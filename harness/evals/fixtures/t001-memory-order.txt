@@ -1,0 +1,1 @@
+The tiers from highest authority to lowest are: managed policy settings first, then user memory, then project CLAUDE.md, and finally the local override file.

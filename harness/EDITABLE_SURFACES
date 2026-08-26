@@ -1,0 +1,5 @@
+# Files a self-improvement proposal is allowed to modify.
+# One path per line. Everything else (gate logic, eval fixtures, workflows,
+# hook decisions) is out of scope by design — bounded change only.
+CLAUDE.md
+docs/RUNBOOK.md

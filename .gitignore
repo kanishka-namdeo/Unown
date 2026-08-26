@@ -1,0 +1,28 @@
+# --- Unown local overrides / secrets ---
+CLAUDE.local.md
+.env
+*.key
+secrets/
+
+# --- Runtime artifacts (personal memory tiers, logs) ---
+unown/logs/
+dreams/sessions/*.local.md
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+
+# --- Node ---
+node_modules/
+
+# --- OS noise ---
+.DS_Store
+Thumbs.db
+
+# --- harness runtime artifacts ---
+harness/runs/
+harness/proposals/
+harness/verdicts/
+harness/weaknesses.json
+unown_state.json

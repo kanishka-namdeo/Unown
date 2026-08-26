@@ -1,0 +1,103 @@
+# Weekly Self-Improvement Loop — Unown mechanism #2
+#
+# Runs evals headlessly, mines failures, generates bounded proposals, and
+# (when the validation gate passes) opens a PR promoting harness v2.
+# Fully offline-capable: pass offline=true to exercise the deterministic
+# reposeek loop without any API spend.
+
+name: self-improve
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"           # Mondays 04:00 UTC
+  workflow_dispatch:
+    inputs:
+      offline:
+        description: "Use state-aware offline mode (no API calls)"
+        type: boolean
+        default: true
+      max_iterations:
+        description: "Loop bound per run"
+        type: number
+        default: 2
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: self-improve
+  cancel-in-progress: true
+
+jobs:
+  improve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Claude Code (headless)
+        if: ${{ inputs.offline != true }}
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run bounded improvement loop
+        id: loop
+        working-directory: harness
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+          OFFLINE=""
+          [[ "${{ inputs.offline }}" != "false" || -z "${ANTHROPIC_API_KEY:-}" ]] && OFFLINE="--offline"
+          chmod +x iterate.sh seed_demo.sh run_evals.py mine_failures.py propose_fix.py validate_fix.py
+          # The seed demo IS the canonical one-shot loop against the repo's
+          # seeded stale fact; iterate.sh generalizes it for live models.
+          if [[ -n "$OFFLINE" ]]; then
+            ./seed_demo.sh || true
+          else
+            ./iterate.sh --max-iterations "${{ inputs.max_iterations }}" || true
+          fi
+
+      - name: Collect artifacts on any outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unown-harness-run-${{ github.run_id }}
+          path: |
+            harness/runs/
+            harness/proposals/
+            harness/verdicts/
+            harness/weaknesses.json
+          retention-days: 14
+
+      - name: Open v2 PR when the gate passed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERDICT=$(python3 - <<'PY'
+          import json, pathlib, sys
+          for f in sorted(pathlib.Path("harness/verdicts").glob("*.json")):
+              v = json.loads(f.read_text()).get("verdict")
+              if v == "PASS":
+                  print(f.name); sys.exit(0)
+          print("")
+          PY
+          )
+          if [[ -z "$VERDICT" ]]; then echo "No PASS verdict this run."; exit 0; fi
+          BR="unown/harness-v2-$(date +%Y%m%d%H%M)"
+          git config user.name  "unown-bot"
+          git config user.email "unown-bot@users.noreply.github.com"
+          git switch -c "$BR"
+          git add -A docs/ CLAUDE.md memory/
+          git diff --cached --quiet && { echo "no promotable diff"; exit 0; }
+          git commit -m "harness: promote validated change ($VERDICT)"
+          git push origin "$BR"
+          gh pr create \
+            --title "Unown harness v2: validated promotion" \
+            --body "Validation gate PASS (\`$VERDICT\`). See verdict artifact for eval tallies." \
+            --base main --head "$BR"

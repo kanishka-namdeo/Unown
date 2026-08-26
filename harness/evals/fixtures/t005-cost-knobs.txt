@@ -1,0 +1,1 @@
+Budget knobs and the sub-50-dollar monthly plan are documented in docs/COST.md.
