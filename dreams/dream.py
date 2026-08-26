@@ -156,6 +156,7 @@ def main() -> int:
     )
     # strip accidental duplicate of our own title from model output
     body = re.sub(r"^#\s+Dream consolidation.*$", "", body, flags=re.M).strip()
+    CONSOLIDATED.mkdir(parents=True, exist_ok=True)
     out_path.write_text(header + body + "\n", encoding="utf-8")
 
     state = load_state()

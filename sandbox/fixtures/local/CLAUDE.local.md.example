@@ -1,0 +1,12 @@
+# Local override (sandbox fixture)
+
+Gitignored tier: machine- or worktree-specific tweaks that beat every other
+memory layer. In production you would NOT commit this file — the repo's own
+.gitignore already excludes CLAUDE.local.md; here it exists to prove local
+specificity wins during resolution.
+
+## Overrides for this checkout only
+
+- Use port 8123 for any dev server started in this worktree.
+- Treat ./scratch/** as disposable; never stage it in commits.
+- During demos, narrate each mechanism out loud before running commands.

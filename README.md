@@ -40,6 +40,7 @@ memory/digest.py          ← prints the effective memory stack for any dir
 harness/                  ← the self-improvement loop (evals → mine → fix → gate)
 dreams/                   ← session notes in, consolidated CLAUDE.md out
 router/dispatch.py        ← GitHub event → headless session router
+sandbox/                  ← keyless test rig: 6 scenarios, disposable clones
 .github/workflows/        ← nightly-dream, self-improve, event-router
 docs/                     ← research report, architecture, cost & security
 ```
@@ -86,6 +87,18 @@ evals (2-of-3 majority to absorb model noise), and either promotes the change
 Enable the workflows under **Actions**, then add repository secrets:
 `ANTHROPIC_API_KEY`. See [`docs/COST.md`](docs/COST.md) for budget knobs and
 [`docs/SECURITY.md`](docs/SECURITY.md) before enabling event-driven routing.
+
+### 6. Prove it works before touching anything: run the sandbox
+
+No API keys, no network, no mutations of your checkout — every mechanism gets
+driven end-to-end inside a disposable clone:
+
+```bash
+python3 sandbox/run_sandbox.py     # 6 scenarios; FAILS if your live repo changes
+```
+
+Expected tail: `Result: 6/6 scenarios PASSED`. See [`sandbox/README.md`](sandbox/README.md)
+for what each scenario proves and how to add one.
 
 ---
 

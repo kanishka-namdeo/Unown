@@ -26,3 +26,6 @@ harness/proposals/
 harness/verdicts/
 harness/weaknesses.json
 unown_state.json
+
+# --- sandbox runtime (disposable clones) ---
+sandbox/.runtime/

@@ -44,7 +44,9 @@ def candidate_files(cwd: Path) -> list[dict]:
                 imports = [ln.strip()[1:].split()[0]
                            for ln in text.splitlines()
                            if ln.strip().startswith("@") and not ln.strip().startswith("`@")]
-                found.append({**c,
+                # NOTE: strip raw Path objects so --json stays serializable.
+                meta = {k: v for k, v in c.items() if k != "path"}
+                found.append({**meta,
                               "resolved_path": str(p),
                               "bytes": len(text.encode("utf-8")),
                               "lines": len(text.splitlines()),
