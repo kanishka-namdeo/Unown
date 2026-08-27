@@ -43,6 +43,7 @@ router/dispatch.py        ← GitHub event → headless session router
 sandbox/                  ← keyless test rig: 6 scenarios, disposable clones
 .github/workflows/        ← nightly-dream, self-improve, event-router
 docs/                     ← research report, architecture, cost & security
+docs/SANDBOXING.md        ← evaluated pre-made sandboxes (srt, E2B, container-use…)
 ```
 
 ### 2. Run it interactively

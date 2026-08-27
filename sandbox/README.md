@@ -12,6 +12,13 @@ python3 sandbox/run_sandbox.py --keep     # keep runtime artifacts for inspectio
 
 ## Why a sandbox?
 
+> **Scope note:** this rig is a *logical* sandbox — it proves Unown's
+> behaviors are correct and that your checkout is never mutated. It is not a
+> security boundary. For real enforcement (OS-level jails, containers,
+> microVMs) read [`../docs/SANDBOXING.md`](../docs/SANDBOXING.md), which maps
+> pre-made options (`srt`, `/sandbox`, devcontainers, `container-use`, E2B,
+> …) onto each Unown touchpoint.
+
 Unown's scripts mutate state: hooks write logs, dreamers consolidate notes,
 the harness edits source files and promotes patches. You want to *prove* those
 behaviors before pointing them at your real project. The sandbox gives each

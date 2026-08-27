@@ -74,6 +74,12 @@ For unattended/vm-scale deployments wrap headless runs in a filesystem jail
 The repo's CI path already approximates this via ephemeral runners +
 workflow-scoped tokens.
 
+**Concrete tooling:** see [`SANDBOXING.md`](SANDBOXING.md) for the evaluated
+landscape — Anthropic's `sandbox-runtime` (`srt`), Claude Code's built-in
+sandboxed Bash, dev containers, Dagger `container-use`, E2B / Vercel /
+Cloudflare microVM sandboxes, and k8s `agent-sandbox` — with a tiered
+recommendation per Unown touchpoint (harness gate, router, interactive).
+
 ## 6. Known trade-offs
 
 - Exit-code semantics mean a buggy PreToolUse script fails *open* — chosen
