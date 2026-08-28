@@ -171,6 +171,10 @@
         "vitest": "4.1.9",
       },
     },
+    "packages/self-learning": {
+      "name": "@earendil-works/pi-self-learning",
+      "version": "0.1.0",
+    },
     "packages/server": {
       "name": "@earendil-works/pi-server",
       "version": "0.84.3",
@@ -322,6 +326,8 @@
     "@earendil-works/pi-evals": ["@earendil-works/pi-evals@workspace:packages/evals"],
 
     "@earendil-works/pi-protocol": ["@earendil-works/pi-protocol@workspace:packages/protocol"],
+
+    "@earendil-works/pi-self-learning": ["@earendil-works/pi-self-learning@workspace:packages/self-learning"],
 
     "@earendil-works/pi-server": ["@earendil-works/pi-server@workspace:packages/server"],
 

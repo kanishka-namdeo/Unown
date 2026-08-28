@@ -4,13 +4,18 @@ Unown takes the open-source **[pi coding agent](https://github.com/badlogic/pi-m
 
 > Let the agent find its own weaknesses. Let it fix them. Let it remember what worked.
 
+Use it two ways:
+
+- **In your terminal** — `unown` gives you a full interactive coding-agent session (the real pi TUI) in your actual project directory, with tiered memory injected, guardrail hooks active, and session notes captured for learning.
+- **As a learning backend** — the engine keeps running harness cycles, AutoDream consolidation and background jobs; your terminal sessions feed it notes, and it writes improved memory back into your project.
+
 | # | Mechanism | Where it lives | What it does |
 |---|-----------|----------------|--------------|
-| 1 | **Tiered Memory** | `pi-repo/packages/self-learning/src/memory.ts` | Four tiers — policy → project → user → local — merged most-specific-wins and injected into every agent session. Every write is versioned, attributable (`seed` / `harness` / `autodream` / `manual` / `rollback`) and rollback-able. |
-| 2 | **Self-Improving Harness** | `…/harness.ts` | Runs a benchmark task → if it fails, mines the failure transcript → asks the LLM for memory rules that would have prevented it → re-runs a *candidate* with the patched memory → ships the patch only if verification passes (then sweeps for regressions). |
-| 3 | **Routing** | `…/router.ts` | Interval jobs (`harness-cycle`, `auto-dream`, `sandbox-gc`) and event jobs (`on improvement:shipped`) keep the agent learning in the background — with a busy-mutex so the sandbox is never double-driven. |
-| 4 | **AutoDreaming** | `…/dream.ts` | Session notes captured by hooks flow into the AutoDream consolidation pass: merge duplicates, resolve contradictions, prune stale entries, reorganize by topic — then write the consolidated result back as the new project memory. |
-| 5 | **Hooks** | `…/hooks.ts` | A pi inline extension enforcing guardrails at every layer: `SessionStart`, `UserPromptSubmit`, `PreToolUse` (bash deny-list + path jail), `PostToolUse` (syntax gate that feeds errors back to the agent), `Stop`, `SubagentStop`. Every decision is logged. |
+| 1 | **Tiered Memory** | `pi-repo/packages/self-learning/src/{memory,term}.ts` | Four tiers — policy → project → user → local — merged most-specific-wins and injected into every agent session (engine sandboxes *and* terminal sessions). Every write is versioned, attributable (`seed` / `harness` / `autodream` / `manual` / `rollback`) and rollback-able. |
+| 2 | **Self-Improving Harness** | `…/harness.ts` | Runs a benchmark task → if it fails, mines the failure transcript → asks the LLM for memory rules that would have prevented it → re-runs a *candidate* with the patched memory → ships the patch only if verification passes (then sweeps for regressions). Shipped patches that later regress are automatically **un-shipped** (retention check). |
+| 3 | **Routing** | `…/router.ts` | Interval jobs (`harness-cycle`, `auto-dream`, `note-sync`, `sandbox-gc`) and event jobs (`on improvement:shipped`) keep the agent learning in the background — with a busy-mutex so the sandbox is never double-driven. |
+| 4 | **AutoDreaming** | `…/dream.ts` | Session notes are consolidated: benchmark notes into the engine's project memory (gated by a canary run — a dream that breaks the last-passing task is rolled back), terminal notes into **your project's own** `.unown/memory/project.md`. |
+| 5 | **Hooks** | `…/{hooks,termhooks}.ts` | A pi inline extension enforcing guardrails at every layer: `SessionStart`, `UserPromptSubmit`, `PreToolUse` (bash deny-list + path jail), `PostToolUse` (syntax gate that feeds errors back to the agent), `Stop`, `SubagentStop`. Every decision is logged. |
 
 Everything is observable from a **mission-control dashboard** (Next.js) with live SSE activity, run transcripts, memory version history, dream journals, hook decision logs, an interactive console, and the job router.
 
@@ -19,7 +24,15 @@ Everything is observable from a **mission-control dashboard** (Next.js) with liv
 ## Architecture
 
 ```
-┌───────────────────────────┐        ┌────────────────────────────────────┐
+                        ┌──────────────────────────────────┐
+                        │  your project                    │
+                        │  $ unown          (pi TUI)       │
+                        │  $ unown -p "…"   (headless)     │
+                        │  .unown/memory/project.md  ◄─────┼──┐
+                        └──────────┬───────────────────────┘  │
+              notes (POST /api/notes, or outbox files offline) │
+                                   ▼                          │
+┌───────────────────────────┐        ┌────────────────────────┴───────────┐
 │  Dashboard (Next.js :3000)│  REST/ │  Self-learning engine (bun :3030)  │
 │  7 tabs · live SSE feed   │◄───────┤  mini-services/agent-service       │
 └───────────────────────────┘  SSE   │  ┌──────────────────────────────┐  │
@@ -27,10 +40,10 @@ Everything is observable from a **mission-control dashboard** (Next.js) with liv
 ┌───────────────────────────┐        │  │ self-learning                │  │
 │  pi coding agent          │◄───────┤  │  memory · hooks · notes      │  │
 │  (headless, per sandbox)  │ drives │  │  harness · dream · router    │  │
-│  write/bash tools + hooks │        │  │  sandbox · runner · store    │  │
-└───────────┬───────────────┘        │  └──────────────────────────────┘  │
-            │ OpenAI-compatible      └───────────────┬────────────────────┘
-            ▼                                        │
+│  write/bash tools + hooks │        │  │  sandbox · runner · term     │  │
+└───────────┬───────────────┘        │  │  termhooks · cli · outbox    │  │
+            │ OpenAI-compatible      │  └──────────────────────────────┘  │
+            ▼                        └───────────────┬────────────────────┘
 ┌───────────────────────────┐        ┌───────────────▼────────────────────┐
 │  llm-bridge (bun :3031)   │        │  SQLite (WAL)                      │
 │  z-ai SDK adapter:        │        │  db/selflearning.db                │
@@ -49,27 +62,34 @@ dream.
 ## Repository layout
 
 ```
-pi-repo/                        the pi coding agent (badlogic/pi-mono)
-  packages/self-learning/       ★ the transformation — the self-learning layer
-    src/memory.ts               tiered memory (pattern 1)
-    src/hooks.ts                6-layer hook guardrails (pattern 5)
-    src/harness.ts              self-improving loop (pattern 2)
-    src/router.ts               background jobs + events (pattern 3)
-    src/dream.ts                AutoDream consolidation (pattern 4)
-    src/notes.ts                session-note capture
-    src/sandbox.ts              sandbox library: jails, snapshots, verification
-    src/runner.ts               headless pi deployment + transcripts
-    src/store.ts                SQLite persistence (runs, versions, logs)
-    src/server.ts               REST + SSE API for the dashboard
-    src/tasks.ts                seeded benchmark tasks
+bin/unown                     the `unown` terminal agent entry point
+pi-repo/                      the pi coding agent (badlogic/pi-mono)
+  packages/self-learning/     ★ the transformation — the self-learning layer
+    src/memory.ts             tiered memory (pattern 1, engine side)
+    src/term.ts               terminal-agent config: ~/.unown state, per-project memory resolution, note outbox
+    src/termhooks.ts          terminal guardrails + session-note capture
+    src/cli.ts                the `unown` command (TUI + headless + doctor/memory/init/note)
+    src/hooks.ts              6-layer hook guardrails (pattern 5, engine side)
+    src/harness.ts            self-improving loop + retention auto-unship (pattern 2)
+    src/router.ts             background jobs + events (pattern 3)
+    src/dream.ts              AutoDream consolidation + canary gate + per-project dreams (pattern 4)
+    src/notes.ts              session-note capture (benchmark + terminal kinds)
+    src/outbox.ts             offline note delivery (engine-side sync)
+    src/sandbox.ts            sandbox library: jails, snapshots, verification
+    src/runner.ts             headless pi deployment + transcripts
+    src/store.ts              SQLite persistence (runs, versions, logs)
+    src/server.ts             REST + SSE API for the dashboard
+    src/tasks.ts              seeded benchmark tasks
 mini-services/
-  llm-bridge/                   OpenAI-compatible gateway over the z-ai SDK
-  agent-service/                boots the engine (memory/tasks/router/API)
-src/                            dashboard (Next.js App Router + shadcn/ui)
-scripts/                        install.sh · start.sh · stop.sh
-data/self-learning/             runtime state (sandboxes, sessions, memory) — created on first run
-db/selflearning.db              runtime SQLite store — created on first run
-blueprint/                      Unown v1 — the Claude Code harness blueprint this project grew out of
+  llm-bridge/                 OpenAI-compatible gateway over the z-ai SDK
+  agent-service/              boots the engine (memory/tasks/router/API)
+src/                          dashboard (Next.js App Router + shadcn/ui)
+scripts/                      install.sh · start.sh · stop.sh
+data/self-learning/           runtime state (sandboxes, sessions, memory) — created on first run
+db/selflearning.db            runtime SQLite store — created on first run
+~/.unown/                     terminal-agent state (agent config, global memory, note outbox)
+<project>/.unown/             per-project memory (commit project.md, ignore local.md)
+blueprint/                    Unown v1 — the Claude Code harness blueprint this project grew out of
 ```
 
 ---
@@ -109,7 +129,35 @@ Boots three services:
 
 Logs land in `.run/*.log`; stop with `bun run agent:stop`.
 
-### 3. Watch it learn
+### 3. Use it in your terminal
+
+`unown` runs the agent in your **real project directory** — the full pi TUI
+(file tools, bash, session management, `@file` mentions), plus the
+self-learning layer:
+
+```bash
+cd ~/code/my-project
+unown                      # interactive session (like claude/pi, but learning)
+unown "fix the failing tests"   # …optionally starting with a prompt
+unown -p "explain the build error" | less   # one-shot headless (like claude -p)
+unown doctor               # check bridge / engine / memory configuration
+unown memory               # print the effective 4-tier memory stack
+unown note "watch out: flaky test in auth.spec"   # hand AutoDream a note directly
+```
+
+What the terminal session does for you:
+
+- **Memory** — the resolved stack (global policy → your project's `.unown/memory/project.md` → global user memory → `.unown/memory/local.md`) is injected into every session, alongside your own `AGENTS.md`/`CLAUDE.md` chain if present.
+- **Guardrails** — catastrophic commands (`rm -rf /`, fork bombs, disk formats) and out-of-project writes are blocked before execution; broken JS/TS you (or the agent) write gets the transpiler error fed back instead of compounding. Normal work — network, `git push`, package installs — is allowed. Set `UNOWN_STRICT_HOOKS=1` for sandbox-grade strictness.
+- **Learning** — when you exit, a session note is delivered to the engine; AutoDream consolidates your notes into an updated `.unown/memory/project.md`, so the next session starts where the last one ended. Notes queue in `~/.unown/notes/outbox/` when the engine is down and sync automatically later.
+
+Install the command globally (optional):
+
+```bash
+cd Unown && bun install -g .   # puts `unown` on your PATH
+```
+
+### 4. Watch it learn
 
 Open **http://localhost:3000**:
 
@@ -135,13 +183,17 @@ All variables are optional; defaults in parentheses.
 | Variable | Applies to | Meaning |
 |----------|------------|---------|
 | `PI_AGENT_PORT` | engine | REST+SSE API port (3030) |
-| `PI_BRIDGE_URL` | engine | LLM endpoint the agent talks to (http://127.0.0.1:3031) |
-| `PI_MODEL_ID` / `PI_PROVIDER` | engine | model / provider registered with pi (glm-4-plus / zai-bridge) |
+| `PI_BRIDGE_URL` | engine + terminal | LLM endpoint the agent talks to (http://127.0.0.1:3031) |
+| `PI_MODEL_ID` / `PI_PROVIDER` | engine + terminal | model / provider registered with pi (glm-4-plus / zai-bridge) |
 | `PI_SELFLEARNING_DATA` / `PI_SELFLEARNING_DB` | engine | runtime data dir & SQLite path (`data/self-learning`, `db/selflearning.db`, resolved relative to the repo) |
+| `PI_DREAM_GATE` | engine | `0` disables the dream canary gate (default on) |
 | `BRIDGE_PORT` | llm-bridge | listen port (3031) |
 | `BRIDGE_MODEL` | llm-bridge | advertised default model (glm-4-plus) |
 | `BRIDGE_API_KEY` | llm-bridge | when set, require `Authorization: Bearer <key>` on every request (unset = open, localhost-only use) |
 | `NEXT_PUBLIC_AGENT_API_BASE` | dashboard | point the dashboard directly at the engine (`http://localhost:3030`) or an API-gateway prefix; unset keeps the sandbox gateway mode |
+| `UNOWN_HOME` | terminal | state dir for the `unown` CLI: agent config, global memory, note outbox (`~/.unown`) |
+| `UNOWN_ENGINE_URL` | terminal | where the CLI delivers session notes (`http://127.0.0.1:3030`) |
+| `UNOWN_STRICT_HOOKS` | terminal | `1` = sandbox-grade hooks in terminal sessions (blocks network, git push, sudo); unset allows normal developer operations |
 
 ### Using a different model provider
 
@@ -158,8 +210,10 @@ bun run agent:engine
 ```
 
 The engine writes the provider into `data/self-learning/pi-agent-dir/models.json`
-for pi automatically — or craft that file by hand for exotic providers (see
-pi's `models.json` docs).
+for pi automatically. For the **terminal agent**, edit
+`~/.unown/agent/models.json` by hand (or set the same env vars before the
+first run) — it accepts any pi-supported provider (see pi's `models.json`
+docs).
 
 ### Production notes
 
@@ -169,10 +223,21 @@ pi's `models.json` docs).
 
 ## Security model
 
-- **Sandboxes**: every agent run happens in an isolated workspace directory; executed commands are jailed to it with timeouts and output caps; benchmark tests are sha256-pinned so the agent cannot tamper with verification.
-- **Hooks**: `PreToolUse` denies destructive shell (`rm -rf /`, `sudo`, outbound `curl`/`wget` to external hosts…), the path jail blocks escapes, and the `PostToolUse` syntax gate feeds transpiler errors back to the agent instead of letting broken code compound.
+- **Sandboxes**: every engine run happens in an isolated workspace directory; executed commands are jailed to it with timeouts and output caps; benchmark tests are sha256-pinned so the agent cannot tamper with verification.
+- **Hooks (engine)**: `PreToolUse` denies destructive shell (`rm -rf /`, `sudo`, outbound `curl`/`wget` to external hosts…), the path jail blocks escapes, and the `PostToolUse` syntax gate feeds transpiler errors back to the agent instead of letting broken code compound.
+- **Hooks (terminal)**: the same gate protects interactive sessions but scoped for real work — catastrophic commands (filesystem-root deletion, fork bombs, disk formats) and writes outside your project/`/tmp` are blocked; network, `git push` and installs stay available. `UNOWN_STRICT_HOOKS=1` restores the sandbox-grade policy.
 - **LLM bridge**: optional bearer auth, request serialization and rate-limit backoff.
 - **No secrets in the repo**: the engine reads credentials from its environment at runtime.
+
+## Learning integrity (how the system polices itself)
+
+Self-modification without gates degenerates fast, so every memory write is
+controlled:
+
+- **Ship gate** — a mined patch only enters memory after its candidate run passes verification in a fresh sandbox.
+- **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`).
+- **Retention check** — if a task later fails after its improvement shipped, the improvement is marked `regressed` and the memory is rolled back to the pre-ship version (auto-unship).
+- **Full version history** — every write to every tier is versioned and attributable; anything can be rolled back from the dashboard.
 
 ## What it actually learned (demo session)
 

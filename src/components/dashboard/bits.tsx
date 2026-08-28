@@ -99,6 +99,8 @@ export function ImprovementStatusBadge({ status }: { status: string }) {
       return <Pill tone="zinc">validated</Pill>;
     case "rejected":
       return <Pill tone="rose">rejected</Pill>;
+    case "regressed":
+      return <Pill tone="orange">regressed</Pill>;
     default:
       return <Pill tone="zinc">{status}</Pill>;
   }
@@ -146,6 +148,8 @@ export function DreamStatusBadge({ status }: { status: string }) {
       return <Pill tone="amber" pulse>running</Pill>;
     case "no-notes":
       return <Pill tone="zinc">no-notes</Pill>;
+    case "gated":
+      return <Pill tone="orange">gated</Pill>;
     case "error":
       return <Pill tone="rose">error</Pill>;
     default:

@@ -140,6 +140,29 @@ export class Store {
                 this.db.exec("PRAGMA journal_mode = WAL;");
                 this.db.exec("PRAGMA busy_timeout = 5000;");
                 this.db.exec(SCHEMA);
+                this.migrate();
+        }
+        /** Idempotent column additions for schema evolution on existing installs. */
+        private migrate() {
+                const columns: Array<[string, string, string]> = [
+                        // notes: distinguish benchmark run notes from terminal-session notes
+                        ["notes", "kind", "ALTER TABLE notes ADD COLUMN kind TEXT DEFAULT 'benchmark'"],
+                        ["notes", "project_path", "ALTER TABLE notes ADD COLUMN project_path TEXT"],
+                        ["notes", "project_slug", "ALTER TABLE notes ADD COLUMN project_slug TEXT"],
+                        // improvements: remember the memory version a shipped patch produced
+                        // (enables auto-unship via rollback when the task later regresses)
+                        ["improvements", "memory_version", "ALTER TABLE improvements ADD COLUMN memory_version INTEGER"],
+                ];
+                for (const [table, col, ddl] of columns) {
+                        const existing = this.query<any>(`PRAGMA table_info(${table})`).some((c: any) => c.name === col);
+                        if (!existing) {
+                                try {
+                                        this.db.exec(ddl);
+                                } catch {
+                                        /* concurrent migration — ignore */
+                                }
+                        }
+                }
         }
         query<T = any>(sql: string, params: any[] = []): T[] {
                 const stmt = this.db.prepare(sql);

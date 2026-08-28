@@ -19,7 +19,7 @@ import { store } from "./store.ts";
 import { chatJson } from "./llm.ts";
 import { runAgent, type RunResult } from "./runner.ts";
 import { getTask, listTasks } from "./tasks.ts";
-import { readTier, appendRules, type Tier } from "./memory.ts";
+import { readTier, appendRules, rollback, type Tier } from "./memory.ts";
 import { emit, emitAsync } from "./bus.ts";
 import { logHook } from "./hooks.ts";
 
@@ -183,6 +183,13 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
                 }
                 store.run(`UPDATE tasks SET fail_count = fail_count + 1 WHERE id = ?`, [taskId]);
 
+                // ---- Retention check ------------------------------------------------
+                // If a task regresses after a shipped improvement, the lesson did not
+                // hold: mark the improvement 'regressed' and roll the memory back to
+                // the pre-ship version (auto-unship). Older rows without a recorded
+                // memory_version are only marked, not rolled back.
+                await retentionCheck(taskId, cycleId);
+
                 // ---- 2..N. Mine → patch → candidate loop ----------------------------
                 const overlays: Record<string, string> = {}; // accumulated overlay per tier
                 const overlayOf = () => {
@@ -233,12 +240,12 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
 
                         if (candidate.status === "passed") {
                                 // ---- SHIP -------------------------------------------------
-                                appendRules(tier, mining.patchLines, "harness", `fixed ${taskId} (cycle ${cycleId.slice(0, 8)}, iteration ${i})`);
-                                store.run(`UPDATE improvements SET status = 'shipped', decided_at = ? WHERE id = ?`, [Date.now(), improvementId]);
-                                logHook(null, "SubagentStop", null, "log", `candidate run ${candidate.id.slice(0, 8)} passed — patch shipped to ${tier} memory`);
-                                emit("improvement:shipped", { id: improvementId, cycleId, taskId, tier });
+                                const shippedVersion = appendRules(tier, mining.patchLines, "harness", `fixed ${taskId} (cycle ${cycleId.slice(0, 8)}, iteration ${i})`);
+                                store.run(`UPDATE improvements SET status = 'shipped', decided_at = ?, memory_version = ? WHERE id = ?`, [Date.now(), shippedVersion, improvementId]);
+                                logHook(null, "SubagentStop", null, "log", `candidate run ${candidate.id.slice(0, 8)} passed — patch shipped to ${tier} memory (v${shippedVersion})`);
+                                emit("improvement:shipped", { id: improvementId, cycleId, taskId, tier, memoryVersion: shippedVersion });
                                 shipped = true;
-                                summary = `baseline failed; iteration ${i} patch shipped (${mining.patchLines.length} rules -> ${tier})`;
+                                summary = `baseline failed; iteration ${i} patch shipped (${mining.patchLines.length} rules -> ${tier} v${shippedVersion})`;
                                 break;
                         }
 
@@ -280,6 +287,37 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
                 emit("cycle:finished", { id: cycleId, taskId, status: "error", error: msg });
                 return { id: cycleId, taskId, status: "error", iterations, baselineRunId: "", improvementIds, summary: msg };
         }
+}
+
+/**
+ * Retention check: a baseline failure on a task with a SHIPPED improvement
+ * means the shipped lesson did not hold. Mark the improvement 'regressed';
+ * when we know the memory version it produced, roll back to the pre-ship
+ * version (auto-unship) so bad lessons cannot linger in memory.
+ */
+async function retentionCheck(taskId: string, cycleId: string) {
+        const shipped = store.get<{ id: string; memory_version: number | null; target_tier: string }>(
+                `SELECT id, memory_version, target_tier FROM improvements WHERE task_id = ? AND status = 'shipped' ORDER BY created_at DESC LIMIT 1`,
+                [taskId],
+        );
+        if (!shipped) return;
+
+        store.run(`UPDATE improvements SET status = 'regressed', decided_at = ? WHERE id = ?`, [Date.now(), shipped.id]);
+        let note = `task ${taskId} failed again after the patch shipped — improvement marked regressed`;
+
+        const version = shipped.memory_version;
+        if (version && version > 1) {
+                try {
+                        rollback(shipped.target_tier as Tier, version - 1, `retention: ${taskId} regressed — unshipped improvement (cycle ${cycleId.slice(0, 8)})`);
+                        note += `; memory rolled back to v${version - 1}`;
+                } catch {
+                        note += `; rollback to v${version - 1} unavailable`;
+                }
+        } else {
+                note += "; legacy ship without recorded version — memory left as-is";
+        }
+        logHook(null, "SubagentStop", null, "log", note);
+        emit("improvement:regressed", { id: shipped.id, taskId, cycleId, rolledBackTo: version && version > 1 ? version - 1 : null });
 }
 
 /** Regression sweep triggered after an improvement ships. */

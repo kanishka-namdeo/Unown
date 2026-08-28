@@ -12,6 +12,8 @@ import { listSandboxes } from "./sandbox.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
 import { subscribe, emit } from "./bus.ts";
 import { ensureAgentDir } from "./runner.ts";
+import { ingestTerminalNote } from "./notes.ts";
+import { syncNoteOutbox } from "./outbox.ts";
 
 const PORT = Number(process.env.PI_AGENT_PORT ?? 3030);
 
@@ -204,6 +206,19 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         const notes = store.query<any>(`SELECT * FROM notes ORDER BY created_at DESC LIMIT ?`, [limit]);
                         return json({ notes });
                 }
+                if (method === "POST" && path === "/api/notes") {
+                        // Terminal-session note ingestion (called by the `unown` CLI).
+                        const content = typeof body?.content === "string" ? body.content.trim() : "";
+                        const projectPath = typeof body?.project_path === "string" ? body.project_path.trim() : "";
+                        if (!content || !projectPath) return json({ error: "content and project_path are required" }, 400);
+                        if (content.length > 20000) return json({ error: "note too large" }, 413);
+                        const id = ingestTerminalNote(content.slice(0, 20000), projectPath);
+                        return json({ ok: true, id });
+                }
+                if (method === "POST" && path === "/api/notes/sync") {
+                        const synced = syncNoteOutbox();
+                        return json({ ok: true, synced });
+                }
 
                 // ------------------------------------------------------------------
                 // Routing jobs
@@ -264,6 +279,8 @@ export function startServer(port: number = PORT) {
         seedMemoryIfEmpty();
         seedTasks();
         recoverOrphans();
+        const synced = syncNoteOutbox();
+        if (synced > 0) console.log(`[agent-service] ingested ${synced} outbox note(s) from terminal sessions`);
         router.start().catch((e) => console.error("[router] failed to start:", e));
 
         const server = Bun.serve({

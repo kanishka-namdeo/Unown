@@ -1,0 +1,15 @@
+#!/usr/bin/env bun
+/**
+ * unown — a self-improving terminal coding agent.
+ *
+ * Boots the pi coding agent (TUI or one-shot print mode) in the current
+ * directory with tiered memory, guardrail hooks and session-note capture.
+ * The self-learning engine (bun run agent:start) consolidates notes into
+ * this project's .unown/memory/project.md via AutoDream.
+ */
+import { runCli } from "../pi-repo/packages/self-learning/src/cli.ts";
+
+runCli(process.argv.slice(2)).catch((err) => {
+	console.error("unown:", err?.message ?? err);
+	process.exit(1);
+});

@@ -11,9 +11,10 @@
  */
 import { store } from "./store.ts";
 import { runCycle, runRegression, pickNextTask } from "./harness.ts";
-import { runDream } from "./dream.ts";
+import { runDream, runProjectDream } from "./dream.ts";
 import { undreamedNotes } from "./notes.ts";
 import { gcSandboxes } from "./sandbox.ts";
+import { syncNoteOutbox } from "./outbox.ts";
 import { emit, onAsync } from "./bus.ts";
 
 export interface JobDef {
@@ -38,7 +39,14 @@ export const JOB_DEFS: JobDef[] = [
                 name: "AutoDream consolidation",
                 kind: "interval",
                 scheduleMs: 10 * 60_000,
-                description: "Consolidates new session notes into project memory (needs ≥3 new notes).",
+                description: "Consolidates new session notes into project memory (needs ≥3 benchmark notes); terminal notes are dreamed into their own projects.",
+        },
+        {
+                id: "note-sync",
+                name: "Terminal note sync",
+                kind: "interval",
+                scheduleMs: 5 * 60_000,
+                description: "Ingests session notes left by `unown` terminal sessions while the engine was unreachable.",
         },
         {
                 id: "regression-on-ship",
@@ -167,10 +175,17 @@ export class Router {
                                 return { cycle };
                         }
                         case "auto-dream": {
-                                const pending = undreamedNotes(50).length;
-                                if (pending < 3) return { skipped: `only ${pending} undreamed notes` };
-                                const dream = await runDream();
-                                return { dream: { id: dream.id, status: dream.status, notesIn: dream.notesIn } };
+                                const pending = undreamedNotes(50, "benchmark").length;
+                                let dream: any = null;
+                                if (pending >= 3) dream = await runDream();
+                                // Terminal notes are consolidated into their own projects.
+                                const projects = await runProjectDream();
+                                if (!dream && projects.length === 0) return { skipped: `only ${pending} undreamed benchmark notes and no terminal notes` };
+                                return { dream: dream ? { id: dream.id, status: dream.status, notesIn: dream.notesIn } : null, projects };
+                        }
+                        case "note-sync": {
+                                const synced = syncNoteOutbox();
+                                return { synced };
                         }
                         case "regression-on-ship": {
                                 const results = await runRegression(2);
