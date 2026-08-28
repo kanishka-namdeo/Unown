@@ -1,54 +1,59 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Unown — root .gitignore
+# Sandbox/template-specific entries are anchored to the repo root (/...) so
+# they never swallow pi-repo subdirectories (e.g. packages/*/tests).
 
 # dependencies
-node_modules
-/.pnp
+node_modules/
+.pnp
 .pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
 
 # next.js
-/.next/
+.next/
 /out/
+.vercel
 
-# production
+# production builds
 /build
+
+# env files — configure from .env.example instead
+.env
+.env.*
+!.env.example
+
+# runtime state of the self-learning engine (root only)
+/data/
+/db/
+/.run/
+
+# sandbox / template artifacts (root only)
+/.zscripts/
+/download/
+/upload/
+/tool-results/
+/examples/
+/tests/
+/skills/
+/Caddyfile
+/worklog.md
+/dev.log
+/server.log
 
 # misc
 .DS_Store
 *.pem
-
-# debug
+*.tsbuildinfo
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
+# local session material (root only)
+/.claude
+/.z-ai-config
+/test
+/prompt
+/local-*
 
 # typescript
-*.tsbuildinfo
 next-env.d.ts
-local-*
-.claude
-.z-ai-config
-*.log
-dev.log
-dev.out.log
-test
-prompt
-
-server.log
-# Skills directory
-/skills/

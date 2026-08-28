@@ -1,5 +1,34 @@
 // Fetch helpers for the self-learning agent service.
-// ALL requests go through the gateway as relative URLs with XTransformPort=3030.
+//
+// Two deployment modes:
+//  1. DIRECT  — set NEXT_PUBLIC_AGENT_API_BASE (e.g. "http://localhost:3030"
+//     or an API-gateway prefix) and requests go straight to the engine.
+//  2. GATEWAY — default: relative URLs carry ?XTransformPort=3030 so the
+//     sandbox gateway routes them to the engine port.
+
+const PORT = 3030;
+const RAW_BASE = (process.env.NEXT_PUBLIC_AGENT_API_BASE ?? "").trim().replace(/\/+$/, "");
+const DIRECT = RAW_BASE.length > 0;
+
+export function apiUrl(
+  path: string,
+  params?: Record<string, string | number | undefined>
+) {
+  const sp = new URLSearchParams();
+  if (!DIRECT) sp.set("XTransformPort", String(PORT));
+  if (params)
+    for (const [k, v] of Object.entries(params))
+      if (v !== undefined && v !== null) sp.set(k, String(v));
+  const qs = sp.toString();
+  const prefix = DIRECT ? `${RAW_BASE}${path}` : path;
+  return qs ? `${prefix}?${qs.toString()}` : prefix;
+}
+
+const EVENTS_URL = DIRECT
+  ? `${RAW_BASE}/api/events`
+  : `/api/events?XTransformPort=${PORT}`;
+
+export { EVENTS_URL };
 
 import type {
   BridgeResponse,
@@ -19,23 +48,6 @@ import type {
   RunsResponse,
   TasksResponse,
 } from "./agent-types";
-
-const PORT = 3030;
-
-export function apiUrl(
-  path: string,
-  params?: Record<string, string | number | undefined>
-) {
-  const sp = new URLSearchParams({ XTransformPort: String(PORT) });
-  if (params)
-    for (const [k, v] of Object.entries(params))
-      if (v !== undefined && v !== null) sp.set(k, String(v));
-  return `${path}?${sp.toString()}`;
-}
-
-const EVENTS_URL = `/api/events?XTransformPort=${PORT}`;
-
-export { EVENTS_URL };
 
 export class ApiError extends Error {
   status: number;

@@ -11,7 +11,11 @@
  */
 import ZAI from "z-ai-web-dev-sdk";
 
-const PORT = 3031;
+const PORT = Number(process.env.BRIDGE_PORT ?? 3031);
+// Optional shared secret: when BRIDGE_API_KEY is set, every request must carry
+// it as an Authorization: Bearer <key> header. Leave unset for local use.
+const BRIDGE_API_KEY = process.env.BRIDGE_API_KEY ?? "";
+const DEFAULT_MODEL = process.env.BRIDGE_MODEL ?? "glm-4-plus";
 
 // ---------------------------------------------------------------------------
 // Types (OpenAI wire format subset we need)
@@ -296,11 +300,21 @@ const server = Bun.serve({
         async fetch(req) {
                 const url = new URL(req.url);
 
+                if (BRIDGE_API_KEY) {
+                        const auth = req.headers.get("authorization") ?? "";
+                        if (auth !== `Bearer ${BRIDGE_API_KEY}`) {
+                                return Response.json(
+                                        { error: { message: "unauthorized: missing or invalid bearer token (BRIDGE_API_KEY is set)", type: "bridge_auth", code: 401 } },
+                                        { status: 401 },
+                                );
+                        }
+                }
+
                 if (req.method === "GET" && url.pathname === "/v1/models") {
                         return Response.json({
                                 object: "list",
                                 data: [
-                                        { id: "glm-4-plus", object: "model", created: Math.floor(Date.now() / 1000), owned_by: "zai-bridge" },
+                                        { id: DEFAULT_MODEL, object: "model", created: Math.floor(Date.now() / 1000), owned_by: "zai-bridge" },
                                 ],
                         });
                 }
@@ -333,7 +347,7 @@ const server = Bun.serve({
                                 const body = await req.json();
                                 const wantsStream = body.stream === true;
                                 entry.stream = wantsStream;
-                                entry.model = body.model ?? "glm-4-plus";
+                                entry.model = body.model ?? DEFAULT_MODEL;
                                 entry.messages = Array.isArray(body.messages) ? body.messages.length : 0;
                                 entry.tools = Array.isArray(body.tools) ? body.tools.length : 0;
 

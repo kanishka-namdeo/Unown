@@ -1,0 +1,10 @@
+{
+  "name": "@earendil-works/pi-self-learning",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-learning layer for the pi coding agent: tiered memory, hooks, session notes, AutoDreaming, self-improving harness, sandbox testing and routing.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

@@ -6,10 +6,10 @@
 import { startServer } from "../../pi-repo/packages/self-learning/src/index.ts";
 
 async function main() {
-	startServer(3030);
+        startServer(Number(process.env.PI_AGENT_PORT ?? 3030));
 }
 
 main().catch((err) => {
-	console.error("[agent-service] fatal:", err);
-	process.exit(1);
+        console.error("[agent-service] fatal:", err);
+        process.exit(1);
 });
