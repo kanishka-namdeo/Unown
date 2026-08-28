@@ -1,0 +1,1 @@
+PostToolUse prefers ruff format, falling back to black when ruff is not installed.

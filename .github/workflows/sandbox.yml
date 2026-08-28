@@ -1,0 +1,51 @@
+name: sandbox
+
+# Keyless CI proof: exercises every Unown mechanism against a disposable
+# clone of the repo. No ANTHROPIC_API_KEY required or allowed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sandbox/**"
+      - ".claude/**"
+      - "harness/**"
+      - "dreams/**"
+      - "router/**"
+      - "memory/**"
+      - ".github/workflows/sandbox.yml"
+  pull_request:
+    paths:
+      - "sandbox/**"
+      - ".claude/**"
+      - "harness/**"
+      - "dreams/**"
+      - "router/**"
+      - "memory/**"
+  workflow_dispatch:
+
+jobs:
+  sandbox-suite:
+    name: Unown sandbox (offline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Belt-and-braces: the runner also strips these itself.
+      ANTHROPIC_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run the sandbox suite
+        run: python3 sandbox/run_sandbox.py
+
+      - name: Upload runtime artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sandbox-runtime
+          path: sandbox/.runtime/
+          retention-days: 7

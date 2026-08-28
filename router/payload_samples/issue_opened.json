@@ -1,0 +1,10 @@
+{
+  "action": "opened",
+  "issue": {
+    "number": 12,
+    "title": "SessionStart digest shows duplicate tier entries on macOS",
+    "user": {"login": "example-contributor"},
+    "body": "When /Library/Application Support/ClaudeCode/CLAUDE.md and ~/.claude/CLAUDE.md both exist, digest.py lists both as managed?"
+  },
+  "repository": {"full_name": "kanishka-namdeo/Unown"}
+}

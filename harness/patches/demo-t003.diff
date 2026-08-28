@@ -1,0 +1,11 @@
+--- a/docs/RUNBOOK.md
++++ b/docs/RUNBOOK.md
+@@ -25,7 +25,7 @@
+ 
+ ## Dream archive
+ 
+-Dream consolidations are archived under memory/dream-archive/ after review.
++Dream consolidations are written to dreams/consolidated/<date>.md and merged into CLAUDE.md only after human review.
+ 
+ ---
+ Maintained via harness-analyst proposals; every change passes validate_fix.py.

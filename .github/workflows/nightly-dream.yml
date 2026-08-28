@@ -1,0 +1,81 @@
+# Nightly Auto Dreaming — Unown mechanism #4
+#
+# Consolidates session notes into dreams/consolidated/<date>.md and opens a PR
+# so a human can merge approved bullets into CLAUDE.md. Bounded by
+# DREAM_MAX_NOTES; runs on schedule even with every laptop closed.
+
+name: nightly-dream
+
+on:
+  schedule:
+    - cron: "30 2 * * *"          # 02:30 UTC daily — pick a quiet hour for you
+  workflow_dispatch:
+    inputs:
+      offline:
+        description: "Mechanical merge only (no model call)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write                  # branch + commit the consolidation
+  pull-requests: write             # open the review PR
+
+concurrency:
+  group: nightly-dream
+  cancel-in-progress: true
+
+jobs:
+  dream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Claude Code (headless)
+        if: ${{ inputs.offline != true }}
+        run: npm install -g @anthropic-ai/claude-code
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Consolidate session notes
+        id: dream
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DREAM_MAX_NOTES: "40"
+        run: |
+          set -euo pipefail
+          ARGS=""
+          if [[ "${{ inputs.offline }}" == "true" || -z "${ANTHROPIC_API_KEY:-}" ]]; then
+            ARGS="--offline"
+            echo "[dream] running in offline/unrefined mode"
+          fi
+          python3 dreams/dream.py $ARGS
+
+      - name: Open consolidation PR when there is something new
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          NEW=$(ls dreams/consolidated/*.md 2>/dev/null | wc -l || true)
+          if [[ "${NEW:-0}" -eq 0 ]]; then
+            echo "No consolidated output; nothing to PR."; exit 0
+          fi
+          BR="unown/dream-$(date +%Y%m%d)"
+          git config user.name  "unown-bot"
+          git config user.email "unown-bot@users.noreply.github.com"
+          git switch -c "$BR" 2>/dev/null || git switch "$BR"
+          git add dreams/consolidated/ dreams/state.json
+          if git diff --cached --quiet; then
+            echo "Nothing new to commit."; exit 0
+          fi
+          git commit -m "dream: nightly memory consolidation $(date +%F)"
+          git push --force origin "$BR"
+          gh pr create \
+            --title "Unown dream: consolidate memory $(date +%F)" \
+            --body-file <(echo "Auto-generated consolidation. Review bullets, merge what you approve into CLAUDE.md, close this PR.") \
+            --base main --head "$BR" || \
+            gh pr edit "$BR" --body "Updated with newer consolidation." || true

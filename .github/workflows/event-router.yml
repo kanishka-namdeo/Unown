@@ -1,0 +1,100 @@
+# Event Router — Unown mechanism #3
+#
+# Connects Unown to GitHub events (PRs, issues, comments) and drives headless
+# cloud sessions. Two hard guardrails:
+#   1. Label gating: only items labelled `unown` trigger a routed run, so
+#      strangers cannot spend your API budget.
+#   2. Fallback safety: without ANTHROPIC_API_KEY the job degrades to a
+#      dry-run print of the prompt that WOULD be sent.
+
+name: event-router
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      intent:
+        description: "pr_review | issue_triage | comment_reply | nightly_summary"
+        default: "nightly_summary"
+        type: string
+      sample:
+        description: "Sample payload path under router/payload_samples/"
+        default: "router/payload_samples/pr_opened.json"
+        type: string
+      dry_run:
+        description: "Only print the prompt"
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Decide intent + gate by label
+        id: pick
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          LABELS_JSON: ${{ toJSON(github.event.issue.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          INTENT=""
+          PAYLOAD="-"
+          case "$EVENT_NAME" in
+            pull_request)   INTENT="pr_review" ;;
+            issues)
+              if ! echo "$LABELS_JSON" | grep -q "unown"; then
+                echo "Issue lacks 'unown' label — not routing (cost guard)."
+                exit 0
+              fi
+              INTENT="issue_triage" ;;
+            issue_comment)  INTENT="comment_reply" ;;
+            workflow_dispatch) INTENT="${{ inputs.intent }}" ;
+                               PAYLOAD="${{ inputs.sample }}" ;;
+          esac
+          if [[ -z "$INTENT" ]]; then echo "no intent"; exit 0; fi
+          echo "intent=$INTENT" >> "$GITHUB_OUTPUT"
+          echo "payload=$PAYLOAD" >> "$GITHUB_OUTPUT"
+
+      - name: Install Claude Code (headless)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == false }}
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Route through headless Unown
+        if: steps.pick.outputs.intent != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+          chmod +x router/dispatch.py
+          DRY="--dry-run"
+          if [[ "${{ inputs.dry_run }}" != "true" && -n "${ANTHROPIC_API_KEY:-}" ]]; then
+            DRY=""
+          else
+            echo "[router] dry-run mode (missing key or explicitly requested)"
+            # gh needs a repo context even for comments we skip in dry-run.
+            git config --global --add safe.directory "$PWD"
+          fi
+          ./dispatch.py \
+            --intent "${{ steps.pick.outputs.intent }}" \
+            --payload "${{ steps.pick.outputs.payload }}" \
+            $DRY

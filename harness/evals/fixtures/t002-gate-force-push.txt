@@ -1,0 +1,1 @@
+A git push --force attempt is intercepted by the PreToolUse gate, which returns deny with a policy reason asking you to open a branch instead.
