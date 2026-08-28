@@ -1,0 +1,15 @@
+/**
+ * agent-service — mini-service wrapper (port 3030) that boots the
+ * pi self-learning layer: memory seeding, task seeding, the router
+ * (background learning), and the REST+SSE API for the dashboard.
+ */
+import { startServer } from "../../pi-repo/packages/self-learning/src/index.ts";
+
+async function main() {
+	startServer(3030);
+}
+
+main().catch((err) => {
+	console.error("[agent-service] fatal:", err);
+	process.exit(1);
+});

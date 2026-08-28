@@ -1,0 +1,642 @@
+    60→        CompactionEntry,
+    61→        CustomEntry,
+    62→        ReadonlySessionManager,
+    63→        SessionEntry,
+    64→        SessionManager,
+    65→} from "../session-manager.ts";
+    66→import type { SlashCommandInfo } from "../slash-commands.ts";
+    67→import type { SourceInfo } from "../source-info.ts";
+    68→import type { BuildSystemPromptOptions } from "../system-prompt.ts";
+    69→import type { BashOperations } from "../tools/bash.ts";
+    70→import type { EditToolDetails } from "../tools/edit.ts";
+    71→import type {
+    72→        BashToolDetails,
+    73→        BashToolInput,
+    74→        EditToolInput,
+    75→        FindToolDetails,
+    76→        FindToolInput,
+    77→        GrepToolDetails,
+    78→        GrepToolInput,
+    79→        LsToolDetails,
+    80→        LsToolInput,
+    81→        PowerShellToolDetails,
+    82→        PowerShellToolInput,
+    83→        ReadToolDetails,
+    84→        ReadToolInput,
+    85→        WriteToolInput,
+    86→} from "../tools/index.ts";
+    87→
+    88→export type { ExecOptions, ExecResult } from "../exec.ts";
+    89→export type { BuildSystemPromptOptions } from "../system-prompt.ts";
+    90→export type { AgentToolResult, AgentToolUpdateCallback, ToolExecutionMode };
+    91→export type { AppKeybinding, KeybindingsManager } from "../keybindings.ts";
+    92→
+    93→// ============================================================================
+    94→// UI Context
+    95→// ============================================================================
+    96→
+    97→/** Options for extension UI dialogs. */
+    98→export interface ExtensionUIDialogOptions {
+    99→        /** AbortSignal to programmatically dismiss the dialog. */
+   100→        signal?: AbortSignal;
+   101→        /** Timeout in milliseconds. Dialog auto-dismisses with live countdown display. */
+   102→        timeout?: number;
+   103→}
+   104→
+   105→/** Placement for extension widgets. */
+   106→export type WidgetPlacement = "aboveEditor" | "belowEditor";
+   107→
+   108→/** Options for extension widgets. */
+   109→export interface ExtensionWidgetOptions {
+   110→        /** Where the widget is rendered. Defaults to "aboveEditor". */
+   111→        placement?: WidgetPlacement;
+   112→}
+   113→
+   114→/** Raw terminal input listener for extensions. */
+   115→export type TerminalInputHandler = (data: string) => { consume?: boolean; data?: string } | undefined;
+   116→
+   117→/** Working indicator configuration for the interactive streaming loader. */
+   118→export interface WorkingIndicatorOptions {
+   119→        /** Animation frames. Use an empty array to hide the indicator entirely. Custom frames are rendered verbatim. */
+   120→        frames?: string[];
+   121→        /** Frame interval in milliseconds for animated indicators. */
+   122→        intervalMs?: number;
+   123→}
+   124→
+   125→/** Wrap the current autocomplete provider with additional behavior. */
+   126→export type AutocompleteProviderFactory = (current: AutocompleteProvider) => AutocompleteProvider;
+   127→export type EditorFactory = (tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) => EditorComponent;
+   128→
+   129→/**
+   130→ * UI context for extensions to request interactive UI.
+   131→ * Each mode (interactive, RPC, print) provides its own implementation.
+   132→ */
+   133→export interface ExtensionUIContext {
+   134→        /** Show a selector and return the user's choice. */
+   135→        select(title: string, options: string[], opts?: ExtensionUIDialogOptions): Promise<string | undefined>;
+   136→
+   137→        /** Show a confirmation dialog. */
+   138→        confirm(title: string, message: string, opts?: ExtensionUIDialogOptions): Promise<boolean>;
+   139→
+   140→        /** Show a text input dialog. */
+   141→        input(title: string, placeholder?: string, opts?: ExtensionUIDialogOptions): Promise<string | undefined>;
+   142→
+   143→        /** Show a notification to the user. */
+   144→        notify(message: string, type?: "info" | "warning" | "error"): void;
+   145→
+   146→        /** Listen to raw terminal input (interactive mode only). Returns an unsubscribe function. */
+   147→        onTerminalInput(handler: TerminalInputHandler): () => void;
+   148→
+   149→        /** Set status text in the footer/status bar. Pass undefined to clear. */
+   150→        setStatus(key: string, text: string | undefined): void;
+   151→
+   152→        /** Set the working/loading message shown during streaming. Call with no argument to restore default. */
+   153→        setWorkingMessage(message?: string): void;
+   154→
+   155→        /** Show or hide the built-in interactive working loader row during streaming. */
+   156→        setWorkingVisible(visible: boolean): void;
+   157→
+   158→        /**
+   159→         * Configure the interactive working indicator shown during streaming.
+   160→         *
+   161→         * - Omit the argument to restore the default animated spinner.
+   162→         * - Use `frames: ["●"]` for a static indicator.
+   163→         * - Use `frames: []` to hide the indicator entirely.
+   164→         * - Custom frames are rendered as provided, so extensions must add their own colors.
+   165→         */
+   166→        setWorkingIndicator(options?: WorkingIndicatorOptions): void;
+   167→
+   168→        /** Set the label shown for hidden thinking blocks. Call with no argument to restore default. */
+   169→        setHiddenThinkingLabel(label?: string): void;
+   170→
+   171→        /** Set a widget to display above or below the editor. Accepts string array or component factory. */
+   172→        setWidget(key: string, content: string[] | undefined, options?: ExtensionWidgetOptions): void;
+   173→        setWidget(
+   174→                key: string,
+   175→                content: ((tui: TUI, theme: Theme) => Component & { dispose?(): void }) | undefined,
+   176→                options?: ExtensionWidgetOptions,
+   177→        ): void;
+   178→
+   179→        /** Set a custom footer component, or undefined to restore the built-in footer.
+   180→         *
+   181→         * The factory receives a FooterDataProvider for data not otherwise accessible:
+   182→         * git branch and extension statuses from setStatus(). Context usage is on
+   183→         * ctx.getContextUsage(), token stats on ctx.sessionManager.getEntries(), model info on ctx.model.
+   184→         */
+   185→        setFooter(
+   186→                factory:
+   187→                        | ((tui: TUI, theme: Theme, footerData: ReadonlyFooterDataProvider) => Component & { dispose?(): void })
+   188→                        | undefined,
+   189→        ): void;
+   190→
+   191→        /** Set a custom header component (shown at startup, above chat), or undefined to restore the built-in header. */
+   192→        setHeader(factory: ((tui: TUI, theme: Theme) => Component & { dispose?(): void }) | undefined): void;
+   193→
+   194→        /** Set the terminal window/tab title. */
+   195→        setTitle(title: string): void;
+   196→
+   197→        /** Show a custom component with keyboard focus. */
+   198→        custom<T>(
+   199→                factory: (
+   200→                        tui: TUI,
+   201→                        theme: Theme,
+   202→                        keybindings: KeybindingsManager,
+   203→                        done: (result: T) => void,
+   204→                ) => (Component & { dispose?(): void }) | Promise<Component & { dispose?(): void }>,
+   205→                options?: {
+   206→                        overlay?: boolean;
+   207→                        /** Overlay positioning/sizing options. Can be static or a function for dynamic updates. */
+   208→                        overlayOptions?: OverlayOptions | (() => OverlayOptions);
+   209→                        /** Called with the overlay handle after the overlay is shown. Use to control visibility. */
+   210→                        onHandle?: (handle: OverlayHandle) => void;
+   211→                },
+   212→        ): Promise<T>;
+   213→
+   214→        /** Paste text into the editor, triggering paste handling (collapse for large content). */
+   215→        pasteToEditor(text: string): void;
+   216→
+   217→        /** Set the text in the core input editor. */
+   218→        setEditorText(text: string): void;
+   219→
+   220→        /** Get the current text from the core input editor. */
+   221→        getEditorText(): string;
+   222→
+   223→        /** Show a multi-line editor for text editing. */
+   224→        editor(title: string, prefill?: string): Promise<string | undefined>;
+   225→
+   226→        /** Stack additional autocomplete behavior on top of the built-in provider. */
+   227→        addAutocompleteProvider(factory: AutocompleteProviderFactory): void;
+   228→
+   229→        /**
+   230→         * Set a custom editor component via factory function.
+   231→         * Pass undefined to restore the default editor.
+   232→         *
+   233→         * The factory receives:
+   234→         * - `theme`: EditorTheme for styling borders and autocomplete
+   235→         * - `keybindings`: KeybindingsManager for app-level keybindings
+   236→         *
+   237→         * For full app keybinding support (escape, ctrl+d, model switching, etc.),
+   238→         * extend `CustomEditor` from `@earendil-works/pi-coding-agent` and call
+   239→         * `super.handleInput(data)` for keys you don't handle.
+   240→         *
+   241→         * @example
+   242→         * ```ts
+   243→         * import { CustomEditor } from "@earendil-works/pi-coding-agent";
+   244→         *
+   245→         * class VimEditor extends CustomEditor {
+   246→         *   private mode: "normal" | "insert" = "insert";
+   247→         *
+   248→         *   handleInput(data: string): void {
+   249→         *     if (this.mode === "normal") {
+   250→         *       // Handle vim normal mode keys...
+   251→         *       if (data === "i") { this.mode = "insert"; return; }
+   252→         *     }
+   253→         *     super.handleInput(data);  // App keybindings + text editing
+   254→         *   }
+   255→         * }
+   256→         *
+   257→         * ctx.ui.setEditorComponent((tui, theme, keybindings) =>
+   258→         *   new VimEditor(tui, theme, keybindings)
+   259→         * );
+   260→         * ```
+   261→         */
+   262→        setEditorComponent(factory: EditorFactory | undefined): void;
+   263→
+   264→        /** Get the currently configured custom editor factory, or undefined when using the default editor. */
+   265→        getEditorComponent(): EditorFactory | undefined;
+   266→
+   267→        /** Get the current theme for styling. */
+   268→        readonly theme: Theme;
+   269→
+   270→        /** Get all available themes with their names and file paths. */
+   271→        getAllThemes(): { name: string; path: string | undefined }[];
+   272→
+   273→        /** Load a theme by name without switching to it. Returns undefined if not found. */
+   274→        getTheme(name: string): Theme | undefined;
+   275→
+   276→        /** Set the current theme by name or Theme object. */
+   277→        setTheme(theme: string | Theme): { success: boolean; error?: string };
+   278→
+   279→        /** Get current tool output expansion state. */
+   280→        getToolsExpanded(): boolean;
+   281→
+   282→        /** Set tool output expansion state. */
+   283→        setToolsExpanded(expanded: boolean): void;
+   284→}
+   285→
+   286→// ============================================================================
+   287→// Extension Context
+   288→// ============================================================================
+   289→
+   290→export interface ContextUsage {
+   291→        /** Estimated context tokens, or null if unknown (e.g. right after compaction, before next LLM response). */
+   292→        tokens: number | null;
+   293→        contextWindow: number;
+   294→        /** Context usage as percentage of context window, or null if tokens is unknown. */
+   295→        percent: number | null;
+   296→}
+   297→
+   298→export interface CompactOptions {
+   299→        customInstructions?: string;
+   300→        onComplete?: (result: CompactionResult) => void;
+   301→        onError?: (error: Error) => void;
+   302→}
+   303→
+   304→/**
+   305→ * Context passed to extension event handlers.
+   306→ */
+   307→export type ExtensionMode = "tui" | "rpc" | "json" | "print";
+   308→
+   309→export interface ExtensionContext {
+   310→        /** UI methods for user interaction */
+   311→        ui: ExtensionUIContext;
+   312→        /** Current run mode. Use "tui" to guard terminal-only UI such as custom components. */
+   313→        mode: ExtensionMode;
+   314→        /** Whether dialog-capable UI is available (true in TUI and RPC modes) */
+   315→        hasUI: boolean;
+   316→        /** Current working directory */
+   317→        cwd: string;
+   318→        /** Session manager (read-only) */
+   319→        sessionManager: ReadonlySessionManager;
+   320→        /** Model registry for API key resolution */
+   321→        modelRegistry: ModelRegistry;
+   322→        /** Current model (may be undefined) */
+   323→        model: Model<any> | undefined;
+   324→        /** Models scoped to this session (resolved from `--models` /
+   325→         *  `enabledModels` settings against the available catalogue). Same set
+   326→         *  the `/scoped-models` command shows. Empty when no scoping is
+   327→         *  configured (all available models are usable). Read-only snapshot. */
+   328→        scopedModels: readonly ScopedModel[];
+   329→        /** Current thinking level, when provided by the session runtime. */
+   330→        thinkingLevel?: ThinkingLevel;
+   331→        /** Whether the agent is idle (not streaming) */
+   332→        isIdle(): boolean;
+   333→        /** Whether project-local trust is active for this context. */
+   334→        isProjectTrusted(): boolean;
+   335→        /** The current abort signal, or undefined when the agent is not streaming. */
+   336→        signal: AbortSignal | undefined;
+   337→        /** Abort the current agent operation */
+   338→        abort(): void;
+   339→        /** Whether there are queued messages waiting */
+   340→        hasPendingMessages(): boolean;
+   341→        /** Gracefully shutdown pi and exit. Available in all contexts. */
+   342→        shutdown(): void;
+   343→        /** Get current context usage for the active model. */
+   344→        getContextUsage(): ContextUsage | undefined;
+   345→        /** Trigger compaction without awaiting completion. */
+   346→        compact(options?: CompactOptions): void;
+   347→        /** Get the current effective system prompt. */
+   348→        getSystemPrompt(): string;
+   349→}
+   350→
+   351→/**
+   352→ * Extended context for command handlers.
+   353→ * Includes session control methods only safe in user-initiated commands.
+   354→ */
+   355→export interface ExtensionCommandContext extends ExtensionContext {
+   356→        /** Get the current base system-prompt construction options. */
+   357→        getSystemPromptOptions(): BuildSystemPromptOptions;
+   358→
+   359→        /** Wait for the agent to finish streaming */
+   360→        waitForIdle(): Promise<void>;
+   361→
+   362→        /** Start a new session, optionally with initialization. */
+   363→        newSession(options?: {
+   364→                parentSession?: string;
+   365→                setup?: (sessionManager: SessionManager) => Promise<void>;
+   366→                withSession?: (ctx: ReplacedSessionContext) => Promise<void>;
+   367→        }): Promise<{ cancelled: boolean }>;
+   368→
+   369→        /** Fork from a specific entry, creating a new session file. */
+   370→        fork(
+   371→                entryId: string,
+   372→                options?: { position?: "before" | "at"; withSession?: (ctx: ReplacedSessionContext) => Promise<void> },
+   373→        ): Promise<{ cancelled: boolean }>;
+   374→
+   375→        /** Navigate to a different point in the session tree. */
+   376→        navigateTree(
+   377→                targetId: string,
+   378→                options?: { summarize?: boolean; customInstructions?: string; replaceInstructions?: boolean; label?: string },
+   379→        ): Promise<{ cancelled: boolean }>;
+   380→
+   381→        /** Switch to a different session file. */
+   382→        switchSession(
+   383→                sessionPath: string,
+   384→                options?: { withSession?: (ctx: ReplacedSessionContext) => Promise<void> },
+   385→        ): Promise<{ cancelled: boolean }>;
+   386→
+   387→        /** Reload extensions, skills, prompts, themes, and context files. */
+   388→        reload(): Promise<void>;
+   389→}
+   390→
+   391→/**
+   392→ * Fresh command-capable context bound to the replacement session after a session switch.
+   393→ *
+   394→ * This is passed to `withSession()` callbacks on `newSession()`, `fork()`, and `switchSession()`.
+   395→ */
+   396→export interface ReplacedSessionContext extends ExtensionCommandContext {
+   397→        sendMessage<T = unknown>(
+   398→                message: Pick<CustomMessage<T>, "customType" | "content" | "display" | "details">,
+   399→                options?: { triggerTurn?: boolean; deliverAs?: "steer" | "followUp" | "nextTurn" },
+   400→        ): Promise<void>;
+   401→
+   402→        sendUserMessage(
+   403→                content: string | (TextContent | ImageContent)[],
+   404→                options?: { deliverAs?: "steer" | "followUp"; expandPromptTemplates?: boolean },
+   405→        ): Promise<void>;
+   406→}
+   407→
+   408→// ============================================================================
+   409→// Tool Types
+   410→// ============================================================================
+   411→
+   412→/** Rendering options for tool results */
+   413→export interface ToolRenderResultOptions {
+   414→        /** Whether the result view is expanded */
+   415→        expanded: boolean;
+   416→        /** Whether this is a partial/streaming result */
+   417→        isPartial: boolean;
+   418→}
+   419→
+   420→/** Context passed to tool renderers. */
+   421→export interface ToolRenderContext<TState = any, TArgs = any> {
+   422→        /** Current tool call arguments. Shared across call/result renders for the same tool call. */
+   423→        args: TArgs;
+   424→        /** Unique id for this tool execution. Stable across call/result renders for the same tool call. */
+   425→        toolCallId: string;
+   426→        /** Invalidate just this tool execution component for redraw. */
+   427→        invalidate: () => void;
+   428→        /** Previously returned component for this render slot, if any. */
+   429→        lastComponent: Component | undefined;
+   430→        /** Shared renderer state for this tool row. Initialized by tool-execution.ts. */
+   431→        state: TState;
+   432→        /** Working directory for this tool execution. */
+   433→        cwd: string;
+   434→        /** Whether the tool execution has started. */
+   435→        executionStarted: boolean;
+   436→        /** Whether the tool call arguments are complete. */
+   437→        argsComplete: boolean;
+   438→        /** Whether the tool result is partial/streaming. */
+   439→        isPartial: boolean;
+   440→        /** Whether the result view is expanded. */
+   441→        expanded: boolean;
+   442→        /** Whether inline images are currently shown in the TUI. */
+   443→        showImages: boolean;
+   444→        /** Whether the current result is an error. */
+   445→        isError: boolean;
+   446→}
+   447→
+   448→/**
+   449→ * Tool definition for registerTool().
+   450→ */
+   451→export interface ToolDefinition<TParams extends TSchema = TSchema, TDetails = unknown, TState = any> {
+   452→        /** Tool name (used in LLM tool calls) */
+   453→        name: string;
+   454→        /** Human-readable label for UI */
+   455→        label: string;
+   456→        /** Description for LLM */
+   457→        description: string;
+   458→        /** Optional one-line snippet for the Available tools section in the default system prompt. Custom tools are omitted from that section when this is not provided. */
+   459→        promptSnippet?: string;
+   460→        /** Optional guideline bullets appended to the default system prompt Guidelines section when this tool is active. */
+   461→        promptGuidelines?: string[];
+   462→        /** Parameter schema (TypeBox) */
+   463→        parameters: TParams;
+   464→        /** Optional provider-side constrained sampling request for this tool. Set false to explicitly disable it, equivalent to leaving it undefined. */
+   465→        constrainedSampling?: false | ConstrainedSamplingConfig;
+   466→        /** Controls whether ToolExecutionComponent renders the standard colored shell or the tool renders its own framing. */
+   467→        renderShell?: "default" | "self";
+   468→
+   469→        /** Optional compatibility shim to prepare raw tool call arguments before schema validation. Must return an object conforming to TParams. */
+   470→        prepareArguments?: (args: unknown) => Static<TParams>;
+   471→
+   472→        /**
+   473→         * Per-tool execution mode override.
+   474→         * - "sequential": this tool must execute one at a time with other tool calls.
+   475→         * - "parallel": this tool can execute concurrently with other tool calls.
+   476→         *
+   477→         * If omitted, the default execution mode applies.
+   478→         */
+   479→        executionMode?: ToolExecutionMode;
+   480→
+   481→        /** Execute the tool. */
+   482→        execute(
+   483→                toolCallId: string,
+   484→                params: Static<TParams>,
+   485→                signal: AbortSignal | undefined,
+   486→                onUpdate: AgentToolUpdateCallback<TDetails> | undefined,
+   487→                ctx: ExtensionContext,
+   488→        ): Promise<AgentToolResult<TDetails>>;
+   489→
+   490→        /** Custom rendering for tool call display */
+   491→        renderCall?: (args: Static<TParams>, theme: Theme, context: ToolRenderContext<TState, Static<TParams>>) => Component;
+   492→
+   493→        /** Custom rendering for tool result display */
+   494→        renderResult?: (
+   495→                result: AgentToolResult<TDetails>,
+   496→                options: ToolRenderResultOptions,
+   497→                theme: Theme,
+   498→                context: ToolRenderContext<TState, Static<TParams>>,
+   499→        ) => Component;
+   500→}
+   501→
+   502→type AnyToolDefinition = ToolDefinition<any, any, any>;
+   503→
+   504→/**
+   505→ * Preserve parameter inference for standalone tool definitions.
+   506→ *
+   507→ * Use this when assigning a tool to a variable or passing it through arrays such
+   508→ * as `customTools`, where contextual typing would otherwise widen params to
+   509→ * `unknown`.
+   510→ */
+   511→export function defineTool<TParams extends TSchema, TDetails = unknown, TState = any>(
+   512→        tool: ToolDefinition<TParams, TDetails, TState>,
+   513→): ToolDefinition<TParams, TDetails, TState> & AnyToolDefinition {
+   514→        return tool as ToolDefinition<TParams, TDetails, TState> & AnyToolDefinition;
+   515→}
+   516→
+   517→// ============================================================================
+   518→// Startup/Resource Events
+   519→// ============================================================================
+   520→
+   521→export interface ProjectTrustEvent {
+   522→        type: "project_trust";
+   523→        cwd: string;
+   524→}
+   525→
+   526→export type ProjectTrustEventDecision = "yes" | "no" | "undecided";
+   527→
+   528→export interface ProjectTrustEventResult {
+   529→        trusted: ProjectTrustEventDecision;
+   530→        remember?: boolean;
+   531→}
+   532→
+   533→export interface ProjectTrustContext {
+   534→        cwd: string;
+   535→        mode: ExtensionMode;
+   536→        hasUI: boolean;
+   537→        ui: Pick<ExtensionUIContext, "select" | "confirm" | "input" | "notify">;
+   538→}
+   539→
+   540→export type ProjectTrustHandler = (
+   541→        event: ProjectTrustEvent,
+   542→        ctx: ProjectTrustContext,
+   543→) => Promise<ProjectTrustEventResult> | ProjectTrustEventResult;
+   544→
+   545→/** Fired after session_start to allow extensions to provide additional resource paths. */
+   546→export interface ResourcesDiscoverEvent {
+   547→        type: "resources_discover";
+   548→        cwd: string;
+   549→        reason: "startup" | "reload";
+   550→}
+   551→
+   552→/** Result from resources_discover event handler */
+   553→export interface ResourcesDiscoverResult {
+   554→        skillPaths?: string[];
+   555→        promptPaths?: string[];
+   556→        themePaths?: string[];
+   557→}
+   558→
+   559→// ============================================================================
+   560→// Session Events
+   561→// ============================================================================
+   562→
+   563→/** Fired when a session is started, loaded, or reloaded */
+   564→export interface SessionStartEvent {
+   565→        type: "session_start";
+   566→        /** Why this session start happened. */
+   567→        reason: "startup" | "reload" | "new" | "resume" | "fork";
+   568→        /** Previously active session file. Present for "new", "resume", and "fork". */
+   569→        previousSessionFile?: string;
+   570→}
+   571→
+   572→/** Fired when the current session metadata changes. */
+   573→export interface SessionInfoChangedEvent {
+   574→        type: "session_info_changed";
+   575→        /** Current normalized session name. Undefined when the name is cleared. */
+   576→        name: string | undefined;
+   577→}
+   578→
+   579→/** Fired before switching to another session (can be cancelled) */
+   580→export interface SessionBeforeSwitchEvent {
+   581→        type: "session_before_switch";
+   582→        reason: "new" | "resume";
+   583→        targetSessionFile?: string;
+   584→}
+   585→
+   586→/** Fired before forking a session (can be cancelled) */
+   587→export interface SessionBeforeForkEvent {
+   588→        type: "session_before_fork";
+   589→        entryId: string;
+   590→        position: "before" | "at";
+   591→}
+   592→
+   593→/** Fired before context compaction (can be cancelled or customized) */
+   594→export interface SessionBeforeCompactEvent {
+   595→        type: "session_before_compact";
+   596→        preparation: CompactionPreparation;
+   597→        branchEntries: SessionEntry[];
+   598→        customInstructions?: string;
+   599→        /** What triggered the compaction: manual /compact, the context threshold, or context overflow recovery */
+   600→        reason: "manual" | "threshold" | "overflow";
+   601→        /** True when the aborted turn is retried after this compaction (overflow recovery) */
+   602→        willRetry: boolean;
+   603→        signal: AbortSignal;
+   604→}
+   605→
+   606→/** Fired after context compaction succeeds */
+   607→export interface SessionCompactEvent {
+   608→        type: "session_compact";
+   609→        compactionEntry: CompactionEntry;
+   610→        fromExtension: boolean;
+   611→        /** What triggered the compaction: manual /compact, the context threshold, or context overflow recovery */
+   612→        reason: "manual" | "threshold" | "overflow";
+   613→        /** True when the aborted turn is retried after this compaction (overflow recovery) */
+   614→        willRetry: boolean;
+   615→}
+   616→
+   617→/** Fired after context compaction fails or is aborted */
+   618→export interface SessionCompactFailedEvent {
+   619→        type: "session_compact_failed";
+   620→        /** What triggered the compaction: manual /compact, the context threshold, or context overflow recovery */
+   621→        reason: "manual" | "threshold" | "overflow";
+   622→        /** Error text when compaction failed for a non-abort reason. */
+   623→        errorMessage?: string;
+   624→        /** True when compaction was cancelled or aborted. */
+   625→        aborted: boolean;
+   626→        /** True when the aborted turn would have been retried after this compaction (overflow recovery) */
+   627→        willRetry: boolean;
+   628→        /** True when the failing compaction content came from a session_before_compact handler. */
+   629→        fromExtension: boolean;
+   630→}
+   631→
+   632→/** Fired before an extension runtime is torn down due to quit, reload, or session replacement. */
+   633→export interface SessionShutdownEvent {
+   634→        type: "session_shutdown";
+   635→        reason: "quit" | "reload" | "new" | "resume" | "fork";
+   636→        /** Destination session file when shutting down due to session replacement. */
+   637→        targetSessionFile?: string;
+   638→}
+   639→
+   640→/** Preparation data for tree navigation */
+   641→export interface TreePreparation {
+   642→        targetId: string;
+   643→        oldLeafId: string | null;
+   644→        commonAncestorId: string | null;
+   645→        entriesToSummarize: SessionEntry[];
+   646→        userWantsSummary: boolean;
+   647→        /** Custom instructions for summarization */
+   648→        customInstructions?: string;
+   649→        /** If true, customInstructions replaces the default prompt instead of being appended */
+   650→        replaceInstructions?: boolean;
+   651→        /** Label to attach to the branch summary entry */
+   652→        label?: string;
+   653→}
+   654→
+   655→/** Fired before navigating in the session tree (can be cancelled) */
+   656→export interface SessionBeforeTreeEvent {
+   657→        type: "session_before_tree";
+   658→        preparation: TreePreparation;
+   659→        signal: AbortSignal;
+   660→}
+   661→
+   662→/** Fired after navigating in the session tree */
+   663→export interface SessionTreeEvent {
+   664→        type: "session_tree";
+   665→        newLeafId: string | null;
+   666→        oldLeafId: string | null;
+   667→        summaryEntry?: BranchSummaryEntry;
+   668→        fromExtension?: boolean;
+   669→}
+   670→
+   671→export type SessionEvent =
+   672→        | SessionStartEvent
+   673→        | SessionInfoChangedEvent
+   674→        | SessionBeforeSwitchEvent
+   675→        | SessionBeforeForkEvent
+   676→        | SessionBeforeCompactEvent
+   677→        | SessionCompactEvent
+   678→        | SessionCompactFailedEvent
+   679→        | SessionShutdownEvent
+   680→        | SessionBeforeTreeEvent
+   681→        | SessionTreeEvent;
+   682→
+   683→// ============================================================================
+   684→// Agent Events
+   685→// ============================================================================
+   686→
+   687→/** Fired before each LLM call. Can modify messages. */
+   688→export interface ContextEvent {
+   689→        type: "context";
+   690→        messages: AgentMessage[];
+   691→}
+   692→
+   693→/** Fired before a provider request is sent. Can replace the payload. */
+   694→export interface BeforeProviderRequestEvent {
+   695→        type: "before_provider_request";
+   696→        payload: unknown;
+   697→}
+   698→
+   699→/**
+
+[showing lines 60-699 of 1792; use offset=700 with limit to continue reading]

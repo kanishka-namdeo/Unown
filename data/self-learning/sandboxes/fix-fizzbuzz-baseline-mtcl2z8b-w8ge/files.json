@@ -1,0 +1,10 @@
+[
+  {
+    "path": "fizzbuzz.js",
+    "bytes": 327
+  },
+  {
+    "path": "fizzbuzz.test.mjs",
+    "bytes": 388
+  }
+]
