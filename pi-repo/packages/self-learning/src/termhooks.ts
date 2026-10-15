@@ -187,9 +187,10 @@ export function buildTerminalNote(info: {
 	sessionStartTs: number;
 }): string {
 	const durMin = Math.max(1, Math.round((Date.now() - info.sessionStartTs) / 60000));
+	const subagentTag = process.env.UNOWN_SUBAGENT === "1" ? " [subagent]" : "";
 	const lines: string[] = [];
 	lines.push(
-		`Terminal session in ${info.cwd} (${durMin} min): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}.`,
+		`Terminal session${subagentTag} in ${info.cwd} (${durMin} min): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}.`,
 	);
 	if (info.lastAssistantText) lines.push(`Final outcome: ${info.lastAssistantText.slice(0, 400)}`);
 	lines.push(

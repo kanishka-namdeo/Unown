@@ -135,14 +135,25 @@ cd ~/code/my-project
 unown                      # interactive session (like claude/pi, but learning)
 unown "fix the failing tests"   # …optionally starting with a prompt
 unown -p "explain the build error" | less   # one-shot headless (like claude -p)
+unown --plan "add auth"    # plan mode: read-only exploration → numbered plan
 unown doctor               # check bridge / engine / memory / sandbox configuration
 unown memory               # print the effective 4-tier memory stack
 unown note "watch out: flaky test in auth.spec"   # hand AutoDream a note directly
 ```
 
+Every session ships with **Claude Code-grade session tools** on top of pi:
+
+- **`todo`** — a visible task list the agent maintains as it works (and `/todos` to inspect it). State rides the session tree, so branching keeps the right list.
+- **`task`** — subagents with a **fresh context window** (`general` full-tool, `explore` read-only, or your own `.unown/agents/*.md` definitions — run `/agents` to list). They are full unown agents: same memory, same guardrails — and their sessions write `[subagent]`-tagged notes, so **subagents learn too**. Up to 4 in parallel via `{tasks: [...]}`.
+- **`note`** — record a durable learning note **mid-session**; it reaches the engine immediately and AutoDream consolidates it into your project's memory (also `/note <text>`).
+- **`fetch_url`** — read-only HTTP GET with HTML stripping and size caps.
+- **`/plan`** (or `--plan`, or Ctrl+Alt+P) — plan mode: write tools disabled, bash allowlisted to read-only commands; the agent explores, produces a numbered plan, and you approve execution with live `[DONE:n]` progress.
+- **Skills** — four starter Agent Skills (`unown-self-learning`, `verification-first`, `methodical-debugging`, `repo-exploration`) are seeded into `~/.unown/agent/skills/`; drop per-project skills into `.unown/skills/<name>/SKILL.md` (pi implements the [Agent Skills](https://agentskills.io) standard, progressive disclosure included).
+- **`/learning`** — re-print the effective 4-tier memory stack, fresh from disk.
+
 What the terminal session does for you:
 
-- **Memory** — the resolved stack (global policy → your project's `.unown/memory/project.md` → global user memory → `.unown/memory/local.md`) is injected into every session, alongside your own `AGENTS.md`/`CLAUDE.md` chain if present.
+- **Memory** — the resolved stack (global policy → your project's `.unown/memory/project.md` → global user memory → `.unown/memory/local.md`) is injected into every session (re-read on each `/new` `/resume` `/fork`, so AutoDream's updates land without a restart), alongside your own `AGENTS.md`/`CLAUDE.md` chain if present.
 - **Guardrails** — catastrophic commands (`rm -rf /`, fork bombs, disk formats) and out-of-project writes are blocked before execution; broken JS/TS you (or the agent) write gets the transpiler error fed back instead of compounding. Normal work — network, `git push`, package installs — is allowed. Set `UNOWN_STRICT_HOOKS=1` for sandbox-grade strictness.
 - **Learning** — when you exit, a session note is delivered to the engine; AutoDream consolidates your notes into an updated `.unown/memory/project.md`, so the next session starts where the last one ended. Notes queue in `~/.unown/notes/outbox/` when the engine is down and sync automatically later.
 
@@ -262,8 +273,10 @@ bin/unown                     the `unown` terminal agent entry point
 pi-repo/                      the pi coding agent (badlogic/pi-mono)
   packages/self-learning/     ★ the transformation — the self-learning layer
     src/memory.ts             tiered memory (pattern 1, engine side)
-    src/term.ts               terminal-agent config: ~/.unown state, per-project memory resolution, note outbox
-    src/termhooks.ts          terminal guardrails + session-note capture
+    src/term.ts               terminal-agent config: ~/.unown state, per-project memory resolution, note outbox, starter-skill seeding
+    src/termhooks.ts          terminal guardrails + session-note capture (+ [subagent] provenance)
+    src/tools.ts              session tools: todo / note / task (subagents) / fetch_url + plan mode
+    src/skill-seeds.ts        starter Agent Skills seeded into ~/.unown/agent/skills/
     src/cli.ts                the `unown` command (TUI + headless + doctor/memory/init/note)
     src/hooks.ts              6-layer hook guardrails (pattern 5, engine side)
     src/harness.ts            self-improving loop + retention auto-unship (pattern 2)

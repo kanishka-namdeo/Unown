@@ -20,6 +20,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
+import { STARTER_SKILLS } from "./skill-seeds.ts";
 
 export const UNOWN_HOME = process.env.UNOWN_HOME ?? join(homedir(), ".unown");
 export const UNOWN_AGENT_DIR = join(UNOWN_HOME, "agent");
@@ -71,7 +72,21 @@ export function writeModelsJson(agentDir: string) {
 	return modelsPath;
 }
 
-/** Ensure ~/.unown/agent is ready: models.json, auth.json, settings.json, sessions dir. */
+/** Seed the starter Agent Skills into ~/.unown/agent/skills/ (never clobbers user edits). */
+export function seedStarterSkills(agentDir: string): string {
+	const skillsDir = join(agentDir, "skills");
+	mkdirSync(skillsDir, { recursive: true });
+	for (const skill of STARTER_SKILLS) {
+		const dir = join(skillsDir, skill.dir);
+		const file = join(dir, "SKILL.md");
+		if (existsSync(file)) continue;
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(file, skill.skillMd, "utf8");
+	}
+	return skillsDir;
+}
+
+/** Ensure ~/.unown/agent is ready: models.json, auth.json, settings.json, sessions dir, starter skills. */
 export function ensureUnownAgentDir(): string {
 	writeModelsJson(UNOWN_AGENT_DIR);
 	const authPath = join(UNOWN_AGENT_DIR, "auth.json");
@@ -79,6 +94,7 @@ export function ensureUnownAgentDir(): string {
 	const settingsPath = join(UNOWN_AGENT_DIR, "settings.json");
 	if (!existsSync(settingsPath)) writeFileSync(settingsPath, "{}", "utf8"); // prevents first-run setup dialog
 	mkdirSync(join(UNOWN_AGENT_DIR, "sessions"), { recursive: true });
+	seedStarterSkills(UNOWN_AGENT_DIR);
 	return UNOWN_AGENT_DIR;
 }
 

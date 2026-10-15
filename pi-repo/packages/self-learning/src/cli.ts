@@ -44,6 +44,7 @@ import {
 	UNOWN_HOME,
 } from "./term.ts";
 import { createTerminalExtension } from "./termhooks.ts";
+import { createUnownToolsExtension } from "./tools.ts";
 
 const HELP = `unown — a self-improving terminal coding agent
 
@@ -51,11 +52,24 @@ Usage:
   unown                    interactive session in the current directory
   unown "do something"     interactive session starting with a prompt
   unown -p "prompt"        one-shot headless run (print mode)
+  unown --plan [...]       start (print or TUI) in plan mode: read-only exploration,
+                           numbered plan, then execution after approval (also /plan, Ctrl+Alt+P)
   unown init               scaffold .unown/ project memory
   unown memory             print the effective memory stack
   unown doctor             run configuration diagnostics
   unown note "text"        deliver a session note to the engine
   unown --help             this help
+
+Session tools (registered in every session):
+  todo / note / task / fetch_url   visible task tracking, mid-session learning notes,
+                                    subagents with a fresh context, HTTP reads
+  /plan /todos /note /agents /learning   session commands
+
+Subagent flags (used internally by the task tool):
+  --mode json              stream JSON events instead of text (print mode)
+  --no-session             do not persist the session
+  --tools a,b,c            restrict the active tool set
+  --append-system-prompt F append the file's contents to the system prompt
 
 Environment:
   UNOWN_HOME               state dir (default ~/.unown)
@@ -71,15 +85,25 @@ interface CliArgs {
 	command: "tui" | "print" | "init" | "memory" | "doctor" | "note" | "help";
 	prompt?: string;
 	verbose: boolean;
+	jsonMode: boolean;
+	noSession: boolean;
+	tools?: string[];
+	appendSystemPromptPath?: string;
+	plan: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
 	const rest: string[] = [];
 	let print = false;
 	let verbose = false;
+	let jsonMode = false;
+	let noSession = false;
+	let tools: string[] | undefined;
+	let appendSystemPromptPath: string | undefined;
+	let plan = false;
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i];
-		if (a === "--help" || a === "-h") return { command: "help", verbose };
+		if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan };
 		if (a === "--print" || a === "-p") {
 			print = true;
 			continue;
@@ -88,28 +112,75 @@ function parseArgs(argv: string[]): CliArgs {
 			verbose = true;
 			continue;
 		}
+		if (a === "--mode") {
+			const next = argv[i + 1];
+			if (next === "json") jsonMode = true;
+			else if (next !== "text") rest.push(a); // unknown mode value: treat as prompt text
+			i++;
+			continue;
+		}
+		if (a === "--no-session") {
+			noSession = true;
+			continue;
+		}
+		if (a === "--plan") {
+			plan = true;
+			continue;
+		}
+		if (a === "--tools") {
+			const next = argv[i + 1];
+			if (next !== undefined) {
+				tools = next
+					.split(",")
+					.map((t) => t.trim())
+					.filter(Boolean);
+				i++;
+			}
+			continue;
+		}
+		if (a === "--append-system-prompt") {
+			const next = argv[i + 1];
+			if (next !== undefined) {
+				appendSystemPromptPath = next;
+				i++;
+			}
+			continue;
+		}
 		rest.push(a);
 	}
 	const first = rest[0];
 	if (first === "init" || first === "memory" || first === "doctor" || first === "note") {
 		const prompt = rest.slice(1).join(" ");
-		return { command: first, prompt, verbose };
+		return { command: first, prompt, verbose, jsonMode, noSession, plan };
 	}
 	const prompt = rest.join(" ");
 	// Non-TTY stdio forces print mode (same behaviour as pi itself).
-	if (print || !process.stdin.isTTY || !process.stdout.isTTY) return { command: "print", prompt, verbose };
-	return { command: "tui", prompt, verbose };
+	if (print || !process.stdin.isTTY || !process.stdout.isTTY)
+		return { command: "print", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan };
+	return { command: "tui", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan };
 }
 
 // ---------------------------------------------------------------------------
 // Agent boot (shared by TUI and print mode)
 // ---------------------------------------------------------------------------
-async function bootRuntime(cwd: string, verbose: boolean) {
+interface BootOptions {
+	jsonMode?: boolean;
+	noSession?: boolean;
+	tools?: string[];
+	appendSystemPromptPath?: string;
+	plan?: boolean;
+}
+
+async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
 	const agentDir = ensureUnownAgentDir();
-	const memoryFiles = resolveTerminalMemory(cwd).map((f) => ({ path: f.path, content: f.content }));
 	const extension = createTerminalExtension({ cwd, engineUrl: ENGINE_URL, strict: STRICT_HOOKS, verbose });
+	const toolsExtension = createUnownToolsExtension({ cwd, engineUrl: ENGINE_URL, verbose });
 
 	const settingsManager = SettingsManager.create(cwd, agentDir);
+
+	// Per-project unown skills (.unown/skills/) ride alongside pi's own skill dirs.
+	const projectSkillsDir = join(cwd, ".unown", "skills");
+	const additionalSkillPaths = existsSync(projectSkillsDir) ? [projectSkillsDir] : undefined;
 
 	const createRuntime: CreateAgentSessionRuntimeFactory = async ({
 		cwd: sessionCwd,
@@ -120,21 +191,36 @@ async function bootRuntime(cwd: string, verbose: boolean) {
 			cwd: sessionCwd,
 			agentDir,
 			settingsManager,
+			extensionFlagValues: bootOpts.plan ? new Map<string, boolean | string>([["plan", true]]) : undefined,
 			resourceLoaderOptions: {
-				extensionFactories: [extension as any],
+				extensionFactories: [extension as any, toolsExtension as any],
+				additionalSkillPaths,
+				appendSystemPrompt: bootOpts.appendSystemPromptPath ? [bootOpts.appendSystemPromptPath] : undefined,
 				agentsFilesOverride: (base: any) => ({
 					// Supplement (not replace) the user's own AGENTS.md/CLAUDE.md chain.
-					agentsFiles: [...base.agentsFiles, ...memoryFiles],
+					// Re-resolved per session (re)new so AutoDream's concurrent memory
+					// updates become visible without restarting the CLI.
+					agentsFiles: [
+						...base.agentsFiles,
+						...resolveTerminalMemory(cwd).map((f) => ({ path: f.path, content: f.content })),
+					],
 				}),
 			},
 		});
-		const created = await createAgentSessionFromServices({ services, sessionManager, sessionStartEvent });
+		const created = await createAgentSessionFromServices({
+			services,
+			sessionManager,
+			sessionStartEvent,
+			tools: bootOpts.tools,
+		});
 		return { ...created, services, diagnostics: services.diagnostics };
 	};
 
-	const sessionManager = SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions"));
+	const sessionManager = bootOpts.noSession
+		? SessionManager.inMemory(cwd)
+		: SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions"));
 	const runtime = await createAgentSessionRuntime(createRuntime, { cwd, agentDir, sessionManager });
-	return { runtime, memoryFiles };
+	return { runtime };
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +332,7 @@ async function cmdNote(text: string) {
 	process.exit(0);
 }
 
-async function cmdPrint(prompt: string | undefined, verbose: boolean) {
+async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: boolean) {
 	const cwd = process.cwd();
 	// Piped stdin (e.g. `cat error.log | unown -p "fix this"`) joins the prompt.
 	let piped = "";
@@ -266,14 +352,20 @@ async function cmdPrint(prompt: string | undefined, verbose: boolean) {
 		console.error("unown: no prompt given (pass one or pipe stdin)");
 		process.exit(1);
 	}
-	const { runtime } = await bootRuntime(cwd, verbose);
-	const code = await runPrintMode(runtime as any, { mode: "text", messages: [message] });
+	const { runtime } = await bootRuntime(cwd, verbose, {
+		jsonMode: args.jsonMode,
+		noSession: args.noSession,
+		tools: args.tools,
+		appendSystemPromptPath: args.appendSystemPromptPath,
+		plan: args.plan,
+	});
+	const code = await runPrintMode(runtime as any, { mode: args.jsonMode ? "json" : "text", messages: [message] });
 	process.exit(code);
 }
 
-async function cmdTui(prompt: string | undefined, verbose: boolean) {
+async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: BootOptions = {}) {
 	const cwd = process.cwd();
-	const { runtime } = await bootRuntime(cwd, verbose);
+	const { runtime } = await bootRuntime(cwd, verbose, bootOpts);
 	const mode = new InteractiveMode(runtime as any, prompt ? { initialMessage: prompt } : {});
 	await mode.run(); // blocks until exit; normal exit path is process.exit(0)
 }
@@ -303,10 +395,14 @@ export async function runCli(argv: string[]) {
 			await cmdNote(args.prompt ?? "");
 			break;
 		case "print":
-			await cmdPrint(args.prompt, args.verbose);
+			await cmdPrint(args.prompt, args, args.verbose);
 			break;
 		case "tui":
-			await cmdTui(args.prompt, args.verbose);
+			await cmdTui(args.prompt, args.verbose, {
+				tools: args.tools,
+				appendSystemPromptPath: args.appendSystemPromptPath,
+				plan: args.plan,
+			});
 			break;
 	}
 }
