@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://www.alibabacloud.com/help/en/model-studio/coding-plan",
+    "name": "Alibaba Cloud Model Studio:Coding plan overview",
+    "snippet": "4 days ago — Coding Plan gives you access to models including Qwen, GLM, Kimi, and MiniMax in popular AI coding tools. Price $ 50/month Quota Up to 6,000 … ...",
+    "host_name": "www.alibabacloud.com",
+    "rank": 0,
+    "date": "Oct 11, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/NousResearch/hermes-agent/issues/3912",
+    "name": "🐛 Alibaba provider hardcoded to coding-intl endpoint —",
+    "snippet": "Mar 30, 2026 — The coding - intl endpoint is only for Alibaba Coding Plan keys, not standard DashScope API keys! Supports Qwen models + third-party providers ( ...",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "Mar 30, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/vibecoding/comments/1rgufpk/openclaw_alibaba_cloud_coding_plan_8_frontier",
+    "name": "OpenClaw + Alibaba Cloud Coding Plan: 8 Frontier Models",
+    "snippet": "TL;DR — Alibaba Cloud's Coding Plan gives you 8 frontier models (including GLM-5, Qwen3.5-Plus, Kimi K2.5, MiniMax M2.5) for one flat fee ... Read more",
+    "host_name": "www.reddit.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://help.aliyun.com/en/model-studio/qwen-code",
+    "name": "Qwen Code - 阿里云文档",
+    "snippet": "5 days ago — Qwen Code is a terminal-based AI coding tool that can be connected to Alibaba Cloud Model Studio via pay-as-you-go, Coding Plan, Token Plan ...",
+    "host_name": "help.aliyun.com",
+    "rank": 3,
+    "date": "Oct 10, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.alibabacloud.com/help/en/model-studio/coding-plan-faq",
+    "name": "Alibaba Cloud Model Studio:FAQ - Coding Plan",
+    "snippet": "4 days ago — Both the Lite and Pro plans support all models included in the plan (including Qwen , GLM, Kimi , and MiniMax). For a complete list of models , ...",
+    "host_name": "www.alibabacloud.com",
+    "rank": 4,
+    "date": "Oct 11, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://qwenlm.github.io/qwen-code-docs/en/users/configuration/model-providers",
+    "name": "Model Providers | Qwen Code Docs",
+    "snippet": "Sep 23, 2026 — Qwen Code allows you to configure multiple model providers through the modelProviders setting in your settings.json.",
+    "host_name": "qwenlm.github.io",
+    "rank": 5,
+    "date": "Sep 23, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/NousResearch/hermes-agent/issues/2220",
+    "name": "Dedicated Alibaba Coding Plan Provider with Accurate",
+    "snippet": "Mar 20, 2026 — Alibaba Coding Plan (DashScope ) is configured as a generic OpenAI-compatible provider: intl.dashscope.aliyuncs.com/v1`. Model: `qwen3.5-plus`. ...",
+    "host_name": "github.com",
+    "rank": 6,
+    "date": "Mar 20, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://mastra.ai/models/providers/alibaba-coding-plan",
+    "name": "Alibaba Coding Plan Models: IDs, Context & Usage",
+    "snippet": "Browse Alibaba Coding Plan model IDs , capabilities, and context windows. Learn how to use them in TypeScript with Mastra's model router.",
+    "host_name": "mastra.ai",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://qwen.ai/blog?id=qwen3.6",
+    "name": "Qwen3.6-Plus: Towards Real World Agents",
+    "snippet": "Apr 1, 2026 — 6 - Plus marks a steady progress in multimodal capabilities , evolving across three core dimensions: advanced reasoning, enhanced applicability, ... Read more",
+    "host_name": "qwen.ai",
+    "rank": 0,
+    "date": "Apr 1, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.alibabacloud.com/blog/qwen3-6-plus-towards-real-world-agents_603005",
+    "name": "Qwen3.6-Plus: Towards Real World Agents",
+    "snippet": "Apr 2, 2026 — 6 - Plus delivers substantial breakthroughs in complex document understanding, physical world visual analysis, video reasoning, and visual coding . Read more",
+    "host_name": "www.alibabacloud.com",
+    "rank": 1,
+    "date": "Apr 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://help.aliyun.com/en/model-studio/qwen3-6-plus",
+    "name": "qwen3.6-plus - 阿里云文档",
+    "snippet": "6 days ago — The models have been markedly enhanced in code -related capabilities such as agentic coding , front-end programming , and Vibe coding , as well as ... Read more",
+    "host_name": "help.aliyun.com",
+    "rank": 2,
+    "date": "Oct 9, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://openrouter.ai/qwen/qwen3.6-plus",
+    "name": "Qwen3.6 Plus - API Pricing & Benchmarks",
+    "snippet": "It is a multimodal reasoning model intended for complex reasoning, visual understanding, coding, and agentic workflows. suited for multimodal agents, visual ...",
+    "host_name": "openrouter.ai",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/openclaw/openclaw/issues/63654",
+    "name": "Qwen: qwen3.6-plus image understanding blocked on",
+    "snippet": "Apr 9, 2026 — The model does support image understanding on Alibaba DashScope , but OpenClaw treats it as unavailable on the Coding Plan endpoint. This forces ... Read more",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "Apr 9, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/LocalLLaMA/comments/1sa7sfw/qwen36plus",
+    "name": "r/LocalLLaMA - Qwen3.6-Plus",
+    "snippet": "Qwen3.6-Plus marks a critical milestone in our journey toward native multimodal agents , delivering an unprecedented leap in agentic coding. Read more",
+    "host_name": "www.reddit.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://qubrid.com/blog",
+    "name": "Qwen3.7-Plus Is Now Available on Qubrid AI",
+    "snippet": "Jun 3, 2026 — Most \" multimodal \" models follow a familiar pattern: add vision as an input modality, let the model describe what it sees, and call it done. Read more",
+    "host_name": "qubrid.com",
+    "rank": 6,
+    "date": "Jun 3, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://playground.roboflow.com/models/qwen/qwen3-6-plus",
+    "name": "Qwen3.6 Plus Vision Benchmarks, Latency & Cost",
+    "snippet": "Qwen3.6 Plus is a flagship model in Alibaba's Qwen Plus series, designed for agentic workflows, coding, and multi-step reasoning. It supports a 1 million ... Read more",
+    "host_name": "playground.roboflow.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

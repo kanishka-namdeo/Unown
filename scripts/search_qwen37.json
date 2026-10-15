@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://llm-stats.com/models/compare/qwen3.6-plus-vs-qwen3.7-max",
+    "name": "Qwen3.6 Plus vs Qwen3.7 Max: Benchmarks, Pricing &",
+    "snippet": "Compare benchmark scores, pricing, context windows, latency and capabilities side-by-side, with a clear verdict on which AI model to choose.",
+    "host_name": "llm-stats.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.cometapi.com/alibaba-releases-qwen3%E2%80%91coder-and-qwen-code",
+    "name": "Alibaba Releases Qwen3‑Coder and Qwen Code",
+    "snippet": "Jul 23, 2025 — Qwen3‐Coder outperforms all existing open‐source coding models on benchmarks such as SWE‐Bench‐Verified and agentic coding evaluations,",
+    "host_name": "www.cometapi.com",
+    "rank": 1,
+    "date": "Jul 23, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.linkedin.com/top-content/artificial-intelligence/ai-model-development/coding-benchmark-updates-for-ai-models",
+    "name": "Coding benchmark updates for AI models",
+    "snippet": "Qwen3 -Coder, a 480B-parameter model optimized for repo-scale tasks. This agentic system handles multi-step workflows like autonomous debugging across services,",
+    "host_name": "www.linkedin.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://medium.com/@takabdt/qwen-3-7-max-just-crashed-the-top-3-at-half-the-price-cf4f9d9d3fc8",
+    "name": "Qwen 3.7 Max Just Crashed the Top 3 at Half the Price.",
+    "snippet": "Code generation across three languages (Python, TypeScript, Rust). Qwen 3.7 Max is competitive but not equal. Claude Opus 4.7 still produces ...",
+    "host_name": "medium.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/artificial/comments/1qv0bof/qwen3codernext_pushing_small_hybrid_models_on",
+    "name": "Qwen3-Coder-Next: Pushing Small Hybrid Models on",
+    "snippet": "Qwen Studio offers comprehensive functionality spanning chatbot, image and video understanding, image generation, document processing, ...",
+    "host_name": "www.reddit.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://lamatic.ai/docs/models",
+    "name": "Benchmarks - Lamatic.ai Docs",
+    "snippet": "Lamatic.ai provides a robust benchmarking capability to objectively evaluate and compare model performance. Qwen3.8 Max (0902 ) 984k",
+    "host_name": "lamatic.ai",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://models.dev/models/alibaba/qwen3.7-plus",
+    "name": "Qwen3.7 Plus pricing, providers, and specs",
+    "snippet": "Jun 2, 2026 — Multimodal Qwen workhorse for long-context agents , visual inputs, and coding. Compare Qwen3.7 Plus from Alibaba across 32 providers.",
+    "host_name": "models.dev",
+    "rank": 6,
+    "date": "Jun 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://apidog.com/blog/qwen3-coder",
+    "name": "Qwen3-Coder: The AI Coding Model Developers Need to",
+    "snippet": "With 480 billion parameters, Qwen3-Coder is outperforming leading open-source coding models on real software engineering benchmarks.",
+    "host_name": "apidog.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]
