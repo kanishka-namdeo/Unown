@@ -55,9 +55,9 @@ export function writeModelsJson(agentDir: string) {
                                                         {
                                                                 id: modelId,
                                                                 name: `${modelId} (via unown)`,
-                                                                contextWindow: 60000,
-                                                                maxTokens: 4096,
-                                                                input: ["text"],
+                                                                contextWindow: 131072,
+                                                                maxTokens: 8192,
+                                                                input: ["text", "image"],
                                                         },
                                                 ],
                                         },

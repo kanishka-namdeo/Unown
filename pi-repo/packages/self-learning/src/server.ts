@@ -7,6 +7,7 @@ import { seedMemoryIfEmpty, snapshot, history, readTier, rollback, type Tier } f
 import { runCycle, listCycles, listImprovements, getImprovement } from "./harness.ts";
 import { listDreams, dreamNotes, runDream } from "./dream.ts";
 import { listRuns, getRun, runAgent } from "./runner.ts";
+import { PROVIDER, MODEL_ID } from "./runner.ts";
 import { listJobs, setJobEnabled, router } from "./router.ts";
 import { listSandboxes } from "./sandbox.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
@@ -63,7 +64,7 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         });
                         return json({
                                 ok: true,
-                                agent: { name: "pi (badlogic/pi-mono)", layer: "self-learning v0.1", provider: "zai-bridge/glm-4-plus", bridge },
+                                agent: { name: "pi (badlogic/pi-mono)", layer: "self-learning v0.1", provider: `${PROVIDER}/${MODEL_ID}`, bridge },
                                 kpis: {
                                         totalRuns: total,
                                         passed,

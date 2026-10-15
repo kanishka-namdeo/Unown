@@ -6,6 +6,8 @@
  */
 import { BRIDGE_URL } from "./store.ts";
 
+const LLM_MODEL = process.env.PI_MODEL_ID ?? "kimi-k2.5";
+
 export interface ChatMsg {
         role: "system" | "user" | "assistant";
         content: string;
@@ -25,7 +27,7 @@ export async function chat(messages: ChatMsg[], opts: { tools?: LlmTool[]; toolC
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                        model: "glm-4-plus",
+                                        model: LLM_MODEL,
                                         messages,
                                         tools: opts.tools,
                                         tool_choice: opts.toolChoice,

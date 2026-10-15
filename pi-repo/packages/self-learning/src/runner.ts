@@ -85,9 +85,9 @@ export function ensureAgentDir() {
                                                         {
                                                                 id: MODEL_ID,
                                                                 name: `${MODEL_ID} (via llm-bridge)`,
-                                                                contextWindow: 60000,
-                                                                maxTokens: 4096,
-                                                                input: ["text"],
+                                                                contextWindow: 131072,
+                                                                maxTokens: 8192,
+                                                                input: ["text", "image"],
                                                         },
                                                 ],
                                         },

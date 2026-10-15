@@ -1,21 +1,50 @@
 /**
- * llm-bridge — OpenAI-compatible gateway over z-ai-web-dev-sdk.
+ * llm-bridge — OpenAI-compatible gateway over a remote OpenAI-compatible
+ * upstream (Dashscope coding plan endpoint).
  *
- * Lets the pi coding agent (and the self-learning layer) use the sandbox LLM
- * through a standard `openai-completions` provider config:
- *   baseUrl: http://127.0.0.1:3031/v1
+ * Lets the pi coding agent (and the self-learning layer) use any remote
+ * OpenAI-compatible endpoint through a standard `openai-completions` provider
+ * config: baseUrl: http://127.0.0.1:3031/v1
  *
- * The z-ai SDK supports native tool calling but not usable SSE streaming,
- * so we always call it non-streaming and synthesize an SSE stream when the
- * client asks for `stream: true` (pi always does).
+ * Responsibilities:
+ *   - injects upstream authentication (BRIDGE_UPSTREAM_KEY)
+ *   - routes any requested model onto the configured model allow-list
+ *     (unknown / legacy model ids are mapped to BRIDGE_ROUTE_DEFAULT)
+ *   - translates the z-ai style `thinking` param into Dashscope's
+ *     `enable_thinking` flag (qwen thinking models)
+ *   - passes messages through verbatim — including tool-role messages and
+ *     image_url content parts, so tool calling AND vision (VLM) work natively
+ *   - true SSE streaming passthrough (the upstream supports native streaming)
+ *   - request serialization + spacing + 429/5xx backoff retries
+ *   - request log ring buffer + health endpoint for the dashboard
+ *
+ * Environment:
+ *   BRIDGE_PORT            listen port (3031)
+ *   BRIDGE_MODEL           advertised default model (kimi-k2.5)
+ *   BRIDGE_UPSTREAM_URL    upstream base url, no trailing slash
+ *                           (https://coding-intl.dashscope.aliyuncs.com/v1)
+ *   BRIDGE_UPSTREAM_KEY    upstream bearer key
+ *   BRIDGE_ROUTE_DEFAULT   model used when a request names an unknown model
+ *   BRIDGE_KNOWN_MODELS    comma-separated passthrough allow-list
+ *   BRIDGE_QWEN_THINKING   1 = leave qwen thinking models in thinking mode
+ *                          (default: disable thinking for snappy agent turns)
+ *   BRIDGE_API_KEY         optional local shared secret for this bridge
+ *   BRIDGE_MIN_SPACING_MS  min ms between upstream requests (default 400)
  */
-import ZAI from "z-ai-web-dev-sdk";
 
 const PORT = Number(process.env.BRIDGE_PORT ?? 3031);
-// Optional shared secret: when BRIDGE_API_KEY is set, every request must carry
-// it as an Authorization: Bearer <key> header. Leave unset for local use.
 const BRIDGE_API_KEY = process.env.BRIDGE_API_KEY ?? "";
-const DEFAULT_MODEL = process.env.BRIDGE_MODEL ?? "glm-4-plus";
+const DEFAULT_MODEL = process.env.BRIDGE_MODEL ?? "kimi-k2.5";
+
+const UPSTREAM_URL = (process.env.BRIDGE_UPSTREAM_URL ?? "https://coding-intl.dashscope.aliyuncs.com/v1").replace(/\/+$/, "");
+const UPSTREAM_KEY = process.env.BRIDGE_UPSTREAM_KEY ?? "";
+const ROUTE_DEFAULT = process.env.BRIDGE_ROUTE_DEFAULT ?? DEFAULT_MODEL;
+const KNOWN_MODELS = (process.env.BRIDGE_KNOWN_MODELS ?? "kimi-k2.5,qwen3.7-plus,qwen3.6-plus")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+const QWEN_THINKING = /^(1|true|yes)$/i.test(process.env.BRIDGE_QWEN_THINKING ?? "");
+const MIN_SPACING_MS = Number(process.env.BRIDGE_MIN_SPACING_MS ?? 400);
 
 // ---------------------------------------------------------------------------
 // Types (OpenAI wire format subset we need)
@@ -40,6 +69,7 @@ interface OaiMessage {
 interface BridgeLogEntry {
         ts: number;
         model: string;
+        upstreamModel: string;
         stream: boolean;
         messages: number;
         tools: number;
@@ -54,17 +84,15 @@ interface BridgeLogEntry {
 const log: BridgeLogEntry[] = [];
 let totalRequests = 0;
 let totalErrors = 0;
-let zai: Awaited<typeof ZAI.create> | null = null;
+let upstreamHealthy: boolean | null = null;
 
 // ---------------------------------------------------------------------------
-// Rate-limit protection: serialize z-ai calls with spacing + retry on 429.
+// Rate-limit protection: serialize upstream calls with spacing + retry on 429.
 // ---------------------------------------------------------------------------
 let chain: Promise<void> = Promise.resolve();
-const MIN_SPACING_MS = 2000;
 let lastRequestAt = 0;
 
-async function callZaiThrottled(body: any): Promise<any> {
-        // serialize through a promise chain (max 1 in flight)
+async function acquireSlot() {
         const run = chain.then(async () => {
                 const wait = Math.max(0, lastRequestAt + MIN_SPACING_MS - Date.now());
                 if (wait > 0) await Bun.sleep(wait);
@@ -75,17 +103,43 @@ async function callZaiThrottled(body: any): Promise<any> {
                 () => {},
         );
         await run;
+}
 
-        const MAX_ATTEMPTS = 6;
+const MAX_ATTEMPTS = 6;
+
+/** One upstream attempt. Returns the raw Response (stream or JSON). */
+async function upstreamFetch(body: any, signal?: AbortSignal): Promise<Response> {
+        const res = await fetch(`${UPSTREAM_URL}/chat/completions`, {
+                method: "POST",
+                headers: {
+                        "Content-Type": "application/json",
+                        ...(UPSTREAM_KEY ? { Authorization: `Bearer ${UPSTREAM_KEY}` } : {}),
+                },
+                body: JSON.stringify(body),
+                signal,
+        });
+        if (!res.ok) {
+                const text = await res.text().catch(() => "");
+                throw Object.assign(new Error(`upstream ${res.status}: ${text.slice(0, 300)}`), { status: res.status });
+        }
+        return res;
+}
+
+/** Upstream call with serialized spacing + retry on 429/5xx/network. */
+async function callUpstream(body: any): Promise<Response> {
+        await acquireSlot();
         let lastError: any;
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
                 try {
-                        const zaiClient = await getZai();
-                        return await zaiClient.chat.completions.create(body);
+                        return await upstreamFetch(body);
                 } catch (err: any) {
                         lastError = err;
                         const msg = String(err?.message ?? err);
-                        const retryable = /429|too many requests|rate limit/i.test(msg) || /5\d\d/.test(msg);
+                        const status = err?.status;
+                        const retryable =
+                                status === 429 ||
+                                (typeof status === "number" && status >= 500) ||
+                                /429|too many requests|rate limit|network|socket|ECONN|fetch failed|timeout|terminated/i.test(msg);
                         if (!retryable || attempt === MAX_ATTEMPTS) throw err;
                         const backoff = Math.min(3000 * 2 ** (attempt - 1), 45000) + Math.random() * 1500;
                         console.log(`[llm-bridge] retryable error (attempt ${attempt}/${MAX_ATTEMPTS}), backing off ${Math.round(backoff)}ms: ${msg.slice(0, 120)}`);
@@ -96,69 +150,51 @@ async function callZaiThrottled(body: any): Promise<any> {
         throw lastError;
 }
 
-async function getZai() {
-        if (!zai) zai = await ZAI.create();
-        return zai;
+// ---------------------------------------------------------------------------
+// Model routing + request shaping
+// ---------------------------------------------------------------------------
+function routeModel(requested: unknown): { upstream: string; requested: string } {
+        const asked = typeof requested === "string" && requested.trim() ? requested.trim() : DEFAULT_MODEL;
+        const upstream = KNOWN_MODELS.includes(asked) ? asked : ROUTE_DEFAULT;
+        return { upstream, requested: asked };
 }
 
-// ---------------------------------------------------------------------------
-// Message normalization: OpenAI protocol -> z-ai SDK (system/user/assistant only)
-// ---------------------------------------------------------------------------
-function contentToText(content: unknown): string {
-        if (typeof content === "string") return content;
-        if (Array.isArray(content)) {
-                return content
-                        .map((part: any) => {
-                                if (typeof part === "string") return part;
-                                if (part?.type === "text" && typeof part.text === "string") return part.text;
-                                if (part?.type === "image_url") return "[image omitted]";
-                                return "";
-                        })
-                        .join("");
-        }
-        return content == null ? "" : String(content);
-}
-
-function normalizeMessages(messages: OaiMessage[]): { role: "system" | "user" | "assistant"; content: string }[] {
-        // call_id -> tool name lookup so tool results can be framed with the tool name
-        const toolNameById = new Map<string, string>();
-        for (const m of messages) {
-                if (m.role === "assistant" && Array.isArray(m.tool_calls)) {
-                        for (const tc of m.tool_calls) {
-                                if (tc.id) {
-                                        let name = tc.function?.name;
-                                        try {
-                                                const parsed = JSON.parse(tc.function?.arguments ?? "{}");
-                                                if (parsed && typeof parsed === "object" && typeof parsed.name === "string" && parsed.arguments && typeof parsed.arguments === "object") {
-                                                        name = parsed.name; // unwrap double-wrapped calls
-                                                }
-                                        } catch {
-                                                /* leave as-is */
-                                        }
-                                        toolNameById.set(tc.id, name ?? "tool");
-                                }
-                        }
-                }
+/**
+ * Build the upstream request body.
+ *
+ * - messages / tools / tool_choice / stream / stream_options / sampling
+ *   params pass through verbatim (tool-role messages and image_url content
+ *   parts included — the upstream is fully OpenAI-compatible).
+ * - the z-ai style `thinking: { type: ... }` param is translated away.
+ * - qwen thinking models get `enable_thinking` (default: disabled, so agent
+ *   turns stay fast; set BRIDGE_QWEN_THINKING=1 to keep deep reasoning).
+ */
+function buildUpstreamBody(body: any, upstreamModel: string): any {
+        const out: any = {
+                model: upstreamModel,
+                messages: body.messages ?? [],
+        };
+        if (Array.isArray(body.tools) && body.tools.length > 0) out.tools = body.tools;
+        if (body.tool_choice !== undefined) out.tool_choice = body.tool_choice;
+        if (body.stream !== undefined) out.stream = body.stream;
+        if (body.stream_options !== undefined) out.stream_options = body.stream_options;
+        const maxTokens = body.max_tokens ?? body.max_completion_tokens;
+        if (maxTokens !== undefined) out.max_tokens = maxTokens;
+        for (const k of ["temperature", "top_p", "stop", "presence_penalty", "frequency_penalty", "response_format", "parallel_tool_calls", "seed", "user", "n"]) {
+                if (body[k] !== undefined) out[k] = body[k];
         }
 
-        const out: { role: "system" | "user" | "assistant"; content: string }[] = [];
-        for (const m of messages) {
-                if (m.role === "system") {
-                        out.push({ role: "system", content: contentToText(m.content) });
-                } else if (m.role === "user") {
-                        out.push({ role: "user", content: contentToText(m.content) });
-                } else if (m.role === "assistant") {
-                        // Render ONLY the visible text. Never echo tool-call JSON back as text:
-                        // the model would imitate the framing inside future tool arguments.
-                        const text = contentToText(m.content);
-                        out.push({ role: "assistant", content: text || "..." });
-                } else if (m.role === "tool") {
-                        const name = toolNameById.get(m.tool_call_id ?? "") ?? m.name ?? "tool";
-                        out.push({
-                                role: "user",
-                                content: `[Result of the ${name} tool]\n${contentToText(m.content)}`,
-                        });
-                }
+        // thinking-mode resolution:
+        //   explicit client `enable_thinking` wins; then the z-ai style
+        //   `thinking` translation; then per-model defaults.
+        let enableThinking: boolean | undefined = body.enable_thinking;
+        if (body.thinking?.type === "disabled") enableThinking = false;
+        else if (body.thinking?.type === "enabled") enableThinking = true;
+        if (enableThinking === undefined && /^qwen/i.test(upstreamModel)) {
+                enableThinking = QWEN_THINKING;
+        }
+        if (enableThinking !== undefined && /^qwen/i.test(upstreamModel)) {
+                out.enable_thinking = enableThinking;
         }
         return out;
 }
@@ -192,24 +228,74 @@ function sanitizeToolCalls(toolCalls: any[] | undefined): any[] | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// SSE synthesis: full completion -> OpenAI streaming chunks
+// SSE pipe: forward upstream SSE frames to the client verbatim.
+// Dashscope emits OpenAI-style `data: {...}` chunks + a final `data: [DONE]`
+// (including a usage chunk when stream_options.include_usage is set), so a
+// verbatim pipe keeps pi's streaming parser happy. While forwarding, we peek
+// at finish_reason / usage / tool-call deltas so the request log stays
+// accurate for streamed requests too.
 // ---------------------------------------------------------------------------
-function sse(res: Response, chunks: unknown[]) {
-        const encoder = new TextEncoder();
-        let closed = false;
+function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Response {
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let contentChars = 0;
         const stream = new ReadableStream({
-                start(controller) {
-                        const push = (obj: unknown) => {
-                                if (closed) return;
-                                controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
-                        };
-                        for (const c of chunks) push(c);
-                        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-                        controller.close();
-                        closed = true;
+                async start(controller) {
+                        try {
+                                // @ts-ignore - Bun exposes the response body stream
+                                const reader = res.body.getReader();
+                                for (;;) {
+                                        const { done, value } = await reader.read();
+                                        if (done) break;
+                                        // peek into the frame stream for log stats
+                                        buffer += decoder.decode(value, { stream: true });
+                                        let nl: number;
+                                        while ((nl = buffer.indexOf("\n")) !== -1) {
+                                                const line = buffer.slice(0, nl).trim();
+                                                buffer = buffer.slice(nl + 1);
+                                                if (!line.startsWith("data:")) continue;
+                                                const payload = line.slice(5).trim();
+                                                if (payload === "[DONE]") continue;
+                                                try {
+                                                        const obj = JSON.parse(payload);
+                                                        const choice = obj?.choices?.[0];
+                                                        if (choice?.finish_reason) entry.finishReason = choice.finish_reason;
+                                                        const delta = choice?.delta;
+                                                        if (typeof delta?.content === "string") contentChars += delta.content.length;
+                                                        if (Array.isArray(delta?.tool_calls)) entry.toolCalls = Math.max(entry.toolCalls, delta.tool_calls.length);
+                                                        if (obj?.usage) {
+                                                                entry.promptTokens = obj.usage.prompt_tokens ?? entry.promptTokens;
+                                                                entry.completionTokens = obj.usage.completion_tokens ?? entry.completionTokens;
+                                                        }
+                                                } catch {
+                                                        /* partial JSON frame — ignore */
+                                                }
+                                        }
+                                        controller.enqueue(value);
+                                }
+                        } catch (err: any) {
+                                // Client disconnect or upstream reset mid-stream:
+                                // close cleanly rather than surface a broken stream.
+                                console.log(`[llm-bridge] stream ended early: ${String(err?.message ?? err).slice(0, 120)}`);
+                        } finally {
+                                entry.contentChars = contentChars;
+                                try {
+                                        controller.close();
+                                } catch {
+                                        /* already closed */
+                                }
+                                onDone();
+                        }
                 },
                 cancel() {
-                        closed = true;
+                        // best-effort abort of the upstream body
+                        try {
+                                // @ts-ignore
+                                res.body?.cancel();
+                        } catch {
+                                /* ignore */
+                        }
+                        onDone();
                 },
         });
         return new Response(stream, {
@@ -221,74 +307,20 @@ function sse(res: Response, chunks: unknown[]) {
         });
 }
 
-function completionToChunks(completion: any, model: string) {
+// Extract summary stats from a non-stream completion for the log entry.
+function completionStats(completion: any) {
         const choice = completion?.choices?.[0] ?? {};
         const message = choice.message ?? {};
-        const finishReason = choice.finish_reason ?? "stop";
-        const id = completion?.id ?? `bridge-${Date.now()}`;
-        const created = completion?.created ?? Math.floor(Date.now() / 1000);
-        const chunks: any[] = [];
-
-        // initial role chunk
-        chunks.push({ id, object: "chat.completion.chunk", created, model, choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }] });
-
-        // content in slices
-        const text = typeof message.content === "string" ? message.content : contentToText(message.content);
-        if (text) {
-                const SLICE = 240;
-                for (let i = 0; i < text.length; i += SLICE) {
-                        chunks.push({ id, object: "chat.completion.chunk", created, model, choices: [{ index: 0, delta: { content: text.slice(i, i + SLICE) }, finish_reason: null }] });
-                }
+        if (Array.isArray(message.tool_calls)) {
+                message.tool_calls = sanitizeToolCalls(message.tool_calls);
         }
-
-        // tool calls (delta format with index), defensively unwrapped
-        const toolCalls = sanitizeToolCalls(message.tool_calls);
-        if (toolCalls && toolCalls.length) {
-                toolCalls.forEach((tc, i) => {
-                        chunks.push({
-                                id,
-                                object: "chat.completion.chunk",
-                                created,
-                                model,
-                                choices: [
-                                        {
-                                                index: 0,
-                                                delta: {
-                                                        tool_calls: [
-                                                                {
-                                                                        index: i,
-                                                                        id: tc.id,
-                                                                        type: "function",
-                                                                        function: { name: tc.function.name, arguments: tc.function.arguments },
-                                                                },
-                                                        ],
-                                                },
-                                                finish_reason: null,
-                                        },
-                                ],
-                        });
-                });
-        }
-
-        // finish_reason
-        chunks.push({ id, object: "chat.completion.chunk", created, model, choices: [{ index: 0, delta: {}, finish_reason: finishReason }] });
-
-        // usage (pi requests stream_options.include_usage)
-        if (completion?.usage) {
-                chunks.push({
-                        id,
-                        object: "chat.completion.chunk",
-                        created,
-                        model,
-                        choices: [],
-                        usage: {
-                                prompt_tokens: completion.usage.prompt_tokens ?? 0,
-                                completion_tokens: completion.usage.completion_tokens ?? 0,
-                                total_tokens: completion.usage.total_tokens ?? 0,
-                        },
-                });
-        }
-        return chunks;
+        return {
+                finishReason: choice.finish_reason ?? null,
+                contentChars: typeof message.content === "string" ? message.content.length : 0,
+                toolCalls: Array.isArray(message.tool_calls) ? message.tool_calls.length : 0,
+                promptTokens: completion?.usage?.prompt_tokens ?? 0,
+                completionTokens: completion?.usage?.completion_tokens ?? 0,
+        };
 }
 
 // ---------------------------------------------------------------------------
@@ -313,14 +345,39 @@ const server = Bun.serve({
                 if (req.method === "GET" && url.pathname === "/v1/models") {
                         return Response.json({
                                 object: "list",
-                                data: [
-                                        { id: DEFAULT_MODEL, object: "model", created: Math.floor(Date.now() / 1000), owned_by: "zai-bridge" },
-                                ],
+                                data: KNOWN_MODELS.map((id) => ({
+                                        id,
+                                        object: "model",
+                                        created: Math.floor(Date.now() / 1000),
+                                        owned_by: "llm-bridge",
+                                })),
                         });
                 }
 
                 if (req.method === "GET" && (url.pathname === "/health" || url.pathname === "/v1/health")) {
-                        return Response.json({ ok: true, port: PORT, requests: totalRequests, errors: totalErrors });
+                        // Light upstream probe: cached result, refreshed at most every 30s.
+                        let upstream: any = { ok: upstreamHealthy };
+                        try {
+                                const res = await fetch(`${UPSTREAM_URL}/models`, {
+                                        headers: UPSTREAM_KEY ? { Authorization: `Bearer ${UPSTREAM_KEY}` } : {},
+                                        signal: AbortSignal.timeout(8000),
+                                });
+                                upstreamHealthy = res.ok;
+                                upstream = { ok: res.ok, status: res.status };
+                        } catch {
+                                upstreamHealthy = false;
+                                upstream = { ok: false };
+                        }
+                        return Response.json({
+                                ok: true,
+                                port: PORT,
+                                requests: totalRequests,
+                                errors: totalErrors,
+                                upstream,
+                                upstreamUrl: UPSTREAM_URL,
+                                defaultModel: ROUTE_DEFAULT,
+                                models: KNOWN_MODELS,
+                        });
                 }
 
                 if (req.method === "GET" && url.pathname === "/v1/log") {
@@ -333,6 +390,7 @@ const server = Bun.serve({
                         let entry: BridgeLogEntry = {
                                 ts: started,
                                 model: "?",
+                                upstreamModel: "?",
                                 stream: false,
                                 messages: 0,
                                 tools: 0,
@@ -343,58 +401,50 @@ const server = Bun.serve({
                                 completionTokens: 0,
                                 durationMs: 0,
                         };
-                        try {
-                                const body = await req.json();
-                                const wantsStream = body.stream === true;
-                                entry.stream = wantsStream;
-                                entry.model = body.model ?? DEFAULT_MODEL;
-                                entry.messages = Array.isArray(body.messages) ? body.messages.length : 0;
-                                entry.tools = Array.isArray(body.tools) ? body.tools.length : 0;
-
-                                // Do NOT ask the z-ai SDK for streaming — call non-streaming,
-                                // throttled + retried by callZaiThrottled.
-                                const completion = await callZaiThrottled({
-                                        model: body.model,
-                                        messages: normalizeMessages(body.messages ?? []),
-                                        tools: Array.isArray(body.tools) && body.tools.length > 0 ? body.tools : undefined,
-                                        tool_choice: body.tool_choice,
-                                        max_tokens: body.max_tokens ?? body.max_completion_tokens,
-                                        temperature: body.temperature,
-                                        thinking: { type: "disabled" },
-                                });
-
-                                const choice = completion?.choices?.[0] ?? {};
-                                const message = choice.message ?? {};
-                                // Sanitize double-wrapped tool calls before handing the completion back.
-                                if (Array.isArray(message.tool_calls)) {
-                                        message.tool_calls = sanitizeToolCalls(message.tool_calls);
-                                }
-                                entry.finishReason = choice.finish_reason ?? null;
-                                entry.contentChars = typeof message.content === "string" ? message.content.length : 0;
-                                entry.toolCalls = Array.isArray(message.tool_calls) ? message.tool_calls.length : 0;
-                                entry.promptTokens = completion?.usage?.prompt_tokens ?? 0;
-                                entry.completionTokens = completion?.usage?.completion_tokens ?? 0;
-
-                                if (wantsStream) {
-                                        entry.durationMs = Date.now() - started;
-                                        log.push(entry);
-                                        if (log.length > 500) log.shift();
-                                        return sse(req, completionToChunks(completion, entry.model));
-                                }
+                        const pushLog = () => {
                                 entry.durationMs = Date.now() - started;
                                 log.push(entry);
                                 if (log.length > 500) log.shift();
+                        };
+                        try {
+                                const body = await req.json();
+                                const wantsStream = body.stream === true;
+                                const { upstream, requested } = routeModel(body.model);
+                                entry.stream = wantsStream;
+                                entry.model = requested;
+                                entry.upstreamModel = upstream;
+                                entry.messages = Array.isArray(body.messages) ? body.messages.length : 0;
+                                entry.tools = Array.isArray(body.tools) ? body.tools.length : 0;
+
+                                const upstreamBody = buildUpstreamBody(body, upstream);
+                                const res = await callUpstream(upstreamBody);
+
+                                if (wantsStream) {
+                                        // True SSE passthrough. Push the log entry at stream
+                                        // open, then let the pipe fill in finish_reason /
+                                        // usage / content stats as frames flow through.
+                                        pushLog();
+                                        let settled = false;
+                                        const settle = () => {
+                                                if (settled) return;
+                                                settled = true;
+                                                entry.durationMs = Date.now() - started;
+                                        };
+                                        return pipeSse(res, entry, settle);
+                                }
+
+                                const completion = await res.json();
+                                Object.assign(entry, completionStats(completion));
+                                pushLog();
                                 return Response.json(completion);
                         } catch (err: any) {
                                 totalErrors++;
                                 entry.error = err?.message ?? String(err);
-                                entry.durationMs = Date.now() - started;
-                                log.push(entry);
-                                if (log.length > 500) log.shift();
-                                const status = /api key|auth/i.test(entry.error) ? 401 : 500;
+                                pushLog();
+                                const status = err?.status ?? (/api key|auth|401|403/i.test(String(entry.error)) ? 401 : 500);
                                 return Response.json(
                                         { error: { message: `llm-bridge: ${entry.error}`, type: "bridge_error", code: status } },
-                                        { status },
+                                        { status: typeof status === "number" && status >= 400 && status <= 599 ? status : 500 },
                                 );
                         }
                 }
@@ -403,4 +453,9 @@ const server = Bun.serve({
         },
 });
 
-console.log(`[llm-bridge] listening on http://127.0.0.1:${server.port} (OpenAI-compatible, backed by z-ai-web-dev-sdk)`);
+if (!UPSTREAM_KEY) {
+        console.warn("[llm-bridge] WARNING: BRIDGE_UPSTREAM_KEY is not set — upstream requests will be unauthenticated.");
+}
+console.log(
+        `[llm-bridge] listening on http://127.0.0.1:${server.port} (OpenAI-compatible, proxying ${UPSTREAM_URL}; models: ${KNOWN_MODELS.join(", ")}; route default: ${ROUTE_DEFAULT})`,
+);
