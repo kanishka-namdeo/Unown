@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://northflank.com/blog/daytona-vs-e2b-ai-code-execution-sandboxes",
+    "name": "Daytona vs E2B in 2026: which sandbox for AI code",
+    "snippet": "Jun 12, 2026 — E2B provides stronger isolation through Firecracker microVMs with dedicated kernels. Daytona uses Docker containers with shared host kernels. Read more",
+    "host_name": "northflank.com",
+    "rank": 0,
+    "date": "Jun 12, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.zenml.io/blog/e2b-vs-daytona",
+    "name": "E2B vs Daytona: Sandbox Comparison for Platform",
+    "snippet": "Mar 2, 2026 — In this E2B vs Daytona guide, you will learn about how these two compare across sandbox lifecycle management, output handling, pricing, ...",
+    "host_name": "www.zenml.io",
+    "rank": 1,
+    "date": "Mar 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.morphllm.com/comparisons/daytona-alternative",
+    "name": "Daytona Alternatives: 4 AI Agent Sandbox Platforms  - Morph",
+    "snippet": "Apr 4, 2026 — E2B is the most mature option for ephemeral AI agent sandboxes with Firecracker microVM isolation. Modal is the pick for GPU-heavy workloads ... Read more",
+    "host_name": "www.morphllm.com",
+    "rank": 2,
+    "date": "Apr 4, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/AI_Agents/comments/1unl2r3/how_are_you_actually_using_agent_sandboxes_like",
+    "name": "Using agent sandboxes like E2B or Daytona",
+    "snippet": "Fresh per task, always; cold start on e2b / daytona is ~150ms (both firecracker ), so the box is never your bottleneck, the model calls and dep ... Read more",
+    "host_name": "www.reddit.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://pub.towardsai.net/e2b-vs-daytona-vs-modal-vs-docker-how-ai-agent-sandboxes-actually-differ-bd1ea9bb3333",
+    "name": "E2B vs Daytona vs Modal vs Docker",
+    "snippet": "Aug 17, 2026 — E2B vs Daytona vs Modal vs Docker: How AI Agent Sandboxes Actually Differ Same word, four different security boundaries.",
+    "host_name": "pub.towardsai.net",
+    "rank": 4,
+    "date": "Aug 17, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://manveerc.substack.com/p/ai-agent-sandboxing-guide",
+    "name": "How to sandbox AI agents in 2026 - Manveer Chawla",
+    "snippet": "AI agent sandboxing guide for 2026: compare Firecracker , gVisor, runtimes, and platforms to pick secure isolation fast. Read now.",
+    "host_name": "manveerc.substack.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.beam.cloud/blog/best-e2b-alternatives",
+    "name": "Best E2B Alternatives for AI Code Sandboxes (2026)",
+    "snippet": "Jun 16, 2026 — The best E2B alternatives for AI agent sandboxes and code execution: open-source, self-hostable, GPU-ready picks like Beam and Daytona .",
+    "host_name": "www.beam.cloud",
+    "rank": 6,
+    "date": "Jun 16, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.logrocket.com/comparing-ai-agent-sandbox-platforms-e2b-modal-daytona-and-more",
+    "name": "Comparing AI agent sandbox platforms: E2B, Modal,",
+    "snippet": "Aug 4, 2026 — E2B, 717ms create / 662ms resume (measured), Firecracker microVM ; Daytona, 742ms create / 1254ms resume (measured), Docker container by default; ... Read more",
+    "host_name": "blog.logrocket.com",
+    "rank": 7,
+    "date": "Aug 4, 2026",
+    "favicon": ""
+  }
+]

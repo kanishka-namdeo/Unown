@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://code.claude.com/docs/en/sandboxing",
+    "name": "Configure the sandboxed Bash tool - Claude Code Docs",
+    "snippet": "macOS: sandboxing uses the built-in Seatbelt framework , so you can go straight to the steps Linux and WSL2: the sandbox relies on bubblewrap and socat , ...",
+    "host_name": "code.claude.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.infralovers.com/blog/2026-02-15-sandboxing-claude-code-macos",
+    "name": "Sandboxing Claude Code on macOS: What I Actually Found",
+    "snippet": "Feb 15, 2026 — on macOS it uses sandbox -exec (Apple's Seatbelt framework), on Linux it uses bubblewrap . Both restrict filesystem writes to the current working ...",
+    "host_name": "www.infralovers.com",
+    "rank": 1,
+    "date": "Feb 15, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.buildthisnow.com/blog/guide/setup/sandboxing-guide",
+    "name": "Claude Code Sandboxing",
+    "snippet": "Feb 16, 2026 — Claude Code sandboxing enforces filesystem and network limits at the kernel . Setup for macOS Seatbelt, Linux and WSL2 bubblewrap,",
+    "host_name": "www.buildthisnow.com",
+    "rank": 2,
+    "date": "Feb 16, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://lobste.rs/s/u4bws9/bubblewrap_your_dev_env_agents",
+    "name": "BubbleWrap your dev env and agents",
+    "snippet": "Mar 28, 2026 — This is baked into Claude Code fwiw: https:// code . claude .com/docs/en/ sandboxing #os-level-enforcement ( Seatbelt on macOS and BubbleWrap on Linux ...",
+    "host_name": "lobste.rs",
+    "rank": 3,
+    "date": "Mar 28, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://claudefa.st/blog/guide/sandboxing-guide",
+    "name": "Claude Code Sandbox Guide: Setup, Config & Security (2026)",
+    "snippet": "Jul 10, 2026 — Set up Claude Code sandboxing for filesystem and network isolation. Covers macOS Seatbelt , Linux bubblewrap, and security config.",
+    "host_name": "claudefa.st",
+    "rank": 4,
+    "date": "Jul 10, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://news.ycombinator.com/item?id=47552993",
+    "name": "The claude sandbox is a good idea, but to be effective it",
+    "snippet": "Bubblewrap is exactly what the Claude sandbox uses. > These restrictions are enforced at the OS level ( Seatbelt on macOS , bubblewrap on Linux ), so they apply ...",
+    "host_name": "news.ycombinator.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/anthropics/claude-code/issues/32251",
+    "name": "[BUG] /sandbox shows Linux dependencies (bubblewrap/",
+    "snippet": "Mar 8, 2026 — / sandbox should detect macOS and show Seatbelt -based sandbox configuration with an option to enable/disable it — not Linux dependency checks. Read more",
+    "host_name": "github.com",
+    "rank": 6,
+    "date": "Mar 8, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/Anthropic/comments/1oc8uq9/claude_code_overrides_the_sandbox_without",
+    "name": "Claude Code overrides the sandbox without permission",
+    "snippet": "The big question is-- did Bubblewrap/Seatbelt fail or was the sandbox not truly activated. Anthropic needs some persistent indicators... some of ... Read more",
+    "host_name": "www.reddit.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

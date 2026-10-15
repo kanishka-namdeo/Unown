@@ -20,6 +20,7 @@ import { store, DATA_DIR, BRIDGE_URL } from "./store.ts";
 import { createSandbox, seedFiles, verifyInSandbox, snapshotFiles } from "./sandbox.ts";
 import { resolveMemory, readTier, currentVersion, type MemoryOverlay } from "./memory.ts";
 import { createHooksExtension } from "./hooks.ts";
+import { writeSandboxShell } from "./bwrap.ts";
 import { createNote, noteFromRun } from "./notes.ts";
 import { emit } from "./bus.ts";
 
@@ -190,6 +191,10 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
         try {
                 ensureAgentDir();
 
+                // OS sandbox: route every agent bash-tool command through the
+                // generated bubblewrap wrapper (transparent when unavailable).
+                const sandboxShell = writeSandboxShell(AGENT_DIR);
+
                 const hooksExt = createHooksExtension({
                         runId,
                         sandboxRoot: sandbox.workspace,
@@ -199,7 +204,7 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                 const services = await createAgentSessionServices({
                         cwd: sandbox.workspace,
                         agentDir: AGENT_DIR,
-                        settingsManager: SettingsManager.inMemory(),
+                        settingsManager: SettingsManager.inMemory(sandboxShell ? { shellPath: sandboxShell } : {}),
                         resourceLoaderOptions: {
                                 extensionFactories: [hooksExt as any],
                                 noSkills: true,

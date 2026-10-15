@@ -28,7 +28,10 @@ engine via `POST /api/notes` or the offline outbox (`~/.unown/notes/outbox/`,
 synced by the `note-sync` job / `outbox.ts`).
 
 Supporting modules: `sandbox.ts` (isolated workspaces, jailed exec, sha256
-tamper-proof verification), `runner.ts` (headless pi deployment + transcripts),
+tamper-proof verification), `bwrap.ts` (OS-level bubblewrap isolation: verify
+scripts and agent bash commands run with a read-only rootfs, private
+`/home` `/tmp` `/run`, no network namespace — see `native/README.md`),
+`runner.ts` (headless pi deployment + transcripts),
 `notes.ts` (session-note capture, benchmark + terminal kinds), `tasks.ts`
 (seeded benchmark tasks), `store.ts` (SQLite persistence with schema
 migrations), `server.ts` (REST + SSE API), `llm.ts` (bridge client),

@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://github.com/openai/codex/blob/main/codex-rs/linux-sandbox/README.md",
+    "name": "codex/codex-rs/linux-sandbox/README.md at main",
+    "snippet": "The helper uses bubblewrap for filesystem seccomp for syscall filtering. it also retains the legacy Landlock filesystem implementation.",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://arxiv.org/html/2509.18548v2",
+    "name": "Locking Down Science Gateways with Landlock and",
+    "snippet": "Landlock is best deployed as one layer of a defense-in-depth stack with a Seccomp filter to cover UDP and dangerous syscalls and active kernel ...",
+    "host_name": "arxiv.org",
+    "rank": 1,
+    "date": "May 28, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://agent-safehouse.dev/docs/agent-investigations/codex",
+    "name": "OpenAI Codex CLI -- Sandbox Analysis Report",
+    "snippet": "Landlock: Linux security module for filesystem access control; Seccomp: System call filtering (for network restriction). From codex-rs/core/src/ ...",
+    "host_name": "agent-safehouse.dev",
+    "rank": 2,
+    "date": "Feb 12, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://simonwillison.net/2025/Nov/9/codex-sandbox-investigation",
+    "name": "OpenAI Codex CLI Sandbox Implementation Analysis",
+    "snippet": "on Linux, it combines Landlock for strict filesystem controls and seccomp for syscall-based network blocking—ensuring that agents can only ...",
+    "host_name": "simonwillison.net",
+    "rank": 3,
+    "date": "Nov 9, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/linux/comments/n32y7z/landlock_added_to_linux",
+    "name": "Landlock added to Linux : r/linux",
+    "snippet": "Seccomp allows you to filter syscalls only. Landlock uses lsm hooks which allow lsm modules to hook into the resulting actions of syscalls as ...",
+    "host_name": "www.reddit.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://lkml.iu.edu/hypermail/linux/kernel/1609.1/04429.html",
+    "name": "[RFC v3 00/22] Landlock LSM: Unprivileged sandboxing",
+    "snippet": "The loaded Landlock eBPF programs can be. Sandbox example with process hierarchy sandboxing (seccomp) seccomp can do for raw syscall filtering. ...",
+    "host_name": "lkml.iu.edu",
+    "rank": 5,
+    "date": "Sep 14, 2016",
+    "favicon": ""
+  },
+  {
+    "url": "https://medium.com/@Koukyosyumei/how-claude-code-and-codex-sandbox-untrusted-code-ba39b493046a",
+    "name": "How Claude Code and Codex Sandbox Untrusted Code",
+    "snippet": "seccomp (“secure computing mode”) filters system calls, such as opening a file, opening a socket, forking, loading a kernel module. With seccomp ...",
+    "host_name": "medium.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://meridianlabs-ai.github.io/inspect_swe/codex_cli.html",
+    "name": "Codex CLI – Inspect SWE",
+    "snippet": "Setting seccomp=unconfined lifts that filter, making the kernel's entire system-call surface reachable from inside the sandbox.",
+    "host_name": "meridianlabs-ai.github.io",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

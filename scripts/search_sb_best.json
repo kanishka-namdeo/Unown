@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://agyn.io/blog/ai-agent-sandboxing-filesystem-network-isolation",
+    "name": "How to Sandbox an AI Agent: Filesystem & Network Isolation",
+    "snippet": "Jun 4, 2026 — This post is a tour of how the leading platforms isolate agents along two axes — filesystem (where the agent's runtime ends and your real ... Read more",
+    "host_name": "agyn.io",
+    "rank": 0,
+    "date": "Jun 4, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://northflank.com/blog/how-to-sandbox-ai-agents",
+    "name": "How to sandbox AI agents in 2026: MicroVMs, gVisor &",
+    "snippet": "Feb 2, 2026 — Sandboxing AI agents involves isolating code execution in secure environments to prevent unauthorized access, data breaches, and system ... Read more",
+    "host_name": "northflank.com",
+    "rank": 1,
+    "date": "Feb 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.augmentcode.com/guides/agent-execution-sandbox",
+    "name": "What Is an Agent Execution Sandbox?",
+    "snippet": "May 3, 2026 — An agent execution sandbox is a production isolation boundary for AI -generated code because it restricts filesystem access, network egress, and ...",
+    "host_name": "www.augmentcode.com",
+    "rank": 2,
+    "date": "May 3, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://mastra.ai/articles/best-ai-agent-sandbox-platforms",
+    "name": "The 6 Best AI Agent Sandbox Platforms (August 2026)",
+    "snippet": "Jul 21, 2026 — E2B provides isolated cloud environments that allow AI agents to execute code , interact with a filesystem through JavaScript,",
+    "host_name": "mastra.ai",
+    "rank": 3,
+    "date": "Jul 21, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/LocalLLaMA/comments/1l8h9wa/with_an_ai_code_execution_agent_how_should_it",
+    "name": "With an AI code execution agent, how should it approach",
+    "snippet": "I'm working on an AI agent that can run and execute code. Currently the code (Python) is executed in a docker container with resource limits, and no ...",
+    "host_name": "www.reddit.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.windmill.dev/blog/launch-week-ai-sandboxes",
+    "name": "AI sandboxes & volumes: isolated environments for coding",
+    "snippet": "Apr 1, 2026 — Filesystem isolation : the agent only namespace isolation is a lighter alternative for workloads where full sandboxing is unnecessary.",
+    "host_name": "www.windmill.dev",
+    "rank": 5,
+    "date": "Apr 1, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://cosmonic.com/blog/ai-sandbox-guide",
+    "name": "The Complete Guide to Sandboxing AI Agents in 2026",
+    "snippet": "May 26, 2026 — This guide covers what an AI sandbox is, why AI agents need one, the four dominant approaches to isolation , and how to choose among them.",
+    "host_name": "cosmonic.com",
+    "rank": 6,
+    "date": "May 26, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.deeplearning.ai/t/recommendations-and-or-best-practices-on-sandbox-software-to-use-when-running-agents-and-or-coding-llms/891786",
+    "name": "Recommendations and/or best practices on sandbox",
+    "snippet": "Apr 25, 2026 — the golden rule is to never run agentic code directly on your local machine without a sandbox layer even if the model has built in safety ...",
+    "host_name": "community.deeplearning.ai",
+    "rank": 7,
+    "date": "Apr 25, 2026",
+    "favicon": ""
+  }
+]

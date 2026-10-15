@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://github.com/containers/bubblewrap",
+    "name": "containers/bubblewrap: Low-level unprivileged",
+    "snippet": "There is a feature in the Linux kernel called user namespaces which allows unprivileged users to use container features. Bubblewrap uses these to build the  ...",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://wiki.archlinux.org/title/Bubblewrap",
+    "name": "Bubblewrap - ArchWiki",
+    "snippet": "Bubblewrap is a lightweight sandbox application used by Flatpak ... bubblewrap no longer supports suid mode and requires unprivileged user namespaces since 0.12. Read more",
+    "host_name": "wiki.archlinux.org",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.x-cmd.com/install/bwrap",
+    "name": "Want Sandbox as Non-Root? bwrap Unprivileged",
+    "snippet": "bwrap is the CLI for bubblewrap , a lightweight Linux sandbox written in C. It uses user and mount namespaces to give unprivileged users isolated environments ... Read more",
+    "host_name": "www.x-cmd.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://palaimon.io/blog/coding-agents-bubblewrap-deep-dive",
+    "name": "Coding Agents V: Why Bubblewrap Wraps Agents",
+    "snippet": "Apr 22, 2026 — Every time a Flatpak application runs, Bubblewrap creates the namespace boundary that isolates it from the host system. Flatpak has been the ... Read more",
+    "host_name": "palaimon.io",
+    "rank": 3,
+    "date": "Apr 22, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/containers/bubblewrap/issues/368",
+    "name": "Block access to user namespaces · Issue #368",
+    "snippet": "Apr 20, 2020 — bwrap sandbox does not block access to user namespaces , therefore allowing the sandboxed process to spawn new user namespaces.",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "Apr 20, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://wiki.gentoo.org/wiki/Bubblewrap",
+    "name": "Bubblewrap - Gentoo Wiki",
+    "snippet": "Apr 11, 2024 — Bubblewrap is a low-level unprivileged sandboxing tool used by Flatpak . Bubblewrap makes extensive use of user namespaces in the Linux kernel ...",
+    "host_name": "wiki.gentoo.org",
+    "rank": 5,
+    "date": "Apr 11, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://discourse.flathub.org/t/steam-bwrap-executable-not-setuid-root/5565",
+    "name": "Steam - bwrap executable not setuid root",
+    "snippet": "Dec 2, 2023 — The non-setuid version of bubblewrap requires a kernel that allows unprivileged users to create new user namespaces . For more details please see ... Read more",
+    "host_name": "discourse.flathub.org",
+    "rank": 6,
+    "date": "Dec 2, 2023",
+    "favicon": ""
+  },
+  {
+    "url": "https://lwn.net/Articles/686113",
+    "name": "Sandboxing for the unprivileged with bubblewrap",
+    "snippet": "May 4, 2016 — Bubblewrap works by creating an empty mount namespace with the root on a temporary filesystem that will be destroyed after the sandboxed process ... Read more",
+    "host_name": "lwn.net",
+    "rank": 7,
+    "date": "May 4, 2016",
+    "favicon": ""
+  }
+]

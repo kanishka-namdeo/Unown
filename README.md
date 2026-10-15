@@ -54,7 +54,8 @@ Everything is observable from a **mission-control dashboard** (Next.js) with liv
 ```
 
 Each harness/task run deploys a **fresh sandbox** (isolated directory, jailed
-exec, tamper-proof sha256-verified tests), injects the resolved tiered memory
+exec, OS-level [bubblewrap](https://github.com/containers/bubblewrap)
+isolation, tamper-proof sha256-verified tests), injects the resolved tiered memory
 into the agent's system prompt, attaches the hooks extension, streams the
 transcript back, verifies the result, and records a session note for the next
 dream.
@@ -223,7 +224,8 @@ docs).
 
 ## Security model
 
-- **Sandboxes**: every engine run happens in an isolated workspace directory; executed commands are jailed to it with timeouts and output caps; benchmark tests are sha256-pinned so the agent cannot tamper with verification.
+- **Sandboxes (OS-level)**: every engine run — verify scripts *and* the agent's own bash commands — executes under bubblewrap (the Flatpak/Claude-Code/Codex Linux sandbox): read-only root filesystem, private `/home` `/tmp` `/run` (the repo, `.env` secrets and engine data are invisible), killed network namespace, dropped capabilities. On hosts without bubblewrap the engine falls back to the in-process path jail. Set `UNOWN_OS_SANDBOX=0` to disable, `UNOWN_SANDBOX_NET=1` to keep the network shared.
+- **Sandboxes (process)**: executed commands are jailed to the workspace with timeouts and output caps; benchmark tests are sha256-pinned so the agent cannot tamper with verification.
 - **Hooks (engine)**: `PreToolUse` denies destructive shell (`rm -rf /`, `sudo`, outbound `curl`/`wget` to external hosts…), the path jail blocks escapes, and the `PostToolUse` syntax gate feeds transpiler errors back to the agent instead of letting broken code compound.
 - **Hooks (terminal)**: the same gate protects interactive sessions but scoped for real work — catastrophic commands (filesystem-root deletion, fork bombs, disk formats) and writes outside your project/`/tmp` are blocked; network, `git push` and installs stay available. `UNOWN_STRICT_HOOKS=1` restores the sandbox-grade policy.
 - **LLM bridge**: optional bearer auth, request serialization and rate-limit backoff.

@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://northflank.com/blog/daytona-vs-modal",
+    "name": "Daytona vs Modal: comparing AI code execution",
+    "snippet": "Jun 12, 2026 — Daytona is built around SDK-managed sandbox lifecycle . You create sandboxes from snapshots, configure auto-stop and cleanup behavior, and reuse ...",
+    "host_name": "northflank.com",
+    "rank": 0,
+    "date": "Jun 12, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.daytona.io",
+    "name": "Daytona - Secure Infrastructure for Running AI-Generated Code",
+    "snippet": "Deploy Al code with confidence using Daytona's lightning-fast infrastructure. 90ms environment creation, stateful operations, and enterprise-grade security.",
+    "host_name": "www.daytona.io",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.morphllm.com/comparisons/daytona-alternative",
+    "name": "Daytona Alternatives: 4 AI Agent Sandbox Platforms  - Morph",
+    "snippet": "Apr 4, 2026 — gVisor 400ms. E2B is the most mature option for ephemeral AI agent sandboxes. Daytona is the only open-source, self-hostable option on this ...",
+    "host_name": "www.morphllm.com",
+    "rank": 2,
+    "date": "Apr 4, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/devops/comments/1vjuku9/what_is_the_best_architecture_for_a",
+    "name": "What is the best architecture for a developer-friendly",
+    "snippet": "The basic concept is: ** AI Agent → Sandbox API/SDK →. Daytona , Modal, and OpenHands, gVisor , Kata, already an open - source project that provides ...",
+    "host_name": "www.reddit.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://manveerc.substack.com/p/ai-agent-sandboxing-guide",
+    "name": "How to sandbox AI agents in 2026 - Manveer Chawla",
+    "snippet": "AI agent sandboxing guide for 2026 : compare Firecracker, gVisor, runtimes, and platforms to pick secure isolation fast. Read now.",
+    "host_name": "manveerc.substack.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://modal.com/resources/best-serverless-sandboxes-ai-code-execution",
+    "name": "Best Serverless Sandboxes for AI Code Execution in 2026",
+    "snippet": "Daytona's open-source core gives teams visibility into the platform's architecture and the option to self-host for complete infrastructure control. Best For: ... Read more",
+    "host_name": "modal.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]

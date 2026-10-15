@@ -43,6 +43,7 @@ import {
         deliverTerminalNote,
 } from "./term.ts";
 import { createTerminalExtension } from "./termhooks.ts";
+import { osSandboxAvailable, resolveBwrapPath } from "./bwrap.ts";
 
 const HELP = `unown — a self-improving terminal coding agent
 
@@ -190,6 +191,16 @@ async function cmdDoctor() {
                 check("LLM bridge", res.ok && body.ok, `${body.requests ?? 0} requests, ${body.errors ?? 0} errors`);
         } catch (err: any) {
                 check("LLM bridge", false, `unreachable (${err?.message ?? err}) — start it with: bun run agent:start`);
+        }
+
+        // 3b. OS sandbox (bubblewrap) — fs + network isolation for engine runs
+        {
+                const osb = await osSandboxAvailable();
+                check(
+                        "OS sandbox (bubblewrap)",
+                        osb,
+                        osb ? `${resolveBwrapPath()} — fs+net isolation active` : "unavailable — engine runs fall back to the path jail",
+                );
         }
 
         // 4. engine health (notes + dreams + dashboard)
