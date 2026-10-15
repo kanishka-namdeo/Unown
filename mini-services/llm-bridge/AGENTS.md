@@ -28,7 +28,8 @@ OpenAI-compatible gateway over the upstream Dashscope coding-plan endpoint. Lets
 - Messages pass through verbatim — including tool-role messages and `image_url` content parts — so tool calling AND vision (VLM) work natively end to end.
 - Streaming: true SSE passthrough (upstream supports native streaming) — no synthesis buffer.
 - Protections: upstream auth injection, request serialization + spacing, headers timeout per attempt (`BRIDGE_UPSTREAM_TIMEOUT_MS`), 429/5xx backoff retries, request-log ring buffer with streamed usage capture.
-- Health: `GET /health` probes the upstream and reports its status for the dashboard.
+- Health: `GET /health` probes the upstream (30s-cached) and reports `upstream {ok, status}`, `upstreamKeyIsSet`, `authRequired` (whether `BRIDGE_API_KEY` is set), `upstreamUrl`, `defaultModel`, `models` — `unown doctor` and `scripts/start.sh` use these fields to surface a missing upstream key loudly instead of letting chats fail with a bare 401.
+- Stream teardown contract: `pipeSse`'s `cancel()` (client disconnect mid-stream) cancels the upstream transfer THROUGH the forwarding reader (`reader.cancel().catch(() => {})`) — `res.body.cancel()` on a reader-locked body rejects asynchronously, and that unhandled rejection crashed stream teardown under disconnect load (observed live: killed clients wedged every subsequent chat request). Never call `.cancel()` on a locked stream without swallowing the rejection.
 
 ## Work Guidance
 

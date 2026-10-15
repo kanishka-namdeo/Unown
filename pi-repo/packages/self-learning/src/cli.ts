@@ -14,12 +14,14 @@
  * Commands:
  *   unown [prompt]        interactive TUI session in the current directory
  *   unown -p "prompt"     one-shot headless run (like `claude -p`)
+ *   unown setup           connect a model provider (wizard or flags)
+ *   unown models          list configured models (+ live bridge list)
  *   unown init            scaffold .unown/ memory scaffold in this project
  *   unown memory          print the effective 4-tier memory stack
  *   unown doctor          diagnose configuration, bridge, engine and memory
  *   unown note "text"     hand a note to the engine (for AutoDream)
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
 	type CreateAgentSessionRuntimeFactory,
@@ -32,16 +34,20 @@ import {
 	SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { osSandboxAvailable, resolveBwrapPath } from "./bwrap.ts";
+import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
+import { printModelsOverview, runSetupCommand } from "./setup.ts";
 import {
 	deliverTerminalNote,
 	ENGINE_URL,
 	ensureUnownAgentDir,
+	ensureUnownAgentDirInfo,
 	initProjectMemory,
 	projectMemoryPath,
 	resolveTerminalMemory,
 	STRICT_HOOKS,
 	UNOWN_AGENT_DIR,
 	UNOWN_HOME,
+	unownAgentDirInit,
 } from "./term.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
@@ -54,6 +60,12 @@ Usage:
   unown -p "prompt"        one-shot headless run (print mode)
   unown --plan [...]       start (print or TUI) in plan mode: read-only exploration,
                            numbered plan, then execution after approval (also /plan, Ctrl+Alt+P)
+  unown setup              connect a model provider — interactive wizard
+                           presets: bridge (bundled), openai, openrouter, anthropic,
+                           dashscope, deepseek, custom (any OpenAI-compatible)
+  unown setup --provider openai --api-key sk-... --model gpt-4o
+                           non-interactive (--force overwrites, --list shows presets)
+  unown models             list configured models (+ what a local bridge serves)
   unown init               scaffold .unown/ project memory
   unown memory             print the effective memory stack
   unown doctor             run configuration diagnostics
@@ -75,6 +87,7 @@ Environment:
   UNOWN_HOME               state dir (default ~/.unown)
   UNOWN_ENGINE_URL         self-learning engine (default http://127.0.0.1:3030)
   UNOWN_STRICT_HOOKS=1     sandbox-grade hooks (blocks network, git push, sudo)
+  UNOWN_NO_PREFLIGHT=1     skip the endpoint reachability check before sessions
   PI_BRIDGE_URL/PI_MODEL_ID/PI_PROVIDER   LLM endpoint for ~/.unown/agent/models.json
 `;
 
@@ -224,6 +237,45 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
 }
 
 // ---------------------------------------------------------------------------
+// Pre-flight: probe the configured model endpoint before a session starts,
+// so failures come with instructions instead of a raw "Connection error."
+// ---------------------------------------------------------------------------
+interface PreflightProblem {
+	message: string;
+	hint: string;
+}
+
+async function runPreflight(): Promise<PreflightProblem | null> {
+	if (process.env.UNOWN_NO_PREFLIGHT) return null;
+	if (process.env.UNOWN_SUBAGENT) return null; // subagents inherit the parent's validated path
+	const agentDir = ensureUnownAgentDir();
+	const provider = resolveActiveProvider(agentDir);
+	if (!provider || !provider.baseUrl) return null; // built-in/unknown endpoint — nothing to probe
+	const probe = await probeOpenAiEndpoint(provider.baseUrl, provider.apiKey ?? undefined, 4000);
+	if (probe.ok) return null;
+	if (probe.problem === "auth") {
+		return {
+			message: `the model endpoint rejected the credentials (${provider.baseUrl}, HTTP ${probe.status}).`,
+			hint: "check the API key in ~/.unown/agent/auth.json (or models.json) — or re-run: unown setup",
+		};
+	}
+	return {
+		message: `cannot reach the model endpoint at ${provider.baseUrl}.`,
+		hint: isLoopbackProvider(provider)
+			? "start the stack (bun run agent:start in the Unown repo) — or connect a different provider: unown setup"
+			: "check the endpoint URL — or re-run: unown setup",
+	};
+}
+
+function printFirstRunBanner(): void {
+	const init = unownAgentDirInit();
+	if (!init?.created) return;
+	console.error(`unown: first run — using the bundled llm-bridge (${init.provider}/${init.modelId}).`);
+	console.error("  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup");
+	console.error();
+}
+
+// ---------------------------------------------------------------------------
 // Commands
 // ---------------------------------------------------------------------------
 function cmdInit() {
@@ -249,24 +301,31 @@ function cmdMemory() {
 
 async function cmdDoctor() {
 	const cwd = process.cwd();
-	let ok = true;
-	const check = (label: string, pass: boolean, detail: string) => {
-		console.log(`${pass ? "✓" : "✗"} ${label}${detail ? ` — ${detail}` : ""}`);
-		if (!pass) ok = false;
+	let hardFail = false;
+	let warnings = 0;
+	const check = (label: string, pass: boolean, detail: string, level: "fail" | "warn" = "fail") => {
+		const icon = pass ? "✓" : level === "warn" ? "⚠" : "✗";
+		console.log(`${icon} ${label}${detail ? ` — ${detail}` : ""}`);
+		if (!pass) {
+			if (level === "fail") hardFail = true;
+			else warnings++;
+		}
 	};
 
 	// 1. agent dir & models
 	const agentDir = ensureUnownAgentDir();
 	const modelsExists = existsSync(join(agentDir, "models.json"));
 	check("agent dir", modelsExists, agentDir);
+	const active = resolveActiveProvider(agentDir);
 	if (modelsExists) {
-		try {
-			const models = JSON.parse(readFileSync(join(agentDir, "models.json"), "utf8"));
-			const providers = Object.keys(models.providers ?? {});
-			check("model provider configured", providers.length > 0, providers.join(", ") || "none");
-		} catch {
-			check("models.json parses", false, "invalid JSON");
-		}
+		const file = readAgentModelsFile(agentDir);
+		if (file.error) check("models.json parses", false, file.error);
+		else
+			check(
+				"model provider configured",
+				file.providers.length > 0,
+				active ? `${active.id} · ${active.modelIds.join(", ") || "no models"}` : "none",
+			);
 	}
 
 	// 2. memory stack
@@ -274,18 +333,86 @@ async function cmdDoctor() {
 	check("project memory", existsSync(projectMemoryPath(cwd)), projectMemoryPath(cwd).replace(cwd, "."));
 	check("user memory", true, `${UNOWN_HOME}/memory/user.md`);
 
-	// 3. bridge health
-	try {
-		const res = await fetch(`${process.env.PI_BRIDGE_URL ?? "http://127.0.0.1:3031"}/health`, {
-			signal: AbortSignal.timeout(3000),
-		});
-		const body: any = await res.json();
-		check("LLM bridge", res.ok && body.ok, `${body.requests ?? 0} requests, ${body.errors ?? 0} errors`);
-	} catch (err: any) {
-		check("LLM bridge", false, `unreachable (${err?.message ?? err}) — start it with: bun run agent:start`);
+	// 3. model endpoint (the chat path — failures here break sessions)
+	if (active?.baseUrl) {
+		const probe = await probeOpenAiEndpoint(active.baseUrl, active.apiKey ?? undefined, 4000);
+		const serving =
+			probe.models && probe.models.length > 0
+				? ` · serves ${probe.models.slice(0, 4).join(", ")}${probe.models.length > 4 ? " …" : ""}`
+				: "";
+		if (probe.ok) {
+			check("model endpoint reachable", true, `${active.baseUrl}${serving}`);
+		} else if (probe.problem === "auth") {
+			check(
+				"model endpoint reachable",
+				false,
+				`credentials rejected (HTTP ${probe.status}) — check the key in ~/.unown/agent/auth.json or run: unown setup`,
+			);
+		} else {
+			check(
+				"model endpoint reachable",
+				false,
+				`${active.baseUrl} unreachable — ${
+					isLoopbackProvider(active)
+						? "start the stack (bun run agent:start) or run: unown setup"
+						: "check the URL or run: unown setup"
+				}`,
+			);
+		}
+		// 3b. bridge specifics: upstream key, upstream health, routable model
+		if (isLoopbackProvider(active)) {
+			try {
+				const res = await fetch(`${active.baseUrl.replace(/\/v1\/?$/, "")}/health`, {
+					signal: AbortSignal.timeout(4000),
+				});
+				if (res.ok) {
+					const body = (await res.json()) as {
+						requests?: number;
+						errors?: number;
+						upstream?: { ok?: boolean; status?: number };
+						upstreamKeyIsSet?: boolean;
+						defaultModel?: string;
+						models?: string[];
+					};
+					check(
+						"bridge upstream key",
+						body.upstreamKeyIsSet !== false,
+						body.upstreamKeyIsSet === false
+							? "BRIDGE_UPSTREAM_KEY is not set in the repo's .env — chats will fail with 401"
+							: "BRIDGE_UPSTREAM_KEY set",
+					);
+					check(
+						"bridge upstream health",
+						body.upstream?.ok !== false,
+						body.upstream?.ok === false
+							? `upstream unhealthy (${body.upstream.status ?? "no answer"}) — check BRIDGE_UPSTREAM_URL`
+							: `${body.requests ?? 0} requests, ${body.errors ?? 0} errors`,
+					);
+					const model = active.modelIds[0];
+					if (model && Array.isArray(body.models) && body.models.length > 0 && !body.models.includes(model)) {
+						check(
+							"default model routable",
+							false,
+							`"${model}" is not in the bridge allow-list (BRIDGE_KNOWN_MODELS) — requests route to ${
+								body.defaultModel ?? "the default"
+							}`,
+							"warn",
+						);
+					}
+				}
+			} catch {
+				// the endpoint probe above already reported reachability
+			}
+		}
+	} else if (modelsExists) {
+		check(
+			"model endpoint reachable",
+			false,
+			"the configured provider declares no baseUrl — fix ~/.unown/agent/models.json or run: unown setup",
+		);
 	}
 
-	// 3b. OS sandbox (bubblewrap) — fs + network isolation for engine runs
+	// 4. OS sandbox (bubblewrap) — fs + network isolation for engine runs
 	{
 		const osb = await osSandboxAvailable();
 		check(
@@ -294,10 +421,12 @@ async function cmdDoctor() {
 			osb
 				? `${resolveBwrapPath()} — fs+net isolation active`
 				: "unavailable — engine runs fall back to the path jail",
+			"warn",
 		);
 	}
 
-	// 4. engine health (notes + dreams + dashboard)
+	// 5. engine health (notes + dreams + dashboard) — chat works without it;
+	// session notes just queue in the outbox until it returns.
 	try {
 		const res = await fetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
 		const body: any = await res.json();
@@ -306,16 +435,22 @@ async function cmdDoctor() {
 			res.ok && body.ok,
 			`${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`,
 		);
-	} catch (err: any) {
+	} catch {
 		check(
 			"self-learning engine",
 			false,
-			`unreachable (${err?.message ?? err}) — notes will queue in ${UNOWN_HOME}/notes/outbox`,
+			`unreachable — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox`,
+			"warn",
 		);
 	}
 
-	console.log(ok ? `\n✓ unown is ready in ${cwd}` : `\n✗ unown has configuration problems (see above)`);
-	process.exit(ok ? 0 : 1);
+	if (hardFail)
+		console.log(
+			`\n✗ unown cannot chat yet — fix the ✗ items above (unown setup, unown --help, docs/troubleshooting.md)`,
+		);
+	else if (warnings > 0) console.log(`\n✓ unown is ready to chat in ${cwd} (⚠ items affect learning features only)`);
+	else console.log(`\n✓ unown is ready in ${cwd}`);
+	process.exit(hardFail ? 1 : 0);
 }
 
 async function cmdNote(text: string) {
@@ -334,6 +469,18 @@ async function cmdNote(text: string) {
 
 async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: boolean) {
 	const cwd = process.cwd();
+	// Pre-flight: fail fast with instructions when the model endpoint is
+	// unreachable or rejects credentials (stderr — stdout may carry the
+	// JSON event stream in --mode json).
+	ensureUnownAgentDirInfo();
+	const pre = await runPreflight();
+	printFirstRunBanner();
+	if (pre) {
+		console.error(`unown: ${pre.message}`);
+		console.error(`  → ${pre.hint}`);
+		console.error("  (set UNOWN_NO_PREFLIGHT=1 to skip this check)");
+		process.exit(1);
+	}
 	// Piped stdin (e.g. `cat error.log | unown -p "fix this"`) joins the prompt.
 	let piped = "";
 	if (!process.stdin.isTTY) {
@@ -365,6 +512,16 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 
 async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: BootOptions = {}) {
 	const cwd = process.cwd();
+	ensureUnownAgentDirInfo();
+	const pre = await runPreflight();
+	printFirstRunBanner();
+	if (pre) {
+		// Warn and continue: the user may start the stack in another
+		// terminal — pi's built-in retries cover that window.
+		console.log(`⚠ pre-flight: ${pre.message}`);
+		console.log(`  → ${pre.hint}`);
+		console.log();
+	}
 	const { runtime } = await bootRuntime(cwd, verbose, bootOpts);
 	const mode = new InteractiveMode(runtime as any, prompt ? { initialMessage: prompt } : {});
 	await mode.run(); // blocks until exit; normal exit path is process.exit(0)
@@ -374,6 +531,14 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
 // Entry point
 // ---------------------------------------------------------------------------
 export async function runCli(argv: string[]) {
+	// `setup` and `models` own their own flag grammar — dispatch before the
+	// generic parser would eat their flags as prompt text.
+	const first = argv[0];
+	if (first === "setup") process.exit(await runSetupCommand(argv.slice(1)));
+	if (first === "models") {
+		await printModelsOverview();
+		process.exit(0);
+	}
 	const args = parseArgs(argv);
 	switch (args.command) {
 		case "help":

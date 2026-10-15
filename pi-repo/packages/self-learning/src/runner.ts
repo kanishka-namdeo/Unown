@@ -27,7 +27,7 @@ import { BRIDGE_URL, DATA_DIR, store } from "./store.ts";
 export const AGENT_DIR = join(DATA_DIR, "pi-agent-dir");
 export const SESSIONS_DIR = join(DATA_DIR, "sessions");
 export const PROVIDER = process.env.PI_PROVIDER ?? "zai-bridge";
-export const MODEL_ID = process.env.PI_MODEL_ID ?? "glm-4-plus";
+export const MODEL_ID = process.env.PI_MODEL_ID ?? "kimi-k2.5";
 
 export interface TranscriptEntry {
 	type: "text" | "tool_start" | "tool_end";

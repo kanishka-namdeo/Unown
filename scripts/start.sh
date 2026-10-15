@@ -59,5 +59,17 @@ echo "    Dashboard      http://localhost:3000"
 echo "    Engine API     http://127.0.0.1:${PI_AGENT_PORT:-3030}/api/overview"
 echo "    LLM bridge     http://127.0.0.1:${BRIDGE_PORT:-3031}/health"
 echo ""
+
+# Honest key/upstream reporting: /health only counts as "ok" for the chat path
+# when the upstream key is set and the upstream actually answers.
+HEALTH_JSON="$(curl -s "http://127.0.0.1:${BRIDGE_PORT:-3031}/health" 2>/dev/null || true)"
+if echo "$HEALTH_JSON" | grep -q '"upstreamKeyIsSet":false'; then
+        echo "  ⚠ BRIDGE_UPSTREAM_KEY is not set in .env — every chat will fail with 401."
+        echo "    fix: edit .env, set BRIDGE_UPSTREAM_KEY=<your upstream key>, then: bun run agent:stop && bun run agent:start"
+elif echo "$HEALTH_JSON" | grep -q '"upstream":{"ok":false'; then
+        echo "  ⚠ The bridge reached the upstream but the upstream is unhealthy —"
+        echo "    check BRIDGE_UPSTREAM_URL / BRIDGE_UPSTREAM_KEY in .env."
+fi
+
 echo "  Logs: .run/bridge.log, .run/engine.log, .run/dashboard.log"
 echo "  Stop: bun run agent:stop"

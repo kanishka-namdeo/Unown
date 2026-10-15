@@ -24,16 +24,54 @@ echo "▶ [3/3] Building the pi coding agent (pi-repo/bun run build:offline)…"
 # packages (coding-agent, ai, agent, …).
 (cd pi-repo && bun run build:offline)
 
-cat <<'EOF'
+# Bootstrap .env from the template so the stack has something to load (the
+# template itself contains no secrets — BRIDGE_UPSTREAM_KEY stays empty).
+if [ ! -f .env ]; then
+        cp .env.example .env
+        echo "✓ created .env from .env.example"
+fi
+
+# Put `unown` on PATH (shim → this checkout). Opt out with UNOWN_NO_LINK=1.
+if [ "${UNOWN_NO_LINK:-}" = "1" ]; then
+        echo "· UNOWN_NO_LINK=1 — skipping the PATH link (run scripts/link.sh anytime)"
+else
+        bash scripts/link.sh || echo "· PATH link failed (not fatal) — run scripts/link.sh manually"
+fi
+
+UPSTREAM_KEY_SET=0
+if grep -q '^BRIDGE_UPSTREAM_KEY=..*' .env 2>/dev/null; then
+        UPSTREAM_KEY_SET=1
+fi
+
+cat <<EOF
 
 ✓ Install complete.
 
-  Next steps:
-    bun run agent:start     # start llm-bridge + engine + dashboard
-    open http://localhost:3000
+Next steps:
+  1. Configure your model credentials:
+EOF
+if [ "$UPSTREAM_KEY_SET" = "1" ]; then
+        cat <<'EOF'
+     ✓ BRIDGE_UPSTREAM_KEY is already set in .env
+EOF
+else
+        cat <<'EOF'
+     ✗ REQUIRED: set BRIDGE_UPSTREAM_KEY in .env — without it every chat
+       fails with 401 (the bridge forwards requests to the upstream
+       provider: Dashscope, OpenAI, OpenRouter, vLLM, …).
+       Prefer a different provider entirely? Skip the stack and run:
+           unown setup --provider openai --api-key sk-... --model gpt-4o
+EOF
+fi
+cat <<'EOF'
 
-  Configure any environment variables in .env first (see .env.example):
-    PI_BRIDGE_URL, PI_AGENT_PORT, BRIDGE_PORT, BRIDGE_API_KEY,
-    PI_MODEL_ID, NEXT_PUBLIC_AGENT_API_BASE, …
+  2. Start the stack:
+       bun run agent:start        # llm-bridge :3031 + engine :3030 + dashboard :3000
 
+  3. Verify & use the agent:
+       unown doctor              # end-to-end diagnostics (should be green)
+       cd ~/code/my-project && unown    # a coding agent in YOUR project
+
+  Docs: README.md (Quickstart) · docs/ (usage, providers, skills, memory,
+  troubleshooting) · unown --help
 EOF

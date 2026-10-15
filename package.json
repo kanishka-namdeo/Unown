@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Unown — a self-improving coding agent built on the pi coding agent: tiered memory, hooks, AutoDreaming, a self-improving harness, sandbox testing, routing, and a mission-control dashboard.",
+  "description": "Unown \u2014 a self-improving coding agent built on the pi coding agent: tiered memory, hooks, AutoDreaming, a self-improving harness, sandbox testing, routing, and a mission-control dashboard.",
   "bin": {
     "unown": "bin/unown"
   },
@@ -16,6 +16,7 @@
     "agent:install": "bash scripts/install.sh",
     "agent:start": "bash scripts/start.sh",
     "agent:stop": "bash scripts/stop.sh",
+    "agent:link": "bash scripts/link.sh",
     "agent:bridge": "cd mini-services/llm-bridge && bun --hot index.ts",
     "agent:engine": "cd mini-services/agent-service && bun --hot index.ts",
     "db:push": "prisma db push --accept-data-loss",

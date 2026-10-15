@@ -36,13 +36,26 @@ export const STRICT_HOOKS = /^(1|true|yes)$/i.test(process.env.UNOWN_STRICT_HOOK
 // terminal agent dir. Users can hand-edit ~/.unown/agent/models.json to point
 // at any OpenAI-compatible endpoint.
 // ---------------------------------------------------------------------------
-export function writeModelsJson(agentDir: string) {
+/** Result of ensuring the agent dir — `created` marks a FIRST run. */
+export interface AgentDirInit {
+	dir: string;
+	created: boolean;
+	provider: string;
+	modelId: string;
+}
+
+let lastInit: AgentDirInit | null = null;
+
+export function writeModelsJson(agentDir: string): { path: string; fresh: boolean; provider: string; modelId: string } {
 	mkdirSync(agentDir, { recursive: true });
 	const modelsPath = join(agentDir, "models.json");
-	if (existsSync(modelsPath)) return modelsPath; // never clobber user edits
 	const provider = process.env.PI_PROVIDER ?? "zai-bridge";
-	const modelId = process.env.PI_MODEL_ID ?? "glm-4-plus";
+	const modelId = process.env.PI_MODEL_ID ?? "kimi-k2.5";
 	const baseUrl = (process.env.PI_BRIDGE_URL ?? "http://127.0.0.1:3031").replace(/\/+$/, "");
+	if (existsSync(modelsPath)) return { path: modelsPath, fresh: false, provider, modelId }; // never clobber user edits
+	// The bridge placeholder key satisfies pi auth; when the bridge itself
+	// requires a shared secret (BRIDGE_API_KEY), use it so the CLI matches.
+	const apiKey = process.env.BRIDGE_API_KEY ?? "bridge-local";
 	writeFileSync(
 		modelsPath,
 		JSON.stringify(
@@ -51,7 +64,7 @@ export function writeModelsJson(agentDir: string) {
 					[provider]: {
 						baseUrl: `${baseUrl}/v1`,
 						api: "openai-completions",
-						apiKey: "bridge-local",
+						apiKey,
 						models: [
 							{
 								id: modelId,
@@ -69,7 +82,7 @@ export function writeModelsJson(agentDir: string) {
 		),
 		"utf8",
 	);
-	return modelsPath;
+	return { path: modelsPath, fresh: true, provider, modelId };
 }
 
 /** Seed the starter Agent Skills into ~/.unown/agent/skills/ (never clobbers user edits). */
@@ -87,15 +100,41 @@ export function seedStarterSkills(agentDir: string): string {
 }
 
 /** Ensure ~/.unown/agent is ready: models.json, auth.json, settings.json, sessions dir, starter skills. */
-export function ensureUnownAgentDir(): string {
-	writeModelsJson(UNOWN_AGENT_DIR);
+export function ensureUnownAgentDirInfo(): AgentDirInit {
+	const models = writeModelsJson(UNOWN_AGENT_DIR);
 	const authPath = join(UNOWN_AGENT_DIR, "auth.json");
 	if (!existsSync(authPath)) writeFileSync(authPath, "{}", "utf8");
 	const settingsPath = join(UNOWN_AGENT_DIR, "settings.json");
-	if (!existsSync(settingsPath)) writeFileSync(settingsPath, "{}", "utf8"); // prevents first-run setup dialog
+	const settingsExisted = existsSync(settingsPath);
+	if (!settingsExisted) {
+		// Default provider/model pinned (no first-run picker) — the same shape
+		// `unown setup` writes; re-run setup to switch providers.
+		writeFileSync(
+			settingsPath,
+			`${JSON.stringify({ defaultProvider: models.provider, defaultModel: models.modelId }, null, 2)}\n`,
+			"utf8",
+		);
+	}
 	mkdirSync(join(UNOWN_AGENT_DIR, "sessions"), { recursive: true });
 	seedStarterSkills(UNOWN_AGENT_DIR);
-	return UNOWN_AGENT_DIR;
+	const init: AgentDirInit = {
+		dir: UNOWN_AGENT_DIR,
+		created: models.fresh || !settingsExisted,
+		provider: models.provider,
+		modelId: models.modelId,
+	};
+	if (!lastInit) lastInit = init; // first call in this process wins — repeated ensures are idempotent
+	return lastInit;
+}
+
+/** String-returning wrapper (existing callers). */
+export function ensureUnownAgentDir(): string {
+	return ensureUnownAgentDirInfo().dir;
+}
+
+/** The last ensureUnownAgentDirInfo() result (null before the first call). */
+export function unownAgentDirInit(): AgentDirInit | null {
+	return lastInit;
 }
 
 // ---------------------------------------------------------------------------

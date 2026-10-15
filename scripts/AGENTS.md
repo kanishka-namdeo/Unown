@@ -11,8 +11,9 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
 
 ## Local Contracts
 
-- `install.sh` — one-time bootstrap: root `bun install` → `pi-repo` `bun install` → `pi-repo` `bun run build:offline` (offline skips the ai package's network model-data hydration).
-- `start.sh` — loads root `.env` (`set -a`), starts llm-bridge (:3031), engine (:3030), dashboard (:3000) as background processes with pidfiles in `.run/`.
+- `install.sh` — one-time bootstrap: root `bun install` → `pi-repo` `bun install` → `pi-repo` `bun run build:offline` (offline skips the ai package's network model-data hydration) → copies `.env.example` → `.env` when missing (template carries no secrets) → runs `link.sh` unless `UNOWN_NO_LINK=1` → prints next steps that flag a missing `BRIDGE_UPSTREAM_KEY` as REQUIRED (chats fail with 401 without it).
+- `link.sh` — puts `unown` on PATH: writes a shim (`exec bun <repo>/bin/unown "$@"`) into the first writable dir of `UNOWN_BIN_DIR`, `~/.local/bin`, `~/bin`, `/usr/local/bin`, warns when the dir is not on PATH. A shim (not `bun install -g .`) is the supported global-install path: it keeps the vendored pi-repo workspace resolution and subagent spawning intact (`process.argv[1]` stays the repo copy). Run via `bun run agent:link`; re-run after moving the repo.
+- `start.sh` — loads root `.env` (`set -a`), starts llm-bridge (:3031), engine (:3030), dashboard (:3000) as background processes with pidfiles in `.run/`; after the health wait it reads the bridge `/health` payload and prints a loud warning when `upstreamKeyIsSet` is false or the upstream probe is unhealthy.
 - `stop.sh` — halts by pidfile, falls back to pattern matching when stale.
 - Probe contract: probes hit the upstream endpoint directly or through the bridge and use `BRIDGE_UPSTREAM_KEY`-style env from the root `.env` — they must never hardcode keys.
 - `search_*.json` / `modelsdev.json` are captured research data (model strengths comparison, models.dev snapshot) that justified the model assignment — treat as read-only evidence. `search_sb_*.json` are the sandbox-landscape research (bubblewrap/Claude Code/Codex/E2B/Daytona) that justified the OS-sandbox selection; `bubblewrap_*.deb` is the provenance package for the vendored `pi-repo/packages/self-learning/native/bin/bwrap` (see that package's `native/README.md`).

@@ -255,11 +255,15 @@ function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Resp
         const decoder = new TextDecoder();
         let buffer = "";
         let contentChars = 0;
+        // The reader locks res.body for the forwarding loop; cancel() below must
+        // go through it (res.body.cancel() on a locked stream rejects asynchronously
+        // — an unhandled rejection that crashed stream teardown under load).
+        let reader: any;
         const stream = new ReadableStream({
                 async start(controller) {
                         try {
                                 // @ts-ignore - Bun exposes the response body stream
-                                const reader = res.body.getReader();
+                                reader = res.body.getReader();
                                 for (;;) {
                                         const { done, value } = await reader.read();
                                         if (done) break;
@@ -304,10 +308,12 @@ function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Resp
                         }
                 },
                 cancel() {
-                        // best-effort abort of the upstream body
+                        // Client went away mid-stream: stop the upstream transfer.
+                        // reader.cancel() resolves the pending read() with done and
+                        // releases the upstream body; never let its rejection escape
+                        // (unhandled rejections took the stream machinery down).
                         try {
-                                // @ts-ignore
-                                res.body?.cancel();
+                                reader?.cancel()?.catch(() => {});
                         } catch {
                                 /* ignore */
                         }
@@ -390,6 +396,8 @@ const server = Bun.serve({
                                 requests: totalRequests,
                                 errors: totalErrors,
                                 upstream,
+                                upstreamKeyIsSet: Boolean(UPSTREAM_KEY),
+                                authRequired: Boolean(BRIDGE_API_KEY),
                                 upstreamUrl: UPSTREAM_URL,
                                 defaultModel: ROUTE_DEFAULT,
                                 models: KNOWN_MODELS,
