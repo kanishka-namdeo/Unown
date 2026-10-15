@@ -24,7 +24,7 @@ Surfaces owned by this root doc (no child AGENTS.md):
 - `bin/unown` — terminal agent entry: interactive TUI, `-p "<prompt>"` headless, `doctor`, `memory`, `init`, `note "<text>"`. In non-TTY shells run headless as `bin/unown -p "…" < /dev/null`.
 - `package.json` — command surface: `dev` (dashboard :3000, logs to `dev.log`), `agent:install` / `agent:start` / `agent:stop` (wrap `scripts/`), `agent:bridge` / `agent:engine` (bun --hot single services), `unown` (CLI), `db:generate` / `db:push` / `db:migrate` / `db:reset` (Prisma).
 - `.env` (gitignored) — single source of runtime config: ports, model ids, upstream credentials. Author from `.env.example`; it is symlinked into both mini-services cwds so bun loads it there. Never commit keys.
-- `prisma/` + `db/` — dashboard Prisma schema + SQLite. Legacy scaffold (User/Post models, unused by UI); the dashboard's live data comes from the engine API (`src/lib/agent-api.ts`). The engine's own store is `db/selflearning.db` (separate, engine-owned, created on first run).
+- `prisma/` + `db/` — dashboard Prisma (v7) schema + SQLite: generator `prisma-client` with output to gitignored `src/generated/prisma`, CLI config in root `prisma.config.ts`, driver-adapter client in `src/lib/db.ts` (`db:*` scripts unchanged). Legacy scaffold (User/Post models, unused by UI); the dashboard's live data comes from the engine API (`src/lib/agent-api.ts`). The engine's own store is `db/selflearning.db` (separate, engine-owned, created on first run).
 - `.unown/` — per-project tiered memory. `memory/project.md` is tracked and maintained by AutoDream (edits are versioned, not clobbered); `local.md` / `*.local.md` are gitignored.
 - `.github/workflows/ci.yml` — lints the dashboard on push and PR.
 - Runtime state (gitignored): `data/self-learning/` (sandboxes, sessions, memory versions, generated pi agent dir), `db/`, `.run/` (pidfiles + logs), `dev.log`, `server.log`.
@@ -40,6 +40,7 @@ Stack lifecycle:
 - Sandbox-persistent start (background processes are killed between tool calls here): `cd /home/z/my-project && (nohup bash .zscripts/dev.sh >> .zscripts/dev.log 2>&1 < /dev/null & echo $! > .zscripts/dev.pid)` — idempotent-ish: re-runs bun install + db:push, reuses healthy services.
 - Stop: `bun run agent:stop`.
 - End-to-end sanity: `unown doctor` all green; `curl -s localhost:3030/api/overview` reports provider `zai-bridge/kimi-k2.5`; `curl -s localhost:3031/health` reports upstream healthy.
+- Toolchain: host bun is 1.4.3 at `~/.bun/bin` (PATH-first). `/usr/local/bin/bun` (1.3.14) remains the binary visible INSIDE the bwrap sandbox (the `/home` tmpfs hides `~/.bun`), so host bun upgrades do not change the sandboxed agent runtime.
 
 Git: PAT-authenticated remote (pull/push need no re-auth). Meaningful work is committed with explicit-path staging (`git add <paths>`, never `git add -A` / `git add .`); the engine itself auto-commits learning artifacts, so verify `git status` before staging.
 

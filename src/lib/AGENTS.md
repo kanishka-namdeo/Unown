@@ -15,7 +15,7 @@ The dashboard's data layer: engine API client (REST + SSE), the engine schema ty
 - `agent-types.ts` — the typed mirror of the engine's REST schema (overview, runs, cycles, improvements, memory tiers + versions, dreams, notes, hooks, jobs, bridge responses). When the engine API changes, update types here in the same change.
 - `agent-store.ts` — zustand store for cross-tab client state; server state belongs to react-query, not here.
 - `agent-format.ts` — display formatting (durations, token counts, statuses); keep renderers free of logic.
-- `db.ts` — instantiates PrismaClient against root `prisma/schema.prisma` (legacy scaffold, User/Post, unused by the UI). Do not extend; engine data is the source of truth.
+- `db.ts` — instantiates PrismaClient (Prisma 7: client generated to gitignored `src/generated/prisma` via `bun run db:generate`; better-sqlite3 driver adapter; CLI config in root `prisma.config.ts`). Legacy scaffold (User/Post, unused by the UI). Do not extend; engine data is the source of truth.
 
 ## Work Guidance
 

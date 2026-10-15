@@ -16,7 +16,7 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
 - `stop.sh` — halts by pidfile, falls back to pattern matching when stale.
 - Probe contract: probes hit the upstream endpoint directly or through the bridge and use `BRIDGE_UPSTREAM_KEY`-style env from the root `.env` — they must never hardcode keys.
 - `search_*.json` / `modelsdev.json` are captured research data (model strengths comparison, models.dev snapshot) that justified the model assignment — treat as read-only evidence. `search_sb_*.json` are the sandbox-landscape research (bubblewrap/Claude Code/Codex/E2B/Daytona) that justified the OS-sandbox selection; `bubblewrap_*.deb` is the provenance package for the vendored `pi-repo/packages/self-learning/native/bin/bwrap` (see that package's `native/README.md`).
-- Sandbox verification contract: `bwrap_smoke.sh` (profile-level isolation suite, 25 checks) and `verify_sandbox.mjs` (engine-level integration suite, 12 checks) must both be fully green before committing changes to the OS sandbox or refreshing the vendored bwrap binary.
+- Sandbox verification contract: `bwrap_smoke.sh` (profile-level isolation suite, 25 checks; invokes the vendored `pi-repo/packages/self-learning/native/bin/bwrap` directly) and `verify_sandbox.mjs` (engine-level integration suite, 12 checks) must both be fully green before committing changes to the OS sandbox or refreshing the vendored bwrap binary.
 - New ad-hoc verification scripts go here (not `/tmp`) when their results matter to the worklog; keep them re-runnable.
 
 ## Work Guidance
