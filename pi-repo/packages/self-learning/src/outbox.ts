@@ -7,9 +7,10 @@
  * The engine ingests those files on boot and on the note-sync router job,
  * then archives them to notes/done/.
  */
-import { ingestTerminalNote } from "./notes.ts";
-import { readOutboxNotes, archiveOutboxNote } from "./term.ts";
+
 import { emit } from "./bus.ts";
+import { ingestTerminalNote } from "./notes.ts";
+import { archiveOutboxNote, readOutboxNotes } from "./term.ts";
 
 /** Ingest all pending outbox notes. Returns the number ingested. */
 export function syncNoteOutbox(): number {

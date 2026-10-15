@@ -34,96 +34,113 @@
  *   UNOWN_SANDBOX_NET  1 keeps the network namespace shared (default: blocked)
  *   UNOWN_BWRAP        explicit path to the bwrap binary
  */
-import { existsSync, chmodSync, writeFileSync, mkdirSync, rmSync, mkdtempSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /** Resolve the bwrap binary: env override -> vendored copy -> system PATH. */
 export function resolveBwrapPath(): string | null {
-        const override = process.env.UNOWN_BWRAP;
-        if (override && existsSync(override)) return override;
-        const vendored = join(HERE, "..", "native", "bin", "bwrap");
-        if (existsSync(vendored)) return vendored;
-        for (const p of ["/usr/bin/bwrap", "/usr/local/bin/bwrap"]) {
-                if (existsSync(p)) return p;
-        }
-        return null;
+	const override = process.env.UNOWN_BWRAP;
+	if (override && existsSync(override)) return override;
+	const vendored = join(HERE, "..", "native", "bin", "bwrap");
+	if (existsSync(vendored)) return vendored;
+	for (const p of ["/usr/bin/bwrap", "/usr/local/bin/bwrap"]) {
+		if (existsSync(p)) return p;
+	}
+	return null;
 }
 
 export function osSandboxConfigured(): boolean {
-        return process.env.UNOWN_OS_SANDBOX !== "0";
+	return process.env.UNOWN_OS_SANDBOX !== "0";
 }
 
 export function netBlocked(): boolean {
-        return process.env.UNOWN_SANDBOX_NET !== "1";
+	return process.env.UNOWN_SANDBOX_NET !== "1";
 }
 
 /** The validated bubblewrap profile (see scripts/bwrap_smoke.sh evidence). */
 export function bwrapArgs(workspace: string, net = netBlocked()): string[] {
-        const args: string[] = [
-                "--ro-bind", "/", "/",
-                "--proc", "/proc",
-                "--dev", "/dev",
-                "--tmpfs", "/home",
-                "--tmpfs", "/run",
-                "--tmpfs", "/tmp",
-                "--tmpfs", "/var/tmp",
-                "--bind", workspace, workspace,
-                "--chdir", workspace,
-                "--die-with-parent",
-                "--new-session",
-                "--cap-drop", "ALL",
-                "--setenv", "HOME", "/tmp/home",
-                "--setenv", "TMPDIR", "/tmp",
-        ];
-        if (net) args.push("--unshare-net", "--unshare-ipc");
-        return args;
+	const args: string[] = [
+		"--ro-bind",
+		"/",
+		"/",
+		"--proc",
+		"/proc",
+		"--dev",
+		"/dev",
+		"--tmpfs",
+		"/home",
+		"--tmpfs",
+		"/run",
+		"--tmpfs",
+		"/tmp",
+		"--tmpfs",
+		"/var/tmp",
+		"--bind",
+		workspace,
+		workspace,
+		"--chdir",
+		workspace,
+		"--die-with-parent",
+		"--new-session",
+		"--cap-drop",
+		"ALL",
+		"--setenv",
+		"HOME",
+		"/tmp/home",
+		"--setenv",
+		"TMPDIR",
+		"/tmp",
+	];
+	if (net) args.push("--unshare-net", "--unshare-ipc");
+	return args;
 }
 
 /** Wrap a command argv with the sandbox profile; null when unavailable. */
 export function wrapCommand(command: string[], workspace: string): string[] | null {
-        const bin = resolveBwrapPath();
-        if (!bin || !osSandboxConfigured()) return null;
-        return [bin, ...bwrapArgs(workspace), "--", ...command];
+	const bin = resolveBwrapPath();
+	if (!bin || !osSandboxConfigured()) return null;
+	return [bin, ...bwrapArgs(workspace), "--", ...command];
 }
 
 let availabilityCache: boolean | null = null;
 
 /** One-time smoke test: can the profile actually execute a command here? */
 export async function osSandboxAvailable(): Promise<boolean> {
-        if (!osSandboxConfigured()) return false;
-        if (availabilityCache !== null) return availabilityCache;
-        const bin = resolveBwrapPath();
-        if (!bin) {
-                availabilityCache = false;
-                return false;
-        }
-        let probeDir: string | null = null;
-        try {
-                probeDir = mkdtempSync(join(tmpdir(), "unown-bwrap-probe-"));
-                const proc = Bun.spawn(
-                        [bin, ...bwrapArgs(probeDir), "--", "/bin/sh", "-c", "exit 0"],
-                        { cwd: probeDir, stdout: "ignore", stderr: "pipe" },
-                );
-                const timer = setTimeout(() => proc.kill(9), 10_000);
-                const code = await proc.exited;
-                clearTimeout(timer);
-                availabilityCache = code === 0;
-        } catch {
-                availabilityCache = false;
-        } finally {
-                if (probeDir) {
-                        try {
-                                rmSync(probeDir, { recursive: true, force: true });
-                        } catch {
-                                /* ignore */
-                        }
-                }
-        }
-        return availabilityCache;
+	if (!osSandboxConfigured()) return false;
+	if (availabilityCache !== null) return availabilityCache;
+	const bin = resolveBwrapPath();
+	if (!bin) {
+		availabilityCache = false;
+		return false;
+	}
+	let probeDir: string | null = null;
+	try {
+		probeDir = mkdtempSync(join(tmpdir(), "unown-bwrap-probe-"));
+		const proc = Bun.spawn([bin, ...bwrapArgs(probeDir), "--", "/bin/sh", "-c", "exit 0"], {
+			cwd: probeDir,
+			stdout: "ignore",
+			stderr: "pipe",
+		});
+		const timer = setTimeout(() => proc.kill(9), 10_000);
+		const code = await proc.exited;
+		clearTimeout(timer);
+		availabilityCache = code === 0;
+	} catch {
+		availabilityCache = false;
+	} finally {
+		if (probeDir) {
+			try {
+				rmSync(probeDir, { recursive: true, force: true });
+			} catch {
+				/* ignore */
+			}
+		}
+	}
+	return availabilityCache;
 }
 
 /**
@@ -133,12 +150,12 @@ export async function osSandboxAvailable(): Promise<boolean> {
  * The workspace is derived from the invocation cwd — no per-run state needed.
  */
 export function writeSandboxShell(agentDir: string): string | null {
-        const bin = resolveBwrapPath();
-        if (!bin || !osSandboxConfigured()) return null;
-        mkdirSync(agentDir, { recursive: true });
-        const shellPath = join(agentDir, "unown-sandbox-shell");
-        const netArgs = netBlocked() ? "--unshare-net \\\n  --unshare-ipc \\\n  " : "";
-        const script = `#!/bin/sh
+	const bin = resolveBwrapPath();
+	if (!bin || !osSandboxConfigured()) return null;
+	mkdirSync(agentDir, { recursive: true });
+	const shellPath = join(agentDir, "unown-sandbox-shell");
+	const netArgs = netBlocked() ? "--unshare-net \\\n  --unshare-ipc \\\n  " : "";
+	const script = `#!/bin/sh
 # Generated by unown (src/bwrap.ts) — sandbox shell for agent bash commands.
 # Invoked as: unown-sandbox-shell -c "<command>"; cwd = sandbox workspace.
 # Re-executes the command under bubblewrap with the validated profile.
@@ -160,7 +177,7 @@ exec '${bin}' \\
   --setenv TMPDIR /tmp \\
   -- /bin/bash "$@"
 `;
-        writeFileSync(shellPath, script, "utf8");
-        chmodSync(shellPath, 0o755);
-        return shellPath;
+	writeFileSync(shellPath, script, "utf8");
+	chmodSync(shellPath, 0o755);
+	return shellPath;
 }

@@ -30,7 +30,10 @@ export interface TerminalHookOptions {
 /** Terminal deny-list: catastrophic only. Network + git push allowed. */
 const TERMINAL_BASH_DENY: { pattern: RegExp; reason: string }[] = [
 	{ pattern: /rm\s+(-[a-z]*\s+)*\/(\s|$)/, reason: "refusing rm on filesystem root" },
-	{ pattern: /rm\s+-[a-z]*r[a-z]*f?\s+(~|\$HOME|\/home)(\/|\s|$)/, reason: "refusing recursive delete of home directories" },
+	{
+		pattern: /rm\s+-[a-z]*r[a-z]*f?\s+(~|\$HOME|\/home)(\/|\s|$)/,
+		reason: "refusing recursive delete of home directories",
+	},
 	{ pattern: /:\(\)\s*\{\s*:\s*\|\s*:&\s*\}\s*;/, reason: "refusing fork bomb" },
 	{ pattern: /mkfs(\.|\s)/, reason: "refusing filesystem format" },
 	{ pattern: /dd\s+[^\n]*of=\/dev\/(sd|nvme|hd)/, reason: "refusing raw writes to disk devices" },
@@ -40,12 +43,15 @@ const TERMINAL_BASH_DENY: { pattern: RegExp; reason: string }[] = [
 
 const STRICT_EXTRA_DENY: { pattern: RegExp; reason: string }[] = [
 	{ pattern: /\bsudo\b/, reason: "sudo is not permitted" },
-	{ pattern: /\b(curl|wget|nc|netcat)\b[^|;&]*\b(?!127\.0\.0\.1|localhost)[a-z0-9-]+\.[a-z]{2,}/i, reason: "network access to external hosts is denied (strict hooks)" },
+	{
+		pattern: /\b(curl|wget|nc|netcat)\b[^|;&]*\b(?!127\.0\.0\.1|localhost)[a-z0-9-]+\.[a-z]{2,}/i,
+		reason: "network access to external hosts is denied (strict hooks)",
+	},
 	{ pattern: /\bgit\s+push\b/, reason: "git push is denied (strict hooks)" },
 ];
 
 function decideTerminalBash(command: string, strict: boolean) {
-	for (const rule of (strict ? [...TERMINAL_BASH_DENY, ...STRICT_EXTRA_DENY] : TERMINAL_BASH_DENY)) {
+	for (const rule of strict ? [...TERMINAL_BASH_DENY, ...STRICT_EXTRA_DENY] : TERMINAL_BASH_DENY) {
 		if (rule.pattern.test(command)) return { block: true, reason: rule.reason };
 	}
 	if (strict) {
@@ -99,7 +105,10 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
 			} else if (tool === "write" || tool === "edit") {
 				const p = String(input.path ?? input.file_path ?? "");
 				if (p && !terminalPathOk(opts.cwd, p)) {
-					decision = { block: true, reason: `write path escapes the project directory: ${p} (use the project dir or /tmp)` };
+					decision = {
+						block: true,
+						reason: `write path escapes the project directory: ${p} (use the project dir or /tmp)`,
+					};
 				}
 			}
 
@@ -146,7 +155,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
 			}
 		});
 
-		pi.on("session_shutdown", async (event: any, ctx: any) => {
+		pi.on("session_shutdown", async (event: any, _ctx: any) => {
 			if (event?.reason !== "quit") return; // new/resume/fork reloads keep the session alive
 			if (prompts === 0 && toolCalls === 0) return; // nothing happened — no note
 			try {
@@ -179,8 +188,12 @@ export function buildTerminalNote(info: {
 }): string {
 	const durMin = Math.max(1, Math.round((Date.now() - info.sessionStartTs) / 60000));
 	const lines: string[] = [];
-	lines.push(`Terminal session in ${info.cwd} (${durMin} min): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}.`);
+	lines.push(
+		`Terminal session in ${info.cwd} (${durMin} min): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}.`,
+	);
 	if (info.lastAssistantText) lines.push(`Final outcome: ${info.lastAssistantText.slice(0, 400)}`);
-	lines.push(`If the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.`);
+	lines.push(
+		`If the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.`,
+	);
 	return lines.join("\n");
 }

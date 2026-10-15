@@ -13,23 +13,18 @@
  */
 import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
-import { store } from "./store.ts";
 import { emit } from "./bus.ts";
+import { store } from "./store.ts";
 
 export type NoteKind = "benchmark" | "terminal";
 
 export function createNote(runId: string, content: string, kind: NoteKind = "benchmark", projectPath?: string | null) {
 	const id = randomUUID();
 	const slug = projectPath ? slugifyProject(projectPath) : null;
-	store.run(`INSERT INTO notes (id, run_id, content, created_at, kind, project_path, project_slug) VALUES (?, ?, ?, ?, ?, ?, ?)`, [
-		id,
-		runId,
-		content,
-		Date.now(),
-		kind,
-		projectPath ?? null,
-		slug,
-	]);
+	store.run(
+		`INSERT INTO notes (id, run_id, content, created_at, kind, project_path, project_slug) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		[id, runId, content, Date.now(), kind, projectPath ?? null, slug],
+	);
 	emit("note:created", { id, runId, kind, projectPath: projectPath ?? null });
 	return id;
 }
@@ -41,9 +36,15 @@ export function ingestTerminalNote(content: string, projectPath: string) {
 
 export function undreamedNotes(limit = 24, kind?: NoteKind) {
 	if (kind) {
-		return store.query<any>(`SELECT id, run_id, content, created_at, kind, project_path, project_slug FROM notes WHERE dream_id IS NULL AND kind = ? ORDER BY created_at DESC LIMIT ?`, [kind, limit]);
+		return store.query<any>(
+			`SELECT id, run_id, content, created_at, kind, project_path, project_slug FROM notes WHERE dream_id IS NULL AND kind = ? ORDER BY created_at DESC LIMIT ?`,
+			[kind, limit],
+		);
 	}
-	return store.query<any>(`SELECT id, run_id, content, created_at, kind, project_path, project_slug FROM notes WHERE dream_id IS NULL ORDER BY created_at DESC LIMIT ?`, [limit]);
+	return store.query<any>(
+		`SELECT id, run_id, content, created_at, kind, project_path, project_slug FROM notes WHERE dream_id IS NULL ORDER BY created_at DESC LIMIT ?`,
+		[limit],
+	);
 }
 
 /** Pending terminal notes grouped by project slug. */
@@ -67,7 +68,12 @@ export function markDreamed(noteIds: string[], dreamId: string) {
 /** Stable short identifier for a project path (used as the memory-version tier key). */
 export function slugifyProject(projectPath: string): string {
 	const base = basename(projectPath) || "project";
-	const cleaned = base.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 32) || "project";
+	const cleaned =
+		base
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-+|-+$/g, "")
+			.slice(0, 32) || "project";
 	return cleaned;
 }
 
@@ -88,9 +94,13 @@ export function noteFromRun(run: {
 	toolsUsed?: string[];
 }): string {
 	const lines: string[] = [];
-	lines.push(`Run ${run.id.slice(0, 8)} (${run.kind}) on task ${run.taskId ?? "interactive"}: ${run.status.toUpperCase()}`);
+	lines.push(
+		`Run ${run.id.slice(0, 8)} (${run.kind}) on task ${run.taskId ?? "interactive"}: ${run.status.toUpperCase()}`,
+	);
 	if (run.verifySummary) lines.push(`Verification: ${run.verifySummary}`);
-	lines.push(`Tools used: ${run.toolsUsed?.length ? `${run.toolCalls ?? 0} calls (${[...new Set(run.toolsUsed)].join(", ")})` : "none"}`);
+	lines.push(
+		`Tools used: ${run.toolsUsed?.length ? `${run.toolCalls ?? 0} calls (${[...new Set(run.toolsUsed)].join(", ")})` : "none"}`,
+	);
 	if (run.status !== "passed" && run.verifyLog) {
 		const failures = run.verifyLog
 			.split("\n")

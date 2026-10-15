@@ -12,46 +12,71 @@
  *
  * plus sandbox.ts (isolated deploy & test sandboxes) and server.ts (REST+SSE API).
  */
-export { store, DATA_DIR, DB_PATH, BRIDGE_URL } from "./store.ts";
-export { chat, chatText, chatJson, bridgeHealth, bridgeLog } from "./llm.ts";
-export {
-        seedMemoryIfEmpty,
-        resolveMemory,
-        readTier,
-        writeTier,
-        appendRules,
-        snapshot as memorySnapshot,
-        history as memoryHistory,
-        rollback as memoryRollback,
-        TIERS,
-        type Tier,
-        type MemoryOverlay,
-} from "./memory.ts";
-export { createHooksExtension, decideBash, jailPath, syntaxCheck, logHook } from "./hooks.ts";
-export { createSandbox, seedFiles, verifyInSandbox, snapshotFiles, listSandboxes, gcSandboxes, execInSandbox } from "./sandbox.ts";
-export { seedTasks, listTasks, getTask, TASK_DEFS } from "./tasks.ts";
-export { runAgent, getRun, listRuns, ensureAgentDir, type RunResult, type RunOptions, type TranscriptEntry } from "./runner.ts";
-export { runCycle, runRegression, mineFailure, pickNextTask, listCycles, listImprovements } from "./harness.ts";
-export { runDream, runProjectDream, listDreams } from "./dream.ts";
-export { Router, router, listJobs, setJobEnabled, JOB_DEFS } from "./router.ts";
-export { startServer, handleApi } from "./server.ts";
-export { emit, emitAsync, subscribe, onAsync, bus } from "./bus.ts";
-export { createNote, ingestTerminalNote, undreamedNotes, noteFromRun, pendingTerminalNotesByProject, slugifyProject, type NoteKind } from "./notes.ts";
-export {
-        UNOWN_HOME,
-        UNOWN_AGENT_DIR,
-        ENGINE_URL,
-        STRICT_HOOKS,
-        ensureUnownAgentDir,
-        initProjectMemory,
-        resolveTerminalMemory,
-        projectMemoryPath,
-        writeModelsJson,
-        writeOutboxNote,
-        deliverTerminalNote,
-        readOutboxNotes,
-        archiveOutboxNote,
-} from "./term.ts";
-export { createTerminalExtension, buildTerminalNote } from "./termhooks.ts";
-export { syncNoteOutbox } from "./outbox.ts";
+
+export { bus, emit, emitAsync, onAsync, subscribe } from "./bus.ts";
 export { runCli } from "./cli.ts";
+export { listDreams, runDream, runProjectDream } from "./dream.ts";
+export { listCycles, listImprovements, mineFailure, pickNextTask, runCycle, runRegression } from "./harness.ts";
+export { createHooksExtension, decideBash, jailPath, logHook, syntaxCheck } from "./hooks.ts";
+export { bridgeHealth, bridgeLog, chat, chatJson, chatText } from "./llm.ts";
+export {
+	appendRules,
+	history as memoryHistory,
+	type MemoryOverlay,
+	readTier,
+	resolveMemory,
+	rollback as memoryRollback,
+	seedMemoryIfEmpty,
+	snapshot as memorySnapshot,
+	TIERS,
+	type Tier,
+	writeTier,
+} from "./memory.ts";
+export {
+	createNote,
+	ingestTerminalNote,
+	type NoteKind,
+	noteFromRun,
+	pendingTerminalNotesByProject,
+	slugifyProject,
+	undreamedNotes,
+} from "./notes.ts";
+export { syncNoteOutbox } from "./outbox.ts";
+export { JOB_DEFS, listJobs, Router, router, setJobEnabled } from "./router.ts";
+export {
+	ensureAgentDir,
+	getRun,
+	listRuns,
+	type RunOptions,
+	type RunResult,
+	runAgent,
+	type TranscriptEntry,
+} from "./runner.ts";
+export {
+	createSandbox,
+	execInSandbox,
+	gcSandboxes,
+	listSandboxes,
+	seedFiles,
+	snapshotFiles,
+	verifyInSandbox,
+} from "./sandbox.ts";
+export { handleApi, startServer } from "./server.ts";
+export { BRIDGE_URL, DATA_DIR, DB_PATH, store } from "./store.ts";
+export { getTask, listTasks, seedTasks, TASK_DEFS } from "./tasks.ts";
+export {
+	archiveOutboxNote,
+	deliverTerminalNote,
+	ENGINE_URL,
+	ensureUnownAgentDir,
+	initProjectMemory,
+	projectMemoryPath,
+	readOutboxNotes,
+	resolveTerminalMemory,
+	STRICT_HOOKS,
+	UNOWN_AGENT_DIR,
+	UNOWN_HOME,
+	writeModelsJson,
+	writeOutboxNote,
+} from "./term.ts";
+export { buildTerminalNote, createTerminalExtension } from "./termhooks.ts";

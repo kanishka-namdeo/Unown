@@ -8,36 +8,36 @@
 #        processes are possible (mitigated by hook deny-rules)
 #   - whole-root ro-bind carries child mounts; --proc/--dev/--tmpfs override them
 set -u
-BWRAP=/home/z/my-project/scripts/bwrap-extract/usr/bin/bwrap
+BWRAP=/home/z/my-project/pi-repo/packages/self-learning/native/bin/bwrap
 WS=/tmp/sbx/ws
 rm -rf "$WS"; mkdir -p "$WS"
 
 run() {
-	"$BWRAP" \
-		--ro-bind / / \
-		--proc /proc \
-		--dev /dev \
-		--tmpfs /home \
-		--tmpfs /run \
-		--tmpfs /tmp \
-		--tmpfs /var/tmp \
-		--bind "$WS" "$WS" \
-		--chdir "$WS" \
-		--unshare-net \
-		--unshare-ipc \
-		--die-with-parent \
-		--new-session \
-		--cap-drop ALL \
-		--setenv HOME /tmp/home \
-		--setenv TMPDIR /tmp \
-		-- "$@"
+        "$BWRAP" \
+                --ro-bind / / \
+                --proc /proc \
+                --dev /dev \
+                --tmpfs /home \
+                --tmpfs /run \
+                --tmpfs /tmp \
+                --tmpfs /var/tmp \
+                --bind "$WS" "$WS" \
+                --chdir "$WS" \
+                --unshare-net \
+                --unshare-ipc \
+                --die-with-parent \
+                --new-session \
+                --cap-drop ALL \
+                --setenv HOME /tmp/home \
+                --setenv TMPDIR /tmp \
+                -- "$@"
 }
 
 pass=0; fail=0
 check() { # <name> <want-exit-0> <cmd...>
-	local name="$1" want="$2"; shift 2
-	if run "$@" >/dev/null 2>&1; then got=0; else got=1; fi
-	if [ "$got" = "$want" ]; then echo "PASS $name"; pass=$((pass+1)); else echo "FAIL $name (exit=$got want=$want)"; fail=$((fail+1)); fi
+        local name="$1" want="$2"; shift 2
+        if run "$@" >/dev/null 2>&1; then got=0; else got=1; fi
+        if [ "$got" = "$want" ]; then echo "PASS $name"; pass=$((pass+1)); else echo "FAIL $name (exit=$got want=$want)"; fail=$((fail+1)); fi
 }
 
 # --- filesystem isolation ---------------------------------------------------
@@ -69,15 +69,15 @@ check "fs: symlink escape blocked" 1 /bin/sh ./esc.sh
 check "net: DNS blocked" 1 /bin/sh -c 'getent hosts deb.debian.org'
 check "net: TCP blocked" 0 /usr/bin/python3 -c 'import socket
 try:
-	socket.create_connection(("deb.debian.org", 80), 3)
+        socket.create_connection(("deb.debian.org", 80), 3)
 except Exception:
-	raise SystemExit(0)
+        raise SystemExit(0)
 raise SystemExit(1)'
 check "net: localhost bridge unreachable" 0 /usr/bin/python3 -c 'import socket
 try:
-	socket.create_connection(("127.0.0.1", 3031), 2)
+        socket.create_connection(("127.0.0.1", 3031), 2)
 except Exception:
-	raise SystemExit(0)
+        raise SystemExit(0)
 raise SystemExit(1)'
 
 # --- runtimes usable inside --------------------------------------------------
@@ -92,9 +92,9 @@ check "rt: bun can mkdir HOME" 0 /usr/local/bin/bun -e 'await Bun.$`mkdir -p ${p
 sleep 30 &
 HOSTPID=$!
 if run -- /bin/sh -c "kill -0 $HOSTPID" 2>/dev/null; then
-	echo "INFO residual: cross-process signals possible (no pidns on this kernel) - mitigated by hook deny-rules"
+        echo "INFO residual: cross-process signals possible (no pidns on this kernel) - mitigated by hook deny-rules"
 else
-	echo "INFO residual: cross-process signals blocked"
+        echo "INFO residual: cross-process signals blocked"
 fi
 kill "$HOSTPID" 2>/dev/null
 echo "INFO residual: /sys visible read-only (whole-root ro-bind); /proc shows host pids"

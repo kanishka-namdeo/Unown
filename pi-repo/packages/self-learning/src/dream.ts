@@ -13,14 +13,14 @@
  *     (versioned in the engine DB as tier "project:<slug>")
  */
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { store } from "./store.ts";
-import { chatJson } from "./llm.ts";
-import { undreamedNotes, markDreamed, pendingTerminalNotesByProject } from "./notes.ts";
-import { readTier, writeTier, currentVersion, rollback } from "./memory.ts";
-import { projectMemoryPath, initProjectMemory, slugifyPath } from "./term.ts";
 import { emit } from "./bus.ts";
+import { chatJson } from "./llm.ts";
+import { currentVersion, readTier, rollback, writeTier } from "./memory.ts";
+import { markDreamed, pendingTerminalNotesByProject, undreamedNotes } from "./notes.ts";
+import { store } from "./store.ts";
+import { initProjectMemory, projectMemoryPath, slugifyPath } from "./term.ts";
 
 export interface DreamResult {
 	id: string;
@@ -56,21 +56,35 @@ export async function runDream(): Promise<DreamResult> {
 	const notes = undreamedNotes(24, "benchmark");
 
 	if (notes.length === 0) {
-		store.run(`INSERT INTO dreams (id, started_at, ended_at, status, notes_in) VALUES (?, ?, ?, 'no-notes', 0)`, [id, Date.now(), Date.now()]);
+		store.run(`INSERT INTO dreams (id, started_at, ended_at, status, notes_in) VALUES (?, ?, ?, 'no-notes', 0)`, [
+			id,
+			Date.now(),
+			Date.now(),
+		]);
 		emit("dream:finished", { id, status: "no-notes" });
 		return { id, status: "no-notes", notesIn: 0, merged: 0, pruned: 0, added: 0, output: "" };
 	}
 
-	store.run(`INSERT INTO dreams (id, started_at, status, notes_in) VALUES (?, ?, 'running', ?)`, [id, Date.now(), notes.length]);
+	store.run(`INSERT INTO dreams (id, started_at, status, notes_in) VALUES (?, ?, 'running', ?)`, [
+		id,
+		Date.now(),
+		notes.length,
+	]);
 	emit("dream:started", { id, notesIn: notes.length });
 
 	try {
 		const currentMemory = readTier("project");
 		const notesText = notes
-			.map((n: any) => `--- note (${new Date(n.created_at).toISOString()}) run=${String(n.run_id ?? "").slice(0, 8)} ---\n${n.content}`)
+			.map(
+				(n: any) =>
+					`--- note (${new Date(n.created_at).toISOString()}) run=${String(n.run_id ?? "").slice(0, 8)} ---\n${n.content}`,
+			)
 			.join("\n\n");
 
-		const result = await chatJson<{ projectMd: string; stats: { merged: number; pruned: number; added: number; topics?: string[] } }>(
+		const result = await chatJson<{
+			projectMd: string;
+			stats: { merged: number; pruned: number; added: number; topics?: string[] };
+		}>(
 			[
 				{ role: "system", content: SYSTEM },
 				{
@@ -85,23 +99,49 @@ export async function runDream(): Promise<DreamResult> {
 		if (!next || next.length < 60) throw new Error("dream produced empty memory");
 		const stats = result.stats ?? { merged: 0, pruned: 0, added: 0 };
 
-		const version = writeTier("project", next + "\n", "autodream", `consolidated ${notes.length} notes (merged ${stats.merged}, pruned ${stats.pruned}, added ${stats.added})`);
+		const version = writeTier(
+			"project",
+			`${next}\n`,
+			"autodream",
+			`consolidated ${notes.length} notes (merged ${stats.merged}, pruned ${stats.pruned}, added ${stats.added})`,
+		);
 
 		// ---- Canary gate: the new memory must not break the last-passing task.
 		const gate = await canaryCheck(version);
 		if (gate.rolledBack) {
-			markDreamed(notes.map((n: any) => n.id), id);
-			store.run(`UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, output = ?, note = ? WHERE id = ?`, [
-				Date.now(),
-				stats.merged ?? 0,
-				stats.pruned ?? 0,
-				stats.added ?? 0,
-				next,
-				`rolled back to v${version - 1}: canary task failed under the new memory (${gate.reason ?? "unknown"})`,
+			markDreamed(
+				notes.map((n: any) => n.id),
 				id,
-			]);
-			emit("dream:finished", { id, status: "gated", notesIn: notes.length, version: version - 1, reason: gate.reason });
-			return { id, status: "gated", notesIn: notes.length, merged: stats.merged ?? 0, pruned: stats.pruned ?? 0, added: stats.added ?? 0, output: next, note: "canary gate rolled the dream back" };
+			);
+			store.run(
+				`UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, output = ?, note = ? WHERE id = ?`,
+				[
+					Date.now(),
+					stats.merged ?? 0,
+					stats.pruned ?? 0,
+					stats.added ?? 0,
+					next,
+					`rolled back to v${version - 1}: canary task failed under the new memory (${gate.reason ?? "unknown"})`,
+					id,
+				],
+			);
+			emit("dream:finished", {
+				id,
+				status: "gated",
+				notesIn: notes.length,
+				version: version - 1,
+				reason: gate.reason,
+			});
+			return {
+				id,
+				status: "gated",
+				notesIn: notes.length,
+				merged: stats.merged ?? 0,
+				pruned: stats.pruned ?? 0,
+				added: stats.added ?? 0,
+				output: next,
+				note: "canary gate rolled the dream back",
+			};
 		}
 
 		markDreamed(
@@ -111,7 +151,15 @@ export async function runDream(): Promise<DreamResult> {
 
 		store.run(
 			`UPDATE dreams SET ended_at = ?, status = 'done', entries_merged = ?, entries_pruned = ?, entries_added = ?, output = ?, note = ? WHERE id = ?`,
-			[Date.now(), stats.merged ?? 0, stats.pruned ?? 0, stats.added ?? 0, next, `project memory -> v${version}${gate.skipped ? " (canary unavailable: " + gate.reason + ")" : " (canary passed)"}`, id],
+			[
+				Date.now(),
+				stats.merged ?? 0,
+				stats.pruned ?? 0,
+				stats.added ?? 0,
+				next,
+				`project memory -> v${version}${gate.skipped ? ` (canary unavailable: ${gate.reason})` : " (canary passed)"}`,
+				id,
+			],
 		);
 		emit("dream:finished", { id, status: "done", notesIn: notes.length, stats, version });
 		return {
@@ -138,7 +186,9 @@ export async function runDream(): Promise<DreamResult> {
  * canary could not run. Returns { skipped } when no canary task is available.
  */
 async function canaryCheck(newVersion: number): Promise<{ rolledBack: boolean; skipped?: boolean; reason?: string }> {
-	const lastPass = store.get<{ task_id: string }>(`SELECT task_id FROM runs WHERE status = 'passed' AND kind IN ('baseline','candidate') AND task_id IS NOT NULL ORDER BY ended_at DESC LIMIT 1`);
+	const lastPass = store.get<{ task_id: string }>(
+		`SELECT task_id FROM runs WHERE status = 'passed' AND kind IN ('baseline','candidate') AND task_id IS NOT NULL ORDER BY ended_at DESC LIMIT 1`,
+	);
 	if (!lastPass) return { rolledBack: false, skipped: true, reason: "no previously-passing task" };
 	if (process.env.PI_DREAM_GATE === "0") return { rolledBack: false, skipped: true, reason: "gate disabled" };
 	try {
@@ -158,7 +208,8 @@ async function canaryCheck(newVersion: number): Promise<{ rolledBack: boolean; s
 			rollback("project", newVersion - 1, `dream canary failed on ${task.id} — consolidation rolled back`);
 			return { rolledBack: true, reason: `canary ${task.id} failed under new memory v${newVersion}` };
 		}
-		if (result.status === "error") return { rolledBack: false, skipped: true, reason: "canary hit infrastructure failure" };
+		if (result.status === "error")
+			return { rolledBack: false, skipped: true, reason: "canary hit infrastructure failure" };
 		return { rolledBack: false };
 	} catch (err: any) {
 		return { rolledBack: false, skipped: true, reason: err?.message ?? String(err) };
@@ -189,7 +240,13 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
 			initProjectMemory(group.projectPath);
 			current = readFileSync(projectMemoryPath(group.projectPath), "utf8");
 		} catch (err: any) {
-			results.push({ slug: group.slug, projectPath: group.projectPath, notesIn: notes.length, status: "error", error: `cannot read project memory: ${err?.message ?? err}` });
+			results.push({
+				slug: group.slug,
+				projectPath: group.projectPath,
+				notesIn: notes.length,
+				status: "error",
+				error: `cannot read project memory: ${err?.message ?? err}`,
+			});
 			continue;
 		}
 
@@ -198,7 +255,10 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
 			.join("\n\n");
 
 		try {
-			const result = await chatJson<{ projectMd: string; stats?: { merged: number; pruned: number; added: number } }>(
+			const result = await chatJson<{
+				projectMd: string;
+				stats?: { merged: number; pruned: number; added: number };
+			}>(
 				[
 					{ role: "system", content: SYSTEM },
 					{
@@ -214,39 +274,67 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
 			// Write the project's memory file (the terminal agent reads this next session).
 			const memPath = projectMemoryPath(group.projectPath);
 			mkdirSync(dirname(memPath), { recursive: true });
-			writeFileSync(memPath, next + "\n", "utf8");
+			writeFileSync(memPath, `${next}\n`, "utf8");
 
 			// Version it in the engine DB under a synthetic tier so history/rollback works.
 			const tierKey = `project:${group.slug}`;
-			const versionRow = store.get<{ version: number }>(`SELECT MAX(version) AS version FROM memory_versions WHERE tier = ?`, [tierKey]);
+			const versionRow = store.get<{ version: number }>(
+				`SELECT MAX(version) AS version FROM memory_versions WHERE tier = ?`,
+				[tierKey],
+			);
 			const version = (versionRow?.version ?? 0) + 1;
-			store.run(`INSERT INTO memory_versions (tier, version, content, changed_by, note, created_at) VALUES (?, ?, ?, 'autodream', ?, ?)`, [
-				tierKey,
-				version,
-				next + "\n",
-				`consolidated ${notes.length} terminal notes for ${group.slug}`,
-				Date.now(),
-			]);
+			store.run(
+				`INSERT INTO memory_versions (tier, version, content, changed_by, note, created_at) VALUES (?, ?, ?, 'autodream', ?, ?)`,
+				[
+					tierKey,
+					version,
+					`${next}\n`,
+					`consolidated ${notes.length} terminal notes for ${group.slug}`,
+					Date.now(),
+				],
+			);
 
 			// All terminal notes for this project are consumed by this dream.
 			const dreamId = `project-${randomUUID()}`;
-			store.run(`INSERT INTO dreams (id, started_at, ended_at, status, notes_in, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?)`, [
+			store.run(
+				`INSERT INTO dreams (id, started_at, ended_at, status, notes_in, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?)`,
+				[
+					dreamId,
+					Date.now(),
+					Date.now(),
+					notes.length,
+					next,
+					`project dream: ${group.slug} memory -> v${version} (${group.projectPath})`,
+				],
+			);
+			markDreamed(
+				notes.map((n: any) => n.id),
 				dreamId,
-				Date.now(),
-				Date.now(),
-				notes.length,
-				next,
-				`project dream: ${group.slug} memory -> v${version} (${group.projectPath})`,
-			]);
-			markDreamed(notes.map((n: any) => n.id), dreamId);
+			);
 			emit("dream:finished", { id: dreamId, status: "done", notesIn: notes.length, project: group.slug, version });
-			results.push({ slug: group.slug, projectPath: group.projectPath, notesIn: notes.length, status: "done", version, note: `memory -> v${version}` });
+			results.push({
+				slug: group.slug,
+				projectPath: group.projectPath,
+				notesIn: notes.length,
+				status: "done",
+				version,
+				note: `memory -> v${version}`,
+			});
 		} catch (err: any) {
 			const msg = err?.message ?? String(err);
 			const dreamId = `project-${randomUUID()}`;
-			store.run(`INSERT INTO dreams (id, started_at, ended_at, status, notes_in, note) VALUES (?, ?, ?, 'error', ?, ?)`, [dreamId, Date.now(), Date.now(), notes.length, `project dream error (${group.slug}): ${msg}`]);
+			store.run(
+				`INSERT INTO dreams (id, started_at, ended_at, status, notes_in, note) VALUES (?, ?, ?, 'error', ?, ?)`,
+				[dreamId, Date.now(), Date.now(), notes.length, `project dream error (${group.slug}): ${msg}`],
+			);
 			emit("dream:finished", { id: dreamId, status: "error", project: group.slug, error: msg });
-			results.push({ slug: group.slug, projectPath: group.projectPath, notesIn: notes.length, status: "error", error: msg });
+			results.push({
+				slug: group.slug,
+				projectPath: group.projectPath,
+				notesIn: notes.length,
+				status: "error",
+				error: msg,
+			});
 		}
 	}
 	return results;

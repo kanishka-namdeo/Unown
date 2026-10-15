@@ -11,10 +11,10 @@
  * `agentsFilesOverride`, rendered as <project_instructions> blocks the same
  * way pi natively treats AGENTS.md files.
  */
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { store, DATA_DIR } from "./store.ts";
 import { emit } from "./bus.ts";
+import { DATA_DIR, store } from "./store.ts";
 
 export const MEMORY_DIR = join(DATA_DIR, "memory");
 export const TIERS = ["policy", "project", "user", "local"] as const;
@@ -83,7 +83,9 @@ export function readTier(tier: Tier): string {
 }
 
 export function currentVersion(tier: Tier): number {
-	const row = store.get<{ version: number }>(`SELECT MAX(version) AS version FROM memory_versions WHERE tier = ?`, [tier]);
+	const row = store.get<{ version: number }>(`SELECT MAX(version) AS version FROM memory_versions WHERE tier = ?`, [
+		tier,
+	]);
 	return row?.version ?? 0;
 }
 
@@ -103,7 +105,7 @@ export function appendRules(tier: Tier, rules: string[], changedBy: string, note
 	const current = readTier(tier);
 	const stamp = new Date().toISOString().replace("T", " ").slice(0, 16);
 	const block = [``, `<!-- ${changedBy} @ ${stamp} — ${note} -->`, ...rules.map((r) => `- ${r}`)].join("\n");
-	const next = current.trimEnd() + "\n" + block + "\n";
+	const next = `${current.trimEnd()}\n${block}\n`;
 	return writeTier(tier, next, changedBy, note);
 }
 
@@ -161,17 +163,29 @@ export function history(tier: Tier, limit = 30): MemoryVersion[] {
 	);
 }
 
-export function snapshot(): { tier: string; version: number; content: string; chars: number; updatedAt: number | null }[] {
+export function snapshot(): {
+	tier: string;
+	version: number;
+	content: string;
+	chars: number;
+	updatedAt: number | null;
+}[] {
 	return TIERS.map((tier) => {
 		const content = readTier(tier);
 		const v = currentVersion(tier);
-		const last = store.get<{ created_at: number }>(`SELECT created_at FROM memory_versions WHERE tier = ? AND version = ?`, [tier, v]);
+		const last = store.get<{ created_at: number }>(
+			`SELECT created_at FROM memory_versions WHERE tier = ? AND version = ?`,
+			[tier, v],
+		);
 		return { tier, version: v, content, chars: content.length, updatedAt: last?.created_at ?? null };
 	});
 }
 
 export function rollback(tier: Tier, toVersion: number, note = "manual rollback"): number {
-	const row = store.get<{ content: string }>(`SELECT content FROM memory_versions WHERE tier = ? AND version = ?`, [tier, toVersion]);
+	const row = store.get<{ content: string }>(`SELECT content FROM memory_versions WHERE tier = ? AND version = ?`, [
+		tier,
+		toVersion,
+	]);
 	if (!row) throw new Error(`no version ${toVersion} for tier ${tier}`);
 	return writeTier(tier, row.content, "rollback", note);
 }
