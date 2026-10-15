@@ -167,3 +167,10 @@ Attribution:
 ## User Override
 
 If the user's instructions conflict with any rule in this document, ask for explicit confirmation before overriding. Only then execute their instructions.
+
+## Child DOX Index
+
+This doc is the upstream pi-mono development ruleset, vendored into Unown and binding for edits inside `pi-repo/` (code quality, commands, git hygiene). Repo-level workflow (Unown commits, stack verification, secrets policy) is governed by the repo root `AGENTS.md` DOX rail, which takes precedence where rules overlap — this doc may not weaken it, and Unown commits follow the root rail's explicit-path staging rule.
+
+- `packages/self-learning/AGENTS.md` — the Unown self-learning engine (the only locally-owned package); env contracts, model registration, learning-integrity gates, verification
+
