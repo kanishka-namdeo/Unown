@@ -321,6 +321,7 @@ export function getTask(id: string) {
 export function listTasks() {
 	return store.query<any>(
 		`SELECT t.id, t.name, t.description, t.category, t.difficulty, t.created_at, t.pass_count, t.fail_count,
+                        t.origin, t.status, t.source_run_id,
                         (SELECT COUNT(*) FROM runs r WHERE r.task_id = t.id AND r.status = 'passed') AS passes,
                         (SELECT COUNT(*) FROM runs r WHERE r.task_id = t.id AND r.status = 'failed') AS fails,
                         (SELECT COUNT(*) FROM cycles c WHERE c.task_id = t.id AND c.status = 'improved') AS improvements

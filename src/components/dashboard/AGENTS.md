@@ -11,7 +11,7 @@ The tab surfaces of the mission-control dashboard — the user-facing window ont
 
 ## Local Contracts
 
-- Tab set (composed in `src/app/page.tsx`): `overview-tab` (pass rate, shipped improvements, dreams, memory version, hook decisions, token usage), `learning-lab-tab` (baseline → diagnosis → patch → candidate → ship/reject cycles with transcripts), `memory-tab` (4 tiers + version history + rollback), `dreams-tab` (AutoDream sessions), `hooks-tab` (guardrail decision log), `console-tab` (drive the sandboxed agent, streaming transcript), `router-tab` (background jobs: toggle, trigger, next-fire).
+- Tab set (composed in `src/app/page.tsx`): `overview-tab` (pass rate, learning-suite KPI with saturated badge, shipped improvements, dreams, memory version, hook decisions, token usage; benchmark task rows carry seed/minted + capability/regression provenance badges), `learning-lab-tab` (baseline → diagnosis → patch → candidate → ship/reject cycles with transcripts), `memory-tab` (4 tiers + version history + rollback), `dreams-tab` (AutoDream sessions), `hooks-tab` (guardrail decision log), `console-tab` (drive the sandboxed agent, streaming transcript), `router-tab` (background jobs: toggle, trigger, next-fire).
 - Every fetch/SSE subscription goes through `src/lib/agent-api.ts` helpers; every payload type comes from `src/lib/agent-types.ts`.
 - Presentation conventions: shadcn `Card`/`Tabs`/`Badge` composition, `lucide-react` icons, `recharts` for charts, `framer-motion` for motion, timestamps formatted via `date-fns` + `src/lib/agent-format.ts` helpers.
 - Live updates: subscribe to the engine SSE stream (`EVENTS_URL` from `agent-api.ts`) and invalidate react-query caches on events; do not poll where SSE exists.

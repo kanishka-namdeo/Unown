@@ -33,8 +33,8 @@ Use it two ways:
 | # | Mechanism | Where it lives | What it does |
 |---|-----------|----------------|--------------|
 | 1 | **Tiered Memory** | [`memory.ts`](pi-repo/packages/self-learning/src/memory.ts) · [`term.ts`](pi-repo/packages/self-learning/src/term.ts) | Four tiers — policy → project → user → local — merged most-specific-wins and injected into every agent session (engine sandboxes *and* terminal sessions). Every write is versioned, attributable (`seed` / `harness` / `autodream` / `manual` / `rollback`) and rollback-able. |
-| 2 | **Self-Improving Harness** | [`harness.ts`](pi-repo/packages/self-learning/src/harness.ts) | Runs a benchmark task → if it fails, mines the failure transcript → asks the LLM for memory rules that would have prevented it → re-runs a *candidate* with the patched memory → ships the patch only if verification passes (then sweeps for regressions). Shipped patches that later regress are automatically **un-shipped** (retention check). |
-| 3 | **Routing** | [`router.ts`](pi-repo/packages/self-learning/src/router.ts) | Six jobs keep the agent learning in the background: interval jobs `harness-cycle`, `auto-dream`, `note-sync`, `sandbox-gc`, plus event jobs on `improvement:shipped` and `run:finished` — with a busy-mutex so the sandbox is never double-driven. |
+| 2 | **Self-Improving Harness** | [`harness.ts`](pi-repo/packages/self-learning/src/harness.ts) · [`mint.ts`](pi-repo/packages/self-learning/src/mint.ts) | Runs a benchmark task → if it fails, mines the failure transcript → asks the LLM for memory rules that would have prevented it → re-runs a *candidate* with the patched memory → ships the patch only if it passes **twice** (candidate + confirmation — a noise gate) then sweeps for regressions. Shipped patches that later regress are automatically **un-shipped** (retention check). When the whole suite passes, **task minting** keeps the loop fed: it converts real failures — or LLM-authored harder curriculum variants — into new capability-eval tasks, which graduate into the regression suite once the agent masters them. |
+| 3 | **Routing** | [`router.ts`](pi-repo/packages/self-learning/src/router.ts) | Seven jobs keep the agent learning in the background: interval jobs `harness-cycle`, `task-mint`, `auto-dream`, `note-sync`, `sandbox-gc`, plus event jobs on `improvement:shipped` and `run:finished` — with a busy-mutex so the sandbox is never double-driven. |
 | 4 | **AutoDreaming** | [`dream.ts`](pi-repo/packages/self-learning/src/dream.ts) | Session notes are consolidated: benchmark notes into the engine's project memory (gated by a canary run — a dream that breaks the last-passing task is rolled back), terminal notes into **your project's own** `.unown/memory/project.md`. |
 | 5 | **Hooks** | [`hooks.ts`](pi-repo/packages/self-learning/src/hooks.ts) · [`termhooks.ts`](pi-repo/packages/self-learning/src/termhooks.ts) | A pi inline extension enforcing guardrails at every layer: `SessionStart`, `UserPromptSubmit`, `PreToolUse` (bash deny-list + path jail), `PostToolUse` (syntax gate that feeds errors back to the agent), `Stop`, `SubagentStop`. Every decision is logged. |
 
@@ -74,20 +74,23 @@ The dotted edge is AutoDream writing consolidated memory back into your project.
 
 ## The learning loop
 
-The harness is the heart of the system — a verify-gated loop that only ever ships memory changes a fresh sandbox has proven correct:
+The harness is the heart of the system — a verify-gated loop that only ever ships memory changes a fresh sandbox has proven correct, and that keeps itself supplied with things it cannot yet do:
 
 ```mermaid
 flowchart TB
     A(["harness cycle"]) --> B["run benchmark task<br>in a fresh sandbox"]
     B --> C{"pass?"}
-    C -- "yes" --> Z(["done · sweep regressions"])
+    C -- "yes" --> G{"capability eval?"}
+    G -- "yes" --> GR(["graduate into<br>the regression suite"])
+    G -- "no" --> Z(["done · sweep regressions"])
     C -- "no" --> D["mine the failure transcript<br>for candidate memory rules"]
     D --> E["candidate run<br>same task · patched memory"]
-    E --> F{"verified?"}
-    F -- "no" --> D2(["discard patch"])
-    F -- "yes" --> G["ship patch to memory"]
-    G --> H["regression sweep +<br>retention auto-unship"]
+    E --> F{"verified twice?"}
+    F -- "no" --> D2(["discard patch · re-mine"])
+    F -- "yes" --> G2["ship patch to memory"]
+    G2 --> H["regression sweep +<br>retention auto-unship"]
     H --> Z
+    S(["suite saturated?<br>task-mint job"]) -. "mint harder tasks<br>from failures / curriculum" .-> B
     Z -. "next cycle" .-> A
 ```
 
@@ -221,6 +224,7 @@ All variables are optional; defaults in parentheses. Author `.env` from [`.env.e
 | `UNOWN_ENGINE_URL` | terminal | where the CLI delivers session notes (`http://127.0.0.1:3030`) |
 | `UNOWN_STRICT_HOOKS` | terminal | `1` = sandbox-grade hooks in terminal sessions (blocks network, git push, sudo); unset allows normal developer operations |
 | `UNOWN_OS_SANDBOX` / `UNOWN_SANDBOX_NET` / `UNOWN_BWRAP` | engine | bubblewrap toggle (`1`) / keep network shared (`0`) / explicit bwrap binary path (vendored by default) |
+| `UNOWN_MAX_MINTED_TASKS` | engine | cap on ACTIVE minted tasks before the `task-mint` job skips (8) |
 
 ### Using a different model provider
 
@@ -254,7 +258,8 @@ The engine writes the provider into `data/self-learning/pi-agent-dir/models.json
 
 Self-modification without gates degenerates fast, so every memory write is controlled:
 
-- **Ship gate** — a mined patch only enters memory after its candidate run passes verification in a fresh sandbox.
+- **Ship gate** — a mined patch only enters memory after its candidate run passes verification in a fresh sandbox — **and the pass replicates** in a second confirmation run (a built-in noise gate: a lucky pass does not ship).
+- **Mint gate** — a minted task only becomes an active capability eval if the agent genuinely FAILS it in a fresh sandbox; tasks the agent already solves are discarded (honest outcome), and minted tasks graduate into the regression suite only by passing a later harness cycle.
 - **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`).
 - **Retention check** — if a task later fails after its improvement shipped, the improvement is marked `regressed` and the memory is rolled back to the pre-ship version (auto-unship).
 - **Full version history** — every write to every tier is versioned and attributable; anything can be rolled back from the dashboard.
@@ -263,7 +268,7 @@ Self-modification without gates degenerates fast, so every memory write is contr
 
 From the original development session (a weaker model driving the engine): `impl-debounce` **failed its baseline** (placeholder implementation, `setTimeout` against a mocked clock) → the harness mined the transcript, proposed rules ("drive time manually via an injectable `now()`", "flush the boundary lazily") → the **candidate run passed** → the rules were **shipped to project memory** → AutoDream later consolidated them into a reusable *Task playbook* section. Router jobs self-healed across service restarts and kept retrying the honestly-still-failing CSV task; memory reached project-tier v6 with every version attributable and rollback-able.
 
-In this checkout — running kimi-k2.5 through the bridge — the engine has autonomously accumulated 50+ verified runs, 20+ AutoDream sessions consolidating 50+ session notes, 500+ hook decisions and a 20-version project-memory history. kimi-k2.5 solves all five seeded benchmark tasks unaided, so the improvement machinery finds nothing to ship — the honest outcome: **the loop only earns its keep when the model struggles**. Point it at a weaker model (or harder tasks) and the mining, patching and shipping above starts firing on its own.
+In this checkout — running kimi-k2.5 through the bridge — the engine has autonomously accumulated 60+ verified runs, 30+ AutoDream sessions consolidating 60+ session notes, 500+ hook decisions and a 20-version project-memory history. kimi-k2.5 solves all five seeded benchmark tasks unaided, so the improvement machinery finds nothing to ship — the honest outcome: **the loop only earns its keep when the model struggles**. That is exactly what task minting addresses: when the suite saturates, the `task-mint` job keeps authoring harder curriculum variants (each one validated by a real agent run — variants the model already solves are discarded just as honestly). Point it at a weaker model (or harder tasks) and the mining, patching and shipping above starts firing on its own.
 
 ## Repository layout
 
@@ -279,7 +284,8 @@ pi-repo/                      the pi coding agent (badlogic/pi-mono)
     src/skill-seeds.ts        starter Agent Skills seeded into ~/.unown/agent/skills/
     src/cli.ts                the `unown` command (TUI + headless + doctor/memory/init/note)
     src/hooks.ts              6-layer hook guardrails (pattern 5, engine side)
-    src/harness.ts            self-improving loop + retention auto-unship (pattern 2)
+    src/harness.ts            self-improving loop + statistical ship gate + retention auto-unship (pattern 2)
+    src/mint.ts               task minting: real failures / curriculum variants → capability evals → graduation
     src/router.ts             background jobs + events (pattern 3)
     src/dream.ts              AutoDream consolidation + canary gate + per-project dreams (pattern 4)
     src/notes.ts              session-note capture (benchmark + terminal kinds)

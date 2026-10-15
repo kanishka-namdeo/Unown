@@ -13,6 +13,7 @@
 import { emit, onAsync } from "./bus.ts";
 import { runDream, runProjectDream } from "./dream.ts";
 import { pickNextTask, runCycle, runRegression } from "./harness.ts";
+import { runMintJob } from "./mint.ts";
 import { undreamedNotes } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
 import { gcSandboxes } from "./sandbox.ts";
@@ -63,6 +64,14 @@ export const JOB_DEFS: JobDef[] = [
 		kind: "event",
 		event: "run:finished",
 		description: "Wakes AutoDream when enough undreamed notes have accumulated.",
+	},
+	{
+		id: "task-mint",
+		name: "Task minting",
+		kind: "interval",
+		scheduleMs: 30 * 60_000,
+		description:
+			"Mines failed runs (or, when the suite is saturated, generates harder curriculum variants) into new capability-eval tasks; a task only ships if the agent genuinely fails it.",
 	},
 	{
 		id: "sandbox-gc",
@@ -208,6 +217,10 @@ export class Router {
 			case "dream-check": {
 				const dream = await runDream();
 				return { dream: { id: dream.id, status: dream.status } };
+			}
+			case "task-mint": {
+				const outcome = await runMintJob();
+				return { outcome };
 			}
 			case "sandbox-gc": {
 				const removed = gcSandboxes(40);

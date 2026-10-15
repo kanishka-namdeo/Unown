@@ -43,14 +43,17 @@ export const ARCH_MERMAID = `flowchart TB
 export const LOOP_MERMAID = `flowchart TB
     A(["harness cycle"]) --> B["run benchmark task<br>in a fresh sandbox"]
     B --> C{"pass?"}
-    C -- "yes" --> Z(["done · sweep regressions"])
+    C -- "yes" --> G{"capability eval?"}
+    G -- "yes" --> GR(["graduate into<br>the regression suite"])
+    G -- "no" --> Z(["done · sweep regressions"])
     C -- "no" --> D["mine the failure transcript<br>for candidate memory rules"]
     D --> E["candidate run<br>same task · patched memory"]
-    E --> F{"verified?"}
-    F -- "no" --> D2(["discard patch"])
-    F -- "yes" --> G["ship patch to memory"]
-    G --> H["regression sweep +<br>retention auto-unship"]
+    E --> F{"verified twice?"}
+    F -- "no" --> D2(["discard patch · re-mine"])
+    F -- "yes" --> G2["ship patch to memory"]
+    G2 --> H["regression sweep +<br>retention auto-unship"]
     H --> Z
+    S(["suite saturated?<br>task-mint job"]) -. "mint harder tasks<br>from failures / curriculum" .-> B
     Z -. "next cycle" .-> A`;
 
 const html = `<!DOCTYPE html>

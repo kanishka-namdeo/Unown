@@ -19,6 +19,7 @@ import { emit } from "./bus.ts";
 import { logHook } from "./hooks.ts";
 import { chatJson } from "./llm.ts";
 import { appendRules, readTier, rollback, type Tier } from "./memory.ts";
+import { graduateTask } from "./mint.ts";
 import { type RunResult, runAgent } from "./runner.ts";
 import { store } from "./store.ts";
 import { getTask, listTasks } from "./tasks.ts";
@@ -180,9 +181,15 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
 
 		if (baseline.status === "passed") {
 			store.run(`UPDATE tasks SET pass_count = pass_count + 1 WHERE id = ?`, [taskId]);
+			// A minted capability eval that starts passing graduates into the
+			// regression suite (Anthropic's capability -> regression pattern).
+			let graduationNote = "";
+			if (graduateTask(taskId)) {
+				graduationNote = " — capability eval graduated into the regression suite";
+			}
 			store.run(
 				`UPDATE cycles SET status = 'already-passing', ended_at = ?, iteration = 1, summary = ? WHERE id = ?`,
-				[Date.now(), "baseline passed — no improvement needed", cycleId],
+				[Date.now(), `baseline passed${graduationNote} — no improvement needed`, cycleId],
 			);
 			emit("cycle:finished", { id: cycleId, taskId, status: "already-passing" });
 			return {
@@ -192,7 +199,7 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
 				iterations: 1,
 				baselineRunId: baseline.id,
 				improvementIds,
-				summary: "baseline passed",
+				summary: `baseline passed${graduationNote}`,
 			};
 		}
 		if (baseline.status === "error") {
@@ -287,6 +294,47 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
 			]);
 
 			if (candidate.status === "passed") {
+				// ---- CONFIRMATION (statistical ship gate) ----------------------
+				// A single passing run can be luck (PyMC measured eval noise floors
+				// around +/-0.06): a patch only ships after a SECOND consecutive pass
+				// in another fresh sandbox with the same overlay.
+				const confirmation = await runAgentWithRetry({
+					taskId,
+					kind: "candidate",
+					prompt: task.prompt,
+					files: task.files,
+					verify: task.verify,
+					cycleId,
+					improvementId,
+					memoryOverlay: overlayOf(),
+					label: `${taskId}-cand${i}-confirm`,
+				});
+				iterations++;
+
+				store.run(`UPDATE improvements SET candidate_run_id = ?, score_after = ? WHERE id = ?`, [
+					confirmation.id,
+					confirmation.status,
+					improvementId,
+				]);
+
+				if (confirmation.status !== "passed") {
+					// The pass did not replicate — reject and mine the new evidence.
+					store.run(`UPDATE improvements SET status = 'rejected', decided_at = ? WHERE id = ?`, [
+						Date.now(),
+						improvementId,
+					]);
+					logHook(
+						null,
+						"SubagentStop",
+						null,
+						"log",
+						`candidate run ${candidate.id.slice(0, 8)} passed but confirmation ${confirmation.id.slice(0, 8)} did not — patch NOT shipped (noise gate)`,
+					);
+					lastRun = confirmation.status === "failed" ? confirmation : candidate;
+					summary = `iteration ${i} patch passed once but failed the confirmation run — not shipped`;
+					continue;
+				}
+
 				// ---- SHIP -------------------------------------------------
 				const shippedVersion = appendRules(
 					tier,
@@ -304,11 +352,11 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
 					"SubagentStop",
 					null,
 					"log",
-					`candidate run ${candidate.id.slice(0, 8)} passed — patch shipped to ${tier} memory (v${shippedVersion})`,
+					`candidate ${candidate.id.slice(0, 8)} + confirmation both passed — patch shipped to ${tier} memory (v${shippedVersion})`,
 				);
 				emit("improvement:shipped", { id: improvementId, cycleId, taskId, tier, memoryVersion: shippedVersion });
 				shipped = true;
-				summary = `baseline failed; iteration ${i} patch shipped (${mining.patchLines.length} rules -> ${tier} v${shippedVersion})`;
+				summary = `baseline failed; iteration ${i} patch passed twice — shipped (${mining.patchLines.length} rules -> ${tier} v${shippedVersion})`;
 				break;
 			}
 

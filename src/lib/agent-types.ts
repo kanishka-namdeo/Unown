@@ -15,6 +15,8 @@ export type HookName =
   | "SubagentStop";
 export type HookDecision = "allow" | "deny" | "augment" | "log" | "log-error";
 export type ChangedBy = "autodream" | "harness" | "seed" | "manual" | "rollback";
+export type TaskOrigin = "seed" | "minted";
+export type TaskStatus = "capability" | "regression" | "discarded";
 
 export interface BridgeInfo {
   ok: boolean;
@@ -30,6 +32,16 @@ export interface OverviewAgent {
   bridge: BridgeInfo;
 }
 
+export interface SuiteStats {
+  total: number;
+  passing: number;
+  capability: number;
+  regression: number;
+  minted: number;
+  graduated: number;
+  saturated: boolean;
+}
+
 export interface OverviewKpis {
   totalRuns: number;
   passed: number;
@@ -42,6 +54,8 @@ export interface OverviewKpis {
   notes: { total: number; pending: number };
   hooks: { total: number; denies: number };
   tokens: { in: number; out: number };
+  // Task-minting suite stats; absent (or null) until the engine ships task minting.
+  suite?: SuiteStats | null;
 }
 
 export interface TrendPoint {
@@ -70,6 +84,9 @@ export interface Task {
   improvements: number;
   pass_count?: number;
   fail_count?: number;
+  // Provenance from task minting; null on rows that predate it (origin defaults to "seed", status to "regression").
+  origin?: TaskOrigin | null;
+  status?: TaskStatus | null;
 }
 
 export interface TasksResponse {

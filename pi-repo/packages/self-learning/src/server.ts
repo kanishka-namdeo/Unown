@@ -7,6 +7,7 @@ import { dreamNotes, listDreams, runDream } from "./dream.ts";
 import { getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
 import { history, readTier, rollback, seedMemoryIfEmpty, snapshot, type Tier } from "./memory.ts";
+import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
 import { listJobs, router, setJobEnabled } from "./router.ts";
@@ -87,6 +88,7 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 					dreams: dreamsDone?.c ?? 0,
 					notes: { total: notesTotal?.c ?? 0, pending: notesPending?.c ?? 0 },
 					hooks: { total: hookTotal?.c ?? 0, denies: hookDenies?.c ?? 0 },
+					suite: suiteStats(),
 					tokens: { in: tokensIn, out: tokensOut },
 				},
 				memoryVersions: Object.fromEntries(mem.map((m) => [m.tier, m.version])),
@@ -99,6 +101,15 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 		// Tasks
 		// ------------------------------------------------------------------
 		if (method === "GET" && path === "/api/tasks") return json({ tasks: listTasks() });
+		if (method === "POST" && path === "/api/tasks/mint") {
+			if (router.isBusy()) return json({ error: "engine is busy with another job" }, 409);
+			try {
+				const outcome = await router.withBusy(() => runMintJob());
+				return json({ ok: true, outcome });
+			} catch (err) {
+				return json({ error: err?.message ?? String(err) }, 500);
+			}
+		}
 		if (method === "GET" && /^\/api\/tasks\/[^/]+$/.test(path)) {
 			const id = decodeURIComponent(path.split("/")[3]);
 			const task = getTask(id);

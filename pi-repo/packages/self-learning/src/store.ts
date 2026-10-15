@@ -152,6 +152,11 @@ export class Store {
 			// improvements: remember the memory version a shipped patch produced
 			// (enables auto-unship via rollback when the task later regresses)
 			["improvements", "memory_version", "ALTER TABLE improvements ADD COLUMN memory_version INTEGER"],
+			// tasks: minted-task provenance (mint.ts) — origin/status/source_run_id;
+			// 'status' defaults to 'regression' so seeded tasks behave as before
+			["tasks", "origin", "ALTER TABLE tasks ADD COLUMN origin TEXT DEFAULT 'seed'"],
+			["tasks", "status", "ALTER TABLE tasks ADD COLUMN status TEXT DEFAULT 'regression'"],
+			["tasks", "source_run_id", "ALTER TABLE tasks ADD COLUMN source_run_id TEXT"],
 		];
 		for (const [table, col, ddl] of columns) {
 			const existing = this.query<any>(`PRAGMA table_info(${table})`).some((c: any) => c.name === col);

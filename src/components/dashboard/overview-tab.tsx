@@ -8,6 +8,7 @@ import {
   Activity,
   CheckCircle2,
   Cpu,
+  GraduationCap,
   Layers,
   Moon,
   Play,
@@ -23,7 +24,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { api, mutations, qk } from "@/lib/agent-api";
 import { formatTokens } from "@/lib/agent-format";
 import { useActivityStore } from "@/lib/agent-store";
-import { DifficultyStars, EmptyState, Mono, SectionHeading } from "./bits";
+import type { TaskOrigin, TaskStatus } from "@/lib/agent-types";
+import { DifficultyStars, EmptyState, Mono, Pill, SectionHeading } from "./bits";
 import { ActivityFeed } from "./activity-feed";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +54,21 @@ function KpiCard({
       </CardContent>
     </Card>
   );
+}
+
+function TaskOriginBadge({ origin }: { origin: TaskOrigin }) {
+  return <Pill tone={origin === "minted" ? "violet" : "zinc"}>{origin}</Pill>;
+}
+
+function TaskStatusBadge({ status }: { status: TaskStatus }) {
+  switch (status) {
+    case "capability":
+      return <Pill tone="amber">capability</Pill>;
+    case "discarded":
+      return <Pill tone="outline">discarded</Pill>;
+    default:
+      return <Pill tone="violet">regression</Pill>;
+  }
 }
 
 const patterns = [
@@ -193,7 +210,7 @@ export function OverviewTab() {
   return (
     <div className="flex flex-col gap-6">
       {/* KPI row */}
-      <section aria-label="key metrics" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <section aria-label="key metrics" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
         <KpiCard
           label="Pass rate"
           value={`${k?.passRate ?? 0}%`}
@@ -207,6 +224,25 @@ export function OverviewTab() {
             </span>
           }
           icon={<CheckCircle2 className="text-emerald-500/70" />}
+        />
+        <KpiCard
+          label="Learning suite"
+          value={k?.suite ? `${k.suite.passing}/${k.suite.total}` : "—"}
+          sub={
+            k?.suite ? (
+              <span className="inline-flex flex-wrap items-center gap-1.5">
+                <span className="text-amber-400">{k.suite.capability} capability</span>
+                <span className="text-zinc-600">·</span>
+                <span>{k.suite.minted} minted</span>
+                <span className="text-zinc-600">·</span>
+                <span className="text-emerald-400">{k.suite.graduated} graduated</span>
+                {k.suite.saturated && <Pill tone="amber">saturated</Pill>}
+              </span>
+            ) : (
+              "awaiting engine task minting"
+            )
+          }
+          icon={<GraduationCap className="text-emerald-500/70" />}
         />
         <KpiCard
           label="Improvements"
@@ -313,7 +349,11 @@ export function OverviewTab() {
                       return (
                         <tr key={t.id} className="border-b border-zinc-800/60 last:border-0 hover:bg-zinc-900/70">
                           <td className="px-4 py-3">
-                            <p className="font-medium text-zinc-200">{t.name}</p>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <p className="font-medium text-zinc-200">{t.name}</p>
+                              <TaskOriginBadge origin={t.origin ?? "seed"} />
+                              <TaskStatusBadge status={t.status ?? "regression"} />
+                            </div>
                             <Mono className="text-zinc-600">{t.id}</Mono>
                           </td>
                           <td className="px-4 py-3"><DifficultyStars level={t.difficulty} /></td>
