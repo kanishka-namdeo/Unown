@@ -7,6 +7,9 @@ node_modules/
 .pnp
 .pnp.*
 
+# prisma 7 generated client (schema generator output)
+src/generated/
+
 # next.js
 .next/
 /out/

@@ -104,6 +104,9 @@ ${colorConfig
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
+// Recharts 3 removed `active`, `payload` and `label` from the Tooltip props
+// (they are now read from chart context), so pull them in from
+// `TooltipContentProps` — the props recharts passes to custom tooltip content.
 function ChartTooltipContent({
   active,
   payload,
@@ -119,6 +122,12 @@ function ChartTooltipContent({
   nameKey,
   labelKey,
 }: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+  Partial<
+    Pick<
+      RechartsPrimitive.TooltipContentProps,
+      "active" | "payload" | "label"
+    >
+  > &
   React.ComponentProps<"div"> & {
     hideLabel?: boolean
     hideIndicator?: boolean
@@ -186,7 +195,7 @@ function ChartTooltipContent({
 
           return (
             <div
-              key={item.dataKey}
+              key={`${item.dataKey}`}
               className={cn(
                 "[&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5",
                 indicator === "dot" && "items-center"
@@ -250,6 +259,8 @@ function ChartTooltipContent({
 
 const ChartLegend = RechartsPrimitive.Legend
 
+// Recharts 3 removed `payload` from the Legend props (it is only passed to
+// custom legend content), so type it via the exported `LegendPayload`.
 function ChartLegendContent({
   className,
   hideIcon = false,
@@ -257,7 +268,8 @@ function ChartLegendContent({
   verticalAlign = "bottom",
   nameKey,
 }: React.ComponentProps<"div"> &
-  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+  Pick<RechartsPrimitive.LegendProps, "verticalAlign"> & {
+    payload?: ReadonlyArray<RechartsPrimitive.LegendPayload>
     hideIcon?: boolean
     nameKey?: string
   }) {

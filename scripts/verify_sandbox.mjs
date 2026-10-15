@@ -21,7 +21,8 @@ let pass = 0;
 let fail = 0;
 const check = (name, ok, detail = "") => {
         console.log(`${ok ? "PASS" : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`);
-        ok ? pass++ : fail++;
+        if (ok) pass++;
+        else fail++;
 };
 
 // 1. availability ------------------------------------------------------------

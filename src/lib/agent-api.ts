@@ -46,6 +46,7 @@ import type {
   OverviewResponse,
   RunDetailResponse,
   RunsResponse,
+  SandboxesResponse,
   TasksResponse,
 } from "./agent-types";
 

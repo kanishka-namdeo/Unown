@@ -203,6 +203,7 @@ export interface DreamsResponse {
 export interface DreamNote {
   id: string;
   run_id: string;
+  project_slug?: string | null;
   content: string;
   created_at: number;
 }
@@ -228,6 +229,7 @@ export interface HooksResponse {
 export interface Note {
   id: string;
   run_id: string;
+  project_slug?: string | null;
   content: string;
   created_at: number;
   dream_id: string | null;
