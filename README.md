@@ -35,7 +35,7 @@ Use it two ways:
 | 1 | **Tiered Memory** | [`memory.ts`](pi-repo/packages/self-learning/src/memory.ts) · [`term.ts`](pi-repo/packages/self-learning/src/term.ts) | Four tiers — policy → project → user → local — merged most-specific-wins and injected into every agent session (engine sandboxes *and* terminal sessions). Every write is versioned, attributable (`seed` / `harness` / `autodream` / `manual` / `rollback`) and rollback-able. |
 | 2 | **Self-Improving Harness** | [`harness.ts`](pi-repo/packages/self-learning/src/harness.ts) · [`mint.ts`](pi-repo/packages/self-learning/src/mint.ts) | Runs a benchmark task → if it fails, mines the failure transcript → asks the LLM for memory rules that would have prevented it → re-runs a *candidate* with the patched memory → ships the patch only if it passes **twice** (candidate + confirmation — a noise gate) then sweeps for regressions. Shipped patches that later regress are automatically **un-shipped** (retention check). When the whole suite passes, **task minting** keeps the loop fed: it converts real failures — or LLM-authored harder curriculum variants — into new capability-eval tasks, which graduate into the regression suite once the agent masters them. |
 | 3 | **Routing** | [`router.ts`](pi-repo/packages/self-learning/src/router.ts) | Seven jobs keep the agent learning in the background: interval jobs `harness-cycle`, `task-mint`, `auto-dream`, `note-sync`, `sandbox-gc`, plus event jobs on `improvement:shipped` and `run:finished` — with a busy-mutex so the sandbox is never double-driven. |
-| 4 | **AutoDreaming** | [`dream.ts`](pi-repo/packages/self-learning/src/dream.ts) | Session notes are consolidated: benchmark notes into the engine's project memory (gated by a canary run — a dream that breaks the last-passing task is rolled back), terminal notes into **your project's own** `.unown/memory/project.md`. |
+| 4 | **AutoDreaming + Skill Acquisition** | [`dream.ts`](pi-repo/packages/self-learning/src/dream.ts) · [`skills.ts`](pi-repo/packages/self-learning/src/skills.ts) | Session notes are consolidated: benchmark notes into the engine's project memory (gated by a canary run — a dream that breaks the last-passing task is rolled back), terminal notes into **your project's own** `.unown/memory/project.md`. When the notes reveal recurring multi-step procedures, AutoDream also mints them as **Agent Skills** — concrete `SKILL.md` procedures written into `.unown/skills/`, versioned and rollback-able — that the next session picks up through progressive disclosure. |
 | 5 | **Hooks** | [`hooks.ts`](pi-repo/packages/self-learning/src/hooks.ts) · [`termhooks.ts`](pi-repo/packages/self-learning/src/termhooks.ts) | A pi inline extension enforcing guardrails at every layer: `SessionStart`, `UserPromptSubmit`, `PreToolUse` (bash deny-list + path jail), `PostToolUse` (syntax gate that feeds errors back to the agent), `Stop`, `SubagentStop`. Every decision is logged. |
 
 Everything is observable from a **mission-control dashboard** (Next.js) with live SSE activity, run transcripts, memory version history, dream journals, hook decision logs, an interactive console, and the job router.
@@ -157,6 +157,7 @@ Every session ships with **Claude Code-grade session tools** on top of pi:
 What the terminal session does for you:
 
 - **Memory** — the resolved stack (global policy → your project's `.unown/memory/project.md` → global user memory → `.unown/memory/local.md`) is injected into every session (re-read on each `/new` `/resume` `/fork`, so AutoDream's updates land without a restart), alongside your own `AGENTS.md`/`CLAUDE.md` chain if present.
+- **Skills that grow themselves** — when your session notes keep describing the same multi-step procedure (how to run this test suite, how to deploy, how to debug the flaky part), AutoDream mints it as an Agent Skill into `.unown/skills/<name>/SKILL.md` — versioned in the engine, rollback-able and retire-able from the dashboard — and the very next session can use it (progressive disclosure: only the name + description ride the prompt until needed).
 - **Guardrails** — catastrophic commands (`rm -rf /`, fork bombs, disk formats) and out-of-project writes are blocked before execution; broken JS/TS you (or the agent) write gets the transpiler error fed back instead of compounding. Normal work — network, `git push`, package installs — is allowed. Set `UNOWN_STRICT_HOOKS=1` for sandbox-grade strictness.
 - **Learning** — when you exit, a session note is delivered to the engine; AutoDream consolidates your notes into an updated `.unown/memory/project.md`, so the next session starts where the last one ended. Notes queue in `~/.unown/notes/outbox/` when the engine is down and sync automatically later.
 
@@ -172,7 +173,7 @@ Open **http://localhost:3000**:
 
 - **Overview** — pass rate, shipped improvements, dream count, memory version, hook decisions, token usage.
 - **Learning Lab** — every harness cycle: baseline run → failure diagnosis → proposed memory patch → candidate run → ship/reject, with full transcripts.
-- **Memory** — the four tiers, their contents, full version history and one-click rollback.
+- **Memory** — the four tiers, their contents, full version history and one-click rollback — plus the Agent Skills AutoDream minted into your projects (with rollback and retire).
 - **Dreams** — AutoDream sessions: merged / pruned / added notes and the consolidated memory they produced.
 - **Hooks** — the decision log of every guardrail (allow / deny / augment).
 - **Console** — drive the sandboxed agent interactively and watch the transcript stream.
@@ -218,6 +219,7 @@ All variables are optional; defaults in parentheses. Author `.env` from [`.env.e
 | `BRIDGE_KNOWN_MODELS` | bridge | comma-separated passthrough allow-list (kimi-k2.5,qwen3.7-plus,qwen3.6-plus) |
 | `BRIDGE_QWEN_THINKING` | bridge | `1` keeps qwen thinking models in thinking mode (default: off, for snappy agent turns) |
 | `BRIDGE_MIN_SPACING_MS` | bridge | minimum spacing between upstream requests in ms (400) |
+| `BRIDGE_UPSTREAM_TIMEOUT_MS` | bridge | cap on time-to-response-headers per upstream attempt in ms (180000) — a stalled upstream fails fast instead of wedging callers; streaming bodies stay uncapped |
 | `BRIDGE_API_KEY` | bridge | when set, require `Authorization: Bearer <key>` on every request (unset = open, localhost-only use) |
 | `NEXT_PUBLIC_AGENT_API_BASE` | dashboard | point the dashboard directly at the engine (`http://localhost:3030`) or an API-gateway prefix; unset keeps the sandbox gateway mode |
 | `UNOWN_HOME` | terminal | state dir for the `unown` CLI: agent config, global memory, note outbox (`~/.unown`) |
@@ -262,6 +264,7 @@ Self-modification without gates degenerates fast, so every memory write is contr
 - **Mint gate** — a minted task only becomes an active capability eval if the agent genuinely FAILS it in a fresh sandbox; tasks the agent already solves are discarded (honest outcome), and minted tasks graduate into the regression suite only by passing a later harness cycle.
 - **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`).
 - **Retention check** — if a task later fails after its improvement shipped, the improvement is marked `regressed` and the memory is rolled back to the pre-ship version (auto-unship).
+- **Skill mint gate** — skills are minted only from recurring multi-step procedures in consolidated notes, max 2 per dream, validated against the Agent Skills contract, deduplicated against everything already on disk; every version is recorded and rollback-able, retirement is a deliberate dashboard action (the engine never deletes your files on its own).
 - **Full version history** — every write to every tier is versioned and attributable; anything can be rolled back from the dashboard.
 
 ## What a learning session looks like
@@ -288,6 +291,7 @@ pi-repo/                      the pi coding agent (badlogic/pi-mono)
     src/mint.ts               task minting: real failures / curriculum variants → capability evals → graduation
     src/router.ts             background jobs + events (pattern 3)
     src/dream.ts              AutoDream consolidation + canary gate + per-project dreams (pattern 4)
+    src/skills.ts             skill acquisition: dream-minted Agent Skills (.unown/skills/), versioned
     src/notes.ts              session-note capture (benchmark + terminal kinds)
     src/outbox.ts             offline note delivery (engine-side sync)
     src/sandbox.ts            sandbox library: jails, snapshots, verification

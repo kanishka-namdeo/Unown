@@ -19,6 +19,7 @@ import { emit } from "./bus.ts";
 import { chatJson } from "./llm.ts";
 import { currentVersion, readTier, rollback, writeTier } from "./memory.ts";
 import { markDreamed, pendingTerminalNotesByProject, undreamedNotes } from "./notes.ts";
+import { mintSkillsForProject } from "./skills.ts";
 import { store } from "./store.ts";
 import { initProjectMemory, projectMemoryPath, slugifyPath } from "./term.ts";
 
@@ -227,6 +228,7 @@ export interface ProjectDreamResult {
 	version?: number;
 	note?: string;
 	error?: string;
+	skills?: Array<{ name: string; description: string }>;
 }
 
 export async function runProjectDream(): Promise<ProjectDreamResult[]> {
@@ -312,13 +314,24 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
 				dreamId,
 			);
 			emit("dream:finished", { id: dreamId, status: "done", notesIn: notes.length, project: group.slug, version });
+
+			// ---- Skill acquisition: recurring procedures become Agent Skills ----
+			const skills = await mintSkillsForProject({
+				projectPath: group.projectPath,
+				slug: group.slug,
+				consolidatedMemory: next,
+				notesText,
+				dreamId,
+			});
+
 			results.push({
 				slug: group.slug,
 				projectPath: group.projectPath,
 				notesIn: notes.length,
 				status: "done",
 				version,
-				note: `memory -> v${version}`,
+				note: `memory -> v${version}${skills.length > 0 ? ` · minted ${skills.length} skill(s): ${skills.map((sk) => sk.name).join(", ")}` : ""}`,
+				skills: skills.map((sk) => ({ name: sk.name, description: sk.description })),
 			});
 		} catch (err: any) {
 			const msg = err?.message ?? String(err);

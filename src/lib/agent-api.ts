@@ -47,6 +47,7 @@ import type {
   RunDetailResponse,
   RunsResponse,
   SandboxesResponse,
+  SkillsResponse,
   TasksResponse,
 } from "./agent-types";
 
@@ -92,6 +93,7 @@ export const qk = {
   notes: ["notes"] as const,
   jobs: ["jobs"] as const,
   sandboxes: ["sandboxes"] as const,
+  skills: ["skills"] as const,
   bridge: ["bridge"] as const,
 };
 
@@ -112,6 +114,7 @@ export const api = {
   notes: (limit = 40) => getJson<NotesResponse>("/api/notes", { limit }),
   jobs: () => getJson<JobsResponse>("/api/jobs"),
   sandboxes: () => getJson<SandboxesResponse>("/api/sandboxes"),
+  skills: () => getJson<SkillsResponse>("/api/skills"),
   bridge: () => getJson<BridgeResponse>("/api/bridge"),
 };
 
@@ -124,6 +127,9 @@ export const mutations = {
     postJson<{ started?: boolean; pendingNotes?: number; skipped?: string }>("/api/dreams/run"),
   rollback: (tier: MemoryTier, version: number) =>
     postJson<{ ok: boolean }>(`/api/memory/${tier}/rollback`, { version }),
+  skillRollback: (id: string, version: number) =>
+    postJson<{ ok: boolean }>(`/api/skills/${id}/rollback`, { version }),
+  skillRetire: (id: string) => postJson<{ ok: boolean }>(`/api/skills/${id}/retire`),
   jobTrigger: (id: string) => postJson<{ ok: boolean; result?: unknown }>(`/api/jobs/${id}/trigger`),
   jobToggle: (id: string) => postJson<{ job: Job }>(`/api/jobs/${id}/toggle`),
 };

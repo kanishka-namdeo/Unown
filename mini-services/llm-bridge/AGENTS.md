@@ -20,13 +20,14 @@ OpenAI-compatible gateway over the upstream Dashscope coding-plan endpoint. Lets
   - `BRIDGE_QWEN_THINKING` — `1` leaves qwen thinking models in thinking mode; default disables (snappier agent turns)
   - `BRIDGE_API_KEY` — optional local shared secret requiring `Authorization: Bearer <key>` on every request
   - `BRIDGE_MIN_SPACING_MS` — min ms between upstream requests (400)
+  - `BRIDGE_UPSTREAM_TIMEOUT_MS` — cap on time-to-response-HEADERS per upstream attempt (180000). Bodies may stream longer once headers arrive; a stalled upstream fails fast instead of wedging callers (the engine's own timeouts are 240s, so the bridge fires first).
 - Model routing rules (binding):
   - Requests naming an allow-listed model pass through unchanged.
   - Requests naming anything else (unknown/legacy ids like `glm-4-plus`) are routed to `BRIDGE_ROUTE_DEFAULT`.
   - Qwen models get `enable_thinking:false` unless `BRIDGE_QWEN_THINKING=1`; a z-ai style `thinking:{disabled}` request param is translated to the same flag.
 - Messages pass through verbatim — including tool-role messages and `image_url` content parts — so tool calling AND vision (VLM) work natively end to end.
 - Streaming: true SSE passthrough (upstream supports native streaming) — no synthesis buffer.
-- Protections: upstream auth injection, request serialization + spacing, 429/5xx backoff retries, request-log ring buffer with streamed usage capture.
+- Protections: upstream auth injection, request serialization + spacing, headers timeout per attempt (`BRIDGE_UPSTREAM_TIMEOUT_MS`), 429/5xx backoff retries, request-log ring buffer with streamed usage capture.
 - Health: `GET /health` probes the upstream and reports its status for the dashboard.
 
 ## Work Guidance

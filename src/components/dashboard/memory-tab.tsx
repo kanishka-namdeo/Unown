@@ -1,10 +1,10 @@
 "use client";
 
-// Memory tab: tiered memory cards, version history, rollback, dream-now.
+// Memory tab: tiered memory cards, version history, rollback, AutoDream-minted skills, dream-now.
 
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, History, Layers, Moon, RotateCcw } from "lucide-react";
+import { Ban, ChevronDown, ChevronUp, History, Layers, Moon, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api, mutations, qk } from "@/lib/agent-api";
 import { timeAgo } from "@/lib/agent-format";
-import type { MemoryTier, MemoryTierInfo } from "@/lib/agent-types";
+import type { MemoryTier, MemoryTierInfo, Skill, SkillStatus } from "@/lib/agent-types";
 import { ChangedByBadge, EmptyState, Mono, Pill, SectionHeading } from "./bits";
 import { cn } from "@/lib/utils";
 
@@ -92,6 +92,86 @@ function TierCard({
   );
 }
 
+function SkillStatusBadge({ status }: { status: SkillStatus }) {
+  return status === "shipped" ? <Pill tone="emerald">shipped</Pill> : <Pill tone="zinc">retired</Pill>;
+}
+
+function SkillCard({
+  skill,
+  busy,
+  onRollback,
+  onRetire,
+}: {
+  skill: Skill;
+  busy: boolean;
+  onRollback: () => void;
+  onRetire: () => void;
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+  const retired = skill.status === "retired";
+  return (
+    <Card className={cn(cardCls, !retired && "border-emerald-500/30")}>
+      <CardContent className="flex flex-col gap-2 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-2 text-sm font-semibold text-zinc-200">
+            <Sparkles className={cn("size-4", retired ? "text-zinc-500" : "text-emerald-400")} />
+            {skill.name}
+          </span>
+          <SkillStatusBadge status={skill.status} />
+          <Pill tone="outline">v{skill.version}</Pill>
+          <Mono className="text-zinc-600">{skill.project_slug}</Mono>
+          <Mono className="text-zinc-600">{timeAgo(skill.updated_at)}</Mono>
+          <span className="ml-auto flex items-center gap-1">
+            {skill.version > 1 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1.5 px-2 text-xs text-zinc-400 hover:text-zinc-100"
+                disabled={busy}
+                onClick={onRollback}
+              >
+                <RotateCcw className="size-3.5" />
+                Rollback to v{skill.version - 1}
+              </Button>
+            )}
+            {!retired && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1.5 px-2 text-xs text-zinc-400 hover:text-rose-300"
+                disabled={busy}
+                onClick={onRetire}
+              >
+                <Ban className="size-3.5" />
+                Retire
+              </Button>
+            )}
+          </span>
+        </div>
+        {skill.description && <p className="text-xs text-zinc-400">{skill.description}</p>}
+        <div>
+          <pre
+            className={cn(
+              "scroll-thin overflow-y-auto rounded-md border border-zinc-800 bg-zinc-950/70 px-2.5 py-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap text-zinc-400",
+              expanded ? "max-h-96" : "max-h-24 [mask-image:linear-gradient(to_bottom,black_60%,transparent)]"
+            )}
+          >
+            {skill.body}
+          </pre>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-1 inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300"
+          >
+            {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+            {expanded ? "collapse" : "expand"}
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function MemoryTab() {
   const queryClient = useQueryClient();
   const { data: overview } = useQuery({ queryKey: qk.overview, queryFn: api.overview, refetchInterval: 5000 });
@@ -101,6 +181,12 @@ export function MemoryTab() {
   const { data: historyData } = useQuery({
     queryKey: qk.memoryHistory(selectedTier),
     queryFn: () => api.memoryHistory(selectedTier),
+    refetchInterval: 8000,
+  });
+
+  const { data: skillsData } = useQuery({
+    queryKey: qk.skills,
+    queryFn: api.skills,
     refetchInterval: 8000,
   });
 
@@ -134,8 +220,33 @@ export function MemoryTab() {
     onError: (err: Error) => toast.error("AutoDream failed", { description: err.message }),
   });
 
+  const [confirmSkillAction, setConfirmSkillAction] = React.useState<{
+    skill: Skill;
+    action: "rollback" | "retire";
+  } | null>(null);
+
+  const skillRollback = useMutation({
+    mutationFn: (skill: Skill) => mutations.skillRollback(skill.id, skill.version - 1),
+    onSuccess: (_d, skill) => {
+      toast.success("Skill rolled back", { description: `${skill.name} restored to v${skill.version - 1}.` });
+      queryClient.invalidateQueries({ queryKey: qk.skills });
+    },
+    onError: (err: Error) => toast.error("Skill rollback failed", { description: err.message }),
+  });
+
+  const skillRetire = useMutation({
+    mutationFn: (skill: Skill) => mutations.skillRetire(skill.id),
+    onSuccess: (_d, skill) => {
+      toast.success("Skill retired", { description: `${skill.name} is no longer loaded into sessions.` });
+      queryClient.invalidateQueries({ queryKey: qk.skills });
+    },
+    onError: (err: Error) => toast.error("Retire failed", { description: err.message }),
+  });
+
   const tiers = memoryData?.tiers ?? [];
   const history = historyData?.history ?? [];
+  const skills = skillsData?.skills ?? [];
+  const skillActionPending = skillRollback.isPending || skillRetire.isPending;
   const currentVersion = tiers.find((t) => t.tier === selectedTier)?.version;
   const pendingNotes = overview?.kpis.notes.pending ?? 0;
 
@@ -222,6 +333,33 @@ export function MemoryTab() {
         </div>
       </section>
 
+      <section aria-label="minted skills">
+        <SectionHeading
+          title="Skills"
+          sub="Agent Skills minted by AutoDream into user projects — recurring procedures from session notes become SKILL.md procedures"
+          right={<Mono className="text-zinc-600">{skills.length} minted</Mono>}
+        />
+        <div className="mt-3 flex flex-col gap-3">
+          {skills.length === 0 ? (
+            <EmptyState
+              icon={<Sparkles />}
+              title="No skills minted yet"
+              hint="AutoDream mints them when recurring procedures appear in session notes"
+            />
+          ) : (
+            skills.map((s) => (
+              <SkillCard
+                key={s.id}
+                skill={s}
+                busy={skillActionPending}
+                onRollback={() => setConfirmSkillAction({ skill: s, action: "rollback" })}
+                onRetire={() => setConfirmSkillAction({ skill: s, action: "retire" })}
+              />
+            ))
+          )}
+        </div>
+      </section>
+
       <AlertDialog open={confirmRollback !== null} onOpenChange={(v) => !v && setConfirmRollback(null)}>
         <AlertDialogContent className="border-zinc-800 bg-zinc-900 text-zinc-100">
           <AlertDialogHeader>
@@ -244,6 +382,43 @@ export function MemoryTab() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmSkillAction !== null} onOpenChange={(v) => !v && setConfirmSkillAction(null)}>
+        {confirmSkillAction && (
+          <AlertDialogContent className="border-zinc-800 bg-zinc-900 text-zinc-100">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {confirmSkillAction.action === "retire"
+                  ? `Retire skill "${confirmSkillAction.skill.name}"?`
+                  : `Roll back "${confirmSkillAction.skill.name}" to v${confirmSkillAction.skill.version - 1}?`}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-zinc-400">
+                {confirmSkillAction.action === "retire"
+                  ? "The skill is marked retired — sessions stop loading it."
+                  : "The skill body is restored to its previous version."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className={cn(
+                  confirmSkillAction.action === "retire"
+                    ? "bg-rose-500 text-zinc-950 hover:bg-rose-400"
+                    : "bg-emerald-500 text-zinc-950 hover:bg-emerald-400"
+                )}
+                onClick={() => {
+                  const target = confirmSkillAction;
+                  setConfirmSkillAction(null);
+                  if (target.action === "retire") skillRetire.mutate(target.skill);
+                  else skillRollback.mutate(target.skill);
+                }}
+              >
+                {confirmSkillAction.action === "retire" ? "Retire" : "Rollback"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
       </AlertDialog>
     </div>
   );

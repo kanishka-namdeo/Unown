@@ -17,6 +17,7 @@ export type HookDecision = "allow" | "deny" | "augment" | "log" | "log-error";
 export type ChangedBy = "autodream" | "harness" | "seed" | "manual" | "rollback";
 export type TaskOrigin = "seed" | "minted";
 export type TaskStatus = "capability" | "regression" | "discarded";
+export type SkillStatus = "shipped" | "retired";
 
 export interface BridgeInfo {
   ok: boolean;
@@ -254,6 +255,25 @@ export interface Note {
 
 export interface NotesResponse {
   notes: Note[];
+}
+
+// Agent Skills minted by AutoDream into user projects (skills minting).
+export interface Skill {
+  id: string;
+  project_slug: string;
+  project_path: string;
+  name: string;
+  description: string;
+  body: string;
+  status: SkillStatus;
+  version: number;
+  dream_id: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface SkillsResponse {
+  skills: Skill[];
 }
 
 export interface Job {

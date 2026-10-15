@@ -107,22 +107,38 @@ async function acquireSlot() {
 
 const MAX_ATTEMPTS = 6;
 
-/** One upstream attempt. Returns the raw Response (stream or JSON). */
+/**
+ * One upstream attempt. Returns the raw Response (stream or JSON).
+ * Time-to-HEADERS is capped (BRIDGE_UPSTREAM_TIMEOUT_MS, default 180s): a
+ * stalled upstream can no longer wedge requests forever, while streaming
+ * bodies remain uncapped once headers have arrived.
+ */
 async function upstreamFetch(body: any, signal?: AbortSignal): Promise<Response> {
-        const res = await fetch(`${UPSTREAM_URL}/chat/completions`, {
-                method: "POST",
-                headers: {
-                        "Content-Type": "application/json",
-                        ...(UPSTREAM_KEY ? { Authorization: `Bearer ${UPSTREAM_KEY}` } : {}),
-                },
-                body: JSON.stringify(body),
-                signal,
-        });
-        if (!res.ok) {
-                const text = await res.text().catch(() => "");
-                throw Object.assign(new Error(`upstream ${res.status}: ${text.slice(0, 300)}`), { status: res.status });
+        const timeoutMs = Math.max(5000, Number(process.env.BRIDGE_UPSTREAM_TIMEOUT_MS ?? 180_000));
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(new Error(`upstream timeout: no response headers after ${timeoutMs}ms`)), timeoutMs);
+        const onOuterAbort = () => ctrl.abort(signal?.reason);
+        signal?.addEventListener("abort", onOuterAbort, { once: true });
+        try {
+                const res = await fetch(`${UPSTREAM_URL}/chat/completions`, {
+                        method: "POST",
+                        headers: {
+                                "Content-Type": "application/json",
+                                ...(UPSTREAM_KEY ? { Authorization: `Bearer ${UPSTREAM_KEY}` } : {}),
+                        },
+                        body: JSON.stringify(body),
+                        signal: ctrl.signal,
+                });
+                clearTimeout(timer); // headers arrived — the body may stream as long as it needs
+                if (!res.ok) {
+                        const text = await res.text().catch(() => "");
+                        throw Object.assign(new Error(`upstream ${res.status}: ${text.slice(0, 300)}`), { status: res.status });
+                }
+                return res;
+        } finally {
+                clearTimeout(timer);
+                signal?.removeEventListener("abort", onOuterAbort);
         }
-        return res;
 }
 
 /** Upstream call with serialized spacing + retry on 429/5xx/network. */

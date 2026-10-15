@@ -13,6 +13,7 @@ import { syncNoteOutbox } from "./outbox.ts";
 import { listJobs, router, setJobEnabled } from "./router.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
+import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from "./skills.ts";
 import { store } from "./store.ts";
 import { getTask, listTasks, seedTasks } from "./tasks.ts";
 
@@ -101,6 +102,27 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 		// Tasks
 		// ------------------------------------------------------------------
 		if (method === "GET" && path === "/api/tasks") return json({ tasks: listTasks() });
+		if (method === "GET" && path === "/api/skills") {
+			const url = new URL(req.url, "http://localhost");
+			const project = url.searchParams.get("project");
+			return json({ skills: listSkills(project ?? undefined) });
+		}
+		if (method === "GET" && path === "/api/skills/:id") {
+			const skill = getSkill(path.split("/")[3] ?? "");
+			if (!skill) return json({ error: "unknown skill" }, 404);
+			return json({ skill, versions: skillVersions(skill.id) });
+		}
+		if (method === "POST" && path === "/api/skills/:id/rollback") {
+			const id = path.split("/")[3] ?? "";
+			const target = Number(body?.version);
+			if (!Number.isInteger(target)) return json({ error: "version (integer) required" }, 400);
+			const result = rollbackSkill(id, target);
+			return result.ok ? json({ ok: true }) : json({ error: result.error }, 400);
+		}
+		if (method === "POST" && path === "/api/skills/:id/retire") {
+			const result = retireSkill(path.split("/")[3] ?? "");
+			return result.ok ? json({ ok: true }) : json({ error: result.error }, 400);
+		}
 		if (method === "POST" && path === "/api/tasks/mint") {
 			if (router.isBusy()) return json({ error: "engine is busy with another job" }, 409);
 			try {

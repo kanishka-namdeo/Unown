@@ -114,6 +114,28 @@ CREATE TABLE IF NOT EXISTS hook_log (
   reason TEXT,
   details TEXT
 );
+CREATE TABLE IF NOT EXISTS skills (
+  id TEXT PRIMARY KEY,
+  project_slug TEXT NOT NULL,
+  project_path TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  body TEXT NOT NULL,               -- full SKILL.md content (current version)
+  status TEXT NOT NULL DEFAULT 'shipped',  -- shipped | retired
+  version INTEGER DEFAULT 1,
+  dream_id TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS skill_versions (
+  skill_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  changed_by TEXT,
+  note TEXT,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (skill_id, version)
+);
 CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
