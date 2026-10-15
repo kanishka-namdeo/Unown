@@ -132,5 +132,6 @@ Default section order:
 - `mini-services/AGENTS.md` — background service boot conventions for both bun services; child: llm-bridge
 - `pi-repo/AGENTS.md` — upstream pi-mono development rules; binding for edits inside `pi-repo/`
 - `pi-repo/packages/self-learning/AGENTS.md` — the self-learning engine, Unown's core transformation layer
+- `docs/AGENTS.md` — user-facing usage docs (quickstart/providers/usage/subagents/skills/memory/configuration/troubleshooting)
 - `blueprint/AGENTS.md` — Unown v1 (Claude Code harness) frozen reference
 - `scripts/AGENTS.md` — bootstrap scripts and session verification artifacts

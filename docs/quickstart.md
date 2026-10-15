@@ -1,0 +1,109 @@
+# Quickstart
+
+From a fresh clone to a working coding agent in your terminal — five minutes.
+
+- [1. Prerequisites](#1-prerequisites)
+- [2. Install](#2-install)
+- [3. Connect a model](#3-connect-a-model)
+- [4. Start the stack (optional but recommended)](#4-start-the-stack-optional-but-recommended)
+- [5. First session](#5-first-session)
+- [Where to go next](#where-to-go-next)
+
+Related pages: [usage](usage.md) · [providers](providers.md) · [memory](memory.md) · [troubleshooting](troubleshooting.md)
+
+## 1. Prerequisites
+
+- [bun](https://bun.sh) ≥ 1.2 (install: `curl -fsSL https://bun.sh/install | bash`)
+- An API key for any OpenAI-compatible provider — Dashscope, OpenAI, OpenRouter, Anthropic, DeepSeek, or a local server (vLLM, Ollama, llama.cpp)
+- Linux or macOS (bubblewrap OS-sandboxing is Linux-only; everything else works everywhere)
+
+## 2. Install
+
+```bash
+git clone https://github.com/kanishka-namdeo/Unown.git
+cd Unown
+bun run agent:install
+```
+
+This installs dashboard dependencies, installs and builds the vendored pi monorepo (`pi-repo/`), creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
+
+Verify:
+
+```bash
+unown --help        # the command surface
+unown doctor        # diagnostics — expect one ✗ (no upstream key yet)
+```
+
+## 3. Connect a model
+
+**The one required credential is an upstream key.** Two supported shapes:
+
+### Option A — the bundled bridge (recommended: full stack + model routing)
+
+Put your provider key in `.env`:
+
+```bash
+# .env
+BRIDGE_UPSTREAM_URL=https://dashscope.aliyuncs.com/compatible-mode/v1   # or any OpenAI-compatible base URL
+BRIDGE_UPSTREAM_KEY=<your key>
+BRIDGE_KNOWN_MODELS=kimi-k2.5,qwen3.7-plus,qwen3.6-plus                 # your provider's model ids
+```
+
+The bridge injects auth, routes model ids, translates thinking flags, and streams SSE — see [providers](providers.md). Then point the terminal agent at it:
+
+```bash
+unown setup --provider bridge        # writes ~/.unown/agent/ (models + defaults)
+```
+
+### Option B — any provider directly, no stack needed
+
+```bash
+unown setup --provider openai --api-key sk-... --model gpt-4o
+# or: openrouter / anthropic / dashscope / deepseek / custom (any OpenAI-compatible base URL)
+```
+
+Interactive wizard (pick a provider, paste a key, choose a model): just run `unown setup`.
+
+## 4. Start the stack (optional but recommended)
+
+The bridge + self-learning engine + dashboard are what make unown *learn* (session notes → AutoDream → project memory + skills). Chat works without them — notes just queue locally until the engine returns.
+
+```bash
+bun run agent:start
+```
+
+| Service | Port | Health |
+|---|---|---|
+| llm-bridge | 3031 | `curl localhost:3031/health` |
+| self-learning engine | 3030 | `curl localhost:3030/api/overview` |
+| dashboard | 3000 | http://localhost:3000 |
+
+If the upstream key is missing or the upstream is unhealthy, the launcher prints a loud warning instead of letting chats fail with a bare 401 later.
+
+## 5. First session
+
+```bash
+cd ~/code/my-project        # ANY project of yours
+unown                        # full interactive TUI (the real pi TUI + learning layer)
+unown "fix the failing tests"          # start with a prompt
+unown -p "explain the build error"     # one-shot headless, like claude -p
+unown --plan "add auth"                # read-only exploration → numbered plan → approve to execute
+```
+
+Before the first message, unown pre-flights the model endpoint — if it can't reach it or the key is rejected you get the exact fix, not a stack trace. When you exit, the session leaves a note for AutoDream; come back tomorrow and the project's `.unown/memory/project.md` remembers what mattered.
+
+Confirm everything end to end:
+
+```bash
+unown doctor        # all green = you can chat; ⚠ items only affect learning features
+```
+
+## Where to go next
+
+- [usage](usage.md) — every command, slash command, and keybinding
+- [providers](providers.md) — models.json, the bridge vs direct endpoints, custom providers
+- [subagents](subagents.md) — fresh-context task agents you can define in markdown
+- [skills](skills.md) — SKILL.md files, the four starters, and skills that grow themselves
+- [memory](memory.md) — the 4-tier memory stack and how AutoDream consolidates it
+- [configuration](configuration.md) — every environment variable and state file
+- [troubleshooting](troubleshooting.md) — symptom → cause → fix

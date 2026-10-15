@@ -24,7 +24,7 @@ Use it two ways:
   <a href="LICENSE"><img src="https://img.shields.io/badge/MIT-License-3DA639?logo=opensourceinitiative" alt="MIT License"></a>
 </p>
 
-**[Dashboard tour](#mission-control)** · **[Architecture](#architecture)** · **[The learning loop](#the-learning-loop)** · **[Quickstart](#quickstart)** · **[Configuration](#configuration)** · **[Security](#security-model)** · **[What it learned](#what-a-learning-session-looks-like)**
+**[Quickstart](#quickstart)** · **[Documentation](#documentation)** · **[Dashboard tour](#mission-control)** · **[Architecture](#architecture)** · **[The learning loop](#the-learning-loop)** · **[Configuration](#configuration)** · **[Security](#security-model)** · **[What it learned](#what-a-learning-session-looks-like)**
 
 ![unown dashboard tour — Overview, Learning Lab and Memory tabs](.github/assets/tour.gif)
 
@@ -32,7 +32,7 @@ Use it two ways:
 
 | # | Mechanism | Where it lives | What it does |
 |---|-----------|----------------|--------------|
-| 1 | **Tiered Memory** | [`memory.ts`](pi-repo/packages/self-learning/src/memory.ts) · [`term.ts`](pi-repo/packages/self-learning/src/term.ts) | Four tiers — policy → project → user → local — merged most-specific-wins and injected into every agent session (engine sandboxes *and* terminal sessions). Every write is versioned, attributable (`seed` / `harness` / `autodream` / `manual` / `rollback`) and rollback-able. |
+| 1 | **Tiered Memory** | [`memory.ts`](pi-repo/packages/self-learning/src/memory.ts) · [`term.ts`](pi-repo/packages/self-learning/src/term.ts) | Four tiers — policy → project → user → local — merged most-specific-wins and injected into every agent session (engine sandboxes *and* terminal sessions). Every write is versioned, attributable (`seed` / `harness` / `autodream` / `rollback`) and rollback-able. |
 | 2 | **Self-Improving Harness** | [`harness.ts`](pi-repo/packages/self-learning/src/harness.ts) · [`mint.ts`](pi-repo/packages/self-learning/src/mint.ts) | Runs a benchmark task → if it fails, mines the failure transcript → asks the LLM for memory rules that would have prevented it → re-runs a *candidate* with the patched memory → ships the patch only if it passes **twice** (candidate + confirmation — a noise gate) then sweeps for regressions. Shipped patches that later regress are automatically **un-shipped** (retention check). When the whole suite passes, **task minting** keeps the loop fed: it converts real failures — or LLM-authored harder curriculum variants — into new capability-eval tasks, which graduate into the regression suite once the agent masters them. |
 | 3 | **Routing** | [`router.ts`](pi-repo/packages/self-learning/src/router.ts) | Seven jobs keep the agent learning in the background: interval jobs `harness-cycle`, `task-mint`, `auto-dream`, `note-sync`, `sandbox-gc`, plus event jobs on `improvement:shipped` and `run:finished` — with a busy-mutex so the sandbox is never double-driven. |
 | 4 | **AutoDreaming + Skill Acquisition** | [`dream.ts`](pi-repo/packages/self-learning/src/dream.ts) · [`skills.ts`](pi-repo/packages/self-learning/src/skills.ts) | Session notes are consolidated: benchmark notes into the engine's project memory (gated by a canary run — a dream that breaks the last-passing task is rolled back), terminal notes into **your project's own** `.unown/memory/project.md`. When the notes reveal recurring multi-step procedures, AutoDream also mints them as **Agent Skills** — concrete `SKILL.md` procedures written into `.unown/skills/`, versioned and rollback-able — that the next session picks up through progressive disclosure. |
@@ -96,6 +96,23 @@ flowchart TB
 
 ---
 
+## Documentation
+
+Full usage docs live in [`docs/`](docs/):
+
+| Page | What it covers |
+|---|---|
+| [quickstart](docs/quickstart.md) | clone → install → connect a model → first session (5 minutes) |
+| [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers |
+| [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
+| [subagents](docs/subagents.md) | the `task` tool, built-in `general`/`explore`, authoring `.unown/agents/*.md` |
+| [skills](docs/skills.md) | the Agent Skills format, the four starters, skills AutoDream mints on its own |
+| [memory](docs/memory.md) | the 4-tier memory stack, session notes, AutoDream consolidation |
+| [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout |
+| [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |
+
+---
+
 ## Quickstart
 
 ### Prerequisites
@@ -111,9 +128,32 @@ cd Unown
 bun run agent:install
 ```
 
-This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/`), and leaves the engine ready to run. Optionally copy `.env.example` → `.env` and adjust ports / model IDs / your upstream credentials.
+This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/`), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` — see below).
 
-### 2. Start
+### 2. Connect a model
+
+**One credential is required: an upstream API key.** Either wire the bundled bridge (recommended — full stack, model routing, nothing secret on client machines):
+
+```bash
+# .env
+BRIDGE_UPSTREAM_URL=https://dashscope.aliyuncs.com/compatible-mode/v1   # any OpenAI-compatible base URL
+BRIDGE_UPSTREAM_KEY=<your key>
+BRIDGE_KNOWN_MODELS=kimi-k2.5,qwen3.7-plus,qwen3.6-plus
+
+unown setup --provider bridge     # point the terminal agent at it
+```
+
+…or skip the stack entirely and use any provider directly:
+
+```bash
+unown setup --provider openai --api-key sk-... --model gpt-4o
+# presets: openai · openrouter · anthropic · dashscope · deepseek · custom (any OpenAI-compatible endpoint)
+unown setup                        # or the interactive wizard
+```
+
+`unown setup` verifies the endpoint and key before declaring success, and writes `~/.unown/agent/{models.json,auth.json,settings.json}`. See [docs/providers.md](docs/providers.md).
+
+### 3. Start
 
 ```bash
 bun run agent:start
@@ -127,9 +167,9 @@ Boots three services:
 | self-learning engine | 3030 | `GET /api/overview` |
 | dashboard | 3000 | `http://localhost:3000` |
 
-Logs land in `.run/*.log`; stop with `bun run agent:stop`.
+Logs land in `.run/*.log`; stop with `bun run agent:stop`. The launcher reads the bridge's `/health` (upstream key set? upstream answering?) and warns loudly instead of letting chats fail with a bare 401 later.
 
-### 3. Use it in your terminal
+### 4. Use it in your terminal
 
 `unown` runs the agent in your **real project directory** — the full pi TUI (file tools, bash, session management, `@file` mentions), plus the self-learning layer:
 
@@ -139,15 +179,19 @@ unown                      # interactive session (like claude/pi, but learning)
 unown "fix the failing tests"   # …optionally starting with a prompt
 unown -p "explain the build error" | less   # one-shot headless (like claude -p)
 unown --plan "add auth"    # plan mode: read-only exploration → numbered plan
-unown doctor               # check bridge / engine / memory / sandbox configuration
+unown setup                # connect a provider (wizard or flags)
+unown models               # list configured models (+ what the bridge serves)
+unown doctor               # end-to-end diagnostics: endpoint, keys, upstream, memory
 unown memory               # print the effective 4-tier memory stack
 unown note "watch out: flaky test in auth.spec"   # hand AutoDream a note directly
 ```
 
+Every session is pre-flighted: if the model endpoint is unreachable or rejects the credentials, you get the exact fix (start the stack / re-run setup) instead of a stack trace. Full command and keybinding reference: [docs/usage.md](docs/usage.md).
+
 Every session ships with **Claude Code-grade session tools** on top of pi:
 
 - **`todo`** — a visible task list the agent maintains as it works (and `/todos` to inspect it). State rides the session tree, so branching keeps the right list.
-- **`task`** — subagents with a **fresh context window** (`general` full-tool, `explore` read-only, or your own `.unown/agents/*.md` definitions — run `/agents` to list). They are full unown agents: same memory, same guardrails — and their sessions write `[subagent]`-tagged notes, so **subagents learn too**. Up to 4 in parallel via `{tasks: [...]}`.
+- **`task`** — subagents with a **fresh context window** (`general` full-tool, `explore` read-only, or your own `.unown/agents/*.md` definitions — run `/agents` to list). They are full unown agents: same memory, same guardrails — and their sessions write `[subagent]`-tagged notes, so **subagents learn too**. Up to 4 in parallel via `{tasks: [...]}` (authoring guide: [docs/subagents.md](docs/subagents.md)).
 - **`note`** — record a durable learning note **mid-session**; it reaches the engine immediately and AutoDream consolidates it into your project's memory (also `/note <text>`).
 - **`fetch_url`** — read-only HTTP GET with HTML stripping and size caps.
 - **`/plan`** (or `--plan`, or Ctrl+Alt+P) — plan mode: write tools disabled, bash allowlisted to read-only commands; the agent explores, produces a numbered plan, and you approve execution with live `[DONE:n]` progress.
@@ -164,10 +208,12 @@ What the terminal session does for you:
 Install the command globally (optional):
 
 ```bash
-cd Unown && bun install -g .   # puts `unown` on your PATH
+bun run agent:link         # writes a `unown` shim into ~/.local/bin → this checkout
 ```
 
-### 4. Watch it learn
+A shim (not `bun install -g .`) is the supported global-install path: it keeps the vendored pi workspace resolution and subagent spawning intact. Re-run it after moving the repo. Full reference: [docs/usage.md](docs/usage.md).
+
+### 5. Watch it learn
 
 Open **http://localhost:3000**:
 
@@ -227,10 +273,11 @@ All variables are optional; defaults in parentheses. Author `.env` from [`.env.e
 | `UNOWN_STRICT_HOOKS` | terminal | `1` = sandbox-grade hooks in terminal sessions (blocks network, git push, sudo); unset allows normal developer operations |
 | `UNOWN_OS_SANDBOX` / `UNOWN_SANDBOX_NET` / `UNOWN_BWRAP` | engine | bubblewrap toggle (`1`) / keep network shared (`0`) / explicit bwrap binary path (vendored by default) |
 | `UNOWN_MAX_MINTED_TASKS` | engine | cap on ACTIVE minted tasks before the `task-mint` job skips (8) |
+| `UNOWN_NO_PREFLIGHT` | terminal | `1` skips the model-endpoint reachability check before sessions |
 
 ### Using a different model provider
 
-The bundled `llm-bridge` turns **any OpenAI-compatible upstream** (Dashscope, OpenAI, OpenRouter, vLLM, llama.cpp server, …) into a local endpoint the pi agent can use: it injects upstream authentication, routes requested model ids onto its allow-list (unknown ids fall back to the default model), translates `thinking` flags for qwen models, passes tool calls and image content through natively, streams SSE back untouched, and serializes/throttles/retries requests. Configure it with `BRIDGE_UPSTREAM_URL`, `BRIDGE_UPSTREAM_KEY` and `BRIDGE_KNOWN_MODELS` — or bypass it entirely with a direct endpoint:
+The bundled `llm-bridge` turns **any OpenAI-compatible upstream** (Dashscope, OpenAI, OpenRouter, vLLM, llama.cpp server, …) into a local endpoint the pi agent can use: it injects upstream authentication, routes requested model ids onto its allow-list (unknown ids fall back to the default model), translates `thinking` flags for qwen models, passes tool calls and image content through natively, streams SSE back untouched, and serializes/throttles/retries requests. Or skip the bridge entirely — `unown setup` connects the terminal agent straight to any provider (see [docs/providers.md](docs/providers.md)).
 
 ```bash
 PI_BRIDGE_URL=https://api.openai.com/v1 \
@@ -239,7 +286,7 @@ PI_PROVIDER=openai \
 bun run agent:engine
 ```
 
-The engine writes the provider into `data/self-learning/pi-agent-dir/models.json` for pi automatically. For the **terminal agent**, edit `~/.unown/agent/models.json` by hand (or set the same env vars before the first run) — it accepts any pi-supported provider (see pi's `models.json` docs).
+The engine writes the provider into `data/self-learning/pi-agent-dir/models.json` for pi automatically. For the **terminal agent**, `unown setup` handles the same wiring (or edit `~/.unown/agent/models.json` by hand — it accepts any pi-supported provider; see [docs/providers.md](docs/providers.md)).
 
 ### Production notes
 
@@ -265,7 +312,7 @@ Self-modification without gates degenerates fast, so every memory write is contr
 - **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`).
 - **Retention check** — if a task later fails after its improvement shipped, the improvement is marked `regressed` and the memory is rolled back to the pre-ship version (auto-unship).
 - **Skill mint gate** — skills are minted only from recurring multi-step procedures in consolidated notes, max 2 per dream, validated against the Agent Skills contract, deduplicated against everything already on disk; every version is recorded and rollback-able, retirement is a deliberate dashboard action (the engine never deletes your files on its own).
-- **Full version history** — every write to every tier is versioned and attributable; anything can be rolled back from the dashboard.
+- **Full version history** — every write to every engine tier is versioned and attributable; engine tiers and minted skills roll back from the dashboard. Project memory (`.unown/memory/project.md`) is a plain versioned Markdown file — the engine records every version it writes, and restoring means pasting a prior version back (skills additionally have one-click rollback/retire with file writeback).
 
 ## What a learning session looks like
 
@@ -277,6 +324,8 @@ In this checkout — running kimi-k2.5 through the bridge — the engine has aut
 
 ```
 bin/unown                     the `unown` terminal agent entry point
+docs/                         usage docs: quickstart, providers, usage, subagents,
+                              skills, memory, configuration, troubleshooting
 .github/assets/               README brand + dashboard screenshot assets
 pi-repo/                      the pi coding agent (badlogic/pi-mono)
   packages/self-learning/     ★ the transformation — the self-learning layer
@@ -305,7 +354,7 @@ mini-services/
   llm-bridge/                 OpenAI-compatible gateway: routing, auth, SSE passthrough
   agent-service/              boots the engine (memory/tasks/router/API)
 src/                          dashboard (Next.js App Router + shadcn/ui)
-scripts/                      install/start/stop + verification tooling
+scripts/                      install/start/stop/link + verification tooling
 data/self-learning/           runtime state (sandboxes, sessions, memory) — created on first run
 db/selflearning.db            runtime SQLite store — created on first run
 ~/.unown/                     terminal-agent state (agent config, global memory, note outbox)
