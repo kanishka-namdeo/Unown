@@ -36,7 +36,7 @@ export function Header() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="truncate text-sm font-semibold text-zinc-100">pi · self-learning agent</h1>
+              <h1 className="truncate text-sm font-semibold text-zinc-100">unown · self-learning agent</h1>
               <span className="hidden shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500 sm:inline">
                 {data?.agent.layer ?? "self-learning"}
               </span>

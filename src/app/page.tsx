@@ -91,7 +91,7 @@ export default function Page() {
 
         <footer className="mt-auto border-t border-zinc-800/70 bg-zinc-950">
           <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-1.5 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[11px] text-zinc-500 sm:px-6">
-            <span>pi self-learning agent — badlogic/pi-mono + self-learning layer</span>
+            <span>unown — badlogic/pi-mono + the self-learning layer</span>
             <span className="font-mono">LLM gateway :3031 · engine :3030</span>
           </div>
         </footer>

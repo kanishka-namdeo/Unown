@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "pi · Self-Learning Agent",
+  title: "Unown — Self-Learning Agent",
   description:
-    "Mission control for the pi coding agent wrapped in a self-learning layer: tiered memory, self-improving harness, routing, auto dreaming and hooks.",
-  keywords: ["pi", "self-learning agent", "coding agent", "tiered memory", "auto dreaming"],
-  authors: [{ name: "pi self-learning" }],
+    "Mission control for Unown, the self-improving coding agent: the pi coding agent wrapped in a self-learning layer — tiered memory, a self-improving harness, AutoDreaming, guardrail hooks and an OS-level sandbox.",
+  keywords: ["unown", "self-improving agent", "coding agent", "tiered memory", "auto dreaming", "pi"],
+  authors: [{ name: "Unown" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
 };
 

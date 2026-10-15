@@ -17,6 +17,8 @@ Service map (all three boot together via `bun run agent:start`):
 
 Data flow: dashboard → engine REST+SSE → sandboxed pi agent runs → llm-bridge → upstream OpenAI-compatible endpoint (Dashscope coding plan). The terminal agent `bin/unown` delivers session notes to the engine; AutoDream consolidates them into this project's `.unown/memory/project.md`.
 
+Repo presentation: `README.md` is the public face — hero banner + badge row, GitHub-native Mermaid architecture/loop diagrams (byte-identical sources live in `scripts/mermaid_check.mjs`), the dashboard screenshot gallery, and honest live-state numbers. Keep claims in sync with the engine's actual `/api/overview` data when editing the "What a learning session looks like" section.
+
 ## Root Contracts
 
 Surfaces owned by this root doc (no child AGENTS.md):
@@ -27,6 +29,7 @@ Surfaces owned by this root doc (no child AGENTS.md):
 - `prisma/` + `db/` — dashboard Prisma (v7) schema + SQLite: generator `prisma-client` with output to gitignored `src/generated/prisma`, CLI config in root `prisma.config.ts`, driver-adapter client in `src/lib/db.ts` (`db:*` scripts unchanged). Legacy scaffold (User/Post models, unused by UI); the dashboard's live data comes from the engine API (`src/lib/agent-api.ts`). The engine's own store is `db/selflearning.db` (separate, engine-owned, created on first run).
 - `.unown/` — per-project tiered memory. `memory/project.md` is tracked and maintained by AutoDream (edits are versioned, not clobbered); `local.md` / `*.local.md` are gitignored.
 - `.github/workflows/ci.yml` — lints the dashboard on push and PR.
+- `.github/assets/` — README visual identity: `banner.png`, `logo.svg`, `social-preview.png` (GitHub social card, 1280x640 <1 MB — upload it manually in repo Settings → General → Social preview), `tour.gif`, and `dashboard-*.png` screenshots. Regenerate via the scripts/ pipeline contract (see scripts/AGENTS.md); `logo.svg` is mirrored to `public/logo.svg` as the dashboard favicon.
 - Runtime state (gitignored): `data/self-learning/` (sandboxes, sessions, memory versions, generated pi agent dir), `db/`, `.run/` (pidfiles + logs), `dev.log`, `server.log`.
 - `.zscripts/dev.sh` (gitignored, sandbox-only) — persistent supervisor that keeps all three services alive across sessions; scans `mini-services/*/package.json` for a `dev` script and launches each with `bun --hot`.
 
