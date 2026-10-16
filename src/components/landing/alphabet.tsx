@@ -74,6 +74,7 @@ function FormTile({
       <Glyph
         id={id}
         weight="heavy"
+        tone={active ? "lit" : "dim"}
         className={`h-[58%] w-[58%] transition-colors duration-200 ${
           active ? "text-glow" : "text-faint group-hover:text-dim"
         }`}
@@ -170,7 +171,7 @@ export function AlphabetSection() {
               >
                 <div className="flex items-center gap-4">
                   <div className="grid size-16 shrink-0 place-items-center rounded-md border border-glow/25 bg-glow/5">
-                    <Glyph id={entry.id} weight="heavy" className="size-11 text-glow" />
+                    <Glyph id={entry.id} weight="heavy" tone="lit" className="size-11 text-glow" />
                   </div>
                   <div className="min-w-0">
                     <p className="font-mono text-2xl leading-none text-ink">{entry.id}</p>

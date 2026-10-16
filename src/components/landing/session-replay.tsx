@@ -63,15 +63,6 @@ export const SESSION: Line[] = [
   { kind: "out", text: "  outbox     ~/.unown/notes/outbox/1757…-checkout.md", tone: "dim" },
 ];
 
-/** A second, shorter script — used by the loop section's Work beat. */
-export const DOCTOR_SCRIPT: Line[] = [
-  { kind: "out", text: "  engine     :3030  ok      7 jobs armed", tone: "good" },
-  { kind: "out", text: "  bridge     :3031  ok      upstream kimi-k2.5", tone: "good" },
-  { kind: "out", text: "  memory     project v6 · policy v1 · user v1", tone: "good" },
-  { kind: "out", text: "  notes      3 queued · 41 consumed", tone: "dim" },
-  { kind: "out", text: "all green", tone: "accent" },
-];
-
 /* ------------------------------------------------------------------ */
 /* schedule                                                            */
 /* ------------------------------------------------------------------ */

@@ -98,7 +98,7 @@ function TrackCard({
 }) {
   return (
     <FadeUp delay={delay} className="h-full">
-      <div className="flex h-full flex-col rounded-lg border border-line bg-panel/60 p-6">
+      <div className="lift flex h-full flex-col rounded-lg border border-line bg-panel/60 p-6 hover:border-line-bright">
         <div className="flex items-center gap-3">
           <Icon className="size-5 shrink-0 text-glow" aria-hidden="true" />
           <h3 className="text-[15px] font-medium text-ink">{name}</h3>
@@ -133,20 +133,33 @@ export function BenchmarksSection() {
           </p>
         </FadeUp>
 
-        {/* headline numbers */}
-        <div className="mt-12 grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { v: "99.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
-            { v: "93.9%", l: "HumanEval+ pass@1", s: "official evalplus, greedy" },
-            { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
-            { v: "4,585", l: "repo tests green", s: "pi monorepo, 0 failing" },
-          ].map((s, i) => (
-            <FadeUp key={s.l} delay={i * 0.05} className="bg-panel p-5">
-              <p className="font-mono text-2xl font-semibold tabular-nums text-glow">{s.v}</p>
-              <p className="mt-1 text-[13px] font-medium text-ink">{s.l}</p>
-              <p className="mt-0.5 font-mono text-[10px] text-faint">{s.s}</p>
-            </FadeUp>
-          ))}
+        {/* Full-bleed on purpose. Every other section runs inside the container;
+            letting four numbers run edge to edge is the cheapest way to break a
+            page that has started to feel like one long column. Dividers are
+            borders on the cells rather than grid gaps, so the row spans the
+            viewport without seam bars where the grid runs out. */}
+        <div className="mt-12 border-y border-line bg-panel/30">
+          <div className="mx-auto grid max-w-6xl px-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+            {[
+              { v: "99.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
+              { v: "93.9%", l: "HumanEval+ pass@1", s: "official evalplus, greedy" },
+              { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
+              { v: "4,585", l: "repo tests green", s: "pi monorepo, 0 failing" },
+            ].map((s, i) => (
+              <div
+                key={s.l}
+                className={`rise border-line py-8 sm:px-5 lg:border-l lg:first:border-l-0 ${i === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b sm:border-b-0 lg:border-b-0" : ""}`}
+              >
+                <p className="font-mono text-3xl font-semibold tabular-nums tracking-tight text-glow">
+                  {s.v}
+                </p>
+                <p className="mt-1.5 text-[13px] font-medium text-ink">{s.l}</p>
+                <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+                  {s.s}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* tracks */}

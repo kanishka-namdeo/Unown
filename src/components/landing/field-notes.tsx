@@ -122,7 +122,7 @@ export function FieldNotesSection() {
             <div className="overflow-hidden rounded-lg border border-line bg-panel/80">
               <div className="flex items-start gap-4 border-b border-line p-5">
                 <div className="grid size-16 shrink-0 place-items-center rounded-md bg-canvas">
-                  <Glyph id="?" weight="heavy" className="size-11 text-glow" />
+                  <Glyph id="?" weight="heavy" tone="lit" className="size-11 text-glow" />
                 </div>
                 <div className="min-w-0 pt-1">
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-glow">

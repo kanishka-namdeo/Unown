@@ -1,39 +1,67 @@
-"use client";
-
-import * as React from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { GLYPHS, MARKS, METRICS, WEIGHT, type GlyphId, type GlyphWeight } from "./glyphs";
+import type { CSSProperties } from "react";
+import {
+  GLYPHS,
+  EYES,
+  MARKS,
+  METRICS,
+  WEIGHT,
+  type GlyphId,
+  type GlyphWeight,
+} from "./glyphs";
 
 /* ------------------------------------------------------------------ */
 /* the eye                                                             */
 /* ------------------------------------------------------------------ */
 
 /**
- * Every Unown carries one eye, always at the centre of the letter. Ours does
- * the same: a lens-shaped void punched through the letter, with a bright
- * vertical slit. Sized against the stroke weight so it reads as a hole in the
- * body at 36px and as an eye at 320px.
+ * The eye: a dark disc punched through the letter with a bright vertical slit.
+ *
+ * Deliberately circular rather than lens-shaped. An almond two-and-a-half units
+ * taller than it is wide reads as a keyhole the moment it overlaps a stroke,
+ * and on the closed forms (`B`, `D`, `P`, `T`, `H`) it always overlaps
+ * something. A disc survives that contact and still reads as an eye, which is
+ * exactly the trick the games use.
+ *
+ * `tone` is the only difference between the two states, and it is all CSS vars:
+ * a `dim` eye is a void with a faint rim that disappears into the page, a `lit`
+ * eye is unmistakably awake. Quiet by default so a wall of twenty-eight tiles
+ * does not strobe; lit only where one glyph is the subject.
  */
-function Eye({ r, slit }: { r: number; slit: number }) {
+function Eye({ r, slit, tone }: { r: number; slit: number; tone: "dim" | "lit" }) {
+  const rim = tone === "lit" ? r * 0.13 : r * 0.1;
   return (
     <g>
-      <path
-        d={`M${-r} 0 C${-r * 0.42} ${-r * 1.16} ${r * 0.42} ${-r * 1.16} ${r} 0 C${r * 0.42} ${r * 1.16} ${-r * 0.42} ${r * 1.16} ${-r} 0 Z`}
-        fill="var(--unown-eye, #0c0b0a)"
-        stroke="var(--unown-eye-rim, #34d399)"
-        strokeWidth={Math.max(r * 0.17, 1.1)}
+      <circle
+        r={r}
+        fill="var(--unown-eye)"
+        stroke="var(--unown-eye-rim)"
+        strokeWidth={rim}
       />
       <rect
         x={-slit / 2}
-        y={-r * 0.88}
+        y={-r * 0.6}
         width={slit}
-        height={r * 1.76}
+        height={r * 1.2}
         rx={slit / 2}
-        fill="var(--unown-eye-lit, #d1fae5)"
+        fill="var(--unown-eye-lit)"
       />
     </g>
   );
 }
+
+/** Colour pairs for the two eye states. Set as inline vars on the svg. */
+export const EYE_TONES: Record<"dim" | "lit", CSSProperties> = {
+  dim: {
+    "--unown-eye": "#0c0b0a",
+    "--unown-eye-rim": "#3b3733",
+    "--unown-eye-lit": "#8b857c",
+  } as CSSProperties,
+  lit: {
+    "--unown-eye": "#05070a",
+    "--unown-eye-rim": "#6ee7b7",
+    "--unown-eye-lit": "#ecfdf5",
+  } as CSSProperties,
+};
 
 /* ------------------------------------------------------------------ */
 /* glyph                                                               */
@@ -44,8 +72,10 @@ export type GlyphProps = {
   id: GlyphId | null;
   /** `heavy` = Unown's silhouette, `script` = the letterform. */
   weight?: GlyphWeight;
-  /** Draw the eye in the middle of the counter. Default: only at heavy weight. */
+  /** Draw the eye in the letter's counter. Default: only at heavy weight. */
   eye?: boolean;
+  /** `dim` (default) reads as a void; `lit` reads as awake. */
+  tone?: "dim" | "lit";
   /** 0–1 stroke reveal, for draw-on animations. Omit for a finished glyph. */
   reveal?: number;
   /** Per-subpath delay in seconds, applied on top of the reveal. */
@@ -59,6 +89,7 @@ export function Glyph({
   id,
   weight = "heavy",
   eye,
+  tone = "dim",
   reveal,
   drawStagger = 0.09,
   label,
@@ -70,8 +101,10 @@ export function Glyph({
   const subpaths = GLYPHS[id];
   const withEye = eye ?? weight === "heavy";
   const animated = typeof reveal === "number" && reveal < 1;
-  const r = sw > 12 ? sw * 0.66 : sw * 0.9;
-  const slit = Math.max(sw * 0.24, 1.8);
+  // Eye radii are authored against WEIGHT.heavy, so scale with the stroke.
+  const place = EYES[id];
+  const r = (place.r * sw) / WEIGHT.heavy;
+  const slit = Math.max(sw * 0.22, 1.7);
 
   return (
     <svg
@@ -81,6 +114,7 @@ export function Glyph({
       aria-label={label}
       aria-hidden={label ? undefined : true}
       fill="none"
+      style={withEye ? EYE_TONES[tone] : undefined}
     >
       <g
         stroke="currentColor"
@@ -99,8 +133,8 @@ export function Glyph({
         ))}
       </g>
       {withEye ? (
-        <g transform={`translate(${METRICS.eye.x} ${METRICS.eye.y})`}>
-          <Eye r={r} slit={slit} />
+        <g transform={`translate(${place.x} ${place.y})`}>
+          <Eye r={r} slit={slit} tone={tone} />
         </g>
       ) : null}
     </svg>
@@ -130,136 +164,5 @@ export function Mark({
         ))}
       </g>
     </svg>
-  );
-}
-
-/**
- * A word spelled in the script. `UNOWN` is the only one the project needs, but
- * this is generic so the quickstart copy and the footer can be lettered too.
- */
-export function GlyphWord({
-  text,
-  weight = "heavy",
-  eye = false,
-  className,
-  label,
-}: {
-  text: string;
-  weight?: GlyphWeight;
-  eye?: boolean;
-  className?: string;
-  label?: string;
-}) {
-  const letters = React.useMemo(
-    () =>
-      text
-        .toUpperCase()
-        .split("")
-        .filter((c) => /[A-Z!?]/.test(c)) as GlyphId[],
-    [text],
-  );
-
-  return (
-    <span
-      className={className}
-      role={label ? "img" : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-    >
-      <span className="inline-flex items-center">
-        {letters.map((l, i) => (
-          <Glyph
-            key={`${l}-${i}`}
-            id={l}
-            weight={weight}
-            eye={eye}
-            className="h-full w-auto shrink-0"
-          />
-        ))}
-      </span>
-    </span>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* animated wrapper                                                    */
-/* ------------------------------------------------------------------ */
-
-/**
- * Draws a glyph on when it scrolls into view. Respects `prefers-reduced-motion`
- * by painting the finished glyph immediately.
- */
-export function DrawingGlyph({
-  id,
-  weight = "heavy",
-  eye,
-  className,
-  delay = 0,
-  duration = 0.9,
-  label,
-}: {
-  id: GlyphId;
-  weight?: GlyphWeight;
-  eye?: boolean;
-  className?: string;
-  delay?: number;
-  duration?: number;
-  label?: string;
-}) {
-  const reduced = useReducedMotion();
-  const [shown, setShown] = React.useState(reduced ?? false);
-
-  return (
-    <motion.span
-      className={className}
-      initial={false}
-      onViewportEnter={() => setShown(true)}
-      viewport={{ once: true, margin: "-40px" }}
-    >
-      <Glyph
-        id={shown ? id : null}
-        weight={weight}
-        eye={eye}
-        reveal={reduced ? 1 : undefined}
-        label={label}
-      />
-    </motion.span>
-  );
-}
-
-/**
- * The seal: one glyph at hero scale with the eye lit and a soft halo. Used as
- * the wordmark's anchor and in the alphabet's callout.
- */
-export function GlyphSeal({
-  id,
-  className,
-  label,
-  lit = true,
-}: {
-  id: GlyphId;
-  className?: string;
-  label?: string;
-  lit?: boolean;
-}) {
-  return (
-    <span
-      className={`relative inline-grid place-items-center ${className ?? ""}`}
-      style={
-        {
-          "--unown-eye": lit ? "#05070a" : "#0b0f14",
-          "--unown-eye-rim": lit ? "#6ee7b7" : "#3f3f46",
-          "--unown-eye-lit": lit ? "#d1fae5" : "#52525b",
-        } as React.CSSProperties
-      }
-    >
-      {lit ? (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-emerald-400/12 blur-2xl"
-        />
-      ) : null}
-      <Glyph id={id} weight="heavy" className="relative h-full w-full text-zinc-100" label={label} />
-    </span>
   );
 }

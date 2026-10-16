@@ -74,6 +74,7 @@ function Spellbox() {
                   key={`${id}-${i}`}
                   id={id}
                   weight="heavy"
+                  tone="lit"
                   className="size-9 text-glow"
                 />
               ))}

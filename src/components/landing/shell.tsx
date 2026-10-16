@@ -49,49 +49,6 @@ export function FadeUp({
   );
 }
 
-/**
- * Section header. `align="left"` is the default on purpose — centred eyebrow +
- * centred headline over a centred paragraph is the single most recognisable
- * template shape on the web, so sections here lead with the left edge and only
- * centre when the content is genuinely a single column of prose.
- */
-export function SectionHeader({
-  eyebrow,
-  title,
-  sub,
-  align = "left",
-}: {
-  eyebrow: string;
-  title: React.ReactNode;
-  sub?: React.ReactNode;
-  align?: "left" | "center";
-}) {
-  const centered = align === "center";
-  return (
-    <FadeUp className={centered ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
-      <p
-        className={`font-mono text-[11px] uppercase tracking-[0.18em] text-glow ${
-          centered ? "" : ""
-        }`}
-      >
-        {eyebrow}
-      </p>
-      <h2
-        className={`mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl ${
-          centered ? "" : ""
-        }`}
-      >
-        {title}
-      </h2>
-      {sub ? (
-        <p className={`mt-4 text-pretty leading-relaxed text-dim ${centered ? "" : "max-w-xl"}`}>
-          {sub}
-        </p>
-      ) : null}
-    </FadeUp>
-  );
-}
-
 export function TrafficDots() {
   return (
     <div className="flex items-center gap-1.5" aria-hidden="true">
@@ -113,7 +70,7 @@ export function TerminalWindow({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-panel shadow-[0_24px_70px_-30px_rgba(0,0,0,0.9)]">
+    <div className="lift overflow-hidden rounded-lg border border-line bg-panel shadow-[0_24px_70px_-30px_rgba(0,0,0,0.9)]">
       <div className="flex items-center gap-3 border-b border-line px-3.5 py-2.5">
         <TrafficDots />
         <div className="flex min-w-0 flex-1 justify-center">
@@ -129,7 +86,7 @@ export function TerminalWindow({
 /** Browser-style frame for the dashboard screenshots. */
 export function BrowserFrame({ url, src, alt }: { url: string; src: string; alt: string }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-panel transition-colors hover:border-line-bright">
+    <div className="lift overflow-hidden rounded-lg border border-line bg-panel hover:border-line-bright">
       <div className="flex items-center gap-3 border-b border-line bg-panel-2 px-3.5 py-2">
         <TrafficDots />
         <div className="flex min-w-0 flex-1 justify-center">
@@ -213,7 +170,7 @@ export function PrimaryLink({
   external?: boolean;
 }) {
   const cls =
-    "inline-flex items-center gap-2 rounded-md bg-glow px-5 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-glow-soft";
+    "glow-hover inline-flex items-center gap-2 rounded-md bg-glow px-5 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-glow-soft";
   if (external) {
     return (
       <a href={href} target="_blank" rel="noreferrer noopener" className={cls}>
@@ -238,7 +195,7 @@ export function GhostLink({
   external?: boolean;
 }) {
   const cls =
-    "inline-flex items-center gap-2 rounded-md border border-line px-5 py-2.5 text-sm text-dim transition-colors hover:border-line-bright hover:text-ink";
+    "lift inline-flex items-center gap-2 rounded-md border border-line px-5 py-2.5 text-sm text-dim transition-colors hover:border-line-bright hover:text-ink";
   if (external) {
     return (
       <a href={href} target="_blank" rel="noreferrer noopener" className={cls}>
