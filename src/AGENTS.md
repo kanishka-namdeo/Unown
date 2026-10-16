@@ -31,6 +31,7 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 
 - `bun run lint` (eslint + eslint-config-next) — must be clean; CI (`.github/workflows/ci.yml`) enforces it on push/PR.
 - Dashboard responds 200 on `http://localhost:3000/dashboard` with live KPIs and no console errors when the engine is up.
+- The Next.js app (landing page at `/` and dashboard shell) auto-deploys to Vercel on push to `main` (root `vercel.json`; see root AGENTS.md). Keep `bun run build` passing.
 
 ## Child DOX Index
 
