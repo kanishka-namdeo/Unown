@@ -1025,9 +1025,9 @@ function buildSummary(model, records) {
         harness: "run-unown.mjs — port of omp metaharness adapters/edit runner",
         model, provider: PROVIDER,
         generatedAt: new Date().toISOString(),
-        totalTasks: records.length,
+        totalTasks: best.length,
         passed: passed.length,
-        passRate: records.length ? passed.length / records.length : 0,
+        passRate: best.length ? passed.length / best.length : 0,
         editCallSuccessRate: editCalls > 0 ? editSuccesses / editCalls : 1,
         editCalls, editSuccesses,
         tokens: {
@@ -1068,8 +1068,8 @@ async function main() {
     // --summarize without --model: rebuild summaries for every model that has results
     const models = config.model
         ? [config.model]
-        : args.summarize && fs.existsSync(RESULTS_DIR)
-            ? (await fsp.readdir(RESULTS_DIR, { withFileTypes: true })).filter((d) => d.isDirectory()).map((d) => d.name)
+        : args.summarize && fs.existsSync(config.resultsDir)
+            ? (await fsp.readdir(config.resultsDir, { withFileTypes: true })).filter((d) => d.isDirectory()).map((d) => d.name)
             : [];
     if (models.length === 0 && !args.summarize) {
         console.error("--model is required (kimi-k2.5 | qwen3.7-plus | qwen3.6-plus)");
