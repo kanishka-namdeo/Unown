@@ -565,8 +565,11 @@ const SELFIMPROVE = [
   { model: "qwen3.7-plus", input: 23.2, time: 4.2 },
 ];
 
-const POLYGLOT_RESULTS: { model: string; pct: number }[] = [];
-const POLYGLOT_STATUS = "in-flight";
+const POLYGLOT_RESULTS = [
+  { model: "qwen3.6-plus", pct: 100.0 },
+  { model: "kimi-k2.5", pct: 98.0 },
+  { model: "qwen3.7-plus", pct: 98.0 },
+];
 
 function BarRow({
   label,
@@ -730,25 +733,15 @@ function BenchmarksSection() {
           <TrackCard
             icon={Layers}
             name="Aider polyglot subset"
-            source="50-exercise stratified subset of Aider-AI/polyglot-benchmark @7e0611e — 6 languages, Aider's 2-attempt protocol, anti-tamper scoring"
+            source="50-exercise stratified subset of Aider-AI/polyglot-benchmark — 6 languages, Aider's 2-attempt protocol, anti-tamper scoring · pass@2 shown, pass@1: 94–96%"
             delay={0.15}
           >
-            {POLYGLOT_STATUS === "in-flight" ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-2 py-4 text-center">
-                <span className="relative flex size-3">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                  <span className="relative inline-flex size-3 rounded-full bg-emerald-500" />
-                </span>
-                <p className="font-mono text-sm text-zinc-300">3 models × 50 exercises — running now</p>
-                <p className="font-mono text-[11px] text-zinc-500">
-                  full per-exercise receipts land in benchmarks/polyglot/
-                </p>
-              </div>
-            ) : (
-              POLYGLOT_RESULTS.map((r, i) => (
-                <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
-              ))
-            )}
+            {POLYGLOT_RESULTS.map((r, i) => (
+              <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
+            ))}
+            <p className="mt-1 font-mono text-[11px] text-zinc-500">
+              first published polyglot numbers for these models · 150/150 exercises scored, zero harness errors
+            </p>
           </TrackCard>
         </div>
 
