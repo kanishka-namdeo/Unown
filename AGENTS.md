@@ -26,7 +26,7 @@ Surfaces owned by this root doc (no child AGENTS.md):
 - `bin/unown` — terminal agent entry: interactive TUI, `-p "<prompt>"` headless, `--plan` (read-only plan mode; also `/plan` or Ctrl+Alt+P in the TUI), `setup` (provider connection wizard — interactive or `--provider <id> --api-key <k> --model <m> [--base-url <u>] [--force]`, presets: bridge/openai/openrouter/anthropic/dashscope/deepseek/custom; writes `~/.unown/agent/{models.json,auth.json,settings.json}`), `models` (configured models + live bridge list), `doctor` (chat-path diagnostics: endpoint reachability, bridge upstream key/health, model routability; engine/bubblewrap are warnings — chat works without them), `memory`, `init`, `note "<text>"`. Every session runs a pre-flight probe of the configured model endpoint (unreachable/auth failures get actionable messages; escape with `UNOWN_NO_PREFLIGHT=1`; skipped for subagents). Every session registers the bundled session tools — `todo` (visible task tracking), `note` (mid-session learning notes), `task` (subagents with a fresh context; agents defined in `.unown/agents/*.md`), `fetch_url` (HTTP reads) — plus `/todos` `/note` `/agents` `/learning` commands and starter Agent Skills in `~/.unown/agent/skills/`. Subagent plumbing flags (used by the `task` tool): `--mode json`, `--no-session`, `--tools a,b`, `--append-system-prompt <path>`. In non-TTY shells run headless as `bin/unown -p "…" < /dev/null`.
 - `package.json` — command surface: `dev` (dashboard :3000, logs to `dev.log`), `agent:install` / `agent:start` / `agent:stop` (wrap `scripts/`), `agent:link` (puts `unown` on PATH via `scripts/link.sh` — the supported global-install path; `bun install -g .` does NOT work with the vendored workspace layout), `agent:bridge` / `agent:engine` (bun --hot single services), `unown` (CLI), `db:generate` / `db:push` / `db:migrate` / `db:reset` (Prisma).
 - `.env` (gitignored) — single source of runtime config: ports, model ids, upstream credentials. Author from `.env.example`; it is symlinked into both mini-services cwds so bun loads it there. Never commit keys.
-- `prisma/` + `db/` — dashboard Prisma (v7) schema + SQLite: generator `prisma-client` with output to gitignored `src/generated/prisma`, CLI config in root `prisma.config.ts`, driver-adapter client in `src/lib/db.ts` (`db:*` scripts unchanged). Legacy scaffold (User/Post models, unused by UI); the dashboard's live data comes from the engine API (`src/lib/agent-api.ts`). The engine's own store is `db/selflearning.db` (separate, engine-owned, created on first run).
+- `prisma/` + `db/` — dashboard Prisma (v7) schema + SQLite: generator `prisma-client` with output to gitignored `src/generated/prisma`, CLI config in root `prisma.config.ts`, driver-adapter client in `src/lib/db.ts` (`db:*` scripts unchanged). Legacy scaffold (User/Post models, unused by UI) — see `src/lib/AGENTS.md`; live data comes from the engine API (`src/lib/agent-api.ts`). The engine's own store is `db/selflearning.db` (separate, engine-owned, created on first run).
 - `.unown/` — per-project agent surface. `memory/project.md` is tracked and maintained by AutoDream (edits are versioned, not clobbered); `memory/local.md` / `*.local.md` are gitignored; `skills/<name>/SKILL.md` (optional, committed) are per-project Agent Skills discovered by terminal sessions; `agents/*.md` (optional) define project subagents. `local.md`, `skills/` and `agents/` are user-authored — `unown init` scaffolds only the memory files.
 - `.github/workflows/ci.yml` — lints the dashboard on push and PR.
 - `.github/assets/` — README visual identity: `banner.png`, `logo.svg`, `social-preview.png` (GitHub social card, 1280x640 <1 MB — upload it manually in repo Settings → General → Social preview), `tour.gif`, and `dashboard-*.png` screenshots. Regenerate via the scripts/ pipeline contract (see scripts/AGENTS.md); `logo.svg` is mirrored to `public/logo.svg` as the dashboard favicon.
@@ -35,7 +35,7 @@ Surfaces owned by this root doc (no child AGENTS.md):
 
 Secrets policy: the upstream LLM key lives only in `.env` (`BRIDGE_UPSTREAM_KEY`); the GitHub PAT lives only in the git remote URL. Never write either into tracked files, docs, or commit messages.
 
-Model routing (configured in `.env`, enforced by llm-bridge): `kimi-k2.5` is the default (strongest coder, agent turns); `qwen3.7-plus` is the fast multimodal alternate (thinking auto-disabled); `qwen3.6-plus` is the 1M-context alternate. Any unknown model id routes to `kimi-k2.5`.
+Model routing: enforced by llm-bridge (binding rules + env in `mini-services/llm-bridge/AGENTS.md`; defaults tuned in `.env`). Unown defaults: `kimi-k2.5` (default coder), `qwen3.7-plus` (fast multimodal, thinking auto-disabled), `qwen3.6-plus` (1M context); unknown ids route to `kimi-k2.5`.
 
 Stack lifecycle:
 
@@ -58,10 +58,9 @@ Git: PAT-authenticated remote (pull/push need no re-auth). Meaningful work is co
 1. Read the root AGENTS.md
 2. Identify every file or folder you expect to touch
 3. Walk from the repository root to each target path
-4. Read every AGENTS.md found along each route
-5. If a parent AGENTS.md lists a child AGENTS.md whose scope contains the path, read that child and continue from there
-6. Use the nearest AGENTS.md as the local contract and parent docs for repo-wide rules
-7. If docs conflict, the closer doc controls local work details, but no child doc may weaken DOX
+4. Read every AGENTS.md on the path from root to target (parents first).
+5. Use the nearest AGENTS.md as the local contract and parent docs for repo-wide rules.
+6. If docs conflict, the closer doc controls local work details, but no child doc may weaken DOX.
 
 Do not rely on memory. Re-read the applicable DOX chain in the current session before editing.
 
@@ -123,7 +122,7 @@ Default section order:
 ## User Preferences
 
 - All inference and VLM traffic uses the Dashscope coding-plan endpoint (a paid plan — do not ration or worry about call limits).
-- Assign models by their strengths: `kimi-k2.5` default agent/coding model; `qwen3.7-plus` fast multimodal alternate (thinking disabled for snappy turns); `qwen3.6-plus` long-context alternate.
+- Assign models by their strengths (details: Model routing above and `mini-services/llm-bridge/AGENTS.md`): `kimi-k2.5` default agent/coding; `qwen3.7-plus` fast multimodal (thinking disabled); `qwen3.6-plus` long-context.
 - GitHub authentication uses the PAT embedded in the git remote URL; do not ask for credentials again.
 - Record any future durable behavior change here or in the relevant child AGENTS.md.
 

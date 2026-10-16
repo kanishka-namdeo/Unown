@@ -35,7 +35,10 @@ scripts and agent bash commands run with a read-only rootfs, private
 `notes.ts` (session-note capture, benchmark + terminal kinds), `tasks.ts`
 (seeded benchmark tasks), `store.ts` (SQLite persistence with schema
 migrations), `server.ts` (REST + SSE API), `llm.ts` (bridge client),
-`bus.ts` (in-process event bus).
+`bus.ts` (in-process event bus), plus `mint.ts` (task authoring + validation +
+graduation), `skills.ts` + `skill-seeds.ts` (AutoDream-minted Agent Skills),
+`setup.ts` (provider wizard), `probe.ts` (endpoint probes), `tools.ts` (terminal
+session tools), `theme.ts` (brand theme), `term.ts`, `cli.ts`, `index.ts`.
 
 ## Running
 
@@ -65,7 +68,7 @@ and an OpenAI-compatible endpoint reachable at `PI_BRIDGE_URL` (default
 |----------|---------|---------|
 | `PI_AGENT_PORT` | 3030 | REST + SSE API port |
 | `PI_BRIDGE_URL` | http://127.0.0.1:3031 | LLM endpoint base |
-| `PI_MODEL_ID` | glm-4-plus | Model id registered with pi |
+| `PI_MODEL_ID` | kimi-k2.5 | Model id registered with pi |
 | `PI_PROVIDER` | zai-bridge | Provider name registered with pi |
 | `PI_SELFLEARNING_DATA` | `<repo>/data/self-learning` | Runtime data dir |
 | `PI_SELFLEARNING_DB` | `<repo>/db/selflearning.db` | SQLite file |
@@ -76,13 +79,4 @@ and an OpenAI-compatible endpoint reachable at `PI_BRIDGE_URL` (default
 
 ## API surface (port 3030)
 
-`GET /api/overview` · `GET /api/tasks` · `GET|POST /api/runs` ·
-`GET /api/runs/:id` · `GET|POST /api/cycles` · `GET /api/improvements` ·
-`GET /api/memory` · `GET /api/memory/history` · `POST /api/memory/rollback` ·
-`GET /api/dreams` · `POST /api/dreams/run` · `GET|POST /api/notes` ·
-`POST /api/notes/sync` · `GET /api/hooks` · `GET /api/jobs` ·
-`POST /api/jobs/:id/toggle` · `POST /api/jobs/:id/trigger` ·
-`POST /api/prompt` · `GET /api/events` (SSE)
-
-Everything the dashboard consumes is here — the package is UI-free and can be
-embedded in any host process.
+The canonical, kept-in-sync route list lives in `src/lib/AGENTS.md` (and ultimately `src/server.ts`); `GET /api/events` is the SSE stream. The package is UI-free and can be embedded in any host process.

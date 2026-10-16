@@ -12,10 +12,10 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 
 ## Local Contracts
 
-- Entry: `src/app/page.tsx` composes `DashboardProviders` + `Header` + the seven `*-tab.tsx` surfaces in a shadcn `Tabs`. Adding a tab = new component in `src/components/dashboard/`, wired here.
+- Entry composition lives in `src/app/dashboard/page.tsx` (`DashboardProviders` + `Header` + the seven `*-tab.tsx` surfaces in a shadcn `Tabs`). `src/app/page.tsx` is the marketing landing page, not the dashboard. Adding a tab = new component in `src/components/dashboard/`, registered in `src/app/dashboard/page.tsx`.
 - All engine data flows through `src/lib/agent-api.ts` (REST + SSE) and `src/lib/agent-types.ts` (schema types mirroring the engine's API). Components never fetch engines directly.
-- Deployment modes (see `agent-api.ts`): DIRECT when `NEXT_PUBLIC_AGENT_API_BASE` is set; otherwise GATEWAY mode with `?XTransformPort=3030` query params so the sandbox Caddy gateway routes to the engine.
-- `src/lib/db.ts` + root `prisma/schema.prisma` are legacy scaffold (User/Post models, unused). Do not build features on them; live data comes from the engine API. Keep `db:*` scripts working.
+- Deployment modes (DIRECT vs GATEWAY) and all fetch/SSE URL handling live in `src/lib/agent-api.ts` — see `src/lib/AGENTS.md`; never hardcode engine URLs elsewhere.
+- `src/lib/db.ts` + root `prisma/schema.prisma` are legacy scaffold (User/Post models, unused). Do not build features on them; live data comes from the engine API. Keep `db:*` scripts working (Prisma client contract: `src/lib/AGENTS.md`).
 - Styling: Tailwind CSS 4 + shadcn/ui conventions (`cn()` from `src/lib/utils.ts`), `lucide-react` icons, `framer-motion` motion, charts via `recharts`.
 - State: server state via `@tanstack/react-query` (see `providers.tsx`); cross-tab client state via zustand (`agent-store.ts`).
 - Root `package.json` owns commands: `bun run dev` (port 3000), `bun run build`, `bun run start`, `bun run lint`.
@@ -30,8 +30,8 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 ## Verification
 
 - `bun run lint` (eslint + eslint-config-next) — must be clean; CI (`.github/workflows/ci.yml`) enforces it on push/PR.
-- Dashboard responds 200 on `http://localhost:3000/dashboard` with live KPIs and no console errors when the engine is up.
-- The Next.js app (landing page at `/` and dashboard shell) auto-deploys to Vercel on push to `main` (root `vercel.json`; see root AGENTS.md). Keep `bun run build` passing.
+- Dashboard responds 200 on `http://localhost:3000/dashboard` with live KPIs and no console errors when the engine is up (and `/` returns the landing page).
+- Keep `bun run build` passing; landing-page/Vercel deployment rules live in root `AGENTS.md`.
 
 ## Child DOX Index
 

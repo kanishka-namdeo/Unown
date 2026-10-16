@@ -19,12 +19,12 @@ The dashboard's data layer: engine API client (REST + SSE), the engine schema ty
 
 ## Work Guidance
 
-- Engine API surface (port 3030): `GET /api/overview`, `GET /api/tasks`, `POST /api/tasks/mint`, `GET|POST /api/runs`, `GET /api/runs/:id`, `GET|POST /api/cycles`, `GET /api/improvements`, `GET /api/memory`, `GET /api/memory/history`, `POST /api/memory/rollback`, `GET /api/skills`, `POST /api/skills/:id/rollback`, `POST /api/skills/:id/retire`, `GET /api/dreams`, `POST /api/dreams/run`, `GET|POST /api/notes`, `POST /api/notes/sync`, `GET /api/hooks`, `GET /api/jobs`, `POST /api/jobs/:id/toggle`, `POST /api/jobs/:id/trigger`, `POST /api/prompt`, `GET /api/events` (SSE). Overview `kpis.suite` carries task-suite stats (total/passing/capability/regression/minted/graduated/saturated); task rows carry `origin` (`seed`|`minted`) and `status` (`capability`|`regression`|`discarded`, null = seed/regression). Skills rows carry `status` (`shipped`|`retired`) and `version` (rollback takes the target version in the body; list may be empty until AutoDream mints one).
+- Engine API surface (port 3030) — full route set: `GET /api/overview`; tasks `GET /api/tasks`, `GET /api/tasks/:id`, `POST /api/tasks/:id/run`, `POST /api/tasks/mint`; skills `GET /api/skills[?project=]`, `GET /api/skills/:id`, `POST /api/skills/:id/rollback`, `POST /api/skills/:id/retire`; runs `GET /api/runs`, `GET /api/runs/:id`, `POST /api/agent/prompt`; memory `GET /api/memory`, `GET /api/memory/:tier/history`, `POST /api/memory/:tier/rollback`; `GET /api/cycles`; improvements `GET /api/improvements`, `GET /api/improvements/:id`; dreams `GET /api/dreams`, `GET /api/dreams/:id/notes`, `POST /api/dreams/run`; `GET /api/hooks`; notes `GET|POST /api/notes`, `POST /api/notes/sync`; jobs `GET /api/jobs`, `POST /api/jobs/:id/trigger`, `POST /api/jobs/:id/toggle`; `GET /api/sandboxes`, `GET /api/bridge`; `GET /api/events` (SSE). Overview `kpis.suite` carries task-suite stats (total/passing/capability/regression/minted/graduated/saturated); task rows carry `origin` (`seed`|`minted`) and `status` (`capability`|`regression`|`discarded`, null = seed/regression). Skills rows carry `status` (`shipped`|`retired`) and `version` (rollback takes the target version in the body; list may be empty until AutoDream mints one).
 - Type every response; no `any` on API boundaries.
 
 ## Verification
 
-- `bun run lint` from the repo root.
+- Lint: `bun run lint` from the repo root (see `src/AGENTS.md`).
 - With the engine up, the Overview tab renders live KPIs (proves api client + types + SSE end to end).
 
 ## Child DOX Index

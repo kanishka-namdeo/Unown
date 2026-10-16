@@ -50,6 +50,8 @@
 
 ## Git
 
+Scope: these rules apply to upstream pi-mono work inside `pi-repo/`; Unown repo-level commits/verification follow the root `AGENTS.md` rail, which takes precedence where they overlap (per the Child DOX Index note). Note the root rail allows commits for meaningful Unown work; the "Never commit unless asked" rule below is upstream-specific.
+
 Multiple pi sessions may be running in this cwd at the same time, each modifying different files. Git operations that touch unstaged, staged, or untracked files outside your own changes will stomp on other sessions' work. Follow these rules:
 
 Committing:
