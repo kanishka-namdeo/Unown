@@ -1,0 +1,67 @@
+{
+  "models": [
+    "kimi-k2.5",
+    "qwen3.6-plus",
+    "qwen3.7-plus"
+  ],
+  "generated_at": "2026-10-16 15:47 UTC",
+  "results": {
+    "kimi-k2.5": {
+      "evaluated_at": "2026-10-16 15:47 UTC",
+      "pass1": 0.9329,
+      "base_pass1": 0.9695,
+      "n_problems": 164,
+      "pass1_count": 153,
+      "base_pass1_count": 159,
+      "raw_pass1": 0.9329,
+      "raw_base_pass1": 0.9695,
+      "generation": {
+        "n_samples": 164,
+        "n_gen_failures": 0,
+        "n_truncated": 4,
+        "n_retried": 0,
+        "total_latency_s": 1999.9999999999989,
+        "n_attempts_total": 164,
+        "failed_task_ids": []
+      }
+    },
+    "qwen3.6-plus": {
+      "evaluated_at": "2026-10-16 15:47 UTC",
+      "pass1": 0.939,
+      "base_pass1": 0.9878,
+      "n_problems": 164,
+      "pass1_count": 154,
+      "base_pass1_count": 162,
+      "raw_pass1": 0.939,
+      "raw_base_pass1": 0.9878,
+      "generation": {
+        "n_samples": 164,
+        "n_gen_failures": 0,
+        "n_truncated": 0,
+        "n_retried": 0,
+        "total_latency_s": 854.3000000000001,
+        "n_attempts_total": 164,
+        "failed_task_ids": []
+      }
+    },
+    "qwen3.7-plus": {
+      "evaluated_at": "2026-10-16 15:47 UTC",
+      "pass1": 0.9329,
+      "base_pass1": 0.9756,
+      "n_problems": 164,
+      "pass1_count": 153,
+      "base_pass1_count": 160,
+      "raw_pass1": 0.9329,
+      "raw_base_pass1": 0.9756,
+      "generation": {
+        "n_samples": 164,
+        "n_gen_failures": 0,
+        "n_truncated": 0,
+        "n_retried": 0,
+        "total_latency_s": 917.6000000000001,
+        "n_attempts_total": 164,
+        "failed_task_ids": []
+      }
+    }
+  }
+}

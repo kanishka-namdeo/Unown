@@ -1,0 +1,24 @@
+{
+	"model": "qwen3.7-plus",
+	"label": "repeat-task efficiency (memory doing its job) — n=10, single run, honest numbers",
+	"cold": {
+		"tasks": 10,
+		"passed": 10,
+		"input": 64853,
+		"output": 7395,
+		"cacheRead": 226176,
+		"avgDurationS": 24
+	},
+	"warm": {
+		"tasks": 10,
+		"passed": 10,
+		"input": 79886,
+		"output": 7249,
+		"cacheRead": 239488,
+		"avgDurationS": 25
+	},
+	"generatedAt": "2026-10-16T13:59:00.516Z",
+	"passRateLiftPp": 0,
+	"inputTokenDelta": 15033,
+	"outputTokenDelta": -146
+}

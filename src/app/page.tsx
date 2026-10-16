@@ -16,6 +16,7 @@ import {
   MoonStar,
   ShieldCheck,
   Sparkles,
+  Target,
   TerminalSquare,
 } from "lucide-react";
 import {
@@ -171,6 +172,12 @@ function Nav() {
             className="text-sm text-zinc-400 transition-colors hover:text-zinc-100"
           >
             Features
+          </a>
+          <a
+            href="#benchmarks"
+            className="text-sm text-zinc-400 transition-colors hover:text-zinc-100"
+          >
+            Benchmarks
           </a>
           <Link
             href="/dashboard"
@@ -526,6 +533,273 @@ function ModelsSection() {
 }
 
 /* ------------------------------------------------------------------ */
+/* benchmarks                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * All numbers are real, reproducible runs through the local llm-bridge
+ * (Dashscope: kimi-k2.5 / qwen3.7-plus / qwen3.6-plus). Receipts live in
+ * benchmarks/ in the repo. Update these consts when new runs land.
+ */
+const EDIT_BENCH = [
+  { model: "qwen3.7-plus", pct: 99.1 },
+  { model: "qwen3.6-plus", pct: 99.1 },
+  { model: "kimi-k2.5", pct: 98.1 },
+];
+
+const HUMANEVAL_PLUS = [
+  { model: "qwen3.6-plus", pct: 93.9 },
+  { model: "kimi-k2.5", pct: 93.3 },
+  { model: "qwen3.7-plus", pct: 93.3 },
+];
+
+/**
+ * Repeat-task efficiency, cold vs warm (fresh memory vs dreamed memory in
+ * the loop) — v2 protocol, agent-authored notes. input = input-token delta,
+ * time = wall-time delta; negative time = faster warm. Published as
+ * measured, including the regressions.
+ */
+const SELFIMPROVE = [
+  { model: "qwen3.6-plus", input: -23.7, time: -8.0 },
+  { model: "kimi-k2.5", input: 21.8, time: -35.1 },
+  { model: "qwen3.7-plus", input: 23.2, time: 4.2 },
+];
+
+const POLYGLOT_RESULTS: { model: string; pct: number }[] = [];
+const POLYGLOT_STATUS = "in-flight";
+
+function BarRow({
+  label,
+  pct,
+  delay = 0,
+  muted = false,
+}: {
+  label: string;
+  pct: number;
+  delay?: number;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 sm:gap-4">
+      <span className="w-28 shrink-0 truncate font-mono text-xs text-zinc-400 sm:w-32">{label}</span>
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-800/80">
+        <motion.div
+          className={`h-full rounded-full ${muted ? "bg-zinc-500" : "bg-emerald-500"}`}
+          initial={{ width: 0 }}
+          whileInView={{ width: `${pct}%` }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.9, delay, ease: "easeOut" }}
+        />
+      </div>
+      <span
+        className={`w-12 shrink-0 text-right font-mono text-sm ${
+          muted ? "text-zinc-400" : "text-emerald-400"
+        }`}
+      >
+        {pct.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
+function TrackCard({
+  icon: Icon,
+  name,
+  source,
+  children,
+  delay = 0,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  name: string;
+  source: string;
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  return (
+    <FadeUp delay={delay} className="h-full">
+      <div className="flex h-full flex-col rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 transition-colors hover:border-zinc-700">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Icon className="size-6 text-emerald-400" aria-hidden="true" />
+            <h3 className="text-base font-semibold">{name}</h3>
+          </div>
+        </div>
+        <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-zinc-500">{source}</p>
+        <div className="mt-5 flex flex-1 flex-col justify-center gap-3">{children}</div>
+      </div>
+    </FadeUp>
+  );
+}
+
+function BenchmarksSection() {
+  return (
+    <section id="benchmarks" className="scroll-mt-16 py-20">
+      <div className="mx-auto max-w-6xl px-6">
+        <SectionHeader
+          eyebrow="PROOF, NOT VIBES"
+          title="Benchmarked where it hurts."
+          sub="Official harnesses, pinned datasets, anti-tamper scoring — every number below is a real run with receipts committed to the repo."
+        />
+
+        {/* headline stats */}
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { v: "99.1%", l: "best edit accuracy", s: "106-fixture oh-my-pi edit benchmark" },
+            { v: "93.9%", l: "HumanEval+ pass@1", s: "official evalplus, greedy decoding" },
+            { v: "−35%", l: "warm wall time", s: "repeat tasks, memory in the loop (kimi)" },
+            { v: "4,585", l: "repo tests green", s: "pi coding-agent monorepo suite" },
+          ].map((s, i) => (
+            <FadeUp key={s.l} delay={i * 0.06}>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 text-center">
+                <p className="font-mono text-3xl font-bold text-emerald-400">{s.v}</p>
+                <p className="mt-1 text-sm font-medium text-zinc-200">{s.l}</p>
+                <p className="mt-1 text-xs text-zinc-500">{s.s}</p>
+              </div>
+            </FadeUp>
+          ))}
+        </div>
+
+        {/* tracks */}
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <TrackCard
+            icon={Target}
+            name="Edit accuracy"
+            source="oh-my-pi's typescript-edit-benchmark — 106 fixtures, byte-exact scoring, full Unown agent in the loop"
+          >
+            {EDIT_BENCH.map((r, i) => (
+              <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
+            ))}
+            <p className="mt-1 font-mono text-[11px] text-zinc-500">
+              % of edits applied exactly as intended · 3 models × 106 fixtures
+            </p>
+          </TrackCard>
+
+          <TrackCard
+            icon={FlaskConical}
+            name="HumanEval+"
+            source="official evalplus CLI (sanitize → evaluate), pass@1, greedy, 164 problems"
+            delay={0.05}
+          >
+            {HUMANEVAL_PLUS.map((r, i) => (
+              <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
+            ))}
+            <p className="mt-1 font-mono text-[11px] text-zinc-500">
+              pass@1 on the extended (Plus) test suite
+            </p>
+          </TrackCard>
+
+          <TrackCard
+            icon={Brain}
+            name="Self-improvement, measured"
+            source="10-task repeat set · cold vs warm with dreamed memory carried into fresh workspaces · 60/60 tasks passed across all six passes"
+            delay={0.1}
+          >
+            {SELFIMPROVE.map((r) => (
+              <div key={r.model} className="flex items-center justify-between gap-3">
+                <span className="w-28 shrink-0 truncate font-mono text-xs text-zinc-400 sm:w-32">
+                  {r.model}
+                </span>
+                <span
+                  className={`rounded-md px-2 py-0.5 font-mono text-sm ${
+                    r.input < 0
+                      ? "bg-emerald-500/10 text-emerald-400"
+                      : "bg-amber-500/10 text-amber-400"
+                  }`}
+                >
+                  {r.input > 0 ? "+" : "−"}
+                  {Math.abs(r.input).toFixed(1)}% input
+                </span>
+                <span
+                  className={`rounded-md px-2 py-0.5 font-mono text-sm ${
+                    r.time < 0
+                      ? "bg-emerald-500/10 text-emerald-400"
+                      : "bg-amber-500/10 text-amber-400"
+                  }`}
+                >
+                  {r.time > 0 ? "+" : "−"}
+                  {Math.abs(r.time).toFixed(1)}% time
+                </span>
+              </div>
+            ))}
+            <p className="mt-1 font-mono text-[11px] text-zinc-500">
+              A caching-only control (v1) faked −25.6% — we publish the real
+              memory effect instead, regressions included
+            </p>
+          </TrackCard>
+
+          <TrackCard
+            icon={Layers}
+            name="Aider polyglot subset"
+            source="50-exercise stratified subset of Aider-AI/polyglot-benchmark @7e0611e — 6 languages, Aider's 2-attempt protocol, anti-tamper scoring"
+            delay={0.15}
+          >
+            {POLYGLOT_STATUS === "in-flight" ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 py-4 text-center">
+                <span className="relative flex size-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex size-3 rounded-full bg-emerald-500" />
+                </span>
+                <p className="font-mono text-sm text-zinc-300">3 models × 50 exercises — running now</p>
+                <p className="font-mono text-[11px] text-zinc-500">
+                  full per-exercise receipts land in benchmarks/polyglot/
+                </p>
+              </div>
+            ) : (
+              POLYGLOT_RESULTS.map((r, i) => (
+                <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
+              ))
+            )}
+          </TrackCard>
+        </div>
+
+        {/* methodology strip */}
+        <FadeUp delay={0.1}>
+          <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+            <p className="font-mono text-xs tracking-widest text-emerald-400">METHODOLOGY</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  t: "Anti-tamper scoring",
+                  d: "Tests restored to pristine state before scoring; reference solutions never enter the agent workspace.",
+                },
+                {
+                  t: "Pinned everything",
+                  d: "Dataset commits, model catalog snapshots and harness versions are pinned and committed.",
+                },
+                {
+                  t: "Official harnesses",
+                  d: "evalplus CLI, oh-my-pi's own edit benchmark, Aider's polyglot protocol — no home-rolled scoring.",
+                },
+                {
+                  t: "Receipts in the repo",
+                  d: "Per-task JSONL with tokens, durations and outcomes for every single run lives in benchmarks/.",
+                },
+              ].map((m) => (
+                <div key={m.t}>
+                  <p className="text-sm font-semibold text-zinc-200">{m.t}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">{m.d}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 text-sm text-zinc-400">
+              Full write-up, fairness rules and raw results:{" "}
+              <a
+                href={`${GITHUB_URL}/tree/main/benchmarks`}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="font-medium text-emerald-400 underline-offset-4 hover:underline"
+              >
+                benchmarks/ in the repo
+              </a>
+            </p>
+          </div>
+        </FadeUp>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* safety                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -822,6 +1096,7 @@ html { scroll-behavior: smooth; }
         <FeaturesSection />
         <ShowcaseSection />
         <ModelsSection />
+        <BenchmarksSection />
         <SafetySection />
         <QuickstartSection />
         <FaqSection />
