@@ -245,15 +245,15 @@ describe("reducer: general contract", () => {
     expect(b.open).toBe(true)
   })
 
-  test("BUG (documented, not fixed): an unknown action type returns undefined", () => {
-    // The switch has no default branch, so a payload that bypasses the Action
-    // union makes the reducer return undefined — React's useReducer would then
-    // throw. TypeScript normally prevents this; pinned so a future default
-    // branch (or an exhaustiveness check) is a visible change.
-    const out = reducer(stateWith(makeToast("unknown-1")), {
+  test("FIXED: an unknown action type returns the state unchanged", () => {
+    // The switch previously had no default branch, so a payload that bypassed
+    // the Action union made the reducer return undefined — React's useReducer
+    // would then throw. A default branch now preserves the previous state.
+    const state = stateWith(makeToast("unknown-1"))
+    const out = reducer(state, {
       type: "NOT_A_REAL_ACTION",
     } as unknown as ActionArg)
-    expect(out).toBeUndefined()
+    expect(out).toBe(state)
   })
 })
 

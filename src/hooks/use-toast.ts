@@ -126,6 +126,10 @@ export const reducer = (state: State, action: Action): State => {
         ...state,
         toasts: state.toasts.filter((t) => t.id !== action.toastId),
       }
+    default:
+      // Unknown action types leave state untouched instead of returning
+      // undefined (which would crash useReducer consumers).
+      return state
   }
 }
 

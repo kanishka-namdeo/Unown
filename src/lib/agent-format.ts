@@ -70,9 +70,15 @@ export function humanizeInterval(ms: number | null | undefined): string {
 
 export function truncateMiddle(s: string | null | undefined, max = 24): string {
   if (!s) return "—";
-  if (s.length <= max) return s;
+  if (max <= 0) return "";
+  // Code-point aware so astral chars (emoji) are never split into lone
+  // UTF-16 surrogates.
+  const chars = Array.from(s);
+  if (chars.length <= max) return s;
+  // No room for a middle ellipsis — hard-cut instead of growing the string.
+  if (max <= 3) return chars.slice(0, max).join("");
   const half = Math.floor((max - 1) / 2);
-  return `${s.slice(0, half)}…${s.slice(-half)}`;
+  return `${chars.slice(0, half).join("")}…${chars.slice(-half).join("")}`;
 }
 
 export function truncateEnd(s: string | null | undefined, max = 90): string {

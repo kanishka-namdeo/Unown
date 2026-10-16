@@ -295,15 +295,16 @@ describe("truncateMiddle", () => {
 
   test("custom small max", () => {
     expect(truncateMiddle("hello world", 5)).toBe("he…ld")
-    expect(truncateMiddle("abcd", 3)).toBe("a…d")
+    // max=3 has no room for head + ellipsis + tail — hard-cut, never grow.
+    expect(truncateMiddle("abcd", 3)).toBe("abc")
   })
 
-  test("BUG (documented, not fixed): max <= 2 returns a LONGER string", () => {
-    // half = floor((max-1)/2) = 0 and s.slice(-0) === s (the whole string),
-    // so an 8-char input "truncates" to a 9-char "…abcdefgh".
-    expect(truncateMiddle("abcdefgh", 1)).toBe("…abcdefgh")
-    expect(truncateMiddle("abcdefgh", 2)).toBe("…abcdefgh")
-    expect(truncateMiddle("abcdefgh", 1)).toHaveLength(9)
+  test("FIXED: max <= 3 hard-cuts instead of returning a longer string", () => {
+    // Was: half = floor((max-1)/2) = 0 and s.slice(-0) === s, so an 8-char
+    // input "truncated" to the 9-char "…abcdefgh". Now: never exceeds max.
+    expect(truncateMiddle("abcdefgh", 1)).toBe("a")
+    expect(truncateMiddle("abcdefgh", 2)).toBe("ab")
+    expect(truncateMiddle("abcdefgh", 0)).toBe("")
   })
 
   test("truncates BMP unicode (CJK) by code unit without corruption", () => {
@@ -313,14 +314,13 @@ describe("truncateMiddle", () => {
     expect(out).toHaveLength(9)
   })
 
-  test("QUIRK: truncation is UTF-16 code-unit based and can split surrogate pairs", () => {
-    const s = "😀".repeat(5) // 5 emoji = 10 UTF-16 code units
-    const out = truncateMiddle(s, 7) // half=3: slices at 3 and -3 split pairs
-    expect(out).toHaveLength(7)
-    // Unit 2 (0-based) is the now-unpaired high surrogate of the 2nd emoji…
-    expect(out.charCodeAt(2)).toBe(0xd83d)
-    // …and unit 4 is the unpaired low surrogate of the 4th emoji.
-    expect(out.charCodeAt(4)).toBe(0xde00)
+  test("FIXED: truncation is code-point aware and never splits surrogate pairs", () => {
+    const s = "😀".repeat(10) // 10 emoji = 20 UTF-16 code units, 10 code points
+    const out = truncateMiddle(s, 7) // half=3 -> 3 emoji + ellipsis + 3 emoji
+    expect(Array.from(out)).toHaveLength(7)
+    // Every retained character is a complete emoji, never a lone surrogate.
+    for (const ch of out) expect(["😀", "…"]).toContain(ch)
+    expect(out).toContain("…")
   })
 
   test("very long strings: exactly one ellipsis, correct head and tail", () => {
