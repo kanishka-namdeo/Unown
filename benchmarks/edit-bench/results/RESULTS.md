@@ -59,7 +59,68 @@ were wrong (wrong content/scope), not the edit format.
 Not apples-to-apples: omp ran its default **hashline** edit variant + its own
 system prompt; Unown ran pi's **replace** edit + pi's system prompt (same
 benchmark addendum both). A fair agent-core A/B needs omp with
-`--edit-variant replace`.
+`--edit-variant replace` — that run is now done, below.
+
+## Fair A/B: Unown vs omp agent core, edit variant pinned (full 106)
+
+We ran **oh-my-pi's own agent** (`@oh-my-pi/pi-coding-agent` 18.11.1,
+in-process via its metaharness `adapters/edit` runner, unmodified) on the
+identical 106 fixtures through the same bridge, same day, same knobs as the
+Unown runs above (thinking off, timeout 300 s, connection timeout 60 s,
+max-turns 30, max-attempts 1, 1 run per task, task concurrency 4, all 106
+tasks — note the omp CLI defaults to a 80-task sample and 120 s timeout, both
+overridden). Task IDs verified set-identical to the Unown receipts. Two cells
+per model: `replace` (pi-style edits — the confound-free agent-core A/B) and
+`hashline` (omp's default edit format, full-106 context for the smoke table
+above).
+
+Protocol deltas that remain (each stack run as shipped, honestly labeled):
+omp's runner sets `PI_STRICT_EDIT_MODE=1`, exposes an `apply_patch` tool, and
+uses omp's system prompt; the Unown runs used pi's defaults (no strict mode,
+no apply_patch). Both sides subtract system-prompt overhead from token counts
+(identical accounting).
+
+| Task success (of 106) | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus | avg |
+|---|---|---|---|---|
+| **Unown** (pi replace) | 104 (98.1%) | 105 (99.1%) | 105 (99.1%) | **98.8%** |
+| **omp** (replace) | **106 (100%)** | 104 (98.1%) | 101 (95.3%) | 97.8% |
+| **omp** (hashline, default) | 105 (99.1%) | 101 (95.3%) | 102 (96.2%) | 96.9% |
+
+| Edit-call success | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus |
+|---|---|---|---|
+| **Unown** (pi replace) | 95.7% | 97.3% | 99.1% |
+| **omp** (replace) | 98.1% | 98.7% | **100%** |
+| **omp** (hashline, default) | 71.4% | 80.4% | 71.9% |
+
+| Avg input tokens / task | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus |
+|---|---|---|---|
+| **Unown** (pi replace) | **3,238** | **2,974** | **2,854** |
+| **omp** (replace) | 5,470 | 8,829 | 8,478 |
+| **omp** (hashline, default) | 9,482 | 9,450 | 9,917 |
+
+Read it straight:
+
+- **Task success: parity within noise.** 318 runs per side; Unown 314/318
+  (98.8%), omp-replace 311/318 (97.8%), omp-hashline 308/318 (96.9%).
+  Single-task deltas (kimi, qwen3.7) are noise at n=1; qwen3.6 is the one
+  meaningful gap — Unown +4 tasks over omp-replace (omp's qwen3.6-replace
+  failed 5 tasks, 3 of them multi-composite).
+- **Edit mechanics: replace is simply a better edit format for these models.**
+  With the variant pinned, both agents land 95.7–100% edit-call success.
+  omp's default hashline drops to 71–80% (0.3–0.6 failed edit calls per task
+  plus hashline warnings) and needs ~1.7–1.9× more input tokens than its own
+  replace runs to reach slightly worse task success — its retry ladder absorbs
+  most, not all, of the grammar failures.
+- **Token efficiency: Unown's stack is 1.7–3.1× lighter on input tokens** on
+  identical tasks (pi default system prompt + replace tooling vs omp's).
+- **Cross-validation:** `multi-composite-multi-edit-007` fails for BOTH qwen
+  models on BOTH agents (4/4 qwen runs) — a model-level lookalike-negation
+  trap, not an agent defect. omp-kimi-replace is the only 106/106 anywhere.
+
+Receipts: `omp-ab/<model>_<variant>.json` (full per-task results, embedded
+config + summary; `omp-runs-eventlogs.tgz` = per-run event JSONL), harness
+recipe in `../omp-harness/` (workspace package.json, agent models.yml,
+run-ab.sh). Run 2026-10-16 17:24–17:46 UTC.
 
 ## Layout
 
@@ -74,18 +135,42 @@ benchmark addendum both). A fair agent-core A/B needs omp with
 - `<model>/dumps/<model>/<task>.md` — full conversation receipts
   (system prompt + every message/tool call/result)
 - `<model>/workdirs/<task>/` — final file state per task
+- `omp-ab/` — omp A/B receipts: `<model>_<variant>.json` (per-task + summary
+  + embedded config), `<model>_<variant>.log` (runner output),
+  `omp-runs-eventlogs.tgz` (per-run event JSONL from omp's runner)
 
 ## Reproduce
 
+**Unown side** (harness committed at `../run-unown.mjs`; fixtures: extract
+omp's `packages/typescript-edit-benchmark/fixtures.tar.gz` next to it as
+`fixtures/`, and provide an agent dir with a `models.json` listing the three
+bridge models — see `../omp-harness/omp-agent-models.yml` for the provider
+shape):
+
 ```bash
-cd /home/z/probes/omp-edit-bench
-PI_CODING_AGENT_DIR=/home/z/probes/omp-edit-bench/unown-eval-agent \
-  node --import ./openai-vendor-register.mjs run-unown.mjs --model <id> [--tasks id] [--summarize]
+cd <checkout>/benchmarks/edit-bench
+PI_CODING_AGENT_DIR=<agent-dir> node run-unown.mjs --model <id> [--tasks id] [--summarize]
 ```
 
-(The `--import ./openai-vendor-register.mjs` hook redirects bare `openai`
-imports from pi-repo's dist to `./vendor/node_modules/openai` — needed since
-the `pi-repo/packages/ai/node_modules/openai` symlink vanished at 08:31 today
-(declared dep openai@7.34.0; cause unknown). The vendor symlink points at the
-identical bun-store copy the earlier runs resolved, so behavior is unchanged
-and the Unown repo tree is not modified.)
+(If `pi-repo/packages/ai/node_modules/openai` is missing — its symlink can be
+pruned by package-manager runs — restore it with
+`bench-data/relink-node-modules.mjs` or `bun install` in `pi-repo`, or use a
+Node `--import` resolution hook pointing at any `openai@7.x` install.)
+
+**omp side** (the fair A/B): build the probe workspace from
+`../omp-harness/` — a bun workspace whose `package.json` pins
+`@oh-my-pi/*@18.11.1` from npm plus two source copies from the oh-my-pi repo
+@`a536558`: `packages/metaharness/adapters/edit` (runner) and
+`packages/typescript-edit-benchmark` (fixtures + scoring), laid out to mirror
+the repo so the runner's relative paths resolve unpatched. Then:
+
+```bash
+cd <probe>/packages/metaharness/adapters/edit
+PI_CODING_AGENT_DIR=<probe>/omp-agent bun cli.ts --model zai-bridge/<id> \
+  --edit-variant replace --thinking off --timeout 300000 \
+  --connection-timeout 60000 --max-turns 30 --max-attempts 1 --runs 1 \
+  --task-concurrency 4 --max-tasks 0 --quiet --output out.json
+```
+
+(`../omp-harness/run-ab.sh` wraps exactly this; the llm-bridge on :3031 must
+be up. `--max-tasks 0` = all 106 — the CLI's default samples 80.)

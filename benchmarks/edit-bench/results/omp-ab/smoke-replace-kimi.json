@@ -1,0 +1,517 @@
+{
+  "config": {
+    "provider": "zai-bridge",
+    "model": "zai-bridge/kimi-k2.5",
+    "thinkingLevel": "off",
+    "runsPerTask": 1,
+    "timeout": 300000,
+    "connectionTimeout": 60000,
+    "maxTurns": 30,
+    "taskConcurrency": 4,
+    "guided": false,
+    "maxAttempts": 1,
+    "noOpRetryLimit": 2,
+    "maxTimeoutRetries": 3,
+    "maxProviderFailureRetries": 3,
+    "mutationScopeWindow": 20,
+    "inProcess": true,
+    "earlyStopOnMatch": true,
+    "editVariant": "replace",
+    "conversationDumpDir": "/home/z/my-project/probes/omp-edit-bench/omp-results/smoke-replace-kimi.dump"
+  },
+  "tasks": [
+    {
+      "id": "identifier-identifier-multi-edit-001",
+      "name": "Identifier Identifier Multi Edit 001",
+      "files": [
+        "remote-catalog-provider.ts"
+      ],
+      "runs": [
+        {
+          "runIndex": 0,
+          "success": true,
+          "patchApplied": true,
+          "verificationPassed": true,
+          "mutationType": "identifier-multi-edit",
+          "mutationCategory": "identifier",
+          "difficultyScore": 5,
+          "tokens": {
+            "input": 2093,
+            "output": 290,
+            "reasoning": 0,
+            "total": 2383
+          },
+          "duration": 12743,
+          "indentScore": 0,
+          "formattedEquivalent": true,
+          "diffStats": {
+            "linesChanged": 0,
+            "charsChanged": 0
+          },
+          "agentResponse": "I can see the three misspellings on lines 23, 28, and 29. Let me fix them:",
+          "toolCalls": {
+            "read": 2,
+            "edit": 3,
+            "write": 0,
+            "editSuccesses": 3,
+            "editFailures": 0,
+            "editWarnings": 0,
+            "editAutocorrects": 0,
+            "totalInputChars": 531
+          },
+          "editFailures": [],
+          "editWarnings": [],
+          "editAutocorrectCount": 0,
+          "mutationIntentMatched": true,
+          "mutationIntentReason": "Target line exactly matches expected fixture.",
+          "earlyStopped": true,
+          "retryStats": {
+            "timeoutRetries": 0,
+            "zeroToolRetries": 0,
+            "providerFailureRetries": 0
+          }
+        }
+      ],
+      "bestRunIndex": 0,
+      "success": true,
+      "tokens": {
+        "input": 2093,
+        "output": 290,
+        "reasoning": 0,
+        "total": 2383
+      },
+      "duration": 12743,
+      "indentScore": 0,
+      "toolCalls": {
+        "read": 2,
+        "edit": 3,
+        "write": 0,
+        "editSuccesses": 3,
+        "editFailures": 0,
+        "editWarnings": 0,
+        "editAutocorrects": 0,
+        "totalInputChars": 531
+      },
+      "editSuccessRate": 1,
+      "autocorrectFreeSuccess": true,
+      "flakeSuccessRate": 1
+    },
+    {
+      "id": "multi-composite-multi-edit-001",
+      "name": "Multi Composite Multi Edit 001",
+      "files": [
+        "initial-message.ts"
+      ],
+      "runs": [
+        {
+          "runIndex": 0,
+          "success": true,
+          "patchApplied": true,
+          "verificationPassed": true,
+          "mutationType": "composite-multi-edit",
+          "mutationCategory": "multi",
+          "difficultyScore": 4,
+          "tokens": {
+            "input": 388,
+            "output": 232,
+            "reasoning": 0,
+            "total": 620
+          },
+          "duration": 6196,
+          "indentScore": 0,
+          "formattedEquivalent": true,
+          "diffStats": {
+            "linesChanged": 0,
+            "charsChanged": 0
+          },
+          "agentResponse": "Now I'll make the three changes:",
+          "toolCalls": {
+            "read": 1,
+            "edit": 3,
+            "write": 0,
+            "editSuccesses": 3,
+            "editFailures": 0,
+            "editWarnings": 0,
+            "editAutocorrects": 0,
+            "totalInputChars": 565
+          },
+          "editFailures": [],
+          "editWarnings": [],
+          "editAutocorrectCount": 0,
+          "mutationIntentMatched": true,
+          "mutationIntentReason": "Target line exactly matches expected fixture.",
+          "earlyStopped": true,
+          "retryStats": {
+            "timeoutRetries": 0,
+            "zeroToolRetries": 0,
+            "providerFailureRetries": 0
+          }
+        }
+      ],
+      "bestRunIndex": 0,
+      "success": true,
+      "tokens": {
+        "input": 388,
+        "output": 232,
+        "reasoning": 0,
+        "total": 620
+      },
+      "duration": 6196,
+      "indentScore": 0,
+      "toolCalls": {
+        "read": 1,
+        "edit": 3,
+        "write": 0,
+        "editSuccesses": 3,
+        "editFailures": 0,
+        "editWarnings": 0,
+        "editAutocorrects": 0,
+        "totalInputChars": 565
+      },
+      "editSuccessRate": 1,
+      "autocorrectFreeSuccess": true,
+      "flakeSuccessRate": 1
+    },
+    {
+      "id": "operator-swap-comparison-001",
+      "name": "Operator Swap Comparison 001",
+      "files": [
+        "restore-sandbox-env.ts"
+      ],
+      "runs": [
+        {
+          "runIndex": 0,
+          "success": true,
+          "patchApplied": true,
+          "verificationPassed": true,
+          "mutationType": "swap-comparison",
+          "mutationCategory": "operator",
+          "difficultyScore": 4,
+          "tokens": {
+            "input": 4,
+            "output": 107,
+            "reasoning": 0,
+            "total": 111
+          },
+          "duration": 4863,
+          "indentScore": 0,
+          "formattedEquivalent": true,
+          "diffStats": {
+            "linesChanged": 0,
+            "charsChanged": 0
+          },
+          "agentResponse": "Found it. Now applying the exact change:",
+          "toolCalls": {
+            "read": 1,
+            "edit": 1,
+            "write": 0,
+            "editSuccesses": 1,
+            "editFailures": 0,
+            "editWarnings": 0,
+            "editAutocorrects": 0,
+            "totalInputChars": 145
+          },
+          "editFailures": [],
+          "editWarnings": [],
+          "editAutocorrectCount": 0,
+          "mutationIntentMatched": true,
+          "mutationIntentReason": "Target line exactly matches expected fixture.",
+          "earlyStopped": true,
+          "retryStats": {
+            "timeoutRetries": 0,
+            "zeroToolRetries": 0,
+            "providerFailureRetries": 0
+          }
+        }
+      ],
+      "bestRunIndex": 0,
+      "success": true,
+      "tokens": {
+        "input": 4,
+        "output": 107,
+        "reasoning": 0,
+        "total": 111
+      },
+      "duration": 4863,
+      "indentScore": 0,
+      "toolCalls": {
+        "read": 1,
+        "edit": 1,
+        "write": 0,
+        "editSuccesses": 1,
+        "editFailures": 0,
+        "editWarnings": 0,
+        "editAutocorrects": 0,
+        "totalInputChars": 145
+      },
+      "editSuccessRate": 1,
+      "autocorrectFreeSuccess": true,
+      "flakeSuccessRate": 1
+    },
+    {
+      "id": "structural-swap-if-else-001",
+      "name": "Structural Swap If Else 001",
+      "files": [
+        "paths.ts"
+      ],
+      "runs": [
+        {
+          "runIndex": 0,
+          "success": true,
+          "patchApplied": true,
+          "verificationPassed": true,
+          "mutationType": "swap-if-else",
+          "mutationCategory": "structural",
+          "difficultyScore": 7,
+          "tokens": {
+            "input": 2266,
+            "output": 312,
+            "reasoning": 0,
+            "total": 2578
+          },
+          "duration": 9540,
+          "indentScore": 0,
+          "formattedEquivalent": true,
+          "diffStats": {
+            "linesChanged": 0,
+            "charsChanged": 0
+          },
+          "agentResponse": ".",
+          "toolCalls": {
+            "read": 2,
+            "edit": 1,
+            "write": 0,
+            "editSuccesses": 1,
+            "editFailures": 0,
+            "editWarnings": 0,
+            "editAutocorrects": 0,
+            "totalInputChars": 711
+          },
+          "editFailures": [],
+          "editWarnings": [],
+          "editAutocorrectCount": 0,
+          "mutationIntentMatched": true,
+          "mutationIntentReason": "Target line exactly matches expected fixture.",
+          "earlyStopped": true,
+          "retryStats": {
+            "timeoutRetries": 0,
+            "zeroToolRetries": 0,
+            "providerFailureRetries": 0
+          }
+        }
+      ],
+      "bestRunIndex": 0,
+      "success": true,
+      "tokens": {
+        "input": 2266,
+        "output": 312,
+        "reasoning": 0,
+        "total": 2578
+      },
+      "duration": 9540,
+      "indentScore": 0,
+      "toolCalls": {
+        "read": 2,
+        "edit": 1,
+        "write": 0,
+        "editSuccesses": 1,
+        "editFailures": 0,
+        "editWarnings": 0,
+        "editAutocorrects": 0,
+        "totalInputChars": 711
+      },
+      "editSuccessRate": 1,
+      "autocorrectFreeSuccess": true,
+      "flakeSuccessRate": 1
+    },
+    {
+      "id": "unicode-unicode-hyphen-001",
+      "name": "Unicode Unicode Hyphen 001",
+      "files": [
+        "shared.ts"
+      ],
+      "runs": [
+        {
+          "runIndex": 0,
+          "success": true,
+          "patchApplied": true,
+          "verificationPassed": true,
+          "mutationType": "unicode-hyphen",
+          "mutationCategory": "unicode",
+          "difficultyScore": 5,
+          "tokens": {
+            "input": 224,
+            "output": 110,
+            "reasoning": 0,
+            "total": 334
+          },
+          "duration": 5777,
+          "indentScore": 0,
+          "formattedEquivalent": true,
+          "diffStats": {
+            "linesChanged": 0,
+            "charsChanged": 0
+          },
+          "toolCalls": {
+            "read": 1,
+            "edit": 1,
+            "write": 0,
+            "editSuccesses": 1,
+            "editFailures": 0,
+            "editWarnings": 0,
+            "editAutocorrects": 0,
+            "totalInputChars": 172
+          },
+          "editFailures": [],
+          "editWarnings": [],
+          "editAutocorrectCount": 0,
+          "mutationIntentMatched": true,
+          "mutationIntentReason": "Target line exactly matches expected fixture.",
+          "earlyStopped": true,
+          "retryStats": {
+            "timeoutRetries": 0,
+            "zeroToolRetries": 0,
+            "providerFailureRetries": 0
+          }
+        }
+      ],
+      "bestRunIndex": 0,
+      "success": true,
+      "tokens": {
+        "input": 224,
+        "output": 110,
+        "reasoning": 0,
+        "total": 334
+      },
+      "duration": 5777,
+      "indentScore": 0,
+      "toolCalls": {
+        "read": 1,
+        "edit": 1,
+        "write": 0,
+        "editSuccesses": 1,
+        "editFailures": 0,
+        "editWarnings": 0,
+        "editAutocorrects": 0,
+        "totalInputChars": 172
+      },
+      "editSuccessRate": 1,
+      "autocorrectFreeSuccess": true,
+      "flakeSuccessRate": 1
+    }
+  ],
+  "summary": {
+    "successfulOneShotTasks": 5,
+    "totalOneShotSuccessTokens": {
+      "input": 4975,
+      "output": 1051,
+      "reasoning": 0,
+      "total": 6026
+    },
+    "avgOneShotSuccessTokensPerTask": {
+      "input": 995,
+      "output": 210,
+      "reasoning": 0,
+      "total": 1205
+    },
+    "medianOneShotSuccessTokensPerTask": {
+      "input": 388,
+      "output": 232,
+      "reasoning": 0,
+      "total": 620
+    },
+    "p1OneShotSuccessTokensPerTask": {
+      "input": 13,
+      "output": 107,
+      "reasoning": 0,
+      "total": 120
+    },
+    "p99OneShotSuccessTokensPerTask": {
+      "input": 2259,
+      "output": 311,
+      "reasoning": 0,
+      "total": 2570
+    },
+    "totalTasks": 5,
+    "totalRuns": 5,
+    "successfulRuns": 5,
+    "successfulTasks": 5,
+    "taskSuccessRate": 1,
+    "flakyTasks": 0,
+    "consistentlyPassingTasks": 5,
+    "totalTokens": {
+      "input": 4975,
+      "output": 1051,
+      "reasoning": 0,
+      "total": 6026
+    },
+    "avgTokensPerTask": {
+      "input": 995,
+      "output": 210,
+      "reasoning": 0,
+      "total": 1205
+    },
+    "medianTokensPerTask": {
+      "input": 388,
+      "output": 232,
+      "reasoning": 0,
+      "total": 620
+    },
+    "p1TokensPerTask": {
+      "input": 13,
+      "output": 107,
+      "reasoning": 0,
+      "total": 120
+    },
+    "p99TokensPerTask": {
+      "input": 2259,
+      "output": 311,
+      "reasoning": 0,
+      "total": 2570
+    },
+    "totalDuration": 39119,
+    "avgDurationPerTask": 7824,
+    "avgIndentScore": 0,
+    "totalToolCalls": {
+      "read": 7,
+      "edit": 9,
+      "write": 0,
+      "editSuccesses": 9,
+      "editFailures": 0,
+      "editWarnings": 0,
+      "editAutocorrects": 0,
+      "totalInputChars": 2124
+    },
+    "avgToolCallsPerTask": {
+      "read": 1.4,
+      "edit": 1.8,
+      "write": 0,
+      "editSuccesses": 1.8,
+      "editFailures": 0,
+      "editWarnings": 0,
+      "editAutocorrects": 0,
+      "totalInputChars": 424.8
+    },
+    "editSuccessRate": 1,
+    "autocorrectFreeSuccessfulTasks": 5,
+    "autocorrectFreeSuccessRate": 1,
+    "autocorrectedBestRuns": 0,
+    "editAutocorrectRate": 0,
+    "timeoutRuns": 0,
+    "totalTimeoutRetries": 0,
+    "totalZeroToolRetries": 0,
+    "totalProviderFailureRetries": 0,
+    "ghostRuns": 0,
+    "transportFailureRuns": 0,
+    "mutationIntentMatchRate": 1,
+    "editFailureCategories": {
+      "range-continuation": 0,
+      "unified-diff": 0,
+      "no-change": 0,
+      "hash-mismatch": 0,
+      "other": 0
+    }
+  },
+  "startTime": "2026-10-16T17:23:56.112Z",
+  "endTime": "2026-10-16T17:24:08.911Z"
+}

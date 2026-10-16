@@ -1,0 +1,15 @@
+providers:
+  zai-bridge:
+    baseUrl: http://127.0.0.1:3031/v1
+    api: openai-completions
+    apiKey: dummy-bridge-key
+    models:
+      - id: kimi-k2.5
+        contextWindow: 131072
+        maxTokens: 16384
+      - id: qwen3.7-plus
+        contextWindow: 131072
+        maxTokens: 16384
+      - id: qwen3.6-plus
+        contextWindow: 131072
+        maxTokens: 16384

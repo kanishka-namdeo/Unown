@@ -675,6 +675,19 @@ function BenchmarksSection() {
             <p className="mt-1 font-mono text-[11px] text-zinc-500">
               % of edits applied exactly as intended · 3 models × 106 fixtures
             </p>
+            <div className="mt-3 space-y-1.5 rounded-lg border border-zinc-800/80 bg-zinc-900/50 p-3">
+              <p className="font-mono text-[11px] leading-relaxed text-zinc-400">
+                <span className="text-emerald-400">head-to-head</span> vs the
+                oh-my-pi agent itself (edit format pinned, identical 106
+                fixtures): task success 98.8% vs 97.8% — parity within noise —
+                at <span className="text-emerald-400">1.7–3.1× fewer input
+                tokens</span> per task.
+              </p>
+              <p className="font-mono text-[11px] leading-relaxed text-zinc-500">
+                omp&apos;s default hashline edits: 71–80% edit-call success;
+                replace-style edits (both agents): 96–100%.
+              </p>
+            </div>
           </TrackCard>
 
           <TrackCard

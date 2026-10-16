@@ -12,7 +12,7 @@ Methodology and fairness rules: see `README.md`. Deep-dives per track: the
 | Track | What it measures | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus |
 |---|---|---|---|---|
 | [pi-repo test suite](#1-pi-repo-test-suite) | vendored monorepo health | 4,585 tests green (model-independent) | — | — |
-| [oh-my-pi edit benchmark](edit-bench/results/RESULTS.md) | surgical edit accuracy, 106 fixtures | **98.1%** | **99.1%** | **99.1%** |
+| [oh-my-pi edit benchmark](edit-bench/results/RESULTS.md) | surgical edit accuracy, 106 fixtures; fair A/B vs omp's own agent (variant pinned): parity 98.8% vs 97.8%, 1.7–3.1× fewer input tokens | **98.1%** | **99.1%** | **99.1%** |
 | [Aider polyglot subset](polyglot/results/RESULTS.md) | real coding accuracy, 50 hardest Exercism exercises, 6 languages, 2 attempts | 94% @1 / **98% @2** | 96% @1 / 98% @2 | 96% @1 / **100% @2** |
 | [pi vitest-evals](evals/results/summary.json) | agent-loop behavior, pi's own eval suite | 3/3 green | 3/3 green | 3/3 green |
 | [Self-improvement lift](selfimprove/results/RESULTS.md) | repeat-task efficiency, cold vs warm memory | +21.8% in / **−35.1% time** | +23.2% in / +4.2% time | **−23.7% in** / −8.0% time |
@@ -33,10 +33,18 @@ ship.
 Unown agent core on oh-my-pi's own byte-exact edit benchmark:
 **kimi 104/106 (98.1%) · qwen3.7 105/106 (99.1%) · qwen3.6 105/106 (99.1%)**,
 edit-call success 95.7–99.1%, zero timeouts. First published numbers for any
-agent on this benchmark other than omp's own smoke runs (5/5); Unown's
-pi-native `replace` edit variant also beats omp's default `hashline` on the
-same 5-task smoke set with ~4× fewer prompt tokens. Full breakdown +
-failure analysis per fixture: `edit-bench/results/RESULTS.md`.
+agent on this benchmark other than omp's own smoke runs (5/5).
+
+**Fair A/B vs the omp agent itself (edit variant pinned to `replace`, full
+106, identical fixtures/bridge/knobs):** task-success parity within noise —
+Unown 314/318 (98.8%) vs omp 311/318 (97.8%); the one meaningful gap is
+qwen3.6 (Unown 105 vs omp 101). Unown's stack uses **1.7–3.1× fewer input
+tokens per task**; omp's default `hashline` edit format drops to 71–80%
+edit-call success (vs 95.7–100% for replace on both agents) and ~1.8× more
+input tokens than its own replace runs. `multi-composite-multi-edit-007`
+fails for both qwen models on both agents — a model-level trap, not an agent
+defect. Full tables + protocol deltas + receipts:
+`edit-bench/results/RESULTS.md` (§ Fair A/B).
 
 ## 3. Aider polyglot subset (50 exercises, 6 languages)
 
