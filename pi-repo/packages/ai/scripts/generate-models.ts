@@ -1069,12 +1069,32 @@ async function fetchNvidiaNimModelIds(): Promise<Map<string, string>> {
         }
 }
 
+// Optional override for the OpenRouter catalog source (e.g. a pinned snapshot for
+// reproducible generation). Accepts an http(s):// URL or a local file path / file:// URL.
+// When unset, the live https://openrouter.ai/api/v1/models endpoint is used.
+const OPENROUTER_MODELS_URL = process.env.OPENROUTER_MODELS_URL;
+
+async function loadOpenRouterCatalog(): Promise<{ data?: OpenRouterModelListItem[] }> {
+        if (OPENROUTER_MODELS_URL) {
+                if (/^https?:\/\//.test(OPENROUTER_MODELS_URL)) {
+                        console.log(`Fetching models from OpenRouter API at ${OPENROUTER_MODELS_URL}...`);
+                        const response = await fetch(OPENROUTER_MODELS_URL);
+                        if (!response.ok) throw new Error(`OpenRouter API at ${OPENROUTER_MODELS_URL} returned ${response.status}`);
+                        return (await response.json()) as { data?: OpenRouterModelListItem[] };
+                }
+                const filePath = OPENROUTER_MODELS_URL.startsWith("file://") ? fileURLToPath(OPENROUTER_MODELS_URL) : OPENROUTER_MODELS_URL;
+                console.log(`Reading models from OpenRouter snapshot at ${filePath}...`);
+                return JSON.parse(readFileSync(filePath, "utf-8")) as { data?: OpenRouterModelListItem[] };
+        }
+        console.log("Fetching models from OpenRouter API...");
+        const response = await fetch("https://openrouter.ai/api/v1/models");
+        if (!response.ok) throw new Error(`OpenRouter API returned ${response.status}`);
+        return (await response.json()) as { data?: OpenRouterModelListItem[] };
+}
+
 async function fetchOpenRouterModels(): Promise<Model<any>[]> {
         try {
-                console.log("Fetching models from OpenRouter API...");
-                const response = await fetch("https://openrouter.ai/api/v1/models");
-                if (!response.ok) throw new Error(`OpenRouter API returned ${response.status}`);
-                const data = (await response.json()) as { data?: OpenRouterModelListItem[] };
+                const data = await loadOpenRouterCatalog();
 
                 const models: Model<any>[] = [];
 
@@ -1425,12 +1445,32 @@ function processFireworksModels(provider: ModelsDevProvider | undefined): Model<
         return models;
 }
 
+// Optional override for the models.dev catalog source (e.g. a pinned snapshot for
+// reproducible generation). Accepts an http(s):// URL or a local file path / file:// URL.
+// When unset, the live https://models.dev/api.json endpoint is used.
+const MODELS_DEV_API_URL = process.env.MODELS_DEV_API_URL;
+
+async function loadModelsDevCatalog(): Promise<ModelsDevCatalog> {
+        if (MODELS_DEV_API_URL) {
+                if (/^https?:\/\//.test(MODELS_DEV_API_URL)) {
+                        console.log(`Fetching models from models.dev API at ${MODELS_DEV_API_URL}...`);
+                        const response = await fetch(MODELS_DEV_API_URL);
+                        if (!response.ok) throw new Error(`models.dev API at ${MODELS_DEV_API_URL} returned ${response.status}`);
+                        return (await response.json()) as ModelsDevCatalog;
+                }
+                const filePath = MODELS_DEV_API_URL.startsWith("file://") ? fileURLToPath(MODELS_DEV_API_URL) : MODELS_DEV_API_URL;
+                console.log(`Reading models from models.dev snapshot at ${filePath}...`);
+                return JSON.parse(readFileSync(filePath, "utf-8")) as ModelsDevCatalog;
+        }
+        console.log("Fetching models from models.dev API...");
+        const response = await fetch("https://models.dev/api.json");
+        if (!response.ok) throw new Error(`models.dev API returned ${response.status}`);
+        return (await response.json()) as ModelsDevCatalog;
+}
+
 async function loadModelsDevData(): Promise<Model<any>[]> {
         try {
-                console.log("Fetching models from models.dev API...");
-                const response = await fetch("https://models.dev/api.json");
-                if (!response.ok) throw new Error(`models.dev API returned ${response.status}`);
-                const data = (await response.json()) as ModelsDevCatalog;
+                const data = await loadModelsDevCatalog();
 
                 const models: Model<any>[] = [];
                 const nvidiaNimModelIds = data.nvidia?.models ? await fetchNvidiaNimModelIds() : new Map<string, string>();
