@@ -99,7 +99,7 @@ The learning path has three moving parts — capture, delivery, dreaming — and
 
 1. **Capture**: exit notes only fire on a real quit (`/quit`, Ctrl+C, Ctrl+D), and only when the session did something; `/new`-style reloads keep the session alive and do not count. Mid-session notes via the `note` tool or `/note` are the reliable path.
 2. **Delivery**: check `~/.unown/notes/outbox/` — a growing pile means the engine is down (or `UNOWN_ENGINE_URL` points at the wrong host). `unown note "test"` tells you which way it went.
-3. **Dreaming**: the engine runs `auto-dream` every 10 minutes and `note-sync` every 5. Terminal notes are dreamed per-project whenever any are pending; the engine's own dream needs at least 3 undreamed benchmark notes. Watch the [Dreams tab](http://localhost:3000) — a dream row with status `error` carries the reason.
+3. **Dreaming**: the engine runs `auto-dream` every 10 minutes and `note-sync` every 5. Terminal notes are dreamed per-project whenever any are pending; the engine's own dream needs at least 3 undreamed benchmark notes. Watch the [Dreams tab](http://localhost:3000/dashboard) — a dream row with status `error` carries the reason.
 
 ### The CLI itself
 
@@ -128,7 +128,7 @@ One command per domain, fastest first:
 
 - **Chat path**: `unown -p "reply with ok"` — a one-shot session that exercises the full chain (pre-flight, models.json, bridge, upstream) and exits non-zero with a hint when anything is broken.
 - **Full doctor pass**: `unown doctor` — expect `✓ unown is ready in <dir>` or, with ⚠ items only, `✓ unown is ready to chat in <dir>`.
-- **Learning path**: `unown note "diagnostic test note"` (delivers or queues, and tells you which), then watch the [Dreams tab](http://localhost:3000) — the note should appear as pending and disappear into the next dream. There is no note deletion — the diagnostic note is real and will be consolidated like any other, so keep it boring ("diagnostic test note") or skip this check if your project memory is precious.
+- **Learning path**: `unown note "diagnostic test note"` (delivers or queues, and tells you which), then watch the [Dreams tab](http://localhost:3000/dashboard) — the note should appear as pending and disappear into the next dream. There is no note deletion — the diagnostic note is real and will be consolidated like any other, so keep it boring ("diagnostic test note") or skip this check if your project memory is precious.
 
 ## Resetting cleanly
 

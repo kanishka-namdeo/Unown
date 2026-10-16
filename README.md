@@ -24,7 +24,7 @@ Use it two ways:
   <a href="LICENSE"><img src="https://img.shields.io/badge/MIT-License-3DA639?logo=opensourceinitiative" alt="MIT License"></a>
 </p>
 
-**[Quickstart](#quickstart)** · **[Documentation](#documentation)** · **[Dashboard tour](#mission-control)** · **[Architecture](#architecture)** · **[The learning loop](#the-learning-loop)** · **[Configuration](#configuration)** · **[Security](#security-model)** · **[What it learned](#what-a-learning-session-looks-like)**
+**[Quickstart](#quickstart)** · **[Documentation](#documentation)** · **[Landing page](#landing-page)** · **[Dashboard tour](#mission-control)** · **[Architecture](#architecture)** · **[The learning loop](#the-learning-loop)** · **[Configuration](#configuration)** · **[Security](#security-model)** · **[What it learned](#what-a-learning-session-looks-like)**
 
 ![unown dashboard tour — Overview, Learning Lab and Memory tabs](.github/assets/tour.gif)
 
@@ -165,7 +165,7 @@ Boots three services:
 |---------|--------------|--------------|
 | llm-bridge | 3031 | `GET /health` |
 | self-learning engine | 3030 | `GET /api/overview` |
-| dashboard | 3000 | `http://localhost:3000` |
+| dashboard | 3000 | `http://localhost:3000/dashboard` |
 
 Logs land in `.run/*.log`; stop with `bun run agent:stop`. The launcher reads the bridge's `/health` (upstream key set? upstream answering?) and warns loudly instead of letting chats fail with a bare 401 later.
 
@@ -215,7 +215,7 @@ A shim (not `bun install -g .`) is the supported global-install path: it keeps t
 
 ### 5. Watch it learn
 
-Open **http://localhost:3000**:
+Open **http://localhost:3000/dashboard**:
 
 - **Overview** — pass rate, shipped improvements, dream count, memory version, hook decisions, token usage.
 - **Learning Lab** — every harness cycle: baseline run → failure diagnosis → proposed memory patch → candidate run → ship/reject, with full transcripts.
@@ -226,6 +226,16 @@ Open **http://localhost:3000**:
 - **Router** — background jobs: enable/disable, trigger manually, see run counts and next-fire times.
 
 The engine seeds itself on first boot: default memory tiers, five benchmark tasks (`fizzbuzz`, `impl-debounce`, `map-limit`, `drop-right`, `fix-csv-parser`), and the router jobs. Leave it running and the `harness-cycle` job will keep mining failures and shipping memory improvements on its own.
+
+---
+
+## Landing page
+
+`bun run agent:start` (or `bun run dev`) serves a **marketing landing page at `/`** for a broader audience — the hero terminal demo, the Work → Learn → Dream loop, the six mechanisms, live dashboard captures, the model-agnostic strip and an FAQ — with **mission control at `/dashboard`**:
+
+![unown landing page — the self-improving terminal agent](public/landing/landing-hero.png)
+
+The page's design rationale (patterns distilled from Claude Code, Cursor, Devin, Cline, Warp and friends) lives in [`docs/landing-research.md`](docs/landing-research.md).
 
 ---
 

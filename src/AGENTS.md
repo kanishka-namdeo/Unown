@@ -30,7 +30,7 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 ## Verification
 
 - `bun run lint` (eslint + eslint-config-next) — must be clean; CI (`.github/workflows/ci.yml`) enforces it on push/PR.
-- Dashboard responds 200 on `http://localhost:3000` with live KPIs and no console errors when the engine is up.
+- Dashboard responds 200 on `http://localhost:3000/dashboard` with live KPIs and no console errors when the engine is up.
 
 ## Child DOX Index
 

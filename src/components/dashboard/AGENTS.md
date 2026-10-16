@@ -25,7 +25,7 @@ The tab surfaces of the mission-control dashboard — the user-facing window ont
 ## Verification
 
 - `bun run lint` from the repo root.
-- Browser check on `http://localhost:3000` with the engine running: tab switches, SSE updates arrive, no console errors.
+- Browser check on `http://localhost:3000/dashboard` with the engine running: tab switches, SSE updates arrive, no console errors.
 
 ## Child DOX Index
 

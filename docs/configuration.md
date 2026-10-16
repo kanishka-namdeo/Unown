@@ -100,7 +100,7 @@ Three services run, each on its own port, each reading its own slice of the envi
 |---------|--------------|--------------|-------|
 | llm-bridge | `3031` (`BRIDGE_PORT`) | `GET /health` | all `BRIDGE_*` |
 | self-learning engine | `3030` (`PI_AGENT_PORT`) | `GET /api/overview` | `PI_*`, `UNOWN_OS_SANDBOX` / `UNOWN_SANDBOX_NET` / `UNOWN_BWRAP`, `PI_DREAM_GATE` |
-| dashboard | `3000` | `http://localhost:3000` | `NEXT_PUBLIC_AGENT_API_BASE`, `DATABASE_URL` |
+| dashboard | `3000` | `http://localhost:3000/dashboard` | `NEXT_PUBLIC_AGENT_API_BASE`, `DATABASE_URL` |
 
 The `unown` CLI (a fourth process, running wherever you are) reads `UNOWN_HOME`, `UNOWN_ENGINE_URL`, `UNOWN_STRICT_HOOKS` and `UNOWN_NO_PREFLIGHT` — and its durable model config from `~/.unown/agent/`.
 

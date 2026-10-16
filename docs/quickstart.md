@@ -76,7 +76,7 @@ bun run agent:start
 |---|---|---|
 | llm-bridge | 3031 | `curl localhost:3031/health` |
 | self-learning engine | 3030 | `curl localhost:3030/api/overview` |
-| dashboard | 3000 | http://localhost:3000 |
+| dashboard | 3000 | http://localhost:3000/dashboard |
 
 If the upstream key is missing or the upstream is unhealthy, the launcher prints a loud warning instead of letting chats fail with a bare 401 later.
 

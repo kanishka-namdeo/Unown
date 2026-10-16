@@ -67,7 +67,7 @@ done
 
 echo ""
 echo "✓ Unown is up."
-echo "    Dashboard      http://localhost:3000"
+echo "    Dashboard      http://localhost:3000/dashboard"
 echo "    Engine API     http://127.0.0.1:${PI_AGENT_PORT:-3030}/api/overview"
 echo "    LLM bridge     http://127.0.0.1:${BRIDGE_PORT:-3031}/health"
 echo ""
