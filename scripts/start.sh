@@ -31,6 +31,18 @@ start_service() { # <name> <cwd> <command…>
         echo "▶ $name started (pid $(cat ".run/$name.pid"))"
 }
 
+# zai-upstream shim: a local OpenAI-compatible endpoint backed by the
+# sandbox's z-ai-web-dev-sdk gateway. Only started when the bridge is pointed
+# at it (BRIDGE_UPSTREAM_URL=http://127.0.0.1:3032/v1) — a real provider
+# (Dashscope, OpenAI, ...) needs no shim.
+if [[ "${BRIDGE_UPSTREAM_URL:-}" == *"127.0.0.1:3032"* ]]; then
+        if curl -sf "http://127.0.0.1:${ZAI_UPSTREAM_PORT:-3032}/v1/models" >/dev/null 2>&1; then
+                echo "• zai-upstream already healthy on :${ZAI_UPSTREAM_PORT:-3032} — reusing it"
+        else
+                start_service zai-upstream mini-services/zai-upstream bun index.ts
+        fi
+fi
+
 # The bridge may already be healthy (started by another supervisor / earlier
 # run) — reuse it instead of dying with EADDRINUSE.
 if curl -sf "http://127.0.0.1:${BRIDGE_PORT:-3031}/health" >/dev/null 2>&1; then

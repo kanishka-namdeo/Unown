@@ -24,6 +24,7 @@ stop_service() { # <name>
 stop_service dashboard
 stop_service engine
 stop_service bridge
+stop_service zai-upstream
 
 # Fallback: catch strays spawned by `next dev` (pipelines, tee'd logs) or bun
 # hot reloads.
@@ -35,7 +36,7 @@ pkill -f "tee dev.log" 2>/dev/null && echo "▶ stray dev log tee stopped" || tr
 for pid in $(pgrep -f "bun.*index\.ts" 2>/dev/null); do
         cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
         case "$cwd" in
-        */mini-services/agent-service | */mini-services/llm-bridge)
+        */mini-services/agent-service | */mini-services/llm-bridge | */mini-services/zai-upstream)
                 kill "$pid" 2>/dev/null && echo "▶ stray bun service stopped (pid $pid, cwd $cwd)"
                 ;;
         esac
