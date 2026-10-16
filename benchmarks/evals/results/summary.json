@@ -1,0 +1,11 @@
+{
+  "suite": "pi vitest-evals (vendored pi-repo/packages/evals) — smoke + extension authoring, 2 harness variants",
+  "command": "cd pi-repo && PI_CODING_AGENT_DIR=<agent-dir> npm run eval -- --provider zai-bridge --model <model>",
+  "capturedAt": "2026-10-16T09:30:00Z",
+  "results": {
+    "kimi-k2.5":   { "testsPassed": "3/3", "extensionJudgeScore": 0.0, "note": "judge scores 0.0 on both prompt variants for ALL models — a hard eval (create+reload+use a pi extension in-session); suite itself green" },
+    "qwen3.7-plus": { "testsPassed": "3/3", "extensionJudgeScore": 0.0 },
+    "qwen3.6-plus": { "testsPassed": "3/3", "extensionJudgeScore": 0.0 }
+  },
+  "notable": "A/B comparison output: default system prompt needs ~10x fewer tokens than the docs-less variant at equal judge score (kimi: 28.6k vs 269.7k tokens)"
+}

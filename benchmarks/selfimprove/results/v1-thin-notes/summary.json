@@ -1,0 +1,24 @@
+{
+	"model": "kimi-k2.5",
+	"label": "repeat-task efficiency (memory doing its job) — n=10, single run, honest numbers",
+	"cold": {
+		"tasks": 10,
+		"passed": 10,
+		"input": 34714,
+		"output": 6651,
+		"cacheRead": 185344,
+		"avgDurationS": 64
+	},
+	"warm": {
+		"tasks": 10,
+		"passed": 10,
+		"input": 25838,
+		"output": 6982,
+		"cacheRead": 217856,
+		"avgDurationS": 34
+	},
+	"generatedAt": "2026-10-16T10:02:32.816Z",
+	"passRateLiftPp": 0,
+	"inputTokenDelta": -8876,
+	"outputTokenDelta": 331
+}
