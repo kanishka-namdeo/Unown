@@ -1033,14 +1033,14 @@ function buildSummary(model, records) {
         tokens: {
             promptTotal: sum(promptToks), completionTotal: sum(completionToks),
             perTask: {
-                prompt: { mean: records.length ? sum(promptToks) / records.length : 0, median: percentile(promptToks, 50), p1: percentile(promptToks, 1), p99: percentile(promptToks, 99) },
-                completion: { mean: records.length ? sum(completionToks) / records.length : 0, median: percentile(completionToks, 50), p1: percentile(completionToks, 1), p99: percentile(completionToks, 99) },
-                total: { mean: records.length ? sum(totalToks) / records.length : 0, median: percentile(totalToks, 50), p1: percentile(totalToks, 1), p99: percentile(totalToks, 99) },
+                prompt: { mean: best.length ? sum(promptToks) / best.length : 0, median: percentile(promptToks, 50), p1: percentile(promptToks, 1), p99: percentile(promptToks, 99) },
+                completion: { mean: best.length ? sum(completionToks) / best.length : 0, median: percentile(completionToks, 50), p1: percentile(completionToks, 1), p99: percentile(completionToks, 99) },
+                total: { mean: best.length ? sum(totalToks) / best.length : 0, median: percentile(totalToks, 50), p1: percentile(totalToks, 1), p99: percentile(totalToks, 99) },
             },
         },
         duration: {
             totalMs: sum(durations),
-            meanMs: records.length ? sum(durations) / records.length : 0,
+            meanMs: best.length ? sum(durations) / best.length : 0,
             medianMs: percentile(durations, 50),
             p1Ms: percentile(durations, 1),
             p99Ms: percentile(durations, 99),
