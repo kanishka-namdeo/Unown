@@ -12,6 +12,7 @@
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
+    "test:unit": "bun test src",
     "unown": "bun bin/unown",
     "agent:install": "bash scripts/install.sh",
     "agent:start": "bash scripts/start.sh",
