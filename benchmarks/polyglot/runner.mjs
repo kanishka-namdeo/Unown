@@ -31,12 +31,15 @@
 import {
         appendFileSync,
         chmodSync,
+        closeSync,
         copyFileSync,
         cpSync,
         existsSync,
         mkdirSync,
+        openSync,
         readFileSync,
         readdirSync,
+        readSync,
         renameSync,
         rmSync,
         statSync,
@@ -258,19 +261,36 @@ async function scoreCpp(dir) {
                 ["-c", "cmake -B build -DEXERCISM_RUN_ALL_TESTS=1 >build-cmake.log 2>&1 && cmake --build build >>build-cmake.log 2>&1"],
                 { cwd: dir, timeoutMs: 300_000, env: { ...process.env, PATH: TOOL_PATH } },
         );
-        if (build.code !== 0) return { passed: false, output: `build failed:\n${build.out}${build.err}` };
+        if (build.code !== 0) {
+                // Surface the REAL compiler/cmake errors — they live in the log,
+                // and attempt-2 feedback without them is useless.
+                let logTail = "";
+                try {
+                        logTail = readFileSync(join(dir, "build-cmake.log"), "utf8").trimEnd().split("\n").slice(-40).join("\n");
+                } catch {}
+                return { passed: false, output: `build failed:\n${logTail || build.out + build.err}` };
+        }
         const buildDir = join(dir, "build");
+        // Only actual test binaries: cmake litters build/ with CMakeCache.txt,
+        // Makefile, *.cmake — plain files that chmod +x happily accepts, and
+        // spawning them makes the kernel fall back to /bin/sh (ENOEXEC path),
+        // "running" the cache as a shell script (exit 127, garbage output)
+        // before the real test binary ever executes. ELF-magic check only.
         const binaries = readdirSync(buildDir, { withFileTypes: true })
-                .filter((e) => e.isFile() && !e.name.startsWith("cmake_install") && !e.name.endsWith(".o") && !/\.(a|so)$/.test(e.name))
+                .filter((e) => e.isFile())
                 .map((e) => e.name)
                 .filter((n) => {
                         try {
-                                chmodSync(join(buildDir, n), 0o755);
-                                return true;
+                                const fd = openSync(join(buildDir, n), "r");
+                                const magic = Buffer.alloc(4);
+                                readSync(fd, magic, 0, 4, 0);
+                                closeSync(fd);
+                                return magic[0] === 0x7f && magic[1] === 0x45 && magic[2] === 0x4c && magic[3] === 0x46;
                         } catch {
                                 return false;
                         }
-                });
+                })
+                .sort();
         if (binaries.length === 0) return { passed: false, output: "no test binary produced" };
         let output = "";
         for (const bin of binaries) {
