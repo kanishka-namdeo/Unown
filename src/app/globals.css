@@ -41,6 +41,26 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Landing-page palette (warm dark). Declared here rather than in
+   * landing.css because Tailwind only resolves @theme in the CSS file that
+   * pulls in tailwindcss. Emits bg-canvas, bg-panel, bg-panel-2, bg-line,
+   * text-ink, text-dim, text-faint, text-glow, border-line and friends.
+   * The dashboard keeps the cool zinc tokens above: it is an application, and
+   * a tinted canvas reads as a mistake there. Only the marketing page at /
+   * opts in. Ten idle custom properties cost a few hundred bytes on the
+   * dashboard; a split build that silently dropped the palette would cost
+   * a lot more. */
+  --color-canvas: #0c0b0a;
+  --color-panel: #131211;
+  --color-panel-2: #1a1817;
+  --color-line: #272421;
+  --color-line-bright: #3b3733;
+  --color-ink: #f4f1ea;
+  --color-dim: #a8a29a;
+  --color-faint: #6d675f;
+  --color-glow: #34d399;
+  --color-glow-soft: #6ee7b7;
 }
 
 :root {

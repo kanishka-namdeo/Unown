@@ -1,0 +1,155 @@
+/*
+ * Landing page stylesheet — `/` only. Imported by `src/app/page.tsx`, so
+ * nothing here is loaded by `/dashboard`.
+ *
+ * The palette itself (bg-canvas, text-dim, text-glow, border-line …) lives in
+ * the `@theme` block in `globals.css`, because Tailwind only resolves `@theme`
+ * in the file that pulls in `tailwindcss`. What stays here is the hand-written
+ * layer that Tailwind cannot express, plus the scroll-linked motion.
+ *
+ * Two jobs remain:
+ *
+ *  1. The one serif, the grain texture, and the hairline rules.
+ *
+ *  2. Scroll-linked motion for the hero seal, implemented in CSS via
+ *     `animation-timeline: view()`. Chromium and Safari 26 animate it;
+ *     Firefox gets the finished state, which is a fine fallback because the
+ *     gate uses `@supports` with an `animation-range` check that filters
+ *     partial implementations. Never ship a hero that depends on JS to be
+ *     readable.
+ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* the one serif — attributed quotations only                       */
+/* ---------------------------------------------------------------- */
+
+/*
+ * Instrument Serif, loaded once in `layout.tsx`. Reserved for Pokédex entries
+ * and other text we did not write, so a reader can tell a quote from our own
+ * voice at a glance. Never used for body copy — it is a display face.
+ */
+.quote {
+  font-family: var(--font-quote), Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+/* ---------------------------------------------------------------- */
+/* grain                                                             */
+/* ---------------------------------------------------------------- */
+
+/*
+ * A 200px seamless fractal-noise tile, inlined as an SVG data URI so it costs
+ * ~300 bytes and makes no network request. `stitchTiles="stitch"` is what
+ * makes the tile seamless; a live full-screen `filter: url(#grain)` would jank
+ * on scroll, so we tile instead and blend it at very low opacity.
+ */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  background-repeat: repeat;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+/*
+ * Viewport-pinned variant for the page shell. An absolutely-positioned grain
+ * layer on a document this tall would mean a layer as tall as the page; fixed
+ * keeps the paint bounded to one screen no matter how long the page gets.
+ */
+.grain-fixed::after {
+  position: fixed;
+}
+
+/* ---------------------------------------------------------------- */
+/* hero seal — the letter spells the name as you scroll it           */
+/* ---------------------------------------------------------------- */
+
+/*
+ * Five forms, U N O W N. Each one's own draw animation is bound to its
+ * position in the hero's `view()` timeline, so the word assembles itself top
+ * to bottom as the hero crosses the viewport. Base state (no scroll support)
+ * is the finished word — the page must never read as broken, only less alive.
+ */
+.seal-form {
+  opacity: 0.25;
+}
+
+@supports ((animation-timeline: view()) and (animation-range: 0% 100%)) {
+  .seal-stage {
+    view-timeline-name: --seal;
+    view-timeline-axis: block;
+  }
+
+  .seal {
+    animation: seal-breathe 6s ease-in-out infinite;
+  }
+
+  .seal-form {
+    animation: seal-reveal linear both;
+    animation-timeline: --seal;
+    /* Spread the five reveals across the first 70% of the hero's traverse. */
+    animation-range: entry 8% entry 72%;
+  }
+
+  .seal-form:nth-of-type(2) { animation-range: entry 14% entry 62%; }
+  .seal-form:nth-of-type(3) { animation-range: entry 20% entry 52%; }
+  .seal-form:nth-of-type(4) { animation-range: entry 26% entry 42%; }
+  .seal-form:nth-of-type(5) { animation-range: entry 32% entry 32%; }
+}
+
+@keyframes seal-reveal {
+  from { opacity: 0.16; transform: translateY(10px) scale(0.965); }
+  to   { opacity: 1;    transform: none; }
+}
+
+@keyframes seal-breathe {
+  0%, 100% { transform: scale(1) rotate(-1.2deg); }
+  50%      { transform: scale(1.03) rotate(1.2deg); }
+}
+
+/* The eye halo drifts on its own so the seal never feels frozen. */
+.seal-halo {
+  animation: halo-drift 9s ease-in-out infinite;
+}
+
+@keyframes halo-drift {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.06); }
+}
+
+/* ---------------------------------------------------------------- */
+/* a hairline rule that reads as a scanline on the dark canvas        */
+/* ---------------------------------------------------------------- */
+
+.rule-hair {
+  background-image: linear-gradient(
+    to right,
+    transparent,
+    var(--color-line-bright) 18%,
+    var(--color-line-bright) 82%,
+    transparent
+  );
+  height: 1px;
+}
+
+/* Terminal scroll region keeps long lines from widening the page. */
+.term-lines {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-bright) transparent;
+}

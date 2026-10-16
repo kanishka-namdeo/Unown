@@ -1,0 +1,121 @@
+"use client";
+
+import * as React from "react";
+import { FadeUp, TerminalWindow, CopyButton, GITHUB_URL } from "./shell";
+
+const INSTALL = [
+  "git clone https://github.com/kanishka-namdeo/Unown.git",
+  "cd Unown",
+  "bun run agent:install     # deps + pi build + .env",
+  "unown setup               # connect any model",
+  "unown                     # first session — memory on",
+];
+
+const COMMANDS: [string, string][] = [
+  ["unown", "interactive session in the current project"],
+  ['unown "fix the failing tests"', "start with a prompt"],
+  ['unown -p "explain the build error"', "one-shot headless, pipes to less"],
+  ['unown --plan "add auth"', "read-only plan mode, approve before executing"],
+  ["unown setup", "provider wizard — or --provider/--api-key/--model"],
+  ["unown models", "configured models plus what the bridge serves"],
+  ["unown doctor", "endpoint, keys, upstream, memory — end to end"],
+  ["unown memory", "print the effective four-tier stack"],
+  ['unown note "flaky auth spec"', "hand AutoDream a note directly"],
+];
+
+const PREREQS: [string, string][] = [
+  ["bun", "≥ 1.2"],
+  ["an endpoint", "any OpenAI-compatible base URL + key"],
+  ["OS", "Linux or macOS — bubblewrap sandboxing is Linux-only"],
+];
+
+export function QuickstartSection() {
+  return (
+    <section id="quickstart" className="scroll-mt-16 py-20 sm:py-24">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
+          <FadeUp>
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
+              Quickstart
+            </p>
+            <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+              Five minutes to a smarter terminal.
+            </h2>
+            <p className="mt-4 max-w-md text-pretty leading-relaxed text-dim">
+              It is a clone-and-run tool. There is no account, no cloud, and no key that
+              has to be pasted anywhere except your own{" "}
+              <span className="font-mono text-ink">.env</span>.
+            </p>
+
+            <div className="mt-8">
+              <TerminalWindow
+                title="unown — install"
+                actions={<CopyButton text={INSTALL.join("\n")} label="Copy the install commands" />}
+              >
+                <pre className="term-lines overflow-x-auto p-4 font-mono text-[12px] leading-relaxed sm:p-5">
+                  {INSTALL.map((line, i) => {
+                    const hash = line.indexOf("#");
+                    const cmd = hash === -1 ? line : line.slice(0, hash);
+                    const comment = hash === -1 ? "" : line.slice(hash);
+                    return (
+                      <div key={i} className="whitespace-pre">
+                        <span className="text-ink">{cmd}</span>
+                        {comment ? <span className="text-faint">{comment}</span> : null}
+                      </div>
+                    );
+                  })}
+                </pre>
+              </TerminalWindow>
+            </div>
+
+            <dl className="mt-6 grid gap-x-8 gap-y-2 sm:grid-cols-[auto_1fr]">
+              {PREREQS.map(([k, v]) => (
+                <React.Fragment key={k}>
+                  <dt className="font-mono text-[11px] text-faint">{k}</dt>
+                  <dd className="text-[12.5px] text-dim">{v}</dd>
+                </React.Fragment>
+              ))}
+            </dl>
+          </FadeUp>
+
+          <FadeUp delay={0.08}>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-glow">
+              The whole command surface
+            </p>
+            <ul className="mt-5 border-t border-line">
+              {COMMANDS.map(([cmd, what]) => (
+                <li
+                  key={cmd}
+                  className="flex flex-col gap-1 border-b border-line py-3 sm:flex-row sm:items-baseline sm:gap-4"
+                >
+                  <code className="shrink-0 font-mono text-[11.5px] text-ink sm:w-64">{cmd}</code>
+                  <span className="text-[12.5px] leading-relaxed text-dim">{what}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-5 text-[12.5px] leading-relaxed text-faint">
+              Every session also ships session tools:{" "}
+              <code className="font-mono text-dim">todo</code>,{" "}
+              <code className="font-mono text-dim">note</code>,{" "}
+              <code className="font-mono text-dim">task</code> (subagents with a fresh context) and{" "}
+              <code className="font-mono text-dim">fetch_url</code>. Slash commands:{" "}
+              <code className="font-mono text-dim">/todos</code>,{" "}
+              <code className="font-mono text-dim">/note</code>,{" "}
+              <code className="font-mono text-dim">/plan</code>,{" "}
+              <code className="font-mono text-dim">/agents</code>,{" "}
+              <code className="font-mono text-dim">/learning</code>.
+            </p>
+            <a
+              href={`${GITHUB_URL}/tree/main/docs`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-4 inline-block font-mono text-[11.5px] text-glow underline-offset-4 hover:underline"
+            >
+              the full usage reference
+            </a>
+          </FadeUp>
+        </div>
+      </div>
+    </section>
+  );
+}
