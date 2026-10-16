@@ -6,7 +6,7 @@ User-facing usage documentation for the `unown` terminal agent and the self-lear
 
 ## Ownership
 
-- Owns: `quickstart.md`, `providers.md`, `usage.md`, `subagents.md`, `skills.md`, `memory.md`, `configuration.md`, `troubleshooting.md`.
+- Owns: `quickstart.md`, `providers.md`, `usage.md`, `subagents.md`, `skills.md`, `memory.md`, `configuration.md`, `troubleshooting.md`, `benchmark-research.md`, `testing-strategy.md`.
 
 ## Local Contracts
 
