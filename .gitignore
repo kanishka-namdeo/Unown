@@ -63,3 +63,6 @@ next-env.d.ts
 
 # terminal-agent runtime state (unown setup)
 /agent/
+
+# extracted edit-benchmark fixtures (byproduct of the committed tarball)
+benchmarks/edit-bench/fixtures/

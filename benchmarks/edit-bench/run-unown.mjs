@@ -41,7 +41,7 @@ import * as prettier from "prettier";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PI_DIST = "/home/z/my-project/Unown/pi-repo/packages/coding-agent/dist/index.js";
-const RESULTS_DIR = path.join(__dirname, "unown-results");
+const RESULTS_DIR = path.join(__dirname, "unown-results"); // default; overridable via --results-dir
 const DEFAULT_AGENT_DIR = path.join(__dirname, "unown-eval-agent");
 const AGENT_DIR = process.env.PI_CODING_AGENT_DIR || DEFAULT_AGENT_DIR;
 const PROVIDER = "zai-bridge";
@@ -76,6 +76,8 @@ const config = {
     fixtures: args.fixtures || path.join(__dirname, "fixtures"),
     tarball: path.join(__dirname, "packages", "typescript-edit-benchmark", "fixtures.tar.gz"),
     concurrency: Number(args.concurrency || 4),
+    runs: Math.max(1, Number(args.runs || 1)),
+    resultsDir: args.resultsDir || path.join(__dirname, "unown-results"),
     timeoutMs: Number(args.timeout || 300000),
     connectionTimeoutMs: Number(args.connectionTimeout || 60000),
     maxTurns: Number(args.maxTurns || 30),
@@ -758,13 +760,14 @@ async function writeConversationDump(dumpDir, taskId, session) {
 // ---------------------------------------------------------------------------
 // Single task run (port of runSingleTask)
 // ---------------------------------------------------------------------------
-async function runSingleTask(task, modelSlug, runDirs) {
+async function runSingleTask(task, modelSlug, runDirs, runIndex = 0) {
     const startedAt = Date.now();
-    const logFile = path.join(runDirs.events, `${task.id}.jsonl`);
+    const runTag = runIndex > 0 ? `.r${runIndex}` : "";
+    const logFile = path.join(runDirs.events, `${task.id}${runTag}.jsonl`);
     const logEvent = (event) => fsp.appendFile(logFile, `${JSON.stringify(event)}\n`);
     const log = (obj) => fsp.appendFile(logFile, `${JSON.stringify(obj)}\n`);
 
-    const workDir = path.join(runDirs.workdirs, task.id);
+    const workDir = path.join(runDirs.workdirs, `${task.id}${runTag}`);
     await fsp.rm(workDir, { recursive: true, force: true });
     await fsp.mkdir(workDir, { recursive: true });
     // copy input/ -> workDir
@@ -911,7 +914,7 @@ async function runSingleTask(task, modelSlug, runDirs) {
                 ? `Verification failed: ${error}${diff ? `\n\nDiff (expected vs actual):\n\n\`\`\`diff\n${diff}\n\`\`\`` : ""}${suffix}`
                 : `Previous attempt failed.${suffix}`;
         }
-        await writeConversationDump(path.join(runDirs.dumps, modelSlug), task.id, client);
+        await writeConversationDump(path.join(runDirs.dumps, modelSlug), `${task.id}${runTag}`, client);
     } catch (err) {
         error = err instanceof Error ? err.message : String(err);
         await log({ type: "error", error }).catch(() => { });
@@ -976,18 +979,38 @@ function percentile(sortedAscending, p) {
 const sum = (xs) => xs.reduce((a, b) => a + b, 0);
 
 function buildSummary(model, records) {
-    const passed = records.filter((r) => r.success);
+    // Group by task; pick the "best" run per task (omp metaharness semantics:
+    // success > fewer total tokens > earlier run). With 1 run per task this is
+    // the identity — n=1 summaries are byte-compatible with the original format.
+    const byTask = new Map();
+    for (const r of records) {
+        if (!byTask.has(r.task)) byTask.set(r.task, []);
+        byTask.get(r.task).push(r);
+    }
+    const best = [...byTask.values()].map((rs) => rs.slice().sort((a, b) => {
+        if (a.success !== b.success) return a.success ? -1 : 1;
+        const at = a.tokens?.total ?? 0, bt = b.tokens?.total ?? 0;
+        if (at !== bt) return at - bt;
+        return (a.run ?? 0) - (b.run ?? 0);
+    })[0]);
+    const runsPerTask = Math.max(...[...byTask.values()].map((rs) => rs.length));
+    const anyOfN = [...byTask.values()].filter((rs) => rs.some((r) => r.success)).length;
+    const allRunsPassed = records.filter((r) => r.success).length;
+    const allRunsTotal = records.length;
+    const flakyTasks = [...byTask.entries()].filter(([, rs]) => rs.length > 1 && rs.some((r) => r.success) && rs.some((r) => !r.success)).map(([t]) => t);
+
+    const passed = best.filter((r) => r.success);
     const editCalls = sum(records.map((r) => r.editCalls));
     const editSuccesses = sum(records.map((r) => r.editSuccesses));
-    const promptToks = records.map((r) => r.tokens.prompt).sort((a, b) => a - b);
-    const completionToks = records.map((r) => r.tokens.completion).sort((a, b) => a - b);
-    const totalToks = records.map((r) => r.tokens.total).sort((a, b) => a - b);
-    const durations = records.map((r) => r.durationMs).sort((a, b) => a - b);
+    const promptToks = best.map((r) => r.tokens.prompt).sort((a, b) => a - b);
+    const completionToks = best.map((r) => r.tokens.completion).sort((a, b) => a - b);
+    const totalToks = best.map((r) => r.tokens.total).sort((a, b) => a - b);
+    const durations = best.map((r) => r.durationMs).sort((a, b) => a - b);
 
     const byTier = {};
     const byCategory = {};
     const byMutation = {};
-    for (const r of records) {
+    for (const r of best) {
         (byTier[r.tier] ??= { total: 0, passed: 0 }); byTier[r.tier].total++; if (r.success) byTier[r.tier].passed++;
         (byCategory[r.mutationCategory] ??= { total: 0, passed: 0 }); byCategory[r.mutationCategory].total++; if (r.success) byCategory[r.mutationCategory].passed++;
         (byMutation[r.mutationType] ??= { total: 0, passed: 0 }); byMutation[r.mutationType].total++; if (r.success) byMutation[r.mutationType].passed++;
@@ -1022,12 +1045,19 @@ function buildSummary(model, records) {
             p1Ms: percentile(durations, 1),
             p99Ms: percentile(durations, 99),
         },
-        mutationIntentMatchRate: (() => { const withIntent = records.filter((r) => r.mutationIntentMatched !== null); return withIntent.length ? withIntent.filter((r) => r.mutationIntentMatched).length / withIntent.length : null; })(),
-        earlyStops: records.filter((r) => r.earlyStopped).length,
-        indentScoreAvg: records.length ? sum(records.map((r) => r.indentScore)) / records.length : 0,
+        mutationIntentMatchRate: (() => { const withIntent = best.filter((r) => r.mutationIntentMatched !== null); return withIntent.length ? withIntent.filter((r) => r.mutationIntentMatched).length / withIntent.length : null; })(),
+        earlyStops: best.filter((r) => r.earlyStopped).length,
+        indentScoreAvg: best.length ? sum(best.map((r) => r.indentScore)) / best.length : 0,
         byTier, byCategory, byMutation,
         editFailureCategories: failureCategories,
-        failedTasks: records.filter((r) => !r.success).map((r) => ({ task: r.task, tier: r.tier, mutationType: r.mutationType, error: r.error, editCalls: r.editCalls, retries: r.retries })),
+        failedTasks: best.filter((r) => !r.success).map((r) => ({ task: r.task, tier: r.tier, mutationType: r.mutationType, error: r.error, editCalls: r.editCalls, retries: r.retries })),
+        // multi-run fields (identity when 1 run per task)
+        runsPerTask,
+        anyOfN,
+        allRunsPassed,
+        allRunsTotal,
+        allRunsTaskSuccessRate: allRunsTotal ? allRunsPassed / allRunsTotal : 0,
+        flakyTasks,
     };
 }
 
@@ -1045,10 +1075,11 @@ async function main() {
         console.error("--model is required (kimi-k2.5 | qwen3.7-plus | qwen3.6-plus)");
         process.exit(2);
     }
+    const resultsRoot = config.resultsDir;
     for (const model of models) {
         // model ids (kimi-k2.5, qwen3.7-plus, qwen3.6-plus) contain only [a-z0-9.-]: usable verbatim as dir names
         const modelSlug = model;
-        const modelResultsDir = path.join(RESULTS_DIR, modelSlug);
+        const modelResultsDir = path.join(resultsRoot, modelSlug);
         await fsp.mkdir(modelResultsDir, { recursive: true });
         const jsonlPath = path.join(modelResultsDir, `${modelSlug}.jsonl`);
         const summaryPath = path.join(modelResultsDir, "summary.json");
@@ -1063,11 +1094,18 @@ async function main() {
             if (fs.existsSync(jsonlPath)) {
                 for (const line of (await fsp.readFile(jsonlPath, "utf8")).split("\n")) {
                     if (!line.trim()) continue;
-                    try { done.add(JSON.parse(line).task); } catch { /* tolerate */ }
+                    try { const r = JSON.parse(line); done.add(r.run !== undefined ? `${r.task}#${r.run}` : r.task); } catch { /* tolerate */ }
                 }
             }
-            const pending = window.filter((t) => !done.has(t.id));
-            console.log(`[unown-edit-bench] model=${model} window=${window.length} done=${window.length - pending.length} pending=${pending.length} (of ${allTasks.length} total fixtures)`);
+            // (task, runIndex) pairs; run 0 of a task is keyed bare for n=1 compatibility
+            const pending = [];
+            for (const t of window) {
+                for (let r = 0; r < config.runs; r++) {
+                    const key = r === 0 ? t.id : `${t.id}#${r}`;
+                    if (!done.has(key)) pending.push({ task: t, runIndex: r });
+                }
+            }
+            console.log(`[unown-edit-bench] model=${model} window=${window.length} runs/task=${config.runs} done=${window.length * config.runs - pending.length} pending=${pending.length} (of ${allTasks.length} total fixtures)`);
             if (pending.length === 0) {
                 console.log("[unown-edit-bench] nothing to do for this window");
             }
@@ -1085,16 +1123,16 @@ async function main() {
             await new Promise((resolveAll) => {
                 const launchNext = () => {
                     while (inflight < config.concurrency && cursor < pending.length) {
-                        const task = pending[cursor++];
+                        const item = pending[cursor++];
                         inflight++;
-                        runSingleTask(task, modelSlug, runDirs)
+                        runSingleTask(item.task, modelSlug, runDirs, item.runIndex)
                             .then(async (record) => {
-                                await fsp.appendFile(jsonlPath, `${JSON.stringify(record)}\n`);
+                                await fsp.appendFile(jsonlPath, `${JSON.stringify({ ...record, run: item.runIndex })}\n`);
                             })
                             .catch(async (err) => {
                                 const record = {
-                                    task: task.id, tier: task.metadata?.difficulty ?? "unknown",
-                                    mutationType: task.metadata?.mutationType ?? "unknown", model,
+                                    task: item.task.id, tier: item.task.metadata?.difficulty ?? "unknown",
+                                    mutationType: item.task.metadata?.mutationType ?? "unknown", model, run: item.runIndex,
                                     success: false, error: `runner crash: ${err?.stack || err}`, editCalls: 0,
                                     editSuccesses: 0, tokens: { prompt: 0, completion: 0, total: 0 }, durationMs: 0,
                                 };
@@ -1117,7 +1155,7 @@ async function main() {
             const records = (await fsp.readFile(jsonlPath, "utf8")).split("\n").filter((l) => l.trim()).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
             const summary = buildSummary(model, records);
             await fsp.writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
-            console.log(`[unown-edit-bench] ${model}: ${summary.passed}/${summary.totalTasks} passed (${(summary.passRate * 100).toFixed(1)}%) — edit-call ${(summary.editCallSuccessRate * 100).toFixed(1)}% (${summary.editSuccesses}/${summary.editCalls}) — summary → ${summaryPath}`);
+            console.log(`[unown-edit-bench] ${model}: ${summary.passed}/${summary.totalTasks} passed best-of-${summary.runsPerTask} (${(summary.passRate * 100).toFixed(1)}%) · any-of-${summary.runsPerTask}: ${summary.anyOfN}/${summary.totalTasks} · all-runs ${summary.allRunsPassed}/${summary.allRunsTotal} — edit-call ${(summary.editCallSuccessRate * 100).toFixed(1)}% — summary → ${summaryPath}`);
         } else {
             console.log(`[unown-edit-bench] ${model}: no results yet`);
         }
