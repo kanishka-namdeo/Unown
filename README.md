@@ -108,7 +108,7 @@ Full usage docs live in [`docs/`](docs/):
 | [subagents](docs/subagents.md) | the `task` tool, built-in `general`/`explore`, authoring `.unown/agents/*.md` |
 | [skills](docs/skills.md) | the Agent Skills format, the four starters, skills AutoDream mints on its own |
 | [memory](docs/memory.md) | the 4-tier memory stack, session notes, AutoDream consolidation |
-| [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout |
+| [memory-classifier-evaluation](docs/memory-classifier-evaluation.md) | objective evaluation of Jev/GLiNER-style classifiers in the memory system || [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout |
 | [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |
 
 ---
