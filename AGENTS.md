@@ -43,6 +43,7 @@ Stack lifecycle:
 - Sandbox-persistent start (background processes are killed between tool calls here): `cd /home/z/my-project && (nohup bash .zscripts/dev.sh >> .zscripts/dev.log 2>&1 < /dev/null & echo $! > .zscripts/dev.pid)` — idempotent-ish: re-runs bun install + db:push, reuses healthy services.
 - Stop: `bun run agent:stop`.
 - End-to-end sanity: `unown doctor` all green; `curl -s localhost:3030/api/overview` reports provider `zai-bridge/kimi-k2.5`; `curl -s localhost:3031/health` reports upstream healthy.
+- Vercel (landing page): the marketing site at `/` auto-deploys on every push to `main` via Vercel's GitHub integration — project `unown` under `kane111s-projects`, production alias `https://unown-nine.vercel.app`. Tunable in root `vercel.json` (framework `nextjs`, build `bun run build`, install `bun install`); re-deploy manually with `vercel deploy --prod`. The dashboard and engine stay local — only the landing route (+ `/dashboard` shell) is hosted.
 - Toolchain: host bun is 1.4.3 at `~/.bun/bin` (PATH-first). `/usr/local/bin/bun` (1.3.14) remains the binary visible INSIDE the bwrap sandbox (the `/home` tmpfs hides `~/.bun`), so host bun upgrades do not change the sandboxed agent runtime.
 
 Git: PAT-authenticated remote (pull/push need no re-auth). Meaningful work is committed with explicit-path staging (`git add <paths>`, never `git add -A` / `git add .`); the engine itself auto-commits learning artifacts, so verify `git status` before staging.
