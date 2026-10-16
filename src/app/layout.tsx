@@ -14,11 +14,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Unown — Self-Learning Agent",
+  title: "Unown — the self-improving terminal agent",
   description:
-    "Mission control for Unown, the self-improving coding agent: the pi coding agent wrapped in a self-learning layer — tiered memory, a self-improving harness, AutoDreaming, guardrail hooks and an OS-level sandbox.",
-  keywords: ["unown", "self-improving agent", "coding agent", "tiered memory", "auto dreaming", "pi"],
+    "An open-source terminal coding agent with tiered memory, AutoDreaming and a verify-gated self-improving harness. Works with any OpenAI-compatible model.",
+  keywords: [
+    "unown",
+    "coding agent",
+    "self-improving",
+    "memory",
+    "auto dreaming",
+    "terminal agent",
+  ],
   authors: [{ name: "Unown" }],
+  openGraph: {
+    title: "Unown — the self-improving terminal agent",
+    description:
+      "An open-source terminal coding agent with tiered memory, AutoDreaming and a verify-gated self-improving harness. Works with any OpenAI-compatible model.",
+    images: ["/landing/landing-hero.png", "/landing/dash-overview.png"],
+  },
   icons: {
     icon: "/logo.svg",
   },
