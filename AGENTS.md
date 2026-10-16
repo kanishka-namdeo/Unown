@@ -11,11 +11,14 @@ Service map (all three boot together via `bun run agent:start`):
 
 | Service | Code | Port | Health |
 |---|---|---|---|
-| Dashboard (Next.js 16) | `src/` | 3000 | `GET /` |
+| Marketing landing page (Next.js 16) | `src/components/landing/` | 3000 | `GET /` |
+| Dashboard (Next.js 16) | `src/components/dashboard/` | 3000 | `GET /dashboard` |
 | Self-learning engine (bun) | `mini-services/agent-service` → `pi-repo/packages/self-learning` | 3030 | `GET /api/overview` |
 | llm-bridge (bun) | `mini-services/llm-bridge` | 3031 | `GET /health` |
 
 Data flow: dashboard → engine REST+SSE → sandboxed pi agent runs → llm-bridge → upstream OpenAI-compatible endpoint (Dashscope coding plan). The terminal agent `bin/unown` delivers session notes to the engine; AutoDream consolidates them into this project's `.unown/memory/project.md`.
+
+Landing page: `src/components/landing/` owns the marketing page at `/`. It is built around a hand-drawn 28-form Unown script (inline SVG, no font file) that the repo also exposes as a lexicon mapping each form to a real mechanism. Its contract — no vendored Pokémon assets, verified lore only, every number a checkable artifact, motion additive only — lives in that folder's AGENTS.md. Rebuild it with `bun run build` and check it visually; a screenshot against the production build is part of done.
 
 Repo presentation: `README.md` is the public face — hero banner + badge row, GitHub-native Mermaid architecture/loop diagrams (byte-identical sources live in `scripts/mermaid_check.mjs`), the dashboard screenshot gallery, and honest live-state numbers. Keep claims in sync with the engine's actual `/api/overview` data when editing the "What a learning session looks like" section.
 
@@ -128,7 +131,7 @@ Default section order:
 
 ## Child DOX Index
 
-- `src/AGENTS.md` — Next.js mission-control dashboard (7 tabs, live SSE feed); children: dashboard components, engine client lib
+- `src/AGENTS.md` — Next.js app: the mission-control dashboard (7 tabs, live SSE feed) and the marketing page; children: landing page sections, dashboard components, engine client lib
 - `mini-services/AGENTS.md` — background service boot conventions for both bun services; child: llm-bridge
 - `pi-repo/AGENTS.md` — upstream pi-mono development rules; binding for edits inside `pi-repo/`
 - `pi-repo/packages/self-learning/AGENTS.md` — the self-learning engine, Unown's core transformation layer

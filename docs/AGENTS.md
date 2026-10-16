@@ -7,6 +7,7 @@ User-facing usage documentation for the `unown` terminal agent and the self-lear
 ## Ownership
 
 - Owns: `quickstart.md`, `providers.md`, `usage.md`, `subagents.md`, `skills.md`, `memory.md`, `memory-classifier-evaluation.md`, `configuration.md`, `troubleshooting.md`, `benchmark-research.md`, `landing-research.md`, `testing-strategy.md`.
+- `landing-research.md` is a design-rationale doc, not a usage page: it records the research behind the marketing page and the sourcing rules for anything quoted on it. When the page changes materially, update it in the same change — that file is why the page's claims stay defensible.
 
 ## Local Contracts
 

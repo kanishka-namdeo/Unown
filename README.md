@@ -231,11 +231,13 @@ The engine seeds itself on first boot: default memory tiers, five benchmark task
 
 ## Landing page
 
-`bun run agent:start` (or `bun run dev`) serves a **marketing landing page at `/`** for a broader audience — the hero terminal demo, the Work → Learn → Dream loop, the six mechanisms, live dashboard captures, the model-agnostic strip and an FAQ — with **mission control at `/dashboard`**:
+`bun run agent:start` (or `bun run dev`) serves a **marketing landing page at `/`** and **mission control at `/dashboard`**.
 
-![unown landing page — the self-improving terminal agent](public/landing/landing-hero.png)
+The landing page is built around the name. Unown is the Symbol Pokémon — a flat black letter with one eye, alive since 1999, found on the walls of ruins reading what is written there — and `unown` is a pun you have to read twice. So the page carries a **28-form alphabet drawn from scratch for this project** (inline SVG, no font file, no sprite sheet): hover or focus any form in the wall to decode the lore it borrows and the real mechanism it stands for here. A typed session, the engine's literal note template and harness log strings, benchmark receipts, the six integrity gates and a working install command fill out the rest.
 
-The page's design rationale (patterns distilled from Claude Code, Cursor, Devin, Cline, Warp and friends) lives in [`docs/landing-research.md`](docs/landing-research.md).
+![unown landing page — the terminal coding agent that remembers](public/landing/landing-hero.png)
+
+Every number and every quoted artifact on that page is checkable, nothing from a Pokémon release is bundled or reproduced, and the page says plainly that it is an independent project. The design rationale, the lore sourcing rules and the asset licences are in [`docs/landing-research.md`](docs/landing-research.md); the section contracts are in [`src/components/landing/AGENTS.md`](src/components/landing/AGENTS.md).
 
 ---
 
