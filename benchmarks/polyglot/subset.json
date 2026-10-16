@@ -1,0 +1,254 @@
+{
+	"source": {
+		"repo": "https://github.com/Aider-AI/polyglot-benchmark",
+		"commit": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f"
+	},
+	"selection": "alphabetical, evenly spaced indices per language (deterministic, no seed)",
+	"stratification": "per-language counts proportional to the official 225-exercise mix",
+	"officialMix": {
+		"python": 34,
+		"javascript": 49,
+		"cpp": 26,
+		"go": 39,
+		"java": 47,
+		"rust": 30
+	},
+	"subsetCounts": {
+		"python": 8,
+		"javascript": 11,
+		"cpp": 6,
+		"go": 9,
+		"java": 10,
+		"rust": 6
+	},
+	"total": 50,
+	"generatedAt": "2026-10-16T09:12:28.688Z",
+	"summary": {
+		"python": {
+			"available": 34,
+			"selected": 8
+		},
+		"javascript": {
+			"available": 49,
+			"selected": 11
+		},
+		"cpp": {
+			"available": 26,
+			"selected": 6
+		},
+		"go": {
+			"available": 39,
+			"selected": 9
+		},
+		"java": {
+			"available": 47,
+			"selected": 10
+		},
+		"rust": {
+			"available": 30,
+			"selected": 6
+		}
+	},
+	"exercises": [
+		{
+			"lang": "python",
+			"name": "affine-cipher"
+		},
+		{
+			"lang": "python",
+			"name": "connect"
+		},
+		{
+			"lang": "python",
+			"name": "forth"
+		},
+		{
+			"lang": "python",
+			"name": "list-ops"
+		},
+		{
+			"lang": "python",
+			"name": "pov"
+		},
+		{
+			"lang": "python",
+			"name": "scale-generator"
+		},
+		{
+			"lang": "python",
+			"name": "tree-building"
+		},
+		{
+			"lang": "python",
+			"name": "zipper"
+		},
+		{
+			"lang": "javascript",
+			"name": "affine-cipher"
+		},
+		{
+			"lang": "javascript",
+			"name": "bottle-song"
+		},
+		{
+			"lang": "javascript",
+			"name": "forth"
+		},
+		{
+			"lang": "javascript",
+			"name": "house"
+		},
+		{
+			"lang": "javascript",
+			"name": "ocr-numbers"
+		},
+		{
+			"lang": "javascript",
+			"name": "poker"
+		},
+		{
+			"lang": "javascript",
+			"name": "rectangles"
+		},
+		{
+			"lang": "javascript",
+			"name": "scale-generator"
+		},
+		{
+			"lang": "javascript",
+			"name": "sum-of-multiples"
+		},
+		{
+			"lang": "javascript",
+			"name": "two-bucket"
+		},
+		{
+			"lang": "javascript",
+			"name": "zipper"
+		},
+		{
+			"lang": "cpp",
+			"name": "all-your-base"
+		},
+		{
+			"lang": "cpp",
+			"name": "clock"
+		},
+		{
+			"lang": "cpp",
+			"name": "gigasecond"
+		},
+		{
+			"lang": "cpp",
+			"name": "meetup"
+		},
+		{
+			"lang": "cpp",
+			"name": "robot-name"
+		},
+		{
+			"lang": "cpp",
+			"name": "zebra-puzzle"
+		},
+		{
+			"lang": "go",
+			"name": "alphametics"
+		},
+		{
+			"lang": "go",
+			"name": "connect"
+		},
+		{
+			"lang": "go",
+			"name": "error-handling"
+		},
+		{
+			"lang": "go",
+			"name": "kindergarten-garden"
+		},
+		{
+			"lang": "go",
+			"name": "paasio"
+		},
+		{
+			"lang": "go",
+			"name": "protein-translation"
+		},
+		{
+			"lang": "go",
+			"name": "simple-linked-list"
+		},
+		{
+			"lang": "go",
+			"name": "trinary"
+		},
+		{
+			"lang": "go",
+			"name": "zebra-puzzle"
+		},
+		{
+			"lang": "java",
+			"name": "affine-cipher"
+		},
+		{
+			"lang": "java",
+			"name": "bottle-song"
+		},
+		{
+			"lang": "java",
+			"name": "custom-set"
+		},
+		{
+			"lang": "java",
+			"name": "hangman"
+		},
+		{
+			"lang": "java",
+			"name": "ocr-numbers"
+		},
+		{
+			"lang": "java",
+			"name": "protein-translation"
+		},
+		{
+			"lang": "java",
+			"name": "resistor-color-trio"
+		},
+		{
+			"lang": "java",
+			"name": "simple-linked-list"
+		},
+		{
+			"lang": "java",
+			"name": "two-bucket"
+		},
+		{
+			"lang": "java",
+			"name": "zipper"
+		},
+		{
+			"lang": "rust",
+			"name": "accumulate"
+		},
+		{
+			"lang": "rust",
+			"name": "dot-dsl"
+		},
+		{
+			"lang": "rust",
+			"name": "grep"
+		},
+		{
+			"lang": "rust",
+			"name": "parallel-letter-frequency"
+		},
+		{
+			"lang": "rust",
+			"name": "scale-generator"
+		},
+		{
+			"lang": "rust",
+			"name": "xorcism"
+		}
+	]
+}
