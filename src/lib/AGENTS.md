@@ -25,6 +25,7 @@ The dashboard's data layer: engine API client (REST + SSE), the engine schema ty
 ## Verification
 
 - Lint: `bun run lint` from the repo root (see `src/AGENTS.md`).
+- Unit: `bun test src` (bun:test, zero extra deps) — table-driven `*.test.ts` files sit beside their modules (`agent-format`, `utils`, `agent-store`, `agent-api`); `agent-api` tests re-evaluate the module under different `NEXT_PUBLIC_AGENT_API_BASE` values (query-suffixed dynamic import busts Bun's module cache) to cover both DIRECT and GATEWAY modes. CI runs them.
 - With the engine up, the Overview tab renders live KPIs (proves api client + types + SSE end to end).
 
 ## Child DOX Index

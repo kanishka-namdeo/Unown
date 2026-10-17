@@ -1,0 +1,10 @@
+{
+  "name": "unown-edit-bench",
+  "private": true,
+  "type": "module",
+  "description": "Runner-side deps for benchmarks/edit-bench/run-unown.mjs (prettier for byte-exact scoring, diff for failure receipts). Fixtures come from the committed packages/typescript-edit-benchmark/fixtures.tar.gz; results land in unown-results/ (gitignored scratch) and are copied into results/ when publishing.",
+  "dependencies": {
+    "diff": "^9.0.0",
+    "prettier": "^3.9.5"
+  }
+}

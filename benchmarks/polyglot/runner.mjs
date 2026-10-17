@@ -495,6 +495,10 @@ if (args.includes("--list")) {
 mkdirSync(join(ROOT, "results"), { recursive: true });
 mkdirSync(join(ROOT, "scratch"), { recursive: true });
 const resultsFile = join(ROOT, "results", `${model}.jsonl`);
+// The summary reads this file unconditionally — make sure it exists even when
+// zero exercises match the filters (otherwise --only <typo> crashes with ENOENT
+// instead of reporting an empty run).
+if (!existsSync(resultsFile)) writeFileSync(resultsFile, "");
 
 // Resume: skip exercises with a final outcome (attempt-1 pass, or attempt-2 recorded).
 const done = new Set();

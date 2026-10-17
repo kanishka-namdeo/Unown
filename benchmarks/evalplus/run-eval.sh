@@ -2,6 +2,7 @@
 # Official evalplus evaluation pipeline for one model.
 #
 #   ./run-eval.sh <model-id>
+#   RESULTS_ROOT=results/rerun-<date> ./run-eval.sh <model-id>   # fresh receipts
 #
 # Assumes results/<model>/samples.jsonl exists (164 lines, from gen-samples.mjs).
 # Steps (all official evalplus CLI, no patches):
@@ -21,10 +22,13 @@ set -euo pipefail
 MODEL="${1:?usage: run-eval.sh <model-id>}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PYBIN="${PYBIN:-/home/z/.venv/bin/python}"
+# Worker count: 2 is fine on a big box; 1 avoids OOM when a benchmark marathon
+# shares the machine (the committed 2026-10-16 results were produced at 1).
+PARALLEL="${EVALPLUS_PARALLEL:-2}"
 export HUMANEVAL_OVERRIDE_PATH="$HERE/dataset/HumanEvalPlus-v0.1.10.jsonl"
 
 cd "$HERE"
-D="results/$MODEL"
+D="${RESULTS_ROOT:-results}/$MODEL"
 [ -f "$D/samples.jsonl" ] || { echo "missing $D/samples.jsonl (run gen-samples.mjs first)"; exit 1; }
 
 # stale results would make the evaluator load-previous or prompt interactively
@@ -37,11 +41,11 @@ echo "[run-eval] $MODEL: sanitize (official evalplus.sanitize)"
 
 echo "[run-eval] $MODEL: evaluate sanitized (official protocol -> headline)"
 "$PYBIN" -m evalplus.evaluate humaneval --samples="$D/samples-sanitized.jsonl" \
-    --parallel=2 --i_just_wanna_run=True --output_file="$D/samples-sanitized.eval_results.json"
+    --parallel="$PARALLEL" --i_just_wanna_run=True --output_file="$D/samples-sanitized.eval_results.json"
 
 echo "[run-eval] $MODEL: evaluate raw extraction (robustness check)"
 "$PYBIN" -m evalplus.evaluate humaneval --samples="$D/samples.jsonl" \
-    --parallel=2 --i_just_wanna_run=True --output_file="$D/samples.eval_results.json"
+    --parallel="$PARALLEL" --i_just_wanna_run=True --output_file="$D/samples.eval_results.json"
 
 echo "[run-eval] $MODEL done:"
 ls -la "$D"

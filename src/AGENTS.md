@@ -21,7 +21,8 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 - Styling: Tailwind CSS 4 + shadcn/ui conventions (`cn()` from `src/lib/utils.ts`), `lucide-react` icons, `framer-motion` motion, charts via `recharts`.
 - The landing palette (`bg-canvas`, `bg-panel`, `text-ink`, `text-dim`, `text-glow`, `border-line`, `sgb-*`, …) lives in `src/app/globals.css`, not in `landing.css` — Tailwind only resolves `@theme` in the file that pulls in `tailwindcss`. The tokens sit in a **non-inline** `@theme` block (so Tailwind emits `var(--color-…)` and the cascade can repaint them at runtime); only the three font tokens are `@theme inline`. Theming is a `data-theme` attribute on `<html>` (plus `prefers-color-scheme` for the auto default), **not** a `.dark` class — never add `dark:` variants to landing markup. The dashboard does not use these tokens.
 - State: server state via `@tanstack/react-query` (see `providers.tsx`); cross-tab client state via zustand (`agent-store.ts`).
-- Root `package.json` owns commands: `bun run dev` (port 3000), `bun run build`, `bun run start`, `bun run lint`.
+- Root `package.json` owns commands: `bun run dev` (port 3000), `bun run build`, `bun run start`, `bun run lint`, `bun run typecheck`, `bun run test:unit` (`bun test src`).
+- `src/types/bun-test.d.ts` — ambient `bun-types` loader so `tsc --noEmit` resolves the `bun:test` imports of the in-tree `*.test.ts` files (the `@types/bun` shim package is deliberately not a dependency).
 
 ## Work Guidance
 
@@ -32,7 +33,7 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 
 ## Verification
 
-- `bun run lint` (eslint + eslint-config-next) — must be clean; CI (`.github/workflows/ci.yml`) enforces it on push/PR.
+- `bun run lint` (eslint + eslint-config-next) — must be clean; CI (`.github/workflows/ci.yml`) enforces lint, `bun run typecheck` and `bun test src` on push/PR.
 - Dashboard responds 200 on `http://localhost:3000/dashboard` with live KPIs and no console errors when the engine is up (and `/` returns the landing page).
 - Keep `bun run build` passing; landing-page/Vercel deployment rules live in root `AGENTS.md`.
 - Landing-page work additionally requires a visual pass against a production build and a reduced-motion pass — see `src/components/landing/AGENTS.md`.

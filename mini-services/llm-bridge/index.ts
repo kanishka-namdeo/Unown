@@ -18,6 +18,11 @@
  *   - request serialization + spacing + 429/5xx backoff retries
  *   - request log ring buffer + health endpoint for the dashboard
  *
+ * This file is the thin SERVING layer: routing, request shaping, tool-call
+ * sanitization, SSE stats folding and retry/backoff math live in ./pure.ts
+ * (unit-tested by ./pure.test.ts). Environment parsing goes through
+ * loadConfig(env) so tests can construct configs without process.env.
+ *
  * Environment:
  *   BRIDGE_PORT            listen port (3031)
  *   BRIDGE_MODEL           advertised default model (kimi-k2.5)
@@ -32,55 +37,36 @@
  *   BRIDGE_MIN_SPACING_MS  min ms between upstream requests (default 400)
  */
 
-const PORT = Number(process.env.BRIDGE_PORT ?? 3031);
-const BRIDGE_API_KEY = process.env.BRIDGE_API_KEY ?? "";
-const DEFAULT_MODEL = process.env.BRIDGE_MODEL ?? "kimi-k2.5";
+import {
+        loadConfig,
+        upstreamTimeoutMs,
+        routeModel,
+        buildUpstreamBody,
+        completionStats,
+        foldSseLine,
+        isRetryableError,
+        backoffDelayMs,
+        spacingWaitMs,
+        MAX_ATTEMPTS,
+        type BridgeLogEntry,
+        type SseStats,
+} from "./pure";
 
-const UPSTREAM_URL = (process.env.BRIDGE_UPSTREAM_URL ?? "https://coding-intl.dashscope.aliyuncs.com/v1").replace(/\/+$/, "");
-const UPSTREAM_KEY = process.env.BRIDGE_UPSTREAM_KEY ?? "";
-const ROUTE_DEFAULT = process.env.BRIDGE_ROUTE_DEFAULT ?? DEFAULT_MODEL;
-const KNOWN_MODELS = (process.env.BRIDGE_KNOWN_MODELS ?? "kimi-k2.5,qwen3.7-plus,qwen3.6-plus")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-const QWEN_THINKING = /^(1|true|yes)$/i.test(process.env.BRIDGE_QWEN_THINKING ?? "");
-const MIN_SPACING_MS = Number(process.env.BRIDGE_MIN_SPACING_MS ?? 400);
-
-// ---------------------------------------------------------------------------
-// Types (OpenAI wire format subset we need)
-// ---------------------------------------------------------------------------
-interface OaiToolCall {
-        id: string;
-        type: "function";
-        function: { name: string; arguments: string };
-        index?: number;
-}
-interface OaiMessage {
-        role: "system" | "user" | "assistant" | "tool";
-        content: unknown;
-        tool_calls?: OaiToolCall[];
-        tool_call_id?: string;
-        name?: string;
-}
+const {
+        port: PORT,
+        apiKey: BRIDGE_API_KEY,
+        defaultModel: DEFAULT_MODEL,
+        upstreamUrl: UPSTREAM_URL,
+        upstreamKey: UPSTREAM_KEY,
+        routeDefault: ROUTE_DEFAULT,
+        knownModels: KNOWN_MODELS,
+        qwenThinking: QWEN_THINKING,
+        minSpacingMs: MIN_SPACING_MS,
+} = loadConfig();
 
 // ---------------------------------------------------------------------------
 // Request log ring buffer (for the dashboard)
 // ---------------------------------------------------------------------------
-interface BridgeLogEntry {
-        ts: number;
-        model: string;
-        upstreamModel: string;
-        stream: boolean;
-        messages: number;
-        tools: number;
-        finishReason: string | null;
-        contentChars: number;
-        toolCalls: number;
-        promptTokens: number;
-        completionTokens: number;
-        durationMs: number;
-        error?: string;
-}
 const log: BridgeLogEntry[] = [];
 let totalRequests = 0;
 let totalErrors = 0;
@@ -94,7 +80,7 @@ let lastRequestAt = 0;
 
 async function acquireSlot() {
         const run = chain.then(async () => {
-                const wait = Math.max(0, lastRequestAt + MIN_SPACING_MS - Date.now());
+                const wait = spacingWaitMs(lastRequestAt, Date.now(), MIN_SPACING_MS);
                 if (wait > 0) await Bun.sleep(wait);
                 lastRequestAt = Date.now();
         });
@@ -105,8 +91,6 @@ async function acquireSlot() {
         await run;
 }
 
-const MAX_ATTEMPTS = 6;
-
 /**
  * One upstream attempt. Returns the raw Response (stream or JSON).
  * Time-to-HEADERS is capped (BRIDGE_UPSTREAM_TIMEOUT_MS, default 180s): a
@@ -114,7 +98,7 @@ const MAX_ATTEMPTS = 6;
  * bodies remain uncapped once headers have arrived.
  */
 async function upstreamFetch(body: any, signal?: AbortSignal): Promise<Response> {
-        const timeoutMs = Math.max(5000, Number(process.env.BRIDGE_UPSTREAM_TIMEOUT_MS ?? 180_000));
+        const timeoutMs = upstreamTimeoutMs();
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(new Error(`upstream timeout: no response headers after ${timeoutMs}ms`)), timeoutMs);
         const onOuterAbort = () => ctrl.abort(signal?.reason);
@@ -151,13 +135,8 @@ async function callUpstream(body: any): Promise<Response> {
                 } catch (err: any) {
                         lastError = err;
                         const msg = String(err?.message ?? err);
-                        const status = err?.status;
-                        const retryable =
-                                status === 429 ||
-                                (typeof status === "number" && status >= 500) ||
-                                /429|too many requests|rate limit|network|socket|ECONN|fetch failed|timeout|terminated/i.test(msg);
-                        if (!retryable || attempt === MAX_ATTEMPTS) throw err;
-                        const backoff = Math.min(3000 * 2 ** (attempt - 1), 45000) + Math.random() * 1500;
+                        if (!isRetryableError(err) || attempt === MAX_ATTEMPTS) throw err;
+                        const backoff = backoffDelayMs(attempt);
                         console.log(`[llm-bridge] retryable error (attempt ${attempt}/${MAX_ATTEMPTS}), backing off ${Math.round(backoff)}ms: ${msg.slice(0, 120)}`);
                         await Bun.sleep(backoff);
                         lastRequestAt = Date.now();
@@ -167,94 +146,28 @@ async function callUpstream(body: any): Promise<Response> {
 }
 
 // ---------------------------------------------------------------------------
-// Model routing + request shaping
-// ---------------------------------------------------------------------------
-function routeModel(requested: unknown): { upstream: string; requested: string } {
-        const asked = typeof requested === "string" && requested.trim() ? requested.trim() : DEFAULT_MODEL;
-        const upstream = KNOWN_MODELS.includes(asked) ? asked : ROUTE_DEFAULT;
-        return { upstream, requested: asked };
-}
-
-/**
- * Build the upstream request body.
- *
- * - messages / tools / tool_choice / stream / stream_options / sampling
- *   params pass through verbatim (tool-role messages and image_url content
- *   parts included — the upstream is fully OpenAI-compatible).
- * - the z-ai style `thinking: { type: ... }` param is translated away.
- * - qwen thinking models get `enable_thinking` (default: disabled, so agent
- *   turns stay fast; set BRIDGE_QWEN_THINKING=1 to keep deep reasoning).
- */
-function buildUpstreamBody(body: any, upstreamModel: string): any {
-        const out: any = {
-                model: upstreamModel,
-                messages: body.messages ?? [],
-        };
-        if (Array.isArray(body.tools) && body.tools.length > 0) out.tools = body.tools;
-        if (body.tool_choice !== undefined) out.tool_choice = body.tool_choice;
-        if (body.stream !== undefined) out.stream = body.stream;
-        if (body.stream_options !== undefined) out.stream_options = body.stream_options;
-        const maxTokens = body.max_tokens ?? body.max_completion_tokens;
-        if (maxTokens !== undefined) out.max_tokens = maxTokens;
-        for (const k of ["temperature", "top_p", "stop", "presence_penalty", "frequency_penalty", "response_format", "parallel_tool_calls", "seed", "user", "n"]) {
-                if (body[k] !== undefined) out[k] = body[k];
-        }
-
-        // thinking-mode resolution:
-        //   explicit client `enable_thinking` wins; then the z-ai style
-        //   `thinking` translation; then per-model defaults.
-        let enableThinking: boolean | undefined = body.enable_thinking;
-        if (body.thinking?.type === "disabled") enableThinking = false;
-        else if (body.thinking?.type === "enabled") enableThinking = true;
-        if (enableThinking === undefined && /^qwen/i.test(upstreamModel)) {
-                enableThinking = QWEN_THINKING;
-        }
-        if (enableThinking !== undefined && /^qwen/i.test(upstreamModel)) {
-                out.enable_thinking = enableThinking;
-        }
-        return out;
-}
-
-/**
- * Defensive unwrapping of double-wrapped tool calls: some models occasionally
- * emit arguments like {"name":"read","arguments":{...}} (imitating the wire
- * format). Unwrap to the inner arguments object.
- */
-function sanitizeToolCalls(toolCalls: any[] | undefined): any[] | undefined {
-        if (!Array.isArray(toolCalls)) return undefined;
-        const fixed = toolCalls.map((tc, i) => {
-                let args = tc?.function?.arguments;
-                if (typeof args === "string") {
-                        try {
-                                const parsed = JSON.parse(args);
-                                if (parsed && typeof parsed === "object" && typeof parsed.name === "string" && parsed.arguments && typeof parsed.arguments === "object") {
-                                        args = JSON.stringify(parsed.arguments);
-                                }
-                        } catch {
-                                /* partial JSON — leave as-is */
-                        }
-                }
-                return {
-                        id: tc?.id ?? `call_${i}`,
-                        type: "function" as const,
-                        function: { name: tc?.function?.name ?? "", arguments: args ?? "{}" },
-                };
-        });
-        return fixed;
-}
-
-// ---------------------------------------------------------------------------
 // SSE pipe: forward upstream SSE frames to the client verbatim.
 // Dashscope emits OpenAI-style `data: {...}` chunks + a final `data: [DONE]`
 // (including a usage chunk when stream_options.include_usage is set), so a
 // verbatim pipe keeps pi's streaming parser happy. While forwarding, we peek
-// at finish_reason / usage / tool-call deltas so the request log stays
-// accurate for streamed requests too.
+// at finish_reason / usage / tool-call deltas (pure.ts foldSseLine) so the
+// request log stays accurate for streamed requests too.
 // ---------------------------------------------------------------------------
 function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Response {
         const decoder = new TextDecoder();
         let buffer = "";
-        let contentChars = 0;
+        // Stats accumulator, folded per frame by pure.ts foldSseLine. The
+        // entry's finishReason / toolCalls / token counts update live as frames
+        // flow (so /v1/log shows progress mid-stream); contentChars lands on
+        // the entry only once the stream completes, matching the original
+        // inline loop.
+        const stats: SseStats = {
+                finishReason: entry.finishReason,
+                contentChars: 0,
+                toolCalls: entry.toolCalls,
+                promptTokens: entry.promptTokens,
+                completionTokens: entry.completionTokens,
+        };
         // The reader locks res.body for the forwarding loop; cancel() below must
         // go through it (res.body.cancel() on a locked stream rejects asynchronously
         // — an unhandled rejection that crashed stream teardown under load).
@@ -273,23 +186,11 @@ function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Resp
                                         while ((nl = buffer.indexOf("\n")) !== -1) {
                                                 const line = buffer.slice(0, nl).trim();
                                                 buffer = buffer.slice(nl + 1);
-                                                if (!line.startsWith("data:")) continue;
-                                                const payload = line.slice(5).trim();
-                                                if (payload === "[DONE]") continue;
-                                                try {
-                                                        const obj = JSON.parse(payload);
-                                                        const choice = obj?.choices?.[0];
-                                                        if (choice?.finish_reason) entry.finishReason = choice.finish_reason;
-                                                        const delta = choice?.delta;
-                                                        if (typeof delta?.content === "string") contentChars += delta.content.length;
-                                                        if (Array.isArray(delta?.tool_calls)) entry.toolCalls = Math.max(entry.toolCalls, delta.tool_calls.length);
-                                                        if (obj?.usage) {
-                                                                entry.promptTokens = obj.usage.prompt_tokens ?? entry.promptTokens;
-                                                                entry.completionTokens = obj.usage.completion_tokens ?? entry.completionTokens;
-                                                        }
-                                                } catch {
-                                                        /* partial JSON frame — ignore */
-                                                }
+                                                foldSseLine(line, stats);
+                                                entry.finishReason = stats.finishReason;
+                                                entry.toolCalls = stats.toolCalls;
+                                                entry.promptTokens = stats.promptTokens;
+                                                entry.completionTokens = stats.completionTokens;
                                         }
                                         controller.enqueue(value);
                                 }
@@ -298,7 +199,7 @@ function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Resp
                                 // close cleanly rather than surface a broken stream.
                                 console.log(`[llm-bridge] stream ended early: ${String(err?.message ?? err).slice(0, 120)}`);
                         } finally {
-                                entry.contentChars = contentChars;
+                                entry.contentChars = stats.contentChars;
                                 try {
                                         controller.close();
                                 } catch {
@@ -327,22 +228,6 @@ function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Resp
                         Connection: "keep-alive",
                 },
         });
-}
-
-// Extract summary stats from a non-stream completion for the log entry.
-function completionStats(completion: any) {
-        const choice = completion?.choices?.[0] ?? {};
-        const message = choice.message ?? {};
-        if (Array.isArray(message.tool_calls)) {
-                message.tool_calls = sanitizeToolCalls(message.tool_calls);
-        }
-        return {
-                finishReason: choice.finish_reason ?? null,
-                contentChars: typeof message.content === "string" ? message.content.length : 0,
-                toolCalls: Array.isArray(message.tool_calls) ? message.tool_calls.length : 0,
-                promptTokens: completion?.usage?.prompt_tokens ?? 0,
-                completionTokens: completion?.usage?.completion_tokens ?? 0,
-        };
 }
 
 // ---------------------------------------------------------------------------
@@ -433,14 +318,14 @@ const server = Bun.serve({
                         try {
                                 const body = await req.json();
                                 const wantsStream = body.stream === true;
-                                const { upstream, requested } = routeModel(body.model);
+                                const { upstream, requested } = routeModel(body.model, KNOWN_MODELS, ROUTE_DEFAULT, DEFAULT_MODEL);
                                 entry.stream = wantsStream;
                                 entry.model = requested;
                                 entry.upstreamModel = upstream;
                                 entry.messages = Array.isArray(body.messages) ? body.messages.length : 0;
                                 entry.tools = Array.isArray(body.tools) ? body.tools.length : 0;
 
-                                const upstreamBody = buildUpstreamBody(body, upstream);
+                                const upstreamBody = buildUpstreamBody(body, upstream, QWEN_THINKING);
                                 const res = await callUpstream(upstreamBody);
 
                                 if (wantsStream) {

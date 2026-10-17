@@ -8,6 +8,26 @@
 > the current suite cannot see. Links to source that have only been inspected,
 > not modified.
 
+> **Implementation status (2026-10-17).** Phase 0 and Phase 1 are shipped, Phase 2
+> is started, and the benchmark tracks were re-verified from a fresh checkout:
+> - Phase 0: `typecheck` gate (green), CI extended to lint + typecheck + unit +
+>   shell-syntax + theme (`.github/workflows/ci.yml`), §4.1 unit tests — 162
+>   tests across `src/lib` + `src/hooks` (`bun test src`).
+> - Phase 1: engine unit tests — 384 tests under
+>   `pi-repo/packages/self-learning/test/` (memory, tasks, mint, router, llm,
+>   notes, skills, bwrap, termhooks incl. the §4.3 corpus); llm-bridge pure
+>   logic extracted to `mini-services/llm-bridge/pure.ts` with 95 tests.
+> - §4.3 corpus outcome: 8 bypass classes found and closed (wrapped `rm -rf /`,
+>   `${HOME}` expansion, fork-bomb variants, numeric-IP egress, ssh, find/xargs
+>   deletion, base64|sh, chmod-777-root, symlink jail escape via realpath).
+> - Phase 2 (started): engine HTTP integration harness — 10 tests under
+>   `pi-repo/packages/self-learning/test/integration/` (real startServer on an
+>   ephemeral port, mock bridge, temp state); found + fixed the unreachable
+>   `/api/skills/:id` routes. Dashboard component tests (RTL) still deferred.
+> - Fresh-checkout verification of tracks 1/2/3/6 with receipts under
+>   `<track>/results/rerun-2026-10-17/`; pi-repo suite at 5,032 tests / 0 failing
+>   per-workspace consolidated evidence.
+
 ## 1. Why this document
 
 The repository ships six benchmark tracks (README "Tracks") plus the vendored pi

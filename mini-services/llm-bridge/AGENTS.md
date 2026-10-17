@@ -6,7 +6,7 @@ OpenAI-compatible gateway over the upstream Dashscope coding-plan endpoint. Lets
 
 ## Ownership
 
-- Owns: `index.ts` — the entire bridge (routing, auth injection, thinking translation, streaming, throttling, retries, request log, health probe).
+- Owns: `index.ts` — the thin serving layer (auth injection, SSE pipe, throttling, retries, request log, health probe) and `pure.ts` — the pure logic (env parsing via `loadConfig(env)`, model routing, request shaping, tool-call sanitization, completion/SSE stats, retry/backoff/spacing math), unit-tested by `pure.test.ts`.
 
 ## Local Contracts
 
@@ -39,6 +39,7 @@ OpenAI-compatible gateway over the upstream Dashscope coding-plan endpoint. Lets
 
 ## Verification
 
+- `cd mini-services/llm-bridge && bun test pure.test.ts` — pure-logic unit tests (also `bun run test`).
 - `curl -s localhost:3031/health` → upstream healthy.
 - Probe scripts at root `scripts/` (`probe_dashscope.py`, `probe_stream.py`, `probe_thinking.py`, `probe_vision.py`, `test_bridge.py`) exercise chat, SSE, thinking-toggle and base64-image paths through the bridge.
 - End-to-end: a Learning Lab harness cycle completes against the bridge (see engine doc).

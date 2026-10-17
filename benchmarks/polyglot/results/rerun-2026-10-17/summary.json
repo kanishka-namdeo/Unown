@@ -1,0 +1,156 @@
+{
+	"generatedAt": "2026-10-17T10:06:13.726Z",
+	"subset": {
+		"repo": "https://github.com/Aider-AI/polyglot-benchmark",
+		"commit": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f"
+	},
+	"models": {
+		"kimi-k2.5": {
+			"exercisesRecorded": 50,
+			"expected": 50,
+			"harnessErrors": [],
+			"scored": 50,
+			"pass1": 47,
+			"pass2": 47,
+			"pass1Pct": 94,
+			"pass2Pct": 94,
+			"perLang": {
+				"python": {
+					"attempted": 8,
+					"pass1": 8,
+					"pass2": 8
+				},
+				"javascript": {
+					"attempted": 11,
+					"pass1": 11,
+					"pass2": 11
+				},
+				"cpp": {
+					"attempted": 6,
+					"pass1": 3,
+					"pass2": 3
+				},
+				"go": {
+					"attempted": 9,
+					"pass1": 9,
+					"pass2": 9
+				},
+				"java": {
+					"attempted": 10,
+					"pass1": 10,
+					"pass2": 10
+				},
+				"rust": {
+					"attempted": 6,
+					"pass1": 6,
+					"pass2": 6
+				}
+			},
+			"tokens": {
+				"input": 726488,
+				"output": 112559,
+				"cacheRead": 4755200
+			},
+			"avgDurationS": 70,
+			"totalAgentS": 3519
+		},
+		"qwen3.6-plus": {
+			"exercisesRecorded": 50,
+			"expected": 50,
+			"harnessErrors": [],
+			"scored": 50,
+			"pass1": 48,
+			"pass2": 48,
+			"pass1Pct": 96,
+			"pass2Pct": 96,
+			"perLang": {
+				"python": {
+					"attempted": 8,
+					"pass1": 8,
+					"pass2": 8
+				},
+				"javascript": {
+					"attempted": 11,
+					"pass1": 11,
+					"pass2": 11
+				},
+				"cpp": {
+					"attempted": 6,
+					"pass1": 4,
+					"pass2": 4
+				},
+				"go": {
+					"attempted": 9,
+					"pass1": 9,
+					"pass2": 9
+				},
+				"java": {
+					"attempted": 10,
+					"pass1": 10,
+					"pass2": 10
+				},
+				"rust": {
+					"attempted": 6,
+					"pass1": 6,
+					"pass2": 6
+				}
+			},
+			"tokens": {
+				"input": 5100984,
+				"output": 94512,
+				"cacheRead": 0
+			},
+			"avgDurationS": 49,
+			"totalAgentS": 2445
+		},
+		"qwen3.7-plus": {
+			"exercisesRecorded": 50,
+			"expected": 50,
+			"harnessErrors": [],
+			"scored": 50,
+			"pass1": 48,
+			"pass2": 48,
+			"pass1Pct": 96,
+			"pass2Pct": 96,
+			"perLang": {
+				"python": {
+					"attempted": 8,
+					"pass1": 8,
+					"pass2": 8
+				},
+				"javascript": {
+					"attempted": 11,
+					"pass1": 11,
+					"pass2": 11
+				},
+				"cpp": {
+					"attempted": 6,
+					"pass1": 4,
+					"pass2": 4
+				},
+				"go": {
+					"attempted": 9,
+					"pass1": 9,
+					"pass2": 9
+				},
+				"java": {
+					"attempted": 10,
+					"pass1": 10,
+					"pass2": 10
+				},
+				"rust": {
+					"attempted": 6,
+					"pass1": 6,
+					"pass2": 6
+				}
+			},
+			"tokens": {
+				"input": 1381800,
+				"output": 121379,
+				"cacheRead": 5313792
+			},
+			"avgDurationS": 65,
+			"totalAgentS": 3274
+		}
+	}
+}

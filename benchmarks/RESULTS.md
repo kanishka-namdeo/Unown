@@ -7,6 +7,16 @@ run through the bundled llm-bridge against Dashscope
 Methodology and fairness rules: see `README.md`. Deep-dives per track: the
 `RESULTS.md` inside each track's `results/` directory.
 
+**Fresh-checkout verification (2026-10-17):** the whole stack was re-cloned,
+re-configured and re-run from scratch — the pi-repo suite at 5,032 tests / 0
+failing (4,585 documented + 384 new engine unit tests from the testing
+strategy's Phase 1), HumanEval+ and the oh-my-pi edit benchmark re-run end to
+end with fresh receipts under `<track>/results/rerun-2026-10-17/` (per-track
+`RESULTS.md` there). Headline table shows the committed 2026-10-16 numbers;
+the rerun reproduces them within the documented noise bands (evalplus ±1
+problem per model; edit-bench kimi exact, qwens inside the n=1 flake band).
+Landing-page consts carry the fresh numbers.
+
 ## Headline
 
 | Track | What it measures | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus |

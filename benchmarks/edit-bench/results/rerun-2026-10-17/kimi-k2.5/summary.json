@@ -1,0 +1,240 @@
+{
+  "benchmark": "oh-my-pi typescript-edit-benchmark (106 shipped fixtures)",
+  "agent": "Unown pi-repo createAgentSession (in-process) @ /home/z/my-project/unown/pi-repo/packages/coding-agent",
+  "editSemantics": "pi-native replace (edits[]: {oldText,newText} batch; exact-first, fuzzy fallback)",
+  "harness": "run-unown.mjs — port of omp metaharness adapters/edit runner",
+  "model": "kimi-k2.5",
+  "provider": "zai-bridge",
+  "generatedAt": "2026-10-17T08:40:26.197Z",
+  "totalTasks": 106,
+  "passed": 104,
+  "passRate": 0.9811320754716981,
+  "editCallSuccessRate": 0.9642857142857143,
+  "editCalls": 112,
+  "editSuccesses": 108,
+  "tokens": {
+    "promptTotal": 112583,
+    "completionTotal": 49186,
+    "perTask": {
+      "prompt": {
+        "mean": 1062.1037735849056,
+        "median": 0,
+        "p1": 0,
+        "p99": 11950.450000000015
+      },
+      "completion": {
+        "mean": 464.0188679245283,
+        "median": 301,
+        "p1": 133.35,
+        "p99": 2053.050000000001
+      },
+      "total": {
+        "mean": 1526.122641509434,
+        "median": 326,
+        "p1": 133.35,
+        "p99": 12633.000000000013
+      }
+    }
+  },
+  "duration": {
+    "totalMs": 1435168,
+    "meanMs": 13539.32075471698,
+    "medianMs": 9955.5,
+    "p1Ms": 5133.65,
+    "p99Ms": 56183.30000000002
+  },
+  "mutationIntentMatchRate": 0.9716981132075472,
+  "earlyStops": 104,
+  "indentScoreAvg": 0.009433962264150943,
+  "byTier": {
+    "easy": {
+      "total": 40,
+      "passed": 39
+    },
+    "medium": {
+      "total": 31,
+      "passed": 31
+    },
+    "nightmare": {
+      "total": 13,
+      "passed": 12
+    },
+    "hard": {
+      "total": 22,
+      "passed": 22
+    }
+  },
+  "byCategory": {
+    "call": {
+      "total": 1,
+      "passed": 1
+    },
+    "duplicate": {
+      "total": 6,
+      "passed": 6
+    },
+    "access": {
+      "total": 1,
+      "passed": 1
+    },
+    "identifier": {
+      "total": 10,
+      "passed": 10
+    },
+    "literal": {
+      "total": 2,
+      "passed": 2
+    },
+    "multi": {
+      "total": 16,
+      "passed": 15
+    },
+    "operator": {
+      "total": 7,
+      "passed": 7
+    },
+    "regex": {
+      "total": 1,
+      "passed": 0
+    },
+    "structural": {
+      "total": 61,
+      "passed": 61
+    },
+    "unicode": {
+      "total": 1,
+      "passed": 1
+    }
+  },
+  "byMutation": {
+    "swap-call-args": {
+      "total": 1,
+      "passed": 1
+    },
+    "duplicate-line-flip": {
+      "total": 6,
+      "passed": 6
+    },
+    "remove-optional-chain": {
+      "total": 1,
+      "passed": 1
+    },
+    "identifier-multi-edit": {
+      "total": 10,
+      "passed": 10
+    },
+    "flip-boolean": {
+      "total": 1,
+      "passed": 1
+    },
+    "off-by-one": {
+      "total": 1,
+      "passed": 1
+    },
+    "composite-multi-edit": {
+      "total": 16,
+      "passed": 15
+    },
+    "remove-negation": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-arithmetic": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-equality": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-comparison": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-increment-decrement": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-logical": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-nullish": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-regex-quantifier": {
+      "total": 1,
+      "passed": 0
+    },
+    "duplicate-block": {
+      "total": 6,
+      "passed": 6
+    },
+    "move-distant-block": {
+      "total": 9,
+      "passed": 9
+    },
+    "remove-case-label": {
+      "total": 8,
+      "passed": 8
+    },
+    "swap-adjacent-lines": {
+      "total": 6,
+      "passed": 6
+    },
+    "swap-if-else": {
+      "total": 8,
+      "passed": 8
+    },
+    "swap-sibling-blocks": {
+      "total": 12,
+      "passed": 12
+    },
+    "wrap-redundant-if": {
+      "total": 12,
+      "passed": 12
+    },
+    "unicode-hyphen": {
+      "total": 1,
+      "passed": 1
+    }
+  },
+  "editFailureCategories": {
+    "not-found": 2,
+    "not-unique": 1,
+    "overlap": 1
+  },
+  "failedTasks": [
+    {
+      "task": "multi-composite-multi-edit-008",
+      "tier": "nightmare",
+      "mutationType": "composite-multi-edit",
+      "error": "File mismatch for google-generative-ai.ts",
+      "editCalls": 2,
+      "retries": {
+        "timeout": 0,
+        "zeroTool": 0,
+        "providerFailure": 0
+      }
+    },
+    {
+      "task": "regex-swap-regex-quantifier-001",
+      "tier": "easy",
+      "mutationType": "swap-regex-quantifier",
+      "error": "File mismatch for tool-override.ts",
+      "editCalls": 1,
+      "retries": {
+        "timeout": 0,
+        "zeroTool": 0,
+        "providerFailure": 0
+      }
+    }
+  ],
+  "runsPerTask": 1,
+  "anyOfN": 104,
+  "allRunsPassed": 104,
+  "allRunsTotal": 106,
+  "allRunsTaskSuccessRate": 0.9811320754716981,
+  "flakyTasks": []
+}
