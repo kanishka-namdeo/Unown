@@ -302,12 +302,24 @@ export function bashRedirectEscape(cwd: string, command: string): string | null 
                 // prefixed SYSTEM_TREE below would otherwise deny — over-blocking
                 // every legitimate `> /tmp/…` scratch redirect on darwin).
                 if (TMP_ROOTS.some((r) => insideRoot(r, resolved))) continue;
+                // Defense-in-depth: node:path resolution can mangle device
+                // paths (\\.\PhysicalDrive1 gains a drive prefix on win32) and
+                // other unusual absolute forms, so the raw user-supplied target
+                // is tested against the lexical deny regexes as well. Order
+                // matters: the tmp exemption above ran on the RESOLVED path, so
+                // legitimate `> /var/folders/…/T/log` spellings (macOS tmpdir)
+                // never reach this deny set even though "^/var" matches them.
                 if (
                         SYSTEM_TREE.test(resolved) ||
                         SYSTEM_TREE_WIN.test(resolved) ||
                         RAW_DEVICE.test(resolved) ||
                         RAW_DEVICE_WIN.test(resolved) ||
-                        SSH_TRUST_DIR.test(resolved)
+                        SSH_TRUST_DIR.test(resolved) ||
+                        SYSTEM_TREE.test(target) ||
+                        SYSTEM_TREE_WIN.test(target) ||
+                        RAW_DEVICE.test(target) ||
+                        RAW_DEVICE_WIN.test(target) ||
+                        SSH_TRUST_DIR.test(target)
                 ) {
                         return `redirect target escapes the safe write set: ${target} (resolved ${resolved})`;
                 }

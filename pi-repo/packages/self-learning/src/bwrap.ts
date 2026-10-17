@@ -71,15 +71,15 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  *  the gate a Git-Bash /usr/bin/bwrap from a WSL mount could win on Windows
  *  by accident. Non-linux hosts always resolve null (-> TS path jail). */
 export function resolveBwrapPath(): string | null {
-	if (process.platform !== "linux") return null;
-	const override = process.env.UNOWN_BWRAP;
-	if (override && existsSync(override)) return override;
-	const vendored = join(HERE, "..", "native", "bin", "bwrap");
-	if (existsSync(vendored)) return vendored;
-	for (const p of ["/usr/bin/bwrap", "/usr/local/bin/bwrap"]) {
-		if (existsSync(p)) return p;
-	}
-	return null;
+        if (process.platform !== "linux") return null;
+        const override = process.env.UNOWN_BWRAP;
+        if (override && existsSync(override)) return override;
+        const vendored = join(HERE, "..", "native", "bin", "bwrap");
+        if (existsSync(vendored)) return vendored;
+        for (const p of ["/usr/bin/bwrap", "/usr/local/bin/bwrap"]) {
+                if (existsSync(p)) return p;
+        }
+        return null;
 }
 
 /** Resolve the sandbox-exec binary: env override -> /usr/bin/sandbox-exec.
@@ -90,11 +90,11 @@ export function resolveBwrapPath(): string | null {
  *  override exists for nonstandard setups. Non-darwin hosts always
  *  resolve null (-> TS path jail). */
 export function resolveSandboxExecPath(): string | null {
-	if (process.platform !== "darwin") return null;
-	const override = process.env.UNOWN_SANDBOX_EXEC;
-	if (override && existsSync(override)) return override;
-	if (existsSync("/usr/bin/sandbox-exec")) return "/usr/bin/sandbox-exec";
-	return null;
+        if (process.platform !== "darwin") return null;
+        const override = process.env.UNOWN_SANDBOX_EXEC;
+        if (override && existsSync(override)) return override;
+        if (existsSync("/usr/bin/sandbox-exec")) return "/usr/bin/sandbox-exec";
+        return null;
 }
 
 /** The OS-sandbox backend for this host: "bwrap" on Linux, "seatbelt" on
@@ -103,55 +103,80 @@ export function resolveSandboxExecPath(): string | null {
  *  — the UNOWN_OS_SANDBOX=0 kill-switch is applied by the callers, exactly
  *  as resolveBwrapPath has always done. */
 export function resolveOsSandboxBackend(): "bwrap" | "seatbelt" | null {
-	if (process.platform === "linux") return resolveBwrapPath() === null ? null : "bwrap";
-	if (process.platform === "darwin") return resolveSandboxExecPath() === null ? null : "seatbelt";
-	return null;
+        if (process.platform === "linux") return resolveBwrapPath() === null ? null : "bwrap";
+        if (process.platform === "darwin") return resolveSandboxExecPath() === null ? null : "seatbelt";
+        return null;
 }
 
 export function osSandboxConfigured(): boolean {
-	return process.env.UNOWN_OS_SANDBOX !== "0";
+        return process.env.UNOWN_OS_SANDBOX !== "0";
 }
 
 export function netBlocked(): boolean {
-	return process.env.UNOWN_SANDBOX_NET !== "1";
+        return process.env.UNOWN_SANDBOX_NET !== "1";
 }
 
 /** The validated bubblewrap profile (see scripts/bwrap_smoke.sh evidence). */
-export function bwrapArgs(workspace: string, net = netBlocked()): string[] {
-	const args: string[] = [
-		"--ro-bind",
-		"/",
-		"/",
-		"--proc",
-		"/proc",
-		"--dev",
-		"/dev",
-		"--tmpfs",
-		"/home",
-		"--tmpfs",
-		"/run",
-		"--tmpfs",
-		"/tmp",
-		"--tmpfs",
-		"/var/tmp",
-		"--bind",
-		workspace,
-		workspace,
-		"--chdir",
-		workspace,
-		"--die-with-parent",
-		"--new-session",
-		"--cap-drop",
-		"ALL",
-		"--setenv",
-		"HOME",
-		"/tmp/home",
-		"--setenv",
-		"TMPDIR",
-		"/tmp",
-	];
-	if (net) args.push("--unshare-net", "--unshare-ipc");
-	return args;
+export function bwrapArgs(workspace: string, net = netBlocked(), execPath: string = process.execPath): string[] {
+        const args: string[] = [
+                "--ro-bind",
+                "/",
+                "/",
+                "--proc",
+                "/proc",
+                "--dev",
+                "/dev",
+                "--tmpfs",
+                "/home",
+                "--tmpfs",
+                "/run",
+                "--tmpfs",
+                "/tmp",
+                "--tmpfs",
+                "/var/tmp",
+                "--bind",
+                workspace,
+                workspace,
+                "--chdir",
+                workspace,
+                "--die-with-parent",
+                "--new-session",
+                "--cap-drop",
+                "ALL",
+                "--setenv",
+                "HOME",
+                "/tmp/home",
+                "--setenv",
+                "TMPDIR",
+                "/tmp",
+        ];
+        // The default bun install (~/.bun/bin) sits under /home — which the
+        // --tmpfs /home above masks inside the sandbox. Without this bind every
+        // sandboxed `bun run …` (engine verify scripts, harness runs) fails
+        // with "bun: command not found" on hosts where bun lives under a
+        // masked tree (the bun.sh installer default, GitHub Actions runners).
+        // Ordered AFTER the tmpfs mounts so the later mount wins.
+        for (const bind of runtimeBindArgs(execPath)) args.push(...bind);
+        if (net) args.push("--unshare-net", "--unshare-ipc");
+        return args;
+}
+
+/** Extra --ro-bind flags that make the bun runtime visible inside the
+ *  sandbox when its executable directory sits under a tmpfs-masked tree
+ *  (/home, /run, /tmp, /var/tmp). Linux-only (the bwrap backend itself is
+ *  linux-gated); empty on system installs (/usr/local/bin, /opt/…). The
+ *  exec dir is realpath'd so a ~/.bun symlink farm cannot dodge the check. */
+export function runtimeBindArgs(execPath: string): string[][] {
+        if (process.platform !== "linux" || !execPath) return [];
+        let dir: string;
+        try {
+                dir = dirname(realpathSync(execPath));
+        } catch {
+                dir = dirname(execPath);
+        }
+        const masked = ["/home", "/run", "/tmp", "/var/tmp"];
+        if (!masked.some((m) => dir === m || dir.startsWith(`${m}/`))) return [];
+        return [["--ro-bind", dir, dir]];
 }
 
 // ---------------------------------------------------------------------------
@@ -164,16 +189,16 @@ export function bwrapArgs(workspace: string, net = netBlocked()): string[] {
  *  Falls back to resolve() when the path does not exist yet (callers
  *  create the workspace before wrapping, but probing must not throw). */
 export function seatbeltWorkspacePath(workspace: string): string {
-	try {
-		return realpathSync(workspace);
-	} catch {
-		return resolve(workspace);
-	}
+        try {
+                return realpathSync(workspace);
+        } catch {
+                return resolve(workspace);
+        }
 }
 
 /** Escape a path for a seatbelt string literal: \ and " (subpath "..."). */
 function escapeSeatbeltPath(p: string): string {
-	return p.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        return p.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 /**
@@ -221,25 +246,25 @@ function escapeSeatbeltPath(p: string): string {
  * stays out so this function remains pure and golden-testable.
  */
 export function buildSeatbeltProfile(workspace: string, opts: { net: boolean }): string {
-	const ws = escapeSeatbeltPath(workspace);
-	const netLine = opts.net ? "(allow network*)" : "(deny network*)";
-	return [
-		"(version 1)",
-		"(deny default)",
-		"(allow file-read*)",
-		"(allow process-exec*)",
-		"(allow process-fork)",
-		"(allow sysctl*)",
-		"(allow mach-lookup)",
-		"(allow signal (target self))",
-		'(allow file-write* (literal "/dev/null"))',
-		'(allow file-write* (subpath "/private/tmp"))',
-		'(allow file-write* (subpath "/var/folders"))',
-		`(allow file-write* (subpath "${ws}"))`,
-		'(deny file-write* (subpath "/System"))',
-		netLine,
-		"",
-	].join("\n");
+        const ws = escapeSeatbeltPath(workspace);
+        const netLine = opts.net ? "(allow network*)" : "(deny network*)";
+        return [
+                "(version 1)",
+                "(deny default)",
+                "(allow file-read*)",
+                "(allow process-exec*)",
+                "(allow process-fork)",
+                "(allow sysctl*)",
+                "(allow mach-lookup)",
+                "(allow signal (target self))",
+                '(allow file-write* (literal "/dev/null"))',
+                '(allow file-write* (subpath "/private/tmp"))',
+                '(allow file-write* (subpath "/var/folders"))',
+                `(allow file-write* (subpath "${ws}"))`,
+                '(deny file-write* (subpath "/System"))',
+                netLine,
+                "",
+        ].join("\n");
 }
 
 /**
@@ -253,9 +278,9 @@ export function buildSeatbeltProfile(workspace: string, opts: { net: boolean }):
  * their own (equally valid) copy.
  */
 export function seatbeltProfilePath(workspace: string): string {
-	const ws = seatbeltWorkspacePath(workspace);
-	const hash = createHash("sha256").update(ws).digest("hex").slice(0, 16);
-	return join(tmpdir(), `unown-seatbelt-${hash}.sb`);
+        const ws = seatbeltWorkspacePath(workspace);
+        const hash = createHash("sha256").update(ws).digest("hex").slice(0, 16);
+        return join(tmpdir(), `unown-seatbelt-${hash}.sb`);
 }
 
 /** Single-entry cache for the generated profile: rewrite only when the
@@ -264,39 +289,39 @@ let seatbeltProfileCache: { path: string; content: string } | null = null;
 
 /** Materialize the seatbelt profile for a workspace and return its path. */
 function ensureSeatbeltProfile(workspace: string): string {
-	const ws = seatbeltWorkspacePath(workspace);
-	const content = buildSeatbeltProfile(ws, { net: !netBlocked() });
-	const path = seatbeltProfilePath(ws);
-	if (
-		seatbeltProfileCache &&
-		seatbeltProfileCache.path === path &&
-		seatbeltProfileCache.content === content &&
-		existsSync(path)
-	) {
-		return path;
-	}
-	writeFileSync(path, content, "utf8");
-	seatbeltProfileCache = { path, content };
-	return path;
+        const ws = seatbeltWorkspacePath(workspace);
+        const content = buildSeatbeltProfile(ws, { net: !netBlocked() });
+        const path = seatbeltProfilePath(ws);
+        if (
+                seatbeltProfileCache &&
+                seatbeltProfileCache.path === path &&
+                seatbeltProfileCache.content === content &&
+                existsSync(path)
+        ) {
+                return path;
+        }
+        writeFileSync(path, content, "utf8");
+        seatbeltProfileCache = { path, content };
+        return path;
 }
 
 /** Wrap a command argv with the OS-sandbox profile for this host; null when
  *  unavailable. The Linux argv is byte-identical to the historical bwrap
  *  one; seatbelt wraps as [sandbox-exec, -f, <profile>, --, command...]. */
 export function wrapCommand(command: string[], workspace: string): string[] | null {
-	if (!osSandboxConfigured()) return null;
-	const backend = resolveOsSandboxBackend();
-	if (backend === "bwrap") {
-		const bin = resolveBwrapPath();
-		if (!bin) return null;
-		return [bin, ...bwrapArgs(workspace), "--", ...command];
-	}
-	if (backend === "seatbelt") {
-		const bin = resolveSandboxExecPath();
-		if (!bin) return null;
-		return [bin, "-f", ensureSeatbeltProfile(workspace), "--", ...command];
-	}
-	return null;
+        if (!osSandboxConfigured()) return null;
+        const backend = resolveOsSandboxBackend();
+        if (backend === "bwrap") {
+                const bin = resolveBwrapPath();
+                if (!bin) return null;
+                return [bin, ...bwrapArgs(workspace), "--", ...command];
+        }
+        if (backend === "seatbelt") {
+                const bin = resolveSandboxExecPath();
+                if (!bin) return null;
+                return [bin, "-f", ensureSeatbeltProfile(workspace), "--", ...command];
+        }
+        return null;
 }
 
 let availabilityCache: boolean | null = null;
@@ -304,46 +329,46 @@ let availabilityCache: boolean | null = null;
 /** One-time bwrap smoke test: can the profile actually execute a command
  *  here? (probe body of osSandboxAvailable, Linux backend) */
 async function probeBwrap(bin: string): Promise<boolean> {
-	let probeDir: string | null = null;
-	try {
-		probeDir = mkdtempSync(join(tmpdir(), "unown-bwrap-probe-"));
-		const proc = Bun.spawn([bin, ...bwrapArgs(probeDir), "--", "/bin/sh", "-c", "exit 0"], {
-			cwd: probeDir,
-			stdout: "ignore",
-			stderr: "pipe",
-		});
-		const timer = setTimeout(() => proc.kill(9), 10_000);
-		const code = await proc.exited;
-		clearTimeout(timer);
-		return code === 0;
-	} catch {
-		return false;
-	} finally {
-		if (probeDir) {
-			try {
-				rmSync(probeDir, { recursive: true, force: true });
-			} catch {
-				/* ignore */
-			}
-		}
-	}
+        let probeDir: string | null = null;
+        try {
+                probeDir = mkdtempSync(join(tmpdir(), "unown-bwrap-probe-"));
+                const proc = Bun.spawn([bin, ...bwrapArgs(probeDir), "--", "/bin/sh", "-c", "exit 0"], {
+                        cwd: probeDir,
+                        stdout: "ignore",
+                        stderr: "pipe",
+                });
+                const timer = setTimeout(() => proc.kill(9), 10_000);
+                const code = await proc.exited;
+                clearTimeout(timer);
+                return code === 0;
+        } catch {
+                return false;
+        } finally {
+                if (probeDir) {
+                        try {
+                                rmSync(probeDir, { recursive: true, force: true });
+                        } catch {
+                                /* ignore */
+                        }
+                }
+        }
 }
 
 /** One-time seatbelt smoke test: can sandbox-exec execute a trivial
  *  profile here? (probe body of osSandboxAvailable, macOS backend) */
 async function probeSeatbelt(bin: string): Promise<boolean> {
-	try {
-		const proc = Bun.spawn([bin, "-p", "(version 1)(allow default)", "--", "/bin/sh", "-c", "exit 0"], {
-			stdout: "ignore",
-			stderr: "pipe",
-		});
-		const timer = setTimeout(() => proc.kill(9), 10_000);
-		const code = await proc.exited;
-		clearTimeout(timer);
-		return code === 0;
-	} catch {
-		return false;
-	}
+        try {
+                const proc = Bun.spawn([bin, "-p", "(version 1)(allow default)", "--", "/bin/sh", "-c", "exit 0"], {
+                        stdout: "ignore",
+                        stderr: "pipe",
+                });
+                const timer = setTimeout(() => proc.kill(9), 10_000);
+                const code = await proc.exited;
+                clearTimeout(timer);
+                return code === 0;
+        } catch {
+                return false;
+        }
 }
 
 /** One-time cached smoke test per backend: can the host's OS sandbox
@@ -351,25 +376,30 @@ async function probeSeatbelt(bin: string): Promise<boolean> {
  *  UNOWN_OS_SANDBOX=0 kill-switch short-circuit to false — the TS path
  *  jail remains the only barrier. */
 export async function osSandboxAvailable(): Promise<boolean> {
-	if (!osSandboxConfigured()) return false;
-	if (availabilityCache !== null) return availabilityCache;
-	const backend = resolveOsSandboxBackend();
-	let ok = false;
-	if (backend === "bwrap") {
-		const bin = resolveBwrapPath();
-		if (bin) ok = await probeBwrap(bin);
-	} else if (backend === "seatbelt") {
-		const bin = resolveSandboxExecPath();
-		if (bin) ok = await probeSeatbelt(bin);
-	}
-	availabilityCache = ok;
-	return availabilityCache;
+        if (!osSandboxConfigured()) return false;
+        if (availabilityCache !== null) return availabilityCache;
+        const backend = resolveOsSandboxBackend();
+        let ok = false;
+        if (backend === "bwrap") {
+                const bin = resolveBwrapPath();
+                if (bin) ok = await probeBwrap(bin);
+        } else if (backend === "seatbelt") {
+                const bin = resolveSandboxExecPath();
+                if (bin) ok = await probeSeatbelt(bin);
+        }
+        availabilityCache = ok;
+        return availabilityCache;
 }
 
 /** The Linux (bwrap) wrapper script — byte-identical to the historical one. */
 function bwrapShellScript(bin: string): string {
-	const netArgs = netBlocked() ? "--unshare-net \\\n  --unshare-ipc \\\n  " : "";
-	return `#!/bin/sh
+        const netArgs = netBlocked() ? "--unshare-net \\\n  --unshare-ipc \\\n  " : "";
+        // Same runtime bind as bwrapArgs(): keep bun visible when its install
+        // dir sits under a tmpfs-masked tree (~/.bun default, GH runners).
+        const rtBinds = runtimeBindArgs(process.execPath)
+                .map((b) => `  --ro-bind '${b[1]}' '${b[2]}' \\\n`)
+                .join("");
+        return `#!/bin/sh
 # Generated by unown (src/bwrap.ts) — sandbox shell for agent bash commands.
 # Invoked as: unown-sandbox-shell -c "<command>"; cwd = sandbox workspace.
 # Re-executes the command under bubblewrap with the validated profile.
@@ -382,7 +412,7 @@ exec '${bin}' \\
   --tmpfs /run \\
   --tmpfs /tmp \\
   --tmpfs /var/tmp \\
-  --bind "$WS" "$WS" \\
+${rtBinds}  --bind "$WS" "$WS" \\
   --chdir "$WS" \\
   ${netArgs}--die-with-parent \\
   --new-session \\
@@ -405,10 +435,10 @@ exec '${bin}' \\
  * writes for the same workspace.
  */
 function seatbeltShellScript(bin: string): string {
-	// strip the single trailing \n so the heredoc writes the profile
-	// BYTE-identical to the engine-side file (no extra blank line before EOF).
-	const profileBody = buildSeatbeltProfile("$WSE", { net: !netBlocked() }).replace(/\n$/, "");
-	return `#!/bin/sh
+        // strip the single trailing \n so the heredoc writes the profile
+        // BYTE-identical to the engine-side file (no extra blank line before EOF).
+        const profileBody = buildSeatbeltProfile("$WSE", { net: !netBlocked() }).replace(/\n$/, "");
+        return `#!/bin/sh
 # Generated by unown (src/bwrap.ts) — sandbox shell for agent bash commands (macOS seatbelt).
 # Invoked as: unown-sandbox-shell -c "<command>"; cwd = sandbox workspace.
 # Mirrors the bwrap wrapper: the workspace is derived from the invocation
@@ -436,15 +466,15 @@ exec '${bin}' -f "$PROFILE" -- /bin/bash "$@"
  * kill-switch disables the wrapper everywhere.
  */
 export function writeSandboxShell(agentDir: string): string | null {
-	if (!osSandboxConfigured()) return null;
-	const backend = resolveOsSandboxBackend();
-	if (backend === null) return null;
-	const bin = backend === "bwrap" ? resolveBwrapPath() : resolveSandboxExecPath();
-	if (!bin) return null;
-	mkdirSync(agentDir, { recursive: true });
-	const shellPath = join(agentDir, "unown-sandbox-shell");
-	const script = backend === "bwrap" ? bwrapShellScript(bin) : seatbeltShellScript(bin);
-	writeFileSync(shellPath, script, "utf8");
-	chmodSync(shellPath, 0o755);
-	return shellPath;
+        if (!osSandboxConfigured()) return null;
+        const backend = resolveOsSandboxBackend();
+        if (backend === null) return null;
+        const bin = backend === "bwrap" ? resolveBwrapPath() : resolveSandboxExecPath();
+        if (!bin) return null;
+        mkdirSync(agentDir, { recursive: true });
+        const shellPath = join(agentDir, "unown-sandbox-shell");
+        const script = backend === "bwrap" ? bwrapShellScript(bin) : seatbeltShellScript(bin);
+        writeFileSync(shellPath, script, "utf8");
+        chmodSync(shellPath, 0o755);
+        return shellPath;
 }
