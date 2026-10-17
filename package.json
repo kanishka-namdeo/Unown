@@ -14,6 +14,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:unit": "bun test src",
+    "test:coverage": "node scripts/check_coverage.mjs --run",
+    "check:docs": "node scripts/check_docs.mjs docs/*.md",
     "unown": "bun bin/unown",
     "agent:install": "bash scripts/install.sh",
     "agent:start": "bash scripts/start.sh",
