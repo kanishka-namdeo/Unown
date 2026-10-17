@@ -53,13 +53,21 @@ const RECEIPTS_DIR =
 // Scratch environment MUST be in place before ANY src import (store.ts opens
 // SQLite and reads DATA_DIR at module load). This file therefore has NO static
 // imports of ../src/* — everything is imported dynamically in beforeAll.
+//
+// GATED (the round-two CI bug fix): this module's body evaluates even when
+// the suite is skipped (bun registers every file), and an UNGATED claim here
+// would steal PI_SELFLEARNING_* from later-loading unit files whose
+// `import "./_env.ts"` only sets defaults (??=). Claim only when this suite
+// is actually enabled; it is designed to run standalone under its gate.
 // ---------------------------------------------------------------------------
-process.env.PI_SELFLEARNING_DATA = join(SCRATCH, "data");
-process.env.PI_SELFLEARNING_DB = join(SCRATCH, "db", "selflearning.db");
-process.env.PI_AGENT_PORT = String(ENGINE_PORT);
-process.env.PI_BRIDGE_URL = `http://127.0.0.1:${PROXY_PORT}`;
-process.env.PI_MODEL_ID = MODEL;
-process.env.PI_PROVIDER = "zai-bridge";
+if (GATE) {
+        process.env.PI_SELFLEARNING_DATA = join(SCRATCH, "data");
+        process.env.PI_SELFLEARNING_DB = join(SCRATCH, "db", "selflearning.db");
+        process.env.PI_AGENT_PORT = String(ENGINE_PORT);
+        process.env.PI_BRIDGE_URL = `http://127.0.0.1:${PROXY_PORT}`;
+        process.env.PI_MODEL_ID = MODEL;
+        process.env.PI_PROVIDER = "zai-bridge";
+}
 
 let serverMod: typeof import("../src/server.ts");
 let memoryMod: typeof import("../src/memory.ts");

@@ -45,12 +45,17 @@ const RECEIPTS_DIR =
         join(import.meta.dir, "..", "..", "..", "..", "benchmarks", "memory-eval", "results");
 
 // Scratch env BEFORE any src import (see memory-live.test.ts for the pattern).
-process.env.PI_SELFLEARNING_DATA = join(SCRATCH, "data");
-process.env.PI_SELFLEARNING_DB = join(SCRATCH, "db", "selflearning.db");
-process.env.PI_AGENT_PORT = String(ENGINE_PORT);
-process.env.PI_BRIDGE_URL = `http://127.0.0.1:${PROXY_PORT}`;
-process.env.PI_MODEL_ID = MODEL;
-process.env.PI_PROVIDER = "zai-bridge";
+// GATED like memory-live: the module body evaluates even when the suite is
+// skipped, and an ungated claim would steal PI_SELFLEARNING_* from
+// later-loading unit files whose ./_env.ts import only sets defaults (??=).
+if (GATE) {
+        process.env.PI_SELFLEARNING_DATA = join(SCRATCH, "data");
+        process.env.PI_SELFLEARNING_DB = join(SCRATCH, "db", "selflearning.db");
+        process.env.PI_AGENT_PORT = String(ENGINE_PORT);
+        process.env.PI_BRIDGE_URL = `http://127.0.0.1:${PROXY_PORT}`;
+        process.env.PI_MODEL_ID = MODEL;
+        process.env.PI_PROVIDER = "zai-bridge";
+}
 
 const POISON_PROJECT = join(SCRATCH, "victim-project");
 

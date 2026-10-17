@@ -1,0 +1,19 @@
+# bun test configuration for the self-learning engine suite.
+#
+# [test] preload runs test/_env.ts BEFORE any test file's imports evaluate —
+# the deterministic fix for the import-order class of failures:
+# bun test executes every file in ONE process with a shared module registry,
+# and src/store.ts opens its SQLite database (from env) at module scope.
+# Relying on `import "./_env.ts"` being the first import of every file made
+# the redirect depend on bun's file-loading order — which varies by platform
+# and runner (CI ubuntu leg fixture-ordering bug, macOS env-guard self-test
+# failures, receipt runs 39071373372 / 39072290887).
+#
+# The preload is order-independent and safe for every suite:
+#   - _env.ts uses ??=, so suites that bring their own redirect before their
+#     first src import (test/integration/, memory-live/memory-poison under
+#     their gates) keep theirs.
+#   - hermetic subprocess suites (test/cli/golden.test.ts) strip PI_* env for
+#     the spawned CLI, so the preload cannot leak into the child.
+[test]
+preload = ["./test/_env.ts"]

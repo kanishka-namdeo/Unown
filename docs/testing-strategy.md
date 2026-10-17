@@ -243,8 +243,9 @@ schema, landing GBA palette contract, gitleaks full-history secret scan, and
 `bun audit --prod` with three documented prisma-internal ignores. A concurrency
 group cancels superseded runs.
 
-Still absent: the bridge suite (95), the integration suite, `bun run build`,
-and E2E/axe. The merge also surfaced a second, subtler honesty problem -
+Still absent: the integration suite, `bun run build`,
+and E2E/axe. The bridge suite (95) was wired in this revision's round
+three. The merge also surfaced a second, subtler honesty problem -
 "the job exists" is not "the job pays off". At `afd962b` the newest upstream
 run had engine tests green on the ubuntu leg but red on the windows and macos
 legs, and `sandbox-smoke` red on ubuntu because the ubuntu-24.04 runner image
@@ -493,7 +494,7 @@ Notes on the two decisions that changed from the original proposal:
 | 8 | `bun audit --prod` | SHIPPED | 3 documented prisma-internal ignores |
 | 9 | Changed-line coverage >= 80% in `src/` | SHIPPED (this revision) | `bun test --coverage` + `scripts/check_coverage.mjs`; measured baseline 91.1% lines |
 | 10 | Engine suite `bun test test/` in `self-learning` | SHIPPED (upstream, `build-test` matrix) | ubuntu green; post-`ae7b01b` (run 39071373372): windows 687/79/3, macos 726/40/4; locally on Windows 600/79/25 - 22 of the local 25 pass on the runner (privilege environment), 3 are real (§7.2). Hermetic means green on **every** runner |
-| 11 | Bridge suite `bun test pure.test.ts` | **OPEN** | 95 tests, sub-second - now the cheapest missing gate |
+| 11 | Bridge suite `bun test pure.test.ts` | **SHIPPED** (this revision, round three) | 95 tests, sub-second, no deps/network — dedicated `bridge` CI job | 
 | 12 | Engine integration suite (`test:integration`) | **OPEN** | 10 tests, real server + mock bridge |
 | 13 | Sandbox suite in CI | SHIPPED (upstream, unconditional ubuntu `sandbox-smoke` job) | **GREEN** as of run 39072290887 (`a13cf9d`): trajectory red 10/11/1 -> profile green 21/0/1 + engine red 10/2 -> fully green. The red phase proved the value of the early-canary design (§7.5) |
 | 14 | `bun run build` before deploy | **OPEN** | Vercel builds on push; GitHub CI should too |
@@ -591,6 +592,22 @@ preserved in the margin notes where they were cited from history.
   list (its own author's commit caused it - invariant: a shared fixture root
   is mutable state; a test that deletes a subtree other tests still read
   needs an mkdtemp of its own, which is §7.1's per-test isolation rule).
+- **SHIPPED (round three, this session)** - the whole import-order / ENOENT
+  class closed at its source, local receipts: (a) the self-learning package
+  `bunfig.toml` preloads `test/_env.ts` before ANY test file's imports
+  evaluate (order-independent env redirect - same pattern the repo root
+  already uses for its DOM preload); (b) `_env.ts` materializes
+  `<TEST_TMP>/data` and `<TEST_TMP>/unown-home` up front (`store.ts` only
+  mkdirs `dirname(DB_PATH)`, so a tripwire `realpathSync(DATA_DIR)` could
+  ENOENT on a clean runner before the first memory write - reproduced the
+  CI ubuntu receipt deterministically, then five consecutive clean-`/tmp`
+  runs at 736/0/37); (c) `memory-live`/`memory-poison` claim their scratch
+  env only under their gates (module bodies evaluate even when skipped, and
+  an ungated claim steals `PI_SELFLEARNING_*` from later-loading unit files
+  whose `_env` import only sets defaults `??=`). The macOS env-guard
+  self-test x3 share the import-order root cause and are expected to clear
+  on the next CI run; the windows residue (canary rollback + F4 live-pinned
+  + raw-device twin) is path-semantics work that stays OPEN.
 - **OPEN** - Fault injection, none of it: bridge down mid-run; process kill
   mid-run then restart (orphan recovery must leave memory versions monotonic and
   no partial write visible); SQLite concurrent read while a run writes (WAL, no
@@ -1004,18 +1021,20 @@ is what remains.
 
 **Now (days).**
 
-1. Close the measured cross-platform residue. Two upstream rounds already
-   shipped and three CI runs measured them (`ae7b01b`: fixtures + macOS
-   `/private/etc` fix + sandbox sysctl/canary - validated 10/11/1 -> 21/0/1 by
-   run 39071373372; `a13cf9d`: sandbox runtime-bind + realpath hardening -
-   `sandbox-smoke` fully green by run 39072290887, which however introduced
-   an ubuntu fixture-ordering bug, `memory.test.ts:60` ENOENT). Repair list,
-   by receipt (§7.2): the ubuntu fixture bug (top: round-two regression), 3
-   Windows path/canary tests, 3 macOS env guards; the `_env.ts` tripwires
-   point at import order - a likely one-line fix. A red main licenses noise;
-   nobody triages a red board for long.
-2. Wire the bridge suite (95, sub-second) into CI - after item 1 this is the
-   cheapest remaining gap.
+1. ~~Close the measured cross-platform residue.~~ **CLOSED for the
+   import-order/ENOENT class (round three, this session)** — the
+   `bunfig.toml` preload + up-front redirect-root materialization + gated
+   live-suite env claims are shipped with local receipts (five consecutive
+   clean-`/tmp` runs at 736/0/37, the exact condition that produced the
+   ubuntu `memory.test.ts:60` receipt; macOS env guards share the root
+   cause). The predicted "one-line fix" turned out to be three small
+   changes — the tripwire was the symptom, not the defect. **REMAINS
+   OPEN:** the Windows path-semantics residue (canary rollback + F4
+   live-pinned + raw-device twin, §7.2) — needs a Windows receipt, not a
+   Linux guess.
+2. ~~Wire the bridge suite (95, sub-second) into CI.~~ **DONE** — dedicated
+   `bridge` job (checkout + setup-bun + `bun test pure.test.ts`; no
+   install, no network).
 3. Corpus checksum manifest + runner verification (§8.3), and the owner decision on
    write containment (§8.2). This is the only P0 in the document that is about the
    integrity of published numbers rather than about catching bugs.

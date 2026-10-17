@@ -144,6 +144,22 @@ jobs:
         # verifyInSandbox, the generated sandbox shell wrapper).
         run: bun scripts/verify_sandbox.mjs
 
+  bridge:
+    name: LLM bridge tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Bridge unit suite (pure routing/throttle/timeout logic)
+        # 95 hermetic tests, sub-second, no node_modules, no network: the
+        # bridge's pure logic (model routing, thinking-mode handling, request
+        # throttling, upstream timeout parsing). The last un-wired test suite
+        # (testing-strategy.md §6 gates 10-13 / §11 item 2).
+        working-directory: mini-services/llm-bridge
+        run: bun test pure.test.ts
+
   lint:
     name: Lint dashboard
     runs-on: ubuntu-latest

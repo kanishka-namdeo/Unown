@@ -55,6 +55,19 @@ This package is Unowned (modified from upstream pi-mono); sibling packages (`ai`
   (K-sampled canary gate: drift/claim analysis, PI_DREAM_CANARY_K) and
   `budget.test.ts` (resolved-block hard cap PI_MEMORY_TOTAL_CHARS with
   oldest-first degradation).
+- Suite-ordering contract (closed the 3-OS import-order residue, follow-up
+  to CI runs 39071373372/39072290887): `bunfig.toml` preloads `test/_env.ts`
+  BEFORE any test file's imports evaluate, so the DB/bridge env redirect is
+  independent of bun's file-loading order (which varies by platform and
+  runner). `_env.ts` also materializes `<TEST_TMP>/data` and
+  `<TEST_TMP>/unown-home` up front — store.ts only mkdirs `dirname(DB_PATH)`,
+  so a tripwire realpathSync(DATA_DIR) could ENOENT before the first memory
+  write. The live suites (`memory-live`/`memory-poison`) claim their scratch
+  env ONLY under their gates (module bodies evaluate even when skipped, and
+  an ungated claim steals `PI_SELFLEARNING_*` from later-loading unit files
+  whose `_env` import only sets defaults `??=`). When adding test files:
+  static `../src/*` imports still require `import "./_env.ts"` first by
+  convention, but the preload is the enforced backstop.
 - `UNOWN_MEMORY_LIVE=1 bun test test/memory-live.test.ts` — LIVE memory
   e2e (scratch engine + real bridge, ~45 s): boots a real server on :3035
   behind a recording proxy (:3036), proves the 4-tier block + guide +

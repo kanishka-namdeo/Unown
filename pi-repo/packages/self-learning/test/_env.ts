@@ -27,6 +27,18 @@ const TEST_TMP_LITERAL = join(tmpdir(), "engine-tests-b");
 
 mkdirSync(TEST_TMP_LITERAL, { recursive: true });
 
+// Materialize the redirected roots UP FRONT (the round-two CI bug fix):
+// src/store.ts only mkdirs dirname(DB_PATH) (= TEST_TMP) at module load, and
+// DATA_DIR (<TEST_TMP>/data) is otherwise created lazily by whichever test
+// first writes a memory tier. A tripwire test that realpathSync(DATA_DIR)s
+// before that (bun's file execution order varies by platform/runner) hit
+// ENOENT — CI ubuntu receipt 39072290887, `memory.test.ts:60 lstats a
+// /tmp/engine-tests-b subtree … an earlier test removed`. Creating both
+// redirect targets here makes the invariant order-independent: whenever the
+// env redirect was honored, the roots exist.
+mkdirSync(join(TEST_TMP_LITERAL, "data"), { recursive: true });
+mkdirSync(join(TEST_TMP_LITERAL, "unown-home"), { recursive: true });
+
 export const TEST_TMP = (() => {
         try {
                 return realpathSync(TEST_TMP_LITERAL);
