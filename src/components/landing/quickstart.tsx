@@ -20,13 +20,14 @@ const COMMANDS: [string, string][] = [
   ["unown models", "configured models plus what the bridge serves"],
   ["unown doctor", "endpoint, keys, upstream and memory, end to end"],
   ["unown memory", "print the effective four-tier stack"],
+  ["unown init", "scaffold this project's .unown/memory files"],
   ['unown note "flaky auth spec"', "hand AutoDream a note directly"],
 ];
 
 const PREREQS: [string, string][] = [
   ["bun", "≥ 1.2"],
   ["an endpoint", "any OpenAI-compatible base URL + key"],
-  ["OS", "Linux or macOS. Bubblewrap sandboxing is Linux-only"],
+  ["OS", "Windows, macOS or Linux — same commands. OS sandbox: bubblewrap (Linux), Seatbelt (macOS); native Windows runs the in-process jail"],
 ];
 
 export function QuickstartSection() {

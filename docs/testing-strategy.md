@@ -188,18 +188,21 @@ only because a competitor's number was inconvenient.
 
 ## 3. Live inventory (2026-10-18)
 
-All counts below are from this tree unless marked `[C]`.
+All counts below are from this tree unless marked `[C]`, and are now
+platform-tagged: after the cross-platform merge (M2-M4, `afd962b`) the engine
+suite's path-semantics differ per OS and the differences are load-bearing
+(§7.2).
 
 | Surface | What exists | Measured | Gap |
 |---|---|---|---|
-| `src/` (dashboard + landing) | `bun test src` with happy-dom + RTL | 206 tests / 13 files, 0 fail `[V]` | No E2E, no a11y, no visual regression, no landing-page tests; line coverage 91.1% overall but `providers.tsx` 58% and `activity-feed.tsx` 54% `[V]` |
-| `pi-repo/.../self-learning` (engine) | `bun test test/` unit + guard + canary + budget suites; `test/cli/golden.test.ts`; `test/termhooks.adversarial.test.ts`; `test/integration/` | 533 pass / 13 skip in the consolidated snapshot `[V: benchmarks/snapshots/track1-rerun-2026-10-17/summary.json]` | No fault injection, no load test, no coverage measurement, no property fuzzing; live suites are env-gated and therefore never run in CI |
-| `mini-services/llm-bridge` | `bun test pure.test.ts` (pure routing/thinking/retry/backoff/SSE math) + env-gated VLM smoke | 95 tests, 0 fail `[V]` | No load/chaos, no cancellation test, no contract test against a real OpenAI client |
-| `bin/unown` (CLI + TUI) | `test/cli/golden.test.ts` (setup/doctor/memory/plan/headless/env-knobs/parallel) | covered in the 533 above | No TUI interaction test, no `unown setup` idempotency-under-failure test |
-| `pi-repo/*` (upstream vendored) | `npm run test` per workspace with pinned model-catalog snapshots | 4,809 pass / 0 fail / 13 skip (5,342 minus 533 self-learning) `[V: summary.json]` | Out of our scope by policy (§13) |
+| `src/` (dashboard + landing) | `bun test src` with happy-dom + RTL | 206 tests / 13 files, 0 fail `[V: 2026-10-18, Windows]` | No E2E, no a11y, no visual regression, no landing-page tests; line coverage 91.1% overall but `providers.tsx` 58% and `activity-feed.tsx` 54% `[V]` |
+| `pi-repo/.../self-learning` (engine) | `bun test test/` unit + guard + canary + budget suites; `test/cli/golden.test.ts`; `test/termhooks.adversarial.test.ts`; `test/integration/`; new: `tools.test.ts`, seatbelt and Windows-hook tests (M2/M3) | pre-fix `888c8fa`: 603 pass / 35 skip / 64 fail of 702; post-fix `ae7b01b` (three-OS portability): **600 pass / 79 skip / 25 fail of 704** across 20 files `[V: 2026-10-18, Windows, bun 1.4.2 AND pinned 1.4.3 - not a bun-version delta]`; ubuntu leg green on both runs (733/37/0 at run 39071373372) | the 25 residuals (§7.2): canary suite 6, CLI golden 16, path tests 3; no fault injection, no load test, no coverage measurement, no property fuzzing; live suites are env-gated and therefore never run in CI |
+| `mini-services/llm-bridge` | `bun test pure.test.ts` (pure routing/thinking/retry/backoff/SSE math) + env-gated VLM smoke | 95 tests, 0 fail `[V: 2026-10-18, Windows]` | No load/chaos, no cancellation test, no contract test against a real OpenAI client, not in CI (§11) |
+| `bin/unown` (CLI + TUI) | `test/cli/golden.test.ts` (setup/doctor/memory/plan/headless/env-knobs/parallel) | covered in the engine suite above | The golden suite still fails 16 cases on this Windows tree after `ae7b01b` (subprocess-spawn families, §7.2); no TUI interaction test, no `unown setup` idempotency-under-failure test |
+| `pi-repo/*` (upstream vendored) | `npm run test` per workspace with pinned model-catalog snapshots | pre-merge Linux receipt: 4,809 pass / 0 fail / 13 skip `[V: benchmarks/snapshots/track1-rerun-2026-10-17/summary.json]` | Out of our scope by policy (§13); receipt needs re-measuring post-merge on the Linux box |
 | Benchmarks | Tracks 1-9 (`benchmarks/README.md`) | re-verified 2026-10-17 with receipts `[C: benchmarks/RESULTS.md]` | No time-horizon ladder, no judge calibration, no external memory benchmark |
-| Sandbox | `bwrap_smoke.sh` (25 checks), `verify_sandbox.mjs` (12 checks) | green locally `[V: scripts/AGENTS.md]` | Not in CI; run only by hand on sandbox changes |
-| CI (`.github/workflows/ci.yml`) | lint, typecheck, `bun test src`, `bash -n scripts/*.sh`, theme, GBA palette, gitleaks, `bun audit --prod` | 8 jobs | No engine tests, no bridge tests, no coverage gate, no integration, no build, no sandbox job |
+| Sandbox | `bwrap_smoke.sh` (25 checks), `verify_sandbox.mjs` (12 checks) | In CI as the `sandbox-smoke` job (ubuntu) `[V: ci.yml]`; trajectory across runs: red 10/11/1 at `afd962b` (launcher dies) `[V: 39069143075]` -> profile step green 21/0/1, engine step red 10/2 at `ae7b01b` `[V: 39071373372]` -> **fully green** (both steps) at `a13cf9d` `[V: 39072290887]` | the launcher-vs-engine split diagnosed itself across the three runs; the record keeps the per-step receipts (§7.5) |
+| CI (`.github/workflows/ci.yml`) | lint-shell, `build-test` (3-OS real-installer matrix + engine suite + CLI smokes), `sandbox-smoke` (ubuntu), lint, typecheck, `bun test src`, coverage gate, docs gate, theme, GBA palette, gitleaks, `bun audit --prod` | 12 jobs `[V: ci.yml]` | No bridge tests, no integration, no build, no E2E/axe; at run 39072290887 (`a13cf9d`): `sandbox-smoke` fully green, all dashboard gates green, engine legs red (ubuntu 735/37/1, windows 689/80/3, macos 729/41/3) |
 
 ### 3.1 Reconciling the test counts
 
@@ -214,19 +217,61 @@ that receipt's note). `benchmarks/README.md` and `RESULTS.md` should adopt the
 same figure and the same scope sentence - a count without its scope is not a
 fact, which is this page's own `docs-drift` taxonomy item (§14.2 #9).
 
+That reconciliation is now itself historical: the cross-platform merge
+(`afd962b`, 2026-10-17) grew the engine suite to 700+ collected tests and the
+5,342 receipt predates it. Fix `ae7b01b` then re-based the fixtures
+platform-aware (realpath'd `/var/tmp` on POSIX, homedir scratch on win32,
+platform-gated corpora: local skip count rose 35 -> 79 on Windows, which is the
+gating working, not a regression). The standing rule this page commits to is
+per-platform, scope-tagged receipts, not one global figure: Windows (this
+tree, post-fix 600/79/25) and Linux (last full receipt 5,342/0/13) each carry
+their own number until the Windows residuals are cleared (§7.2). Re-measure
+the full Track 1 pipeline on the Linux box post-merge before quoting any new
+global figure.
+
 ### 3.2 What CI actually gates today
 
-`[V: .github/workflows/ci.yml]` eight jobs: dashboard lint (`bunx eslint src`),
-typecheck (`tsc --noEmit` after `db:generate`), dashboard unit tests
-(`bun test src`), shell syntax (`bash -n scripts/*.sh`), theme schema, landing GBA
-palette contract, gitleaks full-history secret scan, and `bun audit --prod` with
-three documented prisma-internal ignores.
+`[V: .github/workflows/ci.yml]` twelve jobs: `lint-shell` (bash -n over
+`scripts/*.sh`), `build-test` (ubuntu/macos/windows matrix: the real installer
+`bun scripts/install.ts` with model-data hydration, then the engine suite
+`bun test test/`, then `unown --help` and a `doctor`-table smoke), `sandbox-smoke`
+(ubuntu: `bwrap_smoke.sh` + `verify_sandbox.mjs`), dashboard lint (`bunx eslint
+src`), typecheck (`tsc --noEmit` after `db:generate`), dashboard unit tests
+(`bun test src`), the changed-line coverage gate (`scripts/check_coverage.mjs
+--run`), the docs link/anchor gate (`scripts/check_docs.mjs docs/*.md`), theme
+schema, landing GBA palette contract, gitleaks full-history secret scan, and
+`bun audit --prod` with three documented prisma-internal ignores. A concurrency
+group cancels superseded runs.
 
-Notably **absent**: the engine suite (533 tests), the bridge suite (95), the
-integration suite, coverage, the build, and the sandbox suite. The first two are
-the cheapest real gap in the repository - they are fast, hermetic and already
-green locally, and today a regression in the engine cannot fail CI at all. §11
-puts them first.
+Still absent: the bridge suite (95), the integration suite, `bun run build`,
+and E2E/axe. The merge also surfaced a second, subtler honesty problem -
+"the job exists" is not "the job pays off". At `afd962b` the newest upstream
+run had engine tests green on the ubuntu leg but red on the windows and macos
+legs, and `sandbox-smoke` red on ubuntu because the ubuntu-24.04 runner image
+blocks unprivileged user namespaces `[V: runs 39069143075, 39070679749]`.
+`ae7b01b` shipped the remedies - platform-aware test fixtures, the macOS
+`/private/etc` allowlist fix, a `sandbox-smoke` sysctl pre-step, and an early
+userns canary in `bwrap_smoke.sh` that prints the exact fix when userns is
+unavailable. Version 39071373372 (`5f35339`) then measured that fix in CI:
+the profile suite went green (21 pass / 0 fail / 1 skip, from 10/11/1), but
+the windows engine leg still fails 3 pure path-math tests (687/79/3 of 769),
+macOS fails its env-guard self-tests plus one system-tree test (726/40/4 of
+770), and `verify_sandbox.mjs` fails 2 of 12 engine-level checks. `a13cf9d`
+(round two, 2026-10-17T21:45Z) then targets those receipts directly - bun
+exec-dir runtime-bind for the sandbox failures, a `node:path` realpath join
+for the macOS deny dodge, raw-target lexical test for the win32 device path -
+with upstream receipt run 39072290887 (completed post-capture): `sandbox-smoke`
+went fully GREEN for the first time in this series, but the engine legs came
+back newly composed - ubuntu 735/37/1 of 773 (a round-two-introduced fixture-
+ordering bug: `memory.test.ts:60` lstats a `/tmp/engine-tests-b` subtree a
+sibling test already removed), macos 729/41/3 of 773 (env-guard self-tests x3:
+the `^/...` deny regexes still not exercised - likely the `_env.ts` import
+order the tripwire names), windows 689/80/3 of 772 (canary rollback + the F4
+bun-node live-pinned case + the win32 raw-device twin). Locally two of the
+CLI-golden cases plus the raw-device twin went green (Windows: 604/80/23
+of 707, was 600/79/25). So round two bought `sandbox-smoke` at the price of
+one fixture-ordering defect and re-shaped the windows/macos residue;
+§7.2 and §7.5 carry the residue; §11 keeps clearing it first.
 
 ## 4. The competitive baseline
 
@@ -394,7 +439,7 @@ carry large noise `[C]`.
 | Memory poisoning | provenance tags, delimiters, canary gating, MPBench-style probes | provenance in the injected block, deterministic guard, canary with K samples, n=10 poison corpus | **Ahead** |
 | Contamination-aware model headline | LiveCodeBench / SWE-rebench, post-cutoff windows | Track 7, pinned window, official prompt + grader, `no_code` reported honestly | **Ahead** |
 | Container-free honest benchmarking | cite third-party boards rather than fake a self-run | Tracks 2/3/4/6/7/8 self-run; SWE-bench/TB quoted with dates | **Ahead** |
-| CI gate on the engine's own suite | universal | engine (533) and bridge (95) tests are **not** in CI | **Behind, badly, and cheap to fix** |
+| CI gate on the engine's own suite | universal | wiring landed; ubuntu leg green; windows 3 red / macos 4 red post-`ae7b01b` `[V: run 39071373372]`, 25 local Windows residuals of which ~22 are privilege-environment and pass on the runner | **Wired and mostly green; path/env residue named in §7.2** |
 | Verifier integrity / anti-contamination | verifier boundary, reward-hack flagging, trial auditing | none | **Behind, and unpriced** |
 | Judge calibration for graded metrics | judge id + rubric + FPR probe published | none | **Behind, and cheap to fix** |
 | Coverage as a gate | routine | targets stated, no gate (gate added in this revision) | **Fixed here** |
@@ -412,15 +457,15 @@ in the tree, and why it is the right call:
 |---|---|---|---|---|
 | Unit (pure functions, reducers, formats) | `bun test` (built in, no config) | `src/**/*.test.ts` | <5 s, $0 | every PR |
 | Component (React) | `bun test` + happy-dom + `@testing-library/react` + `user-event` | `src/components/dashboard/__tests__/` | <5 s, $0 | every PR |
-| Engine unit + guard suites | `bun test test/` | `pi-repo/packages/self-learning/test/` | <60 s, $0 | every PR (once wired) |
+| Engine unit + guard suites | `bun test test/` | `pi-repo/packages/self-learning/test/` | <60 s, $0 | every PR (wired; ubuntu leg green, the fixture-level portability landed in `ae7b01b`, Windows residuals §7.2) |
 | Contract (engine <-> dashboard) | hand-maintained `src/lib/agent-types.ts` + integration fixture capture | `src/lib`, `test/integration/` | seconds | every PR (partial) |
 | Integration (HTTP, SSE, DB) | real `startServer` on an ephemeral port, mock bridge, temp state | `test/integration/` | ~30 s, $0 | every PR (once wired) |
-| CLI golden | subprocess `bin/unown` against a temp `UNOWN_HOME` | `test/cli/golden.test.ts` | ~2 min, $0 | every PR (once wired) |
+| CLI golden | subprocess `bin/unown` against a temp `UNOWN_HOME` | `test/cli/golden.test.ts` | ~2 min, $0 | every PR (wired inside the ubuntu build-test leg; 16 Windows residuals post-`ae7b01b`, §7.2) |
 | Adversarial corpus | labelled cases + expected decision | `test/termhooks.adversarial.test.ts` | <10 s | every PR |
 | Live probes (memory, poison, VLM) | env-gated (`UNOWN_MEMORY_LIVE=1`, `UNOWN_MEMORY_POISON=1`, `UNOWN_VLM_SMOKE=1`) | engine + bridge | minutes, $$ | weekly + pre-release |
 | Agent evals / benchmarks | existing `runner*.mjs` per track | `benchmarks/*` | hours, $$ | weekly + release |
 | End-to-end (UI) | Playwright - **not yet adopted** | `e2e/` (absent) | 5-15 min | nightly (planned) |
-| Sandbox | `bwrap_smoke.sh`, `verify_sandbox.mjs` | `scripts/` | ~1 min | on sandbox-surface changes (manual) |
+| Sandbox | `bwrap_smoke.sh`, `verify_sandbox.mjs` | `scripts/` | ~1 min | every PR (in CI as the ubuntu `sandbox-smoke` job; `ae7b01b` adds the userns canary + sysctl pre-step - §7.5) |
 | Coverage | `bun test --coverage` + `scripts/check_coverage.mjs` | CI job | +5 s | every PR (shipped in this revision) |
 
 Notes on the two decisions that changed from the original proposal:
@@ -447,14 +492,14 @@ Notes on the two decisions that changed from the original proposal:
 | 7 | gitleaks full-history secret scan | SHIPPED | |
 | 8 | `bun audit --prod` | SHIPPED | 3 documented prisma-internal ignores |
 | 9 | Changed-line coverage >= 80% in `src/` | SHIPPED (this revision) | `bun test --coverage` + `scripts/check_coverage.mjs`; measured baseline 91.1% lines |
-| 10 | Engine suite `bun test test/` in `self-learning` | **OPEN** | 533 tests, hermetic, ~60 s - the cheapest missing gate |
-| 11 | Bridge suite `bun test pure.test.ts` | **OPEN** | 95 tests, sub-second |
+| 10 | Engine suite `bun test test/` in `self-learning` | SHIPPED (upstream, `build-test` matrix) | ubuntu green; post-`ae7b01b` (run 39071373372): windows 687/79/3, macos 726/40/4; locally on Windows 600/79/25 - 22 of the local 25 pass on the runner (privilege environment), 3 are real (§7.2). Hermetic means green on **every** runner |
+| 11 | Bridge suite `bun test pure.test.ts` | **OPEN** | 95 tests, sub-second - now the cheapest missing gate |
 | 12 | Engine integration suite (`test:integration`) | **OPEN** | 10 tests, real server + mock bridge |
-| 13 | `bash scripts/bwrap_smoke.sh` + `node scripts/verify_sandbox.mjs` on sandbox-surface changes | **OPEN** | needs a `paths:` filter + Linux runner; the vendored bwrap binary is committed |
+| 13 | Sandbox suite in CI | SHIPPED (upstream, unconditional ubuntu `sandbox-smoke` job) | **GREEN** as of run 39072290887 (`a13cf9d`): trajectory red 10/11/1 -> profile green 21/0/1 + engine red 10/2 -> fully green. The red phase proved the value of the early-canary design (§7.5) |
 | 14 | `bun run build` before deploy | **OPEN** | Vercel builds on push; GitHub CI should too |
 | 15 | Mermaid byte-identity (`scripts/mermaid_check.mjs`) | **OPEN** | needs Playwright + a browser; belongs to the visual pipeline |
 | 16 | Playwright E2E + axe-core | **OPEN** | the largest untouched surface |
-| 17 | Docs link and anchor integrity on `docs/*.md` | SHIPPED (this revision) | `scripts/check_docs.mjs` as the `docs` CI job; the CLI-surface and env-var cross-checks in `docs/AGENTS.md` remain prose (§7.10) |
+| 17 | Docs link and anchor integrity on `docs/*.md` | SHIPPED (this revision; verified green against upstream's new `windows.md`/`macos.md`) | `scripts/check_docs.mjs` as the `docs` CI job; the CLI-surface and env-var cross-checks in `docs/AGENTS.md` remain prose (§7.10) |
 
 ## 7. Surface-by-surface backlog
 
@@ -495,7 +540,57 @@ preserved in the margin notes where they were cited from history.
 
 - **SHIPPED** - memory, tasks, mint, router, llm, notes, skills, outbox, bwrap,
   termhooks (unit + adversarial), guard, dream-guard, canary, budget, CLI golden,
-  HTTP integration (10 tests, real server + mock bridge).
+  HTTP integration (10 tests, real server + mock bridge); from the M2/M3 merge:
+  `tools.test.ts`, the seatbelt (macOS sandbox-exec) suite, and a Windows-hook
+  suite.
+- **OPEN (residual after `ae7b01b`, which cleared most of it)** -
+  **cross-platform test debt**. The merge pushed the family into CI, and
+  upstream's own `build-test` windows/macos legs failed for exactly the same
+  families this tree failed locally (64 failures at `888c8fa`, `[V: run
+  39069143075 + local 2026-10-18 receipt]`). Fix `ae7b01b` then did the first
+  half: platform-aware fixture roots, win32-gated seatbelt/bwrap-backend and
+  POSIX-symlink corpora (skip counts rose 35 -> 79 on both Windows trees:
+  platform-elective coverage now tells the truth instead of failing), and a
+  real engine fix (SYSTEM_TREE now admits the macOS `/private/` prefix - a
+  genuine deny-gap, the exact symlink-indirection family §4.4 teaches). The
+  measured residue, per platform, run 39071373372 + local receipts:
+
+  | Context | Collected | Pass / skip / fail | Residue |
+  |---|---|---|---|
+  The measured residue, per context and run (each row cites its own receipt
+  so the deltas stay legible):
+
+  | Context | Collected | Pass / skip / fail | Residue |
+  |---|---|---|---|
+  | CI ubuntu (`ae7b01b`, run 39071373372) | 770 | 733 / 37 / **0** | none |
+  | CI windows (same run) | 769 | 687 / 79 / **3** | `jailPath` diagnostics x2 ("resolved path returned", "no over-jailing"), win32 `bashRedirectEscape` raw-device twin |
+  | CI macos (same run) | 770 | 726 / 40 / **4** | env-guard self-tests x3 ("env redirect is active"), one `bashRedirectEscape` absolute-redirect |
+  | CI ubuntu (`a13cf9d`, run 39072290887) | 773 | 735 / 37 / **1** | fixture-ordering ENOENT (`memory.test.ts:60` lstats a `/tmp/engine-tests-b` subtree an earlier test removed) - introduced by round two |
+  | CI windows (same run) | 772 | 689 / 80 / **3** | `canaryCheck` rollback + F4 bun-node live-pinned + win32 raw-device twin |
+  | CI macos (same run) | 773 | 729 / 41 / **3** | env-guard self-tests x3 (unchanged by round two's join) |
+  | Local Windows (`a13cf9d`) | 707 | 604 / 80 / **23** | residual CI families + `canaryCheck` x6 + CLI golden x14; those two families PASS on the runner: local-privilege failures (symlink/process spawning), not suite defects |
+
+  The policy rules unchanged: a "hermetic suite" means green on every runner,
+  and the small absolute residue (3 + 4 in CI) is the actual repair list; the
+  22-test local/runner delta argues for an env-normalisation pass over the
+  spawn-based suites so local receipts match CI receipts.
+
+  Round two (`a13cf9d`, "sandbox runtime-bind + realpath hardening - first
+  3-OS CI findings") then landed against exactly that residue: `bwrap.ts`
+  runtime-binds the bun exec dir back into the sandbox (the mask eats
+  `~/.bun` on runners and dodged `bun run` - the two `verify_sandbox.mjs`
+  failures), `hooks.ts` realpathAncestor joins via `node:path` (a `//`
+  prefix when the ancestor is `/` dodged every `^/...` deny regex on macOS),
+  and `bashRedirectEscape` now tests the RAW redirect target against the
+  lexical deny for win32 device paths. Local Windows receipt post-`a13cf9d`:
+  604 pass / 80 skip / 23 fail of 707 (was 600/79/25 - two CLI-golden
+  subprocess cases and the raw-twin now pass locally). CI verdict for the
+  round (`39072290887`): `sandbox-smoke` fully green (first time in this
+  series); the engine legs return the residue the table above lists, with
+  the newly introduced ubuntu fixture-ordering bug at the top of the repair
+  list (its own author's commit caused it - invariant: a shared fixture root
+  is mutable state; a test that deletes a subtree other tests still read
+  needs an mkdtemp of its own, which is §7.1's per-test isolation rule).
 - **OPEN** - Fault injection, none of it: bridge down mid-run; process kill
   mid-run then restart (orphan recovery must leave memory versions monotonic and
   no partial write visible); SQLite concurrent read while a run writes (WAL, no
@@ -564,9 +659,27 @@ preserved in the margin notes where they were cited from history.
 
 *(was §4.5; surface: `sandbox.ts`, `bwrap.ts`)*
 
-- **SHIPPED** - `bwrap_smoke.sh` (25 checks) and `verify_sandbox.mjs` (12 checks).
-- **OPEN** - Get both into CI behind a `paths:` filter. This is the only sandbox
-  evidence that is currently a human ritual.
+- **SHIPPED** - `bwrap_smoke.sh` (25 checks) and `verify_sandbox.mjs` (12
+  checks); both are wired into CI as the unconditional ubuntu `sandbox-smoke`
+  job (upstream M4) - no `paths:` filter, at the cost of ~1 min per run.
+- **PARTIALLY VALIDATED IN CI** - the red `afd962b` run (10 pass / 11 fail /
+  1 skip, launcher dies on every check) found a real test-design trap: the
+  "passes" were the fail-closed assertions (write `/etc` blocked, TCP blocked)
+  that cannot tell "blocked as designed" from "the launcher is dead".
+  `ae7b01b` shipped both fixes this record named, and run 39071373372 proves
+  them where they mattered: the profile suite went from 10/11/1 to
+  **21 pass / 0 fail / 1 skip** after the sysctl. The job still fails one step
+  later, which is itself diagnostic: `verify_sandbox.mjs` reports
+  10 pass / 2 fail - `execInSandbox` works (isolation=bwrap, exit-code
+  propagation passes) but "bun runs inside sandbox" and the
+  `verifyInSandbox` isolation self-test fail. Engine-level sandbox
+  integration on the runner was the next concrete fix, and `a13cf9d` (round
+  two) addresses it: `bwrap.ts` runtime-binds the bun exec dir back into the
+  sandbox (runners mask `~/.bun`, so sandboxed `bun run` died
+  command-not-found); `runtimeBindArgs` is now unit-tested for
+  masked/unmasked/inert. **Validated in CI**: run 39072290887 shows the
+  `sandbox-smoke` job fully green (both steps) for the first time in the
+  series.
 - **OPEN** - Adopt the vendor's boundary framing as a written contract
   (§4.4 `[C]`): state which surface each isolation layer covers, state that the
   terminal agent is *outside* the OS sandbox by design, and state the rule that
@@ -891,25 +1004,36 @@ is what remains.
 
 **Now (days).**
 
-1. Wire the engine suite (533 tests) and the bridge suite (95) into CI. Hermetic,
-   green locally, currently invisible to CI.
-2. Corpus checksum manifest + runner verification (§8.3), and the owner decision on
+1. Close the measured cross-platform residue. Two upstream rounds already
+   shipped and three CI runs measured them (`ae7b01b`: fixtures + macOS
+   `/private/etc` fix + sandbox sysctl/canary - validated 10/11/1 -> 21/0/1 by
+   run 39071373372; `a13cf9d`: sandbox runtime-bind + realpath hardening -
+   `sandbox-smoke` fully green by run 39072290887, which however introduced
+   an ubuntu fixture-ordering bug, `memory.test.ts:60` ENOENT). Repair list,
+   by receipt (§7.2): the ubuntu fixture bug (top: round-two regression), 3
+   Windows path/canary tests, 3 macOS env guards; the `_env.ts` tripwires
+   point at import order - a likely one-line fix. A red main licenses noise;
+   nobody triages a red board for long.
+2. Wire the bridge suite (95, sub-second) into CI - after item 1 this is the
+   cheapest remaining gap.
+3. Corpus checksum manifest + runner verification (§8.3), and the owner decision on
    write containment (§8.2). This is the only P0 in the document that is about the
    integrity of published numbers rather than about catching bugs.
-3. Judge id + rubric + FPR probe for the graded numbers (§10 item L). Cheap, and it
+4. Judge id + rubric + FPR probe for the graded numbers (§10 item L). Cheap, and it
    is the difference between a measurement and an opinion.
-4. Reconcile the three pi-repo test counts in `benchmarks/README.md` and
-   `RESULTS.md` (§3.1).
-5. Extend `check_docs.mjs` to the prose-only rules: commands in the docs exist in
+5. Re-measure the full Track 1 pipeline on the Linux box post-merge and
+   reconcile `benchmarks/README.md`, `RESULTS.md` (§3.1).
+6. Extend `check_docs.mjs` to the prose-only rules: commands in the docs exist in
    `cli.ts` HELP, env vars in `configuration.md` exist in `.env.example`.
 
 **Next (one to two weeks).**
 
-6. Sandbox suite into CI behind a `paths:` filter.
 7. `bun run build` into CI.
 8. Docs-drift checks: README/landing numbers to receipts (§7.10).
 9. Property-based tests for `decideBash` / `jailPath` /
-   `bashRedirectEscape` / budget arithmetic.
+   `bashRedirectEscape` / budget arithmetic - property testing is also the
+   structural fix for the Windows path-semantics failures, not just a hardening
+   item.
 10. The engine self-suite release assertion: ~10 fixtures that must pass on a
     clean checkout with pinned snapshots, run per release.
 
@@ -940,7 +1064,7 @@ Stating that is the point.
 
 | # | Criterion | Status | Evidence |
 |---|---|---|---|
-| 1 | CI enforces lint + typecheck + unit + security scan | **PARTIAL** | Lint, typecheck, dashboard unit, gitleaks, audit ship. Engine (533) and bridge (95) suites do not (§6 gates 10-11) |
+| 1 | CI enforces lint + typecheck + unit + security scan | **PARTIAL** | All dashboard gates ship green (including coverage + docs; `sandbox-smoke` too at run 39072290887). The engine suite is wired in the 3-OS matrix but red on all three legs at that run (ubuntu one fixture-ordering bug `memory.test.ts:60`, windows 3, macos 3, §7.2) and the bridge suite (95) is still absent (§6 gates 10-13) |
 | 2 | The harness self-suite is green on a clean checkout with pinned snapshots | **NOT MET** | The seeded suite exists; no release assertion runs it (§7.2) |
 | 3 | Hook deny recall >= 99% on the adversarial corpus, every miss triaged | **PARTIAL** | Corpus and triage exist; recall is not published as a number per run, and the fuzzer is absent (§7.3) |
 | 4 | Memory lift shows a statistically significant improvement for a shipped memory version, with CI | **NOT MET** | Track 5 v3 is n=1 and 6/6 everywhere - saturated, therefore uninformative. Needs the full-context baseline and repetitions (§7.6, §10 item A) |
@@ -976,8 +1100,10 @@ revision, which is precisely the drift this revision exists to stop.
 
 - **Pre-commit / local**: pure unit + hook corpus + coverage on changed files
   (<2 min, $0).
-- **Per PR**: lint, typecheck, dashboard unit, coverage gate, changed-path
-  security scan; engine + bridge suites once wired.
+- **Per PR**: lint, typecheck, dashboard unit, coverage gate, docs gate,
+  changed-path security scan; engine suite wired inside the 3-OS `build-test`
+  matrix (ubuntu leg green, win/mac red - §7.2); bridge + integration suites
+  once wired.
 - **Nightly**: dashboard E2E + axe, perf and cost trend, soak.
 - **Weekly**: adversarial corpus rerun, live memory and poison probes, VLM
   review, memory-lift and skill-acquisition evals.
@@ -1054,9 +1180,11 @@ Classify before fixing; the label is part of the run record.
 *Method: tree inspection of `src/`, `pi-repo/packages/self-learning/`,
 `mini-services/llm-bridge/`, `.github/workflows/ci.yml`, `scripts/`, and
 `benchmarks/`; reproduced commands (`bun test src`, `bun test src --coverage`,
-`bun test pure.test.ts`); receipts under `benchmarks/**/results/` and
-`benchmarks/snapshots/`; external sources listed in Appendix A, captured
-2026-10-18. In-repo claims are tagged `[V]` with a `file:line` or a receipt;
+`bun test pure.test.ts`, and post-merge `bun test test/` on Windows, Appendix A);
+receipts under `benchmarks/**/results/` and `benchmarks/snapshots/`; upstream CI
+evidence collected from the GitHub Actions API (runs list, jobs, logs) at
+2026-10-18; external sources listed in Appendix A, captured 2026-10-18.
+In-repo claims are tagged `[V]` with a `file:line`, a run id, or a receipt;
 external claims are `[C]` and carry the publisher's incentive.*
 
 ## Appendix A: sources
@@ -1150,11 +1278,62 @@ in the number they report.
 
 - `benchmarks/README.md` (tracks and measurement rules) · `benchmarks/RESULTS.md`
   (receipts) · `benchmarks/snapshots/track1-rerun-2026-10-17/summary.json` (the
-  5,342 figure) · `docs/benchmark-research.md` (benchmark selection and fairness
-  rules) · `docs/memory-system-review.md` (findings F1-F10) ·
+  pre-merge Linux receipt: 5,342 pass / 0 fail / 13 skip) ·
+  `docs/benchmark-research.md` (benchmark selection and fairness rules) ·
+  `docs/memory-system-review.md` (findings F1-F10) ·
   `docs/AGENTS.md` (the page contract this record must satisfy) ·
   `scripts/AGENTS.md` (sandbox and asset pipelines) ·
   `.github/workflows/ci.yml` (the gate ledger's source).
+
+**CI and platform receipts (2026-10-18)**
+
+- Upstream CI run 39069143075 (push to `main`, commit `afd962b`,
+  2026-10-17T21:01Z): `Build + test (ubuntu-latest)` success; `Build + test
+  (windows-latest)` and `Build + test (macos-latest)` failed at the
+  "Self-learning engine tests" step; `Sandbox smoke (bwrap profile)` failed
+  (10 pass / 11 fail / 1 skip, every launcher-dependent check failing on
+  `exit=1`). Run 39070679749 (commit `888c8fa`, the merge of it) failed the
+  same way - the red state reproduced through the merge, not caused by it.
+  Evidence via the GitHub Actions API (runs, jobs, step logs):
+  https://github.com/kanishka-namdeo/Unown/actions/runs/39069143075
+- Fix `ae7b01b` (2026-10-17T21:32Z): platform-aware fixture roots, win32-
+  gated corpora, macOS `SYSTEM_TREE` `/private/` allowlist fix, `sandbox-smoke`
+  sysctl pre-step + early userns canary in `bwrap_smoke.sh`.
+- Upstream CI run 39071373372 (commit `5f35339`, includes `ae7b01b`;
+  completed 2026-10-17T21:3x): `build-test` - ubuntu green (733 pass / 37
+  skip / 0 fail of 770), windows red (687/79/3 of 769: 2x `jailPath`
+  diagnostics, 1x win32 `bashRedirectEscape` raw-device twin), macos red
+  (726/40/4 of 770: 3x env-guard self-tests, 1x `bashRedirectEscape`
+  absolute redirect); `sandbox-smoke` - `bwrap_smoke.sh` now green (21 pass /
+  0 fail / 1 skip, from 10/11/1), `verify_sandbox.mjs` red (10 pass / 2 fail:
+  "bun runs inside sandbox", "verifyInSandbox passes isolation self-test");
+  every dashboard gate green (lint, typecheck, unit, coverage, docs, theme,
+  palette, security). So: sysctl fix validated, engine-at-CI residue real.
+  https://github.com/kanishka-namdeo/Unown/actions/runs/39071373372
+- Round two `a13cf9d` (2026-10-17T21:45Z, "sandbox runtime-bind + realpath
+  hardening - first 3-OS CI findings, round two"): bwrap runtime-binds the
+  bun exec dir (targets the 2 `verify_sandbox.mjs` failures), hooks'
+  realpathAncestor joins via `node:path` (the `//`-prefix dodged macOS deny
+  regexes), `bashRedirectEscape` tests the raw win32 redirect target, DATA_DIR
+  tripwires realpath'd. CI run 39072290887 (completed 2026-10-17T21:4x):
+  `sandbox-smoke` fully GREEN (both steps - first time in the series); engine
+  legs: ubuntu 735/37/**1** of 773 (fixture-ordering ENOENT introduced by this
+  commit), macos 729/41/**3**, windows 689/80/**3**. Local Windows
+  post-`a13cf9d`: 604 pass / 80 skip / 23 fail of 707 (two CLI-golden
+  subprocess cases + the raw twin went green vs `5f35339`).
+- Local Windows comparison (2026-10-18, identical result on bun 1.4.2 and
+  CI-pinned 1.4.3 - not a bun-version delta): `bun test test/` collects 704
+  tests across 20 files: 600 pass / 79 skip / 25 fail. Against the pre-fix
+  state (702 collected, 603/35/64 at `888c8fa`): the fixture fix converted
+  the failure families into skips (35 -> 79) and into runner-green (the
+  canary + CLI-golden families fail locally but pass on the runner, i.e.
+  they are local privilege-environment failures - Windows symlink creation
+  rights etc.), leaving 3 shared-real failures.
+- Other local receipts (2026-10-18, Windows): `bun test src` 206 pass /
+  0 fail; `bun test pure.test.ts` 95 pass / 0 fail; `node
+  scripts/check_coverage.mjs --run` and `node scripts/check_docs.mjs
+  docs/*.md` both green (the latter validating the merged `docs/windows.md`
+  and `docs/macos.md` pages).
 
 **Related pages:** [benchmark-research.md](benchmark-research.md) (which public
 benchmarks to run and the fairness rules), [memory-system-review.md](memory-system-review.md)
