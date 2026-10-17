@@ -9,11 +9,11 @@ The two bun background services that make up the agent runtime: `llm-bridge` (Op
 - Owns: shared boot conventions for the two runtime services and this doc; `agent-service/index.ts` directly (a thin wrapper — ~15 lines calling `startServer()` from `pi-repo/packages/self-learning/src/index.ts`).
 - Child owns: `llm-bridge/` — see Child DOX Index.
 - Parked, not owned: `zai-upstream/` (sandbox-only shim, port 3032, no package.json or AGENTS.md; run manually when needed). It is intentionally outside the ownership index because its supervisor launch depends on a dev script it does not provide.
-- Does not own: engine internals (`pi-repo/packages/self-learning/`), dashboard (`src/`), launch orchestration (`scripts/start.sh`, root `package.json`).
+- Does not own: engine internals (`pi-repo/packages/self-learning/`), dashboard (`src/`), launch orchestration (`scripts/start.ts`, root `package.json`).
 
 ## Local Contracts
 
-- Ports: engine `PI_AGENT_PORT` (3030), bridge `BRIDGE_PORT` (3031). Both default from `.env`, which is symlinked into each service cwd so bun loads it there — config changes happen in the root `.env`, never per-service copies.
+- Ports: engine `PI_AGENT_PORT` (3030), bridge `BRIDGE_PORT` (3031). Both default from the root `.env`: `scripts/start.ts` parses it and exports every variable into each service's environment (bun does NOT read the repo-root `.env` from a service cwd — the launcher is the delivery path). Config changes happen in the root `.env`, never per-service copies.
 - Each service directory must keep a `package.json` with a `dev` script: the sandbox supervisor `.zscripts/dev.sh` scans `mini-services/*/package.json` for `dev` and launches each with `bun --hot`.
 - Dev entrypoints: `bun run agent:bridge` / `bun run agent:engine` from the repo root (both `bun --hot`).
 - Production: run WITHOUT hot reload — `cd mini-services/<service> && bun index.ts` (`--hot` can detach in-flight engine cycles from the router mutex when sources change mid-run).
@@ -29,7 +29,7 @@ The two bun background services that make up the agent runtime: `llm-bridge` (Op
 
 - `curl -s localhost:3031/health` — bridge up, upstream healthy.
 - `curl -s localhost:3030/api/overview` — engine up, reports real provider/model.
-- Logs: `.run/*.log` (via `scripts/start.sh`) or `.zscripts/mini-service-*.log` (via the supervisor).
+- Logs: `.run/*.log` (via `scripts/start.ts`) or `.zscripts/mini-service-*.log` (via the supervisor).
 
 ## Child DOX Index
 

@@ -12,7 +12,7 @@ Every knob unown has: the one variable you actually must set, the full environme
 
 ## The one required thing
 
-**`BRIDGE_UPSTREAM_KEY`** in the repo's `.env`. The bundled llm-bridge forwards every chat to your upstream provider (Dashscope, OpenAI, OpenRouter, vLLM, …) and needs that key to authenticate. Without it, the bridge itself starts fine — and then **every chat fails with 401**. The installer, `scripts/start.sh` and `unown doctor` all flag this loudly precisely because the failure mode is otherwise silent.
+**`BRIDGE_UPSTREAM_KEY`** in the repo's `.env`. The bundled llm-bridge forwards every chat to your upstream provider (Dashscope, OpenAI, OpenRouter, vLLM, …) and needs that key to authenticate. Without it, the bridge itself starts fine — and then **every chat fails with 401**. The installer, `scripts/start.ts` and `unown doctor` all flag this loudly precisely because the failure mode is otherwise silent.
 
 ```bash
 cp .env.example .env
@@ -106,7 +106,7 @@ The `unown` CLI (a fourth process, running wherever you are) reads `UNOWN_HOME`,
 
 The variables reach those processes through three different mechanisms, and one common trap:
 
-1. **`scripts/start.sh` sources `.env`** (`set -a; . ./.env; set +a`) before spawning the bridge, engine and dashboard — so all three services inherit every variable.
+1. **`scripts/start.ts` parses `.env`** (same `set -a; . ./.env; set +a` semantics) before spawning the bridge, engine and dashboard — so all three services inherit every variable (bun does not read the repo-root `.env` from a mini-services cwd, so the launcher exports it into each child).
 2. **bun auto-loads `.env` from the cwd of each service.** `mini-services/llm-bridge/.env` and `mini-services/agent-service/.env` are symlinks to the repo root `.env`, so running a service by hand from its own directory (`cd mini-services/llm-bridge && bun index.ts`) still picks the file up.
 3. **The `unown` CLI does *not* see the repo's `.env` when you run it from another project.** bun loads `.env` from the process cwd — your project, not the unown repo — and the CLI's durable config comes from `~/.unown/agent/` (see below). If you want `UNOWN_ENGINE_URL`, `UNOWN_STRICT_HOOKS` or `UNOWN_HOME` to apply to terminal sessions everywhere, export them in your shell profile. The one exception: run `unown setup` from the unown repo root and it *will* see `.env` (handy for the `BRIDGE_API_KEY` coupling below).
 
