@@ -212,6 +212,19 @@ export function projectMemoryPath(projectDir: string): string {
         return join(projectDir, ".unown", "memory", "project.md");
 }
 
+/**
+ * True when a project's memory file is still the untouched AutoDream seed —
+ * i.e. no real content has ever shipped (the "first mint" moment the dream
+ * guard treats with the strictest policy: no version rows + pristine file).
+ */
+export function isPristineSeedProjectMemory(content: string): boolean {
+        const t = content.trim();
+        if (t === PROJECT_SEED.trim()) return true;
+        // Seed-marker fallback: the seed's empty-section markers are present and
+        // there is no bullet-rule content beyond the seed's own two bullets.
+        return t.includes("(empty — AutoDream fills this from session notes)") && !/^[-*]\s+(?!This file is maintained)/m.test(t);
+}
+
 /** Resolve the full 4-tier memory stack for a terminal session in projectDir. */
 export function resolveTerminalMemory(projectDir: string): TerminalMemoryFile[] {
         initProjectMemory(projectDir);
