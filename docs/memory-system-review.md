@@ -116,7 +116,10 @@ the dream LLM refused to plant under the hardened prompt (planted=false on
 both paths); the guard's planted-candidate behavior is pinned by 31
 unit/integration tests with canned poison. Canary sampling (K tasks) +
 claimed-vs-ground-truth checks shipped as §5.2 — see F7 and `src/canary.ts`.
-Still open: §5.4 (multi-attempt corpus).
+§5.4 is closed too: the ten-variant obfuscation ladder
+(`benchmarks/memory-eval/poison-corpus/`) flagged 10/10 adversarial notes at
+the input layer, planted 0/10 attacker rules and shipped none, with a clean
+benign control.
 
 ### F5 [design] "Most specific tier wins" is a claim, not a mechanism
 
