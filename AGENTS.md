@@ -18,7 +18,7 @@ Service map (all three boot together via `bun run agent:start`):
 
 Data flow: dashboard → engine REST+SSE → sandboxed pi agent runs → llm-bridge → upstream OpenAI-compatible endpoint (Dashscope coding plan). The terminal agent `bin/unown` delivers session notes to the engine; AutoDream consolidates them into this project's `.unown/memory/project.md`.
 
-Landing page: `src/components/landing/` owns the marketing page at `/`. It is built around a hand-drawn 28-form Unown script (inline SVG, no font file) that the repo also exposes as a lexicon mapping each form to a real mechanism. Its contract — no vendored Pokémon assets, verified lore only, every number a checkable artifact, motion additive only — lives in that folder's AGENTS.md. Rebuild it with `bun run build` and check it visually; a screenshot against the production build is part of done.
+Landing page: `src/components/landing/` owns the marketing page at `/`. It is built around a hand-drawn 28-form Unown script (inline SVG, no font file) that the repo also exposes as a lexicon mapping each form to a real mechanism. Its palette is Game Boy Advance / Pokémon Generation III, in two schemes (dark = Hoenn, light = Kanto in daylight), and every colour on it is a legal 5-bit GBA value, enforced by the browser-free `scripts/gba_palette_check.mjs`. Its contract — no vendored Pokémon assets, verified lore only, every number a checkable artifact, motion additive only — lives in that folder's AGENTS.md. Rebuild it with `bun run build` and check it visually; a screenshot against the production build is part of done.
 
 Repo presentation: `README.md` is the public face — hero banner + badge row, GitHub-native Mermaid architecture/loop diagrams (byte-identical sources live in `scripts/mermaid_check.mjs`), the dashboard screenshot gallery, and honest live-state numbers. Keep claims in sync with the engine's actual `/api/overview` data when editing the "What a learning session looks like" section.
 
@@ -137,4 +137,4 @@ Default section order:
 - `pi-repo/packages/self-learning/AGENTS.md` — the self-learning engine, Unown's core transformation layer
 - `docs/AGENTS.md` — user-facing usage docs (quickstart/providers/usage/subagents/skills/memory/configuration/troubleshooting)
 - `blueprint/AGENTS.md` — Unown v1 (Claude Code harness) frozen reference
-- `scripts/AGENTS.md` — bootstrap scripts, session verification artifacts, the README asset pipeline, and the landing-page verification pair (screenshot + contrast audit)
+- `scripts/AGENTS.md` — bootstrap scripts, session verification artifacts, the README asset pipeline, and the landing-page verification gates (static palette check, screenshot, contrast audit, theme toggle)

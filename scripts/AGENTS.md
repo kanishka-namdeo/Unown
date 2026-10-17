@@ -6,7 +6,7 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
 
 ## Ownership
 
-- Owns: `install.sh`, `start.sh`, `stop.sh` (product scripts), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), the README asset pipeline (`shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`), and the landing-page verification pair (`landing_shots.mjs`, `contrast_audit.mjs`).
+- Owns: `install.sh`, `start.sh`, `stop.sh` (product scripts), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), the README asset pipeline (`scripts/brand/` HTML sources, `shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`), and the landing-page verification gates (`gba_palette_check.mjs`, `landing_shots.mjs`, `contrast_audit.mjs`, `theme_toggle_check.mjs`, `landing_og_shots.mjs`).
 - Sandbox-template artifacts also parked here (NOT part of Unown): `init-fullstack.sh`, `dev-all.sh`, `scaffold.tar` — installed by the hosting sandbox, tracked only for provenance.
 
 ## Local Contracts
@@ -34,9 +34,25 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
   are whitespace-insensitive because the production bundle is minified, and it
   distinguishes `src=` subresources from `href=` hyperlinks. A Bulbapedia link in a
   sources list is the attribution rule working, not an asset leak.
-- Landing verification contract (the visual + contrast gate for
-  `src/components/landing/`; both need the production standalone server, not
-  the dev server, because that is what Vercel serves):
+- Landing verification contract (the palette + visual + contrast gate for
+  `src/components/landing/`). `gba_palette_check.mjs` reads the CSS and needs
+  neither browser nor server; the other three need the production standalone
+  server, not the dev server, because that is what Vercel serves:
+  - `gba_palette_check.mjs` — the palette's static gate: `bun scripts/gba_palette_check.mjs`
+    from the repo root; reads `src/app/globals.css`, `src/app/landing.css` and
+    `src/components/landing/`, exits non-zero. Six rules: every `--color-*` literal is one
+    of the 32 values a 5-bit GBA channel holds (`floor(255*v/31)` — `#ffffff` legal,
+    `#f8f8f8` not); the two light-scheme blocks (the `prefers-color-scheme` one and
+    `[data-theme="light"]`) stay declaration-identical; every required token role exists and
+    every `data-hue`/`data-tone` a component declares is implemented in the CSS; each text
+    token clears AA 4.5:1 against all 43 surfaces per scheme (the three neutrals, the five
+    section fields, and every `/10` tint chip composited over each field — gate each accent
+    against EVERY field, not only its own); stale DMG / Super Game Boy vocabulary (`glow`,
+    `sgb-*`, `--gb-scanline`, `.crt`) is gone; landing components hold **zero** hex
+    literals. It recomputes the contrast table quoted in `globals.css` and the landing doc,
+    so prose cannot drift from CSS. No browser or server means it is the only landing
+    palette gate CI can run, and `ci.yml`'s `landing-palette` job runs it on every
+    push and PR, so run it first.
   - `landing_shots.mjs` — photographs the page: derives its section plan from
     the DOM (a section you add is photographed without editing the script),
     shoots every top-level section **in both colour schemes** (dark names
@@ -66,16 +82,28 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
     `localStorage.unown-theme` agree at every step; checks a forced choice
     survives reload (the inline `<head>` bootstrap's job) and the `aria-label`
     announces state. Same `LANDING_SHOTS_URL` base URL; non-zero on failure.
+  - `landing_og_shots.mjs` — regenerates the TRACKED OpenGraph images in
+    `public/landing/` (`landing-hero.png`, `landing-full.png`,
+    `landing-mobile.png`) that `layout.tsx` names. These are screenshots of the
+    landing page, so they go stale the moment its palette moves. Runs against
+    the production standalone server like the other three, asserts
+    `--color-canvas` resolved to the dark scheme's hex before each shot (so it
+    cannot silently re-bake a retired palette), scrolls the document so every
+    reveal settles to its finished state, warns on horizontal overflow, and
+    exits non-zero on a console error. It was previously the gitignored
+    `download/capture_public_shots.mjs` while its outputs were tracked — i.e. a
+    published asset with no committed generator.
 - Sandbox verification contract: `bwrap_smoke.sh` (profile-level isolation suite, 25 checks; invokes the vendored `pi-repo/packages/self-learning/native/bin/bwrap` directly) and `verify_sandbox.mjs` (engine-level integration suite, 12 checks) must both be fully green before committing changes to the OS sandbox or refreshing the vendored bwrap binary.
 - Theme verification contract: `check_theme.mjs` validates the unown brand theme (`pi-repo/packages/self-learning/src/theme.ts`) against pi's theme schema (51 required color tokens, value formats, var resolution) — run it after any palette change.
 - New ad-hoc verification scripts go here (not `/tmp`) when their results matter to the worklog; keep them re-runnable.
-- README asset pipeline contract (sources live in gitignored `download/brand/` + `download/shots/`, outputs are tracked in `.github/assets/`):
+- README asset pipeline contract (the brand HTML SOURCES are tracked in `scripts/brand/`; rendered intermediates and screenshot captures go to gitignored `download/brand/` + `download/shots/`; final outputs are tracked in `.github/assets/`):
   - `shots_capture.mjs` — dashboard screenshots via headless chromium. Browses the PRODUCTION dashboard behind the Caddy gateway (`SHOTS_BASE_URL=http://127.0.0.1:81 SHOTS_NO_PROXY=1 bun scripts/shots_capture.mjs --video`) so relative `/api?XTransformPort=3030` calls — including the SSE stream — route to the engine same-origin (dev mode breaks on the gateway's HMR websocket; the `engineProxy` browser-layer replay is the dev-mode fallback). Hides transient toasts/dev chrome, triggers the non-LLM `note-sync` + `sandbox-gc` router jobs after SSE connects so the Live Activity feed shows real events (disable with `SHOTS_NO_TRIGGER=1`), never clicks LLM-spending buttons. Requires the scratch playwright install in `download/.pwtools/` + chromium in `~/.cache/ms-playwright/`.
-  - `brand_render.mjs` — renders `download/brand/{banner,social}.html` (Geist via Google Fonts) to `banner.png` (3232x840) and `social@2x.png` (2560x1280).
+  - `brand_render.mjs` — renders the tracked sources `scripts/brand/{banner,social}.html` (Geist / Geist Mono via Google Fonts, needs network) into gitignored `download/brand/`: `banner.png` (3232x840, 1616x420 @ dsf 2) and `social@2x.png` (2560x1280, 1280x640 @ dsf 2). Sources are in git on purpose — the PNGs under `.github/assets/` have to stay regenerable from a clean checkout, and `download/` is not.
+  - `scripts/brand/*.html` — the Gen 3 re-skin of the README identity. Both files carry a header comment naming the palette and the 5-bit rule; every colour channel in them (hex and `rgb()` alike, alpha excluded) must be one of the 32 values `floor(255*v/31)` admits, matching `src/app/globals.css`. `scripts/gba_palette_check.mjs` gates the CSS only, so these two files are self-policed — re-check them by hand after any edit. Content is frozen: mark, `unown`, the tagline, and the five capability strings.
   - `mermaid_check.mjs` — parses + locally renders the two README Mermaid diagrams (mermaid@11, default theme, exactly GitHub's rendering path); the diagram sources in this file and in `README.md` MUST stay byte-identical.
   - `vlm_review.mjs` — design QA loop: sends images to the local bridge (`qwen3.7-plus`, thinking off) for terse PASS/FIX critiques.
-  - `curate_assets.mjs` — stages the final set: banner, logo.svg, social-preview.png (downscaled to exactly 1280x640, must stay <1 MB for GitHub), tour.gif (ffmpeg from the tour webm, 720px/9fps/palette), and top-crops of the tall full-page tab shots.
-  - Refresh order: rebuild dashboard (`bun run build` + `bun run start`) → shots_capture → ffmpeg GIF → curate_assets. Verify README image references still resolve afterwards.
+  - `curate_assets.mjs` — stages the final set: banner, logo.svg (mirrored from `public/logo.svg`, keep the two byte-identical), social-preview.png (downscaled to exactly 1280x640, must stay <1 MB for GitHub), tour.gif (ffmpeg from the tour webm, 720px/9fps/palette), and top-crops of the tall full-page tab shots. Every step SKIPS a missing source instead of throwing, so a checkout with the brand HTML but no `download/shots/` still stages the brand pair without touching the tracked dashboard crops.
+  - Refresh order: rebuild dashboard (`bun run build` + `bun run start`) → shots_capture → ffmpeg GIF → curate_assets. Verify README image references still resolve afterwards. Brand-only refresh (no dashboard needed): `bun scripts/brand_render.mjs` → `bun scripts/curate_assets.mjs`, then LOOK at the regenerated `banner.png` / `social-preview.png` and at an 880px-wide downscale — the banner's contract is that it reads at GitHub's rendered width.
 
 ## Work Guidance
 
