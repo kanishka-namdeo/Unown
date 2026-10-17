@@ -28,12 +28,12 @@ const TILES: Tile[] = [
 
 export function ModelsBand() {
   return (
-    <section className="border-y border-line py-12">
+    <section data-hue="aqua" className="border-y border-line py-12">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp>
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-12">
             <div className="shrink-0 lg:w-60">
-              <p className="gb-label text-[10px] text-glow">
+              <p className="gb-label text-[10px] text-gold">
                 Model agnostic
               </p>
               <p className="mt-2 text-[15px] leading-snug text-ink">
@@ -46,7 +46,7 @@ export function ModelsBand() {
                 {TILES.map((t) => (
                   <li
                     key={t.label}
-                    className="gb-panel lift flex h-11 items-center gap-2.5 px-3 hover:border-line-bright" data-tone="cream"
+                    className="gb-panel lift flex h-11 items-center gap-2.5 px-3 hover:border-line-bright"
                   >
                     {t.slug ? (
                       <ProviderMark slug={t.slug} className="size-4 shrink-0 text-dim" />
@@ -75,7 +75,7 @@ export function ModelsBand() {
                 onto an allow-list, injects upstream auth, translates{" "}
                 <code className="font-mono text-dim">thinking</code> flags for qwen, passes
                 tool calls and image content through natively, and streams SSE back
-                untouched — or skip the bridge entirely with{" "}
+                untouched.{" "}Or skip the bridge entirely with{" "}
                 <code className="font-mono text-dim">unown setup --provider</code>. Marks
                 are{" "}
                 <a

@@ -9,7 +9,7 @@ import { FadeUp, SectionHead } from "./shell";
 const GATES = [
   {
     t: "Ship gate",
-    d: "A mined patch enters memory only after a candidate run passes verification in a fresh sandbox — and the pass replicates in a second, independent confirmation run.",
+    d: "A mined patch enters memory only after a candidate run passes verification in a fresh sandbox, and the pass replicates in a second, independent confirmation run.",
     tag: "verify ×2",
   },
   {
@@ -55,7 +55,7 @@ const LOG = [
 
 const DECISION_TONE: Record<string, string> = {
   log: "text-faint",
-  allow: "text-glow-soft",
+  allow: "text-gold-soft",
   augment: "text-amber",
   deny: "text-poke",
 };
@@ -66,16 +66,15 @@ const DECISION_TONE: Record<string, string> = {
 
 export function IntegritySection() {
   return (
-    <section id="integrity" className="scroll-mt-16 border-y border-line bg-panel/40 py-20 sm:py-24">
+    <section data-hue="magma" id="integrity" className="scroll-mt-16 border-y border-line py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead
             kicker="Integrity"
-            tone="brick"
             lead={
               <>
                 So every memory write is behind a gate, and every gate is visible from the
-                dashboard with the run that proved it. This is the objection this project has to
+                dashboard with the run that proved it. It is the objection this project has to
                 win, so it gets the whole section.
               </>
             }
@@ -97,7 +96,7 @@ export function IntegritySection() {
                     <h3 className="text-[15px] font-medium text-ink">{g.t}</h3>
                     <p className="mt-1.5 text-[13px] leading-relaxed text-dim">{g.d}</p>
                   </div>
-                  <span className="gb-label self-start border border-line bg-canvas/60 px-2 py-0.5 text-[9px] text-glow sm:justify-self-end">
+                  <span className="gb-label self-start border border-line bg-canvas/60 px-2 py-0.5 text-[9px] text-gold sm:justify-self-end">
                     {g.tag}
                   </span>
                 </li>
@@ -107,7 +106,7 @@ export function IntegritySection() {
 
           {/* the log */}
           <FadeUp delay={0.1}>
-            <div className="gb-panel overflow-hidden" data-tone="brick">
+            <div className="gb-panel overflow-hidden">
               <div className="flex items-center gap-2 border-b border-line bg-panel px-3.5 py-2">
                 <span className="size-1.5 rounded-full bg-line-bright" aria-hidden="true" />
                 <span className="gb-term text-[17px] text-faint">
@@ -142,7 +141,8 @@ export function IntegritySection() {
               <div>
                 <h3 className="text-sm font-medium text-ink">Sandboxes, two layers</h3>
                 <p className="mt-2 text-[13px] leading-relaxed text-dim">
-                  Every engine run — verification scripts and the agent&apos;s own bash —
+                  Every engine run, the verification scripts and the agent&apos;s own
+                  bash alike,
                   executes under bubblewrap with a read-only root and private{" "}
                   <span className="font-mono text-ink">/home /tmp /run</span>. Your repo,
                   your <span className="font-mono text-ink">.env</span> and the engine
@@ -158,7 +158,7 @@ export function IntegritySection() {
                   The engine sandbox blocks <span className="font-mono">sudo</span> and
                   outbound calls outright. Your terminal sessions are scoped for real work
                   instead: filesystem-root deletion, fork bombs and disk formats are
-                  blocked, writes outside the project are refused — and network,{" "}
+                  blocked, writes outside the project are refused, and network,{" "}
                   <span className="font-mono">git push</span> and package installs stay
                   available. <span className="font-mono text-ink">UNOWN_STRICT_HOOKS=1</span>{" "}
                   restores sandbox-grade strictness.

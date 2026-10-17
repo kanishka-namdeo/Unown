@@ -16,9 +16,9 @@ const COMMANDS: [string, string][] = [
   ['unown "fix the failing tests"', "start with a prompt"],
   ['unown -p "explain the build error"', "one-shot headless, pipes to less"],
   ['unown --plan "add auth"', "read-only plan mode, approve before executing"],
-  ["unown setup", "provider wizard — or --provider/--api-key/--model"],
+  ["unown setup", "provider wizard, or --provider/--api-key/--model"],
   ["unown models", "configured models plus what the bridge serves"],
-  ["unown doctor", "endpoint, keys, upstream, memory — end to end"],
+  ["unown doctor", "endpoint, keys, upstream and memory, end to end"],
   ["unown memory", "print the effective four-tier stack"],
   ['unown note "flaky auth spec"', "hand AutoDream a note directly"],
 ];
@@ -26,19 +26,19 @@ const COMMANDS: [string, string][] = [
 const PREREQS: [string, string][] = [
   ["bun", "≥ 1.2"],
   ["an endpoint", "any OpenAI-compatible base URL + key"],
-  ["OS", "Linux or macOS — bubblewrap sandboxing is Linux-only"],
+  ["OS", "Linux or macOS. Bubblewrap sandboxing is Linux-only"],
 ];
 
 export function QuickstartSection() {
   return (
-    <section id="quickstart" className="scroll-mt-16 py-20 sm:py-24">
+    <section data-hue="gold" id="quickstart" className="scroll-mt-16 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
           {/* min-w-0 on both columns: the install <pre> and the command
               list carry unbreakable URLs, and grid items default to
               min-width:auto, which would push the layout past 390px. */}
           <FadeUp className="min-w-0">
-            <p className="gb-label text-[10px] text-glow">
+            <p className="gb-label text-[10px] text-gold">
               Quickstart
             </p>
             <h2 className="mt-3 font-display text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -62,7 +62,7 @@ export function QuickstartSection() {
                     const comment = hash === -1 ? "" : line.slice(hash);
                     return (
                       <div key={i} className="flex items-baseline gap-3 whitespace-pre">
-                        <span className="gb-label shrink-0 text-[9px] text-glow">
+                        <span className="gb-label shrink-0 text-[9px] text-gold">
                           {String(i + 1).padStart(2, "0")}
                         </span>
                         <span className="text-ink">{cmd}</span>
@@ -77,7 +77,7 @@ export function QuickstartSection() {
             <dl className="mt-6 grid gap-x-8 gap-y-2 sm:grid-cols-[auto_1fr]">
               {PREREQS.map(([k, v]) => (
                 <React.Fragment key={k}>
-                  <dt className="gb-label text-[9px] text-glow">{k}</dt>
+                  <dt className="gb-label text-[9px] text-gold">{k}</dt>
                   <dd className="text-[12.5px] text-dim">{v}</dd>
                 </React.Fragment>
               ))}
@@ -85,7 +85,7 @@ export function QuickstartSection() {
           </FadeUp>
 
           <FadeUp delay={0.08} className="min-w-0">
-            <p className="gb-label text-[9px] text-glow">
+            <p className="gb-label text-[9px] text-gold">
               The whole command surface
             </p>
             <ul className="mt-5 border-t border-line">
@@ -115,7 +115,7 @@ export function QuickstartSection() {
               href={`${GITHUB_URL}/tree/main/docs`}
               target="_blank"
               rel="noreferrer noopener"
-              className="mt-4 inline-block font-mono text-[11.5px] text-glow underline-offset-4 hover:underline"
+              className="mt-4 inline-block font-mono text-[11.5px] text-gold underline-offset-4 hover:underline"
             >
               the full usage reference
             </a>

@@ -30,7 +30,7 @@ const BORROWED: Borrowed[] = [
     t: "The letter is the body",
     d: (
       <>
-        Unown&apos;s silhouette <em className="not-italic text-ink">is</em> the letter —
+        Unown&apos;s silhouette <em className="not-italic text-ink">is</em> the letter,
         which is why the hero here is a glyph with an eye rather than a symbol parked next
         to a wordmark. Every form carries one eye at the centre of its counter.
       </>
@@ -53,7 +53,7 @@ const BORROWED: Borrowed[] = [
       <>
         The only two forms with half-closed eyes are{" "}
         <code className="font-mono text-[11.5px] text-ink">!</code> and{" "}
-        <code className="font-mono text-[11.5px] text-ink">?</code>. Ours are too — and they
+        <code className="font-mono text-[11.5px] text-ink">?</code>. Ours are too, and they
         happen to be the two that describe the gates: verify-twice, and the question the loop
         exists to answer.
       </>
@@ -65,7 +65,7 @@ const BORROWED: Borrowed[] = [
       <>
         Unown clings to walls in ruins, reading what is engraved there. Unown writes to{" "}
         <code className="font-mono text-[11.5px] text-ink">.unown/memory/project.md</code> in
-        your repository — the same gesture, with version history and a rollback button.
+        your repository. Same gesture, with version history and a rollback button.
       </>
     ),
   },
@@ -102,13 +102,12 @@ const SOURCES: { href: string; label: string; why: string }[] = [
 
 export function FieldNotesSection() {
   return (
-    <section id="field-notes" className="scroll-mt-16 border-y border-line bg-panel/40 py-20 sm:py-24">
+    <section data-hue="psychic" id="field-notes" className="scroll-mt-16 border-y border-line py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead
             kicker="Field notes"
-            tone="cream"
-            lead="A developer tool called unown needs to explain itself twice, so here is both readings. The Pokémon side is lore, quoted and attributed. The engineering side is the part you can check."
+            lead="A developer tool called unown has to explain itself twice. Both readings are below. The Pokémon side is lore, quoted and attributed; the engineering side is the part you can check."
           >
             On the name, and on the letters.
           </SectionHead>
@@ -117,13 +116,13 @@ export function FieldNotesSection() {
         <div className="mt-12 grid gap-8 lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-12">
           {/* the dex card */}
           <FadeUp>
-            <div className="gb-panel overflow-hidden" data-tone="cream">
+            <div className="gb-panel overflow-hidden">
               <div className="flex items-start gap-4 border-b border-line p-5">
                 <div className="grid size-16 shrink-0 place-items-center bg-canvas">
-                  <Glyph id="?" weight="heavy" tone="lit" className="size-11 text-glow" />
+                  <Glyph id="?" weight="heavy" tone="lit" className="size-11 text-gold" />
                 </div>
                 <div className="min-w-0 pt-1">
-                  <p className="gb-label text-[10px] text-glow">
+                  <p className="gb-label text-[10px] text-gold">
                     Symbol
                   </p>
                   <p className="mt-1 text-lg font-medium leading-none text-ink">Unown</p>
@@ -141,7 +140,7 @@ export function FieldNotesSection() {
               </div>
 
               <figure className="p-5">
-                <div className="gb-box p-4" data-tone="cream">
+                <div className="gb-box p-4">
                   <blockquote className="quote text-[20px] leading-relaxed text-canvas">
                     “This Pokémon is shaped like ancient writing. It is a mystery as to which
                     came first, the ancient writings or the various UNOWN. Research into this
@@ -166,7 +165,7 @@ export function FieldNotesSection() {
 
           {/* what we took */}
           <FadeUp delay={0.08}>
-            <p className="gb-label text-[10px] text-glow">
+            <p className="gb-label text-[10px] text-gold">
               What we borrowed, and what we built
             </p>
             <div className="mt-5 border-t border-line">

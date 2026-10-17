@@ -94,7 +94,7 @@ function schedule(script: Line[]): Slot[] {
 
 const TONE: Record<NonNullable<Extract<Line, { kind: "out" }>["tone"]>, string> = {
   dim: "text-faint",
-  good: "text-glow-soft",
+  good: "text-gold-soft",
   warn: "text-amber",
   accent: "text-ink",
 };
@@ -227,10 +227,10 @@ export function SessionReplay({ script = SESSION }: { script?: Line[] }) {
                   <div key={v.key} className="whitespace-pre-wrap break-words">
                     {v.slot.line.kind === "cmd" ? (
                       <span>
-                        <span className="text-glow">$ </span>
+                        <span className="text-gold">$ </span>
                         <span className="text-ink">{v.text}</span>
                         {v.live ? (
-                          <span className="unown-cursor ml-0.5 inline-block h-[0.95em] w-[0.5em] translate-y-[2px] bg-glow" />
+                          <span className="unown-cursor ml-0.5 inline-block h-[0.95em] w-[0.5em] translate-y-[2px] bg-gold" />
                         ) : null}
                       </span>
                     ) : v.slot.line.kind === "rule" ? (
@@ -249,7 +249,7 @@ export function SessionReplay({ script = SESSION }: { script?: Line[] }) {
           <button
             type="button"
             onClick={toggle}
-            className="inline-flex size-7 items-center justify-center border border-line bg-panel-2 text-dim transition-colors duration-100 [transition-timing-function:steps(2,end)] hover:border-line-bright hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
+            className="inline-flex size-7 items-center justify-center border border-line bg-panel-2 text-dim transition-colors duration-100 [transition-timing-function:steps(2,end)] hover:border-line-bright hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
             aria-label={playing ? "Pause the session replay" : finished ? "Replay the session" : "Play the session replay"}
           >
             {playing ? (
@@ -277,16 +277,16 @@ export function SessionReplay({ script = SESSION }: { script?: Line[] }) {
               jump(ratio * total);
               (e.currentTarget as HTMLElement).focus();
             }}
-            className="relative h-6 flex-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-glow [transition-timing-function:steps(2,end)]"
+            className="relative h-6 flex-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gold [transition-timing-function:steps(2,end)]"
           >
             <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 bg-line">
               <div
-                className="h-full bg-glow/70"
+                className="h-full bg-gold/70"
                 style={{ width: `${(t / total) * 100}%` }}
               />
             </div>
             <div
-              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 border border-canvas bg-glow"
+              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 border border-canvas bg-gold"
               style={{ left: `${(t / total) * 100}%` }}
             />
           </div>

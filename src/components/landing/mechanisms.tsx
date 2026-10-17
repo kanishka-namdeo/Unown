@@ -11,7 +11,7 @@ const SRC = (file: string) => `${GITHUB_URL}/blob/main/pi-repo/packages/self-lea
 
 const PAINS = [
   {
-    t: "You re-explain the same three things every morning.",
+    t: "You re-explain the same three things each time you sit down.",
     d: "The conventions, the flaky test, the service that lies about being ready. Every session starts from zero and pays for the same context again.",
   },
   {
@@ -61,7 +61,7 @@ const MECHANISMS: Mechanism[] = [
     n: "03",
     title: "Routing",
     pain: "improvement only happens when you remember to run it",
-    body: "Seven jobs keep the loop moving in the background: five on intervals — harness-cycle 10m, auto-dream 10m, note-sync 5m, task-mint 30m, sandbox-gc 15m — plus two on events, improvement:shipped and run:finished. A busy-mutex means the sandbox is never double-driven.",
+    body: "Seven jobs keep the loop moving in the background: five on intervals (harness-cycle 10m, auto-dream 10m, note-sync 5m, task-mint 30m, sandbox-gc 15m) and two on events, improvement:shipped and run:finished. A busy-mutex means the sandbox is never double-driven.",
     proof: "When the suite saturates, task minting authors harder curriculum variants from real failures.",
     file: "router.ts",
     href: SRC("router.ts"),
@@ -70,7 +70,7 @@ const MECHANISMS: Mechanism[] = [
     n: "04",
     title: "AutoDreaming and skill acquisition",
     pain: "you find out it learned the wrong thing weeks later",
-    body: "Session notes consolidate into project memory under a canary gate: the most recently passing task has to re-pass, or the dream rolls itself back. When notes keep describing the same multi-step procedure, AutoDream mints it as a real Agent Skill in .unown/skills/ — at most two per dream, deduped against everything already on disk.",
+    body: "Session notes consolidate into project memory under a canary gate: the most recently passing task has to re-pass, or the dream rolls itself back. When notes keep describing the same multi-step procedure, AutoDream mints it as a real Agent Skill in .unown/skills/, at most two per dream, deduped against everything already on disk.",
     proof: "The engine never deletes your files. Retirement is a deliberate dashboard action.",
     file: "dream.ts",
     href: SRC("dream.ts"),
@@ -80,7 +80,7 @@ const MECHANISMS: Mechanism[] = [
     title: "Hooks",
     pain: "it ran something it had no business running",
     body: "A pi extension enforcing guardrails at six layers: SessionStart, UserPromptSubmit, PreToolUse (deny-list plus a path jail), PostToolUse (a syntax gate that feeds the transpiler error straight back), Stop and SubagentStop. Every allow, deny and augment is written to a log.",
-    proof: "Normal work stays allowed — network, git push, installs. UNOWN_STRICT_HOOKS=1 for sandbox-grade.",
+    proof: "Normal work stays allowed: network, git push, installs. UNOWN_STRICT_HOOKS=1 for sandbox-grade.",
     file: "hooks.ts",
     href: SRC("hooks.ts"),
   },
@@ -89,13 +89,13 @@ const MECHANISMS: Mechanism[] = [
 const INFRA = [
   {
     title: "OS-level sandbox",
-    body: "Every engine run executes under bubblewrap — the foundation Flatpak and Claude Code use. Read-only root, private /home, /tmp and /run, so your repo, .env and engine data are invisible inside. Killed network namespace, dropped capabilities, sha256-pinned verification so the agent cannot edit the test.",
+    body: "Every engine run executes under bubblewrap, the same sandboxing Flatpak and Claude Code use. Read-only root, private /home, /tmp and /run, so your repo, .env and engine data are invisible inside. Killed network namespace, dropped capabilities, sha256-pinned verification so the agent cannot edit the test.",
     file: "bwrap.ts",
     href: SRC("bwrap.ts"),
   },
   {
     title: "Mission control",
-    body: "A dashboard that streams runs, cycles, dream journals, memory version history and hook decisions over SSE — and lets you roll any of them back.",
+    body: "A dashboard that streams runs, cycles, dream journals, memory version history and hook decisions over SSE, and lets you roll any of them back.",
     file: "/dashboard",
     href: "/dashboard",
   },
@@ -107,11 +107,11 @@ const INFRA = [
 
 export function MechanismsSection() {
   return (
-    <section id="mechanisms" className="scroll-mt-16 py-20 sm:py-24">
+    <section data-hue="magma" id="mechanisms" className="scroll-mt-16 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         {/* the problem, stated plainly */}
         <FadeUp className="max-w-2xl">
-          <SectionHead kicker="The problem" tone="brick">
+          <SectionHead kicker="The problem">
             An agent that forgets is a tax you pay every morning.
           </SectionHead>
         </FadeUp>
@@ -128,7 +128,7 @@ export function MechanismsSection() {
         {/* the mechanisms, as rows rather than a grid of identical tiles */}
         <div className="mt-20">
           <FadeUp className="max-w-2xl">
-            <SectionHead kicker="Five mechanisms" tone="brick">
+            <SectionHead kicker="Five mechanisms">
               One answer to each of those.
             </SectionHead>
           </FadeUp>
@@ -137,7 +137,7 @@ export function MechanismsSection() {
             {MECHANISMS.map((m, i) => (
               <FadeUp key={m.n} delay={Math.min(i, 3) * 0.05}>
                 <div className="group grid gap-4 border-t border-line py-8 lg:grid-cols-[2.5rem_minmax(0,17rem)_minmax(0,1fr)] lg:gap-6">
-                  <p className="gb-label text-[10px] tabular-nums text-glow">{m.n}</p>
+                  <p className="gb-label text-[10px] tabular-nums text-gold">{m.n}</p>
 
                   <div>
                     <h3 className="text-lg font-medium text-ink">{m.title}</h3>
@@ -148,7 +148,7 @@ export function MechanismsSection() {
                       href={m.href}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11px] text-glow underline-offset-4 hover:underline"
+                      className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
                     >
                       {m.file}
                       <ExternalLink className="size-3" aria-hidden="true" />
@@ -184,7 +184,7 @@ export function MechanismsSection() {
                   {...(item.href.startsWith("http")
                     ? { target: "_blank", rel: "noreferrer noopener" }
                     : {})}
-                  className="mt-3 inline-block font-mono text-[11px] text-glow underline-offset-4 hover:underline"
+                  className="mt-3 inline-block font-mono text-[11px] text-gold underline-offset-4 hover:underline"
                 >
                   {item.file}
                 </a>

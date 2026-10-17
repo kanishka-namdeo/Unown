@@ -35,7 +35,7 @@ function Seal() {
     <div className="seal-stage relative flex flex-col items-center">
       <div
         aria-hidden="true"
-        className="absolute -inset-x-10 -inset-y-12 border border-line/70 bg-panel/40"
+        className="absolute -inset-x-10 -inset-y-12 border border-line/70"
       />
 
       <div className="relative flex flex-col items-center gap-2 sm:gap-2.5">
@@ -45,7 +45,7 @@ function Seal() {
             className="seal-form relative block size-[4.5rem] text-ink sm:size-20"
             aria-hidden="true"
           >
-            {/* The halo wraps only the first form so the glow reads as a single
+            {/* The halo wraps only the first form so the gold reads as a single
                 light source rather than five. */}
             {i === 0 ? (
               <span
@@ -95,15 +95,15 @@ const TRUST = [
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden pt-14 pb-16 sm:pt-20 sm:pb-24">
-      {/* one warm glow, top-left, following the left edge of the copy */}
+    <section data-hue="psychic" className="relative overflow-hidden pt-14 pb-16 sm:pt-20 sm:pb-24">
+      {/* one warm dither halo, top-left, following the left edge of the copy */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-40 -top-52 size-[560px] gb-dither opacity-15"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgba(120,113,104,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,113,104,0.10)_1px,transparent_1px)] [background-size:64px_64px] [mask-image:radial-gradient(ellipse_70%_55%_at_30%_0%,black_10%,transparent_78%)]"
+        className="hero-grid pointer-events-none absolute inset-0"
       />
 
       <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
@@ -112,7 +112,7 @@ export function Hero() {
               <pre>'s min-content; without it the git-clone URL sets the
               column's intrinsic width and the section clips it on phones. */}
           <div className="max-w-2xl min-w-0">
-            <p className="gb-label text-[10px] text-glow">
+            <p className="gb-label text-[10px] text-gold">
               Open source · MIT · built on the pi agent
             </p>
 
@@ -123,7 +123,7 @@ export function Hero() {
             <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-dim">
               Unown is a coding agent that runs in your terminal and{" "}
               <span className="text-ink">remembers</span>. Every session ends by handing
-              the engine a note. Overnight the engine turns notes into project memory —
+              the engine a note. Overnight the engine turns notes into project memory,
               and refuses to keep any of it until a fresh sandbox has proven it twice.
             </p>
 
@@ -175,7 +175,7 @@ export function Hero() {
                   key={t}
                   className="flex items-center gap-2 font-mono text-[11px] text-faint"
                 >
-                  <span className="size-1 rounded-full bg-glow/70" aria-hidden="true" />
+                  <span className="size-1 rounded-full bg-gold/70" aria-hidden="true" />
                   {t}
                 </li>
               ))}
@@ -189,7 +189,7 @@ export function Hero() {
         <div className="rise mt-16 sm:mt-24">
           <SessionReplay />
           <p className="mt-3 text-center font-mono text-[11px] text-faint">
-            a real session — the memory banner, hook log line and note template are the
+            a real session: the memory banner, hook log line and note template are the
             formats Unown actually writes
           </p>
         </div>

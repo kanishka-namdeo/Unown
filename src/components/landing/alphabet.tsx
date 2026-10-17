@@ -47,17 +47,16 @@ function MarkField() {
 /* ------------------------------------------------------------------ */
 
 /**
- * The 28 forms cycle the four Super Game Boy hues rather than all sharing one
- * rim colour. This is the SGB trick at its most literal: the play area (the
- * glyph, its dim eye, the caption) stays DMG monochrome, and the colour is
- * carried entirely by the tile's frame — a lit rim on the idle tiles, a solid
- * tone fill on the pinned one. Cycling by index is a fixed pattern, not random,
- * so the field is stable between renders and does not reflow.
+ * The 28 forms cycle the four hues that are NOT their section's own. The
+ * alphabet sits on `psychic`, so the wall cycles aqua / leaf / magma / gold:
+ * each tile is a labelled drawer with a lit rim in its hue, and the pinned one
+ * fills with it. Cycling by index is a fixed pattern, not random, so the field
+ * is stable between renders and does not reflow.
  *
  * The eye is deliberately NOT toned. Twenty-eight lit eyes strobe; a coloured
  * rim around a dim eye reads as a labelled drawer instead.
  */
-const TILE_TONES: readonly Tone[] = ["cream", "amber", "brick", "purple"];
+const TILE_TONES: readonly Tone[] = ["aqua", "leaf", "magma", "gold"];
 
 function FormTile({
   id,
@@ -81,7 +80,7 @@ function FormTile({
       onClick={() => onPick(id)}
       aria-pressed={active}
       {...toneAttr(tone)}
-      className={`lift group relative flex aspect-square flex-col items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-glow focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
+      className={`lift group relative flex aspect-square flex-col items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
         active ? "gb-box" : "gb-panel hover:border-line-bright"
       }`}
     >
@@ -123,6 +122,7 @@ export function AlphabetSection() {
 
   return (
     <section
+      data-hue="psychic"
       id="alphabet"
       className="relative scroll-mt-16 overflow-hidden border-y border-line py-20 sm:py-24"
     >
@@ -131,13 +131,13 @@ export function AlphabetSection() {
       <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid gap-6 max-w-2xl">
           <FadeUp>
-            <SectionHead kicker="The alphabet" tone="purple">
+            <SectionHead kicker="The alphabet">
               The name is a pun you have to read twice.
             </SectionHead>
           </FadeUp>
           <FadeUp delay={0.06}>
             <p className="text-pretty leading-relaxed text-dim">
-              <span className="text-ink">un</span>own. Unown is the <em>Symbol Pokémon</em> —
+              <span className="text-ink">un</span>own. Unown is the <em>Symbol Pokémon</em>:
               a flat black letter with one eye, alive since 1999, found stuck to walls in
               ruins, shaped like writing on very old tablets. It is the only word in the
               franchise that is a typo of itself.
@@ -145,11 +145,11 @@ export function AlphabetSection() {
           </FadeUp>
           <FadeUp delay={0.12}>
             <p className="text-pretty leading-relaxed text-dim">
-              Which is the whole thesis for an agent with memory: the interesting thing
+              An agent with memory earns its keep the same way: the interesting thing
               about it is that it <span className="text-ink">reads</span>. So the 28 forms
-              below are ours, drawn from scratch as inline SVG — no font file, no image
-              sprite. Each one decodes twice: the lore it borrows, and the real mechanism
-              it stands for here.
+              below are ours, drawn from scratch as inline SVG. There is no font file and
+              no image sprite. Each one decodes twice: the lore it borrows, and the real
+              mechanism it stands for here.
             </p>
           </FadeUp>
         </div>
@@ -180,11 +180,11 @@ export function AlphabetSection() {
           {/* the decoding */}
           <FadeUp delay={0.08} className="lg:order-2">
             <div className="lg:sticky lg:top-24">
-              <TerminalWindow title={`form ${ordinal} / 28 · ${entry.id}`} tone="purple">
+              <TerminalWindow title={`form ${ordinal} / 28 · ${entry.id}`}>
                 <div aria-live="polite" className="p-5">
                   <div className="flex items-center gap-4">
-                    <div className="grid size-16 shrink-0 place-items-center border-[3px] border-canvas bg-glow/10">
-                      <Glyph id={entry.id} weight="heavy" tone="lit" className="size-11 text-glow" />
+                    <div className="grid size-16 shrink-0 place-items-center border-[3px] border-canvas bg-gold/10">
+                      <Glyph id={entry.id} weight="heavy" tone="lit" className="size-11 text-gold" />
                     </div>
                     <div className="min-w-0">
                       <p className="gb-term text-[24px] leading-none text-ink">{entry.id}</p>
@@ -204,7 +204,7 @@ export function AlphabetSection() {
                   </figure>
 
                   <div className="mt-5 border-t border-line pt-4">
-                    <p className="gb-label text-[9px] text-glow">
+                    <p className="gb-label text-[9px] text-gold">
                       in unown
                     </p>
                     <p className="mt-2 text-[13px] leading-relaxed text-ink">{entry.means}</p>

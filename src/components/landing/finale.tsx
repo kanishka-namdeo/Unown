@@ -28,7 +28,7 @@ function Spellbox() {
   const known = letters.length === 0;
 
   return (
-    <div data-tone="amber" className="gb-box p-5">
+    <div className="gb-box p-5">
       <label
         htmlFor="spellbox"
         className="gb-label text-[10px] text-canvas"
@@ -88,7 +88,7 @@ function Spellbox() {
       </div>
 
       <p className="mt-4 border-t border-canvas/40 pt-3 text-[11px] leading-relaxed text-canvas/80">
-        {Object.keys(GLYPHS).length} forms, all inline SVG — there is no font file behind
+        {Object.keys(GLYPHS).length} forms, all inline SVG. There is no font file behind
         this and no image sprite. If a letter is missing from your keyboard,{" "}
         <code className="font-mono text-canvas">!</code> and <code className="font-mono text-canvas">?</code>{" "}
         always work.
@@ -109,12 +109,11 @@ export function FinaleSection() {
   const { woke } = useAlphabetWake();
 
   return (
-    <section className="relative border-t border-line py-24 sm:py-32">
+    <section data-hue="leaf" className="relative border-t border-line py-24 sm:py-32">
       <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-16">
           <FadeUp>
             <SectionHead
-              tone="amber"
               kicker="Where to start"
               lead="Clone it, run one session, and come back tomorrow with memory that already knows what you told it. Nothing to sign up for. If it is not useful, you have lost an afternoon and gained a very opinionated terminal agent."
             >
@@ -151,7 +150,7 @@ export function FinaleSection() {
             <p
               role="status"
               aria-live="polite"
-              className={`mt-8 font-mono text-[11px] text-glow transition-opacity duration-500 ${
+              className={`mt-8 font-mono text-[11px] text-gold transition-opacity duration-500 ${
                 woke ? "opacity-100" : "h-0 opacity-0"
               }`}
             >

@@ -32,7 +32,7 @@ const TWO = [
 
 function Pair() {
   return (
-    <div className="gb-panel p-6" data-tone="cream">
+    <div className="gb-panel p-6">
       <div className="flex items-stretch gap-4">
         {TWO.map((half, i) => (
           <div key={half.glyph} className="flex min-w-0 flex-1 flex-col">
@@ -65,7 +65,7 @@ function Pair() {
       </div>
 
       <div className="mt-6 flex items-center gap-4 border-t border-line pt-5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-glow">
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gold">
           the odd power
         </span>
         <span className="h-px flex-1 bg-line" aria-hidden="true" />
@@ -83,26 +83,26 @@ function Pair() {
 
 export function OriginSection() {
   return (
-    <section className="py-20 sm:py-24">
+    <section data-hue="aqua" className="py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
           {/* left: the two quotes that explain the architecture */}
           <div>
             <FadeUp>
-              <p className="gb-label text-[10px] text-glow">
+              <p className="gb-label text-[10px] text-gold">
                 Why it is built this way
               </p>
               <h2 className="mt-3 font-display text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
                 When alone, nothing happens.
               </h2>
               <p className="mt-4 max-w-md text-pretty leading-relaxed text-dim">
-                The best line in the Pokédex is an accidental description of distributed
-                systems, and it is the design brief for everything in this repository.
+                The Pokédex entry quoted here describes distributed systems by accident.
+                It is also the shape this repository keeps trying to build.
               </p>
             </FadeUp>
 
             <FadeUp delay={0.08}>
-              <figure className="relative mt-8 gb-box p-5" data-tone="cream">
+              <figure className="relative mt-8 gb-box p-5">
                 <blockquote className="quote text-pretty text-2xl leading-snug text-canvas italic sm:text-3xl">
                   “{DEX_QUOTES.emergent}”
                 </blockquote>
@@ -123,13 +123,13 @@ export function OriginSection() {
                   allowed to land if a sandbox proves them twice.
                 </p>
                 <p className="mt-3 text-[13px] leading-relaxed text-dim">
-                  Neither half is clever. The loop between them is the product.
+                  The loop between them is the product.
                 </p>
               </div>
             </FadeUp>
 
             <FadeUp delay={0.2}>
-              <figure className="relative mt-10 gb-box p-5" data-tone="cream">
+              <figure className="relative mt-10 gb-box p-5">
                 <blockquote className="quote text-pretty text-lg leading-relaxed text-canvas italic sm:text-xl">
                   “{DEX_QUOTES.origin}”
                 </blockquote>
@@ -139,11 +139,11 @@ export function OriginSection() {
                 <ContinueArrow className="absolute bottom-2 right-3 text-canvas" />
               </figure>
               <p className="mt-4 text-[13px] leading-relaxed text-dim">
-                Take the other half seriously and you get this project&apos;s whole thesis
-                in one line: which came first, the code you wrote, or the agent that
-                read it? Unown keeps betting on the second, and then{" "}
-                <span className="text-ink">versioning the answer</span> so you can roll it
-                back when the bet is wrong.
+                The other half asks the question back: which came first, the code you
+                wrote, or the agent that read it? Unown keeps betting on the second, and
+                then{" "}
+                <span className="text-ink">versioning the answer</span> so you can roll
+                the bet back when it is wrong.
               </p>
             </FadeUp>
           </div>
@@ -180,7 +180,7 @@ export function OriginSection() {
             },
           ].map((act) => (
             <div key={act.k} className="bg-panel p-6">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-glow">
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-gold">
                 {act.k}
               </p>
               <h3 className="mt-2 text-lg font-medium">{act.t}</h3>
