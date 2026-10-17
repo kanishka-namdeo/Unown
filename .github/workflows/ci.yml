@@ -5,56 +5,30 @@ on:
     branches: [main]
   pull_request:
 
+# Cancel superseded runs of the same branch/PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Required CI gates (docs/testing-strategy.md §3): lint, typecheck, unit tests,
-# shell syntax, theme contract. The mermaid render check and the build job are
-# deliberately deferred — see the trailing comments.
+# shell syntax, theme contract. The mermaid render check and the dashboard
+# build are deliberately deferred — see the trailing comments.
+#
+# Cross-platform legs (M4):
+#   - build-test exercises the REAL installer end to end on
+#     ubuntu/macos/windows: `bun scripts/install.ts` with UNOWN_NO_LINK=1 runs
+#     both bun installs, the model-data hydration (network) and build:offline —
+#     the exact path a fresh clone takes on a user machine (~5-8 min per OS,
+#     hence the 30-minute job timeout). Then the self-learning engine tests and
+#     a CLI boot smoke.
+#   - sandbox-smoke runs the repo-relative bwrap verification tools
+#     (scripts/bwrap_smoke.sh + scripts/verify_sandbox.mjs) on ubuntu only —
+#     the OS sandbox is a Linux surface (bwrap is a Linux ELF; src/bwrap.ts
+#     gates the other platforms out by design).
 
 jobs:
-  lint:
-    name: Lint dashboard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Install dependencies
-        run: bun install
-      - name: Lint
-        run: bunx eslint src
-
-  typecheck:
-    name: Typecheck dashboard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Install dependencies
-        run: bun install
-      - name: Generate Prisma client
-        # src/generated/prisma is gitignored output; tsc needs it for src/lib/db.ts
-        run: bun run db:generate
-      - name: Typecheck
-        run: bun run typecheck
-
-  unit:
-    name: Unit tests (dashboard)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Install dependencies
-        run: bun install
-      - name: Unit tests
-        # bun:test is built in — no vitest/jest config or extra deps needed
-        run: bun test src
-
-  shell-syntax:
-    name: Shell syntax (bash -n)
+  lint-shell:
+    name: Lint shell scripts (bash -n)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +44,132 @@ jobs:
           done
           exit $failed
 
+  build-test:
+    name: Build + test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Enable git long paths (Windows)
+        # The vendored pi-repo trees (examples/**/node_modules) can exceed the
+        # 260-char MAX_PATH limit. This must run BEFORE checkout so the action
+        # sees the global config; git is preinstalled on the runner.
+        if: runner.os == 'Windows'
+        run: git config --global core.longpaths true
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          # Matches the repo badge + the bun-types devDependency pin.
+          bun-version: "1.4.3"
+      - name: Install via the real installer (bun installs + model-data hydration + build:offline)
+        # UNOWN_NO_LINK=1 skips the PATH shim step (meaningless on a runner) —
+        # everything else a fresh clone does runs for real here, including the
+        # network hydration of pi-repo/packages/ai/src/providers/data (gitignored
+        # upstream — without it build:offline cannot work on a fresh clone).
+        env:
+          UNOWN_NO_LINK: "1"
+        run: bun scripts/install.ts
+      - name: Self-learning engine tests
+        # Live suites (UNOWN_MEMORY_LIVE / UNOWN_MEMORY_POISON) and the
+        # integration suite (PI_TEST_SCOPE=integration) are env-gated and skip
+        # under plain `bun test test/` — no extra env needed; test/_env.ts
+        # redirects the DB/bridge away from anything live.
+        working-directory: pi-repo/packages/self-learning
+        run: bun test test/
+      - name: Smoke — CLI boots (unown --help)
+        run: bun bin/unown --help
+      - name: Smoke — doctor prints its table
+        # Doctor exit-code semantics (self-learning src/cli.ts cmdDoctor):
+        # hard-exit 1 on any ✗ chat-path row. In CI there is no stack and no
+        # upstream key, so "model endpoint reachable" is an expected ✗ and
+        # doctor exits 1 — deterministically, on all three OSes. Faking an
+        # upstream (or starting the bridge with a dummy key) would make the
+        # job green dishonestly. Instead this smoke asserts the CLI *boots and
+        # prints the full doctor table* — a crash prints none of these rows —
+        # and accepts exit codes {0,1}; anything higher fails the step.
+        shell: bash
+        run: |
+          # Note: GH runs bash steps with -e; capture the exit code without
+          # tripping errexit (`|| code=$?` keeps the assignment conditional).
+          code=0
+          out="$(bun bin/unown doctor 2>&1)" || code=$?
+          printf '%s\n' "$out"
+          if [ "$code" -gt 1 ]; then
+            echo "::error::unown doctor crashed (exit $code)"
+            exit 1
+          fi
+          for row in "agent dir" "model endpoint reachable" "OS sandbox" "self-learning engine"; do
+            if ! printf '%s\n' "$out" | grep -q "$row"; then
+              echo "::error::doctor table missing row: $row"
+              exit 1
+            fi
+          done
+
+  sandbox-smoke:
+    name: Sandbox smoke (bwrap profile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: bwrap profile verification
+        # 25 isolation checks against the vendored bwrap (fs masking, network
+        # namespace, runtime usability). Uses unprivileged user namespaces —
+        # if the runner kernel ever refuses them this job goes red, which is
+        # the intended canary for the engine's OS-sandbox surface.
+        run: bash scripts/bwrap_smoke.sh
+      - name: Engine sandbox verification
+        # The integration points the engine actually uses (execInSandbox,
+        # verifyInSandbox, the generated sandbox shell wrapper).
+        run: bun scripts/verify_sandbox.mjs
+
+  lint:
+    name: Lint dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies
+        run: bun install
+      - name: Lint
+        run: bunx eslint src
+
+  typecheck:
+    name: Typecheck dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies
+        run: bun install
+      - name: Generate Prisma client
+        # src/generated/prisma is gitignored output; tsc needs it for src/lib/db.ts
+        run: bun run db:generate
+      - name: Typecheck
+        run: bun run typecheck
+
+  unit:
+    name: Unit tests (dashboard)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies
+        run: bun install
+      - name: Unit tests
+        # bun:test is built in — no vitest/jest config or extra deps needed
+        run: bun test src
+
   theme:
     name: Theme contract
     runs-on: ubuntu-latest
@@ -77,9 +177,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.4.3"
       - name: Theme schema check
-        # bun (not node) because the script imports a .ts file from pi-repo
+        # bun (not node) because the script imports a .TS file from pi-repo
         run: bun scripts/check_theme.mjs
 
   landing-palette:
@@ -89,7 +189,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.4.3"
       - name: GBA grid + AA contract
         # Reads the CSS only — no browser, no server, no build — which is what
         # makes the "every colour is a legal Game Boy Advance colour" claim a
@@ -101,8 +201,6 @@ jobs:
 #   it as a required gate before deploy (testing-strategy.md §3 gate 3).
 # - scripts/mermaid_check.mjs — needs Playwright + browser binaries + CDN;
 #   belongs to the screenshot/visual pipeline (Phase 2/3), not a cheap gate.
-# - scripts/verify_sandbox.mjs / bwrap_smoke.sh — run only on changes under
-#   sandbox/bwrap surfaces (testing-strategy.md §3 gate 6, Phase 3).
 
   security:
     name: Security scan (secrets + advisories)
@@ -118,7 +216,7 @@ jobs:
       - name: Install bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.4.3"
       - name: Advisory audit (root, production deps only)
         # `bun audit` exits non-zero on advisories; --prod keeps it to runtime
         # deps. Fail-open is NOT acceptable for known-exploited vulns, so a
