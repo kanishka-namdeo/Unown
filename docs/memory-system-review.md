@@ -1,5 +1,7 @@
 # Memory system — critical architecture review
 
+A full code read of the tiered-memory subsystem plus live probes against a real engine, agent runs and dreams: ten findings, each tagged with its status, and the matrix for re-running every check.
+
 **Date:** 2026-10-17 · **Scope:** the tiered-memory subsystem of the
 self-learning engine (`pi-repo/packages/self-learning/src/{memory,store,dream,
 runner,term,notes,harness}.ts`) and its terminal sibling (`cli.ts`, `tools.ts`).
@@ -8,6 +10,14 @@ agent runs + real dreams through the llm-bridge (receipts:
 `benchmarks/memory-eval/results/`, live suites `test/memory-live.test.ts`,
 `test/memory-poison.test.ts`). Every finding below is either live-verified
 (marked **[live]**) or pinned by a unit test.
+
+Related pages: [memory](memory.md) · [memory-classifier-evaluation](memory-classifier-evaluation.md) · [testing-strategy](testing-strategy.md)
+
+- [1. Architecture as built](#1-architecture-as-built)
+- [2. Findings](#2-findings)
+- [3. Effectiveness — what the benchmarks say](#3-effectiveness--what-the-benchmarks-say)
+- [4. Verification matrix (how to re-run everything)](#4-verification-matrix-how-to-re-run-everything)
+- [5. Recommended next steps (ranked)](#5-recommended-next-steps-ranked)
 
 ## 1. Architecture as built
 
