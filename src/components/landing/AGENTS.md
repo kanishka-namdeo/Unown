@@ -110,6 +110,9 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
 - Lighthouse on the production build must stay at 1.00 for accessibility,
   best-practices and SEO. It caught the contrast and list-structure bugs that
   reading the source did not.
+- `bun scripts/verify-deploy.mjs` asserts the live deployment after any push to
+  `main`. A green local build says nothing about whether the deploy landed, so
+  this is the gate, not `bun run build`.
 - **Contrast is a contract, not a vibe.** Every text token clears WCAG AA 4.5:1
   on the darkest surface it lands on: `ink` 17.4, `dim` 7.0, `faint` 4.7, `glow`
   10.2. `--color-faint` was `#6d675f` (3.16:1 on panel-2) and had to go to

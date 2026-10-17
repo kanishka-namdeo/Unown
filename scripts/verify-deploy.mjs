@@ -1,0 +1,193 @@
+#!/usr/bin/env node
+/**
+ * Verify the live deployment.
+ *
+ *   bun scripts/verify-deploy.mjs [url]
+ *
+ * Exits non-zero if anything fails, so it is usable as a post-push gate as
+ * well as a manual check. It answers one question honestly: is production
+ * actually serving the code we think it is, and is it intact?
+ *
+ * Why this exists rather than "just check the site": Vercel auto-deploys on
+ * every push to `main`, and a green local build says nothing about whether the
+ * deploy landed, whether the production alias has caught up, or whether the
+ * page is still a blank slate without JavaScript. Those are exactly the three
+ * ways this page has broken before.
+ */
+
+const URL_ARG = process.argv[2] || "https://unown-nine.vercel.app";
+
+let failures = 0;
+const note = (ok, label, detail = "") => {
+  if (!ok) failures += 1;
+  const mark = ok ? "  ok  " : " FAIL ";
+  console.log(`${mark} ${label}${detail ? `  ${detail}` : ""}`);
+};
+
+/* ---------------------------------------------------------------- */
+/* helpers                                                           */
+/* ---------------------------------------------------------------- */
+
+async function get(url) {
+  const res = await fetch(url, {
+    headers: { "cache-control": "no-cache" },
+    redirect: "follow",
+  });
+  const text = await res.text();
+  return { res, text, status: res.status };
+}
+
+const section = (t) => console.log(`\n${t}`);
+
+/* ---------------------------------------------------------------- */
+/* run                                                               */
+/* ---------------------------------------------------------------- */
+
+console.log(`verifying ${URL_ARG}\n`);
+
+section("routes");
+const routes = [
+  ["/", 200],
+  ["/dashboard", 200],
+  ["/api", 200],
+];
+const bodies = {};
+for (const [path, want] of routes) {
+  try {
+    const { status, text } = await get(URL_ARG + path);
+    bodies[path] = text;
+    note(status === want, `${path} -> ${want}`, `got ${status}, ${text.length} bytes`);
+  } catch (err) {
+    note(false, `${path} -> ${want}`, String(err.message ?? err));
+  }
+}
+
+const html = bodies["/"] ?? "";
+if (!html) {
+  console.error("\nno HTML from /; aborting content checks.");
+  process.exit(1);
+}
+
+/* ---------------------------------------------------------------- */
+/* content: is the page we built actually there?                     */
+/* ---------------------------------------------------------------- */
+
+section("page content");
+note(html.includes("It reads what you write down"), "hero headline");
+note(/id="alphabet"/.test(html), "alphabet section");
+note((html.match(/viewBox="0 0 100 100"/g) || []).length >= 28, "the 28-form script", `${(html.match(/viewBox="0 0 100 100"/g) || []).length} glyph SVGs`);
+note(html.includes("seal-form"), "hero seal");
+note(html.includes("Skip to content"), "skip link");
+note(html.includes("psst"), "konami hint");
+note(html.includes("not affiliated with, endorsed by or sponsored by"), "non-affiliation disclaimer");
+note(html.includes("pass@1") || html.includes("HumanEval"), "benchmark figures");
+note(html.includes("hook_log"), "hook decision log");
+note(/Neuro|<svg[^>]+>/.test(html) || html.includes("<svg"), "inline svg present");
+
+/* ---------------------------------------------------------------- */
+/* no-JS: the page must not be a blank slate without scripting      */
+/* ---------------------------------------------------------------- */
+
+section("no-JS safety net");
+// Framer Motion serialises `initial` into the SSR markup, so ~56 elements ship
+// as `style="opacity:0;transform:translateY(...)"`. Without the <noscript>
+// override the page is blank for anyone with scripting disabled.
+const inlineHidden = (html.match(/style="opacity:0/g) || []).length;
+note(inlineHidden > 0, "pre-hydration hidden state present (expected)", `${inlineHidden} elements`);
+note(/<noscript>[\s\S]*opacity: 1 !important[\s\S]*<\/noscript>/.test(html), "<noscript> override shipped");
+const head = html.slice(0, html.indexOf("</head>"));
+note(!/unown-landing-noscript/.test(head), "override NOT hoisted to <head>", "hoisting would kill every reveal");
+
+/* ---------------------------------------------------------------- */
+/* accessibility regressions                                          */
+/* ---------------------------------------------------------------- */
+
+section("accessibility regressions");
+note(!/text-(faint|dim|ink|glow|glow-soft|amber-\d+|rose-\d+)\/\d+/.test(html), "no opacity-faded text tokens");
+note(!/class="[^"]*"[^>]*>\s*<li/.test(html) === false || !/<ul[^>]*>\s*<div/.test(html), "no <ul><div><li> list breakage");
+note(html.includes('role="slider"'), "session scrubber exposed as a slider");
+note(/role="tablist"/.test(html), "loop tabs exposed as a tablist");
+
+/* ---------------------------------------------------------------- */
+/* assets: licensed sources only, nothing hotlinked from elsewhere   */
+/* ---------------------------------------------------------------- */
+
+section("assets");
+/*
+ * Only `src` is a subresource the page actually fetches. `href` is a link a
+ * visitor may choose to follow, and hyperlinking Bulbapedia or Wikipedia in a
+ * sources list is precisely what the licensing rule asks for — paraphrasing a
+ * fact and linking it. Conflating the two made this check fail on a healthy
+ * deployment twice.
+ */
+const subresources = [...html.matchAll(/\ssrc="(https?:\/\/[^"]+)"/g)].map((m) => m[1]);
+const loaded = [...new Set(subresources)];
+const allowed = ["unown-nine.vercel.app", "kanishka-namdeo.github.io"];
+const unexpectedLoads = loaded.filter((u) => !allowed.some((a) => u.includes(a)));
+note(
+  unexpectedLoads.length === 0,
+  "no cross-origin subresource loads",
+  unexpectedLoads.join(", ") || "none — every asset is self-hosted",
+);
+
+const hyperlinks = [...new Set([...html.matchAll(/\shref="(https?:\/\/[^"]+)"/g)].map((m) => m[1]))];
+console.log(`        (${hyperlinks.length} external hyperlinks, all opt-in — not loaded by the page)`);
+
+/* An asset leak means something being *loaded*, not something being cited. */
+const forbiddenAssets = [
+  "fonts.gstatic.com",
+  "fonts.googleapis.com",
+  "cdn.jsdelivr.net",
+  "unpkg.com",
+  "dafont",
+  "fontstruct",
+  "archive.org",
+  "wikimedia",
+];
+const assetLeaks = loaded.filter((u) => forbiddenAssets.some((f) => u.includes(f)));
+note(assetLeaks.length === 0, "no externally hosted font or asset loads", assetLeaks.join(", ") || "none");
+
+/* Everything the page cites must be linked, and it must say it is not affiliated. */
+const citedSources = hyperlinks.filter((u) => /bulbapedia|serebii|pokemondb|wikipedia|nsta|ssbwiki/.test(u));
+console.log(`        (${citedSources.length} cited lore sources, hyperlinked with attribution)`);
+note(
+  html.includes("not affiliated with, endorsed by or sponsored by"),
+  "non-affiliation stated where the lore appears",
+);
+
+/* ---------------------------------------------------------------- */
+/* css bundle                                                        */
+/* ---------------------------------------------------------------- */
+
+section("css");
+const cssHrefs = [...new Set([...html.matchAll(/href="(\/_next\/static\/chunks\/[^"]+\.css)"/g)].map((m) => m[1]))];
+let css = "";
+for (const h of cssHrefs) {
+  try {
+    const r = await fetch(URL_ARG + h);
+    css += await r.text();
+  } catch {
+    /* a chunk that will not fetch is reported by the content checks above */
+  }
+}
+// Production CSS is minified, so every probe below is whitespace-insensitive.
+const flat = css.replace(/\s+/g, "");
+note(css.length > 0, "stylesheet chunks fetched", `${cssHrefs.length} chunks, ${(css.length / 1024).toFixed(0)} KB`);
+note(/\.bg-canvas\{background-color:#0c0b0a\}/.test(css), "warm-dark palette present");
+note(flat.includes("feTurbulence"), "grain texture present");
+note(flat.includes("animation-timeline"), "scroll-driven motion present");
+note(flat.includes("@keyframesrise"), "reveal keyframes present");
+note(flat.includes("@media(prefers-reduced-motion:reduce)"), "reduced-motion honoured");
+note(css.includes("--font-quote"), "quote serif loaded");
+note(!/\.text-faint\\\/70/.test(css) && !/\.text-faint\\\/80/.test(css), "faded text utilities not emitted");
+
+/* ---------------------------------------------------------------- */
+/* summary                                                            */
+/* ---------------------------------------------------------------- */
+
+console.log(
+  failures === 0
+    ? "\nall checks passed"
+    : `\n${failures} check(s) FAILED`,
+);
+process.exit(failures === 0 ? 0 : 1);

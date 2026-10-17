@@ -17,6 +17,23 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
 - `stop.sh` — halts by pidfile, falls back to pattern matching when stale.
 - Probe contract: probes hit the upstream endpoint directly or through the bridge and use `BRIDGE_UPSTREAM_KEY`-style env from the root `.env` — they must never hardcode keys.
 - `search_*.json` / `modelsdev.json` are captured research data (model strengths comparison, models.dev snapshot) that justified the model assignment — treat as read-only evidence. `search_sb_*.json` are the sandbox-landscape research (bubblewrap/Claude Code/Codex/E2B/Daytona) that justified the OS-sandbox selection; `bubblewrap_*.deb` is the provenance package for the vendored `pi-repo/packages/self-learning/native/bin/bwrap` (see that package's `native/README.md`).
+- Provider-mark contract: `vendor-provider-marks.mjs` regenerates
+  `src/components/landing/provider-marks.tsx` from the CC0 SVGs in
+  `download/providers/` (gitignored; refetch from the pinned Simple Icons CDN
+  first). Labels live in the script, path data is lifted from the SVG — never
+  hand-edit the generated component, and never hotlink the CDN at runtime.
+- Deployment contract: `verify-deploy.mjs` asserts the **live** deployment, not
+  the local build: `bun scripts/verify-deploy.mjs [url]` (defaults to the
+  production alias, exits non-zero on failure). It checks the routes, that the
+  served page is the page we wrote, that the no-JS safety net is present **and**
+  not hoisted to `<head>`, that the accessibility regressions have not returned,
+  that nothing cross-origin is loaded, and that the CSS bundle still carries the
+  palette, grain, scroll motion and the reduced-motion block. Run it after any push
+  to `main`: Vercel auto-deploys, and a green local build does not mean the deploy
+  landed. Two traps it already handles, so do not reintroduce them — its CSS probes
+  are whitespace-insensitive because the production bundle is minified, and it
+  distinguishes `src=` subresources from `href=` hyperlinks. A Bulbapedia link in a
+  sources list is the attribution rule working, not an asset leak.
 - Sandbox verification contract: `bwrap_smoke.sh` (profile-level isolation suite, 25 checks; invokes the vendored `pi-repo/packages/self-learning/native/bin/bwrap` directly) and `verify_sandbox.mjs` (engine-level integration suite, 12 checks) must both be fully green before committing changes to the OS sandbox or refreshing the vendored bwrap binary.
 - Theme verification contract: `check_theme.mjs` validates the unown brand theme (`pi-repo/packages/self-learning/src/theme.ts`) against pi's theme schema (51 required color tokens, value formats, var resolution) — run it after any palette change.
 - New ad-hoc verification scripts go here (not `/tmp`) when their results matter to the worklog; keep them re-runnable.
