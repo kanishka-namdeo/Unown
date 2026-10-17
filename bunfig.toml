@@ -1,0 +1,8 @@
+# bun test configuration.
+#
+# [test] preload registers the happy-dom global DOM (src/test-dom-setup.ts)
+# for dashboard component tests (React Testing Library). The preload runs for
+# every test file, but registration is additive — the pure unit tests in
+# src/lib + src/hooks ignore the DOM globals. `bun test src` must stay green.
+[test]
+preload = ["./src/test-dom-setup.ts"]
