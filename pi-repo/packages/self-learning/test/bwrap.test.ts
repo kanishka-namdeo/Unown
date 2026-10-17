@@ -18,6 +18,7 @@ import {
         osSandboxAvailable,
         osSandboxConfigured,
         resolveBwrapPath,
+        runtimeBindArgs,
         wrapCommand,
         writeSandboxShell,
 } from "../src/bwrap.ts";
@@ -66,9 +67,14 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 describe("bwrapArgs — the validated bubblewrap profile", () => {
         const WS = "/ws";
+        // Fixed execPath so the argv goldens stay byte-identical on every host:
+        // bwrapArgs injects a --ro-bind for the bun runtime dir when it sits
+        // under a tmpfs-masked tree (/home/… — the bun.sh default, GH runners),
+        // and process.execPath differs per host. /usr/local/bin is unmasked.
+        const EXEC = "/usr/local/bin/bun";
 
         test("golden argv (network blocked)", () => {
-                expect(bwrapArgs(WS, true)).toEqual([
+                expect(bwrapArgs(WS, true, EXEC)).toEqual([
                         "--ro-bind",
                         "/",
                         "/",
@@ -107,19 +113,19 @@ describe("bwrapArgs — the validated bubblewrap profile", () => {
         test("--new-session is always present (TIOCSTI / CVE-2017-5226 mitigation)", () => {
                 // Without a fresh session, a sandboxed TIOCSTI ioctl could inject
                 // keystrokes into the controlling terminal of the parent engine.
-                expect(bwrapArgs(WS, true)).toContain("--new-session");
-                expect(bwrapArgs(WS, false)).toContain("--new-session");
+                expect(bwrapArgs(WS, true, EXEC)).toContain("--new-session");
+                expect(bwrapArgs(WS, false, EXEC)).toContain("--new-session");
         });
 
         test("whole rootfs is read-only bind-mounted at /", () => {
-                const args = bwrapArgs(WS, true);
+                const args = bwrapArgs(WS, true, EXEC);
                 const i = args.indexOf("--ro-bind");
                 expect(args[i + 1]).toBe("/");
                 expect(args[i + 2]).toBe("/");
         });
 
         test("workspace is bind-mounted at its REAL path (no path translation)", () => {
-                const args = bwrapArgs(WS, true);
+                const args = bwrapArgs(WS, true, EXEC);
                 const i = args.indexOf("--bind");
                 expect(args[i + 1]).toBe(WS);
                 expect(args[i + 2]).toBe(WS);
@@ -128,7 +134,7 @@ describe("bwrapArgs — the validated bubblewrap profile", () => {
         });
 
         test("private tmpfs mounts cover /home, /run, /tmp and /var/tmp", () => {
-                const args = bwrapArgs(WS, true);
+                const args = bwrapArgs(WS, true, EXEC);
                 const tmpfsTargets: string[] = [];
                 for (let i = 0; i + 1 < args.length; i++) {
                         if (args[i] === "--tmpfs") tmpfsTargets.push(args[i + 1]);
@@ -137,11 +143,33 @@ describe("bwrapArgs — the validated bubblewrap profile", () => {
         });
 
         test("network shared: unshare flags dropped, profile otherwise identical", () => {
-                expect(bwrapArgs(WS, false)).toEqual(bwrapArgs(WS, true).slice(0, -2));
+                expect(bwrapArgs(WS, false, EXEC)).toEqual(bwrapArgs(WS, true, EXEC).slice(0, -2));
         });
 
         test("unshare-net/ipc are the last flags when the network is blocked", () => {
-                expect(bwrapArgs(WS, true).slice(-2)).toEqual(["--unshare-net", "--unshare-ipc"]);
+                expect(bwrapArgs(WS, true, EXEC).slice(-2)).toEqual(["--unshare-net", "--unshare-ipc"]);
+        });
+
+        // The bun-runtime bind: keeps `bun run …` working inside the sandbox
+        // when bun is installed under a masked tree (bun.sh default ~/.bun,
+        // GitHub Actions /home/runner/.bun). Ordered after the tmpfs mounts.
+        test.skipIf(process.platform !== "linux")("runtime bind: bun under a masked tree is ro-bound back in", () => {
+                const args = bwrapArgs(WS, true, "/home/runner/.bun/bin/bun");
+                const i = args.lastIndexOf("--ro-bind");
+                expect(args.slice(i, i + 3)).toEqual(["--ro-bind", "/home/runner/.bun/bin", "/home/runner/.bun/bin"]);
+                expect(args.indexOf("--ro-bind")).toBeLessThan(i); // the root ro-bind comes first
+                expect(args.indexOf("--tmpfs", args.indexOf("--ro-bind"))).toBeLessThan(i); // after the tmpfs mounts
+                expect(args.slice(-2)).toEqual(["--unshare-net", "--unshare-ipc"]); // net flags still last
+        });
+
+        test("runtime bind: system installs stay pristine (no extra bind)", () => {
+                // Not masked -> the golden argv above is the whole story.
+                expect(runtimeBindArgs("/usr/local/bin/bun")).toEqual([]);
+                expect(runtimeBindArgs("/opt/bun/bin/bun")).toEqual([]);
+        });
+
+        test("runtime bind: empty and relative paths are inert", () => {
+                expect(runtimeBindArgs("")).toEqual([]);
         });
 });
 

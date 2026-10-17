@@ -14,7 +14,7 @@
  * Every decision is logged to the hook_log table and pushed to the live bus.
  */
 import { realpathSync } from "node:fs";
-import { basename, dirname, resolve as resolvePath } from "node:path";
+import { basename, dirname, join, resolve as resolvePath } from "node:path";
 import { emit } from "./bus.ts";
 import { store } from "./store.ts";
 
@@ -226,13 +226,18 @@ function realpathAncestor(p: string): string {
         for (;;) {
                 try {
                         const real = realpathSync(dir);
-                        return tail ? `${real}/${tail}` : real;
+                        // join() (not `${real}/${tail}`): canonical separators on
+                        // win32 (downstream compares use both styles) and no
+                        // double slash when the existing ancestor is "/" itself
+                        // (macOS hosts without /root — "//root/…" would dodge
+                        // every ^/… deny regex).
+                        return tail ? join(real, tail) : real;
                 } catch {
                         /* missing path (or broken symlink) — climb one level */
                 }
                 const parent = dirname(dir);
                 if (parent === dir) return p; // reached "/" without an existing ancestor
-                tail = tail ? `${basename(dir)}/${tail}` : basename(dir);
+                tail = tail ? join(basename(dir), tail) : basename(dir);
                 dir = parent;
         }
 }
