@@ -135,6 +135,6 @@ Default section order:
 - `mini-services/AGENTS.md` — background service boot conventions for both bun services; child: llm-bridge
 - `pi-repo/AGENTS.md` — upstream pi-mono development rules; binding for edits inside `pi-repo/`
 - `pi-repo/packages/self-learning/AGENTS.md` — the self-learning engine, Unown's core transformation layer
-- `docs/AGENTS.md` — user-facing usage docs (quickstart/providers/usage/subagents/skills/memory/configuration/troubleshooting) plus the durable decision records (benchmark/landing research, testing strategy, memory-classifier evaluation, `oh-my-pi-swap-assessment.md` — the standing verdict on replacing the vendored pi harness)
+- `docs/AGENTS.md` — user-facing usage docs (quickstart/providers/usage/subagents/skills/memory/configuration/troubleshooting) plus the durable decision records (benchmark/landing research, testing strategy, memory-classifier evaluation, and the two harness-swap records — `oh-my-pi-swap-assessment.md` and `opencode-swap-assessment.md`, each candidate-specific, sharing the chokepoint invariant and the standing verdict that the vendored pi harness stays)
 - `blueprint/AGENTS.md` — Unown v1 (Claude Code harness) frozen reference
 - `scripts/AGENTS.md` — bootstrap scripts, session verification artifacts, the README asset pipeline, and the landing-page verification gates (static palette check, screenshot, contrast audit, theme toggle)

@@ -76,9 +76,10 @@ function Seal() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Sits directly under the copy rather than below the fold. Research on dev-tool
- * landing pages is consistent that a trust block immediately after the hero is
- * what converts: it answers "is this real" before the visitor has to ask.
+ * Sits directly under the copy rather than below the fold, so "is this real"
+ * is answered before the visitor has to ask it. Four of these six used to be
+ * said again in a later section; what is left here is what is true of the
+ * *download* specifically, which no other section argues.
  */
 const TRUST = [
   "MIT licensed",
@@ -122,16 +123,17 @@ export function Hero() {
 
             <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-dim">
               Unown is a coding agent that runs in your terminal and{" "}
-              <span className="text-ink">remembers</span>. Every session ends by handing
-              the engine a note. Overnight the engine turns notes into project memory,
-              and refuses to keep any of it until a fresh sandbox has proven it twice.
+              <span className="text-ink">remembers</span>. Every session ends by handing a
+              background engine a note. Overnight that engine turns notes into project
+              memory, and refuses to keep any of it until a fresh sandbox has proven it
+              twice.
             </p>
 
-            <p className="mt-6 max-w-xl border-l border-line pl-4 font-mono text-[11.5px] leading-relaxed text-faint">
-              self-improving terminal coding agent
-              <br />
-              tiered memory · AutoDreaming · sandbox-verified harness
-            </p>
+            {/* A spec-sheet eyebrow used to sit here and restate that paragraph noun
+                for noun — coding agent, terminal, memory, AutoDreaming, sandbox — which
+                is four duplicated facts for the sake of a second block of type. The
+                trust strip below already does the job with six claims that are each
+                about the download rather than the mechanism. */}
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <PrimaryLink href="#quickstart">

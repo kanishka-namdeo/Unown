@@ -2,7 +2,7 @@
 
 How unown remembers: a four-tier memory stack injected into every session, a note pipeline that captures what actually happened, and AutoDream — the consolidation job that turns notes into memory and mints skills.
 
-Related pages: [usage](usage.md) · [skills](skills.md) · [configuration](configuration.md) · [troubleshooting](troubleshooting.md) · [memory-classifier-evaluation](memory-classifier-evaluation.md)
+Related pages: [usage](usage.md) · [skills](skills.md) · [configuration](configuration.md) · [troubleshooting](troubleshooting.md) · [memory-classifier-evaluation](memory-classifier-evaluation.md) · [memory-system-review](memory-system-review.md)
 
 - [The four-tier stack](#the-four-tier-stack)
 - [What every session sees](#what-every-session-sees)

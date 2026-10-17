@@ -2,14 +2,14 @@ import { FadeUp } from "./shell";
 import { ProviderMark, type ProviderSlug } from "./provider-marks";
 
 /**
- * Lock-in neutraliser. Research on dev-tool landing pages is unambiguous that
- * "works with whatever you already pay for" is a first-class section, not a
- * footnote — it removes the switching-cost objection before anyone forms it.
+ * The lock-in objection, answered before it forms. This band is also the
+ * canonical home for the model allow-list and the bridge spec: `hero.tsx`'s
+ * trust strip, `faq.tsx`'s "which models" answer and the `Z` decode all point
+ * here rather than re-listing providers.
  *
  * Marks are CC0 Simple Icons, vendored (see `provider-marks.tsx`). OpenAI and
  * DashScope are deliberately text-only: one mark was retired at its owner's
- * request, the other has no slug — and saying so is more honest than a logo
- * wall of nine things that all look the same.
+ * request, the other has no slug.
  */
 
 type Tile = { label: string; slug?: ProviderSlug; note?: string };

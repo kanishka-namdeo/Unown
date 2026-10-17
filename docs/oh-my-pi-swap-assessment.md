@@ -124,6 +124,8 @@ Scope swept: `pi-repo/packages/self-learning/src/**/*.ts` + `bin/unown` +
 | pi packages imported | 3 specifiers (`pi-coding-agent`, `pi-ai`, `pi-tui`) | [V-vendor] |
 | Anything outside those files that would need moving | engine memory/dream/harness/mint/router/server/notes/store, dashboard `src/`, llm-bridge | 0 pi references — pi-free | 
 
+> **Figures below re-measured 2026-10-17.** [Sibling record](opencode-swap-assessment.md) §3 swept this same scope and found 12,038 lines, 5 files naming pi, and 34 identifier-bearing lines. The shape of the conclusion is unchanged — the port is small, the risk lives in the chokepoints — but read those as the live counts.
+
 The Next.js app and CI never import pi; the dashboard talks to the engine only
 over HTTP/SSE on :3030. `src/components/landing/mechanisms.tsx:6` and
 `.github/workflows/ci.yml:82` mention pi as **documentation URLs and a script
@@ -478,6 +480,7 @@ errors.
 ## Related pages
 
 - [memory.md](memory.md) — the 4-tier stack and AutoDream this record compares against
+- [opencode-swap-assessment.md](opencode-swap-assessment.md) — the second harness candidate, measured against the §2 invariant; it clears both chokepoints and is blocked further out, at the artifact
 - [subagents.md](subagents.md) — the `task` tool whose `--mode json` grammar would retarget
 - [providers.md](providers.md) — `models.json` / `auth.json` / `settings.json` wiring the bridge, and its `models.yml` counterpart in the candidate
 - [skills.md](skills.md) — AutoDream-minted skills versus generated `skills/`

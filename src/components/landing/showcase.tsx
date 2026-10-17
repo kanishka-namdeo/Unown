@@ -25,8 +25,8 @@ export function ShowcaseSection() {
             lead={
               <>
                 Everything the engine does is streamed over SSE into a dashboard: every run,
-                every dream, every memory version, every guardrail decision. Seven tabs, and
-                none of them are decorative.
+                every dream, every memory version, every guardrail decision. Seven tabs, each
+                of which drives something real.
               </>
             }
           >

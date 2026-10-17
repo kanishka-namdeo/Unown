@@ -5,7 +5,8 @@ keep its claims defensible. First written 2026-10 when the page was a
 conventional hero-plus-features layout; rewritten after the page was rebuilt
 around a purpose-drawn alphabet; rewritten again when that page was re-skinned
 as a Game Boy — the structure above barely moved, but the palette, type and
-surface treatment all did, and the reasoning for each is below.
+surface treatment all did, and the reasoning for each is below. A later pass
+changed no pixels: an audit of what the page says twice, in Part 12.
 
 **Contents**
 
@@ -21,6 +22,7 @@ surface treatment all did, and the reasoning for each is below.
 - [Part 9 — How to keep it honest](#part-9--how-to-keep-it-honest)
 - [Part 10 — The second scheme, and where the colour is allowed to live](#part-10--the-second-scheme-and-where-the-colour-is-allowed-to-live)
 - [Part 11 — The generation changes: Game Boy Advance, and a grid you can check](#part-11--the-generation-changes-game-boy-advance-and-a-grid-you-can-check)
+- [Part 12 — The density pass: one fact, one home](#part-12--the-density-pass-one-fact-one-home)
 
 Related pages: [benchmark-research.md](benchmark-research.md) — the numbers the
 page quotes; the page's binding contract lives one level up in
@@ -127,16 +129,33 @@ kept because it records why the page went retro in the first place.*
 The rule the page follows everywhere: **motion is additive, never
 load-bearing.**
 
-- Scroll reveals are CSS `animation-timeline: view()`, gated behind
-  `@supports ((animation-timeline: view()) and (animation-range: 0% 100%))`.
-  The un-animated base state is the *finished* state, so Firefox and
-  reduced-motion visitors see an identical page.
+- Reveals run on two systems: CSS `animation-timeline: view()` for the `.rise`
+  blocks and the hero seal, gated behind `@supports ((animation-timeline:
+  view()) and (animation-range: 0% 100%))`, and framer-motion `whileInView` for
+  the copy (`FadeUp`). The un-animated base state is the *finished* state on
+  both, so Firefox and reduced-motion visitors see an identical page.
 - The hero seal assembles itself on scroll for the same reason.
 - Micro-interactions (`lift`, `glow-hover`, `link-sweep`) are 150–260ms state
   changes on hover or focus. Nothing loops for decoration.
-- `prefers-reduced-motion` is honoured in CSS **and** in every JS path,
-  including the session replay, which paints the finished transcript and never
-  autoplays.
+- `prefers-reduced-motion` is honoured in CSS **and** in every JS path, and
+  since the density pass the page root enforces it for framer wholesale:
+  `page.tsx` wraps the tree in `LandingMotion` (`MotionConfig
+  reducedMotion="user"`), which covers the staged reveals written as bare
+  `motion` elements — the origin pipeline, the integrity hook log, the finale
+  spellbox — without every call site re-checking the preference. The session
+  replay paints the finished transcript and never autoplays.
+- A framer reveal may animate `opacity` and `transform` only. The `<noscript>`
+  restore in `effects.tsx` keys on the two properties framer serialises, so a
+  `width` tween stays at zero with scripting off; bars keep their finished
+  width in `style` and animate `scaleX` from 0.
+- The FAQ accordion is the one animation on `height`, and it is furniture
+  rather than a reveal: a closed panel has no finished state to preserve. Its
+  `@keyframes` live in `landing.css` and its `--animate-*` tokens in
+  `globals.css`, because Tailwind only resolves theme tokens in the file that
+  imports it. It also carries its own `prefers-reduced-motion` override, since
+  plain CSS keyframes do not consult the preference. It had been silently
+  broken — the utilities compiled to nothing and no gate noticed — so the
+  landing doc now checks it by computed style.
 
 Scroll-driven animations are Chromium + Safari 26 today and not Baseline, which
 is exactly why the finished state is the base state rather than the animation.
@@ -229,8 +248,10 @@ Live dashboard captures in `public/landing/`, seeded with real engine data:
   question the reader has to finish.
 - **Rejected:** "The self-improving terminal agent." (correct, forgettable),
   "Your terminal agent, dreaming at night." (kept as section copy),
-  "Stop re-explaining your codebase." (kept as the closing line, where it earns
-  its place after the page has made the case).
+  "Stop re-explaining your codebase." (was the closing line for two revisions;
+  cut in the density pass, because mechanisms 01 already names that pain. The
+  close is now "One afternoon, and then it starts remembering.", which states
+  the payoff instead of the problem).
 
 ## Part 9 — How to keep it honest
 
@@ -456,3 +477,102 @@ this part follows.
 - **Snapping the palette to multiples of 8.** A tempting 5-bit-ish grid — and a
   *different* 5-bit scale from `floor(255*v/31)`. It would have broken every
   value the ROM dumps actually use; `ff` alone is not a multiple of 8.
+
+## Part 12 — The density pass: one fact, one home
+
+The most recent pass deleted more than it wrote, and it began with a count
+rather than an opinion. Two audits measured how often the page argues its own
+load-bearing facts:
+
+- The first found "verified twice in a fresh sandbox" stated **seven** times and
+  the sandbox **three** times. Neither was a copy problem. Both were an
+  information-architecture problem: by the third repetition the eye has learned
+  the paragraph carries no new fact and skips the fourth.
+- The fix was to give every load-bearing claim one canonical home and let all
+  other mentions point at it. The second audit, run against that fix, found the
+  page had instead *grown* — verify-twice back to ten statements, the
+  non-affiliation notice to four, the provider list and the tier resolver to
+  five each.
+
+The rule both audits produced: **a duplicate fact is the cheapest word on the
+page to delete, and deletion is the only edit that raises the lore share
+without inventing prose.** About 450 words of restatement were cut across the
+lexicon, the origin acts, the FAQ and the hero.
+
+### The canonical homes
+
+- **the gates** — `integrity.tsx` `GATES[]`; mechanisms 02/04/05 and the loop
+  section describe the loop rather than restating the gate table;
+- **the sandbox, both layers** — `integrity.tsx`; the mechanisms section keeps
+  only the Flatpak / Claude Code comparison, which integrity has no equivalent
+  of;
+- **the model allow-list and the bridge** — `models.tsx`;
+- **the non-affiliation notice** — the footer copy `verify-deploy.mjs` asserts.
+  The two lore sections keep their own one-liners because they are the sections
+  making a Pokémon claim;
+- **"no font file, no image sprite"** — `alphabet.tsx`;
+- **the Pokédex entry** — `field-notes.tsx`, reading `DEX_QUOTES` from
+  `lexicon.ts`, so the same 33 words are no longer printed in origin too;
+- **the caching negative control** — `benchmarks.tsx`.
+
+### `means` is a decode, not a specification
+
+The 28 lexicon `means` lines had accumulated 507 words that restated the gate
+table, the sandbox, the tier resolver, the provider grid and the benchmark
+numbers back at the page. They now sit under about twelve words each: name the
+mechanism, and let the section that owns it do the explaining. `proof` stays a
+bare number or a repo path.
+
+### Lore you can read without hovering anything
+
+The decode panel shows one lexicon entry at a time, so 25 of the 28 verified
+lore bodies were reachable only through a pointer event. The `HIGHLIGHTS` strip
+in `alphabet.tsx` lifts three forms into the intro column as static text —
+chosen for register rather than fame — reading them from `LEXICON_BY_ID` so the
+quotation stays single-sourced with the panel.
+
+### The FAQ is seven questions
+
+It carried nine. The dream-canary answer, the two-sandbox-policies answer, the
+bridge spec and the long non-affiliation answer were all reprints of sections
+the visitor had just scrolled past. The two that cannot be cut are the naming
+question, and the one that admits the loop may correctly find nothing to do.
+Every answer still has to pass "which section already said this?".
+
+### Two relocations
+
+- The **Konami hint** moved from the footer — 10px, under 58 words of
+  trademark boilerplate, and `hidden sm:inline` — to the alphabet tiles, where
+  a reader is already poking at glyphs. There the code reads as an escalation
+  of an interaction they have already found.
+- The **0.0 extension-authoring admission** moved from the bottom of benchmarks
+  to a lit box directly under the gate table in integrity. It is the page's
+  strongest trust artifact, and it was the least likely thing there to be
+  read; beside the gates it is also the right kind of neighbour, a gate that
+  says no.
+
+### A lore budget, measured per screen
+
+Authored lore-to-tech prose sits near 1:2, and that aggregate hides the real
+problem: the lore arrived in two lumps (origin and alphabet at positions 2 and
+3, field notes at 11) and left seven consecutive technical sections at 0%
+between them. Two rules came out of it:
+
+- **No more than three consecutive sections at zero lore.**
+- **One punchline per section, each a different kind of thing** — an aphorism,
+  a reveal, a callback, a joke, an admission, a plain instruction. The middle
+  seven were all aphorisms, and three of them were the same joke told with
+  different nouns, which is what actually reads as boring.
+
+The proof zone stays technical on purpose: Pokémon in a benchmark table would
+be a costume and would fight the no-fabrication rule. And where a sequence was
+rendered as simultaneity — the origin acts fading in together, a hook log as a
+static table — the fix was staging, not a paragraph. One exception is
+deliberate: a number that counts up, or a figure that ticks from zero, reads as
+fabrication on a page whose argument is that its numbers are checkable. Animate
+the container, never the measurement.
+
+`field-notes` stays at position 11 despite reading better next to `alphabet`:
+the three psychic sections are interleaved on purpose so no two neighbours
+share a hue, and front-loading the lore would run the conversion path
+(benchmarks → integrity → quickstart → finale) together as one technical block.

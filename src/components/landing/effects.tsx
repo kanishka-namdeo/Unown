@@ -209,10 +209,8 @@ type WakeApi = {
 const WakeContext = React.createContext<WakeApi>({ woke: false, wake: () => {} });
 
 /**
- * The one easter egg worth shipping. The Konami code fires here; the payoff is
- * the whole alphabet falling down the page, because anyone who knows the
- * sequence is telling you they know the reference and nobody else will ever
- * find it. Nests inside `LetterRainProvider` so the flourish costs nothing extra.
+ * The Konami code. Nests inside `LetterRainProvider` so the flourish costs
+ * nothing extra; the receipt renders in the finale.
  */
 export function AlphabetWakeProvider({ children }: { children: React.ReactNode }) {
   const [woke, setWoke] = React.useState(false);
@@ -253,9 +251,7 @@ const KONAMI = [
 ] as const;
 
 /**
- * Fires `onUnlock` on ↑↑↓↓←→←→BA. Wired to the "the alphabet wakes" flourish —
- * the one easter egg worth having, because anyone who knows it is telling you
- * they know the reference, and nobody else will ever find it.
+ * Fires `onUnlock` on ↑↑↓↓←→←→BA.
  */
 export function useKonami(onUnlock: () => void) {
   const handler = React.useRef(onUnlock);

@@ -148,6 +148,16 @@
    * are gone — a GBA is a TFT LCD, it has no scanlines to photograph. */
   --gb-hp-well: #081020;
   --gb-grain: rgb(255 255 255 / 0.05);
+
+  /* The FAQ accordion ships `data-[state=open]:animate-accordion-down` from the
+   * vendored shadcn primitive, but Tailwind only resolves `--animate-*` in the
+   * file that pulls in `tailwindcss` — which is this one. Without these two
+   * entries the classes compiled to nothing and every answer snapped open with
+   * no motion at all. The keyframes themselves are in `landing.css`; the
+   * durations are short because a 354-word answer in VT323 has to feel like a
+   * panel opening, not a page loading. */
+  --animate-accordion-down: accordion-down 180ms steps(4, end);
+  --animate-accordion-up: accordion-up 140ms steps(3, end);
 }
 
 /* ---------------------------------------------------------------- */

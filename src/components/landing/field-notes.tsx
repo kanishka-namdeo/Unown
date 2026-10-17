@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Glyph } from "./glyph";
 import { WEIGHT } from "./glyphs";
+import { DEX_QUOTES } from "./lexicon";
 import { FadeUp, SectionHead, ContinueArrow } from "./shell";
 
 /**
@@ -10,13 +11,18 @@ import { FadeUp, SectionHead, ContinueArrow } from "./shell";
  * text (commentary/quotation, with the source named) or a verifiable fact from
  * Bulbapedia / PokémonDB. No artwork, no sprites, no trademarks beyond naming
  * the thing this project is named after.
+ *
+ * This is the canonical home for `DEX_QUOTES.origin`: `origin.tsx` printed the
+ * same 33 words as a second pull-quote, so the page carried the dex entry
+ * twice. The card is where a Pokédex entry belongs, so it reads the string from
+ * `lexicon.ts` rather than re-typing it — one source, one printing.
  */
 
 const FACTS: [string, string][] = [
   ["Entry", "№ 0201 · Symbol · Psychic"],
   ["Japanese", "アンノーン — literally the word “Unknown”"],
   ["German", "Icognito — unknown + incognito"],
-  ["French", "Zarbi — verlan, the slang that reverses syllables"],
+  ["French", "Zarbi — verlan"],
   ["Ability", "Levitate — Ground-type moves pass straight through it"],
   ["Size", "0.5 m · 5.0 kg"],
   ["Where", "Ruins of Alph, Tanoby Ruins, Solaceon Ruins"],
@@ -31,8 +37,8 @@ const BORROWED: Borrowed[] = [
     d: (
       <>
         Unown&apos;s silhouette <em className="not-italic text-ink">is</em> the letter,
-        which is why the hero here is a glyph with an eye rather than a symbol parked next
-        to a wordmark. Every form carries one eye at the centre of its counter.
+        which is why the hero here is a glyph with an eye. Every form carries one eye at
+        the centre of its counter.
       </>
     ),
   },
@@ -43,7 +49,6 @@ const BORROWED: Borrowed[] = [
         The script is 28 stroke paths on a 100×100 grid. Rendered at stroke weight
         {" "}
         {WEIGHT.heavy} it reads as a silhouette; at {WEIGHT.script} it reads as a letterform.
-        One definition, two readings, no font file and no image sprite to download.
       </>
     ),
   },
@@ -54,8 +59,7 @@ const BORROWED: Borrowed[] = [
         The only two forms with half-closed eyes are{" "}
         <code className="font-mono text-[11.5px] text-ink">!</code> and{" "}
         <code className="font-mono text-[11.5px] text-ink">?</code>. Ours are too, and they
-        happen to be the two that describe the gates: verify-twice, and the question the loop
-        exists to answer.
+        happen to be the two that name the gates.
       </>
     ),
   },
@@ -65,7 +69,7 @@ const BORROWED: Borrowed[] = [
       <>
         Unown clings to walls in ruins, reading what is engraved there. Unown writes to{" "}
         <code className="font-mono text-[11.5px] text-ink">.unown/memory/project.md</code> in
-        your repository. Same gesture, with version history and a rollback button.
+        your repository, and every version of it is one click from rollback.
       </>
     ),
   },
@@ -107,7 +111,7 @@ export function FieldNotesSection() {
         <FadeUp className="max-w-2xl">
           <SectionHead
             kicker="Field notes"
-            lead="A developer tool called unown has to explain itself twice. Both readings are below. The Pokémon side is lore, quoted and attributed; the engineering side is the part you can check."
+            lead="A developer tool called unown has to explain itself twice. The Pokémon side is lore, quoted and attributed; the engineering side is the part you can check."
           >
             On the name, and on the letters.
           </SectionHead>
@@ -142,22 +146,19 @@ export function FieldNotesSection() {
               <figure className="p-5">
                 <div className="gb-box p-4">
                   <blockquote className="quote text-[20px] leading-relaxed text-canvas">
-                    “This Pokémon is shaped like ancient writing. It is a mystery as to which
-                    came first, the ancient writings or the various UNOWN. Research into this
-                    topic is ongoing but nothing is known.”
+                    “{DEX_QUOTES.origin}”
                   </blockquote>
                   <div className="mt-3 flex justify-end">
                     <ContinueArrow className="text-canvas" />
                   </div>
                 </div>
                 <figcaption className="mt-3 gb-label text-[9px] text-faint">
-                  Pokédex · Ruby / Sapphire
+                  {DEX_QUOTES.originSrc}
                 </figcaption>
                 <p className="mt-4 text-[12px] leading-relaxed text-dim">
-                  Engraved on the floor of the Ruins of Alph, in the same script, is a
-                  sentence this project would like on its own tombstone:{" "}
+                  Engraved on the floor of the Ruins of Alph, in the same script:{" "}
                   <span className="text-ink">our words shall remain here for the ages</span>.
-                  Project memory is exactly that sentence, with a version number.
+                  Project memory is that sentence with a version number.
                 </p>
               </figure>
             </div>

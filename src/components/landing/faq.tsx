@@ -8,14 +8,26 @@ import {
 } from "@/components/ui/accordion";
 import { FadeUp, PixelCursor, SectionHead } from "./shell";
 
+/**
+ * The skeptic's questions.
+ *
+ * Every answer here has to survive the question "which section already said
+ * this?" — the gates, both sandboxes, the bridge and the non-affiliation notice
+ * all have sections of their own, and reprinting them is what once made half
+ * the accordion read as terms of service. Two answers are load-bearing:
+ *   - the naming question, the only place the pun is told straight rather than
+ *     through the alphabet wall;
+ *   - "does the loop do anything on its own", the only place the page admits
+ *     the loop may correctly find nothing to do.
+ */
 const FAQ = [
   {
     q: "Why is it called Unown?",
-    a: "Two reasons. The mechanical one: an agent with tiered memory is a thing that reads what you write down, which is the single most characteristic thing about Unown. The lucky one: unown is a typo of “unknown”, and an agent whose memory might be wrong should be named for the possibility of not knowing. Unown is the Symbol Pokémon: a flat black letter with one eye, alive since 1999, found on the walls of ruins reading the writing there.",
+    a: "Two reasons. The mechanical one: an agent with tiered memory is a thing that reads what you write down. The lucky one: unown is a typo of “unknown”, and an agent whose memory might be wrong should be named for the possibility of not knowing.",
   },
   {
     q: "Are you affiliated with Nintendo or The Pokémon Company?",
-    a: "No. This is an independent, MIT-licensed developer tool that happens to be named after a Pokémon. No sprite, card, logo, artwork or audio from any Pokémon release is bundled, hotlinked or reproduced. Short quotations of game text appear on the landing page with the source named, for commentary.",
+    a: "No. An independent MIT-licensed developer tool that happens to be named after a Pokémon.",
   },
   {
     q: "Does it send my code anywhere?",
@@ -23,27 +35,19 @@ const FAQ = [
   },
   {
     q: "Which models does it work with?",
-    a: "Any OpenAI-compatible endpoint: Dashscope, OpenAI, Anthropic, OpenRouter, DeepSeek, or a local vLLM / Ollama / llama.cpp server. The bundled bridge maps requested model ids onto an allow-list, injects auth, translates thinking flags for qwen models, passes tool calls and images through natively, and streams SSE back untouched. Or skip the bridge and point the terminal agent straight at a provider with unown setup.",
+    a: "Any OpenAI-compatible endpoint, hosted or local, including the ones you already run yourself.",
   },
   {
     q: "Will it rewrite my tests to make them pass?",
-    a: "The seeded policy tier in memory literally says not to: “If a verification fails, inspect the failure output and fix the root cause — never edit tests to make them pass.” In the terminal session that is an instruction; in the engine it is structural: benchmark tests are sha256-pinned and restored to pristine state before scoring, so an agent that edits them scores zero. Unown writes to .unown/memory/*.md and .unown/skills/*.md. It does not touch your source, and it does not touch your AGENTS.md.",
-  },
-  {
-    q: "What happens if a dream makes things worse?",
-    a: "Every consolidation runs a canary first: the most recently passing task has to re-pass under the new memory. If it does not, the dream is rolled back automatically and logged as gated. Shipped patches that regress later get un-shipped by the retention check, and every memory version stays rollback-able from the dashboard.",
-  },
-  {
-    q: "Is it safe to run on my repo?",
-    a: "Two different policies for two different places. Engine runs are hard-walled: bubblewrap with a read-only root, private /home, /tmp and /run, a killed network namespace and dropped capabilities, so sudo and outbound calls are refused outright, and your repo and .env are invisible from inside. Terminal sessions are scoped for real work instead: filesystem-root deletion, fork bombs, disk formats and writes outside the project are blocked, while network, git push and package installs stay available. UNOWN_STRICT_HOOKS=1 restores sandbox-grade strictness.",
+    a: "The seeded policy tier in memory literally says not to: “If a verification fails, inspect the failure output and fix the root cause — never edit tests to make them pass.” In the terminal session that is an instruction; in the engine it is structural: benchmark tests are sha256-pinned and restored to pristine state before scoring, so an agent that edits them scores zero. Unown writes to .unown/memory/*.md and .unown/skills/*.md — not your source, and not your AGENTS.md.",
   },
   {
     q: "Does the loop actually do anything on its own?",
-    a: "Honest answer: only when the model actually struggles. With kimi-k2.5 through the bridge, the five seeded benchmark tasks are solved unaided, so the mining and shipping machinery correctly finds nothing to ship: an engine that patched memory for no reason would be a bug. Point it at a weaker model, or let task minting author harder variants once the suite saturates, and the loop starts firing on its own.",
+    a: "Honest answer: only when the model actually struggles. With kimi-k2.5 through the bridge, the seeded benchmark tasks are solved unaided, so the mining and shipping machinery correctly finds nothing to ship: an engine that patched memory for no reason would be a bug. Point it at a weaker model, or let task minting author harder variants once the suite saturates, and the loop starts firing on its own.",
   },
   {
     q: "What is it built on, and what does it cost?",
-    a: "The open-source pi coding agent by Mario Zechner, wrapped in a self-learning layer that lives in this repository rather than in a fork. MIT licensed end to end. No licence fee and no service tier; the only cost is whatever your model endpoint charges you.",
+    a: "The open-source pi coding agent by Mario Zechner, wrapped in a self-learning layer that lives in this repository rather than in a fork. MIT licensed end to end, no licence fee and no service tier; the only cost is whatever your model endpoint charges you.",
   },
 ];
 
@@ -55,7 +59,7 @@ export function FaqSection() {
           <FadeUp>
             <SectionHead
               kicker="FAQ"
-              lead="Including the two that decide whether anyone installs a self-modifying agent: is it safe, and will it touch my tests."
+              lead="Including the one that decides installs: will it rewrite my tests to make them pass."
             >
               The skeptic&apos;s questions.
             </SectionHead>
