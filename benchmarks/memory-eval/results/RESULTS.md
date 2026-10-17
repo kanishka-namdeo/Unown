@@ -141,3 +141,25 @@ rolls the dream back with the evidence in the dream note.
   on the audit trail, not just "canary passed".
 - Cost note: K=3 canaries per dream means up to 3 agent re-runs per
   consolidation (env-tunable; the live suite's single armed task → 1 run).
+
+## 6. §5.5 shipped: hard-sum budget on the injected block (+ F8)
+
+`src/budget.ts` caps the resolved block that actually reaches the agent's
+system prompt at `PI_MEMORY_TOTAL_CHARS` (default 80,000 ≈ 20k tokens,
+strategy §4.8) on BOTH injection surfaces (engine runner via
+`resolveMemoryForAgentDetailed`, terminal via `terminalMemoryForAgent`).
+Degradation is oldest-rules-first (appendRules blocks carry dated
+provenance headers; ties break by file position), then visible
+head-truncation markers; the guide and policy tiers are NEVER pruned, and
+degenerate caps are reported as overflow instead of silently dropping
+guardrails. Pruning is injection-time only — the stored memory is never
+modified by the cap, and every degraded run records a MemoryBudget hook
+receipt + `memory:budget` event. F8 closed as a side effect:
+`/api/memory`'s `resolvedChars` is now the actual resolved block.
+
+- Pinned: `test/budget.test.ts` — 11 cases (no-op, oldest-first across
+  tiers, position ties, protected tiers, truncation markers, honest
+  overflow, overlay candidates, stored-vs-injected separation, terminal
+  path, F8 semantics).
+- Live: full e2e loop 7/7 with the budget wired — the verbatim-injection
+  marker probe still passes (no-op when under budget).

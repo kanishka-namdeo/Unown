@@ -24,16 +24,19 @@
  *   .unown/memory/project.md — is a different path: there the file IS the
  *   source of truth and dreams write it atomically; see dream.ts / term.ts.)
  *
- * Size guard (context-window hygiene):
- *   writeTier/appendRules refuse to store a tier larger than
- *   PI_MEMORY_MAX_TIER_CHARS (default 48,000 ≈ 12k tokens/tier, keeping the
- *   whole 4-tier resolved block comfortably under the 20k-token budget the
- *   testing strategy §4.8 demands).
+ * Size guard (context-window hygiene), two layers:
+ *   per-tier: writeTier/appendRules refuse to store a tier larger than
+ *   PI_MEMORY_MAX_TIER_CHARS (default 48,000 ≈ 12k tokens/tier);
+ *   total: the resolved block actually injected is hard-capped by
+ *   PI_MEMORY_TOTAL_CHARS (default 80,000 ≈ 20k tokens — strategy §4.8)
+ *   with oldest-rules-first degradation at INJECTION time (budget.ts) —
+ *   the stored memory is never modified by the cap.
  */
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { emit } from "./bus.ts";
+import { pruneToBudget, type BudgetFile, type BudgetReport } from "./budget.ts";
 import { MEMORY_GUIDE, MEMORY_GUIDE_PATH } from "./memory-guide.ts";
 import { DATA_DIR, store } from "./store.ts";
 
@@ -228,6 +231,12 @@ export interface AgentMemoryFile {
         content: string;
 }
 
+export interface DetailedAgentMemory {
+        files: AgentMemoryFile[];
+        /** Injection-time budget enforcement report (§5.5). */
+        report: BudgetReport;
+}
+
 /**
  * The files actually injected into the agent's system prompt (runner.ts):
  * a guide file carrying the tier semantics, followed by the four tiers with
@@ -237,14 +246,29 @@ export interface AgentMemoryFile {
  * files list drops all of that).
  */
 export function resolveMemoryForAgent(overlay?: MemoryOverlay): AgentMemoryFile[] {
+        return resolveMemoryForAgentDetailed(overlay).files;
+}
+
+/**
+ * resolveMemoryForAgent + the §5.5 budget report: the whole injected block
+ * (guide + 4 tiers + provenance lines) is hard-capped at
+ * PI_MEMORY_TOTAL_CHARS (default 80k ≈ 20k tokens, strategy §4.8) by
+ * dropping the OLDEST appendRules blocks first (guide/policy exempt), then
+ * head-truncating with a visible marker. Injection-time only — the stored
+ * memory is untouched, so nothing is lost at rest.
+ */
+export function resolveMemoryForAgentDetailed(overlay?: MemoryOverlay): DetailedAgentMemory {
         const files = resolveMemoryFiles(overlay);
-        return [
-                { path: MEMORY_GUIDE_PATH, content: MEMORY_GUIDE },
+        const budgetFiles: BudgetFile[] = [
+                { path: MEMORY_GUIDE_PATH, content: MEMORY_GUIDE, tier: "guide" },
                 ...files.map((f) => ({
                         path: f.path,
                         content: `${provenanceLine(f.tier, Boolean(overlay?.[f.tier]))}\n${f.content}`,
+                        tier: f.tier,
                 })),
         ];
+        const { files: budgeted, report } = pruneToBudget(budgetFiles);
+        return { files: budgeted, report };
 }
 
 export interface ResolvedMemory {

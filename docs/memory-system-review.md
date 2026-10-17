@@ -135,10 +135,11 @@ DISTINCT task), each judged on outcome + tool drift + claim consistency
 the evidence in the reason. Regression-on-ship (`runRegression(2)`) still
 compensates post-hoc.
 
-### F8 [minor] `/api/memory`'s `resolvedChars` sums raw tier lengths
+### F8 [fixed] `/api/memory`'s `resolvedChars` sums raw tier lengths
 
-…not the actual resolved block (header + wrappers). Cosmetic; snapshot()
-is the accurate surface.
+…not the actual resolved block (header + wrappers). **Fix:** the endpoint
+now returns `resolveMemory().totalChars` — the real block, wrappers and
+provenance included (pinned in `test/budget.test.ts`).
 
 ### F9 [quirk, unchanged] Empty-string overlay is honored
 
@@ -182,6 +183,7 @@ project-path weaknesses (F4B: no canary, no caps beyond the dream guard).
 | Guard scanner + gate (§5.1/§5.3) | `bun test test/guard.test.ts` | always |
 | Guard wiring on both dream paths (stub bridge, canned poison) | `bun test test/dream-guard.test.ts` | always |
 | Canary sampling + drift/claim analysis (§5.2) | `bun test test/canary.test.ts` | always |
+| Resolved-block budget + degradation (§5.5) | `bun test test/budget.test.ts` | always |
 | Live e2e loop (7 live tests + receipts) | `UNOWN_MEMORY_LIVE=1 bun test test/memory-live.test.ts` | env |
 | Poisoning probes | `UNOWN_MEMORY_POISON=1 bun test test/memory-poison.test.ts` | env |
 | v2 repeat-task | `node runner.mjs --phase cold\|wait-dream\|warm\|report` | manual |
@@ -209,5 +211,12 @@ project-path weaknesses (F4B: no canary, no caps beyond the dream guard).
    (report-only).
 4. Multi-attempt poison corpus (n≥10, obfuscation ladder) to make F4
    statistical rather than directional.
-5. Hard-sum budget on the resolved block in the runner (currently only
-   per-tier caps) with a degradation policy (oldest-rules-first pruning).
+5. ~~Hard-sum budget on the resolved block in the runner (currently only
+   per-tier caps) with a degradation policy (oldest-rules-first pruning).~~
+   **SHIPPED** — `src/budget.ts` wired into BOTH injection surfaces
+   (engine runner + terminal): `PI_MEMORY_TOTAL_CHARS` (default 80k ≈ 20k
+   tokens, strategy §4.8) with oldest-blocks-first degradation and visible
+   truncation markers at INJECTION time only (stored memory untouched);
+   guide/policy never pruned; every degraded run logs a MemoryBudget hook
+   receipt + `memory:budget` event. Pinned by `test/budget.test.ts` (11
+   cases incl. cross-tier oldest-first, ties, overflow honesty, overlay).

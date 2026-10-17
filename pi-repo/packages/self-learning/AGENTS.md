@@ -51,7 +51,10 @@ This package is Unowned (modified from upstream pi-mono); sibling packages (`ai`
   (deterministic adversarial-content scanner + gate decisions, §5.1/§5.3)
   and `dream-guard.test.ts` (both dream paths end-to-end against a STUB
   bridge serving canned poison — first-mint gating, sanitization, note
-  banners provably reaching the "LLM", no network).
+  banners provably reaching the "LLM", no network), plus `canary.test.ts`
+  (K-sampled canary gate: drift/claim analysis, PI_DREAM_CANARY_K) and
+  `budget.test.ts` (resolved-block hard cap PI_MEMORY_TOTAL_CHARS with
+  oldest-first degradation).
 - `UNOWN_MEMORY_LIVE=1 bun test test/memory-live.test.ts` — LIVE memory
   e2e (scratch engine + real bridge, ~45 s): boots a real server on :3035
   behind a recording proxy (:3036), proves the 4-tier block + guide +

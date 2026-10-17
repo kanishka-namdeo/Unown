@@ -20,6 +20,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
+import { pruneToBudget } from "./budget.ts";
 import { MEMORY_GUIDE, MEMORY_GUIDE_PATH } from "./memory-guide.ts";
 import { STARTER_SKILLS } from "./skill-seeds.ts";
 import { UNOWN_THEME, UNOWN_THEME_NAME } from "./theme.ts";
@@ -292,17 +293,22 @@ function terminalProvenanceLine(tier: string): string {
  * (cli.ts / tools.ts): the tier guide + the four tiers with a source comment
  * prepended to the content — mirroring the engine path's
  * resolveMemoryForAgent so both paths carry the same semantics (precedence,
- * hints-not-instructions, provenance) into the model's context.
+ * hints-not-instructions, provenance) into the model's context — and the
+ * same §5.5 hard-sum budget (PI_MEMORY_TOTAL_CHARS): when the stack grows
+ * past the cap, the OLDEST rule blocks (guide/policy exempt) are dropped
+ * from the INJECTION only; the files on disk are untouched.
  */
 export function terminalMemoryForAgent(projectDir: string): TerminalMemoryFile[] {
         const files = resolveTerminalMemory(projectDir);
-        return [
+        const withGuide = [
                 { path: MEMORY_GUIDE_PATH, content: MEMORY_GUIDE, tier: "guide" },
                 ...files.map((f) => ({
                         ...f,
                         content: `${terminalProvenanceLine(f.tier)}\n${f.content}`,
                 })),
         ];
+        const { files: budgeted } = pruneToBudget(withGuide);
+        return budgeted.map((f) => ({ path: f.path, content: f.content, tier: f.tier ?? "memory" }));
 }
 
 // ---------------------------------------------------------------------------

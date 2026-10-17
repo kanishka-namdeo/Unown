@@ -19,7 +19,7 @@ import {
 import { emit } from "./bus.ts";
 import { writeSandboxShell } from "./bwrap.ts";
 import { createHooksExtension, logHook } from "./hooks.ts";
-import { currentVersion, type MemoryOverlay, resolveMemoryForAgent } from "./memory.ts";
+import { currentVersion, type MemoryOverlay, resolveMemoryForAgentDetailed } from "./memory.ts";
 import { createNote, noteFromRun } from "./notes.ts";
 import { createSandbox, seedFiles, snapshotFiles, verifyInSandbox } from "./sandbox.ts";
 import { BRIDGE_URL, DATA_DIR, store } from "./store.ts";
@@ -105,7 +105,21 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
         const runId = randomUUID();
         const sandbox = createSandbox(opts.label ?? opts.kind);
         const startedAt = Date.now();
-        const memoryFiles = resolveMemoryForAgent(opts.memoryOverlay);
+        // §5.5: the injected block is hard-capped (PI_MEMORY_TOTAL_CHARS) with
+        // oldest-rules-first degradation at injection time — the stored memory is
+        // untouched, and every degraded run carries an audit receipt.
+        const memory = resolveMemoryForAgentDetailed(opts.memoryOverlay);
+        const memoryFiles = memory.files;
+        if (memory.report.prunedBlocks.length > 0 || memory.report.truncatedTiers.length > 0 || memory.report.overflow) {
+                const line = `memory budget: injected ${memory.report.totalAfter}/${memory.report.cap} chars — pruned ${memory.report.prunedBlocks.length} old block(s) [${memory.report.prunedBlocks
+                        .map((b) => `${b.tier}@${b.date}`)
+                        .join(", ")}], truncated [${memory.report.truncatedTiers.join(", ")}]${
+                        memory.report.overflow ? ", OVERFLOW (protected content alone exceeds the cap)" : ""
+                }`;
+                console.warn(`[memory] ${line}`);
+                emit("memory:budget", { ...memory.report, runId });
+                logHook(runId, "MemoryBudget", null, "warn", line);
+        }
         const memoryVersion = currentVersion("project");
 
         store.run(
