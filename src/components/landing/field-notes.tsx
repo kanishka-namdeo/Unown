@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Glyph } from "./glyph";
+import { WEIGHT } from "./glyphs";
 import { FadeUp } from "./shell";
 
 /**
@@ -39,9 +40,10 @@ const BORROWED: Borrowed[] = [
     t: "Two weights, one data set",
     d: (
       <>
-        The script is 28 stroke paths on a 100×100 grid. Rendered at weight 19 it reads as a
-        silhouette; at weight 8 it reads as a letterform. One definition, two readings, no
-        font file and no image sprite to download.
+        The script is 28 stroke paths on a 100×100 grid. Rendered at stroke weight
+        {" "}
+        {WEIGHT.heavy} it reads as a silhouette; at {WEIGHT.script} it reads as a letterform.
+        One definition, two readings, no font file and no image sprite to download.
       </>
     ),
   },
