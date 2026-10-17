@@ -28,9 +28,9 @@ const HUMANEVAL_PLUS = [
 ];
 
 const POLYGLOT = [
-  { model: "qwen3.6-plus", pct: 100, pass1: 96 },
-  { model: "kimi-k2.5", pct: 98, pass1: 94 },
-  { model: "qwen3.7-plus", pct: 98, pass1: 96 },
+  { model: "qwen3.6-plus", pct: 96, pass1: 96 },
+  { model: "qwen3.7-plus", pct: 96, pass1: 96 },
+  { model: "kimi-k2.5", pct: 94, pass1: 94 },
 ];
 
 /** Repeat-task efficiency, cold vs warm — v2 protocol, agent-authored notes. */
@@ -229,7 +229,7 @@ export function BenchmarksSection() {
           <TrackCard
             icon={Layers}
             name="Aider polyglot subset"
-            source="50-exercise stratified subset of Aider-AI/polyglot-benchmark · 6 languages · Aider's 2-attempt protocol · pass@2 shown"
+            source="50-exercise stratified subset of Aider-AI/polyglot-benchmark · 6 languages · Aider's 2-attempt protocol · pass@2 shown · 2026-10-17 fresh-checkout rerun"
             delay={0.15}
           >
             {POLYGLOT.map((r, i) => (
@@ -241,8 +241,9 @@ export function BenchmarksSection() {
               </div>
             ))}
             <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-              first published polyglot numbers for these models · 150 scored runs across
-              three models
+              first published polyglot numbers for these models · 2026-10-17
+              fresh-checkout rerun: pass@1 reproduces the committed run exactly
+              (47/48/48 of 50) · 300 scored runs across two days
             </p>
           </TrackCard>
         </div>
