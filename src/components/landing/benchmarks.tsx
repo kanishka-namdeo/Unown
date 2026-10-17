@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
-import { Brain, ExternalLink, FlaskConical, Layers, ShieldCheck, Target } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Brain, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Target } from "lucide-react";
 import { FadeUp, BENCH_URL } from "./shell";
 
 /**
@@ -33,12 +33,25 @@ const POLYGLOT = [
   { model: "kimi-k2.5", pct: 94, pass1: 94 },
 ];
 
-/** Repeat-task efficiency, cold vs warm — v2 protocol, agent-authored notes. */
+/**
+ * Repeat-task efficiency, cold vs warm — v2 protocol, agent-authored notes.
+ * Deltas are the published percentages; the raw input-token totals and
+ * per-phase average durations come from
+ * benchmarks/selfimprove/results/v2-notes/summary.*.json (n=10, single run).
+ */
 const SELFIMPROVE = [
-  { model: "qwen3.6-plus", input: -23.7, time: -8.0 },
-  { model: "kimi-k2.5", input: 21.8, time: -35.1 },
-  { model: "qwen3.7-plus", input: 23.2, time: 4.2 },
+  { model: "qwen3.6-plus", input: -23.7, time: -8.0, coldIn: 401445, warmIn: 306218, coldS: 25, warmS: 23 },
+  { model: "kimi-k2.5", input: 21.8, time: -35.1, coldIn: 34553, warmIn: 42075, coldS: 37, warmS: 24 },
+  { model: "qwen3.7-plus", input: 23.2, time: 4.2, coldIn: 64853, warmIn: 79886, coldS: 24, warmS: 25 },
 ];
+
+/**
+ * The memory-lift chart's shared domain: each bar is a percentage of its
+ * model's cold run. Cold is pinned at 100 and the axis runs to 125 so the
+ * warm bars that grew (kimi +21.8%, qwen3.7 +23.2%) are shown, not cropped.
+ */
+const LIFT_SCALE = 125;
+const COLD_BAR_W = (100 / LIFT_SCALE) * 100;
 
 /* ------------------------------------------------------------------ */
 /* bits                                                                */
@@ -83,6 +96,78 @@ function Delta({ v, unit }: { v: number; unit: string }) {
       {v > 0 ? "+" : "−"}
       {Math.abs(v).toFixed(1)}% {unit}
     </span>
+  );
+}
+
+/** Cold → warm wall time, with the delta's sign carried by the chip's tone. */
+function TimeChip({ coldS, warmS, d }: { coldS: number; warmS: number; d: number }) {
+  const good = d < 0;
+  return (
+    <span
+      className={`rounded px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
+        good ? "bg-glow/10" : "bg-amber-400/10"
+      }`}
+    >
+      <span className="text-dim">
+        {coldS}s → {warmS}s
+      </span>{" "}
+      <span className={good ? "text-glow" : "text-amber-300"}>
+        {d > 0 ? "+" : "−"}
+        {Math.abs(d).toFixed(1)}%
+      </span>
+    </span>
+  );
+}
+
+/**
+ * One bar of the memory-lift chart. `width` is a share of the track: cold rows
+ * pass the 100%-of-cold baseline, warm rows their measured share of the
+ * 0–125% domain. Grows in on scroll like BarRow, but the finished width ships
+ * in the SSR markup and the grow is a transform — so the noscript
+ * reveal-restore in effects.tsx (which keys on opacity+transform) resolves
+ * these bars to their final state without scripting, unlike a width tween.
+ */
+function LiftBar({
+  kind,
+  width,
+  tokens,
+  tone,
+  tick = false,
+  delay = 0,
+}: {
+  kind: "cold" | "warm";
+  width: number;
+  tokens: number;
+  tone: "cold" | "win" | "cost";
+  tick?: boolean;
+  delay?: number;
+}) {
+  const reduced = useReducedMotion();
+  const fill =
+    tone === "cold" ? "bg-line-bright" : tone === "win" ? "bg-glow" : "bg-amber-300";
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-9 shrink-0 font-mono text-[10px] text-faint">{kind}</span>
+      <div className="relative h-2 flex-1 rounded-full bg-line">
+        {tick ? (
+          <span
+            aria-hidden="true"
+            className="absolute -top-1.5 -bottom-1.5 left-[80%] border-l border-dashed border-line-bright"
+          />
+        ) : null}
+        <motion.div
+          className={`absolute inset-y-0 left-0 origin-left rounded-full ${fill}`}
+          style={{ width: `${width}%` }}
+          initial={{ opacity: 0, scaleX: reduced ? 1 : 0 }}
+          whileInView={{ opacity: 1, scaleX: 1 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.9, delay, ease: "easeOut" }}
+        />
+      </div>
+      <span className="w-[4.5rem] shrink-0 text-right font-mono text-[10px] tabular-nums text-dim">
+        {tokens.toLocaleString("en-US")}
+      </span>
+    </div>
   );
 }
 
@@ -208,7 +293,7 @@ export function BenchmarksSection() {
           <TrackCard
             icon={Brain}
             name="Self-improvement, measured"
-            source="10-task repeat set · cold vs warm, dreamed memory carried into fresh workspaces · 60/60 passed across six passes"
+            source="10-task repeat set · cold vs warm, dreamed memory carried into fresh workspaces · 60/60 passed across six passes · v2 agent-authored notes · receipts under benchmarks/selfimprove/results/"
             delay={0.1}
           >
             {SELFIMPROVE.map((r) => (
@@ -220,6 +305,14 @@ export function BenchmarksSection() {
                 <Delta v={r.time} unit="time" />
               </div>
             ))}
+            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+              pass 10/10 → 10/10 on every model, both passes — memory buys efficiency,
+              not correctness; the full{" "}
+              <a href="#memory-lift" className="text-glow underline-offset-2 hover:underline">
+                cold-vs-warm chart
+              </a>{" "}
+              is below.
+            </p>
             <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
               A caching-only control in v1 faked −25.6%. We publish the real memory effect
               instead.
@@ -247,6 +340,119 @@ export function BenchmarksSection() {
             </p>
           </TrackCard>
         </div>
+
+        {/* The memory-lift chart testing-strategy §7A asked for, in the form
+            our data can publish: pass-rate is 10/10 → 10/10 everywhere, so what
+            memory actually buys is efficiency — cold vs warm input tokens and
+            wall time, exactly as measured, including the two models that spent
+            more. Full-width because paired bars plus raw counts need the room;
+            it also breaks the column rhythm between the track grid and the
+            regression panel, the way the stat band does above. */}
+        <FadeUp delay={0.05}>
+          <div
+            id="memory-lift"
+            className="mt-6 scroll-mt-16 rounded-lg border border-line bg-panel/40 p-6"
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <Repeat className="size-5 shrink-0 text-glow" aria-hidden="true" />
+              <h3 className="text-[15px] font-medium text-ink">Memory lift, cold vs warm</h3>
+              <span className="rounded bg-glow/10 px-1.5 py-0.5 font-mono text-[10.5px] text-glow">
+                n=10 · single run per phase
+              </span>
+              <a
+                href={`${BENCH_URL}/selfimprove/results`}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="ml-auto inline-flex items-center gap-1.5 font-mono text-[11px] text-glow underline-offset-4 hover:underline"
+              >
+                benchmarks/selfimprove/results/
+                <ExternalLink className="size-3" aria-hidden="true" />
+              </a>
+            </div>
+            <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
+              The eval the self-improvement claim rests on: each model solved the same
+              10-task Python Exercism set cold (fresh project, fresh memory), then warm —
+              a brand-new workspace carrying only the dreamed memory from its cold pass,
+              no source files shared, memory verified changed per task before the warm
+              pass. Bars are input tokens, normalized per model: cold is the 100%
+              baseline, the dashed tick marks it, and the scale runs to 125% so the models
+              that spent more are not cropped.
+            </p>
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[10px] text-faint">
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden="true" className="h-1.5 w-4 rounded-full bg-line-bright" />
+                cold
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden="true" className="h-1.5 w-4 rounded-full bg-glow" />
+                warm · fewer input tokens
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden="true" className="h-1.5 w-4 rounded-full bg-amber-300" />
+                warm · more input tokens
+              </span>
+              <span className="ml-auto hidden lg:inline">
+                input tokens per model · dashed tick = cold (100%), scale 0–125%
+              </span>
+            </div>
+
+            <div className="mt-4">
+              {SELFIMPROVE.map((r, i) => (
+                <div key={r.model} className={i === 0 ? "" : "mt-6"}>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                    <span className="font-mono text-[11px] text-ink">{r.model}</span>
+                    <Delta v={r.input} unit="in" />
+                    <TimeChip coldS={r.coldS} warmS={r.warmS} d={r.time} />
+                    <span className="ml-auto font-mono text-[10px] tabular-nums text-faint">
+                      pass 10/10 → 10/10
+                    </span>
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    <LiftBar
+                      kind="cold"
+                      width={COLD_BAR_W}
+                      tokens={r.coldIn}
+                      tone="cold"
+                      delay={i * 0.12}
+                    />
+                    <LiftBar
+                      kind="warm"
+                      width={(r.warmIn / r.coldIn) * COLD_BAR_W}
+                      tokens={r.warmIn}
+                      tone={r.input < 0 ? "win" : "cost"}
+                      delay={i * 0.12 + 0.06}
+                      tick
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-5 font-mono text-[10.5px] leading-relaxed text-dim">
+              <span className="text-glow">read it honestly:</span> pass-rate lift is 0pp
+              across the board — two of three models spent <em>more</em> input tokens with
+              memory in the loop, and kimi-k2.5 still finished 35% faster; qwen3.6-plus
+              took both wins. On tasks the model can already solve, memory buys
+              efficiency, not correctness. Single run per phase — deltas are direction,
+              not significance.
+            </p>
+
+            <div className="mt-4 rounded-md border border-line bg-canvas/50 p-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-amber-300">
+                Negative control (v1) — not published as a memory effect
+              </p>
+              <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-dim">
+                kimi-k2.5 with only thin session summaries as notes showed −25.6% input
+                and 64s → 34s (−46.9%) wall time warm — with an{" "}
+                <span className="text-ink">unchanged memory file</span>. That saving is
+                upstream prompt caching on near-identical prompts, not memory; v1 is
+                kept as the control arm that isolates the confound. v2 above is what we
+                publish, with per-task dreamed-memory receipts committed.
+              </p>
+            </div>
+          </div>
+        </FadeUp>
 
         {/* The regression layer below the loop: tests that protect the harness
             while the agent rewrites itself. Numbers are the committed test
