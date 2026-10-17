@@ -82,6 +82,20 @@ jobs:
         # bun (not node) because the script imports a .ts file from pi-repo
         run: bun scripts/check_theme.mjs
 
+  landing-palette:
+    name: Landing palette contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: GBA grid + AA contract
+        # Reads the CSS only — no browser, no server, no build — which is what
+        # makes the "every colour is a legal Game Boy Advance colour" claim a
+        # gate rather than a caption.
+        run: bun scripts/gba_palette_check.mjs
+
 # NOT in CI yet, on purpose:
 # - `bun run build` — heavy; Vercel already builds on every push. Phase 2 adds
 #   it as a required gate before deploy (testing-strategy.md §3 gate 3).

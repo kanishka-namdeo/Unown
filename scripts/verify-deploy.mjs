@@ -103,7 +103,7 @@ note(!/unown-landing-noscript/.test(head), "override NOT hoisted to <head>", "ho
 /* ---------------------------------------------------------------- */
 
 section("accessibility regressions");
-note(!/text-(faint|dim|ink|glow|glow-soft|amber-\d+|rose-\d+)\/\d+/.test(html), "no opacity-faded text tokens");
+note(!/text-(faint|dim|ink|gold|gold-soft|amber-\d+|rose-\d+)\/\d+/.test(html), "no opacity-faded text tokens");
 note(!/class="[^"]*"[^>]*>\s*<li/.test(html) === false || !/<ul[^>]*>\s*<div/.test(html), "no <ul><div><li> list breakage");
 note(html.includes('role="slider"'), "session scrubber exposed as a slider");
 note(/role="tablist"/.test(html), "loop tabs exposed as a tablist");
@@ -173,12 +173,32 @@ for (const h of cssHrefs) {
 // Production CSS is minified, so every probe below is whitespace-insensitive.
 const flat = css.replace(/\s+/g, "");
 note(css.length > 0, "stylesheet chunks fetched", `${cssHrefs.length} chunks, ${(css.length / 1024).toFixed(0)} KB`);
-note(/\.bg-canvas\{background-color:#0c0b0a\}/.test(css), "warm-dark palette present");
-note(flat.includes("feTurbulence"), "grain texture present");
+// Palette probe. This used to assert one literal hex (`.bg-canvas{…#0c0b0a}`),
+// which broke the moment the landing page moved to a two-scheme palette: the
+// utility now emits `var(--color-canvas)` so the `:root` / `prefers-color-scheme`
+// / `[data-theme]` cascade can repaint it at runtime. Assert the mechanism, not
+// a frozen value — a var-emitting utility plus both scheme canvases shipped is a
+// stronger guarantee than the single hex ever was.
+note(/\.bg-canvas\{background-color:var\(--color-canvas\)\}/.test(flat), "palette tokens emitted as vars (repaintable)");
+note(flat.includes("#102039") && flat.includes("#e6e6d5"), "both scheme canvases shipped");
+note(flat.includes("--color-psychic") && flat.includes("--tone-fill") && flat.includes("--hue-accent"), "Gen 3 hue system shipped");
+note(flat.includes("[data-theme=light]") && flat.includes("prefers-color-scheme:light"), "light override + auto-default shipped");
+// Grain probe. The original page used an SVG `feTurbulence` film-grain filter;
+// the retro rebuild replaced it with the thing an LCD actually has — a fixed
+// pixel-separator matrix drawn as two crossed `repeating-linear-gradient`s in
+// `--gb-grain` (see landing.css). Assert the texture is present by its shipped
+// mechanism, not the retired filter. (The CRT scanline layer that used to sit
+// alongside it is gone: a Game Boy Advance is a TFT panel and has no scanlines.)
+note(flat.includes("--gb-grain") && flat.includes("repeating-linear-gradient"), "grain texture present");
 note(flat.includes("animation-timeline"), "scroll-driven motion present");
 note(flat.includes("@keyframesrise"), "reveal keyframes present");
 note(flat.includes("@media(prefers-reduced-motion:reduce)"), "reduced-motion honoured");
-note(css.includes("--font-quote"), "quote serif loaded");
+// Quote-face probe. `.quote` used to be Instrument Serif (a `--font-quote`
+// token); the DMG rebuild retired the serif — a quoted dex entry is game text —
+// and the face is now VT323 (`--font-vt`), matching the terminal body. Assert
+// the class still resolves to a real family so the attributed-quotation rule
+// (quote-only, never body copy) survives.
+note(/\.quote\{font-family:var\(--font-vt\)/.test(flat), "quote face loaded");
 note(!/\.text-faint\\\/70/.test(css) && !/\.text-faint\\\/80/.test(css), "faded text utilities not emitted");
 
 /* ---------------------------------------------------------------- */

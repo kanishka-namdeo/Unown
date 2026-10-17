@@ -128,15 +128,15 @@ export function LoopSection() {
   }
 
   return (
-    <section id="loop" className="scroll-mt-16 border-y border-line bg-panel/40 py-20 sm:py-24">
+    <section data-hue="leaf" id="loop" className="scroll-mt-16 border-y border-line py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
-          <SectionHead kicker="The learning loop" tone="amber">
+          <SectionHead kicker="The learning loop">
             Most agents forget. This one has to prove it remembered.
           </SectionHead>
           <p className="mt-4 text-pretty leading-relaxed text-dim">
-            Three steps, run continuously by the engine while you work. What follows is
-            not a diagram of the idea — it is the formats each step actually writes.
+            Three steps, run continuously by the engine while you work. Each one below
+            shows the file that step actually writes.
           </p>
         </FadeUp>
 
@@ -163,7 +163,7 @@ export function LoopSection() {
                   aria-controls={`loop-panel-${b.key}`}
                   tabIndex={on ? 0 : -1}
                   onClick={() => setActive(i)}
-                  className={`group relative flex items-center gap-3.5 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-glow [transition-timing-function:steps(2,end)] ${
+                  className={`group relative flex items-center gap-3.5 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold [transition-timing-function:steps(2,end)] ${
                     on ? "bg-panel-2" : "bg-panel hover:bg-panel-2"
                   }`}
                 >
@@ -172,11 +172,11 @@ export function LoopSection() {
                   <span
                     aria-hidden="true"
                     className={`absolute inset-x-0 top-0 h-0.5 origin-left transition-transform duration-300 ${
-                      on ? "scale-x-100 bg-glow" : "scale-x-0 bg-glow"
+                      on ? "scale-x-100 bg-gold" : "scale-x-0 bg-gold"
                     }`}
                   />
                   {on ? (
-                    <PixelCursor className="size-2.5 shrink-0 text-glow" />
+                    <PixelCursor className="size-2.5 shrink-0 text-gold" />
                   ) : (
                     <span className="size-2.5 shrink-0" aria-hidden="true" />
                   )}
@@ -185,7 +185,7 @@ export function LoopSection() {
                     weight="heavy"
                     tone={on ? "lit" : "dim"}
                     className={`size-7 shrink-0 transition-colors ${
-                      on ? "text-glow" : "text-faint group-hover:text-dim"
+                      on ? "text-gold" : "text-faint group-hover:text-dim"
                     }`}
                   />
                   <span className="min-w-0">
@@ -208,7 +208,7 @@ export function LoopSection() {
             id={`loop-panel-${beat.key}`}
             aria-labelledby={`loop-tab-${beat.key}`}
             tabIndex={0}
-            className="border border-line bg-panel/40 p-6 focus:outline-none sm:p-8"
+            className="border border-line p-6 focus:outline-none sm:p-8"
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -232,7 +232,7 @@ export function LoopSection() {
                     <div className="overflow-hidden border border-line">
                       <div className="flex items-center gap-2 border-b border-line bg-panel px-3.5 py-2">
                         <span
-                          className="size-1.5 rounded-full bg-glow/60"
+                          className="size-1.5 rounded-full bg-gold/60"
                           aria-hidden="true"
                         />
                         <span className="truncate font-mono text-[10.5px] text-faint">

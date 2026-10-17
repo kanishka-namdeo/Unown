@@ -49,10 +49,10 @@ export default function LandingPage() {
     <LetterRainProvider>
       <AlphabetWakeProvider>
         <LandingStyles />
-        <div className="grain grain-fixed crt relative isolate flex min-h-screen flex-col overflow-x-clip bg-canvas text-ink">
+        <div className="grain grain-fixed relative isolate flex min-h-screen flex-col overflow-x-clip bg-canvas text-ink">
           <a
             href="#main"
-            className="skip-link rounded-md bg-glow px-4 py-2 text-sm font-medium text-canvas"
+            className="skip-link rounded-md bg-gold px-4 py-2 text-sm font-medium text-canvas"
           >
             Skip to content
           </a>

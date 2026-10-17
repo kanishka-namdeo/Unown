@@ -8,7 +8,7 @@
  * at 3.16:1 for a while. This walks the REAL rendered page instead: every
  * visible text node, its computed colour, and the composited background
  * actually behind it — so a token that is fine on `canvas` but lands on
- * `bg-glow` in one section is caught where it is, not where the token table
+ * `bg-gold` in one section is caught where it is, not where the token table
  * says it is.
  *
  * IT AUDITS BOTH SCHEMES. The page ships a dark screen (the emissive DMG,
@@ -96,7 +96,7 @@ const AUDIT = () => {
       ctx.fillStyle = "#000000";
       ctx.fillStyle = css; // falls back to the previous value if unparsable
       // Clear first: source-over onto a leftover pixel corrupts every
-      // translucent colour (bg-glow/10 would composite over the previous
+      // translucent colour (bg-gold/10 would composite over the previous
       // text colour instead of transparency).
       ctx.clearRect(0, 0, 1, 1);
       ctx.fillRect(0, 0, 1, 1);
@@ -202,7 +202,7 @@ const AUDIT = () => {
         ratio: Number(got.toFixed(2)),
         required: need,
         tokens: (typeof el.className === "string" ? el.className : "").match(
-          /(?:text|bg|border)-(?:canvas|panel|line|ink|dim|faint|glow|amber|poke|sgb-[a-z]+)[^\s]*/g,
+          /(?:text|bg|border)-(?:canvas|panel|line|ink|dim|faint|gold|gold-soft|amber|poke|aqua|magma|leaf|psychic)[^\s]*/g,
         ),
       });
     }
@@ -266,7 +266,7 @@ try {
       const s = (v ?? "").trim().replace(/^#/, "").toLowerCase();
       return s.length === 3 ? s.split("").map((c) => c + c).join("") : s;
     };
-    const expected = scheme === "light" ? "#eae5c8" : "#0a140a";
+    const expected = scheme === "light" ? "#e6e6d5" : "#102039";
     const appliedOk = hexOf(applied.canvas) === hexOf(expected);
     if (!appliedOk) {
       // Hard-stop. Never fall through to a "0 failures" PASS for a scheme we

@@ -121,20 +121,20 @@ try {
 
   const btn = page.locator('button[aria-label^="Screen:"]');
   console.log(`theme toggle cycle on ${BASE} (OS emulated dark, so auto == dark):`);
-  await expect("initial auto", null, "#0a140a");
+  await expect("initial auto", null, "#102039");
   await btn.click(); await sleep(200);
-  await expect("cycle 1 -> light", "light", "#eae5c8");
+  await expect("cycle 1 -> light", "light", "#e6e6d5");
   await btn.click(); await sleep(200);
-  await expect("cycle 2 -> dark", "dark", "#0a140a");
+  await expect("cycle 2 -> dark", "dark", "#102039");
   await btn.click(); await sleep(200);
-  await expect("cycle 3 -> auto", null, "#0a140a");
+  await expect("cycle 3 -> auto", null, "#102039");
 
   // The inline <head> bootstrap must replay a persisted choice after reload.
   await btn.click(); await sleep(200);
-  await expect("set light", "light", "#eae5c8");
+  await expect("set light", "light", "#e6e6d5");
   await page.reload({ waitUntil: "domcontentloaded" });
   await sleep(600);
-  await expect("persisted after reload", "light", "#eae5c8");
+  await expect("persisted after reload", "light", "#e6e6d5");
 
   // The control must announce its state to a screen reader.
   const label = await btn.getAttribute("aria-label");

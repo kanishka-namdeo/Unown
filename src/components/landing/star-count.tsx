@@ -53,7 +53,7 @@ export async function StarCount() {
   const stars = await getStars();
   return (
     <>
-      <span aria-hidden="true" className="text-glow">
+      <span aria-hidden="true" className="text-gold">
         ★
       </span>{" "}
       {compact(stars)}

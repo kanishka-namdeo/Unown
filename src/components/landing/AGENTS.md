@@ -72,29 +72,35 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
 
 ### The retro design system
 
-The page is a Game Boy that is switched on. Everything below is the local
-spelling of that: sections compose these parts, they do not invent parallel
-ones.
+The page is a Game Boy Advance that is switched on. Everything below is the
+local spelling of that: sections compose these parts, they do not invent
+parallel ones.
 
-- **The palette is DMG-01, in both lights.** Declared in `src/app/globals.css`
-  (see root `src/AGENTS.md` for why it lives there). The four canonical shades
-  `#0f380f / #306230 / #8bac0f / #9bbc0f` are public-domain facts about a 1989
-  LCD — using them is not using Pokémon art, which is why this page can look the
-  way it does without shipping any. Tokens: `canvas` `panel` `panel-2`, `line`
-  `line-bright` (borders), `ink` `dim` `faint` (text), `glow`/`glow-soft`
-  (DMG shade 4 and a step above it), `amber` `#ffcb05` and `poke` `#ff6a4d`
-  (cartridge accents), plus `sgb-cream`/`sgb-amber`/`sgb-brick`/`sgb-purple`
-  (the Super Game Boy frame hues, below). Every token is **dual-valued**: a dark
-  `:root`, a `prefers-color-scheme: light` block, and a `[data-theme="light"]`
-  override that wins the cascade — same names in both, so a section restyles
-  for free. **Never write a `dark:` variant on this page**: theming is an
-  attribute on `<html>`, not a `.dark` class, and the tokens already carry both
-  schemes.
-- **Light mode is the same handheld in daylight, not a re-skin.** A real DMG-01
-  is a *reflective, unlit* LCD — dark ink on a pale reflector, and the famous
-  green-on-black is the emulator / low-light look. So the light scheme is the
-  unlit screen (`#eae5c8` reflector, `#1c2810` ink) and the nav toggle picks the
-  room. The toggle cycles auto → daylight → dark, persists to
+- **The palette is Generation III, in both lights.** Declared in
+  `src/app/globals.css` (see root `src/AGENTS.md` for why it lives there).
+  Every colour is a **legal Game Boy Advance colour**: the console holds 5 bits
+  per channel and the ROM palettes render value `v` as `floor(255*v/31)`, which
+  admits exactly 32 values per channel (`00 08 10 18 20 29 31 39 41 4a 52 5a 62
+  6a 73 7b 83 8b 94 9c a4 ac b4 bd c5 cd d5 de e6 ee f6 ff`). So `#ffffff` is
+  allowed and `#f8f8f8` is not. `bun scripts/gba_palette_check.mjs` fails the
+  run on anything off that grid, which is what makes the claim checkable rather
+  than decorative — and it is also why no landing component may write its own
+  hex. Tokens: `canvas` `panel` `panel-2`, `line` `line-bright` (borders),
+  `ink` `dim` `faint` (text), `gold`/`gold-soft` (the navy-plus-gold accent that
+  reads Gen 3), `amber` `poke` (stat-bar steps), plus the five section hues
+  `gold` `aqua` `magma` `leaf` `psychic`, each with a `-field` companion. Every
+  token is **dual-valued**: a dark `:root`, a `prefers-color-scheme: light`
+  block, and a `[data-theme="light"]` override that wins the cascade — same
+  names in both, so a section restyles for free. **Never write a `dark:`
+  variant on this page**: theming is an attribute on `<html>`, not a `.dark`
+  class, and the tokens already carry both schemes.
+- **The two schemes are the two halves of the generation.** DARK is Hoenn — the
+  Ruby/Sapphire/Emerald menu, PokéNav and cave navy (`#102039`) with gold.
+  LIGHT is Kanto in daylight — the FireRed/LeafGreen interior cream (`#e6e6d5`)
+  with that same navy as its ink. Caveat that must stay disclosed: **no public
+  FRLG `.pal` dump exists**, so the light scheme is the verified RSE dumps
+  pushed to their warm, bright end. It is art-direction, not a colour-meter
+  reading. The toggle cycles auto → daylight → dark, persists to
   `localStorage.unown-theme`, and the inline `<head>` bootstrap in `layout.tsx`
   replays it before first paint (no flash, and inert with scripting off). The
   auto default is `prefers-color-scheme`, so an untouched visitor gets their OS.
@@ -105,7 +111,8 @@ ones.
   freeze the page. The font tokens must stay inline because their `--font-*`
   variables are set on `<body>`, and an inline utility resolves them from
   `:root`, where they do not exist. Moving a token between the blocks silently
-  breaks one of the two schemes — re-check both if you do.
+  breaks one of the two schemes — re-check both if you do. The same var-emitting
+  property is what makes the per-section hue cascade below possible at all.
 - **Three faces, one job each** (loaded in `src/app/layout.tsx`):
   `font-pixel` (Press Start 2P) for chrome only — eyebrows, buttons, badges,
   tile captions, kbd hints, never more than a few words; `font-display`
@@ -114,52 +121,70 @@ ones.
   pixel body face is a nostalgia trap that also costs the Lighthouse 1.00.
 - **Console furniture lives in `landing.css` and `shell.tsx`.** Use these
   rather than re-deriving the look:
-  - `.gb-box` — light dialogue box (bright fill, dark frame, light rim). The
-    correct surface for a quotation, a dex entry, a call-to-action.
-  - `.gb-panel` — dark console panel with a lit rim. The correct surface for
-    a card. Square corners.
+  - `.gb-box` — the game's text window (accent fill, field-coloured gutter, lit
+    rim). The correct surface for a quotation, a dex entry, a call-to-action.
+  - `.gb-panel` — console panel whose card surface blends toward its section's
+    field. The correct surface for a card. Square corners.
   - `.gb-btn` / `.gb-btn-dark` — pressable buttons; the press is an inset
     bevel plus a `steps(2)` translate.
   - `.gb-hp` — the stat bar. Always pair it with the printed number; colour
     is never the only signal.
   - `.gb-label`, `.gb-h`, `.gb-term`, `.gb-inset`, `.gb-cont` — pixel label,
     pixel heading, terminal body, inner hairline, blinking continue arrow.
+  - `.gb-dither` / `.gb-dither-fine` / `.gb-hatch` — the era's gradient. A GBA
+    can address 32,768 colours but its blend and brightness effects move in
+    discrete bands, so ramps step and dither; they replace any `blur()` glow,
+    which is continuous-tone photography in a world made of switches.
   - `PixelCursor` (battle-menu `▶`), `ContinueArrow` (blinking `▼`),
     `HpBar` (label + bar + figure) in `shell.tsx`.
-- **Colour rides on the furniture as Super Game Boy tones — the frame only,
-  never the play area.** The SGB (1994) drew full-colour borders around a
-  monochrome screen, so on this page a section's hue lives in its *chrome* —
-  box rims, terminal/browser title bars, the pixel kicker — while body copy and
-  `font-display` headings stay DMG green. Mechanism: `landing.css` declares
-  `--tone-fill` / `--tone-rim`, defaulted per furniture class (`.gb-box`,
-  `.gb-panel`, `.gb-bar`) and overridden by `[data-tone="cream|amber|brick|purple"]`
-  (`glow` is the DMG-green default and takes no attribute). A toned `.gb-box`
-  fills with the hue (text is `text-canvas`); a toned `.gb-panel` recolours only
-  its rim. `shell.tsx` exports `type Tone` and `toneAttr(tone)`, and `SectionHead`,
-  `TerminalWindow`, `BrowserFrame` take a `tone` prop that recolours the kicker /
-  title bar / url bar. Apply one hue per section to its chrome; do not tone every
-  nested element (rainbow soup), and never recolour paragraph text or glyph
-  fills. The alphabet is the one deliberate exception: its 28 tiles cycle the four
-  hues as rims by index (`TILE_TONES`) for a labelled-drawer wall — the eyes stay
-  `dim`, because lit eyes strobe. `.gb-hp`'s `data-tone` is a *different* system
-  (`mid`/`low` → green/amber/red stat step) and shares only the attribute name;
-  its values never overlap the four SGB hues.
+- **One hue per section, and it carries the whole section.** A GBA screen is
+  full-colour, so there is no "monochrome play area" rule any more — instead a
+  section declares `data-hue` on its own `<section>` and that hue becomes its
+  field, its heading, its kicker, its buttons, its rims and (blended) its card
+  surface. Mechanism: `landing.css` sets `--hue-bg` / `--hue-accent` on `:root`
+  (canvas + gold) and overrides both per `[data-hue="gold|aqua|magma|leaf|psychic"]`;
+  `section[data-hue]` then paints its background and blends
+  `--color-panel-2` toward the field so a tinted section never puts a neutral
+  grey card on itself. `shell.tsx` exports `type Hue`, `type Tone`, `hueAttr()`
+  and `toneAttr()`. `[data-tone="…"]` on a furniture element still overrides
+  just that element's `--tone-fill` / `--tone-rim`.
+  - **Allocation is a rule, not taste:** `psychic` is reserved for the three
+    sections about Unown itself (hero, alphabet, field-notes); the other ten
+    cycle `aqua → leaf → magma → gold` in page order, so no two adjacent
+    sections share a hue and "which hue does this get" is answerable without
+    opening the file.
+  - `SectionHead`, `TerminalWindow` and `BrowserFrame` take **no** hue prop —
+    they inherit their section. A header that could disagree with its section is
+    how the page gets eleven hues fighting each other.
+  - Body copy (`text-dim`, `text-faint`) never takes a hue. The alphabet is the
+    one deliberate intra-section variation: its 28 tiles cycle
+    `TILE_TONES = [aqua, leaf, magma, gold]` as rims by index — the eyes stay
+    `dim`, because lit eyes strobe.
+  - `.gb-hp`'s `data-tone` is a *different* system (`mid`/`low` → gold/poke stat
+    step, high is `leaf`) and shares only the attribute name with the hue tones.
 - **Square corners are the rule.** Nothing on this page uses `rounded-*`.
   A pixel language with antialiased corner radii is a contradiction, and the
-  one-pixel chamfer people remember from Gen 1 cannot be faked cleanly.
+  one-pixel chamfer Gen 3 drew into its window skins cannot be faked cleanly.
 - **Stepped motion, never eased, for anything that is furniture.** `.lift`
   and `.link-sweep` already use `steps()`. Hover states on boxes and buttons
-  advance in discrete frames; scroll reveals and `FadeUp` keep their existing
-  smooth behaviour, because those are page motion rather than UI state.
+  advance in discrete frames — a button's hover lights its rim rather than
+  brightening its fill, because a lighter fill step would be an off-grid value;
+  scroll reveals and `FadeUp` keep their existing smooth behaviour, because
+  those are page motion rather than UI state.
 - **The box rule in one line:** on a dark canvas an offset drop shadow paints
   nothing, so depth comes from a stacked ring — dark ring, light gap, dark
   edge. `.gb-box` and `.gb-panel` already do this; do not add `shadow-*` on
   top of them, it will fight their `box-shadow`.
+- **The screen has one overlay, not two.** A 3px LCD pixel grid sits over the
+  canvas. The CRT scanline and vignette layer is gone: a GBA is a TFT panel and
+  has no scanlines, and the grid's pitch tightened from the DMG's 4px because
+  the handheld's dot pitch is far finer. Fonts are SIL OFL-1.1 (Press Start 2P,
+  Pixelify Sans, VT323) — the same license as the Geist faces.
 - **No official art, still.** Nothing Pokémon-derived is vendored, hotlinked
   or reproduced: no sprite, card, logo, Poké Ball or Pokémon font. The
   nostalgia is carried by palette, geometry, type and the hand-drawn script.
-  Fonts are SIL OFL-1.1 (Press Start 2P, Pixelify Sans, VT323) — the same
-  license as the Geist faces.
+  A GBA palette value is a fact about 2001 hardware, the same kind of fact the
+  DMG shades were — it is not somebody's artwork.
 
 ## Work Guidance
 
@@ -177,6 +202,21 @@ ones.
 - Voice: concrete, honest about limits, no buzzwords. The engine section gets
   the whole "integrity" section because for a self-modifying agent that is the
   objection that decides installs. Keep the "what we did not run" box.
+- **The copy must not read like a model wrote it.** The tells to edit out on
+  sight: contrast-as-staging where the negative half names something nobody
+  claimed ("not a diagram of the idea", "proof, not vibes", "neither half is
+  clever"); a one-line closer that restates the paragraph above it; an ordinary
+  fact dressed as design theory ("the whole thesis", "the design brief for
+  everything in this repository"); writing about the document instead of its
+  subject ("so it gets the whole section"); the same phrase twice in three
+  lines; and em-dash saturation, which is the easiest tell to miss because each
+  one alone looks fine. Dashes belong in labels, number ranges, quoted game text
+  and the literal transcript, not in every second sentence. Judge a passage by
+  whether it adds a fact the previous sentence did not have.
+- Never "fix" prose that is a real artifact: the Pokédex quotations, the
+  session-replay transcript lines, the note template, the hook log strings, the
+  benchmark figures, or the non-affiliation text. They are quoted or measured,
+  and `verify-deploy.mjs` asserts several of them verbatim.
 - Typography: `font-display` (Pixelify Sans) for headings, `font-pixel`
   (Press Start 2P) for chrome labels, `font-term` (VT323) for terminal and
   dialogue text, Geist Sans for paragraphs, and `.quote` (VT323) **only** for
@@ -224,29 +264,45 @@ ones.
   `main`. A green local build says nothing about whether the deploy landed, so
   this is the gate, not `bun run build`.
 - **Contrast is a contract, not a vibe, and it is measured, not remembered.**
-  `bun scripts/contrast_audit.mjs` (against the production build, same base URL
-  convention as `landing_shots.mjs`) walks every visible text node and fails
-  the run below AA; it is the gate for this paragraph, not the arithmetic
-  below. The audit walks **both schemes** (it emulates `prefers-color-scheme`
-  dark and light in turn and asserts `--color-canvas` resolved to the hex each
-  should produce, so a cascade bug cannot fake a pass). Worst-case ratio of
-  every text token against the three surfaces text lands on (canvas / panel /
-  panel-2, taking the lowest):
-  - DARK:  `ink` 14.16 · `dim` 9.30 · `faint` 5.85 · `glow` 7.28 · `amber` 10.48 ·
-    `poke` 5.63 · `sgb-cream` 13.19 · `sgb-amber` 6.08 · `sgb-brick` 5.04 ·
-    `sgb-purple` 6.05 · `text-canvas`-on-`bg-glow` 8.59
-  - LIGHT: `ink` 9.49 · `dim` 6.50 · `faint` 5.08 · `glow` 5.50 · `amber` 5.55 ·
-    `poke` 5.16 · `sgb-cream` 5.12 · `sgb-amber` 5.02 · `sgb-brick` 4.94 ·
-    `sgb-purple` 9.41 · `text-canvas`-on-`bg-glow` 7.05
-  `line-bright` (1.99 dark, ~2.4 light) is exempt by design in both modes: it is
-  only ever a border or a bar-chart track, never text and never the sole carrier
-  of a state — the audit caught it used as a `──` terminal rule once, and the
-  rule was changed to `text-faint` rather than the exemption widened. `faint` has
-  been moved before for exactly this reason (`#6d675f` failed at 3.16 while
-  carrying 10-11px captions, which are normal text, not large text). The SGB tone
-  rims were also gated per-mode before shipping: text on a toned `.gb-box` fill
-  is `text-canvas` and clears 5.94–15.54 dark / 6.34–12.05 light. If you re-tune
-  the palette, re-run the audit before shipping it.
+  `bun scripts/gba_palette_check.mjs` is the cheap half — it recomputes the
+  table below straight out of the CSS, needs no browser, and is the palette gate
+  CI can actually run. `bun scripts/contrast_audit.mjs` (against the production
+  build, same base URL convention as `landing_shots.mjs`) is the real one: it
+  walks every visible text node and fails the run below AA. The audit walks
+  **both schemes** (it emulates `prefers-color-scheme` dark and light in turn and
+  asserts `--color-canvas` resolved to the hex each should produce, so a cascade
+  bug cannot fake a pass). Worst-case ratio of every text token, taken against
+  **all 43 surfaces a token can actually land on** per scheme — the three
+  neutrals, all five section fields, and every `/10` tint chip composited over
+  each field:
+  - DARK:  `ink` 9.57 · `dim` 7.49 · `faint` 5.74 · `gold` 7.69 ·
+    `gold-soft` 9.47 · `amber` 7.39 · `poke` 4.53 · `aqua` 4.97 · `magma` 5.18 ·
+    `leaf` 5.82 · `psychic` 4.73
+  - LIGHT: `ink` 9.81 · `dim` 8.55 · `faint` 7.52 · `gold` 6.73 ·
+    `gold-soft` 7.84 · `amber` 6.15 · `poke` 6.46 · `aqua` 7.15 · `magma` 6.17 ·
+    `leaf` 6.78 · `psychic` 6.51
+  The 43-surface rule exists because of a regression the 3-surface version
+  missed: `text-gold` inside a magma section resolved to **4.49:1**, because
+  every accent had only ever been checked against *its own* field. Gate each
+  accent against **every** field, not just its own. `line-bright` is exempt by
+  design in both modes: it is only ever a border or a bar-chart track, never
+  text and never the sole carrier of a state — the audit caught it used as a
+  `──` terminal rule once, and the rule was changed to `text-faint` rather than
+  the exemption widened. `faint` has been moved before for exactly this reason
+  (`#6d675f` failed at 3.16 while carrying 10-11px captions, which are normal
+  text, not large text). Text on an accent-filled `.gb-box` is `text-canvas` and
+  clears 4.53–10.40 dark / 6.46–9.41 light. The last live run scanned 1059 text
+  nodes across both schemes with zero failures. **If you re-tune the palette,
+  re-run both scripts before shipping it** — and note that the `color-mix` card
+  blends are invisible to the static gate, which is exactly why the browser
+  audit is not redundant.
+- `public/landing/landing-{hero,full,mobile}.png` are the OpenGraph images
+  `layout.tsx` names, and they are tracked screenshots of this page — so they go
+  stale the moment the palette moves. Regenerate with
+  `bun scripts/landing_og_shots.mjs` against the production build; it asserts
+  `--color-canvas` resolved to the dark scheme's hex before each shot, so it
+  cannot silently re-bake an old palette. The `dash-*.png` files in that folder
+  are dashboard captures and are not this page's business.
 
 ## Child DOX Index
 

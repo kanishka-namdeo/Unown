@@ -79,7 +79,7 @@ function BarRow({
           style={{ transition: "none" }}
         />
       </div>
-      <span className="w-12 shrink-0 text-right font-mono text-[11px] tabular-nums text-glow">
+      <span className="w-12 shrink-0 text-right font-mono text-[11px] tabular-nums text-gold">
         {pct.toFixed(1)}
       </span>
     </div>
@@ -91,7 +91,7 @@ function Delta({ v, unit }: { v: number; unit: string }) {
   return (
     <span
       className={`px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
-        good ? "bg-glow/10 text-glow" : "bg-amber/10 text-amber"
+        good ? "bg-gold/10 text-gold" : "bg-amber/10 text-amber"
       }`}
     >
       {v > 0 ? "+" : "−"}
@@ -106,13 +106,13 @@ function TimeChip({ coldS, warmS, d }: { coldS: number; warmS: number; d: number
   return (
     <span
       className={`px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
-        good ? "bg-glow/10" : "bg-amber/10"
+        good ? "bg-gold/10" : "bg-amber/10"
       }`}
     >
       <span className="text-dim">
         {coldS}s → {warmS}s
       </span>{" "}
-      <span className={good ? "text-glow" : "text-amber"}>
+      <span className={good ? "text-gold" : "text-amber"}>
         {d > 0 ? "+" : "−"}
         {Math.abs(d).toFixed(1)}%
       </span>
@@ -145,7 +145,7 @@ function LiftBar({
 }) {
   const reduced = useReducedMotion();
   const fill =
-    tone === "cold" ? "bg-line-bright" : tone === "win" ? "bg-glow" : "bg-amber";
+    tone === "cold" ? "bg-line-bright" : tone === "win" ? "bg-gold" : "bg-amber";
   return (
     <div className="flex items-center gap-3">
       <span className="w-9 shrink-0 font-mono text-[10px] text-faint">{kind}</span>
@@ -187,9 +187,9 @@ function TrackCard({
 }) {
   return (
     <FadeUp delay={delay} className="h-full">
-      <div className="gb-panel lift flex h-full flex-col p-6 hover:border-line-bright" data-tone="amber">
+      <div className="gb-panel lift flex h-full flex-col p-6 hover:border-line-bright">
         <div className="flex items-center gap-3">
-          <Icon className="size-5 shrink-0 text-glow" aria-hidden="true" />
+          <Icon className="size-5 shrink-0 text-gold" aria-hidden="true" />
           <h3 className="text-[15px] font-medium text-ink">{name}</h3>
         </div>
         <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">{source}</p>
@@ -205,16 +205,15 @@ function TrackCard({
 
 export function BenchmarksSection() {
   return (
-    <section id="benchmarks" className="scroll-mt-16 py-20 sm:py-24">
+    <section data-hue="leaf" id="benchmarks" className="scroll-mt-16 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead
-            kicker="Proof, not vibes"
-            tone="amber"
+            kicker="Methodology and receipts"
             lead={
               <>
                 Official harnesses, pinned datasets, anti-tamper scoring, and per-task JSONL in
-                the repo. The warm-memory panel below is published exactly as measured — two of
+                the repo. The warm-memory panel below is published exactly as measured: two of
                 three models used <em>more</em> input tokens with memory in the loop, and we
                 left that in.
               </>
@@ -241,7 +240,7 @@ export function BenchmarksSection() {
                 key={s.l}
                 className={`rise border-line py-8 sm:px-5 lg:border-l lg:first:border-l-0 ${i === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b sm:border-b-0 lg:border-b-0" : ""}`}
               >
-                <p className="gb-h text-3xl tabular-nums tracking-tight text-glow">
+                <p className="gb-h text-3xl tabular-nums tracking-tight text-gold">
                   {s.v}
                 </p>
                 <p className="mt-1.5 text-[13px] font-medium text-ink">{s.l}</p>
@@ -265,10 +264,10 @@ export function BenchmarksSection() {
             ))}
             <div className="mt-2 space-y-1.5 border border-line bg-canvas/50 p-3">
               <p className="font-mono text-[10.5px] leading-relaxed text-dim">
-                <span className="text-glow">head-to-head</span> against the oh-my-pi agent
+                <span className="text-gold">head-to-head</span> against the oh-my-pi agent
                 itself, same 106 fixtures, edit format pinned, 3 runs per task:{" "}
-                <span className="text-ink">identical best-of-3 scores on every model</span>{" "}
-                — and <span className="text-glow">2.4–5.4× fewer input tokens</span> per
+                <span className="text-ink">identical best-of-3 scores on every model</span>,{" "}
+                — and <span className="text-gold">2.4–5.4× fewer input tokens</span> per
                 task.
               </p>
               <p className="font-mono text-[10.5px] leading-relaxed text-dim">
@@ -311,7 +310,7 @@ export function BenchmarksSection() {
             <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
               pass 10/10 → 10/10 on every model, both passes — memory buys efficiency,
               not correctness; the full{" "}
-              <a href="#memory-lift" className="text-glow underline-offset-2 hover:underline">
+              <a href="#memory-lift" className="text-gold underline-offset-2 hover:underline">
                 cold-vs-warm chart
               </a>{" "}
               is below.
@@ -352,18 +351,18 @@ export function BenchmarksSection() {
             it also breaks the column rhythm between the track grid and the
             regression panel, the way the stat band does above. */}
         <FadeUp delay={0.05}>
-          <div id="memory-lift" className="gb-panel mt-6 scroll-mt-16 p-6" data-tone="amber">
+          <div id="memory-lift" className="gb-panel mt-6 scroll-mt-16 p-6" data-tone="magma">
             <div className="flex flex-wrap items-center gap-3">
-              <Repeat className="size-5 shrink-0 text-glow" aria-hidden="true" />
+              <Repeat className="size-5 shrink-0 text-gold" aria-hidden="true" />
               <h3 className="text-[15px] font-medium text-ink">Memory lift, cold vs warm</h3>
-              <span className="bg-glow/10 px-1.5 py-0.5 font-mono text-[10.5px] text-glow">
+              <span className="bg-gold/10 px-1.5 py-0.5 font-mono text-[10.5px] text-gold">
                 n=10 · single run per phase
               </span>
               <a
                 href={`${BENCH_URL}/selfimprove/results`}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="ml-auto inline-flex items-center gap-1.5 font-mono text-[11px] text-glow underline-offset-4 hover:underline"
+                className="ml-auto inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
               >
                 benchmarks/selfimprove/results/
                 <ExternalLink className="size-3" aria-hidden="true" />
@@ -371,7 +370,7 @@ export function BenchmarksSection() {
             </div>
             <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
               The eval the self-improvement claim rests on: each model solved the same
-              10-task Python Exercism set cold (fresh project, fresh memory), then warm —
+              10-task Python Exercism set cold (fresh project, fresh memory), then warm:
               a brand-new workspace carrying only the dreamed memory from its cold pass,
               no source files shared, memory verified changed per task before the warm
               pass. Bars are input tokens, normalized per model: cold is the 100%
@@ -385,7 +384,7 @@ export function BenchmarksSection() {
                 cold
               </span>
               <span className="flex items-center gap-1.5">
-                <span aria-hidden="true" className="h-1.5 w-4 bg-glow" />
+                <span aria-hidden="true" className="h-1.5 w-4 bg-gold" />
                 warm · fewer input tokens
               </span>
               <span className="flex items-center gap-1.5">
@@ -430,21 +429,20 @@ export function BenchmarksSection() {
             </div>
 
             <p className="mt-5 font-mono text-[10.5px] leading-relaxed text-dim">
-              <span className="text-glow">read it honestly:</span> pass-rate lift is 0pp
-              across the board — two of three models spent <em>more</em> input tokens with
-              memory in the loop, and kimi-k2.5 still finished 35% faster; qwen3.6-plus
-              took both wins. On tasks the model can already solve, memory buys
-              efficiency, not correctness. Single run per phase — deltas are direction,
-              not significance.
+              <span className="text-gold">Pass-rate lift is 0pp</span> across the board:
+              two of three models spent <em>more</em> input tokens with memory in the loop,
+              and kimi-k2.5 still finished 35% faster; qwen3.6-plus took both wins. On
+              tasks the model can already solve, memory buys efficiency, not correctness.
+              Single run per phase, so the deltas are direction rather than significance.
             </p>
 
-            <div className="gb-box mt-4 p-4" data-tone="amber">
+            <div className="gb-box mt-4 p-4" data-tone="magma">
               <p className="gb-label text-[10px] text-canvas">
-                Negative control (v1) — not published as a memory effect
+                Negative control (v1): not published as a memory effect
               </p>
               <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-canvas">
                 kimi-k2.5 with only thin session summaries as notes showed −25.6% input
-                and 64s → 34s (−46.9%) wall time warm — with an{" "}
+                and 64s → 34s (−46.9%) wall time warm, with an{" "}
                 <span className="font-medium text-canvas">unchanged memory file</span>. That saving is
                 upstream prompt caching on near-identical prompts, not memory; v1 is
                 kept as the control arm that isolates the confound. v2 above is what we
@@ -458,18 +456,18 @@ export function BenchmarksSection() {
             while the agent rewrites itself. Numbers are the committed test
             suites — checkable by running them. */}
         <FadeUp delay={0.05}>
-          <div className="mt-6 gb-panel p-6" data-tone="amber">
+          <div className="mt-6 gb-panel p-6">
             <div className="flex flex-wrap items-center gap-3">
-              <ShieldCheck className="size-5 shrink-0 text-glow" aria-hidden="true" />
+              <ShieldCheck className="size-5 shrink-0 text-gold" aria-hidden="true" />
               <h3 className="text-[15px] font-medium text-ink">
                 The regression layer below the loop
               </h3>
-              <span className="bg-glow/10 px-1.5 py-0.5 font-mono text-[10.5px] text-glow">
+              <span className="bg-gold/10 px-1.5 py-0.5 font-mono text-[10.5px] text-gold">
                 641 harness tests · 0 fail
               </span>
             </div>
             <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
-              A self-improving agent regresses its own harness first — a bad memory ship
+              A self-improving agent regresses its own harness first: a bad memory ship
               looks exactly like a better model. So the loop sits on a locked suite that
               must stay green while everything above it evolves: the dashboard&apos;s pure
               logic, the bridge&apos;s routing and retry math, the engine&apos;s memory
@@ -485,7 +483,7 @@ export function BenchmarksSection() {
                 {
                   v: "95",
                   l: "llm-bridge unit tests",
-                  d: "model routing, tool-call sanitizing, SSE stats folding, retry/backoff math — 6,197 assertions",
+                  d: "model routing, tool-call sanitizing, SSE stats folding, retry/backoff math; 6,197 assertions",
                 },
                 {
                   v: "384",
@@ -494,7 +492,7 @@ export function BenchmarksSection() {
                 },
               ].map((c) => (
                 <div key={c.l} className="gb-inset p-4">
-                  <p className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-glow">
+                  <p className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-gold">
                     {c.v}
                   </p>
                   <p className="mt-1 text-[13px] font-medium text-ink">{c.l}</p>
@@ -504,17 +502,17 @@ export function BenchmarksSection() {
             </div>
             <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[10.5px] leading-relaxed text-faint">
               <span>
-                <span className="text-glow">CI</span> lint · typecheck · unit · shell-syntax
-                · theme — every push
+                <span className="text-gold">CI</span> lint · typecheck · unit · shell-syntax
+                · theme, every push
               </span>
               <span>
-                <span className="text-glow">hook corpus</span> 38 adversarial commands; the
+                <span className="text-gold">hook corpus</span> 38 adversarial commands; the
                 bypasses the corpus found (wrapped <span className="text-ink">rm -rf /</span>,
                 <span className="text-ink"> $&#123;HOME&#125;</span> expansion, fork-bomb
                 variants, numeric-IP egress, symlink jail escape) are closed and pinned
               </span>
               <span>
-                <span className="text-glow">runs on</span> bun test · zero new dependencies
+                <span className="text-gold">runs on</span> bun test · zero new dependencies
               </span>
             </div>
           </div>
@@ -522,9 +520,9 @@ export function BenchmarksSection() {
 
         {/* methodology + what we did not do */}
         <FadeUp delay={0.08}>
-          <div className="mt-6 grid gap-6 gb-panel p-6 lg:grid-cols-[minmax(0,1fr)_18rem]" data-tone="amber">
+          <div className="mt-6 grid gap-6 gb-panel p-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
             <div>
-              <p className="gb-label text-[10px] text-glow">
+              <p className="gb-label text-[10px] text-gold">
                 Methodology
               </p>
               <div className="mt-4 grid gap-5 sm:grid-cols-2">
@@ -539,7 +537,7 @@ export function BenchmarksSection() {
                   },
                   {
                     t: "Official harnesses",
-                    d: "evalplus CLI, oh-my-pi's own edit benchmark, Aider's polyglot protocol — no home-rolled scoring.",
+                    d: "evalplus CLI, oh-my-pi's own edit benchmark, Aider's polyglot protocol; nothing home-rolled.",
                   },
                   {
                     t: "Receipts in the repo",
@@ -554,7 +552,7 @@ export function BenchmarksSection() {
               </div>
             </div>
 
-            <div className="gb-box p-4" data-tone="amber">
+            <div className="gb-box p-4">
               <p className="gb-label text-[10px] text-canvas">
                 What we did not run
               </p>

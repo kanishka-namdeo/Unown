@@ -20,6 +20,7 @@ surface treatment all did, and the reasoning for each is below.
 - [Part 8 — Headline work](#part-8--headline-work)
 - [Part 9 — How to keep it honest](#part-9--how-to-keep-it-honest)
 - [Part 10 — The second scheme, and where the colour is allowed to live](#part-10--the-second-scheme-and-where-the-colour-is-allowed-to-live)
+- [Part 11 — The generation changes: Game Boy Advance, and a grid you can check](#part-11--the-generation-changes-game-boy-advance-and-a-grid-you-can-check)
 
 Related pages: [benchmark-research.md](benchmark-research.md) — the numbers the
 page quotes; the page's binding contract lives one level up in
@@ -118,6 +119,9 @@ The second redesign. The alphabet stayed; everything it is printed on changed.
   fixed CRT scanline layer sits over that — the grid is the screen, the
   scanlines are the camera.
 
+*This part describes the pre-GBA palette and is superseded by Part 11; it is
+kept because it records why the page went retro in the first place.*
+
 ## Part 4 — Motion rules
 
 The rule the page follows everywhere: **motion is additive, never
@@ -201,7 +205,7 @@ Everything shipped is either generated here or explicitly licensed:
 | Asset | Source | Licence | How it ships |
 |---|---|---|---|
 | The 28-form script | drawn in this repo | ours | inline SVG path data |
-| LCD pixel grid + CRT scanlines | repeating gradients in `landing.css` | ours (generated) | a few hundred bytes, no `feTurbulence`, no network request |
+| LCD pixel grid | repeating gradients in `landing.css` | ours (generated) | a few hundred bytes, no `feTurbulence`, no network request |
 | Press Start 2P, Pixelify Sans, VT323 | Google Fonts | OFL-1.1 | self-hosted by `next/font`; pixel chrome, headings and terminal/dialogue text |
 | Geist Sans | Vercel | OFL-1.1 | self-hosted by `next/font`; all body copy — a pixel body face costs readability and the Lighthouse 1.00 |
 | Provider marks | Simple Icons | CC0-1.0 | path data vendored by `scripts/vendor-provider-marks.mjs` |
@@ -240,6 +244,11 @@ Live dashboard captures in `public/landing/`, seeded with real engine data:
 - New lore goes through Part 5 before it goes into `lexicon.ts`.
 
 ## Part 10 — The second scheme, and where the colour is allowed to live
+
+*Superseded by Part 11 — the DMG reflector premise and the Super Game Boy frame
+rule were replaced by the Game Boy Advance palette; the disclosures below are
+kept because they are the precedent Part 11 follows for disclosing
+art-direction.*
 
 The page originally shipped one scheme: the emissive green-on-black everyone
 associates with the handheld. It now ships two, and the second one had to be as
@@ -316,3 +325,134 @@ body copy and headings stay DMG, and the colour budget is spent on chrome.
   collapses: one accent that passes on a dark panel fails on a pale reflector.
 - **Pixel-sampling a photographed DMG screen** for the reflector — it costs the
   contrast headroom the AA contract needs. Disclosed and tuned instead.
+
+## Part 11 — The generation changes: Game Boy Advance, and a grid you can check
+
+The page now simulates a [Game Boy Advance](https://en.wikipedia.org/wiki/Game_Boy_Advance) —
+a 2001 full-colour TFT handheld — and the whole colour system moved with it: two
+schemes, five hues, and a hardware rule a reader can check. Parts 3b and 10 are
+superseded on colour and stay as written; their disclosures are the precedent
+this part follows.
+
+### Why the DMG premise had to go
+
+- A GBA screen is **full-colour** — 15 bits per pixel, 32,768 colours on screen
+  ([Tonc](https://gbadev.net/tonc/hardware.html)) — so "monochrome play area,
+  colour only in the frame" cannot survive as a rule. There is no monochrome
+  play area to protect.
+- The Super Game Boy is a **different machine** from the one now referenced: a
+  1994 SNES accessory, not a GBA feature. And even the DMG-01 quad Parts 3b and
+  10 are built on cannot be painted on a GBA — `0f`, `38`, `30`, `9b` and `bc`
+  are not channel values the panel can produce.
+
+### The hardware rule, and why it is checkable
+
+- A GBA pixel stores **5 bits per channel** (0-31)
+  ([Tonc](https://gbadev.net/tonc/hardware.html)), and a ROM palette value `v`
+  reaches the screen as `floor(255*v/31)`
+  ([GBATEK, LCD Colour Palettes](https://problemkaputt.de/gbatek-lcd-color-palettes.htm))
+  — which admits exactly **32 values per channel**:
+  `00 08 10 18 20 29 31 39 41 4a 52 5a 62 6a 73 7b 83 8b 94 9c a4 ac b4 bd c5 cd d5 de e6 ee f6 ff`.
+- Consequences worth stating plainly: `#ffffff` **is** a legal GBA colour and
+  `#f8f8f8` **is not**. Everything the previous palette leaned on was off the
+  grid — `#0a140a`, `#0f1d0f`, `#142614`, `#e9f6d9`, `#b3cf90`, `#88a66a`,
+  `#9bbc0f`, `#c3e06a`, `#ffcb05`, `#ff6a4d`, `#eae5c8`, `#5f7f4a`, `#04100a`,
+  and the four SGB hues `#f8e8c8`/`#d89048`/`#e86a5a`/`#b48cf2`.
+- The reference palettes are **ROM data, not taste**: `pret/pokeruby`'s
+  [`graphics/` `.pal` files](https://github.com/pret/pokeruby) are published as
+  the Lospec
+  "[Pokémon Ruby & Sapphire Exterior](https://lospec.com/palette-list/pokemon-ruby-sapphire-exterior)"
+  (56 swatches) and
+  "[Interior](https://lospec.com/palette-list/pokemon-ruby-sapphire-interior)"
+  (33 swatches) sets, and every swatch in both renders onto the 32-value grid.
+- `scripts/gba_palette_check.mjs` fails the run on any channel value not on the
+  grid. That is what turns the sentence "every colour on this page is a legal
+  Game Boy Advance colour" from a vibe into a falsifiable claim.
+
+### The two schemes are the two halves of the generation
+
+- **DARK is Hoenn at night (Ruby/Sapphire/Emerald).** The canvas family is the
+  navy the menu, the PokéNav and the cave interiors are drawn from; the panels
+  step up `#102039 → #182952 → #29315a`, the ink is `#dee6ee`, and the
+  navy-plus-gold pairing (`#ffc55a`) is what reads Gen 3 to anyone who grew up
+  in it.
+- **LIGHT is Kanto in daylight (FireRed/LeafGreen).** The canvas is the interior
+  cream `#e6e6d5` (panels `#d5d5b4`/`#cdcdc5`), the ink is that same Hoenn navy
+  — the two schemes share their darkest value.
+- **The honest caveat: no public FireRed/LeafGreen `.pal` dump exists.** The
+  light scheme is built from the verified RSE dumps pushed to their warm,
+  bright end. That is disclosed art-direction, in the same tradition as
+  Part 10's reflector disclosure — nothing on the page should be read as
+  claiming the light values were sampled from an FRLG ROM.
+
+### The five hues, and where each comes from
+
+- **aqua** (dark `#62acee` / light `#203952`) and **magma** (`#ff8b41` /
+  `#732908`) are Ruby's and Sapphire's two teams. **leaf** (`#83c562` /
+  `#294118`) is Hoenn's grass plus Emerald's documented blue→green shift of the
+  window-frame hue
+  ([Voliol, Pokémon Palettes in Generation III](https://voliol.neocities.org/articles/genIIIpalettes)).
+  **psychic** (`#f67b9c` / `#6a2052`) is Unown's own Pokémon type
+  ([ColorDex](https://www.pokemonaaah.net/art/colordex/)), snapped onto the
+  grid. **gold** (`#ffc55a` / `#5a3108`) is the default — Gen 3's menu
+  highlight.
+- Each hue ships a `-field` companion used as that section's tinted surface:
+  aqua `#102939`/`#dee6ee`, magma `#291020`/`#eed5cd`, leaf `#102918`/`#d5e6cd`,
+  psychic `#291029`/`#e6d5de`, gold `#292010`/`#eee6cd`. Colour now rides on the
+  section itself, not its chrome — the fields are the successor to the frame
+  rule.
+- **Allocation is a rule, not a vibe:** `psychic` is reserved for the three
+  sections about Unown itself (hero, alphabet, field notes); the remaining ten
+  sections cycle aqua → leaf → magma → gold in page order.
+
+### What the CRT layer was doing there, and why it is gone
+
+- The old page painted a fixed CRT scanline + vignette layer **over an LCD
+  simulation** — a camera looking at a tube that the machine never had. A GBA is
+  a thin-film-transistor panel
+  ([Wikipedia](https://en.wikipedia.org/wiki/Game_Boy_Advance)); it has no
+  scanlines, so the layer could not survive the move.
+- The LCD pixel grid stays — the panel is still made of addressable squares —
+  retuned from 4px to 3px because the GBA's dot pitch is much finer than the
+  1989 handheld's. It remains art-directed for the same disclosed reason as
+  before: a browser cannot address 0.25mm, only approximate it.
+
+### Contrast, measured, both schemes
+
+- The invariant widened with the fields: a text token is no longer checked only
+  against the three neutral surfaces, but against **all five section fields and
+  every `/10` tint chip composited over each field — 43 surfaces per scheme**.
+- The widening was caused by a real regression the first version of the static
+  gate missed: it checked each accent only against *its own* field, and
+  `text-gold` inside a magma section resolved to **4.49:1** — a pass that was
+  not one.
+- Worst-case ratio per text token, measured over all 43 surfaces:
+  - DARK: `ink` 9.57 · `dim` 7.49 · `faint` 5.74 · `gold` 7.69 ·
+    `gold-soft` 9.47 · `amber` 7.39 · `poke` 4.53 · `aqua` 4.97 ·
+    `magma` 5.18 · `leaf` 5.82 · `psychic` 4.73
+  - LIGHT: `ink` 9.81 · `dim` 8.55 · `faint` 7.52 · `gold` 6.73 ·
+    `gold-soft` 7.84 · `amber` 6.15 · `poke` 6.46 · `aqua` 7.15 ·
+    `magma` 6.17 · `leaf` 6.78 · `psychic` 6.51
+- The live browser audit (`scripts/contrast_audit.mjs`) scanned **1059 visible
+  text nodes across both schemes and reported zero AA failures** — the gate for
+  this paragraph, same as before.
+
+### Rejected
+
+- **Inventing FireRed/LeafGreen hexes.** There is no dump to quote, so a
+  "sampled" light scheme would be a citation to a ROM that does not exist in
+  public. Disclosed art-direction instead.
+- **Keeping the frame-only colour discipline.** It describes an SNES accessory,
+  and it would strand five verified GBA hues in chrome on a machine whose whole
+  point is a colour screen.
+- **Keeping the scanline layer.** A GBA has none; there is no honest reading of
+  the hardware on which it belongs.
+- **A `filter: brightness()` hover.** Brightening a legal colour by a float
+  factor invents an off-grid value — the claim dies at the first hover. The
+  GBA's own route to a lighter step is
+  [colour special effects](https://problemkaputt.de/gbatek-lcd-i-o-color-special-effects.htm)
+  (alpha blending / brightness shifts), and `color-mix()` in the CSS is that
+  mechanism.
+- **Snapping the palette to multiples of 8.** A tempting 5-bit-ish grid — and a
+  *different* 5-bit scale from `floor(255*v/31)`. It would have broken every
+  value the ROM dumps actually use; `ff` alone is not a multiple of 8.

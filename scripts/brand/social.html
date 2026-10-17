@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>unown — GitHub social preview</title>
+    <!--
+      PALETTE: Game Boy Advance / Pokemon Generation III, dark scheme
+      ("Hoenn at night") — the same token table the marketing page ships in
+      src/app/globals.css `@theme`.
+
+      HARD RULE — every colour channel here is one of the 32 values a 5-bit
+      GBA channel can take, rendered as floor(255*v/31):
+        00 08 10 18 20 29 31 39 41 4a 52 5a 62 6a 73 7b 83 8b 94 9c a4 ac
+        b4 bd c5 cd d5 de e6 ee f6 ff
+      #102039 and #ffffff are legal; #f8f8f8, #121212 and the old emerald
+      #34d399 are NOT. Alpha is its own channel, so rgba() of an on-grid
+      colour stays on-grid. `scripts/gba_palette_check.mjs` gates the CSS;
+      this file is outside its scope, but the card exists to agree with the
+      page's claim that every colour is a legal GBA colour — an off-grid hex
+      here makes that claim false. Check before you commit.
+
+      Roles used: canvas #102039 · ink #dee6ee · dim #bdcde6 · gold #ffc55a ·
+      aqua #62acee.
+
+      NO POKEMON ASSETS: no official sprite, card, art or font. The mark is
+      this project's own observing-eye glyph (public/logo.svg, recoloured),
+      and the faces are webfont-free SIL OFL Geist / Geist Mono.
+
+      Rendered by scripts/brand_render.mjs at 1280x640 CSS px, dsf 2 ->
+      2560x1280, then downscaled to exactly 1280x640 by curate_assets.mjs
+      and PNG-8 quantised. Everything therefore has to survive a 2x
+      reduction: hairlines are 2 CSS px minimum and type is deliberately
+      oversized, because GitHub shows this at ~50% in a dark feed.
+    -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --canvas: #102039;
+        --ink: #dee6ee;
+        --dim: #bdcde6;
+        --gold: #ffc55a;
+        --aqua: #62acee;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1280px;
+        height: 640px;
+      }
+
+      body {
+        position: relative;
+        overflow: hidden;
+        background: var(--canvas);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      /* the map grid a Gen 3 route is built on */
+      .field {
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(
+            to right,
+            rgba(98, 172, 238, 0.09) 2px,
+            transparent 2px
+          ),
+          linear-gradient(
+            to bottom,
+            rgba(98, 172, 238, 0.09) 2px,
+            transparent 2px
+          );
+        background-size: 80px 80px;
+        background-position: 50% 0;
+      }
+
+      /*
+       * The glow, dithered rather than blurred. A GBA has no continuous-tone
+       * blur: a brightening is a change in the DENSITY of a two-colour
+       * checkerboard, not its alpha. Four concentric bands of the same
+       * aqua-on-canvas weave, each a step coarser and a step sparser than
+       * the one inside it — the `.gb-dither` mechanism from landing.css
+       * stacked into a ramp. Aqua, not gold, so the gold mark keeps its
+       * figure/ground separation and the halo reads as the map lighting up.
+       *
+       * Keep the coverage low: a dense checker reads as an alpha-channel
+       * placeholder, not as a glow. Weaves are oversized versus the banner
+       * because this file is halved on the way to 1280x640.
+       */
+      .dither {
+        position: absolute;
+        left: 50%;
+        top: -60px;
+        width: 1160px;
+        height: 820px;
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+      .dither i {
+        position: absolute;
+        inset: 0;
+        display: block;
+        background-repeat: repeat;
+        --r: 46% 32%;
+        --cx: 50%;
+        --cy: 33%;
+      }
+      .b1 {
+        background-image: repeating-conic-gradient(
+          rgba(98, 172, 238, 0.22) 0% 25%,
+          transparent 0% 50%
+        );
+        background-size: 8px 8px;
+        -webkit-mask-image: radial-gradient(
+          ellipse var(--r) at var(--cx) var(--cy),
+          #000 0 20%,
+          transparent 30%
+        );
+      }
+      .b2 {
+        background-image: repeating-conic-gradient(
+          rgba(98, 172, 238, 0.16) 0% 25%,
+          transparent 0% 50%
+        );
+        background-size: 14px 14px;
+        -webkit-mask-image: radial-gradient(
+          ellipse var(--r) at var(--cx) var(--cy),
+          transparent 0 18%,
+          #000 27% 41%,
+          transparent 50%
+        );
+      }
+      .b3 {
+        background-image: repeating-conic-gradient(
+          rgba(98, 172, 238, 0.11) 0% 25%,
+          transparent 0% 50%
+        );
+        background-size: 22px 22px;
+        -webkit-mask-image: radial-gradient(
+          ellipse var(--r) at var(--cx) var(--cy),
+          transparent 0 39%,
+          #000 47% 63%,
+          transparent 71%
+        );
+      }
+      .b4 {
+        background-image: repeating-conic-gradient(
+          rgba(98, 172, 238, 0.07) 0% 25%,
+          transparent 0% 50%
+        );
+        background-size: 32px 32px;
+        -webkit-mask-image: radial-gradient(
+          ellipse var(--r) at var(--cx) var(--cy),
+          transparent 0 61%,
+          #000 69% 87%,
+          transparent 98%
+        );
+      }
+
+      .stack {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transform: translateY(-6px);
+      }
+
+      .mark {
+        display: block;
+        width: 132px;
+        height: 132px;
+      }
+
+      .word {
+        margin-top: 26px;
+        font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+        font-weight: 700;
+        font-size: 132px;
+        line-height: 1;
+        letter-spacing: -0.045em;
+        color: var(--ink);
+      }
+
+      .tag {
+        margin-top: 22px;
+        font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+        font-weight: 500;
+        font-size: 46px;
+        line-height: 1.1;
+        letter-spacing: -0.015em;
+        color: var(--dim);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="field"></div>
+    <div class="dither" aria-hidden="true">
+      <i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i>
+    </div>
+
+    <div class="stack">
+      <!-- the observing eye — public/logo.svg, recoloured only -->
+      <svg class="mark" viewBox="0 0 128 128" aria-hidden="true">
+        <g stroke="#ffc55a" stroke-width="10" stroke-linecap="round" fill="none">
+          <circle cx="64" cy="64" r="40" />
+          <path d="M37 36 L23 22" />
+          <path d="M91 36 L105 22" />
+          <path d="M64 106 L64 118" />
+        </g>
+        <circle cx="64" cy="64" r="13" fill="#ffc55a" />
+      </svg>
+
+      <h1 class="word">unown</h1>
+      <p class="tag">The self-improving coding agent</p>
+    </div>
+  </body>
+</html>
