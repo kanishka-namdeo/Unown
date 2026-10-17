@@ -42,8 +42,8 @@ models.dev endpoint produces catalog drift (52 failures). The pinned snapshots l
 
 ```bash
 cd pi-repo/packages/ai
-MODELS_DEV_API_URL=../../benchmarks/snapshots/modelsdev-api-2026-08-25.json \
-OPENROUTER_MODELS_URL=../../benchmarks/snapshots/openrouter-models-2026-08-25.json \
+MODELS_DEV_API_URL=../../../benchmarks/snapshots/modelsdev-api-2026-08-25.json \
+OPENROUTER_MODELS_URL=../../../benchmarks/snapshots/openrouter-models-2026-08-25.json \
 node scripts/generate-models.ts --strict --data-only
 ```
 
