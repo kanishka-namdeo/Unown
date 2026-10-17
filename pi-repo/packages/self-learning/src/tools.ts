@@ -28,7 +28,7 @@
 import { spawn } from "node:child_process";
 import { type Dirent, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { type ExtensionAPI, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Key, Text } from "@earendil-works/pi-tui";
@@ -163,11 +163,47 @@ export interface SubagentRunResult {
 
 function getUnownInvocation(args: string[]): { command: string; args: string[] } {
         const currentScript = process.argv[1];
-        const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");
-        if (currentScript && !isBunVirtualScript && existsSync(currentScript)) {
+        if (currentScript && !isBunVirtualScriptPath(currentScript) && existsSync(currentScript)) {
                 return { command: process.execPath, args: [currentScript, ...args] };
         }
+        // Fallback. With shell:false, `spawn("unown")` cannot resolve unown.cmd
+        // on Windows — so there we re-resolve the actual CLI script (bin/unown,
+        // found by walking up from this module) and exec it with the current
+        // runtime, mirroring the primary path. POSIX keeps the PATH lookup.
+        if (process.platform === "win32") {
+                const cli = resolveUnownCliScript();
+                if (cli) return { command: process.execPath, args: [cli, ...args] };
+        }
         return { command: "unown", args };
+}
+
+// Bun compiled binaries run from a virtual filesystem: POSIX spells it
+// /$bunfs/root/…; the Windows form is a drive letter + backslashes,
+// C:\$bunfs\root\… (case-insensitive, either separator). Neither exists on
+// disk, so the primary exec path must never use them as the script.
+const BUN_FS_PREFIX_POSIX = "/$bunfs/root/";
+const BUN_FS_PREFIX_WIN = /^[a-zA-Z]:[\\/]\$bunfs[\\/]root[\\/]/i;
+
+/** True when `script` is Bun's virtual compiled-binary path in either
+ *  platform spelling. Exported for tests. */
+export function isBunVirtualScriptPath(script: string | undefined): boolean {
+        if (!script) return false;
+        return script.startsWith(BUN_FS_PREFIX_POSIX) || BUN_FS_PREFIX_WIN.test(script);
+}
+
+/** Locate the canonical CLI script: walk up from this module until a
+ *  directory containing bin/unown is found (pi-repo/packages/self-learning/src
+ *  -> … -> repo root/bin/unown). Cross-platform by construction — no PATH
+ *  or .cmd resolution involved. */
+export function resolveUnownCliScript(): string | null {
+        let dir = import.meta.dir;
+        for (;;) {
+                const candidate = join(dir, "bin", "unown");
+                if (existsSync(candidate)) return candidate;
+                const parent = dirname(dir);
+                if (parent === dir) return null;
+                dir = parent;
+        }
 }
 
 function assistantText(message: any): string {
@@ -185,6 +221,46 @@ function formatTokens(count: number): string {
         if (count < 1000) return String(count);
         if (count < 1_000_000) return `${Math.round(count / 1000)}k`;
         return `${(count / 1_000_000).toFixed(1)}M`;
+}
+
+interface KillableProc {
+        pid?: number | undefined;
+        kill(signal?: NodeJS.Signals | number): boolean;
+}
+
+/** Kill a timed-out / aborted subagent. Windows: bun's kill() emulation
+ *  hard-terminates only the DIRECT child while grandchildren survive, so
+ *  spawn System32 taskkill /F /T for a forceful tree kill (same approach as
+ *  pi's killProcessTree — not importable from the package root, so kept
+ *  local). POSIX: the subagent is spawned WITHOUT its own process group, so
+ *  a group kill is impossible (it would take the parent down too) — keep the
+ *  SIGTERM escalation on the direct child. */
+function killSubagentTree(proc: KillableProc): void {
+        if (process.platform === "win32") {
+                if (proc.pid === undefined) return;
+                try {
+                        const killer = spawn(
+                                join(process.env.SystemRoot ?? "C:\\Windows", "System32", "taskkill.exe"),
+                                ["/F", "/T", "/PID", String(proc.pid)],
+                                { stdio: "ignore", detached: true, windowsHide: true },
+                        );
+                        // A failed spawn emits "error" asynchronously; consume it
+                        // so it cannot crash the parent.
+                        killer.once("error", () => {});
+                } catch {
+                        try {
+                                proc.kill("SIGKILL");
+                        } catch {
+                                /* already gone */
+                        }
+                }
+                return;
+        }
+        try {
+                proc.kill("SIGTERM");
+        } catch {
+                /* already gone */
+        }
 }
 
 /** Spawn one unown subagent and collect its JSON event stream. */
@@ -286,19 +362,24 @@ export async function runSubagent(
 
                         const watchdog = setTimeout(() => {
                                 stderrBuffer += `\n(subagent timed out after ${SUBAGENT_TIMEOUT_MS / 1000}s and was killed)`;
-                                proc.kill("SIGTERM");
-                                setTimeout(() => {
-                                        try {
-                                                proc.kill("SIGKILL");
-                                        } catch {
-                                                /* already gone */
-                                        }
-                                }, 5000);
+                                killSubagentTree(proc);
+                                if (process.platform !== "win32") {
+                                        // POSIX escalation: SIGTERM (sent by killSubagentTree)
+                                        // then SIGKILL. On win32 taskkill /F /T is already a
+                                        // forceful tree kill — no second stage needed.
+                                        setTimeout(() => {
+                                                try {
+                                                        proc.kill("SIGKILL");
+                                                } catch {
+                                                        /* already gone */
+                                                }
+                                        }, 5000);
+                                }
                         }, SUBAGENT_TIMEOUT_MS);
 
                         const killProc = () => {
                                 stderrBuffer += "\n(subagent aborted)";
-                                proc.kill("SIGTERM");
+                                killSubagentTree(proc);
                         };
                         if (signal) {
                                 if (signal.aborted) killProc();
@@ -407,6 +488,21 @@ const DESTRUCTIVE_PATTERNS = [
         /\bsystemctl\s+(start|stop|restart|enable|disable)/i,
         /\bservice\s+\S+\s+(start|stop|restart)/i,
         /\b(vim?|nano|emacs|code|subl)\b/i,
+        // ---- Windows / PowerShell family (case-insensitive: PowerShell verbs
+        // and flags are case-insensitive at runtime, and `-flag`/`/flag` are
+        // both accepted). These are the chained-command backstop: a command
+        // must pass the SAFE allowlist AND contain none of these.
+        /\bremove-item\b/i, // any Remove-Item: plan mode is read-only (covers -Recurse/-Force/system dirs)
+        /\b(?:del|rd|rmdir|erase)\s[^\n]*\/s\b/i, // recursive cmd deletes (bare `del file` chained is a known residual)
+        /\bformat\s+[a-zA-Z]:/i,
+        /\breg\s/i, // any reg.exe use (query included — plan mode never touches the registry)
+        /\bbcdedit\b/i,
+        /\bdiskpart\b/i,
+        /\bvssadmin\b/i,
+        /\bwbadmin\b/i,
+        /\bset-executionpolicy\b/i,
+        /\bstop-process\b/i,
+        /\btaskkill\s[^\n]*\/f\b/i,
 ];
 
 const SAFE_PATTERNS = [
@@ -458,6 +554,12 @@ const SAFE_PATTERNS = [
         /^\s*rg\b/,
         /^\s*fd\b/,
         /^\s*bat\b/,
+        // ---- Windows / PowerShell read-only family (case-insensitive).
+        /^\s*(Get-Content|Get-ChildItem|Get-Item|Get-Location|Get-Command|Get-Process|Get-Date|Select-String|Measure-Object|Test-Path)\b/i,
+        /^\s*dir\b/i, // cmd + PowerShell alias for Get-ChildItem
+        /^\s*where\.exe\b/i,
+        // (type and whoami are already above; kept case-sensitive with their POSIX peers.)
+        /^\s*(git|npm|node|python|bun)\s+--version\b/i,
 ];
 
 export function isSafeCommand(command: string): boolean {
