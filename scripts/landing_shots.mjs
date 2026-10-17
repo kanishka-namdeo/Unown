@@ -153,8 +153,8 @@ async function openPage(browser, opts = {}) {
  * would mean nothing. We compare resolved-vs-expected and hard-fail instead.
  */
 const SCHEMES = [
-  { scheme: "dark", canvas: "#0a140a", prefix: "" },
-  { scheme: "light", canvas: "#eae5c8", prefix: "light-" },
+  { scheme: "dark", canvas: "#102039", prefix: "" },
+  { scheme: "light", canvas: "#e6e6d5", prefix: "light-" },
 ];
 
 async function assertScheme(page, expectedCanvas, scheme) {
