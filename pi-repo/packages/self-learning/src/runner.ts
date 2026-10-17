@@ -215,7 +215,8 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                 ensureAgentDir();
 
                 // OS sandbox: route every agent bash-tool command through the
-                // generated bubblewrap wrapper (transparent when unavailable).
+                // generated per-OS wrapper — bubblewrap on Linux, seatbelt on
+                // macOS (transparent when unavailable).
                 const sandboxShell = writeSandboxShell(AGENT_DIR);
 
                 const hooksExt = createHooksExtension({

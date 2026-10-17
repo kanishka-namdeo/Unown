@@ -9,7 +9,7 @@
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { osSandboxAvailable, wrapCommand } from "./bwrap.ts";
+import { osSandboxAvailable, resolveOsSandboxBackend, wrapCommand } from "./bwrap.ts";
 import { DATA_DIR, store } from "./store.ts";
 
 export const SANDBOXES_DIR = join(DATA_DIR, "sandboxes");
@@ -50,11 +50,26 @@ export interface ExecResult {
 	stderr: string;
 	timedOut: boolean;
 	durationMs: number;
-	/** "bwrap" when the command ran under the OS sandbox, "process" otherwise. */
-	isolation: "bwrap" | "process";
+	/** Which OS sandbox the command ran under: "bwrap" (Linux), "seatbelt"
+	 *  (macOS) or "process" when no OS sandbox was available (TS path jail
+	 *  only — the transparent fallback). */
+	isolation: "bwrap" | "seatbelt" | "process";
 }
 
 const MAX_OUTPUT = 60_000;
+
+/** Child env for sandbox commands. HOME and USERPROFILE are BOTH pinned to
+ *  the sandbox root — POSIX ignores USERPROFILE and Windows ignores HOME, so
+ *  setting both is harmless everywhere and correct on each platform. The
+ *  POSIX PATH fallback applies only on POSIX hosts with PATH unset; on win32
+ *  a POSIX PATH string would poison the child, so there we omit PATH entirely
+ *  (the child falls back to the OS default search). */
+function buildSandboxChildEnv(sandboxRoot: string, extra?: Record<string, string>): Record<string, string> {
+	const env: Record<string, string> = { HOME: sandboxRoot, USERPROFILE: sandboxRoot };
+	if (process.env.PATH) env.PATH = process.env.PATH;
+	else if (process.platform !== "win32") env.PATH = "/usr/local/bin:/usr/bin:/bin";
+	return { ...env, ...extra };
+}
 
 export async function execInSandbox(
 	sandbox: Sandbox,
@@ -64,29 +79,29 @@ export async function execInSandbox(
 	const started = Date.now();
 	const timeoutMs = opts.timeoutMs ?? 30_000;
 	let timedOut = false;
-	// OS-level isolation when bubblewrap is available (fs + net confinement
-	// around the TS path jail); transparent fallback to plain exec.
-	let isolation: "bwrap" | "process" = "process";
+	// OS-level isolation when a backend is available (bubblewrap on Linux,
+	// seatbelt on macOS; fs + net confinement around the TS path jail);
+	// transparent fallback to plain exec.
+	let isolation: ExecResult["isolation"] = "process";
 	let cmd = command;
 	if (await osSandboxAvailable()) {
 		const wrapped = wrapCommand(command, sandbox.workspace);
 		if (wrapped) {
 			cmd = wrapped;
-			isolation = "bwrap";
+			isolation = resolveOsSandboxBackend() === "seatbelt" ? "seatbelt" : "bwrap";
 		}
 	}
 	const proc = Bun.spawn(cmd, {
 		cwd: sandbox.workspace,
-		env: {
-			PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
-			HOME: sandbox.root,
-			...opts.env,
-		},
+		env: buildSandboxChildEnv(sandbox.root, opts.env),
 		stdout: "pipe",
 		stderr: "pipe",
 	});
 	const timer = setTimeout(() => {
 		timedOut = true;
+		// kill(9) is a hard kill. No tree-kill needed: verify/exec commands run
+		// `bun` directly (no shell) and the minted verify scripts spawn nothing.
+		// (Bun maps kill(9) to TerminateProcess on win32.)
 		proc.kill(9);
 	}, timeoutMs);
 	const [stdout, stderr] = await Promise.all([

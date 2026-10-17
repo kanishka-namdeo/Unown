@@ -13,11 +13,14 @@ Related pages: [usage](usage.md) · [providers](providers.md) · [memory](memory
 
 ## 1. Prerequisites
 
-- [bun](https://bun.sh) ≥ 1.2 (install: `curl -fsSL https://bun.sh/install | bash`)
+- [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` (or `brew install bun`) · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal)
+- [git](https://git-scm.com) (any build; on Windows the standard Git-for-Windows install is fine)
 - An API key for any OpenAI-compatible provider — Dashscope, OpenAI, OpenRouter, Anthropic, DeepSeek, or a local server (vLLM, Ollama, llama.cpp)
-- Linux or macOS (bubblewrap OS-sandboxing is Linux-only; everything else works everywhere)
+- **Windows, macOS, or Linux** — the same commands and the full stack on all three. OS-level engine sandbox: Linux (bubblewrap) + macOS (seatbelt); native Windows uses the in-process path jail (WSL2 for kernel-grade isolation). Per-OS details: [Windows guide](windows.md) · [macOS guide](macos.md)
 
 ## 2. Install
+
+Identical on every OS:
 
 ```bash
 git clone https://github.com/kanishka-namdeo/Unown.git
@@ -25,7 +28,11 @@ cd Unown
 bun run agent:install
 ```
 
-This installs dashboard dependencies, installs and builds the vendored pi monorepo (`pi-repo/`), creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
+This installs dashboard dependencies, installs and builds the vendored pi monorepo (`pi-repo/`) — hydrating its provider model data on first run (that directory is gitignored upstream, so fresh clones fetch it once, ~1–2 min) — creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout; on Windows: `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1`). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
+
+> **Windows notes**
+> - If the installer just added `%USERPROFILE%\.local\bin` to your PATH, **restart your terminal** before `unown` resolves.
+> - cmd.exe picks up `unown.cmd` automatically; PowerShell users get `unown.ps1` (if script execution is disabled on a locked-down machine, run once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`).
 
 Verify:
 

@@ -110,7 +110,7 @@ The bridge turns one upstream into a clean local endpoint for the whole stack:
 - **SSE passthrough** — true streaming, tool calls and image content pass through verbatim.
 - **Guardrails** — request serialization + spacing (`BRIDGE_MIN_SPACING_MS`), time-to-headers timeout (`BRIDGE_UPSTREAM_TIMEOUT_MS`), 429/5xx backoff retries, optional shared secret (`BRIDGE_API_KEY`).
 
-`GET localhost:3031/health` reports the live state — including whether the upstream key is set and whether the upstream answers — which `unown doctor` and `scripts/start.sh` surface as actionable warnings.
+`GET localhost:3031/health` reports the live state — including whether the upstream key is set and whether the upstream answers — which `unown doctor` and `scripts/start.ts` surface as actionable warnings.
 
 **The `BRIDGE_API_KEY` coupling:** if you set a shared secret on the bridge, every client must present it — including the terminal agent. `unown setup --provider bridge` picks it up from the environment; if you set it *after* configuring, re-run setup (or hand-edit the `apiKey` in `~/.unown/agent/models.json`).
 

@@ -17,6 +17,7 @@
 // modified.
 
 import "./_env.ts";
+import { TEST_TMP } from "./_env.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -56,7 +57,7 @@ test("env redirect is active (never touch the live engine state)", () => {
         // Tripwire: if this fails, ./_env.ts was not the first import and the tests
         // would be running against the live engine store — abort loudly instead.
         // The exact /tmp root is co-owned with the parallel b-suite (test/_env.ts).
-        expect(DATA_DIR.startsWith("/tmp/engine-tests-")).toBe(true);
+        expect(DATA_DIR.startsWith(TEST_TMP)).toBe(true);
         expect(MEMORY_DIR).toBe(join(DATA_DIR, "memory"));
 });
 

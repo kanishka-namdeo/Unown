@@ -20,6 +20,7 @@
 // under /tmp/, so a project fixture inside /tmp would mask every traversal
 // escape (they would all resolve into the allowed /tmp subtree).
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
+import { TEST_TMP } from "./_env.ts";
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdirSync, readlinkSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
@@ -41,7 +42,7 @@ if (!process.env.UNOWN_TEST_KEEP_FIXTURES) symlinkSync(OUTSIDE, join(PROJ, "link
 
 afterAll(() => {
         rmSync(VT_ROOT, { recursive: true, force: true });
-        rmSync("/tmp/engine-tests-b/termhooks", { recursive: true, force: true });
+        rmSync(join(TEST_TMP, "termhooks"), { recursive: true, force: true });
 });
 
 // ---------------------------------------------------------------------------

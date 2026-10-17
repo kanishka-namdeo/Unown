@@ -20,15 +20,17 @@
 // QUIRK/BUG comments pin current behavior; the module is NOT modified.
 
 import "./_env.ts";
+import { TEST_TMP } from "./_env.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DATA_DIR, store } from "../src/store.ts";
 import { TASK_DEFS, buildVerify, getTask, listTasks, seedTasks, type TaskDef } from "../src/tasks.ts";
 
-const FIXTURE_ROOT = "/tmp/engine-tests-tasks";
+const FIXTURE_ROOT = join(tmpdir(), "engine-tests-tasks");
 
 const sha256 = (s: string): string => createHash("sha256").update(s, "utf8").digest("hex");
 
@@ -96,7 +98,7 @@ afterAll(() => {
 test("env redirect is active (never touch the live engine db)", () => {
         // Tripwire: if this fails, ./_env.ts was not the first import and the tests
         // would be running against the live engine store — abort loudly instead.
-        expect(DATA_DIR.startsWith("/tmp/engine-tests-")).toBe(true);
+        expect(DATA_DIR.startsWith(TEST_TMP)).toBe(true);
         expect(DATA_DIR).toContain("/data");
 });
 

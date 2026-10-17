@@ -14,6 +14,7 @@ Use it two ways:
 - **As a learning backend** — the engine keeps running harness cycles, AutoDream consolidation and background jobs; your terminal sessions feed it notes, and it writes improved memory back into your project.
 
 <p align="center">
+  <a href="https://github.com/kanishka-namdeo/Unown/actions/workflows/ci.yml"><img src="https://github.com/kanishka-namdeo/Unown/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.4.3-black?logo=bun" alt="Bun"></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-7.0.2-3178C6?logo=typescript&amp;logoColor=white" alt="TypeScript"></a>
   <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-16.4-black?logo=nextdotjs" alt="Next.js"></a>
@@ -113,6 +114,8 @@ Full usage docs live in [`docs/`](docs/):
 | [oh-my-pi-swap-assessment](docs/oh-my-pi-swap-assessment.md) | decision record: why the vendored pi harness stays, and what would reopen that call |
 | [opencode-swap-assessment](docs/opencode-swap-assessment.md) | decision record: opencode clears both harness chokepoints, and is still not adoptable — why the blocker moved to the artifact |
 | [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout |
+| [windows guide](docs/windows.md) | native Windows: install, cmd/PowerShell shims, Git Bash + the powershell tool, sandbox story, WSL2 |
+| [macos guide](docs/macos.md) | macOS: seatbelt sandbox notes, darwin prebuilds, install one-liners |
 | [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |
 
 ---
@@ -121,10 +124,14 @@ Full usage docs live in [`docs/`](docs/):
 
 ### Prerequisites
 
-- [bun](https://bun.sh) ≥ 1.2
+- [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal)
+- [git](https://git-scm.com) (any build; on Windows the standard Git-for-Windows install is fine)
 - An OpenAI-compatible LLM endpoint (see *Using a different model provider* below)
+- **Windows, macOS and Linux** — the full agent and stack run on all three; OS-level engine sandbox: **Linux (bubblewrap) + macOS (seatbelt)**; native Windows uses the in-process path jail (WSL2 gives you kernel-grade isolation). See the [Windows](docs/windows.md) and [macOS](docs/macos.md) guides
 
 ### 1. Install
+
+Identical on every OS:
 
 ```bash
 git clone https://github.com/kanishka-namdeo/Unown.git
@@ -132,7 +139,7 @@ cd Unown
 bun run agent:install
 ```
 
-This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/`), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` — see below).
+This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.
 
 ### 2. Connect a model
 
@@ -213,6 +220,8 @@ Install the command globally (optional):
 
 ```bash
 bun run agent:link         # writes a `unown` shim into ~/.local/bin → this checkout
+                         # (Windows: %USERPROFILE%\.local\bin\unown.cmd + unown.ps1,
+                         #  and appends the dir to your user PATH)
 ```
 
 A shim (not `bun install -g .`) is the supported global-install path: it keeps the vendored pi workspace resolution and subagent spawning intact. Re-run it after moving the repo. Full reference: [docs/usage.md](docs/usage.md).
@@ -312,7 +321,7 @@ The engine writes the provider into `data/self-learning/pi-agent-dir/models.json
 
 ## Security model
 
-- **Sandboxes (OS-level)**: every engine run — verify scripts *and* the agent's own bash commands — executes under [bubblewrap](https://github.com/containers/bubblewrap) (the same foundation Flatpak, Claude Code and Codex use for Linux sandboxing): read-only root filesystem, private `/home` `/tmp` `/run` (the repo, `.env` secrets and engine data are invisible), killed network namespace, dropped capabilities. On hosts without bubblewrap the engine falls back to the in-process path jail. Set `UNOWN_OS_SANDBOX=0` to disable, `UNOWN_SANDBOX_NET=1` to keep the network shared. A verified bwrap binary is vendored in `pi-repo/packages/self-learning/native/` with recorded sha256 provenance.
+- **Sandboxes (OS-level)**: every engine run — verify scripts *and* the agent's own bash commands — executes under the OS sandbox: **bubblewrap** on Linux (the same foundation Flatpak, Claude Code and Codex use for Linux sandboxing: read-only root filesystem, private `/home` `/tmp` `/run`, killed network namespace, dropped capabilities) and **seatbelt (`sandbox-exec`)** on macOS with a bwrap-equivalent profile. **Native Windows has no OS sandbox** — engine runs there use the in-process path jail, the same degradation Claude Code ships on native Windows (WSL2 gives you kernel-grade isolation). On hosts without the OS sandbox the engine falls back to the path jail everywhere. Set `UNOWN_OS_SANDBOX=0` to disable, `UNOWN_SANDBOX_NET=1` to keep the network shared. A verified bwrap binary is vendored in `pi-repo/packages/self-learning/native/` with recorded sha256 provenance (Linux only).
 - **Sandboxes (process)**: executed commands are jailed to the workspace with timeouts and output caps; benchmark tests are sha256-pinned so the agent cannot tamper with verification.
 - **Hooks (engine)**: `PreToolUse` denies destructive shell (`rm -rf /`, `sudo`, outbound `curl`/`wget` to external hosts…), the path jail blocks escapes, and the `PostToolUse` syntax gate feeds transpiler errors back to the agent instead of letting broken code compound.
 - **Hooks (terminal)**: the same gate protects interactive sessions but scoped for real work — catastrophic commands (filesystem-root deletion, fork bombs, disk formats) and writes outside your project/`/tmp` are blocked; network, `git push` and installs stay available. `UNOWN_STRICT_HOOKS=1` restores the sandbox-grade policy.

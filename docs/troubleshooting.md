@@ -9,6 +9,7 @@ Related pages: [usage](usage.md) · [providers](providers.md) · [Memory](memory
   - [The chat path](#the-chat-path)
   - [The learning path](#the-learning-path)
   - [The CLI itself](#the-cli-itself)
+  - [Windows](#windows)
 - [Where the logs are](#where-the-logs-are)
 - [Resetting cleanly](#resetting-cleanly)
 - [Getting help](#getting-help)
@@ -78,7 +79,7 @@ unown session ──► ~/.unown/agent/models.json ──► the endpoint it nam
 
 Two of these deserve a sentence more:
 
-- **The PATH shim.** `scripts/link.sh` writes a small shim (default `~/.local/bin/unown`) that always executes *this checkout's* `bin/unown` with bun. A global `bun install -g .` is **not** the supported route — the shim keeps subagent spawning, the vendored `pi-repo/` workspace deps and `git pull` updates working with zero maintenance. If the shim's target dir is not on your `PATH`, the script prints the exact `export PATH=…` line to add.
+- **The PATH shim.** `scripts/link.ts` (via `bun run agent:link`) writes a small shim that always executes *this checkout's* `bin/unown` with bun — default `~/.local/bin/unown` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows (the dir is appended to your user PATH; restart your terminal after a fresh install). A global `bun install -g .` is **not** the supported route — the shim keeps subagent spawning, the vendored `pi-repo/` workspace deps and `git pull` updates working with zero maintenance. If the shim's target dir is not on your `PATH`, the script prints the exact line to add (`export PATH=…` on macOS/Linux; on Windows it updates the registry PATH for you).
 - **The stale-model case.** `models.json` is written once and then deliberately left alone (your hand edits are never clobbered). That is the right default — until the "once" was written by an older setup. `unown setup --force` overwrites it; deleting the file works too because the next run re-creates it from current env/defaults.
 
 ### The learning path
@@ -105,15 +106,29 @@ The learning path has three moving parts — capture, delivery, dreaming — and
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `unown: command not found` | The PATH shim is missing (or you moved the repo) | `bun run agent:link` (or `bash scripts/link.sh`) from the repo — see the PATH-shim note above |
-| `bun: command not found` | bun is not installed | Install it from <https://bun.sh> (≥ 1.2), then re-run `bun run agent:link` if you had a shim pointing at a stale bun path |
+| `unown: command not found` | The PATH shim is missing (or you moved the repo) | `bun run agent:link` (or `bash scripts/link.sh` on macOS/Linux) from the repo — see the PATH-shim note above |
+| `bun: command not found` | bun is not installed | Install it from <https://bun.sh> (≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install \| bash`; Windows: `powershell -c "irm bun.sh/install.ps1 \| iex"`), then re-run `bun run agent:link` if you had a shim pointing at a stale bun path |
 | Doctor: `OS sandbox (bubblewrap)` shows ⚠ | No bubblewrap on this host (macOS, or a Linux box without it) | Nothing to fix for chat. Engine runs fall back to the in-process path jail — OS-level isolation is Linux/bubblewrap only |
+
+### Windows
+
+The Windows-specific failure modes (the general rows above still apply). Full guide: [windows guide](windows.md).
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `'unown' is not recognized…` right after installing | The installer appended `%USERPROFILE%\.local\bin` to your **User PATH via the registry** (never `setx`), but the terminal you're typing in predates the change | Open a **new** terminal (cmd or PowerShell), then `unown doctor`. Still nothing? `bun run agent:link` from the repo and read its hint |
+| PowerShell: `…running scripts is disabled on this system` | The default execution policy blocks the `unown.ps1` shim | Once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` — or just call `unown.cmd` (cmd users never see this; from PowerShell `unown.cmd` works too) |
+| `'bun' is not recognized` / `bun: command not found` | bun not installed (or installed after the shim was written — the shims embed bun's path at link time) | `powershell -c "irm bun.sh/install.ps1 | iex"`, open a new terminal, then re-run `bun run agent:link` so the shim points at the new bun |
+| Dashboard: `Could not locate the bindings file` / `ERR_DLOPEN_FAILED` mentioning better-sqlite3 | better-sqlite3 13 ships **prebuilds for win32 x64/arm64 inside the package** — nothing compiles and there is no postinstall — so this means a broken install extract, not a missing toolchain | `rm -rf node_modules; bun install`. Note the engine never uses better-sqlite3 (it uses `bun:sqlite`): chat and learning are unaffected — this row is dashboard-only. If typecheck then misses `src/generated/prisma`, run `bun run db:generate` (that's what CI does) |
+| You want bwrap-grade sandbox isolation | Native Windows has no OS sandbox — engine runs use the in-process path jail there (the same degradation Claude Code ships on native Windows) | Use **WSL2**: install bun inside WSL2 (`curl -fsSL https://bun.sh/install | bash`), clone the repo there (keep it in the Linux filesystem, `~/…`, not `/mnt/c`) — on Linux the engine picks up the vendored bwrap automatically. Details: [windows guide § sandbox](windows.md#the-sandbox-story-on-windows) |
+
+The same logs apply as everywhere (`.run\bridge.log`, `.run\engine.log`, `.run\dashboard.log` inside the repo); `unown doctor` prints platform-aware rows (`OS sandbox (Windows)` ⚠ is *expected*, not a defect).
 
 ## Where the logs are
 
 | Location | What it holds |
 |----------|---------------|
-| `.run/bridge.log`, `.run/engine.log`, `.run/dashboard.log` | The three services as started by `scripts/start.sh` (pidfiles sit next to them in `.run/`; stop with `bun run agent:stop`) |
+| `.run/bridge.log`, `.run/engine.log`, `.run/dashboard.log` | The three services as started by `scripts/start.ts` (pidfiles sit next to them in `.run/`; stop with `bun run agent:stop`) |
 | `.zscripts/mini-service-<name>.log` | Services started via the dev supervisor (`.zscripts/dev.sh`) instead of `start.sh` |
 | `~/.unown/notes/outbox/` | Terminal notes queued because the engine was unreachable — the queue draining is itself a health signal |
 | `curl -s localhost:3031/health` | Live bridge state: `upstream {ok, status}`, `upstreamKeyIsSet`, `authRequired`, served `models` |

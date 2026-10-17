@@ -26,6 +26,8 @@
  *                 outbox for later sync; AutoDream then consolidates it into
  *                 the project's .unown/memory/project.md.
  */
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve as resolvePath } from "node:path";
 import { decideBash, jailPath, syntaxCheck } from "./hooks.ts";
 import { deliverTerminalNote } from "./term.ts";
@@ -125,6 +127,67 @@ const TERMINAL_BASH_DENY: { pattern: RegExp; reason: string }[] = [
                 pattern: /\btee\b[^\n|;&]*(?:\.ssh\/|\/(?:etc|usr|var|bin|sbin|boot|lib|root)\/)/,
                 reason: "refusing tee writes to system paths / SSH trust files",
         },
+        // ---- Windows catastrophic family. Matched on ALL platforms on
+        // purpose: Git Bash, WSL and the powershell tool make every Windows
+        // spelling reachable from any host. Mirrors the POSIX catastrophic
+        // classes above (drive root = `/`, system trees incl. the Users hive =
+        // /etc + /home); benign Windows-native reads (dir, Get-*, reg query,
+        // vssadmin list) stay allowed.
+        { pattern: /\bformat\s+[a-zA-Z]:/i, reason: "refusing drive format" },
+        {
+                // cmd tree deletes (del/rd/rmdir/erase) on drive roots — twin of
+                // the rm-on-filesystem-root rule. Flags may be `/`- or `-`-style,
+                // any order; `C:\` and `C:\*` blocked, `C:\subdir` not (same
+                // split as `rm /` vs `rm /etc`).
+                pattern:
+                        /\b(?:del|rd|rmdir|erase)\s+(?:[-/][a-zA-Z?*]+\s+)*[a-zA-Z]:[\\/](?:\s|\*|['"`;|&)]|[\\/]|$)/i,
+                reason: "refusing delete on Windows drive roots",
+        },
+        {
+                // …and on Windows system trees, incl. the Users hive (the POSIX
+                // rm rules block /home the same way — use relative paths for
+                // in-profile work, exactly the POSIX story).
+                pattern:
+                        /\b(?:del|rd|rmdir|erase)\s+(?:[-/][a-zA-Z?*]+\s+)*[a-zA-Z]:[\\/](?:Windows|Program Files(?: \(x86\))?|PerfLogs|System Volume Information|\$Recycle\.Bin|Users)(?:[\\/]|['"`;|&)]|\s|$)/i,
+                reason: "refusing delete on Windows system trees",
+        },
+        { pattern: /\breg\s+(?:add|delete|import)\b/i, reason: "refusing registry modification" },
+        { pattern: /\bbcdedit\b/i, reason: "refusing boot-configuration edits" },
+        { pattern: /\bdiskpart\b/i, reason: "refusing disk partitioning" },
+        { pattern: /\bvssadmin\s+delete\b/i, reason: "refusing shadow-copy deletion" },
+        { pattern: /\bwbadmin\s+delete\b/i, reason: "refusing backup deletion" },
+        { pattern: /\btakeown\s[^\n]*\/f\b/i, reason: "refusing ownership takeover" },
+        { pattern: /\bcipher\s+\/w\b/i, reason: "refusing free-space wipe" },
+        { pattern: /\bset-executionpolicy\b/i, reason: "refusing execution-policy changes" },
+        { pattern: /\b(?:powershell|pwsh)(?:\.exe)?\s[^\n]*-encodedcommand\b/i, reason: "refusing encoded command payloads" },
+        {
+                // Recursive Remove-Item against drive roots — twin of the
+                // rm-root rule. `Remove-Item -Recurse .\build` etc. stays
+                // allowed (catastrophic-only bar).
+                pattern:
+                        /\bremove-item\s(?=[^\n]*-recurse\b)[^\n]*[a-zA-Z]:[\\/](?:\s|\*|['"`;|&)]|[\\/]|$)/i,
+                reason: "refusing recursive delete on Windows drive roots",
+        },
+        {
+                // …and against Windows system trees (incl. Users — same
+                // rationale as the del rules).
+                pattern:
+                        /\bremove-item\s(?=[^\n]*-recurse\b)[^\n]*[a-zA-Z]:[\\/](?:Windows|Program Files(?: \(x86\))?|PerfLogs|System Volume Information|\$Recycle\.Bin|Users)(?:[\\/]|['"`;|&)]|\s|$)/i,
+                reason: "refusing recursive delete on Windows system trees",
+        },
+        {
+                // Killing the processes Windows cannot re-launch cleanly.
+                pattern: /\btaskkill\s[^\n]*\/im\s+["']?(?:svchost|wininit|csrss|lsass|explorer)\b/i,
+                reason: "refusing kills of critical system processes",
+        },
+        { pattern: /\bstop-process\s[^\n]*-name\s+["']?(?:svchost|wininit|csrss|lsass)\b/i, reason: "refusing kills of critical system processes" },
+        {
+                // Raw device namespace writes (\\.\PhysicalDrive, \\.\CdRom,
+                // \\.\C:) via redirect — twin of the /dev rule, incl. the
+                // Git Bash //./ spelling.
+                pattern: />\s*(?:\\\\|\/\/)\.[\\/]/i,
+                reason: "refusing raw writes to Windows devices via redirect",
+        },
 ];
 
 const STRICT_EXTRA_DENY: { pattern: RegExp; reason: string }[] = [
@@ -149,13 +212,38 @@ function decideTerminalBash(command: string, strict: boolean) {
         return { block: false };
 }
 
-/** Path policy for terminal sessions: writes confined to project + /tmp. */
-function terminalPathOk(cwd: string, p: string): boolean {
+/** Safe write roots outside the project jail: the OS temp dir (realpath-
+ *  resolved, so a symlinked TMPDIR still compares equal — jailPath returns
+ *  realpath-resolved paths) plus POSIX /tmp (kept even when TMPDIR points
+ *  elsewhere: /tmp stays the conventional scratch space on every POSIX host
+ *  and the pre-existing policy allowed it). Computed once at module load.
+ *  Both separator styles are honored (jailPath resolves with node:path, which
+ *  yields backslash paths on Windows). */
+const TMP_ROOTS: string[] = (() => {
+        const roots = new Set<string>();
+        for (const dir of [tmpdir(), "/tmp"]) {
+                if (!dir) continue;
+                roots.add(dir);
+                try {
+                        roots.add(realpathSync(dir));
+                } catch {
+                        /* not present — the literal spelling is enough */
+                }
+        }
+        return [...roots];
+})();
+
+function insideRoot(root: string, p: string): boolean {
+        return p === root || p.startsWith(`${root}/`) || p.startsWith(`${root}\\`);
+}
+
+/** Path policy for terminal sessions: writes confined to the project dir and
+ *  the system temp dir. `tmpRoots` overrides the computed set (unit tests
+ *  inject a portable root); callers that omit it keep the default policy. */
+export function terminalPathOk(cwd: string, p: string, tmpRoots: string[] = TMP_ROOTS): boolean {
         const jail = jailPath(cwd, p);
         if (jail.ok) return true;
-        const resolved = jail.resolved;
-        if (resolved.startsWith("/tmp/") || resolved === "/tmp") return true;
-        return false;
+        return tmpRoots.some((r) => insideRoot(r, jail.resolved));
 }
 
 // ---------------------------------------------------------------------------
@@ -172,8 +260,16 @@ function terminalPathOk(cwd: string, p: string): boolean {
 // ---------------------------------------------------------------------------
 const REDIRECT_TARGET = />{1,2}\s*([^\s;|&]+)/g;
 const LN_SYMLINK = /\bln\s+(?:-[a-zA-Z-]+\s+)*-s\s+(?:-[a-zA-Z-]+\s+)?(\S+)\s+([^\s;&|>]+)/g;
+// POSIX originals kept; the _WIN twins add the Windows forms (drive-letter
+// system trees, the \\.\ device namespace and backslash .ssh paths).
+// They mirror the POSIX semantics exactly: the tree itself or anything under
+// it. Fail-closed note: the .ssh twin also catches POSIX filenames containing
+// literal backslashes around a .ssh segment — blocking there is the safe side.
 const SYSTEM_TREE = /^\/(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|root)(?:\/|$)/;
+const SYSTEM_TREE_WIN = /^[a-zA-Z]:[\\/](?:Windows|Program Files(?: \(x86\))?|PerfLogs|System Volume Information|\$Recycle\.Bin)(?:[\\/]|$)/i;
 const RAW_DEVICE = /^\/dev\/(?:sd|nvme|hd|vd|xvd|mmcblk|loop|disk|mem|kmem|sr)/;
+const RAW_DEVICE_WIN = /^\\\\\\.\\(?:physicaldrive|cdrom|[a-zA-Z]:)/i;
+const SSH_TRUST_DIR = /(^|[\\/])\.ssh[\\/]/;
 
 function stripQuotes(s: string): string {
         return s.replace(/^["']+|["']+$/g, "");
@@ -198,7 +294,13 @@ export function bashRedirectEscape(cwd: string, command: string): string | null 
                                 resolved = `${resolvePath(cwd, link.target)}${resolved.slice(link.path.length)}`;
                         }
                 }
-                if (SYSTEM_TREE.test(resolved) || RAW_DEVICE.test(resolved) || /(^|\/)\.ssh\//.test(resolved)) {
+                if (
+                        SYSTEM_TREE.test(resolved) ||
+                        SYSTEM_TREE_WIN.test(resolved) ||
+                        RAW_DEVICE.test(resolved) ||
+                        RAW_DEVICE_WIN.test(resolved) ||
+                        SSH_TRUST_DIR.test(resolved)
+                ) {
                         return `redirect target escapes the safe write set: ${target} (resolved ${resolved})`;
                 }
         }
@@ -248,7 +350,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                 if (p && !terminalPathOk(opts.cwd, p)) {
                                         decision = {
                                                 block: true,
-                                                reason: `write path escapes the project directory: ${p} (use the project dir or /tmp)`,
+                                                reason: `write path escapes the project directory: ${p} (use the project dir or the system temp dir)`,
                                         };
                                 }
                         }

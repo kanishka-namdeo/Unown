@@ -34,11 +34,12 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 const GATE = process.env.UNOWN_MEMORY_LIVE === "1";
-const SCRATCH = "/home/z/my-project/scratch-mem/live";
+const SCRATCH = join(tmpdir(), "scratch-mem", "live");
 const ENGINE_PORT = Number(process.env.UNOWN_MEMORY_LIVE_PORT ?? 3035);
 const PROXY_PORT = ENGINE_PORT + 1;
 const ENGINE = `http://127.0.0.1:${ENGINE_PORT}`;

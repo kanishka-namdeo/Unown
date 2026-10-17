@@ -173,7 +173,9 @@ export function writeAgentConfig(input: WriteConfigInput): void {
 		}
 		auth[input.providerId] = { type: "api_key", key: input.apiKeyInAuthJson };
 		writeFileSync(authPath, `${JSON.stringify(auth, null, 2)}\n`, "utf8");
-		chmodSync(authPath, 0o600);
+		// POSIX mode bits are a no-op on NTFS (Windows ACL hardening of
+		// auth.json is a documented follow-up); keep 0600 on POSIX hosts.
+		if (process.platform !== "win32") chmodSync(authPath, 0o600);
 	}
 
 	// settings.json — default provider/model so sessions never need a picker.
