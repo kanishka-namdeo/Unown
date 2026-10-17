@@ -1,6 +1,6 @@
 "use client";
 
-import { FadeUp } from "./shell";
+import { FadeUp, SectionHead } from "./shell";
 
 /* ------------------------------------------------------------------ */
 /* the gates                                                           */
@@ -56,8 +56,8 @@ const LOG = [
 const DECISION_TONE: Record<string, string> = {
   log: "text-faint",
   allow: "text-glow-soft",
-  augment: "text-amber-300",
-  deny: "text-rose-300",
+  augment: "text-amber",
+  deny: "text-poke",
 };
 
 /* ------------------------------------------------------------------ */
@@ -69,17 +69,19 @@ export function IntegritySection() {
     <section id="integrity" className="scroll-mt-16 border-y border-line bg-panel/40 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-            Integrity
-          </p>
-          <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+          <SectionHead
+            kicker="Integrity"
+            tone="brick"
+            lead={
+              <>
+                So every memory write is behind a gate, and every gate is visible from the
+                dashboard with the run that proved it. This is the objection this project has to
+                win, so it gets the whole section.
+              </>
+            }
+          >
             Self-modification without gates degenerates fast.
-          </h2>
-          <p className="mt-4 text-pretty leading-relaxed text-dim">
-            So every memory write is behind a gate, and every gate is visible from the
-            dashboard with the run that proved it. This is the objection this project has to
-            win, so it gets the whole section.
-          </p>
+          </SectionHead>
         </FadeUp>
 
         <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-14">
@@ -95,7 +97,7 @@ export function IntegritySection() {
                     <h3 className="text-[15px] font-medium text-ink">{g.t}</h3>
                     <p className="mt-1.5 text-[13px] leading-relaxed text-dim">{g.d}</p>
                   </div>
-                  <span className="self-start rounded border border-line bg-canvas/60 px-2 py-0.5 font-mono text-[10px] text-glow sm:justify-self-end">
+                  <span className="gb-label self-start border border-line bg-canvas/60 px-2 py-0.5 text-[9px] text-glow sm:justify-self-end">
                     {g.tag}
                   </span>
                 </li>
@@ -105,10 +107,10 @@ export function IntegritySection() {
 
           {/* the log */}
           <FadeUp delay={0.1}>
-            <div className="overflow-hidden rounded-lg border border-line">
+            <div className="gb-panel overflow-hidden" data-tone="brick">
               <div className="flex items-center gap-2 border-b border-line bg-panel px-3.5 py-2">
                 <span className="size-1.5 rounded-full bg-line-bright" aria-hidden="true" />
-                <span className="font-mono text-[10.5px] text-faint">
+                <span className="gb-term text-[17px] text-faint">
                   hook_log — six layers, every decision recorded
                 </span>
               </div>
@@ -118,17 +120,17 @@ export function IntegritySection() {
                     key={`${hook}-${reason}`}
                     className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3.5 py-2.5"
                   >
-                    <span className="w-36 shrink-0 font-mono text-[10.5px] text-ink">
+                    <span className="w-36 shrink-0 gb-term text-[17px] text-ink">
                       {hook}
                     </span>
                     <span
-                      className={`w-16 shrink-0 font-mono text-[10.5px] ${
+                      className={`w-16 shrink-0 gb-term text-[17px] ${
                         DECISION_TONE[decision]
                       }`}
                     >
                       {decision}
                     </span>
-                    <span className="min-w-0 flex-1 font-mono text-[10.5px] leading-relaxed text-dim">
+                    <span className="min-w-0 flex-1 gb-term text-[17px] leading-relaxed text-dim">
                       {reason}
                     </span>
                   </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
-import { FadeUp, GITHUB_URL } from "./shell";
+import { FadeUp, GITHUB_URL, SectionHead } from "./shell";
 
 const SRC = (file: string) => `${GITHUB_URL}/blob/main/pi-repo/packages/self-learning/src/${file}`;
 
@@ -111,15 +111,12 @@ export function MechanismsSection() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         {/* the problem, stated plainly */}
         <FadeUp className="max-w-2xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-            The problem
-          </p>
-          <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+          <SectionHead kicker="The problem" tone="brick">
             An agent that forgets is a tax you pay every morning.
-          </h2>
+          </SectionHead>
         </FadeUp>
 
-        <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-line bg-line md:grid-cols-3">
+        <div className="mt-10 grid gap-px overflow-hidden border border-line bg-line md:grid-cols-3">
           {PAINS.map((p, i) => (
             <FadeUp key={p.t} delay={i * 0.06} className="bg-panel p-6">
               <p className="text-[15px] font-medium leading-snug text-ink">{p.t}</p>
@@ -131,19 +128,16 @@ export function MechanismsSection() {
         {/* the mechanisms, as rows rather than a grid of identical tiles */}
         <div className="mt-20">
           <FadeUp className="max-w-2xl">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-              Five mechanisms
-            </p>
-            <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+            <SectionHead kicker="Five mechanisms" tone="brick">
               One answer to each of those.
-            </h2>
+            </SectionHead>
           </FadeUp>
 
           <div className="mt-10">
             {MECHANISMS.map((m, i) => (
               <FadeUp key={m.n} delay={Math.min(i, 3) * 0.05}>
                 <div className="group grid gap-4 border-t border-line py-8 lg:grid-cols-[2.5rem_minmax(0,17rem)_minmax(0,1fr)] lg:gap-6">
-                  <p className="font-mono text-[11px] tabular-nums text-glow">{m.n}</p>
+                  <p className="gb-label text-[10px] tabular-nums text-glow">{m.n}</p>
 
                   <div>
                     <h3 className="text-lg font-medium text-ink">{m.title}</h3>
@@ -175,12 +169,12 @@ export function MechanismsSection() {
 
         {/* infrastructure, labelled as such so the count stays honest */}
         <FadeUp className="mt-6">
-          <div className="grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2">
+          <div className="grid gap-px overflow-hidden border border-line bg-line sm:grid-cols-2">
             {INFRA.map((item) => (
               <div key={item.title} className="bg-panel p-6">
                 <div className="flex items-baseline justify-between gap-3">
                   <h3 className="text-[15px] font-medium text-ink">{item.title}</h3>
-                  <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-faint">
+                  <span className="gb-label text-[8px] text-faint">
                     infrastructure
                   </span>
                 </div>

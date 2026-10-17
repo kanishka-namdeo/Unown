@@ -57,32 +57,191 @@ export function FadeUp({
   );
 }
 
-export function TrafficDots() {
+/* ------------------------------------------------------------------ */
+/* console furniture                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The battle-menu cursor: a stepped triangle, not a font glyph.
+ *
+ * `shapeRendering="crispEdges"` is what does the work — it switches off
+ * antialiasing on the diagonal, so the browser staircases it for us and the
+ * arrow lands on the pixel grid for free. Drawn as `▶` in text would fall
+ * outside the `latin` subset the page's fonts are sliced to and silently
+ * render in whatever face the OS picked.
+ */
+export function PixelCursor({ className }: { className?: string }) {
   return (
-    <div className="flex items-center gap-1.5" aria-hidden="true">
-      <span className="size-2.5 rounded-full bg-line-bright" />
-      <span className="size-2.5 rounded-full bg-line-bright" />
-      <span className="size-2.5 rounded-full bg-line-bright" />
+    <svg
+      viewBox="0 0 7 10"
+      aria-hidden="true"
+      shapeRendering="crispEdges"
+      className={className}
+      fill="currentColor"
+    >
+      <polygon points="0,0 7,5 0,10" />
+    </svg>
+  );
+}
+
+/**
+ * The blinking ▼ that sits bottom-right of every dialogue box in the games.
+ * Purely decorative and always `aria-hidden`: a screen reader announcing
+ * "black down-pointing triangle" at every box is worse than announcing
+ * nothing. The blink is `.gb-cont`, 1s `step-end`, gated on reduced motion
+ * in `landing.css`.
+ */
+export function ContinueArrow({ className }: { className?: string }) {
+  return (
+    <span className={`gb-cont inline-flex ${className ?? ""}`} aria-hidden="true">
+      <svg viewBox="0 0 10 7" shapeRendering="crispEdges" fill="currentColor" className="size-[0.9em]">
+        <polygon points="0,0 10,0 5,7" />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * A Gen 1 stat bar. Colour steps green → amber → red as the value drops,
+ * exactly as a real HP bar does, but the colour is never the only signal:
+ * the number sits next to it, so the bar survives colour blindness and
+ * survives a reader who cannot see it at all.
+ */
+export function HpBar({
+  value,
+  label = "HP",
+  caption,
+}: {
+  /** 0–100. Rendered as both the bar width and the printed figure. */
+  value: number;
+  /** Short pixel-font label to the left of the bar. */
+  label?: string;
+  /** Optional spoken description; falls back to `label value%`. */
+  caption?: string;
+}) {
+  const pct = Math.max(0, Math.min(100, Math.round(value)));
+  const tone = pct > 50 ? "high" : pct > 20 ? "mid" : "low";
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="gb-label shrink-0 text-[8px] text-faint">{label}</span>
+      <div
+        className="gb-hp min-w-0 flex-1"
+        data-tone={tone === "high" ? undefined : tone}
+        role="img"
+        aria-label={caption ?? `${label} ${pct}%`}
+      >
+        <i style={{ width: `${pct}%` }} />
+      </div>
+      <span className="gb-term shrink-0 text-[17px] leading-none tabular-nums text-dim">
+        {pct}%
+      </span>
     </div>
   );
 }
 
-/** Terminal-style window frame shared by the hero, the replay and the quickstart. */
+/**
+ * The five section tones. These are names, not colours: each maps to a
+ * `[data-tone="…"]` rule in `landing.css` that swaps the CSS custom
+ * properties `--tone-fill` / `--tone-rim`. A section may never pass a hex —
+ * that is what keeps thirteen sections restyled in parallel from drifting
+ * into fourteen different reds, and what lets every tone be contrast-checked
+ * once, centrally, in both colour schemes.
+ *
+ * `glow` is the default (DMG shade 4); the other four are the Super Game Boy
+ * stock palette. Contrast for all five, in both schemes, is verified by
+ * `bun scripts/contrast_audit.mjs`.
+ */
+export type Tone = "glow" | "cream" | "amber" | "brick" | "purple";
+
+/** Renders the tone as the data attribute the CSS keys on. */
+export function toneAttr(tone?: Tone): { "data-tone"?: Tone } {
+  return tone && tone !== "glow" ? { "data-tone": tone } : {};
+}
+
+/**
+ * The section header every section shares: pixel kicker, pixel heading,
+ * optional lead.
+ *
+ * It exists because thirteen sections restyled in parallel drift — the most
+ * likely failure of this page is not any one ugly section but fourteen
+ * different heading sizes. Reach for this first; only drop to manual markup
+ * when the section genuinely needs something else, and keep the same classes
+ * when you do.
+ *
+ * Keep `kicker` to a few words: it is set in Press Start 2P, and a sentence
+ * in that face is a wall.
+ */
+export function SectionHead({
+  kicker,
+  children,
+  lead,
+  className,
+  tone,
+}: {
+  kicker?: React.ReactNode;
+  children: React.ReactNode;
+  lead?: React.ReactNode;
+  className?: string;
+  /** Section hue. Recolours the kicker only — headings stay `text-ink`. */
+  tone?: Tone;
+}) {
+  return (
+    <div className={className}>
+      {kicker ? (
+        <p
+          {...toneAttr(tone)}
+          className={`gb-label text-[10px] ${tone && tone !== "glow" ? "text-(--tone-rim)" : "text-glow"}`}
+        >
+          {kicker}
+        </p>
+      ) : null}
+      <h2 className="gb-h mt-4 text-[clamp(1.8rem,3.2vw,2.6rem)] text-ink">
+        {children}
+      </h2>
+      {lead ? (
+        <div className="mt-5 max-w-2xl text-[15px] leading-relaxed text-dim">
+          {lead}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Window buttons. Squares, because a Game Boy window has no macOS chrome. */
+export function TrafficDots() {
+  return (
+    <div className="flex items-center gap-1.5" aria-hidden="true">
+      <span className="size-2 bg-canvas" />
+      <span className="size-2 bg-canvas" />
+      <span className="size-2 bg-canvas" />
+    </div>
+  );
+}
+
+/**
+ * Terminal-style window frame shared by the hero, the replay and the
+ * quickstart. The title bar is a bright dialogue-box strip rather than a
+ * grey app bar: it is the one piece of chrome a reader sees on every screen,
+ * so it is where the page says what it is. `tone` recolours that strip (and
+ * the panel rim) to the section's SGB hue; it defaults to DMG green.
+ */
 export function TerminalWindow({
   title,
   children,
   actions,
+  tone,
 }: {
   title: string;
   children: React.ReactNode;
   actions?: React.ReactNode;
+  tone?: Tone;
 }) {
   return (
-    <div className="lift overflow-hidden rounded-lg border border-line bg-panel shadow-[0_24px_70px_-30px_rgba(0,0,0,0.9)]">
-      <div className="flex items-center gap-3 border-b border-line px-3.5 py-2.5">
+    <div className="gb-panel lift overflow-hidden" {...toneAttr(tone)}>
+      <div className="gb-bar flex items-center gap-3 px-3 py-2">
         <TrafficDots />
         <div className="flex min-w-0 flex-1 justify-center">
-          <span className="truncate font-mono text-[11px] text-faint">{title}</span>
+          <span className="gb-label truncate text-[9px] text-canvas">{title}</span>
         </div>
         <div className="flex min-w-[28px] items-center justify-end gap-2">{actions}</div>
       </div>
@@ -92,15 +251,13 @@ export function TerminalWindow({
 }
 
 /** Browser-style frame for the dashboard screenshots. */
-export function BrowserFrame({ url, src, alt }: { url: string; src: string; alt: string }) {
+export function BrowserFrame({ url, src, alt, tone }: { url: string; src: string; alt: string; tone?: Tone }) {
   return (
-    <div className="lift overflow-hidden rounded-lg border border-line bg-panel hover:border-line-bright">
-      <div className="flex items-center gap-3 border-b border-line bg-panel-2 px-3.5 py-2">
+    <div className="gb-panel lift overflow-hidden" {...toneAttr(tone)}>
+      <div className="gb-bar flex items-center gap-3 px-3 py-2">
         <TrafficDots />
         <div className="flex min-w-0 flex-1 justify-center">
-          <span className="truncate rounded border border-line bg-canvas px-2.5 py-0.5 font-mono text-[10px] text-faint">
-            {url}
-          </span>
+          <span className="gb-label truncate text-[9px] text-canvas">{url}</span>
         </div>
         <div className="min-w-[28px]" aria-hidden="true" />
       </div>
@@ -168,6 +325,15 @@ export function CopyButton({
 /* buttons                                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The primary action: a Gen 1 menu button. The press comes from the inset
+ * bevel in `.gb-btn` and a two-frame translate, not from a shadow — see the
+ * frame rule in `landing.css`.
+ *
+ * The label is Press Start 2P at 10px, so every caller keeps it to two or
+ * three words. Set a sentence in that face and it stops being chrome and
+ * starts being a wall.
+ */
 export function PrimaryLink({
   href,
   children,
@@ -177,8 +343,7 @@ export function PrimaryLink({
   children: React.ReactNode;
   external?: boolean;
 }) {
-  const cls =
-    "glow-hover inline-flex items-center gap-2 rounded-md bg-glow px-5 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-glow-soft";
+  const cls = "gb-btn gb-label inline-flex items-center gap-2 px-5 py-3 text-[10px] font-normal";
   if (external) {
     return (
       <a href={href} target="_blank" rel="noreferrer noopener" className={cls}>
@@ -202,8 +367,7 @@ export function GhostLink({
   children: React.ReactNode;
   external?: boolean;
 }) {
-  const cls =
-    "lift inline-flex items-center gap-2 rounded-md border border-line px-5 py-2.5 text-sm text-dim transition-colors hover:border-line-bright hover:text-ink";
+  const cls = "gb-btn-dark gb-label inline-flex items-center gap-2 px-5 py-3 text-[10px] font-normal";
   if (external) {
     return (
       <a href={href} target="_blank" rel="noreferrer noopener" className={cls}>
@@ -230,57 +394,176 @@ const NAV_LINKS = [
   { href: "#faq", label: "FAQ" },
 ];
 
+/**
+ * A console menu bar: bright rule underneath, pixel wordmark, and a `▶`
+ * cursor that lights up in the gutter on hover.
+ *
+ * The cursor is absolutely positioned into the 20px link gap rather than
+ * laid out in front of the label, so hovering costs no reflow — six links
+ * shifting by nine pixels each is the kind of jitter that makes a sticky
+ * header feel cheap. The nav keeps Geist for its links on purpose: Press
+ * Start 2P is a fixed-width bitmap face, and "HOW IT LEARNED" in it overruns
+ * the header below 1200px. The retro here comes from the rule, the wordmark
+ * and the cursor, not from making the navigation hard to read.
+ */
 export function Nav() {
   return (
-    <header className="sticky top-0 z-50 border-b border-line/70 bg-canvas/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b-[3px] border-glow bg-panel/92 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-5 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/" className="group flex items-center gap-2.5">
           <Glyph
             id="U"
             weight="heavy"
-            className="size-6 text-glow"
+            className="size-7 text-glow"
             label="Unown"
           />
-          <span className="text-base font-medium tracking-tight">unown</span>
-          <span className="hidden font-mono text-[10px] uppercase tracking-[0.14em] text-faint min-[430px]:inline">
+          <span className="gb-label text-[13px] text-ink">unown</span>
+          <span className="gb-label hidden text-[7px] text-faint min-[430px]:inline">
             self-improving
           </span>
         </Link>
 
-        <nav aria-label="Main" className="ml-auto hidden items-center gap-6 lg:flex">
+        <nav aria-label="Main" className="ml-auto hidden items-center gap-5 lg:flex">
           {NAV_LINKS.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="text-[13px] text-dim transition-colors hover:text-ink"
+              className="group relative text-[13px] text-dim transition-colors hover:text-glow focus-visible:text-glow focus:outline-none"
             >
+              <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-glow opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
               {l.label}
             </a>
           ))}
-          <Link href="/dashboard" className="text-[13px] text-dim transition-colors hover:text-ink">
+          <Link
+            href="/dashboard"
+            className="group relative text-[13px] text-dim transition-colors hover:text-glow focus-visible:text-glow focus:outline-none"
+          >
+            <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-glow opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
             Dashboard
           </Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5 lg:ml-0">
+          <ThemeToggle />
           <a
             href={GITHUB_URL}
             target="_blank"
             rel="noreferrer noopener"
             aria-label="Unown on GitHub"
-            className="inline-flex size-9 items-center justify-center rounded-md text-dim transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
+            className="inline-flex size-9 items-center justify-center text-dim transition-colors hover:text-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
           >
             <GithubMark className="size-[18px]" />
           </a>
           <a
             href="#quickstart"
-            className="rounded-md bg-glow px-4 py-2 text-[13px] font-medium text-canvas transition-colors hover:bg-glow-soft"
+            className="gb-btn gb-label px-4 py-2.5 text-[9px] font-normal"
           >
             Get started
           </a>
         </div>
       </div>
     </header>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* theme toggle                                                       */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The three screens the handheld can be in, and the order the toggle cycles
+ * them: auto (follow the OS) -> daylight -> dark -> auto.
+ *
+ * "auto" is not a fourth palette — it is the *absence* of a `data-theme`
+ * attribute, which is exactly what hands the decision back to
+ * `prefers-color-scheme`. That is what keeps the default working for a
+ * visitor with JavaScript off: the CSS media query answers, and this
+ * component never has to run.
+ */
+type ThemeMode = "system" | "light" | "dark";
+const THEME_NEXT: Record<ThemeMode, ThemeMode> = { system: "light", light: "dark", dark: "system" };
+const THEME_NAME: Record<ThemeMode, string> = {
+  system: "Auto",
+  light: "Daylight",
+  dark: "Dark",
+};
+/** What pressing the button will switch TO — the accessible name of the control. */
+const THEME_ACTION: Record<ThemeMode, string> = {
+  system: "switch to the daylight screen",
+  light: "switch to the dark screen",
+  dark: "switch back to auto",
+};
+
+function readMode(): ThemeMode {
+  if (typeof document === "undefined") return "system";
+  const t = document.documentElement.dataset.theme;
+  return t === "light" || t === "dark" ? t : "system";
+}
+
+/**
+ * The pixel "screen" glyph. Hollow = daylight (an unlit LCD shows pale), full
+ * = dark (an emissive one), half = auto. Drawn as crisp-edged rects rather
+ * than a lucide sun/moon: those are smooth vector shapes and would be the one
+ * non-pixel thing in the header. The frame is always drawn so the three states
+ * read as the same object changing, not three different icons.
+ */
+function ThemeIcon({ mode }: { mode: ThemeMode }) {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className="size-[17px]"
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+    >
+      <rect x="0" y="2" width="12" height="8" fill="none" stroke="currentColor" strokeWidth="2" />
+      {mode === "dark" ? (
+        <rect x="2" y="4" width="8" height="4" fill="currentColor" />
+      ) : mode === "system" ? (
+        <rect x="2" y="4" width="4" height="4" fill="currentColor" />
+      ) : null}
+    </svg>
+  );
+}
+
+/**
+ * Cycles auto -> daylight -> dark. State is mirrored onto `<html data-theme>`
+ * (the hook the palette in `globals.css` listens for) and persisted to
+ * `localStorage`, where the inline bootstrap in `layout.tsx` replays it on the
+ * next visit before first paint. Starts on "system" and corrects itself in an
+ * effect, which is what keeps the server render and the first client render
+ * identical.
+ */
+export function ThemeToggle() {
+  const [mode, setMode] = React.useState<ThemeMode>("system");
+
+  React.useEffect(() => {
+    setMode(readMode());
+  }, []);
+
+  function cycle() {
+    const next = THEME_NEXT[mode];
+    setMode(next);
+    const root = document.documentElement;
+    if (next === "system") delete root.dataset.theme;
+    else root.dataset.theme = next;
+    try {
+      if (next === "system") localStorage.removeItem("unown-theme");
+      else localStorage.setItem("unown-theme", next);
+    } catch {
+      /* storage blocked — the choice still applies for this page view. */
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={cycle}
+      aria-label={`Screen: ${THEME_NAME[mode]}. Press to ${THEME_ACTION[mode]}.`}
+      title={`Screen: ${THEME_NAME[mode]}`}
+      className="inline-flex size-9 items-center justify-center text-dim transition-colors hover:text-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
+    >
+      <ThemeIcon mode={mode} />
+    </button>
   );
 }
 
@@ -293,37 +576,37 @@ export function Footer() {
   useKonami(wake);
 
   return (
-    <footer className="border-t border-line pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-10">
+    <footer className="border-t-[3px] border-glow pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-10">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-8">
           <div className="max-w-xs">
             <div className="flex items-center gap-2">
-              <Glyph id="U" weight="heavy" className="size-5 text-glow" />
-              <span className="text-sm font-medium">unown</span>
+              <Glyph id="U" weight="heavy" className="size-6 text-glow" />
+              <span className="gb-label text-[11px]">unown</span>
             </div>
-            <p className="mt-3 text-[13px] leading-relaxed text-faint">
+            <p className="gb-term mt-3 text-[17px] leading-snug text-faint">
               A terminal coding agent that turns sessions into notes, and notes into
               verified memory.
             </p>
           </div>
 
           <nav aria-label="Footer" className="grid grid-cols-2 gap-x-12 gap-y-2 text-[13px] sm:grid-cols-3">
-            <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-ink">
+            <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-glow">
               GitHub
             </a>
-            <a href={DOCS_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-ink">
+            <a href={DOCS_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-glow">
               Documentation
             </a>
-            <Link href="/dashboard" className="text-dim transition-colors hover:text-ink">
+            <Link href="/dashboard" className="text-dim transition-colors hover:text-glow">
               Dashboard
             </Link>
-            <a href={BENCH_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-ink">
+            <a href={BENCH_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-glow">
               Benchmarks
             </a>
-            <a href="#alphabet" className="text-dim transition-colors hover:text-ink">
+            <a href="#alphabet" className="text-dim transition-colors hover:text-glow">
               The alphabet
             </a>
-            <a href="#quickstart" className="text-dim transition-colors hover:text-ink">
+            <a href="#quickstart" className="text-dim transition-colors hover:text-glow">
               Install
             </a>
           </nav>
@@ -338,13 +621,15 @@ export function Footer() {
               href="https://github.com/badlogic/pi-mono"
               target="_blank"
               rel="noreferrer noopener"
-              className="underline underline-offset-2 hover:text-dim"
+              className="underline underline-offset-2 hover:text-glow"
             >
               pi coding agent
             </a>
             , MIT licensed. Unown is an independent open-source project — not affiliated
             with, endorsed by or sponsored by Nintendo, Game Freak, Creatures Inc. or The
             Pokémon Company. Pokémon and Unown are trademarks of their respective owners.
+            No official art ships here: every glyph, box and bar on this page is drawn
+            in code.
           </p>
           <p className="font-mono text-[10px] text-dim">
             <span className="hidden sm:inline">psst — try ↑↑↓↓←→←→ba</span>

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Brain, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Target } from "lucide-react";
-import { FadeUp, BENCH_URL } from "./shell";
+import { FadeUp, BENCH_URL, SectionHead } from "./shell";
 
 /**
  * Every number here comes from a real run with receipts committed under
@@ -66,16 +66,17 @@ function BarRow({
   pct: number;
   delay?: number;
 }) {
+  const tone = pct > 50 ? undefined : pct > 20 ? "mid" : "low";
   return (
     <div className="flex items-center gap-3 sm:gap-4">
       <span className="w-28 shrink-0 truncate font-mono text-[11px] text-dim sm:w-32">{label}</span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
-        <motion.div
-          className="h-full rounded-full bg-glow"
+      <div className="gb-hp min-w-0 flex-1" data-tone={tone} role="img" aria-label={`${label} ${pct.toFixed(1)}%`}>
+        <motion.i
           initial={{ width: 0 }}
           whileInView={{ width: `${pct}%` }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.9, delay, ease: "easeOut" }}
+          style={{ transition: "none" }}
         />
       </div>
       <span className="w-12 shrink-0 text-right font-mono text-[11px] tabular-nums text-glow">
@@ -89,8 +90,8 @@ function Delta({ v, unit }: { v: number; unit: string }) {
   const good = v < 0;
   return (
     <span
-      className={`rounded px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
-        good ? "bg-glow/10 text-glow" : "bg-amber-400/10 text-amber-300"
+      className={`px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
+        good ? "bg-glow/10 text-glow" : "bg-amber/10 text-amber"
       }`}
     >
       {v > 0 ? "+" : "−"}
@@ -104,14 +105,14 @@ function TimeChip({ coldS, warmS, d }: { coldS: number; warmS: number; d: number
   const good = d < 0;
   return (
     <span
-      className={`rounded px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
-        good ? "bg-glow/10" : "bg-amber-400/10"
+      className={`px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
+        good ? "bg-glow/10" : "bg-amber/10"
       }`}
     >
       <span className="text-dim">
         {coldS}s → {warmS}s
       </span>{" "}
-      <span className={good ? "text-glow" : "text-amber-300"}>
+      <span className={good ? "text-glow" : "text-amber"}>
         {d > 0 ? "+" : "−"}
         {Math.abs(d).toFixed(1)}%
       </span>
@@ -144,11 +145,11 @@ function LiftBar({
 }) {
   const reduced = useReducedMotion();
   const fill =
-    tone === "cold" ? "bg-line-bright" : tone === "win" ? "bg-glow" : "bg-amber-300";
+    tone === "cold" ? "bg-line-bright" : tone === "win" ? "bg-glow" : "bg-amber";
   return (
     <div className="flex items-center gap-3">
       <span className="w-9 shrink-0 font-mono text-[10px] text-faint">{kind}</span>
-      <div className="relative h-2 flex-1 rounded-full bg-line">
+      <div className="relative h-2 flex-1 bg-line">
         {tick ? (
           <span
             aria-hidden="true"
@@ -156,7 +157,7 @@ function LiftBar({
           />
         ) : null}
         <motion.div
-          className={`absolute inset-y-0 left-0 origin-left rounded-full ${fill}`}
+          className={`absolute inset-y-0 left-0 origin-left ${fill}`}
           style={{ width: `${width}%` }}
           initial={{ opacity: 0, scaleX: reduced ? 1 : 0 }}
           whileInView={{ opacity: 1, scaleX: 1 }}
@@ -186,7 +187,7 @@ function TrackCard({
 }) {
   return (
     <FadeUp delay={delay} className="h-full">
-      <div className="lift flex h-full flex-col rounded-lg border border-line bg-panel/60 p-6 hover:border-line-bright">
+      <div className="gb-panel lift flex h-full flex-col p-6 hover:border-line-bright" data-tone="amber">
         <div className="flex items-center gap-3">
           <Icon className="size-5 shrink-0 text-glow" aria-hidden="true" />
           <h3 className="text-[15px] font-medium text-ink">{name}</h3>
@@ -207,18 +208,20 @@ export function BenchmarksSection() {
     <section id="benchmarks" className="scroll-mt-16 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-            Proof, not vibes
-          </p>
-          <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+          <SectionHead
+            kicker="Proof, not vibes"
+            tone="amber"
+            lead={
+              <>
+                Official harnesses, pinned datasets, anti-tamper scoring, and per-task JSONL in
+                the repo. The warm-memory panel below is published exactly as measured — two of
+                three models used <em>more</em> input tokens with memory in the loop, and we
+                left that in.
+              </>
+            }
+          >
             Benchmarked where it hurts, including where it loses.
-          </h2>
-          <p className="mt-4 text-pretty leading-relaxed text-dim">
-            Official harnesses, pinned datasets, anti-tamper scoring, and per-task JSONL in
-            the repo. The warm-memory panel below is published exactly as measured — two of
-            three models used <em>more</em> input tokens with memory in the loop, and we
-            left that in.
-          </p>
+          </SectionHead>
         </FadeUp>
 
         {/* Full-bleed on purpose. Every other section runs inside the container;
@@ -232,13 +235,13 @@ export function BenchmarksSection() {
               { v: "98.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
               { v: "93.9%", l: "HumanEval+ pass@1", s: "official evalplus, greedy" },
               { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
-              { v: "5,032", l: "repo tests green", s: "pi monorepo + engine, 0 failing" },
+              { v: "5,342", l: "repo tests green", s: "pi monorepo + engine, 0 failing" },
             ].map((s, i) => (
               <div
                 key={s.l}
                 className={`rise border-line py-8 sm:px-5 lg:border-l lg:first:border-l-0 ${i === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b sm:border-b-0 lg:border-b-0" : ""}`}
               >
-                <p className="font-mono text-3xl font-semibold tabular-nums tracking-tight text-glow">
+                <p className="gb-h text-3xl tabular-nums tracking-tight text-glow">
                   {s.v}
                 </p>
                 <p className="mt-1.5 text-[13px] font-medium text-ink">{s.l}</p>
@@ -260,7 +263,7 @@ export function BenchmarksSection() {
             {EDIT_BENCH.map((r, i) => (
               <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
             ))}
-            <div className="mt-2 space-y-1.5 rounded-md border border-line bg-canvas/50 p-3">
+            <div className="mt-2 space-y-1.5 border border-line bg-canvas/50 p-3">
               <p className="font-mono text-[10.5px] leading-relaxed text-dim">
                 <span className="text-glow">head-to-head</span> against the oh-my-pi agent
                 itself, same 106 fixtures, edit format pinned, 3 runs per task:{" "}
@@ -349,14 +352,11 @@ export function BenchmarksSection() {
             it also breaks the column rhythm between the track grid and the
             regression panel, the way the stat band does above. */}
         <FadeUp delay={0.05}>
-          <div
-            id="memory-lift"
-            className="mt-6 scroll-mt-16 rounded-lg border border-line bg-panel/40 p-6"
-          >
+          <div id="memory-lift" className="gb-panel mt-6 scroll-mt-16 p-6" data-tone="amber">
             <div className="flex flex-wrap items-center gap-3">
               <Repeat className="size-5 shrink-0 text-glow" aria-hidden="true" />
               <h3 className="text-[15px] font-medium text-ink">Memory lift, cold vs warm</h3>
-              <span className="rounded bg-glow/10 px-1.5 py-0.5 font-mono text-[10.5px] text-glow">
+              <span className="bg-glow/10 px-1.5 py-0.5 font-mono text-[10.5px] text-glow">
                 n=10 · single run per phase
               </span>
               <a
@@ -381,15 +381,15 @@ export function BenchmarksSection() {
 
             <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[10px] text-faint">
               <span className="flex items-center gap-1.5">
-                <span aria-hidden="true" className="h-1.5 w-4 rounded-full bg-line-bright" />
+                <span aria-hidden="true" className="h-1.5 w-4 bg-line-bright" />
                 cold
               </span>
               <span className="flex items-center gap-1.5">
-                <span aria-hidden="true" className="h-1.5 w-4 rounded-full bg-glow" />
+                <span aria-hidden="true" className="h-1.5 w-4 bg-glow" />
                 warm · fewer input tokens
               </span>
               <span className="flex items-center gap-1.5">
-                <span aria-hidden="true" className="h-1.5 w-4 rounded-full bg-amber-300" />
+                <span aria-hidden="true" className="h-1.5 w-4 bg-amber" />
                 warm · more input tokens
               </span>
               <span className="ml-auto hidden lg:inline">
@@ -438,14 +438,14 @@ export function BenchmarksSection() {
               not significance.
             </p>
 
-            <div className="mt-4 rounded-md border border-line bg-canvas/50 p-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-amber-300">
+            <div className="gb-box mt-4 p-4" data-tone="amber">
+              <p className="gb-label text-[10px] text-canvas">
                 Negative control (v1) — not published as a memory effect
               </p>
-              <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-dim">
+              <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-canvas">
                 kimi-k2.5 with only thin session summaries as notes showed −25.6% input
                 and 64s → 34s (−46.9%) wall time warm — with an{" "}
-                <span className="text-ink">unchanged memory file</span>. That saving is
+                <span className="font-medium text-canvas">unchanged memory file</span>. That saving is
                 upstream prompt caching on near-identical prompts, not memory; v1 is
                 kept as the control arm that isolates the confound. v2 above is what we
                 publish, with per-task dreamed-memory receipts committed.
@@ -458,13 +458,13 @@ export function BenchmarksSection() {
             while the agent rewrites itself. Numbers are the committed test
             suites — checkable by running them. */}
         <FadeUp delay={0.05}>
-          <div className="mt-6 rounded-lg border border-line bg-panel/40 p-6">
+          <div className="mt-6 gb-panel p-6" data-tone="amber">
             <div className="flex flex-wrap items-center gap-3">
               <ShieldCheck className="size-5 shrink-0 text-glow" aria-hidden="true" />
               <h3 className="text-[15px] font-medium text-ink">
                 The regression layer below the loop
               </h3>
-              <span className="rounded bg-glow/10 px-1.5 py-0.5 font-mono text-[10.5px] text-glow">
+              <span className="bg-glow/10 px-1.5 py-0.5 font-mono text-[10.5px] text-glow">
                 641 harness tests · 0 fail
               </span>
             </div>
@@ -493,7 +493,7 @@ export function BenchmarksSection() {
                   d: "memory tiers + rollback, sha256 tamper gate, mint validation, busy-mutex, bwrap profile, hook corpus",
                 },
               ].map((c) => (
-                <div key={c.l} className="rounded-md border border-line bg-canvas/50 p-4">
+                <div key={c.l} className="gb-inset p-4">
                   <p className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-glow">
                     {c.v}
                   </p>
@@ -522,9 +522,9 @@ export function BenchmarksSection() {
 
         {/* methodology + what we did not do */}
         <FadeUp delay={0.08}>
-          <div className="mt-6 grid gap-6 rounded-lg border border-line bg-panel/40 p-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="mt-6 grid gap-6 gb-panel p-6 lg:grid-cols-[minmax(0,1fr)_18rem]" data-tone="amber">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-glow">
+              <p className="gb-label text-[10px] text-glow">
                 Methodology
               </p>
               <div className="mt-4 grid gap-5 sm:grid-cols-2">
@@ -554,26 +554,26 @@ export function BenchmarksSection() {
               </div>
             </div>
 
-            <div className="rounded-md border border-line bg-canvas/50 p-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-amber-300">
+            <div className="gb-box p-4" data-tone="amber">
+              <p className="gb-label text-[10px] text-canvas">
                 What we did not run
               </p>
-              <ul className="mt-3 space-y-2 text-[12px] leading-relaxed text-dim">
+              <ul className="mt-3 space-y-2 text-[12px] leading-relaxed text-canvas">
                 <li>
-                  <span className="text-ink">SWE-bench Verified</span> and{" "}
-                  <span className="text-ink">Terminal-Bench 2.0</span> are quoted from
+                  <span className="font-medium text-canvas">SWE-bench Verified</span> and{" "}
+                  <span className="font-medium text-canvas">Terminal-Bench 2.0</span> are quoted from
                   vendor reports, not measured here.
                 </li>
                 <li>
-                  Our own <span className="text-ink">extension-authoring eval</span> scores{" "}
-                  <span className="text-ink">0.0</span> for every model. Reported as-is.
+                  Our own <span className="font-medium text-canvas">extension-authoring eval</span> scores{" "}
+                  <span className="font-medium text-canvas">0.0</span> for every model. Reported as-is.
                 </li>
               </ul>
               <a
                 href={BENCH_URL}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] text-glow underline-offset-4 hover:underline"
+                className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] text-canvas underline-offset-4 hover:underline"
               >
                 benchmarks/
                 <ExternalLink className="size-3" aria-hidden="true" />

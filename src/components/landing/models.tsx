@@ -33,7 +33,7 @@ export function ModelsBand() {
         <FadeUp>
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-12">
             <div className="shrink-0 lg:w-60">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-glow">
+              <p className="gb-label text-[10px] text-glow">
                 Model agnostic
               </p>
               <p className="mt-2 text-[15px] leading-snug text-ink">
@@ -46,18 +46,18 @@ export function ModelsBand() {
                 {TILES.map((t) => (
                   <li
                     key={t.label}
-                    className="lift flex h-11 items-center gap-2.5 rounded border border-line bg-panel/60 px-3 hover:border-line-bright"
+                    className="gb-panel lift flex h-11 items-center gap-2.5 px-3 hover:border-line-bright" data-tone="cream"
                   >
                     {t.slug ? (
                       <ProviderMark slug={t.slug} className="size-4 shrink-0 text-dim" />
                     ) : (
                       <span
                         aria-hidden="true"
-                        className="size-4 shrink-0 rounded-[3px] border border-line-bright"
+                        className="size-4 shrink-0 border border-line-bright"
                       />
                     )}
                     <span className="min-w-0">
-                      <span className="block truncate font-mono text-[11.5px] leading-tight text-ink">
+                      <span className="block truncate gb-label text-[9px] leading-tight text-ink">
                         {t.label}
                       </span>
                       {t.note ? (

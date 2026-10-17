@@ -3,7 +3,27 @@
 Why the marketing page (`/`) looks the way it does, and the sourcing rules that
 keep its claims defensible. First written 2026-10 when the page was a
 conventional hero-plus-features layout; rewritten after the page was rebuilt
-around a purpose-drawn alphabet.
+around a purpose-drawn alphabet; rewritten again when that page was re-skinned
+as a Game Boy — the structure above barely moved, but the palette, type and
+surface treatment all did, and the reasoning for each is below.
+
+**Contents**
+
+- [Part 1 — Products studied](#part-1--products-studied)
+- [Part 2 — Why the page is built on an alphabet](#part-2--why-the-page-is-built-on-an-alphabet)
+- [Part 3 — What replaced what](#part-3--what-replaced-what)
+- [Part 3b — Why the page is a Game Boy](#part-3b--why-the-page-is-a-game-boy)
+- [Part 4 — Motion rules](#part-4--motion-rules)
+- [Part 5 — Sourcing rules for the page](#part-5--sourcing-rules-for-the-page)
+- [Part 6 — Third-party assets](#part-6--third-party-assets)
+- [Part 7 — Assets](#part-7--assets)
+- [Part 8 — Headline work](#part-8--headline-work)
+- [Part 9 — How to keep it honest](#part-9--how-to-keep-it-honest)
+- [Part 10 — The second scheme, and where the colour is allowed to live](#part-10--the-second-scheme-and-where-the-colour-is-allowed-to-live)
+
+Related pages: [benchmark-research.md](benchmark-research.md) — the numbers the
+page quotes; the page's binding contract lives one level up in
+[`src/components/landing/AGENTS.md`](../src/components/landing/AGENTS.md).
 
 ---
 
@@ -71,8 +91,32 @@ the Pokémon and an agent that reads its own memory tiers.
 | "Work → Learn → Dream" as three static cards | The same three steps as tabs over the engine's real note template, log strings and AutoDream-written memory | The formats are the proof; a diagram of the idea is not |
 | "Any model" as a row of text pills | Nine tiles with vendored CC0 Simple Icons marks, plus a note on why two are text | Named marks read faster than pills; the two omissions are themselves a trust signal |
 | Benchmarks as a 4-up card grid | Full-bleed headline row (a deliberate rhythm break), then four tracks, then a "what we did not run" box | Full-bleed breaks a page that has started to feel like one long column |
-| Cold zinc throughout | Warm-dark palette on `/` only | The dashboard is an application and a tinted canvas reads as a mistake there; the marketing page is a choice |
-| One font pair | Geist Sans + Geist Mono + Instrument Serif, quoted only | A serif italic signals "someone else's words, quoted", which is exactly what the Pokédex entries are |
+| Cold zinc throughout | Game Boy DMG-green palette on `/` only | The dashboard is an application and a tinted canvas reads as a mistake there; the marketing page is a choice — and the product is a terminal agent with a TUI, so it is drawn as the screen it lives in |
+| One font pair | Geist Sans for body + three pixel faces for chrome, headings and terminal text | A serif italic used to signal "someone else's words, quoted"; on a Game Boy page the quoted word is game text, so `.quote` is VT323 and the serif was dropped |
+
+## Part 3b — Why the page is a Game Boy
+
+The second redesign. The alphabet stayed; everything it is printed on changed.
+
+- **The palette is DMG-01, inverted.** `#0f380f / #306230 / #8bac0f / #9bbc0f`
+  are public-domain facts about a 1989 LCD, which is what lets the page look
+  like this without shipping any Pokémon art. The canvas is the darkest of the
+  four pushed one step down (`#0a140a`); `bg-glow` *is* the DMG shade-4 fill,
+  so a dialogue box on this page is literally the game's dialogue box.
+- **Two accents, both cartridge-era.** Pokémon yellow `#ffcb05` and Poké-Ball
+  red `#ff6a4d`, used sparingly — stat figures and deny states, never fills.
+- **Depth is stacked rings, not drop shadows.** On a dark canvas an offset
+  shadow paints nothing, so `.gb-box` / `.gb-panel` build a dark ring, a light
+  gap and a dark edge instead.
+- **Square corners, everywhere.** A pixel language with antialiased corner
+  radii is a contradiction; the one-pixel chamfer people remember from Gen 1
+  cannot be faked cleanly.
+- **Stepped motion for furniture, smooth for page motion.** Buttons, hovers and
+  toggles advance in `steps(2)` frames like a sprite swap; scroll reveals keep
+  their smooth interpolation because they are page motion, not UI state.
+- **The screen has a screen.** A 4px LCD pixel grid sits over the canvas and a
+  fixed CRT scanline layer sits over that — the grid is the screen, the
+  scanlines are the camera.
 
 ## Part 4 — Motion rules
 
@@ -157,8 +201,9 @@ Everything shipped is either generated here or explicitly licensed:
 | Asset | Source | Licence | How it ships |
 |---|---|---|---|
 | The 28-form script | drawn in this repo | ours | inline SVG path data |
-| Grain texture | inline `feTurbulence` data URI | ours (generated) | ~300 bytes in `landing.css` |
-| Instrument Serif | Google Fonts | OFL-1.1 | self-hosted by `next/font`, attributed quotes only |
+| LCD pixel grid + CRT scanlines | repeating gradients in `landing.css` | ours (generated) | a few hundred bytes, no `feTurbulence`, no network request |
+| Press Start 2P, Pixelify Sans, VT323 | Google Fonts | OFL-1.1 | self-hosted by `next/font`; pixel chrome, headings and terminal/dialogue text |
+| Geist Sans | Vercel | OFL-1.1 | self-hosted by `next/font`; all body copy — a pixel body face costs readability and the Lighthouse 1.00 |
 | Provider marks | Simple Icons | CC0-1.0 | path data vendored by `scripts/vendor-provider-marks.mjs` |
 | Star count | `api.github.com` | public API | fetched at build/ISR, with a hard fallback |
 
@@ -193,3 +238,81 @@ Live dashboard captures in `public/landing/`, seeded with real engine data:
 - Live counters the current checkout cannot reproduce ("60+ verified runs") are
   not on the page and must not be added.
 - New lore goes through Part 5 before it goes into `lexicon.ts`.
+
+## Part 10 — The second scheme, and where the colour is allowed to live
+
+The page originally shipped one scheme: the emissive green-on-black everyone
+associates with the handheld. It now ships two, and the second one had to be as
+defensible as the first. This part is the research behind the light scheme and
+the colour treatment.
+
+### What the hardware actually does
+
+The 1989 DMG-01 has **no backlight**. It is a reflective STN LCD: a mirror
+behind the panel bounces ambient light back through the polariser and the
+liquid-crystal layer, and a pixel reads dark when the crystals twist to block
+that light. Four nominal shades per pixel (`#0f380f / #306230 / #8bac0f /
+#9bbc0f`, darkest to lightest) — the same public-domain facts the rest of the
+page is built on.
+
+So there are two honest presentations of one screen, and the page uses one per
+scheme:
+
+| Presentation | How you see it | Page scheme |
+| --- | --- | --- |
+| Unmodified hardware in a lit room | dark olive ink on a pale reflector | **light** |
+| Backlit mod, emulator, low-light photo | the four shades glowing on dark | **dark** |
+
+"Green-on-black" is not what a stock DMG looks like in daylight — it is the
+emulator / backlit presentation. Both are period-correct; the nav toggle just
+picks which room the handheld is sitting in.
+
+### The reflector value is art-directed, not sampled — and the tradeoff
+
+A real unlit DMG reflector is a pea-soup yellow-green (around `#c4cfa1`). The
+page's light canvas is `#eae5c8` — warmer and lighter than the hardware. That
+is a deliberate, disclosed trade: WCAG AA needs every text token to clear
+4.5:1 against the canvas, and a darker, more accurate reflector squeezes the
+headroom on the lighter tokens (`faint`, the SGB rims) below the line. The
+light scheme is therefore "an unlit LCD in a bright room, tuned for
+legibility", not a colour-meter reading of a photographed screen. The ink
+(`#1c2810`) is the dark-olive end of the same family, so the pair still reads
+as one LCD.
+
+### Why the colour lives in the frame: the Super Game Boy
+
+The brief was "more colour in both modes" without abandoning a monochrome
+identity. The Super Game Boy (1994, SNES accessory) is the period-accurate
+answer: it ran Game Boy cartridges but had the SNES draw a **full-colour
+decorative border** around a play field that stayed the handheld's four shades
+unless a game explicitly opted into colourisation. The default behaviour —
+vivid frame, monochrome content — is precisely the constraint this page wants:
+body copy and headings stay DMG, and the colour budget is spent on chrome.
+
+### The colour budget, and what it deliberately does not spend
+
+- **Spent on:** dialogue-box and panel rims, terminal/browser title bars, the
+  pixel kicker on each section head, and the alphabet's 28 tiles (which cycle
+  the four hues as rims — a labelled-drawer wall, the SGB border at its most
+  literal).
+- **Not spent on:** body copy, `font-display` headings, or glyph fills — the
+  play area stays monochrome. The Unown eyes stay `dim` except where one glyph
+  is the subject; twenty-eight lit eyes strobe.
+- **The four hues** (`sgb-cream / sgb-amber / sgb-brick / sgb-purple`) were
+  picked to clear AA as a rim against the panel surface *and* as a fill under
+  `text-canvas` in **both** schemes. Each has a dark/light dual, separately
+  tuned: the light scheme's hues sit at the dark, saturated end so they hold on
+  a pale reflector, the dark scheme's at the bright end so they read on
+  near-black. Every ratio is in the landing `AGENTS.md` Verification section
+  and re-checked by `bun scripts/contrast_audit.mjs`, which walks both schemes.
+
+### Rejected
+
+- **A pastel "light mode"** (white cards, blue accents) — it would read as a
+  generic modern site and throw away the LCD premise. The light scheme had to
+  be the *same hardware in different light*, not a second brand.
+- **Full-colour text or headings** — the moment body copy takes a hue the page
+  stops being a Game Boy screen and starts being a slide deck, and contrast
+  collapses: one accent that passes on a dark panel fails on a pale reflector.
+- **Pixel-sampling a photographed DMG screen** for the reflector — it costs the
+  contrast headroom the AA contract needs. Disclosed and tuned instead.

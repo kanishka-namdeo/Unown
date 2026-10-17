@@ -34,11 +34,14 @@ export function QuickstartSection() {
     <section id="quickstart" className="scroll-mt-16 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
-          <FadeUp>
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
+          {/* min-w-0 on both columns: the install <pre> and the command
+              list carry unbreakable URLs, and grid items default to
+              min-width:auto, which would push the layout past 390px. */}
+          <FadeUp className="min-w-0">
+            <p className="gb-label text-[10px] text-glow">
               Quickstart
             </p>
-            <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h2 className="mt-3 font-display text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
               Five minutes to a smarter terminal.
             </h2>
             <p className="mt-4 max-w-md text-pretty leading-relaxed text-dim">
@@ -58,7 +61,10 @@ export function QuickstartSection() {
                     const cmd = hash === -1 ? line : line.slice(0, hash);
                     const comment = hash === -1 ? "" : line.slice(hash);
                     return (
-                      <div key={i} className="whitespace-pre">
+                      <div key={i} className="flex items-baseline gap-3 whitespace-pre">
+                        <span className="gb-label shrink-0 text-[9px] text-glow">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
                         <span className="text-ink">{cmd}</span>
                         {comment ? <span className="text-faint">{comment}</span> : null}
                       </div>
@@ -71,15 +77,15 @@ export function QuickstartSection() {
             <dl className="mt-6 grid gap-x-8 gap-y-2 sm:grid-cols-[auto_1fr]">
               {PREREQS.map(([k, v]) => (
                 <React.Fragment key={k}>
-                  <dt className="font-mono text-[11px] text-faint">{k}</dt>
+                  <dt className="gb-label text-[9px] text-glow">{k}</dt>
                   <dd className="text-[12.5px] text-dim">{v}</dd>
                 </React.Fragment>
               ))}
             </dl>
           </FadeUp>
 
-          <FadeUp delay={0.08}>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-glow">
+          <FadeUp delay={0.08} className="min-w-0">
+            <p className="gb-label text-[9px] text-glow">
               The whole command surface
             </p>
             <ul className="mt-5 border-t border-line">

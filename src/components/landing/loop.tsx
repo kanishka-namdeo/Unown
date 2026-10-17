@@ -4,7 +4,7 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Glyph } from "./glyph";
 import type { GlyphId } from "./glyphs";
-import { FadeUp } from "./shell";
+import { FadeUp, SectionHead, PixelCursor } from "./shell";
 
 /* ------------------------------------------------------------------ */
 /* the three real artifacts                                            */
@@ -131,12 +131,9 @@ export function LoopSection() {
     <section id="loop" className="scroll-mt-16 border-y border-line bg-panel/40 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-            The learning loop
-          </p>
-          <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+          <SectionHead kicker="The learning loop" tone="amber">
             Most agents forget. This one has to prove it remembered.
-          </h2>
+          </SectionHead>
           <p className="mt-4 text-pretty leading-relaxed text-dim">
             Three steps, run continuously by the engine while you work. What follows is
             not a diagram of the idea — it is the formats each step actually writes.
@@ -150,7 +147,7 @@ export function LoopSection() {
             role="tablist"
             aria-label="Stages of the learning loop"
             onKeyDown={onKeyDown}
-            className="grid gap-px overflow-hidden rounded-t-lg border border-b-0 border-line bg-line sm:grid-cols-3"
+            className="grid gap-px overflow-hidden border border-b-0 border-line bg-line sm:grid-cols-3"
           >
             {BEATS.map((b, i) => {
               const on = i === active;
@@ -166,7 +163,7 @@ export function LoopSection() {
                   aria-controls={`loop-panel-${b.key}`}
                   tabIndex={on ? 0 : -1}
                   onClick={() => setActive(i)}
-                  className={`group relative flex items-center gap-3.5 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-glow ${
+                  className={`group relative flex items-center gap-3.5 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-glow [transition-timing-function:steps(2,end)] ${
                     on ? "bg-panel-2" : "bg-panel hover:bg-panel-2"
                   }`}
                 >
@@ -178,6 +175,11 @@ export function LoopSection() {
                       on ? "scale-x-100 bg-glow" : "scale-x-0 bg-glow"
                     }`}
                   />
+                  {on ? (
+                    <PixelCursor className="size-2.5 shrink-0 text-glow" />
+                  ) : (
+                    <span className="size-2.5 shrink-0" aria-hidden="true" />
+                  )}
                   <Glyph
                     id={b.glyph}
                     weight="heavy"
@@ -206,7 +208,7 @@ export function LoopSection() {
             id={`loop-panel-${beat.key}`}
             aria-labelledby={`loop-tab-${beat.key}`}
             tabIndex={0}
-            className="rounded-b-lg border border-line bg-panel/40 p-6 focus:outline-none sm:p-8"
+            className="border border-line bg-panel/40 p-6 focus:outline-none sm:p-8"
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -227,7 +229,7 @@ export function LoopSection() {
                   </div>
 
                   <div className="min-w-0">
-                    <div className="overflow-hidden rounded-lg border border-line">
+                    <div className="overflow-hidden border border-line">
                       <div className="flex items-center gap-2 border-b border-line bg-panel px-3.5 py-2">
                         <span
                           className="size-1.5 rounded-full bg-glow/60"

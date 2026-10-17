@@ -2,16 +2,15 @@
  * Landing page stylesheet — `/` only. Imported by `src/app/page.tsx`, so
  * nothing here is loaded by `/dashboard`.
  *
- * The palette itself (bg-canvas, text-dim, text-glow, border-line …) lives in
- * the `@theme` block in `globals.css`, because Tailwind only resolves `@theme`
- * in the file that pulls in `tailwindcss`. What stays here is the hand-written
- * layer that Tailwind cannot express, plus the scroll-linked motion.
+ * The palette (bg-canvas, text-dim, text-glow, border-line …) and the three
+ * retro font utilities live in the `@theme` block in `globals.css`, because
+ * Tailwind only resolves `@theme` in the file that pulls in `tailwindcss`.
+ * What stays here is the hand-written layer Tailwind cannot express:
  *
- * Two jobs remain:
- *
- *  1. The one serif, the grain texture, and the hairline rules.
- *
- *  2. Scroll-linked motion for the hero seal, implemented in CSS via
+ *  1. The Gen 1 dialogue box, the pixel button and the HP bar — the three
+ *     pieces of console furniture every section is built out of.
+ *  2. The CRT scanline and LCD pixel-grid overlays.
+ *  3. Scroll-linked motion for the hero seal, implemented in CSS via
  *     `animation-timeline: view()`. Chromium and Safari 26 animate it;
  *     Firefox gets the finished state, which is a fine fallback because the
  *     gate uses `@supports` with an `animation-range` check that filters
@@ -30,29 +29,39 @@ html {
 }
 
 /* ---------------------------------------------------------------- */
-/* the one serif — attributed quotations only                       */
+/* the quoted voice — attributed quotations only                     */
 /* ---------------------------------------------------------------- */
 
 /*
- * Instrument Serif, loaded once in `layout.tsx`. Reserved for Pokédex entries
- * and other text we did not write, so a reader can tell a quote from our own
- * voice at a glance. Never used for body copy — it is a display face.
+ * VT323, loaded once in `layout.tsx`. Reserved for text we did not write —
+ * the Pokédex entries and the field notes — so a reader can tell a quotation
+ * from our own voice at a glance. It replaced Instrument Serif: on a Game Boy
+ * page a refined serif was the one modern note left, and a quoted dex entry
+ * is game text, not editorial. Never used for body copy.
+ *
+ * VT323 runs small for its point size (it is a 12px terminal face), so every
+ * caller sets it a step larger than it would set Geist.
  */
 .quote {
-  font-family: var(--font-quote), Georgia, "Times New Roman", serif;
+  font-family: var(--font-vt), "Courier New", monospace;
   font-weight: 400;
-  letter-spacing: -0.005em;
+  letter-spacing: 0.01em;
 }
 
 /* ---------------------------------------------------------------- */
-/* grain                                                             */
+/* the LCD pixel grid                                                 */
 /* ---------------------------------------------------------------- */
 
 /*
- * A 200px seamless fractal-noise tile, inlined as an SVG data URI so it costs
- * ~300 bytes and makes no network request. `stitchTiles="stitch"` is what
- * makes the tile seamless; a live full-screen `filter: url(#grain)` would jank
- * on scroll, so we tile instead and blend it at very low opacity.
+ * Was film grain; now it is the thing a 1989 reflective TFT actually has —
+ * a fixed 4px matrix of pixel separators. Two crossed repeating gradients,
+ * inlined with no network request, at an opacity that reads as texture on
+ * empty canvas and disappears over text. `mix-blend-mode: overlay` means it
+ * lightens the dark greens and leaves the bright greens alone, which is what
+ * a real pixel gap does.
+ *
+ * The CRT scanlines are a separate, fixed layer in `.crt::before` below —
+ * the grid is the screen, the scanlines are the camera.
  */
 .grain::after {
   content: "";
@@ -60,20 +69,74 @@ html {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E");
-  background-size: 200px 200px;
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      var(--gb-grain) 0 1px,
+      transparent 1px 4px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--gb-grain) 0 1px,
+      transparent 1px 4px
+    );
+  background-size: 4px 4px;
   background-repeat: repeat;
-  opacity: 0.05;
+  opacity: 0.5;
   mix-blend-mode: overlay;
 }
 
 /*
- * Viewport-pinned variant for the page shell. An absolutely-positioned grain
- * layer on a document this tall would mean a layer as tall as the page; fixed
- * keeps the paint bounded to one screen no matter how long the page gets.
+ * Viewport-pinned variant for the page shell. An absolutely-positioned layer
+ * on a document this tall would mean a layer as tall as the page; fixed keeps
+ * the paint bounded to one screen no matter how long the page gets.
  */
 .grain-fixed::after {
   position: fixed;
+}
+
+/* ---------------------------------------------------------------- */
+/* CRT scanlines + vignette                                          */
+/* ---------------------------------------------------------------- */
+
+/*
+ * The camera, not the screen: a fixed, pointer-events-free layer over the
+ * whole shell. 3px period so it survives being scaled by a HiDPI display,
+ * and dark rather than light so it deepens the greens instead of greying
+ * them. `pointer-events: none` on the element and both pseudo-elements is
+ * what makes a high z-index safe — nothing here can swallow a click.
+ *
+ * There is deliberately NO flicker. Rapid modulation above ~3Hz is a
+ * photosensitivity hazard, and a landing page is not the place to gamble a
+ * visitor's afternoon for atmosphere. The scanlines are static; only the
+ * cursor and the continue-arrow blink, at 1Hz step-end, which is slower than
+ * anything that could provoke a response.
+ *
+ * Both layers ride on `::before` because `.grain` already owns `::after` on
+ * the same shell element, and two rules fighting over one pseudo-element is
+ * exactly the kind of thing that works in a screenshot and dies in review.
+ */
+.crt::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  /* First layer is painted on top: the vignette over the scanline grid.
+   * Both draw from the gb-* furniture vars so the dark screen keeps its
+   * black camera layer while the daylight screen swaps to a faint ink wash —
+   * black over a pale reflector reads as a dirty screen, not a CRT. */
+  background-image:
+    radial-gradient(
+      ellipse at center,
+      transparent 62%,
+      var(--gb-vignette) 100%
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--gb-scanline) 0 1px,
+      transparent 1px 3px
+    );
 }
 
 /* ---------------------------------------------------------------- */
@@ -124,17 +187,22 @@ html {
 
 /*
  * Motion that communicates state rather than decorating. Every rule here is a
- * 150-220ms state change on something the visitor did (hover, focus), which is
- * the line between responsive and restless.
+ * state change on something the visitor did (hover, focus), which is the line
+ * between responsive and restless.
+ *
+ * The timing functions are `steps()`, not beziers. That is the whole retro
+ * tell: a Game Boy UI cannot interpolate, so nothing on this page eases into
+ * a hover — it advances in discrete frames, the way the console did.
  */
 
-/* Cards lift a single pixel and warm their border. One pixel: enough to feel,
+/* Cards lift a single pixel and light their rim. One pixel: enough to feel,
    not enough to notice as movement. */
 .lift {
   transition:
-    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform 110ms steps(2, end),
+    border-color 110ms steps(2, end),
+    box-shadow 110ms steps(2, end),
+    background-color 110ms steps(2, end);
 }
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
@@ -145,7 +213,7 @@ html {
 }
 
 /* A rule that draws in from the left on hover — the standard editorial tell
-   that a link goes somewhere. */
+   that a link goes somewhere. Stepped, so it wipes on in four frames. */
 .link-sweep {
   position: relative;
   text-decoration: none;
@@ -161,7 +229,7 @@ html {
   background: currentColor;
   transform: scaleX(0);
   transform-origin: right;
-  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 240ms steps(6, end);
 }
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
@@ -178,17 +246,20 @@ html {
   border-radius: 2px;
 }
 
-/* Primary action picks up a soft emerald bloom, like the mark lighting. */
+/* Primary action picks up a phosphor bloom on hover, like the mark lighting.
+   The tint rides on var(--color-glow) via color-mix rather than the baked
+   rgb(155 188 15) so the bloom follows the scheme — bright green over the
+   dark screen, ink-green over the daylight one. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .glow-hover {
-    box-shadow: 0 0 0 0 rgb(52 211 153 / 0%);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-glow) 0%, transparent);
     transition:
       box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
       background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .glow-hover:hover {
-    box-shadow: 0 8px 28px -10px rgb(52 211 153 / 0.45);
+    box-shadow: 0 8px 28px -10px color-mix(in oklab, var(--color-glow) 50%, transparent);
   }
 }
 
@@ -271,22 +342,342 @@ html {
 }
 
 /* ---------------------------------------------------------------- */
-/* a hairline rule that reads as a scanline on the dark canvas        */
+/* a dashed pixel rule between blocks                                */
 /* ---------------------------------------------------------------- */
 
+/* A dashed pixel rule rather than a gradient hairline — the old one was the
+   most modern-looking thing left on the page. */
 .rule-hair {
-  background-image: linear-gradient(
+  background-image: repeating-linear-gradient(
     to right,
-    transparent,
-    var(--color-line-bright) 18%,
-    var(--color-line-bright) 82%,
-    transparent
+    var(--color-line-bright) 0 6px,
+    transparent 6px 12px
   );
-  height: 1px;
+  height: 3px;
 }
 
 /* Terminal scroll region keeps long lines from widening the page. */
 .term-lines {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line-bright) transparent;
+}
+
+/* ================================================================ */
+/* console furniture                                                 */
+/* ================================================================ */
+
+/*
+ * The three pieces of Game Boy furniture every section is built from: the
+ * dialogue box, the button and the HP bar. They are deliberately written as
+ * raw CSS rather than Tailwind utilities because each one is a stack of
+ * shadows that a utility class would have to be invented for, and because a
+ * section author should be able to reach for `gb-box` and get the whole
+ * console frame rather than six arbitrary values that are 2px out.
+ *
+ * THE FRAME RULE. A drop shadow is invisible on this page: the canvas is
+ * already near-black, so an offset in black or in `canvas` paints nothing.
+ * What carries the depth instead is a stacked ring — dark ring, light gap,
+ * dark edge — which is how the games drew a window over a dark field. Every
+ * light box is `border: 3px solid canvas` (dark against its own fill) plus
+ * `box-shadow: 0 0 0 3px glow` (the light rim outside it). That is the whole
+ * trick, and it costs two declarations.
+ *
+ * SQUARE CORNERS. No `rounded-*` on anything using these classes. A pixel
+ * art language with antialiased corner radii is a contradiction, and the
+ * chamfer everyone remembers from Gen 1 is one pixel wide — which CSS can
+ * only fake badly. Square reads as deliberate; a 6px radius reads as the
+ * template this page is trying not to be.
+ */
+
+/* --- section tones ------------------------------------------------- */
+
+/*
+ * THE SGB TRICK. The Super Game Boy (1994) drew full-COLOUR borders around a
+ * monochrome play area: the game stayed four shades, the frame around it did
+ * not. That is exactly what a `tone` does here. Body copy and headings stay
+ * DMG green — this is still an LCD — and a section's colour lives only in its
+ * CHROME: the box rim, the terminal title bar, the kicker.
+ *
+ * Mechanics: `--tone-fill` and `--tone-rim` are custom properties that each
+ * furniture class defaults (so a box with no data-tone is unchanged), and a
+ * `[data-tone="…"]` on the element overrides them. Setting the attribute is
+ * the entire API — no section hand-picks a hex, so thirteen sections restyled
+ * in parallel cannot drift into fourteen different reds. Pass `tone` to
+ * `SectionHead` / `TerminalWindow` / `BrowserFrame` in shell.tsx and it
+ * renders the attribute for you.
+ *
+ * Contrast is pre-checked for all five tones in BOTH schemes (see the
+ * Verification section of the landing AGENTS.md): text-canvas on any
+ * tone-as-fill is >= 5.94 dark / >= 6.34 light, and every rim clears 4.94
+ * against the card fill. Never add a tone without re-running the audit.
+ */
+.gb-box,
+.gb-panel,
+.gb-bar {
+  --tone-fill: var(--color-glow);
+  --tone-rim: var(--color-glow);
+}
+
+/* .gb-panel's rim is the lit hairline, not the glow ring, so it keeps its
+   own default; a tone overrides just the rim and leaves the dark fill. */
+.gb-panel {
+  --tone-rim: var(--color-line-bright);
+}
+
+[data-tone="cream"] {
+  --tone-fill: var(--color-sgb-cream);
+  --tone-rim: var(--color-sgb-cream);
+}
+
+[data-tone="amber"] {
+  --tone-fill: var(--color-sgb-amber);
+  --tone-rim: var(--color-sgb-amber);
+}
+
+[data-tone="brick"] {
+  --tone-fill: var(--color-sgb-brick);
+  --tone-rim: var(--color-sgb-brick);
+}
+
+[data-tone="purple"] {
+  --tone-fill: var(--color-sgb-purple);
+  --tone-rim: var(--color-sgb-purple);
+}
+
+/* --- dialogue box ------------------------------------------------- */
+
+/* Light: the game's text window. The fill and outer rim take the section
+   tone (default glow), so `data-tone="brick"` gives a brick dialogue box
+   without any section touching a hex value. */
+.gb-box {
+  background: var(--tone-fill);
+  color: var(--color-canvas);
+  border: 3px solid var(--color-canvas);
+  box-shadow: 0 0 0 3px var(--tone-rim);
+}
+
+/* Dark: a console panel sitting on the page. Lit rim instead of a gap, so it
+   separates from the canvas without becoming a bright slab. A tone recolours
+   only the rim — the panel stays dark, which is what keeps a toned panel from
+   fighting the monochrome play area it frames. */
+.gb-panel {
+  background: var(--color-panel-2);
+  border: 3px solid var(--color-canvas);
+  box-shadow: 0 0 0 3px var(--tone-rim);
+}
+
+/*
+ * The title-bar strip. Factored out of TerminalWindow/BrowserFrame so a
+ * section's window header can carry the tone as a solid band — the SGB
+ * border made walkable. `border-canvas` underneath is the same 3px gutter
+ * every frame on this page has.
+ */
+.gb-bar {
+  background: var(--tone-fill);
+  border-bottom: 3px solid var(--color-canvas);
+}
+
+/* The inner hairline the games draw just inside the frame. Adds a second
+   step to a box without a second element. */
+.gb-inset {
+  box-shadow: inset 0 0 0 2px var(--color-canvas);
+}
+
+/* --- buttons ------------------------------------------------------ */
+
+/*
+ * The press is an inset bevel that shrinks, plus a one-pixel translate on
+ * `steps(2)`. Retro motion is stepped, never eased — an eased button is the
+ * single fastest way to make a Game Boy UI read as a website.
+ */
+.gb-btn {
+  border: 3px solid var(--color-canvas);
+  background: var(--color-glow);
+  color: var(--color-canvas);
+  box-shadow: inset -3px -3px 0 0 rgb(10 20 10 / 0.34);
+  transition:
+    transform 90ms steps(2, end),
+    box-shadow 90ms steps(2, end),
+    background-color 90ms steps(2, end);
+}
+
+.gb-btn:hover {
+  background: var(--color-glow-soft);
+  box-shadow: inset -2px -2px 0 0 rgb(10 20 10 / 0.34);
+}
+
+.gb-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: inset 0 0 0 0 rgb(10 20 10 / 0.34);
+}
+
+/*
+ * Dark counterpart: light bevel top-left, dark bevel bottom-right.
+ *
+ * The top-left bevel is the phosphor-tinted highlight, so it rides on
+ * var(--color-glow) via color-mix and follows the scheme. The bottom-right
+ * one is a shadow, and a shadow stays dark in both schemes — the light
+ * source does not move when the room brightens — so it is deliberately a
+ * literal black rather than a themed value. Same reasoning for the
+ * rgb(10 20 10) bevels on .gb-btn above: they are shadows, not pigment.
+ */
+.gb-btn-dark {
+  border: 3px solid var(--color-canvas);
+  background: var(--color-panel-2);
+  color: var(--color-ink);
+  box-shadow:
+    inset 2px 2px 0 0 color-mix(in oklab, var(--color-glow) 18%, transparent),
+    inset -2px -2px 0 0 rgb(0 0 0 / 0.5);
+  transition:
+    transform 90ms steps(2, end),
+    box-shadow 90ms steps(2, end),
+    border-color 90ms steps(2, end);
+}
+
+.gb-btn-dark:hover {
+  border-color: var(--color-glow);
+  color: var(--color-glow);
+}
+
+.gb-btn-dark:active {
+  transform: translate(2px, 2px);
+  box-shadow: inset -2px -2px 0 0 color-mix(in oklab, var(--color-glow) 18%, transparent);
+}
+
+/* --- HP bar ------------------------------------------------------- */
+
+/*
+ * The stat bar from the battle screen: dark well, bright fill, colour steps
+ * down green → amber → red exactly as a real HP bar does. The colour is
+ * never the only signal — every caller pairs it with a number, so the bar
+ * survives colour blindness and survives a reader who cannot see it at all.
+ */
+.gb-hp {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  background: var(--gb-hp-well);
+  border: 2px solid var(--color-canvas);
+  box-shadow: 0 0 0 2px var(--color-line-bright);
+}
+
+.gb-hp > i {
+  display: block;
+  height: 100%;
+  background: var(--color-glow);
+  transition: width 400ms steps(12, end);
+}
+
+.gb-hp[data-tone="mid"] > i {
+  background: var(--color-amber);
+}
+
+.gb-hp[data-tone="low"] > i {
+  background: var(--color-poke);
+}
+
+/* --- labels ------------------------------------------------------- */
+
+/*
+ * Press Start 2P is a fixed-width 8×8 bitmap face. Anything longer than a
+ * phrase in it turns into a ransom note, so `.gb-label` caps the size and
+ * adds the tracking the original grid had between characters.
+ */
+.gb-label {
+  font-family: var(--font-press), var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  -webkit-font-smoothing: none;
+}
+
+/* --- blinking continue arrow -------------------------------------- */
+
+/*
+ * The ▼ that sits bottom-right of every dialogue box in the games. It is
+ * an SVG rather than a text glyph for one reason: ▼ (U+25BC) is outside the
+ * `latin` subset these fonts are sliced to, so as text it would silently
+ * fall back to whatever the OS felt like serving.
+ */
+.gb-cont {
+  animation: gb-cont 1s step-end infinite;
+}
+
+@keyframes gb-cont {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* --- pixel type helpers ------------------------------------------- */
+
+/* Headings. Pixelify Sans at display sizes. */
+.gb-h {
+  font-family: var(--font-pixelify), var(--font-geist-sans), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+}
+
+/* Terminal and dialogue body text. VT323 runs small, so callers set the
+   size a step above where they would set Geist. */
+.gb-term {
+  font-family: var(--font-vt), var(--font-geist-mono), monospace;
+  letter-spacing: 0.01em;
+}
+
+/* --- dither: the era's gradient ------------------------------------ */
+
+/*
+ * This is how a four-shade screen fakes a fade, and it is the replacement
+ * for the blurred radial blobs the page used to carry. A `blur-[130px]` glow
+ * is the single most modern artefact a page like this can hold — it is
+ * continuous-tone photography in a world made of switches.
+ *
+ * `repeating-conic-gradient` at 0/25/50% with an even `background-size` is
+ * the standard two-colour checkerboard; halve `background-size` for a finer
+ * weave. Both are decorative only — never put text on one without checking
+ * the contrast against the *other* colour in the pattern, not the average.
+ */
+.gb-dither {
+  background-image: repeating-conic-gradient(
+    var(--color-line-bright) 0% 25%,
+    transparent 0% 50%
+  );
+  background-size: 8px 8px;
+}
+
+.gb-dither-fine {
+  background-image: repeating-conic-gradient(
+    var(--color-line-bright) 0% 25%,
+    transparent 0% 50%
+  );
+  background-size: 4px 4px;
+}
+
+/* 45° hatch — the other half of the dithering toolbox, for edges. */
+.gb-hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-line-bright) 0 3px,
+    transparent 3px 7px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gb-btn,
+  .gb-btn-dark,
+  .gb-hp > i {
+    transition: none;
+  }
+
+  .gb-cont {
+    animation: none;
+    opacity: 1;
+  }
 }

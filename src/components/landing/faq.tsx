@@ -6,7 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { FadeUp } from "./shell";
+import { FadeUp, PixelCursor, SectionHead } from "./shell";
 
 const FAQ = [
   {
@@ -53,26 +53,31 @@ export function FaqSection() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-14">
           <FadeUp>
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-              FAQ
-            </p>
-            <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+            <SectionHead
+              tone="purple"
+              kicker="FAQ"
+              lead="Including the two that decide whether anyone installs a self-modifying agent: is it safe, and will it touch my tests."
+            >
               The skeptic&apos;s questions.
-            </h2>
-            <p className="mt-4 text-pretty leading-relaxed text-dim">
-              Including the two that decide whether anyone installs a self-modifying agent:
-              is it safe, and will it touch my tests.
-            </p>
+            </SectionHead>
           </FadeUp>
 
           <FadeUp delay={0.06}>
             <Accordion type="single" collapsible className="w-full">
               {FAQ.map((item) => (
-                <AccordionItem key={item.q} value={item.q} className="border-line">
-                  <AccordionTrigger className="text-left text-[14.5px] font-medium text-ink hover:no-underline hover:text-glow">
-                    {item.q}
+                <AccordionItem
+                  key={item.q}
+                  value={item.q}
+                  data-tone="purple"
+                  className="gb-panel mb-3 border-0 last:mb-0"
+                >
+                  <AccordionTrigger className="group rounded-none text-left text-[14.5px] font-medium text-ink hover:no-underline hover:text-glow [&>svg]:hidden">
+                    <span className="flex items-center gap-2.5">
+                      <PixelCursor className="h-3 w-[7px] shrink-0 text-glow opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
+                      <span>{item.q}</span>
+                    </span>
                   </AccordionTrigger>
-                  <AccordionContent className="text-[13px] leading-relaxed text-dim">
+                  <AccordionContent className="gb-term text-[19px] leading-snug text-dim">
                     {item.a}
                   </AccordionContent>
                 </AccordionItem>

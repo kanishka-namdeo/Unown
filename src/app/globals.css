@@ -42,27 +42,165 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Landing-page palette (warm dark). Declared here rather than in
-   * landing.css because Tailwind only resolves @theme in the CSS file that
-   * pulls in tailwindcss. Emits bg-canvas, bg-panel, bg-panel-2, bg-line,
-   * text-ink, text-dim, text-faint, text-glow, border-line and friends.
-   * The dashboard keeps the cool zinc tokens above: it is an application, and
-   * a tinted canvas reads as a mistake there. Only the marketing page at /
-   * opts in. Ten idle custom properties cost a few hundred bytes on the
-   * dashboard; a split build that silently dropped the palette would cost
-   * a lot more. */
-  --color-canvas: #0c0b0a;
-  --color-panel: #131211;
-  --color-panel-2: #1a1817;
-  --color-line: #272421;
-  --color-line-bright: #3b3733;
-  --color-ink: #f4f1ea;
-  --color-dim: #a8a29a;
-  /* Clears WCAG AA 4.5:1 on panel-2, the darkest surface it lands on, and
-     stays a clear step below `dim` so the ink/dim/faint hierarchy holds. */
-  --color-faint: #8b8279;
-  --color-glow: #34d399;
-  --color-glow-soft: #6ee7b7;
+  /* Font utilities stay in the INLINE block on purpose. Their values are
+   * var(--font-press) etc., which next/font defines on <body>. Inline makes
+   * the utility emit `font-family: var(--font-press)` verbatim, so it resolves
+   * against body at the point of use. In a non-inline @theme the reference
+   * would be evaluated at :root — where the variable does not exist yet — and
+   * every retro face would silently fall back to a system font. */
+  --font-pixel: var(--font-press);
+  --font-display: var(--font-pixelify);
+  --font-term: var(--font-vt);
+}
+
+/* ---------------------------------------------------------------- */
+/* landing palette — NON-inline, so the light scheme can restyle it  */
+/* ---------------------------------------------------------------- */
+
+/*
+ * Declared here rather than in landing.css because Tailwind only resolves
+ * @theme in the file that pulls in tailwindcss.
+ *
+ * This block is deliberately NOT `inline`. The shadcn block above is inline
+ * (its values are var() references the dashboard swaps per-`.dark`), but the
+ * landing palette ships as literal hex — and inline bakes those literals into
+ * every utility (`.bg-canvas{background-color:#0a140a}`), which makes them
+ * impossible to override at runtime. Dropping `inline` here makes each utility
+ * emit `var(--color-canvas)` instead, and THAT is what lets the light scheme
+ * below restyle the whole page without a second set of class names.
+ *
+ * It is the Game Boy DMG-01 screen. The four canonical shades
+ * #0f380f / #306230 / #8bac0f / #9bbc0f are public-domain facts about a 1989
+ * LCD — the only "Pokémon art" this page needs, and the reason it can look
+ * this way while shipping none. `glow` IS shade 4, so a `bg-glow` box is
+ * literally the game's dialogue box.
+ *
+ * TWO SCHEMES, ONE VOCABULARY. DARK (the default) is the screen emissive in a
+ * dark room. LIGHT is the same reflective LCD unlit, in daylight — which is
+ * what the hardware actually looks like: dark olive ink on a pale
+ * greenish-beige reflector, not the green-on-black that emulators invented
+ * for low light. Both are historically honest; the toggle picks which room
+ * the handheld is in. Same token names, so every section restyles for free.
+ *
+ * CONTRAST IS A CONTRACT IN BOTH MODES (see landing AGENTS.md Verification).
+ * Every text token clears AA 4.5:1 against canvas AND panel-2, the two
+ * surfaces text actually lands on. Measured worst-case ratios:
+ *   DARK   ink 14.16 · dim 9.30 · faint 5.85 · glow 7.28 · amber 10.48 ·
+ *          poke 5.63 · sgb-cream 13.19 · sgb-amber 6.08 · sgb-brick 5.04 ·
+ *          sgb-purple 6.05 · text-canvas-on-glow 8.59
+ *   LIGHT  ink 9.49 · dim 6.50 · faint 5.08 · glow 5.50 · amber 5.55 ·
+ *          poke 5.16 · sgb-cream 5.12 · sgb-amber 5.02 · sgb-brick 4.94 ·
+ *          sgb-purple 9.41 · text-canvas-on-glow 7.05
+ * `line-bright` is exempt in both modes by design: it is only ever a border
+ * or a bar-chart track, never text. Re-run `bun scripts/contrast_audit.mjs`
+ * (it now walks both schemes) before shipping any change to these values.
+ *
+ * The dashboard keeps the cool zinc tokens above: it is an application, and a
+ * tinted canvas reads as a mistake there. Only the marketing page at / opts in.
+ */
+@theme {
+  --color-canvas: #0a140a;
+  --color-panel: #0f1d0f;
+  --color-panel-2: #142614;
+  --color-line: #1f3a1f;
+  --color-line-bright: #2f5a2f;
+  --color-ink: #e9f6d9;
+  --color-dim: #b3cf90;
+  --color-faint: #88a66a;
+  /* DMG shade 4, the lightest screen green. Accent, CTA fill, dialogue box. */
+  --color-glow: #9bbc0f;
+  --color-glow-soft: #c3e06a;
+  /* Cartridge-era accents. */
+  --color-amber: #ffcb05;
+  --color-poke: #ff6a4d;
+  /* Super Game Boy accents (stock SGB palette 1-A, 1994). Cream, amber,
+   * brick, purple — period-accurate extra hues for the border treatment.
+   * Dual-valued: the DARK figures are the usable-on-dark-screen brightenings
+   * of the originals; the LIGHT figures are the originals, darkened just
+   * enough to clear AA on the pale reflector. */
+  --color-sgb-cream: #f8e8c8;
+  --color-sgb-amber: #d89048;
+  --color-sgb-brick: #e86a5a;
+  --color-sgb-purple: #b48cf2;
+
+  /* Furniture-only values for `landing.css` raw rules. These carry no
+   * `--color-` prefix on purpose: they are never turned into Tailwind
+   * utilities, they exist so the few hardcoded console colours (the HP-bar
+   * well, the CRT scanlines and vignette, the LCD grain) flip with the
+   * scheme instead of staying locked to the dark screen. */
+  --gb-hp-well: #071107;
+  --gb-scanline: rgb(0 0 0 / 0.2);
+  --gb-vignette: rgb(0 0 0 / 0.3);
+  --gb-grain: rgb(255 255 255 / 0.055);
+}
+
+/* ---------------------------------------------------------------- */
+/* light scheme — the same LCD, unlit, in daylight                   */
+/* ---------------------------------------------------------------- */
+
+/*
+ * Applied two ways, and the duplication is deliberate:
+ *  1. `prefers-color-scheme` — so a light-OS visitor gets the light screen
+ *     with JavaScript disabled, which keeps the no-JS contract intact.
+ *  2. `[data-theme="light"]` — the explicit override the nav toggle writes.
+ * An explicit dark choice needs no block: the @theme default above IS dark,
+ * and the media query is gated on :not([data-theme]) so it stands aside.
+ * Unlayered CSS outranks Tailwind's @layer theme, so these win cleanly.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --color-canvas: #eae5c8;
+    --color-panel: #ded8b6;
+    --color-panel-2: #d3cc9f;
+    --color-line: #b5ad80;
+    --color-line-bright: #9a9160;
+    --color-ink: #1c2810;
+    --color-dim: #37431f;
+    --color-faint: #4a5230;
+    --color-glow: #375110;
+    --color-glow-soft: #2c4410;
+    --color-amber: #594702;
+    --color-poke: #833525;
+    --color-sgb-cream: #554e30;
+    --color-sgb-amber: #6e4712;
+    --color-sgb-brick: #99231b;
+    --color-sgb-purple: #301850;
+
+    /* Furniture flips with the scheme. The HP well must stay darker than the
+     * canvas for the fill to read, so it tracks `line` rather than the near-
+     * black it is on the dark screen. Scanlines and vignette drop to a third
+     * of their dark strength: black at 20% over a pale reflector reads as
+     * grime, not as a CRT. The grain inverts to dark specks. */
+    --gb-hp-well: #b5ad80;
+    --gb-scanline: rgb(28 40 16 / 0.07);
+    --gb-vignette: rgb(28 40 16 / 0.12);
+    --gb-grain: rgb(28 40 16 / 0.05);
+  }
+}
+
+:root[data-theme="light"] {
+  --color-canvas: #eae5c8;
+  --color-panel: #ded8b6;
+  --color-panel-2: #d3cc9f;
+  --color-line: #b5ad80;
+  --color-line-bright: #9a9160;
+  --color-ink: #1c2810;
+  --color-dim: #37431f;
+  --color-faint: #4a5230;
+  --color-glow: #375110;
+  --color-glow-soft: #2c4410;
+  --color-amber: #594702;
+  --color-poke: #833525;
+  --color-sgb-cream: #554e30;
+  --color-sgb-amber: #6e4712;
+  --color-sgb-brick: #99231b;
+  --color-sgb-purple: #301850;
+
+  /* Mirror of the furniture block above — keep the two in step. */
+  --gb-hp-well: #b5ad80;
+  --gb-scanline: rgb(28 40 16 / 0.07);
+  --gb-vignette: rgb(28 40 16 / 0.12);
+  --gb-grain: rgb(28 40 16 / 0.05);
 }
 
 :root {

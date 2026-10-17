@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { BrowserFrame, FadeUp } from "./shell";
+import { BrowserFrame, FadeUp, SectionHead } from "./shell";
 
 /** The seven tabs, and what each one is actually for. */
 const TABS: [string, string][] = [
@@ -20,17 +20,18 @@ export function ShowcaseSection() {
     <section className="py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-            Mission control
-          </p>
-          <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+          <SectionHead
+            kicker="Mission control"
+            lead={
+              <>
+                Everything the engine does is streamed over SSE into a dashboard — every run,
+                every dream, every memory version, every guardrail decision. Seven tabs, and
+                none of them are decorative.
+              </>
+            }
+          >
             A self-improving agent you cannot watch is a rumour.
-          </h2>
-          <p className="mt-4 text-pretty leading-relaxed text-dim">
-            Everything the engine does is streamed over SSE into a dashboard — every run,
-            every dream, every memory version, every guardrail decision. Seven tabs, and
-            none of them are decorative.
-          </p>
+          </SectionHead>
         </FadeUp>
 
         <FadeUp delay={0.06} className="mt-10">

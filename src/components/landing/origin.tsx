@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Glyph } from "./glyph";
 import { DEX_QUOTES } from "./lexicon";
-import { FadeUp } from "./shell";
+import { ContinueArrow, FadeUp } from "./shell";
 
 /* ------------------------------------------------------------------ */
 /* two of them                                                         */
@@ -32,7 +32,7 @@ const TWO = [
 
 function Pair() {
   return (
-    <div className="rounded-lg border border-line bg-panel/60 p-6">
+    <div className="gb-panel p-6" data-tone="cream">
       <div className="flex items-stretch gap-4">
         {TWO.map((half, i) => (
           <div key={half.glyph} className="flex min-w-0 flex-1 flex-col">
@@ -55,7 +55,7 @@ function Pair() {
             {i === 0 ? (
               <div
                 aria-hidden="true"
-                className="mt-4 self-center font-mono text-xl text-line-bright lg:hidden"
+                className="mt-4 self-center font-mono text-xl text-faint lg:hidden"
               >
                 +
               </div>
@@ -89,10 +89,10 @@ export function OriginSection() {
           {/* left: the two quotes that explain the architecture */}
           <div>
             <FadeUp>
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
+              <p className="gb-label text-[10px] text-glow">
                 Why it is built this way
               </p>
-              <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+              <h2 className="mt-3 font-display text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
                 When alone, nothing happens.
               </h2>
               <p className="mt-4 max-w-md text-pretty leading-relaxed text-dim">
@@ -102,13 +102,14 @@ export function OriginSection() {
             </FadeUp>
 
             <FadeUp delay={0.08}>
-              <figure className="relative mt-8 border-l-2 border-glow/50 pl-5">
-                <blockquote className="quote text-pretty text-xl leading-snug text-ink italic sm:text-2xl">
+              <figure className="relative mt-8 gb-box p-5" data-tone="cream">
+                <blockquote className="quote text-pretty text-2xl leading-snug text-canvas italic sm:text-3xl">
                   “{DEX_QUOTES.emergent}”
                 </blockquote>
-                <figcaption className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
+                <figcaption className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-canvas/90">
                   {DEX_QUOTES.emergentSrc}
                 </figcaption>
+                <ContinueArrow className="absolute bottom-2 right-3 text-canvas" />
               </figure>
             </FadeUp>
 
@@ -128,21 +129,22 @@ export function OriginSection() {
             </FadeUp>
 
             <FadeUp delay={0.2}>
-              <figure className="relative mt-10 border-l-2 border-line-bright pl-5">
-                <blockquote className="quote text-pretty text-[17px] leading-relaxed text-dim italic sm:text-lg">
+              <figure className="relative mt-10 gb-box p-5" data-tone="cream">
+                <blockquote className="quote text-pretty text-lg leading-relaxed text-canvas italic sm:text-xl">
                   “{DEX_QUOTES.origin}”
                 </blockquote>
-                <figcaption className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
+                <figcaption className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-canvas/90">
                   {DEX_QUOTES.originSrc}
                 </figcaption>
-                <p className="mt-4 text-[13px] leading-relaxed text-dim">
-                  Take the other half seriously and you get this project&apos;s whole thesis
-                  in one line: which came first, the code you wrote, or the agent that
-                  read it? Unown keeps betting on the second, and then{" "}
-                  <span className="text-ink">versioning the answer</span> so you can roll it
-                  back when the bet is wrong.
-                </p>
+                <ContinueArrow className="absolute bottom-2 right-3 text-canvas" />
               </figure>
+              <p className="mt-4 text-[13px] leading-relaxed text-dim">
+                Take the other half seriously and you get this project&apos;s whole thesis
+                in one line: which came first, the code you wrote, or the agent that
+                read it? Unown keeps betting on the second, and then{" "}
+                <span className="text-ink">versioning the answer</span> so you can roll it
+                back when the bet is wrong.
+              </p>
             </FadeUp>
           </div>
 
@@ -158,7 +160,7 @@ export function OriginSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
-          className="mt-16 grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-3"
+          className="mt-16 grid gap-px overflow-hidden border border-line bg-line sm:grid-cols-3"
         >
           {[
             {
