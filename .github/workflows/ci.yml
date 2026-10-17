@@ -127,6 +127,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.3"
+      - name: Allow unprivileged user namespaces (bubblewrap requirement)
+        # Ubuntu 24.04 runner images ship kernel.apparmor_restrict_unprivileged_
+        # userns=1, which makes every bwrap invocation fail with a confusing
+        # "bwrap: Setting up uid map: Permission denied". Developer machines
+        # and most distros keep this at 0; flip it back for the smoke run.
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: bwrap profile verification
         # 25 isolation checks against the vendored bwrap (fs masking, network
         # namespace, runtime usability). Uses unprivileged user namespaces —

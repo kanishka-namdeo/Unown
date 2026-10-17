@@ -37,7 +37,7 @@ import { runDream, runProjectDream } from "../src/dream.ts";
 import { currentVersion, readTier, writeTier, MEMORY_DIR } from "../src/memory.ts";
 import { ingestTerminalNote, undreamedNotes } from "../src/notes.ts";
 import { store } from "../src/store.ts";
-import { initProjectMemory, projectMemoryPath, isPristineSeedProjectMemory } from "../src/term.ts";
+import { initProjectMemory, projectMemoryPath, isPristineSeedProjectMemory, slugifyPath } from "../src/term.ts";
 
 const SCRATCH = join(tmpdir(), "engine-tests-dream-guard");
 const PROJECT_A = join(SCRATCH, "pristine-victim"); // first-mint case
@@ -257,7 +257,7 @@ describe("project path — runProjectDream under the guard (F4B)", () => {
                 writeFileSync(memPath, CLEAN_DREAM_MD, "utf8");
                 store.run(
                         `INSERT INTO memory_versions (tier, version, content, changed_by, note, created_at) VALUES (?, 1, ?, 'test', 'established', ?)`,
-                        [`project:${slugify(PROJECT_B)}`, `${CLEAN_DREAM_MD}\n`, Date.now()],
+                        [`project:${slugifyPath(PROJECT_B)}`, `${CLEAN_DREAM_MD}\n`, Date.now()],
                 );
 
                 ingestTerminalNote(POISON_NOTE, PROJECT_B);
@@ -275,7 +275,7 @@ describe("project path — runProjectDream under the guard (F4B)", () => {
                 // The DB version row carries the SAME sanitized content (fs/db agree).
                 const row = store.get<any>(
                         `SELECT content, note FROM memory_versions WHERE tier = ? AND version = 2`,
-                        [`project:${slugify(PROJECT_B)}`],
+                        [`project:${slugifyPath(PROJECT_B)}`],
                 );
                 expect(row.content).toBe(after);
                 expect(String(row.note)).toContain("quarantined");
@@ -335,6 +335,5 @@ function ingestBenchmarkNote(content: string) {
         );
 }
 
-function slugify(dir: string): string {
-        return dir.split("/").pop()!.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
+// The production slugifier (src/term.ts slugifyPath) is used directly: a local
+// dir.split("/") twin broke on win32 backslash paths (M5-tests portability).

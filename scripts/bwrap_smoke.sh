@@ -27,6 +27,18 @@ if [ -z "${BWRAP:-}" ] || [ ! -x "$BWRAP" ]; then
 fi
 echo "bwrap: $BWRAP"
 
+# Early canary: unprivileged userns must work or EVERY check below fails with
+# a misleading exit=1. Ubuntu 24.04+ (and GH's ubuntu-latest images) ship
+# apparmor_restrict_unprivileged_userns=1 which blocks bwrap outright:
+#   sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+if ! "$BWRAP" --unshare-user --ro-bind / / --dev /dev /bin/true 2>/tmp/bwrap-userns.err; then
+        echo "✗ bwrap cannot create an unprivileged user namespace on this host:" >&2
+        sed 's/^/    /' /tmp/bwrap-userns.err >&2
+        echo "  fix: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0" >&2
+        echo "  (CI does this in a pre-step; developer machines usually have it at 0)" >&2
+        exit 1
+fi
+
 # Host facts captured OUTSIDE the sandbox (bwrap replaces /home, HOME and the
 # runtime paths, so the checks below must reference the host's real values).
 # The home-invisibility check assumes $HOME sits under /home (true on GH

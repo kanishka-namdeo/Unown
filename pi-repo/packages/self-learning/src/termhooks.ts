@@ -265,7 +265,10 @@ const LN_SYMLINK = /\bln\s+(?:-[a-zA-Z-]+\s+)*-s\s+(?:-[a-zA-Z-]+\s+)?(\S+)\s+([
 // They mirror the POSIX semantics exactly: the tree itself or anything under
 // it. Fail-closed note: the .ssh twin also catches POSIX filenames containing
 // literal backslashes around a .ssh segment — blocking there is the safe side.
-const SYSTEM_TREE = /^\/(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|root)(?:\/|$)/;
+// The optional `private/` prefix covers macOS, where /etc, /var & co. are
+// symlinks into /private/… — jailPath realpaths through them, so the plain
+// spellings would silently miss every symlink-indirected escape on darwin.
+const SYSTEM_TREE = /^\/(?:private\/)?(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|root)(?:\/|$)/;
 const SYSTEM_TREE_WIN = /^[a-zA-Z]:[\\/](?:Windows|Program Files(?: \(x86\))?|PerfLogs|System Volume Information|\$Recycle\.Bin)(?:[\\/]|$)/i;
 const RAW_DEVICE = /^\/dev\/(?:sd|nvme|hd|vd|xvd|mmcblk|loop|disk|mem|kmem|sr)/;
 const RAW_DEVICE_WIN = /^\\\\\\.\\(?:physicaldrive|cdrom|[a-zA-Z]:)/i;
@@ -294,6 +297,11 @@ export function bashRedirectEscape(cwd: string, command: string): string | null 
                                 resolved = `${resolvePath(cwd, link.target)}${resolved.slice(link.path.length)}`;
                         }
                 }
+                // Allowed write roots are EXEMPT before the deny check (macOS:
+                // os.tmpdir() lives under /private/var/…, which the private-
+                // prefixed SYSTEM_TREE below would otherwise deny — over-blocking
+                // every legitimate `> /tmp/…` scratch redirect on darwin).
+                if (TMP_ROOTS.some((r) => insideRoot(r, resolved))) continue;
                 if (
                         SYSTEM_TREE.test(resolved) ||
                         SYSTEM_TREE_WIN.test(resolved) ||

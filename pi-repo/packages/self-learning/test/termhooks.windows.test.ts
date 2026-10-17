@@ -22,7 +22,7 @@
 // escapes.
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { bashRedirectEscape, createTerminalExtension, terminalPathOk } from "../src/termhooks.ts";
@@ -36,7 +36,17 @@ const PROJ = join(VT_ROOT, "proj");
 mkdirSync(PROJ, { recursive: true });
 // Real temp-dir fixture used as the INJECTED tmp root. It must NOT be the
 // project cwd — a project inside tmpdir() would mask jail escapes.
-const TMP_ROOT = mkdtempSync(join(tmpdir(), "unown-win-tmp-"));
+// REALPATH-RESOLVED: on macOS tmpdir() lives behind the /var -> /private/var
+// symlink and jailPath returns physical paths — the injected root must be
+// the physical spelling to compare equal there (first 3-OS CI run).
+const TMP_ROOT = (() => {
+        const d = mkdtempSync(join(tmpdir(), "unown-win-tmp-"));
+        try {
+                return realpathSync(d);
+        } catch {
+                return d;
+        }
+})();
 
 afterAll(() => {
         rmSync(VT_ROOT, { recursive: true, force: true });
@@ -177,9 +187,15 @@ describe("terminalPathOk — the system temp dir is an allowed write root", () =
 
         test("the default policy allows os.tmpdir() and POSIX /tmp, but not /var/tmp or system paths", () => {
                 expect(terminalPathOk(PROJ, join(tmpdir(), "notes.md"))).toBe(true);
-                expect(terminalPathOk(PROJ, "/tmp/session-notes.md")).toBe(true);
-                expect(terminalPathOk(PROJ, "/tmp/sub/dir/x.md")).toBe(true);
-                expect(terminalPathOk(PROJ, "/var/tmp/x")).toBe(false);
+                if (process.platform === "win32") {
+                        // No POSIX /tmp on Windows — the homedir-based fixture root plays
+                        // the same role: an existing scratch dir OUTSIDE the allowed roots.
+                        expect(terminalPathOk(PROJ, join(VT_ROOT, "scratch.md"))).toBe(false);
+                } else {
+                        expect(terminalPathOk(PROJ, "/tmp/session-notes.md")).toBe(true);
+                        expect(terminalPathOk(PROJ, "/tmp/sub/dir/x.md")).toBe(true);
+                        expect(terminalPathOk(PROJ, "/var/tmp/x")).toBe(false);
+                }
                 expect(terminalPathOk(PROJ, "/etc/passwd")).toBe(false);
                 expect(terminalPathOk(PROJ, "../../etc/passwd")).toBe(false);
         });

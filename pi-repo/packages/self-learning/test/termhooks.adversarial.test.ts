@@ -46,8 +46,8 @@
 // traversal escapes). Runs on plain `bun test`.
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
-import { homedir } from "node:os";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { homedir, platform, tmpdir } from "node:os";
 import { join } from "node:path";
 import { bashRedirectEscape, buildTerminalNote, createTerminalExtension } from "../src/termhooks.ts";
 import { decideBash, jailPath } from "../src/hooks.ts";
@@ -69,7 +69,10 @@ mkdirSync(join(FAKE_HOME, ".ssh"), { recursive: true });
 rmSync(PROJ, { recursive: true, force: true }); // fresh on every run
 mkdirSync(PROJ, { recursive: true });
 mkdirSync(OUTSIDE, { recursive: true });
-if (!process.env.UNOWN_TEST_KEEP_FIXTURES) {
+// POSIX-only fixtures: symlink targets /etc/passwd and /etc do not exist on
+// Windows (and symlinkSync needs admin/DevMode there) — every test that
+// consumes plink/etcdir/home below is skipIf(win32).
+if (process.platform !== "win32" && !process.env.UNOWN_TEST_KEEP_FIXTURES) {
         symlinkSync("/etc/passwd", join(PROJ, "plink")); // single-file escape
         symlinkSync("/etc", join(PROJ, "etcdir")); // dir escape → /etc
         symlinkSync(FAKE_HOME, join(PROJ, "home")); // dir escape → fake home (has .ssh)
@@ -201,7 +204,7 @@ describe("adversarial corpus — bypasses closed (B1–B10)", () => {
 // in-project symlink. Regex-denied direct forms stay covered by the `>` rules;
 // bashRedirectEscape adds the realpath-resolved half.
 // ---------------------------------------------------------------------------
-describe("adversarial corpus — bash redirect symlink escape (B9)", () => {
+describe.skipIf(process.platform === "win32")("adversarial corpus — bash redirect symlink escape (B9)", () => {
         test.each([
                 ["echo hacked > plink"], // plink -> /etc/passwd
                 ["ln -s /etc/passwd p && echo hacked > p"],
@@ -213,14 +216,21 @@ describe("adversarial corpus — bash redirect symlink escape (B9)", () => {
                 expect(bashDecision(nonStrict, command)?.block).toBe(true);
                 expect(bashDecision(strict, command)?.block).toBe(true);
         });
+});
 
+// The no-over-blocking half of B9 runs on EVERY platform: the semantic
+// (legit scratch redirects must not be denied) is universal, so the /tmp
+// literals become os.tmpdir() values on win32 (no POSIX /tmp there).
+describe("adversarial corpus — B9 legit redirects stay allowed (no over-blocking)", () => {
+        const TMP_LOG = platform() === "win32" ? join(tmpdir(), "log") : "/tmp/log";
+        const TMP_SCRATCH = platform() === "win32" ? join(tmpdir(), "sub", "dir", "scratch.md") : "/tmp/sub/dir/scratch.md";
         test.each([
                 ["echo done > out.txt"], // in-project
-                ["npm test > /tmp/log 2>&1"], // /tmp allowance + fd-dup target
+                [`npm test > ${TMP_LOG} 2>&1`], // tmp allowance + fd-dup target
                 ["cargo build 2> /dev/null"], // harmless device
-                ["echo x > /tmp/sub/dir/scratch.md"],
+                [`echo x > ${TMP_SCRATCH}`],
                 ["echo x > /dev/null"],
-                ["echo x > home/notes.md"], // symlinked home write OUTSIDE .ssh: documented residual
+                ["echo x > home/notes.md"], // symlinked home write OUTSIDE .ssh: documented residual (POSIX fixture; in-project — equally allowed — on win32)
         ])("LEGIT: %s stays allowed (no redirect over-blocking)", (command: string) => {
                 expect(bashDecision(nonStrict, command)).toBeUndefined();
                 expect(bashDecision(strict, command)).toBeUndefined();
@@ -244,34 +254,41 @@ describe("bashRedirectEscape", () => {
                 expect(bashRedirectEscape(PROJ, "cat foo | grep x")).toBeNull();
         });
 
-        test("returns null for in-project, /tmp, /dev/null and fd-dup targets", () => {
+        test("returns null for in-project, tmp, /dev/null and fd-dup targets", () => {
+                // The tmp root is os.tmpdir()-based on win32 (no POSIX /tmp there);
+                // on darwin os.tmpdir() lives under /private/var/folders — the tmp-root
+                // exemption in bashRedirectEscape keeps it allowed.
+                const TMP_LOG = platform() === "win32" ? join(tmpdir(), "log") : "/tmp/log";
                 expect(bashRedirectEscape(PROJ, "echo x > out.txt")).toBeNull();
-                expect(bashRedirectEscape(PROJ, "echo x >> /tmp/log 2>&1")).toBeNull();
+                expect(bashRedirectEscape(PROJ, `echo x >> ${TMP_LOG} 2>&1`)).toBeNull();
                 expect(bashRedirectEscape(PROJ, "cargo build 2> /dev/null")).toBeNull();
         });
 
-        test("flags a redirect that resolves into /etc through a symlink", () => {
+        test.skipIf(process.platform === "win32")("flags a redirect that resolves into /etc through a symlink", () => {
                 const reason = bashRedirectEscape(PROJ, "echo hacked > plink");
                 expect(reason).toContain("plink");
                 expect(reason).toContain("/etc/passwd");
         });
 
-        test("flags a redirect that resolves into a .ssh trust dir", () => {
+        test.skipIf(process.platform === "win32")("flags a redirect that resolves into a .ssh trust dir", () => {
                 const reason = bashRedirectEscape(PROJ, "echo key > home/.ssh/authorized_keys");
                 expect(reason).toContain(".ssh");
         });
 
-        test("flags direct absolute system-tree redirects (double coverage with the regex)", () => {
+        // POSIX-only: node:path resolves "/etc/hosts" to C:\etc\hosts on win32 —
+        // outside every deny tree of the resolver (the lexical `> /etc` REGEX
+        // rule still denies these on every platform; see the B1–B10 table).
+        test.skipIf(process.platform === "win32")("flags direct absolute system-tree redirects (double coverage with the regex)", () => {
                 expect(bashRedirectEscape(PROJ, "echo x > /etc/hosts")).toContain("/etc/hosts");
                 expect(bashRedirectEscape(PROJ, "echo x > /root/.bashrc")).toContain("/root/.bashrc");
         });
 
-        test("flags raw-device redirect targets", () => {
+        test.skipIf(process.platform === "win32")("flags raw-device redirect targets", () => {
                 expect(bashRedirectEscape(PROJ, "echo x > /dev/sda")).toContain("/dev/sda");
                 expect(bashRedirectEscape(PROJ, "cat z > /dev/nvme0n1")).toContain("/dev/nvme0n1");
         });
 
-        test("simulates `ln -s` links created by the same compound command", () => {
+        test.skipIf(process.platform === "win32")("simulates `ln -s` links created by the same compound command", () => {
                 // The link does not exist yet when the hook decides — but the redirect
                 // later in the same command will follow it.
                 expect(bashRedirectEscape(PROJ, "ln -s /etc/passwd p && echo hacked > p")).toContain("/etc/passwd");
@@ -284,7 +301,7 @@ describe("bashRedirectEscape", () => {
                 expect(bashRedirectEscape(PROJ, "ln -s /tmp cache && echo x > cache/build.log")).toBeNull();
         });
 
-        test("quoted targets are resolved after quote-stripping", () => {
+        test.skipIf(process.platform === "win32")("quoted targets are resolved after quote-stripping", () => {
                 expect(bashRedirectEscape(PROJ, 'echo x > "plink"')).toContain("/etc/passwd");
                 expect(bashRedirectEscape(PROJ, "echo x > 'etcdir/hosts'")).toContain("/etc/hosts");
         });
@@ -408,10 +425,43 @@ describe("adversarial corpus — documented accepted-policy allows", () => {
                 expect(bashDecision(nonStrict, "echo key > ~/.ssh/authorized_keys")?.block).toBe(true);
         });
 
-        test("jailPath still keeps the write-tool symlink escape closed (first-wave regression)", () => {
+        test.skipIf(process.platform === "win32")("jailPath still keeps the write-tool symlink escape closed (first-wave regression)", () => {
                 const jail = jailPath(PROJ, join("plink", "sibling.txt"));
                 expect(jail.ok).toBe(false);
-                expect(jail.resolved).toBe("/etc/passwd/sibling.txt");
+                // macOS realpaths /etc into /private/etc — compare against the REAL
+                // path so the assertion holds on linux AND darwin.
+                expect(jail.resolved).toBe(`${realpathSync("/etc/passwd")}/sibling.txt`);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// REGRESSION (first 3-OS CI run): the macOS /private realpath world. jailPath
+// resolves through the /var, /etc and /tmp symlinks, so on darwin every system
+// path arrives /private-prefixed — SYSTEM_TREE must match that prefix (else
+// symlink-indirected escapes bypass the redirect guard), and the allowed tmp
+// roots must be exempt BEFORE that system-tree check (os.tmpdir() on darwin
+// lives under /private/var/folders — without the exemption every legitimate
+// tmp redirect would be over-blocked). The symlink half runs on linux+darwin
+// (win32 has no POSIX symlinks); the tmp-exemption half is platform-neutral.
+// ---------------------------------------------------------------------------
+describe("bashRedirectEscape — darwin /private realpath regressions (first 3-OS CI)", () => {
+        test.skipIf(process.platform === "win32")("a redirect through a symlink to /etc/passwd is denied at the REAL system path", () => {
+                const link = join(PROJ, "plink-realpath");
+                rmSync(link, { force: true });
+                symlinkSync("/etc/passwd", link);
+                try {
+                        const reason = bashRedirectEscape(PROJ, "echo hacked > plink-realpath");
+                        expect(reason).toContain(realpathSync("/etc/passwd")); // darwin: /private/etc/passwd — the private-prefixed SYSTEM_TREE must catch it
+                } finally {
+                        rmSync(link, { force: true });
+                }
+        });
+
+        test("redirects into os.tmpdir() stay allowed (tmp roots are exempt before the system-tree check)", () => {
+                // darwin: os.tmpdir() = /var/folders/… → realpath /private/var/folders/… —
+                // inside the /private-prefixed /var system tree; the exemption keeps
+                // legitimate scratch redirects working on every platform.
+                expect(bashRedirectEscape(PROJ, `npm test > ${join(tmpdir(), "log")} 2>&1`)).toBeNull();
         });
 });
 

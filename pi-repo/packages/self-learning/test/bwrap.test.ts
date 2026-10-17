@@ -188,9 +188,19 @@ describe("env knobs (UNOWN_OS_SANDBOX / UNOWN_SANDBOX_NET)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// resolveBwrapPath
+// resolveBwrapPath — the Linux backend's binary resolution. resolveBwrapPath
+// returns null on every non-linux host by design (a Git-Bash/WSL bwrap must
+// never win on Windows or macOS), so the vendored-path goldens run on the
+// Linux CI leg while the off-linux gate itself stays pinned everywhere.
 // ---------------------------------------------------------------------------
-describe("resolveBwrapPath", () => {
+describe("resolveBwrapPath — off-linux gate (runs everywhere)", () => {
+        test.skipIf(process.platform === "linux")("non-linux hosts resolve null — even an existing UNOWN_BWRAP override cannot bypass the gate", () => {
+                process.env.UNOWN_BWRAP = FAKE_BWRAP;
+                expect(resolveBwrapPath()).toBeNull();
+        });
+});
+
+describe.skipIf(process.platform !== "linux")("resolveBwrapPath (linux)", () => {
         test("default resolves the vendored binary", () => {
                 const p = resolveBwrapPath();
                 expect(p).toBe(EXPECTED_VENDORED);
@@ -212,7 +222,10 @@ describe("resolveBwrapPath", () => {
 // wrapCommand
 // ---------------------------------------------------------------------------
 describe("wrapCommand", () => {
-        test("wraps argv: [bin, ...profile, --, command...]", () => {
+        // The bwrap argv construction is Linux-only (resolveOsSandboxBackend
+        // dispatches to seatbelt on darwin / null on win32) — those legs run
+        // the seatbelt twins in test/seatbelt.test.ts instead.
+        test.skipIf(process.platform !== "linux")("wraps argv: [bin, ...profile, --, command...]", () => {
                 process.env.UNOWN_BWRAP = FAKE_BWRAP;
                 const wrapped = wrapCommand(["/bin/sh", "-c", "exit 0"], WORKSPACE);
                 expect(wrapped).not.toBeNull();
@@ -228,7 +241,7 @@ describe("wrapCommand", () => {
                 expect(wrapCommand(["ls"], WORKSPACE)).toBeNull();
         });
 
-        test("network flags follow UNOWN_SANDBOX_NET", () => {
+        test.skipIf(process.platform !== "linux")("network flags follow UNOWN_SANDBOX_NET", () => {
                 process.env.UNOWN_BWRAP = FAKE_BWRAP;
                 process.env.UNOWN_SANDBOX_NET = "1";
                 const shared = wrapCommand(["ls"], WORKSPACE)!;
@@ -240,7 +253,7 @@ describe("wrapCommand", () => {
                 expect(blocked).toContain("--unshare-ipc");
         });
 
-        test("the session-hijack mitigation survives into wrapped argv", () => {
+        test.skipIf(process.platform !== "linux")("the session-hijack mitigation survives into wrapped argv", () => {
                 process.env.UNOWN_BWRAP = FAKE_BWRAP;
                 expect(wrapCommand(["ls"], WORKSPACE)!).toContain("--new-session");
         });
@@ -250,14 +263,16 @@ describe("wrapCommand", () => {
 // writeSandboxShell
 // ---------------------------------------------------------------------------
 describe("writeSandboxShell", () => {
-        test("writes an executable wrapper into the agent dir", () => {
+        // The bwrap wrapper generation is Linux-only (darwin generates the
+        // seatbelt wrapper — pinned in test/seatbelt.test.ts; win32 gets null).
+        test.skipIf(process.platform !== "linux")("writes an executable wrapper into the agent dir", () => {
                 const path = writeSandboxShell(AGENT_DIR);
                 expect(path).toBe(join(AGENT_DIR, "unown-sandbox-shell"));
                 expect(existsSync(path ?? "")).toBe(true);
                 expect(statSync(path!).mode & 0o777).toBe(0o755);
         });
 
-        test("script re-execs the resolved binary with the validated profile", () => {
+        test.skipIf(process.platform !== "linux")("script re-execs the resolved binary with the validated profile", () => {
                 process.env.UNOWN_BWRAP = FAKE_BWRAP;
                 const path = writeSandboxShell(AGENT_DIR);
                 const script = readFileSync(path!, "utf8");
@@ -271,14 +286,14 @@ describe("writeSandboxShell", () => {
                 expect(script).toContain("WS=$(pwd -P)"); // workspace derived from invocation cwd
         });
 
-        test("network-blocked default bakes the unshare flags into the script", () => {
+        test.skipIf(process.platform !== "linux")("network-blocked default bakes the unshare flags into the script", () => {
                 process.env.UNOWN_BWRAP = FAKE_BWRAP;
                 const script = readFileSync(writeSandboxShell(AGENT_DIR)!, "utf8");
                 expect(script).toContain("--unshare-net");
                 expect(script).toContain("--unshare-ipc");
         });
 
-        test("UNOWN_SANDBOX_NET=1 omits the unshare flags from the script", () => {
+        test.skipIf(process.platform !== "linux")("UNOWN_SANDBOX_NET=1 omits the unshare flags from the script", () => {
                 process.env.UNOWN_BWRAP = FAKE_BWRAP;
                 process.env.UNOWN_SANDBOX_NET = "1";
                 const script = readFileSync(writeSandboxShell(AGENT_DIR)!, "utf8");
