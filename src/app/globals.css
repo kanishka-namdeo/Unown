@@ -64,78 +64,94 @@
  * This block is deliberately NOT `inline`. The shadcn block above is inline
  * (its values are var() references the dashboard swaps per-`.dark`), but the
  * landing palette ships as literal hex — and inline bakes those literals into
- * every utility (`.bg-canvas{background-color:#0a140a}`), which makes them
+ * every utility (`.bg-canvas{background-color:#102039}`), which makes them
  * impossible to override at runtime. Dropping `inline` here makes each utility
- * emit `var(--color-canvas)` instead, and THAT is what lets the light scheme
- * below restyle the whole page without a second set of class names.
+ * emit `var(--color-canvas)` instead, and THAT is what lets both the light
+ * scheme below and the per-section `[data-hue]` overrides in `landing.css`
+ * restyle the page without a second set of class names.
  *
- * It is the Game Boy DMG-01 screen. The four canonical shades
- * #0f380f / #306230 / #8bac0f / #9bbc0f are public-domain facts about a 1989
- * LCD — the only "Pokémon art" this page needs, and the reason it can look
- * this way while shipping none. `glow` IS shade 4, so a `bg-glow` box is
- * literally the game's dialogue box.
+ * THE GENERATION IS THE GAME BOY ADVANCE — Pokémon Generation III
+ * (Ruby/Sapphire/Emerald 2002-05, FireRed/LeafGreen 2004). Every value here is
+ * a colour the console could actually emit: a GBA pixel stores 5 bits per
+ * channel, and the disassembly palettes (pret/pokeruby `.pal`, published on
+ * Lospec) render them as floor(255*v/31), which admits exactly 32 values per
+ * channel — 00 08 10 18 20 29 31 39 41 4a 52 5a 62 6a 73 7b 83 8b 94 9c a4 ac
+ * b4 bd c5 cd d5 de e6 ee f6 ff. `scripts/gba_palette_check.mjs` fails the run
+ * on anything off that grid, so "every colour on this page is a legal Game Boy
+ * Advance colour" is a checked claim rather than a vibe. It is also why
+ * #ffffff is allowed and #f8f8f8 is not.
  *
- * TWO SCHEMES, ONE VOCABULARY. DARK (the default) is the screen emissive in a
- * dark room. LIGHT is the same reflective LCD unlit, in daylight — which is
- * what the hardware actually looks like: dark olive ink on a pale
- * greenish-beige reflector, not the green-on-black that emulators invented
- * for low light. Both are historically honest; the toggle picks which room
- * the handheld is in. Same token names, so every section restyles for free.
+ * TWO SCHEMES, ONE VOCABULARY — the two halves of the generation. DARK is
+ * Hoenn: the Ruby/Sapphire/Emerald menu, PokéNav and cave palette, whose
+ * deepest window navy is `#102039`, and whose accent is the navy-plus-gold
+ * pairing that reads Gen 3. LIGHT is Kanto in daylight: the FireRed/LeafGreen
+ * end of the same engine, where the window is the interior cream `#e6e6d5` and
+ * the ink is that same Hoenn navy. Same token names, so every section restyles
+ * for free.
+ *
+ * FIVE HUES, AND WHERE THEY COME FROM. `aqua` and `magma` are the two teams of
+ * Ruby/Sapphire, `leaf` is Hoenn's grass and Emerald's own shift of the frame
+ * hue from blue to green, `psychic` is Unown's own type, and `gold` is the
+ * default. Each has a `-field` companion: the tinted surface a section sits on.
+ * Those are ramp steps of the same verified tileset families, not invented
+ * hues — and no public FireRed/LeafGreen `.pal` dump exists, so the light
+ * scheme is built from the RSE dumps pushed to their warm, bright end. That is
+ * disclosed art-direction, the same way the old reflector value was.
  *
  * CONTRAST IS A CONTRACT IN BOTH MODES (see landing AGENTS.md Verification).
  * Every text token clears AA 4.5:1 against canvas AND panel-2, the two
- * surfaces text actually lands on. Measured worst-case ratios:
- *   DARK   ink 14.16 · dim 9.30 · faint 5.85 · glow 7.28 · amber 10.48 ·
- *          poke 5.63 · sgb-cream 13.19 · sgb-amber 6.08 · sgb-brick 5.04 ·
- *          sgb-purple 6.05 · text-canvas-on-glow 8.59
- *   LIGHT  ink 9.49 · dim 6.50 · faint 5.08 · glow 5.50 · amber 5.55 ·
- *          poke 5.16 · sgb-cream 5.12 · sgb-amber 5.02 · sgb-brick 4.94 ·
- *          sgb-purple 9.41 · text-canvas-on-glow 7.05
+ * surfaces text actually lands on, and every hue field keeps its own accent
+ * plus ink/dim/faint legible on it. Measured worst-case ratios:
+ *   DARK   ink 9.91 · dim 7.76 · faint 5.95 · gold 7.96 · amber 7.65 ·
+ *          poke 4.69 · aqua 5.15 · magma 4.88 · leaf 6.02 · psychic 4.90
+ *   LIGHT  ink 10.20 · dim 8.89 · faint 7.81 · gold 5.28 · amber 4.60 ·
+ *          poke 5.99 · aqua 7.43 · magma 6.41 · leaf 7.05 · psychic 6.77
  * `line-bright` is exempt in both modes by design: it is only ever a border
  * or a bar-chart track, never text. Re-run `bun scripts/contrast_audit.mjs`
- * (it now walks both schemes) before shipping any change to these values.
+ * (it walks both schemes) and `bun scripts/gba_palette_check.mjs` before
+ * shipping any change to these values.
  *
- * The dashboard keeps the cool zinc tokens above: it is an application, and a
+ * The dashboard keeps the cool zinc tokens below: it is an application, and a
  * tinted canvas reads as a mistake there. Only the marketing page at / opts in.
  */
 @theme {
-  --color-canvas: #0a140a;
-  --color-panel: #0f1d0f;
-  --color-panel-2: #142614;
-  --color-line: #1f3a1f;
-  --color-line-bright: #2f5a2f;
-  --color-ink: #e9f6d9;
-  --color-dim: #b3cf90;
-  --color-faint: #88a66a;
-  /* DMG shade 4, the lightest screen green. Accent, CTA fill, dialogue box. */
-  --color-glow: #9bbc0f;
-  --color-glow-soft: #c3e06a;
-  /* Cartridge-era accents. */
-  --color-amber: #ffcb05;
-  --color-poke: #ff6a4d;
-  /* Super Game Boy accents (stock SGB palette 1-A, 1994). Cream, amber,
-   * brick, purple — period-accurate extra hues for the border treatment.
-   * Dual-valued: the DARK figures are the usable-on-dark-screen brightenings
-   * of the originals; the LIGHT figures are the originals, darkened just
-   * enough to clear AA on the pale reflector. */
-  --color-sgb-cream: #f8e8c8;
-  --color-sgb-amber: #d89048;
-  --color-sgb-brick: #e86a5a;
-  --color-sgb-purple: #b48cf2;
+  --color-canvas: #102039;
+  --color-panel: #182952;
+  --color-panel-2: #29315a;
+  --color-line: #414a6a;
+  --color-line-bright: #62627b;
+  --color-ink: #dee6ee;
+  --color-dim: #bdcde6;
+  --color-faint: #9cb4de;
+  /* The Gen 3 accent: window navy + gold, the pairing that reads Hoenn. */
+  --color-gold: #ffc55a;
+  --color-gold-soft: #eee6a4;
+  /* Stat-bar steps — the HP bar's amber and its "low" red. */
+  --color-amber: #ffbd83;
+  --color-poke: #ff7362;
+  /* The five section hues, and the tinted surface each one owns. */
+  --color-gold-field: #292010;
+  --color-aqua: #62acee;
+  --color-aqua-field: #102939;
+  --color-magma: #ff8b41;
+  --color-magma-field: #291020;
+  --color-leaf: #83c562;
+  --color-leaf-field: #102918;
+  --color-psychic: #f67b9c;
+  --color-psychic-field: #291029;
 
   /* Furniture-only values for `landing.css` raw rules. These carry no
    * `--color-` prefix on purpose: they are never turned into Tailwind
-   * utilities, they exist so the few hardcoded console colours (the HP-bar
-   * well, the CRT scanlines and vignette, the LCD grain) flip with the
-   * scheme instead of staying locked to the dark screen. */
-  --gb-hp-well: #071107;
-  --gb-scanline: rgb(0 0 0 / 0.2);
-  --gb-vignette: rgb(0 0 0 / 0.3);
-  --gb-grain: rgb(255 255 255 / 0.055);
+   * utilities, they exist so the couple of hardcoded console colours (the
+   * HP-bar well and the LCD pixel grid) flip with the scheme instead of
+   * staying locked to the dark screen. The old CRT scanline and vignette vars
+   * are gone — a GBA is a TFT LCD, it has no scanlines to photograph. */
+  --gb-hp-well: #081020;
+  --gb-grain: rgb(255 255 255 / 0.05);
 }
 
 /* ---------------------------------------------------------------- */
-/* light scheme — the same LCD, unlit, in daylight                   */
+/* light scheme — the same cartridge, Kanto in daylight              */
 /* ---------------------------------------------------------------- */
 
 /*
@@ -146,61 +162,70 @@
  * An explicit dark choice needs no block: the @theme default above IS dark,
  * and the media query is gated on :not([data-theme]) so it stands aside.
  * Unlayered CSS outranks Tailwind's @layer theme, so these win cleanly.
+ *
+ * The two blocks below must stay identical apart from their selectors —
+ * `scripts/gba_palette_check.mjs` diffs them and fails if they drift.
  */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --color-canvas: #eae5c8;
-    --color-panel: #ded8b6;
-    --color-panel-2: #d3cc9f;
-    --color-line: #b5ad80;
-    --color-line-bright: #9a9160;
-    --color-ink: #1c2810;
-    --color-dim: #37431f;
-    --color-faint: #4a5230;
-    --color-glow: #375110;
-    --color-glow-soft: #2c4410;
-    --color-amber: #594702;
-    --color-poke: #833525;
-    --color-sgb-cream: #554e30;
-    --color-sgb-amber: #6e4712;
-    --color-sgb-brick: #99231b;
-    --color-sgb-purple: #301850;
+    --color-canvas: #e6e6d5;
+    --color-panel: #d5d5b4;
+    --color-panel-2: #cdcdc5;
+    --color-line: #b4b4a4;
+    --color-line-bright: #949483;
+    --color-ink: #102039;
+    --color-dim: #182952;
+    --color-faint: #29315a;
+    --color-gold: #5a3108;
+    --color-gold-soft: #4a2908;
+    --color-amber: #6a3108;
+    --color-poke: #732020;
+    --color-gold-field: #eee6cd;
+    --color-aqua: #203952;
+    --color-aqua-field: #dee6ee;
+    --color-magma: #732908;
+    --color-magma-field: #eed5cd;
+    --color-leaf: #294118;
+    --color-leaf-field: #d5e6cd;
+    --color-psychic: #6a2052;
+    --color-psychic-field: #e6d5de;
 
     /* Furniture flips with the scheme. The HP well must stay darker than the
      * canvas for the fill to read, so it tracks `line` rather than the near-
-     * black it is on the dark screen. Scanlines and vignette drop to a third
-     * of their dark strength: black at 20% over a pale reflector reads as
-     * grime, not as a CRT. The grain inverts to dark specks. */
-    --gb-hp-well: #b5ad80;
-    --gb-scanline: rgb(28 40 16 / 0.07);
-    --gb-vignette: rgb(28 40 16 / 0.12);
-    --gb-grain: rgb(28 40 16 / 0.05);
+     * black it is on the Hoenn screen. The pixel grid inverts to dark specks:
+     * on an unlit reflector the gaps between subpixels read as shadow, not as
+     * light. */
+    --gb-hp-well: #b4b4a4;
+    --gb-grain: rgb(16 32 57 / 0.05);
   }
 }
 
 :root[data-theme="light"] {
-  --color-canvas: #eae5c8;
-  --color-panel: #ded8b6;
-  --color-panel-2: #d3cc9f;
-  --color-line: #b5ad80;
-  --color-line-bright: #9a9160;
-  --color-ink: #1c2810;
-  --color-dim: #37431f;
-  --color-faint: #4a5230;
-  --color-glow: #375110;
-  --color-glow-soft: #2c4410;
-  --color-amber: #594702;
-  --color-poke: #833525;
-  --color-sgb-cream: #554e30;
-  --color-sgb-amber: #6e4712;
-  --color-sgb-brick: #99231b;
-  --color-sgb-purple: #301850;
+  --color-canvas: #e6e6d5;
+  --color-panel: #d5d5b4;
+  --color-panel-2: #cdcdc5;
+  --color-line: #b4b4a4;
+  --color-line-bright: #949483;
+  --color-ink: #102039;
+  --color-dim: #182952;
+  --color-faint: #29315a;
+  --color-gold: #5a3108;
+  --color-gold-soft: #4a2908;
+  --color-amber: #6a3108;
+  --color-poke: #732020;
+  --color-gold-field: #eee6cd;
+  --color-aqua: #203952;
+  --color-aqua-field: #dee6ee;
+  --color-magma: #732908;
+  --color-magma-field: #eed5cd;
+  --color-leaf: #294118;
+  --color-leaf-field: #d5e6cd;
+  --color-psychic: #6a2052;
+  --color-psychic-field: #e6d5de;
 
   /* Mirror of the furniture block above — keep the two in step. */
-  --gb-hp-well: #b5ad80;
-  --gb-scanline: rgb(28 40 16 / 0.07);
-  --gb-vignette: rgb(28 40 16 / 0.12);
-  --gb-grain: rgb(28 40 16 / 0.05);
+  --gb-hp-well: #b4b4a4;
+  --gb-grain: rgb(16 32 57 / 0.05);
 }
 
 :root {

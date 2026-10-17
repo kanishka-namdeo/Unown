@@ -2,15 +2,20 @@
  * Landing page stylesheet — `/` only. Imported by `src/app/page.tsx`, so
  * nothing here is loaded by `/dashboard`.
  *
- * The palette (bg-canvas, text-dim, text-glow, border-line …) and the three
+ * The palette (bg-canvas, text-dim, text-gold, border-line …) and the three
  * retro font utilities live in the `@theme` block in `globals.css`, because
  * Tailwind only resolves `@theme` in the file that pulls in `tailwindcss`.
  * What stays here is the hand-written layer Tailwind cannot express:
  *
- *  1. The Gen 1 dialogue box, the pixel button and the HP bar — the three
+ *  1. The section hue cascade — one `data-hue` attribute on a `<section>`
+ *     that carries that section's field colour and its accent.
+ *  2. The Gen 3 dialogue box, the pixel button and the HP bar — the three
  *     pieces of console furniture every section is built out of.
- *  2. The CRT scanline and LCD pixel-grid overlays.
- *  3. Scroll-linked motion for the hero seal, implemented in CSS via
+ *  3. The LCD pixel-grid overlay. (There used to be a CRT scanline layer here
+ *     too. It is gone: a Game Boy Advance is a TFT panel, it has no scanlines
+ *     to photograph, and the grid is the only screen artefact the hardware
+ *     actually has.)
+ *  4. Scroll-linked motion for the hero seal, implemented in CSS via
  *     `animation-timeline: view()`. Chromium and Safari 26 animate it;
  *     Firefox gets the finished state, which is a fine fallback because the
  *     gate uses `@supports` with an `animation-range` check that filters
@@ -49,19 +54,21 @@ html {
 }
 
 /* ---------------------------------------------------------------- */
-/* the LCD pixel grid                                                 */
+/* the LCD pixel grid                                                */
 /* ---------------------------------------------------------------- */
 
 /*
- * Was film grain; now it is the thing a 1989 reflective TFT actually has —
- * a fixed 4px matrix of pixel separators. Two crossed repeating gradients,
- * inlined with no network request, at an opacity that reads as texture on
- * empty canvas and disappears over text. `mix-blend-mode: overlay` means it
- * lightens the dark greens and leaves the bright greens alone, which is what
- * a real pixel gap does.
+ * The one screen artefact the hardware really has: a fixed matrix of pixel
+ * separators. Two crossed repeating gradients, inlined with no network
+ * request, at an opacity that reads as texture on empty field and disappears
+ * over text. `mix-blend-mode: overlay` means it lightens the dark navy and
+ * leaves the bright accents alone, which is what a real pixel gap does.
  *
- * The CRT scanlines are a separate, fixed layer in `.crt::before` below —
- * the grid is the screen, the scanlines are the camera.
+ * The pitch is 3px, not the 4px this page used when it was a DMG. The GBA's
+ * 240x160 panel is a much finer dot pitch than the 1989 handheld's, and a
+ * coarse grid is the fastest way to make a colour screen look like a
+ * monochrome one. It is still art-directed — a browser cannot address the
+ * panel's real 0.25mm pitch — and it is deliberately the only overlay left.
  */
 .grain::after {
   content: "";
@@ -73,14 +80,14 @@ html {
     repeating-linear-gradient(
       to right,
       var(--gb-grain) 0 1px,
-      transparent 1px 4px
+      transparent 1px 3px
     ),
     repeating-linear-gradient(
       to bottom,
       var(--gb-grain) 0 1px,
-      transparent 1px 4px
+      transparent 1px 3px
     );
-  background-size: 4px 4px;
+  background-size: 3px 3px;
   background-repeat: repeat;
   opacity: 0.5;
   mix-blend-mode: overlay;
@@ -93,50 +100,6 @@ html {
  */
 .grain-fixed::after {
   position: fixed;
-}
-
-/* ---------------------------------------------------------------- */
-/* CRT scanlines + vignette                                          */
-/* ---------------------------------------------------------------- */
-
-/*
- * The camera, not the screen: a fixed, pointer-events-free layer over the
- * whole shell. 3px period so it survives being scaled by a HiDPI display,
- * and dark rather than light so it deepens the greens instead of greying
- * them. `pointer-events: none` on the element and both pseudo-elements is
- * what makes a high z-index safe — nothing here can swallow a click.
- *
- * There is deliberately NO flicker. Rapid modulation above ~3Hz is a
- * photosensitivity hazard, and a landing page is not the place to gamble a
- * visitor's afternoon for atmosphere. The scanlines are static; only the
- * cursor and the continue-arrow blink, at 1Hz step-end, which is slower than
- * anything that could provoke a response.
- *
- * Both layers ride on `::before` because `.grain` already owns `::after` on
- * the same shell element, and two rules fighting over one pseudo-element is
- * exactly the kind of thing that works in a screenshot and dies in review.
- */
-.crt::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  /* First layer is painted on top: the vignette over the scanline grid.
-   * Both draw from the gb-* furniture vars so the dark screen keeps its
-   * black camera layer while the daylight screen swaps to a faint ink wash —
-   * black over a pale reflector reads as a dirty screen, not a CRT. */
-  background-image:
-    radial-gradient(
-      ellipse at center,
-      transparent 62%,
-      var(--gb-vignette) 100%
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      var(--gb-scanline) 0 1px,
-      transparent 1px 3px
-    );
 }
 
 /* ---------------------------------------------------------------- */
@@ -241,26 +204,9 @@ html {
 }
 
 .link-sweep:focus-visible {
-  outline: 2px solid var(--color-glow);
+  outline: 2px solid var(--hue-accent);
   outline-offset: 3px;
   border-radius: 2px;
-}
-
-/* Primary action picks up a phosphor bloom on hover, like the mark lighting.
-   The tint rides on var(--color-glow) via color-mix rather than the baked
-   rgb(155 188 15) so the bloom follows the scheme — bright green over the
-   dark screen, ink-green over the daylight one. */
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .glow-hover {
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-glow) 0%, transparent);
-    transition:
-      box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
-      background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .glow-hover:hover {
-    box-shadow: 0 8px 28px -10px color-mix(in oklab, var(--color-glow) 50%, transparent);
-  }
 }
 
 /* ---------------------------------------------------------------- */
@@ -280,7 +226,7 @@ html {
 
 .skip-link:focus-visible {
   transform: none;
-  outline: 2px solid var(--color-glow);
+  outline: 2px solid var(--hue-accent);
   outline-offset: 2px;
 }
 
@@ -374,113 +320,173 @@ html {
  * section author should be able to reach for `gb-box` and get the whole
  * console frame rather than six arbitrary values that are 2px out.
  *
- * THE FRAME RULE. A drop shadow is invisible on this page: the canvas is
- * already near-black, so an offset in black or in `canvas` paints nothing.
- * What carries the depth instead is a stacked ring — dark ring, light gap,
- * dark edge — which is how the games drew a window over a dark field. Every
+ * THE FRAME RULE. A blurred drop shadow is not a thing a 2001 handheld can
+ * draw, and on a dark field an offset in black paints nothing anyway. What
+ * carries the depth instead is a stacked ring — dark ring, light gap, dark
+ * edge — which is how Gen 3 drew its ice-white window over a navy map. Every
  * light box is `border: 3px solid canvas` (dark against its own fill) plus
- * `box-shadow: 0 0 0 3px glow` (the light rim outside it). That is the whole
- * trick, and it costs two declarations.
+ * `box-shadow: 0 0 0 3px var(--tone-rim)` (the light rim outside it). That is
+ * the whole trick, and it costs two declarations.
  *
  * SQUARE CORNERS. No `rounded-*` on anything using these classes. A pixel
  * art language with antialiased corner radii is a contradiction, and the
- * chamfer everyone remembers from Gen 1 is one pixel wide — which CSS can
+ * chamfer Gen 3 drew into its window skins is one pixel wide — which CSS can
  * only fake badly. Square reads as deliberate; a 6px radius reads as the
  * template this page is trying not to be.
  */
 
-/* --- section tones ------------------------------------------------- */
+/* --- section hues -------------------------------------------------- */
 
 /*
- * THE SGB TRICK. The Super Game Boy (1994) drew full-COLOUR borders around a
- * monochrome play area: the game stayed four shades, the frame around it did
- * not. That is exactly what a `tone` does here. Body copy and headings stay
- * DMG green — this is still an LCD — and a section's colour lives only in its
- * CHROME: the box rim, the terminal title bar, the kicker.
+ * THE HUE CASCADE. A Game Boy Advance game is not four shades — it is a
+ * full-colour screen, and each area of the world owns a palette. So a section
+ * here declares `data-hue` on its own `<section>` and everything inside it
+ * repaints: `--hue-bg` is that section's field, `--hue-accent` is the chrome
+ * and heading colour that lives on it.
  *
- * Mechanics: `--tone-fill` and `--tone-rim` are custom properties that each
- * furniture class defaults (so a box with no data-tone is unchanged), and a
- * `[data-tone="…"]` on the element overrides them. Setting the attribute is
- * the entire API — no section hand-picks a hex, so thirteen sections restyled
- * in parallel cannot drift into fourteen different reds. Pass `tone` to
- * `SectionHead` / `TerminalWindow` / `BrowserFrame` in shell.tsx and it
- * renders the attribute for you.
+ * It works because the landing tokens live in a NON-inline `@theme` (see
+ * `globals.css`): every utility emits `var(--color-…)`, and custom properties
+ * inherit, so re-declaring them on an ancestor is enough — no second set of
+ * class names, no `dark:` variants, nothing for a section author to remember.
  *
- * Contrast is pre-checked for all five tones in BOTH schemes (see the
- * Verification section of the landing AGENTS.md): text-canvas on any
- * tone-as-fill is >= 5.94 dark / >= 6.34 light, and every rim clears 4.94
- * against the card fill. Never add a tone without re-running the audit.
+ * The five hues are the generation's own vocabulary: `aqua` and `magma` are
+ * Ruby/Sapphire's two teams, `leaf` is Hoenn's grass and Emerald's shift of
+ * the frame hue from blue to green, `psychic` is what Unown is, and `gold` is
+ * the default — the navy-plus-gold of the RSE menu shell. Each value, and each
+ * `-field` companion, is a legal 5-bit GBA colour and is AA-checked against its
+ * own field in BOTH schemes by `scripts/gba_palette_check.mjs` and
+ * `scripts/contrast_audit.mjs`. Never add a hue without re-running both.
+ *
+ * An element can still override its section with `data-tone="…"` — that is how
+ * the alphabet's 28 tiles cycle hues inside one section. `--tone-fill` and
+ * `--tone-rim` default to the section accent, so a box with no data-tone takes
+ * its section's hue rather than a fixed green.
  */
+:root {
+  --hue-bg: var(--color-canvas);
+  --hue-accent: var(--color-gold);
+  /* The scheme's untinted card surface, under a name the hue cascade can blend
+   * against without creating a self-reference. Resolved on :root, so it picks
+   * up whichever scheme is active and stays a literal colour below that. */
+  --panel-2-plain: var(--color-panel-2);
+}
+
+section[data-hue] {
+  background-color: var(--hue-bg);
+  /* A tinted section must not put a neutral grey card on itself — a sage panel
+   * over a blush field reads as two palettes, which is exactly what the DMG
+   * version got away with because everything was one hue. So the card surface
+   * blends toward the section's field. `color-mix` is not a cheat on the grid
+   * rule: the GBA had a hardware blend mode (EVA/EVB), and this is that blend.
+   * The static gate cannot see the result, which is why
+   * `scripts/contrast_audit.mjs` measures the composited background of every
+   * text node on the real page — that is the gate for this rule. */
+  --color-panel-2: color-mix(in oklab, var(--hue-bg) 55%, var(--panel-2-plain));
+}
+
+[data-hue="gold"] {
+  --hue-bg: var(--color-gold-field);
+  --hue-accent: var(--color-gold);
+}
+
+[data-hue="aqua"] {
+  --hue-bg: var(--color-aqua-field);
+  --hue-accent: var(--color-aqua);
+}
+
+[data-hue="magma"] {
+  --hue-bg: var(--color-magma-field);
+  --hue-accent: var(--color-magma);
+}
+
+[data-hue="leaf"] {
+  --hue-bg: var(--color-leaf-field);
+  --hue-accent: var(--color-leaf);
+}
+
+[data-hue="psychic"] {
+  --hue-bg: var(--color-psychic-field);
+  --hue-accent: var(--color-psychic);
+}
+
 .gb-box,
 .gb-panel,
 .gb-bar {
-  --tone-fill: var(--color-glow);
-  --tone-rim: var(--color-glow);
+  --tone-fill: var(--hue-accent);
+  --tone-rim: var(--hue-accent);
 }
 
-/* .gb-panel's rim is the lit hairline, not the glow ring, so it keeps its
+/* .gb-panel's rim is the lit hairline, not the accent ring, so it keeps its
    own default; a tone overrides just the rim and leaves the dark fill. */
 .gb-panel {
   --tone-rim: var(--color-line-bright);
 }
 
-[data-tone="cream"] {
-  --tone-fill: var(--color-sgb-cream);
-  --tone-rim: var(--color-sgb-cream);
+[data-tone="gold"] {
+  --tone-fill: var(--color-gold);
+  --tone-rim: var(--color-gold);
 }
 
-[data-tone="amber"] {
-  --tone-fill: var(--color-sgb-amber);
-  --tone-rim: var(--color-sgb-amber);
+[data-tone="aqua"] {
+  --tone-fill: var(--color-aqua);
+  --tone-rim: var(--color-aqua);
 }
 
-[data-tone="brick"] {
-  --tone-fill: var(--color-sgb-brick);
-  --tone-rim: var(--color-sgb-brick);
+[data-tone="magma"] {
+  --tone-fill: var(--color-magma);
+  --tone-rim: var(--color-magma);
 }
 
-[data-tone="purple"] {
-  --tone-fill: var(--color-sgb-purple);
-  --tone-rim: var(--color-sgb-purple);
+[data-tone="leaf"] {
+  --tone-fill: var(--color-leaf);
+  --tone-rim: var(--color-leaf);
+}
+
+[data-tone="psychic"] {
+  --tone-fill: var(--color-psychic);
+  --tone-rim: var(--color-psychic);
 }
 
 /* --- dialogue box ------------------------------------------------- */
 
-/* Light: the game's text window. The fill and outer rim take the section
-   tone (default glow), so `data-tone="brick"` gives a brick dialogue box
-   without any section touching a hex value. */
+/* Light: the game's text window. The fill and outer rim take the section hue
+   (or an element's own `data-tone`), so `data-tone="magma"` gives a Magma-red
+   window inside a leaf section without any section touching a hex value. The
+   3px border is the field colour, which is what makes the window read as
+   lifted out of the section rather than pasted onto it. */
 .gb-box {
   background: var(--tone-fill);
   color: var(--color-canvas);
-  border: 3px solid var(--color-canvas);
+  border: 3px solid var(--hue-bg);
   box-shadow: 0 0 0 3px var(--tone-rim);
 }
 
 /* Dark: a console panel sitting on the page. Lit rim instead of a gap, so it
-   separates from the canvas without becoming a bright slab. A tone recolours
-   only the rim — the panel stays dark, which is what keeps a toned panel from
-   fighting the monochrome play area it frames. */
+   separates from its section's field without becoming a bright slab. A tone
+   recolours only the rim — the panel stays on the neutral card surface, which
+   is what keeps a toned panel from fighting the hue field it sits in. */
 .gb-panel {
   background: var(--color-panel-2);
-  border: 3px solid var(--color-canvas);
+  border: 3px solid var(--hue-bg);
   box-shadow: 0 0 0 3px var(--tone-rim);
 }
 
 /*
  * The title-bar strip. Factored out of TerminalWindow/BrowserFrame so a
- * section's window header can carry the tone as a solid band — the SGB
- * border made walkable. `border-canvas` underneath is the same 3px gutter
- * every frame on this page has.
+ * section's window header can carry the hue as a solid band — the Gen 3 name
+ * strip, which sat on the corner of the window as a solid block of the accent
+ * colour. `border-canvas` underneath is the same 3px gutter every frame on
+ * this page has.
  */
 .gb-bar {
   background: var(--tone-fill);
-  border-bottom: 3px solid var(--color-canvas);
+  border-bottom: 3px solid var(--hue-bg);
 }
 
 /* The inner hairline the games draw just inside the frame. Adds a second
    step to a box without a second element. */
 .gb-inset {
-  box-shadow: inset 0 0 0 2px var(--color-canvas);
+  box-shadow: inset 0 0 0 2px var(--hue-bg);
 }
 
 /* --- buttons ------------------------------------------------------ */
@@ -489,44 +495,60 @@ html {
  * The press is an inset bevel that shrinks, plus a one-pixel translate on
  * `steps(2)`. Retro motion is stepped, never eased — an eased button is the
  * single fastest way to make a Game Boy UI read as a website.
+ *
+ * The bevel is `#102039` at 34% — the Hoenn window navy, used as a shadow
+ * rather than as pigment. It is a literal on purpose and it is still a legal
+ * GBA colour: a shadow does not change when the room brightens, so this is the
+ * one value on the page that does NOT flip with the scheme.
  */
 .gb-btn {
-  border: 3px solid var(--color-canvas);
-  background: var(--color-glow);
+  border: 3px solid var(--hue-bg);
+  background: var(--hue-accent);
   color: var(--color-canvas);
-  box-shadow: inset -3px -3px 0 0 rgb(10 20 10 / 0.34);
+  box-shadow: inset -3px -3px 0 0 rgb(16 32 57 / 0.34);
   transition:
     transform 90ms steps(2, end),
     box-shadow 90ms steps(2, end),
     background-color 90ms steps(2, end);
 }
 
+/*
+ * The hover lights the rim rather than brightening the fill. That is what a
+ * Gen 3 menu does — the cursor row gets a border, the sprite underneath is
+ * untouched — and it keeps every pixel on screen a colour the console could
+ * emit. A `filter: brightness()` or a lighter fill step would invent a value
+ * that is not on the 5-bit grid.
+ */
 .gb-btn:hover {
-  background: var(--color-glow-soft);
-  box-shadow: inset -2px -2px 0 0 rgb(10 20 10 / 0.34);
+  box-shadow:
+    inset -2px -2px 0 0 rgb(16 32 57 / 0.34),
+    0 0 0 3px var(--color-ink);
 }
 
 .gb-btn:active {
   transform: translate(2px, 2px);
-  box-shadow: inset 0 0 0 0 rgb(10 20 10 / 0.34);
+  box-shadow: inset 0 0 0 0 rgb(16 32 57 / 0.34);
 }
 
 /*
  * Dark counterpart: light bevel top-left, dark bevel bottom-right.
  *
- * The top-left bevel is the phosphor-tinted highlight, so it rides on
- * var(--color-glow) via color-mix and follows the scheme. The bottom-right
- * one is a shadow, and a shadow stays dark in both schemes — the light
- * source does not move when the room brightens — so it is deliberately a
+ * The top-left bevel is a translucent highlight, so it rides on
+ * var(--hue-accent) via color-mix and follows the section's hue. The
+ * color-mix is not a cheat on the grid rule: the GBA had a hardware blend
+ * mode (EVA/EVB, 0-31 per source) and every one of these translucent steps is
+ * what that blend does — a mix of two colours the console could address. The
+ * bottom-right one is a shadow, and a shadow stays dark in both schemes — the
+ * light source does not move when the room brightens — so it is deliberately a
  * literal black rather than a themed value. Same reasoning for the
- * rgb(10 20 10) bevels on .gb-btn above: they are shadows, not pigment.
+ * rgb(16 32 57) bevels on .gb-btn above: they are shadows, not pigment.
  */
 .gb-btn-dark {
-  border: 3px solid var(--color-canvas);
+  border: 3px solid var(--hue-bg);
   background: var(--color-panel-2);
   color: var(--color-ink);
   box-shadow:
-    inset 2px 2px 0 0 color-mix(in oklab, var(--color-glow) 18%, transparent),
+    inset 2px 2px 0 0 color-mix(in oklab, var(--hue-accent) 18%, transparent),
     inset -2px -2px 0 0 rgb(0 0 0 / 0.5);
   transition:
     transform 90ms steps(2, end),
@@ -535,20 +557,20 @@ html {
 }
 
 .gb-btn-dark:hover {
-  border-color: var(--color-glow);
-  color: var(--color-glow);
+  border-color: var(--hue-accent);
+  color: var(--hue-accent);
 }
 
 .gb-btn-dark:active {
   transform: translate(2px, 2px);
-  box-shadow: inset -2px -2px 0 0 color-mix(in oklab, var(--color-glow) 18%, transparent);
+  box-shadow: inset -2px -2px 0 0 color-mix(in oklab, var(--hue-accent) 18%, transparent);
 }
 
 /* --- HP bar ------------------------------------------------------- */
 
 /*
  * The stat bar from the battle screen: dark well, bright fill, colour steps
- * down green → amber → red exactly as a real HP bar does. The colour is
+ * down green → gold → red exactly as a real HP bar does. The colour is
  * never the only signal — every caller pairs it with a number, so the bar
  * survives colour blindness and survives a reader who cannot see it at all.
  */
@@ -557,19 +579,19 @@ html {
   height: 10px;
   overflow: hidden;
   background: var(--gb-hp-well);
-  border: 2px solid var(--color-canvas);
+  border: 2px solid var(--hue-bg);
   box-shadow: 0 0 0 2px var(--color-line-bright);
 }
 
 .gb-hp > i {
   display: block;
   height: 100%;
-  background: var(--color-glow);
+  background: var(--color-leaf);
   transition: width 400ms steps(12, end);
 }
 
 .gb-hp[data-tone="mid"] > i {
-  background: var(--color-amber);
+  background: var(--color-gold);
 }
 
 .gb-hp[data-tone="low"] > i {
@@ -634,10 +656,13 @@ html {
 /* --- dither: the era's gradient ------------------------------------ */
 
 /*
- * This is how a four-shade screen fakes a fade, and it is the replacement
- * for the blurred radial blobs the page used to carry. A `blur-[130px]` glow
- * is the single most modern artefact a page like this can hold — it is
- * continuous-tone photography in a world made of switches.
+ * A GBA can address 32,768 colours, but its hardware blend and brightness
+ * effects (EVA/EVB, and BLDY with 16 steps) only move a screen in discrete
+ * bands — which is why Gen 3's skies and water are short stepped ramps and its
+ * transitions dither rather than fade. This is that vocabulary, and it is the
+ * replacement for the blurred radial blobs the page used to carry. A
+ * `blur-[130px]` glow is the single most modern artefact a page like this can
+ * hold — it is continuous-tone photography in a world made of switches.
  *
  * `repeating-conic-gradient` at 0/25/50% with an even `background-size` is
  * the standard two-colour checkerboard; halve `background-size` for a finer
@@ -667,6 +692,32 @@ html {
     var(--color-line-bright) 0 3px,
     transparent 3px 7px
   );
+}
+
+/* --- the hero's survey grid ---------------------------------------- */
+
+/*
+ * The map grid a Gen 3 route is built on, at 64px, masked so it fades out
+ * before it reaches the copy. It used to be an inline arbitrary carrying
+ * `rgba(120,113,104,.10)` — a zinc from the dashboard's palette and the one
+ * colour on this page that belonged to no palette at all. It now takes 14% of
+ * its section's accent, so the grid is aqua in an aqua section and the value
+ * stays traceable to the token table.
+ */
+.hero-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--hue-accent) 14%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--hue-accent) 14%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 55% at 30% 0%, black 10%, transparent 78%);
 }
 
 @media (prefers-reduced-motion: reduce) {

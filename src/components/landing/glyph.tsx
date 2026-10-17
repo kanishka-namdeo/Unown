@@ -52,22 +52,23 @@ function Eye({ r, slit, tone }: { r: number; slit: number; tone: "dim" | "lit" }
 /**
  * Colour pairs for the two eye states, set as inline vars on the svg.
  *
- * DMG shades, not emeralds: `dim` is a void in the darkest screen green with
- * a `line-bright` rim, `lit` steps to `glow`/`glow-soft`. Deliberately no
- * colour brighter than shade 4 — the whole point of the palette is that
- * nothing on this page could be lit by a Game Boy that a Game Boy could not
- * already produce.
+ * They are the palette's own tokens rather than a second set of hexes: `dim`
+ * is a void in the section field with a `line-bright` rim, `lit` steps up to
+ * the gold accent. Going through `var()` is what lets an eye follow its
+ * section's hue and the visitor's scheme instead of being welded to one 1989
+ * screen — and it is what keeps `scripts/gba_palette_check.mjs` honest, since
+ * a literal here would be a palette value the gate cannot see.
  */
 export const EYE_TONES: Record<"dim" | "lit", CSSProperties> = {
   dim: {
-    "--unown-eye": "#0a140a",
-    "--unown-eye-rim": "#2f5a2f",
-    "--unown-eye-lit": "#5f7f4a",
+    "--unown-eye": "var(--color-canvas)",
+    "--unown-eye-rim": "var(--color-line-bright)",
+    "--unown-eye-lit": "var(--color-faint)",
   } as CSSProperties,
   lit: {
-    "--unown-eye": "#04100a",
-    "--unown-eye-rim": "#9bbc0f",
-    "--unown-eye-lit": "#c3e06a",
+    "--unown-eye": "var(--color-canvas)",
+    "--unown-eye-rim": "var(--color-gold)",
+    "--unown-eye-lit": "var(--color-gold-soft)",
   } as CSSProperties,
 };
 

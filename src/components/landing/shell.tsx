@@ -102,7 +102,7 @@ export function ContinueArrow({ className }: { className?: string }) {
 }
 
 /**
- * A Gen 1 stat bar. Colour steps green → amber → red as the value drops,
+ * A Gen 3 stat bar. Colour steps green → gold → red as the value drops,
  * exactly as a real HP bar does, but the colour is never the only signal:
  * the number sits next to it, so the bar survives colour blindness and
  * survives a reader who cannot see it at all.
@@ -140,22 +140,38 @@ export function HpBar({
 }
 
 /**
- * The five section tones. These are names, not colours: each maps to a
- * `[data-tone="…"]` rule in `landing.css` that swaps the CSS custom
- * properties `--tone-fill` / `--tone-rim`. A section may never pass a hex —
- * that is what keeps thirteen sections restyled in parallel from drifting
- * into fourteen different reds, and what lets every tone be contrast-checked
- * once, centrally, in both colour schemes.
+ * The five Gen 3 hues. These are names, not colours: each maps to a
+ * `[data-hue="…"]` / `[data-tone="…"]` rule in `landing.css` that swaps the
+ * CSS custom properties `--hue-bg` / `--hue-accent` / `--tone-fill` /
+ * `--tone-rim`. A section may never pass a hex — that is what keeps thirteen
+ * sections restyled in parallel from drifting into fourteen different reds,
+ * and what lets every hue be contrast-checked once, centrally, in both colour
+ * schemes.
  *
- * `glow` is the default (DMG shade 4); the other four are the Super Game Boy
- * stock palette. Contrast for all five, in both schemes, is verified by
- * `bun scripts/contrast_audit.mjs`.
+ * `aqua` and `magma` are Ruby/Sapphire's two teams, `leaf` is Hoenn's grass
+ * and Emerald's blue-to-green shift of the window frame, `psychic` is what
+ * Unown is, and `gold` is the RSE menu's navy-plus-gold default. Contrast for
+ * all five, in both schemes, is verified by `bun scripts/contrast_audit.mjs`
+ * and the grid check in `bun scripts/gba_palette_check.mjs`.
  */
-export type Tone = "glow" | "cream" | "amber" | "brick" | "purple";
+export type Hue = "gold" | "aqua" | "magma" | "leaf" | "psychic";
 
-/** Renders the tone as the data attribute the CSS keys on. */
+/** Element-level override of its section's hue. Same five names. */
+export type Tone = Hue;
+
+/**
+ * Renders the section hue as the attribute the CSS keys on. A section that
+ * takes no hue sits on the page canvas with the gold accent, which is the
+ * correct default for the shell, the nav and the footer.
+ */
+export function hueAttr(hue?: Hue): { "data-hue"?: Hue } {
+  return hue ? { "data-hue": hue } : {};
+}
+
+/** Renders an element-level tone override. Unlike `hueAttr`, no default is
+ *  elided: `data-tone="gold"` inside a leaf section is a deliberate choice. */
 export function toneAttr(tone?: Tone): { "data-tone"?: Tone } {
-  return tone && tone !== "glow" ? { "data-tone": tone } : {};
+  return tone ? { "data-tone": tone } : {};
 }
 
 /**
@@ -168,6 +184,12 @@ export function toneAttr(tone?: Tone): { "data-tone"?: Tone } {
  * when the section genuinely needs something else, and keep the same classes
  * when you do.
  *
+ * Both the kicker and the heading take the section's `--hue-accent`, so a
+ * section gets its hue from its own `data-hue` and this component never has to
+ * be told. That is deliberate: the old `tone` prop let a header disagree with
+ * the section it sat in, which is how a page gets eleven hues fighting each
+ * other.
+ *
  * Keep `kicker` to a few words: it is set in Press Start 2P, and a sentence
  * in that face is a wall.
  */
@@ -176,26 +198,18 @@ export function SectionHead({
   children,
   lead,
   className,
-  tone,
 }: {
   kicker?: React.ReactNode;
   children: React.ReactNode;
   lead?: React.ReactNode;
   className?: string;
-  /** Section hue. Recolours the kicker only — headings stay `text-ink`. */
-  tone?: Tone;
 }) {
   return (
     <div className={className}>
       {kicker ? (
-        <p
-          {...toneAttr(tone)}
-          className={`gb-label text-[10px] ${tone && tone !== "glow" ? "text-(--tone-rim)" : "text-glow"}`}
-        >
-          {kicker}
-        </p>
+        <p className="gb-label text-[10px] text-(--hue-accent)">{kicker}</p>
       ) : null}
-      <h2 className="gb-h mt-4 text-[clamp(1.8rem,3.2vw,2.6rem)] text-ink">
+      <h2 className="gb-h mt-4 text-[clamp(1.8rem,3.2vw,2.6rem)] text-(--hue-accent)">
         {children}
       </h2>
       {lead ? (
@@ -220,24 +234,22 @@ export function TrafficDots() {
 
 /**
  * Terminal-style window frame shared by the hero, the replay and the
- * quickstart. The title bar is a bright dialogue-box strip rather than a
- * grey app bar: it is the one piece of chrome a reader sees on every screen,
- * so it is where the page says what it is. `tone` recolours that strip (and
- * the panel rim) to the section's SGB hue; it defaults to DMG green.
+ * quickstart. The title bar is the Gen 3 name strip — a solid band of the
+ * section's accent rather than a grey app bar: it is the one piece of chrome a
+ * reader sees on every screen, so it is where the page says what it is. It
+ * takes its hue from the section it is in, so it has no `tone` prop.
  */
 export function TerminalWindow({
   title,
   children,
   actions,
-  tone,
 }: {
   title: string;
   children: React.ReactNode;
   actions?: React.ReactNode;
-  tone?: Tone;
 }) {
   return (
-    <div className="gb-panel lift overflow-hidden" {...toneAttr(tone)}>
+    <div className="gb-panel lift overflow-hidden">
       <div className="gb-bar flex items-center gap-3 px-3 py-2">
         <TrafficDots />
         <div className="flex min-w-0 flex-1 justify-center">
@@ -251,9 +263,9 @@ export function TerminalWindow({
 }
 
 /** Browser-style frame for the dashboard screenshots. */
-export function BrowserFrame({ url, src, alt, tone }: { url: string; src: string; alt: string; tone?: Tone }) {
+export function BrowserFrame({ url, src, alt }: { url: string; src: string; alt: string }) {
   return (
-    <div className="gb-panel lift overflow-hidden" {...toneAttr(tone)}>
+    <div className="gb-panel lift overflow-hidden">
       <div className="gb-bar flex items-center gap-3 px-3 py-2">
         <TrafficDots />
         <div className="flex min-w-0 flex-1 justify-center">
@@ -310,10 +322,10 @@ export function CopyButton({
       type="button"
       onClick={onCopy}
       aria-label={copied ? "Copied" : label}
-      className="inline-flex size-7 shrink-0 items-center justify-center rounded border border-line bg-panel-2 text-dim transition-colors hover:border-line-bright hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
+      className="inline-flex size-7 shrink-0 items-center justify-center rounded border border-line bg-panel-2 text-dim transition-colors hover:border-line-bright hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
     >
       {copied ? (
-        <Check className="size-3.5 text-glow" aria-hidden="true" />
+        <Check className="size-3.5 text-gold" aria-hidden="true" />
       ) : (
         <Copy className="size-3.5" aria-hidden="true" />
       )}
@@ -326,7 +338,8 @@ export function CopyButton({
 /* ------------------------------------------------------------------ */
 
 /**
- * The primary action: a Gen 1 menu button. The press comes from the inset
+ * The primary action: a Gen 3 menu button, filled with its section's accent.
+ * The press comes from the inset
  * bevel in `.gb-btn` and a two-frame translate, not from a shadow — see the
  * frame rule in `landing.css`.
  *
@@ -408,13 +421,13 @@ const NAV_LINKS = [
  */
 export function Nav() {
   return (
-    <header className="sticky top-0 z-50 border-b-[3px] border-glow bg-panel/92 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b-[3px] border-gold bg-panel/92 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-5 sm:px-6">
         <Link href="/" className="group flex items-center gap-2.5">
           <Glyph
             id="U"
             weight="heavy"
-            className="size-7 text-glow"
+            className="size-7 text-gold"
             label="Unown"
           />
           <span className="gb-label text-[13px] text-ink">unown</span>
@@ -428,17 +441,17 @@ export function Nav() {
             <a
               key={l.href}
               href={l.href}
-              className="group relative text-[13px] text-dim transition-colors hover:text-glow focus-visible:text-glow focus:outline-none"
+              className="group relative text-[13px] text-dim transition-colors hover:text-gold focus-visible:text-gold focus:outline-none"
             >
-              <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-glow opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+              <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
               {l.label}
             </a>
           ))}
           <Link
             href="/dashboard"
-            className="group relative text-[13px] text-dim transition-colors hover:text-glow focus-visible:text-glow focus:outline-none"
+            className="group relative text-[13px] text-dim transition-colors hover:text-gold focus-visible:text-gold focus:outline-none"
           >
-            <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-glow opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+            <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
             Dashboard
           </Link>
         </nav>
@@ -450,7 +463,7 @@ export function Nav() {
             target="_blank"
             rel="noreferrer noopener"
             aria-label="Unown on GitHub"
-            className="inline-flex size-9 items-center justify-center text-dim transition-colors hover:text-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
+            className="inline-flex size-9 items-center justify-center text-dim transition-colors hover:text-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
           >
             <GithubMark className="size-[18px]" />
           </a>
@@ -560,7 +573,7 @@ export function ThemeToggle() {
       onClick={cycle}
       aria-label={`Screen: ${THEME_NAME[mode]}. Press to ${THEME_ACTION[mode]}.`}
       title={`Screen: ${THEME_NAME[mode]}`}
-      className="inline-flex size-9 items-center justify-center text-dim transition-colors hover:text-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
+      className="inline-flex size-9 items-center justify-center text-dim transition-colors hover:text-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
     >
       <ThemeIcon mode={mode} />
     </button>
@@ -576,12 +589,12 @@ export function Footer() {
   useKonami(wake);
 
   return (
-    <footer className="border-t-[3px] border-glow pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-10">
+    <footer className="border-t-[3px] border-gold pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-10">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-8">
           <div className="max-w-xs">
             <div className="flex items-center gap-2">
-              <Glyph id="U" weight="heavy" className="size-6 text-glow" />
+              <Glyph id="U" weight="heavy" className="size-6 text-gold" />
               <span className="gb-label text-[11px]">unown</span>
             </div>
             <p className="gb-term mt-3 text-[17px] leading-snug text-faint">
@@ -591,22 +604,22 @@ export function Footer() {
           </div>
 
           <nav aria-label="Footer" className="grid grid-cols-2 gap-x-12 gap-y-2 text-[13px] sm:grid-cols-3">
-            <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-glow">
+            <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-gold">
               GitHub
             </a>
-            <a href={DOCS_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-glow">
+            <a href={DOCS_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-gold">
               Documentation
             </a>
-            <Link href="/dashboard" className="text-dim transition-colors hover:text-glow">
+            <Link href="/dashboard" className="text-dim transition-colors hover:text-gold">
               Dashboard
             </Link>
-            <a href={BENCH_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-glow">
+            <a href={BENCH_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-gold">
               Benchmarks
             </a>
-            <a href="#alphabet" className="text-dim transition-colors hover:text-glow">
+            <a href="#alphabet" className="text-dim transition-colors hover:text-gold">
               The alphabet
             </a>
-            <a href="#quickstart" className="text-dim transition-colors hover:text-glow">
+            <a href="#quickstart" className="text-dim transition-colors hover:text-gold">
               Install
             </a>
           </nav>
@@ -621,7 +634,7 @@ export function Footer() {
               href="https://github.com/badlogic/pi-mono"
               target="_blank"
               rel="noreferrer noopener"
-              className="underline underline-offset-2 hover:text-glow"
+              className="underline underline-offset-2 hover:text-gold"
             >
               pi coding agent
             </a>
