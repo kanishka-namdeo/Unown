@@ -14,8 +14,12 @@
 // endpoint, isolated UNOWN_HOME) keep suite-a's llm/termhooks imports away
 // from the live llm-bridge (:3031) and the developer's real ~/.unown.
 import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-export const TEST_TMP = "/tmp/engine-tests-b";
+// os.tmpdir()-based so the suite is portable (Windows %TEMP%, macOS
+// /var/folders); on Linux this is still /tmp — the historical location.
+export const TEST_TMP = join(tmpdir(), "engine-tests-b");
 
 mkdirSync(TEST_TMP, { recursive: true });
 

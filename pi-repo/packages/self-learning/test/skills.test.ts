@@ -13,13 +13,14 @@
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { listSkills, mintSkillsForProject, projectSkillsDir, renderSkillMd, skillVersions } from "../src/skills.ts";
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
-const ROOT = "/tmp/engine-tests-b/skills";
+const ROOT = join(tmpdir(), "engine-tests-b", "skills");
 // Run-unique suffix: the redirected SQLite DB persists across bun test
 // invocations, so slugs must never collide between runs.
 const RUN = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;

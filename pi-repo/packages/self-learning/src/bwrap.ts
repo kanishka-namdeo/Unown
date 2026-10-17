@@ -41,8 +41,12 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-/** Resolve the bwrap binary: env override -> vendored copy -> system PATH. */
+/** Resolve the bwrap binary: env override -> vendored copy -> system PATH.
+ *  Linux-only by explicit gate: bubblewrap is a Linux ELF tool, and without
+ *  the gate a Git-Bash /usr/bin/bwrap from a WSL mount could win on Windows
+ *  by accident. Non-linux hosts always resolve null (-> TS path jail). */
 export function resolveBwrapPath(): string | null {
+	if (process.platform !== "linux") return null;
 	const override = process.env.UNOWN_BWRAP;
 	if (override && existsSync(override)) return override;
 	const vendored = join(HERE, "..", "native", "bin", "bwrap");
@@ -108,8 +112,11 @@ export function wrapCommand(command: string[], workspace: string): string[] | nu
 
 let availabilityCache: boolean | null = null;
 
-/** One-time smoke test: can the profile actually execute a command here? */
+/** One-time smoke test: can the profile actually execute a command here?
+ *  Non-linux hosts short-circuit to false — same explicit gate as
+ *  resolveBwrapPath (Linux behavior unchanged). */
 export async function osSandboxAvailable(): Promise<boolean> {
+	if (process.platform !== "linux") return false;
 	if (!osSandboxConfigured()) return false;
 	if (availabilityCache !== null) return availabilityCache;
 	const bin = resolveBwrapPath();
@@ -150,6 +157,9 @@ export async function osSandboxAvailable(): Promise<boolean> {
  * The workspace is derived from the invocation cwd — no per-run state needed.
  */
 export function writeSandboxShell(agentDir: string): string | null {
+	// Linux-only by explicit gate (see resolveBwrapPath) — non-linux hosts
+	// never generate a shell wrapper; the agent session runs un-wrapped.
+	if (process.platform !== "linux") return null;
 	const bin = resolveBwrapPath();
 	if (!bin || !osSandboxConfigured()) return null;
 	mkdirSync(agentDir, { recursive: true });

@@ -102,6 +102,12 @@ const BASH_DENY: { pattern: RegExp; reason: string }[] = [
                 pattern: />\s*\/dev\/(?:sd|nvme|hd|vd|xvd|mmcblk|loop|disk|mem|kmem|sr)/,
                 reason: "refusing raw writes to disk devices via redirect",
         },
+        {
+                // Raw Windows device namespace writes (\\.\PhysicalDrive …),
+                // incl. the Git Bash //./ spelling.
+                pattern: />\s*(?:\\\\|\/\/)\.[\\/]/i,
+                reason: "refusing raw writes to Windows devices via redirect",
+        },
         { pattern: /\b(pkill|killall)\b/, reason: "signaling processes outside the sandbox is denied" },
         { pattern: /\bfind\b[^\n]*(?:-delete\b|-exec\s+rm\b)/, reason: "find-based deletion is denied in the sandbox" },
         {
@@ -146,6 +152,54 @@ const BASH_DENY: { pattern: RegExp; reason: string }[] = [
                         /\bchmod\s+(?:-[a-zA-Z]+\s+)*777\s+\/(?:\s|\/|\*|['"`;|&)]|$|(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|home|root)(?:\/|\s|['"`;|&)]|$))/,
                 reason: "refusing world-writable chmod on system trees",
         },
+        // ---- Windows catastrophic family. Matched on ALL platforms on
+        // purpose: Git Bash, WSL and the powershell tool (whose commands reach
+        // decideBash through the same tool_call path as bash) make every
+        // Windows spelling reachable from any host. Mirrors the POSIX
+        // catastrophic classes above; benign Windows-native reads (dir, Get-*,
+        // reg query, vssadmin list) stay allowed.
+        { pattern: /\bformat\s+[a-zA-Z]:/i, reason: "refusing drive format" },
+        {
+                // cmd tree deletes on drive roots — twin of the rm-on-root rule
+                // (`C:\` and `C:\*` blocked, `C:\subdir` not).
+                pattern:
+                        /\b(?:del|rd|rmdir|erase)\s+(?:[-/][a-zA-Z?*]+\s+)*[a-zA-Z]:[\\/](?:\s|\*|['"`;|&)]|[\\/]|$)/i,
+                reason: "refusing delete on Windows drive roots",
+        },
+        {
+                // …and on Windows system trees, incl. the Users hive (the POSIX
+                // rm rules block /home the same way).
+                pattern:
+                        /\b(?:del|rd|rmdir|erase)\s+(?:[-/][a-zA-Z?*]+\s+)*[a-zA-Z]:[\\/](?:Windows|Program Files(?: \(x86\))?|PerfLogs|System Volume Information|\$Recycle\.Bin|Users)(?:[\\/]|['"`;|&)]|\s|$)/i,
+                reason: "refusing delete on Windows system trees",
+        },
+        { pattern: /\breg\s+(?:add|delete|import)\b/i, reason: "refusing registry modification" },
+        { pattern: /\bbcdedit\b/i, reason: "refusing boot-configuration edits" },
+        { pattern: /\bdiskpart\b/i, reason: "refusing disk partitioning" },
+        { pattern: /\bvssadmin\s+delete\b/i, reason: "refusing shadow-copy deletion" },
+        { pattern: /\bwbadmin\s+delete\b/i, reason: "refusing backup deletion" },
+        { pattern: /\btakeown\s[^\n]*\/f\b/i, reason: "refusing ownership takeover" },
+        { pattern: /\bcipher\s+\/w\b/i, reason: "refusing free-space wipe" },
+        { pattern: /\bset-executionpolicy\b/i, reason: "refusing execution-policy changes" },
+        { pattern: /\b(?:powershell|pwsh)(?:\.exe)?\s[^\n]*-encodedcommand\b/i, reason: "refusing encoded command payloads" },
+        {
+                // Recursive Remove-Item against drive roots — twin of the
+                // rm-on-root rule; `Remove-Item -Recurse .\build` stays allowed.
+                pattern:
+                        /\bremove-item\s(?=[^\n]*-recurse\b)[^\n]*[a-zA-Z]:[\\/](?:\s|\*|['"`;|&)]|[\\/]|$)/i,
+                reason: "refusing recursive delete on Windows drive roots",
+        },
+        {
+                pattern:
+                        /\bremove-item\s(?=[^\n]*-recurse\b)[^\n]*[a-zA-Z]:[\\/](?:Windows|Program Files(?: \(x86\))?|PerfLogs|System Volume Information|\$Recycle\.Bin|Users)(?:[\\/]|['"`;|&)]|\s|$)/i,
+                reason: "refusing recursive delete on Windows system trees",
+        },
+        {
+                // Killing the processes Windows cannot re-launch cleanly.
+                pattern: /\btaskkill\s[^\n]*\/im\s+["']?(?:svchost|wininit|csrss|lsass|explorer)\b/i,
+                reason: "refusing kills of critical system processes",
+        },
+        { pattern: /\bstop-process\s[^\n]*-name\s+["']?(?:svchost|wininit|csrss|lsass)\b/i, reason: "refusing kills of critical system processes" },
 ];
 
 export interface PreToolDecision {

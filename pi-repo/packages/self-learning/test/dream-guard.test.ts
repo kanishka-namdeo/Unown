@@ -30,6 +30,7 @@
 import "./_env.ts";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { runDream, runProjectDream } from "../src/dream.ts";
@@ -38,7 +39,7 @@ import { ingestTerminalNote, undreamedNotes } from "../src/notes.ts";
 import { store } from "../src/store.ts";
 import { initProjectMemory, projectMemoryPath, isPristineSeedProjectMemory } from "../src/term.ts";
 
-const SCRATCH = "/tmp/engine-tests-dream-guard";
+const SCRATCH = join(tmpdir(), "engine-tests-dream-guard");
 const PROJECT_A = join(SCRATCH, "pristine-victim"); // first-mint case
 const PROJECT_B = join(SCRATCH, "established-victim"); // sanitize case
 const PROJECT_C = join(SCRATCH, "clean-project"); // verbatim case

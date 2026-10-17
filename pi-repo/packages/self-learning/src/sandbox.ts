@@ -56,6 +56,19 @@ export interface ExecResult {
 
 const MAX_OUTPUT = 60_000;
 
+/** Child env for sandbox commands. HOME and USERPROFILE are BOTH pinned to
+ *  the sandbox root — POSIX ignores USERPROFILE and Windows ignores HOME, so
+ *  setting both is harmless everywhere and correct on each platform. The
+ *  POSIX PATH fallback applies only on POSIX hosts with PATH unset; on win32
+ *  a POSIX PATH string would poison the child, so there we omit PATH entirely
+ *  (the child falls back to the OS default search). */
+function buildSandboxChildEnv(sandboxRoot: string, extra?: Record<string, string>): Record<string, string> {
+	const env: Record<string, string> = { HOME: sandboxRoot, USERPROFILE: sandboxRoot };
+	if (process.env.PATH) env.PATH = process.env.PATH;
+	else if (process.platform !== "win32") env.PATH = "/usr/local/bin:/usr/bin:/bin";
+	return { ...env, ...extra };
+}
+
 export async function execInSandbox(
 	sandbox: Sandbox,
 	command: string[],
@@ -77,16 +90,15 @@ export async function execInSandbox(
 	}
 	const proc = Bun.spawn(cmd, {
 		cwd: sandbox.workspace,
-		env: {
-			PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
-			HOME: sandbox.root,
-			...opts.env,
-		},
+		env: buildSandboxChildEnv(sandbox.root, opts.env),
 		stdout: "pipe",
 		stderr: "pipe",
 	});
 	const timer = setTimeout(() => {
 		timedOut = true;
+		// kill(9) is a hard kill. No tree-kill needed: verify/exec commands run
+		// `bun` directly (no shell) and the minted verify scripts spawn nothing.
+		// (Bun maps kill(9) to TerminateProcess on win32.)
 		proc.kill(9);
 	}, timeoutMs);
 	const [stdout, stderr] = await Promise.all([
