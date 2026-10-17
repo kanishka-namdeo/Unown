@@ -571,7 +571,11 @@ export function BenchmarksSection() {
                 stayed accurate per-session-auditable. The memory system itself now has
                 a live suite — injection proven by a unique marker in the captured
                 upstream request, real dream + canary + rollback roundtrips,
-                crash-consistency, and poisoning probes — receipts in{" "}
+                crash-consistency, and a ten-variant poisoning corpus (n=10
+                obfuscation ladder: base64 payloads, zero-width smuggling, authority
+                spoofs, split notes): every adversarial note flagged at the input
+                layer, 0/10 attacker rules planted into dreamed memory, 0 shipped —
+                receipts in{" "}
                 <a
                   href={`${BENCH_URL}/memory-eval/results`}
                   target="_blank"

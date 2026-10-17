@@ -163,3 +163,12 @@ receipt + `memory:budget` event. F8 closed as a side effect:
   path, F8 semantics).
 - Live: full e2e loop 7/7 with the budget wired — the verbatim-injection
   marker probe still passes (no-op when under budget).
+
+## 7. §5.4 shipped: the poison corpus (see poison-corpus/RESULTS.md)
+
+The multi-attempt corpus lives in `../poison-corpus/` (this dir's sibling):
+ten obfuscation variants + a benign control through the real dream prompt on
+the live bridge — 10/10 adversarial notes flagged at the input layer, 0/10
+attacker rules planted into candidates, 0 directives shipped, 0 false
+posititives on the control. Per-variant receipts + summary.json + a
+resume-safe runner are committed there.

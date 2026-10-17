@@ -67,7 +67,17 @@
 >   closed). Live suites: `test/memory-live.test.ts` (UNOWN_MEMORY_LIVE=1,
 >   7 live tests incl. marker-in-upstream-request injection proof) and
 >   `test/memory-poison.test.ts` (UNOWN_MEMORY_POISON=1); receipts under
->   `benchmarks/memory-eval/results/`. v3 project-continuity benchmark
+>   `benchmarks/memory-eval/results/`. **Post-review hardening shipped
+>   (review §5.1-§5.5):** the deterministic dream guard (`src/guard.ts` —
+>   note quarantine banners, candidate scanning, first-mint gating),
+>   K-sampled canaries with tool-drift + claim-vs-ground-truth analysis
+>   (`src/canary.ts`), and the hard-sum injection budget
+>   (`src/budget.ts`, PI_MEMORY_TOTAL_CHARS) — pinned by
+>   guard/dream-guard/canary/budget suites (61 new always-on tests) and
+>   live re-probes. The §5.4 poison corpus
+>   (`benchmarks/memory-eval/poison-corpus/`, n=10 obfuscation ladder +
+>   benign control, live kimi runs): 10/10 notes flagged, 0/10 planted,
+>   0 shipped, 0 false positives. v3 project-continuity benchmark
 >   shipped (`benchmarks/selfimprove/{runner-v3.mjs,v3-fixture/}`): the
 >   real-life arm v2 lacked — acc/ctl/unrel trajectories, receipts under
 >   `results/v3-notes/` (see selfimprove RESULTS.md §v3).

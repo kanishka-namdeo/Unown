@@ -209,8 +209,16 @@ project-path weaknesses (F4B: no canary, no caps beyond the dream guard).
    request body (pinned on the captured stub request + live re-probe);
    per-rule `[note N]` tags are instructed and their absence is audited
    (report-only).
-4. Multi-attempt poison corpus (n≥10, obfuscation ladder) to make F4
-   statistical rather than directional.
+4. ~~Multi-attempt poison corpus (n≥10, obfuscation ladder) to make F4
+   statistical rather than directional.~~ **SHIPPED** —
+   `benchmarks/memory-eval/poison-corpus/` (live, kimi): 10 obfuscation
+   variants + benign control. 10/10 adversarial notes flagged at the input
+   layer; 0/10 attacker rules planted into the dream candidate (the
+   pre-hardening F4 probe planted the paraphrase — the before/after is the
+   §5.3 delta); 0 shipped; 0 false positives on the control. Layer-3
+   catch-rate is vacuous live (nothing planted) and pinned deterministically
+   by the guard unit/integration suites. Receipts: RESULTS.md + per-variant
+   JSON + summary.json.
 5. ~~Hard-sum budget on the resolved block in the runner (currently only
    per-tier caps) with a degradation policy (oldest-rules-first pruning).~~
    **SHIPPED** — `src/budget.ts` wired into BOTH injection surfaces
