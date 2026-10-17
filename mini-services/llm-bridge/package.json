@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --hot index.ts"
+    "dev": "bun --hot index.ts",
+    "test": "bun test pure.test.ts"
   }
 }
