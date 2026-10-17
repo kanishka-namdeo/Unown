@@ -9,7 +9,7 @@
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { osSandboxAvailable, wrapCommand } from "./bwrap.ts";
+import { osSandboxAvailable, resolveOsSandboxBackend, wrapCommand } from "./bwrap.ts";
 import { DATA_DIR, store } from "./store.ts";
 
 export const SANDBOXES_DIR = join(DATA_DIR, "sandboxes");
@@ -50,8 +50,10 @@ export interface ExecResult {
 	stderr: string;
 	timedOut: boolean;
 	durationMs: number;
-	/** "bwrap" when the command ran under the OS sandbox, "process" otherwise. */
-	isolation: "bwrap" | "process";
+	/** Which OS sandbox the command ran under: "bwrap" (Linux), "seatbelt"
+	 *  (macOS) or "process" when no OS sandbox was available (TS path jail
+	 *  only — the transparent fallback). */
+	isolation: "bwrap" | "seatbelt" | "process";
 }
 
 const MAX_OUTPUT = 60_000;
@@ -77,15 +79,16 @@ export async function execInSandbox(
 	const started = Date.now();
 	const timeoutMs = opts.timeoutMs ?? 30_000;
 	let timedOut = false;
-	// OS-level isolation when bubblewrap is available (fs + net confinement
-	// around the TS path jail); transparent fallback to plain exec.
-	let isolation: "bwrap" | "process" = "process";
+	// OS-level isolation when a backend is available (bubblewrap on Linux,
+	// seatbelt on macOS; fs + net confinement around the TS path jail);
+	// transparent fallback to plain exec.
+	let isolation: ExecResult["isolation"] = "process";
 	let cmd = command;
 	if (await osSandboxAvailable()) {
 		const wrapped = wrapCommand(command, sandbox.workspace);
 		if (wrapped) {
 			cmd = wrapped;
-			isolation = "bwrap";
+			isolation = resolveOsSandboxBackend() === "seatbelt" ? "seatbelt" : "bwrap";
 		}
 	}
 	const proc = Bun.spawn(cmd, {

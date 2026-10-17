@@ -33,7 +33,7 @@ import {
         SessionManager,
         SettingsManager,
 } from "@earendil-works/pi-coding-agent";
-import { osSandboxAvailable, resolveBwrapPath } from "./bwrap.ts";
+import { netBlocked, osSandboxAvailable, resolveBwrapPath, resolveSandboxExecPath } from "./bwrap.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import { printModelsOverview, runSetupCommand } from "./setup.ts";
 import {
@@ -414,25 +414,29 @@ async function cmdDoctor() {
         }
 
         // 4. OS sandbox — fs + network isolation for engine runs. Platform-aware:
-        // Linux checks bubblewrap; macOS reports the pending seatbelt work and
-        // Windows the native-Windows story (path-jail fallback in both cases —
+        // Linux checks bubblewrap, macOS checks seatbelt (sandbox-exec), and
+        // Windows reports the native-Windows story (path-jail fallback there —
         // the same degradation Claude Code ships on native Windows). Always a
         // non-fatal warning.
         {
                 const osb = await osSandboxAvailable();
                 const name =
                         process.platform === "darwin"
-                                ? "OS sandbox (macOS)"
+                                ? "OS sandbox (seatbelt)"
                                 : process.platform === "win32"
                                   ? "OS sandbox (Windows)"
                                   : "OS sandbox (bubblewrap)";
                 const unavailable =
                         process.platform === "darwin"
-                                ? "seatbelt integration pending — engine runs use the path jail"
+                                ? "sandbox-exec unavailable — engine runs use the path jail"
                                 : process.platform === "win32"
                                   ? "not available on native Windows — engine runs use the path jail (same as Claude Code's Windows story)"
                                   : "unavailable — engine runs fall back to the path jail";
-                check(name, osb, osb ? `${resolveBwrapPath()} — fs+net isolation active` : unavailable, "warn");
+                const detail =
+                        process.platform === "darwin"
+                                ? `${resolveSandboxExecPath()} — fs isolation active (seatbelt profile${netBlocked() ? "; network denied" : "; network shared"})`
+                                : `${resolveBwrapPath()} — fs+net isolation active`;
+                check(name, osb, osb ? detail : unavailable, "warn");
         }
 
         // 5. engine health (notes + dreams + dashboard) — chat works without it;
