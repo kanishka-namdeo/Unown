@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { FadeUp, SectionHead } from "./shell";
 
 /* ------------------------------------------------------------------ */
@@ -73,9 +74,8 @@ export function IntegritySection() {
             kicker="Integrity"
             lead={
               <>
-                So every memory write is behind a gate, and every gate is visible from the
-                dashboard with the run that proved it. It is the objection this project has to
-                win, so it gets the whole section.
+                Every memory write sits behind a gate, and every gate leaves a log line naming
+                the run that cleared it.
               </>
             }
           >
@@ -102,6 +102,24 @@ export function IntegritySection() {
                 </li>
               ))}
             </ul>
+
+            {/* The admission, next to the gates instead of 2,500px below them.
+                It used to sit as the last block of `benchmarks.tsx`, in an 18rem
+                aside under four cards, two panels and a full-width chart — the
+                page's strongest trust artifact and the least likely thing on it
+                to be read. Here it is also the right *kind* of neighbour: a gate
+                that says no, and refuses to negotiate. `benchmarks.tsx` keeps the
+                vendor-quoted-benchmarks caveat, which is a methodology footnote
+                rather than a limit on the agent. */}
+            <div className="gb-box mt-6 p-5" data-tone="magma">
+              <p className="gb-label text-[10px] text-canvas">
+                And one eval we report at zero
+              </p>
+              <p className="mt-2 text-[13px] leading-relaxed text-canvas">
+                Our own <span className="font-medium">extension-authoring eval</span> scores{" "}
+                <span className="font-medium">0.0</span> for every model. Reported as-is.
+              </p>
+            </div>
           </FadeUp>
 
           {/* the log */}
@@ -114,9 +132,13 @@ export function IntegritySection() {
                 </span>
               </div>
               <div className="divide-y divide-line/70">
-                {LOG.map(([hook, decision, reason]) => (
-                  <div
+                {LOG.map(([hook, decision, reason], i) => (
+                  <motion.div
                     key={`${hook}-${reason}`}
+                    initial={{ opacity: 0, x: -8 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, margin: "-60px" }}
+                    transition={{ duration: 0.22, delay: i * 0.07 }}
                     className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3.5 py-2.5"
                   >
                     <span className="w-36 shrink-0 gb-term text-[17px] text-ink">
@@ -132,7 +154,7 @@ export function IntegritySection() {
                     <span className="min-w-0 flex-1 gb-term text-[17px] leading-relaxed text-dim">
                       {reason}
                     </span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>

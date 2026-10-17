@@ -144,6 +144,46 @@ html {
   }
 }
 
+/*
+ * Accordion open/close. Driven by the `animate-accordion-down` / `-up` utilities
+ * that the vendored `ui/accordion.tsx` already applies; the `--animate-*`
+ * tokens that map onto these keyframes live in `globals.css`, because that is
+ * the file Tailwind resolves its theme from.
+ *
+ * Animated on `height` deliberately, and it is the one place on this page that
+ * is allowed to: it is not a reveal, so it is not load-bearing, and a closed
+ * accordion has no visible height to preserve for a visitor with scripting off.
+ * `steps()` because a Game Boy panel opens in frames.
+ */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/* Every other reveal on this page already resolves to its finished state under
+ * `prefers-reduced-motion`, but these two are plain CSS keyframes and would
+ * not. With the animation off, an open answer keeps its Radix-measured height
+ * and a closed one unmounts — which is exactly the finished state. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-accordion-down,
+  .animate-accordion-up {
+    animation: none;
+  }
+}
+
 /* ---------------------------------------------------------------- */
 /* micro-interactions                                                */
 /* ---------------------------------------------------------------- */

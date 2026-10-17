@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
 import { Glyph, Mark } from "./glyph";
 import { GLYPH_IDS, MARKS, type GlyphId, type MarkId } from "./glyphs";
 import { LEXICON_BY_ID } from "./lexicon";
@@ -57,6 +56,16 @@ function MarkField() {
  * rim around a dim eye reads as a labelled drawer instead.
  */
 const TILE_TONES: readonly Tone[] = ["aqua", "leaf", "magma", "gold"];
+
+/**
+ * Three forms lifted out of the wall so the lexicon is readable without
+ * hovering anything. The decode panel shows one entry at a time, so 25 of 28
+ * verified lore bodies are otherwise reachable only by a visitor who hovers
+ * every tile — i.e. nobody. Chosen for register, not fame: one current jab,
+ * one technical jab, one 2001 review quote. Read from `LEXICON_BY_ID` so the
+ * quotation and its attribution stay single-sourced with the panel.
+ */
+const HIGHLIGHTS: readonly GlyphId[] = ["Z", "!", "L"];
 
 function FormTile({
   id,
@@ -145,11 +154,34 @@ export function AlphabetSection() {
           </FadeUp>
           <FadeUp delay={0.12}>
             <p className="text-pretty leading-relaxed text-dim">
-              An agent with memory earns its keep the same way: the interesting thing
-              about it is that it <span className="text-ink">reads</span>. So the 28 forms
-              below are ours, drawn from scratch as inline SVG. There is no font file and
-              no image sprite. Each one decodes twice: the lore it borrows, and the real
-              mechanism it stands for here.
+              An agent with memory earns its keep the same way: it{" "}
+              <span className="text-ink">reads</span>. The 28 forms below are ours, drawn
+              from scratch as inline SVG — no font file, no image sprite — and each one
+              decodes twice: the lore it borrows, and the real mechanism it stands for
+              here.
+            </p>
+          </FadeUp>
+          <FadeUp delay={0.18}>
+            <div className="border-t border-line">
+              {HIGHLIGHTS.map((id) => {
+                const e = LEXICON_BY_ID.get(id)!;
+                return (
+                  <div key={id} className="flex items-start gap-4 border-b border-line py-4">
+                    <Glyph id={e.id} weight="heavy" className="size-10 shrink-0 text-gold" />
+                    <div className="min-w-0">
+                      <blockquote className="quote text-pretty text-[15px] italic leading-relaxed text-dim">
+                        {e.lore}
+                      </blockquote>
+                      <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.14em] text-faint">
+                        {e.loreSrc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 font-mono text-[10px] text-faint">
+              Three of twenty-eight. The rest are in the wall.
             </p>
           </FadeUp>
         </div>
@@ -173,7 +205,8 @@ export function AlphabetSection() {
               ))}
             </div>
             <p className="mt-4 font-mono text-[11px] text-faint">
-              hover or focus to decode · click to pin it and rain the letter
+              hover or focus to decode · click to pin it and rain the letter · psst, try
+              ↑↑↓↓←→←→ba
             </p>
           </FadeUp>
 

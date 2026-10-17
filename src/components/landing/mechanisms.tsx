@@ -43,7 +43,7 @@ const MECHANISMS: Mechanism[] = [
     n: "01",
     title: "Tiered memory",
     pain: "re-explaining the project every session",
-    body: "Four tiers — policy, project, user, local — resolved most-specific-wins and injected into every prompt. Engine sandboxes and terminal sessions get the same stack, re-read on /new, /resume and /fork so an AutoDream update lands without a restart.",
+    body: "Four tiers: policy, project, user, local. Most-specific-wins, injected into every prompt. Engine sandboxes and terminal sessions get the same stack, re-read on /new, /resume and /fork so an AutoDream update lands without a restart.",
     proof: "Every write is versioned and attributed: seed · harness · autodream · manual · rollback.",
     file: "memory.ts",
     href: SRC("memory.ts"),
@@ -52,8 +52,8 @@ const MECHANISMS: Mechanism[] = [
     n: "02",
     title: "Self-improving harness",
     pain: "it fixed the bug by editing the test",
-    body: "A benchmark task runs in a fresh sandbox. If it fails, the transcript is mined for memory rules that would have prevented it, a candidate re-runs against the patched memory, and the patch ships only if a second independent run passes too. Shipped patches that later regress are un-shipped automatically.",
-    proof: "The noise gate is the point: one passing run is a lucky run.",
+    body: "A benchmark task runs in a fresh sandbox. If it fails, the transcript is mined for memory rules that would have prevented it, and a candidate re-runs against the patched memory.",
+    proof: "The engine log records both runs: candidate, then confirmation.",
     file: "harness.ts",
     href: SRC("harness.ts"),
   },
@@ -61,7 +61,7 @@ const MECHANISMS: Mechanism[] = [
     n: "03",
     title: "Routing",
     pain: "improvement only happens when you remember to run it",
-    body: "Seven jobs keep the loop moving in the background: five on intervals (harness-cycle 10m, auto-dream 10m, note-sync 5m, task-mint 30m, sandbox-gc 15m) and two on events, improvement:shipped and run:finished. A busy-mutex means the sandbox is never double-driven.",
+    body: "Seven jobs keep the loop moving in the background without you: five on a timer, two on events. A busy-mutex means the sandbox is never double-driven.",
     proof: "When the suite saturates, task minting authors harder curriculum variants from real failures.",
     file: "router.ts",
     href: SRC("router.ts"),
@@ -70,7 +70,7 @@ const MECHANISMS: Mechanism[] = [
     n: "04",
     title: "AutoDreaming and skill acquisition",
     pain: "you find out it learned the wrong thing weeks later",
-    body: "Session notes consolidate into project memory under a canary gate: the most recently passing task has to re-pass, or the dream rolls itself back. When notes keep describing the same multi-step procedure, AutoDream mints it as a real Agent Skill in .unown/skills/, at most two per dream, deduped against everything already on disk.",
+    body: "Session notes consolidate into project memory, and a procedure that keeps recurring gets minted as a real Agent Skill in .unown/skills/ so the next session starts with it instead of rediscovering it.",
     proof: "The engine never deletes your files. Retirement is a deliberate dashboard action.",
     file: "dream.ts",
     href: SRC("dream.ts"),
@@ -79,7 +79,7 @@ const MECHANISMS: Mechanism[] = [
     n: "05",
     title: "Hooks",
     pain: "it ran something it had no business running",
-    body: "A pi extension enforcing guardrails at six layers: SessionStart, UserPromptSubmit, PreToolUse (deny-list plus a path jail), PostToolUse (a syntax gate that feeds the transpiler error straight back), Stop and SubagentStop. Every allow, deny and augment is written to a log.",
+    body: "A pi extension enforcing guardrails at six layers: before the prompt, before and after every tool call, and at the end of the session and of each subagent. Every allow, deny and augment is written to a log.",
     proof: "Normal work stays allowed: network, git push, installs. UNOWN_STRICT_HOOKS=1 for sandbox-grade.",
     file: "hooks.ts",
     href: SRC("hooks.ts"),
@@ -89,13 +89,15 @@ const MECHANISMS: Mechanism[] = [
 const INFRA = [
   {
     title: "OS-level sandbox",
-    body: "Every engine run executes under bubblewrap, the same sandboxing Flatpak and Claude Code use. Read-only root, private /home, /tmp and /run, so your repo, .env and engine data are invisible inside. Killed network namespace, dropped capabilities, sha256-pinned verification so the agent cannot edit the test.",
+    // Only the Flatpak/Claude Code comparison — the containment claim itself is
+    // integrity.tsx's, in both its layers.
+    body: "bubblewrap, the same sandboxing Flatpak and Claude Code use.",
     file: "bwrap.ts",
     href: SRC("bwrap.ts"),
   },
   {
-    title: "Mission control",
-    body: "A dashboard that streams runs, cycles, dream journals, memory version history and hook decisions over SSE, and lets you roll any of them back.",
+    title: "The dashboard",
+    body: "Runs, cycles, dreams and memory versions stream live, and any of them roll back in one click.",
     file: "/dashboard",
     href: "/dashboard",
   },
@@ -129,7 +131,7 @@ export function MechanismsSection() {
         <div className="mt-20">
           <FadeUp className="max-w-2xl">
             <SectionHead kicker="Five mechanisms">
-              One answer to each of those.
+              Three pains, five answers.
             </SectionHead>
           </FadeUp>
 

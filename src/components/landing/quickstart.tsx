@@ -42,7 +42,7 @@ export function QuickstartSection() {
               Quickstart
             </p>
             <h2 className="mt-3 font-display text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-              Five minutes to a smarter terminal.
+              Three commands and a model key.
             </h2>
             <p className="mt-4 max-w-md text-pretty leading-relaxed text-dim">
               It is a clone-and-run tool. There is no account, no cloud, and no key that

@@ -44,6 +44,46 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
   `benchmarks/`. Unverifiable live counters ("60+ verified runs") must never
   appear — they are not checkable in this checkout and the page's whole argument
   is that its numbers are checkable.
+- **Every fact is stated exactly once, in the section that argues it.** A
+  measurement audit found the verify-twice rule stated seven times and the
+  sandbox three times, which is what made the page's middle read as a wall: the
+  eye learns that a paragraph carries no new fact and stops reading the third
+  time. A second audit found it had *grown* to ten statements of verify-twice,
+  four of the non-affiliation notice, five of the provider list and five of the
+  tier resolver. Canonical homes, which are load-bearing — do not restate a
+  claim in another section, link to its owner instead:
+  - **the gates** (`integrity.tsx` `GATES[]`) — `mechanisms.tsx` 02/04/05 and
+    `loop.tsx` describe the loop, not the gate table;
+  - **the sandbox, both layers** (`integrity.tsx`) — `mechanisms.tsx` keeps only
+    the Flatpak/Claude Code comparison, which integrity has no equivalent of;
+  - **the model allow-list and the bridge** (`models.tsx`) — `hero.tsx`'s trust
+    chip, `faq.tsx`'s "which models" answer and the `Z` decode all point here
+    instead of re-listing providers;
+  - **the non-affiliation notice** (`shell.tsx` footer, the copy
+    `verify-deploy.mjs` asserts). `alphabet.tsx` and `field-notes.tsx` keep
+    their own one-liners because they are the sections making a Pokémon claim.
+    `faq.tsx` answers the question in one sentence and points at the footer;
+  - **"no font file, no image sprite"** (`alphabet.tsx` only — `finale.tsx` used
+    to restate the weaker "28 forms, all inline SVG" seven sections later);
+  - **`DEX_QUOTES.origin`** (`field-notes.tsx` dex card, which reads it from
+    `lexicon.ts`). `origin.tsx` used to print the same 33 words as a second
+    pull-quote; it now carries only the "odd power" quotation and states the
+    "which came first" argument in prose;
+  - **the caching negative control** (`benchmarks.tsx` only — once as a caption,
+    once as the control box; it used to be three times).
+- **`lexicon.ts` `means` is a DECODE, not a specification, and stays under
+  ~12 words.** Twenty-eight entries at eighteen words each is a wall; at eleven
+  it is a reference table you can skim, which is the only instrument that suits
+  twenty-eight rows. The file used to carry 507 words of `means` prose that
+  restated the gate table, the sandbox, the tier resolver, the provider grid and
+  the benchmark numbers back at the page. Name the mechanism; let the section
+  that owns it do the explaining. `proof` stays a bare number or repo path.
+- **Lore must be reachable without interacting.** The decode panel shows one
+  lexicon entry at a time, so `HIGHLIGHTS` in `alphabet.tsx` lifts three forms
+  into the intro column as a static strip. A section narrated as a payoff but
+  built as a hover-revealed reference table delivers nothing to the ~90% of
+  visitors who scroll past it — the page's best writing was behind a pointer
+  event. If you add lore, add it somewhere it can be read without a click.
 - `lexicon.ts` lore may only contain facts verified against Bulbapedia,
   PokémonDB, Wikipedia or ssbwiki, quoted with the source named. Popular but
   wrong (the sleeping-stick line, Lavender Town, Unown letters in Deltarune
@@ -52,6 +92,28 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
   `seal-form`) animate from the *finished* state so a browser without
   `animation-timeline` or a visitor with reduced motion sees an identical page.
   `prefers-reduced-motion` is honoured in CSS and in every JS animation path.
+- **`page.tsx` wraps the tree in `LandingMotion` (`MotionConfig
+  reducedMotion="user"`), and that is the only place reduced motion has to be
+  handled for framer.** `FadeUp` branches on `useReducedMotion()` itself, which
+  protects reveals written through the primitive — but the page also has staged
+  reveals written as bare `motion` elements because they need per-item delays:
+  the `origin` pipeline (rail `scaleX`, then three staggered `motion.li`), the
+  `integrity` hook log (seven staggered rows) and the `finale` spellbox
+  (per-letter `motion.span`). Without the wrapper those three would move a
+  reduced-motion visitor through the page. Wrap new animation in
+  `LandingMotion`, not in another `useReducedMotion()` branch.
+- **The FAQ accordion animates on `height`, and it needs two files to do it.**
+  The vendored `ui/accordion.tsx` already emits
+  `data-[state=open]:animate-accordion-down`, but Tailwind only resolves
+  `--animate-*` in the file that pulls in `tailwindcss` — `globals.css` — so
+  `--animate-accordion-down` / `-up` live in its `@theme` block and the
+  `@keyframes` live in `landing.css`. Both were missing, which compiled the
+  classes to nothing: every answer had been snapping open with no motion, and
+  nothing in the build failed. `landing.css` also carries a
+  `prefers-reduced-motion: reduce` override that sets `animation: none` on
+  both utilities, because plain CSS keyframes do not consult the preference.
+  With the animation off, an open answer keeps its Radix-measured height and a
+  closed one unmounts — the finished state. Do not edit the vendored primitive.
 - **The no-JS case is part of that rule, and it needed a fix.** Framer Motion
   serialises `initial` into the SSR markup, so ~56 elements shipped as
   `style="opacity:0;transform:translateY(20px)"` — a visitor with scripting
@@ -61,6 +123,16 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
   framer writes and nothing else on the page hides itself that way. React does
   not hoist it out of `<noscript>`, which is what keeps it inert with scripting
   on — if you touch it, re-check that.
+- **That restore can only reach a reveal that carries BOTH `opacity:0` and a
+  `transform`, so nothing on this page may reveal by tweening `width`.** A width
+  tween serialises as `style="width:0"`, matches neither substring, and the
+  element stays at zero with scripting disabled. `BarRow` used to do exactly
+  that and rendered every benchmark bar in both track cards as an empty track;
+  `LiftBar` was already correct. The pattern for a bar reveal is: put the
+  **finished** value in `style`, animate `scaleX` from 0 with `origin-left`, and
+  branch on `useReducedMotion()` so the finished state is the initial state.
+  The printed figure beside the bar is a second signal, not a substitute for the
+  bar itself.
 - Provider marks are CC0 Simple Icons, **vendored** as path data by
   `scripts/vendor-provider-marks.mjs`. Never hotlink the CDN and never add
   `npm i simple-icons` for eight glyphs. OpenAI and DashScope are text-only on
@@ -199,9 +271,77 @@ parallel ones.
 - Alternate the layout rhythm. Most sections are a left column beside a right
   one on purpose so the ones that are not (the loop's horizontal tabs, the
   full-bleed benchmark row, the centred spellbox) still read as a change.
-- Voice: concrete, honest about limits, no buzzwords. The engine section gets
-  the whole "integrity" section because for a self-modifying agent that is the
-  objection that decides installs. Keep the "what we did not run" box.
+- **The Pokémon-to-engineering ratio is a per-screen rule, not a page-wide
+  number, and the aggregate is actively misleading.** Measured authored prose
+  sits near 1:2 lore:tech, but that number hides two different problems, and
+  they need opposite fixes:
+  1. **A long dry run.** Lore is carried by `origin`, `alphabet` and
+     `field-notes`, which sit at positions 2, 3 and 11 — so positions 4-10
+     (loop, mechanisms, showcase, models, benchmarks, integrity, quickstart)
+     were seven consecutive sections at 0% lore across ~2,300 words. Rule:
+     **no more than three consecutive sections at zero.**
+  2. **A repeated punchline register, which is what actually reads as boring.**
+     Sections 4-10 were all aphorisms, and several were the *same* aphorism:
+     "An agent that forgets is a tax you pay every morning" and "Most agents
+     forget. This one has to prove it remembered" are one joke twice, and "A
+     self-improving agent you cannot watch is a rumour" is a third pass at it.
+     Rule: **one line per section, and each line earns its place by being a
+     different kind of thing** — aphorism, reveal, callback, joke, admission,
+     plain instruction. Six aphorisms in a row is a drumbeat. `quickstart.tsx`
+     is deliberately a plain instruction ("Three commands and a model key.")
+     to break that run, and `integrity.tsx` carries the page's only admission.
+  3. **Raise the lore share by cutting, not by writing.** A duplicate fact is
+     the cheapest word on the page to delete and the only lever that raises the
+     ratio without inventing prose. The second audit deleted ~450 words of
+     restatement across the lexicon, the acts, the FAQ and the hero, which is
+     where most of the ratio improvement came from.
+  4. **The proof zone stays technical.** Pokémon in a benchmark table would be a
+     costume and would fight the no-fabrication rule. Loop, mechanisms,
+     showcase, models, benchmarks, integrity, quickstart and faq are right at
+     ~0% lore; their job is to be checkable. The reward for scrolling is
+     delivered by origin, alphabet and field-notes, so those have to actually
+     deliver it.
+  5. **Convert static text to motion where motion carries the meaning.** A
+     process rendered as three cells that fade in together (origin's acts) and
+     a log rendered as a static table (integrity's `hook_log`) are both cases
+     of a *sequence presented as simultaneity*. Stepping those is worth more
+     lore than a paragraph would have been. But a number that counts up, or a
+     figure that ticks from zero, reads as fabrication on a page whose entire
+     argument is that its numbers are checkable — animate the container, never
+     the measurement.
+- **`field-notes` stays at position 11 despite reading better at 4.** Moving it
+  next to `alphabet` would cluster the three `psychic` sections adjacently and
+  break the hue rule that no two neighbouring sections share a hue — the three
+  Unown sections are deliberately interleaved for that reason. Front-loading
+  the lore also pushes the conversion path (benchmarks → integrity → quickstart
+  → finale) into one unbroken technical run. If someone wants that change, the
+  hue allocation has to be rewritten with it, not around it.
+- Voice: concrete, honest about limits, no buzzwords. The integrity section gets
+  the whole section because for a self-modifying agent that is the objection
+  that decides installs. **The 0.0 extension-authoring admission now lives in
+  `integrity.tsx`**, as a lit `gb-box` directly under the six gates, labelled
+  "And one eval we report at zero". It used to be the last block of
+  `benchmarks.tsx` — an 18rem aside under four cards, two panels and a
+  full-width chart — which made the page's strongest trust artifact the least
+  likely thing on it to be read, in a section that argued trustworthiness with
+  no admission of a limit anywhere in it. Beside the gate table it is also the
+  right *kind* of neighbour: a gate that says no and refuses to negotiate.
+  `benchmarks.tsx` keeps the SWE-bench / Terminal-Bench caveat, which is a
+  methodology footnote rather than a limit on the agent, and links to Integrity
+  for the zero. Do not move it back.
+- **Never justify a section with "research on dev-tool landing pages says".**
+  Two section headers claimed it with no citation, which is both an AI tell and
+  a violation of "every factual claim is a real artifact" — and the most
+  dangerous kind, because the next editor trusts it as a reason. State the
+  reason the section earns its place in terms of what it argues.
+- **`origin.tsx`'s three acts are a stepped pipeline, not a second copy of the
+  loop section.** They used to be three cells that faded in together, carrying
+  the labels `Work` / `Learn` / `Dream` — byte-identical to `loop.tsx`'s tab
+  labels — with bodies that restated `loop.tsx`'s leads almost sentence for
+  sentence. Now: a rail draws `scaleX` left, the three `motion.li` stagger in
+  behind it at 140ms, and each body is one line saying what the act is *for*
+  rather than re-describing the gate `integrity.tsx` tabulates. The page's only
+  genuine sequence must not be presented as simultaneity.
 - **The copy must not read like a model wrote it.** The tells to edit out on
   sight: contrast-as-staging where the negative half names something nobody
   claimed ("not a diagram of the idea", "proof, not vibes", "neither half is
@@ -217,6 +357,26 @@ parallel ones.
   session-replay transcript lines, the note template, the hook log strings, the
   benchmark figures, or the non-affiliation text. They are quoted or measured,
   and `verify-deploy.mjs` asserts several of them verbatim.
+- **The FAQ is seven questions and that is a decision, not an oversight.** It
+  carried nine; the dream-canary answer, the two-sandbox-policies answer, the
+  bridge spec and the long non-affiliation answer were all reprints of a section
+  the visitor had just scrolled past, and half an accordion of restated
+  material is what made it read as terms-of-service copy. Two answers must not
+  be cut: the naming question, and "does the loop actually do anything on its
+  own" — the only place the page admits the loop may correctly find nothing to
+  do. The `lead` names the *tests* question, which is the install-decider and
+  is in the list; do not write a `lead` that promises a question the list does
+  not contain. Every answer still has to pass "which section already said this?"
+  — the naming answer once carried the whole Symbol-Pokémon paragraph that
+  `alphabet.tsx` already tells, and the affiliation answer once restated the
+  footer notice, which is the copy `verify-deploy.mjs` asserts.
+- **The Konami hint lives under the alphabet tiles**, next to the click-to-rain
+  affordance, not in the footer. It used to sit at 10px under 58 words of
+  trademark boilerplate and was `hidden sm:inline`, so it was visible to 30% of
+  visitors at the lowest-attention point on the page. Placing it where a reader
+  is already poking at glyphs turns the code into an escalation of an
+  interaction they have already found. The `role="status"` receipt still renders
+  in the finale.
 - Typography: `font-display` (Pixelify Sans) for headings, `font-pixel`
   (Press Start 2P) for chrome labels, `font-term` (VT323) for terminal and
   dialogue text, Geist Sans for paragraphs, and `.quote` (VT323) **only** for
@@ -251,6 +411,15 @@ parallel ones.
   emulates `prefers-color-scheme`, while the toggle writes the attribute.
 - Tab through `/`: skip link, alphabet tiles, loop tabs (arrows/Home/End), the
   session scrubber (arrows/Home/End/Space), the spellbox, the accordion.
+- **Open an FAQ answer and assert it actually moves.** The accordion shipped
+  broken for as long as it existed — its `animate-accordion-down` utility
+  resolved to nothing because the `--animate-*` tokens were in the wrong file —
+  and no gate caught it, because a component that silently does not animate
+  still builds, passes contrast and screenshots identically. In the browser
+  console, click a trigger and check
+  `getComputedStyle(document.querySelector('#faq [data-slot="accordion-content"]')).animationName`
+  is `accordion-down`, then that `animation: none` under
+  `prefers-reduced-motion: reduce`.
 - Re-run the page with `prefers-reduced-motion: reduce` — every reveal must
   resolve to its finished state and the session replay must show the finished
   transcript with no autoplay.

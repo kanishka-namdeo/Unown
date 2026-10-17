@@ -13,19 +13,21 @@ const TWO = [
   {
     glyph: "A" as const,
     title: "The terminal agent",
-    body: "pi's TUI, in your real project directory, with the resolved memory stack injected into every prompt and guardrail hooks riding along. On its own this is a good coding agent that forgets everything at midnight.",
+    body: "pi's TUI, in your real project directory, with the memory stack already loaded. On its own this is a good coding agent that forgets everything at midnight.",
     lines: ["unown", "unown -p …", "unown --plan", "unown doctor", "unown memory"],
   },
   {
     glyph: "B" as const,
     title: "The engine behind it",
-    body: "Sandboxed harness cycles, a verify-gated ship rule, seven background jobs and AutoDream consolidation. It never touches your editor. It exists to notice what you keep getting wrong and write it down.",
+    body: "Sandboxed harness cycles and AutoDream consolidation, on a clock instead of in your session. It never touches your editor.",
     lines: [
       "harness-cycle   10m",
       "auto-dream      10m",
       "note-sync        5m",
       "task-mint       30m",
       "sandbox-gc      15m",
+      "on improvement:shipped",
+      "on run:finished",
     ],
   },
 ];
@@ -70,7 +72,7 @@ function Pair() {
         </span>
         <span className="h-px flex-1 bg-line" aria-hidden="true" />
         <span className="font-mono text-[11px] text-ink">
-          session notes → memory → skills → a better next session
+          notes → memory → a better next session
         </span>
       </div>
     </div>
@@ -93,11 +95,10 @@ export function OriginSection() {
                 Why it is built this way
               </p>
               <h2 className="mt-3 font-display text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                When alone, nothing happens.
+                Alone, it is only half a tool.
               </h2>
               <p className="mt-4 max-w-md text-pretty leading-relaxed text-dim">
-                The Pokédex entry quoted here describes distributed systems by accident.
-                It is also the shape this repository keeps trying to build.
+                The dex settles it: the interesting part starts at two.
               </p>
             </FadeUp>
 
@@ -118,27 +119,19 @@ export function OriginSection() {
                 <p className="text-[13px] leading-relaxed text-dim">
                   Run <span className="font-mono text-ink">unown</span> on its own and you
                   have a coding agent with very good manners and a total memory of
-                  yesterday. Add the engine and something else appears: notes taken at the
-                  end of every session, failures mined overnight, patches that are only
-                  allowed to land if a sandbox proves them twice.
-                </p>
-                <p className="mt-3 text-[13px] leading-relaxed text-dim">
-                  The loop between them is the product.
+                  yesterday. Add the engine and something else appears: notes at the end of
+                  every session, failures mined overnight, and a memory file you can read
+                  tomorrow.
                 </p>
               </div>
             </FadeUp>
 
+            {/* The dex's "which came first" line, asked back at the product. The
+                quotation itself lives in the dex card in `field-notes.tsx`; printing
+                it here too put the same 33 words on the page twice, and this paragraph
+                carries the argument without it. */}
             <FadeUp delay={0.2}>
-              <figure className="relative mt-10 gb-box p-5">
-                <blockquote className="quote text-pretty text-lg leading-relaxed text-canvas italic sm:text-xl">
-                  “{DEX_QUOTES.origin}”
-                </blockquote>
-                <figcaption className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-canvas/90">
-                  {DEX_QUOTES.originSrc}
-                </figcaption>
-                <ContinueArrow className="absolute bottom-2 right-3 text-canvas" />
-              </figure>
-              <p className="mt-4 text-[13px] leading-relaxed text-dim">
+              <p className="mt-10 text-[13px] leading-relaxed text-dim">
                 The other half asks the question back: which came first, the code you
                 wrote, or the agent that read it? Unown keeps betting on the second, and
                 then{" "}
@@ -154,40 +147,57 @@ export function OriginSection() {
           </FadeUp>
         </div>
 
-        {/* the three acts, named once, then expanded in the next section */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5 }}
-          className="mt-16 grid gap-px overflow-hidden border border-line bg-line sm:grid-cols-3"
-        >
-          {[
-            {
-              k: "01",
-              t: "Work",
-              d: "You chat in your terminal. Hooks watch every tool call. A note is written on the way out.",
-            },
-            {
-              k: "02",
-              t: "Learn",
-              d: "The harness runs the suite in a fresh sandbox, mines whatever failed, and drafts memory rules that would have prevented it.",
-            },
-            {
-              k: "03",
-              t: "Dream",
-              d: "AutoDream consolidates notes into project memory and mints skills — canary-gated, so a bad dream rolls itself back.",
-            },
-          ].map((act) => (
-            <div key={act.k} className="bg-panel p-6">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-gold">
-                {act.k}
-              </p>
-              <h3 className="mt-2 text-lg font-medium">{act.t}</h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-dim">{act.d}</p>
-            </div>
-          ))}
-        </motion.div>
+        {/* The pipeline. This used to be three cells that faded in together and
+            whose bodies restated `loop.tsx` almost sentence for sentence — the
+            page's only sequence, presented as simultaneity, one section before the
+            section that owns it. It is now a stepped reveal with a rail, so the
+            cards arrive in the order they happen, and each body is one line that
+            says what the act is for rather than re-describing the gate that
+            `integrity.tsx` already tabulates. */}
+        <div className="mt-16">
+          <motion.div
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="mb-px h-px origin-left bg-line"
+            aria-hidden="true"
+          />
+          <ol className="grid gap-px overflow-hidden border border-line bg-line sm:grid-cols-3">
+            {[
+              {
+                k: "01",
+                t: "Work",
+                d: "Hooks watch every tool call. A note is written on the way out.",
+              },
+              {
+                k: "02",
+                t: "Learn",
+                d: "The suite runs somewhere you cannot see, and whatever failed gets mined.",
+              },
+              {
+                k: "03",
+                t: "Dream",
+                d: "Notes become memory, and skills get minted while you sleep.",
+              },
+            ].map((act, i) => (
+              <motion.li
+                key={act.k}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.45, delay: 0.15 + i * 0.14 }}
+                className="bg-panel p-6"
+              >
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-gold">
+                  {act.k}
+                </p>
+                <h3 className="mt-2 text-lg font-medium">{act.t}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-dim">{act.d}</p>
+              </motion.li>
+            ))}
+          </ol>
+        </div>
       </div>
     </section>
   );

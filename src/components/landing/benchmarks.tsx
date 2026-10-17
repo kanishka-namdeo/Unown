@@ -57,6 +57,13 @@ const COLD_BAR_W = (100 / LIFT_SCALE) * 100;
 /* bits                                                                */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A single stat bar. The finished width lives in `style` and only the reveal is
+ * animated, via `scaleX` with `origin-left` — never a `width` tween, which
+ * serialises to a state the `<noscript>` restore in `effects.tsx` cannot reach.
+ * `LiftBar` uses the same shape. The printed figure beside the bar is a second
+ * signal, not a substitute for the bar itself.
+ */
 function BarRow({
   label,
   pct,
@@ -66,17 +73,19 @@ function BarRow({
   pct: number;
   delay?: number;
 }) {
+  const reduced = useReducedMotion();
   const tone = pct > 50 ? undefined : pct > 20 ? "mid" : "low";
   return (
     <div className="flex items-center gap-3 sm:gap-4">
       <span className="w-28 shrink-0 truncate font-mono text-[11px] text-dim sm:w-32">{label}</span>
       <div className="gb-hp min-w-0 flex-1" data-tone={tone} role="img" aria-label={`${label} ${pct.toFixed(1)}%`}>
         <motion.i
-          initial={{ width: 0 }}
-          whileInView={{ width: `${pct}%` }}
+          className="origin-left"
+          style={{ width: `${pct}%` }}
+          initial={{ opacity: 0, scaleX: reduced ? 1 : 0 }}
+          whileInView={{ opacity: 1, scaleX: 1 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.9, delay, ease: "easeOut" }}
-          style={{ transition: "none" }}
         />
       </div>
       <span className="w-12 shrink-0 text-right font-mono text-[11px] tabular-nums text-gold">
@@ -123,10 +132,8 @@ function TimeChip({ coldS, warmS, d }: { coldS: number; warmS: number; d: number
 /**
  * One bar of the memory-lift chart. `width` is a share of the track: cold rows
  * pass the 100%-of-cold baseline, warm rows their measured share of the
- * 0–125% domain. Grows in on scroll like BarRow, but the finished width ships
- * in the SSR markup and the grow is a transform — so the noscript
- * reveal-restore in effects.tsx (which keys on opacity+transform) resolves
- * these bars to their final state without scripting, unlike a width tween.
+ * 0–125% domain. Grows in on scroll like BarRow, transform not width — see
+ * BarRow for why that distinction is load-bearing.
  */
 function LiftBar({
   kind,
@@ -213,9 +220,8 @@ export function BenchmarksSection() {
             lead={
               <>
                 Official harnesses, pinned datasets, anti-tamper scoring, and per-task JSONL in
-                the repo. The warm-memory panel below is published exactly as measured: two of
-                three models used <em>more</em> input tokens with memory in the loop, and we
-                left that in.
+                the repo. Every number below is published as measured, including the ones
+                where memory made things worse.
               </>
             }
           >
@@ -238,7 +244,7 @@ export function BenchmarksSection() {
             ].map((s, i) => (
               <div
                 key={s.l}
-                className={`rise border-line py-8 sm:px-5 lg:border-l lg:first:border-l-0 ${i === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b sm:border-b-0 lg:border-b-0" : ""}`}
+                className={`rise rise-${i + 1} border-line py-8 sm:px-5 lg:border-l lg:first:border-l-0 ${i === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b sm:border-b-0 lg:border-b-0" : ""}`}
               >
                 <p className="gb-h text-3xl tabular-nums tracking-tight text-gold">
                   {s.v}
@@ -308,16 +314,16 @@ export function BenchmarksSection() {
               </div>
             ))}
             <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-              pass 10/10 → 10/10 on every model, both passes — memory buys efficiency,
-              not correctness; the full{" "}
+              pass 10/10 → 10/10 on every model, both passes. What memory actually bought
+              is in the{" "}
               <a href="#memory-lift" className="text-gold underline-offset-2 hover:underline">
                 cold-vs-warm chart
-              </a>{" "}
-              is below.
+              </a>
+              .
             </p>
             <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-              A caching-only control in v1 faked −25.6%. We publish the real memory effect
-              instead.
+              A control arm caught us over-claiming on exactly this, so it stayed in the
+              published results.
             </p>
           </TrackCard>
 
@@ -562,11 +568,14 @@ export function BenchmarksSection() {
                   <span className="font-medium text-canvas">Terminal-Bench 2.0</span> are quoted from
                   vendor reports, not measured here.
                 </li>
-                <li>
-                  Our own <span className="font-medium text-canvas">extension-authoring eval</span> scores{" "}
-                  <span className="font-medium text-canvas">0.0</span> for every model. Reported as-is.
-                </li>
               </ul>
+              <p className="mt-3 text-[11px] leading-relaxed text-canvas/85">
+                The one eval that scores zero is reported next to the gates, in{" "}
+                <a href="#integrity" className="underline underline-offset-2">
+                  Integrity
+                </a>
+                .
+              </p>
               <a
                 href={BENCH_URL}
                 target="_blank"

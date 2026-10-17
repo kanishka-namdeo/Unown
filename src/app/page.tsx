@@ -18,7 +18,7 @@ import { ModelsBand } from "@/components/landing/models";
 import { OriginSection } from "@/components/landing/origin";
 import { QuickstartSection } from "@/components/landing/quickstart";
 import { ShowcaseSection } from "@/components/landing/showcase";
-import { Footer, Nav } from "@/components/landing/shell";
+import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
 
 /**
  * The marketing landing page at `/`. Composition only — every section owns
@@ -48,6 +48,10 @@ export default function LandingPage() {
   return (
     <LetterRainProvider>
       <AlphabetWakeProvider>
+        {/* `LandingMotion` makes every framer animation on this page honour
+            `prefers-reduced-motion`, including the staged ones that are not
+            written through `FadeUp`. See its doc comment in `shell.tsx`. */}
+        <LandingMotion>
         <LandingStyles />
         <div className="grain grain-fixed relative isolate flex min-h-screen flex-col overflow-x-clip bg-canvas text-ink">
           <a
@@ -74,6 +78,7 @@ export default function LandingPage() {
           </main>
           <Footer />
         </div>
+        </LandingMotion>
       </AlphabetWakeProvider>
     </LetterRainProvider>
   );

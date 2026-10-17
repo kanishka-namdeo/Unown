@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
+import { MotionConfig, motion, useReducedMotion } from "framer-motion";
 import { Check, Copy } from "lucide-react";
 import { Glyph } from "./glyph";
 import { useAlphabetWake, useKonami } from "./effects";
@@ -15,6 +15,26 @@ export const SOURCE_URL = `${GITHUB_URL}/tree/main/pi-repo/packages/self-learnin
 /* ------------------------------------------------------------------ */
 /* primitives                                                          */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Wraps the landing tree so `prefers-reduced-motion` is honoured by EVERY
+ * framer-motion animation on the page, including ones written with a bare
+ * `motion.div` rather than `FadeUp`.
+ *
+ * `FadeUp` already branches on `useReducedMotion()` itself, but that only
+ * protects the reveals written through the primitive — and the page also has
+ * staged reveals (the `origin` pipeline, the `integrity` hook log, the
+ * `finale` spellbox) that are hand-rolled `motion` elements because they need
+ * per-item delays. `reducedMotion="user"` strips their transforms while
+ * keeping the opacity fade, so the finished state is the only thing a
+ * reduced-motion visitor ever sees. Wrap the page in this rather than
+ * remembering to branch at each new call site.
+ */
+export function LandingMotion({ children }: { children: React.ReactNode }) {
+  return (
+    <MotionConfig reducedMotion="user">{children}</MotionConfig>
+  );
+}
 
 /** lucide-react 1.x dropped brand icons, so inline the GitHub mark. */
 export function GithubMark({ className }: { className?: string }) {
@@ -628,7 +648,7 @@ export function Footer() {
         <div className="rule-hair my-8" />
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="max-w-2xl text-[11px] leading-relaxed text-faint">
+          <p className="max-w-3xl text-[11px] leading-relaxed text-faint">
             Built on the{" "}
             <a
               href="https://github.com/badlogic/pi-mono"
@@ -643,9 +663,6 @@ export function Footer() {
             Pokémon Company. Pokémon and Unown are trademarks of their respective owners.
             No official art ships here: every glyph, box and bar on this page is drawn
             in code.
-          </p>
-          <p className="font-mono text-[10px] text-dim">
-            <span className="hidden sm:inline">psst — try ↑↑↓↓←→←→ba</span>
           </p>
         </div>
       </div>

@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 import { Glyph } from "./glyph";
-import { GLYPHS, type GlyphId } from "./glyphs";
+import type { GlyphId } from "./glyphs";
 import { useAlphabetWake } from "./effects";
 import { FadeUp, GITHUB_URL, DOCS_URL, SectionHead, ContinueArrow } from "./shell";
 
@@ -70,13 +71,27 @@ function Spellbox() {
           <>
             <div className="flex flex-wrap items-center gap-1.5">
               {shown.map((id, i) => (
-                <Glyph
+                <motion.span
                   key={`${id}-${i}`}
-                  id={id}
-                  weight="heavy"
-                  tone="lit"
-                  className="size-9 text-canvas"
-                />
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.22,
+                    ease: [0.22, 1, 0.36, 1],
+                    // Stepped by delay rather than by a `steps()` curve, so the
+                    // letters land one at a time like a frame of typed output
+                    // while each one itself uses the page's smooth reveal ease.
+                    delay: Math.min(i, MAX - 1) * 0.035,
+                  }}
+                  className="inline-block"
+                >
+                  <Glyph
+                    id={id}
+                    weight="heavy"
+                    tone="lit"
+                    className="size-9 text-canvas"
+                  />
+                </motion.span>
               ))}
             </div>
             <p className="mt-4 font-mono text-[11px] text-canvas/80">
@@ -88,8 +103,7 @@ function Spellbox() {
       </div>
 
       <p className="mt-4 border-t border-canvas/40 pt-3 text-[11px] leading-relaxed text-canvas/80">
-        {Object.keys(GLYPHS).length} forms, all inline SVG. There is no font file behind
-        this and no image sprite. If a letter is missing from your keyboard,{" "}
+        If a letter is missing from your keyboard,{" "}
         <code className="font-mono text-canvas">!</code> and <code className="font-mono text-canvas">?</code>{" "}
         always work.
       </p>
@@ -117,7 +131,7 @@ export function FinaleSection() {
               kicker="Where to start"
               lead="Clone it, run one session, and come back tomorrow with memory that already knows what you told it. Nothing to sign up for. If it is not useful, you have lost an afternoon and gained a very opinionated terminal agent."
             >
-              Stop re-explaining your codebase.
+              One afternoon, and then it starts remembering.
             </SectionHead>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
