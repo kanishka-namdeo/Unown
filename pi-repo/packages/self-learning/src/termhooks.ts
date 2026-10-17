@@ -5,12 +5,17 @@
  * a real interactive coding session in the user's project directory:
  *
  *   PreToolUse  — catastrophic-command deny-list (rm on / or home incl.
- *                 wrapped/expansion forms, fork bombs, su, mkfs/dd/wipefs,
- *                 world-writable chmod on /, find/xargs/base64-based
- *                 deletion, writes to system paths); write-path jail to
- *                 the project dir + /tmp (reads stay unrestricted;
- *                 symlinked escapes are realpath-resolved). Network and
- *                 git push are ALLOWED — real work needs them. Set
+ *                 wrapped/expansion/split-flag/long-flag forms and system
+ *                 directories, fork bombs, su, mkfs/dd/wipefs, world-
+ *                 writable chmod on / and system trees, find/xargs/base64/
+ *                 curl/printf/escape-based payloads piped to a shell, writes
+ *                 to system paths, SSH trust files and raw devices — incl.
+ *                 redirect targets that only reach those paths through an
+ *                 in-project symlink); write-path jail to the project dir +
+ *                 /tmp (reads stay unrestricted; symlinked escapes are
+ *                 realpath-resolved). Network and git push are ALLOWED —
+ *                 real work needs them (piping fetched bytes into a shell
+ *                 is NOT network use and stays denied). Set
  *                 UNOWN_STRICT_HOOKS=1 to get the sandbox-grade deny-list
  *                 (adds sudo, ssh, network and git push).
  *   PostToolUse — syntax gate: broken JS/TS gets the transpiler error fed
@@ -21,6 +26,7 @@
  *                 outbox for later sync; AutoDream then consolidates it into
  *                 the project's .unown/memory/project.md.
  */
+import { resolve as resolvePath } from "node:path";
 import { decideBash, jailPath, syntaxCheck } from "./hooks.ts";
 import { deliverTerminalNote } from "./term.ts";
 
@@ -36,14 +42,25 @@ export interface TerminalHookOptions {
  * Rules are deliberately UNANCHORED (substring) and tolerate trailing
  * quotes/parens/backticks/globs after the destructive target, so wrapped
  * payloads (`bash -c 'rm -rf /'`, `$(rm -rf /)`, `rm -rf /*`, `${HOME}`)
- * match too — same convention as hooks.ts BASH_DENY. */
+ * match too — same convention as hooks.ts BASH_DENY (which this list
+ * mirrors for the catastrophic classes; strict sessions run both). */
 const TERMINAL_BASH_DENY: { pattern: RegExp; reason: string }[] = [
         {
-                pattern: /\brm\s+(?:-[a-zA-Z]*\s+)*\/(?:\s|\/|\*|['"`;|&)]|$)/,
+                // Flags tolerate short (-rf), long (--no-preserve-root) and split
+                // (-r -f) forms, so `rm --no-preserve-root -rf /` cannot sneak past.
+                pattern: /\brm\s+(?:-{1,2}[a-zA-Z][a-zA-Z-]*\s+)*\/(?:\s|\/|\*|['"`;|&)]|$)/,
                 reason: "refusing rm on filesystem root",
         },
         {
-                pattern: /\brm\s+-[a-zA-Z]*r[a-zA-Z]*f?\s+(?:~|\$HOME|\$\{HOME\}|\/home)(?:\/|\s|['"`;|&)]|$)/,
+                // rm on system directories (incl. /home): `rm -rf /etc` etc. — the
+                // root rule above only matches `/` itself.
+                pattern: /\brm\s+(?:-{1,2}[a-zA-Z][a-zA-Z-]*\s+)*\/(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|root|home)(?:\/|\s|['"`;|&)]|$)/,
+                reason: "refusing rm on system directories",
+        },
+        {
+                // Recursive flag may be split (`rm -r -f ~`) or long (--recursive);
+                // the lookahead keeps plain non-recursive `rm ~/file` allowed.
+                pattern: /\brm\s(?=[^\n]*-[a-zA-Z]*r)(?:-{1,2}[a-zA-Z][a-zA-Z-]*\s+)*(?:~|\$HOME|\$\{HOME\}|\/home)(?:\/|\s|['"`;|&)]|$)/,
                 reason: "refusing recursive delete of home directories",
         },
         {
@@ -58,14 +75,55 @@ const TERMINAL_BASH_DENY: { pattern: RegExp; reason: string }[] = [
         { pattern: /\bwipefs\b/, reason: "refusing disk signature wipe" },
         { pattern: />\s*\/(etc|usr|var|bin|root)\//, reason: "refusing writes to system paths" },
         {
-                pattern: /\bchmod\s+(?:-[a-zA-Z]+\s+)*777\s+\/(?:\s|\/|\*|['"`;|&)]|$)/,
-                reason: "refusing world-writable chmod on root",
+                // SSH trust files under any spelling of the home directory (~, $HOME,
+                // /home/<user>, /root) — persistence via authorized_keys.
+                pattern: />\s*(?:~|\$HOME|\$\{HOME\}|\/home\/\S+|\/root)\/\.ssh\//,
+                reason: "refusing writes to SSH trust files (~/.ssh/authorized_keys)",
+        },
+        {
+                pattern: />\s*\/dev\/(?:sd|nvme|hd|vd|xvd|mmcblk|loop|disk|mem|kmem|sr)/,
+                reason: "refusing raw writes to disk devices via redirect",
+        },
+        {
+                // World-writable chmod on root AND on system trees (`chmod -R 777 /etc`
+                // used to slip past the `/`-only tail).
+                pattern:
+                        /\bchmod\s+(?:-[a-zA-Z]+\s+)*777\s+\/(?:\s|\/|\*|['"`;|&)]|$|(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|home|root)(?:\/|\s|['"`;|&)]|$))/,
+                reason: "refusing world-writable chmod on system trees",
         },
         { pattern: /\bfind\b[^\n]*(?:-delete\b|-exec\s+rm\b)/, reason: "refusing find-based deletion" },
-        { pattern: /\bxargs\s+(?:-[a-zA-Z]+\s+)*rm\b/, reason: "refusing piped deletion via xargs" },
+        {
+                // Option values may be attached (`-I{}`) or separate (`-n 2`) — the old
+                // `-[a-zA-Z]+\s+` shape let `xargs -I{} rm -rf {}` through.
+                pattern: /\bxargs\b[^\n|;]*\brm\b/,
+                reason: "refusing piped deletion via xargs",
+        },
         {
                 pattern: /\b(?:base64|openssl)\b[^\n|]*\|\s*(?:sh|bash)\b/,
                 reason: "refusing decoded payloads piped to a shell",
+        },
+        {
+                // Network-fetched code piped to a shell (curl|sh, wget -qO-|bash) —
+                // same class as the base64 rule above. Plain curl/wget (no pipe
+                // into a shell) stays allowed: real work needs the network.
+                pattern: /\b(?:curl|wget)\b[^\n|]*\|\s*(?:sh|bash|zsh|dash|ksh)\b/,
+                reason: "refusing downloaded payloads piped to a shell",
+        },
+        {
+                // printf builds the payload string at runtime — catches hex-escaped
+                // (`printf '\x72m -rf /'`) and quote-split (`printf 'r''m -rf /'`) rm.
+                pattern: /\bprintf\b[^\n|]*\|\s*(?:sh|bash|zsh|dash|ksh)\b/,
+                reason: "refusing printf-built payloads piped to a shell",
+        },
+        {
+                // Hex/octal escape sequences feeding a shell (`echo -e '\x72m …' | sh`).
+                pattern: /(?:\\x[0-9a-fA-F]{2}|\\[0-7]{3})[^\n|;&]*\|\s*(?:sh|bash|zsh|dash|ksh)\b/,
+                reason: "refusing escape-obfuscated payloads piped to a shell",
+        },
+        {
+                // tee writes files just like a redirect but dodges the `>` rules.
+                pattern: /\btee\b[^\n|;&]*(?:\.ssh\/|\/(?:etc|usr|var|bin|sbin|boot|lib|root)\/)/,
+                reason: "refusing tee writes to system paths / SSH trust files",
         },
 ];
 
@@ -100,6 +158,53 @@ function terminalPathOk(cwd: string, p: string): boolean {
         return false;
 }
 
+// ---------------------------------------------------------------------------
+// Bash redirect hardening: a `> target` that lexically looks harmless can
+// point at /etc (or ~/.ssh, or a raw disk) through an in-project symlink —
+// `ln -s /etc/passwd p && echo hacked > p`. jailPath realpaths the deepest
+// existing ancestor, so re-checking every redirect target closes exactly
+// that escape while `> out.txt`, `> /tmp/x`, `> ~/notes.md`, `2> /dev/null`
+// and `2>&1` keep working (fail-open only for paths that resolve into the
+// safe write set). `ln -s A B && … > B…` is simulated too — the link does
+// not exist yet when the hook runs, but the redirect later in the same
+// compound command will follow it. Regex-denied commands are handled above;
+// this is the symlink/indirection half the regexes cannot see.
+// ---------------------------------------------------------------------------
+const REDIRECT_TARGET = />{1,2}\s*([^\s;|&]+)/g;
+const LN_SYMLINK = /\bln\s+(?:-[a-zA-Z-]+\s+)*-s\s+(?:-[a-zA-Z-]+\s+)?(\S+)\s+([^\s;&|>]+)/g;
+const SYSTEM_TREE = /^\/(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|root)(?:\/|$)/;
+const RAW_DEVICE = /^\/dev\/(?:sd|nvme|hd|vd|xvd|mmcblk|loop|disk|mem|kmem|sr)/;
+
+function stripQuotes(s: string): string {
+        return s.replace(/^["']+|["']+$/g, "");
+}
+
+/** True when a redirect target in `command` resolves into a system tree, an
+ *  SSH trust directory or a raw device (directly, via an existing symlink,
+ *  or via an `ln -s` earlier in the same command). */
+export function bashRedirectEscape(cwd: string, command: string): string | null {
+        // Symlinks the SAME command is about to create — apply them on top of
+        // the (lexical) redirect resolution before the deny-set check.
+        const links: Array<{ target: string; path: string }> = [];
+        for (const m of command.matchAll(LN_SYMLINK)) {
+                links.push({ target: stripQuotes(m[1]), path: resolvePath(cwd, stripQuotes(m[2])) });
+        }
+        for (const match of command.matchAll(REDIRECT_TARGET)) {
+                const target = stripQuotes(match[1]);
+                if (!target || target.startsWith("&")) continue; // `2>&1` style dup
+                let resolved = jailPath(cwd, target).resolved;
+                for (const link of links) {
+                        if (resolved === link.path || resolved.startsWith(`${link.path}/`)) {
+                                resolved = `${resolvePath(cwd, link.target)}${resolved.slice(link.path.length)}`;
+                        }
+                }
+                if (SYSTEM_TREE.test(resolved) || RAW_DEVICE.test(resolved) || /(^|\/)\.ssh\//.test(resolved)) {
+                        return `redirect target escapes the safe write set: ${target} (resolved ${resolved})`;
+                }
+        }
+        return null;
+}
+
 export function createTerminalExtension(opts: TerminalHookOptions) {
         const strict = opts.strict ?? false;
         const verbose = opts.verbose ?? false;
@@ -132,6 +237,12 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                         if (tool === "bash" || tool === "powershell") {
                                 const command = String(input.command ?? "");
                                 decision = decideTerminalBash(command, strict);
+                                if (!decision.block) {
+                                        // Regex layer passed — still check redirect targets for
+                                        // symlink indirection into system paths / .ssh / devices.
+                                        const escape = bashRedirectEscape(opts.cwd, command);
+                                        if (escape) decision = { block: true, reason: escape };
+                                }
                         } else if (tool === "write" || tool === "edit") {
                                 const p = String(input.path ?? input.file_path ?? "");
                                 if (p && !terminalPathOk(opts.cwd, p)) {
