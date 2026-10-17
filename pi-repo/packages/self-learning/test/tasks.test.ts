@@ -24,7 +24,7 @@ import { TEST_TMP } from "./_env.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DATA_DIR, store } from "../src/store.ts";
@@ -98,7 +98,8 @@ afterAll(() => {
 test("env redirect is active (never touch the live engine db)", () => {
         // Tripwire: if this fails, ./_env.ts was not the first import and the tests
         // would be running against the live engine store — abort loudly instead.
-        expect(realpathSync(DATA_DIR).startsWith(TEST_TMP)).toBe(true); // realpath: macOS /var/folders -> /private/var/folders
+        const DATA_REAL = existsSync(DATA_DIR) ? realpathSync(DATA_DIR) : DATA_DIR; // realpath when it exists (macOS /var -> /private); lexical before first mkdir
+        expect(DATA_REAL.startsWith(TEST_TMP)).toBe(true);
         expect(DATA_DIR).toContain("/data");
 });
 

@@ -54,11 +54,13 @@ const RECEIPTS_DIR =
 // SQLite and reads DATA_DIR at module load). This file therefore has NO static
 // imports of ../src/* — everything is imported dynamically in beforeAll.
 //
-// GATED (the round-two CI bug fix): this module's body evaluates even when
-// the suite is skipped (bun registers every file), and an UNGATED claim here
-// would steal PI_SELFLEARNING_* from later-loading unit files whose
-// `import "./_env.ts"` only sets defaults (??=). Claim only when this suite
-// is actually enabled; it is designed to run standalone under its gate.
+// GATED on the suite actually running (CI rounds three, both trees): bun's
+// file execution order differs per filesystem (APFS runs this file FIRST),
+// and an ungated module-level env assignment would leak this scratch redirect
+// into every later suite's `_env.ts` ??= — tripping their "env redirect is
+// active" tripwires on darwin, and stealing PI_SELFLEARNING_* from
+// later-loading unit files on every platform. Claim only when this suite is
+// actually enabled; it is designed to run standalone under its gate.
 // ---------------------------------------------------------------------------
 if (GATE) {
         process.env.PI_SELFLEARNING_DATA = join(SCRATCH, "data");

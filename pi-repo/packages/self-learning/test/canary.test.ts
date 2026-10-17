@@ -220,6 +220,12 @@ function insertTask(id: string) {
 const fakeAgent = (result: { status: string; transcript?: string; lastAssistantText?: string }) =>
         jestLike => Promise.resolve(result);
 
+// The canaryCheck gate tests drive the real dream/canary loop (files, DB,
+// subprocess-shaped awaits). They finish in well under a second on Linux but
+// exceed the 5s default on Windows runners (spawn + Defender scanning),
+// measured at 5.3–6.1s on windows-latest — hence the explicit timeout.
+const CANARY_TIMEOUT = { timeout: 60_000 } as const;
+
 describe("canaryCheck — the gate decisions", () => {
         beforeEach(() => {
                 store.run(`DELETE FROM runs`);
@@ -241,7 +247,7 @@ describe("canaryCheck — the gate decisions", () => {
                 expect(gate.rolledBack).toBe(true);
                 expect(gate.reason).toContain("taskA failed under new memory v3");
                 expect(readTier("project")).toBe("# Memory\n- stable rule [seed]\n");
-        });
+        }, CANARY_TIMEOUT);
 
         test("THE F4 CASE LIVE-PINNED: a PASSING canary that drifted bun→node gates the dream", async () => {
                 insertTask("taskA");
@@ -253,7 +259,7 @@ describe("canaryCheck — the gate decisions", () => {
                 expect(gate.reason).toContain("tool drift");
                 expect(gate.reason).toContain("node");
                 expect(readTier("project")).toBe("# Memory\n- stable rule [seed]\n");
-        });
+        }, CANARY_TIMEOUT);
 
         test("a PASSING canary whose report claims a runner it never ran gates the dream", async () => {
                 insertTask("taskA");
@@ -263,7 +269,7 @@ describe("canaryCheck — the gate decisions", () => {
                 });
                 expect(gate.rolledBack).toBe(true);
                 expect(gate.reason).toContain("claim mismatch");
-        });
+        }, CANARY_TIMEOUT);
 
         test("an honest passing canary returns outcomes with runner evidence", async () => {
                 insertTask("taskA");
