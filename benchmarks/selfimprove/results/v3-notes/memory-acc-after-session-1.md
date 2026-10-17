@@ -1,0 +1,12 @@
+# Tier 1 — Project Memory
+
+## Workflow
+- This file is maintained by Unown: terminal session notes are consolidated
+  here by AutoDream. Edit freely — your edits are preserved as a new version.
+
+## Conventions
+- Run tests with: `node <file>.test.mjs` (no test runner needed)
+- Tests use `node:assert/strict` and import from `./calc.mjs`
+
+## Known pitfalls
+(empty)

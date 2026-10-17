@@ -129,6 +129,12 @@ Unown's differentiator, measured honestly: the same task set solved twice in the
 project (cold pass vs. warm pass with accumulated session notes + dreamed memory).
 Reported as pass-rate delta and token delta between passes. This is *repeat-task*
 efficiency — memory doing exactly what it exists for — and is labelled as such.
+**v3 (project continuity)** adds the real-life arm: three copies of the same
+evolving 6-task repo — real dreams accumulating (`acc`) vs. no-memory control
+(`ctl`) vs. unrelated-domain memory (`unrel`) — through the real `unown` CLI.
+On a solvable trajectory (kimi-k2.5, n=1): 6/6 everywhere, +36% billed input
+tokens for real memory, +30% for wrong-domain memory (the clean negative
+control), dream content audited per session. Receipts: `results/v3-notes/`.
 
 ## Track 6 — HumanEval+ via evalplus (`evalplus/`)
 
@@ -156,6 +162,16 @@ reference refactor. On n=1 all three models solved it — the separation is cost
 qwen3.6-plus spent 1.2 M input tokens with zero cache reads where kimi-k2.5 spent 44 K
 riding 474 K of cache. The eval exists to surface exactly that context-management
 difference.
+
+## Track 9 — Memory-system live evaluation & adversarial probes (`memory-eval/`)
+
+The memory system itself under test (strategy §4.6/§4.7/§4.8): live end-to-end
+suites against a scratch engine + real bridge — injection proof by unique
+marker in the captured upstream request body, real dream + canary + SSE +
+rollback roundtrips, crash-consistency self-heal, busy-mutex serialization,
+size hygiene — plus MPBench-style poisoning probes (engine tier vs.
+project tier, receipts as evidence). Findings and hardening shipped:
+`docs/memory-system-review.md`.
 
 ## What we deliberately do NOT self-run (and why)
 

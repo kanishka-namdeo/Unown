@@ -54,6 +54,23 @@
 >   all three models solved it; the separation is cost: qwen3.6-plus 1.2 M
 >   input tokens with 0 cache reads vs kimi-k2.5 43.5 K / 474 K cache;
 >   landing card live); dashboard E2E still pending.
+> - Memory-system live evaluation shipped (2026-10-17): critical architecture
+>   review (`docs/memory-system-review.md`) with live-verified findings —
+>   F1 the resolved header/provenance never reached the model (fixed via
+>   `memory-guide.ts` + agent-facing resolvers on both injection paths),
+>   F2 non-atomic file-first writes (fixed: SQLite-authoritative +
+>   atomic materialization + self-healing reads, §4.7 closed), F3 the
+>   SessionStart receipt never fired on the SDK path (fixed in runner.ts),
+>   F4 live poisoning probes (engine tier: paraphrased poison shipped and a
+>   runtime-agnostic canary missed it; project tier: verbatim poison, no
+>   gate — §4.6 MPBench-style corpus, n=1), F6 per-tier size caps (§4.8
+>   closed). Live suites: `test/memory-live.test.ts` (UNOWN_MEMORY_LIVE=1,
+>   7 live tests incl. marker-in-upstream-request injection proof) and
+>   `test/memory-poison.test.ts` (UNOWN_MEMORY_POISON=1); receipts under
+>   `benchmarks/memory-eval/results/`. v3 project-continuity benchmark
+>   shipped (`benchmarks/selfimprove/{runner-v3.mjs,v3-fixture/}`): the
+>   real-life arm v2 lacked — acc/ctl/unrel trajectories, receipts under
+>   `results/v3-notes/` (see selfimprove RESULTS.md §v3).
 > - Fresh-checkout verification of tracks 1/2/3/6 with receipts under
 >   `<track>/results/rerun-2026-10-17/`; pi-repo suite at 5,342 tests / 0
 >   failing per-workspace consolidated evidence

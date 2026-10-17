@@ -1,0 +1,132 @@
+{
+  "suite": "memory-live",
+  "startedAt": "2026-10-17T18:41:43.671Z",
+  "env": {
+    "enginePort": 3035,
+    "proxyPort": 3036,
+    "bridge": "http://127.0.0.1:3031",
+    "model": "kimi-k2.5"
+  },
+  "tests": [
+    {
+      "name": "boot+seed",
+      "ok": true,
+      "evidence": {
+        "tiers": [
+          [
+            "policy",
+            1
+          ],
+          [
+            "project",
+            1
+          ],
+          [
+            "user",
+            1
+          ],
+          [
+            "local",
+            1
+          ]
+        ],
+        "resolvedChars": 1023
+      },
+      "ts": "2026-10-17T18:41:44.153Z"
+    },
+    {
+      "name": "write/history/rollback",
+      "ok": true,
+      "evidence": {
+        "writeVersion": 2,
+        "rollbackVersion": 3,
+        "provenanceSample": "<!-- provenance: v1 · seed · 2026-10-17 -->"
+      },
+      "ts": "2026-10-17T18:41:44.163Z"
+    },
+    {
+      "name": "self-heal",
+      "ok": true,
+      "evidence": {
+        "marker": "self-heal-a5f85e90",
+        "version": 2
+      },
+      "ts": "2026-10-17T18:41:44.164Z"
+    },
+    {
+      "name": "dream+canary+SSE",
+      "ok": true,
+      "evidence": {
+        "dreamId": "e6973bec-b8a5-482d-9051-307ef7dc3f45",
+        "dreamStatus": "done",
+        "dreamNote": "project memory -> v2 (canary passed)",
+        "notesIn": 3,
+        "projectVersion": 2,
+        "dreamedMemoryChars": 578,
+        "sseEvents": [
+          "memory:changed",
+          "memory:changed",
+          "memory:changed",
+          "memory:changed",
+          "dream:started",
+          "memory:changed",
+          "dream:finished"
+        ]
+      },
+      "ts": "2026-10-17T18:42:11.257Z"
+    },
+    {
+      "name": "busy-mutex-409",
+      "ok": true,
+      "evidence": {
+        "a": 200,
+        "b": 409
+      },
+      "ts": "2026-10-17T18:42:26.275Z"
+    },
+    {
+      "name": "size-hygiene",
+      "ok": true,
+      "evidence": {
+        "totalChars": 2473,
+        "tiers": [
+          [
+            "policy",
+            455
+          ],
+          [
+            "project",
+            687
+          ],
+          [
+            "user",
+            134
+          ],
+          [
+            "local",
+            40
+          ]
+        ]
+      },
+      "ts": "2026-10-17T18:42:26.275Z"
+    }
+  ],
+  "finishedAt": "2026-10-17T18:42:26.275Z",
+  "capturedChatRequests": 14,
+  "sseEventNames": [
+    "hello",
+    "memory:changed",
+    "cycle:started",
+    "run:started",
+    "hook",
+    "run:tool",
+    "run:text",
+    "note:created",
+    "run:finished",
+    "cycle:finished",
+    "dream:started",
+    "ping",
+    "router:error",
+    "dream:finished"
+  ]
+}

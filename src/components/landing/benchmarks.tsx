@@ -557,6 +557,41 @@ export function BenchmarksSection() {
                 publish, with per-task dreamed-memory receipts committed.
               </p>
             </div>
+
+            <div className="gb-inset mt-4 p-4">
+              <p className="gb-label text-[10px] text-gold">
+                v3 · the real-life arm + the memory system under test
+              </p>
+              <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-dim">
+                Real life is not re-solving the same task: v3 runs six sequential
+                sessions in one evolving repo with a real dream between them (kimi-k2.5,
+                n=1) — 6/6 with memory, 6/6 without, 6/6 with wrong-domain memory;
+                learned memory cost +36% billed input tokens, irrelevant memory +30%
+                and bought nothing (a clean negative control), while the dreamed rules
+                stayed accurate per-session-auditable. The memory system itself now has
+                a live suite — injection proven by a unique marker in the captured
+                upstream request, real dream + canary + rollback roundtrips,
+                crash-consistency, and poisoning probes — receipts in{" "}
+                <a
+                  href={`${BENCH_URL}/memory-eval/results`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-gold underline-offset-4 hover:underline"
+                >
+                  benchmarks/memory-eval/results/
+                </a>{" "}
+                and{" "}
+                <a
+                  href="https://github.com/kanishka-namdeo/Unown/blob/main/docs/memory-system-review.md"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-gold underline-offset-4 hover:underline"
+                >
+                  docs/memory-system-review.md
+                </a>
+                .
+              </p>
+            </div>
           </div>
         </FadeUp>
 
@@ -571,7 +606,7 @@ export function BenchmarksSection() {
                 The regression layer below the loop
               </h3>
               <span className="bg-gold/10 px-1.5 py-0.5 font-mono text-[10.5px] text-gold">
-                641 harness tests · 0 fail
+                846 harness tests · 0 fail
               </span>
             </div>
             <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
@@ -584,19 +619,19 @@ export function BenchmarksSection() {
             <div className="mt-5 grid gap-5 sm:grid-cols-3">
               {[
                 {
-                  v: "162",
+                  v: "206",
                   l: "dashboard unit tests",
-                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers",
+                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers, RTL coverage of all seven dashboard tabs",
                 },
                 {
-                  v: "95",
+                  v: "102",
                   l: "llm-bridge unit tests",
-                  d: "model routing, tool-call sanitizing, SSE stats folding, retry/backoff math; 6,197 assertions",
+                  d: "model routing, tool-call sanitizing, SSE stats folding, retry/backoff math, VLM payload pinning; 16,310 assertions",
                 },
                 {
-                  v: "384",
+                  v: "538",
                   l: "engine unit tests",
-                  d: "memory tiers + rollback, sha256 tamper gate, mint validation, busy-mutex, bwrap profile, hook corpus",
+                  d: "memory tiers + atomicity + rollback, sha256 tamper gate, mint validation, busy-mutex, bwrap profile, hook + CLI corpus",
                 },
               ].map((c) => (
                 <div key={c.l} className="gb-inset p-4">
