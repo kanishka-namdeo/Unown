@@ -28,9 +28,8 @@ engine via `POST /api/notes` or the offline outbox (`~/.unown/notes/outbox/`,
 synced by the `note-sync` job / `outbox.ts`).
 
 Supporting modules: `sandbox.ts` (isolated workspaces, jailed exec, sha256
-tamper-proof verification), `bwrap.ts` (OS-level bubblewrap isolation: verify
-scripts and agent bash commands run with a read-only rootfs, private
-`/home` `/tmp` `/run`, no network namespace — see `native/README.md`),
+tamper-proof verification), `bwrap.ts` (the OS-level sandbox: bubblewrap on
+Linux, seatbelt/sandbox-exec on macOS — see the section below),
 `runner.ts` (headless pi deployment + transcripts),
 `notes.ts` (session-note capture, benchmark + terminal kinds), `tasks.ts`
 (seeded benchmark tasks), `store.ts` (SQLite persistence with schema
@@ -76,6 +75,54 @@ and an OpenAI-compatible endpoint reachable at `PI_BRIDGE_URL` (default
 | `UNOWN_HOME` | `~/.unown` | Terminal-agent state dir (agent config, global memory, note outbox) |
 | `UNOWN_ENGINE_URL` | http://127.0.0.1:3030 | Where the terminal agent delivers notes |
 | `UNOWN_STRICT_HOOKS` | off | `1` = sandbox-grade hooks in terminal sessions |
+
+## OS-level sandbox (Linux: bubblewrap · macOS: seatbelt)
+
+Every engine sandbox command — verify scripts directly, and every agent
+bash-tool command through the generated `unown-sandbox-shell` wrapper
+(`runner.ts` injects it as the session's `shellPath`) — runs under the
+host's OS sandbox, dispatched per platform by `src/bwrap.ts`:
+bubblewrap on Linux (vendored binary, see `native/README.md`) and a
+generated seatbelt profile under `sandbox-exec` on macOS. Hosts without
+a backend (native Windows) fall back to the in-process TypeScript path
+jail. `unown doctor` reports which backend is active.
+
+Semantics parity (bwrap vs seatbelt):
+
+| Property | Linux (bubblewrap) | macOS (seatbelt) |
+|---|---|---|
+| root filesystem | `--ro-bind /` (read-only) | `(allow file-read*)` over `(deny default)` |
+| host `$HOME` | hidden — private tmpfs on `/home` | **readable** (writes denied) — no tmpfs on darwin |
+| tmp areas | private tmpfs on `/tmp` `/var/tmp` | writes allowed to `/private/tmp` + `/var/folders` — **shared with the host**, not private copies |
+| workspace | bind rw at its real path | `(allow file-write* (subpath "<realpath>"))` |
+| `/dev/null` writes | fresh `/dev` has device nodes | `(allow file-write* (literal "/dev/null"))` |
+| network | `--unshare-net` namespace | `(deny network*)` syscall-level deny |
+| process/IPC | `--unshare-ipc`, caps dropped | `(allow mach-lookup)` (no IPC-namespace equivalent), `(allow signal (target self))` |
+| session hardening | `--new-session`, `--die-with-parent` | no equivalent (residual) |
+
+The two documented darwin asymmetries (no mount namespaces on macOS):
+**reads of the host filesystem — including `$HOME` — stay allowed** (same
+as bwrap's read-only bind of `/`, but bwrap's `/home` tmpfs additionally
+hides the host home), while **writes outside the workspace/tmp areas are
+denied exactly like bwrap's tmpfs mounts**; the tmp areas are shared with
+the host instead of private copies. Reads never leave the machine and the
+engine's data/repo secrets are write-protected either way.
+
+Environment knobs (root `.env`):
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `UNOWN_OS_SANDBOX` | on | `0` disables the OS sandbox (TS path jail remains) |
+| `UNOWN_SANDBOX_NET` | blocked | `1` keeps the network shared (`--unshare-net` dropped / `(allow network*)`) |
+| `UNOWN_BWRAP` | vendored binary | explicit bwrap path on Linux |
+| `UNOWN_SANDBOX_EXEC` | `/usr/bin/sandbox-exec` | explicit sandbox-exec path on macOS |
+
+The seatbelt profile is generated per workspace (deterministic
+`<os.tmpdir()>/unown-seatbelt-<sha256(workspace)[:16]>.sb`) and the shell
+wrapper regenerates it at invocation time from the session cwd — one
+wrapper serves every run. `sandbox-exec` is deprecated by Apple but
+shipped on every macOS and is what shipping agents (Claude Code, Codex)
+use today.
 
 ## API surface (port 3030)
 
