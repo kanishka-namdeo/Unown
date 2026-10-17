@@ -8,20 +8,23 @@ import { FadeUp, BENCH_URL } from "./shell";
 /**
  * Every number here comes from a real run with receipts committed under
  * `benchmarks/`. Measured 2026-10-16, greedy decoding, through the bundled
- * llm-bridge on Dashscope (kimi-k2.5 / qwen3.7-plus / qwen3.6-plus).
+ * llm-bridge on Dashscope (kimi-k2.5 / qwen3.7-plus / qwen3.6-plus); tracks
+ * re-verified from a fresh checkout on 2026-10-17 (evalplus + edit-bench
+ * consts below carry the fresh numbers; per-track receipts under
+ * benchmarks/<track>/results/rerun-2026-10-17/).
  * When a run lands, update the consts and the receipts in the same commit.
  */
 
 const EDIT_BENCH = [
-  { model: "qwen3.7-plus", pct: 99.1 },
-  { model: "qwen3.6-plus", pct: 99.1 },
   { model: "kimi-k2.5", pct: 98.1 },
+  { model: "qwen3.7-plus", pct: 96.2 },
+  { model: "qwen3.6-plus", pct: 94.3 },
 ];
 
 const HUMANEVAL_PLUS = [
-  { model: "qwen3.6-plus", pct: 93.9 },
-  { model: "kimi-k2.5", pct: 93.3 },
-  { model: "qwen3.7-plus", pct: 93.3 },
+  { model: "kimi-k2.5", pct: 93.9 },
+  { model: "qwen3.6-plus", pct: 93.3 },
+  { model: "qwen3.7-plus", pct: 92.7 },
 ];
 
 const POLYGLOT = [
@@ -141,10 +144,10 @@ export function BenchmarksSection() {
         <div className="mt-12 border-y border-line bg-panel/30">
           <div className="mx-auto grid max-w-6xl px-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
             {[
-              { v: "99.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
+              { v: "98.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
               { v: "93.9%", l: "HumanEval+ pass@1", s: "official evalplus, greedy" },
               { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
-              { v: "4,585", l: "repo tests green", s: "pi monorepo, 0 failing" },
+              { v: "5,032", l: "repo tests green", s: "pi monorepo + engine, 0 failing" },
             ].map((s, i) => (
               <div
                 key={s.l}
@@ -167,7 +170,7 @@ export function BenchmarksSection() {
           <TrackCard
             icon={Target}
             name="Edit accuracy"
-            source="oh-my-pi typescript-edit-benchmark · 106 fixtures · byte-exact scoring · full Unown agent in the loop"
+            source="oh-my-pi typescript-edit-benchmark · 106 fixtures · byte-exact scoring · full Unown agent in the loop · 2026-10-17 fresh-checkout rerun"
           >
             {EDIT_BENCH.map((r, i) => (
               <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
@@ -180,20 +183,25 @@ export function BenchmarksSection() {
                 — and <span className="text-glow">2.4–5.4× fewer input tokens</span> per
                 task.
               </p>
+              <p className="font-mono text-[10.5px] leading-relaxed text-dim">
+                2026-10-17 fresh-checkout rerun: kimi reproduces exactly (98.1); the
+                n=1 qwen spread sits inside the flake band the n=3 pass quantified.
+              </p>
             </div>
           </TrackCard>
 
           <TrackCard
             icon={FlaskConical}
             name="HumanEval+"
-            source="official evalplus CLI · sanitize → evaluate · pass@1 · greedy · 164 problems"
+            source="official evalplus CLI · sanitize → evaluate · pass@1 · greedy · 164 problems · 2026-10-17 fresh-checkout rerun"
             delay={0.05}
           >
             {HUMANEVAL_PLUS.map((r, i) => (
               <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
             ))}
             <p className="mt-1 font-mono text-[10px] text-faint">
-              base HumanEval, for reference: 98.8 / 97.0 / 97.6
+              base HumanEval, for reference: 97.6 / 98.2 / 98.2 · prior committed run:
+              93.3 / 93.9 / 93.3 — ±1 problem, greedy-decoding noise
             </p>
           </TrackCard>
 

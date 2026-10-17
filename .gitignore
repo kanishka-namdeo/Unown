@@ -66,3 +66,9 @@ next-env.d.ts
 
 # extracted edit-benchmark fixtures (byproduct of the committed tarball)
 benchmarks/edit-bench/fixtures/
+
+# fresh-rerun scratch bulk (agent workspaces, event dumps) — receipts are the
+# per-task JSONL + summaries + official evaluator output
+benchmarks/edit-bench/results/rerun-2026-10-17/*/workdirs/
+benchmarks/edit-bench/results/rerun-2026-10-17/*/dumps/
+benchmarks/edit-bench/results/rerun-2026-10-17/*/events/
