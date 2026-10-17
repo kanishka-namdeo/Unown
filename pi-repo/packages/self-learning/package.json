@@ -5,7 +5,8 @@
   "description": "Self-learning layer for the pi coding agent: tiered memory, hooks, session notes, AutoDreaming, self-improving harness, sandbox testing and routing.",
   "type": "module",
   "scripts": {
-    "test": "bun test test/"
+    "test": "bun test test/",
+    "test:integration": "PI_TEST_SCOPE=integration bun test test/integration/"
   },
   "exports": {
     ".": "./src/index.ts"
