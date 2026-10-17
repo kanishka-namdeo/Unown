@@ -31,6 +31,8 @@ research):
 | 4 | pi vitest-evals | Behavioral correctness of the agent loop (pi's own eval suite) | `evals/` |
 | 5 | Self-improvement lift | The differentiator: repeat-task pass-rate/token improvement from Unown memory | `selfimprove/` |
 | 6 | HumanEval+ (evalplus) | Model-level codegen sanity (non-agentic, labelled as such) | `evalplus/` |
+| 7 | LiveCodeBench v6 subset | Contamination-aware model-tier headline: post-cutoff problems (2025-01→04 window) | `livecodebench/` |
+| 8 | Long-horizon refactor | One hard multi-file contract change under a time cap, scored on the file diff — surfaces context-management cost | `longhorizon/` |
 
 ## Track 1 — pi-repo test suite
 
@@ -127,12 +129,49 @@ Unown's differentiator, measured honestly: the same task set solved twice in the
 project (cold pass vs. warm pass with accumulated session notes + dreamed memory).
 Reported as pass-rate delta and token delta between passes. This is *repeat-task*
 efficiency — memory doing exactly what it exists for — and is labelled as such.
+**v3 (project continuity)** adds the real-life arm: three copies of the same
+evolving 6-task repo — real dreams accumulating (`acc`) vs. no-memory control
+(`ctl`) vs. unrelated-domain memory (`unrel`) — through the real `unown` CLI.
+On a solvable trajectory (kimi-k2.5, n=1): 6/6 everywhere, +36% billed input
+tokens for real memory, +30% for wrong-domain memory (the clean negative
+control), dream content audited per session. Receipts: `results/v3-notes/`.
 
 ## Track 6 — HumanEval+ via evalplus (`evalplus/`)
 
 Model-level (non-agentic) codegen sanity through the same bridge, greedy decoding,
 pass@1 on the HumanEval+ test suites (80× more tests than HumanEval). Included as a
 model-tier reference column only — it does not measure the agent.
+
+## Track 7 — LiveCodeBench v6 subset (`livecodebench/`) — contamination-aware headline
+
+HumanEval+ problems predate every current model, so a high score cannot distinguish
+ability from memorization. This track is the post-cutoff answer: a 50-problem
+stratified subset of LiveCodeBench's newest window (contests 2025-01-04 → 2025-04-06,
+after all three models' cutoffs), official LCB prompt template and grader logic,
+greedy decoding, pass@1, per-problem JSONL receipts. Dominated honestly by the
+`no_code` cutoff failure mode at the pinned 4096-token budget — reported as measured.
+HumanEval+ (Track 6) stays as the pre-cutoff reference column; this is the one that
+cannot have been memorized.
+
+## Track 8 — Long-horizon refactor (`longhorizon/`)
+
+§7 J's probe: one deliberately hard multi-file contract change (`createdBy: string` →
+`{id, name}` across an 11-module TypeScript app) under a hard wall-clock cap, run with
+the full unown agent, scored on the file diff (not just tests) against a committed
+reference refactor. On n=1 all three models solved it — the separation is cost:
+qwen3.6-plus spent 1.2 M input tokens with zero cache reads where kimi-k2.5 spent 44 K
+riding 474 K of cache. The eval exists to surface exactly that context-management
+difference.
+
+## Track 9 — Memory-system live evaluation & adversarial probes (`memory-eval/`)
+
+The memory system itself under test (strategy §4.6/§4.7/§4.8): live end-to-end
+suites against a scratch engine + real bridge — injection proof by unique
+marker in the captured upstream request body, real dream + canary + SSE +
+rollback roundtrips, crash-consistency self-heal, busy-mutex serialization,
+size hygiene — plus MPBench-style poisoning probes (engine tier vs.
+project tier, receipts as evidence). Findings and hardening shipped:
+`docs/memory-system-review.md`.
 
 ## What we deliberately do NOT self-run (and why)
 

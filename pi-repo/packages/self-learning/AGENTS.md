@@ -45,6 +45,28 @@ This package is Unowned (modified from upstream pi-mono); sibling packages (`ai`
 
 ## Verification
 
+- `bun test test/` (this package) — the always-on unit suite (memory
+  durability semantics, caps, provenance, dream/harness/notes/router tests;
+  live suites skip by default). Includes the guard suites: `guard.test.ts`
+  (deterministic adversarial-content scanner + gate decisions, §5.1/§5.3)
+  and `dream-guard.test.ts` (both dream paths end-to-end against a STUB
+  bridge serving canned poison — first-mint gating, sanitization, note
+  banners provably reaching the "LLM", no network), plus `canary.test.ts`
+  (K-sampled canary gate: drift/claim analysis, PI_DREAM_CANARY_K) and
+  `budget.test.ts` (resolved-block hard cap PI_MEMORY_TOTAL_CHARS with
+  oldest-first degradation).
+- `UNOWN_MEMORY_LIVE=1 bun test test/memory-live.test.ts` — LIVE memory
+  e2e (scratch engine + real bridge, ~45 s): boots a real server on :3035
+  behind a recording proxy (:3036), proves the 4-tier block + guide +
+  provenance are injected VERBATIM into the upstream chat request (unique
+  marker), runs a real task + real dream + canary + SSE + rollback +
+  busy-mutex 409 + self-heal probes. Writes a receipt to
+  `benchmarks/memory-eval/results/`. Requires the llm-bridge on :3031.
+- `UNOWN_MEMORY_POISON=1 bun test test/memory-poison.test.ts` — LIVE
+  MPBench-style poisoning probes (engine tier + project tier; receipts in
+  the same dir). Post-guard: the attacker's directive NEVER shipping is
+  ASSERTED (deterministic guarantee); whether the dream LLM plants the
+  poison pre-guard is recorded as measured (prompt-resistance, n=1).
 - `curl -s localhost:3030/api/overview` → up, provider `zai-bridge/kimi-k2.5`.
 - `bin/unown doctor` from the repo root → all green (incl. "OS sandbox (bubblewrap)").
 - Sandbox suite (profile + engine) and the OS-sandbox profile contract are defined in `scripts/AGENTS.md`; both `bwrap_smoke.sh` (25 checks) and `verify_sandbox.mjs` (12 checks) must pass before committing sandbox changes or refreshing `native/bin/bwrap`.

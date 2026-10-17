@@ -1,0 +1,41 @@
+{
+  "model": "kimi-k2.5",
+  "label": "project-continuity: 6 sequential tasks in one repo — accumulate (real dreams) vs control (no memory) vs unrelated (python memory), n=1 trajectory per arm",
+  "acc": {
+    "tasks": 6,
+    "passed": 6,
+    "input": 17314,
+    "output": 2274,
+    "cacheRead": 136960,
+    "avgDurationS": 36,
+    "fails": []
+  },
+  "ctl": {
+    "tasks": 6,
+    "passed": 6,
+    "input": 12690,
+    "output": 3266,
+    "cacheRead": 202240,
+    "avgDurationS": 11,
+    "fails": []
+  },
+  "unrel": {
+    "tasks": 6,
+    "passed": 6,
+    "input": 16438,
+    "output": 3127,
+    "cacheRead": 213376,
+    "avgDurationS": 11,
+    "fails": []
+  },
+  "generatedAt": "2026-10-17T18:58:37.165Z",
+  "accVsCtl": {
+    "passDeltaPp": 0,
+    "inputTokenDeltaPct": 36,
+    "durationDeltaPct": 227
+  },
+  "unrelVsCtl": {
+    "passDeltaPp": 0,
+    "inputTokenDeltaPct": 30
+  }
+}

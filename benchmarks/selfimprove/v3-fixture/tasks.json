@@ -1,0 +1,52 @@
+{
+	"repoName": "membench",
+	"description": "A small evolving library repo: six sequential sessions in the SAME working tree, the way a real user works on a real project (new spec, new spec, new spec, regression, new spec, new spec). Fixture for the v3 project-continuity memory benchmark (runner-v3.mjs).",
+	"tasks": [
+		{
+			"id": "t1-impl-add",
+			"title": "Implement calc.add",
+			"dropTest": "calc.test.mjs",
+			"promptSpec": "Create `calc.mjs` exporting `add(a, b)` that returns the integer sum of its two arguments. Keep the module tiny — no extra exports.",
+			"seedSource": null
+		},
+		{
+			"id": "t2-impl-stats",
+			"title": "Implement stats.mean (uses calc.add)",
+			"dropTest": "stats.test.mjs",
+			"promptSpec": "Create `stats.mjs` exporting `mean(values)` that returns the arithmetic mean of a non-empty array of numbers. Implement it in terms of `add` imported from `./calc.mjs` (accumulate the sum with add). `mean([])` must throw a RangeError.",
+			"seedSource": null
+		},
+		{
+			"id": "t3-impl-format",
+			"title": "Implement format.formatReport",
+			"dropTest": "format.test.mjs",
+			"promptSpec": "Create `format.mjs` exporting `formatReport(rows)` where rows is an array of `{ label, value }` objects. It returns a single string joining each row as `label: value` separated by ` | ` (space, pipe, space). An empty array returns the empty string.",
+			"seedSource": null
+		},
+		{
+			"id": "t4-fix-regression",
+			"title": "Fix a seeded regression in calc.mjs",
+			"dropTest": null,
+			"promptSpec": "A regression slipped into the repo: the calc tests are failing. Find the root cause in the existing source and fix it. Do not modify any test file.",
+			"mutate": {
+				"file": "calc.mjs",
+				"find": "return a + b;",
+				"replaceWith": "return a - b;"
+			}
+		},
+		{
+			"id": "t5-impl-persist",
+			"title": "Implement persist (save/load JSON records)",
+			"dropTest": "persist.test.mjs",
+			"promptSpec": "Create `persist.mjs` exporting `save(path, records)` and `load(path)`. `save` writes `JSON.stringify(records)` followed by a single newline to `path` (UTF-8). `load` reads the file and returns the parsed array. Round-trip must preserve deep-equal records.",
+			"seedSource": null
+		},
+		{
+			"id": "t6-impl-search",
+			"title": "Implement search over records",
+			"dropTest": "search.test.mjs",
+			"promptSpec": "Create `search.mjs` exporting `search(records, q)` returning the subset of record objects whose JSON serialization contains the query case-insensitively. Preserve input order; never mutate the input array.",
+			"seedSource": null
+		}
+	]
+}

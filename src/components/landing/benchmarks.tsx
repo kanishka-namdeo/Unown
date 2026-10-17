@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Brain, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Target } from "lucide-react";
+import { Brain, Compass, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Swords, Target } from "lucide-react";
 import { FadeUp, BENCH_URL, SectionHead } from "./shell";
 
 /**
@@ -11,7 +11,9 @@ import { FadeUp, BENCH_URL, SectionHead } from "./shell";
  * llm-bridge on Dashscope (kimi-k2.5 / qwen3.7-plus / qwen3.6-plus); tracks
  * re-verified from a fresh checkout on 2026-10-17 (evalplus + edit-bench
  * consts below carry the fresh numbers; per-track receipts under
- * benchmarks/<track>/results/rerun-2026-10-17/).
+ * benchmarks/<track>/results/rerun-2026-10-17/). LiveCodeBench v6 was run
+ * 2026-10-17, same bridge, same decoding — receipts under
+ * benchmarks/livecodebench/results/.
  * When a run lands, update the consts and the receipts in the same commit.
  */
 
@@ -25,6 +27,33 @@ const HUMANEVAL_PLUS = [
   { model: "kimi-k2.5", pct: 93.9 },
   { model: "qwen3.6-plus", pct: 93.3 },
   { model: "qwen3.7-plus", pct: 92.7 },
+];
+
+/**
+ * LiveCodeBench release_v6 increment (contests 2025-01-04 → 2025-04-06) —
+ * after every one of these models' knowledge cutoffs, so nothing here can be
+ * memorized. 50-problem stratified subset (see benchmarks/livecodebench/
+ * dataset/subset.json), official LCB prompt + grader logic, greedy pass@1.
+ * no_code = the model spent the whole 4096-token budget without closing a
+ * fenced code block — reported as a fail, not filtered.
+ */
+const LIVECODEBENCH = [
+  { model: "kimi-k2.5", pct: 52, noCode: 15 },
+  { model: "qwen3.7-plus", pct: 38, noCode: 26 },
+  { model: "qwen3.6-plus", pct: 36, noCode: 27 },
+];
+
+/**
+ * Long-horizon refactor (§7 J): one hard multi-file contract change under a
+ * wall-clock cap, scored on the file diff against a committed reference.
+ * n=1 per model; the 7-minute cap (env-tunable, default 15) is recorded in
+ * every receipt. The separation this track surfaces is cost, not
+ * correctness: all three models solved it.
+ */
+const LONGHORIZON = [
+  { model: "kimi-k2.5", durS: 245, files: 13, inTok: 43520, cacheRead: 474112, jaccard: 0.93 },
+  { model: "qwen3.7-plus", durS: 299, files: 14, inTok: 62617, cacheRead: 840704, jaccard: 0.87 },
+  { model: "qwen3.6-plus", durS: 291, files: 15, inTok: 1205337, cacheRead: 0, jaccard: 0.81 },
 ];
 
 const POLYGLOT = [
@@ -237,8 +266,8 @@ export function BenchmarksSection() {
         <div className="mt-12 border-y border-line bg-panel/30">
           <div className="mx-auto grid max-w-6xl px-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
             {[
+              { v: "52%", l: "LiveCodeBench v6 pass@1", s: "post-cutoff problems, kimi-k2.5" },
               { v: "98.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
-              { v: "93.9%", l: "HumanEval+ pass@1", s: "official evalplus, greedy" },
               { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
               { v: "5,342", l: "repo tests green", s: "pi monorepo + engine, 0 failing" },
             ].map((s, i) => (
@@ -260,6 +289,41 @@ export function BenchmarksSection() {
 
         {/* tracks */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <TrackCard
+            icon={Swords}
+            name="LiveCodeBench v6 — the contamination-aware headline"
+            source="50-problem stratified subset of LiveCodeBench's release_v6 increment · contests 2025-01-04 → 2025-04-06 · after every model's cutoff · official LCB prompt + grader · greedy pass@1 · receipts under benchmarks/livecodebench/results/"
+          >
+            {LIVECODEBENCH.map((r, i) => (
+              <div key={r.model} className="flex items-center gap-3">
+                <BarRow label={r.model} pct={r.pct} delay={i * 0.1} />
+                <span className="hidden shrink-0 font-mono text-[10px] text-faint sm:inline">
+                  {r.noCode} no_code
+                </span>
+              </div>
+            ))}
+            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+              HumanEval+ (below) predates these models, so its 90s cannot separate ability
+              from memorization. These problems were published after their cutoffs. Every
+              model sweeps easy (13/13, 12/13); hard is where it ends (4/23, 1/23, 1/23).
+            </p>
+            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+              <span className="text-gold">no_code is the honest failure mode</span>: at the
+              pinned 4096-token budget, a model that reasons at length gets cut off before
+              closing its code fence — 15/26/27 of 50. Reported as measured, not filtered;
+              larger-budget runs are future work, not a silent re-run.
+            </p>
+            <a
+              href={`${BENCH_URL}/livecodebench/results`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
+            >
+              benchmarks/livecodebench/results/
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
+          </TrackCard>
+
           <TrackCard
             icon={Target}
             name="Edit accuracy"
@@ -346,6 +410,50 @@ export function BenchmarksSection() {
               fresh-checkout rerun: pass@1 reproduces the committed run exactly
               (47/48/48 of 50) · 300 scored runs across two days
             </p>
+          </TrackCard>
+
+          <TrackCard
+            icon={Compass}
+            name="Long-horizon refactor"
+            source="one hard multi-file contract change (createdBy: string → {id, name} across an 11-module TypeScript app) · full unown agent · hard wall-clock cap · scored on the file diff against a committed reference · n=1 · receipts under benchmarks/longhorizon/results/"
+            delay={0.2}
+          >
+            {LONGHORIZON.map((r) => (
+              <div key={r.model} className="flex flex-wrap items-center gap-2">
+                <span className="w-28 shrink-0 truncate font-mono text-[11px] text-dim">
+                  {r.model}
+                </span>
+                <span
+                  className={`px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
+                    r.inTok > 200000 ? "bg-amber/10 text-amber" : "bg-gold/10 text-gold"
+                  }`}
+                >
+                  {(r.inTok / 1000).toFixed(r.inTok >= 100000 ? 0 : 1)}k in
+                </span>
+                <span className="font-mono text-[11px] tabular-nums text-faint">
+                  {r.cacheRead > 0 ? `${Math.round(r.cacheRead / 1000)}k cached` : "0 cached"}
+                </span>
+                <span className="ml-auto font-mono text-[10px] tabular-nums text-faint">
+                  {r.durS}s · {r.files} files · jaccard {r.jaccard.toFixed(2)}
+                </span>
+              </div>
+            ))}
+            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+              all three solved it: green as-is suites, pristine-restore profiles matching
+              the reference's own 27/12, no timeouts. <span className="text-gold">The
+              separation is cost</span>: qwen3.6-plus spent 1.2M input tokens with zero
+              cache reads — 28× kimi — on the same task; kimi rode 474k of cache for 44k
+              fresh input. Compaction never triggered for any model.
+            </p>
+            <a
+              href={`${BENCH_URL}/longhorizon/results`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
+            >
+              benchmarks/longhorizon/results/
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
           </TrackCard>
         </div>
 
@@ -455,6 +563,41 @@ export function BenchmarksSection() {
                 publish, with per-task dreamed-memory receipts committed.
               </p>
             </div>
+
+            <div className="gb-inset mt-4 p-4">
+              <p className="gb-label text-[10px] text-gold">
+                v3 · the real-life arm + the memory system under test
+              </p>
+              <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-dim">
+                Real life is not re-solving the same task: v3 runs six sequential
+                sessions in one evolving repo with a real dream between them (kimi-k2.5,
+                n=1) — 6/6 with memory, 6/6 without, 6/6 with wrong-domain memory;
+                learned memory cost +36% billed input tokens, irrelevant memory +30%
+                and bought nothing (a clean negative control), while the dreamed rules
+                stayed accurate per-session-auditable. The memory system itself now has
+                a live suite — injection proven by a unique marker in the captured
+                upstream request, real dream + canary + rollback roundtrips,
+                crash-consistency, and poisoning probes — receipts in{" "}
+                <a
+                  href={`${BENCH_URL}/memory-eval/results`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-gold underline-offset-4 hover:underline"
+                >
+                  benchmarks/memory-eval/results/
+                </a>{" "}
+                and{" "}
+                <a
+                  href="https://github.com/kanishka-namdeo/Unown/blob/main/docs/memory-system-review.md"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-gold underline-offset-4 hover:underline"
+                >
+                  docs/memory-system-review.md
+                </a>
+                .
+              </p>
+            </div>
           </div>
         </FadeUp>
 
@@ -469,7 +612,7 @@ export function BenchmarksSection() {
                 The regression layer below the loop
               </h3>
               <span className="bg-gold/10 px-1.5 py-0.5 font-mono text-[10.5px] text-gold">
-                641 harness tests · 0 fail
+                846 harness tests · 0 fail
               </span>
             </div>
             <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
@@ -482,19 +625,19 @@ export function BenchmarksSection() {
             <div className="mt-5 grid gap-5 sm:grid-cols-3">
               {[
                 {
-                  v: "162",
+                  v: "206",
                   l: "dashboard unit tests",
-                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers",
+                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers, RTL coverage of all seven dashboard tabs",
                 },
                 {
-                  v: "95",
+                  v: "102",
                   l: "llm-bridge unit tests",
-                  d: "model routing, tool-call sanitizing, SSE stats folding, retry/backoff math; 6,197 assertions",
+                  d: "model routing, tool-call sanitizing, SSE stats folding, retry/backoff math, VLM payload pinning; 16,310 assertions",
                 },
                 {
-                  v: "384",
+                  v: "538",
                   l: "engine unit tests",
-                  d: "memory tiers + rollback, sha256 tamper gate, mint validation, busy-mutex, bwrap profile, hook corpus",
+                  d: "memory tiers + atomicity + rollback, sha256 tamper gate, mint validation, busy-mutex, bwrap profile, hook + CLI corpus",
                 },
               ].map((c) => (
                 <div key={c.l} className="gb-inset p-4">

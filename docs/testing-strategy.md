@@ -34,15 +34,43 @@
 >   (split/long-flag `rm` forms, `rm` on system directories, redirect targets
 >   reaching system paths or `~/.ssh/` through in-project symlinks, raw disk
 >   devices, `xargs -I{}` payloads, curl-piped shells, printf/escape-built
->   commands). Sandbox fuzzer + CI security scans remain future work.
+>   commands). CI security scans shipped: gitleaks full-history secret scan +
+>   `bun audit --prod` advisory gate (documented prisma-internal ignores) in
+>   `.github/workflows/ci.yml`; the sandbox fuzzer remains future work.
 > - Phase 4 (underway): memory-lift chart shipped on the landing page —
 >   full-width `#memory-lift` panel (per-model cold-vs-warm input-token paired
 >   bars with raw counts, duration chips, the v1 prompt-caching negative
 >   control, and a receipt link to `benchmarks/selfimprove/results/`); VLM
 >   smoke through the bridge shipped (§7 I image-understanding half: env-gated
 >   `mini-services/llm-bridge/vlm-smoke.test.ts`, receipt + caveats under
->   `benchmarks/vlm-smoke/results/`); agent
->   evals A–G scheduling and dashboard E2E still pending.
+>   `benchmarks/vlm-smoke/results/`); §7 K LiveCodeBench v6 shipped as the
+>   contamination-aware model-tier headline (Track 7: 50-problem stratified
+>   subset of the release_v6 increment, official LCB prompt + grader port,
+>   greedy pass@1 — kimi-k2.5 52% / qwen3.7-plus 38% / qwen3.6-plus 36%,
+>   `no_code` cutoff failure reported as measured; receipts + RESULTS.md under
+>   `benchmarks/livecodebench/`, landing card + stat-band cell live); §7 J
+>   long-horizon eval shipped (`benchmarks/longhorizon/`: n=1 per model at a
+>   7-minute env-tunable cap, file-diff scoring vs a committed reference —
+>   all three models solved it; the separation is cost: qwen3.6-plus 1.2 M
+>   input tokens with 0 cache reads vs kimi-k2.5 43.5 K / 474 K cache;
+>   landing card live); dashboard E2E still pending.
+> - Memory-system live evaluation shipped (2026-10-17): critical architecture
+>   review (`docs/memory-system-review.md`) with live-verified findings —
+>   F1 the resolved header/provenance never reached the model (fixed via
+>   `memory-guide.ts` + agent-facing resolvers on both injection paths),
+>   F2 non-atomic file-first writes (fixed: SQLite-authoritative +
+>   atomic materialization + self-healing reads, §4.7 closed), F3 the
+>   SessionStart receipt never fired on the SDK path (fixed in runner.ts),
+>   F4 live poisoning probes (engine tier: paraphrased poison shipped and a
+>   runtime-agnostic canary missed it; project tier: verbatim poison, no
+>   gate — §4.6 MPBench-style corpus, n=1), F6 per-tier size caps (§4.8
+>   closed). Live suites: `test/memory-live.test.ts` (UNOWN_MEMORY_LIVE=1,
+>   7 live tests incl. marker-in-upstream-request injection proof) and
+>   `test/memory-poison.test.ts` (UNOWN_MEMORY_POISON=1); receipts under
+>   `benchmarks/memory-eval/results/`. v3 project-continuity benchmark
+>   shipped (`benchmarks/selfimprove/{runner-v3.mjs,v3-fixture/}`): the
+>   real-life arm v2 lacked — acc/ctl/unrel trajectories, receipts under
+>   `results/v3-notes/` (see selfimprove RESULTS.md §v3).
 > - Fresh-checkout verification of tracks 1/2/3/6 with receipts under
 >   `<track>/results/rerun-2026-10-17/`; pi-repo suite at 5,342 tests / 0
 >   failing per-workspace consolidated evidence
@@ -606,10 +634,32 @@ J. **Long-horizon / multi-file refactor task.** One deliberately hard, multi-
    management and tool-call limits; score file diff, not just tests. Useful for
    comparing models and memory strategies.
 
+   *Status (2026-10-17): shipped* (`benchmarks/longhorizon/`) — "clippad", an
+   11-module TypeScript app whose `createdBy: string` must become
+   `createdBy: {id, name}` everywhere at once; committed reference refactor
+   for diff comparison; full unown agent; scored on the file diff both ways
+   (as-is tests + pristine-restored) plus jaccard/closeness heuristics.
+   n=1 per model at a 7-minute cap (env-tunable, default 15; recorded in
+   every receipt). Result: all three models solved it — green as-is suites,
+   pristine profiles equal to the reference's own 27/12, no compaction
+   events — the separation is cost: qwen3.6-plus 1.2 M input tokens with
+   zero cache reads vs kimi-k2.5 43.5 K riding 474 K cache. Receipts +
+   RESULTS.md + per-model workspace patches committed; landing card live.
+
 K. **Contamination-aware headline.** For publishable numbers, add LiveCodeBench
    v6 (post-cutoff, LeetCode/AtCoder/Codeforces) as the model-tier headline
    instead of HumanEval+, and treat Commit0 / SWE-bench / Terminal-Bench as
    cited-only (Docker-bound) per existing policy.
+
+   *Status (2026-10-17): shipped as Track 7* (`benchmarks/livecodebench/`) —
+   50-problem stratified subset of the release_v6 increment (contests
+   2025-01-04 → 2025-04-06, after all three models' cutoffs; the increment
+   contains 0 Codeforces problems, noted honestly), official LCB prompt
+   template + stdlib-only port of their grader, greedy pass@1 through the
+   bundled bridge. Results: kimi-k2.5 52% / qwen3.7-plus 38% / qwen3.6-plus
+   36%, with `no_code` (4096-token cutoff before a closed fence) as the
+   dominant failure mode — reported as measured. Per-problem JSONL receipts +
+   RESULTS.md committed; landing carries the headline card + stat-band cell.
 
 ## 8. Implementation roadmap (suggested phasing)
 

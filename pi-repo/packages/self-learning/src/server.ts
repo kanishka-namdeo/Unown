@@ -6,7 +6,7 @@ import { emit, subscribe } from "./bus.ts";
 import { dreamNotes, listDreams, runDream } from "./dream.ts";
 import { getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
-import { history, readTier, rollback, seedMemoryIfEmpty, snapshot, type Tier } from "./memory.ts";
+import { history, resolveMemory, rollback, seedMemoryIfEmpty, snapshot, type Tier } from "./memory.ts";
 import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
@@ -190,11 +190,9 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 if (method === "GET" && path === "/api/memory") {
                         return json({
                                 tiers: snapshot(),
-                                resolvedChars:
-                                        readTier("policy").length +
-                                        readTier("project").length +
-                                        readTier("user").length +
-                                        readTier("local").length,
+                                // F8 fix: the ACTUAL resolved block (header +
+                                // wrappers + provenance), not the raw tier sum.
+                                resolvedChars: resolveMemory().totalChars,
                         });
                 }
                 if (method === "GET" && /^\/api\/memory\/[^/]+\/history$/.test(path)) {

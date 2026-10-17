@@ -20,6 +20,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
+import { pruneToBudget } from "./budget.ts";
+import { MEMORY_GUIDE, MEMORY_GUIDE_PATH } from "./memory-guide.ts";
 import { STARTER_SKILLS } from "./skill-seeds.ts";
 import { UNOWN_THEME, UNOWN_THEME_NAME } from "./theme.ts";
 
@@ -211,6 +213,19 @@ export function projectMemoryPath(projectDir: string): string {
         return join(projectDir, ".unown", "memory", "project.md");
 }
 
+/**
+ * True when a project's memory file is still the untouched AutoDream seed —
+ * i.e. no real content has ever shipped (the "first mint" moment the dream
+ * guard treats with the strictest policy: no version rows + pristine file).
+ */
+export function isPristineSeedProjectMemory(content: string): boolean {
+        const t = content.trim();
+        if (t === PROJECT_SEED.trim()) return true;
+        // Seed-marker fallback: the seed's empty-section markers are present and
+        // there is no bullet-rule content beyond the seed's own two bullets.
+        return t.includes("(empty — AutoDream fills this from session notes)") && !/^[-*]\s+(?!This file is maintained)/m.test(t);
+}
+
 /** Resolve the full 4-tier memory stack for a terminal session in projectDir. */
 export function resolveTerminalMemory(projectDir: string): TerminalMemoryFile[] {
         initProjectMemory(projectDir);
@@ -255,6 +270,45 @@ export function resolveTerminalMemory(projectDir: string): TerminalMemoryFile[] 
         });
 
         return files;
+}
+
+/** DB-free provenance line for a terminal memory tier (source path only). */
+function terminalProvenanceLine(tier: string): string {
+        switch (tier) {
+                case "policy":
+                        return `<!-- source: global policy file (~/.unown/memory/policy.md) -->`;
+                case "project":
+                        return `<!-- source: project memory (.unown/memory/project.md — maintained by AutoDream & your edits) -->`;
+                case "user":
+                        return `<!-- source: global user memory (~/.unown/memory/user.md) -->`;
+                case "local":
+                        return `<!-- source: local overrides (.unown/memory/local.md — highest precedence, gitignored) -->`;
+                default:
+                        return `<!-- source: unown memory -->`;
+        }
+}
+
+/**
+ * The memory files actually injected into a TERMINAL session's system prompt
+ * (cli.ts / tools.ts): the tier guide + the four tiers with a source comment
+ * prepended to the content — mirroring the engine path's
+ * resolveMemoryForAgent so both paths carry the same semantics (precedence,
+ * hints-not-instructions, provenance) into the model's context — and the
+ * same §5.5 hard-sum budget (PI_MEMORY_TOTAL_CHARS): when the stack grows
+ * past the cap, the OLDEST rule blocks (guide/policy exempt) are dropped
+ * from the INJECTION only; the files on disk are untouched.
+ */
+export function terminalMemoryForAgent(projectDir: string): TerminalMemoryFile[] {
+        const files = resolveTerminalMemory(projectDir);
+        const withGuide = [
+                { path: MEMORY_GUIDE_PATH, content: MEMORY_GUIDE, tier: "guide" },
+                ...files.map((f) => ({
+                        ...f,
+                        content: `${terminalProvenanceLine(f.tier)}\n${f.content}`,
+                })),
+        ];
+        const { files: budgeted } = pruneToBudget(withGuide);
+        return budgeted.map((f) => ({ path: f.path, content: f.content, tier: f.tier ?? "memory" }));
 }
 
 // ---------------------------------------------------------------------------

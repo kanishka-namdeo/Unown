@@ -57,3 +57,37 @@ buys efficiency, not correctness. Numbers are single-run (n=10 tasks); we
 do not claim significance. Per-task dreamed-memory receipts are committed
 (`memory-cold-*.md`) so the "memory actually changed" precondition is
 auditable.
+
+## v3 — project continuity (the real-life arm, kimi-k2.5)
+
+`v3-notes/` — v2 measured *repeat-task* efficiency (same task, same memory).
+Real life is different: you keep working in the SAME repo on NEW tasks while
+memory accumulates session over session. v3 simulates that trajectory with
+three copies of the same evolving 6-task repo (`../v3-fixture/`):
+**acc** (real product behavior — every session's notes consolidated by a
+real AutoDream dream, memory snapshot per session, next session sees the
+learned `.unown/memory/project.md`), **ctl** (identical sessions, notes
+deleted + memory reset to the template after each session — a memoryless
+agent), and **unrel** (memory pre-seeded with the v2 PYTHON Exercism dream —
+a real, learned, wrong-domain memory — kept fixed; isolates "irrelevant
+memory present" from "no memory").
+
+| Arm | Pass | Billed input tokens | Avg duration | Notes |
+|---|---|---|---|---|
+| acc (real dreams) | 6/6 | 17,314 | 36s | 5/6 dreams consolidated; memory grew accurately |
+| ctl (no memory) | 6/6 | 12,690 | 11s | control purity: notes deleted pre-dream |
+| unrel (python memory) | 6/6 | 16,438 | 11s | negative control: wrong-domain memory, fixed |
+
+Read honestly: on a trajectory the model can already solve, accumulated
+real memory bought **0pp pass-rate, cost ~36% more billed input tokens and
+~3× wall time on the average** (the duration skew is one 105s regression
+session — n=1, single trajectory; the JSONL has per-session durations).
+The unrelated-memory arm is the cleanest result: wrong-domain memory costs
+~30% input tokens and buys nothing — the negative control confirms the
+measurement is sensitive to *memory content*, not just prompt size. Dream
+QUALITY, audited from the per-session snapshots, was genuinely good
+(`memory-acc-after-session-*.md`: test command, import style, the
+`add`-accumulation rule, JSON-newline requirement — all accurate). n=1
+trajectory per arm, one model, single run: directional, not statistical.
+Protocol receipts: `runner-v3.mjs`, `kimi-k2.5.jsonl`, `logs/` (full
+session stdout/stderr), `unrel-memory-source.md`.

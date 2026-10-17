@@ -1,0 +1,174 @@
+{
+  "track": "LiveCodeBench v6 (code_generation_lite, release_v6 increment) — contamination-aware model-tier headline",
+  "benchmarkSource": {
+    "dataset": "livecodebench/code_generation_lite",
+    "file": "test6.jsonl",
+    "url": "https://huggingface.co/datasets/livecodebench/code_generation_lite/resolve/main/test6.jsonl",
+    "sha256": "bb4c364f71921c4495a6ad15abe1a927350b720009f4933e2e71f8af0f6fd1f5",
+    "version": "release_v6 increment (loader version_tag `v6` = test6.jsonl; cumulative release_v6 = 1055 problems, May 2023 - Apr 2025)",
+    "dateWindow": {
+      "from": "2025-01-04T00:00:00",
+      "to": "2025-04-06T00:00:00"
+    },
+    "problemsAvailable": 175
+  },
+  "subset": {
+    "total": 50,
+    "cellCounts": {
+      "atcoder/easy": 8,
+      "atcoder/hard": 17,
+      "atcoder/medium": 7,
+      "leetcode/easy": 5,
+      "leetcode/hard": 6,
+      "leetcode/medium": 7
+    },
+    "selection": "stratified proportional allocation across the 6 (platform x difficulty) cells with largest-remainder rounding; within each cell sorted by (contest_date, question_id) and evenly spaced indices floor(i*n/k); deterministic, no seed, no cherry-picking",
+    "codeforcesNote": "the v6 increment contains 0 Codeforces problems (LCB's newest window added only AtCoder + LeetCode); reaching back for Codeforces would mean older-window problems, i.e. the opposite of contamination-aware",
+    "pinnedIn": "benchmarks/livecodebench/dataset/subset.json"
+  },
+  "protocol": {
+    "attempts": "pass@1, greedy (temperature=0, top_p=1, n=1, max_tokens=4096)",
+    "prompt": "official LCB OpenAIChat template (system + get_generic_question_template_answer), pinned in runner.mjs",
+    "extraction": "official LCB extract_code (last fenced pair)",
+    "scorer": "benchmarks/livecodebench/scorer.py — faithful stdlib port of lcb_runner testing_util.py; public+private lite tests, first-fail-stop, 6s per test",
+    "endpoint": "Dashscope coding-intl via bundled llm-bridge (http://127.0.0.1:3031/v1)",
+    "models": [
+      "kimi-k2.5",
+      "qwen3.7-plus",
+      "qwen3.6-plus"
+    ]
+  },
+  "results": {
+    "kimi-k2.5": {
+      "n": 50,
+      "subsetTotal": 50,
+      "passed": 26,
+      "passAt1Pct": 52,
+      "scoredProblems": 50,
+      "byOutcome": {
+        "pass": 26,
+        "rte": 2,
+        "no_code": 15,
+        "tle": 3,
+        "wa": 4
+      },
+      "byPlatform": {
+        "atcoder": {
+          "n": 32,
+          "pass": 16
+        },
+        "leetcode": {
+          "n": 18,
+          "pass": 10
+        }
+      },
+      "byDifficulty": {
+        "easy": {
+          "n": 13,
+          "pass": 13
+        },
+        "hard": {
+          "n": 23,
+          "pass": 4
+        },
+        "medium": {
+          "n": 14,
+          "pass": 9
+        }
+      },
+      "tokens": {
+        "in": 28851,
+        "out": 130234
+      },
+      "avgGenLatencyS": 53.9,
+      "avgEvalDurationS": 1.9
+    },
+    "qwen3.7-plus": {
+      "n": 50,
+      "subsetTotal": 50,
+      "passed": 19,
+      "passAt1Pct": 38,
+      "scoredProblems": 50,
+      "byOutcome": {
+        "pass": 19,
+        "no_code": 26,
+        "wa": 4,
+        "rte": 1
+      },
+      "byPlatform": {
+        "atcoder": {
+          "n": 32,
+          "pass": 10
+        },
+        "leetcode": {
+          "n": 18,
+          "pass": 9
+        }
+      },
+      "byDifficulty": {
+        "easy": {
+          "n": 13,
+          "pass": 13
+        },
+        "hard": {
+          "n": 23,
+          "pass": 1
+        },
+        "medium": {
+          "n": 14,
+          "pass": 5
+        }
+      },
+      "tokens": {
+        "in": 31183,
+        "out": 135042
+      },
+      "avgGenLatencyS": 44.7,
+      "avgEvalDurationS": 0.2
+    },
+    "qwen3.6-plus": {
+      "n": 50,
+      "subsetTotal": 50,
+      "passed": 18,
+      "passAt1Pct": 36,
+      "scoredProblems": 50,
+      "byOutcome": {
+        "pass": 18,
+        "no_code": 27,
+        "wa": 4,
+        "tle": 1
+      },
+      "byPlatform": {
+        "atcoder": {
+          "n": 32,
+          "pass": 11
+        },
+        "leetcode": {
+          "n": 18,
+          "pass": 7
+        }
+      },
+      "byDifficulty": {
+        "easy": {
+          "n": 13,
+          "pass": 12
+        },
+        "hard": {
+          "n": 23,
+          "pass": 1
+        },
+        "medium": {
+          "n": 14,
+          "pass": 5
+        }
+      },
+      "tokens": {
+        "in": 31183,
+        "out": 138986
+      },
+      "avgGenLatencyS": 48,
+      "avgEvalDurationS": 0.3
+    }
+  },
+  "generatedAt": "2026-10-17T16:16:06.239Z"
+}
