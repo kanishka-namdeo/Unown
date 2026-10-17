@@ -2,6 +2,7 @@
 # Official evalplus evaluation pipeline for one model.
 #
 #   ./run-eval.sh <model-id>
+#   RESULTS_ROOT=results/rerun-<date> ./run-eval.sh <model-id>   # fresh receipts
 #
 # Assumes results/<model>/samples.jsonl exists (164 lines, from gen-samples.mjs).
 # Steps (all official evalplus CLI, no patches):
@@ -24,7 +25,7 @@ PYBIN="${PYBIN:-/home/z/.venv/bin/python}"
 export HUMANEVAL_OVERRIDE_PATH="$HERE/dataset/HumanEvalPlus-v0.1.10.jsonl"
 
 cd "$HERE"
-D="results/$MODEL"
+D="${RESULTS_ROOT:-results}/$MODEL"
 [ -f "$D/samples.jsonl" ] || { echo "missing $D/samples.jsonl (run gen-samples.mjs first)"; exit 1; }
 
 # stale results would make the evaluator load-previous or prompt interactively

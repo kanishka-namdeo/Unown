@@ -40,7 +40,10 @@ import { diffLines } from "diff";
 import * as prettier from "prettier";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PI_DIST = "/home/z/my-project/Unown/pi-repo/packages/coding-agent/dist/index.js";
+// Repo-relative (env-overridable) — resolves from this script's location so the
+// benchmark runs from any checkout, not only the original author's machine.
+const PI_DIST = process.env.PI_DIST ||
+    path.join(__dirname, "..", "..", "pi-repo", "packages", "coding-agent", "dist", "index.js");
 const RESULTS_DIR = path.join(__dirname, "unown-results"); // default; overridable via --results-dir
 const DEFAULT_AGENT_DIR = path.join(__dirname, "unown-eval-agent");
 const AGENT_DIR = process.env.PI_CODING_AGENT_DIR || DEFAULT_AGENT_DIR;
@@ -1020,7 +1023,7 @@ function buildSummary(model, records) {
 
     return {
         benchmark: "oh-my-pi typescript-edit-benchmark (106 shipped fixtures)",
-        agent: "Unown pi-repo createAgentSession (in-process) @ /home/z/my-project/Unown/pi-repo",
+        agent: `Unown pi-repo createAgentSession (in-process) @ ${path.dirname(path.dirname(PI_DIST))}`,
         editSemantics: "pi-native replace (edits[]: {oldText,newText} batch; exact-first, fuzzy fallback)",
         harness: "run-unown.mjs — port of omp metaharness adapters/edit runner",
         model, provider: PROVIDER,
