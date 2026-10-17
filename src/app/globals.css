@@ -42,27 +42,48 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Landing-page palette (warm dark). Declared here rather than in
-   * landing.css because Tailwind only resolves @theme in the CSS file that
-   * pulls in tailwindcss. Emits bg-canvas, bg-panel, bg-panel-2, bg-line,
-   * text-ink, text-dim, text-faint, text-glow, border-line and friends.
+  /* Landing-page palette. Declared here rather than in landing.css because
+   * Tailwind only resolves @theme in the CSS file that pulls in
+   * tailwindcss. Emits bg-canvas, bg-panel, bg-panel-2, bg-line, text-ink,
+   * text-dim, text-faint, text-glow, border-line and friends, plus the font
+   * utilities font-pixel / font-display / font-term.
+   *
+   * It is the Game Boy DMG-01 screen, inverted: a page that reads like a
+   * handheld that is switched on, not a modern dark theme with green accents.
+   * The four canonical DMG shades are #0f380f / #306230 / #8bac0f / #9bbc0f —
+   * public-domain facts about a 1989 LCD, and the only "Pokémon art" this page
+   * needs. `glow` IS shade 4, so a `bg-glow` box is literally the game's
+   * dialogue box. `amber` (#ffcb05) and `poke` (#ff6a4d) are the two
+   * cartridge-era accents, used on badges and HP bars, never on paragraphs.
+   *
    * The dashboard keeps the cool zinc tokens above: it is an application, and
    * a tinted canvas reads as a mistake there. Only the marketing page at /
-   * opts in. Ten idle custom properties cost a few hundred bytes on the
-   * dashboard; a split build that silently dropped the palette would cost
-   * a lot more. */
-  --color-canvas: #0c0b0a;
-  --color-panel: #131211;
-  --color-panel-2: #1a1817;
-  --color-line: #272421;
-  --color-line-bright: #3b3733;
-  --color-ink: #f4f1ea;
-  --color-dim: #a8a29a;
-  /* Clears WCAG AA 4.5:1 on panel-2, the darkest surface it lands on, and
-     stays a clear step below `dim` so the ink/dim/faint hierarchy holds. */
-  --color-faint: #8b8279;
-  --color-glow: #34d399;
-  --color-glow-soft: #6ee7b7;
+   * opts in.
+   *
+   * CONTRAST IS A CONTRACT (see landing AGENTS.md Verification). Measured
+   * against panel-2, the highest-luminance surface any text token lands on:
+   *   ink 14.16 · dim 9.30 · faint 5.85 · glow 7.28 · amber 10.48 · poke 5.63
+   * All clear WCAG AA 4.5:1. Re-run the arithmetic before shipping any change
+   * to these values — `line-bright` (1.99) is exempt by design: it is only
+   * ever a border or a bar-chart track, never text. */
+  --color-canvas: #0a140a;
+  --color-panel: #0f1d0f;
+  --color-panel-2: #142614;
+  --color-line: #1f3a1f;
+  --color-line-bright: #2f5a2f;
+  --color-ink: #e9f6d9;
+  --color-dim: #b3cf90;
+  --color-faint: #88a66a;
+  /* DMG shade 4, the lightest screen green. Accent, CTA fill, dialogue box. */
+  --color-glow: #9bbc0f;
+  --color-glow-soft: #c3e06a;
+  /* Cartridge-era accents. */
+  --color-amber: #ffcb05;
+  --color-poke: #ff6a4d;
+
+  --font-pixel: var(--font-press);
+  --font-display: var(--font-pixelify);
+  --font-term: var(--font-vt);
 }
 
 :root {

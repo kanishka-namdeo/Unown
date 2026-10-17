@@ -35,7 +35,7 @@ function Seal() {
     <div className="seal-stage relative flex flex-col items-center">
       <div
         aria-hidden="true"
-        className="absolute -inset-x-10 -inset-y-12 rounded-xl border border-line/70 bg-panel/40"
+        className="absolute -inset-x-10 -inset-y-12 border border-line/70 bg-panel/40"
       />
 
       <div className="relative flex flex-col items-center gap-2 sm:gap-2.5">
@@ -49,7 +49,7 @@ function Seal() {
                 light source rather than five. */}
             {i === 0 ? (
               <span
-                className="seal-halo pointer-events-none absolute left-1/2 top-1/2 size-48 -z-10 rounded-full bg-emerald-500/20 blur-3xl"
+                className="seal-halo pointer-events-none absolute left-1/2 top-1/2 size-48 -z-10 gb-dither opacity-30"
                 aria-hidden="true"
               />
             ) : null}
@@ -99,7 +99,7 @@ export function Hero() {
       {/* one warm glow, top-left, following the left edge of the copy */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -left-40 -top-52 size-[560px] rounded-full bg-emerald-500/8 blur-[130px]"
+        className="pointer-events-none absolute -left-40 -top-52 size-[560px] gb-dither opacity-15"
       />
       <div
         aria-hidden="true"
@@ -108,13 +108,15 @@ export function Hero() {
 
       <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
-          {/* copy */}
-          <div className="max-w-2xl">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
+          {/* copy — min-w-0 so this grid item can shrink below the install
+              <pre>'s min-content; without it the git-clone URL sets the
+              column's intrinsic width and the section clips it on phones. */}
+          <div className="max-w-2xl min-w-0">
+            <p className="gb-label text-[10px] text-glow">
               Open source · MIT · built on the pi agent
             </p>
 
-            <h1 className="mt-5 text-balance text-[2.75rem] font-semibold leading-[1.04] tracking-tight sm:text-6xl lg:text-[4.25rem]">
+            <h1 className="mt-5 font-display text-balance text-[2.75rem] font-semibold leading-[1.04] tracking-tight sm:text-6xl lg:text-[4.25rem]">
               It reads what you write down.
             </h1>
 
@@ -154,7 +156,7 @@ export function Hero() {
 
             {/* Install. For a clone-and-run tool the command is the conversion,
                 so it sits above the fold rather than at the bottom of the page. */}
-            <div className="mt-8 max-w-xl overflow-hidden rounded-md border border-line bg-panel/70">
+            <div className="mt-8 max-w-xl overflow-hidden gb-panel">
               <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
                   five minutes to a smarter terminal

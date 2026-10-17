@@ -95,7 +95,7 @@ function schedule(script: Line[]): Slot[] {
 const TONE: Record<NonNullable<Extract<Line, { kind: "out" }>["tone"]>, string> = {
   dim: "text-faint",
   good: "text-glow-soft",
-  warn: "text-amber-300",
+  warn: "text-amber",
   accent: "text-ink",
 };
 
@@ -220,7 +220,7 @@ export function SessionReplay({ script = SESSION }: { script?: Line[] }) {
         {/* Animated surface — hidden from assistive tech; the list below is the
             accessible equivalent. */}
         <div aria-hidden="true" className="term-lines h-[19rem] overflow-hidden sm:h-[21rem]">
-          <div className="flex h-full flex-col justify-end gap-[3px] p-4 font-mono text-[11.5px] leading-relaxed sm:p-5 sm:text-[12.5px]">
+          <div className="flex h-full flex-col justify-end gap-[3px] p-4 gb-term text-[17px] leading-relaxed sm:p-5 sm:text-[19px]">
             {visible.map(
               (v) =>
                 v && (
@@ -234,7 +234,7 @@ export function SessionReplay({ script = SESSION }: { script?: Line[] }) {
                         ) : null}
                       </span>
                     ) : v.slot.line.kind === "rule" ? (
-                      <span className="text-line-bright">────────────────────────────────</span>
+                      <span className="text-faint">────────────────────────────────</span>
                     ) : (
                       <span className={TONE[v.slot.line.tone ?? "dim"]}>{v.text}</span>
                     )}
@@ -249,7 +249,7 @@ export function SessionReplay({ script = SESSION }: { script?: Line[] }) {
           <button
             type="button"
             onClick={toggle}
-            className="inline-flex size-7 items-center justify-center rounded border border-line bg-panel-2 text-dim transition-colors hover:border-line-bright hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
+            className="inline-flex size-7 items-center justify-center border border-line bg-panel-2 text-dim transition-colors duration-100 [transition-timing-function:steps(2,end)] hover:border-line-bright hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
             aria-label={playing ? "Pause the session replay" : finished ? "Replay the session" : "Play the session replay"}
           >
             {playing ? (
@@ -277,16 +277,16 @@ export function SessionReplay({ script = SESSION }: { script?: Line[] }) {
               jump(ratio * total);
               (e.currentTarget as HTMLElement).focus();
             }}
-            className="relative h-6 flex-1 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
+            className="relative h-6 flex-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-glow [transition-timing-function:steps(2,end)]"
           >
-            <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-line">
+            <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 bg-line">
               <div
-                className="h-full rounded-full bg-glow/70"
+                className="h-full bg-glow/70"
                 style={{ width: `${(t / total) * 100}%` }}
               />
             </div>
             <div
-              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-canvas bg-glow"
+              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 border border-canvas bg-glow"
               style={{ left: `${(t / total) * 100}%` }}
             />
           </div>

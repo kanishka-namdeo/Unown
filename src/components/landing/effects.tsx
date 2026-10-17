@@ -170,7 +170,7 @@ export function LetterRainProvider({ children }: { children: React.ReactNode }) 
         {drops.map((d) => (
           <span
             key={d.key}
-            className="unown-drop select-none font-mono font-bold text-emerald-300"
+            className="unown-drop select-none font-pixel text-glow"
             style={
               {
                 left: `${d.left}%`,

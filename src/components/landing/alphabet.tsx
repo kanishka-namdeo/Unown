@@ -6,7 +6,7 @@ import { Glyph, Mark } from "./glyph";
 import { GLYPH_IDS, MARKS, type GlyphId, type MarkId } from "./glyphs";
 import { LEXICON_BY_ID } from "./lexicon";
 import { useLetterRain } from "./effects";
-import { FadeUp } from "./shell";
+import { FadeUp, SectionHead, TerminalWindow, PixelCursor } from "./shell";
 
 /* ------------------------------------------------------------------ */
 /* background marks                                                    */
@@ -65,23 +65,24 @@ function FormTile({
       onMouseLeave={() => onHover(null)}
       onClick={() => onPick(id)}
       aria-pressed={active}
-      className={`group relative flex aspect-square flex-col items-center justify-center rounded-md border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-glow focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
-        active
-          ? "border-glow/60 bg-glow/8"
-          : "border-line bg-panel/50 hover:border-line-bright"
+      className={`lift group relative flex aspect-square flex-col items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-glow focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
+        active ? "gb-box" : "gb-panel hover:border-line-bright"
       }`}
     >
+      {active ? (
+        <PixelCursor className="absolute left-1.5 top-1.5 size-2 text-canvas" />
+      ) : null}
       <Glyph
         id={id}
         weight="heavy"
         tone={active ? "lit" : "dim"}
-        className={`h-[58%] w-[58%] transition-colors duration-200 ${
-          active ? "text-glow" : "text-faint group-hover:text-dim"
+        className={`h-[58%] w-[58%] transition-colors duration-100 ${
+          active ? "text-canvas" : "text-faint group-hover:text-dim"
         }`}
       />
       <span
-        className={`mt-1 font-mono text-[9px] uppercase transition-colors ${
-          active ? "text-glow" : "text-dim"
+        className={`mt-1 gb-label text-[8px] transition-colors ${
+          active ? "text-canvas" : "text-dim"
         }`}
       >
         {id}
@@ -114,12 +115,9 @@ export function AlphabetSection() {
       <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid gap-6 max-w-2xl">
           <FadeUp>
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-              The alphabet
-            </p>
-            <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+            <SectionHead kicker="The alphabet">
               The name is a pun you have to read twice.
-            </h2>
+            </SectionHead>
           </FadeUp>
           <FadeUp delay={0.06}>
             <p className="text-pretty leading-relaxed text-dim">
@@ -165,43 +163,42 @@ export function AlphabetSection() {
           {/* the decoding */}
           <FadeUp delay={0.08} className="lg:order-2">
             <div className="lg:sticky lg:top-24">
-              <div
-                aria-live="polite"
-                className="rounded-lg border border-line bg-panel/80 p-5 backdrop-blur-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="grid size-16 shrink-0 place-items-center rounded-md border border-glow/25 bg-glow/5">
-                    <Glyph id={entry.id} weight="heavy" tone="lit" className="size-11 text-glow" />
+              <TerminalWindow title={`form ${ordinal} / 28 · ${entry.id}`}>
+                <div aria-live="polite" className="p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="grid size-16 shrink-0 place-items-center border-[3px] border-canvas bg-glow/10">
+                      <Glyph id={entry.id} weight="heavy" tone="lit" className="size-11 text-glow" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="gb-term text-[24px] leading-none text-ink">{entry.id}</p>
+                      <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
+                        form {ordinal} / 28
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-mono text-2xl leading-none text-ink">{entry.id}</p>
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-                      form {ordinal} / 28
+
+                  <figure className="mt-5 border-t border-line pt-4">
+                    <blockquote className="quote font-term text-[15px] italic leading-relaxed text-dim">
+                      {entry.lore}
+                    </blockquote>
+                    <figcaption className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-dim">
+                      {entry.loreSrc ?? "Unown"}
+                    </figcaption>
+                  </figure>
+
+                  <div className="mt-5 border-t border-line pt-4">
+                    <p className="gb-label text-[9px] text-glow">
+                      in unown
                     </p>
+                    <p className="mt-2 text-[13px] leading-relaxed text-ink">{entry.means}</p>
+                    {entry.proof ? (
+                      <p className="mt-3 inline-block border border-line bg-canvas/60 px-2 py-0.5 font-mono text-[10px] text-faint">
+                        {entry.proof}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
-
-                <figure className="mt-5 border-t border-line pt-4">
-                  <blockquote className="text-[13px] italic leading-relaxed text-dim">
-                    {entry.lore}
-                  </blockquote>
-                  <figcaption className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-dim">
-                    {entry.loreSrc ?? "Unown"}
-                  </figcaption>
-                </figure>
-
-                <div className="mt-5 border-t border-line pt-4">
-                  <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-glow">
-                    in unown
-                  </p>
-                  <p className="mt-2 text-[13px] leading-relaxed text-ink">{entry.means}</p>
-                  {entry.proof ? (
-                    <p className="mt-3 inline-block rounded border border-line bg-canvas/60 px-2 py-0.5 font-mono text-[10px] text-faint">
-                      {entry.proof}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
+              </TerminalWindow>
             </div>
           </FadeUp>
         </div>

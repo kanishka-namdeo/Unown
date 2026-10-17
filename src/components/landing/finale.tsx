@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { Glyph } from "./glyph";
 import { GLYPHS, type GlyphId } from "./glyphs";
 import { useAlphabetWake } from "./effects";
-import { FadeUp, GITHUB_URL, DOCS_URL } from "./shell";
+import { FadeUp, GITHUB_URL, DOCS_URL, SectionHead, ContinueArrow } from "./shell";
 
 const DEFAULT_WORD = "UNKNOWN";
 const MAX = 9;
@@ -28,16 +28,16 @@ function Spellbox() {
   const known = letters.length === 0;
 
   return (
-    <div className="rounded-lg border border-line bg-panel/70 p-5">
+    <div className="gb-box p-5">
       <label
         htmlFor="spellbox"
-        className="font-mono text-[10px] uppercase tracking-[0.16em] text-glow"
+        className="gb-label text-[10px] text-canvas"
       >
         spell it in unown
       </label>
 
-      <div className="mt-3 flex items-center gap-3 border-b border-line pb-2 focus-within:border-glow/60">
-        <span aria-hidden="true" className="font-mono text-sm text-faint">
+      <div className="mt-3 flex items-center gap-3 border-b border-canvas/40 pb-2 focus-within:border-canvas">
+        <span aria-hidden="true" className="font-mono text-sm text-canvas/80">
           $
         </span>
         <input
@@ -48,9 +48,9 @@ function Spellbox() {
           spellCheck={false}
           autoComplete="off"
           placeholder="type anything"
-          className="w-full bg-transparent font-mono text-sm text-ink outline-none placeholder:text-dim"
+          className="w-full bg-transparent font-mono text-sm text-canvas outline-none placeholder:text-canvas/60"
         />
-        <span className="shrink-0 font-mono text-[10px] tabular-nums text-faint">
+        <span className="shrink-0 font-mono text-[10px] tabular-nums text-canvas/80">
           {shown.length}/{MAX}
         </span>
       </div>
@@ -63,7 +63,7 @@ function Spellbox() {
         aria-label={known ? "no letters yet" : `${raw.toUpperCase()} spelled in Unown`}
       >
         {known ? (
-          <p className="font-mono text-[11px] text-faint">
+          <p className="font-mono text-[11px] text-canvas/80">
             a letter, or one of the two punctuation forms
           </p>
         ) : (
@@ -75,11 +75,11 @@ function Spellbox() {
                   id={id}
                   weight="heavy"
                   tone="lit"
-                  className="size-9 text-glow"
+                  className="size-9 text-canvas"
                 />
               ))}
             </div>
-            <p className="mt-4 font-mono text-[11px] text-faint">
+            <p className="mt-4 font-mono text-[11px] text-canvas/80">
               {raw.toUpperCase().slice(0, MAX)}
               {letters.length > MAX ? "…" : ""}
             </p>
@@ -87,12 +87,16 @@ function Spellbox() {
         )}
       </div>
 
-      <p className="mt-4 border-t border-line pt-3 text-[11px] leading-relaxed text-faint">
+      <p className="mt-4 border-t border-canvas/40 pt-3 text-[11px] leading-relaxed text-canvas/80">
         {Object.keys(GLYPHS).length} forms, all inline SVG — there is no font file behind
         this and no image sprite. If a letter is missing from your keyboard,{" "}
-        <code className="font-mono text-dim">!</code> and <code className="font-mono text-dim">?</code>{" "}
+        <code className="font-mono text-canvas">!</code> and <code className="font-mono text-canvas">?</code>{" "}
         always work.
       </p>
+
+      <div className="mt-3 flex justify-end">
+        <ContinueArrow className="text-canvas" />
+      </div>
     </div>
   );
 }
@@ -105,31 +109,21 @@ export function FinaleSection() {
   const { woke } = useAlphabetWake();
 
   return (
-    <section className="relative overflow-hidden border-t border-line py-24 sm:py-32">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 size-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/8 blur-[130px]"
-      />
-
+    <section className="relative border-t border-line py-24 sm:py-32">
       <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-16">
           <FadeUp>
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-              Where to start
-            </p>
-            <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+            <SectionHead
+              kicker="Where to start"
+              lead="Clone it, run one session, and come back tomorrow with memory that already knows what you told it. Nothing to sign up for. If it is not useful, you have lost an afternoon and gained a very opinionated terminal agent."
+            >
               Stop re-explaining your codebase.
-            </h2>
-            <p className="mt-4 max-w-lg text-pretty leading-relaxed text-dim">
-              Clone it, run one session, and come back tomorrow with memory that already
-              knows what you told it. Nothing to sign up for. If it is not useful, you have
-              lost an afternoon and gained a very opinionated terminal agent.
-            </p>
+            </SectionHead>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a
                 href="#quickstart"
-                className="inline-flex items-center gap-2 rounded-md bg-glow px-5 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-glow-soft"
+                className="gb-btn gb-label inline-flex items-center gap-2 px-5 py-3 text-[10px] font-normal"
               >
                 Get started
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -138,7 +132,7 @@ export function FinaleSection() {
                 href={GITHUB_URL}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="inline-flex items-center gap-2 rounded-md border border-line px-5 py-2.5 text-sm text-dim transition-colors hover:border-line-bright hover:text-ink"
+                className="gb-btn-dark gb-label inline-flex items-center gap-2 px-5 py-3 text-[10px] font-normal"
               >
                 Star on GitHub
               </a>

@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Pixelify_Sans,
+  Press_Start_2P,
+  VT323,
+} from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -14,17 +20,46 @@ const geistMono = Geist_Mono({
 });
 
 /**
- * One serif, used only for attributed pull-quotes on the landing page — the
- * Pokédex entries and the name story. Instrument Serif (OFL-1.1) is a display
- * face, so it never carries body copy. Warp's design system made the same call
- * for the same reason: a serif italic signals "these are someone else's words,
- * quoted", which is exactly the semantic the lore sections need.
+ * The three retro faces, all SIL OFL-1.1 so the license is the same as the
+ * two we already ship. Each has exactly one job and none of them is body copy:
+ *
+ *  - `font-pixel`  (Press Start 2P). Chrome only — eyebrows, buttons, badges,
+ *                  nav items, kbd hints. It is a fixed-width 8x8 bitmap face,
+ *                  so it looks right at 9-12px and terrible in a sentence.
+ *                  Never set more than a few words in it.
+ *  - `font-display` (Pixelify Sans). Headings. Pixel-quantized outlines with
+ *                  proportional advance widths, which is what makes a
+ *                  90-character H2 readable where Press Start 2P would run to
+ *                  five ragged lines.
+ *  - `font-term`  (VT323). Terminal bodies, dialogue boxes and attributed
+ *                  quotations. It replaces the old Instrument Serif: on a Game
+ *                  Boy page a refined serif was the one modern note left, and
+ *                  a quoted Pokédex entry is game text, not editorial. `.quote`
+ *                  still means "someone else's words" — it just says so in the
+ *                  face the console would have used.
+ *
+ * Geist Sans stays for body copy. A pixel body face is a nostalgia trap: it
+ * burns the reader by paragraph three and costs the Lighthouse 1.00 the page
+ * is contracted to hold. The retro reads from the palette, the boxes and the
+ * chrome — not from punishing the paragraphs.
  */
-const quoteSerif = Instrument_Serif({
-  variable: "--font-quote",
+const pixelFont = Press_Start_2P({
+  variable: "--font-press",
   subsets: ["latin"],
   weight: "400",
-  style: ["normal", "italic"],
+  display: "swap",
+});
+
+const displayFont = Pixelify_Sans({
+  variable: "--font-pixelify",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const termFont = VT323({
+  variable: "--font-vt",
+  subsets: ["latin"],
+  weight: "400",
   display: "swap",
 });
 
@@ -66,7 +101,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${quoteSerif.variable} antialiased bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} ${pixelFont.variable} ${displayFont.variable} ${termFont.variable} antialiased bg-background text-foreground`}
       >
         {children}
         <Toaster />

@@ -6,7 +6,7 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
 
 ## Ownership
 
-- Owns: `install.sh`, `start.sh`, `stop.sh` (product scripts), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), and the README asset pipeline (`shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`).
+- Owns: `install.sh`, `start.sh`, `stop.sh` (product scripts), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), the README asset pipeline (`shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`), and the landing-page verification pair (`landing_shots.mjs`, `contrast_audit.mjs`).
 - Sandbox-template artifacts also parked here (NOT part of Unown): `init-fullstack.sh`, `dev-all.sh`, `scaffold.tar` — installed by the hosting sandbox, tracked only for provenance.
 
 ## Local Contracts
@@ -34,6 +34,27 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
   are whitespace-insensitive because the production bundle is minified, and it
   distinguishes `src=` subresources from `href=` hyperlinks. A Bulbapedia link in a
   sources list is the attribution rule working, not an asset leak.
+- Landing verification contract (the visual + contrast gate for
+  `src/components/landing/`; both need the production standalone server, not
+  the dev server, because that is what Vercel serves):
+  - `landing_shots.mjs` — photographs the page: derives its section plan from
+    the DOM (a section you add is photographed without editing the script),
+    shoots every top-level section plus a reduced-motion pass, and with
+    `--mobile` a 390px pass, into `download/landing/`. Exits non-zero on any
+    console error. `LANDING_SHOTS_URL` overrides the base URL (default
+    `http://localhost:3111`). Screenshots must be LOOKED at — a green run that
+    nobody viewed is not a visual check.
+  - `contrast_audit.mjs` — WCAG AA measured on the rendered page: walks every
+    visible text node, resolves its computed colour and the composited
+    background actually behind it, and exits non-zero on any failure below
+    4.5:1 (3:1 for large text). Report lands in
+    `download/landing/contrast_report.json`. Two traps it already handles, do
+    not reintroduce them: colours must be normalised by painting a pixel and
+    reading bytes (Chromium serialises computed colours as `lab()` and
+    `fillStyle` readback as hex, so an `rgb()` regex matches nothing and the
+    audit silently "passes" by scanning zero nodes), and the scratch canvas
+    must be cleared before each paint or translucent colours composite over
+    the previous sample.
 - Sandbox verification contract: `bwrap_smoke.sh` (profile-level isolation suite, 25 checks; invokes the vendored `pi-repo/packages/self-learning/native/bin/bwrap` directly) and `verify_sandbox.mjs` (engine-level integration suite, 12 checks) must both be fully green before committing changes to the OS sandbox or refreshing the vendored bwrap binary.
 - Theme verification contract: `check_theme.mjs` validates the unown brand theme (`pi-repo/packages/self-learning/src/theme.ts`) against pi's theme schema (51 required color tokens, value formats, var resolution) — run it after any palette change.
 - New ad-hoc verification scripts go here (not `/tmp`) when their results matter to the worklog; keep them re-runnable.

@@ -13,8 +13,8 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 ## Local Contracts
 
 - Entry composition lives in `src/app/dashboard/page.tsx` (`DashboardProviders` + `Header` + the seven `*-tab.tsx` surfaces in a shadcn `Tabs`). Adding a tab = new component in `src/components/dashboard/`, registered in `src/app/dashboard/page.tsx`.
-- `src/app/page.tsx` is the marketing landing page, not the dashboard, and it is **composition only** — every section lives in `src/components/landing/`, which owns its own contract doc. It imports `src/app/landing.css` for its stylesheet and the warm-dark palette (declared in `globals.css`, see below).
-- The two pages deliberately look different: the dashboard keeps the cool zinc tokens because it is an application, and only the marketing page is warm-dark. Do not unify them.
+- `src/app/page.tsx` is the marketing landing page, not the dashboard, and it is **composition only** — every section lives in `src/components/landing/`, which owns its own contract doc. It imports `src/app/landing.css` for its stylesheet and the retro DMG-green palette (declared in `globals.css`, see below).
+- The two pages deliberately look different: the dashboard keeps the cool zinc tokens because it is an application, and only the marketing page is retro (Game Boy DMG green-screen). Do not unify them.
 - All engine data flows through `src/lib/agent-api.ts` (REST + SSE) and `src/lib/agent-types.ts` (schema types mirroring the engine's API). Components never fetch engines directly.
 - Deployment modes (DIRECT vs GATEWAY) and all fetch/SSE URL handling live in `src/lib/agent-api.ts` — see `src/lib/AGENTS.md`; never hardcode engine URLs elsewhere.
 - `src/lib/db.ts` + root `prisma/schema.prisma` are legacy scaffold (User/Post models, unused). Do not build features on them; live data comes from the engine API. Keep `db:*` scripts working (Prisma client contract: `src/lib/AGENTS.md`).

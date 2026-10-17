@@ -137,4 +137,4 @@ Default section order:
 - `pi-repo/packages/self-learning/AGENTS.md` — the self-learning engine, Unown's core transformation layer
 - `docs/AGENTS.md` — user-facing usage docs (quickstart/providers/usage/subagents/skills/memory/configuration/troubleshooting)
 - `blueprint/AGENTS.md` — Unown v1 (Claude Code harness) frozen reference
-- `scripts/AGENTS.md` — bootstrap scripts and session verification artifacts
+- `scripts/AGENTS.md` — bootstrap scripts, session verification artifacts, the README asset pipeline, and the landing-page verification pair (screenshot + contrast audit)

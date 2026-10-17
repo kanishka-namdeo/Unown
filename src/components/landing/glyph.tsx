@@ -49,17 +49,25 @@ function Eye({ r, slit, tone }: { r: number; slit: number; tone: "dim" | "lit" }
   );
 }
 
-/** Colour pairs for the two eye states. Set as inline vars on the svg. */
+/**
+ * Colour pairs for the two eye states, set as inline vars on the svg.
+ *
+ * DMG shades, not emeralds: `dim` is a void in the darkest screen green with
+ * a `line-bright` rim, `lit` steps to `glow`/`glow-soft`. Deliberately no
+ * colour brighter than shade 4 — the whole point of the palette is that
+ * nothing on this page could be lit by a Game Boy that a Game Boy could not
+ * already produce.
+ */
 export const EYE_TONES: Record<"dim" | "lit", CSSProperties> = {
   dim: {
-    "--unown-eye": "#0c0b0a",
-    "--unown-eye-rim": "#3b3733",
-    "--unown-eye-lit": "#8b857c",
+    "--unown-eye": "#0a140a",
+    "--unown-eye-rim": "#2f5a2f",
+    "--unown-eye-lit": "#5f7f4a",
   } as CSSProperties,
   lit: {
-    "--unown-eye": "#05070a",
-    "--unown-eye-rim": "#6ee7b7",
-    "--unown-eye-lit": "#ecfdf5",
+    "--unown-eye": "#04100a",
+    "--unown-eye-rim": "#9bbc0f",
+    "--unown-eye-lit": "#c3e06a",
   } as CSSProperties,
 };
 

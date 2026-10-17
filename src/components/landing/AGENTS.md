@@ -70,6 +70,58 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
   must never fail a build: any error, timeout or shape mismatch renders the
   fallback. It sets `revalidate: 3600`, which is what makes `/` ISR.
 
+### The retro design system
+
+The page is a Game Boy that is switched on. Everything below is the local
+spelling of that: sections compose these parts, they do not invent parallel
+ones.
+
+- **The palette is DMG-01, inverted.** Declared in the `@theme` block of
+  `src/app/globals.css` (see root `src/AGENTS.md` for why it lives there).
+  The four canonical shades `#0f380f / #306230 / #8bac0f / #9bbc0f` are
+  public-domain facts about a 1989 LCD — using them is not using Pokémon art,
+  which is why this page can look the way it does without shipping any.
+  Tokens: `canvas` `panel` `panel-2` (dark greens), `line` `line-bright`
+  (borders), `ink` `dim` `faint` (text), `glow`/`glow-soft` (DMG shade 4 and
+  a step above it), plus `amber` `#ffcb05` and `poke` `#ff6a4d` as
+  cartridge-era accents.
+- **Three faces, one job each** (loaded in `src/app/layout.tsx`):
+  `font-pixel` (Press Start 2P) for chrome only — eyebrows, buttons, badges,
+  tile captions, kbd hints, never more than a few words; `font-display`
+  (Pixelify Sans) for every `h1`/`h2`; `font-term` (VT323) for terminal
+  bodies, dialogue text and `.quote`. Geist Sans stays for paragraphs — a
+  pixel body face is a nostalgia trap that also costs the Lighthouse 1.00.
+- **Console furniture lives in `landing.css` and `shell.tsx`.** Use these
+  rather than re-deriving the look:
+  - `.gb-box` — light dialogue box (bright fill, dark frame, light rim). The
+    correct surface for a quotation, a dex entry, a call-to-action.
+  - `.gb-panel` — dark console panel with a lit rim. The correct surface for
+    a card. Square corners.
+  - `.gb-btn` / `.gb-btn-dark` — pressable buttons; the press is an inset
+    bevel plus a `steps(2)` translate.
+  - `.gb-hp` — the stat bar. Always pair it with the printed number; colour
+    is never the only signal.
+  - `.gb-label`, `.gb-h`, `.gb-term`, `.gb-inset`, `.gb-cont` — pixel label,
+    pixel heading, terminal body, inner hairline, blinking continue arrow.
+  - `PixelCursor` (battle-menu `▶`), `ContinueArrow` (blinking `▼`),
+    `HpBar` (label + bar + figure) in `shell.tsx`.
+- **Square corners are the rule.** Nothing on this page uses `rounded-*`.
+  A pixel language with antialiased corner radii is a contradiction, and the
+  one-pixel chamfer people remember from Gen 1 cannot be faked cleanly.
+- **Stepped motion, never eased, for anything that is furniture.** `.lift`
+  and `.link-sweep` already use `steps()`. Hover states on boxes and buttons
+  advance in discrete frames; scroll reveals and `FadeUp` keep their existing
+  smooth behaviour, because those are page motion rather than UI state.
+- **The box rule in one line:** on a dark canvas an offset drop shadow paints
+  nothing, so depth comes from a stacked ring — dark ring, light gap, dark
+  edge. `.gb-box` and `.gb-panel` already do this; do not add `shadow-*` on
+  top of them, it will fight their `box-shadow`.
+- **No official art, still.** Nothing Pokémon-derived is vendored, hotlinked
+  or reproduced: no sprite, card, logo, Poké Ball or Pokémon font. The
+  nostalgia is carried by palette, geometry, type and the hand-drawn script.
+  Fonts are SIL OFL-1.1 (Press Start 2P, Pixelify Sans, VT323) — the same
+  license as the Geist faces.
+
 ## Work Guidance
 
 - Sections are flat files named after what they show (`alphabet.tsx`,
@@ -86,10 +138,14 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
 - Voice: concrete, honest about limits, no buzzwords. The engine section gets
   the whole "integrity" section because for a self-modifying agent that is the
   objection that decides installs. Keep the "what we did not run" box.
-- Typography: Geist Sans for everything, Geist Mono for code/eyebrows/kbd,
-  and `.quote` (Instrument Serif) **only** for attributed quotations — it
-  signals "someone else's words, quoted" and must never carry body copy.
-- The dashboard's cool zinc palette is untouched. Only this page is warm-dark.
+- Typography: `font-display` (Pixelify Sans) for headings, `font-pixel`
+  (Press Start 2P) for chrome labels, `font-term` (VT323) for terminal and
+  dialogue text, Geist Sans for paragraphs, and `.quote` (VT323) **only** for
+  attributed quotations — it signals "someone else's words, quoted" and must
+  never carry body copy. `.quote` used to be Instrument Serif; the serif was
+  the one modern note left on a Game Boy page, and a quoted dex entry is game
+  text, so the face changed but the rule did not.
+- The dashboard's cool zinc palette is untouched. Only this page is retro.
 
 ## Verification
 
@@ -97,8 +153,12 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
 - `bun run build` — exit 0. `/` must prerender; the star-count fetch is the only
   network call and it is wrapped.
 - Visual check is required, not optional. Serve the production build
-  (`$env:PORT=3111; $env:NODE_ENV=production; bun .next/standalone/server.js`) and
-  screenshot `/` at hero, alphabet, loop, benchmarks and footer.
+  (`$env:PORT=3111; $env:NODE_ENV=production; bun .next/standalone/server.js`)
+  and run `bun scripts/landing_shots.mjs` — it photographs every top-level
+  section plus a reduced-motion pass into `download/landing/`, and exits
+  non-zero on a console error. The plan is derived from the DOM, so a section
+  you add is photographed without editing the script. Look at the output; a
+  green run that nobody looked at is not a visual check.
 - Tab through `/`: skip link, alphabet tiles, loop tabs (arrows/Home/End), the
   session scrubber (arrows/Home/End/Space), the spellbox, the accordion.
 - Re-run the page with `prefers-reduced-motion: reduce` — every reveal must
@@ -113,14 +173,21 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
 - `bun scripts/verify-deploy.mjs` asserts the live deployment after any push to
   `main`. A green local build says nothing about whether the deploy landed, so
   this is the gate, not `bun run build`.
-- **Contrast is a contract, not a vibe.** Every text token clears WCAG AA 4.5:1
-  on the darkest surface it lands on: `ink` 17.4, `dim` 7.0, `faint` 4.7, `glow`
-  10.2. `--color-faint` was `#6d675f` (3.16:1 on panel-2) and had to go to
-  `#8b8279` because it carries 10–11px captions, which are normal text, not
-  large text. If you re-tune the palette, re-run the arithmetic before shipping
-  it. `--color-line-bright` (1.67) is exempt by design: it is only ever a
-  border or a bar-chart track, never text and never the sole carrier of a
-  state.
+- **Contrast is a contract, not a vibe, and it is measured, not remembered.**
+  `bun scripts/contrast_audit.mjs` (against the production build, same base URL
+  convention as `landing_shots.mjs`) walks every visible text node and fails
+  the run below AA; it is the gate for this paragraph, not the arithmetic
+  below. Every text token clears 4.5:1 on `panel-2`, the highest-luminance
+  surface any of them lands on: `ink` 14.16, `dim` 9.30, `faint` 5.85, `glow`
+  7.28, `amber` 10.48, `poke` 5.63. Light boxes are `text-canvas` on `bg-glow`
+  at 8.59, and dark text on the DMG shade-4 fill is 6.02. `line-bright` (1.99)
+  is exempt by design: it is only ever a border or a bar-chart track, never
+  text and never the sole carrier of a state — the audit caught it used as a
+  `──` terminal rule once, and the rule was changed to `text-faint` rather
+  than the exemption widened. `faint` has been moved before for exactly this
+  reason (`#6d675f` failed at 3.16 while carrying 10-11px captions, which are
+  normal text, not large text). If you re-tune the palette, re-run the audit
+  before shipping it.
 
 ## Child DOX Index
 

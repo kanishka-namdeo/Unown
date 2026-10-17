@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Glyph } from "./glyph";
 import { WEIGHT } from "./glyphs";
-import { FadeUp } from "./shell";
+import { FadeUp, SectionHead, ContinueArrow } from "./shell";
 
 /**
  * The Pokédex card. Every line is either a short attributed quotation of game
@@ -105,29 +105,24 @@ export function FieldNotesSection() {
     <section id="field-notes" className="scroll-mt-16 border-y border-line bg-panel/40 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-glow">
-            Field notes
-          </p>
-          <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+          <SectionHead
+            kicker="Field notes"
+            lead="A developer tool called unown needs to explain itself twice, so here is both readings. The Pokémon side is lore, quoted and attributed. The engineering side is the part you can check."
+          >
             On the name, and on the letters.
-          </h2>
-          <p className="mt-4 text-pretty leading-relaxed text-dim">
-            A developer tool called <span className="text-ink">un</span>own needs to explain
-            itself twice, so here is both readings. The Pokémon side is lore, quoted and
-            attributed. The engineering side is the part you can check.
-          </p>
+          </SectionHead>
         </FadeUp>
 
         <div className="mt-12 grid gap-8 lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-12">
           {/* the dex card */}
           <FadeUp>
-            <div className="overflow-hidden rounded-lg border border-line bg-panel/80">
+            <div className="gb-panel overflow-hidden">
               <div className="flex items-start gap-4 border-b border-line p-5">
-                <div className="grid size-16 shrink-0 place-items-center rounded-md bg-canvas">
+                <div className="grid size-16 shrink-0 place-items-center bg-canvas">
                   <Glyph id="?" weight="heavy" tone="lit" className="size-11 text-glow" />
                 </div>
                 <div className="min-w-0 pt-1">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-glow">
+                  <p className="gb-label text-[10px] text-glow">
                     Symbol
                   </p>
                   <p className="mt-1 text-lg font-medium leading-none text-ink">Unown</p>
@@ -138,19 +133,24 @@ export function FieldNotesSection() {
               <div className="space-y-2 border-b border-line px-5 py-4">
                 {FACTS.map(([k, v]) => (
                   <div key={k} className="flex gap-3 text-[11.5px]">
-                    <span className="w-16 shrink-0 font-mono text-faint">{k}</span>
+                    <span className="gb-label w-16 shrink-0 text-[8px] text-faint">{k}</span>
                     <span className="min-w-0 text-dim">{v}</span>
                   </div>
                 ))}
               </div>
 
               <figure className="p-5">
-                <blockquote className="quote text-[17px] leading-relaxed text-ink italic">
-                  “This Pokémon is shaped like ancient writing. It is a mystery as to which
-                  came first, the ancient writings or the various UNOWN. Research into this
-                  topic is ongoing but nothing is known.”
-                </blockquote>
-                <figcaption className="mt-3 font-mono text-[9.5px] uppercase tracking-[0.14em] text-faint">
+                <div className="gb-box p-4">
+                  <blockquote className="quote text-[20px] leading-relaxed text-canvas">
+                    “This Pokémon is shaped like ancient writing. It is a mystery as to which
+                    came first, the ancient writings or the various UNOWN. Research into this
+                    topic is ongoing but nothing is known.”
+                  </blockquote>
+                  <div className="mt-3 flex justify-end">
+                    <ContinueArrow className="text-canvas" />
+                  </div>
+                </div>
+                <figcaption className="mt-3 gb-label text-[9px] text-faint">
                   Pokédex · Ruby / Sapphire
                 </figcaption>
                 <p className="mt-4 text-[12px] leading-relaxed text-dim">
@@ -165,7 +165,7 @@ export function FieldNotesSection() {
 
           {/* what we took */}
           <FadeUp delay={0.08}>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-glow">
+            <p className="gb-label text-[10px] text-glow">
               What we borrowed, and what we built
             </p>
             <div className="mt-5 border-t border-line">
@@ -185,7 +185,7 @@ export function FieldNotesSection() {
             </p>
 
             <div className="mt-6 border-t border-line pt-5">
-              <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-dim">
+              <p className="gb-label text-[9.5px] text-dim">
                 Sources
               </p>
               <ul className="mt-3 space-y-1.5 text-[11.5px]">

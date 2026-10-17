@@ -3,7 +3,9 @@
 Why the marketing page (`/`) looks the way it does, and the sourcing rules that
 keep its claims defensible. First written 2026-10 when the page was a
 conventional hero-plus-features layout; rewritten after the page was rebuilt
-around a purpose-drawn alphabet.
+around a purpose-drawn alphabet; rewritten again when that page was re-skinned
+as a Game Boy — the structure above barely moved, but the palette, type and
+surface treatment all did, and the reasoning for each is below.
 
 ---
 
@@ -71,8 +73,32 @@ the Pokémon and an agent that reads its own memory tiers.
 | "Work → Learn → Dream" as three static cards | The same three steps as tabs over the engine's real note template, log strings and AutoDream-written memory | The formats are the proof; a diagram of the idea is not |
 | "Any model" as a row of text pills | Nine tiles with vendored CC0 Simple Icons marks, plus a note on why two are text | Named marks read faster than pills; the two omissions are themselves a trust signal |
 | Benchmarks as a 4-up card grid | Full-bleed headline row (a deliberate rhythm break), then four tracks, then a "what we did not run" box | Full-bleed breaks a page that has started to feel like one long column |
-| Cold zinc throughout | Warm-dark palette on `/` only | The dashboard is an application and a tinted canvas reads as a mistake there; the marketing page is a choice |
-| One font pair | Geist Sans + Geist Mono + Instrument Serif, quoted only | A serif italic signals "someone else's words, quoted", which is exactly what the Pokédex entries are |
+| Cold zinc throughout | Game Boy DMG-green palette on `/` only | The dashboard is an application and a tinted canvas reads as a mistake there; the marketing page is a choice — and the product is a terminal agent with a TUI, so it is drawn as the screen it lives in |
+| One font pair | Geist Sans for body + three pixel faces for chrome, headings and terminal text | A serif italic used to signal "someone else's words, quoted"; on a Game Boy page the quoted word is game text, so `.quote` is VT323 and the serif was dropped |
+
+## Part 3b — Why the page is a Game Boy
+
+The second redesign. The alphabet stayed; everything it is printed on changed.
+
+- **The palette is DMG-01, inverted.** `#0f380f / #306230 / #8bac0f / #9bbc0f`
+  are public-domain facts about a 1989 LCD, which is what lets the page look
+  like this without shipping any Pokémon art. The canvas is the darkest of the
+  four pushed one step down (`#0a140a`); `bg-glow` *is* the DMG shade-4 fill,
+  so a dialogue box on this page is literally the game's dialogue box.
+- **Two accents, both cartridge-era.** Pokémon yellow `#ffcb05` and Poké-Ball
+  red `#ff6a4d`, used sparingly — stat figures and deny states, never fills.
+- **Depth is stacked rings, not drop shadows.** On a dark canvas an offset
+  shadow paints nothing, so `.gb-box` / `.gb-panel` build a dark ring, a light
+  gap and a dark edge instead.
+- **Square corners, everywhere.** A pixel language with antialiased corner
+  radii is a contradiction; the one-pixel chamfer people remember from Gen 1
+  cannot be faked cleanly.
+- **Stepped motion for furniture, smooth for page motion.** Buttons, hovers and
+  toggles advance in `steps(2)` frames like a sprite swap; scroll reveals keep
+  their smooth interpolation because they are page motion, not UI state.
+- **The screen has a screen.** A 4px LCD pixel grid sits over the canvas and a
+  fixed CRT scanline layer sits over that — the grid is the screen, the
+  scanlines are the camera.
 
 ## Part 4 — Motion rules
 
@@ -157,8 +183,9 @@ Everything shipped is either generated here or explicitly licensed:
 | Asset | Source | Licence | How it ships |
 |---|---|---|---|
 | The 28-form script | drawn in this repo | ours | inline SVG path data |
-| Grain texture | inline `feTurbulence` data URI | ours (generated) | ~300 bytes in `landing.css` |
-| Instrument Serif | Google Fonts | OFL-1.1 | self-hosted by `next/font`, attributed quotes only |
+| LCD pixel grid + CRT scanlines | repeating gradients in `landing.css` | ours (generated) | a few hundred bytes, no `feTurbulence`, no network request |
+| Press Start 2P, Pixelify Sans, VT323 | Google Fonts | OFL-1.1 | self-hosted by `next/font`; pixel chrome, headings and terminal/dialogue text |
+| Geist Sans | Vercel | OFL-1.1 | self-hosted by `next/font`; all body copy — a pixel body face costs readability and the Lighthouse 1.00 |
 | Provider marks | Simple Icons | CC0-1.0 | path data vendored by `scripts/vendor-provider-marks.mjs` |
 | Star count | `api.github.com` | public API | fetched at build/ISR, with a hard fallback |
 
