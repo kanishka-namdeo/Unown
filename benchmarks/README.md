@@ -58,7 +58,13 @@ Fixed along the way (see worklog for details):
   filesystems) and served stale credential/model caches; now includes a content digest.
 - Bun's non-hoisted `node_modules` layout breaks cross-package `vi.mock("openai")` in
   coding-agent tests; any `npm exec` can prune per-package store symlinks (repair:
-  re-run `bun install`, or use the relink script in the worklog appendix).
+  re-run `bun install`, or use the relink script in the worklog appendix). Root-caused
+  2026-10-17: the coding-agent test file could not resolve `openai` from its own
+  package, so the mock never applied — fixed properly by declaring `openai` as a
+  coding-agent devDependency (bun install maintains the store symlink). The npm
+  workspace runner can still die mid-suite on the root `vitest/config` resolution;
+  the robust verification path is per-workspace runs (see the 2026-10-17
+  consolidated receipts in `RESULTS.md`).
 
 ## Track 2 — Aider polyglot subset (`polyglot/`)
 
