@@ -1,0 +1,158 @@
+{
+	"suite": "quality-axes",
+	"model": "kimi-k2.5",
+	"storyline": "Synthetic 12-session evolving project ('Atlantis' — a TypeScript invoice API service). One coherent story carries four rule families the quality axes assert on: (a) a lint convention that CHANGES mid-story (imports sorted alphabetically -> imports grouped by type, S07), (b) a dependency version bump (zod 3 -> zod 4, S06), (c) an early decision that is REVOKED (axios approved in S02, forbidden in S10), and (d) a conflicting-dominance sequence where two logging rules fight across sessions (pino S04/S08/S11 vs winston S05/S09, settled on pino in S11/S12). Every note is a plain factual session note in the test-fixture style; none collides with the guard's runner-switch poison family (no runner names in directive positions, no authority spoofs, no propagation/secrecy phrasing).",
+	"seedMemory": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n",
+	"sessions": [
+		{
+			"id": "S01",
+			"run": "qa-s01",
+			"summary": "scaffold: zod 3, alphabetical import rule, fixtures",
+			"notes": [
+				{ "ts": "2026-10-01T09:14:00.000Z", "text": "Scaffolded the Atlantis invoice service (TypeScript, express routing). Installed zod 3.24.1 for payload validation." },
+				{ "ts": "2026-10-01T09:21:00.000Z", "text": "Set up ESLint with the import-order rule: imports sorted alphabetically within each file. Fixed the 14 violations the rule found in the initial commit." },
+				{ "ts": "2026-10-01T09:33:00.000Z", "text": "Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes; validation tests all green." }
+			]
+		},
+		{
+			"id": "S02",
+			"run": "qa-s02",
+			"summary": "HTTP client decision: axios approved",
+			"notes": [
+				{ "ts": "2026-10-02T10:02:00.000Z", "text": "Evaluated HTTP clients for the billing-provider API (axios vs plain fetch). The team approved axios for its interceptor support; standardized on axios for all outbound HTTP calls." },
+				{ "ts": "2026-10-02T10:24:00.000Z", "text": "Implemented BillingClient with axios: retry logic lives in a response interceptor, auth header injection in a request interceptor." }
+			]
+		},
+		{
+			"id": "S03",
+			"run": "qa-s03",
+			"summary": "zod 3 depth; alphabetical rule pays off",
+			"notes": [
+				{ "ts": "2026-10-03T09:47:00.000Z", "text": "Invoice payload schemas use zod 3 with .strict(); unknown keys are rejected. All 96 fixture cases validate." },
+				{ "ts": "2026-10-03T10:05:00.000Z", "text": "The alphabetical import sorting caught two merge conflicts early; import order checks are worth keeping." },
+				{ "ts": "2026-10-03T10:18:00.000Z", "text": "express error handler maps zod 3 .flatten() output to a 400 response." }
+			]
+		},
+		{
+			"id": "S04",
+			"run": "qa-s04",
+			"summary": "logging choice: pino",
+			"notes": [
+				{ "ts": "2026-10-04T11:02:00.000Z", "text": "Added structured logging with pino: JSON lines to stdout, one logger instance per module." },
+				{ "ts": "2026-10-04T11:20:00.000Z", "text": "pino's redaction options keep card numbers out of the logs; configured the standard redact paths." },
+				{ "ts": "2026-10-04T11:35:00.000Z", "text": "zod 3 schema for credit-note payloads mirrors the invoice schema; both flatten cleanly in the error handler." }
+			]
+		},
+		{
+			"id": "S05",
+			"run": "qa-s05",
+			"summary": "logging switch: winston (ops dashboard)",
+			"notes": [
+				{ "ts": "2026-10-05T09:30:00.000Z", "text": "Switched logging from pino to winston: the ops dashboard ingests winston's log format natively, and the migration was a one-file change." },
+				{ "ts": "2026-10-05T09:52:00.000Z", "text": "BillingClient's axios retries are now logged through winston at warn level." }
+			]
+		},
+		{
+			"id": "S06",
+			"run": "qa-s06",
+			"summary": "zod 3 -> zod 4 upgrade",
+			"notes": [
+				{ "ts": "2026-10-06T10:11:00.000Z", "text": "Upgraded zod from 3 to 4 (zod 4.0.5). Replaced .strict() with z.strictObject() across all schemas; zod 4 renamed the error utilities." },
+				{ "ts": "2026-10-06T10:29:00.000Z", "text": "The zod 4 error format changed shape; rewrote the error-mapper to read zod 4's issue list." },
+				{ "ts": "2026-10-06T10:44:00.000Z", "text": "Import order is still enforced alphabetically; the zod 4 migration introduced no import violations." }
+			]
+		},
+		{
+			"id": "S07",
+			"run": "qa-s07",
+			"summary": "lint rule CHANGE: alphabetical -> grouped by type",
+			"notes": [
+				{ "ts": "2026-10-07T09:05:00.000Z", "text": "ESLint import rule changed today: imports are grouped by type (node builtins first, then external packages, then internal aliases, then relative paths). Reorganized every source file; lint passes." },
+				{ "ts": "2026-10-07T09:26:00.000Z", "text": "The alphabetical import sort is retired; grouping by type is the convention the codebase follows now." }
+			]
+		},
+		{
+			"id": "S08",
+			"run": "qa-s08",
+			"summary": "logging revert: pino (winston dropped lines)",
+			"notes": [
+				{ "ts": "2026-10-08T10:40:00.000Z", "text": "Reverted logging back to pino after winston's async transport dropped log lines under load; pino passed the 10-minute soak test with zero loss." },
+				{ "ts": "2026-10-08T11:01:00.000Z", "text": "zod 4 validation now covers query parameters too, not just body payloads." },
+				{ "ts": "2026-10-08T11:15:00.000Z", "text": "Import grouping by type matches the ESLint config; two stragglers fixed in the billing module." }
+			]
+		},
+		{
+			"id": "S09",
+			"run": "qa-s09",
+			"summary": "logging flip: winston again (dashboard parity)",
+			"notes": [
+				{ "ts": "2026-10-09T09:22:00.000Z", "text": "Logging flip: ops wanted dashboard parity, so winston replaced pino again. The winston-based logger is the current setup." },
+				{ "ts": "2026-10-09T09:41:00.000Z", "text": "Re-wired the pino redaction config into winston transports; the same card-number paths are redacted." }
+			]
+		},
+		{
+			"id": "S10",
+			"run": "qa-s10",
+			"summary": "REVOCATION: axios forbidden, fetch only",
+			"notes": [
+				{ "ts": "2026-10-10T10:08:00.000Z", "text": "Security review outcome: axios is now forbidden in this codebase; plain fetch only for outbound HTTP. Migration of BillingClient off axios started." },
+				{ "ts": "2026-10-10T10:31:00.000Z", "text": "BillingClient uses fetch with a small hand-rolled retry wrapper; axios was removed from package.json." },
+				{ "ts": "2026-10-10T10:47:00.000Z", "text": "The fetch-based client passes the same integration suite the axios client passed." }
+			]
+		},
+		{
+			"id": "S11",
+			"run": "qa-s11",
+			"summary": "logging settled: pino stays",
+			"notes": [
+				{ "ts": "2026-10-11T09:19:00.000Z", "text": "Logging decision settled: pino stays. After the second winston data-loss incident the team removed winston for good; pino is the logging standard." },
+				{ "ts": "2026-10-11T09:44:00.000Z", "text": "All imports follow the type-grouping order; lint reports zero violations across the repo." }
+			]
+		},
+		{
+			"id": "S12",
+			"run": "qa-s12",
+			"summary": "release wrap-up: final state of all rule families",
+			"notes": [
+				{ "ts": "2026-10-12T16:02:00.000Z", "text": "Released v1.2.0: zod 4 schemas, fetch-based HTTP client, pino logging, type-grouped imports. Contract suite green." },
+				{ "ts": "2026-10-12T16:25:00.000Z", "text": "Post-release retro: the axios experiment and both winston stints were reverted; fetch and pino are the standing choices." },
+				{ "ts": "2026-10-12T16:41:00.000Z", "text": "Session note: the enforced lint rule is imports grouped by type, and the validation library is zod 4 — both verified against CI today." }
+			]
+		}
+	],
+	"axes": {
+		"contradiction": {
+			"what": "Old rule (imports sorted alphabetically, S01-S06) vs new rule (imports grouped by type, S07+). The dream must resolve the contradiction: the candidate may not state both as current (old-rule lines must be absent or explicitly historical/superseded).",
+			"loser": { "name": "alphabetical-import-sort", "re": "alphabet\\w*" },
+			"winner": { "name": "type-grouped-imports", "re": "group\\w*(?:\\s+(?:by\\s+)?type|\\s+imports?)|type[- ]group\\w*|imports?\\s+group\\w*" },
+			"scenarios": [
+				{ "id": "inbatch", "slices": [["S01", "S08"]] },
+				{ "id": "accumulated", "slices": [["S01", "S04"], ["S05", "S08"]] }
+			]
+		},
+		"staleness": {
+			"what": "Dependency version bump zod 3 (S01-S05) -> zod 4 (S06+). After the bump, the candidate must reference zod 4 and must not present zod 3 as the current validation library (historical/migration framing is fine).",
+			"loser": { "name": "zod-3", "re": "zod\\s*(?:v\\.?\\s*)?3\\b|zod@3" },
+			"winner": { "name": "zod-4", "re": "zod\\s*(?:v\\.?\\s*)?4\\b|zod@4" },
+			"scenarios": [
+				{ "id": "accumulated", "slices": [["S01", "S05"], ["S06", "S12"]] }
+			]
+		},
+		"forgetting": {
+			"what": "Revoked decision: axios approved for all outbound HTTP (S02) then forbidden, fetch only (S10). After the revocation, the candidate must not state the axios approval (or axios usage) as current — lines that explicitly revoke/mark it historical are exempt.",
+			"loser": { "name": "axios-approved", "re": "axios" },
+			"winner": { "name": "fetch-only", "re": "fetch" },
+			"scenarios": [
+				{ "id": "accumulated", "slices": [["S01", "S06"], ["S07", "S12"]] }
+			]
+		},
+		"interference": {
+			"what": "Conflicting dominance: logging rule pino (S04, S08, S11) vs winston (S05, S09) alternating across sessions, settled on pino by the most recent evidence (S11/S12). The final candidate must resolve to exactly one logger stated as current (record which; the intermediate candidates record the oscillation trail).",
+			"loser": { "name": "winston-logging", "re": "winston" },
+			"winner": { "name": "pino-logging", "re": "pino" },
+			"scenarios": [
+				{ "id": "accumulated", "slices": [["S01", "S05"], ["S06", "S09"], ["S10", "S12"]] }
+			]
+		}
+	}
+}

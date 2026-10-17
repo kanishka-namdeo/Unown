@@ -1,0 +1,162 @@
+{
+  "suite": "quality-axes",
+  "axis": "staleness",
+  "what": "Dependency version bump zod 3 (S01-S05) -> zod 4 (S06+). After the bump, the candidate must reference zod 4 and must not present zod 3 as the current validation library (historical/migration framing is fine).",
+  "model": "kimi-k2.5",
+  "date": "2026-10-17T23:25:43.845Z",
+  "durationMs": 16044,
+  "error": null,
+  "pass": true,
+  "scenarios": [
+    {
+      "id": "accumulated",
+      "slices": [
+        [
+          "S01",
+          "S05"
+        ],
+        [
+          "S06",
+          "S12"
+        ]
+      ],
+      "error": null,
+      "steps": [
+        {
+          "id": "staleness/accumulated#1",
+          "sessions": "S01,S02,S03,S04,S05",
+          "notesIn": 13,
+          "versionIn": 2,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 7308,
+          "error": null,
+          "stats": {
+            "merged": 3,
+            "pruned": 3,
+            "added": 5,
+            "topics": [
+              "Workflow",
+              "HTTP & Clients",
+              "Logging",
+              "Validation & Errors",
+              "Code Quality"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 2026-10-01].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Use zod 3 with .strict() for payload validation; unknown keys are rejected [note 2026-10-03].\n- Keep import statements sorted alphabetically; the check catches merge conflicts early [note 2026-10-03].\n\n## HTTP & Clients\n- Standardize on axios for all outbound HTTP calls; use request interceptors for auth, response interceptors for retries [note 2026-10-02].\n\n## Logging\n- Use winston for structured logging; ops dashboard ingests its format natively [note 2026-10-05].\n- Log axios retries at warn level through winston [note 2026-10-05].\n\n## Validation & Errors\n- Express error handler returns 400 for zod validation failures (use .flatten() for error output), 500 otherwise [note 1, note 2026-10-03].\n- Credit-note payloads mirror invoice schema structure; both flatten cleanly in the error handler [note 2026-10-04].\n\n## Code Quality\n- Prefer standard library functions over hand-rolled logic [note 2].\n"
+        },
+        {
+          "id": "staleness/accumulated#2",
+          "sessions": "S06,S07,S08,S09,S10,S11,S12",
+          "notesIn": 18,
+          "versionIn": 3,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 8731,
+          "error": null,
+          "stats": {
+            "merged": 5,
+            "pruned": 3,
+            "added": 4,
+            "topics": [
+              "Workflow",
+              "Validation & Errors",
+              "HTTP & Clients",
+              "Logging",
+              "Code Quality"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 2026-10-01].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports grouped by type: node builtins, external packages, internal aliases, relative paths [note 2026-10-07].\n\n## Validation & Errors\n- Use zod 4 with z.strictObject() for payload validation; unknown keys are rejected [note 2026-10-06].\n- zod 4 error format changed; read issue list directly in error mapper [note 2026-10-06].\n- Express error handler returns 400 for zod validation failures, 500 otherwise [note 1].\n- Credit-note payloads mirror invoice schema structure; both flatten cleanly in the error handler [note 2026-10-04].\n- zod 4 validation covers query parameters too, not just body payloads [note 2026-10-08].\n\n## HTTP & Clients\n- Use native fetch for outbound HTTP; axios is forbidden [note 2026-10-10].\n- Implement retry logic as small hand-rolled wrapper around fetch [note 2026-10-10].\n\n## Logging\n- Use pino for structured logging; it passed the 10-minute soak test with zero loss [note 2026-10-08].\n- winston is removed after two data-loss incidents [note 2026-10-11].\n\n## Code Quality\n- Prefer standard library functions over hand-rolled logic [note 2].\n"
+        }
+      ],
+      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 2026-10-01].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports grouped by type: node builtins, external packages, internal aliases, relative paths [note 2026-10-07].\n\n## Validation & Errors\n- Use zod 4 with z.strictObject() for payload validation; unknown keys are rejected [note 2026-10-06].\n- zod 4 error format changed; read issue list directly in error mapper [note 2026-10-06].\n- Express error handler returns 400 for zod validation failures, 500 otherwise [note 1].\n- Credit-note payloads mirror invoice schema structure; both flatten cleanly in the error handler [note 2026-10-04].\n- zod 4 validation covers query parameters too, not just body payloads [note 2026-10-08].\n\n## HTTP & Clients\n- Use native fetch for outbound HTTP; axios is forbidden [note 2026-10-10].\n- Implement retry logic as small hand-rolled wrapper around fetch [note 2026-10-10].\n\n## Logging\n- Use pino for structured logging; it passed the 10-minute soak test with zero loss [note 2026-10-08].\n- winston is removed after two data-loss incidents [note 2026-10-11].\n\n## Code Quality\n- Prefer standard library functions over hand-rolled logic [note 2].\n",
+      "assertion": {
+        "type": "winner-current-loser-absent",
+        "pass": true,
+        "winnerName": "zod-4",
+        "loserName": "zod-3",
+        "winnerCurrentCount": 3,
+        "loserCurrentCount": 0,
+        "rows": [
+          {
+            "line": "- Use zod 4 with z.strictObject() for payload validation; unknown keys are rejected [note 2026-10-06].",
+            "loserMatch": false,
+            "winnerMatch": true,
+            "loserCurrent": false,
+            "winnerCurrent": true,
+            "why": "winner stated as current"
+          },
+          {
+            "line": "- zod 4 error format changed; read issue list directly in error mapper [note 2026-10-06].",
+            "loserMatch": false,
+            "winnerMatch": true,
+            "loserCurrent": false,
+            "winnerCurrent": true,
+            "why": "winner stated as current"
+          },
+          {
+            "line": "- zod 4 validation covers query parameters too, not just body payloads [note 2026-10-08].",
+            "loserMatch": false,
+            "winnerMatch": true,
+            "loserCurrent": false,
+            "winnerCurrent": true,
+            "why": "winner stated as current"
+          }
+        ]
+      },
+      "guard": {
+        "action": "ship",
+        "flags": [],
+        "reason": null,
+        "falsePositive": false
+      },
+      "shippedAssertionPass": true,
+      "trail": {
+        "loserEstablishedInFirstMemory": true
+      }
+    }
+  ],
+  "dreamCalls": 2,
+  "notes": "assertions are deterministic regex/line classification — see rows[] in each scenario's assertion for the audit trail; full dream input (notesText) omitted from the receipt, candidates kept verbatim"
+}

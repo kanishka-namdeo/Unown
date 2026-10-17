@@ -1,0 +1,144 @@
+{
+  "suite": "quality-axes",
+  "axis": "forgetting",
+  "what": "Revoked decision: axios approved for all outbound HTTP (S02) then forbidden, fetch only (S10). After the revocation, the candidate must not state the axios approval (or axios usage) as current — lines that explicitly revoke/mark it historical are exempt.",
+  "model": "kimi-k2.5",
+  "date": "2026-10-17T23:26:09.673Z",
+  "durationMs": 16454,
+  "error": null,
+  "pass": true,
+  "scenarios": [
+    {
+      "id": "accumulated",
+      "slices": [
+        [
+          "S01",
+          "S06"
+        ],
+        [
+          "S07",
+          "S12"
+        ]
+      ],
+      "error": null,
+      "steps": [
+        {
+          "id": "forgetting/accumulated#1",
+          "sessions": "S01,S02,S03,S04,S05,S06",
+          "notesIn": 16,
+          "versionIn": 2,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 7877,
+          "error": null,
+          "stats": {
+            "merged": 4,
+            "pruned": 5,
+            "added": 7,
+            "topics": [
+              "Workflow",
+              "Tech stack",
+              "Schema patterns",
+              "Error handling",
+              "Logging",
+              "Known pitfalls"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note qa-s01]\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0]\n- Enforce alphabetical import order via ESLint; catches merge conflicts early [note qa-s03]\n\n## Tech stack\n- Use axios for all outbound HTTP calls; leverage interceptors for retries and auth [note qa-s02]\n- Use winston for logging; ops dashboard ingests its format natively [note qa-s05]\n- Use zod 4 (not 3) for payload validation [note qa-s06]\n\n## Schema patterns\n- Replace zod 3 .strict() with z.strictObject() in zod 4 [note qa-s06]\n- Credit-note payloads mirror invoice schema structure; both flatten in error handler [note qa-s04]\n\n## Error handling\n- Express error handler returns 400 for validation failures, 500 otherwise [note 1]\n- Map zod error output to 400 responses; zod 4 changed error shape—update mapper accordingly [note qa-s03, qa-s06]\n\n## Logging\n- Log axios retries at warn level through winston [note qa-s05]\n- Redact card numbers via standard redact paths [note qa-s04]\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2]\n"
+        },
+        {
+          "id": "forgetting/accumulated#2",
+          "sessions": "S07,S08,S09,S10,S11,S12",
+          "notesIn": 15,
+          "versionIn": 3,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 8572,
+          "error": null,
+          "stats": {
+            "merged": 4,
+            "pruned": 5,
+            "added": 2,
+            "topics": [
+              "Workflow",
+              "Tech stack",
+              "Schema patterns",
+              "Error handling",
+              "Logging",
+              "Known pitfalls"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note qa-s01]\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0]\n- Group imports by type: node builtins, external packages, internal aliases, relative paths [note qa-s07]\n\n## Tech stack\n- Use fetch for all outbound HTTP; axios is forbidden in this codebase [note qa-s10]\n- Use pino for logging; winston was removed after repeated data-loss incidents [note qa-s11, qa-s12]\n- Use zod 4 (not 3) for payload validation [note qa-s06]\n\n## Schema patterns\n- Replace zod 3 .strict() with z.strictObject() in zod 4 [note qa-s06]\n- Credit-note payloads mirror invoice schema structure; both flatten in error handler [note qa-s04]\n- Apply zod 4 validation to query parameters, not just body payloads [note qa-s08]\n\n## Error handling\n- Express error handler returns 400 for validation failures, 500 otherwise [note 1]\n- Map zod error output to 400 responses; zod 4 changed error shape—update mapper accordingly [note qa-s03, qa-s06]\n\n## Logging\n- Log HTTP retries at warn level [note qa-s05]\n- Redact card numbers via standard redact paths [note qa-s04]\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2]\n"
+        }
+      ],
+      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note qa-s01]\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0]\n- Group imports by type: node builtins, external packages, internal aliases, relative paths [note qa-s07]\n\n## Tech stack\n- Use fetch for all outbound HTTP; axios is forbidden in this codebase [note qa-s10]\n- Use pino for logging; winston was removed after repeated data-loss incidents [note qa-s11, qa-s12]\n- Use zod 4 (not 3) for payload validation [note qa-s06]\n\n## Schema patterns\n- Replace zod 3 .strict() with z.strictObject() in zod 4 [note qa-s06]\n- Credit-note payloads mirror invoice schema structure; both flatten in error handler [note qa-s04]\n- Apply zod 4 validation to query parameters, not just body payloads [note qa-s08]\n\n## Error handling\n- Express error handler returns 400 for validation failures, 500 otherwise [note 1]\n- Map zod error output to 400 responses; zod 4 changed error shape—update mapper accordingly [note qa-s03, qa-s06]\n\n## Logging\n- Log HTTP retries at warn level [note qa-s05]\n- Redact card numbers via standard redact paths [note qa-s04]\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2]\n",
+      "assertion": {
+        "type": "revoked-rule-absent",
+        "pass": true,
+        "revokedCurrentCount": 0,
+        "revokedRule": "axios-approved",
+        "replacementMentionCount": 0,
+        "rows": [
+          {
+            "line": "- Use fetch for all outbound HTTP; axios is forbidden in this codebase [note qa-s10]",
+            "revokedCurrent": false,
+            "why": "superseded/forbidden marker present"
+          }
+        ]
+      },
+      "guard": {
+        "action": "ship",
+        "flags": [],
+        "reason": null,
+        "falsePositive": false
+      },
+      "shippedAssertionPass": true,
+      "trail": {
+        "revokedRuleEstablishedInFirstMemory": true
+      }
+    }
+  ],
+  "dreamCalls": 2,
+  "notes": "assertions are deterministic regex/line classification — see rows[] in each scenario's assertion for the audit trail; full dream input (notesText) omitted from the receipt, candidates kept verbatim"
+}

@@ -1,0 +1,95 @@
+{
+  "suite": "quality-axes",
+  "date": "2026-10-17T23:32:49.755Z",
+  "model": "kimi-k2.5",
+  "bridgeUpstreamStatus": 200,
+  "axesTotal": 4,
+  "axesPassed": 4,
+  "axes": {
+    "contradiction": {
+      "pass": true,
+      "error": null,
+      "dreamCalls": 3,
+      "durationMs": 21907,
+      "guardActions": [
+        "ship",
+        "ship"
+      ],
+      "guardFalsePositive": false,
+      "shippedAssertionPass": [
+        true,
+        true
+      ],
+      "scenarios": [
+        {
+          "id": "inbatch",
+          "pass": true
+        },
+        {
+          "id": "accumulated",
+          "pass": true
+        }
+      ]
+    },
+    "staleness": {
+      "pass": true,
+      "error": null,
+      "dreamCalls": 2,
+      "durationMs": 16044,
+      "guardActions": [
+        "ship"
+      ],
+      "guardFalsePositive": false,
+      "shippedAssertionPass": [
+        true
+      ],
+      "scenarios": [
+        {
+          "id": "accumulated",
+          "pass": true
+        }
+      ]
+    },
+    "forgetting": {
+      "pass": true,
+      "error": null,
+      "dreamCalls": 2,
+      "durationMs": 16454,
+      "guardActions": [
+        "ship"
+      ],
+      "guardFalsePositive": false,
+      "shippedAssertionPass": [
+        true
+      ],
+      "scenarios": [
+        {
+          "id": "accumulated",
+          "pass": true
+        }
+      ]
+    },
+    "interference": {
+      "pass": true,
+      "error": null,
+      "dreamCalls": 3,
+      "durationMs": 24431,
+      "guardActions": [
+        "ship"
+      ],
+      "guardFalsePositive": false,
+      "shippedAssertionPass": [
+        true
+      ],
+      "scenarios": [
+        {
+          "id": "accumulated",
+          "pass": true
+        }
+      ]
+    }
+  },
+  "dreamCallsTotal": 10,
+  "guardFalsePositiveAxes": [],
+  "perAxis": "(see results/<axis>.json — full candidates + per-line classification audit trail)"
+}

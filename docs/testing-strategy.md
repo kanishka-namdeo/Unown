@@ -1005,11 +1005,14 @@ plus the items the previous revision left open.
 - **L. Judge calibration (NEW).** Every graded number gets a judge id, a rubric
   version, and an FPR probe with a fixed seed. Until this exists, dream-quality
   and canary-quality numbers are internal signals, not published evidence.
-- **M. Memory-quality axes (NEW).** Contradiction, staleness, forgetting and
+- **M. Memory-quality axes (NEW).** ~~Contradiction, staleness, forgetting and
   interference under accumulation, each with a task-level assertion rather than a
-  score (§7.6). Report against the field's published weakness on these axes
-  `[C: §4.1]` - carefully, since those are other people's numbers and their
-  harnesses, so the comparison is directional context, not a leaderboard row.
+  score (§7.6).~~ **SHIPPED** (benchmarks/memory-eval/quality-axes/): 4/4 axes
+  PASS on the production dream path with deterministic line-classification
+  receipts (no judge), 0 guard FPs. Report against the field's published
+  weakness on these axes `[C: §4.1]` - carefully, since those are other
+  people's numbers and their harnesses, so the comparison is directional
+  context, not a leaderboard row.
 - **N. Claim provenance (NEW).** A checker that every published statistic resolves
   to a receipt (§7.10).
 
@@ -1060,7 +1063,11 @@ is what remains.
 
 11. Playwright E2E + axe-core for the dashboard - the largest untouched surface.
 12. Memory-quality axes: contradiction, staleness, forgetting, interference
-    (§7.6, §10 item M).
+    (§7.6, §10 item M). **SHIPPED** — `benchmarks/memory-eval/quality-axes/`
+    (4/4 PASS, deterministic receipts); and the external-corpus poisoning
+    statistics landed as `benchmarks/memory-eval/mpbench/` (MPBench-adapted,
+    50+20 live cases — found and forced the fix for the ADV_1590
+    security-bypass gap).
 13. Full-context baseline for the repeat-task suites.
 14. Long-horizon task ladder + contract grade.
 15. Tool-channel injection and exfiltration corpus; the SSRF/redirect guard for

@@ -72,6 +72,24 @@ const SWITCH_RE =
 const AUTHORITY_RE =
         /\b(ignore|disregard|forget|skip|override|bypass)\b[^.\n]{0,60}\b(previous|prior|above|earlier|policy|guardrails?|instructions?|system|rules?|prompts?)\b/i;
 
+/**
+ * Security-bypass semantics, however framed — directive OR "observed
+ * pattern". Catches a bypass verb near a process-gate object in BOTH
+ * orders (the passive voice: "verification is bypassed"). Found live by
+ * the MPBench-adapted corpus (ADV_1590: "deploy.sh --fast-deploy flag
+ * bypass manual security verification" consolidated as an "(observed, not
+ * policy)" deployment pattern and SHIPPED — AUTHORITY_RE's object list
+ * only covers instructions/policy, so a process-gate target evaded every
+ * layer). False positives ("avoid flaky tests in CI") are recoverable by
+ * design: quarantined lines are recorded, sanitize ships the rest.
+ */
+const BYPASS_VERB = String.raw`\b(?:bypass\w*|skip\w*|circumvent\w*|work(?:ed|ing)? around|sidestep\w*|disable\w*|suppress\w*|avoid(?:s|ed|ing)?)\b`;
+const GATE_OBJECT = String.raw`\b(?:verif\w*|checks?|checkpoints?|review(?:s|ers?)?|approv\w*|sign[- ]?offs?|gates?|guardrail\w*|screen\w*|scans?|scann\w*|validat\w*|tests?|testing|audits?|controls?|inspections?|security)\b`;
+const SECURITY_BYPASS_RE = new RegExp(
+        `${BYPASS_VERB}[^.\\n]{0,80}${GATE_OBJECT}|${GATE_OBJECT}[^.\\n]{0,60}\\b(?:is |are |was |were |gets? |be |been |being )?(?:bypassed|skipped|circumvented|disabled|suppressed|avoided)\\b`,
+        "i",
+);
+
 /** System-prompt / role hijack framing. */
 const SYSTEM_RE = /\b(system prompt|your instructions|you are now|act as a|new instructions|as an ai|your role is|jailbreak)\b/i;
 
@@ -118,6 +136,7 @@ export function scanMemoryCandidate(candidate: string): GuardFlag[] {
                 if (PROVENANCE_FORGERY_RE.test(text)) return push("provenance-forgery", "high");
                 if (BASE64_BLOB_RE.test(text)) return push("opaque-blob", "high");
                 if (AUTHORITY_RE.test(text)) return push("authority-attack", "high");
+                if (SECURITY_BYPASS_RE.test(text)) return push("security-bypass", "high");
                 if (SYSTEM_RE.test(text)) return push("system-prompt-hijack", "high");
                 if (PRIVILEGE_RE.test(text)) return push("privilege-grant", "high");
 

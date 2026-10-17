@@ -1,0 +1,202 @@
+{
+  "suite": "quality-axes",
+  "axis": "interference",
+  "what": "Conflicting dominance: logging rule pino (S04, S08, S11) vs winston (S05, S09) alternating across sessions, settled on pino by the most recent evidence (S11/S12). The final candidate must resolve to exactly one logger stated as current (record which; the intermediate candidates record the oscillation trail).",
+  "model": "kimi-k2.5",
+  "date": "2026-10-17T23:29:37.398Z",
+  "durationMs": 24431,
+  "error": null,
+  "pass": true,
+  "scenarios": [
+    {
+      "id": "accumulated",
+      "slices": [
+        [
+          "S01",
+          "S05"
+        ],
+        [
+          "S06",
+          "S09"
+        ],
+        [
+          "S10",
+          "S12"
+        ]
+      ],
+      "error": null,
+      "steps": [
+        {
+          "id": "interference/accumulated#1",
+          "sessions": "S01,S02,S03,S04,S05",
+          "notesIn": 13,
+          "versionIn": 2,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 7542,
+          "error": null,
+          "stats": {
+            "merged": 3,
+            "pruned": 2,
+            "added": 5,
+            "topics": [
+              "Workflow",
+              "Known pitfalls",
+              "Dependencies & Tooling",
+              "Validation patterns"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 0].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Maintain ESLint import-order rule: imports sorted alphabetically within each file [note 1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Zod schemas use .strict(); unknown keys are rejected [note 4].\n- Zod validation errors map .flatten() output to 400 responses [note 5].\n\n## Dependencies & Tooling\n- Use axios for all outbound HTTP calls; leverage interceptors for retries and auth [note 7].\n- Use winston for logging; ops dashboard ingests its format natively [note 9].\n- Winston retry warnings: log axios retry events at warn level [note 10].\n\n## Validation patterns\n- Mirror related schemas (credit-note payloads follow invoice schema patterns) [note 6].\n- All fixture cases must validate against schemas before merge [note 4, note 0].\n"
+        },
+        {
+          "id": "interference/accumulated#2",
+          "sessions": "S06,S07,S08,S09",
+          "notesIn": 10,
+          "versionIn": 3,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 8565,
+          "error": null,
+          "stats": {
+            "merged": 3,
+            "pruned": 2,
+            "added": 2,
+            "topics": [
+              "Workflow",
+              "Known pitfalls",
+              "Dependencies & Tooling",
+              "Validation patterns"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 0].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports grouped by type: node builtins, external packages, internal aliases, relative paths [note 7, note 8].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Zod 4 uses z.strictObject() instead of .strict(); error utilities renamed [note 9].\n- Zod 4 validation covers query parameters and body payloads; update mappers to read issue list [note 5, note 9].\n- Pino handles high-load logging without dropped lines; winston async transport failed soak test [note 6, note 4].\n\n## Dependencies & Tooling\n- Use axios for all outbound HTTP calls; leverage interceptors for retries and auth [note 7].\n- Use pino for logging; redact card-number paths in config [note 4, note 3].\n- Winston retry warnings: if temporarily on winston, log axios retry events at warn level [note 10].\n\n## Validation patterns\n- Mirror related schemas (credit-note payloads follow invoice schema patterns) [note 6].\n- All fixture cases must validate against schemas before merge [note 4, note 0].\n"
+        },
+        {
+          "id": "interference/accumulated#3",
+          "sessions": "S10,S11,S12",
+          "notesIn": 8,
+          "versionIn": 4,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 8319,
+          "error": null,
+          "stats": {
+            "merged": 3,
+            "pruned": 2,
+            "added": 2,
+            "topics": [
+              "Workflow",
+              "Known pitfalls",
+              "Dependencies & Tooling",
+              "Validation patterns"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 0].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports grouped by type: node builtins, external packages, internal aliases, relative paths [note 7, note 8, qa-s12].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Zod 4 uses z.strictObject() instead of .strict(); error utilities renamed [note 9].\n- Zod 4 validation covers query parameters and body payloads; update mappers to read issue list [note 5, note 9].\n- Pino handles high-load logging without dropped lines [note 4, note 6, qa-s11].\n\n## Dependencies & Tooling\n- Use native fetch for outbound HTTP; axios forbidden [qa-s10].\n- Use pino for logging; redact card-number paths in config [note 3, note 4, qa-s11].\n- BillingClient uses fetch with hand-rolled retry wrapper [qa-s10].\n\n## Validation patterns\n- Mirror related schemas (credit-note payloads follow invoice schema patterns) [note 6].\n- All fixture cases must validate against schemas before merge [note 0, note 4].\n"
+        }
+      ],
+      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 0].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports grouped by type: node builtins, external packages, internal aliases, relative paths [note 7, note 8, qa-s12].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Zod 4 uses z.strictObject() instead of .strict(); error utilities renamed [note 9].\n- Zod 4 validation covers query parameters and body payloads; update mappers to read issue list [note 5, note 9].\n- Pino handles high-load logging without dropped lines [note 4, note 6, qa-s11].\n\n## Dependencies & Tooling\n- Use native fetch for outbound HTTP; axios forbidden [qa-s10].\n- Use pino for logging; redact card-number paths in config [note 3, note 4, qa-s11].\n- BillingClient uses fetch with hand-rolled retry wrapper [qa-s10].\n\n## Validation patterns\n- Mirror related schemas (credit-note payloads follow invoice schema patterns) [note 6].\n- All fixture cases must validate against schemas before merge [note 0, note 4].\n",
+      "assertion": {
+        "type": "exactly-one-current",
+        "pass": true,
+        "winnerName": "pino-logging",
+        "loserName": "winston-logging",
+        "winnerCurrentCount": 1,
+        "loserCurrentCount": 0,
+        "winner": "pino-logging",
+        "winnerMatchesMostRecentEvidence": true,
+        "rows": [
+          {
+            "line": "- Pino handles high-load logging without dropped lines [note 4, note 6, qa-s11].",
+            "loserMatch": false,
+            "winnerMatch": true,
+            "loserCurrent": false,
+            "winnerCurrent": false,
+            "why": "winner-killer marker present (stated as dropped)"
+          },
+          {
+            "line": "- Use pino for logging; redact card-number paths in config [note 3, note 4, qa-s11].",
+            "loserMatch": false,
+            "winnerMatch": true,
+            "loserCurrent": false,
+            "winnerCurrent": true,
+            "why": "winner stated as current"
+          }
+        ]
+      },
+      "guard": {
+        "action": "ship",
+        "flags": [],
+        "reason": null,
+        "falsePositive": false
+      },
+      "shippedAssertionPass": true,
+      "trail": {
+        "oscillation": [
+          {
+            "step": "interference/accumulated#1",
+            "winnerCurrent": 0,
+            "loserCurrent": 2
+          },
+          {
+            "step": "interference/accumulated#2",
+            "winnerCurrent": 2,
+            "loserCurrent": 1
+          },
+          {
+            "step": "interference/accumulated#3",
+            "winnerCurrent": 1,
+            "loserCurrent": 0
+          }
+        ],
+        "loserEstablishedInFirstMemory": true
+      }
+    }
+  ],
+  "dreamCalls": 3,
+  "notes": "assertions are deterministic regex/line classification — see rows[] in each scenario's assertion for the audit trail; full dream input (notesText) omitted from the receipt, candidates kept verbatim"
+}

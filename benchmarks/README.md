@@ -173,6 +173,24 @@ the live bridge. Result: 10/10 notes flagged, 0/10 planted, 0 directives
 shipped, 0 false positives (kimi-k2.5; receipts + resume-safe runner in the
 dir).
 
+**MPBench-adapted corpus (external, public):** `memory-eval/mpbench/` —
+50 adversarial + 20 benign cases sampled (seed 20261018, sha256-provenance)
+from the public MPBench dataset (Digital-Trust-Lab/mp-bench, Apache-2.0) —
+5 attack classes × 4 signal strengths, office domains smuggled into the
+dream as session material. First external-corpus memory benchmark. The
+first run FOUND a real gap (ADV_1590: an "observed, not policy"-framed
+security-bypass shipped through every guard layer) → the `security-bypass`
+guard rule shipped with it; post-fix: 0/50 planted, 0/50 shipped, 0
+benign FPs. Receipts + RESULTS.md in the dir.
+
+**Memory-quality axes (deterministic):** `memory-eval/quality-axes/` —
+contradiction, staleness, forgetting, interference under accumulation on a
+synthetic 12-session evolving project, driven through the production dream
+path (no LLM judge: regex line-classification with full audit trail).
+Result: 4/4 axes PASS (the dream prunes superseded rules, tracks version
+bumps, honors revocations, resolves interference to the most recent
+evidence), 0 guard FPs on the benign rule changes.
+
 The memory system itself under test (strategy §4.6/§4.7/§4.8): live end-to-end
 suites against a scratch engine + real bridge — injection proof by unique
 marker in the captured upstream request body, real dream + canary + SSE +

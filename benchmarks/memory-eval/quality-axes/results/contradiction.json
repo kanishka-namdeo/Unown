@@ -1,0 +1,222 @@
+{
+  "suite": "quality-axes",
+  "axis": "contradiction",
+  "what": "Old rule (imports sorted alphabetically, S01-S06) vs new rule (imports grouped by type, S07+). The dream must resolve the contradiction: the candidate may not state both as current (old-rule lines must be absent or explicitly historical/superseded).",
+  "model": "kimi-k2.5",
+  "date": "2026-10-17T23:25:05.504Z",
+  "durationMs": 21907,
+  "error": null,
+  "pass": true,
+  "scenarios": [
+    {
+      "id": "inbatch",
+      "slices": [
+        [
+          "S01",
+          "S08"
+        ]
+      ],
+      "error": null,
+      "steps": [
+        {
+          "id": "contradiction/inbatch#1",
+          "sessions": "S01,S02,S03,S04,S05,S06,S07,S08",
+          "notesIn": 21,
+          "versionIn": 2,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 7280,
+          "error": null,
+          "stats": {
+            "merged": 4,
+            "pruned": 6,
+            "added": 3,
+            "topics": [
+              "Workflow",
+              "Known pitfalls",
+              "Validation (zod 4)",
+              "Logging",
+              "HTTP clients"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports are grouped by type: node builtins, external packages, internal aliases, relative paths [note 7].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Pino handles high-load logging without dropping lines; winston's async transport failed under load [note 4].\n\n## Validation (zod 4)\n- Use z.strictObject() instead of .strict() [note 8].\n- Error mapper reads zod 4's issue list format [note 6].\n- Query parameters require explicit validation, not just body payloads [note 3].\n\n## Logging\n- Pino with redaction paths keeps card numbers out of logs [note 11].\n- One logger instance per module, JSON lines to stdout [note 12].\n\n## HTTP clients\n- Use axios for outbound HTTP calls; interceptors handle retries and auth [note 14, 15].\n"
+        }
+      ],
+      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports are grouped by type: node builtins, external packages, internal aliases, relative paths [note 7].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Pino handles high-load logging without dropping lines; winston's async transport failed under load [note 4].\n\n## Validation (zod 4)\n- Use z.strictObject() instead of .strict() [note 8].\n- Error mapper reads zod 4's issue list format [note 6].\n- Query parameters require explicit validation, not just body payloads [note 3].\n\n## Logging\n- Pino with redaction paths keeps card numbers out of logs [note 11].\n- One logger instance per module, JSON lines to stdout [note 12].\n\n## HTTP clients\n- Use axios for outbound HTTP calls; interceptors handle retries and auth [note 14, 15].\n",
+      "assertion": {
+        "type": "winner-current-loser-absent",
+        "pass": true,
+        "winnerName": "type-grouped-imports",
+        "loserName": "alphabetical-import-sort",
+        "winnerCurrentCount": 1,
+        "loserCurrentCount": 0,
+        "rows": [
+          {
+            "line": "- Imports are grouped by type: node builtins, external packages, internal aliases, relative paths [note 7].",
+            "loserMatch": false,
+            "winnerMatch": true,
+            "loserCurrent": false,
+            "winnerCurrent": true,
+            "why": "winner stated as current"
+          }
+        ]
+      },
+      "guard": {
+        "action": "ship",
+        "flags": [],
+        "reason": null,
+        "falsePositive": false
+      },
+      "shippedAssertionPass": true,
+      "trail": {}
+    },
+    {
+      "id": "accumulated",
+      "slices": [
+        [
+          "S01",
+          "S04"
+        ],
+        [
+          "S05",
+          "S08"
+        ]
+      ],
+      "error": null,
+      "steps": [
+        {
+          "id": "contradiction/accumulated#1",
+          "sessions": "S01,S02,S03,S04",
+          "notesIn": 11,
+          "versionIn": 2,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 6822,
+          "error": null,
+          "stats": {
+            "merged": 3,
+            "pruned": 0,
+            "added": 4,
+            "topics": [
+              "Workflow",
+              "Tech stack",
+              "Validation patterns",
+              "Known pitfalls"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 10]\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0]\n- Import order checks (alphabetical) catch merge conflicts early; keep enabled [note 5]\n\n## Tech stack\n- zod 3.24.1 for payload validation; use .strict() to reject unknown keys [note 6, note 10]\n- axios for all outbound HTTP calls; use request/response interceptors for auth and retry logic [note 7, note 8]\n- pino for structured logging: JSON lines to stdout, one logger instance per module; redact card numbers via standard redact paths [note 2, note 3]\n\n## Validation patterns\n- Mirror related schemas (credit-note ↔ invoice) for consistent flattening in error handlers [note 1]\n- Express error handler: zod .flatten() → 400 for validation failures, 500 otherwise [note 4, note 9]\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2]\n"
+        },
+        {
+          "id": "contradiction/accumulated#2",
+          "sessions": "S05,S06,S07,S08",
+          "notesIn": 10,
+          "versionIn": 3,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 7800,
+          "error": null,
+          "stats": {
+            "merged": 3,
+            "pruned": 2,
+            "added": 2,
+            "topics": [
+              "Workflow",
+              "Tech stack",
+              "Validation patterns",
+              "Known pitfalls"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 10]\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0]\n- Import order: group by type (node builtins → external → internal aliases → relative) [note 4, note 5]\n\n## Tech stack\n- zod 4.0.5 for payload validation; use z.strictObject() to reject unknown keys [note 6, note 8]\n- axios for all outbound HTTP calls; use request/response interceptors for auth and retry logic [note 7]\n- pino for structured logging: JSON lines to stdout, one logger instance per module; redact card numbers via standard redact paths [note 3]\n\n## Validation patterns\n- Mirror related schemas (credit-note ↔ invoice) for consistent flattening in error handlers [note 1]\n- Express error handler: zod 4's issue list → 400 for validation failures, 500 otherwise; map zod 4 error format explicitly [note 4, note 9]\n- Validate query parameters with zod 4, not just body payloads [note 2]\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [seed]\n- pino survives load tests where winston drops lines; pino passed 10-minute soak test with zero loss [note 3]\n"
+        }
+      ],
+      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 10]\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0]\n- Import order: group by type (node builtins → external → internal aliases → relative) [note 4, note 5]\n\n## Tech stack\n- zod 4.0.5 for payload validation; use z.strictObject() to reject unknown keys [note 6, note 8]\n- axios for all outbound HTTP calls; use request/response interceptors for auth and retry logic [note 7]\n- pino for structured logging: JSON lines to stdout, one logger instance per module; redact card numbers via standard redact paths [note 3]\n\n## Validation patterns\n- Mirror related schemas (credit-note ↔ invoice) for consistent flattening in error handlers [note 1]\n- Express error handler: zod 4's issue list → 400 for validation failures, 500 otherwise; map zod 4 error format explicitly [note 4, note 9]\n- Validate query parameters with zod 4, not just body payloads [note 2]\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [seed]\n- pino survives load tests where winston drops lines; pino passed 10-minute soak test with zero loss [note 3]\n",
+      "assertion": {
+        "type": "winner-current-loser-absent",
+        "pass": true,
+        "winnerName": "type-grouped-imports",
+        "loserName": "alphabetical-import-sort",
+        "winnerCurrentCount": 1,
+        "loserCurrentCount": 0,
+        "rows": [
+          {
+            "line": "- Import order: group by type (node builtins → external → internal aliases → relative) [note 4, note 5]",
+            "loserMatch": false,
+            "winnerMatch": true,
+            "loserCurrent": false,
+            "winnerCurrent": true,
+            "why": "winner stated as current"
+          }
+        ]
+      },
+      "guard": {
+        "action": "ship",
+        "flags": [],
+        "reason": null,
+        "falsePositive": false
+      },
+      "shippedAssertionPass": true,
+      "trail": {
+        "loserEstablishedInFirstMemory": true
+      }
+    }
+  ],
+  "dreamCalls": 3,
+  "notes": "assertions are deterministic regex/line classification — see rows[] in each scenario's assertion for the audit trail; full dream input (notesText) omitted from the receipt, candidates kept verbatim"
+}
