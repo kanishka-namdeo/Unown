@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>unown — README banner</title>
+    <!--
+      PALETTE: Game Boy Advance / Pokemon Generation III, dark scheme
+      ("Hoenn at night") — the same token table the marketing page ships in
+      src/app/globals.css `@theme`.
+
+      HARD RULE — every colour channel here is one of the 32 values a 5-bit
+      GBA channel can take, rendered as floor(255*v/31):
+        00 08 10 18 20 29 31 39 41 4a 52 5a 62 6a 73 7b 83 8b 94 9c a4 ac
+        b4 bd c5 cd d5 de e6 ee f6 ff
+      #102039 and #ffffff are legal; #f8f8f8, #121212 and the old emerald
+      #34d399 are NOT. Alpha is its own channel, so rgba() of an on-grid
+      colour stays on-grid. `scripts/gba_palette_check.mjs` gates the CSS;
+      this file is outside its scope, but the banner exists to agree with
+      the page's claim that every colour is a legal GBA colour — an
+      off-grid hex here makes that claim false. Check before you commit.
+
+      Roles used: canvas #102039 · panel #182952 · panel-2 #29315a ·
+      line #414a6a · ink #dee6ee · dim #bdcde6 · gold #ffc55a · hp-well
+      #081020 · section hues aqua #62acee · magma #ff8b41 · leaf #83c562 ·
+      psychic #f67b9c.
+
+      NO POKEMON ASSETS: no official sprite, card, art or font. The mark is
+      this project's own observing-eye glyph (public/logo.svg, recoloured),
+      and the two faces are webfont-free SIL OFL Geist / Geist Mono.
+
+      Rendered by scripts/brand_render.mjs at 1616x420 CSS px, dsf 2 ->
+      3232x840. Read it at GitHub's ~880px rendered width (~54% scale), so
+      nothing here is thinner than 2 CSS px and no type is under 18 CSS px.
+    -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --canvas: #102039;
+        --panel: #182952;
+        --panel-2: #29315a;
+        --line: #414a6a;
+        --ink: #dee6ee;
+        --dim: #bdcde6;
+        --gold: #ffc55a;
+        --well: #081020;
+        --aqua: #62acee;
+        --magma: #ff8b41;
+        --leaf: #83c562;
+        --psychic: #f67b9c;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1616px;
+        height: 420px;
+      }
+
+      body {
+        position: relative;
+        overflow: hidden;
+        background: var(--canvas);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      /* --- the map grid a Gen 3 route is built on --------------------- */
+      .field {
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(
+            to right,
+            rgba(98, 172, 238, 0.11) 1px,
+            transparent 1px
+          ),
+          linear-gradient(
+            to bottom,
+            rgba(98, 172, 238, 0.11) 1px,
+            transparent 1px
+          );
+        background-size: 64px 64px;
+        background-position: 50% 0;
+      }
+
+      /* --- the glow, dithered rather than blurred --------------------- */
+      /*
+       * A GBA has no continuous-tone blur. Its skies and transitions are
+       * short stepped ramps, and a brightening is expressed by changing the
+       * DENSITY of a two-colour checkerboard, not its alpha. So the halo is
+       * four concentric bands of the same aqua-on-canvas weave, each a step
+       * coarser and a step sparser than the one inside it — that is the
+       * `.gb-dither` / `.gb-dither-fine` mechanism from landing.css stacked
+       * into a ramp.
+       *
+       * It is AQUA, not gold, on purpose: the grid is aqua too, so the halo
+       * reads as the map lighting up rather than as a second light source,
+       * and the gold mark keeps its figure/ground separation. Keep the
+       * coverage low — a dense checker reads as an alpha-channel placeholder,
+       * not as a glow, which is exactly the failure this layer has to avoid.
+       * At GitHub's ~54% rendered scale the two inner bands average out to a
+       * flat lift (what a real dither does when you step back) and only the
+       * outer bands stay legible as texture.
+       */
+      .dither {
+        position: absolute;
+        left: 50%;
+        top: -140px;
+        width: 1100px;
+        height: 560px;
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+      .dither i {
+        position: absolute;
+        inset: 0;
+        display: block;
+        background-repeat: repeat;
+        --r: 50% 34%;
+        --cx: 50%;
+        --cy: 40%;
+      }
+      .b1 {
+        background-image: repeating-conic-gradient(
+          rgba(98, 172, 238, 0.22) 0% 25%,
+          transparent 0% 50%
+        );
+        background-size: 5px 5px;
+        -webkit-mask-image: radial-gradient(
+          ellipse var(--r) at var(--cx) var(--cy),
+          #000 0 20%,
+          transparent 30%
+        );
+      }
+      .b2 {
+        background-image: repeating-conic-gradient(
+          rgba(98, 172, 238, 0.16) 0% 25%,
+          transparent 0% 50%
+        );
+        background-size: 9px 9px;
+        -webkit-mask-image: radial-gradient(
+          ellipse var(--r) at var(--cx) var(--cy),
+          transparent 0 18%,
+          #000 27% 41%,
+          transparent 50%
+        );
+      }
+      .b3 {
+        background-image: repeating-conic-gradient(
+          rgba(98, 172, 238, 0.11) 0% 25%,
+          transparent 0% 50%
+        );
+        background-size: 14px 14px;
+        -webkit-mask-image: radial-gradient(
+          ellipse var(--r) at var(--cx) var(--cy),
+          transparent 0 39%,
+          #000 47% 63%,
+          transparent 71%
+        );
+      }
+      .b4 {
+        background-image: repeating-conic-gradient(
+          rgba(98, 172, 238, 0.07) 0% 25%,
+          transparent 0% 50%
+        );
+        background-size: 21px 21px;
+        -webkit-mask-image: radial-gradient(
+          ellipse var(--r) at var(--cx) var(--cy),
+          transparent 0 61%,
+          #000 69% 85%,
+          transparent 96%
+        );
+      }
+
+      /* --- content ---------------------------------------------------- */
+      .stack {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .mark {
+        display: block;
+        width: 104px;
+        height: 104px;
+      }
+
+      .word {
+        margin-top: 22px;
+        font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+        font-weight: 700;
+        font-size: 104px;
+        line-height: 1;
+        letter-spacing: -0.045em;
+        color: var(--ink);
+      }
+
+      .tag {
+        margin-top: 18px;
+        font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+        font-weight: 500;
+        font-size: 33px;
+        line-height: 1.1;
+        letter-spacing: -0.012em;
+        color: var(--dim);
+      }
+
+      /*
+       * Square chips, hard outline, two-tone row. Gen 3 menu rows are a dark
+       * fill with a lit top edge and a shaded bottom edge — that bevel, not
+       * a radius, is what makes them read as period UI. The four section
+       * hues plus gold ride on the leading pixel, which is the page's own
+       * vocabulary: aqua / leaf / psychic / magma / gold.
+       */
+      .chips {
+        list-style: none;
+        display: flex;
+        gap: 16px;
+        margin-top: 40px;
+      }
+      .chips li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 22px 14px;
+        background: var(--panel);
+        border: 2px solid var(--line);
+        box-shadow: inset 0 2px 0 var(--panel-2), inset 0 -2px 0 var(--well);
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-weight: 500;
+        font-size: 21px;
+        line-height: 1;
+        letter-spacing: -0.005em;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .chips s {
+        display: block;
+        width: 11px;
+        height: 11px;
+        flex: none;
+        box-shadow: 0 0 0 2px var(--well);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="field"></div>
+    <div class="dither" aria-hidden="true">
+      <i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i>
+    </div>
+
+    <div class="stack">
+      <!-- the observing eye — public/logo.svg, recoloured only -->
+      <svg class="mark" viewBox="0 0 128 128" aria-hidden="true">
+        <g stroke="#ffc55a" stroke-width="10" stroke-linecap="round" fill="none">
+          <circle cx="64" cy="64" r="40" />
+          <path d="M37 36 L23 22" />
+          <path d="M91 36 L105 22" />
+          <path d="M64 106 L64 118" />
+        </g>
+        <circle cx="64" cy="64" r="13" fill="#ffc55a" />
+      </svg>
+
+      <h1 class="word">unown</h1>
+      <p class="tag">The self-improving coding agent</p>
+
+      <ul class="chips">
+        <li><s style="background: var(--aqua)"></s>tiered memory</li>
+        <li><s style="background: var(--leaf)"></s>self-improving harness</li>
+        <li><s style="background: var(--psychic)"></s>AutoDreaming</li>
+        <li><s style="background: var(--magma)"></s>guardrail hooks</li>
+        <li><s style="background: var(--gold)"></s>OS-level sandbox</li>
+      </ul>
+    </div>
+  </body>
+</html>

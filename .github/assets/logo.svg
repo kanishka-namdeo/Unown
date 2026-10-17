@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <!-- unown mark — the observing eye (watch, learn, remember) -->
-  <g stroke="#34d399" stroke-width="10" stroke-linecap="round" fill="none">
+  <g stroke="#ffc55a" stroke-width="10" stroke-linecap="round" fill="none">
     <circle cx="64" cy="64" r="40"/>
     <path d="M37 36 L23 22"/>
     <path d="M91 36 L105 22"/>
     <path d="M64 106 L64 118"/>
   </g>
-  <circle cx="64" cy="64" r="13" fill="#34d399"/>
+  <circle cx="64" cy="64" r="13" fill="#ffc55a"/>
 </svg>
