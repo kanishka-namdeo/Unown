@@ -48,7 +48,7 @@ function Spellbox() {
           spellCheck={false}
           autoComplete="off"
           placeholder="type anything"
-          className="w-full bg-transparent font-mono text-sm text-ink outline-none placeholder:text-faint/60"
+          className="w-full bg-transparent font-mono text-sm text-ink outline-none placeholder:text-dim"
         />
         <span className="shrink-0 font-mono text-[10px] tabular-nums text-faint">
           {shown.length}/{MAX}

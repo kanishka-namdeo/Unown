@@ -95,7 +95,7 @@ function schedule(script: Line[]): Slot[] {
 const TONE: Record<NonNullable<Extract<Line, { kind: "out" }>["tone"]>, string> = {
   dim: "text-faint",
   good: "text-glow-soft",
-  warn: "text-amber-300/90",
+  warn: "text-amber-300",
   accent: "text-ink",
 };
 

@@ -58,7 +58,9 @@
   --color-line-bright: #3b3733;
   --color-ink: #f4f1ea;
   --color-dim: #a8a29a;
-  --color-faint: #6d675f;
+  /* Clears WCAG AA 4.5:1 on panel-2, the darkest surface it lands on, and
+     stays a clear step below `dim` so the ink/dim/faint hierarchy holds. */
+  --color-faint: #8b8279;
   --color-glow: #34d399;
   --color-glow-soft: #6ee7b7;
 }

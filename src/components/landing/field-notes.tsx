@@ -185,7 +185,7 @@ export function FieldNotesSection() {
             </p>
 
             <div className="mt-6 border-t border-line pt-5">
-              <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-faint/80">
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-dim">
                 Sources
               </p>
               <ul className="mt-3 space-y-1.5 text-[11.5px]">

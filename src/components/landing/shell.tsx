@@ -30,14 +30,22 @@ export function FadeUp({
   children,
   delay = 0,
   className,
+  as = "div",
 }: {
   children: React.ReactNode;
   delay?: number;
   className?: string;
+  /**
+   * Element to render. Pass "li" whenever the parent is a list: an `<li>` must
+   * be a direct child of its `<ul>`, and wrapping one in FadeUp's default
+   * `<div>` is invalid list structure that screen readers announce badly.
+   */
+  as?: "div" | "li" | "article" | "section";
 }) {
   const reduced = useReducedMotion();
+  const Comp = motion[as];
   return (
-    <motion.div
+    <Comp
       className={className}
       initial={{ opacity: 0, y: reduced ? 0 : 20 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -45,7 +53,7 @@ export function FadeUp({
       transition={{ duration: 0.45, delay, ease: "easeOut" }}
     >
       {children}
-    </motion.div>
+    </Comp>
   );
 }
 
@@ -338,7 +346,7 @@ export function Footer() {
             with, endorsed by or sponsored by Nintendo, Game Freak, Creatures Inc. or The
             Pokémon Company. Pokémon and Unown are trademarks of their respective owners.
           </p>
-          <p className="font-mono text-[10px] text-faint/70">
+          <p className="font-mono text-[10px] text-dim">
             <span className="hidden sm:inline">psst — try ↑↑↓↓←→←→ba</span>
           </p>
         </div>

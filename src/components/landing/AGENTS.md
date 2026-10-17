@@ -95,6 +95,14 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
 - Re-run the page with `prefers-reduced-motion: reduce` — every reveal must
   resolve to its finished state and the session replay must show the finished
   transcript with no autoplay.
+- **Contrast is a contract, not a vibe.** Every text token clears WCAG AA 4.5:1
+  on the darkest surface it lands on: `ink` 17.4, `dim` 7.0, `faint` 4.7, `glow`
+  10.2. `--color-faint` was `#6d675f` (3.16:1 on panel-2) and had to go to
+  `#8b8279` because it carries 10–11px captions, which are normal text, not
+  large text. If you re-tune the palette, re-run the arithmetic before shipping
+  it. `--color-line-bright` (1.67) is exempt by design: it is only ever a
+  border or a bar-chart track, never text and never the sole carrier of a
+  state.
 
 ## Child DOX Index
 

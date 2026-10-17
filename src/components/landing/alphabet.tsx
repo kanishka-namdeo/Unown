@@ -81,7 +81,7 @@ function FormTile({
       />
       <span
         className={`mt-1 font-mono text-[9px] uppercase transition-colors ${
-          active ? "text-glow" : "text-faint/70"
+          active ? "text-glow" : "text-dim"
         }`}
       >
         {id}
@@ -185,7 +185,7 @@ export function AlphabetSection() {
                   <blockquote className="text-[13px] italic leading-relaxed text-dim">
                     {entry.lore}
                   </blockquote>
-                  <figcaption className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-faint/80">
+                  <figcaption className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-dim">
                     {entry.loreSrc ?? "Unown"}
                   </figcaption>
                 </figure>

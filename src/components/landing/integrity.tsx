@@ -56,7 +56,7 @@ const LOG = [
 const DECISION_TONE: Record<string, string> = {
   log: "text-faint",
   allow: "text-glow-soft",
-  augment: "text-amber-300/90",
+  augment: "text-amber-300",
   deny: "text-rose-300",
 };
 

@@ -61,7 +61,7 @@ export function ModelsBand() {
                         {t.label}
                       </span>
                       {t.note ? (
-                        <span className="block truncate font-mono text-[9px] leading-tight text-faint/70">
+                        <span className="block truncate font-mono text-[9px] leading-tight text-dim">
                           {t.note}
                         </span>
                       ) : null}

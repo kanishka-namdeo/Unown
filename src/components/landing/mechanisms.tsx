@@ -143,7 +143,7 @@ export function MechanismsSection() {
             {MECHANISMS.map((m, i) => (
               <FadeUp key={m.n} delay={Math.min(i, 3) * 0.05}>
                 <div className="group grid gap-4 border-t border-line py-8 lg:grid-cols-[2.5rem_minmax(0,17rem)_minmax(0,1fr)] lg:gap-6">
-                  <p className="font-mono text-[11px] tabular-nums text-glow/70">{m.n}</p>
+                  <p className="font-mono text-[11px] tabular-nums text-glow">{m.n}</p>
 
                   <div>
                     <h3 className="text-lg font-medium text-ink">{m.title}</h3>

@@ -62,11 +62,14 @@ export function ShowcaseSection() {
             <div>
               <ul className="border-t border-line">
                 {TABS.map(([tab, what], i) => (
-                  <FadeUp key={tab} delay={Math.min(i, 4) * 0.04}>
-                    <li className="border-b border-line py-3.5">
-                      <p className="text-[13.5px] font-medium text-ink">{tab}</p>
-                      <p className="mt-1 text-[12.5px] leading-relaxed text-dim">{what}</p>
-                    </li>
+                  <FadeUp
+                    key={tab}
+                    as="li"
+                    delay={Math.min(i, 4) * 0.04}
+                    className="border-b border-line py-3.5"
+                  >
+                    <p className="text-[13.5px] font-medium text-ink">{tab}</p>
+                    <p className="mt-1 text-[12.5px] leading-relaxed text-dim">{what}</p>
                   </FadeUp>
                 ))}
               </ul>
