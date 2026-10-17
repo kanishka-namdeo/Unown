@@ -31,6 +31,7 @@ research):
 | 4 | pi vitest-evals | Behavioral correctness of the agent loop (pi's own eval suite) | `evals/` |
 | 5 | Self-improvement lift | The differentiator: repeat-task pass-rate/token improvement from Unown memory | `selfimprove/` |
 | 6 | HumanEval+ (evalplus) | Model-level codegen sanity (non-agentic, labelled as such) | `evalplus/` |
+| 7 | LiveCodeBench v6 subset | Contamination-aware model-tier headline: post-cutoff problems (2025-01→04 window) | `livecodebench/` |
 
 ## Track 1 — pi-repo test suite
 
@@ -133,6 +134,17 @@ efficiency — memory doing exactly what it exists for — and is labelled as su
 Model-level (non-agentic) codegen sanity through the same bridge, greedy decoding,
 pass@1 on the HumanEval+ test suites (80× more tests than HumanEval). Included as a
 model-tier reference column only — it does not measure the agent.
+
+## Track 7 — LiveCodeBench v6 subset (`livecodebench/`) — contamination-aware headline
+
+HumanEval+ problems predate every current model, so a high score cannot distinguish
+ability from memorization. This track is the post-cutoff answer: a 50-problem
+stratified subset of LiveCodeBench's newest window (contests 2025-01-04 → 2025-04-06,
+after all three models' cutoffs), official LCB prompt template and grader logic,
+greedy decoding, pass@1, per-problem JSONL receipts. Dominated honestly by the
+`no_code` cutoff failure mode at the pinned 4096-token budget — reported as measured.
+HumanEval+ (Track 6) stays as the pre-cutoff reference column; this is the one that
+cannot have been memorized.
 
 ## What we deliberately do NOT self-run (and why)
 

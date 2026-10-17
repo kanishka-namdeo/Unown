@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Brain, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Target } from "lucide-react";
+import { Brain, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Swords, Target } from "lucide-react";
 import { FadeUp, BENCH_URL, SectionHead } from "./shell";
 
 /**
@@ -11,7 +11,9 @@ import { FadeUp, BENCH_URL, SectionHead } from "./shell";
  * llm-bridge on Dashscope (kimi-k2.5 / qwen3.7-plus / qwen3.6-plus); tracks
  * re-verified from a fresh checkout on 2026-10-17 (evalplus + edit-bench
  * consts below carry the fresh numbers; per-track receipts under
- * benchmarks/<track>/results/rerun-2026-10-17/).
+ * benchmarks/<track>/results/rerun-2026-10-17/). LiveCodeBench v6 was run
+ * 2026-10-17, same bridge, same decoding — receipts under
+ * benchmarks/livecodebench/results/.
  * When a run lands, update the consts and the receipts in the same commit.
  */
 
@@ -25,6 +27,20 @@ const HUMANEVAL_PLUS = [
   { model: "kimi-k2.5", pct: 93.9 },
   { model: "qwen3.6-plus", pct: 93.3 },
   { model: "qwen3.7-plus", pct: 92.7 },
+];
+
+/**
+ * LiveCodeBench release_v6 increment (contests 2025-01-04 → 2025-04-06) —
+ * after every one of these models' knowledge cutoffs, so nothing here can be
+ * memorized. 50-problem stratified subset (see benchmarks/livecodebench/
+ * dataset/subset.json), official LCB prompt + grader logic, greedy pass@1.
+ * no_code = the model spent the whole 4096-token budget without closing a
+ * fenced code block — reported as a fail, not filtered.
+ */
+const LIVECODEBENCH = [
+  { model: "kimi-k2.5", pct: 52, noCode: 15 },
+  { model: "qwen3.7-plus", pct: 38, noCode: 26 },
+  { model: "qwen3.6-plus", pct: 36, noCode: 27 },
 ];
 
 const POLYGLOT = [
@@ -231,8 +247,8 @@ export function BenchmarksSection() {
         <div className="mt-12 border-y border-line bg-panel/30">
           <div className="mx-auto grid max-w-6xl px-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
             {[
+              { v: "52%", l: "LiveCodeBench v6 pass@1", s: "post-cutoff problems, kimi-k2.5" },
               { v: "98.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
-              { v: "93.9%", l: "HumanEval+ pass@1", s: "official evalplus, greedy" },
               { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
               { v: "5,342", l: "repo tests green", s: "pi monorepo + engine, 0 failing" },
             ].map((s, i) => (
@@ -254,6 +270,41 @@ export function BenchmarksSection() {
 
         {/* tracks */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <TrackCard
+            icon={Swords}
+            name="LiveCodeBench v6 — the contamination-aware headline"
+            source="50-problem stratified subset of LiveCodeBench's release_v6 increment · contests 2025-01-04 → 2025-04-06 · after every model's cutoff · official LCB prompt + grader · greedy pass@1 · receipts under benchmarks/livecodebench/results/"
+          >
+            {LIVECODEBENCH.map((r, i) => (
+              <div key={r.model} className="flex items-center gap-3">
+                <BarRow label={r.model} pct={r.pct} delay={i * 0.1} />
+                <span className="hidden shrink-0 font-mono text-[10px] text-faint sm:inline">
+                  {r.noCode} no_code
+                </span>
+              </div>
+            ))}
+            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+              HumanEval+ (below) predates these models, so its 90s cannot separate ability
+              from memorization. These problems were published after their cutoffs. Every
+              model sweeps easy (13/13, 12/13); hard is where it ends (4/23, 1/23, 1/23).
+            </p>
+            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+              <span className="text-gold">no_code is the honest failure mode</span>: at the
+              pinned 4096-token budget, a model that reasons at length gets cut off before
+              closing its code fence — 15/26/27 of 50. Reported as measured, not filtered;
+              larger-budget runs are future work, not a silent re-run.
+            </p>
+            <a
+              href={`${BENCH_URL}/livecodebench/results`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
+            >
+              benchmarks/livecodebench/results/
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
+          </TrackCard>
+
           <TrackCard
             icon={Target}
             name="Edit accuracy"
