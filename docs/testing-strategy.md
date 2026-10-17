@@ -188,18 +188,21 @@ only because a competitor's number was inconvenient.
 
 ## 3. Live inventory (2026-10-18)
 
-All counts below are from this tree unless marked `[C]`.
+All counts below are from this tree unless marked `[C]`, and are now
+platform-tagged: after the cross-platform merge (M2-M4, `afd962b`) the engine
+suite's path-semantics differ per OS and the differences are load-bearing
+(§7.2).
 
 | Surface | What exists | Measured | Gap |
 |---|---|---|---|
-| `src/` (dashboard + landing) | `bun test src` with happy-dom + RTL | 206 tests / 13 files, 0 fail `[V]` | No E2E, no a11y, no visual regression, no landing-page tests; line coverage 91.1% overall but `providers.tsx` 58% and `activity-feed.tsx` 54% `[V]` |
-| `pi-repo/.../self-learning` (engine) | `bun test test/` unit + guard + canary + budget suites; `test/cli/golden.test.ts`; `test/termhooks.adversarial.test.ts`; `test/integration/` | 533 pass / 13 skip in the consolidated snapshot `[V: benchmarks/snapshots/track1-rerun-2026-10-17/summary.json]` | No fault injection, no load test, no coverage measurement, no property fuzzing; live suites are env-gated and therefore never run in CI |
-| `mini-services/llm-bridge` | `bun test pure.test.ts` (pure routing/thinking/retry/backoff/SSE math) + env-gated VLM smoke | 95 tests, 0 fail `[V]` | No load/chaos, no cancellation test, no contract test against a real OpenAI client |
-| `bin/unown` (CLI + TUI) | `test/cli/golden.test.ts` (setup/doctor/memory/plan/headless/env-knobs/parallel) | covered in the 533 above | No TUI interaction test, no `unown setup` idempotency-under-failure test |
-| `pi-repo/*` (upstream vendored) | `npm run test` per workspace with pinned model-catalog snapshots | 4,809 pass / 0 fail / 13 skip (5,342 minus 533 self-learning) `[V: summary.json]` | Out of our scope by policy (§13) |
+| `src/` (dashboard + landing) | `bun test src` with happy-dom + RTL | 206 tests / 13 files, 0 fail `[V: 2026-10-18, Windows]` | No E2E, no a11y, no visual regression, no landing-page tests; line coverage 91.1% overall but `providers.tsx` 58% and `activity-feed.tsx` 54% `[V]` |
+| `pi-repo/.../self-learning` (engine) | `bun test test/` unit + guard + canary + budget suites; `test/cli/golden.test.ts`; `test/termhooks.adversarial.test.ts`; `test/integration/`; new: `tools.test.ts`, seatbelt and Windows-hook tests (M2/M3) | Windows (this tree): 603 pass / 35 skip / **64 fail** of 702 across 20 files `[V: 2026-10-18, "bun test test/" on Microsoft Windows]`; Linux/CI: green (ubuntu build-test leg) `[V: GH run 39069143075]` | 64 Windows failures concentrated in path-semantics suites (§7.2); no fault injection, no load test, no coverage measurement, no property fuzzing; live suites are env-gated and therefore never run in CI |
+| `mini-services/llm-bridge` | `bun test pure.test.ts` (pure routing/thinking/retry/backoff/SSE math) + env-gated VLM smoke | 95 tests, 0 fail `[V: 2026-10-18, Windows]` | No load/chaos, no cancellation test, no contract test against a real OpenAI client, not in CI (§11) |
+| `bin/unown` (CLI + TUI) | `test/cli/golden.test.ts` (setup/doctor/memory/plan/headless/env-knobs/parallel) | covered in the engine suite above | The golden suite fails 16/16 on this Windows tree (§7.2); no TUI interaction test, no `unown setup` idempotency-under-failure test |
+| `pi-repo/*` (upstream vendored) | `npm run test` per workspace with pinned model-catalog snapshots | pre-merge Linux receipt: 4,809 pass / 0 fail / 13 skip `[V: benchmarks/snapshots/track1-rerun-2026-10-17/summary.json]` | Out of our scope by policy (§13); receipt needs re-measuring post-merge on the Linux box |
 | Benchmarks | Tracks 1-9 (`benchmarks/README.md`) | re-verified 2026-10-17 with receipts `[C: benchmarks/RESULTS.md]` | No time-horizon ladder, no judge calibration, no external memory benchmark |
-| Sandbox | `bwrap_smoke.sh` (25 checks), `verify_sandbox.mjs` (12 checks) | green locally `[V: scripts/AGENTS.md]` | Not in CI; run only by hand on sandbox changes |
-| CI (`.github/workflows/ci.yml`) | lint, typecheck, `bun test src`, `bash -n scripts/*.sh`, theme, GBA palette, gitleaks, `bun audit --prod` | 8 jobs | No engine tests, no bridge tests, no coverage gate, no integration, no build, no sandbox job |
+| Sandbox | `bwrap_smoke.sh` (25 checks), `verify_sandbox.mjs` (12 checks) | In CI as the `sandbox-smoke` job (ubuntu) `[V: ci.yml]` - which is **RED**: the bwrap invocation itself fails on the runner, 10 pass / 11 fail / 1 skip `[V: GH run 39069143075]` | The job is the canary and it is red in the latest upstream run; the trap it exposes is that fail-closed "blocked" assertions trivially pass when the launcher fails (§7.5) |
+| CI (`.github/workflows/ci.yml`) | lint-shell, `build-test` (3-OS real-installer matrix + engine suite + CLI smokes), `sandbox-smoke` (ubuntu), lint, typecheck, `bun test src`, coverage gate, docs gate, theme, GBA palette, gitleaks, `bun audit --prod` | 12 jobs `[V: ci.yml]` | No bridge tests, no integration, no build, no E2E/axe; as of 2026-10-18 the windows/macos `build-test` legs and `sandbox-smoke` are RED on `origin/main` `[V: run 39069143075]` |
 
 ### 3.1 Reconciling the test counts
 
@@ -214,19 +217,35 @@ that receipt's note). `benchmarks/README.md` and `RESULTS.md` should adopt the
 same figure and the same scope sentence - a count without its scope is not a
 fact, which is this page's own `docs-drift` taxonomy item (§14.2 #9).
 
+That reconciliation is now itself historical: the cross-platform merge
+(`afd962b`, 2026-10-17) grew the engine suite to 702 collected tests and the
+5,342 receipt predates it. The standing rule this page commits to is per-
+platform, scope-tagged receipts, not one global figure: the Linux Environment
+(that produced the snapshot) and Windows (this tree, 603/35/64) must each carry
+their own number until the Windows failures are cleared or platform-gated
+(§7.2). Re-measure the full Track 1 pipeline on the Linux box post-merge before
+quoting any new global figure.
+
 ### 3.2 What CI actually gates today
 
-`[V: .github/workflows/ci.yml]` eight jobs: dashboard lint (`bunx eslint src`),
-typecheck (`tsc --noEmit` after `db:generate`), dashboard unit tests
-(`bun test src`), shell syntax (`bash -n scripts/*.sh`), theme schema, landing GBA
-palette contract, gitleaks full-history secret scan, and `bun audit --prod` with
-three documented prisma-internal ignores.
+`[V: .github/workflows/ci.yml]` twelve jobs: `lint-shell` (bash -n over
+`scripts/*.sh`), `build-test` (ubuntu/macos/windows matrix: the real installer
+`bun scripts/install.ts` with model-data hydration, then the engine suite
+`bun test test/`, then `unown --help` and a `doctor`-table smoke), `sandbox-smoke`
+(ubuntu: `bwrap_smoke.sh` + `verify_sandbox.mjs`), dashboard lint (`bunx eslint
+src`), typecheck (`tsc --noEmit` after `db:generate`), dashboard unit tests
+(`bun test src`), the changed-line coverage gate (`scripts/check_coverage.mjs
+--run`), the docs link/anchor gate (`scripts/check_docs.mjs docs/*.md`), theme
+schema, landing GBA palette contract, gitleaks full-history secret scan, and
+`bun audit --prod` with three documented prisma-internal ignores. A concurrency
+group cancels superseded runs.
 
-Notably **absent**: the engine suite (533 tests), the bridge suite (95), the
-integration suite, coverage, the build, and the sandbox suite. The first two are
-the cheapest real gap in the repository - they are fast, hermetic and already
-green locally, and today a regression in the engine cannot fail CI at all. §11
-puts them first.
+Still absent: the bridge suite (95), the integration suite, `bun run build`,
+and E2E/axe. And the merge's promise is only half-kept today: the newest
+upstream CI run on `main` (`afd962b`, run 39069143075) shows the engine suite
+green on the ubuntu leg but RED on the windows and macos legs (the path-
+semantics debt of §7.2), and `sandbox-smoke` RED on ubuntu. The jobs exist;
+their payoff does not yet. §11 puts clearing that first.
 
 ## 4. The competitive baseline
 
@@ -394,7 +413,7 @@ carry large noise `[C]`.
 | Memory poisoning | provenance tags, delimiters, canary gating, MPBench-style probes | provenance in the injected block, deterministic guard, canary with K samples, n=10 poison corpus | **Ahead** |
 | Contamination-aware model headline | LiveCodeBench / SWE-rebench, post-cutoff windows | Track 7, pinned window, official prompt + grader, `no_code` reported honestly | **Ahead** |
 | Container-free honest benchmarking | cite third-party boards rather than fake a self-run | Tracks 2/3/4/6/7/8 self-run; SWE-bench/TB quoted with dates | **Ahead** |
-| CI gate on the engine's own suite | universal | engine (533) and bridge (95) tests are **not** in CI | **Behind, badly, and cheap to fix** |
+| CI gate on the engine's own suite | universal | wiring landed (ubuntu leg green); windows/macos legs red, sandbox-smoke red `[V: run 39069143075]` | **Fixed in shape, red in substance** |
 | Verifier integrity / anti-contamination | verifier boundary, reward-hack flagging, trial auditing | none | **Behind, and unpriced** |
 | Judge calibration for graded metrics | judge id + rubric + FPR probe published | none | **Behind, and cheap to fix** |
 | Coverage as a gate | routine | targets stated, no gate (gate added in this revision) | **Fixed here** |
@@ -412,15 +431,15 @@ in the tree, and why it is the right call:
 |---|---|---|---|---|
 | Unit (pure functions, reducers, formats) | `bun test` (built in, no config) | `src/**/*.test.ts` | <5 s, $0 | every PR |
 | Component (React) | `bun test` + happy-dom + `@testing-library/react` + `user-event` | `src/components/dashboard/__tests__/` | <5 s, $0 | every PR |
-| Engine unit + guard suites | `bun test test/` | `pi-repo/packages/self-learning/test/` | <60 s, $0 | every PR (once wired) |
+| Engine unit + guard suites | `bun test test/` | `pi-repo/packages/self-learning/test/` | <60 s, $0 | every PR (wired; ubuntu leg green, win/mac legs red - §7.2) |
 | Contract (engine <-> dashboard) | hand-maintained `src/lib/agent-types.ts` + integration fixture capture | `src/lib`, `test/integration/` | seconds | every PR (partial) |
 | Integration (HTTP, SSE, DB) | real `startServer` on an ephemeral port, mock bridge, temp state | `test/integration/` | ~30 s, $0 | every PR (once wired) |
-| CLI golden | subprocess `bin/unown` against a temp `UNOWN_HOME` | `test/cli/golden.test.ts` | ~2 min, $0 | every PR (once wired) |
+| CLI golden | subprocess `bin/unown` against a temp `UNOWN_HOME` | `test/cli/golden.test.ts` | ~2 min, $0 | every PR (wired inside the ubuntu build-test leg; red on Windows - §7.2) |
 | Adversarial corpus | labelled cases + expected decision | `test/termhooks.adversarial.test.ts` | <10 s | every PR |
 | Live probes (memory, poison, VLM) | env-gated (`UNOWN_MEMORY_LIVE=1`, `UNOWN_MEMORY_POISON=1`, `UNOWN_VLM_SMOKE=1`) | engine + bridge | minutes, $$ | weekly + pre-release |
 | Agent evals / benchmarks | existing `runner*.mjs` per track | `benchmarks/*` | hours, $$ | weekly + release |
 | End-to-end (UI) | Playwright - **not yet adopted** | `e2e/` (absent) | 5-15 min | nightly (planned) |
-| Sandbox | `bwrap_smoke.sh`, `verify_sandbox.mjs` | `scripts/` | ~1 min | on sandbox-surface changes (manual) |
+| Sandbox | `bwrap_smoke.sh`, `verify_sandbox.mjs` | `scripts/` | ~1 min | every PR (in CI as the ubuntu `sandbox-smoke` job - RED in the latest upstream run, §7.5) |
 | Coverage | `bun test --coverage` + `scripts/check_coverage.mjs` | CI job | +5 s | every PR (shipped in this revision) |
 
 Notes on the two decisions that changed from the original proposal:
@@ -447,14 +466,14 @@ Notes on the two decisions that changed from the original proposal:
 | 7 | gitleaks full-history secret scan | SHIPPED | |
 | 8 | `bun audit --prod` | SHIPPED | 3 documented prisma-internal ignores |
 | 9 | Changed-line coverage >= 80% in `src/` | SHIPPED (this revision) | `bun test --coverage` + `scripts/check_coverage.mjs`; measured baseline 91.1% lines |
-| 10 | Engine suite `bun test test/` in `self-learning` | **OPEN** | 533 tests, hermetic, ~60 s - the cheapest missing gate |
-| 11 | Bridge suite `bun test pure.test.ts` | **OPEN** | 95 tests, sub-second |
+| 10 | Engine suite `bun test test/` in `self-learning` | SHIPPED (upstream, `build-test` matrix) | ubuntu leg green; windows/macos legs red (§7.2 debt). Hermetic means green on **every** runner - red legs defeat the gate until cleared |
+| 11 | Bridge suite `bun test pure.test.ts` | **OPEN** | 95 tests, sub-second - now the cheapest missing gate |
 | 12 | Engine integration suite (`test:integration`) | **OPEN** | 10 tests, real server + mock bridge |
-| 13 | `bash scripts/bwrap_smoke.sh` + `node scripts/verify_sandbox.mjs` on sandbox-surface changes | **OPEN** | needs a `paths:` filter + Linux runner; the vendored bwrap binary is committed |
+| 13 | Sandbox suite in CI | SHIPPED (upstream, unconditional ubuntu `sandbox-smoke` job) | **RED on the latest upstream run**: 10 pass / 11 fail / 1 skip - the launcher itself fails, so fail-closed "blocked" assertions pass spuriously (§7.5) |
 | 14 | `bun run build` before deploy | **OPEN** | Vercel builds on push; GitHub CI should too |
 | 15 | Mermaid byte-identity (`scripts/mermaid_check.mjs`) | **OPEN** | needs Playwright + a browser; belongs to the visual pipeline |
 | 16 | Playwright E2E + axe-core | **OPEN** | the largest untouched surface |
-| 17 | Docs link and anchor integrity on `docs/*.md` | SHIPPED (this revision) | `scripts/check_docs.mjs` as the `docs` CI job; the CLI-surface and env-var cross-checks in `docs/AGENTS.md` remain prose (§7.10) |
+| 17 | Docs link and anchor integrity on `docs/*.md` | SHIPPED (this revision; verified green against upstream's new `windows.md`/`macos.md`) | `scripts/check_docs.mjs` as the `docs` CI job; the CLI-surface and env-var cross-checks in `docs/AGENTS.md` remain prose (§7.10) |
 
 ## 7. Surface-by-surface backlog
 
@@ -495,7 +514,22 @@ preserved in the margin notes where they were cited from history.
 
 - **SHIPPED** - memory, tasks, mint, router, llm, notes, skills, outbox, bwrap,
   termhooks (unit + adversarial), guard, dream-guard, canary, budget, CLI golden,
-  HTTP integration (10 tests, real server + mock bridge).
+  HTTP integration (10 tests, real server + mock bridge); from the M2/M3 merge:
+  `tools.test.ts`, the seatbelt (macOS sandbox-exec) suite, and a Windows-hook
+  suite.
+- **OPEN, and now green-on-CI-critical** - **cross-platform test debt**. On
+  Windows the suite collects 64 failures, and upstream's own `build-test`
+  windows/macos legs fail for the same families `[V: GH run 39069143075,
+  2026-10-17]`. The failing groups: `jailPath` (symlink/realpath resolution,
+  backslash-as-separator quirks, jail-root realpathing), `bashRedirectEscape`
+  and the B9 symlink-redirect corpus (`/etc` targets do not exist on Windows),
+  `resolveBwrapPath`/`wrapCommand`/`writeSandboxShell` (the platform gate eats
+  the API the tests assert), `canaryCheck` + the project-dream guard, and 16
+  CLI-golden cases. The policy decision this forces: make these suites
+  platform-correct (portable temp roots, real wsl-free path resolution) or
+  platform-gate them with an honest per-OS skip receipt. "Hermetic suite" now
+  means the same as "green on every runner"; until then the windows/macos CI
+  legs license every breakage to look like CI noise.
 - **OPEN** - Fault injection, none of it: bridge down mid-run; process kill
   mid-run then restart (orphan recovery must leave memory versions monotonic and
   no partial write visible); SQLite concurrent read while a run writes (WAL, no
@@ -564,9 +598,17 @@ preserved in the margin notes where they were cited from history.
 
 *(was §4.5; surface: `sandbox.ts`, `bwrap.ts`)*
 
-- **SHIPPED** - `bwrap_smoke.sh` (25 checks) and `verify_sandbox.mjs` (12 checks).
-- **OPEN** - Get both into CI behind a `paths:` filter. This is the only sandbox
-  evidence that is currently a human ritual.
+- **SHIPPED** - `bwrap_smoke.sh` (25 checks) and `verify_sandbox.mjs` (12
+  checks); both are wired into CI as the unconditional ubuntu `sandbox-smoke`
+  job (upstream M4) - no `paths:` filter, at the cost of ~1 min per run.
+- **OPEN - CI is red, and it found a real test-design trap.** In the latest
+  upstream run the job scores 10 pass / 11 fail / 1 skip because the bwrap
+  invocation itself fails on the runner `[V: GH run 39069143075]`. The 10
+  "passes" are the fail-closed assertions (write `/etc` blocked, TCP blocked)
+  that cannot tell "blocked as designed" from "the launcher is dead", so the
+  green half of the report is meaningless exactly when it matters most. Both
+  fixes are small: assert a successful baseline exec before the deny checks,
+  and have each check print the launcher's stderr on failure.
 - **OPEN** - Adopt the vendor's boundary framing as a written contract
   (§4.4 `[C]`): state which surface each isolation layer covers, state that the
   terminal agent is *outside* the OS sandbox by design, and state the rule that
@@ -891,25 +933,31 @@ is what remains.
 
 **Now (days).**
 
-1. Wire the engine suite (533 tests) and the bridge suite (95) into CI. Hermetic,
-   green locally, currently invisible to CI.
-2. Corpus checksum manifest + runner verification (§8.3), and the owner decision on
+1. Clear the red CI legs inherited from the merge: make the engine suite's
+   windows/macos legs green (platform-correct fixes or an honest per-OS skip
+   policy, §7.2) and revive `sandbox-smoke` (baseline-exec assertion + stderr
+   on failure, §7.5). A red main licenses noise; nobody triages a red board
+   for long.
+2. Wire the bridge suite (95, sub-second) into CI - after item 1 this is the
+   cheapest remaining gap.
+3. Corpus checksum manifest + runner verification (§8.3), and the owner decision on
    write containment (§8.2). This is the only P0 in the document that is about the
    integrity of published numbers rather than about catching bugs.
-3. Judge id + rubric + FPR probe for the graded numbers (§10 item L). Cheap, and it
+4. Judge id + rubric + FPR probe for the graded numbers (§10 item L). Cheap, and it
    is the difference between a measurement and an opinion.
-4. Reconcile the three pi-repo test counts in `benchmarks/README.md` and
-   `RESULTS.md` (§3.1).
-5. Extend `check_docs.mjs` to the prose-only rules: commands in the docs exist in
+5. Re-measure the full Track 1 pipeline on the Linux box post-merge and
+   reconcile `benchmarks/README.md`, `RESULTS.md` (§3.1).
+6. Extend `check_docs.mjs` to the prose-only rules: commands in the docs exist in
    `cli.ts` HELP, env vars in `configuration.md` exist in `.env.example`.
 
 **Next (one to two weeks).**
 
-6. Sandbox suite into CI behind a `paths:` filter.
 7. `bun run build` into CI.
 8. Docs-drift checks: README/landing numbers to receipts (§7.10).
 9. Property-based tests for `decideBash` / `jailPath` /
-   `bashRedirectEscape` / budget arithmetic.
+   `bashRedirectEscape` / budget arithmetic - property testing is also the
+   structural fix for the Windows path-semantics failures, not just a hardening
+   item.
 10. The engine self-suite release assertion: ~10 fixtures that must pass on a
     clean checkout with pinned snapshots, run per release.
 
@@ -940,7 +988,7 @@ Stating that is the point.
 
 | # | Criterion | Status | Evidence |
 |---|---|---|---|
-| 1 | CI enforces lint + typecheck + unit + security scan | **PARTIAL** | Lint, typecheck, dashboard unit, gitleaks, audit ship. Engine (533) and bridge (95) suites do not (§6 gates 10-11) |
+| 1 | CI enforces lint + typecheck + unit + security scan | **PARTIAL** | Lint, typecheck, dashboard unit, coverage, docs gates, gitleaks, audit ship, and the engine suite is wired inside the `build-test` matrix - but its windows/macos legs are red and `sandbox-smoke` is red on the latest run, and the bridge suite (95) is still absent (§6 gates 10-11) |
 | 2 | The harness self-suite is green on a clean checkout with pinned snapshots | **NOT MET** | The seeded suite exists; no release assertion runs it (§7.2) |
 | 3 | Hook deny recall >= 99% on the adversarial corpus, every miss triaged | **PARTIAL** | Corpus and triage exist; recall is not published as a number per run, and the fuzzer is absent (§7.3) |
 | 4 | Memory lift shows a statistically significant improvement for a shipped memory version, with CI | **NOT MET** | Track 5 v3 is n=1 and 6/6 everywhere - saturated, therefore uninformative. Needs the full-context baseline and repetitions (§7.6, §10 item A) |
@@ -976,8 +1024,10 @@ revision, which is precisely the drift this revision exists to stop.
 
 - **Pre-commit / local**: pure unit + hook corpus + coverage on changed files
   (<2 min, $0).
-- **Per PR**: lint, typecheck, dashboard unit, coverage gate, changed-path
-  security scan; engine + bridge suites once wired.
+- **Per PR**: lint, typecheck, dashboard unit, coverage gate, docs gate,
+  changed-path security scan; engine suite wired inside the 3-OS `build-test`
+  matrix (ubuntu leg green, win/mac red - §7.2); bridge + integration suites
+  once wired.
 - **Nightly**: dashboard E2E + axe, perf and cost trend, soak.
 - **Weekly**: adversarial corpus rerun, live memory and poison probes, VLM
   review, memory-lift and skill-acquisition evals.
@@ -1054,9 +1104,11 @@ Classify before fixing; the label is part of the run record.
 *Method: tree inspection of `src/`, `pi-repo/packages/self-learning/`,
 `mini-services/llm-bridge/`, `.github/workflows/ci.yml`, `scripts/`, and
 `benchmarks/`; reproduced commands (`bun test src`, `bun test src --coverage`,
-`bun test pure.test.ts`); receipts under `benchmarks/**/results/` and
-`benchmarks/snapshots/`; external sources listed in Appendix A, captured
-2026-10-18. In-repo claims are tagged `[V]` with a `file:line` or a receipt;
+`bun test pure.test.ts`, and post-merge `bun test test/` on Windows, Appendix A);
+receipts under `benchmarks/**/results/` and `benchmarks/snapshots/`; upstream CI
+evidence collected from the GitHub Actions API (runs list, jobs, logs) at
+2026-10-18; external sources listed in Appendix A, captured 2026-10-18.
+In-repo claims are tagged `[V]` with a `file:line`, a run id, or a receipt;
 external claims are `[C]` and carry the publisher's incentive.*
 
 ## Appendix A: sources
@@ -1150,11 +1202,30 @@ in the number they report.
 
 - `benchmarks/README.md` (tracks and measurement rules) · `benchmarks/RESULTS.md`
   (receipts) · `benchmarks/snapshots/track1-rerun-2026-10-17/summary.json` (the
-  5,342 figure) · `docs/benchmark-research.md` (benchmark selection and fairness
-  rules) · `docs/memory-system-review.md` (findings F1-F10) ·
+  pre-merge Linux receipt: 5,342 pass / 0 fail / 13 skip) ·
+  `docs/benchmark-research.md` (benchmark selection and fairness rules) ·
+  `docs/memory-system-review.md` (findings F1-F10) ·
   `docs/AGENTS.md` (the page contract this record must satisfy) ·
   `scripts/AGENTS.md` (sandbox and asset pipelines) ·
   `.github/workflows/ci.yml` (the gate ledger's source).
+
+**CI and platform receipts (2026-10-18)**
+
+- Upstream CI run 39069143075 (push to `main`, commit `afd962b`,
+  2026-10-17T21:01Z): `Build + test (ubuntu-latest)` success; `Build + test
+  (windows-latest)` and `Build + test (macos-latest)` failed at the
+  "Self-learning engine tests" step; `Sandbox smoke (bwrap profile)` failed
+  (10 pass / 11 fail / 1 skip, every launcher-dependent check fails on
+  `exit=1`). Evidence via the GitHub Actions API (runs, jobs, step logs);
+  reproducible from the run's own artifacts page:
+  https://github.com/kanishka-namdeo/Unown/actions/runs/39069143075
+- Local Windows reproduction (this tree at `888c8fa`, bun 1.4.2,
+  2026-10-18): `bun test test/` in `pi-repo/packages/self-learning` collects
+  702 tests across 20 files: 603 pass / 35 skip / 64 fail, with the failing
+  families listed in §7.2; `bun test src` 206 pass / 0 fail; `bun test
+  pure.test.ts` 95 pass / 0 fail; `node scripts/check_coverage.mjs --run` and
+  `node scripts/check_docs.mjs docs/*.md` both green (the latter validating the
+  merged `docs/windows.md` and `docs/macos.md` pages).
 
 **Related pages:** [benchmark-research.md](benchmark-research.md) (which public
 benchmarks to run and the fairness rules), [memory-system-review.md](memory-system-review.md)
