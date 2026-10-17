@@ -54,8 +54,34 @@ const CSS = `
 }
 `;
 
+/**
+ * The no-scripting safety net. Without it the page fails its own rule: 56
+ * elements ship with framer-motion's `opacity:0` pre-hydration state inline,
+ * so with JavaScript disabled every reveal would be invisible. With scripting
+ * on this block is inert and the reveals animate exactly as before.
+ */
+const NOSCRIPT = `
+/* No scripting: undo the inline pre-hydration state so the content is simply
+   there. Framer Motion writes opacity:0 plus a transform for every reveal,
+   and nothing on this page uses an inline hidden-state transform for any
+   other reason, so this is precise rather than a blanket [style] override. */
+[style*="opacity:0"][style*="transform"] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+`;
+
 export function LandingStyles() {
-  return <style href="unown-landing" precedence="medium">{CSS}</style>;
+  return (
+    <>
+      <style href="unown-landing" precedence="medium">{CSS}</style>
+      <noscript>
+        <style href="unown-landing-noscript" precedence="medium">
+          {NOSCRIPT}
+        </style>
+      </noscript>
+    </>
+  );
 }
 
 /* ------------------------------------------------------------------ */

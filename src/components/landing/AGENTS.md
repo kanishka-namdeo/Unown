@@ -52,6 +52,15 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
   `seal-form`) animate from the *finished* state so a browser without
   `animation-timeline` or a visitor with reduced motion sees an identical page.
   `prefers-reduced-motion` is honoured in CSS and in every JS animation path.
+- **The no-JS case is part of that rule, and it needed a fix.** Framer Motion
+  serialises `initial` into the SSR markup, so ~56 elements shipped as
+  `style="opacity:0;transform:translateY(20px)"` — a visitor with scripting
+  disabled got a blank page. `LandingStyles` now ships a `<noscript>` override
+  that undoes the inline hidden state. It is scoped to
+  `[style*="opacity:0"][style*="transform"]` because that is precisely what
+  framer writes and nothing else on the page hides itself that way. React does
+  not hoist it out of `<noscript>`, which is what keeps it inert with scripting
+  on — if you touch it, re-check that.
 - Provider marks are CC0 Simple Icons, **vendored** as path data by
   `scripts/vendor-provider-marks.mjs`. Never hotlink the CDN and never add
   `npm i simple-icons` for eight glyphs. OpenAI and DashScope are text-only on
@@ -95,6 +104,12 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
 - Re-run the page with `prefers-reduced-motion: reduce` — every reveal must
   resolve to its finished state and the session replay must show the finished
   transcript with no autoplay.
+- Fetch `/` and assert the served HTML contains a `<noscript>` block and that no
+  stylesheet link for it appears in `<head>`. Both halves matter: absent means
+  a blank page without JS, hoisted means every reveal is permanently disabled.
+- Lighthouse on the production build must stay at 1.00 for accessibility,
+  best-practices and SEO. It caught the contrast and list-structure bugs that
+  reading the source did not.
 - **Contrast is a contract, not a vibe.** Every text token clears WCAG AA 4.5:1
   on the darkest surface it lands on: `ink` 17.4, `dim` 7.0, `faint` 4.7, `glow`
   10.2. `--color-faint` was `#6d675f` (3.16:1 on panel-2) and had to go to
