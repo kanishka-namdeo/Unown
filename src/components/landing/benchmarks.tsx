@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Brain, ExternalLink, FlaskConical, Layers, Target } from "lucide-react";
+import { Brain, ExternalLink, FlaskConical, Layers, ShieldCheck, Target } from "lucide-react";
 import { FadeUp, BENCH_URL } from "./shell";
 
 /**
@@ -238,6 +238,72 @@ export function BenchmarksSection() {
             </p>
           </TrackCard>
         </div>
+
+        {/* The regression layer below the loop: tests that protect the harness
+            while the agent rewrites itself. Numbers are the committed test
+            suites — checkable by running them. */}
+        <FadeUp delay={0.05}>
+          <div className="mt-6 rounded-lg border border-line bg-panel/40 p-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <ShieldCheck className="size-5 shrink-0 text-glow" aria-hidden="true" />
+              <h3 className="text-[15px] font-medium text-ink">
+                The regression layer below the loop
+              </h3>
+              <span className="rounded bg-glow/10 px-1.5 py-0.5 font-mono text-[10.5px] text-glow">
+                641 harness tests · 0 fail
+              </span>
+            </div>
+            <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
+              A self-improving agent regresses its own harness first — a bad memory ship
+              looks exactly like a better model. So the loop sits on a locked suite that
+              must stay green while everything above it evolves: the dashboard&apos;s pure
+              logic, the bridge&apos;s routing and retry math, the engine&apos;s memory
+              versioning, task tamper-gate, sandbox profile and hook decisions.
+            </p>
+            <div className="mt-5 grid gap-5 sm:grid-cols-3">
+              {[
+                {
+                  v: "162",
+                  l: "dashboard unit tests",
+                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers",
+                },
+                {
+                  v: "95",
+                  l: "llm-bridge unit tests",
+                  d: "model routing, tool-call sanitizing, SSE stats folding, retry/backoff math — 6,197 assertions",
+                },
+                {
+                  v: "384",
+                  l: "engine unit tests",
+                  d: "memory tiers + rollback, sha256 tamper gate, mint validation, busy-mutex, bwrap profile, hook corpus",
+                },
+              ].map((c) => (
+                <div key={c.l} className="rounded-md border border-line bg-canvas/50 p-4">
+                  <p className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-glow">
+                    {c.v}
+                  </p>
+                  <p className="mt-1 text-[13px] font-medium text-ink">{c.l}</p>
+                  <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-faint">{c.d}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[10.5px] leading-relaxed text-faint">
+              <span>
+                <span className="text-glow">CI</span> lint · typecheck · unit · shell-syntax
+                · theme — every push
+              </span>
+              <span>
+                <span className="text-glow">hook corpus</span> 38 adversarial commands; the
+                bypasses the corpus found (wrapped <span className="text-ink">rm -rf /</span>,
+                <span className="text-ink"> $&#123;HOME&#125;</span> expansion, fork-bomb
+                variants, numeric-IP egress, symlink jail escape) are closed and pinned
+              </span>
+              <span>
+                <span className="text-glow">runs on</span> bun test · zero new dependencies
+              </span>
+            </div>
+          </div>
+        </FadeUp>
 
         {/* methodology + what we did not do */}
         <FadeUp delay={0.08}>

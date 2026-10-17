@@ -18,7 +18,9 @@ import sys
 from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RESULTS = os.path.join(HERE, "results")
+RESULTS = os.environ.get("RESULTS_ROOT", os.path.join(HERE, "results"))
+# RESULTS_ROOT: point at a rerun dir (e.g. results/rerun-2026-10-17) to
+# summarize fresh receipts without touching the committed ones.
 MODELS = sorted(
     d for d in os.listdir(RESULTS)
     if os.path.isdir(os.path.join(RESULTS, d)) and not d.startswith(".")
