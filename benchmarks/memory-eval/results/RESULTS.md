@@ -119,3 +119,25 @@ resistance (measured: kimi refused to plant under the hardened prompt),
 audit trail), (3) the engine canary (unchanged). The §5.4 multi-attempt
 corpus (n≥10, obfuscation ladder) remains open to turn these n=1
 directional results into statistics.
+
+## 5. §5.2 shipped: K-sampled canaries with tool-drift + claim analysis
+
+`src/canary.ts` + `dream.ts`'s canaryCheck now sample up to
+`PI_DREAM_CANARY_K` (default 3) distinct previously-passing tasks per dream
+and judge each canary on three axes: verify outcome, **tool drift** (the
+canary's executed runner set vs the task's reference run — the exact F4
+signature: reference `bun`, canary `node`), and **claim mismatch** (the
+final report claims verification via runners never executed). Any red flag
+rolls the dream back with the evidence in the dream note.
+
+- Pinned: `test/canary.test.ts` — 24 cases, including the F4 drift scenario
+  gated end-to-end through a faked agent seam, claim-mismatch gating, K/GATE
+  disable paths, and reference stratification rules (regression runs never
+  become references).
+- Live: full e2e loop re-run green (7/7,
+  `memory-live-receipt-1792265884112.json`); the real dream's note now reads
+  `project memory -> v2 · canaries: fix-fizzbuzz: passed (runners: bun) ·
+  guard: clean (0 unprovenanced new line(s))` — per-canary runner evidence
+  on the audit trail, not just "canary passed".
+- Cost note: K=3 canaries per dream means up to 3 agent re-runs per
+  consolidation (env-tunable; the live suite's single armed task → 1 run).

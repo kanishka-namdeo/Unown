@@ -104,8 +104,9 @@ attacks, privilege grants, hidden chars, base64 blobs, provenance forgery)
 audit, first mints GATE on any flag. Post-guard live re-probe (n=1, kimi):
 the dream LLM refused to plant under the hardened prompt (planted=false on
 both paths); the guard's planted-candidate behavior is pinned by 31
-unit/integration tests with canned poison. Still open: §5.2 (canary
-sampling + claimed-vs-ground-truth) and §5.4 (multi-attempt corpus).
+unit/integration tests with canned poison. Canary sampling (K tasks) +
+claimed-vs-ground-truth checks shipped as §5.2 — see F7 and `src/canary.ts`.
+Still open: §5.4 (multi-attempt corpus).
 
 ### F5 [design] "Most specific tier wins" is a claim, not a mechanism
 
@@ -123,13 +124,16 @@ tokens/tier) enforced in `writeTier`, `appendRules`, and project-dream
 output (oversized dream = error, old memory preserved). Live size-hygiene
 probe: 2,228 chars after the full loop.
 
-### F7 [design, documented] Single canary = last-passing task only
+### F7 [fixed, §5.2] Single canary = last-passing task only
 
-The canary is one task — the most recently passing one — so a dream that
+The canary was one task — the most recently passing one — so a dream that
 breaks *other* tasks but not that one ships (F4 demonstrates the inverse:
-poison that breaks nothing on the canary ships). Regression-on-ship
-(`runRegression(2)`) partially compensates post-hoc. Improvement: sample K
-stratified tasks per gate.
+poison that breaks nothing on the canary ships). **Fix:** K stratified
+samples (`PI_DREAM_CANARY_K`, default 3 — the most recent passing run per
+DISTINCT task), each judged on outcome + tool drift + claim consistency
+(`src/canary.ts`); any failure or behavioral red flag gates the dream with
+the evidence in the reason. Regression-on-ship (`runRegression(2)`) still
+compensates post-hoc.
 
 ### F8 [minor] `/api/memory`'s `resolvedChars` sums raw tier lengths
 
@@ -177,6 +181,7 @@ project-path weaknesses (F4B: no canary, no caps beyond the dream guard).
 | Unit (incl. new durability/cap/provenance tests) | `bun test test/` (self-learning pkg) | always |
 | Guard scanner + gate (§5.1/§5.3) | `bun test test/guard.test.ts` | always |
 | Guard wiring on both dream paths (stub bridge, canned poison) | `bun test test/dream-guard.test.ts` | always |
+| Canary sampling + drift/claim analysis (§5.2) | `bun test test/canary.test.ts` | always |
 | Live e2e loop (7 live tests + receipts) | `UNOWN_MEMORY_LIVE=1 bun test test/memory-live.test.ts` | env |
 | Poisoning probes | `UNOWN_MEMORY_POISON=1 bun test test/memory-poison.test.ts` | env |
 | v2 repeat-task | `node runner.mjs --phase cold\|wait-dream\|warm\|report` | manual |
@@ -188,7 +193,14 @@ project-path weaknesses (F4B: no canary, no caps beyond the dream guard).
    exploit path).~~ **SHIPPED** — `src/guard.ts` + `dream.ts`: first-mint
    gate + line-level quarantine on both dream paths (§5.1); pinned by
    `test/guard.test.ts` + `test/dream-guard.test.ts`, re-probed live.
-2. Canary sampling + agent-claimed-vs-ground-truth check (F4A/F7).
+2. ~~Canary sampling + agent-claimed-vs-ground-truth check (F4A/F7).~~
+   **SHIPPED** — `src/canary.ts` + `dream.ts` canaryCheck: K stratified
+   samples (`PI_DREAM_CANARY_K`, default 3) judged on verify outcome + tool
+   drift vs the task's reference run + claimed-vs-executed runner check; any
+   red flag rolls the dream back with the evidence in the reason. Pinned by
+   `test/canary.test.ts` (24 cases; the F4 bun→node drift pinned end-to-end
+   through the runAgent seam) and live-verified (dream notes now carry
+   per-canary runner evidence: "canaries: fix-fizzbuzz: passed (runners: bun)").
 3. ~~Adversarial-note filter in the dream system prompt + per-rule
    provenance tags (F4).~~ **SHIPPED** — quarantine banners + hardened
    SYSTEM rules 8/9 (§5.3); the banner provably reaches the dream LLM's

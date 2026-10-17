@@ -1,0 +1,146 @@
+{
+  "suite": "memory-live",
+  "startedAt": "2026-10-17T19:37:23.111Z",
+  "env": {
+    "enginePort": 3035,
+    "proxyPort": 3036,
+    "bridge": "http://127.0.0.1:3031",
+    "model": "kimi-k2.5"
+  },
+  "tests": [
+    {
+      "name": "boot+seed",
+      "ok": true,
+      "evidence": {
+        "tiers": [
+          [
+            "policy",
+            1
+          ],
+          [
+            "project",
+            1
+          ],
+          [
+            "user",
+            1
+          ],
+          [
+            "local",
+            1
+          ]
+        ],
+        "resolvedChars": 1023
+      },
+      "ts": "2026-10-17T19:37:23.543Z"
+    },
+    {
+      "name": "write/history/rollback",
+      "ok": true,
+      "evidence": {
+        "writeVersion": 2,
+        "rollbackVersion": 3,
+        "provenanceSample": "<!-- provenance: v1 · seed · 2026-10-17 -->"
+      },
+      "ts": "2026-10-17T19:37:23.547Z"
+    },
+    {
+      "name": "self-heal",
+      "ok": true,
+      "evidence": {
+        "marker": "self-heal-701cbd3b",
+        "version": 2
+      },
+      "ts": "2026-10-17T19:37:23.548Z"
+    },
+    {
+      "name": "real-run-injection",
+      "ok": true,
+      "evidence": {
+        "runId": "b334bfc5-099d-4093-b1d2-98ecb67c32de",
+        "runStatus": "passed",
+        "tokensIn": 1471,
+        "tokensOut": 352,
+        "markerPresentInRequests": 4,
+        "capturedRequests": 4,
+        "sessionStartReason": "session started (memory v1)"
+      },
+      "ts": "2026-10-17T19:37:32.575Z"
+    },
+    {
+      "name": "dream+canary+SSE",
+      "ok": true,
+      "evidence": {
+        "dreamId": "95bffff5-fe2c-4666-919a-4b2eba88dd34",
+        "dreamStatus": "done",
+        "dreamNote": "project memory -> v2 · canaries: fix-fizzbuzz: passed (runners: bun) · guard: clean (0 unprovenanced new line(s))",
+        "notesIn": 3,
+        "projectVersion": 2,
+        "dreamedMemoryChars": 580,
+        "sseEvents": [
+          "memory:changed",
+          "memory:changed",
+          "memory:changed",
+          "memory:changed",
+          "dream:started",
+          "memory:changed",
+          "dream:finished"
+        ]
+      },
+      "ts": "2026-10-17T19:37:49.094Z"
+    },
+    {
+      "name": "busy-mutex-409",
+      "ok": true,
+      "evidence": {
+        "a": 200,
+        "b": 409
+      },
+      "ts": "2026-10-17T19:38:04.111Z"
+    },
+    {
+      "name": "size-hygiene",
+      "ok": true,
+      "evidence": {
+        "totalChars": 2381,
+        "tiers": [
+          [
+            "policy",
+            455
+          ],
+          [
+            "project",
+            595
+          ],
+          [
+            "user",
+            134
+          ],
+          [
+            "local",
+            40
+          ]
+        ]
+      },
+      "ts": "2026-10-17T19:38:04.111Z"
+    }
+  ],
+  "finishedAt": "2026-10-17T19:38:04.112Z",
+  "capturedChatRequests": 14,
+  "sseEventNames": [
+    "hello",
+    "memory:changed",
+    "cycle:started",
+    "run:started",
+    "hook",
+    "run:tool",
+    "run:text",
+    "note:created",
+    "run:finished",
+    "cycle:finished",
+    "dream:started",
+    "ping",
+    "router:error",
+    "dream:finished"
+  ]
+}

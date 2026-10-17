@@ -17,6 +17,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { emit } from "./bus.ts";
+import { analyzeCanaryRun, canaryK, sampleCanaryTasks } from "./canary.ts";
 import { decideGuardAction, guardSummary, noteGuardBanner, scanUntrustedText, type GuardFlag } from "./guard.ts";
 import { chatJson } from "./llm.ts";
 import { currentVersion, maxTierChars, readTier, rollback, writeTier } from "./memory.ts";
@@ -217,7 +218,7 @@ export async function runDream(): Promise<DreamResult> {
                                 stats.pruned ?? 0,
                                 stats.added ?? 0,
                                 next,
-                                `project memory -> v${version}${gate.skipped ? ` (canary unavailable: ${gate.reason})` : " (canary passed)"} · ${guardSummary(guard)}`,
+                                `project memory -> v${version} · ${canaryNote(gate)} · ${guardSummary(guard)}`,
                                 id,
                         ],
                 );
@@ -240,24 +241,47 @@ export async function runDream(): Promise<DreamResult> {
         }
 }
 
+/** Compact canary outcome for dream rows (§5.2): the per-sample verdicts. */
+function canaryNote(gate: { skipped?: boolean; reason?: string; canaries?: string[] }): string {
+        if (gate.canaries?.length) return `canaries: ${gate.canaries.join("; ")}`;
+        if (gate.skipped) return `canary unavailable: ${gate.reason ?? "unknown"}`;
+        return "canary passed";
+}
+
 /**
- * Canary gate for dreams: re-run the most recently PASSED task under the new
- * memory. A FAILED canary rolls the dream back (the consolidation introduced a
- * regression); an infrastructure ERROR keeps the dream but records that the
- * canary could not run. Returns { skipped } when no canary task is available.
+ * Canary gate for dreams (§5.2: K stratified samples + behavioral analysis).
+ *
+ * For each sampled task (PI_DREAM_CANARY_K, default 3 — the most recent
+ * PASSING run per DISTINCT task): re-run it under the new memory and compare
+ * against its reference run. Gate (rollback) when a canary FAILS, when its
+ * runner set DRIFTS from the reference (the memory redirected the agent's
+ * verification tooling — the live F4 signature), or when its final report
+ * claims verification it never ran (self-verification corruption). An
+ * infrastructure ERROR on a canary skips that sample (recorded), keeping the
+ * dream. Returns { skipped } when sampling is disabled or unavailable.
  */
-async function canaryCheck(newVersion: number): Promise<{ rolledBack: boolean; skipped?: boolean; reason?: string }> {
-        const lastPass = store.get<{ task_id: string }>(
-                `SELECT task_id FROM runs WHERE status = 'passed' AND kind IN ('baseline','candidate') AND task_id IS NOT NULL ORDER BY ended_at DESC LIMIT 1`,
-        );
-        if (!lastPass) return { rolledBack: false, skipped: true, reason: "no previously-passing task" };
+export async function canaryCheck(
+        newVersion: number,
+        opts?: { runAgentFn?: (o: any) => Promise<{ status: string; transcript?: unknown; lastAssistantText?: string }> },
+): Promise<{ rolledBack: boolean; skipped?: boolean; reason?: string; canaries?: string[] }> {
+        const k = canaryK();
+        if (k <= 0) return { rolledBack: false, skipped: true, reason: "canary sampling disabled (PI_DREAM_CANARY_K<=0)" };
+        const samples = sampleCanaryTasks(k);
+        if (samples.length === 0) return { rolledBack: false, skipped: true, reason: "no previously-passing task" };
         if (process.env.PI_DREAM_GATE === "0") return { rolledBack: false, skipped: true, reason: "gate disabled" };
-        try {
-                const { runAgent } = await import("./runner.ts");
-                const { getTask } = await import("./tasks.ts");
-                const task = getTask(lastPass.task_id);
-                if (!task) return { rolledBack: false, skipped: true, reason: "canary task missing" };
-                const result = await runAgent({
+
+        const { runAgent, getRun } = await import("./runner.ts");
+        const { getTask } = await import("./tasks.ts");
+        const runAgentFn = opts?.runAgentFn ?? runAgent;
+        const outcomes: string[] = [];
+
+        for (const sample of samples) {
+                const task = getTask(sample.taskId);
+                if (!task) {
+                        outcomes.push(`${sample.taskId}: task missing (skipped)`);
+                        continue;
+                }
+                const result = await runAgentFn({
                         taskId: task.id,
                         kind: "regression",
                         prompt: task.prompt,
@@ -267,14 +291,42 @@ async function canaryCheck(newVersion: number): Promise<{ rolledBack: boolean; s
                 });
                 if (result.status === "failed") {
                         rollback("project", newVersion - 1, `dream canary failed on ${task.id} — consolidation rolled back`);
-                        return { rolledBack: true, reason: `canary ${task.id} failed under new memory v${newVersion}` };
+                        return {
+                                rolledBack: true,
+                                reason: `canary ${task.id} failed under new memory v${newVersion}`,
+                                canaries: [...outcomes, `${task.id}: FAILED`],
+                        };
                 }
-                if (result.status === "error")
-                        return { rolledBack: false, skipped: true, reason: "canary hit infrastructure failure" };
-                return { rolledBack: false };
-        } catch (err: any) {
-                return { rolledBack: false, skipped: true, reason: err?.message ?? String(err) };
+                if (result.status === "error") {
+                        outcomes.push(`${task.id}: infrastructure error (skipped)`);
+                        continue;
+                }
+                // §5.2 behavioral checks: compare the passing canary against the
+                // task's reference run (its most recent passing baseline/candidate).
+                const reference = getRun(sample.referenceRunId);
+                const analysis = analyzeCanaryRun(result, reference ?? null);
+                if (analysis.drift || analysis.claimMismatch) {
+                        rollback(
+                                "project",
+                                newVersion - 1,
+                                `dream canary gated on ${task.id}: ${analysis.reason} — consolidation rolled back`,
+                        );
+                        return {
+                                rolledBack: true,
+                                reason: `canary ${task.id}: ${analysis.reason}`,
+                                canaries: [...outcomes, `${task.id}: GATED (${analysis.drift ? "drift" : "claim"})`],
+                        };
+                }
+                outcomes.push(
+                        `${task.id}: passed (runners: ${analysis.executedRunners.join(", ") || "none"}${
+                                analysis.claimedRunners.length ? `; claimed: ${analysis.claimedRunners.join(", ")}` : ""
+                        }${analysis.referenceUnavailable ? "; reference unavailable" : ""})`,
+                );
         }
+        // Every sample missing/erroring means the canary could not actually run.
+        const anyRan = outcomes.some((o) => o.includes("passed"));
+        if (!anyRan) return { rolledBack: false, skipped: true, reason: `canaries unavailable (${outcomes.join("; ")})`, canaries: outcomes };
+        return { rolledBack: false, canaries: outcomes };
 }
 
 // ---------------------------------------------------------------------------

@@ -358,10 +358,14 @@ describe.skipIf(!GATE)("memory live loop (scratch engine + real bridge)", () => 
                         expect(projectVersion).toBeGreaterThanOrEqual(2);
                         const projectNow = memoryMod.readTier("project");
                         if (dream.status === "done") {
-                                expect(dream.note).toContain("canary passed");
+                                // §5.2 note format: per-sample canary verdicts with runner
+                                // evidence ("canaries: fix-fizzbuzz: passed (runners: bun)").
+                                expect(dream.note).toContain("canaries:");
+                                expect(dream.note).toMatch(/fix-fizzbuzz: passed/);
+                                expect(dream.note).toContain("runners: ");
                                 expect(projectNow).not.toBe(projectBefore);
                         } else if (dream.status === "gated") {
-                                expect(dream.note).toContain("rolled back");
+                                expect(dream.note).toMatch(/rolled back|first-mint|quarantined/);
                         }
                         recordTest("dream+canary+SSE", {
                                 dreamId: dream.id,
