@@ -6,8 +6,11 @@ User-facing usage documentation for the `unown` terminal agent and the self-lear
 
 ## Ownership
 
-- Owns: `quickstart.md`, `providers.md`, `usage.md`, `subagents.md`, `skills.md`, `memory.md`, `memory-classifier-evaluation.md`, `configuration.md`, `troubleshooting.md`, `benchmark-research.md`, `landing-research.md`, `testing-strategy.md`.
+- Owns: `quickstart.md`, `providers.md`, `usage.md`, `subagents.md`, `skills.md`, `memory.md`, `memory-classifier-evaluation.md`, `configuration.md`, `troubleshooting.md`, `benchmark-research.md`, `landing-research.md`, `testing-strategy.md`, `oh-my-pi-swap-assessment.md`.
 - `landing-research.md` is a design-rationale doc, not a usage page: it records the research behind the marketing page and the sourcing rules for anything quoted on it. When the page changes materially, update it in the same change — that file is why the page's claims stay defensible.
+- Four pages are decision records, not usage pages: `memory-classifier-evaluation.md`, `benchmark-research.md`, `testing-strategy.md`, `oh-my-pi-swap-assessment.md`. They share a shape — purpose blockquote with the verdict up front, mini-TOC, a stated method section, evidence, related pages.
+- Decision records tier every load-bearing claim: `[V]` (verified at a cited `file:line`, npm/GitHub API field, or reproduced command), `[C]` (upstream-claimed, not re-derived), `[U]` (unknown — what a spike must settle). Counts must state their scope. A negative claim ("symbol X is absent") requires the code-search that would have found it — a grep of a barrel file is not proof, because star exports hide the symbol in a sibling module.
+- `oh-my-pi-swap-assessment.md` is the standing answer to "should we replace the vendored pi harness". Reopen it, in the same change, only when one of its §9 revisit triggers becomes true; its §11 corrections register and Appendix F reproduce the checks that flipped its own earlier claims and must not be quietly re-litigated.
 
 ## Local Contracts
 
@@ -26,7 +29,9 @@ User-facing usage documentation for the `unown` terminal agent and the self-lear
 ## Verification
 
 - Links resolve: every relative link targets an existing file in `docs/` or an anchor in the same page.
-- `grep -P '(?<!\[m)emory\]\(' docs/*.md` returns nothing (no real link corruption).
+- Real link corruption looks like a bare `emory](` (the `[memory]` label losing its `[mem`). Gate: `grep -rnP --exclude=AGENTS.md '(^|[^A-Za-z])emory\]\(' docs/*.md` returns nothing. The contract file is excluded because it quotes the artifact; requiring a non-letter before it is what keeps legitimate labels that merely end in "memory" (`[Inspecting memory](#inspecting-memory)`, `[Memory](memory.md)`) from matching. The looser `(?<!\[m)emory\]\(` form is **wrong** on exactly that count and returns seven false positives.
+- Anchor slugs follow GitHub's rule: lowercase, punctuation dropped, **each** space replaced by one hyphen — so a heading containing ` — ` hashes to a **double** hyphen (`## Part 1 — Products studied` → `#part-1--products-studied`). Collapsing runs of spaces is the classic false-negative when checking your own TOC links.
+- Most of this corpus is CRLF. In JavaScript `.` does not match `\r`, so a heading scan that splits on `\n` and anchors with `(.*)$` silently matches **nothing** — always split on `/\r?\n/` before concluding a link is broken.
 - Commands referenced: `bun bin/unown --help` covers every command the docs claim.
 
 ## Child DOX Index
