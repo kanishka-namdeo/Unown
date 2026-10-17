@@ -9,6 +9,7 @@ Related pages: [usage](usage.md) · [providers](providers.md) · [Memory](memory
   - [The chat path](#the-chat-path)
   - [The learning path](#the-learning-path)
   - [The CLI itself](#the-cli-itself)
+  - [Windows](#windows)
 - [Where the logs are](#where-the-logs-are)
 - [Resetting cleanly](#resetting-cleanly)
 - [Getting help](#getting-help)
@@ -108,6 +109,20 @@ The learning path has three moving parts — capture, delivery, dreaming — and
 | `unown: command not found` | The PATH shim is missing (or you moved the repo) | `bun run agent:link` (or `bash scripts/link.sh` on macOS/Linux) from the repo — see the PATH-shim note above |
 | `bun: command not found` | bun is not installed | Install it from <https://bun.sh> (≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install \| bash`; Windows: `powershell -c "irm bun.sh/install.ps1 \| iex"`), then re-run `bun run agent:link` if you had a shim pointing at a stale bun path |
 | Doctor: `OS sandbox (bubblewrap)` shows ⚠ | No bubblewrap on this host (macOS, or a Linux box without it) | Nothing to fix for chat. Engine runs fall back to the in-process path jail — OS-level isolation is Linux/bubblewrap only |
+
+### Windows
+
+The Windows-specific failure modes (the general rows above still apply). Full guide: [windows guide](windows.md).
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `'unown' is not recognized…` right after installing | The installer appended `%USERPROFILE%\.local\bin` to your **User PATH via the registry** (never `setx`), but the terminal you're typing in predates the change | Open a **new** terminal (cmd or PowerShell), then `unown doctor`. Still nothing? `bun run agent:link` from the repo and read its hint |
+| PowerShell: `…running scripts is disabled on this system` | The default execution policy blocks the `unown.ps1` shim | Once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` — or just call `unown.cmd` (cmd users never see this; from PowerShell `unown.cmd` works too) |
+| `'bun' is not recognized` / `bun: command not found` | bun not installed (or installed after the shim was written — the shims embed bun's path at link time) | `powershell -c "irm bun.sh/install.ps1 | iex"`, open a new terminal, then re-run `bun run agent:link` so the shim points at the new bun |
+| Dashboard: `Could not locate the bindings file` / `ERR_DLOPEN_FAILED` mentioning better-sqlite3 | better-sqlite3 13 ships **prebuilds for win32 x64/arm64 inside the package** — nothing compiles and there is no postinstall — so this means a broken install extract, not a missing toolchain | `rm -rf node_modules; bun install`. Note the engine never uses better-sqlite3 (it uses `bun:sqlite`): chat and learning are unaffected — this row is dashboard-only. If typecheck then misses `src/generated/prisma`, run `bun run db:generate` (that's what CI does) |
+| You want bwrap-grade sandbox isolation | Native Windows has no OS sandbox — engine runs use the in-process path jail there (the same degradation Claude Code ships on native Windows) | Use **WSL2**: install bun inside WSL2 (`curl -fsSL https://bun.sh/install | bash`), clone the repo there (keep it in the Linux filesystem, `~/…`, not `/mnt/c`) — on Linux the engine picks up the vendored bwrap automatically. Details: [windows guide § sandbox](windows.md#the-sandbox-story-on-windows) |
+
+The same logs apply as everywhere (`.run\bridge.log`, `.run\engine.log`, `.run\dashboard.log` inside the repo); `unown doctor` prints platform-aware rows (`OS sandbox (Windows)` ⚠ is *expected*, not a defect).
 
 ## Where the logs are
 

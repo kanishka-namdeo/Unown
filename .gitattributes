@@ -1,0 +1,46 @@
+# .gitattributes — line-ending + binary policy for the whole repository
+# (Unown's own layer AND the vendored pi-repo/, which is tracked in this repo).
+#
+# Convention: LF everywhere, on every OS.
+#   - *.sh is bash-native: LF is mandatory.
+#   - *.cmd and *.ps1 stay LF ON PURPOSE. bin/unown.cmd works because it is a
+#     label-free single-liner (goto + LF is a cmd.exe parser trap — see the
+#     header of bin/unown.cmd), and PowerShell 5.1+ parses LF .ps1 without
+#     complaint. CRLF here would be pure churn.
+#   - *.bat is kept CRLF: batch files may use labels/goto, where cmd.exe is
+#     only reliable with CRLF (pi-repo/pi-test.bat is the one tracked .bat).
+#   - `* text=auto eol=lf` lets git binary-sniff (NUL bytes) as a safety net
+#     beneath the explicit binary list, and keeps Windows checkouts LF so the
+#     repo behaves identically on all three OSes.
+
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Windows launchers: LF by design (see the header comment above).
+*.cmd text eol=lf
+*.ps1 text eol=lf
+
+# Binaries — never normalize, never diff.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.node binary
+*.deb binary
+*.tar binary
+*.tar.gz binary
+*.tgz binary
+*.wasm binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.zip binary
+
+# Vendored OS-sandbox binary (ELF, no extension) — keep git's hands off it.
+# (Defense in depth: the vendored pi-repo ships its own .gitattributes that
+# governs its subtree — for this path it relies on `text=auto` NUL-sniffing,
+# which keeps the ELF untouched; this line covers us if that ever changes.)
+pi-repo/packages/self-learning/native/bin/bwrap binary
