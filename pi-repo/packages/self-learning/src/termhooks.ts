@@ -275,7 +275,7 @@ const LN_SYMLINK = /\bln\s+(?:-[a-zA-Z-]+\s+)*-s\s+(?:-[a-zA-Z-]+\s+)?(\S+)\s+([
 const SYSTEM_TREE = /^\/(?:private\/)?(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|root)(?:\/|$)/;
 const SYSTEM_TREE_WIN = /^[a-zA-Z]:[\\/](?:Windows|Program Files(?: \(x86\))?|PerfLogs|System Volume Information|\$Recycle\.Bin)(?:[\\/]|$)/i;
 const RAW_DEVICE = /^\/dev\/(?:sd|nvme|hd|vd|xvd|mmcblk|loop|disk|mem|kmem|sr)/;
-const RAW_DEVICE_WIN = /^\\\\\\.\\(?:physicaldrive|cdrom|[a-zA-Z]:)/i;
+const RAW_DEVICE_WIN = /^\\\\\.\\(?:physicaldrive|cdrom|[a-zA-Z]:)/i;
 const SSH_TRUST_DIR = /(^|[\\/])\.ssh[\\/]/;
 
 function stripQuotes(s: string): string {
