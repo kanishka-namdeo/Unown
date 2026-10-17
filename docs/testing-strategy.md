@@ -8,8 +8,8 @@
 > the current suite cannot see. Links to source that have only been inspected,
 > not modified.
 
-> **Implementation status (2026-10-17).** Phase 0 and Phase 1 are shipped, Phase 2
-> is started, and the benchmark tracks were re-verified from a fresh checkout:
+> **Implementation status (2026-10-17).** Phases 0–3 are shipped, Phase 4 is
+> underway, and the benchmark tracks were re-verified from a fresh checkout:
 > - Phase 0: `typecheck` gate (green), CI extended to lint + typecheck + unit +
 >   shell-syntax + theme (`.github/workflows/ci.yml`), §4.1 unit tests — 162
 >   tests across `src/lib` + `src/hooks` (`bun test src`).
@@ -20,13 +20,31 @@
 > - §4.3 corpus outcome: 8 bypass classes found and closed (wrapped `rm -rf /`,
 >   `${HOME}` expansion, fork-bomb variants, numeric-IP egress, ssh, find/xargs
 >   deletion, base64|sh, chmod-777-root, symlink jail escape via realpath).
-> - Phase 2 (started): engine HTTP integration harness — 10 tests under
+> - Phase 2 (complete): engine HTTP integration harness — 10 tests under
 >   `pi-repo/packages/self-learning/test/integration/` (real startServer on an
 >   ephemeral port, mock bridge, temp state); found + fixed the unreachable
->   `/api/skills/:id` routes. Dashboard component tests (RTL) still deferred.
+>   `/api/skills/:id` routes. Dashboard component tests (RTL) no longer
+>   deferred: 206 `bun test src` tests cover all seven tabs (happy/empty/error
+>   plus their mutation flows) and the SSE bridge — the layer caught and fixed
+>   a `refetchInterval` crash in `run-detail.tsx` on run-less query data.
+> - Phase 3 (complete): CLI golden tests (setup/doctor/memory/plan/headless/
+>   env-knobs/parallel sessions — `test/cli/golden.test.ts`) and the extended
+>   adversarial hook corpus (`test/termhooks.adversarial.test.ts`, B1–B10 +
+>   §4.3 remaining candidates): 149 tests; closed further bypass classes
+>   (split/long-flag `rm` forms, `rm` on system directories, redirect targets
+>   reaching system paths or `~/.ssh/` through in-project symlinks, raw disk
+>   devices, `xargs -I{}` payloads, curl-piped shells, printf/escape-built
+>   commands). Sandbox fuzzer + CI security scans remain future work.
+> - Phase 4 (underway): memory-lift chart shipped on the landing page —
+>   full-width `#memory-lift` panel (per-model cold-vs-warm input-token paired
+>   bars with raw counts, duration chips, the v1 prompt-caching negative
+>   control, and a receipt link to `benchmarks/selfimprove/results/`); agent
+>   evals A–G scheduling and dashboard E2E still pending.
 > - Fresh-checkout verification of tracks 1/2/3/6 with receipts under
->   `<track>/results/rerun-2026-10-17/`; pi-repo suite at 5,032 tests / 0 failing
->   per-workspace consolidated evidence.
+>   `<track>/results/rerun-2026-10-17/`; pi-repo suite at 5,342 tests / 0
+>   failing per-workspace consolidated evidence
+>   (`benchmarks/snapshots/track1-rerun-2026-10-17/`, includes the Phase 3
+>   suites).
 
 ## 1. Why this document
 

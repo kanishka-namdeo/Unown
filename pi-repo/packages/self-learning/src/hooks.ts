@@ -53,14 +53,27 @@ export function logHook(
 // tolerate trailing quotes/parens/backticks/globs, so wrapped payloads
 // (`bash -c 'rm -rf /'`, `$(rm -rf /)`, `xargs rm -rf /`, `rm -rf /*`) match
 // too. The network rule keeps an explicit loopback exemption (127.0.0.1 /
-// localhost) so engine-side bridge calls stay allowed.
+// localhost) so engine-side bridge calls stay allowed. Flag groups tolerate
+// short/long/split options (`rm --no-preserve-root -rf /`, `rm -r -f ~`), rm
+// covers system directories (not just `/`), and payloads piped to a shell are
+// denied whether base64-decoded, downloaded (curl|sh) or printf/escape-built.
 const BASH_DENY: { pattern: RegExp; reason: string }[] = [
         {
-                pattern: /\brm\s+(?:-[a-zA-Z]*\s+)*\/(?:\s|\/|\*|['"`;|&)]|$)/,
+                // Flags tolerate short (-rf), long (--no-preserve-root) and split
+                // (-r -f) forms, so `rm --no-preserve-root -rf /` cannot sneak past.
+                pattern: /\brm\s+(?:-{1,2}[a-zA-Z][a-zA-Z-]*\s+)*\/(?:\s|\/|\*|['"`;|&)]|$)/,
                 reason: "refusing rm on filesystem root",
         },
         {
-                pattern: /\brm\s+-[a-zA-Z]*r[a-zA-Z]*f?\s+(?:~|\$HOME|\$\{HOME\}|\/home)(?:\/|\s|['"`;|&)]|$)/,
+                // rm on system directories (incl. /home): `rm -rf /etc` etc. — the
+                // root rule above only matches `/` itself.
+                pattern: /\brm\s+(?:-{1,2}[a-zA-Z][a-zA-Z-]*\s+)*\/(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|root|home)(?:\/|\s|['"`;|&)]|$)/,
+                reason: "refusing rm on system directories",
+        },
+        {
+                // Recursive flag may be split (`rm -r -f ~`) or long (--recursive);
+                // the lookahead keeps plain non-recursive `rm ~/file` allowed.
+                pattern: /\brm\s(?=[^\n]*-[a-zA-Z]*r)(?:-{1,2}[a-zA-Z][a-zA-Z-]*\s+)*(?:~|\$HOME|\$\{HOME\}|\/home)(?:\/|\s|['"`;|&)]|$)/,
                 reason: "refusing recursive delete of home directories",
         },
         { pattern: /\bsudo\b/, reason: "sudo is not permitted in the sandbox" },
@@ -79,19 +92,59 @@ const BASH_DENY: { pattern: RegExp; reason: string }[] = [
         { pattern: /\bssh\b[^\n]*@/, reason: "ssh to remote hosts is denied in the sandbox" },
         { pattern: /\bgit\s+push\b/, reason: "git push is denied in the sandbox" },
         { pattern: />\s*\/(etc|usr|var|bin|home|root)\//, reason: "redirecting writes to system paths is denied" },
+        {
+                // SSH trust files under any spelling of the home directory (~, $HOME,
+                // /home/<user>, /root) — persistence via authorized_keys.
+                pattern: />\s*(?:~|\$HOME|\$\{HOME\}|\/home\/\S+|\/root)\/\.ssh\//,
+                reason: "refusing writes to SSH trust files (~/.ssh/authorized_keys)",
+        },
+        {
+                pattern: />\s*\/dev\/(?:sd|nvme|hd|vd|xvd|mmcblk|loop|disk|mem|kmem|sr)/,
+                reason: "refusing raw writes to disk devices via redirect",
+        },
         { pattern: /\b(pkill|killall)\b/, reason: "signaling processes outside the sandbox is denied" },
         { pattern: /\bfind\b[^\n]*(?:-delete\b|-exec\s+rm\b)/, reason: "find-based deletion is denied in the sandbox" },
-        { pattern: /\bxargs\s+(?:-[a-zA-Z]+\s+)*rm\b/, reason: "piped deletion via xargs rm is denied in the sandbox" },
+        {
+                // Option values may be attached (`-I{}`) or separate (`-n 2`) — the old
+                // `-[a-zA-Z]+\s+` shape let `xargs -I{} rm -rf {}` through.
+                pattern: /\bxargs\b[^\n|;]*\brm\b/,
+                reason: "piped deletion via xargs rm is denied in the sandbox",
+        },
         {
                 pattern: /\b(?:base64|openssl)\b[^\n|]*\|\s*(?:sh|bash)\b/,
                 reason: "decoded payloads piped to a shell are denied in the sandbox",
+        },
+        {
+                // Network-fetched code piped to a shell (curl|sh, wget -qO-|bash) — same
+                // class as the base64 rule above.
+                pattern: /\b(?:curl|wget)\b[^\n|]*\|\s*(?:sh|bash|zsh|dash|ksh)\b/,
+                reason: "downloaded payloads piped to a shell are denied",
+        },
+        {
+                // printf builds the payload string at runtime — catches hex-escaped
+                // (`printf '\x72m -rf /'`) and quote-split (`printf 'r''m -rf /'`) rm.
+                pattern: /\bprintf\b[^\n|]*\|\s*(?:sh|bash|zsh|dash|ksh)\b/,
+                reason: "printf-built payloads piped to a shell are denied",
+        },
+        {
+                // Hex/octal escape sequences feeding a shell (`echo -e '\x72m …' | sh`).
+                pattern: /(?:\\x[0-9a-fA-F]{2}|\\[0-7]{3})[^\n|;&]*\|\s*(?:sh|bash|zsh|dash|ksh)\b/,
+                reason: "escape-obfuscated payloads piped to a shell are denied",
+        },
+        {
+                // tee writes files just like a redirect but dodges the `>` rules.
+                pattern: /\btee\b[^\n|;&]*(?:\.ssh\/|\/(?:etc|usr|var|bin|sbin|boot|lib|root)\/)/,
+                reason: "tee writes to system paths / SSH trust files are denied",
         },
         { pattern: /mkfs(\.|\s)/, reason: "refusing filesystem format" },
         { pattern: /dd\s+[^\n]*of=\/dev\/(sd|nvme|hd)/, reason: "refusing raw writes to disk devices" },
         { pattern: /\bwipefs\b/, reason: "refusing disk signature wipe" },
         {
-                pattern: /\bchmod\s+(?:-[a-zA-Z]+\s+)*777\s+\/(?:\s|\/|\*|['"`;|&)]|$)/,
-                reason: "refusing world-writable chmod on root",
+                // World-writable chmod on root AND on system trees (`chmod -R 777 /etc`
+                // used to slip past the `/`-only tail).
+                pattern:
+                        /\bchmod\s+(?:-[a-zA-Z]+\s+)*777\s+\/(?:\s|\/|\*|['"`;|&)]|$|(?:etc|usr|var|bin|sbin|boot|lib|lib64|opt|srv|home|root)(?:\/|\s|['"`;|&)]|$))/,
+                reason: "refusing world-writable chmod on system trees",
         },
 ];
 

@@ -64,7 +64,7 @@ export function RunDetailDialog({
     queryKey: qk.run(runId ?? ""),
     queryFn: () => api.run(runId as string),
     enabled: open && !!runId,
-    refetchInterval: (query) => (query.state.data?.run.status === "running" ? 3000 : false),
+    refetchInterval: (query) => (query?.state?.data?.run?.status === "running" ? 3000 : false),
   });
 
   const run = data?.run;
