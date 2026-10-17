@@ -15,14 +15,17 @@
 //
 // These tests run on `bun test` (bun:test is built in — zero new deps).
 //
-// Jail fixtures live under /var/tmp/engine-tests-b (not /tmp/engine-tests-b)
-// deliberately: the terminal write-path policy allows everything resolving
-// under /tmp/, so a project fixture inside /tmp would mask every traversal
-// escape (they would all resolve into the allowed /tmp subtree).
+// Jail fixtures live outside the allowed tmp roots deliberately (POSIX:
+// /var/tmp/engine-tests-b — NOT /tmp/engine-tests-b; Windows: a scratch dir
+// under $HOME): the terminal write-path policy allows everything resolving
+// under os.tmpdir() and POSIX /tmp, so a project fixture inside /tmp would
+// mask every traversal escape (they would all resolve into the allowed
+// /tmp subtree).
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
 import { TEST_TMP } from "./_env.ts";
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, readlinkSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, readlinkSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { homedir, platform, tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildTerminalNote, createTerminalExtension } from "../src/termhooks.ts";
 import { decideBash, jailPath } from "../src/hooks.ts";
@@ -30,7 +33,22 @@ import { decideBash, jailPath } from "../src/hooks.ts";
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
-const VT_ROOT = "/var/tmp/engine-tests-b";
+// /var/tmp on POSIX is NOT an allowed write root (that is the point — see the
+// header). Windows has no /var/tmp, so a homedir-based scratch dir plays the
+// same role there: equally outside the allowed tmp roots.
+const VT_BASE = platform() === "win32" ? join(homedir(), ".unown-termhooks-fixtures") : "/var/tmp";
+const VT_DIR = platform() === "win32" ? join(VT_BASE, "engine-tests-b") : `${VT_BASE}/engine-tests-b`;
+mkdirSync(VT_DIR, { recursive: true });
+// macOS realpaths /var/tmp into /private/var/tmp — build fixtures AND
+// expectations from the physical path so the jail's realpath-resolved
+// outputs compare equal on darwin too (jailPath realpaths both sides).
+const VT_ROOT = (() => {
+        try {
+                return realpathSync(VT_DIR);
+        } catch {
+                return VT_DIR; // exotic host: keep the literal spelling
+        }
+})();
 const PROJ = join(VT_ROOT, "termhooks", "proj");
 const OUTSIDE = join(VT_ROOT, "termhooks", "outside");
 
@@ -38,10 +56,13 @@ mkdirSync(join(VT_ROOT, "termhooks"), { recursive: true });
 rmSync(PROJ, { recursive: true, force: true }); // fresh on every run
 mkdirSync(PROJ, { recursive: true });
 mkdirSync(OUTSIDE, { recursive: true });
-if (!process.env.UNOWN_TEST_KEEP_FIXTURES) symlinkSync(OUTSIDE, join(PROJ, "link"));
+// POSIX-only fixture (Windows symlinkSync needs admin/DevMode — every test
+// that consumes the `link` escapes below is skipIf(win32)).
+if (process.platform !== "win32" && !process.env.UNOWN_TEST_KEEP_FIXTURES) symlinkSync(OUTSIDE, join(PROJ, "link"));
 
 afterAll(() => {
         rmSync(VT_ROOT, { recursive: true, force: true });
+        if (platform() === "win32") rmSync(VT_BASE, { recursive: true, force: true }); // our own scratch dir under $HOME
         rmSync(join(TEST_TMP, "termhooks"), { recursive: true, force: true });
 });
 
@@ -213,7 +234,10 @@ describe("jailPath (path jail with symlink resolution)", () => {
                 expect(jailPath(PROJ, undefined as unknown as string).resolved).toBe(PROJ);
         });
 
-        test("QUIRK: backslash-separated paths are jailed as literal filenames on POSIX", () => {
+        // POSIX-only quirk: on win32 "\etc\passwd" is a real absolute path and
+        // resolves through node:path instead (the win32 twins live in
+        // termhooks.windows.test.ts).
+        test.skipIf(process.platform === "win32")("QUIRK: backslash-separated paths are jailed as literal filenames on POSIX", () => {
                 // The `root\\` prefix check hints at Windows support; on POSIX
                 // "\etc\passwd" is a single relative segment, so it resolves INSIDE the
                 // jail (safe by accident — the write tool would create a literal file).
@@ -222,7 +246,7 @@ describe("jailPath (path jail with symlink resolution)", () => {
                 expect(jail.resolved).toBe(join(PROJ, "\\etc\\passwd"));
         });
 
-        test("a symlink inside the jail pointing outside IS detected", () => {
+        test.skipIf(process.platform === "win32")("a symlink inside the jail pointing outside IS detected", () => {
                 // Bypass closed (task 2-e-4): jailPath now realpath-resolves the deepest
                 // existing ancestor and re-checks the prefix, so proj/link -> OUTSIDE no
                 // longer smuggles writes past the jail. §4.3 listed this escape
@@ -241,7 +265,7 @@ describe("jailPath (path jail with symlink resolution)", () => {
                 expect(jail.resolved).toBe(join(PROJ, "brand", "new", "deep", "file.ts"));
         });
 
-        test("a symlinked jail root keeps working (root is realpathed too)", () => {
+        test.skipIf(process.platform === "win32")("a symlinked jail root keeps working (root is realpathed too)", () => {
                 // /tmp-link -> PROJ: writes through the symlinked root must stay allowed,
                 // so the root prefix used for the real-path re-check is realpathed as well.
                 const rootLink = join(VT_ROOT, "termhooks", "rootlink");
@@ -350,13 +374,17 @@ describe("createTerminalExtension — write/edit path jail", () => {
                 expect(decision?.reason).toContain("escapes the project directory");
         });
 
+        // The explicit tmp allowance: POSIX /tmp, Windows %TEMP% — same semantic
+        // (the system scratch area is an allowed write root on every platform).
+        const TMP_A = platform() === "win32" ? join(tmpdir(), "session-notes.md") : "/tmp/session-notes.md";
+        const TMP_B = platform() === "win32" ? join(tmpdir(), "sub", "dir", "x.md") : "/tmp/sub/dir/x.md";
         test.each([
                 ["write", "src/main.ts"],
                 ["write", "notes.md"],
                 ["write", "./src/x.ts"],
                 ["write", `${PROJ}/src/main.ts`], // absolute in-project path
-                ["write", "/tmp/session-notes.md"], // explicit /tmp allowance (terminal policy)
-                ["write", "/tmp/sub/dir/x.md"],
+                ["write", TMP_A], // explicit tmp allowance (terminal policy)
+                ["write", TMP_B],
                 ["edit", "src/main.ts"],
         ])("%s to %s is allowed", (tool: string, path: string) => {
                 expect(toolDecision(handlers, tool, path)).toBeUndefined();
@@ -368,7 +396,7 @@ describe("createTerminalExtension — write/edit path jail", () => {
                 expect(toolDecision(handlers, "read", "/etc/hostname")).toBeUndefined();
         });
 
-        test("write through an in-project symlink is blocked (bypass closed)", () => {
+        test.skipIf(process.platform === "win32")("write through an in-project symlink is blocked (bypass closed)", () => {
                 // Bypass closed (task 2-e-4): terminalPathOk -> jailPath now
                 // realpath-resolves, so proj/link -> OUTSIDE is denied.
                 const decision = toolDecision(handlers, "write", join("link", "evil.txt"));
@@ -490,12 +518,15 @@ describe("§4.3 adversarial corpus (block/allow matrix)", () => {
         });
 
         // Path-jail half of the §4.3 corpus ("Path jail escape (terminal writes)").
+        // The symlink-escape row needs the POSIX `link` fixture (skipIf win32);
+        // the tmp allowance row is platform-conditional (same semantic everywhere).
+        const TMP_ALLOW = platform() === "win32" ? join(tmpdir(), "session-notes.md") : "/tmp/session-notes.md";
         test.each([
                 ["write", "/etc/passwd", true], // absolute system path
                 ["write", "../../etc/passwd", true], // ../ traversal
                 ["write", "/tmp/../etc/passwd", true], // /tmp allowance is prefix-checked AFTER resolve
-                ["write", join("link", "evil.txt"), true], // in-project symlink -> outside (closed)
-                ["write", "/tmp/session-notes.md", false], // documented /tmp allowance
+                ...(process.platform === "win32" ? [] : ([["write", join("link", "evil.txt"), true]] as [string, string, boolean][])), // in-project symlink -> outside (closed; POSIX fixture)
+                ["write", TMP_ALLOW, false], // documented tmp allowance
                 ["write", "src/main.ts", false], // in-project
                 ["write", "~/.ssh/authorized_keys", false], // tilde is NOT shell-expanded by the file tools — literal '~' dir inside the jail (bash-side ~ targets are covered by the rm rules)
                 ["read", "/etc/hostname", false], // documented policy: reads unrestricted

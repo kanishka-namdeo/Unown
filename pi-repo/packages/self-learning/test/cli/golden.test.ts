@@ -27,7 +27,7 @@
 // Spawned CLI runs take seconds each — every test carries an explicit bun
 // timeout well above the default 5s.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
         agentFile,
@@ -183,7 +183,11 @@ describe("CLI golden — unown setup", () => {
 
                         const auth = JSON.parse(agentFile(run, "auth.json") ?? "{}");
                         expect(auth.openai).toEqual({ type: "api_key", key: "sk-golden-test" });
-                        expect(statSync(join(run.unownHome, "agent", "auth.json")).mode & 0o777).toBe(0o600);
+                        // chmod is a no-op on win32 (documented in src/setup.ts — NTFS
+                        // relies on ACLs); the 0600 golden is POSIX-only.
+                        if (process.platform !== "win32") {
+                                expect(statSync(join(run.unownHome, "agent", "auth.json")).mode & 0o777).toBe(0o600);
+                        }
 
                         const settings = JSON.parse(agentFile(run, "settings.json") ?? "{}");
                         expect(settings).toMatchObject({ defaultProvider: "openai", defaultModel: "golden-model" });
@@ -339,7 +343,12 @@ describe("CLI golden — plan mode", () => {
                 LONG,
         );
 
-        test(
+        // POSIX-bash e2e: the fixtures/commands below are POSIX bash semantics
+        // (Windows e2e golden coverage lands with PowerShell-native fixtures —
+        // follow-up).
+        test.skipIf(
+                process.platform === "win32",
+        )(
                 "--plan: safe bash command executes; a write-shaped command is refused by the plan allowlist",
                 async () => {
                         // safe (read-only) command runs fine in plan mode
@@ -367,7 +376,12 @@ describe("CLI golden — plan mode", () => {
 // 7. Env knobs
 // ---------------------------------------------------------------------------
 describe("CLI golden — env knobs", () => {
-        test(
+        // POSIX-bash e2e: the bash tool spawn + deny-reason fixture below are
+        // POSIX bash semantics (Windows e2e golden coverage lands with
+        // PowerShell-native fixtures — follow-up).
+        test.skipIf(
+                process.platform === "win32",
+        )(
                 "terminal hooks deny a catastrophic bash tool call end-to-end (real CLI)",
                 async () => {
                         const run = await unown(["-p", 'TOOLCALL bash {"command":"rm -rf /"}', "--mode", "json"], base());
@@ -449,13 +463,18 @@ describe("CLI golden — parallel sessions", () => {
                                         const notes = outboxNotes(run);
                                         expect(notes.length).toBeGreaterThanOrEqual(1);
                                         const content = notes.map((n) => readFileSync(join(run.unownHome, "notes", "outbox", n), "utf8")).join("\n");
-                                        expect(content).toContain(`Terminal session in ${run.projDir}`);
+                                        // The CLI realpaths its cwd (macOS: /var/folders ->
+                                        // /private/var/folders) — compare against the physical path.
+                                        expect(content).toContain(`Terminal session in ${realpathSync(run.projDir)}`);
                                 }
-                                // no stomping: alpha's home never saw beta's project path and vice versa
+                                // no stomping: alpha's home never saw beta's project path and
+                                // vice versa — in either the literal or the realpath'd spelling
                                 const alphaNote = readFileSync(join(runs[0].unownHome, "notes", "outbox", outboxNotes(runs[0])[0]), "utf8");
                                 const betaNote = readFileSync(join(runs[1].unownHome, "notes", "outbox", outboxNotes(runs[1])[0]), "utf8");
                                 expect(alphaNote).not.toContain(runs[1].projDir);
+                                expect(alphaNote).not.toContain(realpathSync(runs[1].projDir));
                                 expect(betaNote).not.toContain(runs[0].projDir);
+                                expect(betaNote).not.toContain(realpathSync(runs[0].projDir));
                                 expect(runs[0].unownHome).not.toBe(runs[1].unownHome);
                         } finally {
                                 for (const run of runs) run.release();

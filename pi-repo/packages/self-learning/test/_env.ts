@@ -13,15 +13,27 @@
 // b: the /tmp/engine-tests-b default below). The extra redirects (dead bridge
 // endpoint, isolated UNOWN_HOME) keep suite-a's llm/termhooks imports away
 // from the live llm-bridge (:3031) and the developer's real ~/.unown.
-import { mkdirSync } from "node:fs";
+import { mkdirSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // os.tmpdir()-based so the suite is portable (Windows %TEMP%, macOS
 // /var/folders); on Linux this is still /tmp — the historical location.
-export const TEST_TMP = join(tmpdir(), "engine-tests-b");
+// REALPATH-RESOLVED on purpose: on macOS /var and /var/folders are symlinks
+// into /private/…, and the modules under test (store.ts data dir, termhooks
+// TMP_ROOTS) resolve through realpath — a literal TEST_TMP would make every
+// `DATA_DIR.startsWith(TEST_TMP)` tripwire fail on darwin.
+const TEST_TMP_LITERAL = join(tmpdir(), "engine-tests-b");
 
-mkdirSync(TEST_TMP, { recursive: true });
+mkdirSync(TEST_TMP_LITERAL, { recursive: true });
+
+export const TEST_TMP = (() => {
+        try {
+                return realpathSync(TEST_TMP_LITERAL);
+        } catch {
+                return TEST_TMP_LITERAL; // exotic host: keep the literal spelling
+        }
+})();
 
 process.env.PI_SELFLEARNING_DB ??= `${TEST_TMP}/selflearning.db`;
 process.env.PI_SELFLEARNING_DATA ??= `${TEST_TMP}/data`;
