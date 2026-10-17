@@ -234,6 +234,10 @@ const TMP_ROOTS: string[] = (() => {
 })();
 
 function insideRoot(root: string, p: string): boolean {
+        // Degenerate roots ("", "/", "\", "C:\", …) would prefix-match entire
+        // namespaces — never treat them as an allowed root (Bun's win32
+        // realpath of "/tmp" can yield such forms on some hosts).
+        if (!root || root === "/" || root === "\\" || /^[a-zA-Z]:[\\/]?$/.test(root)) return false;
         return p === root || p.startsWith(`${root}/`) || p.startsWith(`${root}\\`);
 }
 
@@ -291,20 +295,19 @@ export function bashRedirectEscape(cwd: string, command: string): string | null 
         for (const match of command.matchAll(REDIRECT_TARGET)) {
                 const target = stripQuotes(match[1]);
                 if (!target || target.startsWith("&")) continue; // `2>&1` style dup
-                // LEXICAL FAST PATH — deny device paths / system trees / ssh
-                // trust dirs on sight, before node:path gets involved: win32
-                // resolution of \\.\ device paths is implementation-defined
-                // (Bun appends trailing separators, may drive-prefix), so the
-                // raw spelling is authoritative. Targets that lexically fall
-                // inside an allowed tmp root (macOS /var/folders/…) stay
-                // exempt — the resolved-path layer below re-confirms with
-                // symlink knowledge.
+                // LEXICAL FAST PATH — raw devices and ssh trust dirs are NEVER
+                // legitimate write targets on any OS, so they are denied on
+                // sight with no tmp exemption (win32 resolution of \\.\
+                // device paths is implementation-defined in bun; and a
+                // degenerate tmp root must never exempt a disk device).
+                if (RAW_DEVICE.test(target) || RAW_DEVICE_WIN.test(target) || SSH_TRUST_DIR.test(target)) {
+                        return `redirect target escapes the safe write set: ${target}`;
+                }
+                // System trees: denied on sight too, unless the target lexically
+                // falls inside an allowed tmp root (macOS /var/folders/…) — the
+                // resolved-path layer below re-confirms with symlink knowledge.
                 if (
-                        (SYSTEM_TREE.test(target) ||
-                                SYSTEM_TREE_WIN.test(target) ||
-                                RAW_DEVICE.test(target) ||
-                                RAW_DEVICE_WIN.test(target) ||
-                                SSH_TRUST_DIR.test(target)) &&
+                        (SYSTEM_TREE.test(target) || SYSTEM_TREE_WIN.test(target)) &&
                         !TMP_ROOTS.some((r) => insideRoot(r, target))
                 ) {
                         return `redirect target escapes the safe write set: ${target}`;
