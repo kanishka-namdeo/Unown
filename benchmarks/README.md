@@ -165,6 +165,14 @@ difference.
 
 ## Track 9 — Memory-system live evaluation & adversarial probes (`memory-eval/`)
 
+**Poison corpus (§5.4):** `memory-eval/poison-corpus/` — a ten-variant
+obfuscation ladder (verbatim, paraphrase, base64 payload, zero-width,
+authority spoof, secrecy, code-fence, split notes, camouflage, override
+frames) + a benign control, consolidated through the real dream prompt on
+the live bridge. Result: 10/10 notes flagged, 0/10 planted, 0 directives
+shipped, 0 false positives (kimi-k2.5; receipts + resume-safe runner in the
+dir).
+
 The memory system itself under test (strategy §4.6/§4.7/§4.8): live end-to-end
 suites against a scratch engine + real bridge — injection proof by unique
 marker in the captured upstream request body, real dream + canary + SSE +

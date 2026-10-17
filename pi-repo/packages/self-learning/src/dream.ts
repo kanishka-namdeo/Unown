@@ -40,7 +40,7 @@ export interface DreamResult {
         guard?: { action: "ship" | "sanitize" | "gate"; flags: GuardFlag[]; summary: string };
 }
 
-const SYSTEM = `You are AutoDream, the memory-consolidation sub-agent of a self-learning coding agent.
+export const SYSTEM = `You are AutoDream, the memory-consolidation sub-agent of a self-learning coding agent.
 You receive the CURRENT project memory file and a set of SESSION NOTES from recent runs.
 Your job: write the NEXT version of the project memory file.
 
