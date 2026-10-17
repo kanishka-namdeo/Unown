@@ -140,6 +140,25 @@ export function HpBar({
 }
 
 /**
+ * The five section tones. These are names, not colours: each maps to a
+ * `[data-tone="…"]` rule in `landing.css` that swaps the CSS custom
+ * properties `--tone-fill` / `--tone-rim`. A section may never pass a hex —
+ * that is what keeps thirteen sections restyled in parallel from drifting
+ * into fourteen different reds, and what lets every tone be contrast-checked
+ * once, centrally, in both colour schemes.
+ *
+ * `glow` is the default (DMG shade 4); the other four are the Super Game Boy
+ * stock palette. Contrast for all five, in both schemes, is verified by
+ * `bun scripts/contrast_audit.mjs`.
+ */
+export type Tone = "glow" | "cream" | "amber" | "brick" | "purple";
+
+/** Renders the tone as the data attribute the CSS keys on. */
+export function toneAttr(tone?: Tone): { "data-tone"?: Tone } {
+  return tone && tone !== "glow" ? { "data-tone": tone } : {};
+}
+
+/**
  * The section header every section shares: pixel kicker, pixel heading,
  * optional lead.
  *
@@ -157,15 +176,25 @@ export function SectionHead({
   children,
   lead,
   className,
+  tone,
 }: {
   kicker?: React.ReactNode;
   children: React.ReactNode;
   lead?: React.ReactNode;
   className?: string;
+  /** Section hue. Recolours the kicker only — headings stay `text-ink`. */
+  tone?: Tone;
 }) {
   return (
     <div className={className}>
-      {kicker ? <p className="gb-label text-[10px] text-glow">{kicker}</p> : null}
+      {kicker ? (
+        <p
+          {...toneAttr(tone)}
+          className={`gb-label text-[10px] ${tone && tone !== "glow" ? "text-(--tone-rim)" : "text-glow"}`}
+        >
+          {kicker}
+        </p>
+      ) : null}
       <h2 className="gb-h mt-4 text-[clamp(1.8rem,3.2vw,2.6rem)] text-ink">
         {children}
       </h2>
@@ -193,20 +222,23 @@ export function TrafficDots() {
  * Terminal-style window frame shared by the hero, the replay and the
  * quickstart. The title bar is a bright dialogue-box strip rather than a
  * grey app bar: it is the one piece of chrome a reader sees on every screen,
- * so it is where the page says what it is.
+ * so it is where the page says what it is. `tone` recolours that strip (and
+ * the panel rim) to the section's SGB hue; it defaults to DMG green.
  */
 export function TerminalWindow({
   title,
   children,
   actions,
+  tone,
 }: {
   title: string;
   children: React.ReactNode;
   actions?: React.ReactNode;
+  tone?: Tone;
 }) {
   return (
-    <div className="gb-panel lift overflow-hidden">
-      <div className="flex items-center gap-3 border-b-[3px] border-canvas bg-glow px-3 py-2">
+    <div className="gb-panel lift overflow-hidden" {...toneAttr(tone)}>
+      <div className="gb-bar flex items-center gap-3 px-3 py-2">
         <TrafficDots />
         <div className="flex min-w-0 flex-1 justify-center">
           <span className="gb-label truncate text-[9px] text-canvas">{title}</span>
@@ -219,10 +251,10 @@ export function TerminalWindow({
 }
 
 /** Browser-style frame for the dashboard screenshots. */
-export function BrowserFrame({ url, src, alt }: { url: string; src: string; alt: string }) {
+export function BrowserFrame({ url, src, alt, tone }: { url: string; src: string; alt: string; tone?: Tone }) {
   return (
-    <div className="gb-panel lift overflow-hidden">
-      <div className="flex items-center gap-3 border-b-[3px] border-canvas bg-glow px-3 py-2">
+    <div className="gb-panel lift overflow-hidden" {...toneAttr(tone)}>
+      <div className="gb-bar flex items-center gap-3 px-3 py-2">
         <TrafficDots />
         <div className="flex min-w-0 flex-1 justify-center">
           <span className="gb-label truncate text-[9px] text-canvas">{url}</span>
@@ -412,6 +444,7 @@ export function Nav() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5 lg:ml-0">
+          <ThemeToggle />
           <a
             href={GITHUB_URL}
             target="_blank"
@@ -430,6 +463,107 @@ export function Nav() {
         </div>
       </div>
     </header>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* theme toggle                                                       */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The three screens the handheld can be in, and the order the toggle cycles
+ * them: auto (follow the OS) -> daylight -> dark -> auto.
+ *
+ * "auto" is not a fourth palette — it is the *absence* of a `data-theme`
+ * attribute, which is exactly what hands the decision back to
+ * `prefers-color-scheme`. That is what keeps the default working for a
+ * visitor with JavaScript off: the CSS media query answers, and this
+ * component never has to run.
+ */
+type ThemeMode = "system" | "light" | "dark";
+const THEME_NEXT: Record<ThemeMode, ThemeMode> = { system: "light", light: "dark", dark: "system" };
+const THEME_NAME: Record<ThemeMode, string> = {
+  system: "Auto",
+  light: "Daylight",
+  dark: "Dark",
+};
+/** What pressing the button will switch TO — the accessible name of the control. */
+const THEME_ACTION: Record<ThemeMode, string> = {
+  system: "switch to the daylight screen",
+  light: "switch to the dark screen",
+  dark: "switch back to auto",
+};
+
+function readMode(): ThemeMode {
+  if (typeof document === "undefined") return "system";
+  const t = document.documentElement.dataset.theme;
+  return t === "light" || t === "dark" ? t : "system";
+}
+
+/**
+ * The pixel "screen" glyph. Hollow = daylight (an unlit LCD shows pale), full
+ * = dark (an emissive one), half = auto. Drawn as crisp-edged rects rather
+ * than a lucide sun/moon: those are smooth vector shapes and would be the one
+ * non-pixel thing in the header. The frame is always drawn so the three states
+ * read as the same object changing, not three different icons.
+ */
+function ThemeIcon({ mode }: { mode: ThemeMode }) {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className="size-[17px]"
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+    >
+      <rect x="0" y="2" width="12" height="8" fill="none" stroke="currentColor" strokeWidth="2" />
+      {mode === "dark" ? (
+        <rect x="2" y="4" width="8" height="4" fill="currentColor" />
+      ) : mode === "system" ? (
+        <rect x="2" y="4" width="4" height="4" fill="currentColor" />
+      ) : null}
+    </svg>
+  );
+}
+
+/**
+ * Cycles auto -> daylight -> dark. State is mirrored onto `<html data-theme>`
+ * (the hook the palette in `globals.css` listens for) and persisted to
+ * `localStorage`, where the inline bootstrap in `layout.tsx` replays it on the
+ * next visit before first paint. Starts on "system" and corrects itself in an
+ * effect, which is what keeps the server render and the first client render
+ * identical.
+ */
+export function ThemeToggle() {
+  const [mode, setMode] = React.useState<ThemeMode>("system");
+
+  React.useEffect(() => {
+    setMode(readMode());
+  }, []);
+
+  function cycle() {
+    const next = THEME_NEXT[mode];
+    setMode(next);
+    const root = document.documentElement;
+    if (next === "system") delete root.dataset.theme;
+    else root.dataset.theme = next;
+    try {
+      if (next === "system") localStorage.removeItem("unown-theme");
+      else localStorage.setItem("unown-theme", next);
+    } catch {
+      /* storage blocked — the choice still applies for this page view. */
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={cycle}
+      aria-label={`Screen: ${THEME_NAME[mode]}. Press to ${THEME_ACTION[mode]}.`}
+      title={`Screen: ${THEME_NAME[mode]}`}
+      className="inline-flex size-9 items-center justify-center text-dim transition-colors hover:text-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-glow"
+    >
+      <ThemeIcon mode={mode} />
+    </button>
   );
 }
 

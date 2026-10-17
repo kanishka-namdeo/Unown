@@ -28,7 +28,7 @@ function Spellbox() {
   const known = letters.length === 0;
 
   return (
-    <div className="gb-box p-5">
+    <div data-tone="amber" className="gb-box p-5">
       <label
         htmlFor="spellbox"
         className="gb-label text-[10px] text-canvas"
@@ -114,6 +114,7 @@ export function FinaleSection() {
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-16">
           <FadeUp>
             <SectionHead
+              tone="amber"
               kicker="Where to start"
               lead="Clone it, run one session, and come back tomorrow with memory that already knows what you told it. Nothing to sign up for. If it is not useful, you have lost an afternoon and gained a very opinionated terminal agent."
             >

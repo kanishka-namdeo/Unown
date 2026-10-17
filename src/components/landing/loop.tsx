@@ -131,7 +131,7 @@ export function LoopSection() {
     <section id="loop" className="scroll-mt-16 border-y border-line bg-panel/40 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
-          <SectionHead kicker="The learning loop">
+          <SectionHead kicker="The learning loop" tone="amber">
             Most agents forget. This one has to prove it remembered.
           </SectionHead>
           <p className="mt-4 text-pretty leading-relaxed text-dim">

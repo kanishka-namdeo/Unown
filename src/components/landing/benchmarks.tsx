@@ -99,7 +99,7 @@ function TrackCard({
 }) {
   return (
     <FadeUp delay={delay} className="h-full">
-      <div className="gb-panel lift flex h-full flex-col p-6 hover:border-line-bright">
+      <div className="gb-panel lift flex h-full flex-col p-6 hover:border-line-bright" data-tone="amber">
         <div className="flex items-center gap-3">
           <Icon className="size-5 shrink-0 text-glow" aria-hidden="true" />
           <h3 className="text-[15px] font-medium text-ink">{name}</h3>
@@ -122,6 +122,7 @@ export function BenchmarksSection() {
         <FadeUp className="max-w-2xl">
           <SectionHead
             kicker="Proof, not vibes"
+            tone="amber"
             lead={
               <>
                 Official harnesses, pinned datasets, anti-tamper scoring, and per-task JSONL in
@@ -243,7 +244,7 @@ export function BenchmarksSection() {
 
         {/* methodology + what we did not do */}
         <FadeUp delay={0.08}>
-          <div className="mt-6 grid gap-6 gb-panel p-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="mt-6 grid gap-6 gb-panel p-6 lg:grid-cols-[minmax(0,1fr)_18rem]" data-tone="amber">
             <div>
               <p className="gb-label text-[10px] text-glow">
                 Methodology
@@ -275,7 +276,7 @@ export function BenchmarksSection() {
               </div>
             </div>
 
-            <div className="gb-box p-4">
+            <div className="gb-box p-4" data-tone="amber">
               <p className="gb-label text-[10px] text-canvas">
                 What we did not run
               </p>

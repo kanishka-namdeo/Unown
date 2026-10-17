@@ -6,7 +6,7 @@ import { Glyph, Mark } from "./glyph";
 import { GLYPH_IDS, MARKS, type GlyphId, type MarkId } from "./glyphs";
 import { LEXICON_BY_ID } from "./lexicon";
 import { useLetterRain } from "./effects";
-import { FadeUp, SectionHead, TerminalWindow, PixelCursor } from "./shell";
+import { FadeUp, SectionHead, TerminalWindow, PixelCursor, toneAttr, type Tone } from "./shell";
 
 /* ------------------------------------------------------------------ */
 /* background marks                                                    */
@@ -46,13 +46,28 @@ function MarkField() {
 /* one form                                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The 28 forms cycle the four Super Game Boy hues rather than all sharing one
+ * rim colour. This is the SGB trick at its most literal: the play area (the
+ * glyph, its dim eye, the caption) stays DMG monochrome, and the colour is
+ * carried entirely by the tile's frame — a lit rim on the idle tiles, a solid
+ * tone fill on the pinned one. Cycling by index is a fixed pattern, not random,
+ * so the field is stable between renders and does not reflow.
+ *
+ * The eye is deliberately NOT toned. Twenty-eight lit eyes strobe; a coloured
+ * rim around a dim eye reads as a labelled drawer instead.
+ */
+const TILE_TONES: readonly Tone[] = ["cream", "amber", "brick", "purple"];
+
 function FormTile({
   id,
+  tone,
   active,
   onHover,
   onPick,
 }: {
   id: GlyphId;
+  tone: Tone;
   active: boolean;
   onHover: (id: GlyphId | null) => void;
   onPick: (id: GlyphId) => void;
@@ -65,6 +80,7 @@ function FormTile({
       onMouseLeave={() => onHover(null)}
       onClick={() => onPick(id)}
       aria-pressed={active}
+      {...toneAttr(tone)}
       className={`lift group relative flex aspect-square flex-col items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-glow focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
         active ? "gb-box" : "gb-panel hover:border-line-bright"
       }`}
@@ -115,7 +131,7 @@ export function AlphabetSection() {
       <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid gap-6 max-w-2xl">
           <FadeUp>
-            <SectionHead kicker="The alphabet">
+            <SectionHead kicker="The alphabet" tone="purple">
               The name is a pun you have to read twice.
             </SectionHead>
           </FadeUp>
@@ -142,10 +158,11 @@ export function AlphabetSection() {
           {/* the forms */}
           <FadeUp className="lg:order-1">
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-              {GLYPH_IDS.map((id) => (
+              {GLYPH_IDS.map((id, i) => (
                 <FormTile
                   key={id}
                   id={id}
+                  tone={TILE_TONES[i % TILE_TONES.length]}
                   active={id === active}
                   onHover={setHovered}
                   onPick={(next) => {
@@ -163,7 +180,7 @@ export function AlphabetSection() {
           {/* the decoding */}
           <FadeUp delay={0.08} className="lg:order-2">
             <div className="lg:sticky lg:top-24">
-              <TerminalWindow title={`form ${ordinal} / 28 · ${entry.id}`}>
+              <TerminalWindow title={`form ${ordinal} / 28 · ${entry.id}`} tone="purple">
                 <div aria-live="polite" className="p-5">
                   <div className="flex items-center gap-4">
                     <div className="grid size-16 shrink-0 place-items-center border-[3px] border-canvas bg-glow/10">

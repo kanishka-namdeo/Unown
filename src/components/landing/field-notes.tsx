@@ -107,6 +107,7 @@ export function FieldNotesSection() {
         <FadeUp className="max-w-2xl">
           <SectionHead
             kicker="Field notes"
+            tone="cream"
             lead="A developer tool called unown needs to explain itself twice, so here is both readings. The Pokémon side is lore, quoted and attributed. The engineering side is the part you can check."
           >
             On the name, and on the letters.
@@ -116,7 +117,7 @@ export function FieldNotesSection() {
         <div className="mt-12 grid gap-8 lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-12">
           {/* the dex card */}
           <FadeUp>
-            <div className="gb-panel overflow-hidden">
+            <div className="gb-panel overflow-hidden" data-tone="cream">
               <div className="flex items-start gap-4 border-b border-line p-5">
                 <div className="grid size-16 shrink-0 place-items-center bg-canvas">
                   <Glyph id="?" weight="heavy" tone="lit" className="size-11 text-glow" />
@@ -140,7 +141,7 @@ export function FieldNotesSection() {
               </div>
 
               <figure className="p-5">
-                <div className="gb-box p-4">
+                <div className="gb-box p-4" data-tone="cream">
                   <blockquote className="quote text-[20px] leading-relaxed text-canvas">
                     “This Pokémon is shaped like ancient writing. It is a mystery as to which
                     came first, the ancient writings or the various UNOWN. Research into this

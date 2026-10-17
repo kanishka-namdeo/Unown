@@ -46,7 +46,7 @@ export function ModelsBand() {
                 {TILES.map((t) => (
                   <li
                     key={t.label}
-                    className="gb-panel lift flex h-11 items-center gap-2.5 px-3 hover:border-line-bright"
+                    className="gb-panel lift flex h-11 items-center gap-2.5 px-3 hover:border-line-bright" data-tone="cream"
                   >
                     {t.slug ? (
                       <ProviderMark slug={t.slug} className="size-4 shrink-0 text-dim" />

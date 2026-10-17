@@ -93,6 +93,17 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Anti-flash theme bootstrap. Runs synchronously in <head>, before the body
+ * paints, so a visitor who chose the light screen never sees a dark frame
+ * first (and vice versa). It only reads the persisted override — when there
+ * is none it does nothing, and `prefers-color-scheme` decides, which is what
+ * keeps the light/dark default working for visitors with JavaScript off.
+ * Kept tiny and inline on purpose: an external request here would be a
+ * render-blocking round trip on the LCP element.
+ */
+const THEME_INIT = `try{var t=localStorage.getItem("unown-theme");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t}}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -100,6 +111,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${pixelFont.variable} ${displayFont.variable} ${termFont.variable} antialiased bg-background text-foreground`}
       >

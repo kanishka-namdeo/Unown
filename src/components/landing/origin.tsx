@@ -32,7 +32,7 @@ const TWO = [
 
 function Pair() {
   return (
-    <div className="gb-panel p-6">
+    <div className="gb-panel p-6" data-tone="cream">
       <div className="flex items-stretch gap-4">
         {TWO.map((half, i) => (
           <div key={half.glyph} className="flex min-w-0 flex-1 flex-col">
@@ -102,11 +102,11 @@ export function OriginSection() {
             </FadeUp>
 
             <FadeUp delay={0.08}>
-              <figure className="relative mt-8 gb-box p-5">
+              <figure className="relative mt-8 gb-box p-5" data-tone="cream">
                 <blockquote className="quote text-pretty text-2xl leading-snug text-canvas italic sm:text-3xl">
                   “{DEX_QUOTES.emergent}”
                 </blockquote>
-                <figcaption className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-canvas/70">
+                <figcaption className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-canvas/90">
                   {DEX_QUOTES.emergentSrc}
                 </figcaption>
                 <ContinueArrow className="absolute bottom-2 right-3 text-canvas" />
@@ -129,11 +129,11 @@ export function OriginSection() {
             </FadeUp>
 
             <FadeUp delay={0.2}>
-              <figure className="relative mt-10 gb-box p-5">
+              <figure className="relative mt-10 gb-box p-5" data-tone="cream">
                 <blockquote className="quote text-pretty text-lg leading-relaxed text-canvas italic sm:text-xl">
                   “{DEX_QUOTES.origin}”
                 </blockquote>
-                <figcaption className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-canvas/70">
+                <figcaption className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-canvas/90">
                   {DEX_QUOTES.originSrc}
                 </figcaption>
                 <ContinueArrow className="absolute bottom-2 right-3 text-canvas" />

@@ -11,11 +11,19 @@
  * `bg-glow` in one section is caught where it is, not where the token table
  * says it is.
  *
+ * IT AUDITS BOTH SCHEMES. The page ships a dark screen (the emissive DMG,
+ * `@theme` default) and a light screen (the same LCD unlit in daylight, via
+ * `prefers-color-scheme`). The tokens are dual-valued, so the contract holds
+ * twice over and a failure in either is a failure. Each pass first asserts
+ * that the scheme's `--color-canvas` actually resolved to the expected hex —
+ * otherwise a cascade bug would silently audit the dark palette twice and
+ * report light as passing.
+ *
  * Usage:
  *   LANDING_SHOTS_URL=http://localhost:3111 bun scripts/contrast_audit.mjs
  *
  * Output: printed table + download/landing/contrast_report.json.
- * Exits non-zero on any failure.
+ * Exits non-zero on any failure, in either scheme.
  */
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -194,7 +202,7 @@ const AUDIT = () => {
         ratio: Number(got.toFixed(2)),
         required: need,
         tokens: (typeof el.className === "string" ? el.className : "").match(
-          /(?:text|bg|border)-(?:canvas|panel|line|ink|dim|faint|glow|amber|poke)[^\s]*/g,
+          /(?:text|bg|border)-(?:canvas|panel|line|ink|dim|faint|glow|amber|poke|sgb-[a-z]+)[^\s]*/g,
         ),
       });
     }
@@ -212,47 +220,100 @@ const browser = await chromium.launch({
   args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars", "--font-render-hinting=none"],
 });
 
-let failures = [];
-let worst = [];
+/**
+ * The page has two schemes, so the contract is measured twice. `dark` is the
+ * emissive screen (the @theme default); `light` is the same LCD unlit in
+ * daylight, which arrives via `prefers-color-scheme`. A failure in EITHER is a
+ * failure — the tokens are dual-valued and both sides were tuned to clear AA.
+ */
+const SCHEMES = ["dark", "light"];
+
+const allFailures = [];
+const perScheme = [];
+let totalScanned = 0;
+
 try {
-  const ctx = await browser.newContext({ viewport: { width: 1512, height: 982 }, colorScheme: "dark" });
-  const page = await ctx.newPage();
-  await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 30000 });
-  await page.waitForLoadState("networkidle").catch(() => {});
-  await new Promise((r) => setTimeout(r, 1500));
-  // Scroll the whole page so every lazy/scroll-revealed section is rendered.
-  await page.evaluate(async () => {
-    const h = document.documentElement.scrollHeight;
-    for (let y = 0; y < h; y += 700) {
-      window.scrollTo(0, y);
-      await new Promise((r) => setTimeout(r, 40));
+  for (const scheme of SCHEMES) {
+    const ctx = await browser.newContext({
+      viewport: { width: 1512, height: 982 },
+      colorScheme: scheme,
+    });
+    const page = await ctx.newPage();
+    await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.waitForLoadState("networkidle").catch(() => {});
+    await new Promise((r) => setTimeout(r, 1500));
+    // Scroll the whole page so every lazy/scroll-revealed section is rendered.
+    await page.evaluate(async () => {
+      const h = document.documentElement.scrollHeight;
+      for (let y = 0; y < h; y += 700) {
+        window.scrollTo(0, y);
+        await new Promise((r) => setTimeout(r, 40));
+      }
+      window.scrollTo(0, 0);
+    });
+    await new Promise((r) => setTimeout(r, 800));
+
+    // Confirm the scheme actually applied before measuring. A silent no-op —
+    // e.g. the light block losing the cascade — would otherwise audit the
+    // dark palette twice and call light "PASS". Compare like for like: strip
+    // the leading # from BOTH sides (expected is written with one, the
+    // resolved value may or may not carry one).
+    const applied = await page.evaluate(() => ({
+      canvas: getComputedStyle(document.documentElement).getPropertyValue("--color-canvas").trim(),
+      attr: document.documentElement.dataset.theme ?? null,
+    }));
+    const hexOf = (v) => {
+      const s = (v ?? "").trim().replace(/^#/, "").toLowerCase();
+      return s.length === 3 ? s.split("").map((c) => c + c).join("") : s;
+    };
+    const expected = scheme === "light" ? "#eae5c8" : "#0a140a";
+    const appliedOk = hexOf(applied.canvas) === hexOf(expected);
+    if (!appliedOk) {
+      // Hard-stop. Never fall through to a "0 failures" PASS for a scheme we
+      // did not actually measure — that is the false-pass this script exists
+      // to catch.
+      throw new Error(
+        `scheme "${scheme}" did not apply: --color-canvas=${applied.canvas || "(unset)"} ` +
+          `(expected ${expected}). The palette is not the one on screen.`,
+      );
     }
-    window.scrollTo(0, 0);
-  });
-  await new Promise((r) => setTimeout(r, 800));
-  const audit = await page.evaluate(AUDIT);
-  failures = audit.failures;
-  worst = audit.worst ?? [];
-  console.log(`scanned ${audit.scanned} visible text nodes on ${BASE}`);
-  console.log("lowest ratios:");
-  for (const w of audit.worst) {
-    console.log(`  ${String(w.ratio).padStart(5)}:1  ${w.color} on ${w.background}  ${w.fontSize}px  ${w.selector}`);
-    console.log(`         "${w.text}"`);
+
+    const audit = await page.evaluate(AUDIT);
+    totalScanned += audit.scanned;
+    const tagged = (audit.failures ?? []).map((f) => ({ ...f, scheme }));
+    allFailures.push(...tagged);
+    perScheme.push({
+      scheme,
+      scanned: audit.scanned,
+      worst: audit.worst ?? [],
+      failures: tagged.length,
+    });
+    console.log(`\n=== scheme "${scheme}" — scanned ${audit.scanned} visible text nodes on ${BASE} ===`);
+    console.log(`    --color-canvas resolved to ${applied.canvas} (attr=${applied.attr ?? "none"})`);
+    console.log("    lowest ratios:");
+    for (const w of audit.worst) {
+      console.log(`      ${String(w.ratio).padStart(5)}:1  ${w.color} on ${w.background}  ${w.fontSize}px  ${w.selector}`);
+      console.log(`             "${w.text}"`);
+    }
+    await ctx.close();
   }
-  await ctx.close();
 } finally {
   await browser.close();
 }
 
 mkdirSync(OUT, { recursive: true });
-writeFileSync(join(OUT, "contrast_report.json"), JSON.stringify({ base: BASE, checkedAt: new Date().toISOString(), failures, worst }, null, 2));
+writeFileSync(
+  join(OUT, "contrast_report.json"),
+  JSON.stringify({ base: BASE, checkedAt: new Date().toISOString(), schemes: perScheme, failures: allFailures }, null, 2),
+);
 
-if (!failures.length) {
-  console.log(`PASS  no WCAG AA contrast failures on ${BASE}`);
+console.log(`\ntotal scanned across ${SCHEMES.length} schemes: ${totalScanned}`);
+if (!allFailures.length) {
+  console.log(`PASS  no WCAG AA contrast failures on ${BASE} (schemes: ${SCHEMES.join(", ")})`);
 } else {
-  console.log(`FAIL  ${failures.length} text nodes below AA on ${BASE}\n`);
-  for (const f of failures) {
-    console.log(`  ${f.ratio}:1 (needs ${f.required})  ${f.color} on ${f.background}  ${f.fontSize}px/${f.fontWeight}`);
+  console.log(`FAIL  ${allFailures.length} text nodes below AA on ${BASE}\n`);
+  for (const f of allFailures) {
+    console.log(`  [${f.scheme}] ${f.ratio}:1 (needs ${f.required})  ${f.color} on ${f.background}  ${f.fontSize}px/${f.fontWeight}`);
     console.log(`      ${f.selector}`);
     console.log(`      tokens: ${(f.tokens ?? []).join(" ") || "(none)"}`);
     console.log(`      "${f.text}"\n`);

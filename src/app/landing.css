@@ -72,12 +72,12 @@ html {
   background-image:
     repeating-linear-gradient(
       to right,
-      rgb(255 255 255 / 0.055) 0 1px,
+      var(--gb-grain) 0 1px,
       transparent 1px 4px
     ),
     repeating-linear-gradient(
       to bottom,
-      rgb(255 255 255 / 0.055) 0 1px,
+      var(--gb-grain) 0 1px,
       transparent 1px 4px
     );
   background-size: 4px 4px;
@@ -122,16 +122,19 @@ html {
   inset: 0;
   z-index: 60;
   pointer-events: none;
-  /* First layer is painted on top: the vignette over the scanline grid. */
+  /* First layer is painted on top: the vignette over the scanline grid.
+   * Both draw from the gb-* furniture vars so the dark screen keeps its
+   * black camera layer while the daylight screen swaps to a faint ink wash —
+   * black over a pale reflector reads as a dirty screen, not a CRT. */
   background-image:
     radial-gradient(
       ellipse at center,
       transparent 62%,
-      rgb(0 0 0 / 0.3) 100%
+      var(--gb-vignette) 100%
     ),
     repeating-linear-gradient(
       to bottom,
-      rgb(0 0 0 / 0.2) 0 1px,
+      var(--gb-scanline) 0 1px,
       transparent 1px 3px
     );
 }
@@ -243,17 +246,20 @@ html {
   border-radius: 2px;
 }
 
-/* Primary action picks up a phosphor bloom on hover, like the mark lighting. */
+/* Primary action picks up a phosphor bloom on hover, like the mark lighting.
+   The tint rides on var(--color-glow) via color-mix rather than the baked
+   rgb(155 188 15) so the bloom follows the scheme — bright green over the
+   dark screen, ink-green over the daylight one. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .glow-hover {
-    box-shadow: 0 0 0 0 rgb(155 188 15 / 0%);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-glow) 0%, transparent);
     transition:
       box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
       background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .glow-hover:hover {
-    box-shadow: 0 8px 28px -10px rgb(155 188 15 / 0.5);
+    box-shadow: 0 8px 28px -10px color-mix(in oklab, var(--color-glow) 50%, transparent);
   }
 }
 
@@ -383,22 +389,92 @@ html {
  * template this page is trying not to be.
  */
 
+/* --- section tones ------------------------------------------------- */
+
+/*
+ * THE SGB TRICK. The Super Game Boy (1994) drew full-COLOUR borders around a
+ * monochrome play area: the game stayed four shades, the frame around it did
+ * not. That is exactly what a `tone` does here. Body copy and headings stay
+ * DMG green — this is still an LCD — and a section's colour lives only in its
+ * CHROME: the box rim, the terminal title bar, the kicker.
+ *
+ * Mechanics: `--tone-fill` and `--tone-rim` are custom properties that each
+ * furniture class defaults (so a box with no data-tone is unchanged), and a
+ * `[data-tone="…"]` on the element overrides them. Setting the attribute is
+ * the entire API — no section hand-picks a hex, so thirteen sections restyled
+ * in parallel cannot drift into fourteen different reds. Pass `tone` to
+ * `SectionHead` / `TerminalWindow` / `BrowserFrame` in shell.tsx and it
+ * renders the attribute for you.
+ *
+ * Contrast is pre-checked for all five tones in BOTH schemes (see the
+ * Verification section of the landing AGENTS.md): text-canvas on any
+ * tone-as-fill is >= 5.94 dark / >= 6.34 light, and every rim clears 4.94
+ * against the card fill. Never add a tone without re-running the audit.
+ */
+.gb-box,
+.gb-panel,
+.gb-bar {
+  --tone-fill: var(--color-glow);
+  --tone-rim: var(--color-glow);
+}
+
+/* .gb-panel's rim is the lit hairline, not the glow ring, so it keeps its
+   own default; a tone overrides just the rim and leaves the dark fill. */
+.gb-panel {
+  --tone-rim: var(--color-line-bright);
+}
+
+[data-tone="cream"] {
+  --tone-fill: var(--color-sgb-cream);
+  --tone-rim: var(--color-sgb-cream);
+}
+
+[data-tone="amber"] {
+  --tone-fill: var(--color-sgb-amber);
+  --tone-rim: var(--color-sgb-amber);
+}
+
+[data-tone="brick"] {
+  --tone-fill: var(--color-sgb-brick);
+  --tone-rim: var(--color-sgb-brick);
+}
+
+[data-tone="purple"] {
+  --tone-fill: var(--color-sgb-purple);
+  --tone-rim: var(--color-sgb-purple);
+}
+
 /* --- dialogue box ------------------------------------------------- */
 
-/* Light: the game's text window. Dark text on DMG shade 4 — 6.02:1, AA. */
+/* Light: the game's text window. The fill and outer rim take the section
+   tone (default glow), so `data-tone="brick"` gives a brick dialogue box
+   without any section touching a hex value. */
 .gb-box {
-  background: var(--color-glow);
+  background: var(--tone-fill);
   color: var(--color-canvas);
   border: 3px solid var(--color-canvas);
-  box-shadow: 0 0 0 3px var(--color-glow);
+  box-shadow: 0 0 0 3px var(--tone-rim);
 }
 
 /* Dark: a console panel sitting on the page. Lit rim instead of a gap, so it
-   separates from the canvas without becoming a bright slab. */
+   separates from the canvas without becoming a bright slab. A tone recolours
+   only the rim — the panel stays dark, which is what keeps a toned panel from
+   fighting the monochrome play area it frames. */
 .gb-panel {
   background: var(--color-panel-2);
   border: 3px solid var(--color-canvas);
-  box-shadow: 0 0 0 3px var(--color-line-bright);
+  box-shadow: 0 0 0 3px var(--tone-rim);
+}
+
+/*
+ * The title-bar strip. Factored out of TerminalWindow/BrowserFrame so a
+ * section's window header can carry the tone as a solid band — the SGB
+ * border made walkable. `border-canvas` underneath is the same 3px gutter
+ * every frame on this page has.
+ */
+.gb-bar {
+  background: var(--tone-fill);
+  border-bottom: 3px solid var(--color-canvas);
 }
 
 /* The inner hairline the games draw just inside the frame. Adds a second
@@ -435,13 +511,22 @@ html {
   box-shadow: inset 0 0 0 0 rgb(10 20 10 / 0.34);
 }
 
-/* Dark counterpart: light bevel top-left, dark bevel bottom-right. */
+/*
+ * Dark counterpart: light bevel top-left, dark bevel bottom-right.
+ *
+ * The top-left bevel is the phosphor-tinted highlight, so it rides on
+ * var(--color-glow) via color-mix and follows the scheme. The bottom-right
+ * one is a shadow, and a shadow stays dark in both schemes — the light
+ * source does not move when the room brightens — so it is deliberately a
+ * literal black rather than a themed value. Same reasoning for the
+ * rgb(10 20 10) bevels on .gb-btn above: they are shadows, not pigment.
+ */
 .gb-btn-dark {
   border: 3px solid var(--color-canvas);
   background: var(--color-panel-2);
   color: var(--color-ink);
   box-shadow:
-    inset 2px 2px 0 0 rgb(155 188 15 / 0.18),
+    inset 2px 2px 0 0 color-mix(in oklab, var(--color-glow) 18%, transparent),
     inset -2px -2px 0 0 rgb(0 0 0 / 0.5);
   transition:
     transform 90ms steps(2, end),
@@ -456,7 +541,7 @@ html {
 
 .gb-btn-dark:active {
   transform: translate(2px, 2px);
-  box-shadow: inset -2px -2px 0 0 rgb(155 188 15 / 0.18);
+  box-shadow: inset -2px -2px 0 0 color-mix(in oklab, var(--color-glow) 18%, transparent);
 }
 
 /* --- HP bar ------------------------------------------------------- */
@@ -471,7 +556,7 @@ html {
   position: relative;
   height: 10px;
   overflow: hidden;
-  background: #071107;
+  background: var(--gb-hp-well);
   border: 2px solid var(--color-canvas);
   box-shadow: 0 0 0 2px var(--color-line-bright);
 }

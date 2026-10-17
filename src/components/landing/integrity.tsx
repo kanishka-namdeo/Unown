@@ -71,6 +71,7 @@ export function IntegritySection() {
         <FadeUp className="max-w-2xl">
           <SectionHead
             kicker="Integrity"
+            tone="brick"
             lead={
               <>
                 So every memory write is behind a gate, and every gate is visible from the
@@ -106,7 +107,7 @@ export function IntegritySection() {
 
           {/* the log */}
           <FadeUp delay={0.1}>
-            <div className="gb-panel overflow-hidden">
+            <div className="gb-panel overflow-hidden" data-tone="brick">
               <div className="flex items-center gap-2 border-b border-line bg-panel px-3.5 py-2">
                 <span className="size-1.5 rounded-full bg-line-bright" aria-hidden="true" />
                 <span className="gb-term text-[17px] text-faint">

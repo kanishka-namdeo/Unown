@@ -4,10 +4,16 @@
  *
  * The landing AGENTS.md makes a visual check against the PRODUCTION build
  * mandatory ("required, not optional"), and this is how it is run. It browses
- * the built page, screenshots every top-level section once, and then repeats
- * the pass under `prefers-reduced-motion: reduce` so a reveal that fails to
- * resolve to its finished state shows up as a blank frame rather than as an
- * opinion.
+ * the built page, screenshots every top-level section once — in BOTH colour
+ * schemes, because the page ships a dark screen (the emissive DMG, the @theme
+ * default) and a light screen (the same LCD unlit in daylight, applied via
+ * `prefers-color-scheme`) — and then repeats the pass under
+ * `prefers-reduced-motion: reduce` so a reveal that fails to resolve to its
+ * finished state shows up as a blank frame rather than as an opinion.
+ *
+ * Each scheme pass first asserts that `--color-canvas` resolved to the hex
+ * that scheme should produce, so a cascade bug cannot silently photograph the
+ * dark palette twice and call the light one "covered".
  *
  * Usage:
  *   bun scripts/landing_shots.mjs                 # http://localhost:3111/
@@ -18,7 +24,8 @@
  * install `shots_capture.mjs` uses) and falls back to a resolvable
  * `playwright` package. Requires a chromium build in the playwright cache.
  *
- * Output: download/landing/*.png + landing_report.json (gitignored).
+ * Output: download/landing/*.png + landing_report.json (gitignored). Light
+ * shots are prefixed `light-`; dark keeps the unprefixed historical names.
  * Never clicks anything that spends money; it only scrolls and screenshots.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -138,6 +145,35 @@ async function openPage(browser, opts = {}) {
   return { ctx, page, errors };
 }
 
+/**
+ * Both schemes the page ships, and the `--color-canvas` each must resolve to.
+ * The section pass loops these. The assertion matters: the light scheme is
+ * applied by a `prefers-color-scheme` media query, so if that block ever loses
+ * the cascade a light pass would photograph the dark palette and a green run
+ * would mean nothing. We compare resolved-vs-expected and hard-fail instead.
+ */
+const SCHEMES = [
+  { scheme: "dark", canvas: "#0a140a", prefix: "" },
+  { scheme: "light", canvas: "#eae5c8", prefix: "light-" },
+];
+
+async function assertScheme(page, expectedCanvas, scheme) {
+  const got = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue("--color-canvas").trim(),
+  );
+  const norm = (v) => {
+    const s = (v ?? "").replace(/^#/, "").toLowerCase();
+    return s.length === 3 ? s.split("").map((c) => c + c).join("") : s;
+  };
+  if (norm(got) !== norm(expectedCanvas)) {
+    throw new Error(
+      `scheme "${scheme}" did not apply: --color-canvas=${got || "(unset)"} (expected ${expectedCanvas}). ` +
+        `Not photographing a palette that is not on screen.`,
+    );
+  }
+  return got;
+}
+
 mkdirSync(OUT, { recursive: true });
 const report = {
   base: BASE,
@@ -155,16 +191,29 @@ const browser = await chromium.launch({
 });
 
 try {
-  /* ---- 1. every section, motion on ---- */
-  const normal = await openPage(browser);
-  const plan = await normal.page.evaluate(PLAN);
+  /* ---- 1. every section, motion on, in BOTH schemes ---- */
+  const plan = await (async () => {
+    const probe = await openPage(browser);
+    const p = await probe.page.evaluate(PLAN);
+    await probe.ctx.close();
+    return p;
+  })();
   console.log(`[plan] ${plan.length} top-level blocks on ${BASE}`);
-  for (let i = 0; i < plan.length; i++) {
-    const s = await shootSection(normal.page, plan[i], i);
-    report.shots.push(s);
-    console.log(`  + ${s.file}  "${s.label}"`);
+
+  for (const { scheme, canvas, prefix } of SCHEMES) {
+    const pass = await openPage(browser, { colorScheme: scheme });
+    const applied = await assertScheme(pass.page, canvas, scheme);
+    console.log(`[scheme] "${scheme}" — --color-canvas resolved to ${applied}`);
+    for (let i = 0; i < plan.length; i++) {
+      const s = await shootSection(pass.page, plan[i], i, prefix);
+      report.shots.push({ ...s, scheme });
+      console.log(`  + ${s.file}  "${s.label}"  [${scheme}]`);
+    }
+    if (scheme === "dark") report.consoleErrors = [...new Set(pass.errors)];
+    else report.consoleErrors.push(...pass.errors);
+    await pass.ctx.close();
   }
-  await normal.ctx.close();
+  report.consoleErrors = [...new Set(report.consoleErrors)].slice(0, 12);
 
   /* ---- 2. reduced motion: reveals must resolve to their finished state ---- */
   const rm = await openPage(browser, { reducedMotion: "reduce" });
@@ -192,8 +241,6 @@ try {
     }
     await m.ctx.close();
   }
-
-  report.consoleErrors = [...new Set(normal.errors)].slice(0, 12);
 } finally {
   await browser.close();
 }

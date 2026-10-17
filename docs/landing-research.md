@@ -7,6 +7,24 @@ around a purpose-drawn alphabet; rewritten again when that page was re-skinned
 as a Game Boy — the structure above barely moved, but the palette, type and
 surface treatment all did, and the reasoning for each is below.
 
+**Contents**
+
+- [Part 1 — Products studied](#part-1--products-studied)
+- [Part 2 — Why the page is built on an alphabet](#part-2--why-the-page-is-built-on-an-alphabet)
+- [Part 3 — What replaced what](#part-3--what-replaced-what)
+- [Part 3b — Why the page is a Game Boy](#part-3b--why-the-page-is-a-game-boy)
+- [Part 4 — Motion rules](#part-4--motion-rules)
+- [Part 5 — Sourcing rules for the page](#part-5--sourcing-rules-for-the-page)
+- [Part 6 — Third-party assets](#part-6--third-party-assets)
+- [Part 7 — Assets](#part-7--assets)
+- [Part 8 — Headline work](#part-8--headline-work)
+- [Part 9 — How to keep it honest](#part-9--how-to-keep-it-honest)
+- [Part 10 — The second scheme, and where the colour is allowed to live](#part-10--the-second-scheme-and-where-the-colour-is-allowed-to-live)
+
+Related pages: [benchmark-research.md](benchmark-research.md) — the numbers the
+page quotes; the page's binding contract lives one level up in
+[`src/components/landing/AGENTS.md`](../src/components/landing/AGENTS.md).
+
 ---
 
 ## Part 1 — Products studied
@@ -220,3 +238,81 @@ Live dashboard captures in `public/landing/`, seeded with real engine data:
 - Live counters the current checkout cannot reproduce ("60+ verified runs") are
   not on the page and must not be added.
 - New lore goes through Part 5 before it goes into `lexicon.ts`.
+
+## Part 10 — The second scheme, and where the colour is allowed to live
+
+The page originally shipped one scheme: the emissive green-on-black everyone
+associates with the handheld. It now ships two, and the second one had to be as
+defensible as the first. This part is the research behind the light scheme and
+the colour treatment.
+
+### What the hardware actually does
+
+The 1989 DMG-01 has **no backlight**. It is a reflective STN LCD: a mirror
+behind the panel bounces ambient light back through the polariser and the
+liquid-crystal layer, and a pixel reads dark when the crystals twist to block
+that light. Four nominal shades per pixel (`#0f380f / #306230 / #8bac0f /
+#9bbc0f`, darkest to lightest) — the same public-domain facts the rest of the
+page is built on.
+
+So there are two honest presentations of one screen, and the page uses one per
+scheme:
+
+| Presentation | How you see it | Page scheme |
+| --- | --- | --- |
+| Unmodified hardware in a lit room | dark olive ink on a pale reflector | **light** |
+| Backlit mod, emulator, low-light photo | the four shades glowing on dark | **dark** |
+
+"Green-on-black" is not what a stock DMG looks like in daylight — it is the
+emulator / backlit presentation. Both are period-correct; the nav toggle just
+picks which room the handheld is sitting in.
+
+### The reflector value is art-directed, not sampled — and the tradeoff
+
+A real unlit DMG reflector is a pea-soup yellow-green (around `#c4cfa1`). The
+page's light canvas is `#eae5c8` — warmer and lighter than the hardware. That
+is a deliberate, disclosed trade: WCAG AA needs every text token to clear
+4.5:1 against the canvas, and a darker, more accurate reflector squeezes the
+headroom on the lighter tokens (`faint`, the SGB rims) below the line. The
+light scheme is therefore "an unlit LCD in a bright room, tuned for
+legibility", not a colour-meter reading of a photographed screen. The ink
+(`#1c2810`) is the dark-olive end of the same family, so the pair still reads
+as one LCD.
+
+### Why the colour lives in the frame: the Super Game Boy
+
+The brief was "more colour in both modes" without abandoning a monochrome
+identity. The Super Game Boy (1994, SNES accessory) is the period-accurate
+answer: it ran Game Boy cartridges but had the SNES draw a **full-colour
+decorative border** around a play field that stayed the handheld's four shades
+unless a game explicitly opted into colourisation. The default behaviour —
+vivid frame, monochrome content — is precisely the constraint this page wants:
+body copy and headings stay DMG, and the colour budget is spent on chrome.
+
+### The colour budget, and what it deliberately does not spend
+
+- **Spent on:** dialogue-box and panel rims, terminal/browser title bars, the
+  pixel kicker on each section head, and the alphabet's 28 tiles (which cycle
+  the four hues as rims — a labelled-drawer wall, the SGB border at its most
+  literal).
+- **Not spent on:** body copy, `font-display` headings, or glyph fills — the
+  play area stays monochrome. The Unown eyes stay `dim` except where one glyph
+  is the subject; twenty-eight lit eyes strobe.
+- **The four hues** (`sgb-cream / sgb-amber / sgb-brick / sgb-purple`) were
+  picked to clear AA as a rim against the panel surface *and* as a fill under
+  `text-canvas` in **both** schemes. Each has a dark/light dual, separately
+  tuned: the light scheme's hues sit at the dark, saturated end so they hold on
+  a pale reflector, the dark scheme's at the bright end so they read on
+  near-black. Every ratio is in the landing `AGENTS.md` Verification section
+  and re-checked by `bun scripts/contrast_audit.mjs`, which walks both schemes.
+
+### Rejected
+
+- **A pastel "light mode"** (white cards, blue accents) — it would read as a
+  generic modern site and throw away the LCD premise. The light scheme had to
+  be the *same hardware in different light*, not a second brand.
+- **Full-colour text or headings** — the moment body copy takes a hue the page
+  stops being a Game Boy screen and starts being a slide deck, and contrast
+  collapses: one accent that passes on a dark panel fails on a pale reflector.
+- **Pixel-sampling a photographed DMG screen** for the reflector — it costs the
+  contrast headroom the AA contract needs. Disclosed and tuned instead.

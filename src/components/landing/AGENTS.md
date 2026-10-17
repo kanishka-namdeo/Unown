@@ -76,15 +76,36 @@ The page is a Game Boy that is switched on. Everything below is the local
 spelling of that: sections compose these parts, they do not invent parallel
 ones.
 
-- **The palette is DMG-01, inverted.** Declared in the `@theme` block of
-  `src/app/globals.css` (see root `src/AGENTS.md` for why it lives there).
-  The four canonical shades `#0f380f / #306230 / #8bac0f / #9bbc0f` are
-  public-domain facts about a 1989 LCD — using them is not using Pokémon art,
-  which is why this page can look the way it does without shipping any.
-  Tokens: `canvas` `panel` `panel-2` (dark greens), `line` `line-bright`
-  (borders), `ink` `dim` `faint` (text), `glow`/`glow-soft` (DMG shade 4 and
-  a step above it), plus `amber` `#ffcb05` and `poke` `#ff6a4d` as
-  cartridge-era accents.
+- **The palette is DMG-01, in both lights.** Declared in `src/app/globals.css`
+  (see root `src/AGENTS.md` for why it lives there). The four canonical shades
+  `#0f380f / #306230 / #8bac0f / #9bbc0f` are public-domain facts about a 1989
+  LCD — using them is not using Pokémon art, which is why this page can look the
+  way it does without shipping any. Tokens: `canvas` `panel` `panel-2`, `line`
+  `line-bright` (borders), `ink` `dim` `faint` (text), `glow`/`glow-soft`
+  (DMG shade 4 and a step above it), `amber` `#ffcb05` and `poke` `#ff6a4d`
+  (cartridge accents), plus `sgb-cream`/`sgb-amber`/`sgb-brick`/`sgb-purple`
+  (the Super Game Boy frame hues, below). Every token is **dual-valued**: a dark
+  `:root`, a `prefers-color-scheme: light` block, and a `[data-theme="light"]`
+  override that wins the cascade — same names in both, so a section restyles
+  for free. **Never write a `dark:` variant on this page**: theming is an
+  attribute on `<html>`, not a `.dark` class, and the tokens already carry both
+  schemes.
+- **Light mode is the same handheld in daylight, not a re-skin.** A real DMG-01
+  is a *reflective, unlit* LCD — dark ink on a pale reflector, and the famous
+  green-on-black is the emulator / low-light look. So the light scheme is the
+  unlit screen (`#eae5c8` reflector, `#1c2810` ink) and the nav toggle picks the
+  room. The toggle cycles auto → daylight → dark, persists to
+  `localStorage.unown-theme`, and the inline `<head>` bootstrap in `layout.tsx`
+  replays it before first paint (no flash, and inert with scripting off). The
+  auto default is `prefers-color-scheme`, so an untouched visitor gets their OS.
+- **Tokens live in a non-inline `@theme` block; only the fonts are
+  `@theme inline`.** Tailwind emits `var(--color-…)` for a non-inline theme, so
+  the `:root` / media-query / `[data-theme]` cascade can repaint utilities at
+  runtime — an inline block would bake one scheme's value into every utility and
+  freeze the page. The font tokens must stay inline because their `--font-*`
+  variables are set on `<body>`, and an inline utility resolves them from
+  `:root`, where they do not exist. Moving a token between the blocks silently
+  breaks one of the two schemes — re-check both if you do.
 - **Three faces, one job each** (loaded in `src/app/layout.tsx`):
   `font-pixel` (Press Start 2P) for chrome only — eyebrows, buttons, badges,
   tile captions, kbd hints, never more than a few words; `font-display`
@@ -105,6 +126,24 @@ ones.
     pixel heading, terminal body, inner hairline, blinking continue arrow.
   - `PixelCursor` (battle-menu `▶`), `ContinueArrow` (blinking `▼`),
     `HpBar` (label + bar + figure) in `shell.tsx`.
+- **Colour rides on the furniture as Super Game Boy tones — the frame only,
+  never the play area.** The SGB (1994) drew full-colour borders around a
+  monochrome screen, so on this page a section's hue lives in its *chrome* —
+  box rims, terminal/browser title bars, the pixel kicker — while body copy and
+  `font-display` headings stay DMG green. Mechanism: `landing.css` declares
+  `--tone-fill` / `--tone-rim`, defaulted per furniture class (`.gb-box`,
+  `.gb-panel`, `.gb-bar`) and overridden by `[data-tone="cream|amber|brick|purple"]`
+  (`glow` is the DMG-green default and takes no attribute). A toned `.gb-box`
+  fills with the hue (text is `text-canvas`); a toned `.gb-panel` recolours only
+  its rim. `shell.tsx` exports `type Tone` and `toneAttr(tone)`, and `SectionHead`,
+  `TerminalWindow`, `BrowserFrame` take a `tone` prop that recolours the kicker /
+  title bar / url bar. Apply one hue per section to its chrome; do not tone every
+  nested element (rainbow soup), and never recolour paragraph text or glyph
+  fills. The alphabet is the one deliberate exception: its 28 tiles cycle the four
+  hues as rims by index (`TILE_TONES`) for a labelled-drawer wall — the eyes stay
+  `dim`, because lit eyes strobe. `.gb-hp`'s `data-tone` is a *different* system
+  (`mid`/`low` → green/amber/red stat step) and shares only the attribute name;
+  its values never overlap the four SGB hues.
 - **Square corners are the rule.** Nothing on this page uses `rounded-*`.
   A pixel language with antialiased corner radii is a contradiction, and the
   one-pixel chamfer people remember from Gen 1 cannot be faked cleanly.
@@ -154,11 +193,22 @@ ones.
   network call and it is wrapped.
 - Visual check is required, not optional. Serve the production build
   (`$env:PORT=3111; $env:NODE_ENV=production; bun .next/standalone/server.js`)
-  and run `bun scripts/landing_shots.mjs` — it photographs every top-level
-  section plus a reduced-motion pass into `download/landing/`, and exits
-  non-zero on a console error. The plan is derived from the DOM, so a section
-  you add is photographed without editing the script. Look at the output; a
-  green run that nobody looked at is not a visual check.
+  and run `bun scripts/landing_shots.mjs --mobile` — it photographs every
+  top-level section **in both colour schemes** (dark names are unprefixed, light
+  are `light-*`), plus a reduced-motion pass and, with `--mobile`, a 390px pass,
+  into `download/landing/`, and exits non-zero on a console error. Each scheme
+  pass asserts `--color-canvas` resolved to that scheme's hex before shooting,
+  so a light run cannot silently photograph the dark palette. The plan is
+  derived from the DOM, so a section you add is photographed without editing the
+  script. Look at the output; a green run that nobody looked at is not a visual
+  check.
+- `bun scripts/theme_toggle_check.mjs` (against the same production server)
+  drives the nav switch through auto → daylight → dark → auto and asserts the
+  `[data-theme]` attribute, the resolved `--color-canvas`, and the
+  `localStorage.unown-theme` value agree at every step, that a forced choice
+  survives a reload (the inline `<head>` bootstrap's job), and that the button's
+  `aria-label` announces its state. `contrast_audit` cannot cover this: it
+  emulates `prefers-color-scheme`, while the toggle writes the attribute.
 - Tab through `/`: skip link, alphabet tiles, loop tabs (arrows/Home/End), the
   session scrubber (arrows/Home/End/Space), the spellbox, the accordion.
 - Re-run the page with `prefers-reduced-motion: reduce` — every reveal must
@@ -177,17 +227,26 @@ ones.
   `bun scripts/contrast_audit.mjs` (against the production build, same base URL
   convention as `landing_shots.mjs`) walks every visible text node and fails
   the run below AA; it is the gate for this paragraph, not the arithmetic
-  below. Every text token clears 4.5:1 on `panel-2`, the highest-luminance
-  surface any of them lands on: `ink` 14.16, `dim` 9.30, `faint` 5.85, `glow`
-  7.28, `amber` 10.48, `poke` 5.63. Light boxes are `text-canvas` on `bg-glow`
-  at 8.59, and dark text on the DMG shade-4 fill is 6.02. `line-bright` (1.99)
-  is exempt by design: it is only ever a border or a bar-chart track, never
-  text and never the sole carrier of a state — the audit caught it used as a
-  `──` terminal rule once, and the rule was changed to `text-faint` rather
-  than the exemption widened. `faint` has been moved before for exactly this
-  reason (`#6d675f` failed at 3.16 while carrying 10-11px captions, which are
-  normal text, not large text). If you re-tune the palette, re-run the audit
-  before shipping it.
+  below. The audit walks **both schemes** (it emulates `prefers-color-scheme`
+  dark and light in turn and asserts `--color-canvas` resolved to the hex each
+  should produce, so a cascade bug cannot fake a pass). Worst-case ratio of
+  every text token against the three surfaces text lands on (canvas / panel /
+  panel-2, taking the lowest):
+  - DARK:  `ink` 14.16 · `dim` 9.30 · `faint` 5.85 · `glow` 7.28 · `amber` 10.48 ·
+    `poke` 5.63 · `sgb-cream` 13.19 · `sgb-amber` 6.08 · `sgb-brick` 5.04 ·
+    `sgb-purple` 6.05 · `text-canvas`-on-`bg-glow` 8.59
+  - LIGHT: `ink` 9.49 · `dim` 6.50 · `faint` 5.08 · `glow` 5.50 · `amber` 5.55 ·
+    `poke` 5.16 · `sgb-cream` 5.12 · `sgb-amber` 5.02 · `sgb-brick` 4.94 ·
+    `sgb-purple` 9.41 · `text-canvas`-on-`bg-glow` 7.05
+  `line-bright` (1.99 dark, ~2.4 light) is exempt by design in both modes: it is
+  only ever a border or a bar-chart track, never text and never the sole carrier
+  of a state — the audit caught it used as a `──` terminal rule once, and the
+  rule was changed to `text-faint` rather than the exemption widened. `faint` has
+  been moved before for exactly this reason (`#6d675f` failed at 3.16 while
+  carrying 10-11px captions, which are normal text, not large text). The SGB tone
+  rims were also gated per-mode before shipping: text on a toned `.gb-box` fill
+  is `text-canvas` and clears 5.94–15.54 dark / 6.34–12.05 light. If you re-tune
+  the palette, re-run the audit before shipping it.
 
 ## Child DOX Index
 

@@ -39,22 +39,33 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
   the dev server, because that is what Vercel serves):
   - `landing_shots.mjs` — photographs the page: derives its section plan from
     the DOM (a section you add is photographed without editing the script),
-    shoots every top-level section plus a reduced-motion pass, and with
-    `--mobile` a 390px pass, into `download/landing/`. Exits non-zero on any
-    console error. `LANDING_SHOTS_URL` overrides the base URL (default
+    shoots every top-level section **in both colour schemes** (dark names
+    unprefixed, light `light-*`), plus a reduced-motion pass, and with
+    `--mobile` a 390px pass, into `download/landing/`. Each scheme pass asserts
+    `--color-canvas` resolved to that scheme's hex before shooting, so a
+    "light" pass cannot silently photograph the dark palette. Exits non-zero
+    on any console error. `LANDING_SHOTS_URL` overrides the base URL (default
     `http://localhost:3111`). Screenshots must be LOOKED at — a green run that
     nobody viewed is not a visual check.
-  - `contrast_audit.mjs` — WCAG AA measured on the rendered page: walks every
-    visible text node, resolves its computed colour and the composited
-    background actually behind it, and exits non-zero on any failure below
-    4.5:1 (3:1 for large text). Report lands in
-    `download/landing/contrast_report.json`. Two traps it already handles, do
-    not reintroduce them: colours must be normalised by painting a pixel and
-    reading bytes (Chromium serialises computed colours as `lab()` and
-    `fillStyle` readback as hex, so an `rgb()` regex matches nothing and the
-    audit silently "passes" by scanning zero nodes), and the scratch canvas
-    must be cleared before each paint or translucent colours composite over
-    the previous sample.
+  - `contrast_audit.mjs` — WCAG AA measured on the rendered page: **walks both
+    colour schemes** (emulates `prefers-color-scheme` dark then light, asserting
+    `--color-canvas` matched each scheme's expected hex), walks every visible
+    text node, resolves its computed colour and the composited background
+    actually behind it, and exits non-zero on any failure below 4.5:1 (3:1 for
+    large text). Report lands in `download/landing/contrast_report.json`. Two
+    traps it already handles, do not reintroduce them: colours must be
+    normalised by painting a pixel and reading bytes (Chromium serialises
+    computed colours as `lab()` and `fillStyle` readback as hex, so an `rgb()`
+    regex matches nothing and the audit silently "passes" by scanning zero
+    nodes), and the scratch canvas must be cleared before each paint or
+    translucent colours composite over the previous sample.
+  - `theme_toggle_check.mjs` — the nav theme switch's own gate (contrast_audit
+    cannot cover it: it drives `prefers-color-scheme`, the toggle writes a
+    `[data-theme]` attribute). Clicks through auto → daylight → dark → auto
+    asserting the attribute, resolved `--color-canvas`, and
+    `localStorage.unown-theme` agree at every step; checks a forced choice
+    survives reload (the inline `<head>` bootstrap's job) and the `aria-label`
+    announces state. Same `LANDING_SHOTS_URL` base URL; non-zero on failure.
 - Sandbox verification contract: `bwrap_smoke.sh` (profile-level isolation suite, 25 checks; invokes the vendored `pi-repo/packages/self-learning/native/bin/bwrap` directly) and `verify_sandbox.mjs` (engine-level integration suite, 12 checks) must both be fully green before committing changes to the OS sandbox or refreshing the vendored bwrap binary.
 - Theme verification contract: `check_theme.mjs` validates the unown brand theme (`pi-repo/packages/self-learning/src/theme.ts`) against pi's theme schema (51 required color tokens, value formats, var resolution) — run it after any palette change.
 - New ad-hoc verification scripts go here (not `/tmp`) when their results matter to the worklog; keep them re-runnable.

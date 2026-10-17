@@ -111,7 +111,7 @@ export function MechanismsSection() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         {/* the problem, stated plainly */}
         <FadeUp className="max-w-2xl">
-          <SectionHead kicker="The problem">
+          <SectionHead kicker="The problem" tone="brick">
             An agent that forgets is a tax you pay every morning.
           </SectionHead>
         </FadeUp>
@@ -128,7 +128,7 @@ export function MechanismsSection() {
         {/* the mechanisms, as rows rather than a grid of identical tiles */}
         <div className="mt-20">
           <FadeUp className="max-w-2xl">
-            <SectionHead kicker="Five mechanisms">
+            <SectionHead kicker="Five mechanisms" tone="brick">
               One answer to each of those.
             </SectionHead>
           </FadeUp>

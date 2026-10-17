@@ -54,6 +54,7 @@ export function FaqSection() {
         <div className="grid gap-10 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-14">
           <FadeUp>
             <SectionHead
+              tone="purple"
               kicker="FAQ"
               lead="Including the two that decide whether anyone installs a self-modifying agent: is it safe, and will it touch my tests."
             >
@@ -67,6 +68,7 @@ export function FaqSection() {
                 <AccordionItem
                   key={item.q}
                   value={item.q}
+                  data-tone="purple"
                   className="gb-panel mb-3 border-0 last:mb-0"
                 >
                   <AccordionTrigger className="group rounded-none text-left text-[14.5px] font-medium text-ink hover:no-underline hover:text-glow [&>svg]:hidden">
