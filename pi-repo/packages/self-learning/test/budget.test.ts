@@ -16,6 +16,7 @@
 import "./_env.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { maxTotalChars, pruneToBudget, type BudgetFile } from "../src/budget.ts";
 import { appendRules, readTier, resolveMemory, resolveMemoryForAgentDetailed, writeTier, MEMORY_DIR } from "../src/memory.ts";
@@ -170,7 +171,7 @@ describe("memory.ts — the injected block is capped, the stored memory is not",
 describe("term.ts — the terminal injection carries the same budget", () => {
         test("terminalMemoryForAgent drops the oldest block to fit; guide/policy spared", () => {
                 const saved = process.env.PI_MEMORY_TOTAL_CHARS;
-                const project = "/tmp/engine-tests-budget/project";
+                const project = join(tmpdir(), "engine-tests-budget", "project");
                 try {
                         // Achievable cap: the protected stack (guide ≈ 660 +
                         // policy ≈ 400 + local/user seeds ≈ 470) plus the project memory
@@ -199,7 +200,7 @@ describe("term.ts — the terminal injection carries the same budget", () => {
                 } finally {
                         if (saved === undefined) delete process.env.PI_MEMORY_TOTAL_CHARS;
                         else process.env.PI_MEMORY_TOTAL_CHARS = saved;
-                        rmSync("/tmp/engine-tests-budget", { recursive: true, force: true });
+                        rmSync(join(tmpdir(), "engine-tests-budget"), { recursive: true, force: true });
                         rmSync(join(UNOWN_HOME, "memory"), { recursive: true, force: true });
                 }
         });

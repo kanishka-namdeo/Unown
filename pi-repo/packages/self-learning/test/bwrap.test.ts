@@ -9,6 +9,7 @@
 // These tests run on `bun test` (bun:test is built in — zero new deps).
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -24,7 +25,7 @@ import {
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
-const ROOT = "/tmp/engine-tests-b/bwrap";
+const ROOT = join(tmpdir(), "engine-tests-b", "bwrap");
 const WORKSPACE = join(ROOT, "ws");
 const AGENT_DIR = join(ROOT, "agent-dir");
 const FAKE_BWRAP = join(ROOT, "fake-bwrap");
