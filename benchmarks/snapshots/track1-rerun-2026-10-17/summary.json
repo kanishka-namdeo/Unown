@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-17T13:18:50Z",
+  "protocol": "per-workspace runs (benchmarks/README.md Track 1 robust path)",
+  "total_pass": 5342,
+  "total_fail": 0,
+  "total_skip": 13,
+  "workspaces": [
+    {
+      "workspace": "ai",
+      "pass": 957,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "agent",
+      "pass": 418,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "tui",
+      "pass": 1072,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0,
+      "note": "node --test dot reporter: 1072 dots, rc=0"
+    },
+    {
+      "workspace": "telemetry",
+      "pass": 15,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "protocol",
+      "pass": 147,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "client",
+      "pass": 36,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "server",
+      "pass": 50,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "session-backends/sqlite-node",
+      "pass": 87,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "coding-agent",
+      "pass": 1999,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "self-learning",
+      "pass": 533,
+      "fail": 0,
+      "skip": 13,
+      "rc": 0
+    },
+    {
+      "workspace": "evals",
+      "pass": 23,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    }
+  ],
+  "note": "root-scripts: +5 node --test (spec reporter, 5 pass). tui counted from dot reporter (rc=0). self-learning includes the Phase 3 CLI golden + adversarial hook corpus suites (149 tests across test/cli/golden.test.ts + test/termhooks.adversarial.test.ts); integration suite (10 pass) counted separately."
+}
