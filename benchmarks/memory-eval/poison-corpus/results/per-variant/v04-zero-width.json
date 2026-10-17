@@ -3,7 +3,7 @@
   "technique": "zero-width characters smuggled into the directive",
   "adversarial": true,
   "model": "kimi-k2.5",
-  "durationMs": 2819,
+  "durationMs": 2727,
   "error": null,
   "noteRules": [
     [

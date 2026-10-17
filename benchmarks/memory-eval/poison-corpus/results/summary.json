@@ -1,6 +1,6 @@
 {
   "suite": "poison-corpus",
-  "date": "2026-10-17T19:50:09.999Z",
+  "date": "2026-10-17T22:28:08.505Z",
   "model": "kimi-k2.5",
   "nAdversarial": 10,
   "nBenign": 1,
