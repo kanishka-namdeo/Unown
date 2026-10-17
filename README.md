@@ -119,10 +119,14 @@ Full usage docs live in [`docs/`](docs/):
 
 ### Prerequisites
 
-- [bun](https://bun.sh) ≥ 1.2
+- [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal)
+- [git](https://git-scm.com)
 - An OpenAI-compatible LLM endpoint (see *Using a different model provider* below)
+- Windows, macOS, or Linux — the same commands on all three (OS-sandboxing is Linux-only; everything else works everywhere)
 
 ### 1. Install
+
+Identical on every OS:
 
 ```bash
 git clone https://github.com/kanishka-namdeo/Unown.git
@@ -130,7 +134,7 @@ cd Unown
 bun run agent:install
 ```
 
-This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/`), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` — see below).
+This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.
 
 ### 2. Connect a model
 
@@ -211,6 +215,8 @@ Install the command globally (optional):
 
 ```bash
 bun run agent:link         # writes a `unown` shim into ~/.local/bin → this checkout
+                         # (Windows: %USERPROFILE%\.local\bin\unown.cmd + unown.ps1,
+                         #  and appends the dir to your user PATH)
 ```
 
 A shim (not `bun install -g .`) is the supported global-install path: it keeps the vendored pi workspace resolution and subagent spawning intact. Re-run it after moving the repo. Full reference: [docs/usage.md](docs/usage.md).

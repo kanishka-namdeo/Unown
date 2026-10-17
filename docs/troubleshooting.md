@@ -78,7 +78,7 @@ unown session ──► ~/.unown/agent/models.json ──► the endpoint it nam
 
 Two of these deserve a sentence more:
 
-- **The PATH shim.** `scripts/link.sh` writes a small shim (default `~/.local/bin/unown`) that always executes *this checkout's* `bin/unown` with bun. A global `bun install -g .` is **not** the supported route — the shim keeps subagent spawning, the vendored `pi-repo/` workspace deps and `git pull` updates working with zero maintenance. If the shim's target dir is not on your `PATH`, the script prints the exact `export PATH=…` line to add.
+- **The PATH shim.** `scripts/link.ts` (via `bun run agent:link`) writes a small shim that always executes *this checkout's* `bin/unown` with bun — default `~/.local/bin/unown` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows (the dir is appended to your user PATH; restart your terminal after a fresh install). A global `bun install -g .` is **not** the supported route — the shim keeps subagent spawning, the vendored `pi-repo/` workspace deps and `git pull` updates working with zero maintenance. If the shim's target dir is not on your `PATH`, the script prints the exact line to add (`export PATH=…` on macOS/Linux; on Windows it updates the registry PATH for you).
 - **The stale-model case.** `models.json` is written once and then deliberately left alone (your hand edits are never clobbered). That is the right default — until the "once" was written by an older setup. `unown setup --force` overwrites it; deleting the file works too because the next run re-creates it from current env/defaults.
 
 ### The learning path
@@ -105,15 +105,15 @@ The learning path has three moving parts — capture, delivery, dreaming — and
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `unown: command not found` | The PATH shim is missing (or you moved the repo) | `bun run agent:link` (or `bash scripts/link.sh`) from the repo — see the PATH-shim note above |
-| `bun: command not found` | bun is not installed | Install it from <https://bun.sh> (≥ 1.2), then re-run `bun run agent:link` if you had a shim pointing at a stale bun path |
+| `unown: command not found` | The PATH shim is missing (or you moved the repo) | `bun run agent:link` (or `bash scripts/link.sh` on macOS/Linux) from the repo — see the PATH-shim note above |
+| `bun: command not found` | bun is not installed | Install it from <https://bun.sh> (≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install \| bash`; Windows: `powershell -c "irm bun.sh/install.ps1 \| iex"`), then re-run `bun run agent:link` if you had a shim pointing at a stale bun path |
 | Doctor: `OS sandbox (bubblewrap)` shows ⚠ | No bubblewrap on this host (macOS, or a Linux box without it) | Nothing to fix for chat. Engine runs fall back to the in-process path jail — OS-level isolation is Linux/bubblewrap only |
 
 ## Where the logs are
 
 | Location | What it holds |
 |----------|---------------|
-| `.run/bridge.log`, `.run/engine.log`, `.run/dashboard.log` | The three services as started by `scripts/start.sh` (pidfiles sit next to them in `.run/`; stop with `bun run agent:stop`) |
+| `.run/bridge.log`, `.run/engine.log`, `.run/dashboard.log` | The three services as started by `scripts/start.ts` (pidfiles sit next to them in `.run/`; stop with `bun run agent:stop`) |
 | `.zscripts/mini-service-<name>.log` | Services started via the dev supervisor (`.zscripts/dev.sh`) instead of `start.sh` |
 | `~/.unown/notes/outbox/` | Terminal notes queued because the engine was unreachable — the queue draining is itself a health signal |
 | `curl -s localhost:3031/health` | Live bridge state: `upstream {ok, status}`, `upstreamKeyIsSet`, `authRequired`, served `models` |

@@ -5,6 +5,10 @@
 # command bring up llm-bridge (:3031), the self-learning engine (:3030) and
 # the Next.js dashboard (:3000) together, so the whole stack lives and dies
 # with the supervised dev process.
+#
+# NOTE: POSIX-only (bash) — dev-only convenience. The supported cross-platform
+# lifecycle is `bun run agent:start` / `bun run agent:stop`
+# (scripts/start.ts / scripts/stop.ts, which run on Windows/macOS/Linux).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT_DIR="$(pwd)"

@@ -2,19 +2,23 @@
 
 ## Purpose
 
-Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wired into root `package.json` (`agent:install` / `agent:start` / `agent:stop`), and (2) verification artifacts from the sessions that configured the Dashscope endpoint and hardened the sandbox — probes, captured search results, and dashboard screenshots kept as evidence. A third group is the README asset pipeline that regenerates the repo's brand + screenshot assets into `.github/assets/`.
+Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wired into root `package.json` (`agent:install` / `agent:start` / `agent:stop` / `agent:link`), and (2) verification artifacts from the sessions that configured the Dashscope endpoint and hardened the sandbox — probes, captured search results, and dashboard screenshots kept as evidence. A third group is the README asset pipeline that regenerates the repo's brand + screenshot assets into `.github/assets/`.
+
+The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`, `start.ts`, `stop.ts`, `serve-dashboard.ts`, shared `lib.ts`) — the same commands on Windows/macOS/Linux. The old `.sh` files remain as thin POSIX wrappers (`exec bun scripts/<name>.ts "$@"`) for muscle memory; the `.ts` files are the single source of truth. `dev-all.sh` is POSIX-only (dev convenience; header says so).
 
 ## Ownership
 
-- Owns: `install.sh`, `start.sh`, `stop.sh` (product scripts), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), the README asset pipeline (`scripts/brand/` HTML sources, `shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`), and the landing-page verification gates (`gba_palette_check.mjs`, `landing_shots.mjs`, `contrast_audit.mjs`, `theme_toggle_check.mjs`, `landing_og_shots.mjs`).
-- Sandbox-template artifacts also parked here (NOT part of Unown): `init-fullstack.sh`, `dev-all.sh`, `scaffold.tar` — installed by the hosting sandbox, tracked only for provenance.
+- Owns: the lifecycle scripts (`install.ts`, `link.ts`, `start.ts`, `stop.ts`, `serve-dashboard.ts`, `lib.ts` + their `.sh` wrappers; `dev-all.sh` POSIX-only), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), the README asset pipeline (`scripts/brand/` HTML sources, `shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`), and the landing-page verification gates (`gba_palette_check.mjs`, `landing_shots.mjs`, `contrast_audit.mjs`, `theme_toggle_check.mjs`, `landing_og_shots.mjs`).
+- Sandbox-template artifacts also parked here (NOT part of Unown): `init-fullstack.sh`, `scaffold.tar` — installed by the hosting sandbox, tracked only for provenance.
 
 ## Local Contracts
 
-- `install.sh` — one-time bootstrap: root `bun install` → `pi-repo` `bun install` → `pi-repo` `bun run build:offline` (offline skips the ai package's network model-data hydration) → copies `.env.example` → `.env` when missing (template carries no secrets) → runs `link.sh` unless `UNOWN_NO_LINK=1` → prints next steps that flag a missing `BRIDGE_UPSTREAM_KEY` as REQUIRED (chats fail with 401 without it).
-- `link.sh` — puts `unown` on PATH: writes a shim (`exec bun <repo>/bin/unown "$@"`) into the first writable dir of `UNOWN_BIN_DIR`, `~/.local/bin`, `~/bin`, `/usr/local/bin`, warns when the dir is not on PATH. A shim (not `bun install -g .`) is the supported global-install path: it keeps the vendored pi-repo workspace resolution and subagent spawning intact (`process.argv[1]` stays the repo copy). Run via `bun run agent:link`; re-run after moving the repo.
-- `start.sh` — loads root `.env` (`set -a`), starts llm-bridge (:3031), engine (:3030), dashboard (:3000) as background processes with pidfiles in `.run/`; after the health wait it reads the bridge `/health` payload and prints a loud warning when `upstreamKeyIsSet` is false or the upstream probe is unhealthy.
-- `stop.sh` — halts by pidfile, falls back to pattern matching when stale.
+- `install.ts` (wrapper: `install.sh`) — one-time bootstrap: verify bun ≥ 1.2 (per-OS install hint) → root `bun install` → `pi-repo` `bun install` → **auto-hydrate `pi-repo/packages/ai/src/providers/data` when it has zero `*.json`** (it is gitignored upstream — without this step fresh clones cannot `build:offline`; staleness is not detectable offline, a non-empty dir is trusted) → `pi-repo` `bun run build:offline` → copies `.env.example` → `.env` when missing (template carries no secrets) → runs `link.ts` unless `UNOWN_NO_LINK=1` (link failure is not fatal) → prints next steps that flag a missing `BRIDGE_UPSTREAM_KEY` as REQUIRED (chats fail with 401 without it). Step failures exit with the child's exit code.
+- `link.ts` (wrapper: `link.sh`) — puts `unown` on PATH. POSIX: bash shim (`exec <bun> <repo>/bin/unown "$@"`, chmod 0755) in the first writable dir of `UNOWN_BIN_DIR`, `~/.local/bin`, `~/bin`, `/usr/local/bin`, warning with the exact profile line when the dir is not on PATH. Windows: `unown.cmd` + `unown.ps1` shims into `%USERPROFILE%\.local\bin`, user-PATH append via PowerShell `[Environment]::SetEnvironmentVariable(…,'User')` (never `setx` — 1024-char truncation), restart-terminal hint. A shim (not `bun install -g .`) is the supported global-install path: it keeps the vendored pi-repo workspace resolution and subagent spawning intact (`process.argv[1]` stays the repo copy). Run via `bun run agent:link`; re-run after moving the repo (idempotent — shims are overwritten cleanly).
+- `start.ts` (wrapper: `start.sh`) — parses root `.env` (`set -a; . ./.env` semantics — bun does NOT read the repo-root `.env` from a mini-services cwd, so the launcher exports it into every child) and starts llm-bridge (:3031), engine (:3030), dashboard (:3000, via the `dev` package script) as detached processes (new session on POSIX, `detached+windowsHide` on Windows) that SURVIVE the launcher's exit; pidfiles in `.run/`, logs `.run/<name>.log`; reuses an already-healthy bridge/zai-upstream instead of dying with EADDRINUSE; zai-upstream only starts when `BRIDGE_UPSTREAM_URL` contains `127.0.0.1:3032`; health polling (fetch, ~60s) then reads the bridge `/health` payload and prints a loud warning when `upstreamKeyIsSet` is false or the upstream probe is unhealthy (plus an honest "still DOWN" line naming stragglers and their logs).
+- `stop.ts` (wrapper: `stop.sh`) — halts by pidfile (SIGTERM on POSIX, `taskkill /F /T` tree-kill on Windows), then stray sweeps: `pkill -f "next dev"` / `tee dev.log` on POSIX, and the `/proc/$pid/cwd` bun-service sweep on Linux ONLY, scoped to THIS checkout (never kills another worktree's stack). **Exits 1 when nothing was running, 0 when it stopped something** (changed from the old .sh, which always exited 0 — chain round-trips with `;`, not `&&`).
+- `serve-dashboard.ts` — the `start` package script: sets `NODE_ENV=production`, spawns `bun .next/standalone/server.js`, tees output to the console and `server.log`, forwards SIGINT/SIGTERM, propagates the exit code.
+- `lib.ts` — shared helpers (bun resolution, `.env` parser, spawnSync runner, liveness probe, HTTP probes, per-OS console glyphs: ASCII on win32). Every lifecycle script imports it; keep it dependency-free (node: builtins only).
 - Probe contract: probes hit the upstream endpoint directly or through the bridge and use `BRIDGE_UPSTREAM_KEY`-style env from the root `.env` — they must never hardcode keys.
 - `search_*.json` / `modelsdev.json` are captured research data (model strengths comparison, models.dev snapshot) that justified the model assignment — treat as read-only evidence. `search_sb_*.json` are the sandbox-landscape research (bubblewrap/Claude Code/Codex/E2B/Daytona) that justified the OS-sandbox selection; `bubblewrap_*.deb` is the provenance package for the vendored `pi-repo/packages/self-learning/native/bin/bwrap` (see that package's `native/README.md`).
 - Provider-mark contract: `vendor-provider-marks.mjs` regenerates
@@ -107,13 +111,17 @@ Two kinds of content live here: (1) the project's bootstrap/lifecycle scripts wi
 
 ## Work Guidance
 
-- Run product scripts only via their npm aliases (`bun run agent:install|start|stop`) so cwd + `.env` loading behave as designed.
-- Keep scripts `set -euo pipefail` + `cd "$(dirname "$0")/.."` like the existing ones.
+- Run product scripts only via their npm aliases (`bun run agent:install|start|stop|link`) so cwd + `.env` loading behave as designed. The commands are identical on Windows/macOS/Linux (bun runs the TS; the `.sh` twins are POSIX compat wrappers).
+- Keep the TS lifecycle scripts runnable from any cwd (they resolve the repo root from `import.meta.dir`), dependency-free (node: builtins + `lib.ts` only), and label-free in `.cmd` files (goto + LF endings is a cmd parser trap).
+- Keep bash wrappers thin: `exec bun "$(dirname "$0")/<name>.ts" "$@"` and nothing else.
+- `set -euo pipefail` + `cd "$(dirname "$0")/.."` remains the pattern for any NEW standalone bash (POSIX-only) scripts.
 
 ## Verification
 
-- `bash -n scripts/*.sh` (syntax) — cheap gate before committing script changes.
-- `bun run agent:stop && bun run agent:start` round trip: all three services healthy (see mini-services doc for endpoints).
+- `bash -n scripts/*.sh` (syntax — the wrappers must stay valid bash) — cheap gate before committing script changes.
+- `bun scripts/install.ts` from a clean worktree must go green end-to-end (includes first-run model-data hydration).
+- `bun run agent:stop; bun run agent:start` round trip: all three services healthy (see mini-services doc for endpoints). Use `;` — stop exits 1 when nothing was running.
+- `bun scripts/link.ts` with `UNOWN_BIN_DIR=/tmp/x` then re-run: idempotent overwrite, PATH warning, executable shim.
 
 ## Child DOX Index
 
