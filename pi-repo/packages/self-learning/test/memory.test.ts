@@ -57,7 +57,8 @@ test("env redirect is active (never touch the live engine state)", () => {
         // Tripwire: if this fails, ./_env.ts was not the first import and the tests
         // would be running against the live engine store — abort loudly instead.
         // The exact /tmp root is co-owned with the parallel b-suite (test/_env.ts).
-        expect(realpathSync(DATA_DIR).startsWith(TEST_TMP)).toBe(true); // realpath: macOS /var/folders -> /private/var/folders
+        const DATA_REAL = existsSync(DATA_DIR) ? realpathSync(DATA_DIR) : DATA_DIR; // realpath when it exists (macOS /var -> /private); lexical before first mkdir
+        expect(DATA_REAL.startsWith(TEST_TMP)).toBe(true);
         expect(MEMORY_DIR).toBe(join(DATA_DIR, "memory"));
 });
 

@@ -291,6 +291,24 @@ export function bashRedirectEscape(cwd: string, command: string): string | null 
         for (const match of command.matchAll(REDIRECT_TARGET)) {
                 const target = stripQuotes(match[1]);
                 if (!target || target.startsWith("&")) continue; // `2>&1` style dup
+                // LEXICAL FAST PATH — deny device paths / system trees / ssh
+                // trust dirs on sight, before node:path gets involved: win32
+                // resolution of \\.\ device paths is implementation-defined
+                // (Bun appends trailing separators, may drive-prefix), so the
+                // raw spelling is authoritative. Targets that lexically fall
+                // inside an allowed tmp root (macOS /var/folders/…) stay
+                // exempt — the resolved-path layer below re-confirms with
+                // symlink knowledge.
+                if (
+                        (SYSTEM_TREE.test(target) ||
+                                SYSTEM_TREE_WIN.test(target) ||
+                                RAW_DEVICE.test(target) ||
+                                RAW_DEVICE_WIN.test(target) ||
+                                SSH_TRUST_DIR.test(target)) &&
+                        !TMP_ROOTS.some((r) => insideRoot(r, target))
+                ) {
+                        return `redirect target escapes the safe write set: ${target}`;
+                }
                 let resolved = jailPath(cwd, target).resolved;
                 for (const link of links) {
                         if (resolved === link.path || resolved.startsWith(`${link.path}/`)) {

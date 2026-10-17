@@ -15,7 +15,7 @@
 import "./_env.ts";
 import { TEST_TMP } from "./_env.ts";
 import { describe, expect, test } from "bun:test";
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { DATA_DIR } from "../src/store.ts";
 import { bridgeHealth, bridgeLog, extractJson } from "../src/llm.ts";
 
@@ -27,7 +27,8 @@ test("env redirect is active (never touch the live engine db)", () => {
         // Tripwire: if this fails, ./_env.ts was not the first import and the tests
         // would be running against the live engine store — abort loudly instead.
         // The exact tmpdir root is co-owned with the parallel b-suite (test/_env.ts).
-        expect(realpathSync(DATA_DIR).startsWith(TEST_TMP)).toBe(true); // realpath: macOS /var/folders -> /private/var/folders
+        const DATA_REAL = existsSync(DATA_DIR) ? realpathSync(DATA_DIR) : DATA_DIR; // realpath when it exists (macOS /var -> /private); lexical before first mkdir
+        expect(DATA_REAL.startsWith(TEST_TMP)).toBe(true);
         expect(DATA_DIR).toContain("/data");
 });
 

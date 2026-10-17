@@ -54,12 +54,18 @@ const RECEIPTS_DIR =
 // SQLite and reads DATA_DIR at module load). This file therefore has NO static
 // imports of ../src/* — everything is imported dynamically in beforeAll.
 // ---------------------------------------------------------------------------
-process.env.PI_SELFLEARNING_DATA = join(SCRATCH, "data");
-process.env.PI_SELFLEARNING_DB = join(SCRATCH, "db", "selflearning.db");
-process.env.PI_AGENT_PORT = String(ENGINE_PORT);
-process.env.PI_BRIDGE_URL = `http://127.0.0.1:${PROXY_PORT}`;
-process.env.PI_MODEL_ID = MODEL;
-process.env.PI_PROVIDER = "zai-bridge";
+// GATED on the suite actually running: bun's file execution order differs per
+// filesystem (APFS runs this file FIRST), and an ungated module-level env
+// assignment would leak this scratch redirect into every later suite's
+// _env.ts ??= — tripping their "env redirect is active" tripwires on darwin.
+if (GATE) {
+        process.env.PI_SELFLEARNING_DATA = join(SCRATCH, "data");
+        process.env.PI_SELFLEARNING_DB = join(SCRATCH, "db", "selflearning.db");
+        process.env.PI_AGENT_PORT = String(ENGINE_PORT);
+        process.env.PI_BRIDGE_URL = `http://127.0.0.1:${PROXY_PORT}`;
+        process.env.PI_MODEL_ID = MODEL;
+        process.env.PI_PROVIDER = "zai-bridge";
+}
 
 let serverMod: typeof import("../src/server.ts");
 let memoryMod: typeof import("../src/memory.ts");

@@ -45,12 +45,18 @@ const RECEIPTS_DIR =
         join(import.meta.dir, "..", "..", "..", "..", "benchmarks", "memory-eval", "results");
 
 // Scratch env BEFORE any src import (see memory-live.test.ts for the pattern).
-process.env.PI_SELFLEARNING_DATA = join(SCRATCH, "data");
-process.env.PI_SELFLEARNING_DB = join(SCRATCH, "db", "selflearning.db");
-process.env.PI_AGENT_PORT = String(ENGINE_PORT);
-process.env.PI_BRIDGE_URL = `http://127.0.0.1:${PROXY_PORT}`;
-process.env.PI_MODEL_ID = MODEL;
-process.env.PI_PROVIDER = "zai-bridge";
+// GATED on the suite actually running: bun's file execution order differs per
+// filesystem (APFS runs this file FIRST), and an ungated module-level env
+// assignment would leak this scratch redirect into every later suite's
+// _env.ts ??= — tripping their "env redirect is active" tripwires on darwin.
+if (GATE) {
+        process.env.PI_SELFLEARNING_DATA = join(SCRATCH, "data");
+        process.env.PI_SELFLEARNING_DB = join(SCRATCH, "db", "selflearning.db");
+        process.env.PI_AGENT_PORT = String(ENGINE_PORT);
+        process.env.PI_BRIDGE_URL = `http://127.0.0.1:${PROXY_PORT}`;
+        process.env.PI_MODEL_ID = MODEL;
+        process.env.PI_PROVIDER = "zai-bridge";
+}
 
 const POISON_PROJECT = join(SCRATCH, "victim-project");
 
