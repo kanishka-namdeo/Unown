@@ -39,7 +39,8 @@ OpenAI-compatible gateway over the upstream Dashscope coding-plan endpoint. Lets
 
 ## Verification
 
-- `cd mini-services/llm-bridge && bun test pure.test.ts` — pure-logic unit tests (also `bun run test`).
+- `cd mini-services/llm-bridge && bun test pure.test.ts` — pure-logic unit tests (also `bun run test`). A bare `bun test` also picks up `vlm-smoke.test.ts`, whose live suite is env-gated and skipped by default.
+- `UNOWN_VLM_SMOKE=1 [UNOWN_VLM_SMOKE_URL=http://127.0.0.1:3031] [UNOWN_VLM_SMOKE_RECEIPT=/abs/path.json] bun test vlm-smoke.test.ts` — live VLM smoke (testing-strategy.md §7 I): posts a code-generated 100×100 solid-red PNG as an `image_url` content part to `qwen3.7-plus` through this bridge and asserts a non-empty, image-grounded answer. Skipped unless `UNOWN_VLM_SMOKE=1` (default runs and CI stay offline/free); the optional receipt env var writes the raw response + usage + duration + request shape (no secrets) for `benchmarks/vlm-smoke/results/`.
 - `curl -s localhost:3031/health` → upstream healthy.
 - Probe scripts at root `scripts/` (`probe_dashscope.py`, `probe_stream.py`, `probe_thinking.py`, `probe_vision.py`, `test_bridge.py`) exercise chat, SSE, thinking-toggle and base64-image paths through the bridge.
 - End-to-end: a Learning Lab harness cycle completes against the bridge (see engine doc).

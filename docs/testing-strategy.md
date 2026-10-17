@@ -38,7 +38,10 @@
 > - Phase 4 (underway): memory-lift chart shipped on the landing page —
 >   full-width `#memory-lift` panel (per-model cold-vs-warm input-token paired
 >   bars with raw counts, duration chips, the v1 prompt-caching negative
->   control, and a receipt link to `benchmarks/selfimprove/results/`); agent
+>   control, and a receipt link to `benchmarks/selfimprove/results/`); VLM
+>   smoke through the bridge shipped (§7 I image-understanding half: env-gated
+>   `mini-services/llm-bridge/vlm-smoke.test.ts`, receipt + caveats under
+>   `benchmarks/vlm-smoke/results/`); agent
 >   evals A–G scheduling and dashboard E2E still pending.
 > - Fresh-checkout verification of tracks 1/2/3/6 with receipts under
 >   `<track>/results/rerun-2026-10-17/`; pi-repo suite at 5,342 tests / 0
@@ -589,6 +592,14 @@ H. **Model routing.** Unknown model id → default; qwen thinking disabled
 I. **VLM (qwen3.7-plus).** Screenshot-to-code and image-understanding smoke
    tests through the bridge; currently the only multimodal path is untested
    beyond `scripts/probe_vision.py`.
+
+   *Status (2026-10-17): the image-understanding half is shipped* —
+   `mini-services/llm-bridge/vlm-smoke.test.ts` (env-gated by
+   `UNOWN_VLM_SMOKE=1`, skipped in default runs/CI) posts a code-generated
+   100×100 solid-red PNG as an `image_url` content part and asserts a
+   non-empty, image-grounded answer; the live run's receipt (raw response,
+   `image_tokens` usage proof, bridge log entry) lives in
+   `benchmarks/vlm-smoke/results/`. Screenshot-to-code remains open.
 
 J. **Long-horizon / multi-file refactor task.** One deliberately hard, multi-
    file task with a time limit (say 15 min) to surface compaction, context
