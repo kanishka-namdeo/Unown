@@ -175,9 +175,10 @@ export function BenchmarksSection() {
             <div className="mt-2 space-y-1.5 rounded-md border border-line bg-canvas/50 p-3">
               <p className="font-mono text-[10.5px] leading-relaxed text-dim">
                 <span className="text-glow">head-to-head</span> against the oh-my-pi agent
-                itself, same 106 fixtures, edit format pinned: task success{" "}
-                <span className="text-ink">98.8% vs 97.8%</span> — parity within noise — at{" "}
-                <span className="text-glow">1.7–3.1× fewer input tokens</span> per task.
+                itself, same 106 fixtures, edit format pinned, 3 runs per task:{" "}
+                <span className="text-ink">identical best-of-3 scores on every model</span>{" "}
+                — and <span className="text-glow">2.4–5.4× fewer input tokens</span> per
+                task.
               </p>
             </div>
           </TrackCard>

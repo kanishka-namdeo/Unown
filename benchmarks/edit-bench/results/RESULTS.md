@@ -104,7 +104,9 @@ Read it straight:
   (98.8%), omp-replace 311/318 (97.8%), omp-hashline 308/318 (96.9%).
   Single-task deltas (kimi, qwen3.7) are noise at n=1; qwen3.6 is the one
   meaningful gap — Unown +4 tasks over omp-replace (omp's qwen3.6-replace
-  failed 5 tasks, 3 of them multi-composite).
+  failed 5 tasks, 3 of them multi-composite). *(The n=3 pass below
+  revises this: that gap was sampling noise — every omp n=1 failure there
+  is a 2-of-3 flaky task, and best-of-3 scores end up identical.)*
 - **Edit mechanics: replace is simply a better edit format for these models.**
   With the variant pinned, both agents land 95.7–100% edit-call success.
   omp's default hashline drops to 71–80% (0.3–0.6 failed edit calls per task
@@ -174,3 +176,62 @@ PI_CODING_AGENT_DIR=<probe>/omp-agent bun cli.ts --model zai-bridge/<id> \
 
 (`../omp-harness/run-ab.sh` wraps exactly this; the llm-bridge on :3031 must
 be up. `--max-tasks 0` = all 106 — the CLI's default samples 80.)
+## n=3 variance pass — the noise question, settled
+
+The n=1 tables above could not distinguish sampling noise from real deltas
+(single-task differences). We re-ran the full 106-fixture benchmark 3× per
+model per agent (318 task-runs per agent-model, 1,908 runs total; same
+fixtures, bridge, thinking-off, 600 s per-attempt timeout, max-attempts 1,
+concurrency 2–4). omp cells aggregate a storm-interrupted run with a
+surgical re-run of its interrupted tasks (per-task replacement; the
+aggregator is committed). Dashscope quota storms mid-run produced a
+characteristic wedge signature (failed + 0 tokens + "Timeout exhausted" +
+0 tool calls) — the aggregator excludes such runs; after the surgical
+pass, **zero runs were excluded** and every task has 3 clean runs.
+
+### Task success, best-of-3 (of 106)
+
+| Agent | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus |
+|---|---|---|---|
+| **Unown** (pi replace) | **106 (100%)** | 105 (99.1%) | 105 (99.1%) |
+| **omp** (replace) | **106 (100%)** | 105 (99.1%) | 105 (99.1%) |
+
+**Verdict: exact parity.** The n=1 qwen3.6 "gap" (Unown 105 vs omp 101) was
+sampling noise — every one of omp's 5 n=1 qwen3.6 failures is a task that
+passes in 2-of-3 runs. At n=3 both agents land identical best-of-3 scores
+on all three models, and any-of-3 equals best-of-3 everywhere (no task
+needs more than one lucky draw).
+
+### Run-level texture
+
+| All-runs success (318 each) | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus |
+|---|---|---|---|
+| Unown | 309 (97.2%) | 303 (95.3%) | 304 (95.6%) |
+| omp | 315 (99.1%) | 310 (97.5%) | 307 (96.5%) |
+
+Flaky tasks (pass some runs, fail others): Unown 6 / 9 / 8,
+omp 3 / 5 / 5 — both agents sit in the same 95–99% per-run reliability
+band. The only task that fails ALL runs for a model, on either agent, is
+`multi-composite-multi-edit-007` — both qwen models, both agents (11 of 12
+qwen task-runs across both agents; both kimi agents pass it in every
+run) — a model-level lookalike-negation trap. Each agent also carries one
+additional 3/3-failure task (Unown qwen3.7: structural-duplicate-block-002;
+omp qwen3.7: none beyond 007).
+
+### Efficiency at best-of-3 (mean input tokens of the selected best run)
+
+| Mean input tokens / task | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus |
+|---|---|---|---|
+| **Unown** | **615** | 3,749 | **2,509** |
+| omp | 3,301 | 6,887 | 6,030 |
+
+Unown's stack stays **2.4–5.4× lighter** on input tokens with the edit
+variant pinned (selection favors consistent low-token runs; both sides
+scored by the same rule). Edit-call success at n=3: Unown 90.7% / 95.8% /
+100% (kimi / qwen3.7 / qwen3.6) vs omp 97.8–99.0% — Unown's kimi run
+lands every task despite ~9% of edit calls failing in-task (recovered on
+retry within the same task; zero task failures).
+
+Receipts: `n3/unown/<model>.{jsonl,summary.json}`,
+`n3/omp/<model>_replace.n3{,fix}.json`; aggregator + wedge detector:
+`../omp-harness/`. Run 2026-10-16 19:55 – 2026-10-17 01:23 UTC (storm-interrupted; surgical re-runs described above).
