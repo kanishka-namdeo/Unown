@@ -30,11 +30,12 @@ User-facing usage documentation for the `unown` terminal agent and the self-lear
 
 ## Verification
 
-- Links resolve: every relative link targets an existing file in `docs/` or an anchor in the same page.
+- Links resolve: every relative link targets an existing file in `docs/` or an anchor in the same page. **Runnable**: `bun run check:docs` (`node scripts/check_docs.mjs docs/*.md`), wired as a CI job.
 - Real link corruption looks like a bare `emory](` (the `[memory]` label losing its `[mem`). Gate: `grep -rnP --exclude=AGENTS.md '(^|[^A-Za-z])emory\]\(' docs/*.md` returns nothing. The contract file is excluded because it quotes the artifact; requiring a non-letter before it is what keeps legitimate labels that merely end in "memory" (`[Inspecting memory](#inspecting-memory)`, `[Memory](memory.md)`) from matching. The looser `(?<!\[m)emory\]\(` form is **wrong** on exactly that count and returns seven false positives.
-- Anchor slugs follow GitHub's rule: lowercase, punctuation dropped, **each** space replaced by one hyphen — so a heading containing ` — ` hashes to a **double** hyphen (`## Part 1 — Products studied` → `#part-1--products-studied`). Collapsing runs of spaces is the classic false-negative when checking your own TOC links.
-- Most of this corpus is CRLF. In JavaScript `.` does not match `\r`, so a heading scan that splits on `\n` and anchors with `(.*)$` silently matches **nothing** — always split on `/\r?\n/` before concluding a link is broken.
+- Anchor slugs follow GitHub's rule: lowercase, punctuation dropped, **each** space replaced by one hyphen — so a heading containing ` — ` hashes to a **double** hyphen (`## Part 1 — Products studied` → `#part-1--products-studied`). Collapsing runs of spaces is the classic false-negative when checking your own TOC links. A heading carrying a parenthetical path (`### 7.2 Engine (\`pi-repo/...\`)`) hashes to a slug nobody would guess — keep the path in the body line, not the heading.
+- Most of this corpus is CRLF. In JavaScript `.` does not match `\r`, so a heading scan that splits on `\n` and anchors with `(.*)$` silently matches **nothing** — always split on `/\r?\n/` before concluding a link is broken. `check_docs.mjs` does.
 - Commands referenced: `bun bin/unown --help` covers every command the docs claim.
+- Decision records additionally owe a status that moves with the code: `testing-strategy.md` tags every backlog item SHIPPED / PARTIAL / OPEN / DECISION and scores its own success criteria (2026-10-18: none fully met, four partial, three not met). A backlog whose live state lives only in a preamble goes stale silently, which is the exact failure the record exists to prevent.
 
 ## Child DOX Index
 

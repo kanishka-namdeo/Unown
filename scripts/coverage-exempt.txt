@@ -1,0 +1,9 @@
+# Exemptions for the changed-line coverage gate (scripts/check_coverage.mjs).
+# One path per line; a justification comment on the same line is required, and the
+# exemption is printed in the CI log so it cannot rot unnoticed.
+#
+# Format:
+#   src/path/to/file.tsx   reason the rule cannot apply here
+#
+# Current exemptions: none. Keep it that way unless a path genuinely cannot be
+# exercised from bun test (a type-only declaration file, a generated artifact).

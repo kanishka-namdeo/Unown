@@ -10,9 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Required CI gates (docs/testing-strategy.md §3): lint, typecheck, unit tests,
-# shell syntax, theme contract. The mermaid render check and the dashboard
-# build are deliberately deferred — see the trailing comments.
+# Required CI gates (docs/testing-strategy.md §3, §6): lint, typecheck, unit
+# tests, changed-line coverage, docs links/anchors, shell syntax, theme
+# contract, landing palette, secret scan, advisory audit. The mermaid render
+# check and the build job are deliberately deferred — see the trailing comments.
 #
 # Cross-platform legs (M4):
 #   - build-test exercises the REAL installer end to end on
@@ -20,11 +21,21 @@ concurrency:
 #     both bun installs, the model-data hydration (network) and build:offline —
 #     the exact path a fresh clone takes on a user machine (~5-8 min per OS,
 #     hence the 30-minute job timeout). Then the self-learning engine tests and
-#     a CLI boot smoke.
+#     a CLI boot smoke — the engine suite is a CI gate from here on.
 #   - sandbox-smoke runs the repo-relative bwrap verification tools
 #     (scripts/bwrap_smoke.sh + scripts/verify_sandbox.mjs) on ubuntu only —
 #     the OS sandbox is a Linux surface (bwrap is a Linux ELF; src/bwrap.ts
 #     gates the other platforms out by design).
+#
+# Dashboard honesty gates (this branch):
+#   - coverage runs the changed-line coverage gate of strategy §6 gate 9:
+#     `scripts/check_coverage.mjs --run` spawns `bun test src --coverage`
+#     itself, fails on a red suite, and treats an unparseable report as a hard
+#     error rather than a pass; threshold 80, exemptions in
+#     scripts/coverage-exempt.txt.
+#   - docs runs the docs link/anchor gate (`node scripts/check_docs.mjs
+#     docs/*.md`) so a broken relative link or a renamed heading anchor fails
+#     CI instead of a reader.
 
 jobs:
   lint-shell:
@@ -176,6 +187,41 @@ jobs:
         # bun:test is built in — no vitest/jest config or extra deps needed
         run: bun test src
 
+  coverage:
+    name: Changed-line coverage (src/)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # full history so the gate can diff against the PR base
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies
+        run: bun install
+      - name: Run suite and enforce the changed-line coverage gate
+        # testing-strategy.md §6 gate 9. The script runs `bun test src
+        # --coverage` itself (byte-safe on every shell), fails on a red suite,
+        # and treats an unparseable report as a hard error rather than a pass.
+        run: node scripts/check_coverage.mjs --run "${{ github.event.pull_request.base.sha || github.event.before }}"
+
+  docs:
+    name: Docs links and anchors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Docs link/anchor gate
+        # docs/AGENTS.md's Verification rules as a runnable check: relative
+        # targets exist, anchors match GitHub heading slugs, cross-file anchors
+        # resolve. Plain node, no dependencies — the gate cannot rot when a
+        # package breaks. On ubuntu `docs/*.md` is expanded by the shell; the
+        # PowerShell glob limitation is a Windows-local concern only.
+        run: node scripts/check_docs.mjs docs/*.md
+
   theme:
     name: Theme contract
     runs-on: ubuntu-latest
@@ -201,12 +247,6 @@ jobs:
         # makes the "every colour is a legal Game Boy Advance colour" claim a
         # gate rather than a caption.
         run: bun scripts/gba_palette_check.mjs
-
-# NOT in CI yet, on purpose:
-# - `bun run build` — heavy; Vercel already builds on every push. Phase 2 adds
-#   it as a required gate before deploy (testing-strategy.md §3 gate 3).
-# - scripts/mermaid_check.mjs — needs Playwright + browser binaries + CDN;
-#   belongs to the screenshot/visual pipeline (Phase 2/3), not a cheap gate.
 
   security:
     name: Security scan (secrets + advisories)
@@ -236,3 +276,15 @@ jobs:
         #   downgrade): the runtime uses SQLite (@prisma/adapter-better-sqlite3);
         #   mysql2 is never connected to.
         run: bun audit --prod --ignore GHSA-ggr8-5vv4-36mx --ignore GHSA-rgwj-5xj2-c3m3 --ignore GHSA-3f6p-5ww8-9rcr
+
+# NOT in CI yet, on purpose:
+# - `bun run build` — heavy; Vercel already builds on every push. Phase 2 adds
+#   it as a required gate before deploy (testing-strategy.md §6 gate 14, §11
+#   "Next" item 7).
+# - scripts/mermaid_check.mjs — needs Playwright + browser binaries + CDN;
+#   belongs to the screenshot/visual pipeline (Phase 2/3), not a cheap gate
+#   (§6 gate 15).
+# - the bridge suite (95 tests, mini-services/llm-bridge/pure.test.ts) is green,
+#   hermetic and sub-second but NOT wired here — now the cheapest missing gate
+#   in the repository (strategy §3.2, §11 "Now" item 1). The engine suite IS
+#   wired (build-test above). Also still open: integration suite, build, E2E/axe.
