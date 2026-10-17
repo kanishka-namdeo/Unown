@@ -1,0 +1,538 @@
+diff --git a/task/README.md b/stage/README.md
+index 0388011..40306a0 100644
+--- a/task/README.md
++++ b/stage/README.md
+@@ -10,7 +10,7 @@ bun test
+ ## What it does
+ 
+ clippad keeps notes in memory (and can persist them as JSON). Every note
+-records **who created it** with a single plain string field:
++records **who created it** with a structured author object:
+ 
+ ```json
+ {
+@@ -18,35 +18,34 @@ records **who created it** with a single plain string field:
+   "title": "Ship it",
+   "body": "release notes draft",
+   "createdAt": 0,
+-  "createdBy": "ada",
++  "createdBy": { "id": "u-001", "name": "ada" },
+   "tags": ["work"]
+ }
+ ```
+ 
+-`createdBy` is just the author NAME (e.g. `"ada"`). `src/users.ts` hands out
+-user ids (`u-001`, ...) for registered names, but notes only ever store the
+-name.
++`createdBy` is an `{ id, name }` object. `src/users.ts` hands out user ids
++(`u-001`, ...) and maps names to stable ids via `UserDirectory.ensure(name)`.
+ 
+ ## Commands
+ 
+ ```
+ clippad add <title> --body <text> --author <name> [--tags a,b]   # create a note
+-clippad list                                                     # "• [n-001] Ship it (by ada) — 3 words"
+-clippad table                                                    # fixed-width table, CREATED-BY column
+-clippad stats                                                    # "ada: 2 notes, 6 words"
+-clippad find <query>                                             # search title/body/tags/author
+-clippad author <name>                                            # notes by that author name
++clippad list                                                     # "• [n-001] Ship it (by ada [u-001]) — 3 words"
++clippad table                                                    # fixed-width table, CREATED-BY column shows "ada (u-001)"
++clippad stats                                                    # "ada (u-001): 2 notes, 6 words"
++clippad find <query>                                             # search title/body/tags/author name+id
++clippad author <id>                                              # notes by that author id
+ clippad total                                                    # word total
+ ```
+ 
+ ## Layout
+ 
+ ```
+-src/types.ts          Note, NoteInput, Author (string)
++src/types.ts          Note, NoteInput, Author ({ id, name })
+ src/ids.ts            n-001 / u-001 id generator
+ src/note.ts           createNote, wordCount, summaryLine
+-src/users.ts          UserDirectory (register, nameOf)
+-src/notebook.ts       Notebook container (add/remove/byAuthor/byTag/...)
++src/users.ts          UserDirectory (register returns Author, ensure lookup-or-register)
++src/notebook.ts       Notebook container (add/remove/byAuthor/id/byTag/...)
+ src/search.ts         findMatches, findByTitle
+ src/format.ts         formatNote, formatHeader
+ src/format-table.ts   formatNoteTable
+diff --git a/task/docs/API.md b/stage/docs/API.md
+index ff9decb..22b0e27 100644
+--- a/task/docs/API.md
++++ b/stage/docs/API.md
+@@ -5,22 +5,25 @@ Every module lives in `src/` and is pure TypeScript with no dependencies.
+ ## types.ts
+ 
+ ```ts
+-/** The creator of a note. A plain author NAME, e.g. "ada". */
+-export type Author = string;
++/** A structured author with a stable id and display name. */
++export interface Author {
++  id: string;   // e.g. "u-001"
++  name: string; // e.g. "ada"
++}
+ 
+ export interface Note {
+   id: string;          // "n-001"
+   title: string;
+   body: string;
+   createdAt: number;   // epoch ms
+-  createdBy: Author;   // author name, e.g. "ada"
++  createdBy: Author;   // { id, name }
+   tags: string[];
+ }
+ 
+ export interface NoteInput {
+   title: string;
+   body: string;
+-  createdBy: Author;   // author name
++  createdBy: Author;   // { id, name }
+   tags?: string[];
+   createdAt?: number;
+   id?: string;
+@@ -46,14 +49,13 @@ summaryLine(note: Note): string           // "[n-001] Ship it — 3 words"
+ 
+ ```ts
+ class UserDirectory {
+-  register(name: string): string          // new user id "u-001", returns the ID
++  register(name: string): Author          // new user { id: "u-001", name }, returns full Author
++  ensure(name: string): Author            // lookup by name or register, returns full Author
+   nameOf(id: string): string | undefined  // display name for an id
+   ids(): string[]                         // registration order
+ }
+ ```
+ 
+-Note: ids returned here are for bookkeeping only — notes store the NAME.
+-
+ ## notebook.ts
+ 
+ ```ts
+@@ -63,7 +65,7 @@ class Notebook {
+   get(id: string): Note | undefined
+   all(): Note[]
+   size(): number
+-  byAuthor(name: string): Note[]          // matches createdBy === name
++  byAuthor(id: string): Note[]            // matches createdBy.id === id
+   byTag(tag: string): Note[]
+   sortedByTitle(): Note[]
+ }
+@@ -72,21 +74,21 @@ class Notebook {
+ ## search.ts
+ 
+ ```ts
+-findMatches(notes: Note[], query: string): Note[]  // substring across title/body/tags/author NAME
++findMatches(notes: Note[], query: string): Note[]  // substring across title/body/tags/author name+id
+ findByTitle(notes: Note[], title: string): Note[]  // exact, case-insensitive
+ ```
+ 
+ ## format.ts
+ 
+ ```ts
+-formatNote(note: Note): string            // "• [n-001] Ship it (by ada) — 3 words"
++formatNote(note: Note): string            // "• [n-001] Ship it (by ada [u-001]) — 3 words"
+ formatHeader(label: string, count: number): string // "== All notes (3) =="
+ ```
+ 
+ ## format-table.ts
+ 
+ ```ts
+-formatNoteTable(notes: Note[]): string    // columns ID, TITLE, CREATED-BY (name), WORDS
++formatNoteTable(notes: Note[]): string    // columns ID, TITLE, CREATED-BY ("ada (u-001)"), WORDS
+ ```
+ 
+ ## store.ts
+@@ -97,7 +99,7 @@ class StoreError extends Error
+ serializeNotes(notes: Note[]): string     // JSON envelope { version: 1, notes }
+ parseStore(text: string): Note[]          // lenient envelope parse (note payloads passed through)
+ parseNote(raw: unknown): Note             // STRICT: throws StoreError unless every field has the
+-                                          //   right type (createdBy must be a string)
++                                          //   right type (createdBy must be { id: string, name: string })
+ saveNotes(path: string, notes: Note[]): void
+ loadNotes(path: string): Note[]           // parseStore + parseNote (strict)
+ ```
+@@ -105,9 +107,14 @@ loadNotes(path: string): Note[]           // parseStore + parseNote (strict)
+ ## stats.ts
+ 
+ ```ts
+-interface AuthorStats { author: string; count: number; words: number }
++interface AuthorStats {
++  id: string;   // author id, e.g. "u-001"
++  name: string; // author name, e.g. "ada"
++  count: number;
++  words: number;
++}
+ 
+-authorStats(notes: Note[]): AuthorStats[]  // grouped by author NAME, count desc, then name
++authorStats(notes: Note[]): AuthorStats[]  // grouped by author id, count desc, then name
+ totalWords(notes: Note[]): number
+ ```
+ 
+@@ -125,9 +132,9 @@ Commands and outputs:
+ | command | output |
+ | --- | --- |
+ | `add <title> --body <t> --author <name> [--tags a,b]` | `added n-001` |
+-| `list` | `== All notes (N) ==` then `• [n-001] Ship it (by ada) — 3 words` lines |
+-| `table` | fixed-width table, `CREATED-BY` column holds the author name |
+-| `stats` | `ada: 2 notes, 6 words` per author |
++| `list` | `== All notes (N) ==` then `• [n-001] Ship it (by ada [u-001]) — 3 words` lines |
++| `table` | fixed-width table, `CREATED-BY` column shows `ada (u-001)` |
++| `stats` | `ada (u-001): 2 notes, 6 words` per author |
+ | `find <query>` | matching `formatNote` lines under `== Matches (N) ==` |
+-| `author <name>` | notes whose createdBy equals the name |
++| `author <id>` | notes whose createdBy.id equals the id |
+ | `total` | `total 42 words` |
+diff --git a/task/src/cli.ts b/stage/src/cli.ts
+index 6c777fe..670990c 100644
+--- a/task/src/cli.ts
++++ b/stage/src/cli.ts
+@@ -39,7 +39,8 @@ export function runCli(argv: string[], deps: CliDeps): string {
+ 				.split(",")
+ 				.map((t) => t.trim())
+ 				.filter(Boolean);
+-			const note = notebook.add({ title, body, createdBy: authorName, tags });
++			const author = users.ensure(authorName);
++			const note = notebook.add({ title, body, createdBy: author, tags });
+ 			return `added ${note.id}`;
+ 		}
+ 		case "list": {
+@@ -55,7 +56,7 @@ export function runCli(argv: string[], deps: CliDeps): string {
+ 		case "stats": {
+ 			const rows = authorStats(notebook.all());
+ 			if (rows.length === 0) return "no stats";
+-			return rows.map((r) => `${r.author}: ${r.count} notes, ${r.words} words`).join("\n");
++			return rows.map((r) => `${r.name} (${r.id}): ${r.count} notes, ${r.words} words`).join("\n");
+ 		}
+ 		case "find": {
+ 			const hits = findMatches(notebook.all(), rest[0] ?? "");
+@@ -63,9 +64,11 @@ export function runCli(argv: string[], deps: CliDeps): string {
+ 			return [formatHeader("Matches", hits.length), ...hits.map(formatNote)].join("\n");
+ 		}
+ 		case "author": {
+-			const hits = notebook.byAuthor(rest[0] ?? "");
++			// Match by author id directly
++			const queryId = rest[0] ?? "";
++			const hits = notebook.byAuthor(queryId);
+ 			if (hits.length === 0) return "no notes";
+-			return [formatHeader(`Author ${rest[0] ?? ""}`, hits.length), ...hits.map(formatNote)].join("\n");
++			return [formatHeader(`Author ${queryId}`, hits.length), ...hits.map(formatNote)].join("\n");
+ 		}
+ 		case "total": {
+ 			return `total ${totalWords(notebook.all())} words`;
+diff --git a/task/src/format-table.ts b/stage/src/format-table.ts
+index 40b7ac1..473d5b2 100644
+--- a/task/src/format-table.ts
++++ b/stage/src/format-table.ts
+@@ -3,14 +3,14 @@ import type { Note } from "./types.ts";
+ 
+ /**
+  * Fixed-width table rendering, used by `clippad table`.
+- * Columns: ID, TITLE, CREATED-BY, WORDS. The CREATED-BY column holds the
+- * author name.
++ * Columns: ID, TITLE, CREATED-BY, WORDS. The CREATED-BY column renders
++ * "<name> (<id>)", e.g. "ada (u-001)".
+  */
+ export function formatNoteTable(notes: Note[]): string {
+ 	const rows = notes.map((n) => ({
+ 		id: n.id,
+ 		title: n.title,
+-		createdBy: n.createdBy,
++		createdBy: `${n.createdBy.name} (${n.createdBy.id})`,
+ 		words: String(wordCount(n)),
+ 	}));
+ 	const widths = {
+diff --git a/task/src/format.ts b/stage/src/format.ts
+index 4ca123c..95f5cdc 100644
+--- a/task/src/format.ts
++++ b/stage/src/format.ts
+@@ -3,10 +3,10 @@ import type { Note } from "./types.ts";
+ 
+ /**
+  * Plain single-line rendering, used by `clippad list` and `clippad find`.
+- * Shape: "• [n-001] Ship it (by ada) — 4 words"
++ * Shape: "• [n-001] Ship it (by ada [u-001]) — 4 words"
+  */
+ export function formatNote(note: Note): string {
+-	return `• [${note.id}] ${note.title} (by ${note.createdBy}) — ${wordCount(note)} words`;
++	return `• [${note.id}] ${note.title} (by ${note.createdBy.name} [${note.createdBy.id}]) — ${wordCount(note)} words`;
+ }
+ 
+ /** Section header, e.g. "== All notes (3) ==". */
+diff --git a/task/src/notebook.ts b/stage/src/notebook.ts
+index 87f267e..a8e3dea 100644
+--- a/task/src/notebook.ts
++++ b/stage/src/notebook.ts
+@@ -30,9 +30,9 @@ export class Notebook {
+ 		return this.notes.length;
+ 	}
+ 
+-	/** Notes created by the given author NAME. */
+-	byAuthor(name: string): Note[] {
+-		return this.notes.filter((n) => n.createdBy === name);
++	/** Notes created by the given author ID. */
++	byAuthor(id: string): Note[] {
++		return this.notes.filter((n) => n.createdBy.id === id);
+ 	}
+ 
+ 	byTag(tag: string): Note[] {
+diff --git a/task/src/search.ts b/stage/src/search.ts
+index 95e8b80..dee514f 100644
+--- a/task/src/search.ts
++++ b/stage/src/search.ts
+@@ -1,6 +1,6 @@
+ import type { Note } from "./types.ts";
+ 
+-/** Case-insensitive substring search across title, body, tags and author name. */
++/** Case-insensitive substring search across title, body, tags and author (name + id). */
+ export function findMatches(notes: Note[], query: string): Note[] {
+ 	const q = query.trim().toLowerCase();
+ 	if (!q) return [];
+@@ -9,7 +9,8 @@ export function findMatches(notes: Note[], query: string): Note[] {
+ 			n.title.toLowerCase().includes(q) ||
+ 			n.body.toLowerCase().includes(q) ||
+ 			n.tags.some((t) => t.toLowerCase().includes(q)) ||
+-			n.createdBy.toLowerCase().includes(q),
++			n.createdBy.name.toLowerCase().includes(q) ||
++			n.createdBy.id.toLowerCase().includes(q),
+ 	);
+ }
+ 
+diff --git a/task/src/stats.ts b/stage/src/stats.ts
+index 34bb0a2..4aaa73a 100644
+--- a/task/src/stats.ts
++++ b/stage/src/stats.ts
+@@ -3,21 +3,23 @@ import type { Note } from "./types.ts";
+ 
+ /** Per-author rollup used by `clippad stats`. */
+ export interface AuthorStats {
+-	author: string; // author NAME
++	id: string;   // author id, e.g. "u-001"
++	name: string; // author name, e.g. "ada"
+ 	count: number;
+ 	words: number;
+ }
+ 
+-/** Group notes by author name; sorted by count desc, then author name. */
++/** Group notes by author id; sorted by count desc, then author name. */
+ export function authorStats(notes: Note[]): AuthorStats[] {
+ 	const map = new Map<string, AuthorStats>();
+ 	for (const n of notes) {
+-		const row = map.get(n.createdBy) ?? { author: n.createdBy, count: 0, words: 0 };
++		const key = n.createdBy.id;
++		const row = map.get(key) ?? { id: n.createdBy.id, name: n.createdBy.name, count: 0, words: 0 };
+ 		row.count += 1;
+ 		row.words += wordCount(n);
+-		map.set(n.createdBy, row);
++		map.set(key, row);
+ 	}
+-	return [...map.values()].sort((a, b) => b.count - a.count || a.author.localeCompare(b.author));
++	return [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+ }
+ 
+ /** Total word count across all notes. */
+diff --git a/task/src/store.ts b/stage/src/store.ts
+index d7f5195..7d6a786 100644
+--- a/task/src/store.ts
++++ b/stage/src/store.ts
+@@ -29,7 +29,13 @@ export function parseNote(raw: unknown): Note {
+ 	if (typeof r.title !== "string") throw new StoreError("note.title must be a string");
+ 	if (typeof r.body !== "string") throw new StoreError("note.body must be a string");
+ 	if (typeof r.createdAt !== "number") throw new StoreError("note.createdAt must be a number");
+-	if (typeof r.createdBy !== "string") throw new StoreError("note.createdBy must be a string");
++	// createdBy must be { id: string, name: string }
++	if (typeof r.createdBy !== "object" || r.createdBy === null) {
++		throw new StoreError("note.createdBy must be an object");
++	}
++	const author = r.createdBy as Record<string, unknown>;
++	if (typeof author.id !== "string") throw new StoreError("note.createdBy.id must be a string");
++	if (typeof author.name !== "string") throw new StoreError("note.createdBy.name must be a string");
+ 	if (!Array.isArray(r.tags) || r.tags.some((t) => typeof t !== "string")) {
+ 		throw new StoreError("note.tags must be string[]");
+ 	}
+@@ -38,7 +44,7 @@ export function parseNote(raw: unknown): Note {
+ 		title: r.title,
+ 		body: r.body,
+ 		createdAt: r.createdAt,
+-		createdBy: r.createdBy,
++		createdBy: { id: author.id, name: author.name },
+ 		tags: r.tags as string[],
+ 	});
+ }
+diff --git a/task/src/types.ts b/stage/src/types.ts
+index d9eaacf..d998f1c 100644
+--- a/task/src/types.ts
++++ b/stage/src/types.ts
+@@ -5,15 +5,18 @@
+  * search, formatters, store, stats, cli) operates on Note objects.
+  */
+ 
+-/** The creator of a note. Today a plain author NAME, e.g. "ada". */
+-export type Author = string;
++/** A structured author with a stable id and display name. */
++export interface Author {
++	id: string;   // e.g. "u-001"
++	name: string; // e.g. "ada"
++}
+ 
+ export interface Note {
+ 	id: string;
+ 	title: string;
+ 	body: string;
+ 	createdAt: number; // epoch milliseconds
+-	createdBy: Author; // author name, e.g. "ada"
++	createdBy: Author;
+ 	tags: string[];
+ }
+ 
+diff --git a/task/src/users.ts b/stage/src/users.ts
+index 299037d..169922c 100644
+--- a/task/src/users.ts
++++ b/stage/src/users.ts
+@@ -1,4 +1,5 @@
+ import { nextId } from "./ids.ts";
++import type { Author } from "./types.ts";
+ 
+ /**
+  * Registry of known users. The CLI registers authors on first use so every
+@@ -6,12 +7,25 @@ import { nextId } from "./ids.ts";
+  */
+ export class UserDirectory {
+ 	private readonly names = new Map<string, string>(); // id -> display name
++	private readonly byName = new Map<string, string>(); // name -> id (first registered)
+ 
+-	/** Register a brand-new user; returns the new user id. */
+-	register(name: string): string {
++	/** Register a brand-new user; returns the full Author {id, name}. */
++	register(name: string): Author {
+ 		const id = nextId("u");
+ 		this.names.set(id, name);
+-		return id;
++		if (!this.byName.has(name)) {
++			this.byName.set(name, id);
++		}
++		return { id, name };
++	}
++
++	/** Look up or register an author by name; returns the full Author. */
++	ensure(name: string): Author {
++		const existingId = this.byName.get(name);
++		if (existingId) {
++			return { id: existingId, name };
++		}
++		return this.register(name);
+ 	}
+ 
+ 	/** Display name for a user id, if known. */
+diff --git a/task/tests/author.test.ts b/stage/tests/author.test.ts
+index c1ad6dd..1384ed4 100644
+--- a/task/tests/author.test.ts
++++ b/stage/tests/author.test.ts
+@@ -1,5 +1,5 @@
+ /**
+- * PINS the current createdBy representation: a plain author NAME string.
++ * PINS the current createdBy representation: a structured Author {id, name}.
+  * These tests document the author contract end to end.
+  */
+ import { beforeEach, describe, expect, test } from "bun:test";
+@@ -9,44 +9,51 @@ import { runCli, freshDeps } from "../src/cli.ts";
+ import { Notebook } from "../src/notebook.ts";
+ import { authorStats } from "../src/stats.ts";
+ import { parseNote, StoreError } from "../src/store.ts";
+-import { beforeEachFixtures, mkNote, DEFAULT_AUTHOR, OTHER_AUTHOR } from "./helpers.ts";
++import { mkNote, DEFAULT_AUTHOR, OTHER_AUTHOR } from "./helpers.ts";
+ 
+ beforeEach(() => resetIds());
+ 
+ describe("author representation", () => {
+-        test("note.createdBy is the author name string", () => {
+-                expect(mkNote().createdBy).toBe(DEFAULT_AUTHOR);
+-                expect(typeof mkNote().createdBy).toBe("string");
++        test("note.createdBy is an Author object with id and name", () => {
++                const note = mkNote();
++                expect(note.createdBy).toEqual(DEFAULT_AUTHOR);
++                expect(note.createdBy.id).toBe("u-001");
++                expect(note.createdBy.name).toBe("ada");
+         });
+ 
+-        test("notebook.byAuthor matches on the plain name", () => {
++        test("notebook.byAuthor matches on the author id", () => {
+                 const book = new Notebook();
+                 book.add({ title: "a", body: "b", createdBy: DEFAULT_AUTHOR });
+                 book.add({ title: "c", body: "d", createdBy: OTHER_AUTHOR });
+-                expect(book.byAuthor(DEFAULT_AUTHOR).map((n) => n.title)).toEqual(["a"]);
++                expect(book.byAuthor(DEFAULT_AUTHOR.id).map((n) => n.title)).toEqual(["a"]);
+         });
+ 
+-        test("formatNote renders '(by <name>)' with no id", () => {
++        test("formatNote renders '(by <name> [<id>])'", () => {
+                 const line = formatNote(mkNote());
+-                expect(line).toContain(`(by ${DEFAULT_AUTHOR})`);
+-                expect(line).not.toContain("u-");
++                expect(line).toContain(`(by ${DEFAULT_AUTHOR.name} [${DEFAULT_AUTHOR.id}])`);
+         });
+ 
+-        test("stats rows are keyed by the plain author name", () => {
++        test("stats rows are keyed by author id with name included", () => {
+                 const rows = authorStats([mkNote(), mkNote(), mkNote({ createdBy: OTHER_AUTHOR })]);
+-                expect(rows.map((r) => r.author)).toEqual([DEFAULT_AUTHOR, OTHER_AUTHOR]);
+-                expect(rows[0]).toEqual({ author: DEFAULT_AUTHOR, count: 2, words: 6 });
++                expect(rows.map((r) => r.id)).toEqual([DEFAULT_AUTHOR.id, OTHER_AUTHOR.id]);
++                expect(rows[0]).toEqual({ id: DEFAULT_AUTHOR.id, name: DEFAULT_AUTHOR.name, count: 2, words: 6 });
+         });
+ 
+-        test("store rejects a note whose createdBy is not a string", () => {
+-                const bad = { ...mkNote(), createdBy: { id: "u-001", name: DEFAULT_AUTHOR } };
++        test("store accepts a note whose createdBy is {id, name}", () => {
++                const raw = { ...mkNote(), createdBy: { id: "u-001", name: "ada" } };
++                const parsed = parseNote(raw);
++                expect(parsed.createdBy).toEqual({ id: "u-001", name: "ada" });
++        });
++
++        test("store rejects a note whose createdBy is a plain string", () => {
++                const bad = { ...mkNote(), createdBy: "ada" };
+                 expect(() => parseNote(bad)).toThrow(StoreError);
+         });
+ 
+-        test("cli stats lines render '<name>: <count> notes, <words> words'", () => {
++        test("cli stats lines render '<name> (<id>): <count> notes, <words> words'", () => {
+                 const deps = freshDeps();
+-                runCli(["add", "one", "--body", "hello world", "--author", DEFAULT_AUTHOR], deps);
+-                runCli(["add", "two", "--body", "hi", "--author", DEFAULT_AUTHOR], deps);
+-                expect(runCli(["stats"], deps)).toBe(`${DEFAULT_AUTHOR}: 2 notes, 3 words`);
++                runCli(["add", "one", "--body", "hello world", "--author", "ada"], deps);
++                runCli(["add", "two", "--body", "hi", "--author", "ada"], deps);
++                expect(runCli(["stats"], deps)).toBe(`ada (u-001): 2 notes, 3 words`);
+         });
+ });
+diff --git a/task/tests/cli.test.ts b/stage/tests/cli.test.ts
+index 98bc26d..bd5d311 100644
+--- a/task/tests/cli.test.ts
++++ b/stage/tests/cli.test.ts
+@@ -58,6 +58,6 @@ describe("cli", () => {
+                 const deps = freshDeps();
+                 runCli(["add", "t", "--body", "b"], deps);
+                 const out = runCli(["list"], deps);
+-                expect(out).toContain("by anonymous");
++                expect(out).toContain("by anonymous [u-001]");
+         });
+ });
+diff --git a/task/tests/helpers.ts b/stage/tests/helpers.ts
+index 05e8077..c20d90c 100644
+--- a/task/tests/helpers.ts
++++ b/stage/tests/helpers.ts
+@@ -1,11 +1,11 @@
+ import { resetIds } from "../src/ids.ts";
+ import { createNote } from "../src/note.ts";
+-import type { Note, NoteInput } from "../src/types.ts";
++import type { Author, Note, NoteInput } from "../src/types.ts";
+ 
+ /** Default note author used across the suite. */
+-export const DEFAULT_AUTHOR = "ada";
++export const DEFAULT_AUTHOR: Author = { id: "u-001", name: "ada" };
+ 
+-export const OTHER_AUTHOR = "grace";
++export const OTHER_AUTHOR: Author = { id: "u-002", name: "grace" };
+ 
+ /** Build a note with sensible defaults; override any field via `over`. */
+ export function mkNote(over: Partial<NoteInput> = {}): Note {

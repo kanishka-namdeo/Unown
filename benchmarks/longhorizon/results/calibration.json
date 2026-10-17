@@ -1,0 +1,37 @@
+{
+	"ts": "2026-10-17T14:06:54.138Z",
+	"label": "reference calibration — the same metrics applied to the hand-written correct refactor",
+	"referenceTestsAsIs": {
+		"pass": 39,
+		"fail": 0,
+		"exitCode": 0
+	},
+	"referenceWithPristineTests": {
+		"pass": 27,
+		"fail": 12,
+		"exitCode": 1
+	},
+	"referenceDiff": {
+		"filesChanged": 14,
+		"files": [
+			"README.md",
+			"docs/API.md",
+			"src/cli.ts",
+			"src/format-table.ts",
+			"src/format.ts",
+			"src/note.ts",
+			"src/notebook.ts",
+			"src/search.ts",
+			"src/stats.ts",
+			"src/store.ts",
+			"src/types.ts",
+			"src/users.ts",
+			"tests/author.test.ts",
+			"tests/helpers.ts"
+		],
+		"insertions": 134,
+		"deletions": 97,
+		"churn": 231
+	},
+	"note": "A PERFECT agent (files identical to the reference) scores: testsAsIs == referenceTestsAsIs, testsPristine == referenceWithPristineTests (the old-contract pins FAIL by design), fileSetJaccard 1.0, finalStateCloseness 1.0. A no-op agent scores 0.0 closeness, 0 files changed, testsAsIs 39/39 (pristine suite on pristine source) — which is why the diff metrics, not tests alone, carry the signal."
+}

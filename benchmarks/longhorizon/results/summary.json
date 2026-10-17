@@ -1,0 +1,293 @@
+{
+	"generatedAt": "2026-10-17T16:36:44.844Z",
+	"track": "longhorizon",
+	"models": {
+		"qwen3.7-plus": {
+			"ts": "2026-10-17T16:31:30.443Z",
+			"model": "qwen3.7-plus",
+			"task": "clippad createdBy: string -> {id, name} sweep (benchmarks/longhorizon)",
+			"timeLimitMin": 7,
+			"outcome": {
+				"exitCode": 0,
+				"timedOut": false,
+				"saidDone": true
+			},
+			"durationS": 299,
+			"diff": {
+				"filesChanged": 14,
+				"filesChangedList": [
+					"README.md",
+					"docs/API.md",
+					"src/cli.ts",
+					"src/format-table.ts",
+					"src/format.ts",
+					"src/notebook.ts",
+					"src/search.ts",
+					"src/stats.ts",
+					"src/store.ts",
+					"src/types.ts",
+					"src/users.ts",
+					"tests/author.test.ts",
+					"tests/cli.test.ts",
+					"tests/helpers.ts"
+				],
+				"insertions": 123,
+				"deletions": 81
+			},
+			"tests": {
+				"asIs": {
+					"pass": 40,
+					"fail": 0,
+					"exitCode": 0,
+					"parseFailed": false
+				},
+				"pristineRestored": {
+					"pass": 27,
+					"fail": 12,
+					"exitCode": 1,
+					"parseFailed": false
+				},
+				"agentEditedTests": [
+					"author.test.ts",
+					"cli.test.ts",
+					"helpers.ts"
+				],
+				"agentAddedTests": []
+			},
+			"similarity": {
+				"fileSetJaccard": 0.867,
+				"finalStateCloseness": 0.134,
+				"churnToReference": 200,
+				"churnPristineToReference": 231,
+				"note": "heuristic: jaccard over changed-file sets; closeness = 1 - lineChurn(workspace,reference)/lineChurn(pristine,reference). Formatting differences count; exact match not required."
+			},
+			"session": {
+				"sessions": 1,
+				"format": "v3",
+				"input": 62617,
+				"output": 13586,
+				"cacheRead": 840704,
+				"cacheWrite": 0,
+				"toolCalls": 74,
+				"toolCallsByTool": {
+					"bash": 6,
+					"todo": 28,
+					"read": 23,
+					"edit": 14,
+					"write": 3
+				},
+				"toolResults": 74,
+				"compactionEntries": 0,
+				"compactionTokensBefore": [],
+				"compactionRuns": [],
+				"branchSummaries": 0,
+				"assistantMessages": 46
+			},
+			"agentStdoutTail": "- **src/format-table.ts** — CREATED-BY column shows `ada (u-001)`\n- **src/store.ts** — `parseNote` validates `createdBy` is `{id: string, name: string}`, rejects plain strings\n- **src/stats.ts** — `AuthorStats` has `{ id, name, count, words }`, keyed by author id\n- **src/cli.ts** — resolves author via `users.ensure()`, stats render `<name> (<id>): ...`, author command matches by id\n- **tests/** — all updated to the new shape; store round-trip works; 40/40 tests green\n- **docs** — README.md and docs/API.md updated with new field shapes and output examples\n\nDONE",
+			"agentStderrTail": ""
+		},
+		"kimi-k2.5": {
+			"ts": "2026-10-17T16:26:19.622Z",
+			"model": "kimi-k2.5",
+			"task": "clippad createdBy: string -> {id, name} sweep (benchmarks/longhorizon)",
+			"timeLimitMin": 7,
+			"outcome": {
+				"exitCode": 0,
+				"timedOut": false,
+				"saidDone": true
+			},
+			"durationS": 245,
+			"diff": {
+				"filesChanged": 13,
+				"filesChangedList": [
+					"README.md",
+					"docs/API.md",
+					"src/cli.ts",
+					"src/format-table.ts",
+					"src/format.ts",
+					"src/notebook.ts",
+					"src/search.ts",
+					"src/stats.ts",
+					"src/store.ts",
+					"src/types.ts",
+					"src/users.ts",
+					"tests/author.test.ts",
+					"tests/helpers.ts"
+				],
+				"insertions": 112,
+				"deletions": 75
+			},
+			"tests": {
+				"asIs": {
+					"pass": 40,
+					"fail": 0,
+					"exitCode": 0,
+					"parseFailed": false
+				},
+				"pristineRestored": {
+					"pass": 27,
+					"fail": 12,
+					"exitCode": 1,
+					"parseFailed": false
+				},
+				"agentEditedTests": [
+					"author.test.ts",
+					"helpers.ts"
+				],
+				"agentAddedTests": []
+			},
+			"similarity": {
+				"fileSetJaccard": 0.929,
+				"finalStateCloseness": 0.169,
+				"churnToReference": 192,
+				"churnPristineToReference": 231,
+				"note": "heuristic: jaccard over changed-file sets; closeness = 1 - lineChurn(workspace,reference)/lineChurn(pristine,reference). Formatting differences count; exact match not required."
+			},
+			"session": {
+				"sessions": 1,
+				"format": "v3",
+				"input": 43520,
+				"output": 10640,
+				"cacheRead": 474112,
+				"cacheWrite": 0,
+				"toolCalls": 66,
+				"toolCallsByTool": {
+					"read": 21,
+					"bash": 7,
+					"todo": 25,
+					"edit": 13
+				},
+				"toolResults": 66,
+				"compactionEntries": 0,
+				"compactionTokensBefore": [],
+				"compactionRuns": [],
+				"branchSummaries": 0,
+				"assistantMessages": 29
+			},
+			"agentStdoutTail": "All 40 tests pass. The refactor is complete:\n\nDONE",
+			"agentStderrTail": ""
+		},
+		"qwen3.6-plus": {
+			"ts": "2026-10-17T16:36:26.677Z",
+			"model": "qwen3.6-plus",
+			"task": "clippad createdBy: string -> {id, name} sweep (benchmarks/longhorizon)",
+			"timeLimitMin": 7,
+			"outcome": {
+				"exitCode": 0,
+				"timedOut": false,
+				"saidDone": true
+			},
+			"durationS": 291,
+			"diff": {
+				"filesChanged": 15,
+				"filesChangedList": [
+					"README.md",
+					"docs/API.md",
+					"src/cli.ts",
+					"src/format-table.ts",
+					"src/format.ts",
+					"src/notebook.ts",
+					"src/search.ts",
+					"src/stats.ts",
+					"src/store.ts",
+					"src/types.ts",
+					"src/users.ts",
+					"tests/author.test.ts",
+					"tests/cli.test.ts",
+					"tests/format.test.ts",
+					"tests/helpers.ts"
+				],
+				"insertions": 136,
+				"deletions": 106
+			},
+			"tests": {
+				"asIs": {
+					"pass": 39,
+					"fail": 0,
+					"exitCode": 0,
+					"parseFailed": false
+				},
+				"pristineRestored": {
+					"pass": 27,
+					"fail": 12,
+					"exitCode": 1,
+					"parseFailed": false
+				},
+				"agentEditedTests": [
+					"author.test.ts",
+					"cli.test.ts",
+					"format.test.ts",
+					"helpers.ts"
+				],
+				"agentAddedTests": []
+			},
+			"similarity": {
+				"fileSetJaccard": 0.813,
+				"finalStateCloseness": 0.009,
+				"churnToReference": 229,
+				"churnPristineToReference": 231,
+				"note": "heuristic: jaccard over changed-file sets; closeness = 1 - lineChurn(workspace,reference)/lineChurn(pristine,reference). Formatting differences count; exact match not required."
+			},
+			"session": {
+				"sessions": 1,
+				"format": "v3",
+				"input": 1205337,
+				"output": 13312,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"toolCalls": 87,
+				"toolCallsByTool": {
+					"bash": 8,
+					"todo": 28,
+					"read": 21,
+					"edit": 30
+				},
+				"toolResults": 87,
+				"compactionEntries": 0,
+				"compactionTokensBefore": [],
+				"compactionRuns": [],
+				"branchSummaries": 0,
+				"assistantMessages": 58
+			},
+			"agentStdoutTail": "All tests pass, including the store round-trip test. The refactor is complete:\n\nDONE",
+			"agentStderrTail": ""
+		}
+	},
+	"calibration": {
+		"ts": "2026-10-17T14:06:54.138Z",
+		"label": "reference calibration — the same metrics applied to the hand-written correct refactor",
+		"referenceTestsAsIs": {
+			"pass": 39,
+			"fail": 0,
+			"exitCode": 0
+		},
+		"referenceWithPristineTests": {
+			"pass": 27,
+			"fail": 12,
+			"exitCode": 1
+		},
+		"referenceDiff": {
+			"filesChanged": 14,
+			"files": [
+				"README.md",
+				"docs/API.md",
+				"src/cli.ts",
+				"src/format-table.ts",
+				"src/format.ts",
+				"src/note.ts",
+				"src/notebook.ts",
+				"src/search.ts",
+				"src/stats.ts",
+				"src/store.ts",
+				"src/types.ts",
+				"src/users.ts",
+				"tests/author.test.ts",
+				"tests/helpers.ts"
+			],
+			"insertions": 134,
+			"deletions": 97,
+			"churn": 231
+		},
+		"note": "A PERFECT agent (files identical to the reference) scores: testsAsIs == referenceTestsAsIs, testsPristine == referenceWithPristineTests (the old-contract pins FAIL by design), fileSetJaccard 1.0, finalStateCloseness 1.0. A no-op agent scores 0.0 closeness, 0 files changed, testsAsIs 39/39 (pristine suite on pristine source) — which is why the diff metrics, not tests alone, carry the signal."
+	}
+}

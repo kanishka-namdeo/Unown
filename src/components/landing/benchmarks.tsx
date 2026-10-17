@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Brain, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Swords, Target } from "lucide-react";
+import { Brain, Compass, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Swords, Target } from "lucide-react";
 import { FadeUp, BENCH_URL, SectionHead } from "./shell";
 
 /**
@@ -41,6 +41,19 @@ const LIVECODEBENCH = [
   { model: "kimi-k2.5", pct: 52, noCode: 15 },
   { model: "qwen3.7-plus", pct: 38, noCode: 26 },
   { model: "qwen3.6-plus", pct: 36, noCode: 27 },
+];
+
+/**
+ * Long-horizon refactor (§7 J): one hard multi-file contract change under a
+ * wall-clock cap, scored on the file diff against a committed reference.
+ * n=1 per model; the 7-minute cap (env-tunable, default 15) is recorded in
+ * every receipt. The separation this track surfaces is cost, not
+ * correctness: all three models solved it.
+ */
+const LONGHORIZON = [
+  { model: "kimi-k2.5", durS: 245, files: 13, inTok: 43520, cacheRead: 474112, jaccard: 0.93 },
+  { model: "qwen3.7-plus", durS: 299, files: 14, inTok: 62617, cacheRead: 840704, jaccard: 0.87 },
+  { model: "qwen3.6-plus", durS: 291, files: 15, inTok: 1205337, cacheRead: 0, jaccard: 0.81 },
 ];
 
 const POLYGLOT = [
@@ -391,6 +404,50 @@ export function BenchmarksSection() {
               fresh-checkout rerun: pass@1 reproduces the committed run exactly
               (47/48/48 of 50) · 300 scored runs across two days
             </p>
+          </TrackCard>
+
+          <TrackCard
+            icon={Compass}
+            name="Long-horizon refactor"
+            source="one hard multi-file contract change (createdBy: string → {id, name} across an 11-module TypeScript app) · full unown agent · hard wall-clock cap · scored on the file diff against a committed reference · n=1 · receipts under benchmarks/longhorizon/results/"
+            delay={0.2}
+          >
+            {LONGHORIZON.map((r) => (
+              <div key={r.model} className="flex flex-wrap items-center gap-2">
+                <span className="w-28 shrink-0 truncate font-mono text-[11px] text-dim">
+                  {r.model}
+                </span>
+                <span
+                  className={`px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
+                    r.inTok > 200000 ? "bg-amber/10 text-amber" : "bg-gold/10 text-gold"
+                  }`}
+                >
+                  {(r.inTok / 1000).toFixed(r.inTok >= 100000 ? 0 : 1)}k in
+                </span>
+                <span className="font-mono text-[11px] tabular-nums text-faint">
+                  {r.cacheRead > 0 ? `${Math.round(r.cacheRead / 1000)}k cached` : "0 cached"}
+                </span>
+                <span className="ml-auto font-mono text-[10px] tabular-nums text-faint">
+                  {r.durS}s · {r.files} files · jaccard {r.jaccard.toFixed(2)}
+                </span>
+              </div>
+            ))}
+            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+              all three solved it: green as-is suites, pristine-restore profiles matching
+              the reference's own 27/12, no timeouts. <span className="text-gold">The
+              separation is cost</span>: qwen3.6-plus spent 1.2M input tokens with zero
+              cache reads — 28× kimi — on the same task; kimi rode 474k of cache for 44k
+              fresh input. Compaction never triggered for any model.
+            </p>
+            <a
+              href={`${BENCH_URL}/longhorizon/results`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
+            >
+              benchmarks/longhorizon/results/
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
           </TrackCard>
         </div>
 

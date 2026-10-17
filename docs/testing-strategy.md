@@ -49,7 +49,11 @@
 >   greedy pass@1 — kimi-k2.5 52% / qwen3.7-plus 38% / qwen3.6-plus 36%,
 >   `no_code` cutoff failure reported as measured; receipts + RESULTS.md under
 >   `benchmarks/livecodebench/`, landing card + stat-band cell live); §7 J
->   long-horizon eval and dashboard E2E still pending.
+>   long-horizon eval shipped (`benchmarks/longhorizon/`: n=1 per model at a
+>   7-minute env-tunable cap, file-diff scoring vs a committed reference —
+>   all three models solved it; the separation is cost: qwen3.6-plus 1.2 M
+>   input tokens with 0 cache reads vs kimi-k2.5 43.5 K / 474 K cache;
+>   landing card live); dashboard E2E still pending.
 > - Fresh-checkout verification of tracks 1/2/3/6 with receipts under
 >   `<track>/results/rerun-2026-10-17/`; pi-repo suite at 5,342 tests / 0
 >   failing per-workspace consolidated evidence
@@ -612,6 +616,18 @@ J. **Long-horizon / multi-file refactor task.** One deliberately hard, multi-
    file task with a time limit (say 15 min) to surface compaction, context
    management and tool-call limits; score file diff, not just tests. Useful for
    comparing models and memory strategies.
+
+   *Status (2026-10-17): shipped* (`benchmarks/longhorizon/`) — "clippad", an
+   11-module TypeScript app whose `createdBy: string` must become
+   `createdBy: {id, name}` everywhere at once; committed reference refactor
+   for diff comparison; full unown agent; scored on the file diff both ways
+   (as-is tests + pristine-restored) plus jaccard/closeness heuristics.
+   n=1 per model at a 7-minute cap (env-tunable, default 15; recorded in
+   every receipt). Result: all three models solved it — green as-is suites,
+   pristine profiles equal to the reference's own 27/12, no compaction
+   events — the separation is cost: qwen3.6-plus 1.2 M input tokens with
+   zero cache reads vs kimi-k2.5 43.5 K riding 474 K cache. Receipts +
+   RESULTS.md + per-model workspace patches committed; landing card live.
 
 K. **Contamination-aware headline.** For publishable numbers, add LiveCodeBench
    v6 (post-cutoff, LeetCode/AtCoder/Codeforces) as the model-tier headline

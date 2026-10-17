@@ -32,6 +32,7 @@ research):
 | 5 | Self-improvement lift | The differentiator: repeat-task pass-rate/token improvement from Unown memory | `selfimprove/` |
 | 6 | HumanEval+ (evalplus) | Model-level codegen sanity (non-agentic, labelled as such) | `evalplus/` |
 | 7 | LiveCodeBench v6 subset | Contamination-aware model-tier headline: post-cutoff problems (2025-01→04 window) | `livecodebench/` |
+| 8 | Long-horizon refactor | One hard multi-file contract change under a time cap, scored on the file diff — surfaces context-management cost | `longhorizon/` |
 
 ## Track 1 — pi-repo test suite
 
@@ -145,6 +146,16 @@ greedy decoding, pass@1, per-problem JSONL receipts. Dominated honestly by the
 `no_code` cutoff failure mode at the pinned 4096-token budget — reported as measured.
 HumanEval+ (Track 6) stays as the pre-cutoff reference column; this is the one that
 cannot have been memorized.
+
+## Track 8 — Long-horizon refactor (`longhorizon/`)
+
+§7 J's probe: one deliberately hard multi-file contract change (`createdBy: string` →
+`{id, name}` across an 11-module TypeScript app) under a hard wall-clock cap, run with
+the full unown agent, scored on the file diff (not just tests) against a committed
+reference refactor. On n=1 all three models solved it — the separation is cost:
+qwen3.6-plus spent 1.2 M input tokens with zero cache reads where kimi-k2.5 spent 44 K
+riding 474 K of cache. The eval exists to surface exactly that context-management
+difference.
 
 ## What we deliberately do NOT self-run (and why)
 
