@@ -110,6 +110,7 @@ Full usage docs live in [`docs/`](docs/):
 | [memory](docs/memory.md) | the 4-tier memory stack, session notes, AutoDream consolidation |
 | [memory-classifier-evaluation](docs/memory-classifier-evaluation.md) | objective evaluation of Jev/GLiNER-style classifiers in the memory system |
 | [oh-my-pi-swap-assessment](docs/oh-my-pi-swap-assessment.md) | decision record: why the vendored pi harness stays, and what would reopen that call |
+| [opencode-swap-assessment](docs/opencode-swap-assessment.md) | decision record: opencode clears both harness chokepoints, and is still not adoptable — why the blocker moved to the artifact |
 | [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout |
 | [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |
 
