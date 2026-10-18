@@ -29,7 +29,7 @@
  */
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
 
@@ -139,12 +139,15 @@ export function trustBypassed(env: Record<string, string | undefined> = process.
 
 /** True when `file` lives inside the user-owned (always-trusted) directory. */
 export function isUserScopedConfig(file: string, opts: TrustOptions = {}): boolean {
-    const abs = (isAbsolute(file) ? file : resolve(file)) + (file.endsWith("/") ? "" : "/-");
-    // append a separator-safe tail so prefix matching cannot be spoofed by a
-    // sibling directory whose name starts with the user dir path
+    const abs = isAbsolute(file) ? file : resolve(file);
     const userDir = resolvedUserDir(opts);
-    const prefix = userDir.endsWith("/") ? userDir : `${userDir}/`;
-    return abs.startsWith(prefix);
+    // path.relative is separator- and drive-aware per platform (win32
+    // backslashes, drive letters) — a plain sub-path result (no leading "..",
+    // not absolute) means abs is INSIDE userDir; "" means abs IS userDir.
+    // This also kills the sibling-spoof case: <userDir>-evil is a "../.." hop,
+    // and a different drive's absolute path comes back absolute.
+    const rel = relative(userDir, abs);
+    return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
 /**
