@@ -80,6 +80,9 @@ describe("languageFromPath", () => {
 
 describe("pathToUri / uriToPath", () => {
     test("posix absolute roundtrip", () => {
+        // A posix path only round-trips where posix paths are native — on
+        // win32 uriToPath deliberately returns backslash separators.
+        if (process.platform === "win32") return;
         const p = "/home/user/proj/a file.ts";
         const uri = pathToUri(p);
         expect(uri.startsWith("file://")).toBe(true);

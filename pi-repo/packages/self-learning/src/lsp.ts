@@ -30,7 +30,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readFileSync, type Dirent, readdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, delimiter as pathDelimiter, join } from "node:path";
 import { UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,12 @@ export function commandExists(command: string, env: Record<string, string | unde
     const dir = command.length > name.length ? command.slice(0, command.length - name.length - 1) : null;
     if (dir) return existsSync(command) || withExeExtensions(command).some((c) => existsSync(c));
     const pathValue = env.PATH ?? env.Path ?? "";
-    const sep = pathValue.includes(";") && !pathValue.includes(":") ? ";" : pathValue.includes(";") ? ";" : ":";
+    // Platform delimiter, not a content heuristic: a SINGLE Windows PATH
+    // entry ("C:\\tools\\bin") contains ":" (the drive) and no ";" — the
+    // old heuristic picked ":" there and split the drive off the path,
+    // which failed the injected-PATH tests on the windows CI leg
+    // (commandExists/resolveServerCommand both route through here).
+    const sep = process.platform === "win32" ? ";" : pathDelimiter;
     for (const dirEntry of pathValue.split(sep)) {
         if (!dirEntry) continue;
         for (const candidate of withExeExtensions(join(dirEntry, name))) {
