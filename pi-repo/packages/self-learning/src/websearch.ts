@@ -18,8 +18,9 @@
 //
 //   free (keyless):  duckduckgo, tavily (keyless mode), youcom (MCP free
 //                    profile, 100 q/day), wikipedia, hn (Algolia),
-//                    stackexchange (300 q/day per IP), searxng (self-hosted
-//                    or trusted instance via UNOWN_SEARXNG_URL)
+//                    stackexchange (300 q/day per IP), npm (registry search),
+//                    github (repo search; optional GITHUB_TOKEN),
+//                    searxng (self-hosted via UNOWN_SEARXNG_URL)
 //   paid (API key):  tavily, brave, serper, exa, perplexity, jina, zhipu,
 //                    dashscope (enable_search grounding), kagi, serpapi,
 //                    firecrawl
@@ -615,6 +616,65 @@ export function parseHnResponse(body: any, cap: number): WebSearchResult[] {
         );
 }
 
+/** npm registry search — keyless, package discovery with download counts;
+ *  the dependency-research provider coding agents actually need. */
+export function parseNpmResponse(body: any, cap: number): WebSearchResult[] {
+        const rows: any[] = Array.isArray(body?.objects) ? body.objects : [];
+        return clampResults(
+                rows.map((row) => {
+                        const pkg = row?.package ?? {};
+                        const name = String(pkg.name ?? "");
+                        const version = pkg.version ? `@${pkg.version}` : "";
+                        const monthly = row?.downloads?.monthly;
+                        return {
+                                url: String(pkg.links?.npm ?? `https://www.npmjs.com/package/${name}`),
+                                title: `${name}${version}`,
+                                snippet: `${String(pkg.description ?? "").slice(0, 240)}${monthly ? ` · ${Math.round(monthly / 1000)}k downloads/mo` : ""}`,
+                                published: row?.updated ? String(row.updated) : undefined,
+                        };
+                }),
+                cap,
+        );
+}
+
+async function npmSearch(query: string, opts: WebSearchOptions): Promise<WebSearchResult[]> {
+        const cap = maxResultsCap(opts.maxResults);
+        const url = `https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=${cap}`;
+        const body = await jsonRequest(url, {});
+        const results = parseNpmResponse(body, cap);
+        if (results.length === 0) throw new Error("npm returned no packages");
+        return results;
+}
+
+/** GitHub repository search — keyless (10 req/min per IP; a GITHUB_TOKEN in
+ *  the environment lifts the search limit and is attached when present). */
+export function parseGithubResponse(body: any, cap: number): WebSearchResult[] {
+        const rows: any[] = Array.isArray(body?.items) ? body.items : [];
+        return clampResults(
+                rows.map((row) => ({
+                        url: String(row?.html_url ?? ""),
+                        title: String(row?.full_name ?? row?.html_url ?? ""),
+                        snippet: `${String(row?.description ?? "").slice(0, 240)} · ${row?.stargazers_count ?? 0} stars · ${row?.language ?? "?"}`,
+                        published: row?.updated_at ? String(row?.updated_at) : undefined,
+                })),
+                cap,
+        );
+}
+
+async function githubSearch(query: string, opts: WebSearchOptions): Promise<WebSearchResult[]> {
+        const cap = maxResultsCap(opts.maxResults);
+        const token = process.env.GITHUB_TOKEN || "";
+        const headers: Record<string, string> = { accept: "application/vnd.github+json" };
+        if (token) headers.authorization = `Bearer ${token}`;
+        const body = await jsonRequest(
+                `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=${cap}`,
+                { headers },
+        );
+        const results = parseGithubResponse(body, cap);
+        if (results.length === 0) throw new Error("github returned no repositories");
+        return results;
+}
+
 async function hnSearch(query: string, opts: WebSearchOptions): Promise<WebSearchResult[]> {
         const cap = maxResultsCap(opts.maxResults);
         const url = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&hitsPerPage=${cap}&tags=story`;
@@ -1086,6 +1146,23 @@ const allSearchProviders: WebSearchProvider[] = [
                 search: hnSearch,
         },
         {
+                id: "npm",
+                name: "npm registry",
+                tier: "free",
+                keyEnvVars: [],
+                isConfigured: () => true,
+                search: npmSearch,
+        },
+        {
+                id: "github",
+                name: "GitHub repos",
+                tier: "free",
+                keyEnvVars: [],
+                optionalKeyEnvVars: ["GITHUB_TOKEN"],
+                isConfigured: () => true, // keyless (10 req/min per IP); token lifts limits
+                search: githubSearch,
+        },
+        {
                 id: "stackexchange",
                 name: "StackExchange",
                 tier: "free",
@@ -1222,7 +1299,17 @@ const KEYED_PRIORITY = [
 
 /** Keyless chain: works out of the box; general engines first, domain-
  *  specific (wikipedia/hn) as terminal safety nets. */
-const KEYLESS_CHAIN = ["searxng", "duckduckgo", "tavily", "youcom", "stackexchange", "wikipedia", "hn"];
+const KEYLESS_CHAIN = [
+        "searxng",
+        "duckduckgo",
+        "tavily",
+        "youcom",
+        "stackexchange",
+        "wikipedia",
+        "hn",
+        "npm",
+        "github",
+];
 
 /**
  * Resolve the provider chain for a search: explicit env override first,

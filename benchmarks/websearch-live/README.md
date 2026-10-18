@@ -33,14 +33,16 @@ the hostile case; residential IPs fare strictly better):
 | free | youcom | live-verified (keyless MCP, 100 q/day) |
 | free | wikipedia | live-verified (policy-compliant UA) |
 | free | hn | live-verified (Algolia) |
+| free | npm | live-verified (registry search, package research) |
+| free | github | live-verified (repo search, unauthenticated) |
 | free | searxng | live-verified (self-hosted instance) |
 | free | duckduckgo | works from residential IPs; datacenter IPs receive the 202 anomaly challenge — detected, surfaced, chain cascades |
 | free | stackexchange | works keyless (300 q/day per IP); this shared datacenter IP is throttled — detected and surfaced |
 | paid | dashscope | live-verified with a real key (Qwen `enable_search` grounding; hourly-metered — a 429 triggers one backoff retry) |
 | paid | brave / serper / exa / perplexity / jina / zhipu / kagi / serpapi / firecrawl | endpoint-liveness-verified: live endpoints answering with their documented auth-gated errors; request/response shapes pinned by the parser tests in `test/websearch.test.ts`, and the full request path mock-verified there — add the provider's key to the environment and the same adapter runs live |
 
-The 5-free + 5-paid floor is met: five free providers verified with live
-queries, and ten paid providers shipped (one live-verified with a key, nine
+The 5-free + 5-paid floor is met: seven free providers verified with live
+queries from a hostile datacenter IP, and ten paid providers shipped (one live-verified with a key, nine
 liveness-verified + mock-pinned). Re-running the harness after adding keys
 upgrades the affected providers to live-verified automatically.
 

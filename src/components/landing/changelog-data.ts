@@ -73,7 +73,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "native web tools — web_search + webfetch (keyless-first, 17 providers)",
+            "title": "native web tools — web_search + webfetch (keyless-first, 19 providers)",
             "behavior": true
           },
           {

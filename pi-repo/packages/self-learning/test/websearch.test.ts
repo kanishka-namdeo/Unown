@@ -27,8 +27,10 @@ import {
         parseExaResponse,
         parseFirecrawlSearchResponse,
         parseHnResponse,
+        parseGithubResponse,
         parseJinaSearchResponse,
         parseKagiResponse,
+        parseNpmResponse,
         parsePerplexityResponse,
         parseRobots,
         parseSearxngResponse,
@@ -287,6 +289,48 @@ describe("provider response parsers", () => {
                 const results = parseYoucomMcpText(inner, 10);
                 expect(results[0]?.url).toBe("https://t.com");
                 expect(results[0]?.published).toBe("2026-01-01");
+        });
+        test("npm: objects with package metadata and downloads", () => {
+                const body = {
+                        objects: [
+                                {
+                                        package: {
+                                                name: "bun",
+                                                version: "1.4.3",
+                                                description: "Fast runtime",
+                                                links: { npm: "https://www.npmjs.com/package/bun" },
+                                        },
+                                        downloads: { monthly: 16514194 },
+                                        updated: "2026-10-18T14:15:24Z",
+                                },
+                        ],
+                };
+                const results = parseNpmResponse(body, 10);
+                expect(results[0]?.title).toBe("bun@1.4.3");
+                expect(results[0]?.snippet).toContain("downloads/mo");
+                expect(results[0]?.published).toBe("2026-10-18T14:15:24Z");
+        });
+        test("npm: falls back to a constructed URL when links are absent", () => {
+                const body = { objects: [{ package: { name: "x", description: "d" } }] };
+                const results = parseNpmResponse(body, 10);
+                expect(results[0]?.url).toBe("https://www.npmjs.com/package/x");
+        });
+        test("github: items with full_name/html_url/stars", () => {
+                const body = {
+                        items: [
+                                {
+                                        full_name: "oven-sh/bun",
+                                        html_url: "https://github.com/oven-sh/bun",
+                                        description: "Incredibly fast runtime",
+                                        stargazers_count: 80000,
+                                        language: "Zig",
+                                        updated_at: "2026-10-18T00:00:00Z",
+                                },
+                        ],
+                };
+                const results = parseGithubResponse(body, 10);
+                expect(results[0]?.title).toBe("oven-sh/bun");
+                expect(results[0]?.snippet).toContain("80000 stars");
         });
         test("stackexchange: items with link/score/tags", () => {
                 const body = {

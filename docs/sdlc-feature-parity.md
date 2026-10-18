@@ -63,14 +63,14 @@ implementation is reverse-engineered from the competitors' sources (OpenCode's
 Code's tool docs, the Roo/OpenClaw provider stacks) and lands in
 `pi-repo/packages/self-learning/src/websearch.ts`:
 
-- **`web_search`** — 17-provider registry with a keyless-first chain that
+- **`web_search`** — 19-provider registry with a keyless-first chain that
   works with zero signup (searxng-self-host → duckduckgo → tavily keyless →
-  youcom free-MCP → stackexchange → wikipedia → hn) and eleven keyed
+  youcom free-MCP → stackexchange → wikipedia → hn → npm → github) and eleven keyed
   providers that auto-join when their env key appears (tavily, serper, exa,
   brave, perplexity, dashscope enable_search, jina, zhipu, firecrawl, kagi,
   serpapi — quality-then-cost priority). Claude-Code-parity domain filters,
   per-provider failure notes surfaced to the model, `UNOWN_WEB_SEARCH_PROVIDER`
-  override. Live-verified receipts: `benchmarks/websearch-live/` (5 free
+  override. Live-verified receipts: `benchmarks/websearch-live/` (7 free
   providers answering real queries from a hostile datacenter IP; a real
   end-to-end agent session — model calls `web_search`, the chain cascades
   dashscope-429 → ddg-challenge → tavily-keyless, returns 8 results, the
