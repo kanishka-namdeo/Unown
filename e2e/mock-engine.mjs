@@ -117,6 +117,64 @@ const sandboxes = [
   { id: "sbx-e2e-5", createdAt: T0 - 2 * MIN, label: "interactive/session", files: 12 },
 ];
 
+const automations = [
+  {
+    id: "auto-e2e-1",
+    title: "nightly repo health check",
+    prompt: "Review the repo health and report anomalies.",
+    cron_expr: "0 3 * * *",
+    delay_ms: null,
+    workspace: "/home/dev/unown",
+    mode: "read-only",
+    model: null,
+    max_runs: null,
+    run_count: 4,
+    scheduled_run_count: 4,
+    lifecycle: "active",
+    next_run_at: T0 + 6 * 60 * MIN,
+    last_run_at: T0 - 18 * MIN,
+    created_at: T0 - 3 * 24 * 60 * MIN,
+    updated_at: T0 - 18 * MIN,
+    schedule: "at 03:00",
+    lastRun: {
+      id: "arun-e2e-1",
+      automation_id: "auto-e2e-1",
+      trigger_kind: "schedule",
+      scheduled_at: T0 - 18 * MIN,
+      status: "succeeded",
+      started_at: T0 - 18 * MIN,
+      ended_at: T0 - 17 * MIN,
+      exit_code: 0,
+      output: "## Nightly Repo Health Check\n\nAll gates green.",
+      error: null,
+      turns: 9,
+      tokens_in: 41000,
+      tokens_out: 1500,
+    },
+  },
+];
+
+const automationRuns = {
+  "auto-e2e-1": [
+    automations[0].lastRun,
+    {
+      id: "arun-e2e-0",
+      automation_id: "auto-e2e-1",
+      trigger_kind: "manual",
+      scheduled_at: null,
+      status: "failed",
+      started_at: T0 - 27 * MIN,
+      ended_at: T0 - 26 * MIN,
+      exit_code: 1,
+      output: null,
+      error: "session timed out",
+      turns: 3,
+      tokens_in: 9000,
+      tokens_out: 200,
+    },
+  ],
+};
+
 const skills = [
   { id: "skl-e2e-1", project_slug: "unown", project_path: "/home/dev/unown", name: "recover-failed-cycle", description: "Recover a failed harness cycle without restarting the engine.", body: "# recover-failed-cycle\n\n1. Read the cycle summary.\n2. Re-arm the job.", status: "shipped", version: 2, dream_id: "drm-e2e-2", created_at: T0 - 34 * MIN, updated_at: T0 - 34 * MIN },
 ];
@@ -261,6 +319,10 @@ const server = createServer((req, res) => {
     if (p === "/api/sandboxes") return json(res, { sandboxes });
     if (p === "/api/skills") return json(res, { skills });
     if (p === "/api/bridge") return json(res, bridge);
+    if (p === "/api/automations") return json(res, { automations });
+    const autoRunsMatch = p.match(/^\/api\/automations\/([^/]+)\/runs$/);
+    if (autoRunsMatch)
+      return json(res, { runs: automationRuns[autoRunsMatch[1]] ?? [] });
     return json(res, { error: "not found" }, 404);
   }
 

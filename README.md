@@ -51,7 +51,7 @@ flowchart TB
         PM("project memory<br>.unown/memory/project.md")
     end
     subgraph dash["dashboard · :3000"]
-        UI["Next.js mission control<br>9 tabs · live SSE feed"]
+        UI["Next.js mission control<br>10 tabs · live SSE feed"]
     end
     subgraph engine["self-learning engine :3030"]
         ENG["memory · harness · dream<br>router · sandbox"]

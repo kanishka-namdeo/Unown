@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 83;
+export const CHANGELOG_TOTAL_ENTRIES = 84;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 43,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 15,
+  "Fixed": 16,
   "Security": 3,
   "Behavior": 6
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 42,
+    "total": 43,
     "counts": {
       "Added": 15,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 7,
+      "Fixed": 8,
       "Security": 0,
       "Behavior": 6
     },
@@ -61,7 +61,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "complementary testbench — campaign 3 (H16–H22): non-traditional local mechanisms around the configured…",
+            "title": "dashboard: Automations tab — the scheduled actor gets a mission-control surface",
             "behavior": false
           },
           {
@@ -127,6 +127,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
+            "behavior": false
+          },
+          {
+            "title": "coverage gate: duplicate module-instance rows could shadow well-covered files (bun 1.3.x)",
             "behavior": false
           },
           {

@@ -363,3 +363,78 @@ describe("SseBridge — full describe() coverage of the remaining event families
     expect(Object.keys(useRunStreamStore.getState().streams)).toEqual(["run-y"]);
   });
 });
+
+describe("SseBridge — automations event families", () => {
+  beforeEach(() => {
+    useRunStreamStore.setState({ streams: {} });
+  });
+
+  /** Probe mounting the automations queries the events invalidate. */
+  function AutomationsProbe() {
+    const automations = useQuery({ queryKey: qk.automations, queryFn: () => api.automations() });
+    const runs = useQuery({ queryKey: qk.runs, queryFn: () => api.runs() });
+    return (
+      <div>
+        <p>probe-automations: {automations.data?.automations.length ?? "-"} automations</p>
+        <p>probe-runs: {runs.data?.runs.length ?? "-"} runs</p>
+      </div>
+    );
+  }
+
+  async function renderWithAutomationsProbe() {
+    engine.route("/api/automations", { automations: [] });
+    engine.route("/api/runs", fx.runsResponse());
+    render(
+      <DashboardProviders>
+        <AutomationsProbe />
+      </DashboardProviders>
+    );
+    expect(await screen.findByText("probe-automations: 0 automations")).toBeTruthy();
+    expect(screen.getByText("probe-runs: 3 runs")).toBeTruthy();
+    const sse = esStub.latest();
+    sse.simulateOpen();
+    return sse;
+  }
+
+  test("lifecycle events (created/updated/deleted/completed) invalidate qk.automations with friendly text", async () => {
+    const sse = await renderWithAutomationsProbe();
+    expect(engine.callsFor("/api/automations")).toHaveLength(1);
+
+    sse.deliver(frame("automation:created", { id: "a1", title: "nightly health check" }));
+    await waitFor(() => expect(engine.callsFor("/api/automations").length).toBe(2));
+
+    sse.deliver(frame("automation:updated", { id: "a1", patch: { lifecycle: "paused" } }));
+    sse.deliver(frame("automation:deleted", { id: "a2" }));
+    sse.deliver(frame("automation:completed", { id: "a3" }));
+    await waitFor(() => expect(engine.callsFor("/api/automations").length).toBe(5));
+
+    const texts = useActivityStore.getState().items.map((i) => i.text);
+    expect(texts).toContain("automation created · nightly health check");
+    expect(texts).toContain("automation updated · a1");
+    expect(texts).toContain("automation deleted · a2");
+    expect(texts).toContain("automation completed · max runs reached (lifecycle terminal)");
+  });
+
+  test("run-started and skipped invalidate the automations list; scheduler/recovery/dispatch events render", async () => {
+    const sse = await renderWithAutomationsProbe();
+
+    sse.deliver(frame("automation:run-started", { id: "a1", runId: "arun-1", trigger: "manual" }));
+    await waitFor(() => expect(engine.callsFor("/api/automations").length).toBe(2));
+    sse.deliver(frame("automation:skipped", { id: "a1", reason: "single-flight: already running" }));
+    await waitFor(() => expect(engine.callsFor("/api/automations").length).toBe(3));
+
+    sse.deliver(frame("automations:started", { pollMs: 30000 }));
+    sse.deliver(frame("automation:recovered", { id: "a4" }));
+    sse.deliver(frame("automation:dispatch-retry", { id: "a5", attempts: 2 }));
+    sse.deliver(frame("automation:dispatch-exhausted", { id: "a5", attempts: 5 }));
+    await settle(150);
+
+    const texts = useActivityStore.getState().items.map((i) => i.text);
+    expect(texts).toContain("automation run started · a1 · manual");
+    expect(texts).toContain("automation skipped · single-flight: already running");
+    expect(texts).toContain("automations scheduler online · poll 30000ms");
+    expect(texts).toContain("automation recovered · a4 — run marked failed at boot");
+    expect(texts).toContain("automation dispatch retry · attempt 2");
+    expect(texts).toContain("automation dispatch gave up after 5 attempts");
+  });
+});

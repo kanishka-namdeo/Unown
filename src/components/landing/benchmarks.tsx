@@ -631,7 +631,7 @@ export function BenchmarksSection() {
                 {
                   v: "206",
                   l: "dashboard unit tests",
-                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers, RTL coverage of all nine dashboard tabs",
+                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers, RTL coverage of all ten dashboard tabs",
                 },
                 {
                   v: "102",

@@ -50,7 +50,7 @@ were:
 
 Each entry: feature → source → the seam it landed on in this repo.
 
-### Round 3 (2026-10-19 — dashboard engine-parity + observability)
+### Round 3 (2026-10-19 — dashboard engine-parity + observability + automations surface)
 
 The dashboard's own contract outran its code: two fully-typed data sources
 (`GET /api/sandboxes`, `GET /api/bridge`) had client functions and query keys
@@ -77,10 +77,21 @@ source:
 | Trust surfaces | NN/g error/empty/loading distinction | engine-down alert banner, KPI skeletons, error/notes/regression KPI fields |
 | SSE contract completion | — (Unown's own documented contract) | every engine event family now invalidates + renders friendly feed text |
 
-Verification receipts: unit suite 280/0 across 25 files (39 new tests), e2e
-specs extended to all nine tabs, live browser pass against a running engine
-(9 tabs, real DashScope traffic in the Gateway view, palette navigation, deep
-links, zero console errors).
+The round also closed the automations loop the parallel session opened: the
+engine's zcode-port scheduled actor shipped REST + types with no client or UI,
+so the tenth tab (`automations-tab.tsx`) renders the full lifecycle — create
+(cron/one-shot, read-only/standard), pause/resume/delete confirms, Run now,
+per-automation run history — with all eleven automation SSE event families
+mapped in the bridge. Verified end-to-end: a "nightly repo health check"
+automation created from the dialog and dispatched via Run now executed a real
+headless session (11 turns, 60.1k tokens in) whose report rendered in the run
+history.
+
+Verification receipts: unit suite 294/0 across 26 files (51 new tests), e2e
+specs extended to all ten tabs (mock engine serves the automations family),
+live browser pass against a running engine (10 tabs, real DashScope traffic
+in the Gateway view, a real automation run, palette navigation, deep links,
+zero console errors).
 
 ### Round 2 (2026-10-19 — subagent upgrades)
 

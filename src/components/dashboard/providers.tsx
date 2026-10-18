@@ -112,6 +112,29 @@ function describe(ev: AgentEvent): ActivityDesc | null {
       return { text: `task graduated · ${str(p, "id")} now passes — promoted to regression guard`, tone: "emerald" };
     case "mint:cascade":
       return { text: `mint cascade · ${str(p, "outcome")}`, tone: "zinc" };
+    case "automation:created":
+      return { text: `automation created · ${str(p, "title")}`, tone: "emerald" };
+    case "automation:updated":
+      return { text: `automation updated · ${str(p, "id")}`, tone: "zinc" };
+    case "automation:deleted":
+      return { text: `automation deleted · ${str(p, "id")}`, tone: "zinc" };
+    case "automation:run-started":
+      return {
+        text: `automation run started · ${str(p, "id")} · ${str(p, "trigger")}`,
+        tone: "amber",
+      };
+    case "automation:skipped":
+      return { text: `automation skipped · ${str(p, "reason")}`, tone: "amber" };
+    case "automation:completed":
+      return { text: `automation completed · max runs reached (lifecycle terminal)`, tone: "emerald" };
+    case "automation:recovered":
+      return { text: `automation recovered · ${str(p, "id")} — run marked failed at boot`, tone: "rose" };
+    case "automation:dispatch-retry":
+      return { text: `automation dispatch retry · attempt ${str(p, "attempts")}`, tone: "amber" };
+    case "automation:dispatch-exhausted":
+      return { text: `automation dispatch gave up after ${str(p, "attempts")} attempts`, tone: "rose" };
+    case "automations:started":
+      return { text: `automations scheduler online · poll ${str(p, "pollMs")}ms`, tone: "zinc" };
     case "job:started":
       return { text: `job started · ${str(p, "name")}`, tone: "amber" };
     case "job:finished":
@@ -169,6 +192,14 @@ function invalidations(event: string): readonly (readonly unknown[])[] {
     case "task:graduated":
     case "mint:cascade":
       return [qk.tasks, qk.overview];
+    case "automation:created":
+    case "automation:updated":
+    case "automation:deleted":
+    case "automation:completed":
+      return [qk.automations, qk.overview];
+    case "automation:run-started":
+    case "automation:skipped":
+      return [qk.automations, qk.overview];
     case "job:started":
     case "job:finished":
     case "job:error":

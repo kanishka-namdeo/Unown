@@ -31,6 +31,9 @@ const EVENTS_URL = DIRECT
 export { EVENTS_URL };
 
 import type {
+  Automation,
+  AutomationRunsResponse,
+  AutomationsResponse,
   BridgeResponse,
   CyclesResponse,
   DreamNotesResponse,
@@ -70,14 +73,14 @@ async function getJson<T>(path: string, params?: Record<string, string | number 
   return (await res.json()) as T;
 }
 
-async function postJson<T>(path: string, body?: unknown): Promise<T> {
+async function postJson<T>(path: string, body?: unknown, method: "POST" | "PATCH" | "DELETE" = "POST"): Promise<T> {
   const res = await fetch(apiUrl(path), {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined && method !== "DELETE" ? undefined : JSON.stringify(body ?? {}),
   });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new ApiError(res.status, data?.error ?? `POST ${path} failed (${res.status})`);
+  if (!res.ok) throw new ApiError(res.status, data?.error ?? `${method} ${path} failed (${res.status})`);
   return data as T;
 }
 
@@ -102,6 +105,8 @@ export const qk = {
   skills: ["skills"] as const,
   skill: (id: string) => ["skill", id] as const,
   bridge: ["bridge"] as const,
+  automations: ["automations"] as const,
+  automationRuns: (id: string) => ["automation-runs", id] as const,
 };
 
 export const api = {
@@ -126,6 +131,9 @@ export const api = {
     getJson<SkillsResponse>("/api/skills", project ? { project } : undefined),
   skill: (id: string) => getJson<SkillDetailResponse>(`/api/skills/${id}`),
   bridge: () => getJson<BridgeResponse>("/api/bridge"),
+  automations: () => getJson<AutomationsResponse>("/api/automations"),
+  automationRuns: (id: string, limit = 20) =>
+    getJson<AutomationRunsResponse>(`/api/automations/${id}/runs`, { limit }),
 };
 
 // ---- Mutations ----
@@ -146,4 +154,26 @@ export const mutations = {
   noteCreate: (content: string, projectPath: string) =>
     postJson<NoteCreateResponse>("/api/notes", { content, project_path: projectPath }),
   notesSync: () => postJson<NotesSyncResponse>("/api/notes/sync"),
+  automationCreate: (body: {
+    title: string;
+    prompt: string;
+    cron?: string;
+    delayMinutes?: number;
+    mode?: "read-only" | "standard";
+    model?: string | null;
+    maxRuns?: number | null;
+  }) => postJson<{ automation: Automation }>("/api/automations", body),
+  automationPatch: (
+    id: string,
+    patch: {
+      title?: string;
+      prompt?: string;
+      mode?: "read-only" | "standard";
+      lifecycle?: "active" | "paused";
+      cron?: string;
+      maxRuns?: number | null;
+    }
+  ) => postJson<{ automation: Automation }>(`/api/automations/${id}`, patch, "PATCH"),
+  automationDelete: (id: string) => postJson<{ ok: boolean }>(`/api/automations/${id}`, undefined, "DELETE"),
+  automationRunNow: (id: string) => postJson<{ ok: boolean }>(`/api/automations/${id}/run`),
 };

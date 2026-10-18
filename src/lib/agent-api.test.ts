@@ -342,3 +342,60 @@ describe("qk (query keys)", () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// Automations client surface (queries + the PATCH/DELETE mutation verbs)
+// ---------------------------------------------------------------------------
+
+describe("automations client surface", () => {
+  test("api.automations GETs the automations list", async () => {
+    calls.length = 0
+    makeResult = () => new Response(JSON.stringify({ automations: [] }), { status: 200 })
+    await gateway.api.automations()
+    expect(calls[0]?.url).toBe("/api/automations?XTransformPort=3030")
+    expect(calls[0]?.init).toEqual({ cache: "no-store" })
+  })
+
+  test("api.automationRuns GETs the per-automation run history with limit", async () => {
+    calls.length = 0
+    makeResult = () => new Response(JSON.stringify({ runs: [] }), { status: 200 })
+    await gateway.api.automationRuns("auto-1", 5)
+    expect(calls[0]?.url).toBe("/api/automations/auto-1/runs?XTransformPort=3030&limit=5")
+  })
+
+  test("automationCreate POSTs the create body", async () => {
+    calls.length = 0
+    makeResult = () => new Response(JSON.stringify({ automation: { id: "a1" } }), { status: 200 })
+    await gateway.mutations.automationCreate({ title: "t", prompt: "p", cron: "0 9 * * *" })
+    expect(calls[0]?.init?.method).toBe("POST")
+    expect(calls[0]?.init?.body).toBe(JSON.stringify({ title: "t", prompt: "p", cron: "0 9 * * *" }))
+    expect(calls[0]?.url).toBe("/api/automations?XTransformPort=3030")
+  })
+
+  test("automationPatch sends PATCH with the patch body", async () => {
+    calls.length = 0
+    makeResult = () => new Response(JSON.stringify({ automation: { id: "a1" } }), { status: 200 })
+    await gateway.mutations.automationPatch("a1", { lifecycle: "paused" })
+    expect(calls[0]?.init?.method).toBe("PATCH")
+    expect(calls[0]?.init?.body).toBe(JSON.stringify({ lifecycle: "paused" }))
+    expect(calls[0]?.url).toBe("/api/automations/a1?XTransformPort=3030")
+  })
+
+  test("automationDelete sends DELETE with an empty JSON body", async () => {
+    calls.length = 0
+    makeResult = () => new Response(JSON.stringify({ ok: true }), { status: 200 })
+    await gateway.mutations.automationDelete("a1")
+    expect(calls[0]?.init?.method).toBe("DELETE")
+    expect(calls[0]?.init?.body).toBe(JSON.stringify({}))
+    expect(calls[0]?.url).toBe("/api/automations/a1?XTransformPort=3030")
+  })
+
+  test("automationRunNow POSTs the run-now route body-less", async () => {
+    calls.length = 0
+    makeResult = () => new Response(JSON.stringify({ ok: true }), { status: 200 })
+    await gateway.mutations.automationRunNow("a1")
+    expect(calls[0]?.init?.method).toBe("POST")
+    expect(calls[0]?.init?.body).toBeUndefined()
+    expect(calls[0]?.url).toBe("/api/automations/a1/run?XTransformPort=3030")
+  })
+})

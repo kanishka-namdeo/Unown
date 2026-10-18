@@ -43,22 +43,22 @@ const reportFile = runSuite ? "coverage.txt" : (args[0] ?? "coverage.txt");
 const baseArg = (runSuite ? args[0] : args[1]) ?? process.env.GITHUB_BASE_REF ?? "HEAD~1";
 
 const fail = (msg) => {
-	console.log(`::error::${msg}`);
-	process.exit(1);
+        console.log(`::error::${msg}`);
+        process.exit(1);
 };
 
 let report;
 if (runSuite) {
-	const proc = spawnSync("bun", ["test", "src", "--coverage"], { encoding: "utf8" });
-	report = `${proc.stdout ?? ""}${proc.stderr ?? ""}`;
-	writeFileSync(reportFile, report, "utf8");
-	if (proc.status !== 0) {
-		console.log(report);
-		fail(`bun test src --coverage exited ${proc.status}; the coverage gate does not run on a red suite`);
-	}
+        const proc = spawnSync("bun", ["test", "src", "--coverage"], { encoding: "utf8" });
+        report = `${proc.stdout ?? ""}${proc.stderr ?? ""}`;
+        writeFileSync(reportFile, report, "utf8");
+        if (proc.status !== 0) {
+                console.log(report);
+                fail(`bun test src --coverage exited ${proc.status}; the coverage gate does not run on a red suite`);
+        }
 } else {
-	if (!existsSync(reportFile)) fail(`no coverage report at ${reportFile} (run: node scripts/check_coverage.mjs --run)`);
-	report = readFileSync(reportFile, "utf8");
+        if (!existsSync(reportFile)) fail(`no coverage report at ${reportFile} (run: node scripts/check_coverage.mjs --run)`);
+        report = readFileSync(reportFile, "utf8");
 }
 
 // The gate is only meaningful if the run it summarises actually passed.
@@ -70,23 +70,34 @@ if (failed > 0) fail(`dashboard suite reported ${failed} failing tests; the cove
 // Parse: " <path> |  86.34 |  91.08 | 26-41,83-98"  (funcs | lines | uncovered)
 const uncovered = new Map();
 for (const raw of report.split(/\r?\n/)) {
-	const line = raw.trim();
-	if (!line.includes("|")) continue;
-	const cells = line.split("|").map((c) => c.trim());
-	if (cells.length < 3) continue;
-	const path = cells[0].replace(/\\/g, "/").replace(/^\.\//, "");
-	if (!path.startsWith("src/")) continue;
-	if (path.endsWith(".test.ts") || path.endsWith(".test.tsx")) continue;
-	const list = cells[3] ?? "";
-	const lines = new Set();
-	for (const part of list.split(",")) {
-		const m = /^(\d+)(?:-(\d+))?$/.exec(part.trim());
-		if (!m) continue;
-		const from = Number(m[1]);
-		const to = Number(m[2] ?? m[1]);
-		for (let n = from; n <= to; n++) lines.add(n);
-	}
-	uncovered.set(path, lines);
+        const line = raw.trim();
+        if (!line.includes("|")) continue;
+        const cells = line.split("|").map((c) => c.trim());
+        if (cells.length < 3) continue;
+        const path = cells[0].replace(/\\/g, "/").replace(/^\.\//, "");
+        if (!path.startsWith("src/")) continue;
+        if (path.endsWith(".test.ts") || path.endsWith(".test.tsx")) continue;
+        const list = cells[3] ?? "";
+        const lines = new Set();
+        for (const part of list.split(",")) {
+                const m = /^(\d+)(?:-(\d+))?$/.exec(part.trim());
+                if (!m) continue;
+                const from = Number(m[1]);
+                const to = Number(m[2] ?? m[1]);
+                for (let n = from; n <= to; n++) lines.add(n);
+        }
+        // bun can emit one row per module instance when a test dynamically
+        // re-imports a module under a query-suffixed specifier (agent-api.test.ts
+        // does this to vary NEXT_PUBLIC_AGENT_API_BASE). A line is only truly
+        // uncovered when NO instance executed it — so duplicate rows INTERSECT,
+        // they do not overwrite (last-write-wins kept the sparse instance's row
+        // and failed well-covered files under bun 1.3.x; 1.4+ merges natively).
+        const prev = uncovered.get(path);
+        if (prev === undefined) {
+                uncovered.set(path, lines);
+        } else {
+                for (const n of prev) if (!lines.has(n)) prev.delete(n);
+        }
 }
 
 const tableStart = report.indexOf("File ");
@@ -96,11 +107,11 @@ if (tableStart >= 0) console.log(report.slice(tableStart).trimEnd());
 const exempt = new Set();
 const exemptFile = "scripts/coverage-exempt.txt";
 if (existsSync(exemptFile)) {
-	for (const raw of readFileSync(exemptFile, "utf8").split(/\r?\n/)) {
-		const line = raw.trim();
-		if (!line || line.startsWith("#")) continue;
-		exempt.add(line.split(/\s+/)[0]);
-	}
+        for (const raw of readFileSync(exemptFile, "utf8").split(/\r?\n/)) {
+                const line = raw.trim();
+                if (!line || line.startsWith("#")) continue;
+                exempt.add(line.split(/\s+/)[0]);
+        }
 }
 
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" });
@@ -109,41 +120,41 @@ const isSrcTest = (p) => p.endsWith(".test.ts") || p.endsWith(".test.tsx") || p.
 let diff;
 let base = baseArg;
 try {
-	git("rev-parse", "--verify", `${base}^{commit}`);
+        git("rev-parse", "--verify", `${base}^{commit}`);
 } catch {
-	base = "HEAD~1";
-	try {
-		git("rev-parse", "--verify", `${base}^{commit}`);
-	} catch {
-		console.log(
-			`::warning::no resolvable git base (tried ${baseArg}); changed-line coverage not evaluated. Pass a base sha to check it locally.`,
-		);
-		process.exit(0);
-	}
+        base = "HEAD~1";
+        try {
+                git("rev-parse", "--verify", `${base}^{commit}`);
+        } catch {
+                console.log(
+                        `::warning::no resolvable git base (tried ${baseArg}); changed-line coverage not evaluated. Pass a base sha to check it locally.`,
+                );
+                process.exit(0);
+        }
 }
 
 try {
-	diff = git("diff", "--unified=0", base, "--", "src");
+        diff = git("diff", "--unified=0", base, "--", "src");
 } catch (e) {
-	fail(`git diff against ${base} failed: ${e.message.split("\n")[0]}`);
+        fail(`git diff against ${base} failed: ${e.message.split("\n")[0]}`);
 }
 
 // @@@ -old,count +new,count @@@ -> the changed line numbers on the new side.
 const changed = new Map();
 let current = null;
 for (const line of diff.split(/\r?\n/)) {
-	const file = /^\+\+\+ b\/(.+)$/.exec(line);
-	if (file) {
-		current = file[1].replace(/\\/g, "/");
-		if (!changed.has(current)) changed.set(current, new Set());
-		continue;
-	}
-	const hunk = /^@@ -\S+ \+(\d+)(?:,(\d+))? @@/.exec(line);
-	if (hunk && current) {
-		const start = Number(hunk[1]);
-		const count = hunk[2] === undefined ? 1 : Number(hunk[2]);
-		for (let n = start; n < start + count; n++) changed.get(current).add(n);
-	}
+        const file = /^\+\+\+ b\/(.+)$/.exec(line);
+        if (file) {
+                current = file[1].replace(/\\/g, "/");
+                if (!changed.has(current)) changed.set(current, new Set());
+                continue;
+        }
+        const hunk = /^@@ -\S+ \+(\d+)(?:,(\d+))? @@/.exec(line);
+        if (hunk && current) {
+                const start = Number(hunk[1]);
+                const count = hunk[2] === undefined ? 1 : Number(hunk[2]);
+                for (let n = start; n < start + count; n++) changed.get(current).add(n);
+        }
 }
 
 const isCode = (p) => /\.tsx?$/.test(p);
@@ -153,35 +164,35 @@ const isCode = (p) => /\.tsx?$/.test(p);
 // test could ever execute, which is how this gate gets ignored instead of obeyed.
 const targets = [...changed.entries()].filter(([p]) => !isSrcTest(p) && isCode(p));
 if (targets.length === 0) {
-	console.log(`ok  no changed src/ code lines against ${base}; coverage gate has nothing to assert`);
-	process.exit(0);
+        console.log(`ok  no changed src/ code lines against ${base}; coverage gate has nothing to assert`);
+        process.exit(0);
 }
 
 let failedPaths = 0;
 console.log(`\nchanged-line coverage (threshold ${THRESHOLD}%), base ${base}:`);
 for (const [path, lines] of targets) {
-	if (exempt.has(path)) {
-		console.log(`  exempt  ${path}`);
-		continue;
-	}
-	// A file with no row in the table was never loaded by any test. That is 0%
-	// coverage information, not 100%: reading the missing row as "nothing
-	// uncovered" is precisely the silent-pass this script exists to prevent.
-	const known = uncovered.has(path);
-	const missed = known ? uncovered.get(path) : new Set(lines);
-	let untested = 0;
-	for (const n of lines) if (missed.has(n)) untested++;
-	const pct = lines.size === 0 ? 100 : Math.round(((lines.size - untested) / lines.size) * 100);
-	const status = pct >= THRESHOLD ? "ok  " : "FAIL";
-	const note = known ? "" : "  (no coverage row: never imported by a test)";
-	console.log(`  ${status}  ${String(pct).padStart(3)}%  ${path}  (${lines.size - untested}/${lines.size} changed lines)${note}`);
-	if (pct < THRESHOLD) failedPaths++;
+        if (exempt.has(path)) {
+                console.log(`  exempt  ${path}`);
+                continue;
+        }
+        // A file with no row in the table was never loaded by any test. That is 0%
+        // coverage information, not 100%: reading the missing row as "nothing
+        // uncovered" is precisely the silent-pass this script exists to prevent.
+        const known = uncovered.has(path);
+        const missed = known ? uncovered.get(path) : new Set(lines);
+        let untested = 0;
+        for (const n of lines) if (missed.has(n)) untested++;
+        const pct = lines.size === 0 ? 100 : Math.round(((lines.size - untested) / lines.size) * 100);
+        const status = pct >= THRESHOLD ? "ok  " : "FAIL";
+        const note = known ? "" : "  (no coverage row: never imported by a test)";
+        console.log(`  ${status}  ${String(pct).padStart(3)}%  ${path}  (${lines.size - untested}/${lines.size} changed lines)${note}`);
+        if (pct < THRESHOLD) failedPaths++;
 }
 
 if (failedPaths > 0) {
-	console.log(
-		`\n${failedPaths} file(s) below ${THRESHOLD}% changed-line coverage. Add a test, or record a justified exemption in ${exemptFile}.`,
-	);
-	process.exit(1);
+        console.log(
+                `\n${failedPaths} file(s) below ${THRESHOLD}% changed-line coverage. Add a test, or record a justified exemption in ${exemptFile}.`,
+        );
+        process.exit(1);
 }
 console.log("coverage gate passed");

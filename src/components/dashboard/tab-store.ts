@@ -17,6 +17,7 @@ export const DASHBOARD_TABS = [
   "sandboxes",
   "gateway",
   "router",
+  "automations",
 ] as const;
 
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];

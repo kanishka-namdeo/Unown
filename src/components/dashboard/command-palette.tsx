@@ -9,6 +9,7 @@ import { create } from "zustand";
 import {
   ArrowRight,
   BookOpen,
+  CalendarClock,
   Code2,
   FlaskConical,
   Layers,
@@ -47,6 +48,7 @@ const TAB_TARGETS = [
   { value: "sandboxes", label: "Sandboxes", icon: Box, hint: "isolated run workspaces" },
   { value: "gateway", label: "Gateway", icon: Network, hint: "LLM bridge request log" },
   { value: "router", label: "Router", icon: RouterIcon, hint: "background jobs" },
+  { value: "automations", label: "Automations", icon: CalendarClock, hint: "scheduled agent runs" },
 ];
 
 export function CommandPalette() {

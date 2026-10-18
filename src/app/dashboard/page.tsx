@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import {
   Box,
+  CalendarClock,
   FlaskConical,
   Layers,
   LayoutDashboard,
@@ -27,6 +28,7 @@ import { ConsoleTab } from "@/components/dashboard/console-tab";
 import { SandboxesTab } from "@/components/dashboard/sandboxes-tab";
 import { GatewayTab } from "@/components/dashboard/gateway-tab";
 import { RouterTab } from "@/components/dashboard/router-tab";
+import { AutomationsTab } from "@/components/dashboard/automations-tab";
 
 const tabs = [
   { value: "overview", label: "Overview", icon: LayoutDashboard, content: <OverviewTab /> },
@@ -38,6 +40,7 @@ const tabs = [
   { value: "sandboxes", label: "Sandboxes", icon: Box, content: <SandboxesTab /> },
   { value: "gateway", label: "Gateway", icon: Network, content: <GatewayTab /> },
   { value: "router", label: "Router", icon: RouterIcon, content: <RouterTab /> },
+  { value: "automations", label: "Automations", icon: CalendarClock, content: <AutomationsTab /> },
 ];
 
 function TabFade({ children }: { children: React.ReactNode }) {

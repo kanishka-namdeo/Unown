@@ -18,6 +18,7 @@ const TABS = [
   { name: "Sandboxes", ready: "task-e2e-4/baseline" },
   { name: "Gateway", ready: "qwen3.7-plus" },
   { name: "Router", ready: "Pick a task, run it in a fresh sandbox, mine failures." },
+  { name: "Automations", ready: "nightly repo health check" },
 ] as const;
 
 /**

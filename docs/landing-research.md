@@ -1123,3 +1123,15 @@ sentence" case) so the numbers cannot silently rot; unlike the zero-LLM
 paragraph (campaign receipts, unpinned by design), these three ARE pinned
 because they are stated as present-tense capabilities, not campaign
 records.
+## 2026-10-19 — showcase copy: ten tabs (the Automations entry)
+
+The engine's automations surface (the zcode-port scheduled actor, merged in
+the parallel session) gained its dashboard tab in the same window, and the
+showcase's tab list is the canonical enumeration — so it grew the tenth entry
+("Automations — scheduled recurring agent runs: cron rhythms or one-shots,
+read-only by default, full run history") and the lead count moved nine → ten.
+The `Router` entry's "seven background jobs" stays seven (engine job count,
+not tab count — unchanged). Sourcing: the tab exists and is pinned by
+`__tests__/automations-tab.test.tsx` (12 tests) and the e2e specs scan it;
+no screenshots claim to show it (same posture as the previous two additions —
+the visible BrowserFrames still depict Overview/Learning Lab/Hooks).

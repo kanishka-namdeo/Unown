@@ -3,7 +3,7 @@
 import { ArrowRight } from "lucide-react";
 import { BrowserFrame, FadeUp, SectionHead } from "./shell";
 
-/** The nine tabs, and what each one is actually for. */
+/** The ten tabs, and what each one is actually for. */
 const TABS: [string, string][] = [
   ["Overview", "pass rate, shipped improvements, dream count, memory version, hook decisions, token usage"],
   ["Learning Lab", "every harness cycle: baseline → diagnosis → patch → candidate → ship or reject, with transcripts"],
@@ -14,6 +14,7 @@ const TABS: [string, string][] = [
   ["Sandboxes", "the isolated workspaces where verified runs execute — files, age, GC cadence"],
   ["Gateway", "every model call through the llm-bridge: tokens, latency, finish reasons, per-model breakdown"],
   ["Router", "the seven background jobs: enable, disable, trigger manually, next fire time"],
+  ["Automations", "scheduled recurring agent runs — cron rhythms or one-shots, read-only by default, full run history"],
 ];
 
 export function ShowcaseSection() {
@@ -26,7 +27,7 @@ export function ShowcaseSection() {
             lead={
               <>
                 Everything the engine does is streamed over SSE into a dashboard: every run,
-                every dream, every memory version, every guardrail decision. Nine tabs, each
+                every dream, every memory version, every guardrail decision. Ten tabs, each
                 of which drives something real.
               </>
             }
