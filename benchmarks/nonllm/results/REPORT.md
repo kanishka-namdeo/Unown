@@ -204,21 +204,21 @@ Raw receipts: `results/2026-10-18-18-14-linux-x64/` (gitignored, per
 convention). The registry verdicts stand; the bench is reproducible
 end-to-end from a clean clone.
 
-## Campaign #2 — research-driven extensions (H16/H17/H18)
+## Campaign #2 — research-driven extensions (H23/H24/H25)
 
 **Date:** 2026-10-18 (same host + bridge) · **Driver:** the online research
 digest (`research/nonllm-sota-digest.md` — 12 searches + 9 page fetches;
 raw artifacts in `download/research/raw/`) — ranked shortlist: an Ettin
 reranker A/B, BM25+cosine RRF fusion, and a tiny injection-classifier
-shadow lane. Registered as H16/H17/H18 before any run; verdicts after.
+shadow lane. Registered as H23/H24/H25 before any run; verdicts after.
 
 | Hyp | Claim | Verdict | Key numbers |
 |---|---|---|---|
-| H16 | Ettin-17m reranker beats ms-marco on the retrieval seam at comparable CPU cost | **VERIFIED** | Spearman vs remote: **ettin 0.646** vs ms-marco 0.555 (same run, same pool); top-5 overlap 1.00 both; 45 vs 34 ms/pair (fp32, chunk-8); inter-lane ρ 0.826; sanity pair 8.05 vs −3.25 logits |
-| H17 | BM25 + cosine RRF fusion ≥ cosine-only vs remote helpfulness | **VERIFIED** | fused top-5 1.00 (== cosine); BM25-only **ρ 0.716 — the best single-lane number of the campaign** (cosine 0.609); 1.0 ms for the whole 20-doc pool; complementary top-5 disagreement (RRF precondition holds) |
-| H18 | Tiny ONNX injection classifier adds signal as a shadow guard | **REFUTED (for integration)** | poison ladder 5/10 @t=0.5, 0 benign FPs (caught base64 0.999 + code-fence 0.975 — contra the literature); MPBench recall 0.14 / F1 0.241 (≪ 0.60); **zero marginal catches over the production guard (10/10, 0/50 planted)**; +224 MB RSS, 114 ms/case — real signal, no value-add, not wired |
+| H23 | Ettin-17m reranker beats ms-marco on the retrieval seam at comparable CPU cost | **VERIFIED** | Spearman vs remote: **ettin 0.646** vs ms-marco 0.555 (same run, same pool); top-5 overlap 1.00 both; 45 vs 34 ms/pair (fp32, chunk-8); inter-lane ρ 0.826; sanity pair 8.05 vs −3.25 logits |
+| H24 | BM25 + cosine RRF fusion ≥ cosine-only vs remote helpfulness | **VERIFIED** | fused top-5 1.00 (== cosine); BM25-only **ρ 0.716 — the best single-lane number of the campaign** (cosine 0.609); 1.0 ms for the whole 20-doc pool; complementary top-5 disagreement (RRF precondition holds) |
+| H25 | Tiny ONNX injection classifier adds signal as a shadow guard | **REFUTED (for integration)** | poison ladder 5/10 @t=0.5, 0 benign FPs (caught base64 0.999 + code-fence 0.975 — contra the literature); MPBench recall 0.14 / F1 0.241 (≪ 0.60); **zero marginal catches over the production guard (10/10, 0/50 planted)**; +224 MB RSS, 114 ms/case — real signal, no value-add, not wired |
 
-### N6 — the Ettin lane (H16): three traps found, worked, documented
+### N6 — the Ettin lane (H23): three traps found, worked, documented
 
 The Ettin family is the 2026 sentence-transformers-maintainer reranker line,
 Apache-2.0, and the 17m card benchmarks directly against our incumbent. Three
@@ -251,7 +251,7 @@ Spearman over the incumbent for 1.3× latency and +194 MB RSS**. Production
 note recorded in the verdict: swap the CE confirm lane when a q8 Ettin
 artifact ships; the q8 ms-marco incumbent stays the default today.
 
-### N7 — the fusion lane (H17): BM25 alone is a finding
+### N7 — the fusion lane (H24): BM25 alone is a finding
 
 With Lucene-default BM25 (k1=1.5, b=0.75, naive lowercase-alphanumeric
 tokenizer, no stemming, no stopwords) the surprise is the single-lane row:
@@ -264,7 +264,7 @@ analysis shows genuinely complementary top-5s — the RRF precondition the
 research digest warned about. Pure TS, zero deps: the cheapest verified
 lane in the registry.
 
-### N8 — the classifier shadow (H18): honest negative
+### N8 — the classifier shadow (H25): honest negative
 
 The ungated tiny-ONNX classifier (testsavantai; the better-known protectai
 models are HF-gated:auto — rejected for keyless first-run) catches 5/10
@@ -288,3 +288,10 @@ download from the HF hub) is wired into the CI probe workflow
 tightened after the first 3-OS receipt lands, per the repo's calibration
 discipline. Local linux-x64: ettin 12 ms/pair, classifier 4 ms/case, both
 discriminating, RSS peak 400 MB combined.
+
+> **Renumber note (2026-10-18):** campaign #2 was originally registered as
+> H16–H18 (commit 3db9083). A parallel session landed the complementary
+> testbench (48f5378) claiming H16–H22 for campaign 3 in the same window,
+> so campaign #2 is renumbered **H23/H24/H25** to keep the program-level
+> hypothesis sequence unambiguous: local-llm H1–H11, nonllm H9–H15 +
+> H23–H25, complementary H16–H22. Content and verdicts unchanged.

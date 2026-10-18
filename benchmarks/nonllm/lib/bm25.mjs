@@ -1,5 +1,5 @@
 /**
- * bm25.mjs — dependency-free BM25 + Reciprocal-Rank-Fusion (H17).
+ * bm25.mjs — dependency-free BM25 + Reciprocal-Rank-Fusion (H24).
  *
  * The research program's consistent finding (nonllm-sota-digest.md §1): every
  * production agent-memory system (Mem0, Zep/Graphiti, Letta, LangMem, Cognee)

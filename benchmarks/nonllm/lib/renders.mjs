@@ -118,7 +118,7 @@ export function renderN5(r) {
 
 export function renderN6(r) {
   const s = r.summary;
-  console.log("\n== N6 Ettin-17m cross-encoder A/B (H16) ==");
+  console.log("\n== N6 Ettin-17m cross-encoder A/B (H23) ==");
   const rows = [];
   const lane = (name, v) => rows.push({
     lane: name,
@@ -139,7 +139,7 @@ export function renderN6(r) {
 
 export function renderN7(r) {
   const s = r.summary;
-  console.log("\n== N7 BM25 + cosine RRF fusion (H17) ==");
+  console.log("\n== N7 BM25 + cosine RRF fusion (H24) ==");
   const lanes = s.lanes ?? {};
   console.log(mdTable([
     {
@@ -172,7 +172,7 @@ export function renderN7(r) {
 
 export function renderN8(r) {
   const s = r.summary;
-  console.log("\n== N8 injection-classifier shadow (H18) ==");
+  console.log("\n== N8 injection-classifier shadow (H25) ==");
   console.log(`role: ${s.role ?? "shadow triage lane"}`);
   if (s.load && s.load.error) {
     console.log(`classifier load FAILED: ${s.load.error}`);

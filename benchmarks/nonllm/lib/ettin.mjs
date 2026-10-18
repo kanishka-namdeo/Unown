@@ -1,5 +1,5 @@
 /**
- * ettin.mjs — cross-encoder/ettin-reranker-17m-v1 lane (H16).
+ * ettin.mjs — cross-encoder/ettin-reranker-17m-v1 lane (H23).
  *
  * WHY THIS FILE EXISTS (the artifact gap, found 2026-10-18): the official
  * in-repo ONNX export of the Ettin reranker family is the BASE ModernBERT

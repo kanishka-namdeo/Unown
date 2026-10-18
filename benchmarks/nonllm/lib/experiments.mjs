@@ -808,7 +808,7 @@ export async function n5DreamCuration({ notesCount = 12, judge = true, topK = 2,
 }
 
 // =============================================================== campaign #2
-// H16/H17/H18: the 2026-10-18 research-driven extensions (nonllm-sota-digest).
+// H23/H24/H25: the 2026-10-18 research-driven extensions (nonllm-sota-digest).
 // N6: Ettin-17m cross-encoder A/B vs ms-marco on the N3 protocol.
 // N7: BM25 + cosine RRF fusion on the same pool.
 // N8: local injection-classifier shadow over the poison + MPBench corpora.
@@ -858,14 +858,14 @@ async function remoteHelpfulness(bridgeUrl, remoteModel, docs, task) {
 }
 
 /**
- * N6 (H16): Ettin-reranker-17m-v1 A/B against the ms-marco lane on the N3
+ * N6 (H23): Ettin-reranker-17m-v1 A/B against the ms-marco lane on the N3
  * retrieval protocol. The Ettin lane reconstructs the classification head in
  * pure JS (see ettin.mjs — the official ONNX artifact drops it).
  */
 export async function n6EttinRerank({ candidates = 20, noRemote = false } = {}) {
   const { bridgeUrl, remoteModel } = cfg();
   const { docs, query, task, taskObj } = retrievalPool({ candidates });
-  const summary = { experiment: "N6", hypothesis: "H16", task, candidates: docs.length };
+  const summary = { experiment: "N6", hypothesis: "H23", task, candidates: docs.length };
 
   // remote baseline (fresh call, the N3 prompt verbatim)
   const remote = noRemote ? { ok: false, scores: docs.map(() => null) } : await remoteHelpfulness(bridgeUrl, remoteModel, docs, taskObj);
@@ -915,11 +915,11 @@ export async function n6EttinRerank({ candidates = 20, noRemote = false } = {}) 
   } else {
     summary.ettinVsMsmarco = null;
   }
-  return { experiment: "N6", hypothesis: "H16", summary };
+  return { experiment: "N6", hypothesis: "H23", summary };
 }
 
 /**
- * N7 (H17): BM25 + bge-cosine hybrid retrieval fused with RRF (k=60) —
+ * N7 (H24): BM25 + bge-cosine hybrid retrieval fused with RRF (k=60) —
  * the non-LLM spine every production memory system ships. Same pool/query
  * as N3/N6; lanes: cosine, bm25, RRF(cos+bm25). Plus the lexical-catch
  * analysis (what BM25 sees that cosine misses, and vice versa).
@@ -927,7 +927,7 @@ export async function n6EttinRerank({ candidates = 20, noRemote = false } = {}) 
 export async function n7Fusion({ candidates = 20, noRemote = false } = {}) {
   const { bridgeUrl, remoteModel } = cfg();
   const { docs, query, task, taskObj } = retrievalPool({ candidates });
-  const summary = { experiment: "N7", hypothesis: "H17", task, candidates: docs.length, rrfK: 60 };
+  const summary = { experiment: "N7", hypothesis: "H24", task, candidates: docs.length, rrfK: 60 };
 
   const remote = noRemote ? { ok: false, scores: docs.map(() => null) } : await remoteHelpfulness(bridgeUrl, remoteModel, docs, taskObj);
   const remoteScores = remote.scores;
@@ -989,7 +989,7 @@ export async function n7Fusion({ candidates = 20, noRemote = false } = {}) {
     bm25OnlyTop5: [...bmTop].filter((i) => !cosTop.has(i)).map((i) => docs[i]?.id ?? i),
     queryTokens: tokenize(query).length,
   };
-  return { experiment: "N7", hypothesis: "H17", summary };
+  return { experiment: "N7", hypothesis: "H24", summary };
 }
 
 function jaccard5(a, b) {
@@ -1006,7 +1006,7 @@ function vCos(a, b) {
 }
 
 /**
- * N8 (H18): the local injection-classifier SHADOW over the two adversarial
+ * N8 (H25): the local injection-classifier SHADOW over the two adversarial
  * corpora the memory system already runs (poison ladder + MPBench-adapted).
  * Keyless, no remote calls: ground truth is the corpora's own labels. The
  * production guard's published numbers (10/10 flags, 0 planted, 0 FPs) are the
@@ -1014,14 +1014,14 @@ function vCos(a, b) {
  * never a sole gate.
  */
 export async function n8GuardShadow({ thresholds = [0.5, 0.7, 0.9] } = {}) {
-  const summary = { experiment: "N8", hypothesis: "H18", role: "shadow triage lane — never a sole gate" };
+  const summary = { experiment: "N8", hypothesis: "H25", role: "shadow triage lane — never a sole gate" };
 
   const poison = JSON.parse(readFileSync(path.join(HERE, "..", "..", "memory-eval", "poison-corpus", "corpus.json"), "utf8")).ladder;
   const mpb = JSON.parse(readFileSync(path.join(HERE, "..", "..", "memory-eval", "mpbench", "corpus.json"), "utf8")).cases;
 
   const gLoad = await loadGuard();
   summary.load = { ok: !gLoad.error, loadMs: gLoad.loadMs, rssDeltaMB: gLoad.rssDeltaMB, error: gLoad.error ?? null };
-  if (gLoad.error) return { experiment: "N8", hypothesis: "H18", summary };
+  if (gLoad.error) return { experiment: "N8", hypothesis: "H25", summary };
 
   // -- poison ladder: 10 adversarial variants + benign control
   const poisonTexts = poison.map((v) => v.note);
@@ -1074,7 +1074,7 @@ export async function n8GuardShadow({ thresholds = [0.5, 0.7, 0.9] } = {}) {
     benignMeanP: round(mean(mpbRows.filter((r) => !r.adversarial).map((r) => r.p ?? 0)), 4),
     adversarialMeanP: round(mean(mpbRows.filter((r) => r.adversarial).map((r) => r.p ?? 0)), 4),
   };
-  return { experiment: "N8", hypothesis: "H18", summary };
+  return { experiment: "N8", hypothesis: "H25", summary };
 }
 
 // imports for campaign #2 lanes
@@ -1084,7 +1084,7 @@ import { loadGuard, guardClassify, GUARD } from "./guardcls.mjs";
 
 /**
  * N0b — campaign-#2 lane runtime probe (keyless, the CI cross-platform gate
- * for H16/H18 lanes): load the Ettin base+JS-head lane and the injection
+ * for H23/H25 lanes): load the Ettin base+JS-head lane and the injection
  * classifier, score canonical sanity pairs, measure latency + RSS.
  */
 export async function n0bProbe() {

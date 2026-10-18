@@ -38,16 +38,16 @@ hand-rolled (~100 LOC); RWKV/SSM generative lanes stay in local-llm's scope.
 ## Layout
 
 ```
-hypotheses.json      the registry: H9–H18, thresholds, guards, verdicts
+hypotheses.json      the registry: H9–H25, thresholds, guards, verdicts
 runner.mjs           CLI driver (works under Bun AND Node >= 18)
 export-fixtures.mjs  read-only fixture refresh from the live engine SQLite
 lib/
   onnx.mjs           the ONLY native-dep file: model registry, loader (timing
                      + RSS), embed, cross-encoder rerank
   ettin.mjs          Ettin-17m lane: base-encoder ONNX + safetensors parser
-                     + the JS-reconstructed classification head (H16)
-  bm25.mjs           BM25 + RRF fusion (H17) — pure TS, zero deps
-  guardcls.mjs       injection-classifier shadow lane (H18) — never a sole gate
+                     + the JS-reconstructed classification head (H23)
+  bm25.mjs           BM25 + RRF fusion (H24) — pure TS, zero deps
+  guardcls.mjs       injection-classifier shadow lane (H25) — never a sole gate
   minhash.mjs        MinHash signatures + LSH banding + seeded perturbations
   lexrank.mjs        LexRank + compressNote (dream-input curation)
   activation.mjs     recency/relevance/frequency/structural scoring
@@ -76,9 +76,9 @@ package.json         ISOLATED deps — the repo stays native-addon-free; this
 | N3 | H12 reranking | cross-encoder vs remote 0–10 consolidation scores on the dream queue | Spearman ρ, top-5 overlap, ms/pair, CE-vs-biencoder |
 | N4 | H13 activation | Park/Hou score vs remote importance ratings; component ablation | Spearman per component, top-5 overlap, zero-LLM cost |
 | N5 | H14 curation | AutoDream replay: full vs LexRank-compressed notes (both on the remote model); blind judge | prompt-token reduction, judge win/tie, structural checks |
-| N6 | H16 Ettin A/B | Ettin-17m (JS head) vs ms-marco on the N3 protocol, same pool, fresh remote baseline | Spearman, top-5, inter-lane ρ, ms/pair |
-| N7 | H17 fusion | BM25 + bge-cosine + RRF k=60 on the same pool; disagreement analysis | Spearman, top-5 overlap per lane, BM25 total ms |
-| N8 | H18 guard shadow | injection classifier over the poison ladder + MPBench corpora (keyless, no remote) | catch rate per threshold, F1 sweep, benign FP, ms/case |
+| N6 | H23 Ettin A/B | Ettin-17m (JS head) vs ms-marco on the N3 protocol, same pool, fresh remote baseline | Spearman, top-5, inter-lane ρ, ms/pair |
+| N7 | H24 fusion | BM25 + bge-cosine + RRF k=60 on the same pool; disagreement analysis | Spearman, top-5 overlap per lane, BM25 total ms |
+| N8 | H25 guard shadow | injection classifier over the poison ladder + MPBench corpora (keyless, no remote) | catch rate per threshold, F1 sweep, benign FP, ms/case |
 
 ## Running it
 
@@ -138,8 +138,8 @@ Verdicts live in `hypotheses.json` (status + verdict + evidence) and are
 curated into `results/REPORT.md` after each campaign. **No change to Unown
 itself is gated on anything less than H9 (runtime gate) verifying on all
 three CI OSes plus local Bun/Node**, and H15 integration only proceeds on
-H10–H14 evidence. Campaign #2 (H16/H17/H18, research-driven): H16 and H17
+H10–H14 evidence. Campaign #2 (H23/H24/H25, research-driven): H23 and H24
 VERIFIED (Ettin-17m +0.091 Spearman over the incumbent; BM25-only ρ 0.716 —
-the best single-lane number — with RRF fusion holding top-5 at 1.00), H18
+the best single-lane number — with RRF fusion holding top-5 at 1.00), H25
 REFUTED for integration (real signal, zero marginal catches over the
 production guard, +224MB RSS) — full receipts in REPORT.md.

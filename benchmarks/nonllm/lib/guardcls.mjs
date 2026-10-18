@@ -1,5 +1,5 @@
 /**
- * guardcls.mjs — local prompt-injection classifier lane (H18).
+ * guardcls.mjs — local prompt-injection classifier lane (H25).
  *
  * Model: testsavantai/prompt-injection-defender-small-v0-onnx
  * (bert-small, 2-label SAFE/INJECTION, Apache-2.0 per the model card family,

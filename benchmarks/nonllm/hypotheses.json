@@ -23,7 +23,8 @@
         "ettin": "cross-encoder/ettin-reranker-17m-v1 fp32 (17M, Apache-2.0) \u2014 base encoder via transformers.js + classification head reconstructed in pure JS (the official ONNX drops the head)",
         "bm25rrf": "dependency-free BM25 (k1=1.5 b=0.75) + Reciprocal Rank Fusion (k=60)",
         "guardcls": "testsavantai/prompt-injection-defender-small-v0-onnx (bert-small, SAFE/INJECTION) \u2014 shadow triage lane"
-      }
+      },
+      "renumber": "originally registered as H16-H18 in commit 3db9083; renumbered to H23-H25 in the follow-up because the parallel complementary-bench session (48f5378) claimed H16-H22 for campaign 3 in the same window \u2014 the program-level sequence is now local-llm H1-H11, nonllm H9-H15 + H23-H25, complementary H16-H22"
     }
   },
   "hypotheses": [
@@ -242,7 +243,7 @@
       ]
     },
     {
-      "id": "H16",
+      "id": "H23",
       "title": "The Ettin-17m reranker (2026 family) beats the ms-marco incumbent on Unown's retrieval seam at comparable CPU cost",
       "statement": "cross-encoder/ettin-reranker-17m-v1 (Apache-2.0, ModernBERT, from the sentence-transformers maintainer, 2026) scores the N3 retrieval pool with Spearman >= the ms-marco-MiniLM-L-6-v2 lane's (0.574) and top-5 overlap vs remote == 1.00, at <= 3x the ms-marco per-pair latency. BLOCKER FOUND + WORKED AROUND: the official ONNX artifact exports the BASE encoder only (output last_hidden_state; the classification head lives in the sentence-transformers module chain 1_Pooling[cls] -> 2_Dense[256->256 GELU] -> 3_LayerNorm -> 4_Dense[256->1]) \u2014 the bench reconstructs the head in pure JS from the repo's safetensors (~263KB).",
       "subtask": "dream-input / memory-injection retrieval reranking (the N3 lane)",
@@ -270,7 +271,7 @@
       "verdict": "VERIFIED \u2014 cross-encoder/ettin-reranker-17m-v1 (fp32 via the base-encoder ONNX + the classification head reconstructed in pure JS from the repo safetensors) OUTSCORES the ms-marco incumbent on the N3 protocol, same run, same pool, same remote baseline: Spearman vs remote 0.646 vs ms-marco 0.555; top-5 overlap 1.00 (both); 45ms/pair vs 34 (chunk-8, fp32 \u2014 no q8 artifact published); inter-lane agreement 0.826; remote call 5.8s. Sanity pairs discriminate hard (relevant 8.05 vs irrelevant -3.25 logits). THREE engineering traps found+fixed en route (all documented in ettin.mjs): (1) the official ONNX artifact exports the BASE encoder only \u2014 session outputs are [last_hidden_state]; AutoModelForSequenceClassification silently returns logits===undefined and mislabels the hidden states as attentions; (2) safetensors data_offsets are BYTE offsets, not element offsets \u2014 the s*4 reading parsed byte-0 tensors correctly by luck and read pool garbage for the rest (NaN logits); (3) Node pooled-Buffer aliasing \u2014 small files share the 8KB pool, so Float32Array views must copy. Production note: a verified head-reconstruction lane makes the Ettin family USABLE from transformers.js today, but at fp32 it costs 1.3x the q8 ms-marco latency and +194MB RSS for +0.09 Spearman \u2014 the incumbent stays the default until a q8 Ettin artifact ships (integration order: swap the CE confirm lane, not the primary)."
     },
     {
-      "id": "H17",
+      "id": "H24",
       "title": "BM25 + bge-cosine RRF fusion (k=60) matches or beats cosine-only retrieval vs the remote's helpfulness ranking",
       "statement": "The non-LLM spine every production memory system ships (Mem0, Zep/Graphiti, Letta, LangMem, Cognee \u2014 see research/nonllm-sota-digest) pairs embeddings with lexical search. Pure-TS BM25 (Lucene defaults k1=1.5 b=0.75) + RRF fusion (k=60, rank-only \u2014 immune to BM25-vs-cosine scale mismatch) over the N3 pool: fused top-5 overlap vs remote >= cosine-only top-5 overlap, at total added cost < 1ms (BM25 index+query for 20 docs).",
       "subtask": "memory-injection retrieval + dream-input candidate ranking (lexical recall insurance)",
@@ -296,7 +297,7 @@
       "verdict": "VERIFIED \u2014 BM25 (Lucene defaults, naive tokenizer) + bge-cosine fused with RRF k=60 over the N3 pool: fused top-5 overlap vs remote 1.00 (== cosine-only 1.00, threshold met), BM25 total cost 1.0ms for the 20-doc pool (\u00b5s/doc \u2014 threshold <= 5ms met). THE FINDING: BM25 ALONE hit Spearman 0.716 vs remote \u2014 the best single-lane number of the whole campaign (cosine 0.609, ms-marco CE 0.555, ettin 0.646) \u2014 because short coding-task prompts and note text share exact tokens; the naive tokenizer with no stemming/stopwords is competitive on THIS domain. BM25-only top-5 was 0.80 (misses the paraphrase tier) \u2014 fusion carries it back to 1.00. Disagreement analysis: cosine-only-top5 [note:f0e5a0af] vs bm25-only-top5 [tier:project:scratch-proj] \u2014 genuinely complementary lists, the RRF precondition. Pure TS, zero deps, zero model: the cheapest verified lane in the registry. Production shape: PI_MEMORY_FUSE=rrf on the injection-rank seam (cosine stays for the semantic tier)."
     },
     {
-      "id": "H18",
+      "id": "H25",
       "title": "A tiny local ONNX injection classifier adds real signal as a SHADOW guard lane (never a sole gate)",
       "statement": "testsavantai/prompt-injection-defender-small-v0-onnx (bert-small, 2-label SAFE/INJECTION, ungated, in-repo ONNX at root) run over the poison ladder (10 variants + benign control) and the MPBench-adapted corpus (50 adversarial + 20 benign): catches a material fraction of adversarial notes at a threshold with benign FP <= 1/20, at <= 20ms/case batched. ROLE: a shadow triage signal beside the deterministic 3-layer guard (the research digest's trap: encoder classifiers miss obfuscated/base64/homoglyph payloads \u2014 poison v03/v07 \u2014 so it can never be the sole gate).",
       "subtask": "dream-input / memory guard lane (shadow classifier beside scanUntrustedText)",
