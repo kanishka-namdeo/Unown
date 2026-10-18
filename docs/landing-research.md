@@ -1089,3 +1089,37 @@ node moved in lockstep (suite now covers all nine). No numbers were added; the
 existing screenshots (`public/landing/dash-*.png`) still show the tabs they
 were captured from, so the asset pipeline was not re-run — the two new tabs
 have no screenshots yet and none of the visible frames claim they do.
+
+## 2026-10-19 — models: the third research bench sentence (complementary mechanisms)
+
+The models section is the canonical home of the bridge/local-lane/zero-LLM
+story, so the third research campaign's headline lands in the same block —
+one sentence triple, each clause a receipt from
+`benchmarks/complementary/results/REPORT.md`:
+
+- "the local lane's shared-prefix calls prefill 54% faster (llama.cpp KV
+  reuse)" — H18: 54.5% prefill-time cut on same-system follow-ups (37% of
+  the prompt processed vs 95% for the broken-prefix control), rounded DOWN
+  to 54% on the page; the mechanism is llama-server's default, so the claim
+  is "measured", not "added".
+- "a small local model can cut the remote lane's input tokens 47% on mining
+  jobs before the call is paid for" — H19: 47.2% median remote input-token
+  cut on the same remote model (mining 4719→2337), blind judge 2T+1L-0W
+  with the loss correctly attributed to the dream seam; the page keeps the
+  conservative mining-only framing.
+- "a sub-1B local model answers image questions at $0 where the remote lane
+  bills vision tokens" — H22: the acceptance lane (boots, answers the
+  vlm-smoke probe locally in 1470ms, RSS 1176MB); deliberately no quality
+  claim — a screenshot corpus campaign is the gate for that.
+
+What the sentence deliberately does NOT say: the four refutations
+(n-gram/draft speculation, near-dup semantic caching, query rewriting) are
+not landing copy — refutations live in the registry and the bench REPORT
+where their receipts are; the page only carries what a reader choosing a
+deployment topology needs (the local lane is fast on repeated prefixes, the
+remote bill is compressible, vision can be $0). The three clauses are
+test-pinned in `landing-copy.test.tsx` (the new "complementary-bench
+sentence" case) so the numbers cannot silently rot; unlike the zero-LLM
+paragraph (campaign receipts, unpinned by design), these three ARE pinned
+because they are stated as present-tense capabilities, not campaign
+records.

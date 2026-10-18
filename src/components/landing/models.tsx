@@ -96,7 +96,14 @@ export function ModelsBand() {
                 reports what they would change without touching the prompt,
                 and the embedding model as an install-on-demand side package,
                 so the LLM calls that remain are only the ones that genuinely
-                generate. Or skip
+                generate. The third research bench,{" "}
+                <code className="font-mono text-dim">benchmarks/complementary</code>,
+                measured what a local engine can do around this endpoint:
+                the local lane's shared-prefix calls prefill 54% faster
+                (llama.cpp KV reuse), a small local model can cut the remote
+                lane's input tokens 47% on mining jobs before the call is
+                paid for, and a sub-1B local model answers image questions
+                at $0 where the remote lane bills vision tokens. Or skip
                 the bridge entirely with{" "}
                 <code className="font-mono text-dim">unown setup --provider</code>. Marks
                 are{" "}

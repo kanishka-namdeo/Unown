@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 82;
+export const CHANGELOG_TOTAL_ENTRIES = 83;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 42,
+  "Added": 43,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 41,
+    "total": 42,
     "counts": {
-      "Added": 14,
+      "Added": 15,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "complementary testbench — campaign 3 (H16–H22): non-traditional local mechanisms around the configured…",
+            "behavior": false
+          },
           {
             "title": "dashboard: engine-parity round — every documented surface now has a view",
             "behavior": false

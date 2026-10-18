@@ -74,6 +74,18 @@ describe("landing models", () => {
     // The split the page promises: background learning goes local, sessions do not.
     expect(text).toContain("while sessions stay on the remote one");
   });
+
+  test("the complementary-bench sentence carries the three measured mechanisms", () => {
+    const { container } = render(<ModelsBand />);
+    const text = container.textContent ?? "";
+    // All three headline numbers are receipts from benchmarks/complementary/results/REPORT.md
+    // (H18 KV reuse 54.5% prefill cut, H19 remote-input compression 47.2% median,
+    // H22 local vision at $0) — pinned so the paragraph cannot silently rot.
+    expect(text).toContain("benchmarks/complementary");
+    expect(text).toContain("54% faster");
+    expect(text).toContain("47%");
+    expect(text).toContain("vision tokens");
+  });
 });
 
 describe("landing faq", () => {

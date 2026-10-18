@@ -34,14 +34,15 @@ research):
 | 7 | LiveCodeBench v6 subset | Contamination-aware model-tier headline: post-cutoff problems (2025-01→04 window) | `livecodebench/` |
 | 8 | Long-horizon refactor | One hard multi-file contract change under a time cap, scored on the file diff — surfaces context-management cost | `longhorizon/` |
 
-Beside the accuracy tracks sit the two hypothesis testbenches of the research
+Beside the accuracy tracks sit the three hypothesis testbenches of the research
 program — they don't score the agent, they falsify (or verify) candidate
 mechanics against real engine fixtures before anything ships to production:
 
 | Testbench | Question | Registry | Where |
 |-----------|----------|----------|-------|
 | local-model research | Can fully-local, performance-optimized LLMs (llama.cpp lane) run the learning layer's subtasks at quality parity, across the broad range of systems Unown supports? | H1–H11 (H1–H4 verified, H5 refuted, H8 shipped as the bridge local lane, H10 the mint cascade) | `local-llm/` |
-| non-LLM research | How much of the learning layer needs *any* neural generation at all — ONNX encoders + symbolic lanes for retrieval/dedup/ranking/curation? | H9–H15 (H9–H13 verified, H14 partially — hybrid curation wins, H15 design-validated) | `nonllm/` |
+| non-LLM research | How much of the learning layer needs *any* neural generation at all — ONNX encoders + symbolic lanes for retrieval/dedup/ranking/curation? | H9–H15 + campaign 2's H23–H25 (H15 verified and shipped as the engine's opt-in dream lanes; campaign 2: Ettin-17m reranker + BM25/RRF fusion verified, injection-classifier shadow refuted) | `nonllm/` |
+| complementary research | What can a local engine do AROUND the configured remote endpoint — speed the local lane, cut what the remote is paid, harden repeated calls, fill the memory-retrieval gap? | H16–H22 (H18 prefix-KV reuse verified 54.5% prefill cut, H19 remote-payload compression verified −47.2% input tokens family-specific, H20 cache split — L1 safe / L2 un-thresholdable, H21 query-rewrite refuted — BM25 is the retrieval answer at 100% recall@5, H22 vision lane verified at $0 / model upgrade refuted, H16+H17 speculation refuted with the small-box ceiling documented) | `complementary/` |
 
 ## Track 1 — pi-repo test suite
 
