@@ -1,5 +1,5 @@
 import { emit } from "./bus.ts";
-import { chatJson, modelFor } from "./llm.ts";
+import { chatJson, modelFor, type ChatMsg } from "./llm.ts";
 import { type RunResult, runAgent } from "./runner.ts";
 import { createSandbox, seedFiles, verifyInSandbox } from "./sandbox.ts";
 import { store } from "./store.ts";
@@ -84,6 +84,61 @@ Task contract:
 
 Return STRICT JSON only:
 {"id":"kebab-case-slug","name":"...","description":"...","category":"bugfix","difficulty":3,"prompt":"...","files":{"src.js":"...","src.test.mjs":"..."},"verifyTestFile":"src.test.mjs"}`;
+
+/**
+ * json_schema for the mint draft — the grammar that constrains the LOCAL
+ * draft call of the cascade (llama.cpp enforces json_schema structurally,
+ * maxLength included — E3; the remote upstream does NOT enforce schema
+ * keywords — E7/H9, which is why the repair call sends no schema).
+ * Copied verbatim from the testbench's MINT_SCHEMA
+ * (benchmarks/local-llm/lib/experiments.mjs, the E4/E8 schema — keep the two
+ * in sync; same convention as the testbench's byte-faithful prompt copies,
+ * in reverse).
+ */
+const MINT_SCHEMA = {
+	type: "object",
+	properties: {
+		id: { type: "string" },
+		name: { type: "string" },
+		description: { type: "string" },
+		category: { type: "string", enum: ["bugfix", "implementation", "algorithm", "refactor"] },
+		difficulty: { type: "integer" },
+		prompt: { type: "string" },
+		files: { type: "object", additionalProperties: { type: "string" } },
+		verifyTestFile: { type: "string" },
+	},
+	required: ["id", "name", "description", "category", "difficulty", "prompt", "files", "verifyTestFile"],
+};
+
+/**
+ * Cascade config, read at CALL time (not module-load) — the same pattern as
+ * llm.ts bridgeUrl(): tests and embedders may set the env after this module
+ * first loaded, and the engine evaluates it per mint job. Default (unset) =
+ * cascade OFF, the all-remote authoring path byte-identical to before.
+ */
+function mintCascadeEnabled(): boolean {
+	return process.env.PI_MINT_CASCADE === "1";
+}
+
+/** The local-lane model that authors the first draft (bridge `local-*` id convention). */
+function mintDraftModel(): string {
+	return process.env.PI_MINT_DRAFT_MODEL_ID || "local-qwen3-0.6b";
+}
+
+/** Record a cascade outcome on the bus + engine log (the same channels task:minted uses). */
+function cascadeOutcome(
+	outcome: "local_valid" | "repaired" | "discarded_after_repair",
+	defId: string | null,
+	draftModel: string,
+	repairModel: string | null,
+	error: string | null = null,
+): void {
+	emit("mint:cascade", { outcome, taskId: defId, draftModel, repairModel, error });
+	console.log(
+		`[mint] cascade ${outcome}${defId ? ` (${defId})` : ""} — draft ${draftModel}` +
+			`${repairModel ? `, repair ${repairModel}` : ""}${error ? `: ${error}` : ""}`,
+	);
+}
 
 function slugifyId(raw: string): string {
 	const slug =
@@ -205,15 +260,101 @@ function unminedFailedRun(): { id: string; task_id: string; transcript: string; 
 	);
 }
 
-async function authorDraft(userContent: string): Promise<{ ok: true; def: TaskDef } | { ok: false; error: string }> {
-	const draft = await chatJson<TaskDraft>(
-		[
-			{ role: "system", content: MINT_SYSTEM },
-			{ role: "user", content: userContent },
-		],
-		{ maxTokens: 3000, model: modelFor("mint") },
-	);
-	return validateDraft(draft);
+/**
+ * The draft-authoring step shared by mintTaskFromRun and mintCurriculumVariant
+ * (both callers route through here, so the opt-in cascade covers both).
+ * Exported for tests — with PI_MINT_CASCADE unset the call this makes is
+ * byte-identical to the pre-cascade authoring call.
+ */
+export async function authorDraft(
+	userContent: string,
+): Promise<{ ok: true; def: TaskDef } | { ok: false; error: string }> {
+	const messages: ChatMsg[] = [
+		{ role: "system", content: MINT_SYSTEM },
+		{ role: "user", content: userContent },
+	];
+	if (!mintCascadeEnabled()) {
+		const draft = await chatJson<TaskDraft>(messages, { maxTokens: 3000, model: modelFor("mint") });
+		return validateDraft(draft);
+	}
+	return authorDraftCascade(messages);
+}
+
+/**
+ * H10 cascade (opt-in via PI_MINT_CASCADE=1) — the VERIFIED E8 topology
+ * (benchmarks/local-llm/lib/e8.mjs, results/e8-mint-cascade/e8-cascade.json:
+ * accept 6/6 vs 5/6 pure-remote, $0.00065 vs $0.0069 remote cost per
+ * accepted, blind judge 2W/3T/0L):
+ *
+ * 	1. LOCAL DRAFT — a small local model (PI_MINT_DRAFT_MODEL_ID, bridge
+ * 		local lane) authors the draft on the UNCHANGED authoring prompt,
+ * 		grammar-constrained by MINT_SCHEMA.
+ * 	2. validateDraft() (the existing gate) — valid ⇒ proceed with NO remote
+ * 		call at all.
+ * 	3. invalid ⇒ ONE remote repair call (the existing mint model — the remote
+ * 		upstream doesn't enforce json_schema keywords, so no responseSchema):
+ * 		the authoring transcript + the invalid draft + the validator error.
+ * 		Re-validate — valid ⇒ proceed; still invalid ⇒ the existing discarded
+ * 		path with a cascade-aware reason.
+ *
+ * Everything downstream (selfcheck → inactive insert → agent validation run →
+ * activate) is UNCHANGED — the cascade only changes how the draft is authored.
+ */
+async function authorDraftCascade(
+	messages: ChatMsg[],
+): Promise<{ ok: true; def: TaskDef } | { ok: false; error: string }> {
+	// stage 1 — LOCAL DRAFT (E8 cascadeArm stage 1: grammar on, same prompt)
+	const draftModel = mintDraftModel();
+	let draft: TaskDraft | null = null;
+	let draftFailure: string | null = null;
+	try {
+		draft = await chatJson<TaskDraft>(messages, {
+			maxTokens: 3000,
+			model: draftModel,
+			responseSchema: MINT_SCHEMA,
+		});
+	} catch (err: any) {
+		// Transport/parse failure (local server down, unparseable draft): E8
+		// still escalates — the repair call re-authors from the prompt.
+		draftFailure = String(err?.message ?? err);
+	}
+	const first =
+		draft === null
+			? { ok: false as const, error: draftFailure ?? "local draft call failed" }
+			: validateDraft(draft);
+	if (first.ok) {
+		cascadeOutcome("local_valid", first.def.id, draftModel, null);
+		return first;
+	}
+
+	// stage 2 — ONE remote repair (E8 cascadeArm stage 3). The remote model
+	// gets the full authoring transcript, the invalid draft and the validator
+	// error — a far smaller job than authoring from scratch. Repair text
+	// copied verbatim from benchmarks/local-llm/lib/e8.mjs (cascadeArm stage
+	// 3 — E8 joins the testbench validator's failReasons with "; "; the
+	// production validator reports a single error string. Keep in sync.)
+	const repairModel = modelFor("mint");
+	const repairMessages: ChatMsg[] = [
+		...messages,
+		{
+			role: "assistant",
+			// E8 placeholder when the local call yielded no draft — verbatim.
+			content: draft === null ? "(the local model returned an empty draft)" : JSON.stringify(draft),
+		},
+		{
+			role: "user",
+			content: `That draft failed validation with: ${first.error}. Return the complete corrected JSON draft only.`,
+		},
+	];
+	const repaired = await chatJson<TaskDraft>(repairMessages, { maxTokens: 3000, model: repairModel });
+	const second = validateDraft(repaired);
+	if (second.ok) {
+		cascadeOutcome("repaired", second.def.id, draftModel, repairModel);
+		return second;
+	}
+	const error = `cascade repair failed: ${second.error} (local draft failed validation with: ${first.error})`;
+	cascadeOutcome("discarded_after_repair", null, draftModel, repairModel, error);
+	return { ok: false, error };
 }
 
 /** Shared pipeline: validate → selfcheck → insert (inactive) → agent validation run → activate/discard. */
