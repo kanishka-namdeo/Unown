@@ -1021,15 +1021,18 @@ describe("H2 trust gate + validation", () => {
         expect(win.command).toBe("cmd.exe");
         expect(win.args[0]).toBe("/d");
         expect(win.args[3]).toContain("pkg&evil"); // wrapped in quotes → literal
+        expect(win.verbatim).toBe(true); // wrapper lines are pre-quoted — spawn must not re-escape
         // win32: % is unescapable through cmd.exe — refused.
         expect(() => stdioSpawnSpec("npx.cmd", ["%VAR%"], {}, "C:\\proj", { platform: "win32" })).toThrow("'%'");
         // win32: .exe binaries spawn directly (no cmd wrapper).
         const exe = stdioSpawnSpec("C:\\tool\\srv.exe", ["-v"], {}, "C:\\proj", { platform: "win32" });
         expect(exe.command).toBe("C:\\tool\\srv.exe");
+        expect(exe.verbatim).toBe(false);
         // posix: passthrough untouched.
         const nix = stdioSpawnSpec("npx", ["-y", "pkg"], {}, "/tmp", { platform: "linux" });
         expect(nix.command).toBe("npx");
         expect(nix.args).toEqual(["-y", "pkg"]);
+        expect(nix.verbatim).toBe(false);
         // ${VAR} expansion through expandWith applies to command and args.
         const expanded = stdioSpawnSpec("${BIN}", ["-${MODE}-"], {}, "/tmp", { expandWith: { BIN: "node", MODE: "fast" } });
         expect(expanded.command).toBe("node");

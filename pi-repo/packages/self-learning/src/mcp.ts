@@ -651,7 +651,7 @@ export class McpConnection {
         }
     }
 
-    private spawnSpec: { command: string; args: string[]; env: Record<string, string>; cwd: string } | null = null;
+    private spawnSpec: { command: string; args: string[]; env: Record<string, string>; cwd: string; verbatim: boolean } | null = null;
     /** Unsafe command line (CRLF / unescapable % through cmd.exe) — start() fails with this. */
     private spawnError: string | null = null;
 
@@ -706,6 +706,9 @@ export class McpConnection {
                 env: { ...process.env, ...spec.env },
                 stdio: ["pipe", "pipe", "pipe"],
                 windowsHide: true,
+                // cmd.exe wrapper lines are pre-quoted — without verbatim the
+                // runtime re-escapes the embedded quotes and cmd fails instantly
+                windowsVerbatimArguments: spec.verbatim === true,
             });
         } catch (err) {
             throw new Error(`failed to spawn ${spec.command}: ${(err as Error).message}`);
@@ -1186,7 +1189,7 @@ export function stdioSpawnSpec(
     env: Record<string, string>,
     cwd: string,
     opts: { platform?: string; expandWith?: Record<string, string | undefined> } = {},
-): { command: string; args: string[]; env: Record<string, string>; cwd: string } {
+): { command: string; args: string[]; env: Record<string, string>; cwd: string; verbatim: boolean } {
     const platform = opts.platform ?? process.platform;
     const expandSource = opts.expandWith ?? process.env;
     const expandedEnv = Object.fromEntries(Object.entries(env).map(([k, v]) => [k, expandEnv(v, expandSource)]));
@@ -1207,9 +1210,13 @@ export function stdioSpawnSpec(
             }
         }
         const line = [escapeCmdArg(expandedCommand), ...expandedArgs.map(escapeCmdArg)].join(" ");
-        return { command: "cmd.exe", args: ["/d", "/s", "/c", `"${line}"`], env: expandedEnv, cwd };
+        // verbatim: the spawn MUST pass this /c line through untouched — the
+        // default arg quoting re-escapes the embedded quotes (\"node\" …) and
+        // cmd.exe then fails instantly (every live stdio test died in ~13ms
+        // on the windows CI leg until windowsVerbatimArguments landed).
+        return { command: "cmd.exe", args: ["/d", "/s", "/c", `"${line}"`], env: expandedEnv, cwd, verbatim: true };
     }
-    return { command: expandedCommand, args: expandedArgs, env: expandedEnv, cwd };
+    return { command: expandedCommand, args: expandedArgs, env: expandedEnv, cwd, verbatim: false };
 }
 
 /**

@@ -382,7 +382,7 @@ export function lspSpawnSpec(
     cwd: string,
     env: Record<string, string | undefined> = process.env,
     platform: string = process.platform,
-): { command: string; args: string[]; env: Record<string, string>; cwd: string } {
+): { command: string; args: string[]; env: Record<string, string>; cwd: string; verbatim: boolean } {
     if (command.length === 0) throw new Error("empty command line");
     return stdioSpawnSpec(command[0], command.slice(1), {}, cwd, { expandWith: env, platform });
 }
@@ -396,7 +396,7 @@ export class LspConnection {
     readonly command: string[];
     readonly cwd: string;
     /** H2: the Windows-correct spawn spec (cmd.exe wrapper for shims). */
-    readonly spawnSpec: { command: string; args: string[]; env: Record<string, string>; cwd: string } | null;
+    readonly spawnSpec: { command: string; args: string[]; env: Record<string, string>; cwd: string; verbatim: boolean } | null;
     /** Refused command line (CRLF / unescapable `%`) — start() fails with this. */
     readonly spawnError: string | null;
     private proc: ChildProcess | null = null;
@@ -455,6 +455,9 @@ export class LspConnection {
                 env: { ...process.env, ...spec.env },
                 stdio: ["pipe", "pipe", "pipe"],
                 windowsHide: true,
+                // cmd.exe wrapper lines are pre-quoted — without verbatim the
+                // runtime re-escapes the embedded quotes and cmd fails instantly
+                windowsVerbatimArguments: spec.verbatim === true,
             });
         } catch (err) {
             throw new Error(`failed to spawn ${this.command.join(" ")}: ${(err as Error).message}`);
