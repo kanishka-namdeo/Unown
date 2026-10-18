@@ -145,7 +145,10 @@ Konami easter egg.
   - **the terminal-agent command surface and its session tools**
     (`quickstart.tsx` — the `COMMANDS` list, the `--goal` evidence contract,
     and the session-tools paragraph naming `lsp`, the MCP join and the slash
-    commands) — no other section lists commands or session tools;
+    commands) — no other section lists commands or session tools; the
+    `unown automations create` line (2026-10-19, Round 3) carries the
+    read-only-by-default claim, checkable against
+    `docs/usage.md#automations-unown-automations`;
   - **the project-config trust gate** (`integrity.tsx`, the cloned-configs
     block, receipts-linked to `config-trust.ts`) — the quickstart names
     `.unown/mcp.json` as where servers are configured without restating the

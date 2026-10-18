@@ -294,6 +294,60 @@ export interface JobsResponse {
   jobs: Job[];
 }
 
+// ---- Automations (scheduled recurring agent runs; zcode port) ----
+
+export type AutomationMode = "read-only" | "standard";
+export type AutomationLifecycle = "active" | "paused" | "completed" | "failed";
+export type AutomationRunTrigger = "schedule" | "manual";
+export type AutomationRunStatus = "running" | "succeeded" | "failed" | "skipped";
+
+export interface Automation {
+  id: string;
+  title: string;
+  prompt: string;
+  cron_expr: string | null;
+  delay_ms: number | null; // one-shot: absolute epoch ms
+  workspace: string;
+  mode: AutomationMode;
+  model: string | null;
+  max_runs: number | null;
+  run_count: number;
+  scheduled_run_count: number;
+  lifecycle: AutomationLifecycle;
+  next_run_at: number | null;
+  last_run_at: number | null;
+  created_at: number;
+  updated_at: number;
+  /** Human hint ("At 09:00, Mon-Fri"), added by the REST layer. */
+  schedule?: string;
+  /** Most recent run, added by the REST list endpoint (null = never ran). */
+  lastRun?: AutomationRun | null;
+}
+
+export interface AutomationsResponse {
+  automations: Automation[];
+}
+
+export interface AutomationRun {
+  id: string;
+  automation_id: string;
+  trigger_kind: AutomationRunTrigger;
+  scheduled_at: number | null;
+  status: AutomationRunStatus;
+  started_at: number;
+  ended_at: number | null;
+  exit_code: number | null;
+  output: string | null;
+  error: string | null;
+  turns: number;
+  tokens_in: number;
+  tokens_out: number;
+}
+
+export interface AutomationRunsResponse {
+  runs: AutomationRun[];
+}
+
 export interface Sandbox {
   id: string;
   createdAt: number;

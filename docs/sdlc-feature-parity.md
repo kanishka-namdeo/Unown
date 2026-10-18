@@ -69,11 +69,18 @@ trick). Pinned by `test/jsonschema.test.ts` (37), `test/worktree.test.ts`
 real CLI: valid/invalid/strict schema flows + a KEPT worktree end-to-end +
 the not-a-repo typed rejection). Suite: 1203 pass / 0 fail.
 
-Deferred from this round (candidates, with the blocking reason): zcode
-Automations + Repo Wiki (scheduled actor needs its own trust story — designed,
-next milestone), oh-my-pi DAP debug tool (medium, pure-TS feasible),
-`omp commit` (low-medium, consumes structured outputs), codewhale MCP-server
-surface + fleet ledger, muse staged shell review.
+Deferred from this round (candidates, with the blocking reason): oh-my-pi
+DAP debug tool (medium, pure-TS feasible), `omp commit` (low-medium, consumes
+structured outputs), codewhale MCP-server surface + fleet ledger, muse staged
+shell review, zcode Repo Wiki (now unblocked by automations — scheduled
+generation exists; the remaining work is the wiki surface itself).
+
+### Round 3 (2026-10-19 — the scheduled actor)
+
+| Feature | Source | Unown form |
+|---|---|---|
+| Automations — scheduled recurring agent runs (5-field local-time cron or one-shot delay; `unown automations` CLI + REST + session tools; misfire skip; dispatch retry 30 s × 2ⁿ⁻¹ capped 15 min × 5 attempts, frozen run id; max 20 automations / 2 concurrent / 30-min run timeout; pause/resume; manual run-now that never consumes maxRuns) | zcode Automations | `pi-repo/packages/self-learning/src/automations.ts` + the dependency-free cron engine `src/cron.ts` (zcode uses croner; we own the parser — Vixie DOM/DOW OR rule pinned) + `src/automations-cli.ts` + engine REST `/api/automations*` + the `automationsScheduler` poll loop. **The trust story that gated it for two rounds, shipped as the design itself**: config lives in the engine DB, never in the repo (no cloned-repo-RCE vector); default mode `read-only` (a `--tools` allowlist with no bash/write/edit/task — the allowlist IS the read-only story, pinned by test); `standard` must be explicit; runs carry `UNOWN_AUTOMATION=1` which hides the mutation tools inside the run (subagents inherit the flag — no recursion); nothing auto-merges — every run recorded with output/exit/turns/tokens. Pinned by `test/cron.test.ts` (14) + `test/automations.test.ts` (29: scheduler single-flight/concurrency/misfire/retry-exhaustion/maxRuns/one-shot/runNow-409 + CRUD + the trust gate). Verified live: a one-shot created via the real CLI dispatched within one poll tick and its run answered through the Dashscope bridge (recorded `succeeded, exit 0, 1 turn`) |
+| Repo Wiki | zcode | Still deferred — see above (the scheduling substrate now exists; the wiki surface is its own project) |
 
 ### Round 1 (2026-10-18 — the shipped v2.1.0 slice)
 
@@ -133,8 +140,8 @@ in the [CHANGELOG](../CHANGELOG.md) under Unreleased:
 | Advisor/watchdog second model | oh-my-pi | Cost-doubling on every turn; our hooks + harness already play the reviewer role in the learning loop. Revisit as an opt-in profile |
 | Event-sourced session replay | muse | pi's session tree + our receipts cover the audit use; full event sourcing is a substrate rewrite |
 | ~~Worktree fan-out subagents~~ | muse | **Adopted in Round 2** (see above) — task tool `worktree_isolation` |
-| Scheduled automations (`/loop`-style cron) | zcode Automations · muse `/loop` · Claude routines | Deferred, not declined: the engine learns on intervals but never acts on the repo unattended, and a scheduled actor needs its own trust story (project configs are trust-gated precisely because they execute commands). No router job, no `.unown/automations.json` reader was ever shipped |
-| Repo Wiki | zcode | Attractive; depends on scheduled background generation, deferred with automations |
+| ~~Scheduled automations~~ (`/loop`-style cron) | zcode Automations · muse `/loop` · Claude routines | **Adopted in Round 3** (see above) — the trust story shipped as the design: engine-DB config, read-only default, no recursion, nothing auto-merges |
+| Repo Wiki | zcode | Still deferred; the automations substrate (Round 3) unblocked the scheduling half — the wiki surface itself remains its own project |
 | Plugin bundles + marketplace | zcode/codewhale/Claude | Our extension surface is inline + file-based (`.unown/`); a marketplace is ecosystem work, not a feature gap |
 | Computer-use / browser automation | omp/zcode | Out of scope for a terminal-first agent this cycle; the dashboard already renders its own surfaces |
 | Collab relay / bot channels / remote control | omp/zcode | Hosted-infrastructure features; the dashboard is our observability plane |

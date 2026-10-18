@@ -3,6 +3,16 @@
  */
 
 import { emit, subscribe } from "./bus.ts";
+import {
+        AutomationsScheduler,
+        createAutomation,
+        deleteAutomation,
+        getAutomation,
+        listAutomations,
+        listRuns as listAutomationRuns,
+        updateAutomation,
+} from "./automations.ts";
+import { describeCron } from "./cron.ts";
 import { dreamNotes, listDreams, runDream } from "./dream.ts";
 import { getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
@@ -37,6 +47,69 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
         const { method, path, query, body } = req;
 
         try {
+                // ------------------------------------------------------------------
+                // Automations (the zcode port — scheduled recurring agent runs)
+                // ------------------------------------------------------------------
+                if (path === "/api/automations") {
+                        if (method === "GET") {
+                                const rows = listAutomations().map((a) => ({
+                                        ...a,
+                                        schedule: a.cron_expr ? describeCron(a.cron_expr) : `one-shot at ${new Date(a.delay_ms ?? 0).toISOString()}`,
+                                        lastRun: listAutomationRuns(a.id, 1)[0] ?? null,
+                                }));
+                                return json({ automations: rows });
+                        }
+                        if (method === "POST") {
+                                const created = createAutomation({
+                                        title: String(body?.title ?? ""),
+                                        prompt: String(body?.prompt ?? ""),
+                                        workspace: String(body?.workspace ?? process.cwd()),
+                                        schedule: {
+                                                cron: body?.cron !== undefined ? String(body.cron) : undefined,
+                                                delayMinutes: body?.delayMinutes !== undefined ? Number(body.delayMinutes) : undefined,
+                                        },
+                                        mode: body?.mode === "standard" ? "standard" : "read-only",
+                                        model: body?.model ? String(body.model) : null,
+                                        maxRuns: body?.maxRuns !== undefined && body?.maxRuns !== null ? Number(body.maxRuns) : null,
+                                });
+                                if (!created.ok) return json({ error: created.error }, created.status ?? 400);
+                                return json({ automation: { ...created.automation, schedule: created.automation.cron_expr ? describeCron(created.automation.cron_expr) : "one-shot" } });
+                        }
+                }
+                const automationMatch = path.match(/^\/api\/automations\/([^/]+)(?:\/(run|runs))?$/);
+                if (automationMatch) {
+                        const id = decodeURIComponent(automationMatch[1]);
+                        const sub = automationMatch[2];
+                        if (sub === "run" && method === "POST") {
+                                const triggered = await automationsScheduler.runNow(id);
+                                if (!triggered.ok) return json({ error: triggered.error }, triggered.status ?? 400);
+                                return json({ ok: true });
+                        }
+                        if (sub === "runs" && method === "GET") {
+                                const limit = Number(query?.get("limit") ?? 20);
+                                return json({ runs: listAutomationRuns(id, Number.isFinite(limit) ? limit : 20) });
+                        }
+                        if (method === "GET") {
+                                const automation = getAutomation(id);
+                                if (!automation) return json({ error: "unknown automation" }, 404);
+                                return json({ automation: { ...automation, schedule: automation.cron_expr ? describeCron(automation.cron_expr) : "one-shot" } });
+                        }
+                        if (method === "PATCH") {
+                                const patch: any = {};
+                                for (const key of ["title", "prompt", "mode", "model", "lifecycle", "cron"]) {
+                                        if (body?.[key] !== undefined) patch[key] = body[key];
+                                }
+                                if (body?.maxRuns !== undefined) patch.max_runs = body.maxRuns; // REST camelCase → the row's snake_case
+                                const updated = updateAutomation(id, patch);
+                                if (!updated.ok) return json({ error: updated.error }, updated.status ?? 400);
+                                return json({ automation: updated.automation });
+                        }
+                        if (method === "DELETE") {
+                                const deleted = deleteAutomation(id);
+                                return deleted ? json({ ok: true }) : json({ error: "unknown automation" }, 404);
+                        }
+                }
+
                 // ------------------------------------------------------------------
                 // Overview
                 // ------------------------------------------------------------------
@@ -335,6 +408,11 @@ export function recoverOrphans() {
         }
 }
 
+/** Automations scheduler — one engine-wide instance (zcode's utility-process
+ *  equivalent; ours is an in-process poll loop). Created at module scope so
+ *  REST handlers (POST .../run) can reach it. */
+export const automationsScheduler = new AutomationsScheduler();
+
 export function startServer(port: number = PORT) {
         ensureAgentDir();
         seedMemoryIfEmpty();
@@ -343,6 +421,7 @@ export function startServer(port: number = PORT) {
         const synced = syncNoteOutbox();
         if (synced > 0) console.log(`[agent-service] ingested ${synced} outbox note(s) from terminal sessions`);
         router.start().catch((e) => console.error("[router] failed to start:", e));
+        automationsScheduler.start();
 
         const server = Bun.serve({
                 port,

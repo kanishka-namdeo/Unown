@@ -28,7 +28,7 @@
 import { spawn } from "node:child_process";
 import { type Dirent, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { type ExtensionAPI, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Key, Text } from "@earendil-works/pi-tui";
@@ -45,7 +45,7 @@ import {
     resolveLspConfig,
     trustProjectLspConfig,
 } from "./lsp.ts";
-import { deliverTerminalNote, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
+import { deliverTerminalNote, ENGINE_URL, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
 import {
     checkGoalCompletion,
     goalContextMessage,
@@ -1378,6 +1378,174 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 })
                                                 .join("\n");
                                         return new Text(theme.fg("muted", summary), 0, 0);
+                                },
+                        });
+                }
+
+                // -------------------------------------------------------------------
+                // Automations (zcode port) — scheduled recurring agent runs.
+                // Trust story: config lives in the ENGINE's DB (never in repo
+                // files); default mode is read-only; automation runs carry
+                // UNOWN_AUTOMATION=1 which HIDES the mutation tools inside a
+                // run (zcode's turn-scoped denylist — List stays available).
+                // -------------------------------------------------------------------
+                const isAutomationRun = /^(1|true)$/i.test(process.env.UNOWN_AUTOMATION ?? "");
+                const engineApi = async (
+                        method: string,
+                        path: string,
+                        body?: unknown,
+                ): Promise<{ ok: boolean; status: number; data: any }> => {
+                        try {
+                                const res = await fetch(`${ENGINE_URL}${path}`, {
+                                        method,
+                                        headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+                                        body: body !== undefined ? JSON.stringify(body) : undefined,
+                                        signal: AbortSignal.timeout(8000),
+                                });
+                                const data = (await res.json().catch(() => ({}))) as any;
+                                return { ok: res.ok, status: res.status, data };
+                        } catch {
+                                return {
+                                        ok: false,
+                                        status: 0,
+                                        data: { error: `the self-learning engine is not reachable at ${ENGINE_URL} — automations need the stack running (bun run agent:start)` },
+                                };
+                        }
+                };
+                const ENGINE_DOWN_HINT =
+                        "the self-learning engine is not reachable — automations need the stack running (bun run agent:start); this session's chat is unaffected";
+
+                const AutomationListParams = Type.Object({}, { description: "List the project's scheduled automations (needs the engine running)." });
+                const AutomationCreateParams = Type.Object({
+                        title: Type.String({
+                                description: "Short title preserving the user's scheduling phrase verbatim (e.g. 'weekday 9am dev brief')",
+                        }),
+                        prompt: Type.String({
+                                description:
+                                        "The unattended task to run on schedule, in THIS project. State the expected deliverable explicitly — nobody will answer questions during the run. Describe the final work directly; do NOT ask it to create or schedule other automations.",
+                        }),
+                        cron: Type.Optional(
+                                Type.String({
+                                        description: 'Standard 5-field cron expression in the user\'s LOCAL timezone (minute hour day-of-month month day-of-week), e.g. "0 9 * * 1-5". Do not convert to UTC.',
+                                }),
+                        ),
+                        delay_minutes: Type.Optional(
+                                Type.Number({ description: "One-shot alternative to cron: run once after N minutes (1..525600). Pass either cron or delay_minutes, not both." }),
+                        ),
+                        mode: Type.Optional(
+                                StringEnum(["read-only", "standard"] as const, {
+                                        description:
+                                                'Permission for the unattended run: "read-only" (default — the run gets read/grep/find/ls/lsp/fetch_url tools only, no shell or writes) or "standard" (the full session toolset; choose deliberately).',
+                                }),
+                        ),
+                        max_runs: Type.Optional(Type.Number({ description: "Stop after N scheduled runs (optional; manual runs never consume the budget)" })),
+                });
+                const AutomationUpdateParams = Type.Object({
+                        id: Type.String({ description: "Automation id from automation_list" }),
+                        title: Type.Optional(Type.String({ description: "Re-synced title" })),
+                        prompt: Type.Optional(Type.String()),
+                        cron: Type.Optional(Type.String({ description: "New 5-field cron (local timezone)" })),
+                        mode: Type.Optional(StringEnum(["read-only", "standard"] as const)),
+                        lifecycle: Type.Optional(StringEnum(["active", "paused"] as const, { description: "Pause/resume the schedule" })),
+                });
+                const AutomationDeleteParams = Type.Object({ id: Type.String({ description: "Automation id from automation_list" }) });
+
+                pi.registerTool({
+                        name: "automation_list",
+                        label: "Automations",
+                        description:
+                                "List this project's scheduled automations (recurring agent runs managed by the self-learning engine): id, title, schedule, next run, last outcome, lifecycle. Automations run unattended while the engine is up; a read-only automation reports on the repo without changing it.",
+                        parameters: AutomationListParams,
+                        async execute() {
+                                const res = await engineApi("GET", "/api/automations");
+                                if (!res.ok) return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
+                                const mine = (res.data.automations ?? []).filter(
+                                        (a: any) => a?.workspace === opts.cwd || a?.workspace === resolve(opts.cwd),
+                                );
+                                if (mine.length === 0) {
+                                        return { content: [{ type: "text", text: "No automations in this project. Create one with automation_create (or `unown automations create`)." }] };
+                                }
+                                const lines = mine.map(
+                                        (a: any) =>
+                                                `${a.id} · ${a.title}\n  schedule: ${a.schedule ?? a.cron_expr ?? "one-shot"} · mode: ${a.mode} · ${a.lifecycle}${a.next_run_at ? `\n  next run: ${new Date(a.next_run_at).toLocaleString()}` : ""}${a.lastRun ? `\n  last run: ${a.lastRun.status} at ${new Date(a.lastRun.started_at).toLocaleString()}` : ""}`,
+                                );
+                                return { content: [{ type: "text", text: lines.join("\n\n") }] };
+                        },
+                        renderCall(_a: any, theme: any) {
+                                return new Text(theme.fg("toolTitle", theme.bold("automations")), 0, 0);
+                        },
+                        renderResult(result: any, _o: any, theme: any) {
+                                const text = result?.content?.[0]?.text ?? "";
+                                return new Text(theme.fg("muted", text.split("\n")[0].slice(0, 80)), 0, 0);
+                        },
+                });
+
+                if (!isSubagent && !isAutomationRun) {
+                        pi.registerTool({
+                                name: "automation_create",
+                                label: "Automation+",
+                                description:
+                                        'Create a scheduled automation that runs an unattended agent in THIS project on a cron schedule (local timezone) or once after a delay. Default mode is read-only (the run reports on the repo; no shell, no writes) — "standard" grants the full toolset and must be chosen deliberately. The user should commit pending work before creating a standard automation. Do not create automations the user did not ask for.',
+                                parameters: AutomationCreateParams,
+                                async execute(_toolCallId, params) {
+                                        const res = await engineApi("POST", "/api/automations", {
+                                                title: params.title,
+                                                prompt: params.prompt,
+                                                workspace: opts.cwd,
+                                                cron: params.cron,
+                                                delayMinutes: params.delay_minutes,
+                                                mode: params.mode ?? "read-only",
+                                                maxRuns: params.max_runs ?? null,
+                                        });
+                                        if (!res.ok) return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
+                                        const a = res.data.automation;
+                                        const when = a.next_run_at ? `next run ${new Date(a.next_run_at).toLocaleString()}` : "scheduled";
+                                        return {
+                                                content: [
+                                                        {
+                                                                type: "text",
+                                                                text: `Created automation ${a.id} ("${a.title}") — ${a.cron_expr ? `cron ${a.cron_expr} (${a.schedule})` : "one-shot"} · mode ${a.mode} · ${when}. Runs are recorded; use automation_list or \`unown automations history ${a.id}\` to inspect.`,
+                                                        },
+                                                ],
+                                        };
+                                },
+                                renderCall(args: any, theme: any) {
+                                        return new Text(theme.fg("toolTitle", theme.bold("automation+ ")) + theme.fg("accent", String(args?.cron ?? "once")), 0, 0);
+                                },
+                        });
+                        pi.registerTool({
+                                name: "automation_update",
+                                label: "Automation~",
+                                description:
+                                        "Update an automation (title, prompt, cron, mode) or pause/resume it. A completed (exhausted) automation is terminal — create a new one instead. Editing the schedule re-arms the next run from now.",
+                                parameters: AutomationUpdateParams,
+                                async execute(_toolCallId, params) {
+                                        const patch: Record<string, unknown> = {};
+                                        for (const key of ["title", "prompt", "cron", "mode"] as const) {
+                                                if ((params as any)[key] !== undefined) patch[key] = (params as any)[key];
+                                        }
+                                        if (params.lifecycle !== undefined) patch.lifecycle = params.lifecycle;
+                                        const res = await engineApi("PATCH", `/api/automations/${encodeURIComponent(params.id)}`, patch);
+                                        if (!res.ok) return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
+                                        const a = res.data.automation;
+                                        return { content: [{ type: "text", text: `Updated ${a.id}: ${a.lifecycle}${a.next_run_at ? `, next run ${new Date(a.next_run_at).toLocaleString()}` : ""}.` }] };
+                                },
+                                renderCall(args: any, theme: any) {
+                                        return new Text(theme.fg("toolTitle", theme.bold("automation~ ")) + theme.fg("muted", String(args?.id ?? "")), 0, 0);
+                                },
+                        });
+                        pi.registerTool({
+                                name: "automation_delete",
+                                label: "Automation-",
+                                description: "Delete an automation and its non-running run history. This cannot be undone — confirm with the user first when the request is ambiguous.",
+                                parameters: AutomationDeleteParams,
+                                async execute(_toolCallId, params) {
+                                        const res = await engineApi("DELETE", `/api/automations/${encodeURIComponent(params.id)}`);
+                                        if (!res.ok) return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
+                                        return { content: [{ type: "text", text: `Deleted automation ${params.id}.` }] };
+                                },
+                                renderCall(args: any, theme: any) {
+                                        return new Text(theme.fg("toolTitle", theme.bold("automation- ")) + theme.fg("muted", String(args?.id ?? "")), 0, 0);
                                 },
                         });
                 }

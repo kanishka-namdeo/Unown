@@ -19,6 +19,7 @@ const COMMANDS = [
         "memory",
         "doctor",
         "mcp",
+        "automations",
         "note",
         "update",
         "changelog",
@@ -28,6 +29,7 @@ const COMMANDS = [
 ] as const;
 
 const MCP_SUBCOMMANDS = ["add", "add-http", "add-json", "list", "get", "remove", "test"];
+const AUTOMATIONS_SUBCOMMANDS = ["list", "create", "edit", "pause", "resume", "run", "history", "delete"];
 
 const UPDATE_FLAGS = ["--check", "--json", "--allow-dirty", "--rollback", "--help"];
 const SESSION_FLAGS = [
@@ -106,6 +108,10 @@ export function bashCompletion(): string {
                 `      COMPREPLY=( $(compgen -W "${MCP_SUBCOMMANDS.join(" ")}" -- "$cur") )`,
                 "      return 0",
                 "      ;;",
+                "    automations)",
+                `      COMPREPLY=( $(compgen -W "${AUTOMATIONS_SUBCOMMANDS.join(" ")}" -- "$cur") )`,
+                "      return 0",
+                "      ;;",
                 "    completions)",
                 '      COMPREPLY=( $(compgen -W "bash zsh fish powershell" -- "$cur") )',
                 "      return 0",
@@ -131,6 +137,7 @@ export function zshCompletion(): string {
                 '    "memory:print the effective memory stack"',
                 '    "doctor:run configuration diagnostics"',
                 '    "mcp:manage MCP server configs (add/list/get/remove/test)"',
+                '    "automations:scheduled recurring agent runs (list/create/edit/pause/resume/run/history/delete)"',
                 '    "note:deliver a session note to the engine"',
                 '    "update:self-update to the newest release"',
                 '    "changelog:print recent CHANGELOG sections"',
@@ -157,6 +164,9 @@ export function zshCompletion(): string {
                 "      ;;",
                 "    mcp)",
                 `      _arguments "1:subcommand:(${MCP_SUBCOMMANDS.join(" ")})"`,
+                "      ;;",
+                "    automations)",
+                `      _arguments "1:subcommand:(${AUTOMATIONS_SUBCOMMANDS.join(" ")})"`,
                 "      ;;",
                 "    completions)",
                 '      _arguments "1:shell:(bash zsh fish powershell)"',
@@ -185,6 +195,7 @@ export function fishCompletion(): string {
         }
         lines.push('complete -c unown -n "__fish_seen_subcommand_from completions" -a "bash zsh fish powershell"');
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from mcp" -a "${MCP_SUBCOMMANDS.join(" ")}"`);
+        lines.push(`complete -c unown -n "__fish_seen_subcommand_from automations" -a "${AUTOMATIONS_SUBCOMMANDS.join(" ")}"`);
         return lines.join("\n");
 }
 

@@ -1040,3 +1040,28 @@ now also carries the live shadow receipt (the running engine's real
 auto-dream job emitting `lane:dream` with the embedding tier engaged and
 the dream completing on the byte-identical prompt). The deliberate reading
 constraint is unchanged: extraction and consolidation stay on the LLM.
+
+## 2026-10-19 — quickstart copy: the automations command line
+
+Round 3 of the SDLC-parity effort (`docs/sdlc-feature-parity.md`) shipped the
+scheduled actor — Automations, the zcode port — so the quickstart `COMMANDS`
+list (the page's canonical home for the command surface) gained one line:
+
+- `unown automations create --cron '0 9 * * 1-5' --title 'brief'` —
+  "scheduled unattended runs — read-only by default". The line carries exactly
+  two claims, both checkable against
+  `docs/usage.md#automations-unown-automations`: the command exists with this
+  grammar (`automations-cli.ts`), and unattended runs default to the
+  read-only toolset (`READ_ONLY_TOOLS` in `automations.ts`, pinned by
+  `test/automations.test.ts`'s allowlist case). The trust story itself
+  (engine-DB config, no recursion, nothing auto-merges) stays off the page —
+  one fact per section, and the quickstart names affordances, not arguments.
+
+Sourcing: command grammar from `pi-repo/packages/self-learning/src/automations-cli.ts`;
+read-only default from `src/automations.ts` (`mode: "read-only"`, the
+`--tools` allowlist `read,grep,find,ls,todo,note,fetch_url,lsp`); both pinned
+by `test/automations.test.ts` (29) and verified live through the bridge.
+No numbers were added, so no artifacts moved. The quickstart component test
+pins the `COMMANDS` list, so the line is covered by the existing changed-line
+gate; the landing rail was regenerated in the same change because the
+CHANGELOG entry is part of the feature (`bun run check:changelog` green).

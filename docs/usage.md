@@ -82,6 +82,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown doctor` | Run configuration diagnostics — `--json` emits a machine-readable report (`{ok, version, checks[{id,status,detail}], summary}`; non-zero exit on failure — scriptable, CI-able) |
 | `unown info` | Print the support bundle — version, platform, git state, provider names, opt-outs — redaction-safe for bug reports; `--json` for the same fields |
 | `unown note "text"` | Deliver a session note to the engine by hand |
+| `unown automations <sub>` | Scheduled recurring agent runs — `list` \| `create` \| `edit` \| `pause` \| `resume` \| `run` \| `history` \| `delete`. Needs the engine running; cron is in your **local** timezone, default mode `read-only`. See [Automations](#automations-unown-automations) |
 | `unown update` | Check for a newer release and self-update — fast-forward the checkout to the newest ready tag, then re-run the installer. Flags: `--check` (report only; exit `2` when an update is available), `--check --json`, `--allow-dirty`, `--rollback`, or an explicit version (`unown update 2.1.0` — also pins/rolls back). See [updating](updating.md) |
 | `unown changelog [n]` | Print the latest `CHANGELOG.md` sections (default 1) |
 | `unown completions <shell>` | Print a completion script — `bash` \| `zsh` \| `fish` \| `powershell` (stdout; installation one-liners in `unown completions --help` and below) |
@@ -106,7 +107,7 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 ## Session tools
 
-Every unown session registers five tools on top of pi's built-ins:
+Every unown session registers six tools on top of pi's built-ins:
 
 | Tool | What the agent does with it |
 |---|---|
@@ -115,6 +116,7 @@ Every unown session registers five tools on top of pi's built-ins:
 | `note` | Records a durable learning note mid-session — delivered to the engine immediately (or queued in the outbox if it is down). AutoDream consolidates notes into project memory. Also `/note <text>`. |
 | `fetch_url` | Read-only HTTP GET. HTML is stripped to text; bodies over 2 MB are refused; output is capped at 12,000 chars by default (`max_chars` clamps to 500–60,000); 20-second timeout; http(s) only. |
 | `lsp` | Language-server code intelligence: `diagnostics` (per file or `all`), `hover`, `definition`, `references`, `symbols`, `status`. Auto-detects servers on PATH (typescript-language-server, pyright/pylsp, gopls, rust-analyzer, clangd, bash-language-server, ruby-lsp, intelephense); configure or override with `.unown/lsp.json` / `~/.unown/agent/lsp.json`. After every `write`/`edit`, fresh diagnostics for that file are appended to the tool result — type errors get fed back to the agent instead of compounding (cold start never blocks; `UNOWN_LSP=0` disables). Also `/lsp`. |
+| `automation_list` | List this project's scheduled [automations](#automations-unown-automations) — id, schedule, next run, last outcome. The mutation tools (`automation_create` / `automation_update` / `automation_delete`) are registered only in interactive sessions: they are hidden inside subagents and inside automation runs themselves, so a scheduled run cannot schedule more runs. |
 
 When you quit a session in which something happened, a session note (prompt count, tool calls, final outcome) is delivered to the engine — or written to `~/.unown/notes/outbox/` if the engine is down, and synced later. That note is the raw material AutoDream consolidates into `.unown/memory/project.md`.
 
@@ -192,6 +194,32 @@ Writes are atomic read-modify-write (existing entries and unknown keys are prese
 - The completion gate runs when the agent ends a turn: the tag must be present on its own line, **every session todo must be done** (and at least one todo must exist), and the reply must carry evidence of both kinds — ≥1 file path (outside quoted/blockquoted text) AND ≥1 command-output marker (a `$ `-prefixed command line, an exit code, or a test tally). Passing marks the goal `complete` and records the evidence; failing prints exactly why (missing tag, N unfinished todos, no todos tracked, missing path evidence, missing output evidence).
 - Goal state persists as a session entry — it survives `/new`, `/resume`, `/fork`. `/goal` shows status, `/goal pause` stops the per-turn injection, `/goal resume` restores it, `/goal clear` removes the goal.
 - **Honest limit**: the gate is agent-honest, not cryptographic — it verifies that the model *cited* evidence, not that the evidence is true. Pair it with the LSP diagnostics loop and `/review` for actual verification.
+
+## Automations (`unown automations`)
+
+Automations are **scheduled, unattended agent runs** in your project — the zcode Automations port, adapted to unown's terminal-first shape. The engine polls every 20 s while it runs; each due automation spawns a real headless unown session (`--mode json -p --no-session`) in the automation's workspace, and the run's output, exit status, turns and token counts are recorded for inspection.
+
+```bash
+unown automations create --title 'morning brief' --cron '0 9 * * 1-5' \
+    --prompt "Summarize yesterday's commits and open TODOs; report risks."
+unown automations list                  # this project's automations (--all: every workspace)
+unown automations history <id>          # recorded runs: status, output, turns, tokens
+unown automations run <id>             # run now (manual runs never consume --max-runs)
+unown automations pause <id> | resume <id>
+unown automations edit <id> [--title|--prompt|--cron|--mode ...]
+unown automations delete <id>
+```
+
+Schedules: a standard **5-field cron expression in your local timezone** (`"0 9 * * 1-5"` — minute hour day-of-month month day-of-week; names, ranges, lists and steps all supported; zcode's constants apply — a missed attempt older than 5 minutes is *skipped*, never replayed), or a **one-shot** `--delay-minutes N` that runs once and completes. `--max-runs N` stops a recurring automation after N scheduled runs (manual `run`s never count). `--model` pins a model for the run; `--workspace` defaults to the current directory.
+
+**The trust story** (this is why the feature shipped *after* the config trust gates, not before):
+
+- **Config lives in the engine's database, never in the repo.** A cloned repository carries no automation definitions, so the cloned-repo-RCE vector that gates `.unown/mcp.json` does not exist here. Automations are created only by you — via the CLI, the REST API, or the session tools.
+- **Permission is per-task.** The default `read-only` mode runs the unattended agent with a read/grep/find/ls/todo/note/fetch_url/lsp toolset — no bash, no writes. `standard` (the full session toolset) must be chosen explicitly with `--mode standard`; a standard run's file changes land in your working tree, reviewable through git before anything happens to them.
+- **No recursion.** Runs carry `UNOWN_AUTOMATION=1`, which hides the automation mutation tools inside the run — an automation cannot create or schedule automations (subagents inherit the flag too).
+- **Nothing auto-merges.** Every run is recorded with its output; inspect failures and successes with `history` before acting on them.
+
+Limits (zcode's, transliterated): 20 automations total, 2 concurrent runs, a 30-minute run timeout, and a dispatch retry ladder (30 s × 2ⁿ⁻¹, capped at 15 min, 5 attempts) for runs that fail to start. Automations need the engine up (`bun run agent:start`); while the engine is down, due slots simply wait for the next poll.
 
 ## Slash commands
 

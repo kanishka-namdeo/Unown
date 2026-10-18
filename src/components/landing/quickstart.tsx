@@ -18,6 +18,7 @@ const COMMANDS: [string, string][] = [
   ['unown -p "explain the build error"', "one-shot headless, pipes to less"],
   ['unown --plan "add auth"', "read-only plan mode, approve before executing"],
   ['unown --goal "make the build green"', "durable goal — completion needs cited evidence"],
+  ["unown automations create --cron '0 9 * * 1-5' --title 'brief'", "scheduled unattended runs — read-only by default"],
   ["unown setup", "provider wizard, or --provider/--api-key/--model"],
   ["unown models", "configured models plus what the bridge serves"],
   ["unown doctor", "endpoint, keys, upstream and memory, end to end"],

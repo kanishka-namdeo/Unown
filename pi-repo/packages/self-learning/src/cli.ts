@@ -57,6 +57,7 @@ import {
 import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDir } from "./checkpoints.ts";
 import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
 import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
+import { runAutomationsCommand } from "./automations-cli.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createTerminalExtension } from "./termhooks.ts";
@@ -109,6 +110,10 @@ Usage:
   unown doctor             run configuration diagnostics (--json: machine-readable)
   unown mcp <sub>         manage MCP servers: add | add-http | add-json |
                            list | get | remove | test (see 'unown help mcp')
+  unown automations <sub> scheduled agent runs (zcode Automations port):
+                           list | create | edit | pause | resume | run |
+                           history | delete — needs the engine running;
+                           cron is LOCAL timezone, default mode read-only
   unown info               print the support bundle (--json: machine-readable)
   unown note "text"        deliver a session note to the engine
   unown update            check for a newer release and self-update
@@ -124,8 +129,11 @@ Usage:
 
 Session tools (registered in every session):
   todo / note / task / fetch_url / lsp   visible task tracking, mid-session learning notes,
-                                         subagents with a fresh context, HTTP reads,
+                                         subagents with a fresh context (output_schema
+                                         structured replies, worktree_isolation), HTTP reads,
                                          language-server code intelligence
+  automation_list (+create/update/delete outside automation runs)
+                                         scheduled runs managed by the engine
   /plan /todos /note /agents /learning /lsp /checkpoint /undo /restore
   /checkpoints /receipts /mcp /goal /review   session commands
 
@@ -900,6 +908,13 @@ export async function runCli(argv: string[]) {
                 // P1 (R-c): Claude Code-style MCP config management — see mcp-cli.ts.
                 // -h/--help inside the subcommand grammar is handled there too.
                 const result = await runMcpCommand(argv.slice(1), { cwd: process.cwd(), userDir: UNOWN_AGENT_DIR });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "automations") {
+                // zcode port: scheduled recurring agent runs — see automations-cli.ts.
+                const result = await runAutomationsCommand(argv.slice(1), { cwd: process.cwd() });
                 if (result.stdout) process.stdout.write(result.stdout);
                 if (result.stderr) process.stderr.write(result.stderr);
                 process.exit(result.exitCode);
