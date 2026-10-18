@@ -129,13 +129,20 @@ jobs:
           format: spdx-json
           artifact-name: sbom-spdx.json
           upload-artifact: true
+      - name: Build provenance attestation (subject digest)
+        # The attestation action requires a SHA-256 subject digest —
+        # github.sha is git's SHA-1, which it rejects (found red in run
+        # 39107793393). The digest is the SHA-256 of the raw commit OBJECT:
+        # verifiable by anyone via `git cat-file commit <sha> | sha256sum`.
+        id: digest
+        run: echo "sha=sha256:$(git cat-file commit ${{ github.sha }} | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Build provenance attestation
         # SLSA Build L3 provenance for the source checkout the release was
         # verified against (the repo's release artifact IS the tag).
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: "kanishka-namdeo/Unown@${{ github.ref_name }}"
-          subject-digest: sha256:${{ github.sha }}
+          subject-digest: ${{ steps.digest.outputs.sha }}
       - name: Release checklist (what was verified)
         run: |
           cat > release-checklist.md <<'EOF'
