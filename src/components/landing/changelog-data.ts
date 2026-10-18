@@ -30,31 +30,31 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 58;
+export const CHANGELOG_TOTAL_ENTRIES = 73;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 31,
-  "Changed": 10,
+  "Added": 37,
+  "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 11,
   "Security": 3,
-  "Behavior": 3
+  "Behavior": 6
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 17,
+    "total": 32,
     "counts": {
-      "Added": 3,
-      "Changed": 8,
+      "Added": 9,
+      "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 3,
       "Security": 0,
-      "Behavior": 3
+      "Behavior": 6
     },
     "groups": [
       {
@@ -65,11 +65,35 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": true
           },
           {
+            "title": "opt-in mint cascade: local-draft + remote-repair task authoring (H10)",
+            "behavior": true
+          },
+          {
+            "title": "nonllm testbench — the zero-LLM tier, experiments + verdicts (not yet a behavior change)",
+            "behavior": false
+          },
+          {
             "title": "landing: the shipping rail",
             "behavior": false
           },
           {
             "title": "local-llm testbench (experiments, not yet a behavior change)",
+            "behavior": false
+          },
+          {
+            "title": "unown mcp — MCP config management without hand-editing JSON",
+            "behavior": false
+          },
+          {
+            "title": "unown doctor now covers the SDLC surfaces",
+            "behavior": false
+          },
+          {
+            "title": "In-session footer status lines",
+            "behavior": false
+          },
+          {
+            "title": "/lsp trust",
             "behavior": false
           }
         ]
@@ -125,6 +149,30 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "Env knobs",
             "behavior": false
+          },
+          {
+            "title": "Security: project-config trust gate (the audit's top gap — cloned-repo RCE)",
+            "behavior": false
+          },
+          {
+            "title": "Security: MCP URL/header/spawn hardening",
+            "behavior": false
+          },
+          {
+            "title": "Security: LSP protocol correctness",
+            "behavior": false
+          },
+          {
+            "title": "Privacy: receipts redaction + runtime-state gitignore",
+            "behavior": false
+          },
+          {
+            "title": "/review git plumbing + reviewer honesty",
+            "behavior": false
+          },
+          {
+            "title": "/goal gate hardening",
+            "behavior": false
           }
         ]
       },
@@ -141,6 +189,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "MCP resilience",
+            "behavior": true
+          },
+          {
+            "title": "Project-config trust gate",
+            "behavior": true
+          },
+          {
+            "title": "/review reviewers are read-only",
+            "behavior": true
+          },
+          {
+            "title": "/goal completion requires both evidence kinds and a todo trail",
             "behavior": true
           }
         ]
