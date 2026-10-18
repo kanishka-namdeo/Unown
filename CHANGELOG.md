@@ -11,7 +11,12 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 ### Added
 
+- **DOX (agent workflow)** — root `AGENTS.md` gains a **Git Preflight** section: every task opens, and the Closeout commit is preceded, by `git fetch` → measure `HEAD...@{u}` → `git pull --ff-only` (never a bare `git pull`, which is fetch + merge and can merge uninvited). A dirty tree is worked around, never cleared by `stash`/`restore`/`clean`/`reset --hard`; a diverged branch stops for the user's choice instead of an agent-side merge or rebase; and a moved tree refreshes what changed (`bun install`, `db:push`, service restart) and re-reads the AGENTS.md chain, because DOX is code. `CONTRIBUTING.md` points at it. This is a repo-workflow rule, not a runtime change — no prompt, model, routing, guard or hook moved, so [docs/BEHAVIOR.md](docs/BEHAVIOR.md) is unchanged.
 - README: bespoke four-tier memory-stack diagram (`.github/assets/diagram-memory.png`, GBA brand palette, regenerable from `scripts/brand/diagram-memory.html`, layout-gated by `scripts/check_overflow.mjs`); README restructured 34 KB → 24.5 KB with every moved section landing in `docs/` (integrity gates + session walkthrough → `docs/memory.md`, production notes → `docs/configuration.md`, repository layout → `CONTRIBUTING.md`).
+
+### Fixed
+
+- `AGENTS.md`: the v2.0.0 verification claim overstated the Release workflow — caught by the first run of the new Git Preflight, which pulled `b30996a`, `e0b7520` and `1b6fc53` mid-task and watched 39107793393 go red. Corrected to measured state: CI run 39106033167 is 17/17 green and `v2.0.0` is tagged, but there is no green Release run and no published Release (`gh release view v2.0.0` → release not found) — three attempts, three distinct defects: the windows version-consistency step (the pwsh/POSIX bug's twin inside `release.yml`, fixed at `b30996a`), the unresolvable `anchore/sbom-action@v17` (upstream publishes only `v0.x`; re-pinned at `e0b7520`), and `subject-digest: sha256:${{ github.sha }}` feeding a 40-char SHA-1 commit id where a 64-hex sha256 is required (fixed at `1b6fc53`, re-tag runs in flight).
 
 Pending for the next release: user-preference consolidation (the weakest recall-qa axis — single-session-preference warm 0.33 — needs a user-tier dream path) and release/productization standards.
 

@@ -38,6 +38,7 @@ Terminal-agent-only contributions (docs, CLI) need nothing beyond step 3's direc
 
 `AGENTS.md` files are binding work contracts for their subtrees — this is not optional etiquette:
 
+- **Before any of it**: sync the checkout — fetch, measure divergence, `git pull --ff-only` (never a bare `git pull`). The gate itself, including what to do when the branch has diverged or the tree is dirty, is the root doc's [Git Preflight](AGENTS.md#git-preflight).
 - **Before editing**: walk from the repository root to your target and read every `AGENTS.md` on the path (parents first; the nearest doc is the local contract, and no child doc may weaken DOX).
 - **After editing**: update the closest owning `AGENTS.md` when your change affects purpose, scope, structure, contracts, workflows, env vars, commands, or claims. The root doc's sync map lists the docs that go stale together with your change.
 - Docs claims must match the code. A PR that leaves a doc contradicting the code is incomplete.
