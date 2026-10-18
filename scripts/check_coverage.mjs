@@ -33,7 +33,7 @@ const THRESHOLD = 80;
 const runSuite = process.argv[2] === "--run";
 const args = process.argv.slice(2).filter((a) => a !== "--run");
 const reportFile = args[0] ?? "coverage.txt";
-const baseArg = args[1] ?? process.env.GITHUB_BASE_REF ?? "HEAD~1";
+const baseArg = (runSuite ? args[0] : args[1]) ?? process.env.GITHUB_BASE_REF ?? "HEAD~1";
 
 const fail = (msg) => {
 	console.log(`::error::${msg}`);
