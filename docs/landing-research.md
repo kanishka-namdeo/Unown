@@ -963,7 +963,9 @@ entries the changelog currently holds, only with how the header text wraps. Ever
 tile is narrower than its viewport, the band scrolls, Tab reaches the region and
 arrows move it, nothing is hidden with scripting off or reduced motion on, and the
 document has no horizontal overflow. Contrast audit PASS (1375 text nodes, both
-schemes), axe on `/` clean, palette gate PASS, units 241 pass / 0 fail,
+schemes), axe on `/` clean — *qualified in the 2026-10-19 addendum below: that
+gate scanned only the first screenful and the claim did not survive the wider
+scan*, palette gate PASS, units 241 pass / 0 fail,
 `check:changelog` green (3 stops, 73 entries, 2 dated).
 ## 2026-10-19 — models: the zero-LLM tier paragraph (retroactive rationale)
 
@@ -1255,7 +1257,9 @@ block and `.unown/memory/project.md`; the memory excerpt is gated rather than
 exempted precisely because AutoDream rewrites that file on a schedule.
 Verification on the production build: units 241 pass / 0 fail, changed-line
 coverage 100% on all ten changed `src/` files, palette PASS, contrast PASS
-(1396 text nodes, both schemes), axe on `/` clean, theme toggle PASS, 28 section
+(1396 text nodes, both schemes), axe on `/` clean — *the same first-screenful
+gate, falsified the next morning; see the 2026-10-19 accessibility addendum*,
+theme toggle PASS, 28 section
 shots with no console errors, the rail's band claims re-measured, build green.
 
 One process note worth keeping: three gates in this round failed *loudly on
@@ -1329,3 +1333,49 @@ LexRank curation) from the two that stay bench-verified (kNN triage, the 23M
 cross-encoder) — a distinction neither side's copy stated on its own. A page
 edited by three sessions in one day is exactly why the derived content is
 generated rather than typed: a merge cannot conflict inside a build result.
+
+## 2026-10-19 — the accessibility gate was scanning one screen of a thirty-four-screen page
+
+The coherence audit's own verification list ended with "axe on `/` clean". It was
+measured, and it was nearly worthless.
+
+**The mechanism.** `FadeUp` gives every section `initial={{ opacity: 0 }}` with
+`whileInView`, `once: true`. axe-core skips a node whose computed opacity is 0 —
+correctly, it is not rendered. The e2e landing test navigated to `/` and analyzed
+without scrolling. So axe saw the hero and the first fold, and passed the other
+~90% of the document by never looking at it.
+
+**What the wider scan found.** Three real `link-in-text-block` failures
+(WCAG 2.0 A, 1.4.1 Use of Color, AA tier): the `cold-vs-warm chart` anchor and
+the two receipts links in the benchmarks section are `hover:underline` — no
+underline at rest — inside paragraphs, so their only distinguishing property is
+color, and axe measured that color's contrast with the surrounding text at
+1.02–1.33:1 against a required 3:1. Underlines at rest; markup fixed, not the
+checker.
+
+**Why the gate is now two passes rather than one with a scroll.**
+
+| Pass | What it proves | Measured caveat |
+|---|---|---|
+| `reducedMotion: reduce` | the whole document, no scroll needed — the page's own "motion is additive, never load-bearing" contract says every section renders in its final state here | the strict scan |
+| `no-preference` + sweep | the state a reader actually arrives in | a 500px/120ms programmatic sweep left one wrapper parked at `opacity:0;transform:translateY(20px)`: an IntersectionObserver callback that never landed. The sweep improves coverage; it does not guarantee it. |
+
+**A settle sleep was wrong in both directions.** Scanning 800ms after a sweep
+produced 43 `color-contrast` findings — mid-fade nodes whose foreground axe
+blends with the background, so the ratios were artifacts, not defects. A
+first fix waited a flat 1.5s, which then *missed* the real link violation, and
+the 4s used in the measuring probe was slack. The gate now waits until the count
+of partially-transparent nodes plateaus (unchanged over ~700ms), which is the
+claim actually being made: nothing is still fading.
+
+**Falsified claims corrected in the same change.** "axe-core on `/` clean" in
+this file (twice) and in `CHANGELOG.md`'s rail entry — each annotated rather
+than quietly rewritten, because they were true of what their gate measured.
+Root `AGENTS.md` and `docs/testing-strategy.md` gate 16 both still said eleven
+Playwright tests; the suite is twelve.
+
+**The general rule worth keeping.** An accessibility gate that scrolls nothing
+is a screenshot of the fold. Any axe/pa11y scan of a page whose content reveals
+on scroll must state which state it scanned, and the state it should state is
+the one where the document is complete — which for this page is the
+reduced-motion render, and that fact is a contract test, not a workaround.

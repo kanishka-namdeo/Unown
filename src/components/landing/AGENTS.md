@@ -600,6 +600,20 @@ parallel ones.
 - Re-run the page with `prefers-reduced-motion: reduce` — every reveal must
   resolve to its finished state and the session replay must show the finished
   transcript with no autoplay.
+- **Any axe/pa11y scan of this page must say which state it scanned, and the
+  state that matters is the reduced-motion render.** Every section below the
+  fold sits at `opacity: 0` until it reveals, and axe skips invisible nodes, so
+  a scan that does not reveal the document inspects roughly one screen of a
+  thirty-four-screen page and reports the rest as clean. That is how three real
+  WCAG 1.4.1 `link-in-text-block` failures (in-text links distinguished only by
+  color) lived on the page behind a green `e2e/a11y.spec.ts`. The gate is now
+  two passes — reduced motion for the whole document, no-preference after a full
+  sweep for what a reader actually arrives at — and a link inside a paragraph
+  carries its underline at rest, not on hover.
+- Do not settle a scan with a sleep. Scanning mid-fade makes axe blend the
+  foreground with the background and invent contrast failures (43 of them in one
+  measured run); scanning too early also skips real violations. `revealAll`
+  waits for the count of partially-transparent nodes to stop changing instead.
 - Fetch `/` and assert the served HTML contains a `<noscript>` block and that no
   stylesheet link for it appears in `<head>`. Both halves matter: absent means
   a blank page without JS, hoisted means every reveal is permanently disabled.
