@@ -351,7 +351,30 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                 : "passed";
                 return await finalize(status, verify);
         } catch (err: any) {
-                return await finalize("error", undefined, err?.message ?? String(err));
+                const runError = err?.message ?? String(err);
+                try {
+                        return await finalize("error", undefined, runError);
+                } catch (finErr: any) {
+                        // LOW-3: if the DB itself is the failing component, finalize throws
+                        // and would REPLACE the original run error (and strand the row at
+                        // 'running'). Record both; recoverOrphans heals the row at next boot.
+                        console.error(`[runner] finalize failed after run error (${runError}): ${finErr?.message ?? finErr}`);
+                        return {
+                                id: runId,
+                                status: "error",
+                                verify: undefined,
+                                transcript,
+                                sandboxId: sandbox.id,
+                                tokensIn,
+                                tokensOut,
+                                toolCalls: toolsUsed.length,
+                                turns,
+                                lastAssistantText,
+                                toolsUsed,
+                                durationMs: Date.now() - startedAt,
+                                error: `${runError} (finalize also failed: ${finErr?.message ?? finErr})`,
+                        };
+                }
         } finally {
                 try {
                         session?.dispose();

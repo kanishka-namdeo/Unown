@@ -8,7 +8,7 @@
  * verify output, changed-file snapshot).
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { osSandboxAvailable, resolveOsSandboxBackend, wrapCommand } from "./bwrap.ts";
 import { DATA_DIR, store } from "./store.ts";
 
@@ -37,7 +37,14 @@ export function createSandbox(label: string): Sandbox {
 export function seedFiles(sandbox: Sandbox, files: Record<string, string>) {
 	for (const [path, content] of Object.entries(files)) {
 		const target = resolve(sandbox.workspace, path);
-		if (!target.startsWith(sandbox.workspace)) throw new Error(`seed path escapes sandbox: ${path}`);
+		// Boundary-aware jail (audit ML-1): a bare startsWith(workspace) accepts
+		// SIBLING directories — resolve("/s/workspace", "../workspace-evil/x")
+		// starts with "/s/workspace" and escapes the OS jail (bwrap/seatbelt
+		// confines sandbox.workspace only). Defense in depth: mint.ts already
+		// blocks ".." and non-FILE_KEY_RE keys upstream.
+		if (target !== sandbox.workspace && !target.startsWith(sandbox.workspace + sep)) {
+			throw new Error(`seed path escapes sandbox: ${path}`);
+		}
 		mkdirSync(join(target, ".."), { recursive: true });
 		writeFileSync(target, content, "utf8");
 	}

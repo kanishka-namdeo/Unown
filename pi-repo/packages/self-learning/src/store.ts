@@ -185,8 +185,12 @@ export class Store {
 			if (!existing) {
 				try {
 					this.db.exec(ddl);
-				} catch {
-					/* concurrent migration — ignore */
+				} catch (err: any) {
+					// Only SQLite's concurrent-migration marker is ignorable (LOW-1);
+					// anything else (read-only DB, corruption, permissions) must surface
+					// here — swallowing it deferred the failure to every later query as a
+					// confusing "no such column" far from the cause.
+					if (!/duplicate column name/i.test(String(err?.message ?? err))) throw err;
 				}
 			}
 		}

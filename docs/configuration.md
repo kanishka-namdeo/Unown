@@ -71,6 +71,7 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 |----------|---------|---------|
 | `UNOWN_HOME` | `~/.unown` | State dir for the CLI: agent config, global memory, note outbox. Per-project memory lives in `<project>/.unown/` regardless. |
 | `UNOWN_ENGINE_URL` | `http://127.0.0.1:3030` | Where the CLI delivers terminal session notes (and reads engine health from). |
+| `UNOWN_ENGINE_HOST` | `127.0.0.1` | What network interface the engine server binds. The engine API is unauthenticated, so it stays on loopback by default; set `0.0.0.0` deliberately (e.g. a dedicated LAN box running the dashboard from another machine) — you are exposing note ingestion, memory rollback and sandboxed agent runs to everyone who can reach that interface. |
 | `UNOWN_STRICT_HOOKS` | unset | `1` = sandbox-grade hooks in terminal sessions (blocks network, `git push`, `sudo`); the default allows normal developer operations. |
 | `UNOWN_NO_PREFLIGHT` | unset | `1` skips the model-endpoint reachability check before each session. Print mode exits non-zero when the endpoint is down — see [troubleshooting](troubleshooting.md). |
 | `UNOWN_LSP` | `1` | `0` disables the `lsp` tool and the PostToolUse diagnostics feedback loop in terminal sessions. |

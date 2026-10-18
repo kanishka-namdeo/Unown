@@ -309,8 +309,8 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 // ---------------------------------------------------------------------------
 // Bun server with SSE event stream
 // ---------------------------------------------------------------------------
-/** Crash recovery: mark rows left 'running' by a previous process as errored. */
-function recoverOrphans() {
+/** Crash recovery: mark rows left 'running' by a previous process as errored. Exported for tests. */
+export function recoverOrphans() {
         const now = Date.now();
         const orphRuns = store.run(
                 `UPDATE runs SET status = 'error', ended_at = ?, error = 'orphaned by service restart' WHERE status = 'running'`,
@@ -321,8 +321,17 @@ function recoverOrphans() {
                 [now],
         );
         store.run(`UPDATE jobs SET status = 'idle' WHERE status = 'running'`);
-        if (orphRuns.changes > 0 || orphCycles.changes > 0) {
-                console.log(`[agent-service] recovered ${orphRuns.changes} orphaned runs, ${orphCycles.changes} orphaned cycles`);
+        // LOW-2: dreams stuck 'running' showed a phantom in-flight dream on the
+        // dashboard forever; tasks stuck 'validating' stayed invisible (active=0)
+        // with source_run_id set, so the lesson was silently lost. A task that
+        // never finished validating is discarded (same as a failed validation).
+        const orphDreams = store.run(
+                `UPDATE dreams SET status = 'error', ended_at = ?, note = COALESCE(note, '') || ' [orphaned by service restart]' WHERE status = 'running'`,
+                [now],
+        );
+        const orphTasks = store.run(`UPDATE tasks SET status = 'discarded' WHERE status = 'validating'`);
+        if (orphRuns.changes > 0 || orphCycles.changes > 0 || orphDreams.changes > 0 || orphTasks.changes > 0) {
+                console.log(`[agent-service] recovered ${orphRuns.changes} orphaned runs, ${orphCycles.changes} orphaned cycles, ${orphDreams.changes} orphaned dreams, ${orphTasks.changes} unvalidated minted tasks`);
         }
 }
 
@@ -337,6 +346,12 @@ export function startServer(port: number = PORT) {
 
         const server = Bun.serve({
                 port,
+                // Loopback by default (MEDIUM-6): the engine API is unauthenticated —
+                // notes ingestion, memory rollback, sandboxed agent runs — so binding
+                // all interfaces would expose the whole learning surface to the LAN.
+                // Opt in deliberately (LAN/dashboard-from-another-device) via
+                // UNOWN_ENGINE_HOST=0.0.0.0.
+                hostname: process.env.UNOWN_ENGINE_HOST ?? "127.0.0.1",
                 idleTimeout: 255, // SSE streams + long-lived API connections
                 async fetch(req) {
                         const url = new URL(req.url);
@@ -344,6 +359,7 @@ export function startServer(port: number = PORT) {
                         // SSE live event stream
                         if (req.method === "GET" && url.pathname === "/api/events") {
                                 let unsub = () => {};
+                                let ping: ReturnType<typeof setInterval> | null = null;
                                 const stream = new ReadableStream({
                                         start(controller) {
                                                 const encoder = new TextEncoder();
@@ -356,13 +372,14 @@ export function startServer(port: number = PORT) {
                                                 };
                                                 send({ event: "hello", ts: Date.now() });
                                                 unsub = subscribe(send);
-                                                // keepalive ping
-                                                const ping = setInterval(() => send({ event: "ping", ts: Date.now() }), 20_000);
-                                                // @ts-expect-error cleanup on cancel
-                                                this.ping = ping;
+                                                // keepalive ping — CLEARED on cancel (MEDIUM-4): each abandoned SSE
+                                                // connection used to leak its 20s interval + retained closures for
+                                                // the life of the engine (cancel only unsubscribed the bus listener).
+                                                ping = setInterval(() => send({ event: "ping", ts: Date.now() }), 20_000);
                                         },
                                         cancel() {
                                                 unsub();
+                                                if (ping) clearInterval(ping);
                                         },
                                 });
                                 return new Response(stream, {
