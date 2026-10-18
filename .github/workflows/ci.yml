@@ -12,8 +12,9 @@ concurrency:
 
 # Required CI gates (docs/testing-strategy.md §3, §6): lint, typecheck, unit
 # tests, changed-line coverage, docs links/anchors, shell syntax, theme
-# contract, landing palette, secret scan, advisory audit. The mermaid render
-# check and the build job are deliberately deferred — see the trailing comments.
+# contract, landing palette, secret scan, advisory audit, mermaid byte-identity
+# (gate 15 — this revision). Still deliberately deferred: Playwright E2E +
+# axe-core (gate 16) — see the trailing comments.
 #
 # Cross-platform legs (M4):
 #   - build-test exercises the REAL installer end to end on
@@ -104,6 +105,12 @@ jobs:
         # clig.dev: the version flag is a contract. The ROOT package.json is
         # the source of truth; cli.ts reads it directly — this asserts the
         # wiring never drifts (e.g. a moved file or a changed layout).
+        # shell: bash is NOT optional on the windows leg: the runner default
+        # shell is pwsh, and this step's POSIX `$(...)` / `if [ ... ]` syntax
+        # is a ParserError under it. Found red in runs 39083708789 + 39084539734
+        # — the same bug class the integration step's `env:` fix addressed one
+        # commit earlier; this step was missed then.
+        shell: bash
         run: |
           expected=$(node -p "require('./package.json').version")
           actual=$(bun bin/unown --version)
@@ -355,14 +362,40 @@ jobs:
         #   mysql2 is never connected to.
         run: bun audit --prod --ignore GHSA-ggr8-5vv4-36mx --ignore GHSA-rgwj-5xj2-c3m3 --ignore GHSA-3f6p-5ww8-9rcr
 
+  mermaid:
+    name: Mermaid byte-identity (gate 15)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install root deps (frozen — brings in playwright@1.57 from devDependencies)
+        run: bun install --frozen-lockfile
+      - name: Chromium for Playwright
+        run: bunx playwright install chromium --with-deps
+      - name: Byte-identity gate — parse + dual render + sha256
+        # testing-strategy.md §6 gate 15. What fails CI here: a README diagram
+        # that no longer parses under mermaid 11.16.1 (the version github.com
+        # renders — vendored + sha-pinned at scripts/vendor/, so no CDN at run
+        # time), or a render that stopped being deterministic. Mermaid 11.16.1's
+        # shape generators sample Math.random; the gate pins it (see the
+        # script header for the measured, found-live details).
+        run: bun scripts/mermaid_check.mjs
+      - name: Receipt artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-receipt
+          path: download/brand/mermaid-receipt.json
+          if-no-files-found: ignore
+
 # NOT in CI yet, on purpose:
-# - `bun run build` — heavy; Vercel already builds on every push. Phase 2 adds
-#   it as a required gate before deploy (testing-strategy.md §6 gate 14, §11
-#   "Next" item 7).
-# - scripts/mermaid_check.mjs — needs Playwright + browser binaries + CDN;
-#   belongs to the screenshot/visual pipeline (Phase 2/3), not a cheap gate
-#   (§6 gate 15).
-# - the bridge suite (95 tests, mini-services/llm-bridge/pure.test.ts) is green,
-#   hermetic and sub-second but NOT wired here — now the cheapest missing gate
-#   in the repository (strategy §3.2, §11 "Now" item 1). The engine suite IS
-#   wired (build-test above). Also still open: integration suite, build, E2E/axe.
+# - Playwright E2E + axe-core (§6 gate 16) — needs a built dashboard + a mock
+#   engine; the next revision wires it as the e2e job. Lighthouse CI (§12
+#   criterion 6) lands with it or right after.
+# Historical note (superseded items, kept so the receipts stay traceable):
+# `bun run build` shipped as the Production build job; the bridge suite and the
+# integration suite shipped inside build-test; the mermaid byte-identity check
+# shipped as the mermaid job above.

@@ -498,7 +498,7 @@ Notes on the two decisions that changed from the original proposal:
 | 12 | Engine integration suite (`test:integration`) | **SHIPPED** (this revision, round three) | 10 tests, real server + mock bridge — `PI_TEST_SCOPE=integration` step in the 3-OS `build-test` matrix |
 | 13 | Sandbox suite in CI | SHIPPED (upstream, unconditional ubuntu `sandbox-smoke` job) | **GREEN** as of run 39072290887 (`a13cf9d`): trajectory red 10/11/1 -> profile green 21/0/1 + engine red 10/2 -> fully green. The red phase proved the value of the early-canary design (§7.5) |
 | 14 | `bun run build` before deploy | **SHIPPED** (this revision) | dedicated `build` job: frozen-lockfile install + prisma generate + `bun run build` + standalone-server smoke (/ and /dashboard 200 on a scratch port) |
-| 15 | Mermaid byte-identity (`scripts/mermaid_check.mjs`) | **OPEN** | needs Playwright + a browser; belongs to the visual pipeline |
+| 15 | Mermaid byte-identity (`scripts/mermaid_check.mjs`) | **SHIPPED** (this revision) | own `ci.yml` job: sources extracted from README.md itself (single source of truth), parsed under the vendored sha-pinned mermaid 11.16.1 (the version github.com runs as of 2026-08), rendered twice in two fresh browser contexts, PNG sha256s compared byte-for-byte. Found live while wiring it: mermaid 11.16.1's shape generators sample `Math.random` — UNPINNED, the loop diagram's stadium nodes wobble up to 30px of path control points between renders (10/31 paths; the architecture diagram, no stadium nodes, was accidentally stable); the gate pins `Math.random` (mulberry32) + `deterministicIds`, and the receipt records both pins |
 | 16 | Playwright E2E + axe-core | **OPEN** | the largest untouched surface |
 | 17 | Docs link and anchor integrity on `docs/*.md` | SHIPPED (this revision; verified green against upstream's new `windows.md`/`macos.md`) | `scripts/check_docs.mjs` as the `docs` CI job; the CLI-surface and env-var cross-checks in `docs/AGENTS.md` remain prose (§7.10) |
 
@@ -1077,10 +1077,10 @@ is what remains.
 18. Perf/cost budget file with per-metric series; the +20%-without-gain alert.
 19. Soak test (1000 runs, tmp filesystem).
 
-**Deferred with a reason.** Mermaid byte-identity check (needs Playwright, belongs
-to the visual pipeline); load/chaos for the bridge (needs a stable mock upstream
-first); 99th-percentile time horizons (METR notes these need ~300 diverse tasks per
-bucket `[C]` - out of reach at this repo's size).
+**Deferred with a reason.** Playwright E2E + axe-core is no longer deferred — it
+is the next gate (§6 gate 16). Load/chaos for the bridge (needs a stable mock
+upstream first); 99th-percentile time horizons (METR notes these need ~300
+diverse tasks per bucket `[C]` - out of reach at this repo's size).
 
 ## 12. Success criteria
 

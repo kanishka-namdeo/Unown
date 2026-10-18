@@ -44,3 +44,7 @@
 # governs its subtree — for this path it relies on `text=auto` NUL-sniffing,
 # which keeps the ELF untouched; this line covers us if that ever changes.)
 pi-repo/packages/self-learning/native/bin/bwrap binary
+
+# Vendored mermaid dist (gate-15 renderer, sha-pinned in mermaid_check.mjs) —
+# generated code: excluded from language stats, excluded from text diffs.
+scripts/vendor/mermaid-*.min.js linguist-generated=true -diff
