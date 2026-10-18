@@ -53,6 +53,8 @@ bin/, models/     llama.cpp binary + GGUF weights (gitignored)
 ```bash
 # 1. provision (idempotent; downloads llama.cpp prebuilt + GGUFs per platform)
 node benchmarks/local-llm/runner.mjs provision
+#    Reuse an existing asset cache (worktree / CI cache / second checkout):
+#    UNOWN_LLAMA_BIN_DIR=/path/to/bin UNOWN_LLAMA_MODELS_DIR=/path/to/models node …
 
 # 2. E0 capability probe (works with NO API key — the cross-platform lane)
 node benchmarks/local-llm/runner.mjs probe

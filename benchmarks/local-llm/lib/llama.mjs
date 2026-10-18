@@ -14,8 +14,10 @@ import { fileURLToPath } from "node:url";
 
 export const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const BENCH_ROOT = path.resolve(HERE, "..");
-export const BIN_DIR = path.join(BENCH_ROOT, "bin");
-export const MODELS_DIR = path.join(BENCH_ROOT, "models");
+// Asset dirs are gitignored (bin/ ~25MB, models/ up to GBs). Point them at a
+// shared cache when running from a second checkout / worktree / CI cache:
+export const BIN_DIR = process.env.UNOWN_LLAMA_BIN_DIR ?? path.join(BENCH_ROOT, "bin");
+export const MODELS_DIR = process.env.UNOWN_LLAMA_MODELS_DIR ?? path.join(BENCH_ROOT, "models");
 export const RESULTS_DIR = path.join(BENCH_ROOT, "results");
 export const FIXTURES_DIR = path.join(BENCH_ROOT, "fixtures");
 
