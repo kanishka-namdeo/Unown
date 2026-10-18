@@ -1,0 +1,15 @@
+# Gitleaks configuration — default rules plus repo allowlists.
+#
+# CI runs `gitleaks detect --log-opts=-1` (the last commit's diff), so a
+# commit that touches a file containing secret-shaped STRINGS will fail the
+# scan even when those strings are obviously fixtures. Allowlist the fixture
+# files here when adding tests for redaction/secret handling.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "redaction test fixtures: deliberately secret-shaped strings (sk-…, Bearer …, KEY=VALUE) that the redactSecrets / receipts-privacy tests must recognize and mask — none are real credentials"
+paths = [
+    '''pi-repo/packages/self-learning/test/checkpoints\.test\.ts''',
+]
