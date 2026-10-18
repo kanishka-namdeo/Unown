@@ -25,13 +25,15 @@
  */
 import { mkdirSync } from "node:fs";
 import {
-  newRunDir, saveJson, RESULTS_DIR,
+  newRunDir, saveJson, RESULTS_DIR, mdTable,
 } from "./lib/report.mjs";
 import {
   n0Probe, n1Triage, n2Dedup, n3Rerank, n4Activation, n5DreamCuration,
+  n6EttinRerank, n7Fusion, n8GuardShadow, n0bProbe,
 } from "./lib/experiments.mjs";
 import {
   renderN0, renderN1, renderN2, renderN3, renderN4, renderN5,
+  renderN6, renderN7, renderN8,
 } from "./lib/renders.mjs";
 import { hostInfo } from "../local-llm/lib/llama.mjs";
 
@@ -96,6 +98,45 @@ async function cmdN5(outDir) {
   return r;
 }
 
+async function cmdN6(outDir) {
+  const dir = outDir ?? newRunDir("n6-ettin");
+  const r = await n6EttinRerank({ candidates: Number(opt("candidates", 20)), noRemote: flag("no-remote") });
+  saveJson(dir, "n6-ettin.json", r);
+  renderN6(r);
+  return r;
+}
+
+async function cmdN7(outDir) {
+  const dir = outDir ?? newRunDir("n7-fusion");
+  const r = await n7Fusion({ candidates: Number(opt("candidates", 20)), noRemote: flag("no-remote") });
+  saveJson(dir, "n7-fusion.json", r);
+  renderN7(r);
+  return r;
+}
+
+async function cmdN8(outDir) {
+  const dir = outDir ?? newRunDir("n8-guard");
+  const r = await n8GuardShadow({});
+  saveJson(dir, "n8-guard.json", r);
+  renderN8(r);
+  return r;
+}
+
+async function cmdProbe2(outDir) {
+  const dir = outDir ?? newRunDir(`probe2-${process.versions.bun ? "bun" : "node"}`);
+  const r = await n0bProbe();
+  saveJson(dir, "n0b-probe.json", r);
+  console.log("\n== N0b campaign-2 lane probe (H16/H18 runtime gate) ==");
+  console.log(mdTable(r.summary.results.map((x) => ({
+    model: x.model, loadOk: x.loadOk, loadMs: x.loadMs ?? "—",
+    pairLatencyMs: x.pairLatencyMs ?? x.latencyPerCaseMs ?? "—",
+    rssDeltaMB: x.rssDeltaMB ?? "—", error: (x.error ?? "").slice(0, 80),
+  }))));
+  console.log(`runtime: ${r.summary.runtime.runtime} on ${r.summary.runtime.platform} | rss peak ${r.summary.rssPeakMB}MB`);
+  console.log(`\n[probe2] saved ${dir}/n0b-probe.json`);
+  return r;
+}
+
 async function cmdAll() {
   const dir = newRunDir(opt("label", undefined));
   console.log(`[all] results -> ${dir}`);
@@ -108,6 +149,9 @@ async function cmdAll() {
     ["n3", cmdN3, (r) => r.summary],
     ["n4", cmdN4, (r) => r.summary],
     ["n5", cmdN5, (r) => r.summary],
+    ["n6", cmdN6, (r) => r.summary],
+    ["n7", cmdN7, (r) => r.summary],
+    ["n8", cmdN8, (r) => r.summary],
   ];
   for (const [name, fn, pick] of steps) {
     try {
@@ -134,9 +178,10 @@ async function cmdFixtures() {
 // ---------------------------------------------------------------- main
 
 const COMMANDS = {
-  probe: cmdProbe, fixtures: cmdFixtures,
+  probe: cmdProbe, probe2: cmdProbe2, fixtures: cmdFixtures,
   "n1-triage": cmdN1, "n2-dedup": cmdN2, "n3-rerank": cmdN3,
   "n4-activation": cmdN4, "n5-dream": cmdN5,
+  "n6-ettin": cmdN6, "n7-fusion": cmdN7, "n8-guard": cmdN8,
   all: cmdAll,
 };
 
@@ -151,6 +196,9 @@ Commands:
   n3-rerank [--candidates N]                     cross-encoder vs remote ranking
   n4-activation [--notes N]                       activation score vs remote importance
   n5-dream  [--notes N] [--skip-judge]            LexRank dream-input curation + judge
+  n6-ettin  [--candidates N] [--no-remote]        Ettin-17m reranker A/B vs ms-marco
+  n7-fusion [--candidates N] [--no-remote]        BM25+cosine RRF fusion vs remote
+  n8-guard                                         injection-classifier shadow (keyless)
   all                                              full suite -> results/<run>/
 
 Models (probe): bge-small, minilm, rerank

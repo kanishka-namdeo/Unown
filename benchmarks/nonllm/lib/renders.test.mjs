@@ -8,7 +8,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderN0, renderN1, renderN2, renderN3, renderN4, renderN5 } from "./renders.mjs";
+import { renderN0, renderN1, renderN2, renderN3, renderN4, renderN5, renderN6, renderN7, renderN8 } from "./renders.mjs";
 
 // capture console output so renders run silently
 const captured = [];
@@ -48,6 +48,23 @@ test("renderN5 survives null judge and missing lanes", () => {
   assert.doesNotThrow(() => renderN5({ summary: { compression: { notes: 12, fullPromptTokens: 5000, compressedPromptTokens: 3000, reductionPct: 40 }, control: { jsonOk: true, saneLength: true, suspicious: false, latencyMs: 12000 }, curated: { jsonOk: false, saneLength: false, suspicious: false, latencyMs: 9000 }, judge: { winner: "tie", consistent: false, aScore: null, bScore: null, reason: "flips" } } }));
 });
 
+test("renderN6 survives failed lanes and absent inter-lane stats", () => {
+  assert.doesNotThrow(() => renderN6({ summary: {} }));
+  assert.doesNotThrow(() => renderN6({ summary: { candidates: 20, msmarco: { error: "load failed" }, ettin: { error: "head NaN" }, ettinVsMsmarco: null, remote: null } }));
+  assert.doesNotThrow(() => renderN6({ summary: { candidates: 20, msmarco: { spearmanVsRemote: null, top5OverlapVsRemote: null, p50ms: null }, ettin: { spearmanVsRemote: 0.6, top5OverlapVsRemote: null, p50ms: null, load: { loadMs: null, rssDeltaMB: null } }, ettinVsMsmarco: null, remote: { latencyMs: 5800, ok: 20 } } }));
+});
+
+test("renderN7 survives failed cosine lane and absent disagreement", () => {
+  assert.doesNotThrow(() => renderN7({ summary: {} }));
+  assert.doesNotThrow(() => renderN7({ summary: { candidates: 20, lanes: { cosine: { error: "no native module" }, bm25: { spearmanVsRemote: null, top5OverlapVsRemote: null, totalMs: null }, rrf: { top5OverlapVsRemote: null } }, disagreement: null, remote: null } }));
+});
+
+test("renderN8 survives failed classifier load and empty corpora results", () => {
+  assert.doesNotThrow(() => renderN8({ summary: {} }));
+  assert.doesNotThrow(() => renderN8({ summary: { role: "shadow", load: { ok: false, error: "gated" }, poison: null, mpbench: null } }));
+  assert.doesNotThrow(() => renderN8({ summary: { load: { ok: true, loadMs: null, rssDeltaMB: null }, poison: { rows: [{ id: "v01", adversarial: true, p: null }], catchAt: {} }, mpbench: { n: 70, adversarial: 50, sweep: [], bySignal: [], byType: {}, benignMeanP: null, adversarialMeanP: null, latencyPerCaseMs: null } } }));
+});
+
 test("every render prints something even for empty summaries", () => {
   captured.length = 0;
   renderN0({ summary: { results: [] } });
@@ -56,6 +73,9 @@ test("every render prints something even for empty summaries", () => {
   renderN3({ summary: {} });
   renderN4({ summary: {} });
   renderN5({ summary: {} });
+  renderN6({ summary: {} });
+  renderN7({ summary: {} });
+  renderN8({ summary: {} });
   console.log = origLog;
-  assert.ok(captured.length >= 6, `expected output from all six renders, got ${captured.length}`);
+  assert.ok(captured.length >= 9, `expected output from all nine renders, got ${captured.length}`);
 });

@@ -54,6 +54,42 @@ jobs:
       - name: N0 runtime probe (load + embed + rerank, keyless)
         run: node runner.mjs probe
 
+      # Campaign-#2 lanes (H16/H18): the Ettin base+JS-head reranker and the
+      # injection classifier. Keyless: base weights + head safetensors +
+      # classifier ONNX all download from the HF hub on first use.
+      - name: N0b campaign-2 lane probe (ettin + injection classifier, keyless)
+        run: node runner.mjs probe2
+
+      - name: Assert campaign-2 lane thresholds
+        shell: node {0}
+        working-directory: .
+        run: |
+          const fs = require("fs");
+          const path = require("path");
+          const glob = path.join("benchmarks", "nonllm", "results");
+          const dirs = fs.readdirSync(glob).filter((d) => d.startsWith("probe2"));
+          if (!dirs.length) { console.error("no probe2 results dir"); process.exit(1); }
+          const newest = dirs
+            .map((d) => ({ d, m: fs.statSync(path.join(glob, d, "n0b-probe.json")).mtimeMs }))
+            .sort((a, b) => b.m - a.m)[0].d;
+          const probe = JSON.parse(fs.readFileSync(path.join(glob, newest, "n0b-probe.json"), "utf8"));
+          const fail = [];
+          for (const r of probe.summary.results) {
+            const tag = `${r.model} on ${probe.summary.runtime.platform}`;
+            if (!r.loadOk) { fail.push(`${tag}: load failed — ${r.error ?? "?"}`); continue; }
+            // Calibration (2026-10-18, first run): generous first-pass bounds —
+            // local linux-x64 measured ettin 12ms/pair, guard 4ms/case. The
+            // ms-marco lane's slowest platform (darwin-arm64) runs ~3x linux;
+            // ettin is fp32 (no q8 artifact) so it gets the wider budget.
+            // Tighten after the first 3-OS receipt lands (repo discipline).
+            const lat = r.pairLatencyMs ?? r.latencyPerCaseMs;
+            if (lat !== undefined && lat !== null && lat > 200) fail.push(`${tag}: lane latency ${lat}ms > 200ms`);
+            if (r.rssDeltaMB !== undefined && r.rssDeltaMB !== null && r.rssDeltaMB > 500) fail.push(`${tag}: rss +${r.rssDeltaMB}MB > 500MB`);
+            if (r.discriminates === false) fail.push(`${tag}: sanity pair FAILED to discriminate (relevant must outscore irrelevant)`);
+          }
+          if (fail.length) { console.error("CAMPAIGN-2 LANE FAILURES:\n- " + fail.join("\n- ")); process.exit(1); }
+          console.log("campaign-2 lane thresholds OK on " + process.platform);
+
       - name: Assert H9 thresholds
         shell: node {0}
         working-directory: .

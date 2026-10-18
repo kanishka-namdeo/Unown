@@ -113,3 +113,91 @@ export function renderN5(r) {
     console.log("judge: — (skipped or a lane failed structural checks)");
   }
 }
+
+// ---------------------------------------------------------------- campaign #2
+
+export function renderN6(r) {
+  const s = r.summary;
+  console.log("\n== N6 Ettin-17m cross-encoder A/B (H16) ==");
+  const rows = [];
+  const lane = (name, v) => rows.push({
+    lane: name,
+    ok: v && !v.error ? "y" : "n",
+    spearmanVsRemote: num(v?.spearmanVsRemote, 3),
+    top5OverlapVsRemote: num(v?.top5OverlapVsRemote, 2),
+    p50ms: num(v?.p50ms, 0),
+    error: v?.error ?? "",
+  });
+  lane("ms-marco-MiniLM (incumbent)", s.msmarco);
+  lane("ettin-reranker-17m (JS head)", s.ettin);
+  console.log(mdTable(rows));
+  if (s.ettinVsMsmarco) console.log(`ettin-vs-msmarco Spearman: ${num(s.ettinVsMsmarco.spearman, 3)} (inter-lane agreement)`);
+  else console.log("ettin-vs-msmarco: — (a lane failed)");
+  if (s.remote) console.log(`remote scoring call: ${s.remote.latencyMs ?? "—"}ms, ${s.remote.ok ?? "?"}/${s.candidates ?? "?"} parsed`);
+  if (s.ettin?.load) console.log(`ettin load: ${num(s.ettin.load.loadMs, 0)}ms, rss +${num(s.ettin.load.rssDeltaMB, 0)}MB${s.ettin.load.error ? ` ERR ${s.ettin.load.error}` : ""}`);
+}
+
+export function renderN7(r) {
+  const s = r.summary;
+  console.log("\n== N7 BM25 + cosine RRF fusion (H17) ==");
+  const lanes = s.lanes ?? {};
+  console.log(mdTable([
+    {
+      lane: "bge-cosine",
+      spearmanVsRemote: num(lanes.cosine?.spearmanVsRemote, 3),
+      top5OverlapVsRemote: num(lanes.cosine?.top5OverlapVsRemote, 2),
+      cost: `${num(lanes.cosine?.embedP50ms, 0)}ms/doc`,
+      error: lanes.cosine?.error ?? "",
+    },
+    {
+      lane: "bm25",
+      spearmanVsRemote: num(lanes.bm25?.spearmanVsRemote, 3),
+      top5OverlapVsRemote: num(lanes.bm25?.top5OverlapVsRemote, 2),
+      cost: `${num(lanes.bm25?.totalMs, 1)}ms total`,
+      error: "",
+    },
+    {
+      lane: "rrf(cos+bm25, k=60)",
+      spearmanVsRemote: "rank-fused",
+      top5OverlapVsRemote: num(lanes.rrf?.top5OverlapVsRemote, 2),
+      cost: "µs",
+      error: "",
+    },
+  ]));
+  if (s.disagreement) {
+    console.log(`lexical catch: cosine-only top5 = [${(s.disagreement.cosineOnlyTop5 ?? []).join(", ") || "—"}] | bm25-only top5 = [${(s.disagreement.bm25OnlyTop5 ?? []).join(", ") || "—"}] (${s.disagreement.queryTokens ?? "—"} query tokens)`);
+  }
+  if (s.remote) console.log(`remote scoring call: ${s.remote.latencyMs ?? "—"}ms, ${s.remote.ok ?? "?"}/${s.candidates ?? "?"} parsed`);
+}
+
+export function renderN8(r) {
+  const s = r.summary;
+  console.log("\n== N8 injection-classifier shadow (H18) ==");
+  console.log(`role: ${s.role ?? "shadow triage lane"}`);
+  if (s.load && s.load.error) {
+    console.log(`classifier load FAILED: ${s.load.error}`);
+    return;
+  }
+  if (s.load) console.log(`load: ${num(s.load.loadMs, 0)}ms, rss +${num(s.load.rssDeltaMB, 0)}MB`);
+  if (s.poison) {
+    const rows = (s.poison.rows ?? []).map((row) => ({
+      variant: row.id, adversarial: row.adversarial ? "ATTACK" : "benign", pInjection: num(row.p, 4),
+    }));
+    console.log(mdTable(rows));
+    const catchRows = Object.entries(s.poison.catchAt ?? {}).map(([t, v]) => ({
+      threshold: t, caught: `${v?.caught ?? "—"}/10`, benignFP: v?.fp ?? 0,
+    }));
+    console.log(mdTable(catchRows));
+  }
+  if (s.mpbench) {
+    const m = s.mpbench;
+    console.log(`MPBench-adapted (n=${m.n ?? "—"}, adversarial ${m.adversarial ?? "—"}): benign mean p=${num(m.benignMeanP, 4)}, adversarial mean p=${num(m.adversarialMeanP, 4)}, ${num(m.latencyPerCaseMs, 1)}ms/case`);
+    console.log(mdTable((m.sweep ?? []).map((x) => ({
+      threshold: x.threshold, precision: num(x.precision, 3), recall: num(x.recall, 3), f1: num(x.f1, 3), tp: x.tp, fp: x.fp, fn: x.fn, tn: x.tn,
+    }))));
+    if (m.bySignal?.length) console.log(mdTable(m.bySignal.map((x) => ({ signal: x.signal, n: x.n, caughtAt07: `${x.caughtAt07}/${x.n}` }))));
+    if (m.byType && Object.keys(m.byType).length) {
+      console.log(mdTable(Object.entries(m.byType).map(([k, v]) => ({ attackType: k, n: v.n, caughtAt07: `${v.caughtAt07}/${v.n}` }))));
+    }
+  }
+}

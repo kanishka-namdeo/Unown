@@ -182,3 +182,109 @@ registry guards.
   needs more than kNN gives.
 - The "other" note kind has no exemplars in either corpus generation —
   production kNN must defer "other" to the LLM by design (margin guard).
+
+## Campaign #1 rerun verification (2026-10-18, this session)
+
+The full `node runner.mjs all` campaign re-run on a fresh clone + fresh
+`bun install`/`build:offline` (host: linux-x64, 2 vCPU / 4GB, node 24.21,
+bridge live against the Dashscope coding plan) reproduced every headline:
+
+| metric | campaign #1 (committed) | rerun |
+|---|---|---|
+| N0 bge-small embed p50 | 13–15 ms | 15–16 ms |
+| N0 rerank p50/pair | 10–11 ms | 10–25 ms (fresh cache) |
+| N1 bge kind acc / macro-F1 | 0.941 / 0.910 | 0.941 / 0.910 |
+| N1 outcome acc / failed-recall | 0.985 / 1.00 | 0.985 / 1.00 |
+| N2 embedding best F1 | 0.962 | 0.962 |
+| N3 CE Spearman / top-5 | 0.574 / 1.00 | 0.574 / 1.00 |
+| N4 full activation ρ | 0.456 / 0.567 | 0.456 (run 1) |
+| N5 hybrid token cut | 19.9% | 19.9% (judge tie, leans curated — same as #1) |
+
+Raw receipts: `results/2026-10-18-18-14-linux-x64/` (gitignored, per
+convention). The registry verdicts stand; the bench is reproducible
+end-to-end from a clean clone.
+
+## Campaign #2 — research-driven extensions (H16/H17/H18)
+
+**Date:** 2026-10-18 (same host + bridge) · **Driver:** the online research
+digest (`research/nonllm-sota-digest.md` — 12 searches + 9 page fetches;
+raw artifacts in `download/research/raw/`) — ranked shortlist: an Ettin
+reranker A/B, BM25+cosine RRF fusion, and a tiny injection-classifier
+shadow lane. Registered as H16/H17/H18 before any run; verdicts after.
+
+| Hyp | Claim | Verdict | Key numbers |
+|---|---|---|---|
+| H16 | Ettin-17m reranker beats ms-marco on the retrieval seam at comparable CPU cost | **VERIFIED** | Spearman vs remote: **ettin 0.646** vs ms-marco 0.555 (same run, same pool); top-5 overlap 1.00 both; 45 vs 34 ms/pair (fp32, chunk-8); inter-lane ρ 0.826; sanity pair 8.05 vs −3.25 logits |
+| H17 | BM25 + cosine RRF fusion ≥ cosine-only vs remote helpfulness | **VERIFIED** | fused top-5 1.00 (== cosine); BM25-only **ρ 0.716 — the best single-lane number of the campaign** (cosine 0.609); 1.0 ms for the whole 20-doc pool; complementary top-5 disagreement (RRF precondition holds) |
+| H18 | Tiny ONNX injection classifier adds signal as a shadow guard | **REFUTED (for integration)** | poison ladder 5/10 @t=0.5, 0 benign FPs (caught base64 0.999 + code-fence 0.975 — contra the literature); MPBench recall 0.14 / F1 0.241 (≪ 0.60); **zero marginal catches over the production guard (10/10, 0/50 planted)**; +224 MB RSS, 114 ms/case — real signal, no value-add, not wired |
+
+### N6 — the Ettin lane (H16): three traps found, worked, documented
+
+The Ettin family is the 2026 sentence-transformers-maintainer reranker line,
+Apache-2.0, and the 17m card benchmarks directly against our incumbent. Three
+real engineering traps surfaced before any ranking number was trustworthy:
+
+1. **The ONNX artifact gap.** `onnx/model.onnx` exports the BASE encoder —
+   session outputs are `['last_hidden_state']`, config architectures is
+   `["ModernBertModel"]`, and the classification head lives in the
+   sentence-transformers module chain
+   (1_Pooling[cls] → 2_Dense[256→256, GELU] → 3_LayerNorm → 4_Dense[256→1]).
+   Through transformers.js, `AutoModelForSequenceClassification` returns
+   `logits === undefined` and silently mislabels the hidden states as
+   `attentions` — the same silent-mislabel class as the ms-marco single-logit
+   softmax trap. Fix: run the base encoder (`AutoModel`), reconstruct the
+   head in pure JS from the repo's safetensors (~263 KB, CLS pooling).
+   Anyone reranking with Ettin in JS hits this.
+2. **safetensors `data_offsets` are BYTE offsets.** Reading them as element
+   offsets (`s*4`) parses byte-0 tensors correctly by luck and reads pool
+   garbage for every other tensor (NaN logits). This was the actual
+   head-NaN bug.
+3. **Node pooled-Buffer aliasing.** Files < ~4 KB are allocated inside
+   Node's shared 8 KB pool; a `Float32Array` view over `buf.buffer` silently
+   aliases stale memory once the next small `readFileSync` reuses the pool
+   (weights that re-parse differently on every run, denormals, 48.98 M
+   spikes — while the file's sha256 stays perfect). Fix: always copy the
+   tensor data out.
+
+Result: a fully working Ettin-17m lane at 45 ms/pair fp32 — **+0.091
+Spearman over the incumbent for 1.3× latency and +194 MB RSS**. Production
+note recorded in the verdict: swap the CE confirm lane when a q8 Ettin
+artifact ships; the q8 ms-marco incumbent stays the default today.
+
+### N7 — the fusion lane (H17): BM25 alone is a finding
+
+With Lucene-default BM25 (k1=1.5, b=0.75, naive lowercase-alphanumeric
+tokenizer, no stemming, no stopwords) the surprise is the single-lane row:
+**ρ 0.716 vs remote helpfulness — better than every neural lane measured on
+this pool** (ettin 0.646, cosine 0.609, ms-marco 0.555). Short coding-task
+prompts and note text share exact tokens, so the lexical signal is strong
+on this domain. BM25-only top-5 was 0.80 (it misses the paraphrase tier);
+RRF fusion (k=60) carries it back to 1.00 at µs cost. The disagreement
+analysis shows genuinely complementary top-5s — the RRF precondition the
+research digest warned about. Pure TS, zero deps: the cheapest verified
+lane in the registry.
+
+### N8 — the classifier shadow (H18): honest negative
+
+The ungated tiny-ONNX classifier (testsavantai; the better-known protectai
+models are HF-gated:auto — rejected for keyless first-run) catches 5/10
+poison-ladder notes at t=0.5 with 0 benign FPs — including the base64 and
+code-fence variants the literature predicted it would miss — but recall
+collapses to 0.14 on the long office-domain MPBench contexts, and the
+production guard already catches everything the classifier does. Two more
+artifact traps documented in guardcls.mjs: `model_max_length: 1e30` (HF
+placeholder) lets sequences run past the 512-token position table (ONNX
+broadcast error at `/bert/embeddings/Add_1`) — pin `max_length: 512`
+explicitly; and the ONNX lives at repo root, not `onnx/` (subfolder:"" +
+model_file_name:"model"). The lane is NOT wired: no marginal safety for
+its memory + latency price.
+
+### Cross-platform status of the new lanes
+
+`node runner.mjs probe2` (keyless: ettin base + head + classifier all
+download from the HF hub) is wired into the CI probe workflow
+(`nonllm-probe.yml`) on the 3-OS matrix with first-pass generous thresholds
+(lane ≤ 200 ms, RSS ≤ 500 MB, sanity discrimination required) — to be
+tightened after the first 3-OS receipt lands, per the repo's calibration
+discipline. Local linux-x64: ettin 12 ms/pair, classifier 4 ms/case, both
+discriminating, RSS peak 400 MB combined.
