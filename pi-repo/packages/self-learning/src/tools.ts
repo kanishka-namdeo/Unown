@@ -28,11 +28,21 @@
 import { spawn } from "node:child_process";
 import { type Dirent, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { type ExtensionAPI, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import {
+    characterForLine,
+    countErrors,
+    languageFromPath,
+    LspManager,
+    readLineText,
+    renderDiagnostics,
+    renderLocations,
+    resolveLspConfig,
+} from "./lsp.ts";
 import { deliverTerminalNote, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
@@ -620,7 +630,7 @@ export interface UnownToolsOptions {
         verbose?: boolean;
 }
 
-const PLAN_MODE_TOOLS = ["read", "bash", "grep", "find", "ls", "todo", "note", "fetch_url"];
+const PLAN_MODE_TOOLS = ["read", "bash", "grep", "find", "ls", "todo", "note", "fetch_url", "lsp"];
 const PLAN_MODE_DISABLED_TOOLS = new Set(["edit", "write", "task"]);
 const PLAN_MANAGED_TOOLS = new Set([...PLAN_MODE_TOOLS, ...PLAN_MODE_DISABLED_TOOLS, "edit", "write"]);
 
@@ -678,6 +688,16 @@ const TaskParams = Type.Object({
 const FetchParams = Type.Object({
         url: Type.String({ description: "http(s) URL to fetch (GET)" }),
         max_chars: Type.Optional(Type.Number({ description: "Cap on returned characters (default 12000)" })),
+});
+
+const LspParams = Type.Object({
+        action: StringEnum(["status", "diagnostics", "hover", "definition", "references", "symbols"] as const),
+        file: Type.Optional(Type.String({ description: "File path (absolute or cwd-relative)" })),
+        line: Type.Optional(Type.Number({ description: "1-based line number (for hover/definition/references)" })),
+        symbol: Type.Optional(
+                Type.String({ description: "Symbol on that line to look at (default: first word on the line)" }),
+        ),
+        all: Type.Optional(Type.Boolean({ description: "diagnostics: report every open file instead of one" })),
 });
 
 export function createUnownToolsExtension(opts: UnownToolsOptions) {
@@ -1019,6 +1039,176 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 });
 
                 // -------------------------------------------------------------------
+                // LSP code intelligence (oh-my-pi port — see src/lsp.ts)
+                // -------------------------------------------------------------------
+
+                let lspManager: LspManager | null = null;
+                const getLsp = (): LspManager => {
+                        if (!lspManager) {
+                                lspManager = new LspManager({ cwd: opts.cwd, config: resolveLspConfig(opts.cwd) });
+                                // Safety net for hard exits: language servers must not outlive us.
+                                process.once("exit", () => lspManager?.disposeAll());
+                        }
+                        return lspManager;
+                };
+                const resolveFile = (p: string): string => (isAbsolute(p) ? p : join(opts.cwd, p));
+
+                pi.registerTool({
+                        name: "lsp",
+                        label: "LSP",
+                        description:
+                                "Language-server code intelligence: compiler/type diagnostics, hover info, go-to-definition, find-references and document symbols. Actions: status, diagnostics (file or all), hover/definition/references (file+line+symbol), symbols (file). Auto-detects language servers on PATH (typescript-language-server, pyright, gopls, rust-analyzer, clangd...); configure or override via .unown/lsp.json. Use after edits to catch type errors, and to navigate symbols instead of grepping.",
+                        parameters: LspParams,
+                        async execute(_toolCallId, params) {
+                                const manager = getLsp();
+                                if (manager.disabled) {
+                                        return {
+                                                content: [{ type: "text", text: "LSP support is disabled (UNOWN_LSP=0 or disabled in lsp.json)." }],
+                                        };
+                                }
+                                try {
+                                        switch (params.action) {
+                                                case "status": {
+                                                        const s = manager.status();
+                                                        const servers = s.servers.length
+                                                                ? s.servers
+                                                                          .map(
+                                                                                  (e) =>
+                                                                                          `  ${e.state === "running" ? "●" : "○"} ${e.language}: ${e.command}` +
+                                                                                          (e.state === "running" ? " (running)" : " (available)"),
+                                                                          )
+                                                                          .join("\n")
+                                                                : "  (no language servers detected on PATH — configure .unown/lsp.json)";
+                                                        const text =
+                                                                `LSP status:\n${servers}\n  open documents: ${s.openDocs}\n  cached diagnostics: ${s.diagnostics}`;
+                                                        return { content: [{ type: "text", text }] };
+                                                }
+                                                case "diagnostics": {
+                                                        if (params.all) {
+                                                                const all = manager.allDiagnostics();
+                                                                if (all.length === 0) {
+                                                                        return {
+                                                                                content: [
+                                                                                        {
+                                                                                                type: "text",
+                                                                                                text: "No diagnostics cached yet — open/query files first (hover, symbols, or an edit).",
+                                                                                        },
+                                                                                ],
+                                                                        };
+                                                                }
+                                                                const parts = all.map((d) => renderDiagnostics(d.path, d.items, 30));
+                                                                return { content: [{ type: "text", text: parts.join("\n\n") }] };
+                                                        }
+                                                        if (!params.file) {
+                                                                return { content: [{ type: "text", text: "Error: file required for diagnostics" }] };
+                                                        }
+                                                        const path = resolveFile(params.file);
+                                                        const language = languageFromPath(path);
+                                                        if (!language || !manager.serverCommandFor(language)) {
+                                                                return {
+                                                                        content: [
+                                                                                {
+                                                                                        type: "text",
+                                                                                        text: `No language server available for ${path}${language ? ` (${language})` : ""}. Install one on PATH (typescript-language-server, pyright, gopls, rust-analyzer, clangd, ...) or configure .unown/lsp.json.`,
+                                                                                },
+                                                                        ],
+                                                                };
+                                                        }
+                                                        const syncTs = Date.now();
+                                                        const conn = await manager.syncDocument(path);
+                                                        const items = conn
+                                                                ? await manager.waitForFreshDiagnostics(path, syncTs)
+                                                                : (manager.diagnosticsFor(path)?.items ?? []);
+                                                        return {
+                                                                content: [{ type: "text", text: renderDiagnostics(path, items) }],
+                                                                details: { action: "diagnostics", file: path, errors: countErrors(items), total: items.length },
+                                                        };
+                                                }
+                                                case "hover":
+                                                case "definition":
+                                                case "references": {
+                                                        if (!params.file || !params.line) {
+                                                                return {
+                                                                        content: [
+                                                                                { type: "text", text: `Error: file and line required for ${params.action}` },
+                                                                        ],
+                                                                };
+                                                        }
+                                                        const path = resolveFile(params.file);
+                                                        const line1 = Math.max(1, Math.floor(params.line));
+                                                        const lineText = readLineText(path, line1);
+                                                        const character = characterForLine(lineText, params.symbol);
+                                                        if (params.action === "hover") {
+                                                                const hover = await manager.hover(path, line1 - 1, character);
+                                                                return {
+                                                                        content: [
+                                                                                {
+                                                                                        type: "text",
+                                                                                        text: hover ?? `No hover information at ${path}:${line1}.`,
+                                                                                },
+                                                                        ],
+                                                                };
+                                                        }
+                                                        const locations =
+                                                                params.action === "definition"
+                                                                        ? await manager.definition(path, line1 - 1, character)
+                                                                        : await manager.references(path, line1 - 1, character);
+                                                        return {
+                                                                content: [{ type: "text", text: renderLocations(locations) }],
+                                                                details: { action: params.action, file: path, line: line1, count: locations.length },
+                                                        };
+                                                }
+                                                case "symbols": {
+                                                        if (!params.file) {
+                                                                return { content: [{ type: "text", text: "Error: file required for symbols" }] };
+                                                        }
+                                                        const path = resolveFile(params.file);
+                                                        const symbols = await manager.symbols(path);
+                                                        if (symbols.length === 0) {
+                                                                return {
+                                                                        content: [
+                                                                                {
+                                                                                        type: "text",
+                                                                                        text: `No symbols returned for ${path} (no language server, or the file has none).`,
+                                                                                },
+                                                                        ],
+                                                                };
+                                                        }
+                                                        const text = symbols
+                                                                .slice(0, 80)
+                                                                .map((s) => `${path}:${s.line + 1}  ${s.name}${s.container ? ` (in ${s.container})` : ""}`)
+                                                                .join("\n");
+                                                        return { content: [{ type: "text", text }], details: { action: "symbols", file: path, count: symbols.length } };
+                                                }
+                                        }
+                                        return { content: [{ type: "text", text: `Error: unknown action ${params.action}` }] };
+                                } catch (err: any) {
+                                        return {
+                                                content: [{ type: "text", text: `lsp ${params.action} failed: ${err?.message ?? String(err)}` }],
+                                                isError: true,
+                                        };
+                                }
+                        },
+                        renderCall(args: any, theme: any) {
+                                return new Text(
+                                        theme.fg("toolTitle", theme.bold("lsp ")) +
+                                                theme.fg("accent", String(args.action ?? "")) +
+                                                (args.file
+                                                        ? theme.fg("dim", ` ${String(args.file).slice(0, 60)}${args.line ? ":" + args.line : ""}`)
+                                                        : ""),
+                                        0,
+                                        0,
+                                );
+                        },
+                        renderResult(result: any, _o: any, theme: any) {
+                                const block = result?.content?.[0];
+                                const text = block?.type === "text" ? block.text : "";
+                                const first = text.split("\n")[0] ?? "";
+                                return new Text(theme.fg("muted", first.slice(0, 100)), 0, 0);
+                        },
+                });
+
+                // -------------------------------------------------------------------
                 // Commands
                 // -------------------------------------------------------------------
 
@@ -1085,6 +1275,27 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         return `── ${f.tier.toUpperCase()} · ${f.path} ──\n${shown}`;
                                 });
                                 ctx.ui.notify(parts.join("\n\n"), "info");
+                        },
+                });
+
+                pi.registerCommand("lsp", {
+                        description: "Show LSP status: detected servers, open documents, diagnostics",
+                        handler: async (_args, ctx) => {
+                                const manager = getLsp();
+                                if (manager.disabled) {
+                                        ctx.ui.notify("LSP support is disabled (UNOWN_LSP=0 or lsp.json).", "info");
+                                        return;
+                                }
+                                const s = manager.status();
+                                const servers = s.servers.length
+                                        ? s.servers
+                                                  .map((e) => `${e.state === "running" ? "●" : "○"} ${e.language} — ${e.command}`)
+                                                  .join("\n")
+                                        : "no language servers detected on PATH (configure .unown/lsp.json)";
+                                ctx.ui.notify(
+                                        `LSP servers:\n${servers}\nopen documents: ${s.openDocs} · cached diagnostics: ${s.diagnostics}`,
+                                        "info",
+                                );
                         },
                 });
 
@@ -1263,6 +1474,47 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                         }
                 });
 
+                // ---- LSP PostToolUse feedback loop: fresh diagnostics after edits.
+                // Cold start never blocks: the first edit kicks off the server,
+                // the second one onward gets compiler feedback appended.
+                pi.on("tool_result", async (event: any) => {
+                        const tool = event?.toolName as string;
+                        if (tool !== "write" && tool !== "edit") return undefined;
+                        const raw = String(event?.input?.path ?? "");
+                        if (!raw) return undefined;
+                        const path = resolveFile(raw);
+                        const language = languageFromPath(path);
+                        if (!language) return undefined;
+                        let manager: LspManager;
+                        try {
+                                manager = getLsp();
+                        } catch {
+                                return undefined;
+                        }
+                        if (manager.disabled) return undefined;
+                        if (!manager.isLiveFor(language)) {
+                                void manager.warmFor(language);
+                                return undefined;
+                        }
+                        try {
+                                const changedTs = Date.now();
+                                await manager.syncDocument(path);
+                                const items = await manager.waitForFreshDiagnostics(path, changedTs);
+                                if (items.length === 0) return undefined;
+                                const errors = countErrors(items);
+                                const text =
+                                        `\n\n[lsp] ${errors > 0 ? `${errors} error(s)` : "diagnostics"} in ${path}:\n` +
+                                        renderDiagnostics(path, items, 20);
+                                if (errors > 0) {
+                                        log(`PostToolUse lsp gate flagged ${path} (${errors} errors)`);
+                                        return { content: [...(event.content ?? []), { type: "text", text }], isError: true };
+                                }
+                                return { content: [...(event.content ?? []), { type: "text", text }] };
+                        } catch {
+                                return undefined; // LSP must never break the edit path
+                        }
+                });
+
                 // ---- restore state on session (re)start
                 pi.on("session_start", async (_event: any, ctx: any) => {
                         if (pi.getFlag("plan") === true) planModeEnabled = true;
@@ -1296,6 +1548,14 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 
                 pi.on("session_tree", async (_event: any, ctx: any) => {
                         reconstructTodos(ctx);
+                });
+
+                pi.on("session_shutdown", () => {
+                        try {
+                                lspManager?.disposeAll();
+                        } catch {
+                                /* best effort */
+                        }
                 });
         };
 

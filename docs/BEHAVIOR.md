@@ -38,7 +38,7 @@ The dream consolidation loop (AutoDream) turns session notes into the next versi
 
 ## Session tools
 
-Every terminal session registers four tools (see [usage](usage.md)): `todo` (visible task tracking), `note` (mid-session learning notes — the raw material AutoDream consolidates), `task` (subagents with a fresh context; project agents defined in `.unown/agents/*.md`), `fetch_url` (HTTP reads). Slash commands: `/todos`, `/note`, `/agents`, `/learning` — `/learning` re-prints the effective memory stack fresh from disk. Starter Agent Skills ride along from `~/.unown/agent/skills/` and `<project>/.unown/skills/`.
+Every terminal session registers five tools (see [usage](usage.md)): `todo` (visible task tracking), `note` (mid-session learning notes — the raw material AutoDream consolidates), `task` (subagents with a fresh context; project agents defined in `.unown/agents/*.md`), `fetch_url` (HTTP reads), and `lsp` (language-server code intelligence — diagnostics/hover/definition/references/symbols, with fresh diagnostics appended to every `write`/`edit` result; servers auto-detected on PATH, configurable via `.unown/lsp.json`, `UNOWN_LSP=0` disables, cold start never blocks a tool result). Slash commands: `/todos`, `/note`, `/agents`, `/learning`, `/lsp` — `/learning` re-prints the effective memory stack fresh from disk. Starter Agent Skills ride along from `~/.unown/agent/skills/` and `<project>/.unown/skills/`.
 
 ## Sandbox model
 

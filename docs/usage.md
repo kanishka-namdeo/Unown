@@ -54,7 +54,7 @@ Plan mode is a read-only exploration phase with an explicit approval gate before
 
 While planning:
 
-- `edit`, `write`, and the `task` tool are disabled; `read`, `bash`, `grep`, `find`, `ls`, `todo`, `note`, and `fetch_url` stay available.
+- `edit`, `write`, and the `task` tool are disabled; `read`, `bash`, `grep`, `find`, `ls`, `todo`, `note`, `fetch_url`, and `lsp` (code intelligence is read-only) stay available.
 - `bash` is restricted to an allowlist of read-only commands — `cat`, `head`, `tail`, `grep`, `find`, `ls`, `diff`, `stat`, `git status/log/diff/show`, `npm list/view`, `curl`, `jq`, `awk`, and similar. Anything that writes, installs, kills, or mutates git state is blocked with a reason. (The full allow/deny pattern lists live in `tools.ts`.)
 
 The flow:
@@ -106,7 +106,7 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 ## Session tools
 
-Every unown session registers four tools on top of pi's built-ins:
+Every unown session registers five tools on top of pi's built-ins:
 
 | Tool | What the agent does with it |
 |---|---|
@@ -114,12 +114,13 @@ Every unown session registers four tools on top of pi's built-ins:
 | `task` | Spawns [subagents](subagents.md) with a fresh context window — `general` (full tools), `explore` (read-only), or your own `.unown/agents/*.md` definitions. Up to 4 tasks per call, executed in parallel. |
 | `note` | Records a durable learning note mid-session — delivered to the engine immediately (or queued in the outbox if it is down). AutoDream consolidates notes into project memory. Also `/note <text>`. |
 | `fetch_url` | Read-only HTTP GET. HTML is stripped to text; bodies over 2 MB are refused; output is capped at 12,000 chars by default (`max_chars` clamps to 500–60,000); 20-second timeout; http(s) only. |
+| `lsp` | Language-server code intelligence: `diagnostics` (per file or `all`), `hover`, `definition`, `references`, `symbols`, `status`. Auto-detects servers on PATH (typescript-language-server, pyright/pylsp, gopls, rust-analyzer, clangd, bash-language-server); configure or override with `.unown/lsp.json` / `~/.unown/agent/lsp.json`. After every `write`/`edit`, fresh diagnostics for that file are appended to the tool result — type errors get fed back to the agent instead of compounding (cold start never blocks; `UNOWN_LSP=0` disables). Also `/lsp`. |
 
 When you quit a session in which something happened, a session note (prompt count, tool calls, final outcome) is delivered to the engine — or written to `~/.unown/notes/outbox/` if the engine is down, and synced later. That note is the raw material AutoDream consolidates into `.unown/memory/project.md`.
 
 ## Slash commands
 
-unown adds five commands of its own:
+unown adds six commands of its own:
 
 | Command | What it does |
 |---|---|
@@ -128,6 +129,7 @@ unown adds five commands of its own:
 | `/note <text>` | Deliver a learning note to the engine now |
 | `/agents` | List available subagents (built-ins + `.unown/agents/*.md` + `~/.unown/agent/agents/*.md`) |
 | `/learning` | Re-print the effective 4-tier memory stack, fresh from disk |
+| `/lsp` | Show LSP status: detected language servers (running/available), open documents, cached diagnostics |
 
 pi ships 23 built-in slash commands. The ones worth learning first:
 
