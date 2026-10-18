@@ -1,0 +1,86 @@
+{
+ "exportedAt": "2026-10-18T10:31:31.068625+00:00",
+ "cycles": [
+  {
+   "id": "9a569cf0-52f1-409f-951e-353e03b0912a",
+   "task_id": "hard-async-race",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792319338577,
+   "ended_at": 1792319472459,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
+  {
+   "id": "d1787757-98b8-466d-a4ef-33ac1a4803c7",
+   "task_id": "hard-async-race",
+   "status": "no-fix",
+   "iteration": 4,
+   "created_at": 1792317124944,
+   "ended_at": 1792319242717,
+   "summary": "iteration 3 patch did not fix the task"
+  },
+  {
+   "id": "843a403b-898c-4fd4-85ac-941c2832f200",
+   "task_id": "hard-lru-cache",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792317098513,
+   "ended_at": 1792317115596,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
+  {
+   "id": "840cd50d-2e76-4873-87d9-6775efd2316f",
+   "task_id": "fix-fizzbuzz",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792316892614,
+   "ended_at": 1792316903471,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
+  {
+   "id": "5bc67026-8c31-4784-83f7-e666d45c2b88",
+   "task_id": "fix-csv-parser",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792316734073,
+   "ended_at": 1792316765207,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
+  {
+   "id": "805e76e7-5f85-42de-b165-6a6a6e181c44",
+   "task_id": "impl-map-limit",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792316704435,
+   "ended_at": 1792316725717,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
+  {
+   "id": "0ffd5465-421e-449d-b6b7-8d83a2e82fa5",
+   "task_id": "impl-debounce",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792316674693,
+   "ended_at": 1792316691736,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
+  {
+   "id": "0fbd86b1-0c00-4f99-817f-3e191bbe009a",
+   "task_id": "fix-drop-right",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792316659327,
+   "ended_at": 1792316667130,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
+  {
+   "id": "2c7bce13-c90b-4486-9d11-51a5da0c4ec2",
+   "task_id": "fix-fizzbuzz",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792316268980,
+   "ended_at": 1792316279077,
+   "summary": "baseline passed \u2014 no improvement needed"
+  }
+ ]
+}

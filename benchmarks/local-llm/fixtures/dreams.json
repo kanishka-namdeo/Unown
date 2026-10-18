@@ -1,0 +1,29 @@
+{
+ "exportedAt": "2026-10-18T10:31:31.068526+00:00",
+ "dreams": [
+  {
+   "id": "46ec4729-187a-49c1-8101-89a342099f15",
+   "started_at": 1792316812608,
+   "ended_at": 1792316885752,
+   "status": "done",
+   "notes_in": 5,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 4,
+   "output": "# Tier 1 \u2014 Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- **FizzBuzz ordering**: Check multiples of 15 (LCM of 3 and 5) before checking 3 or 5 individually to avoid incorrect \"Fizz\" or \"Buzz\" outputs [note 5]\n- **Array slice indices**: When slicing from end, use `arr.length - n` not `arr.length - n - 1` [note 4]\n\n## Implementation patterns\n- **CSV parsing**: Handle unquoted quotes as literals, quoted commas as non-delimiters, and empty fields [note 1]\n- **Map with concurrency limit**: Use `active` counter with loop starting at most `limit` tasks; store results at fixed indices to preserve order [note 2]\n- **Debounce**: Store `lastArgs` and `scheduledTime = currentTime + delay`; use injectable `now` function; flush lazily on calls [note 3]",
+   "note": "project memory -> v2 \u00b7 canaries: fix-csv-parser: passed (runners: bun); impl-map-limit: passed (runners: bun); impl-debounce: passed (runners: bun) \u00b7 guard: clean (0 unprovenanced new line(s))"
+  },
+  {
+   "id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "started_at": 1792319248544,
+   "ended_at": 1792319335513,
+   "status": "done",
+   "notes_in": 9,
+   "entries_merged": 2,
+   "entries_pruned": 0,
+   "entries_added": 3,
+   "output": "# Tier 1 \u2014 Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- **FizzBuzz ordering**: Check multiples of 15 (LCM of 3 and 5) before checking 3 or 5 individually to avoid incorrect \"Fizz\" or \"Buzz\" outputs [note 5]\n- **Array slice indices**: When slicing from end, use `arr.length - n` not `arr.length - n - 1` [note 4]\n- **Async race conditions**: Concurrent reads before writes cause lost updates; all tasks may read stale value (0) then all write 1, losing 9 increments [note 6]\n- **Sequential await chains**: `await lastWriteSettled` forces sequential execution, preventing concurrency overlap [note 7]\n\n## Implementation patterns\n- **CSV parsing**: Handle unquoted quotes as literals, quoted commas as non-delimiters, and empty fields [note 1]\n- **Map with concurrency limit**: Use `active` counter with loop starting at most `limit` tasks; store results at fixed indices to preserve order [note 2]\n- **Debounce**: Store `lastArgs` and `scheduledTime = currentTime + delay`; use injectable `now` function; flush lazily on calls [note 3]\n- **LRU cache**: Doubly-linked list for access order (head=MRU, tail=LRU) + Map for O(1) key-to-node lookups [note 8]\n- **Async concurrent writes**: To allow overlap, don't await previous write; use atomic compare-and-swap or cursor-based coordination, not sequential chaining [note 6,7]",
+   "note": "project memory -> v3 \u00b7 canaries: hard-lru-cache: passed (runners: bun); fix-fizzbuzz: passed (runners: bun); fix-csv-parser: passed (runners: bun) \u00b7 guard: clean (0 unprovenanced new line(s))"
+  }
+ ]
+}

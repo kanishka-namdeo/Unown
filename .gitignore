@@ -90,3 +90,9 @@ benchmarks/edit-bench/results/rerun-2026-10-17/*/events/
 .unown/receipts/
 .unown/checkpoints/
 .unown/reviews/
+
+# local-llm testbench: weights, binaries, and large raw outputs (keep fixtures + curated results)
+benchmarks/local-llm/bin/
+benchmarks/local-llm/models/
+benchmarks/local-llm/results/*/
+!benchmarks/local-llm/results/REPORT.md

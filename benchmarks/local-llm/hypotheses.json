@@ -1,0 +1,130 @@
+{
+  "meta": {
+    "purpose": "Hypothesis registry for evaluating fully-local, performance-optimized LLMs on Unown's learning-layer subtasks. Each hypothesis is falsifiable, has explicit metrics, thresholds, guards, and a verdict updated by the testbench (benchmarks/local-llm/runner.mjs).",
+    "created": "2026-10-18",
+    "method": "Replay byte-faithful production prompts (mined from pi-repo/packages/self-learning/src) with fixtures captured from the live engine, against (a) the production remote model via the llm-bridge and (b) local llama.cpp + small GGUF quants. Blind A/B judged by the remote model with position-swap consistency. Cross-platform validated via the probe experiment on GitHub Actions matrix (linux/macos/windows) and locally.",
+    "remoteBaseline": "kimi-k2.5 via llm-bridge -> Dashscope (list $0.49/M in, $2.50/M out)",
+    "localEngine": "llama.cpp llama-server (MIT, pinned build, CPU, OpenAI-compatible, json_schema grammar)",
+    "localCandidates": {
+      "qwen3-0.6b": "Qwen3-0.6B Q4_K_M (Apache-2.0, ~0.5GB) — fast lane",
+      "granite-4.0-1b": "IBM Granite-4.0-1B Q4_K_M (Apache-2.0, ~1.0GB) — best function-calling-per-GB 1B",
+      "lfm2.5-2.6b": "Liquid LFM2.5-2.6B Q4_K_M (LFM Open 1.0, ~1.7GB) — BFCL-V4 56.9, extraction-focused hybrid arch",
+      "nomic-embed-v2": "nomic-embed-text-v2-moe Q4_K_M (Apache-2.0, ~0.34GB) — embedding lane"
+    },
+    "statusLegend": "proposed | in-progress | verified | refuted | partially-verified"
+  },
+  "hypotheses": [
+    {
+      "id": "H1",
+      "title": "Local embedding model can triage session notes at remote-model agreement",
+      "statement": "Routing note triage (benchmark/terminal/other + outcome) to a local nomic-embed-text-v2-moe embedding classifier achieves >= 0.85 agreement with the production model's labels at < 1s p50 per note and $0 marginal cost.",
+      "subtask": "note triage (new capability feeding dream input curation)",
+      "experiment": "E5-embed",
+      "metrics": ["agreementWithRemote", "latency p50", "embedOkRate"],
+      "thresholds": { "agreementWithRemote": ">= 0.85", "p50ms": "<= 1000", "embedOkRate": ">= 0.95" },
+      "guards": ["confidence threshold + deferral to remote for low-similarity cases (cascade pattern)"],
+      "precedent": "GLiNER/GLiNER2 beat ChatGPT on zero-shot NER on CPU (NAACL'24, arXiv 2507.18546); SetFit routers ~56x faster than LLM classification",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H2",
+      "title": "Small local generative model matches remote on note triage quality",
+      "statement": "A <= 1B local model (qwen3-0.6b / granite-4.0-1b) classifies notes with >= 0.90 kind-agreement and >= 0.85 outcome-agreement vs the production model, with valid JSON >= 95% of calls (grammar-constrained).",
+      "subtask": "note triage (generative lane)",
+      "experiment": "E1-triage",
+      "metrics": ["kindAgreement", "outcomeAgreement", "localJsonValidity", "localLatency p50 vs remote p50"],
+      "thresholds": { "kindAgreement": ">= 0.90", "outcomeAgreement": ">= 0.85", "localJsonValidity": ">= 0.95" },
+      "guards": ["JSON retry (Unown chatJson pattern)", "deferral to remote on parse failure"],
+      "precedent": "OpenCode small_model for titles; Claude Code Haiku subagents; SLM summarization parity (arXiv 2502.00641)",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H3",
+      "title": "Local models can draft failure-mining patches; remote verifies (cascade)",
+      "statement": "A local 0.6B-2.6B model, replaying mineFailure() prompts, produces schema-valid mining results on >= 90% of real failed runs (with json_schema grammar), with judged quality not materially worse than remote (blind judge: local wins+ties >= 40% of judged pairs), at $0 marginal cost. Wall-clock on 2 vCPU will be prefill-bound and slower than remote — acceptable because mining is an async background job.",
+      "subtask": "harness failure mining (mineFailure)",
+      "experiment": "E3-mine",
+      "metrics": ["localJsonOk", "localValidatorPass (harness.ts post-validation)", "judge winner distribution", "latency p50 local vs remote", "cost delta"],
+      "thresholds": { "localJsonOk": ">= 0.90", "localValidatorPass": ">= 0.75", "judgeLocalWinPlusTie": ">= 0.40" },
+      "guards": ["harness verify-twice gate (unchanged)", "zero-candidate escalation to remote (FrugalGPT ladder)", "canary regression suite"],
+      "precedent": "FrugalGPT (98% cost cut cascades); Aider architect/editor split; Cursor fast-apply (13x); Mem0 memory ops on small models",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H4",
+      "title": "Local model can run AutoDream consolidation asynchronously at acceptable quality",
+      "statement": "A local 2.6B model replaying runDream() produces a structurally valid next-memory (JSON valid, 60+ chars, <= 160 lines, no injected directives) and the blind judge does not consistently prefer the remote output (remote strict-win rate <= 60%), at $0 marginal cost. Latency is secondary (async job).",
+      "subtask": "AutoDream memory consolidation (runDream / runProjectDream)",
+      "experiment": "E2-dream",
+      "metrics": ["localOk (JSON)", "saneLength", "suspicious (must be false)", "judge winner", "cost delta"],
+      "thresholds": { "localOk": true, "suspicious": false, "judgeRemoteStrictWin": "<= 0.60" },
+      "guards": ["guard.scanUntrustedText quarantine banners (input side, unchanged)", "canary gate (dream that breaks last-passing task is rolled back)", "big-model diff review before ship (proposed integration)"],
+      "precedent": "Letta sleep-time compute (5x compute cut, +13-18% accuracy); Mem0 consolidation on gpt-4o-mini (+26% LOCOMO); GhostWriter poisoning risk -> verify gates mandatory",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H5",
+      "title": "Local model can author valid benchmark task drafts (task minting)",
+      "statement": "A local 2.6B model replaying mintCurriculumVariant() passes the harness's validateDraft() static contract on >= 50% of attempts (vs remote baseline pass rate), enabling a local-draft + sandbox-self-check + remote-verify pipeline.",
+      "subtask": "task minting (curriculum authoring)",
+      "experiment": "E4-mint",
+      "metrics": ["localValidatorPass", "remoteValidatorPass (baseline)", "judge winner", "cost delta"],
+      "thresholds": { "localValidatorPass": ">= 0.50", "remoteRelative": ">= 0.5x remote pass rate" },
+      "guards": ["mint pipeline already self-checks drafts in a sandbox + validates via a real agent run before activation (unchanged)"],
+      "precedent": "Aider/Cursor role splits; curriculum generation is generation-heavy, verifier-gated",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H6",
+      "title": "Cross-platform viability: llama.cpp + small quants run everywhere Unown runs",
+      "statement": "The local lane (llama-server binary + GGUF) starts and serves grammar-constrained JSON on Linux x64/arm64, macOS x64/arm64 and Windows x64/arm64 within 30s cold start and a practical RAM budget (<= 2.5GB RSS for the 2.6B Q4 lane; <= 1.5GB for the 0.6B lane), using only official prebuilt binaries (no AVX requirement — runtime CPU dispatch).",
+      "subtask": "cross-platform compatibility (the user's explicit gate)",
+      "experiment": "E0-probe (run locally + GitHub Actions OS matrix)",
+      "metrics": ["startupMs", "rssMB", "genTokPerSec", "jsonSchemaOk", "prefillTokPerSec"],
+      "thresholds": { "startupMs": "<= 30000", "rssMB(0.6b)": "<= 1500", "rssMB(2.6b)": "<= 2500", "jsonSchemaOk": true },
+      "guards": ["pinned build number for reproducibility", "detect-and-use existing runtimes (Ollama/LM Studio) before spawning our own"],
+      "precedent": "llama.cpp ships 12-20MB prebuilts for 6 OS+arch combos, MIT license, runtime CPU dispatch sse42->sapphirerapids",
+      "status": "in-progress",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H7",
+      "title": "Negative control: local small models must NOT replace the main agent brain",
+      "statement": "Routing the pi agent session itself (main coding brain) to a local 0.6B-2.6B model collapses benchmark pass rates vs the remote baseline — confirming the scoping: local models are for AUXILIARY learning-layer subtasks only, not the agent loop.",
+      "subtask": "agent session (negative control / scope boundary)",
+      "experiment": "E6-fullloop (phase 2, integration): run harness tasks with PI_MODEL_ID=local-*",
+      "metrics": ["task pass rate local vs remote"],
+      "thresholds": { "expected": "pass rate collapses (documenting the boundary)" },
+      "guards": ["n/a — this is the boundary experiment"],
+      "precedent": "SWE-bench: small models ~38% vs frontier 74-97%; OpenHands local timeouts",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H8",
+      "title": "Integration shape: per-subtask routing via local-* model ids in the bridge",
+      "statement": "The minimal-risk integration is (a) llm-bridge learns a local route (BRIDGE_LOCAL_URL; ids matching local-* forwarded there, keyless), and (b) self-learning/src/llm.ts gains an optional per-call model override with per-subtask env vars (PI_MINER_MODEL_ID, PI_DREAM_MODEL_ID, PI_MINT_MODEL_ID), so the agent session stays remote while background learning jobs can go local. Adoption happens only if H1-H5 verify.",
+      "subtask": "integration design (only on success of H1-H5)",
+      "experiment": "E6-fullloop + regression suite",
+      "metrics": ["routing coverage", "learning-loop pass-rate parity", "cycle cost delta"],
+      "thresholds": { "regressionPassRate": ">= baseline - 1pt" },
+      "guards": ["verify-twice + canary + retention gates (unchanged)", "shadow-mode dual-run before cutover", "every deferral logged with reason code"],
+      "precedent": "Mem0/Continue role-decomposed model configs; static routing beats learned routers (RouterArena)",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    }
+  ]
+}

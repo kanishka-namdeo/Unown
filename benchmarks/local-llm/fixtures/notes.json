@@ -1,0 +1,185 @@
+{
+ "exportedAt": "2026-10-18T10:31:31.066756+00:00",
+ "notes": [
+  {
+   "id": "7b2388cc-7ddc-4102-8bde-0e3050c25953",
+   "run_id": "223cb8c9-a571-45e3-aa16-8e98b618aca5",
+   "content": "Run 223cb8c9 (baseline) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 first (which are divisible by both 3 and 5), before checking for multiples of 3 or 5 individually.",
+   "created_at": 1792316279076,
+   "dream_id": "46ec4729-187a-49c1-8101-89a342099f15",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "0505c16e-19f4-4691-9c50-986c15f63196",
+   "run_id": "c1d68d5c-82c0-40bc-bc91-b49ae9498dc2",
+   "content": "Run c1d68d5c (baseline) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: Fixed. The bug was the extra `- 1` in the slice end index. Changed `arr.length - n - 1` to `arr.length - n`.",
+   "created_at": 1792316667129,
+   "dream_id": "46ec4729-187a-49c1-8101-89a342099f15",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "07a49b99-1b6c-4159-a147-bf99f969522c",
+   "run_id": "b544d3ce-0a14-4cfe-b266-49aa2a4bbc29",
+   "content": "Run b544d3ce (baseline) on task impl-debounce: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Delays invocation**: Stores the arguments (`lastArgs`) and scheduled time (`scheduledTime = currentTime + delay`) on each call\n2. **Injectable clock**: Uses the `now` function passed in options (defaults to `Date.now`)\n3. **Lazy boundary flushing**: On each ",
+   "created_at": 1792316691736,
+   "dream_id": "46ec4729-187a-49c1-8101-89a342099f15",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "2c9c6124-5520-4e6a-93c9-e1ae971b44e1",
+   "run_id": "795de86e-7a0c-409d-972f-8950411e91f1",
+   "content": "Run 795de86e (baseline) on task impl-map-limit: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Concurrency control**: Uses `active` counter and a loop that starts at most `limit` tasks initially. Each task starts a new one when it completes, maintaining the concurrency bound.\n\n2. **Order preservation**: Stores results at `results[currentIndex]` so eac",
+   "created_at": 1792316725716,
+   "dream_id": "46ec4729-187a-49c1-8101-89a342099f15",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "3a4b996c-a1bc-4c74-ba66-fcdc62eb2600",
+   "run_id": "68033e1e-8b77-4ced-ad96-066971abc1a7",
+   "content": "Run 68033e1e (baseline) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. **Simple comma-separated values** (`a,b,c`)\n2. **Empty fields** (`a,,c`)\n3. **Unquoted fields with quotes inside** (`say \"hi\",world` - quotes preserved as literals)\n4. **Quoted fields containing commas** (`\"a,b\",c` - the comma inside quotes is not a delimiter)\n5.",
+   "created_at": 1792316765206,
+   "dream_id": "46ec4729-187a-49c1-8101-89a342099f15",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "e11aec4f-8610-45a8-9e6e-77a000efb980",
+   "run_id": "3826ddbb-9420-40e2-9772-bd135038fe05",
+   "content": "Run 3826ddbb (regression) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. **Simple comma-separated values** - `a,b,c` \u2192 `[\"a\", \"b\", \"c\"]`\n2. **Empty fields** - `a,,c` \u2192 `[\"a\", \"\", \"c\"]`\n3. **Unquoted quotes** - `say \"hi\",world` \u2192 `['say \"hi\"', \"world\"]` (treated as literals)\n4. **Quoted fields with commas** - `\"a,b\",c` \u2192 `[\"a,b\", \"c\"]`",
+   "created_at": 1792316850104,
+   "dream_id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "5669ca84-24cb-4e3a-a1e8-baed067b56e2",
+   "run_id": "8c1096a0-c26e-4262-8dd5-212a04101244",
+   "content": "Run 8c1096a0 (regression) on task impl-map-limit: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Preserves order** by storing results at fixed indices (`results[currentIndex]`)\n2. **Limits concurrency** by starting at most `limit` tasks initially and only starting a new task when one completes\n3. **Propagates errors** by rejecting the main promise immed",
+   "created_at": 1792316866291,
+   "dream_id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "2b46a80a-c929-44ba-a9ff-50e003dad890",
+   "run_id": "3ebe9dc2-23fc-4f71-b970-40d47eff9e0f",
+   "content": "Run 3ebe9dc2 (regression) on task impl-debounce: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Stores `lastArgs`** - the arguments from the most recent call\n2. **Tracks `scheduledTime`** - when the next call should fire (`currentTime + delay`)\n3. **Lazy boundary flushing** - On each call, checks if `currentTime >= scheduledTime` and fires the pending ",
+   "created_at": 1792316885750,
+   "dream_id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "aa454fa8-7b75-44b3-8cd0-513d6750f0cd",
+   "run_id": "c6f06a73-da49-4643-8568-b73c1cd22338",
+   "content": "Run c6f06a73 (baseline) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 (LCM of 3 and 5) **before** checking for multiples of 3 or 5 individually. This ensures numbers like 15 output \"FizzBuzz\" instead of just \"Fizz\".",
+   "created_at": 1792316903470,
+   "dream_id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "a28abc70-389a-4ab3-839e-36d70bad2792",
+   "run_id": "d3f0c9ec-ffc0-4321-abe7-0f933ccc0eaf",
+   "content": "Run d3f0c9ec (baseline) on task hard-lru-cache: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, write, bash)\nAgent's final words: All tests pass. The implementation uses:\n\n1. **A doubly-linked list** to maintain access order: head is the most-recently-used side, tail is the least-recently-used side\n2. **A Map** for O(1) key-to-node lookups\n\nOperations:\n- `get(key)`: Returns -1 if not found, otherwise returns the value and move",
+   "created_at": 1792317115595,
+   "dream_id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "74584923-0ff3-43cd-945b-52c951057005",
+   "run_id": "00817634-7cf1-4b4c-9a1c-958439d45813",
+   "content": "Run 00817634 (baseline) on task hard-async-race: FAILED\nVerification: tests failed\nTools used: 4 calls (read, edit, bash)\nFailure evidence:\n  - 31 |   assert.equal(await s.value, 50, \"final value must be exactly n (50)\");\n  - AssertionError: final value must be exactly n (50)\n  - code: \"ERR_ASSERTION\"\nAgent's final words: The issue is that all the async functions read the value concurrently before any writes settle, so they all read `0` and then all set it to `1`. I need to ensure that each increment waits for the previous one to complete, but that the operations overlap. \n\nLet me reconsider the `FakeStore` behavior:",
+   "created_at": 1792317298526,
+   "dream_id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "77c82061-0ff3-4ae5-8f9c-be52a3bae7b2",
+   "run_id": "0c0f0034-4ee7-4e6a-8f11-04af33082a29",
+   "content": "Run 0c0f0034 (candidate) on task hard-async-race: FAILED\nVerification: tests failed\nTools used: 88 calls (read, edit, bash)\nFailure evidence:\n  - 48 |   assert.ok(\n  - AssertionError: increments must overlap: expected more than 1 concurrent pending write at some point, saw max=1\n  - code: \"ERR_ASSERTION\"\nAgent's final words: Still sequential. The issue is `await lastWriteSettled` which makes each task wait for the previous one.\n\nLet me try a different approach. What if I don't wait for the previous write to settle, but instead use a \"ticket\" system where each task gets a unique value to write?\n\nActually, that's not poss",
+   "created_at": 1792317905839,
+   "dream_id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "971d4d57-db71-4d23-b9c1-7aa4557affb5",
+   "run_id": "668cde88-aa1f-4343-b1af-206ad77599ce",
+   "content": "Run 668cde88 (candidate) on task hard-async-race: FAILED\nVerification: tests failed\nTools used: 48 calls (read, edit, bash)\nAgent's final words: Still 10. The issue is that all the first operations in each lane (which are the first 5 operations) all read before any write happens.\n\nLet me try a different approach: have a \"cursor\" that tracks which operation should run next, and lanes compete to run the next operation:",
+   "created_at": 1792318574264,
+   "dream_id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "b311b52e-ca4d-4037-9f57-a7e15b30c3ff",
+   "run_id": "78c2724a-8b78-4bdf-8979-752f61bc75f4",
+   "content": "Run 78c2724a (candidate) on task hard-async-race: FAILED\nVerification: tests failed\nTools used: 8 calls (read, edit, bash)\nAgent's final words: Still losing updates. The issue is that even with the yield, all 10 lanes are still racing. Let me think about this more carefully.\n\nThe problem is:\n1. All 10 lanes start simultaneously\n2. All 10 lanes await `store.value` and get 0\n3. All 10 lanes set `store.value = 1`\n4. Only one write wins, `_v` b",
+   "created_at": 1792319242716,
+   "dream_id": "42eb9730-0da9-4b5c-9fa7-3acb3e09af50",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "36614b77-2763-4307-b7f2-aee827748e10",
+   "run_id": "11670f37-29a0-4e3c-9a35-020f17ccc53d",
+   "content": "Run 11670f37 (regression) on task hard-lru-cache: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation uses:\n\n1. **A `Map`** for O(1) key-to-node lookups\n2. **A doubly-linked list** (via `head`/`tail` pointers and `prev`/`next` on nodes) to track access order:\n   - `head` = Most Recently Used (MRU)\n   - `tail` = Least Recently Used (LRU)\n\n**Operations:**\n- `get(key)",
+   "created_at": 1792319277212,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "9738438f-db03-4834-99f9-4154b2c0d82a",
+   "run_id": "c351f9bb-622d-429e-a298-962bedc32a29",
+   "content": "Run c351f9bb (regression) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 (LCM of 3 and 5) first, before checking for multiples of 3 or 5 individually. This ensures that numbers divisible by both 3 and 5 output \"FizzBuzz\" instead of just \"Fizz\".",
+   "created_at": 1792319291524,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "475d5b82-6a5f-418a-8ac6-89b56947ab8b",
+   "run_id": "756b785d-ca96-4687-a71e-372a70d7e153",
+   "content": "Run 756b785d (regression) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. Simple comma-separated fields (`a,b,c`)\n2. Empty fields (`a,,c`)\n3. Quotes inside unquoted fields that should be preserved as literals (`say \"hi\"`)\n4. Quoted fields containing commas (`\"a,b\"`)\n5. Escaped quotes inside quoted fields (`\"he said \"\"run\"\"\"` \u2192 `he said",
+   "created_at": 1792319335511,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "b3fe7e86-2e30-4b7e-8640-9b8823beb1e0",
+   "run_id": "4122f79a-d0c8-43f9-93be-0a2eb1f93f2c",
+   "content": "Run 4122f79a (baseline) on task hard-async-race: PASSED\nVerification: all tests passed\nTools used: 19 calls (read, edit, bash)\nAgent's final words: All tests pass consistently. The solution:\n\n1. **Reads the starting value once** - This avoids the race condition where multiple reads get the same value\n2. **Schedules all n writes immediately** - This creates overlap because `pendingSets` is incremented synchronously for each call, but the actual ",
+   "created_at": 1792319472458,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  }
+ ]
+}

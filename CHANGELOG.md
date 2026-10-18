@@ -11,6 +11,10 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 ### Added
 
+- **local-llm testbench (experiments, not yet a behavior change)** — `benchmarks/local-llm/`: a hypothesis-driven bench for evaluating fully-local, performance-optimized LLMs (llama.cpp `llama-server` + small GGUF quants: Qwen3-0.6B, Granite-4.0-1B, LFM2.5-2.6B, nomic-embed-text-v2-moe) against the production remote model on the learning layer's real subtasks. It replays byte-faithful production prompts (`harness.ts` miner, `dream.ts` AutoDream, `mint.ts` task-mint, plus a note-triage probe) over fixtures captured from the live engine (18 notes, 8 tasks, 18 runs incl. 4 genuine FAILED transcripts, 3 shipped improvements, 1 real dream), measures latency/TTFT/tokens/JSON-validity/harness-validator pass/blind-A‑B judge verdicts and cost, and files every hypothesis with thresholds + guards in `hypotheses.json` (H1–H8). Cross-platform lane: pure-Node runner, official llama.cpp prebuilts (runtime CPU dispatch, no AVX floor), new `local-llm-probe.yml` CI matrix (ubuntu/macos/windows) asserting the H6 thresholds keylessly. Early measured receipts on the 2-vCPU/4GB host: E0 probe — 0.6B Q4_K_M cold start 1.05s, RSS 1036MB, gen 18–22.75 tok/s, TTFT ~170ms, json_schema grammar OK; **KV-cache q8_0 quantization degrades CPU prompt processing 4.4× (127 → 29 tok/s)** — the bench drops it (f16 KV + small ctx instead) and flags the finding for anyone copying "GPU-tuned" llama.cpp flags onto CPU boxes; E1 note triage — **0.6B local = 100% kind/outcome agreement and 100% JSON validity vs kimi-k2.5** over 18 real notes (p50 3.7s local vs 1.4s remote, $0 vs $0.0052). No production code path changed: adoption is gated on the registry (H8 sketches the bridge `local-*` route + per-subtask env overrides if H1–H5 verify).
+
+### Added
+
 - Nothing yet — cut from [2.1.0](#210---2026-10-18) on 2026-10-18.
 
 ## [2.1.0] - 2026-10-18

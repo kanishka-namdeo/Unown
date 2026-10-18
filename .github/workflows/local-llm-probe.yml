@@ -1,0 +1,80 @@
+name: local-llm probe
+
+# Cross-platform validation lane for the local-model testbench (H6 in
+# benchmarks/local-llm/hypotheses.json): proves the llama.cpp + small-GGUF
+# lane starts, serves grammar-constrained JSON, and stays inside a modest RAM
+# budget on every OS/arch Unown supports. Runs the KEYLESS experiments only
+# (E0 probe + E1 triage in --no-remote mode) — comparison experiments against
+# the remote baseline run where a bridge is reachable, not in CI.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "benchmarks/local-llm/**"
+      - ".github/workflows/local-llm-probe.yml"
+  pull_request:
+    paths:
+      - "benchmarks/local-llm/**"
+      - ".github/workflows/local-llm-probe.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: probe (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Provision llama.cpp + Qwen3-0.6B Q4_K_M
+        run: node benchmarks/local-llm/runner.mjs provision --models qwen3-0.6b
+        env:
+          # pinned in lib/llama.mjs; keep env override for quick bumps
+          LLAMA_BUILD: b11718
+
+      - name: E0 capability probe (startup / RAM / tok/s / json_schema)
+        run: node benchmarks/local-llm/runner.mjs probe qwen3-0.6b
+
+      - name: E1 note triage, local-only (fixtures, no API key)
+        run: node benchmarks/local-llm/runner.mjs e1-triage --model qwen3-0.6b --no-remote --notes 8
+
+      - name: Assert H6 thresholds
+        shell: node {0}
+        run: |
+          const fs = require("fs");
+          const glob = require("path").join("benchmarks", "local-llm", "results");
+          const dirs = fs.readdirSync(glob).filter((d) => d.startsWith("probe"));
+          if (!dirs.length) { console.error("no probe results dir"); process.exit(1); }
+          const dir = fs.statSync(require("path").join(glob, dirs.at(-1))).mtimeMs;
+          const newest = dirs
+            .map((d) => ({ d, m: fs.statSync(require("path").join(glob, d, "e0-probe.json")).mtimeMs }))
+            .sort((a, b) => b.m - a.m)[0].d;
+          const probe = JSON.parse(fs.readFileSync(require("path").join(glob, newest, "e0-probe.json"), "utf8"));
+          const r = probe.results.find((x) => x.model === "qwen3-0.6b");
+          console.log(JSON.stringify(r, null, 1));
+          const fail = [];
+          if (!r.jsonSchemaOk) fail.push("json_schema constrained decoding did not work");
+          if (r.startupMs > 30000) fail.push("startup > 30s: " + r.startupMs + "ms");
+          if (r.rssMB > 1500) fail.push("RSS > 1.5GB for the 0.6B lane: " + r.rssMB + "MB");
+          if (fail.length) { console.error("H6 THRESHOLD FAILURES:\n- " + fail.join("\n- ")); process.exit(1); }
+          console.log("H6 thresholds OK on " + process.platform);
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-llm-probe-${{ matrix.os }}
+          path: benchmarks/local-llm/results/
+          retention-days: 14
