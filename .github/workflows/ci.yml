@@ -140,13 +140,15 @@ jobs:
         shell: bash
         run: |
           bun bin/unown info --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);if(!j.platform)throw new Error('info json missing platform')})"
-          bun bin/unown doctor --json > /tmp/doctor.json || code=$?
+          # workspace-relative paths: bash's /tmp and node's /tmp DISAGREE on
+          # Windows (msys temp vs drive root) — only bash may touch /tmp here
+          bun bin/unown doctor --json > doctor-ci.json || code=$?
           code=${code:-0}
           if [ "$code" -gt 1 ]; then echo "::error::doctor --json crashed (exit $code)"; exit 1; fi
-          node -e "const j=require('/tmp/doctor.json');if(!Array.isArray(j.checks)||!j.checks.length)throw new Error('doctor json missing checks')"
+          node -e "const j=require('./doctor-ci.json');if(!Array.isArray(j.checks)||!j.checks.length)throw new Error('doctor json missing checks')"
           for sh in bash; do
-            bun bin/unown completions "$sh" > "/tmp/c.$sh"
-            bash -n "/tmp/c.$sh" || { echo "::error::$sh completion has syntax errors"; exit 1; }
+            bun bin/unown completions "$sh" > "c-ci.$sh"
+            bash -n "c-ci.$sh" || { echo "::error::$sh completion has syntax errors"; exit 1; }
           done
           bun bin/unown changelog | grep -q "full changelog" || { echo "::error::unown changelog printed no footer (command broken)"; exit 1; }
           ucode=0
