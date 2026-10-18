@@ -1,0 +1,49 @@
+# OpenSSF Scorecard — weekly supply-chain posture scan (publishes results
+# to api.scorecard.dev; the README badge reads them).
+#
+# Checks this repo scores well on already: CI-Tests, Security-Policy,
+# License, Maintained, Code-Review, Token-Permissions, Pinned-Dependencies,
+# Dependency-Update-Tool, SAST (all shipped 2026-10). Long-term items the
+# scan will keep flagging (documented, accepted): Signed-Releases needs
+# artifact signatures, Fuzzing needs OSS-Fuzz integration, Packaging
+# expects a registry-published package.
+name: Scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "27 6 * * 1"
+  push:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+    steps:
+      - name: Harden runner (audit-only)
+        # Audit mode: extra egress restriction without breaking scorecard.
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Run analysis
+        uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - name: Upload SARIF to the repo Security tab
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 14

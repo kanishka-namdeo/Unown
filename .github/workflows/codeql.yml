@@ -1,0 +1,40 @@
+# CodeQL SAST — weekly + on push/PR (OpenSSF SAST check).
+#
+# javascript-typescript with build-mode: none (source extraction; the repo
+# has no npm build step — bun installs + Next build are not needed for JS
+# analysis). The vendored pi-repo/ is included: packages/self-learning is
+# Unowned first-party agent code; the upstream siblings get the same scan
+# (they ship in the product). node_modules/dist are excluded by CodeQL
+# defaults plus the config below.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "30 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@ce5e7eeac396d720fe2d802714996c8ce561e311 # v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+          config-file: ./.github/codeql-config.yml
+      - uses: github/codeql-action/analyze@ce5e7eeac396d720fe2d802714996c8ce561e311 # v3
+        with:
+          category: "/language:javascript-typescript"

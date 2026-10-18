@@ -1,0 +1,13 @@
+# CodeQL scan paths — skip generated/vendored-binary trees that would only
+# produce noise (and that nobody can action from this repo).
+paths-ignore:
+  - node_modules
+  - "**/node_modules"
+  - "**/dist"
+  - "**/*.min.js"
+  - src/generated
+  - pi-repo/packages/coding-agent/dist
+  - pi-repo/packages/ai/src/models.generated.ts
+  - blueprint
+  - benchmarks
+  - .next
