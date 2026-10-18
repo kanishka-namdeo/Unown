@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 73;
+export const CHANGELOG_TOTAL_ENTRIES = 74;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 37,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 11,
+  "Fixed": 12,
   "Security": 3,
   "Behavior": 6
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 32,
+    "total": 33,
     "counts": {
       "Added": 9,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 3,
+      "Fixed": 4,
       "Security": 0,
       "Behavior": 6
     },
@@ -101,6 +101,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
+            "behavior": false
+          },
           {
             "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
             "behavior": false
