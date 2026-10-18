@@ -87,7 +87,7 @@ export function RouterTab() {
                           </span>
                           <div>
                             <p className="text-sm font-semibold text-zinc-200">{j.name}</p>
-                            <Mono className="text-zinc-600">{j.id}</Mono>
+                            <Mono className="text-zinc-400">{j.id}</Mono>
                           </div>
                         </div>
                       </div>
@@ -105,9 +105,9 @@ export function RouterTab() {
                       </div>
                     </div>
 
-                    <p className="text-xs leading-5 text-zinc-500">{j.description}</p>
+                    <p className="text-xs leading-5 text-zinc-400">{j.description}</p>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-zinc-500">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-zinc-400">
                       <span className="inline-flex items-center gap-1.5">
                         {j.kind === "interval" ? (
                           <>

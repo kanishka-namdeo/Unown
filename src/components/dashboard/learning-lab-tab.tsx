@@ -35,12 +35,12 @@ function ImprovementCard({ imp }: { imp: Improvement }) {
           <Mono className="text-zinc-400">{imp.task_id}</Mono>
           <Pill tone="zinc">iter {imp.iteration}</Pill>
           <Pill tone="emerald">→ {imp.target_tier}</Pill>
-          <span className="ml-auto font-mono text-[10px] text-zinc-600">{timeAgo(imp.created_at)}</span>
+          <span className="ml-auto font-mono text-[10px] text-zinc-400">{timeAgo(imp.created_at)}</span>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <p className="text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">diagnosis</p>
+            <p className="text-[10px] font-semibold tracking-wider text-zinc-400 uppercase">diagnosis</p>
             <p
               className={cn(
                 "mt-1 text-xs leading-5 text-zinc-300",
@@ -59,15 +59,15 @@ function ImprovementCard({ imp }: { imp: Improvement }) {
             </button>
           </div>
           <div>
-            <p className="text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">proposal</p>
+            <p className="text-[10px] font-semibold tracking-wider text-zinc-400 uppercase">proposal</p>
             <p className="mt-1 text-xs leading-5 text-zinc-300">{imp.proposal}</p>
           </div>
         </div>
 
         <div>
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">memory patch</p>
-            <span className="font-mono text-[10px] text-zinc-600">
+            <p className="text-[10px] font-semibold tracking-wider text-zinc-400 uppercase">memory patch</p>
+            <span className="font-mono text-[10px] text-zinc-400">
               {imp.score_before} → {imp.score_after}
             </span>
           </div>
@@ -139,10 +139,10 @@ export function LearningLabTab() {
                   <div className="flex flex-wrap items-center gap-2">
                     <CycleStatusBadge status={c.status} />
                     <span className="text-xs font-medium text-zinc-200">{c.task_name ?? c.task_id}</span>
-                    <Mono className="text-zinc-600">iter {c.iteration}</Mono>
+                    <Mono className="text-zinc-400">iter {c.iteration}</Mono>
                   </div>
-                  {c.summary && <p className="mt-1.5 text-[11px] leading-4 text-zinc-500">{c.summary}</p>}
-                  <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-zinc-600">
+                  {c.summary && <p className="mt-1.5 text-[11px] leading-4 text-zinc-400">{c.summary}</p>}
+                  <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-zinc-400">
                     <span>{timeAgo(c.created_at)}</span>
                     {c.shipped > 0 && <span className="text-emerald-500/80">{c.shipped} shipped</span>}
                   </div>
@@ -177,7 +177,7 @@ export function LearningLabTab() {
           <SectionHeading
             title="Runs"
             sub={selectedCycle ? "runs of the selected cycle" : "baseline · candidate · regression · interactive"}
-            right={<Mono className="text-zinc-600">{runs.length} runs</Mono>}
+            right={<Mono className="text-zinc-400">{runs.length} runs</Mono>}
           />
           <Card className={cn(cardCls, "mt-3")}>
             <CardContent className="p-0">
@@ -187,7 +187,7 @@ export function LearningLabTab() {
                 <div className="scroll-thin overflow-x-auto">
                   <table className="w-full min-w-[760px] text-sm">
                     <thead>
-                      <tr className="border-b border-zinc-800 text-left text-[11px] tracking-wider text-zinc-500 uppercase">
+                      <tr className="border-b border-zinc-800 text-left text-[11px] tracking-wider text-zinc-400 uppercase">
                         <th className="px-4 py-2.5 font-medium">Status</th>
                         <th className="px-4 py-2.5 font-medium">Kind</th>
                         <th className="px-4 py-2.5 font-medium">Task</th>
@@ -215,7 +215,7 @@ export function LearningLabTab() {
                             {formatDuration((r.ended_at ?? Date.now()) - r.started_at)}
                           </td>
                           <td className="px-4 py-2.5" title={r.sandbox_id ?? ""}>
-                            <Mono className="text-zinc-600">{truncateMiddle(r.sandbox_id, 20)}</Mono>
+                            <Mono className="text-zinc-400">{truncateMiddle(r.sandbox_id, 20)}</Mono>
                           </td>
                         </tr>
                       ))}
@@ -225,7 +225,7 @@ export function LearningLabTab() {
               )}
             </CardContent>
           </Card>
-          <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-zinc-600">
+          <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-zinc-400">
             <TerminalSquare className="size-3.5" />
             click a row for the full transcript, prompt and verification log
           </p>

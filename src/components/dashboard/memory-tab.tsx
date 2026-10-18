@@ -55,13 +55,13 @@ function TierCard({
       <CardContent className="flex flex-col gap-2 p-4">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 text-sm font-semibold text-zinc-200">
-            <Layers className={cn("size-4", selected ? "text-emerald-400" : "text-zinc-500")} />
+            <Layers className={cn("size-4", selected ? "text-emerald-400" : "text-zinc-400")} />
             {meta.label}
           </span>
           <Pill tone={selected ? "emerald" : "zinc"}>v{tier.version}</Pill>
         </div>
-        <p className="text-[11px] text-zinc-500">{meta.hint}</p>
-        <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-600">
+        <p className="text-[11px] text-zinc-400">{meta.hint}</p>
+        <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-400">
           <span>{tier.chars} chars</span>
           <span>·</span>
           <span>updated {timeAgo(tier.updatedAt)}</span>
@@ -114,13 +114,13 @@ function SkillCard({
       <CardContent className="flex flex-col gap-2 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-2 text-sm font-semibold text-zinc-200">
-            <Sparkles className={cn("size-4", retired ? "text-zinc-500" : "text-emerald-400")} />
+            <Sparkles className={cn("size-4", retired ? "text-zinc-400" : "text-emerald-400")} />
             {skill.name}
           </span>
           <SkillStatusBadge status={skill.status} />
           <Pill tone="outline">v{skill.version}</Pill>
-          <Mono className="text-zinc-600">{skill.project_slug}</Mono>
-          <Mono className="text-zinc-600">{timeAgo(skill.updated_at)}</Mono>
+          <Mono className="text-zinc-400">{skill.project_slug}</Mono>
+          <Mono className="text-zinc-400">{timeAgo(skill.updated_at)}</Mono>
           <span className="ml-auto flex items-center gap-1">
             {skill.version > 1 && (
               <Button
@@ -291,7 +291,7 @@ export function MemoryTab() {
         <SectionHeading
           title={`${selectedTier} history`}
           sub="who changed what — seed · harness · autodream · manual · rollback"
-          right={<Mono className="text-zinc-600">{history.length} versions</Mono>}
+          right={<Mono className="text-zinc-400">{history.length} versions</Mono>}
         />
         <div className="mt-3 flex flex-col gap-3">
           {history.length === 0 ? (
@@ -307,7 +307,7 @@ export function MemoryTab() {
                       <Pill tone={isCurrent ? "emerald" : "zinc"}>v{h.version}</Pill>
                       {isCurrent && <Pill tone="outline">current</Pill>}
                       <ChangedByBadge changedBy={h.changed_by} />
-                      <Mono className="text-zinc-600">{timeAgo(h.created_at)}</Mono>
+                      <Mono className="text-zinc-400">{timeAgo(h.created_at)}</Mono>
                       {canRollback && (
                         <Button
                           size="sm"
@@ -322,7 +322,7 @@ export function MemoryTab() {
                       )}
                     </div>
                     {h.note && <p className="text-xs text-zinc-400">{h.note}</p>}
-                    <pre className="scroll-thin max-h-28 overflow-y-auto rounded-md border border-zinc-800 bg-zinc-950/70 px-3 py-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap text-zinc-500">
+                    <pre className="scroll-thin max-h-28 overflow-y-auto rounded-md border border-zinc-800 bg-zinc-950/70 px-3 py-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap text-zinc-400">
                       {h.content}
                     </pre>
                   </CardContent>
@@ -337,7 +337,7 @@ export function MemoryTab() {
         <SectionHeading
           title="Skills"
           sub="Agent Skills minted by AutoDream into user projects — recurring procedures from session notes become SKILL.md procedures"
-          right={<Mono className="text-zinc-600">{skills.length} minted</Mono>}
+          right={<Mono className="text-zinc-400">{skills.length} minted</Mono>}
         />
         <div className="mt-3 flex flex-col gap-3">
           {skills.length === 0 ? (

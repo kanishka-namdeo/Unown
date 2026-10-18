@@ -35,11 +35,11 @@ function iconFor(item: ActivityItem): React.ReactNode {
     return <Sparkles className={cn(cls, item.tone === "emerald" ? "text-emerald-400" : "text-amber-400")} />;
   if (item.event.startsWith("dream:")) return <Moon className={cn(cls, "text-amber-400")} />;
   if (item.event === "memory:changed") return <Layers className={cn(cls, "text-emerald-400")} />;
-  if (item.event === "hook") return <ShieldCheck className={cn(cls, "text-zinc-500")} />;
-  if (item.event === "note:created") return <StickyNote className={cn(cls, "text-zinc-500")} />;
+  if (item.event === "hook") return <ShieldCheck className={cn(cls, "text-zinc-400")} />;
+  if (item.event === "note:created") return <StickyNote className={cn(cls, "text-zinc-400")} />;
   if (item.event.startsWith("job:")) return <CalendarClock className={cn(cls, item.tone === "rose" ? "text-rose-400" : "text-amber-400")} />;
   if (item.event === "router:error") return <TriangleAlert className={cn(cls, "text-rose-400")} />;
-  return <PlayCircle className={cn(cls, "text-zinc-500")} />;
+  return <PlayCircle className={cn(cls, "text-zinc-400")} />;
 }
 
 const toneText: Record<string, string> = {
@@ -93,7 +93,7 @@ export function ActivityFeed({
               >
                 <span className="mt-0.5">{iconFor(item)}</span>
                 <span className={cn("min-w-0 flex-1 text-xs leading-5", toneText[item.tone])}>{item.text}</span>
-                <span className="shrink-0 pt-px font-mono text-[10px] text-zinc-600 tabular-nums">
+                <span className="shrink-0 pt-px font-mono text-[10px] text-zinc-400 tabular-nums">
                   {timeAgo(item.ts)}
                 </span>
               </motion.li>

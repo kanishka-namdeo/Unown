@@ -59,9 +59,9 @@ export function HooksTab() {
               <CardContent className="flex flex-col gap-1.5 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <Mono className="text-xs font-semibold text-emerald-400">{p.name}</Mono>
-                  <Mono className="text-zinc-600">{byHook.get(p.name) ?? 0}×</Mono>
+                  <Mono className="text-zinc-400">{byHook.get(p.name) ?? 0}×</Mono>
                 </div>
-                <p className="text-[11px] leading-4 text-zinc-500">{p.what}</p>
+                <p className="text-[11px] leading-4 text-zinc-400">{p.what}</p>
               </CardContent>
             </Card>
           ))}
@@ -88,7 +88,7 @@ export function HooksTab() {
               <div className="scroll-thin overflow-x-auto">
                 <table className="w-full min-w-[760px] text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-800 text-left text-[11px] tracking-wider text-zinc-500 uppercase">
+                    <tr className="border-b border-zinc-800 text-left text-[11px] tracking-wider text-zinc-400 uppercase">
                       <th className="px-4 py-2.5 font-medium">When</th>
                       <th className="px-4 py-2.5 font-medium">Hook</th>
                       <th className="px-4 py-2.5 font-medium">Tool</th>
@@ -102,9 +102,9 @@ export function HooksTab() {
                       const hasDetails = !!h.details;
                       return (
                         <tr key={`${h.ts}-${i}`} className="border-b border-zinc-800/60 align-top last:border-0 hover:bg-zinc-900/70">
-                          <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap text-zinc-500 tabular-nums">{timeAgo(h.ts)}</td>
+                          <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap text-zinc-400 tabular-nums">{timeAgo(h.ts)}</td>
                           <td className="px-4 py-2.5"><Mono className="text-zinc-300">{h.hook}</Mono></td>
-                          <td className="px-4 py-2.5"><Mono className="text-zinc-500">{h.tool ?? "—"}</Mono></td>
+                          <td className="px-4 py-2.5"><Mono className="text-zinc-400">{h.tool ?? "—"}</Mono></td>
                           <td className="px-4 py-2.5"><DecisionBadge decision={h.decision} /></td>
                           <td className="max-w-[280px] px-4 py-2.5">
                             <span className={cn("block truncate text-xs", h.decision === "deny" ? "text-rose-300/80" : "text-zinc-400")} title={h.reason ?? ""}>
@@ -125,7 +125,7 @@ export function HooksTab() {
                                 </CollapsibleContent>
                               </Collapsible>
                             ) : (
-                              <Mono className="text-zinc-700">—</Mono>
+                              <Mono className="text-zinc-400">—</Mono>
                             )}
                           </td>
                         </tr>

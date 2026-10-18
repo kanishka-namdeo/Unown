@@ -13,8 +13,8 @@ concurrency:
 # Required CI gates (docs/testing-strategy.md §3, §6): lint, typecheck, unit
 # tests, changed-line coverage, docs links/anchors, shell syntax, theme
 # contract, landing palette, secret scan, advisory audit, mermaid byte-identity
-# (gate 15 — this revision). Still deliberately deferred: Playwright E2E +
-# axe-core (gate 16) — see the trailing comments.
+# (gate 15), Playwright E2E + axe-core a11y (gate 16 — both this revision).
+# Still deferred: Lighthouse — see the trailing comments.
 #
 # Cross-platform legs (M4):
 #   - build-test exercises the REAL installer end to end on
@@ -391,11 +391,56 @@ jobs:
           path: download/brand/mermaid-receipt.json
           if-no-files-found: ignore
 
+  e2e:
+    name: E2E + a11y (dashboard vs mock engine)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: Generate Prisma client
+        run: bun run db:generate
+      - name: Build (DIRECT api mode — NEXT_PUBLIC_AGENT_API_BASE baked to the mock engine)
+        # A dedicated job (not piggybacked on the build job's artifact) because
+        # Next inlines NEXT_PUBLIC_* at BUILD time: the E2E build talks
+        # straight to the mock engine on :3030, while the shipped build uses
+        # the gateway's relative URLs. Parallel jobs — no wall-clock cost.
+        env:
+          NEXT_PUBLIC_AGENT_API_BASE: http://127.0.0.1:3030
+        run: bun run build
+      - name: Chromium for Playwright
+        run: bunx playwright install chromium --with-deps
+      - name: "E2E smoke + axe-core a11y (11 tests, 3 flows + 8 scans)"
+        # testing-strategy.md §6 gate 16. The mock engine (e2e/mock-engine.mjs,
+        # zero deps, node:http) implements the exact REST + SSE contract the
+        # dashboard consumes. Covers: seven tabs render live data with a clean
+        # browser console, the SSE feed (hello + scripted canned events), the
+        # console prompt round-trip (submit -> interactive run -> transcript),
+        # and axe-core WCAG 2.0/2.1 A+AA scans of the landing page and all
+        # seven tabs under the dashboard's native dark scheme. The axe half of
+        # this gate already paid for itself: its first run found 80+ real AA
+        # contrast defects + an aria violation in the dashboard, fixed in src.
+        run: bunx playwright test
+      - name: Upload report + traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            download/playwright-report
+            download/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
 # NOT in CI yet, on purpose:
-# - Playwright E2E + axe-core (§6 gate 16) — needs a built dashboard + a mock
-#   engine; the next revision wires it as the e2e job. Lighthouse CI (§12
-#   criterion 6) lands with it or right after.
+# - Lighthouse (testing-strategy.md §12 criterion 6's second half) — needs a
+#   LHCI collect run against the same standalone + mock-engine pair the e2e
+#   job already boots; next revision wires it as a step there.
 # Historical note (superseded items, kept so the receipts stay traceable):
 # `bun run build` shipped as the Production build job; the bridge suite and the
 # integration suite shipped inside build-test; the mermaid byte-identity check
-# shipped as the mermaid job above.
+# shipped as the mermaid job; Playwright E2E + axe-core shipped as the e2e job.

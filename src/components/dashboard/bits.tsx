@@ -170,9 +170,9 @@ export function EmptyState({
 }) {
   return (
     <div className={cn("flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-800 px-6 py-10 text-center", className)}>
-      {icon && <div className="text-zinc-600 [&_svg]:size-6">{icon}</div>}
+      {icon && <div className="text-zinc-400 [&_svg]:size-6">{icon}</div>}
       <p className="text-sm text-zinc-400">{title}</p>
-      {hint && <p className="text-xs text-zinc-600">{hint}</p>}
+      {hint && <p className="text-xs text-zinc-400">{hint}</p>}
     </div>
   );
 }
@@ -190,7 +190,7 @@ export function SectionHeading({
     <div className="flex flex-wrap items-baseline justify-between gap-2">
       <div>
         <h2 className="text-sm font-semibold tracking-wide text-zinc-200 uppercase">{title}</h2>
-        {sub && <p className="mt-0.5 text-xs text-zinc-500">{sub}</p>}
+        {sub && <p className="mt-0.5 text-xs text-zinc-400">{sub}</p>}
       </div>
       {right && <div className="flex items-center gap-2">{right}</div>}
     </div>
@@ -199,7 +199,7 @@ export function SectionHeading({
 
 export function DifficultyStars({ level }: { level: number }) {
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`difficulty ${level} of 5`}>
+    <span role="img" className="inline-flex items-center gap-0.5" aria-label={`difficulty ${level} of 5`}>
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
@@ -214,7 +214,7 @@ export function StatChip({ label, value, tone = "zinc" }: { label: string; value
   return (
     <span className={cn("inline-flex items-baseline gap-1.5 rounded-md border px-2 py-1", toneClasses[tone])}>
       <span className="font-mono text-sm font-semibold tabular-nums">{value}</span>
-      <span className="text-[11px] opacity-70">{label}</span>
+      <span className="text-[11px]">{label}</span>
     </span>
   );
 }

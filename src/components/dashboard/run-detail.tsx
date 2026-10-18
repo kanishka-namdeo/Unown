@@ -32,7 +32,7 @@ export function TranscriptLine({ entry }: { entry: TranscriptEntry }) {
       <div className="py-1 font-mono text-xs">
         <span className="mr-1.5 select-none text-emerald-500">$</span>
         <span className="text-zinc-200">{entry.tool}</span>
-        {pretty && <span className="ml-1.5 break-all text-zinc-500">{pretty.length > 300 ? `${pretty.slice(0, 300)}…` : pretty}</span>}
+        {pretty && <span className="ml-1.5 break-all text-zinc-400">{pretty.length > 300 ? `${pretty.slice(0, 300)}…` : pretty}</span>}
       </div>
     );
   }
@@ -79,7 +79,7 @@ export function RunDetailDialog({
             {run && <RunKindBadge kind={run.kind} />}
             {run && <RunStatusBadge status={run.status} />}
           </DialogTitle>
-          <DialogDescription className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-zinc-500">
+          <DialogDescription className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-zinc-400">
             {run && (
               <>
                 <span>task: {run.task_id}</span>
@@ -88,18 +88,18 @@ export function RunDetailDialog({
                 <span>tools: {run.tool_calls}</span>
                 <span>turns: {run.turns}</span>
                 <span>tokens: {formatTokens(run.tokens_in)} in / {formatTokens(run.tokens_out)} out</span>
-                {run.sandbox_id && <span className="text-zinc-600">sandbox: {run.sandbox_id}</span>}
+                {run.sandbox_id && <span className="text-zinc-400">sandbox: {run.sandbox_id}</span>}
               </>
             )}
           </DialogDescription>
         </DialogHeader>
 
-        {isLoading && !run && <p className="py-8 text-center text-sm text-zinc-500">loading run…</p>}
+        {isLoading && !run && <p className="py-8 text-center text-sm text-zinc-400">loading run…</p>}
         {run && (
           <div className="flex flex-col gap-4">
             {run.prompt && (
               <section>
-                <h3 className="mb-1.5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">prompt</h3>
+                <h3 className="mb-1.5 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">prompt</h3>
                 <pre className="scroll-thin max-h-32 overflow-auto rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-2 font-mono text-[11px] whitespace-pre-wrap text-zinc-300">
                   {run.prompt}
                 </pre>
@@ -108,7 +108,7 @@ export function RunDetailDialog({
 
             {run.verify_output && (
               <section>
-                <h3 className="mb-1.5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">verification</h3>
+                <h3 className="mb-1.5 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">verification</h3>
                 <div
                   className={cn(
                     "flex items-center gap-2 rounded-md border px-3 py-2 text-sm",
@@ -136,11 +136,11 @@ export function RunDetailDialog({
             )}
 
             <section>
-              <h3 className="mb-1.5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
-                transcript <span className="ml-1 normal-case text-zinc-600">({run.transcript.length} entries)</span>
+              <h3 className="mb-1.5 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+                transcript <span className="ml-1 normal-case text-zinc-400">({run.transcript.length} entries)</span>
               </h3>
               {run.transcript.length === 0 ? (
-                <p className="rounded-md border border-dashed border-zinc-800 px-4 py-6 text-center text-xs text-zinc-600">
+                <p className="rounded-md border border-dashed border-zinc-800 px-4 py-6 text-center text-xs text-zinc-400">
                   {run.status === "running" ? "transcript streaming…" : "no transcript entries"}
                 </p>
               ) : (

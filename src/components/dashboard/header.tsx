@@ -37,11 +37,11 @@ export function Header() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="truncate text-sm font-semibold text-zinc-100">unown · self-learning agent</h1>
-              <span className="hidden shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500 sm:inline">
+              <span className="hidden shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 sm:inline">
                 {data?.agent.layer ?? "self-learning"}
               </span>
             </div>
-            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-zinc-500">
+            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-zinc-400">
               <span title="LLM provider" className="truncate font-mono">{data?.agent.provider ?? "provider"}</span>
               <span className="hidden items-center gap-1.5 sm:inline-flex" title={bridgeOk ? "bridge up" : "bridge down"}>
                 <span className="relative flex size-2">
@@ -57,7 +57,7 @@ export function Header() {
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500" title="self-learning engine state">
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400" title="self-learning engine state">
             <ServerCog className="size-3.5" />
             <Pill tone={busy ? "amber" : "emerald"} pulse={busy}>
               {busy ? "engine busy" : "engine idle"}

@@ -109,10 +109,10 @@ export function ConsoleTab() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <RunStatusBadge status={r.status} />
-                  <Mono className="text-zinc-600">{timeAgo(r.started_at)}</Mono>
+                  <Mono className="text-zinc-400">{timeAgo(r.started_at)}</Mono>
                 </div>
-                <Mono className="mt-1 block truncate text-zinc-500">{r.id.slice(0, 18)}</Mono>
-                <div className="mt-1 flex gap-2 font-mono text-[10px] text-zinc-600">
+                <Mono className="mt-1 block truncate text-zinc-400">{r.id.slice(0, 18)}</Mono>
+                <div className="mt-1 flex gap-2 font-mono text-[10px] text-zinc-400">
                   <span>{r.tool_calls} tools</span>
                   <span>·</span>
                   <span>{formatTokens(r.tokens_in + r.tokens_out)} tok</span>
@@ -142,10 +142,10 @@ export function ConsoleTab() {
               }}
               placeholder="e.g. Write a function that reverses a linked list, with tests…"
               aria-label="agent prompt"
-              className="min-h-24 resize-y border-zinc-800 bg-zinc-950/80 font-mono text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-emerald-500/40"
+              className="min-h-24 resize-y border-zinc-800 bg-zinc-950/80 font-mono text-sm text-zinc-200 placeholder:text-zinc-400 focus-visible:ring-emerald-500/40"
             />
             <div className="flex items-center justify-between gap-3">
-              <p className="hidden text-[11px] text-zinc-600 sm:block">
+              <p className="hidden text-[11px] text-zinc-400 sm:block">
                 {busy ? "agent working — transcripts stream below" : "Ctrl/⌘ + Enter to run"}
               </p>
               <Button
@@ -178,7 +178,7 @@ export function ConsoleTab() {
                 run && (
                   <span className="flex items-center gap-2">
                     <RunStatusBadge status={run.status} />
-                    <Mono className="text-zinc-600">
+                    <Mono className="text-zinc-400">
                       {formatDuration((run.ended_at ?? Date.now()) - run.started_at)} ·{" "}
                       {formatTokens(run.tokens_in)}/{formatTokens(run.tokens_out)} tok
                     </Mono>
@@ -197,14 +197,14 @@ export function ConsoleTab() {
             )}
 
             {activeRunId && activeRun.isLoading && (
-              <p className="py-8 text-center text-sm text-zinc-500">loading run…</p>
+              <p className="py-8 text-center text-sm text-zinc-400">loading run…</p>
             )}
 
             {run && (
               <>
                 {run.prompt && (
                   <div className="rounded-md border border-zinc-800 bg-zinc-950/60 px-3 py-2">
-                    <Mono className="text-[10px] tracking-wider text-zinc-600 uppercase">prompt</Mono>
+                    <Mono className="text-[10px] tracking-wider text-zinc-400 uppercase">prompt</Mono>
                     <p className="mt-0.5 font-mono text-xs whitespace-pre-wrap text-zinc-400">{run.prompt}</p>
                   </div>
                 )}
@@ -216,7 +216,7 @@ export function ConsoleTab() {
                   aria-label="agent transcript"
                 >
                   {run.transcript.length === 0 ? (
-                    <p className="py-6 text-center font-mono text-xs text-zinc-600">
+                    <p className="py-6 text-center font-mono text-xs text-zinc-400">
                       {isRunning ? "waiting for first token…" : "no transcript entries"}
                     </p>
                   ) : (

@@ -46,11 +46,11 @@ function KpiCard({
     <Card className={cardCls}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase">{label}</p>
-          <span className="text-zinc-600 [&_svg]:size-4">{icon}</span>
+          <p className="text-[11px] font-medium tracking-wider text-zinc-400 uppercase">{label}</p>
+          <span className="text-zinc-400 [&_svg]:size-4">{icon}</span>
         </div>
         <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-zinc-100">{value}</p>
-        {sub && <div className="mt-1 text-xs text-zinc-500">{sub}</div>}
+        {sub && <div className="mt-1 text-xs text-zinc-400">{sub}</div>}
       </CardContent>
     </Card>
   );
@@ -217,9 +217,9 @@ export function OverviewTab() {
           sub={
             <span className="inline-flex items-center gap-1.5">
               <span className="text-emerald-400">{k?.passed ?? 0} passed</span>
-              <span className="text-zinc-600">·</span>
+              <span className="text-zinc-400">·</span>
               <span className="text-rose-400">{k?.failed ?? 0} failed</span>
-              <span className="text-zinc-600">·</span>
+              <span className="text-zinc-400">·</span>
               <span>{k?.totalRuns ?? 0} runs</span>
             </span>
           }
@@ -232,9 +232,9 @@ export function OverviewTab() {
             k?.suite ? (
               <span className="inline-flex flex-wrap items-center gap-1.5">
                 <span className="text-amber-400">{k.suite.capability} capability</span>
-                <span className="text-zinc-600">·</span>
+                <span className="text-zinc-400">·</span>
                 <span>{k.suite.minted} minted</span>
-                <span className="text-zinc-600">·</span>
+                <span className="text-zinc-400">·</span>
                 <span className="text-emerald-400">{k.suite.graduated} graduated</span>
                 {k.suite.saturated && <Pill tone="amber">saturated</Pill>}
               </span>
@@ -288,7 +288,7 @@ export function OverviewTab() {
                   </span>
                   <p className="text-xs font-semibold text-zinc-200">{p.title}</p>
                 </div>
-                <p className="text-[11px] leading-4 text-zinc-500">{p.line}</p>
+                <p className="text-[11px] leading-4 text-zinc-400">{p.line}</p>
                 <p className="mt-0.5 font-mono text-xs text-emerald-400">{p.metric(patternData)}</p>
               </CardContent>
             </Card>
@@ -333,7 +333,7 @@ export function OverviewTab() {
               <div className="scroll-thin overflow-x-auto">
                 <table className="w-full min-w-[720px] text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-800 text-left text-[11px] tracking-wider text-zinc-500 uppercase">
+                    <tr className="border-b border-zinc-800 text-left text-[11px] tracking-wider text-zinc-400 uppercase">
                       <th className="px-4 py-2.5 font-medium">Task</th>
                       <th className="px-4 py-2.5 font-medium">Difficulty</th>
                       <th className="px-4 py-2.5 font-medium">Pass / Fail</th>
@@ -354,18 +354,18 @@ export function OverviewTab() {
                               <TaskOriginBadge origin={t.origin ?? "seed"} />
                               <TaskStatusBadge status={t.status ?? "regression"} />
                             </div>
-                            <Mono className="text-zinc-600">{t.id}</Mono>
+                            <Mono className="text-zinc-400">{t.id}</Mono>
                           </td>
                           <td className="px-4 py-3"><DifficultyStars level={t.difficulty} /></td>
                           <td className="px-4 py-3 font-mono tabular-nums">
                             <span className="text-emerald-400">{t.passes}</span>
-                            <span className="text-zinc-600"> / </span>
+                            <span className="text-zinc-400"> / </span>
                             <span className="text-rose-400">{t.fails}</span>
                           </td>
                           <td className="px-4 py-3 font-mono tabular-nums text-zinc-300">{t.improvements}</td>
                           <td className="px-4 py-3">
                             {rate === null ? (
-                              <span className="text-xs text-zinc-600">not run yet</span>
+                              <span className="text-xs text-zinc-400">not run yet</span>
                             ) : (
                               <span className={cn("font-mono text-xs tabular-nums", rate >= 50 ? "text-emerald-400" : "text-amber-400")}>
                                 {rate}%
@@ -393,7 +393,7 @@ export function OverviewTab() {
             )}
           </CardContent>
         </Card>
-        <p className="mt-2 text-[11px] text-zinc-600">
+        <p className="mt-2 text-[11px] text-zinc-400">
           Cycles mine failures, propose memory patches, validate them against a candidate run and ship only what helps — details in Learning Lab.
         </p>
       </section>

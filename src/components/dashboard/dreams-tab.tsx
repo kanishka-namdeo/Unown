@@ -36,12 +36,12 @@ function DreamCard({ dream }: { dream: Dream }) {
           aria-expanded={expanded}
         >
           <DreamStatusBadge status={dream.status} />
-          <Mono className="text-zinc-500">{dream.id.slice(0, 8)}</Mono>
+          <Mono className="text-zinc-400">{dream.id.slice(0, 8)}</Mono>
           <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300">
             {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
             {expanded ? "collapse" : "expand"}
           </span>
-          <Mono className="text-zinc-600">{timeAgo(dream.started_at)}</Mono>
+          <Mono className="text-zinc-400">{timeAgo(dream.started_at)}</Mono>
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -57,24 +57,24 @@ function DreamCard({ dream }: { dream: Dream }) {
           <div className="flex flex-col gap-3 border-t border-zinc-800 pt-3">
             {dream.output && (
               <div>
-                <p className="mb-1 text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">dream output</p>
+                <p className="mb-1 text-[10px] font-semibold tracking-wider text-zinc-400 uppercase">dream output</p>
                 <pre className="scroll-thin max-h-72 overflow-auto rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-zinc-300">
                   {dream.output}
                 </pre>
               </div>
             )}
             <div>
-              <p className="mb-1.5 text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
-                consumed notes <span className="text-zinc-700">({notes.length})</span>
+              <p className="mb-1.5 text-[10px] font-semibold tracking-wider text-zinc-400 uppercase">
+                consumed notes <span className="text-zinc-400">({notes.length})</span>
               </p>
               {notes.length === 0 ? (
-                <p className="text-xs text-zinc-600">no notes recorded for this dream</p>
+                <p className="text-xs text-zinc-400">no notes recorded for this dream</p>
               ) : (
                 <ul className="flex flex-col gap-1.5">
                   {notes.map((n) => (
                     <li key={n.id} className="rounded-md border border-zinc-800/70 bg-zinc-950/50 px-3 py-2">
                       <p className="text-[11px] leading-4 text-zinc-400">{n.content}</p>
-                      <Mono className="mt-1 block text-zinc-700">{n.run_id ? `run ${n.run_id.slice(0, 8)}` : `terminal · ${n.project_slug ?? "project"}`} · {timeAgo(n.created_at)}</Mono>
+                      <Mono className="mt-1 block text-zinc-400">{n.run_id ? `run ${n.run_id.slice(0, 8)}` : `terminal · ${n.project_slug ?? "project"}`} · {timeAgo(n.created_at)}</Mono>
                     </li>
                   ))}
                 </ul>
@@ -155,15 +155,15 @@ export function DreamsTab() {
                 <CardContent className="p-3">
                   <p className="text-[11px] leading-4 text-zinc-400">{n.content}</p>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <Mono className="text-zinc-700">{n.run_id ? `run ${n.run_id.slice(0, 8)}` : `terminal · ${n.project_slug ?? "project"}`}</Mono>
-                    <Mono className="text-zinc-700">· {timeAgo(n.created_at)}</Mono>
+                    <Mono className="text-zinc-400">{n.run_id ? `run ${n.run_id.slice(0, 8)}` : `terminal · ${n.project_slug ?? "project"}`}</Mono>
+                    <Mono className="text-zinc-400">· {timeAgo(n.created_at)}</Mono>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
-        <p className="inline-flex items-center gap-1.5 text-[11px] text-zinc-600">
+        <p className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400">
           <Sparkles className="size-3.5" />
           merged notes become project-memory rules; stale ones get pruned
         </p>
