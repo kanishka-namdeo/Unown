@@ -53,15 +53,36 @@ Each entry: feature → source → the seam it landed on in this repo.
 | Feature | Source | Unown form |
 |---|---|---|
 | LSP code intelligence (`lsp` tool: status/diagnostics/hover/definition/references/symbols; auto-detected servers; `.unown/lsp.json` config; PostToolUse diagnostics feedback on every write/edit) | oh-my-pi `lsp` + writethrough | `pi-repo/packages/self-learning/src/lsp.ts`, registered by the unown-tools extension — pure-TS stdio JSON-RPC client, zero deps, cold start never blocks a tool result, degrades silently when no server exists |
-| Checkpoints + `/undo` + `/restore` | Claude Code checkpointing · Gemini shadow-git · codewhale receipts | git-based file snapshots per user turn + explicit `/checkpoint`, in the unown-tools extension; session entries record checkpoint ids so `/undo` rewinds files (conversation rewind stays pi's own `/tree`/fork story) |
-| Session receipts ledger + `/receipts` | codewhale RECEIPTS | every tool call/result appended to `.unown/receipts/<session>.jsonl` (files touched, commands run, denials, failures, token usage); `/receipts` prints the ordered audit with totals |
+| Checkpoints + `/undo` + `/restore` | Claude Code checkpointing · Gemini shadow-git · codewhale receipts | content-addressed blob snapshots per user turn + explicit `/checkpoint`, in a dedicated `unown-checkpoints` extension (first in `extensionFactories`, ahead of the guardrails); session entries record checkpoint ids so `/undo` rewinds files (conversation rewind stays pi's own `/tree`/fork story) |
+| Session receipts ledger + `/receipts` | codewhale RECEIPTS | every tool call/result appended to `.unown/receipts/<session>.jsonl` (files touched, commands run, failures, token usage — blocked calls land as error results); `/receipts` prints the ordered audit with totals |
 | MCP client (stdio + streamable HTTP, `.unown/mcp.json` + `~/.unown/agent/mcp.json` discovery, dynamic tool registration, `/mcp` status command) | Claude Code / codewhale / zcode MCP | `pi-repo/packages/self-learning/src/mcp.ts` — tools surfaced through `pi.registerTool` with `mcp__<server>__<tool>` naming; servers never block session start (lazy connect) |
-| `/review` — parallel reviewer subagents, P0–P3 + confidence + verdict | oh-my-pi `/review` · Codex `/review` presets | orchestration over the existing `task` tool: frozen diff snapshot (uncommitted / base-branch / commit), 2–3 reviewer subagents, findings merged + deduped, one verdict |
+| `/review` — parallel reviewer subagents, P0–P3 + confidence + verdict | oh-my-pi `/review` · Codex `/review` presets | orchestration over the existing `task` tool: frozen diff snapshot (uncommitted or base-branch merge-base), 1 reviewer for small diffs (< 6 k chars) and 3 with split focuses for larger ones, findings merged + deduped, one verdict |
 | `/goal` — durable objective with evidence-verified completion | zcode Goal Mode · muse goals | goal state persisted in session entries; completion requires a verification pass with real evidence (changed files, command output, test results); unfinished todos block completion |
-| Scheduled automations (`/loop`-style cron over the engine router) | zcode Automations · muse `/loop` · Claude routines | engine-side `automations` router job reading `.unown/automations.json`, spawning headless `unown -p` runs (deferred — see CHANGELOG for the shipped slice) |
 
 Behavior changes land under the repo's standing policy: CHANGELOG **Agent
 Behavior** entries + tests pinning each feature + receipts where measured.
+
+### Hardening follow-ups (2026-10)
+
+The table above is the shipped v2.1.0 slice; three hardening and
+productization passes (H1/H2/P1) landed after it — details and test counts
+in the [CHANGELOG](../CHANGELOG.md) under Unreleased:
+
+- **Trust gate** — project-scoped `.unown/mcp.json` / `.unown/lsp.json`
+  configure command execution, so they are gated refuse-first (a cloned
+  repo's config is attacker-controlled); `/mcp trust` and `/lsp trust`
+  approve by sha256 fingerprint, and any later edit re-arms the gate.
+- **Integrity** — checkpoint blob/manifest writes are atomic and every
+  restore hash-verifies (`corrupt-blob` never silently writes wrong
+  content); receipts are secret-redacted at the write chokepoint.
+- **Crash recovery** — LSP servers auto-restart within cooldown/restart
+  caps and the diagnostics loop survives a server crash; MCP servers cool
+  down, self-heal (404 re-init + replay, 429/503 backoff), and a child
+  reaper kills orphaned servers on Ctrl-C.
+- **Productization** — `unown mcp` subcommands manage configs from the
+  shell; `unown doctor` covers the session surfaces (`lsp-servers`,
+  `mcp-config`, `unown-state`); footer status lines surface integration
+  health live in the TUI.
 
 ## Adopted — already present
 
@@ -85,6 +106,7 @@ Behavior** entries + tests pinning each feature + receipts where measured.
 | Advisor/watchdog second model | oh-my-pi | Cost-doubling on every turn; our hooks + harness already play the reviewer role in the learning loop. Revisit as an opt-in profile |
 | Event-sourced session replay | muse | pi's session tree + our receipts cover the audit use; full event sourcing is a substrate rewrite |
 | Worktree fan-out subagents | muse | Valuable, but the engine sandbox already isolates harness runs; terminal subagents today are spawned sequentially against the shared tree. Candidate for a follow-up |
+| Scheduled automations (`/loop`-style cron) | zcode Automations · muse `/loop` · Claude routines | Deferred, not declined: the engine learns on intervals but never acts on the repo unattended, and a scheduled actor needs its own trust story (project configs are trust-gated precisely because they execute commands). No router job, no `.unown/automations.json` reader was ever shipped |
 | Repo Wiki | zcode | Attractive; depends on scheduled background generation, deferred with automations |
 | Plugin bundles + marketplace | zcode/codewhale/Claude | Our extension surface is inline + file-based (`.unown/`); a marketplace is ecosystem work, not a feature gap |
 | Computer-use / browser automation | omp/zcode | Out of scope for a terminal-first agent this cycle; the dashboard already renders its own surfaces |

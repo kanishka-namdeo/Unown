@@ -9,6 +9,7 @@ const RECEIPTS: [string, string][] = [
   ["the threat model", `${GITHUB_URL}/blob/main/docs/configuration.md`],
   ["sandbox profile", SRC("bwrap.ts")],
   ["hook layer", SRC("hooks.ts")],
+  ["config trust gate", SRC("config-trust.ts")],
 ];
 
 /* ------------------------------------------------------------------ */
@@ -201,6 +202,16 @@ export function IntegritySection() {
                   <span className="font-mono">git push</span> and package installs stay
                   available. <span className="font-mono text-ink">UNOWN_STRICT_HOOKS=1</span>{" "}
                   restores sandbox-grade strictness.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-ink">Cloned configs don&apos;t get to execute</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-dim">
+                  Project-scoped MCP and LSP configs are trust-gated: an untrusted
+                  one is never loaded, so a repo you just cloned cannot execute
+                  commands through the files it ships. Approving a config pins its
+                  fingerprint, and a file that changed since, or the same name in a
+                  different checkout, is gated again.
                 </p>
               </div>
             </div>

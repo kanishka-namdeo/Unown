@@ -602,3 +602,32 @@ client, `/review`, and `/goal` — so this section's copy moved with them:
   gate and contrast audit results are unchanged (palette check re-run: PASS,
   21 dark + 21 light tokens, all AA). The quickstart component test pins the
   new claims so the changed-line coverage gate stays satisfied.
+
+## 2026-10-18 — productization copy: the mcp quickstart line and the trust-gate story
+
+The same day's productization pass (P1, see CHANGELOG) made the SDLC surface
+manageable without hand-editing JSON and hardened it against hostile configs
+(H2). Two claims moved onto the page, each into its canonical home:
+
+- `quickstart.tsx` `COMMANDS` gains `unown mcp add playwright npx
+  @playwright/mcp@latest` ("connect any MCP server — its tools join every
+  session"). The command is real (`mcp-cli.ts`'s flag grammar: `add <name>
+  <command> [args...]`, user scope default) and shows the zero-config-to-MCP
+  path in one line — the fastest answer to "can it use my MCP servers?".
+  Placement follows the existing command list; classes unchanged.
+- `integrity.tsx` (the section that owns safety/hook/sandbox claims) gains
+  the "Cloned configs don't get to execute" block: project-scoped MCP/LSP
+  configs are trust-gated refuse-first; approvals pin file fingerprints, so
+  a changed file or the same name in another checkout re-arms the gate.
+  The receipts row "config trust gate" links to `src/config-trust.ts`. No
+  other section restates the gate — the quickstart names `.unown/mcp.json`
+  as where servers live, without the safety claim.
+- Canonical-homes list (`AGENTS.md` in this folder) registers both new
+  claims AND back-registers the 2026-10-18 quickstart session-surface
+  claims that shipped without registration (audit finding — the most
+  expensive future-staleness vector).
+- No palette/layout/motion changes — text-only additions on existing
+  classes; palette gate re-run: PASS (21 dark + 21 light tokens, all AA);
+  `public/landing/*.png` regenerated via the og-shots pipeline (the hero
+  renders the quickstart command list). Quickstart component test extended
+  to pin the new line.

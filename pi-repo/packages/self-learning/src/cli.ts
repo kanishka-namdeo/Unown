@@ -123,9 +123,11 @@ Usage:
   unown --version          print the version (matches package.json)
 
 Session tools (registered in every session):
-  todo / note / task / fetch_url   visible task tracking, mid-session learning notes,
-                                    subagents with a fresh context, HTTP reads
-  /plan /todos /note /agents /learning   session commands
+  todo / note / task / fetch_url / lsp   visible task tracking, mid-session learning notes,
+                                         subagents with a fresh context, HTTP reads,
+                                         language-server code intelligence
+  /plan /todos /note /agents /learning /lsp /checkpoint /undo /restore
+  /checkpoints /receipts /mcp /goal /review   session commands
 
 Subagent flags (used internally by the task tool):
   --mode json              stream JSON events instead of text (print mode)
@@ -138,6 +140,10 @@ Environment:
   UNOWN_ENGINE_URL         self-learning engine (default http://127.0.0.1:3030)
   UNOWN_STRICT_HOOKS=1     sandbox-grade hooks (blocks network, git push, sudo)
   UNOWN_NO_PREFLIGHT=1     skip the endpoint reachability check before sessions
+  UNOWN_LSP=0              disable the lsp tool + after-edit diagnostics loop
+                           (waits/timeouts: UNOWN_LSP_WAIT_MS / UNOWN_LSP_TIMEOUT_MS)
+  UNOWN_MCP=0              disable the MCP client (no mcp__* tools register)
+                           (timeouts: UNOWN_MCP_TIMEOUT_MS / UNOWN_MCP_CONNECT_TIMEOUT_MS)
   NO_UPDATE_NOTIFIER=1     silence the startup update notice
   UNOWN_DISABLE_UPDATES=1  disable all update paths (org/CI switch)
   PI_BRIDGE_URL/PI_MODEL_ID/PI_PROVIDER   LLM endpoint for ~/.unown/agent/models.json

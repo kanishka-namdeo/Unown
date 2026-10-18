@@ -32,6 +32,35 @@ describe("clig.dev help surface — `unown help`", () => {
 		expect(run.stdout).toContain("Usage:");
 	});
 
+	test("`unown help` lists the session surface (lsp tool, 14 commands, kill-switches — drift guard)", async () => {
+		const run = await unown(["help"], base());
+		expect(run.exitCode).toBe(0);
+		// the session-tools line carries the lsp tool (R-D A1)
+		expect(run.stdout).toContain("todo / note / task / fetch_url / lsp");
+		// every unown session command is advertised (R-D A1)
+		for (const cmd of [
+			"/plan",
+			"/todos",
+			"/note",
+			"/agents",
+			"/learning",
+			"/lsp",
+			"/checkpoint",
+			"/undo",
+			"/restore",
+			"/checkpoints",
+			"/receipts",
+			"/mcp",
+			"/goal",
+			"/review",
+		]) {
+			expect(run.stdout).toContain(cmd);
+		}
+		// the feature kill-switches are in the Environment section (R-D A2)
+		expect(run.stdout).toContain("UNOWN_LSP=0");
+		expect(run.stdout).toContain("UNOWN_MCP=0");
+	});
+
 	test(
 		"`unown help doctor|info|update|uninstall|completions|setup` each print their own page",
 		async () => {

@@ -114,7 +114,7 @@ Every unown session registers five tools on top of pi's built-ins:
 | `task` | Spawns [subagents](subagents.md) with a fresh context window — `general` (full tools), `explore` (read-only), or your own `.unown/agents/*.md` definitions. Up to 4 tasks per call, executed in parallel. |
 | `note` | Records a durable learning note mid-session — delivered to the engine immediately (or queued in the outbox if it is down). AutoDream consolidates notes into project memory. Also `/note <text>`. |
 | `fetch_url` | Read-only HTTP GET. HTML is stripped to text; bodies over 2 MB are refused; output is capped at 12,000 chars by default (`max_chars` clamps to 500–60,000); 20-second timeout; http(s) only. |
-| `lsp` | Language-server code intelligence: `diagnostics` (per file or `all`), `hover`, `definition`, `references`, `symbols`, `status`. Auto-detects servers on PATH (typescript-language-server, pyright/pylsp, gopls, rust-analyzer, clangd, bash-language-server); configure or override with `.unown/lsp.json` / `~/.unown/agent/lsp.json`. After every `write`/`edit`, fresh diagnostics for that file are appended to the tool result — type errors get fed back to the agent instead of compounding (cold start never blocks; `UNOWN_LSP=0` disables). Also `/lsp`. |
+| `lsp` | Language-server code intelligence: `diagnostics` (per file or `all`), `hover`, `definition`, `references`, `symbols`, `status`. Auto-detects servers on PATH (typescript-language-server, pyright/pylsp, gopls, rust-analyzer, clangd, bash-language-server, ruby-lsp, intelephense); configure or override with `.unown/lsp.json` / `~/.unown/agent/lsp.json`. After every `write`/`edit`, fresh diagnostics for that file are appended to the tool result — type errors get fed back to the agent instead of compounding (cold start never blocks; `UNOWN_LSP=0` disables). Also `/lsp`. |
 
 When you quit a session in which something happened, a session note (prompt count, tool calls, final outcome) is delivered to the engine — or written to `~/.unown/notes/outbox/` if the engine is down, and synced later. That note is the raw material AutoDream consolidates into `.unown/memory/project.md`.
 
@@ -182,7 +182,7 @@ Writes are atomic read-modify-write (existing entries and unknown keys are prese
 - **Targets**: `/review` = uncommitted work (diff vs HEAD + untracked files); `/review <base-branch>` = what changed on this branch since it diverged from base (merge-base range). The diff snapshot is frozen before reviewers start, so mid-review edits cannot skew results; diffs cap at 40 k chars.
 - **Reviewers**: read-only unown subagents with a review system prompt and a strict output contract. Small diffs (< 6 k chars) get one reviewer; larger diffs get three in parallel with split focuses — correctness/edge cases, security, tests/maintainability.
 - **Output**: findings tagged `[P0]`…`[P3]` with confidence and file:line citations, merged across reviewers (deduplicated by title, most-severe wins), plus one verdict — `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP` (the strictest reviewer wins). The rendered review lands on screen and in `.unown/reviews/<timestamp>.md` (gitignored).
-- **Honest limits**: severity and confidence are the reviewing model's self-reported judgment, not verified facts; reviewers see the frozen diff and can read the repo, but they do not execute code.
+- **Honest limits**: severity and confidence are the reviewing model's self-reported judgment, not verified facts; reviewers see the frozen diff and can read the repo — their toolset is `read`/`grep`/`find`/`ls` with no bash, so nothing executes during the review.
 
 ## Goals (/goal)
 
@@ -347,6 +347,12 @@ CLI-only variables. The engine, bridge, and dashboard have their own — see [co
 | `UNOWN_ENGINE_URL` | `http://127.0.0.1:3030` | Where the CLI delivers session notes |
 | `UNOWN_STRICT_HOOKS` | unset | `1` (also `true`/`yes`) = sandbox-grade hooks; see [guardrails](#guardrails) |
 | `UNOWN_NO_PREFLIGHT` | unset | Set = skip the model-endpoint reachability check before sessions |
+| `UNOWN_LSP` | `1` | `0` disables the `lsp` tool and the after-edit diagnostics loop |
+| `UNOWN_LSP_WAIT_MS` | `10000` | Max wait for fresh language-server diagnostics after a `write`/`edit` |
+| `UNOWN_LSP_TIMEOUT_MS` | `15000` | Per-request timeout for LSP JSON-RPC calls |
+| `UNOWN_MCP` | `1` | `0` disables the MCP client surface (no `mcp__*` tools) |
+| `UNOWN_MCP_TIMEOUT_MS` | `120000` | Per-request timeout for MCP JSON-RPC calls |
+| `UNOWN_MCP_CONNECT_TIMEOUT_MS` | `20000` | Timeout for the MCP initialize handshake |
 | `PI_BRIDGE_URL` | `http://127.0.0.1:3031` | LLM endpoint written into `~/.unown/agent/models.json` on first run |
 | `PI_MODEL_ID` / `PI_PROVIDER` | `kimi-k2.5` / `zai-bridge` | Model and provider written on first run; see [providers](providers.md) |
 

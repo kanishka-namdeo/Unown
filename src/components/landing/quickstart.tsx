@@ -23,6 +23,7 @@ const COMMANDS: [string, string][] = [
   ["unown doctor", "endpoint, keys, upstream and memory, end to end"],
   ["unown memory", "print the effective four-tier stack"],
   ["unown init", "scaffold this project's .unown/memory files"],
+  ["unown mcp add playwright npx @playwright/mcp@latest", "connect any MCP server — its tools join every session"],
   ['unown note "flaky auth spec"', "hand AutoDream a note directly"],
   ["unown update", "self-update to the newest release — check, pin, roll back"],
 ];

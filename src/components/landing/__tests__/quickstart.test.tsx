@@ -57,10 +57,15 @@ describe("landing QuickstartSection", () => {
                         "unown doctor",
                         "unown memory",
                         "unown init",
+                        "unown mcp add",
                         "unown note",
                 ]) {
                         expect(text).toContain(cmd);
                 }
+                // the MCP quickstart line: full invocation per mcp-cli.ts grammar
+                // (`unown mcp add <name> <command> [args...]`) + its gloss
+                expect(text).toContain("playwright npx @playwright/mcp@latest");
+                expect(text).toContain("its tools join every session");
         });
 
         test("states the SDLC-parity session surface (lsp, MCP, checkpoints, review, goal)", () => {

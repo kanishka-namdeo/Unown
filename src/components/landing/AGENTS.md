@@ -78,7 +78,15 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
     pull-quote; it now carries only the "odd power" quotation and states the
     "which came first" argument in prose;
   - **the caching negative control** (`benchmarks.tsx` only — once as a caption,
-    once as the control box; it used to be three times).
+    once as the control box; it used to be three times);
+  - **the terminal-agent command surface and its session tools**
+    (`quickstart.tsx` — the `COMMANDS` list, the `--goal` evidence contract,
+    and the session-tools paragraph naming `lsp`, the MCP join and the slash
+    commands) — no other section lists commands or session tools;
+  - **the project-config trust gate** (`integrity.tsx`, the cloned-configs
+    block, receipts-linked to `config-trust.ts`) — the quickstart names
+    `.unown/mcp.json` as where servers are configured without restating the
+    gate.
 - **`lexicon.ts` `means` is a DECODE, not a specification, and stays under
   ~12 words.** Twenty-eight entries at eighteen words each is a wall; at eleven
   it is a reference table you can skim, which is the only instrument that suits
