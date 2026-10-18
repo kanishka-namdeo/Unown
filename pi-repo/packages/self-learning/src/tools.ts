@@ -55,19 +55,32 @@ import {
     parseGoalEntry,
     renderGoalStatus,
 } from "./goal.ts";
-import { assistantTextOf } from "./messages.ts";
-import { checkSchemaShape, SchemaError, validateJsonSchema, type SchemaIssue } from "./jsonschema.ts";
-import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
+import { checkSchemaShape, SchemaError, type SchemaIssue, validateJsonSchema } from "./jsonschema.ts";
 import {
-    buildReviewerTask,
-    captureReviewTarget,
-    mergeReviews,
-    parseReviewOutput,
-    renderReview,
-    REVIEWER_FOCUSES,
-    reviewerAgent,
-    saveReviewArtifact,
+        characterForLine,
+        countErrors,
+        LspManager,
+        languageFromPath,
+        readLineText,
+        renderDiagnostics,
+        renderLocations,
+        resolveLspConfig,
+        trustProjectLspConfig,
+} from "./lsp.ts";
+import { assistantTextOf } from "./messages.ts";
+import {
+        buildReviewerTask,
+        captureReviewTarget,
+        mergeReviews,
+        parseReviewOutput,
+        REVIEWER_FOCUSES,
+        renderReview,
+        reviewerAgent,
+        saveReviewArtifact,
 } from "./review.ts";
+import { deliverTerminalNote, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
+import { fetchPageContent, registerWebTools } from "./websearch.ts";
+import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
 
 // ---------------------------------------------------------------------------
 // Subagent registry: built-ins + .unown/agents/*.md + ~/.unown/agent/agents/*.md
@@ -85,7 +98,7 @@ const BUILTIN_AGENTS: SubagentConfig[] = [
         {
                 name: "general",
                 description:
-                        "General-purpose coding subagent with the full unown toolset (read/write/edit/bash + todo/note/fetch_url) and the same tiered memory. Use for self-contained implementation or investigation tasks that deserve a fresh context.",
+                        "General-purpose coding subagent with the full unown toolset (read/write/edit/bash + todo/note/web_search/webfetch) and the same tiered memory. Use for self-contained implementation or investigation tasks that deserve a fresh context.",
                 systemPrompt: `You are unown's general-purpose coding subagent. You run inside the user's project with unown's tiered memory injected and guardrail hooks active.
 
 You receive ONE self-contained task; you do not see the parent conversation. Do the task completely, then report back concisely:
@@ -257,7 +270,7 @@ export function extractJsonReply(text: string): { ok: true; data: unknown } | { 
 
 /** Find the first balanced top-level {...} or [...] in `text`, or null. */
 function scanBalancedJson(text: string): string | null {
-        const start = text.search(/[{\[]/);
+        const start = text.search(/[{[]/);
         if (start === -1) return null;
         const open = text[start];
         const close = open === "{" ? "}" : "]";
@@ -564,7 +577,9 @@ export async function runSubagent(
                 attempts++;
                 const problems: string[] = [];
                 if (result.exitCode !== 0) {
-                        problems.push(`subagent exited with code ${result.exitCode}${result.stderr.trim() ? `: ${result.stderr.trim().slice(0, 200)}` : ""}`);
+                        problems.push(
+                                `subagent exited with code ${result.exitCode}${result.stderr.trim() ? `: ${result.stderr.trim().slice(0, 200)}` : ""}`,
+                        );
                 } else {
                         const extracted = extractJsonReply(result.output);
                         if (!extracted.ok) problems.push(extracted.error);
@@ -605,54 +620,14 @@ export async function runSubagent(
 
 // ---------------------------------------------------------------------------
 // fetch_url helpers
+//
+// The fetch pipeline itself (SSRF guard, robots check, HTML stripping and
+// the extraction fallback chain) now lives in websearch.ts, shared with the
+// webfetch tool. fetch_url keeps its name for compatibility and delegates.
 // ---------------------------------------------------------------------------
 
-function htmlToText(html: string): string {
-        return html
-                .replace(/<script[\s\S]*?<\/script>/gi, " ")
-                .replace(/<style[\s\S]*?<\/style>/gi, " ")
-                .replace(/<!--[\s\S]*?-->/g, " ")
-                .replace(/<\/(p|div|li|h[1-6]|tr|section|article|header|footer|blockquote|pre|ul|ol|dl)>/gi, "\n")
-                .replace(/<br\s*\/?>/gi, "\n")
-                .replace(/<[^>]+>/g, " ")
-                .replace(/&nbsp;/g, " ")
-                .replace(/&amp;/g, "&")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-                .replace(/&quot;/g, '"')
-                .replace(/&#39;/g, "'")
-                .replace(/[ \t]+/g, " ")
-                .replace(/\n{3,}/g, "\n\n")
-                .trim();
-}
-
 async function fetchUrlText(url: string, maxChars: number): Promise<string> {
-        const parsed = new URL(url);
-        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-                throw new Error(`only http(s) URLs are supported (got ${parsed.protocol})`);
-        }
-        const res = await fetch(parsed, {
-                redirect: "follow",
-                signal: AbortSignal.timeout(20_000),
-                headers: { "user-agent": "unown-fetch-url/1.0" },
-        });
-        const contentType = res.headers.get("content-type") ?? "";
-        const declaredLength = Number(res.headers.get("content-length") ?? "0");
-        if (declaredLength && declaredLength > 2_000_000) {
-                throw new Error(
-                        `refusing to fetch ${url}: body too large (${(declaredLength / 1_000_000).toFixed(1)} MB > 2 MB cap)`,
-                );
-        }
-        const raw = await res.text();
-        if (raw.length > 4_000_000) throw new Error(`body too large (${raw.length} chars > cap)`);
-        const looksHtml = /text\/html/i.test(contentType) || /^\s*(<!doctype html|<html)/i.test(raw);
-        const text = looksHtml ? htmlToText(raw) : raw;
-        const statusLine = `GET ${url} → ${res.status}${contentType ? ` (${contentType.split(";")[0]})` : ""}`;
-        if (!res.ok) {
-                return `${statusLine}\n\n${text.slice(0, maxChars) || "(empty body)"}`;
-        }
-        if (text.length <= maxChars) return `${statusLine}\n\n${text}`;
-        return `${statusLine}\n\n${text.slice(0, maxChars)}\n\n… (truncated at ${maxChars} chars; full body was ${text.length} chars)`;
+        return fetchPageContent(url, { maxChars });
 }
 
 // ---------------------------------------------------------------------------
@@ -854,7 +829,19 @@ export interface UnownToolsOptions {
         verbose?: boolean;
 }
 
-const PLAN_MODE_TOOLS = ["read", "bash", "grep", "find", "ls", "todo", "note", "fetch_url", "lsp"];
+const PLAN_MODE_TOOLS = [
+        "read",
+        "bash",
+        "grep",
+        "find",
+        "ls",
+        "todo",
+        "note",
+        "fetch_url",
+        "web_search",
+        "webfetch",
+        "lsp",
+];
 const PLAN_MODE_DISABLED_TOOLS = new Set(["edit", "write", "task"]);
 const PLAN_MANAGED_TOOLS = new Set([...PLAN_MODE_TOOLS, ...PLAN_MODE_DISABLED_TOOLS, "edit", "write"]);
 
@@ -943,7 +930,8 @@ const TaskParams = Type.Object({
         ),
         schema_mode: Type.Optional(
                 StringEnum(["permissive", "strict"] as const, {
-                        description: '"permissive" (default) keeps an invalid final reply with a warning; "strict" reports it as an error.',
+                        description:
+                                '"permissive" (default) keeps an invalid final reply with a warning; "strict" reports it as an error.',
                 }),
         ),
         worktree_isolation: Type.Optional(
@@ -1210,15 +1198,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         const agents = discoverSubagents(opts.cwd);
                                         // Job = normalized spawn request (single form + batch form).
                                         const jobs = params.tasks
-                                                ? params.tasks
-                                                                .slice(0, 4)
-                                                                .map((t: any) => ({
-                                                                        agent: t.agent ?? "general",
-                                                                        task: t.task as string,
-                                                                        worktreeIsolation: t.worktree_isolation === true || params.worktree_isolation === true,
-                                                                        outputSchema: t.output_schema ?? undefined,
-                                                                        schemaMode: t.schema_mode ?? params.schema_mode,
-                                                                }))
+                                                ? params.tasks.slice(0, 4).map((t: any) => ({
+                                                                agent: t.agent ?? "general",
+                                                                task: t.task as string,
+                                                                worktreeIsolation: t.worktree_isolation === true || params.worktree_isolation === true,
+                                                                outputSchema: t.output_schema ?? undefined,
+                                                                schemaMode: t.schema_mode ?? params.schema_mode,
+                                                        }))
                                                 : [
                                                                 {
                                                                         agent: params.agent ?? "general",
@@ -1242,7 +1228,9 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 const shape = checkSchemaShape(job.outputSchema);
                                                 if (!shape.ok) {
                                                         return {
-                                                                content: [{ type: "text", text: `Error: output_schema is not a usable JSON Schema — ${shape.error}` }],
+                                                                content: [
+                                                                        { type: "text", text: `Error: output_schema is not a usable JSON Schema — ${shape.error}` },
+                                                                ],
                                                         };
                                                 }
                                         }
@@ -1277,7 +1265,14 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                         log(`subagent ${agent.name} isolated in worktree ${tree.path}`);
                                                                 } else {
                                                                         treeFailure = `worktree isolation REJECTED (${created.reason}): ${created.detail} — the subagent was NOT run in the shared tree; retry without worktree_isolation or fix the cause.`;
-                                                                        runs.push({ agent: agent.name, task: job.task, exitCode: 1, turns: 0, toolResults: 0, worktree: { action: "rejected", detail: treeFailure } });
+                                                                        runs.push({
+                                                                                agent: agent.name,
+                                                                                task: job.task,
+                                                                                exitCode: 1,
+                                                                                turns: 0,
+                                                                                toolResults: 0,
+                                                                                worktree: { action: "rejected", detail: treeFailure },
+                                                                        });
                                                                         sections[index] = `## ${agent.name}: FAILED\n${treeFailure}`;
                                                                         continue;
                                                                 }
@@ -1554,7 +1549,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         name: "fetch_url",
                         label: "Fetch",
                         description:
-                                "Fetch an http(s) URL with GET and return the page/document as text (HTML stripped, capped). Use for reading docs, APIs, and raw files over HTTP. For search, prefer your own reasoning plus this tool on known URLs.",
+                                "Fetch an http(s) URL with GET and return the page/document as text (HTML stripped, capped). Hardened: private-address SSRF guard, robots-aware, with an extraction fallback chain for sites that block plain clients. Prefer web_search when you don't have a URL yet; prefer webfetch for the same pipeline with a larger default cap.",
                         parameters: FetchParams,
                         async execute(_toolCallId, params) {
                                 const maxChars = Math.min(Math.max(params.max_chars ?? 12_000, 500), 60_000);
@@ -1576,6 +1571,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 );
                         },
                 });
+
+                // -------------------------------------------------------------------
+                // web_search + webfetch (see websearch.ts — the provider registry)
+                // -------------------------------------------------------------------
+
+                registerWebTools(pi, { verbose });
 
                 // -------------------------------------------------------------------
                 // LSP code intelligence (oh-my-pi port — see src/lsp.ts)
@@ -1647,23 +1648,22 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         const s = manager.status();
                                                         const servers = s.servers.length
                                                                 ? s.servers
-                                                                          .map((e) => {
-                                                                                  const mark = e.state === "running" ? "●" : e.state === "crashed" ? "✗" : "○";
-                                                                                  const state =
-                                                                                          e.state === "running"
-                                                                                                  ? " (running)"
-                                                                                                  : e.state === "crashed"
-                                                                                                    ? ` (crashed${e.crashCount ? ` ${e.crashCount}×` : ""})`
-                                                                                                    : " (available)";
-                                                                                  return `  ${mark} ${e.language}: ${e.command}${state}`;
-                                                                          })
-                                                                          .join("\n")
+                                                                                .map((e) => {
+                                                                                        const mark = e.state === "running" ? "●" : e.state === "crashed" ? "✗" : "○";
+                                                                                        const state =
+                                                                                                e.state === "running"
+                                                                                                        ? " (running)"
+                                                                                                        : e.state === "crashed"
+                                                                                                                ? ` (crashed${e.crashCount ? ` ${e.crashCount}×` : ""})`
+                                                                                                                : " (available)";
+                                                                                        return `  ${mark} ${e.language}: ${e.command}${state}`;
+                                                                                })
+                                                                                .join("\n")
                                                                 : "  (no language servers detected on PATH — configure .unown/lsp.json)";
                                                         // H2 trust gate: the agent sees the withheld state and the
                                                         // approval action (/lsp trust), not silence.
                                                         const guidance = s.needsTrust && s.trustGuidance ? `\n  ⚠ ${s.trustGuidance}` : "";
-                                                        const text =
-                                                                `LSP status:\n${servers}${guidance}\n  open documents: ${s.openDocs}\n  cached diagnostics: ${s.diagnostics}`;
+                                                        const text = `LSP status:\n${servers}${guidance}\n  open documents: ${s.openDocs}\n  cached diagnostics: ${s.diagnostics}`;
                                                         return { content: [{ type: "text", text }] };
                                                 }
                                                 case "diagnostics": {
@@ -1712,9 +1712,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 case "references": {
                                                         if (!params.file || !params.line) {
                                                                 return {
-                                                                        content: [
-                                                                                { type: "text", text: `Error: file and line required for ${params.action}` },
-                                                                        ],
+                                                                        content: [{ type: "text", text: `Error: file and line required for ${params.action}` }],
                                                                 };
                                                         }
                                                         const path = resolveFile(params.file);
@@ -1761,7 +1759,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 .slice(0, 80)
                                                                 .map((s) => `${path}:${s.line + 1}  ${s.name}${s.container ? ` (in ${s.container})` : ""}`)
                                                                 .join("\n");
-                                                        return { content: [{ type: "text", text }], details: { action: "symbols", file: path, count: symbols.length } };
+                                                        return {
+                                                                content: [{ type: "text", text }],
+                                                                details: { action: "symbols", file: path, count: symbols.length },
+                                                        };
                                                 }
                                         }
                                         return { content: [{ type: "text", text: `Error: unknown action ${params.action}` }] };
@@ -1880,10 +1881,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         return;
                                                 }
                                                 if (trustBypassed()) {
-                                                        ctx.ui.notify(
-                                                                "UNOWN_TRUST_PROJECT_CONFIG is set — the trust gate is already bypassed.",
-                                                                "info",
-                                                        );
+                                                        ctx.ui.notify("UNOWN_TRUST_PROJECT_CONFIG is set — the trust gate is already bypassed.", "info");
                                                         return;
                                                 }
                                                 if (!trustProjectLspConfig(opts.cwd)) {
@@ -1918,12 +1916,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         const s = m.status();
                                         const servers = s.servers.length
                                                 ? s.servers
-                                                          .map((e) => {
-                                                                  const mark = e.state === "running" ? "●" : e.state === "crashed" ? "✗" : "○";
-                                                                  const suffix = e.state === "crashed" && e.detail ? ` (${e.detail})` : "";
-                                                                  return `${mark} ${e.language} — ${e.command}${suffix}`;
-                                                          })
-                                                          .join("\n")
+                                                                .map((e) => {
+                                                                        const mark = e.state === "running" ? "●" : e.state === "crashed" ? "✗" : "○";
+                                                                        const suffix = e.state === "crashed" && e.detail ? ` (${e.detail})` : "";
+                                                                        return `${mark} ${e.language} — ${e.command}${suffix}`;
+                                                                })
+                                                                .join("\n")
                                                 : "no language servers detected on PATH (configure .unown/lsp.json)";
                                         const guidance = s.needsTrust && s.trustGuidance ? `\n⚠ ${s.trustGuidance}` : "";
                                         ctx.ui.notify(
@@ -1989,7 +1987,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 });
 
                 pi.registerCommand("review", {
-                        description: "Parallel-subagent code review of uncommitted work (or /review <base-branch>): P0–P3 findings + SHIP verdict",
+                        description:
+                                "Parallel-subagent code review of uncommitted work (or /review <base-branch>): P0–P3 findings + SHIP verdict",
                         handler: async (args, ctx) => {
                                 const base = (args ?? "").trim() || undefined;
                                 ctx.ui.notify("Review: freezing the diff snapshot…", "info");
@@ -2222,7 +2221,10 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                                         if (ctx?.hasUI) {
                                                                 ctx.ui.notify(
                                                                         "Goal COMPLETE — evidence verified:\n" +
-                                                                                check.evidence.slice(0, 6).map((e) => `  • ${e}`).join("\n"),
+                                                                                check.evidence
+                                                                                        .slice(0, 6)
+                                                                                        .map((e) => `  • ${e}`)
+                                                                                        .join("\n"),
                                                                         "info",
                                                                 );
                                                         }
@@ -2327,9 +2329,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                         }
                         if (manager.disabled) return undefined;
                         if (!manager.isLiveFor(language)) {
-                                void manager
-                                        .warmFor(language)
-                                        .then(() => refreshLspFooter(ctx)); // "lsp: ts ready" once the server is up
+                                void manager.warmFor(language).then(() => refreshLspFooter(ctx)); // "lsp: ts ready" once the server is up
                                 return undefined;
                         }
                         try {

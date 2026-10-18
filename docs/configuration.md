@@ -104,6 +104,20 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_LSP_MAX_SYNC_BYTES` | `4194304` | Files larger than this skip LSP document sync (didOpen/didChange) — the server cannot help on huge files; logged once per file. |
 | `UNOWN_TRUST_PROJECT_CONFIG` | unset | `1`/`true` bypasses the project-config trust gate (`.unown/mcp.json` / `.unown/lsp.json` load without approval — CI/headless). Any other value keeps the gate on; approve interactively with `/mcp trust`. |
 | `UNOWN_STATE_WARN_BYTES` | `536870912` | `unown doctor`'s unown-state check warns when the project's `.unown/` runtime state (checkpoints + receipts + reviews) exceeds this. |
+| `UNOWN_WEB_SEARCH` | `1` | `0` disables the `web_search` tool. |
+| `UNOWN_WEBFETCH` | `1` | `0` disables the `webfetch` tool. |
+| `UNOWN_WEB_SEARCH_PROVIDER` | auto | Explicit provider id or comma-separated chain (e.g. `tavily,duckduckgo`); unset = keyed providers first, then the keyless chain. |
+| `UNOWN_WEB_SEARCH_TIMEOUT_MS` | `20000` | Per-provider search timeout. |
+| `UNOWN_WEB_SEARCH_MAX_RESULTS` | `8` | Default result cap per search (max 20; the tool's `max_results` parameter overrides per call). |
+| `UNOWN_WEBFETCH_TIMEOUT_MS` | `30000` | Per-request timeout for `webfetch` (and the `fetch_url` alias). |
+| `UNOWN_WEBFETCH_MAX_CHARS` | `20000` | Default returned-character cap (clamped 500–200000; the tool's `max_chars` parameter overrides per call). |
+| `UNOWN_WEBFETCH_ROBOTS` | on | `0` disables robots.txt honoring in `webfetch`/`fetch_url`. |
+| `UNOWN_WEBFETCH_ALLOW_PRIVATE` | unset | `1` allows `webfetch` to reach private/LAN hosts and non-standard ports (internal docs mirrors; the http(s)-only check always applies). |
+| `UNOWN_SEARXNG_URL` | unset | SearXNG instance URL for the `searxng` provider (self-hosted with `formats: [html, json]` — see `scripts/searxng-test/settings.yml`). |
+| `UNOWN_STACKEXCHANGE_KEY` | unset | Optional free stackapps.com key; lifts the keyless 300 req/day per-IP limit to 10000/day. |
+| `UNOWN_DASHSCOPE_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible base for the `dashscope` (Qwen enable_search) provider. |
+| `UNOWN_DASHSCOPE_MODEL` | `qwen-plus` | Model for the `dashscope` provider. |
+| `TAVILY_API_KEY` / `BRAVE_SEARCH_API_KEY` / `SERPER_API_KEY` / `EXA_API_KEY` / `PERPLEXITY_API_KEY` / `JINA_API_KEY` / `ZHIPU_API_KEY` / `DASHSCOPE_API_KEY` / `KAGI_API_KEY` / `SERPAPI_API_KEY` / `FIRECRAWL_API_KEY` | unset | Paid web-search provider keys — any that are set join the search chain ahead of the keyless fallbacks (see [usage: web tools](usage.md#web-search--webfetch)). |
 | `NO_UPDATE_NOTIFIER` | unset | Any value silences the startup update notice and its background check (ecosystem-standard name). Manual `unown update` still works — see [updating](updating.md). |
 | `UNOWN_DISABLE_AUTOUPDATE` | unset | `1` — same as `NO_UPDATE_NOTIFIER`, the Unown-native spelling. |
 | `DO_NOT_TRACK` | unset | `1` — the standard nonessential-traffic opt-out; suppresses the background update check. |

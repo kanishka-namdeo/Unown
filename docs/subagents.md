@@ -50,7 +50,7 @@ The contract: isolation is opt-in and **fail-closed** — outside a git reposito
 
 | Name | Tools | Use for |
 |---|---|---|
-| `general` | full toolset (read/write/edit/bash + todo/note/fetch_url), same tiered memory | Self-contained implementation or investigation tasks that deserve a fresh context |
+| `general` | full toolset (read/write/edit/bash + todo/note/web_search/webfetch), same tiered memory | Self-contained implementation or investigation tasks that deserve a fresh context |
 | `explore` | `read`, `grep`, `find`, `ls` — read-only | Mapping where things live in the repo and returning file:line evidence, whenever broad code search would pollute the parent context |
 
 `general` is the default when no agent is named.
@@ -70,7 +70,7 @@ Load order is built-in → global → project; a definition with the same `name`
 |---|---|---|
 | `name` | yes | The agent name the `task` tool and `/agents` display |
 | `description` | yes | Shown to the model when it decides whom to spawn — write it as a retrieval trigger ("Use for ...") |
-| `tools` | no | Comma-separated list restricting the subagent's toolset. Omit for the full set. Valid names: `read`, `bash`, `powershell`, `edit`, `write`, `grep`, `find`, `ls`, plus unown's `todo`, `note`, `fetch_url` |
+| `tools` | no | Comma-separated list restricting the subagent's toolset. Omit for the full set. Valid names: `read`, `bash`, `powershell`, `edit`, `write`, `grep`, `find`, `ls`, plus unown's `todo`, `note`, `fetch_url`, `web_search`, `webfetch` |
 
 The Markdown **body (everything after the closing `---`) becomes the subagent's system prompt**. Files without valid `name` and `description` frontmatter are skipped silently. Other frontmatter fields are ignored. Run `/agents` in a session to list everything discovered, with source and toolset.
 

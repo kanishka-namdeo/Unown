@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 86;
+export const CHANGELOG_TOTAL_ENTRIES = 87;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 44,
+  "Added": 45,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 45,
+    "total": 46,
     "counts": {
-      "Added": 16,
+      "Added": 17,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
@@ -71,6 +71,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "dashboard: engine-parity round — every documented surface now has a view",
             "behavior": false
+          },
+          {
+            "title": "native web tools — web_search + webfetch (keyless-first, 17 providers)",
+            "behavior": true
           },
           {
             "title": "local-ML dream lanes — the H15 integration (opt-in, shadow-capable)",

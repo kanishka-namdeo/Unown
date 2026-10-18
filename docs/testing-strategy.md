@@ -650,11 +650,15 @@ preserved in the margin notes where they were cited from history.
 - **OPEN** - The property fuzzer over `decideBash`/`jailPath`/
   `bashRedirectEscape`. Named as future work in the previous revision; it is the
   only defence that scales against unenumerated bypasses.
-- **OPEN** - `fetch_url` has no SSRF guard: `fetchUrlText` validates the scheme
-  and then follows redirects with no host policy `[V:
-  pi-repo/packages/self-learning/src/tools.ts:343-369]`. This was §5 item 6 in the
-  previous revision and is still open. It is also the exfiltration channel §4.4
-  warns about, so it should be treated as a security item, not a robustness one.
+- **SHIPPED** - `fetch_url`/`webfetch` SSRF guard: the fetch pipeline moved into
+  `websearch.ts` (`assertFetchableUrl`) — http(s)-only, standard ports only,
+  private/reserved IPv4+IPv6 ranges refused (literal AND after DNS resolution,
+  so hostnames that rebind to the LAN are caught), robots.txt honored, with an
+  explicit `UNOWN_WEBFETCH_ALLOW_PRIVATE=1` escape hatch for internal mirrors.
+  Unit-tested in `pi-repo/packages/self-learning/test/websearch.test.ts`
+  (literal tables, port guard, protocol guard). Previously §5 item 6 / §7.3
+  OPEN; the exfiltration channel it warned about is closed for the tool
+  surface.
 - **OPEN** - TUI-level behaviour (resume, `/reload` state reconstruction, subagent
   progress rendering) is only covered at the process level today.
 
@@ -1104,6 +1108,8 @@ Stating that is the point.
 | 4 | Memory lift shows a statistically significant improvement for a shipped memory version, with CI | **NOT MET** | Track 5 v3 is n=1 and 6/6 everywhere - saturated, therefore uninformative. Needs the full-context baseline and repetitions (§7.6, §10 item A) |
 | 5 | No P0 open: sandbox escape, secret leak, test tampering, hook bypass | **PARTIAL** | The named P0s are covered by shipped suites. Uncovered: the self-grading surface (§8) and `fetch_url` SSRF (§7.3) |
 | 6 | axe-core clean and Lighthouse accessibility >= 90 on all ten tabs | **PARTIAL** | axe-core half SHIPPED: the `e2e` CI job scans the landing page + all ten tabs (wcag2/21 A+AA) against real rendered data and fails on any violation — green after fixing the 80+ contrast defects + 1 aria violation its first run found (§6 gate 16). Lighthouse >= 90 half still OPEN (next: LHCI collect against the same mock-engine pair) |
+| 5 | No P0 open: sandbox escape, secret leak, test tampering, hook bypass | **PARTIAL** | The named P0s are covered by shipped suites. Uncovered: the self-grading surface (§8). The `fetch_url` SSRF item (§7.3) is SHIPPED (guard + tests in `test/websearch.test.ts`) |
+| 6 | axe-core clean and Lighthouse accessibility >= 90 on all seven tabs | **PARTIAL** | axe-core half SHIPPED: the `e2e` CI job scans the landing page + all seven tabs (wcag2/21 A+AA) against real rendered data and fails on any violation — green after fixing the 80+ contrast defects + 1 aria violation its first run found (§6 gate 16). Lighthouse >= 90 half still OPEN (next: LHCI collect against the same mock-engine pair) |
 | 7 | Cost/token budget tracked, no >20% regression without a decision | **PARTIAL** | Per-run tokens are recorded; no budget, no alert, no decision record (§7.9) |
 
 Criteria 2, 4 and 6 are the ones that would most change what this repository can

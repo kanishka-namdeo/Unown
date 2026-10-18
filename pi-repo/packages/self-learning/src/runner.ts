@@ -23,6 +23,7 @@ import { currentVersion, type MemoryOverlay, resolveMemoryForAgentDetailed } fro
 import { createNote, noteFromRun } from "./notes.ts";
 import { createSandbox, seedFiles, snapshotFiles, verifyInSandbox } from "./sandbox.ts";
 import { BRIDGE_URL, DATA_DIR, store } from "./store.ts";
+import { createWebToolsExtension } from "./websearch.ts";
 
 export const AGENT_DIR = join(DATA_DIR, "pi-agent-dir");
 export const SESSIONS_DIR = join(DATA_DIR, "sessions");
@@ -225,12 +226,20 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                         memoryVersion,
                 });
 
+                // Web tools in sandbox runs: the OS sandbox kills the network
+                // namespace by default (UNOWN_SANDBOX_NET=0), so web_search /
+                // webfetch only make sense when the namespace is shared.
+                // Registered ahead of the hooks extension; UNOWN_WEB_SEARCH=0
+                // / UNOWN_WEBFETCH=0 still kill them individually.
+                const sandboxNet = (process.env.UNOWN_SANDBOX_NET || "0") === "1";
+                const webExt = sandboxNet ? createWebToolsExtension({ verbose: false }) : undefined;
+
                 const services = await createAgentSessionServices({
                         cwd: sandbox.workspace,
                         agentDir: AGENT_DIR,
                         settingsManager: SettingsManager.inMemory(sandboxShell ? { shellPath: sandboxShell } : {}),
                         resourceLoaderOptions: {
-                                extensionFactories: [hooksExt as any],
+                                extensionFactories: webExt ? [webExt as any, hooksExt as any] : [hooksExt as any],
                                 noSkills: true,
                                 noPromptTemplates: true,
                                 noThemes: true,

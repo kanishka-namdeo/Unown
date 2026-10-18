@@ -54,7 +54,7 @@ Plan mode is a read-only exploration phase with an explicit approval gate before
 
 While planning:
 
-- `edit`, `write`, and the `task` tool are disabled; `read`, `bash`, `grep`, `find`, `ls`, `todo`, `note`, `fetch_url`, and `lsp` (code intelligence is read-only) stay available.
+- `edit`, `write`, and the `task` tool are disabled; `read`, `bash`, `grep`, `find`, `ls`, `todo`, `note`, `fetch_url`, `web_search`, `webfetch`, and `lsp` (code intelligence is read-only; web tools are read-only) stay available.
 - `bash` is restricted to an allowlist of read-only commands — `cat`, `head`, `tail`, `grep`, `find`, `ls`, `diff`, `stat`, `git status/log/diff/show`, `npm list/view`, `curl`, `jq`, `awk`, and similar. Anything that writes, installs, kills, or mutates git state is blocked with a reason. (The full allow/deny pattern lists live in `tools.ts`.)
 
 The flow:
@@ -114,11 +114,26 @@ Every unown session registers six tools on top of pi's built-ins:
 | `todo` | Maintains a visible task list (`list` / `add` / `toggle` / `clear`) while working on multi-step tasks. State rides session entries, so branching (`/fork`, `/tree`) keeps the correct list. Inspect it with `/todos`. |
 | `task` | Spawns [subagents](subagents.md) with a fresh context window — `general` (full tools), `explore` (read-only), or your own `.unown/agents/*.md` definitions. Up to 4 tasks per call, executed in parallel. |
 | `note` | Records a durable learning note mid-session — delivered to the engine immediately (or queued in the outbox if it is down). AutoDream consolidates notes into project memory. Also `/note <text>`. |
-| `fetch_url` | Read-only HTTP GET. HTML is stripped to text; bodies over 2 MB are refused; output is capped at 12,000 chars by default (`max_chars` clamps to 500–60,000); 20-second timeout; http(s) only. |
+| `fetch_url` | Read-only HTTP GET. Now delegates to the hardened webfetch pipeline (below): private-address SSRF guard, robots-aware, extraction fallback chain; output is capped at 12,000 chars by default (`max_chars` clamps to 500–60,000). |
+| `web_search` | Searches the live web — ranked results (title, URL, snippet) with provider auto-selection: any configured API key (Tavily/Brave/Serper/Exa/Perplexity/Jina/Zhipu/DashScope/Kagi/SerpApi/Firecrawl) is used first, then the keyless chain (SearXNG if configured → DuckDuckGo → Tavily keyless → You.com → StackExchange → Wikipedia → HN). `allowed_domains`/`blocked_domains` filter results (Claude Code parity). `UNOWN_WEB_SEARCH=0` disables. |
+| `webfetch` | Fetches an http(s) URL as text — same hardening as `fetch_url` (SSRF guard, robots.txt, 4 MB body cap) plus an extraction fallback chain for sites that block plain HTTP clients: direct fetch → Tavily extract (keyless-capable) → Jina reader (keyed) → Firecrawl (keyed). Default cap 20,000 chars (`max_chars` clamps 500–200,000); `raw: true` skips HTML stripping. `UNOWN_WEBFETCH=0` disables. |
 | `lsp` | Language-server code intelligence: `diagnostics` (per file or `all`), `hover`, `definition`, `references`, `symbols`, `status`. Auto-detects servers on PATH (typescript-language-server, pyright/pylsp, gopls, rust-analyzer, clangd, bash-language-server, ruby-lsp, intelephense); configure or override with `.unown/lsp.json` / `~/.unown/agent/lsp.json`. After every `write`/`edit`, fresh diagnostics for that file are appended to the tool result — type errors get fed back to the agent instead of compounding (cold start never blocks; `UNOWN_LSP=0` disables). Also `/lsp`. |
 | `automation_list` | List this project's scheduled [automations](#automations-unown-automations) — id, schedule, next run, last outcome. The mutation tools (`automation_create` / `automation_update` / `automation_delete`) are registered only in interactive sessions: they are hidden inside subagents and inside automation runs themselves, so a scheduled run cannot schedule more runs. |
 
 When you quit a session in which something happened, a session note (prompt count, tool calls, final outcome) is delivered to the engine — or written to `~/.unown/notes/outbox/` if the engine is down, and synced later. That note is the raw material AutoDream consolidates into `.unown/memory/project.md`.
+
+## Web search + webfetch
+
+Both tools ship **keyless-first**: with zero configuration the agent can search the web and read pages. The provider chain resolves at call time from the environment — [configuration](configuration.md#terminal-agent-unown-cli) has the full table.
+
+- **Keyless chain** (no signup, out of the box): SearXNG (when `UNOWN_SEARXNG_URL` points at a self-hosted instance) → DuckDuckGo → Tavily in keyless mode → You.com free MCP (100 q/day) → StackExchange (300 q/day per IP) → Wikipedia → HN Algolia. Cloud/datacenter IPs get challenged by DuckDuckGo and throttled by StackExchange — the chain detects both and cascades (the failure notes are surfaced in the tool result).
+- **Paid providers** (any key that is set joins the chain ahead of the keyless fallbacks, in quality-then-cost order): Tavily, Serper, Exa, Brave, Perplexity, DashScope (Qwen `enable_search` grounding), Jina, Zhipu, Firecrawl, Kagi, SerpApi.
+- **Explicit control**: `UNOWN_WEB_SEARCH_PROVIDER=tavily` (or a comma chain), or the tool's `provider` parameter per call.
+- **Hardening**: `webfetch` refuses private/reserved hosts and non-standard ports (DNS-resolved, not just literal — the SSRF gap `fetch_url` had [was closed](testing-strategy.md)), honors robots.txt (cached 15 min per host; `UNOWN_WEBFETCH_ALLOW_PRIVATE=1` opts out for internal mirrors), caps bodies at 4 MB, and falls back to extraction services when a site blocks plain HTTP clients.
+
+The live provider matrix (which providers verified working from this network, with latencies and receipts) lives in `benchmarks/websearch-live/` — rerun it any time with `bun scripts/websearch-live.mjs`.
+
+In engine **sandbox runs**, the web tools only register when the sandbox network namespace is shared (`UNOWN_SANDBOX_NET=1`) — the default bubblewrap isolation kills the network, so the tools would be dead weight there. Terminal sessions are unaffected.
 
 ## Checkpoints and receipts
 
