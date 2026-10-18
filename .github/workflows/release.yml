@@ -121,14 +121,16 @@ jobs:
           curl -sf -m 5 http://127.0.0.1:3210/dashboard >/dev/null
           kill $server_pid
       - name: SBOM (SPDX) of the dependency tree
-        # anchore/sbom-action runs syft in a container; the SBOM covers the
-        # installed node_modules + vendored pi-repo tree (the runtime
-        # dependency surface a clone-to-install user actually gets).
-        uses: anchore/sbom-action@v0.24.3
-        with:
-          format: spdx-json
-          artifact-name: sbom-spdx.json
-          upload-artifact: true
+        # syft scans the installed node_modules + vendored pi-repo tree (the
+        # runtime dependency surface a clone-to-install user actually gets).
+        # Installed explicitly rather than via anchore/sbom-action so the
+        # SPDX JSON lands at a KNOWN path and is attached to the release
+        # deterministically (the action's artifact upload raced the release
+        # creation — one run attached the SBOM, the next did not).
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft dir:. -o spdx-json=sbom-spdx.json
+          ls -la sbom-spdx.json
       - name: Build provenance attestation (subject digest)
         # The attestation action requires a SHA-256 subject digest —
         # github.sha is git's SHA-1, which it rejects (found red in run
@@ -150,7 +152,7 @@ jobs:
 
           - 3-OS real-installer matrix (ubuntu/macos/windows): install.ts → engine unit suite → integration suite (real server + mock bridge) → bridge suite (95) → version consistency → CLI smokes — all green
           - Production dashboard build + standalone server smoke (/ and /dashboard answered 200)
-          - SBOM (SPDX) attached; build-provenance attestation recorded
+          - SBOM (SPDX) attached as a release asset; build-provenance attestation recorded
           - `unown --version` === package.json.version === tag
 
           Memory-system receipts for this release: see `benchmarks/memory-eval/*/RESULTS.md`
@@ -164,4 +166,5 @@ jobs:
           draft: false
           files: |
             release-checklist.md
+            sbom-spdx.json
           body_path: release-checklist.md
