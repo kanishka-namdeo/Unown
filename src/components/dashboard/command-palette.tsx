@@ -84,7 +84,7 @@ export function CommandPalette() {
             <CommandItem key={t.value} value={`tab ${t.value} ${t.label}`} onSelect={() => goTab(t.value)}>
               <t.icon className="size-4" />
               <span>{t.label}</span>
-              <span className="ml-auto hidden text-[11px] text-zinc-500 sm:inline">{t.hint}</span>
+              <span className="ml-auto hidden text-[11px] text-zinc-400 sm:inline">{t.hint}</span>
             </CommandItem>
           ))}
         </CommandGroup>
@@ -128,7 +128,7 @@ export function CommandPalette() {
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />
-        <p className="px-3 py-2 text-[11px] text-zinc-500" aria-live="polite">
+        <p className="px-3 py-2 text-[11px] text-zinc-400" aria-live="polite">
           {connected ? (
             <>
               <Search className="mr-1 inline size-3" />

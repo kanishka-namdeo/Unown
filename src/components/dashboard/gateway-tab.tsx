@@ -180,7 +180,7 @@ function RequestLogTable({ log }: { log: BridgeLogEntry[] }) {
                       {e.stream ? (
                         <span className="text-emerald-400">yes</span>
                       ) : (
-                        <span className="text-zinc-500">no</span>
+                        <span className="text-zinc-400">no</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-zinc-300">{e.finishReason}</td>

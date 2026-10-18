@@ -44,7 +44,7 @@ function ImprovementCard({ imp, onOpenRun }: { imp: Improvement; onOpenRun: (run
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-[11px]">
-          <span className="text-zinc-500">evidence:</span>
+          <span className="text-zinc-400">evidence:</span>
           <button
             type="button"
             onClick={() => onOpenRun(imp.baseline_run_id)}
@@ -237,7 +237,9 @@ export function LearningLabTab() {
                           }}
                           tabIndex={0}
                           role="button"
-                          aria-label={`open run ${r.id.slice(0, 8)} — ${r.status} ${r.kind}`}
+                          // no aria-label: the accessible name is the row's own text content
+                          // (WCAG 2.5.3 label-in-name — an aria-label that omits the
+                          // visible task id/counts is a serious axe violation)
                           className="cursor-pointer border-b border-zinc-800/60 last:border-0 hover:bg-zinc-900/70 focus-visible:bg-zinc-900/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
                         >
                           <td className="px-4 py-2.5"><RunStatusBadge status={r.status} /></td>

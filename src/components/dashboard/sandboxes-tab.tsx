@@ -33,7 +33,7 @@ function SandboxCard({ sandbox }: { sandbox: Sandbox }) {
           <span className="inline-flex items-center gap-1 text-xs text-zinc-300">
             <FileIcon className="size-3.5 shrink-0 text-emerald-400/80" />
             <span className="font-mono tabular-nums">{sandbox.files}</span>
-            <span className="text-zinc-500">files</span>
+            <span className="text-zinc-400">files</span>
           </span>
           <Mono className="text-zinc-400">{timeAgo(sandbox.createdAt)}</Mono>
         </div>

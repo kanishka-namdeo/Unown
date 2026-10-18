@@ -208,7 +208,7 @@ export function DreamsTab() {
               className="min-h-16 resize-y border-zinc-800 bg-zinc-950/80 text-xs text-zinc-200 placeholder:text-zinc-500 focus-visible:ring-amber-500/40"
             />
             <div className="flex items-center justify-between gap-2">
-              <Mono className={cn("text-[10px]", noteDraft.length > NOTE_MAX_CHARS ? "text-rose-400" : "text-zinc-500")}>
+              <Mono className={cn("text-[10px]", noteDraft.length > NOTE_MAX_CHARS ? "text-rose-400" : "text-zinc-400")}>
                 {noteDraft.length.toLocaleString()} / {NOTE_MAX_CHARS.toLocaleString()}
               </Mono>
               <Button

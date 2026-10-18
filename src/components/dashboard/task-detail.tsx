@@ -118,7 +118,7 @@ export function TaskDetailDialog({
                     <div key={path} className={cn(cardCls, "rounded-lg border")}>
                       <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-1.5">
                         <Mono className="text-xs text-emerald-400/90">{path}</Mono>
-                        <Mono className="text-[10px] text-zinc-500">{content.length} chars</Mono>
+                        <Mono className="text-[10px] text-zinc-400">{content.length} chars</Mono>
                       </div>
                       <pre className="scroll-thin max-h-40 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-zinc-400">
                         {content.length > 2000 ? `${content.slice(0, 2000)}\n… (${content.length - 2000} more chars)` : content}

@@ -151,8 +151,16 @@ describe("LearningLabTab — improvement evidence + run-row activation", () => {
     renderWithProviders(<LearningLabTab />);
     await screen.findByText("3 runs");
 
-    // The run row is a real tab stop (tabIndex=0, role=button).
-    const row = screen.getByRole("button", { name: /open run run-0001/ }) as HTMLElement;
+    // The run row is a real tab stop (tabIndex=0, role=button — no aria-label:
+    // WCAG 2.5.3 label-in-name makes an aria-label that omits the visible
+    // ids/counts a serious axe violation, so the name comes from content).
+    // happy-dom does not compute name-from-content on a <tr>, so the row is
+    // located structurally via its task id cell — the contract under test is
+    // the row's button semantics + keyboard activation, not the name algo.
+    const taskCells = await screen.findAllByText("fix-login-flow");
+    const row = taskCells.map((c) => c.closest("tr")).find(Boolean) as HTMLElement;
+    expect(row.getAttribute("role")).toBe("button");
+    expect(row.tabIndex).toBe(0);
     row.focus();
     expect(document.activeElement).toBe(row);
 

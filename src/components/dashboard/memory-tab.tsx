@@ -44,26 +44,33 @@ function TierCard({
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const meta = tierMeta[tier.tier];
+  // The CARD is not interactive (a role=button card would nest the expand
+  // button — axe `nested-interactive`, WCAG 4.1.2); the header block carries
+  // the select affordance instead, with its own keyboard handler.
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/60",
-        selected ? "border-emerald-500/50 bg-emerald-500/5" : cn(cardCls, "hover:border-zinc-700")
+        "transition-colors",
+        selected ? "border-emerald-500/50 bg-emerald-500/5" : cardCls
       )}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
-      tabIndex={0}
-      role="button"
-      aria-label={`${meta.label} memory tier, version ${tier.version} — select to view history`}
-      aria-pressed={selected}
     >
       <CardContent className="flex flex-col gap-2 p-4">
-        <div className="flex items-center justify-between gap-2">
+        <div
+          className={cn(
+            "-mx-1 -my-1 flex cursor-pointer items-center justify-between gap-2 rounded-sm px-1 py-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/60",
+            !selected && "hover:text-zinc-100"
+          )}
+          onClick={onSelect}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelect();
+            }
+          }}
+          tabIndex={0}
+          role="button"
+          aria-pressed={selected}
+        >
           <span className="flex items-center gap-2 text-sm font-semibold text-zinc-200">
             <Layers className={cn("size-4", selected ? "text-emerald-400" : "text-zinc-400")} />
             {meta.label}
@@ -179,9 +186,9 @@ function SkillCard({
         {showHistory && (
           <div className="flex flex-col gap-1.5 rounded-md border border-zinc-800 bg-zinc-950/50 p-2.5" aria-label="skill version history">
             <p className="text-[10px] font-semibold tracking-wider text-zinc-400 uppercase">
-              version history <span className="ml-1 normal-case text-zinc-500">({versions.length || "…"})</span>
+              version history <span className="ml-1 normal-case text-zinc-400">({versions.length || "…"})</span>
             </p>
-            {versions.length === 0 && <p className="text-xs text-zinc-500">loading versions…</p>}
+            {versions.length === 0 && <p className="text-xs text-zinc-400">loading versions…</p>}
             {versions.map((v) => {
               const isCurrent = v.version === skill.version;
               return (
@@ -193,7 +200,7 @@ function SkillCard({
                       {v.note}
                     </span>
                   )}
-                  <Mono className="text-zinc-500">{timeAgo(v.created_at)}</Mono>
+                  <Mono className="text-zinc-400">{timeAgo(v.created_at)}</Mono>
                   {!isCurrent && (
                     <Button
                       size="sm"

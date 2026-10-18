@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 85;
+export const CHANGELOG_TOTAL_ENTRIES = 86;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 44,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 16,
+  "Fixed": 17,
   "Security": 3,
   "Behavior": 6
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 44,
+    "total": 45,
     "counts": {
       "Added": 16,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 8,
+      "Fixed": 9,
       "Security": 0,
       "Behavior": 6
     },
@@ -129,6 +129,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "dashboard: the engine-parity round went red on the axe gate — three WCAG violation classes across four new…",
+            "behavior": false
+          },
           {
             "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
             "behavior": false
