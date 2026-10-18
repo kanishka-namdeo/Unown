@@ -13,7 +13,7 @@ How to run the `unown` terminal agent, what it does inside a session, and where 
 - [Memory in sessions](#memory-in-sessions)
 - [Environment variables](#environment-variables)
 
-Related pages: [subagents](subagents.md) · [skills](skills.md) · [memory](memory.md) · [providers](providers.md) · [configuration](configuration.md)
+Related pages: [subagents](subagents.md) · [skills](skills.md) · [memory](memory.md) · [providers](providers.md) · [configuration](configuration.md) · [updating](updating.md)
 
 ## Three ways to run
 
@@ -81,6 +81,8 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown memory` | Print the effective 4-tier memory stack |
 | `unown doctor` | Run configuration diagnostics (see below) |
 | `unown note "text"` | Deliver a session note to the engine by hand |
+| `unown update` | Check for a newer release and self-update — fast-forward the checkout to the newest ready tag, then re-run the installer. Flags: `--check` (report only; exit `2` when an update is available), `--check --json`, `--allow-dirty`, `--rollback`, or an explicit version (`unown update 2.1.0` — also pins/rolls back). See [updating](updating.md) |
+| `unown changelog [n]` | Print the latest `CHANGELOG.md` sections (default 1) |
 | `unown --help` / `-h` | Help text |
 | `unown --version` / `-V` | Print the version (matches `package.json`; CI asserts the contract) |
 
@@ -88,7 +90,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 
 **Subagent plumbing flags.** `--mode json` (JSON event stream), `--no-session` (don't persist), `--tools a,b,c` (restrict the active toolset), `--append-system-prompt <file>` (append file contents to the system prompt) exist for the `task` tool, which spawns subagents with exactly these flags. You normally never type them yourself — see [subagents](subagents.md).
 
-**`unown doctor`** checks, in order: the agent dir and `models.json`, the memory stack, model-endpoint reachability (and credentials), bridge upstream key / upstream health / model routability when pointed at the bundled bridge, the OS sandbox (bubblewrap), and the self-learning engine. It exits 1 when chat is broken; warnings only affect learning features (notes queue in the outbox until the engine returns). If it fails, see [troubleshooting](troubleshooting.md).
+**`unown doctor`** checks, in order: the unown version and update-check state (from the notifier cache — no network), the agent dir and `models.json`, the memory stack, model-endpoint reachability (and credentials), bridge upstream key / upstream health / model routability when pointed at the bundled bridge, the OS sandbox (bubblewrap), and the self-learning engine. It exits 1 when chat is broken; warnings only affect learning features (notes queue in the outbox until the engine returns). If it fails, see [troubleshooting](troubleshooting.md).
 
 ## Session tools
 

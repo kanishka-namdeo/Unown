@@ -104,6 +104,7 @@ Full usage docs live in [`docs/`](docs/):
 | Page | What it covers |
 |---|---|
 | [quickstart](docs/quickstart.md) | clone → install → connect a model → first session (5 minutes) |
+| [updating](docs/updating.md) | `unown update`, update notifications, pinned installs, rollback, the privacy model of the update check |
 | [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers |
 | [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
 | [subagents](docs/subagents.md) | the `task` tool, built-in `general`/`explore`, authoring `.unown/agents/*.md` |
@@ -141,6 +142,8 @@ bun run agent:install
 ```
 
 This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.
+
+**Keeping it current:** `unown update` moves the install to the newest release (fast-forward only, never over uncommitted work; `unown update --check` reports without changing anything) — [docs/updating.md](docs/updating.md).
 
 ### 2. Connect a model
 

@@ -73,6 +73,10 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_ENGINE_URL` | `http://127.0.0.1:3030` | Where the CLI delivers terminal session notes (and reads engine health from). |
 | `UNOWN_STRICT_HOOKS` | unset | `1` = sandbox-grade hooks in terminal sessions (blocks network, `git push`, `sudo`); the default allows normal developer operations. |
 | `UNOWN_NO_PREFLIGHT` | unset | `1` skips the model-endpoint reachability check before each session. Print mode exits non-zero when the endpoint is down — see [troubleshooting](troubleshooting.md). |
+| `NO_UPDATE_NOTIFIER` | unset | Any value silences the startup update notice and its background check (ecosystem-standard name). Manual `unown update` still works — see [updating](updating.md). |
+| `UNOWN_DISABLE_AUTOUPDATE` | unset | `1` — same as `NO_UPDATE_NOTIFIER`, the Unown-native spelling. |
+| `DO_NOT_TRACK` | unset | `1` — the standard nonessential-traffic opt-out; suppresses the background update check. |
+| `UNOWN_DISABLE_UPDATES` | unset | `1` blocks **all** update paths (`unown update`, `--check`, background check) — the org/CI kill switch. |
 | `PI_DREAM_GATE` | on | Dream canary gate: re-run the last-passing benchmark task under freshly dreamed project memory and roll the dream back if it fails. `0` disables. Read by the engine. |
 
 ### OS-level sandbox (bubblewrap)
@@ -126,6 +130,8 @@ Where everything lives — all of it deletable, none of it required to pre-exist
   memory/
     policy.md                    tier 0 — optional, you author it
     user.md                      tier 2 — global preferences
+  update-check.json              update-notifier cache — 24h TTL, remote URL stored credential-free
+  update-state.json              last `unown update` record (from/to/fromSha/ok) — what --rollback restores
   notes/
     outbox/                      notes queued while the engine was down
     done/                        ingested notes (archive)

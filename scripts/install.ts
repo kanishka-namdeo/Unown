@@ -153,9 +153,16 @@ if (process.env.UNOWN_NO_LINK === "1") {
 // --------------------------------------------------------- next steps banner
 const envFile = loadEnvFile(path.join(REPO_ROOT, ".env"));
 const upstreamKeySet = Boolean(envFile["BRIDGE_UPSTREAM_KEY"]);
+// `unown update` re-runs this script (UNOWN_INSTALL_CONTEXT=update) — the
+// banner says "update" instead of "install"; everything else is identical.
+const isUpdateRun = process.env.UNOWN_INSTALL_CONTEXT === "update";
 
-console.log(`\n${sym.ok} Install complete.\n`);
+console.log(`\n${sym.ok} ${isUpdateRun ? "Update applied — install steps re-run." : "Install complete."}\n`);
+if (!isUpdateRun) {
 console.log("Next steps:");
+} else {
+console.log("Post-update checklist:");
+}
 console.log("  1. Configure your model credentials:");
 if (upstreamKeySet) {
   console.log(`     ${sym.ok} BRIDGE_UPSTREAM_KEY is already set in .env`);

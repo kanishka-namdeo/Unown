@@ -23,6 +23,7 @@ const COMMANDS: [string, string][] = [
   ["unown memory", "print the effective four-tier stack"],
   ["unown init", "scaffold this project's .unown/memory files"],
   ['unown note "flaky auth spec"', "hand AutoDream a note directly"],
+  ["unown update", "self-update to the newest release — check, pin, roll back"],
 ];
 
 const PREREQS: [string, string][] = [

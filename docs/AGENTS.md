@@ -6,7 +6,7 @@ User-facing usage documentation for the `unown` terminal agent and the self-lear
 
 ## Ownership
 
-- Owns: `quickstart.md`, `providers.md`, `usage.md`, `subagents.md`, `skills.md`, `memory.md`, `memory-classifier-evaluation.md`, `memory-system-review.md`, `configuration.md`, `troubleshooting.md`, `benchmark-research.md`, `landing-research.md`, `testing-strategy.md`, `oh-my-pi-swap-assessment.md`, `opencode-swap-assessment.md`, `BEHAVIOR.md`, plus the platform guides `windows.md` and `macos.md` (upstream M4: install, shims, sandbox story, WSL2 / seatbelt notes — keep their claims in sync with `bin/unown.cmd`/`bin/unown.ps1`, `scripts/link.ts` and `src/sandbox.ts` reality).
+- Owns: `quickstart.md`, `updating.md`, `providers.md`, `usage.md`, `subagents.md`, `skills.md`, `memory.md`, `memory-classifier-evaluation.md`, `memory-system-review.md`, `configuration.md`, `troubleshooting.md`, `benchmark-research.md`, `landing-research.md`, `testing-strategy.md`, `oh-my-pi-swap-assessment.md`, `opencode-swap-assessment.md`, `BEHAVIOR.md`, plus the platform guides `windows.md` and `macos.md` (upstream M4: install, shims, sandbox story, WSL2 / seatbelt notes — keep their claims in sync with `bin/unown.cmd`/`bin/unown.ps1`, `scripts/link.ts` and `src/sandbox.ts` reality).
 - `BEHAVIOR.md` is the agent behavior card (default models, memory tier stack, session tools, sandbox model, hooks policy) — a contract page, not a usage page. It is the single reference for what the agent does by default: every change to prompts, models, routing, guard rules, hooks or memory injection updates it in the same change, with the required CHANGELOG "Agent Behavior" entry and pinning tests (the security-bypass rule is the worked example it cites).
 - `landing-research.md` is a design-rationale doc, not a usage page: it records the research behind the marketing page and the sourcing rules for anything quoted on it. When the page changes materially, update it in the same change — that file is why the page's claims stay defensible.
 - Five pages are decision records, not usage pages: `memory-classifier-evaluation.md`, `benchmark-research.md`, `testing-strategy.md`, `oh-my-pi-swap-assessment.md`, `opencode-swap-assessment.md`. They share a shape — purpose blockquote with the verdict up front, mini-TOC, a stated method section, evidence, related pages.
@@ -22,7 +22,7 @@ User-facing usage documentation for the `unown` terminal agent and the self-lear
 - Voice: match the README — concrete, confident, honest about limitations; tables for references; no emojis; no secrets (placeholder keys only).
 - Cross-link instead of duplicating: provider wiring → `providers.md`, deep usage → `usage.md`, env reference → `configuration.md`. The README keeps only condensed versions plus the docs index table.
 - `unown doctor`'s hard-fail output references `docs/troubleshooting.md` by path — that page must keep existing.
-- When the CLI surface changes (new command/flag/env var), update `usage.md` + `configuration.md` + `cli.ts` HELP in the same change.
+- When the CLI surface changes (new command/flag/env var), update `usage.md` + `configuration.md` + `cli.ts` HELP in the same change; update/rollback/env changes additionally owe `updating.md` (the self-update user contract — flags, exit codes, guards, state files, privacy) in the same change.
 
 ## Work Guidance
 
