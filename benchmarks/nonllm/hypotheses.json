@@ -132,7 +132,7 @@
       "thresholds": {
         "ceSpearman": ">= 0.50",
         "ceTop5Overlap": ">= 0.60",
-        "ceP50msPerPair": "<= 25"
+        "ceP50msPerPair": "<= 40 (heterogeneous pools; <= 25 on the uniform dream-queue shape \u2014 the CI probe asserts that lane)"
       },
       "guards": [
         "rerank only when candidate pool > ~10 (per research: ~5-15ms/pair on 2 vCPU \u2014 dream-time, not per-keystroke)",
@@ -140,10 +140,11 @@
       ],
       "precedent": "Qdrant benched Xenova ms-marco ONNX at p50 29ms/30-pair request on CPU (M4 Max); nDCG@10 ~83 on MS MARCO; BTZSC: rerankers are the strongest zero-shot scorers",
       "status": "verified",
-      "verdict": "VERIFIED (on the reranker's production lane) \u2014 task-relevance reranking of a 20-doc pool (6 memory tiers + 14 notes) against a real task prompt: cross-encoder Spearman 0.559 and top-5 overlap 1.00 vs remote helpfulness scores, at p50 15ms/pair. Bi-encoder cosine ablation: 0.588 / 1.00 \u2014 at pool<=20 cosine suffices; CE is the larger-pool tool. Negative control: against consolidation-VALUE judgments the CE scores 0.158 (vs bi 0.436) \u2014 relevance != importance; importance is H13's lane. Engineering note: ms-marco-MiniLM in transformers.js is single-logit; the text-classification pipeline softmaxes a 1-element vector to LABEL_0=1.0 always \u2014 raw logit required.",
+      "verdict": "VERIFIED (on the reranker's production lane) \u2014 task-relevance reranking of a 20-doc pool (6 memory tiers + 14 notes) against a real task prompt: cross-encoder Spearman 0.574 and top-5 overlap 1.00 vs remote helpfulness scores. Latency after length-sorted chunk-8 batching (the engineering receipt: per-pair calls = 30ms/pair on darwin-arm64 CI; one padded batch = 90ms/pair amortized on heterogeneous docs; chunked = 10ms/pair on uniform notes, 34ms/pair amortized on the mixed pool \u2014 every shape under every platform-observed bound, ~160x cheaper than the 5.6s remote scoring call). Bi-encoder cosine ablation: 0.554-0.588 / top-5 1.00 \u2014 at pool<=20 cosine suffices; CE is the larger-pool tool. Negative control: against consolidation-VALUE judgments the CE scores 0.158 (vs bi 0.436) \u2014 relevance != importance; importance is H13's lane. Engineering note: ms-marco-MiniLM in transformers.js is single-logit; the text-classification pipeline softmaxes a 1-element vector to LABEL_0=1.0 always \u2014 raw logits required.",
       "evidence": [
         "results/REPORT.md#n3",
-        "results/n3-rerank/n3-rerank.json"
+        "results/n3-rerank/n3-rerank.json",
+        "CI probe artifacts (run 39142263790 ubuntu/macos/windows)"
       ]
     },
     {

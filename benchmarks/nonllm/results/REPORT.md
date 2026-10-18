@@ -96,8 +96,15 @@ recent notes (20 candidates).
 
 | lane | Spearman ρ vs remote | top-5 overlap | p50 |
 |---|---|---|---|
-| ms-marco cross-encoder | 0.559 | **1.00** | 15 ms/pair |
-| bge bi-encoder cosine | 0.588 | 1.00 | ~24 ms/doc |
+| ms-marco cross-encoder | 0.574 | **1.00** | 34 ms/pair amortized (mixed pool) · 10 ms/pair (uniform notes) |
+| bge bi-encoder cosine | 0.554–0.588 | 1.00 | ~24 ms/doc |
+
+Latency engineering receipt (three shapes, all measured): per-pair calls —
+15 ms/pair linux but **30 ms/pair on darwin-arm64 CI** (tokenization + session
+overhead per call); one padded batch — 90 ms/pair amortized on heterogeneous
+docs (every pair pays the longest doc's padding); **length-sorted chunks of 8**
+(the shipped shape) — 10 ms/pair uniform, 34 ms/pair mixed, amortizing
+overhead without padding waste. Every remote scoring call it replaces: ~5.6 s.
 
 Both local lanes reproduce the remote's ENTIRE top-5 injection set. The
 bi-encoder ties the CE at this pool size (20 docs) — the CE's extra pairwise
