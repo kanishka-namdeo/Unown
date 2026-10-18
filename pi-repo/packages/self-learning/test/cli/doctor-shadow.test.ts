@@ -15,6 +15,24 @@ import { startMockBridge, sweepTestRoots, unown, type UnownRunOptions } from "./
 import { writeCrashRecord } from "../../src/crash.ts";
 
 let bridge: ReturnType<typeof startMockBridge>;
+
+/**
+ * Write a FOREIGN shim into dir (the file name AND the target-reference
+ * dialect must match the platform: Windows shims are unown.cmd/unown.ps1
+ * with backslash paths, POSIX shims are `unown` with exec + forward
+ * slashes — see uninstall.ts shimTarget).
+ */
+function writeForeignShim(dir: string): string {
+	if (process.platform === "win32") {
+		const p = join(dir, "unown.cmd");
+		writeFileSync(p, '@"bun" "D:\\definitely\\another\\checkout\\bin\\unown" %*\r\n');
+		return p;
+	}
+	const p = join(dir, "unown");
+	writeFileSync(p, '#!/bin/sh\nexec "bun" "/definitely/another/checkout/bin/unown" "$@"\n', { mode: 0o755 });
+	return p;
+}
+
 const base = (extra: Partial<UnownRunOptions> = {}): UnownRunOptions => ({ bridge, ...extra });
 
 beforeAll(() => {
@@ -29,11 +47,11 @@ describe("doctor PATH-shim shadowing check", () => {
 	test("a FOREIGN shim first in the candidate dir is reported as shadowed (warn, chat unaffected)", async () => {
 		const dir = mkdtempSync(join(tmpdir(), "shadow-shim-"));
 		try {
-			writeFileSync(join(dir, "unown"), '#!/bin/sh\nexec "bun" "/definitely/another/checkout/bin/unown" "$@"\n', { mode: 0o755 });
+			writeForeignShim(dir);
 			const run = await unown(["doctor"], base({ env: { UNOWN_BIN_DIR: dir } }));
 			expect(run.exitCode).toBe(0); // warn-level: chat still works
 			expect(run.stdout).toContain("shadowed:");
-			expect(run.stdout).toContain("/definitely/another/checkout/bin/unown");
+			expect(run.stdout).toContain("definitely"); // the foreign target's path appears
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -49,7 +67,7 @@ describe("doctor PATH-shim shadowing check", () => {
 	test("--json carries the check id in the DoctorCheck[] schema", async () => {
 		const dir = mkdtempSync(join(tmpdir(), "shadow-json-"));
 		try {
-			writeFileSync(join(dir, "unown"), '#!/bin/sh\nexec "bun" "/other/bin/unown" "$@"\n', { mode: 0o755 });
+			writeForeignShim(dir);
 			const run = await unown(["doctor", "--json"], base({ env: { UNOWN_BIN_DIR: dir } }));
 			expect(run.exitCode).toBe(0);
 			const parsed = JSON.parse(run.stdout);
@@ -83,8 +101,17 @@ describe("local crash record (zero-telemetry crash reporting)", () => {
 	});
 
 	test("writeCrashRecord never throws (a crashing crash-logger must not mask the original error)", () => {
-		// an unwritable home -> null, not a throw
-		const p = writeCrashRecord(new Error("x"), { home: "/proc/definitely-not-writable" });
-		expect(p).toBeNull();
+		// an unwritable home -> null, not a throw. A path UNDER a plain file
+		// (ENOTDIR) fails identically on every platform — /proc/* is writable
+		// on Windows runners (resolves to <drive>\proc\...), which the first
+		// version of this test learned the hard way.
+		const blocker = join(tmpdir(), `crash-blocker-${Date.now()}`);
+		writeFileSync(blocker, "a file, not a dir");
+		try {
+			const p = writeCrashRecord(new Error("x"), { home: join(blocker, "sub") });
+			expect(p).toBeNull();
+		} finally {
+			rmSync(blocker, { force: true });
+		}
 	});
 });
