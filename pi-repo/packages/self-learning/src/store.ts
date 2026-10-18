@@ -194,6 +194,20 @@ export class Store {
 				}
 			}
 		}
+		// MEDIUM-3: memory_versions(tier, version) had no UNIQUE constraint and
+		// runProjectDream allocated versions outside a transaction — concurrent
+		// dreams could insert the same (tier, version) with different content,
+		// making history/rollback ambiguous. Dedupe legacy duplicates (keeping
+		// the newest row of each pair), then enforce the index. Best-effort on
+		// read-only legacy DBs: allocation is ALSO serialized by the BEGIN
+		// IMMEDIATE transactions in writeTier and runProjectDream.
+		try {
+			this.db.exec(`DELETE FROM memory_versions WHERE id NOT IN (SELECT MAX(id) FROM memory_versions GROUP BY tier, version)`);
+			this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_versions_tier_version ON memory_versions(tier, version)`);
+		} catch (err: any) {
+			console.warn(`[store] memory_versions unique index: ${err?.message ?? err}`);
+		}
+
 	}
 	query<T = any>(sql: string, params: any[] = []): T[] {
 		const stmt = this.db.prepare(sql);

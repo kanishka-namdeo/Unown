@@ -17,6 +17,7 @@
  *     memory/local.md        local overrides (tier 3, gitignored)
  *     .gitignore             ignores local.md
  */
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
@@ -334,7 +335,11 @@ export interface OutboxNote {
 /** Persist a note as an outbox file (delivered to the engine by the sync job). */
 export function writeOutboxNote(note: OutboxNote): string {
         mkdirSync(UNOWN_OUTBOX_DIR, { recursive: true });
-        const name = `${Date.now()}-${slugifyPath(note.projectPath)}.md`;
+        // Date.now() alone collides when two notes for the same project land in
+        // the same millisecond (the second write silently OVERWRITES the first —
+        // found live by the outbox dedup test). A short random tail makes the
+        // name unique while staying sortable and greppable.
+        const name = `${Date.now()}-${randomUUID().slice(0, 6)}-${slugifyPath(note.projectPath)}.md`;
         const body = `---\nproject: ${note.projectPath}\nts: ${note.ts}\n---\n${note.content}\n`;
         const p = join(UNOWN_OUTBOX_DIR, name);
         writeFileSync(p, body, "utf8");

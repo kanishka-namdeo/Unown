@@ -68,7 +68,10 @@ Return STRICT JSON: {"projectMd": "<full new file content>", "stats": {"merged":
 // ---------------------------------------------------------------------------
 // Benchmark dream (engine's own project memory) — now with a canary gate
 // ---------------------------------------------------------------------------
-export async function runDream(): Promise<DreamResult> {
+export async function runDream(
+        /** Test seam: inject a canary (or a crashing one) without the real agent loop. */
+        opts: { canaryFn?: typeof canaryCheck } = {},
+): Promise<DreamResult> {
         const id = randomUUID();
         const notes = undreamedNotes(24, "benchmark");
 
@@ -168,7 +171,56 @@ export async function runDream(): Promise<DreamResult> {
                 );
 
                 // ---- Canary gate: the new memory must not break the last-passing task.
-                const gate = await canaryCheck(version);
+                // MEDIUM-1: an EXCEPTION inside the canary (dynamic-import failure, DB
+                // error, runAgent rejection) used to escape to the outer catch — the new
+                // memory stayed LIVE with no canary validation, and the notes were NOT
+                // marked dreamed (the next dream re-consolidated them into yet another
+                // version). A crashed canary is now treated like a failed one: roll
+                // back, consume the notes, record the reason.
+                let gate: Awaited<ReturnType<typeof canaryCheck>>;
+                try {
+                        gate = await (opts.canaryFn ?? canaryCheck)(version);
+                } catch (canaryErr: any) {
+                        const reason = `canary crashed: ${canaryErr?.message ?? String(canaryErr)}`;
+                        try {
+                                if (version > 1) rollback("project", version - 1, reason);
+                        } catch {
+                                /* v1 seed — nothing below to roll back to */
+                        }
+                        markDreamed(
+                                notes.map((n: any) => n.id),
+                                id,
+                        );
+                        store.run(
+                                `UPDATE dreams SET ended_at = ?, status = 'gated', entries_merged = ?, entries_pruned = ?, entries_added = ?, output = ?, note = ? WHERE id = ?`,
+                                [
+                                        Date.now(),
+                                        stats.merged ?? 0,
+                                        stats.pruned ?? 0,
+                                        stats.added ?? 0,
+                                        next,
+                                        `canary infrastructure failure — memory rolled back to v${version - 1}: ${reason}`,
+                                        id,
+                                ],
+                        );
+                        emit("dream:finished", {
+                                id,
+                                status: "gated",
+                                notesIn: notes.length,
+                                version: version - 1,
+                                reason,
+                        });
+                        return {
+                                id,
+                                status: "gated",
+                                notesIn: notes.length,
+                                merged: stats.merged ?? 0,
+                                pruned: stats.pruned ?? 0,
+                                added: stats.added ?? 0,
+                                output: next,
+                                note: reason,
+                        };
+                }
                 if (gate.rolledBack) {
                         markDreamed(
                                 notes.map((n: any) => n.id),
@@ -429,30 +481,47 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
                                 continue;
                         }
 
-                        // Write the project's memory file atomically (tmp+fsync+rename):
-                        // a crash mid-dream never leaves a truncated .unown/memory/project.md
-                        // in the user's repo (the terminal agent reads this next session).
+                        // Version it in the engine DB under a synthetic tier so history/rollback
+                        // works. MEDIUM-3: DB-FIRST inside BEGIN IMMEDIATE, mirroring writeTier's
+                        // durability model — the version row commits durably BEFORE the file is
+                        // touched (a crash between them leaves the row authoritative, not a file
+                        // ahead of the DB silently downgrading the next first-mint gate), and the
+                        // transaction serializes allocation across concurrent project dreams.
+                        store.run(`BEGIN IMMEDIATE`);
+                        let version: number;
+                        try {
+                                const versionRow = store.get<{ version: number }>(
+                                        `SELECT MAX(version) AS version FROM memory_versions WHERE tier = ?`,
+                                        [tierKey],
+                                );
+                                version = (versionRow?.version ?? 0) + 1;
+                                store.run(
+                                        `INSERT INTO memory_versions (tier, version, content, changed_by, note, created_at) VALUES (?, ?, ?, 'autodream', ?, ?)`,
+                                        [
+                                                tierKey,
+                                                version,
+                                                guard.sanitized,
+                                                `consolidated ${notes.length} terminal notes for ${group.slug}${
+                                                        guard.flags.length > 0 ? ` · ${guardSummary(guard)}` : ""
+                                                }`,
+                                                Date.now(),
+                                        ],
+                                );
+                                store.run(`COMMIT`);
+                        } catch (err: any) {
+                                try {
+                                        store.run(`ROLLBACK`);
+                                } catch {
+                                        /* already rolled back */
+                                }
+                                throw err;
+                        }
+
+                        // Write the project's memory file atomically (tmp+fsync+rename): a crash
+                        // mid-dream never leaves a truncated .unown/memory/project.md in the
+                        // user's repo (the terminal agent reads this next session).
                         const memPath = projectMemoryPath(group.projectPath);
                         atomicWriteFileSync(memPath, guard.sanitized);
-
-                        // Version it in the engine DB under a synthetic tier so history/rollback works.
-                        const versionRow = store.get<{ version: number }>(
-                                `SELECT MAX(version) AS version FROM memory_versions WHERE tier = ?`,
-                                [tierKey],
-                        );
-                        const version = (versionRow?.version ?? 0) + 1;
-                        store.run(
-                                `INSERT INTO memory_versions (tier, version, content, changed_by, note, created_at) VALUES (?, ?, ?, 'autodream', ?, ?)`,
-                                [
-                                        tierKey,
-                                        version,
-                                        guard.sanitized,
-                                        `consolidated ${notes.length} terminal notes for ${group.slug}${
-                                                guard.flags.length > 0 ? ` · ${guardSummary(guard)}` : ""
-                                        }`,
-                                        Date.now(),
-                                ],
-                        );
 
                         // All terminal notes for this project are consumed by this dream.
                         const dreamId = `project-${randomUUID()}`;
