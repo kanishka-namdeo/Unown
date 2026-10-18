@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 84;
+export const CHANGELOG_TOTAL_ENTRIES = 85;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 43,
+  "Added": 44,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 43,
+    "total": 44,
     "counts": {
-      "Added": 15,
+      "Added": 16,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "complementary testbench — campaign 3 (H16–H22): non-traditional local mechanisms around the configured…",
+            "behavior": false
+          },
           {
             "title": "dashboard: Automations tab — the scheduled actor gets a mission-control surface",
             "behavior": false
