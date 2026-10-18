@@ -16,7 +16,7 @@
 //   7. env kill-switch UNOWN_WORKTREE_ISOLATION=0 disables (typed reason)
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -119,7 +119,15 @@ describe("worktree lifecycle (real git)", () => {
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 		expect(existsSync(created.handle.path)).toBe(true);
-		expect(created.handle.path.startsWith(join(repo, ".unown", "worktrees"))).toBe(true);
+		// git rev-parse --show-toplevel (findGitRepo inside createWorktree)
+		// returns the CANONICAL repo path: on macOS tmpdir() lives under /var,
+		// a symlink to /private/var (the mkdtemp path and the git toplevel
+		// differ by that prefix); on Windows git prints forward slashes and
+		// long names where mkdtempSync may hold short/8.3 or backslashed forms.
+		// Compare canonically on both sides — this assertion is about WHERE the
+		// tree lives, not about git's path spelling.
+		const canon = (p: string) => realpathSync(p).replace(/\\/g, "/").toLowerCase();
+		expect(canon(created.handle.path).startsWith(canon(join(repo, ".unown", "worktrees")))).toBe(true);
 		// journal: spawned with base commit + policy
 		const reg = readRegistry(repo);
 		const spawned = reg.find((r) => r.op === "spawned" && r.id === "child-clean");
