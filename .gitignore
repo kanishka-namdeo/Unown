@@ -102,3 +102,7 @@ benchmarks/local-llm/results/*/
 benchmarks/nonllm/node_modules/
 benchmarks/nonllm/models/
 benchmarks/nonllm/results/*/
+# complementary testbench (campaign 3): weights + raw receipts (keep the curated REPORT.md)
+benchmarks/complementary/models/
+benchmarks/complementary/results/*/
+!benchmarks/complementary/results/REPORT.md

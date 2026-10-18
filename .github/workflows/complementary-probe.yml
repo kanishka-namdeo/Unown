@@ -1,0 +1,67 @@
+name: complementary-probe
+
+# Keyless runtime gate for the complementary testbench (campaign 3, H16-H22):
+# asserts the mechanism-level facts on 3 OSes — llama.cpp b11718 speculative-
+# decoding flags exist, the ngram lane boots and answers with grammar, the
+# timings instrument is present, /tokenize works, KV prefix reuse engages.
+# Quality experiments (C1-C7 with remote arms) run on the bench host.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "benchmarks/complementary/**"
+      - ".github/workflows/complementary-probe.yml"
+  pull_request:
+    paths:
+      - "benchmarks/complementary/**"
+      - ".github/workflows/complementary-probe.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: C0 runtime gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # renders unit tests FIRST (the local-llm pattern: a red receipt table
+      # must fail the build before any model download)
+      - name: Renders null-safety suite
+        working-directory: benchmarks/complementary
+        run: node --test lib/renders.test.mjs
+
+      # CI runs the gate on the incumbent model only (~500MB download);
+      # ext-model sections self-skip when the files are absent.
+      - name: Provision llama.cpp + incumbent 0.6B
+        run: node benchmarks/complementary/runner.mjs provision --models incumbent-only
+        env:
+          LLAMA_BUILD: b11718
+
+      - name: C0 probe (asserts flags, boot, grammar answer, timings, KV reuse)
+        run: node benchmarks/complementary/runner.mjs probe
+        env:
+          LLAMA_BUILD: b11718
+
+      - name: Upload receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: c0-probe-${{ matrix.os }}
+          path: benchmarks/complementary/results/
+          if-no-files-found: ignore

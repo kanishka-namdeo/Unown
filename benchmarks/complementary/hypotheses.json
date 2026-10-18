@@ -1,0 +1,139 @@
+{
+  "meta": {
+    "purpose": "Hypothesis registry for the THIRD research campaign: non-traditional, fully-local complementary models/mechanisms that speed up or improve the harness around the configured remote endpoint (Dashscope kimi-k2.5/qwen3.7-plus/qwen3.6-plus) — targeting the pi agent's local lane and the memory system. Each hypothesis is falsifiable, has explicit metrics, thresholds, guards, and a verdict updated by this testbench (benchmarks/complementary/runner.mjs).",
+    "created": "2026-10-19",
+    "numbering": "Continues the research program's global H-sequence to avoid cross-bench ambiguity: local-llm holds H1-H11 (small-LLM lane), nonllm reuses H9-H15 (zero-LLM tier; overlapping ids were an accident kept for history), THIS registry holds H16+ (complementary mechanisms). New hypotheses must start at H23 or later.",
+    "method": "Replay byte-faithful production prompts (imported from benchmarks/local-llm/lib/prompts.mjs, sync-commented against pi-repo/packages/self-learning/src) with fixtures captured from the live engine, against the pinned llama.cpp lane (b11718, prebuilt, CPU) and the production remote via the llm-bridge. Blind A/B judged by the remote model with position-swap consistency (reuses local-llm judge.mjs). Cross-platform validated via the C0 probe on the GitHub Actions matrix.",
+    "remoteBaseline": "kimi-k2.5 via llm-bridge -> Dashscope coding-intl (list $0.49/M in, $2.50/M out)",
+    "localEngine": "llama.cpp llama-server b11718 (MIT, official prebuilts, runtime CPU dispatch) — the SAME engine the shipped BRIDGE_LOCAL_URL lane uses, so a verified mechanism here is a `runner.mjs serve` flag away from production.",
+    "scopeNote": "Campaign question from the operator: experiment and decide (only if successful) about non-traditional LLM models — fully local, performance-optimized, cross-platform — that work complementary to the configured endpoint to speed up/improve harness tasks (pi and/or memory). Changes to Unown itself are gated on this registry exactly like the two prior campaigns."
+  },
+  "hypotheses": [
+    {
+      "id": "H16",
+      "title": "N-gram speculative decoding (model-free) speeds up the local lane's JSON-heavy generation",
+      "statement": "llama-server's n-gram speculative decoding (ngram-simple / ngram-mod — a MODEL-FREE mechanism that drafts from repeated token patterns in context, zero extra RAM, zero model files) accelerates the local lane's schema-constrained learning subtasks (note triage, failure mining) by >= 1.3x median predicted tok/s on CPU with byte-identical greedy outputs, making the async local lane cheaper in wall-clock at no resource cost on any supported platform.",
+      "subtask": "local-lane decode speed (triage + mining replays; benefits every PI_*_MODEL_ID=local-* subtask)",
+      "experiment": "C1-ngram",
+      "metrics": ["tok/s ratio vs baseline (median predicted_per_second)", "p50/p90 latency", "output byte-identity vs baseline (greedy)", "RSS delta", "startup delta"],
+      "thresholds": { "tok/s ratio": ">= 1.3 on >= 1 replay family", "byteIdentity": "= identical on greedy replays (guard)", "rssDeltaMB": "<= +100 (ngram tables are ~16MB)" },
+      "guards": [
+        "greedy sampling (temperature 0) for the identity guard — stochastic sampling can select different tokens under specdec (llama.cpp docs)",
+        "grammar-constrained (json_schema) arm measured separately: GBNF grammar + speculative acceptance may interact — measured, not assumed",
+        "CI cross-platform probe asserts the flags exist and the lane boots on all 3 OSes"
+      ],
+      "precedent": "llama.cpp docs/speculative.md (ngram-mod: 'iterating over text/code blocks, reasoning models that repeat thinking'; 'structured, repetitive generation - JSON, fixed templates' per community benchmarks); dev.to 2026-04 ngram experiments: big wins on repeated/templated prompts, ~0 on diverse prose; CPU-only draft-model specdec measured 2.03x on Qwen2.5-Coder-3B (inventiveHQ 2026-06)",
+      "status": "open",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H17",
+      "title": "Draft-model speculative decoding (Qwen2.5-0.5B drafting for Qwen3-0.6B) further speeds up the local lane",
+      "statement": "Pairing the lane's Qwen3-0.6B Q4_K_M target with a Qwen2.5-0.5B draft model (same tokenizer family) reaches >= 1.5x median tok/s on the same replays, IF the tokenizer/vocab compatibility holds and the 2-vCPU draft compute does not eat the target's throughput; a failure here documents the small-box ceiling for draft-model specdec (n-gram stays the RAM-free fallback).",
+      "subtask": "local-lane decode speed (same replays as C1)",
+      "experiment": "C2-draft",
+      "metrics": ["tok/s ratio vs baseline", "p50/p90 latency", "output byte-identity (greedy)", "RSS delta (draft weights + KV)", "boot compatibility error (if any)"],
+      "thresholds": { "tok/s ratio": ">= 1.5", "byteIdentity": "= identical on greedy replays (guard)", "rssDeltaMB": "<= +700", "bootOk": "tokenizer/vocab must be accepted by llama-server" },
+      "guards": [
+        "llama-server hard-errors on tokenizer mismatch — a boot failure refutes-by-incompatibility with the error recorded, not a silent skip",
+        "draft model RAM counted against the same 4GB co-resident budget as E9 (engine+bridge ~0.5GB must still fit)",
+        "no EAGLE-3/DFlash/MTP drafts exist for a 0.6B target (trained drafts start at Qwen3-1.7B) — documented, not measurable"
+      ],
+      "precedent": "llama.cpp specdec docs: draft/target must share tokenizer; 'target: aim for acceptance >0.6 at K=5 for net speedup'; CPU 2.03x measured on a 3B target (draft compute is cheaper relative to a slower target — a 0.6B target at ~20 tok/s is the hard case this experiment answers)",
+      "status": "open",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H18",
+      "title": "llama-server's prefix KV reuse cuts prefill cost on the lane's shared-system-prompt call sequences",
+      "statement": "The local lane's calls share long stable prefixes (MINER_SYSTEM/DREAM_SYSTEM/TRIAGE_SYSTEM + memory tiers) with varying payloads; llama-server's default prompt caching (cache_prompt, same-slot prefix match) processes only the new suffix on follow-up calls, cutting prefill time >= 25% on shared-prefix sequences with identical outputs — a free production win documented for the serve defaults.",
+      "subtask": "local-lane prefill speed (triage sequences, dream re-runs, mining batches)",
+      "experiment": "C3-kvreuse",
+      "metrics": ["prompt tokens processed on 2nd shared-prefix call (prompt_n)", "prefill ms 1st vs 2nd", "prefill tok/s", "output identity"],
+      "thresholds": { "prefillCut": ">= 25% time on shared-prefix follow-ups", "prompt_n2nd": "< full prompt length (mechanism actually engaged)" },
+      "guards": [
+        "full-attention Qwen3-0.6B only in this experiment — hybrid/recurrent archs (Qwen3.5 DeltaNet, LFM) have partial-checkpoint limits (llama.cpp server-context.cpp SEQ_RM classes); recorded as a compatibility note for the bake-off lane",
+        "outputs must be identical (KV reuse is exact, not approximate)"
+      ],
+      "precedent": "llama.cpp slot/KV-reuse tutorial (GH discussion 13606): 2nd identical prompt processes 1 token; partial reuse on shared system prefix; hexdocs ADR-007 measured 1.23-1.31x on multi-turn Qwen3-0.6B",
+      "status": "open",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H19",
+      "title": "Local token-level prompt compression cuts the REMOTE lane's input cost at quality parity",
+      "statement": "A tiny local model (Qwen3-0.6B via the lane) can select which payload chunks (transcript lines / note blocks) to keep under a budget BEFORE the expensive remote call, cutting the remote payload >= 30% on mining/dream prompts with harness-validator parity and blind-judge W+T >= L — the first mechanism that reduces what Unown pays its configured endpoint, complementary to the local lane's $0 offload.",
+      "subtask": "remote-lane input cost (failure mining + AutoDream payloads)",
+      "experiment": "C4-compress",
+      "metrics": ["payload token cut %", "remote input tokens (usage)", "validatorPass both arms", "blind judge (compressed vs full output)", "cost per call", "compression latency + tokens (local spend)"],
+      "thresholds": { "payloadCut": ">= 30%", "validatorPass": "parity (compressed >= full - 0)", "judge": "wins + ties >= losses", "remoteCostDelta": "proportional to cut" },
+      "guards": [
+        "SYSTEM prompt + JSON schema are NEVER compressed — only the bulk payload (transcript/note content) is selectable",
+        "the compressed replay uses the SAME remote model + production prompt assembly as the baseline arm",
+        "nonllm H14 precedent respected: extractive sentence-level compression lost to the judge on technical detail — this experiment compresses LINE/CHUNK granularity with the model seeing full chunk text and a token budget, and the judge verdict is the arbiter",
+        "logprob-driven token-drop (LLMLingua-1 style) probed in C0; chunk-select is the robust fallback if prompt-logprobs are unavailable"
+      ],
+      "precedent": "LLMLingua-2 (ACL'24 Findings, arXiv 2403.12968): 2-5x compression with minimal loss, 1.6-2.9x e2e latency gain; LLMLingua-1 entropy dropping; nonllm H14 hybrid curation (19.9% cut, judge leans curated) — the remote-cost angle is unexplored",
+      "status": "open",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H20",
+      "title": "A two-tier semantic cache serves repeated learning-layer calls with zero quality loss",
+      "statement": "The learning layer re-issues near-identical LLM calls (re-triage after note edits, dream re-runs after failed ships, retry ladders); an exact-match tier (sha256 of model+messages+params) is trivially safe, and an embedding-similarity tier (same SYSTEM prefix required + user-payload cosine >= threshold via the local nomic lane) hits on realistic replays with ZERO judge-detected quality regressions on the danger cases — hit rate and the false-hit curve are both measured, and a single loss at the production threshold refutes the near-dup tier.",
+      "subtask": "learning-layer call economics (triage + dream replays)",
+      "experiment": "C5-cache",
+      "metrics": ["exact hit rate on 2nd pass", "near-dup hit rate at cos thresholds 0.95/0.97/0.99", "judge on near-dup hits vs fresh (danger cases: edited notes, bumped memory)", "latency saved per hit", "embed overhead per miss"],
+      "thresholds": { "exactTier": "byte-identical replay (tautology check)", "nearDupTier": "0 judge losses on danger cases at the production threshold", "reporting": "hit-rate at each threshold + the false-hit curve" },
+      "guards": [
+        "near-dup tier only keyable within the SAME system prompt hash (cross-task contamination impossible by construction)",
+        "danger-case corpus is adversarial by design: paraphrase edits that change the ANSWER (outcome flipped) must MISS at the production threshold or the tier is refuted",
+        "GPTCache production literature warns semantic caching is 'disastrous for near-miss high-stakes queries' — this experiment measures exactly that boundary on Unown's real call shapes"
+      ],
+      "precedent": "GPTCache (zilliztech) exact + similarity tiers; truefoundry 2026-05 semantic-caching gateway analysis; the bridge already serializes remote calls (MIN_SPACING_MS) — a cache hit also skips the throttle",
+      "status": "open",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H21",
+      "title": "Small-model query rewriting improves memory retrieval recall (the missing retrieval layer)",
+      "statement": "Production memory injection has NO retrieval (whole tiers, recall-qa's documented gap); with a kNN retrieval layer over session/note embeddings (nomic lane), a local 0.6B rewrite of the raw question into retrieval keyword phrases improves recall@5 by >= 5pp over raw-question embedding on the recall-qa corpus (40 questions, oracle evidence sessions) at <= 3s added p50 — the memory-side improvement candidate, integrable as an H15-style pre-processor.",
+      "subtask": "memory retrieval quality (recall-qa corpus)",
+      "experiment": "C6-retrieval",
+      "metrics": ["recall@5 / recall@10 (raw vs rewritten)", "per-question-type breakdown", "rewrite p50 latency + JSON validity", "embed pool build time"],
+      "thresholds": { "recall5Lift": ">= +5pp vs raw-question", "rewriteP50ms": "<= 3000", "rewriteJsonOk": ">= 0.95" },
+      "guards": [
+        "same embedding model + same pool for both arms (the ONLY variable is the query text)",
+        "oracle evidence = sessions containing hasAnswer turns (LongMemEval ground truth), never judge-scored",
+        "rewrite failures fall back to the raw question (graceful degradation measured, not assumed)"
+      ],
+      "precedent": "Mem0 hybrid search (semantic + BM25 + entity) beats pure-vector in production memory systems; HyDE/query-expansion literature; recall-qa README's own open item: 'no retrieval layer exists — the oracle split hands the pipeline the evidence'",
+      "status": "open",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H22",
+      "title": "Qwen3.5-0.8B (2026 tiny-SOTA, native vision) matches the incumbent 0.6B lane AND opens a local vision lane for pi",
+      "statement": "The 2026 generation of sub-1B models (Qwen3.5-0.8B: hybrid Gated DeltaNet+attention, 262K ctx, NATIVE vision via mmproj, Apache-2.0, GGUF Q4_K_M ~0.53GB) matches the incumbent Qwen3-0.6B on the lane's triage replay (JSON validity + label agreement) within the 4GB co-resident RSS budget, and its vision projector loads in llama.cpp and answers the vlm-smoke image probe locally — upgrading the local lane's model class and adding a pi-side image capability the remote lane currently pays vision tokens for.",
+      "subtask": "local-lane model class (triage) + pi vision capability probe",
+      "experiment": "C7-bakeoff",
+      "metrics": ["startup ms", "RSS MB", "gen tok/s", "TTFT", "json_schema ok", "triage: JSON validity + agreement with incumbent (and vs remote when bridge up)", "vision: red-circle probe answered + latency (local vs remote qwen3.7-plus)"],
+      "thresholds": { "triageJsonOk": ">= incumbent (1.00 on the E1 lane)", "triageAgreementWithIncumbent": ">= 0.9", "rssMB": "<= 1500 at triage ctx", "visionProbe": "correct color answer + boots via --mmproj" },
+      "guards": [
+        "hybrid DeltaNet arch caveat: KV-prefix checkpointing is limited for recurrent layers (llama.cpp SEQ_RM classes) — H18's reuse win is NOT assumed to carry; measured as a note",
+        "262K native context is NOT the serving ctx: ctx stays at the lane's 4096 for the RSS budget",
+        "vision probe is an acceptance lane (boots + answers + latency + cost $0), not a quality verdict vs remote — a follow-up campaign needs a real screenshot corpus"
+      ],
+      "precedent": "Qwen3.5 release (Mar 2026, Artificial Analysis: 0.8B II 9 vs Qwen3-0.6B 6.5, native vision at sub-1B previously unavailable); unsloth GGUFs + mmproj; Qualcomm AI Hub runs it on-phone at 30 tok/s decode — the 'broad range of systems' requirement embodied",
+      "status": "open",
+      "verdict": null,
+      "evidence": []
+    }
+  ]
+}
