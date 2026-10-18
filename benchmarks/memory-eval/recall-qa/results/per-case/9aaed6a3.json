@@ -1,0 +1,98 @@
+{
+  "id": "9aaed6a3",
+  "questionType": "multi-session",
+  "question": "How much cashback did I earn at SaveMart last Thursday?",
+  "gtAnswer": "$0.75",
+  "questionDate": "2023/05/29 (Mon) 13:21",
+  "model": "kimi-k2.5",
+  "durationMs": 8350,
+  "notes": [
+    {
+      "ts": "2023-05-25T16:09:00.000Z",
+      "run": "9aaed6a3",
+      "date": "2023/05/25 (Thu) 16:09",
+      "sessionId": "answer_353d3c6d_1",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 12,
+        "fillerDropped": 0,
+        "chars": 2758
+      },
+      "text": "Session with the user on 2023/05/25 (Thu) 16:09 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to get a sense of my expenses for the month. Can you help me track my grocery expenses? I spent $75 on groceries at SaveMart last Thursday.\n\nAssistant: I'd be happy to help you track your grocery expenses.\n\nLet's start with the $75 you spent at SaveMart last Thursday. I'll keep a running total of your grocery expenses for the month.\n\n**Current Total: $75**\n\nFeel free to add any other grocery expenses you've had this month. Just let me know the date, store, and amount you spent, and I'll update the total.\n\nIf you need to add another expense, just \n\nUser: I also had some coffee expenses last week. I spent $15 on coffee and snacks at The Daily Grind, and then another $12.99 on a sandwich and salad with their 20% off offer.\n\nAssistant: Let's add those coffee expenses to your total.\n\n**Grocery Total: $75**\n\n**Coffee/Non-Grocery Total: $15 + $12.99 = $27.99**\n\n**Total Expenses: $75 + $27.99 = $102.99**\n\nI'll keep these expenses separate, so we can track your grocery expenses and non-grocery expenses (like coffee and snacks) separately.\n\nFeel free to add any other expenses you've had this month!\n\nUser: I also spent some money at Office Depot last month for printer ink and paper, it was $50.\n\nAssistant: Let's add that to your non-grocery total.\n\n**Grocery Total: $75**\n\n**Non-Grocery Total: $27.99 + $50 = $77.99**\n\n**Total Expenses: $75 + $77.99 = $152.99**\n\nI'll keep tracking your expenses. Remember, you can add any other expenses you've had this month, and I'll update the totals accordingly.\n\nBy the way, do you want to separate your non-grocery expenses into categories (e.g., coffee, office supp\n\nUser: I think keeping them together is fine for now, thanks.\n\nAssistant: I'll keep them together in the non-grocery category. If you change your mind later, just let me know.\n\nSo, what's next? Do you have any other expenses to add to the list?\n\nUser: I also spent $100 at Gap last weekend on a new pair of jeans and a sweater.\n\nAssistant: Let's add that to your non-grocery total.\n\n**Grocery Total: $75**\n\n**Non-Grocery Total: $77.99 + $100 = $177.99**\n\n**Total Expenses: $75 + $177.99 = $252.99**\n\nI've updated the totals. You're doing great keeping track of your expenses!\n\nDo you have any other expenses to add?\n\nUser: I also spent $50 at Sephora last week on skincare products.\n\nAssistant: Let's add that to your non-grocery total.\n\n**Grocery Total: $75**\n\n**Non-Grocery Total: $177.99 + $50 = $227.99**\n\n**Total Expenses: $75 + $227.99 = $302.99**\n\nI've updated the totals. You're getting a clear picture of your expenses for the month!\n\nDo you have any other expenses to add?"
+    },
+    {
+      "ts": "2023-05-27T04:31:00.000Z",
+      "run": "9aaed6a3",
+      "date": "2023/05/27 (Sat) 04:31",
+      "sessionId": "answer_353d3c6d_2",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 12,
+        "fillerDropped": 0,
+        "chars": 3649
+      },
+      "text": "Session with the user on 2023/05/27 (Sat) 04:31 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to plan my grocery shopping trip for the week. Can you help me make a list of the items I need to buy at SaveMart? I have a membership there and can earn 1% cashback on all purchases.\n\nAssistant: I'd be happy to help you plan your grocery shopping trip. To make a list of the items you need to buy at SaveMart, I'll need to know a bit more information from you. Please provide me with the following details:\n\n1. What type of groceries do you need to buy? (e.g. produce, meat, dairy, canned goods, snacks, etc.)\n2. Do you have any dietary restrictions or preferences (e.g. gluten-free, vegan, etc.\n\nUser: I'm planning to buy some basic items like milk, eggs, bread, and a few snacks. I don't have any dietary restrictions, and I'm shopping for myself. I'd like to stay within a budget of $50. Can you suggest some items that would fit within that range and also tell me how much cashback I'd earn?\n\nAssistant: Based on your requirements, here's a suggested list of basic items that should fit within your budget of $50:\n\n1. Milk (gallon) - $2.99\n2. Eggs (dozen) - $1.99\n3. Bread (loaf) - $2.49\n4. Granola bars (6-pack) - $3.99\n5. Fresh apples (4-count) - $3.49\n6. Yogurt (6-pack) - $4.99\n7. Crackers (box) - $1.99\n8. Peanut butter (jar) - $2.99\n\nTotal estimated cost: $46.92\n\nWith your 1% cashback, you'll earn\n\nUser: What about some pasta and marinara sauce? I have a digital coupon from the SaveMart app that gives me $1 off a jar of pasta sauce. Would that fit within my budget?\n\nAssistant: Adding pasta and marinara sauce to your list sounds like a great idea.\n\nLet's estimate the cost of these items:\n\n1. Pasta (1 pound) - $1.49\n2. Marinara sauce (jar) - $2.99 (before coupon) = $1.99 (after $1 digital coupon)\n\nAdding these items to your original list, your new total estimated cost would be:\n\n$46.92 + $1.49 + $1.99 = $50.40\n\nYou'd be just slightly over your budget of $50, but it's wort\n\nUser: What about some ground beef to go with the pasta? How much would that cost?\n\nAssistant: Ground beef would be a great addition to your pasta dish.\n\nThe cost of ground beef can vary depending on the quality and lean-to-fat ratio. Let's assume you're looking for a moderately priced option. Here's an estimate:\n\n1. Ground beef (1 pound) - $3.99\n\nAdding this to your updated list, your new total estimated cost would be:\n\n$50.40 + $3.99 = $54.39\n\nYou'd be a bit further over your budget of $5\n\nUser: Can you tell me how much I'd save if I were to buy the ground beef in bulk, say 3 pounds, instead of just 1 pound?\n\nAssistant: Buying in bulk can often lead to significant savings.\n\nLet's assume the 3-pound pack of ground beef is priced at $9.99. This works out to:\n\n$9.99 ÷ 3 pounds = $3.33 per pound\n\nCompared to the original 1-pound price of $3.99, you'd save:\n\n$3.99 - $3.33 = $0.66 per pound\n\nSince you'd be buying 3 pounds, your total savings would be:\n\n$0.66 per pound × 3 pounds = $1.98\n\nBy buying the 3-pound pack, you\n\nUser: I'd like to know if SaveMart has any sales or promotions on ground beef this week. Can you check if there are any deals I can take advantage of?\n\nAssistant: I'd be happy to help you check for sales and promotions on ground beef at SaveMart.\n\nLet me check the SaveMart weekly ad and digital coupons for you...\n\nAccording to the SaveMart weekly ad, they have a sale on ground beef this week! \n\n**Sale:** Buy One Get One 50% Off on all ground beef products, including the 3-pound pack!\n\nWith this sale, you can get the 3-pound pack of ground beef for:\n\n$9.99 -"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    [],
+    []
+  ],
+  "notesInput": "--- note (2023-05-27T04:31:00.000Z) run=9aaed6a3 ---\nSession with the user on 2023/05/27 (Sat) 04:31 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to plan my grocery shopping trip for the week. Can you help me make a list of the items I need to buy at SaveMart? I have a membership there and can earn 1% cashback on all purchases.\n\nAssistant: I'd be happy to help you plan your grocery shopping trip. To make a list of the items you need to buy at SaveMart, I'll need to know a bit more information from you. Please provide me with the following details:\n\n1. What type of groceries do you need to buy? (e.g. produce, meat, dairy, canned goods, snacks, etc.)\n2. Do you have any dietary restrictions or preferences (e.g. gluten-free, vegan, etc.\n\nUser: I'm planning to buy some basic items like milk, eggs, bread, and a few snacks. I don't have any dietary restrictions, and I'm shopping for myself. I'd like to stay within a budget of $50. Can you suggest some items that would fit within that range and also tell me how much cashback I'd earn?\n\nAssistant: Based on your requirements, here's a suggested list of basic items that should fit within your budget of $50:\n\n1. Milk (gallon) - $2.99\n2. Eggs (dozen) - $1.99\n3. Bread (loaf) - $2.49\n4. Granola bars (6-pack) - $3.99\n5. Fresh apples (4-count) - $3.49\n6. Yogurt (6-pack) - $4.99\n7. Crackers (box) - $1.99\n8. Peanut butter (jar) - $2.99\n\nTotal estimated cost: $46.92\n\nWith your 1% cashback, you'll earn\n\nUser: What about some pasta and marinara sauce? I have a digital coupon from the SaveMart app that gives me $1 off a jar of pasta sauce. Would that fit within my budget?\n\nAssistant: Adding pasta and marinara sauce to your list sounds like a great idea.\n\nLet's estimate the cost of these items:\n\n1. Pasta (1 pound) - $1.49\n2. Marinara sauce (jar) - $2.99 (before coupon) = $1.99 (after $1 digital coupon)\n\nAdding these items to your original list, your new total estimated cost would be:\n\n$46.92 + $1.49 + $1.99 = $50.40\n\nYou'd be just slightly over your budget of $50, but it's wort\n\nUser: What about some ground beef to go with the pasta? How much would that cost?\n\nAssistant: Ground beef would be a great addition to your pasta dish.\n\nThe cost of ground beef can vary depending on the quality and lean-to-fat ratio. Let's assume you're looking for a moderately priced option. Here's an estimate:\n\n1. Ground beef (1 pound) - $3.99\n\nAdding this to your updated list, your new total estimated cost would be:\n\n$50.40 + $3.99 = $54.39\n\nYou'd be a bit further over your budget of $5\n\nUser: Can you tell me how much I'd save if I were to buy the ground beef in bulk, say 3 pounds, instead of just 1 pound?\n\nAssistant: Buying in bulk can often lead to significant savings.\n\nLet's assume the 3-pound pack of ground beef is priced at $9.99. This works out to:\n\n$9.99 ÷ 3 pounds = $3.33 per pound\n\nCompared to the original 1-pound price of $3.99, you'd save:\n\n$3.99 - $3.33 = $0.66 per pound\n\nSince you'd be buying 3 pounds, your total savings would be:\n\n$0.66 per pound × 3 pounds = $1.98\n\nBy buying the 3-pound pack, you\n\nUser: I'd like to know if SaveMart has any sales or promotions on ground beef this week. Can you check if there are any deals I can take advantage of?\n\nAssistant: I'd be happy to help you check for sales and promotions on ground beef at SaveMart.\n\nLet me check the SaveMart weekly ad and digital coupons for you...\n\nAccording to the SaveMart weekly ad, they have a sale on ground beef this week! \n\n**Sale:** Buy One Get One 50% Off on all ground beef products, including the 3-pound pack!\n\nWith this sale, you can get the 3-pound pack of ground beef for:\n\n$9.99 -\n\n--- note (2023-05-25T16:09:00.000Z) run=9aaed6a3 ---\nSession with the user on 2023/05/25 (Thu) 16:09 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to get a sense of my expenses for the month. Can you help me track my grocery expenses? I spent $75 on groceries at SaveMart last Thursday.\n\nAssistant: I'd be happy to help you track your grocery expenses.\n\nLet's start with the $75 you spent at SaveMart last Thursday. I'll keep a running total of your grocery expenses for the month.\n\n**Current Total: $75**\n\nFeel free to add any other grocery expenses you've had this month. Just let me know the date, store, and amount you spent, and I'll update the total.\n\nIf you need to add another expense, just \n\nUser: I also had some coffee expenses last week. I spent $15 on coffee and snacks at The Daily Grind, and then another $12.99 on a sandwich and salad with their 20% off offer.\n\nAssistant: Let's add those coffee expenses to your total.\n\n**Grocery Total: $75**\n\n**Coffee/Non-Grocery Total: $15 + $12.99 = $27.99**\n\n**Total Expenses: $75 + $27.99 = $102.99**\n\nI'll keep these expenses separate, so we can track your grocery expenses and non-grocery expenses (like coffee and snacks) separately.\n\nFeel free to add any other expenses you've had this month!\n\nUser: I also spent some money at Office Depot last month for printer ink and paper, it was $50.\n\nAssistant: Let's add that to your non-grocery total.\n\n**Grocery Total: $75**\n\n**Non-Grocery Total: $27.99 + $50 = $77.99**\n\n**Total Expenses: $75 + $77.99 = $152.99**\n\nI'll keep tracking your expenses. Remember, you can add any other expenses you've had this month, and I'll update the totals accordingly.\n\nBy the way, do you want to separate your non-grocery expenses into categories (e.g., coffee, office supp\n\nUser: I think keeping them together is fine for now, thanks.\n\nAssistant: I'll keep them together in the non-grocery category. If you change your mind later, just let me know.\n\nSo, what's next? Do you have any other expenses to add to the list?\n\nUser: I also spent $100 at Gap last weekend on a new pair of jeans and a sweater.\n\nAssistant: Let's add that to your non-grocery total.\n\n**Grocery Total: $75**\n\n**Non-Grocery Total: $77.99 + $100 = $177.99**\n\n**Total Expenses: $75 + $177.99 = $252.99**\n\nI've updated the totals. You're doing great keeping track of your expenses!\n\nDo you have any other expenses to add?\n\nUser: I also spent $50 at Sephora last week on skincare products.\n\nAssistant: Let's add that to your non-grocery total.\n\n**Grocery Total: $75**\n\n**Non-Grocery Total: $177.99 + $50 = $227.99**\n\n**Total Expenses: $75 + $227.99 = $302.99**\n\nI've updated the totals. You're getting a clear picture of your expenses for the month!\n\nDo you have any other expenses to add?",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 2,
+      "added": 4,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User tracks grocery expenses separately from non-grocery expenses; prefers non-grocery expenses kept together rather than subcategorized [note 2].\n- User shops at SaveMart with 1% cashback membership [note 1].\n- User uses digital coupons (e.g., SaveMart app) and responds to sales/promotions (e.g., BOGO) [note 1].\n- User considers bulk purchases for per-pound savings [note 1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- Do not hallucinate store sales or promotions; user must provide or verify deal details [note 1].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User tracks grocery expenses separately from non-grocery expenses; prefers non-grocery expenses kept together rather than subcategorized [note 2].\n- User shops at SaveMart with 1% cashback membership [note 1].\n- User uses digital coupons (e.g., SaveMart app) and responds to sales/promotions (e.g., BOGO) [note 1].\n- User considers bulk purchases for per-pound savings [note 1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- Do not hallucinate store sales or promotions; user must provide or verify deal details [note 1].\n",
+    "durationMs": 6548
+  },
+  "warm": {
+    "answer": "The project memory doesn't contain any information about purchases or cashback earned on a specific date (last Thursday). You'll need to check your SaveMart app or receipt for that transaction.",
+    "error": null,
+    "durationMs": 980,
+    "match": {
+      "pass": false,
+      "score": 0,
+      "hit": 0,
+      "total": 2,
+      "hitWords": [],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory doesn't contain any information about your cashback earnings at SaveMart last Thursday.",
+    "error": null,
+    "durationMs": 822,
+    "match": {
+      "pass": false,
+      "score": 0,
+      "hit": 0,
+      "total": 2,
+      "hitWords": [],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": false,
+    "score": 0,
+    "hit": 0,
+    "total": 2,
+    "hitWords": [],
+    "phrase": null
+  }
+}

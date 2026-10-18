@@ -191,6 +191,16 @@ Result: 4/4 axes PASS (the dream prunes superseded rules, tracks version
 bumps, honors revocations, resolves interference to the most recent
 evidence), 0 guard FPs on the benign rule changes.
 
+**Multi-session QA recall (LongMemEval-adapted):** `memory-eval/recall-qa/`
+— 40 questions from the real LongMemEval `oracle` split (MIT, sha256
+provenance), sessions recast as terminal notes → production dream →
+shipped memory injected into a fresh QA session, against a no-dream
+control arm. Headline: warm 0.650 vs cold 0.025 — **lift +0.625** (the
+memory loop's core value proposition, finally measured with a control).
+Per-type receipts decompose failures into consolidation loss vs
+retrieval loss (evidence-retention metric); weakest axis:
+user-preference consolidation (0.33) — a user-tier dream path finding.
+
 The memory system itself under test (strategy §4.6/§4.7/§4.8): live end-to-end
 suites against a scratch engine + real bridge — injection proof by unique
 marker in the captured upstream request body, real dream + canary + SSE +

@@ -1,0 +1,96 @@
+{
+  "suite": "recall-qa-longmemeval",
+  "date": "2026-10-18T00:08:36.793Z",
+  "model": "kimi-k2.5",
+  "bridgeUpstreamStatus": 200,
+  "source": {
+    "repo": "https://huggingface.co/datasets/xiaowu0162/longmemeval",
+    "paper": "arXiv 2410.10813 (LongMemEval)",
+    "split": "longmemeval_oracle (500 questions with oracle-selected haystack sessions)",
+    "url": "https://huggingface.co/datasets/xiaowu0162/longmemeval/resolve/main/longmemeval_oracle",
+    "license": "MIT (dataset card)",
+    "sha256": "821a2034d219ab45846873dd14c14f12cfe7776e73527a483f9dac095d38620c",
+    "nTotal": 500,
+    "negativeExcluded": "*_abs questions (answer: 'information not enough') — a different task",
+    "deprecatedNote": "upstream marks this dataset deprecated in favor of longmemeval-cleaned; the original (as named in the task) still downloads fine and is used here",
+    "turnCaps": {
+      "evidenceTurnChars": 3200,
+      "fillerTurnChars": 600
+    }
+  },
+  "seed": 20261019,
+  "n": 40,
+  "warmPassRate": "0.650",
+  "coldPassRate": "0.025",
+  "lift": 0.625,
+  "headline": "lift = warm − cold: the dream-consolidated memory's added recall over the no-dream control",
+  "arms": {
+    "warm": "system message contains the SHIPPED post-dream memory (gate -> pre-dream memory ships; sanitize -> quarantined remainder)",
+    "cold": "control: same QA call WITHOUT the dream memory (pre-dream seed memory only — AutoDream never ran)"
+  },
+  "byType": {
+    "temporal-reasoning": {
+      "n": 10,
+      "warmPass": "0.600",
+      "coldPass": "0.000",
+      "lift": 0.6,
+      "evidenceRetained": "0.700",
+      "dreamErrors": 0
+    },
+    "knowledge-update": {
+      "n": 10,
+      "warmPass": "0.600",
+      "coldPass": "0.100",
+      "lift": 0.5,
+      "evidenceRetained": "0.700",
+      "dreamErrors": 0
+    },
+    "multi-session": {
+      "n": 10,
+      "warmPass": "0.700",
+      "coldPass": "0.000",
+      "lift": 0.7,
+      "evidenceRetained": "0.200",
+      "dreamErrors": 0
+    },
+    "single-session-user": {
+      "n": 4,
+      "warmPass": "1.000",
+      "coldPass": "0.000",
+      "lift": 1,
+      "evidenceRetained": "1.000",
+      "dreamErrors": 0
+    },
+    "single-session-assistant": {
+      "n": 3,
+      "warmPass": "0.667",
+      "coldPass": "0.000",
+      "lift": 0.667,
+      "evidenceRetained": "0.333",
+      "dreamErrors": 0
+    },
+    "single-session-preference": {
+      "n": 3,
+      "warmPass": "0.333",
+      "coldPass": "0.000",
+      "lift": 0.333,
+      "evidenceRetained": "0.333",
+      "dreamErrors": 0
+    }
+  },
+  "consolidationFunnel": {
+    "evidenceRetainedInShippedRate": "0.550",
+    "meanEvidenceRetentionScore": 0.575,
+    "gatedCases": [],
+    "sanitizedCases": [],
+    "flaggedNoteCases": [
+      "7024f17c",
+      "e48988bc"
+    ],
+    "meanCandidateChars": 1151
+  },
+  "errors": [],
+  "llmCalls": 120,
+  "totalDurationMs": 368126,
+  "perCase": "(see results/per-case/<id>.json — notes, dream candidate, guard verdict, both answers, both match scores)"
+}

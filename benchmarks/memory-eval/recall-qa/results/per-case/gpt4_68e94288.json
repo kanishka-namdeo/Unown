@@ -1,0 +1,108 @@
+{
+  "id": "gpt4_68e94288",
+  "questionType": "temporal-reasoning",
+  "question": "What was the social media activity I participated 5 days ago?",
+  "gtAnswer": "You participated in a social media challenge called #PlankChallenge.",
+  "questionDate": "2023/03/20 (Mon) 05:50",
+  "model": "kimi-k2.5",
+  "durationMs": 9772,
+  "notes": [
+    {
+      "ts": "2023-03-10T17:06:00.000Z",
+      "run": "gpt4_68e",
+      "date": "2023/03/10 (Fri) 17:06",
+      "sessionId": "answer_9793daa4_2",
+      "trim": {
+        "turnsIn": 10,
+        "turnsKept": 10,
+        "fillerDropped": 0,
+        "chars": 3619
+      },
+      "text": "Session with the user on 2023/03/10 (Fri) 17:06 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some healthy meal prep ideas for my fitness journey. I shared a recipe for vegan chili using #FoodieAdventures yesterday that got a lot of attention. Do you have any suggestions for high-protein meals that are easy to prepare?\n\nAssistant: Congratulations on your fitness journey and the success of your vegan chili recipe! I'd be happy to help you with some high-protein meal prep ideas that are easy to prepare and perfect for your fitness goals.\n\nHere are some delicious and nutritious options:\n\n1. **Protein-Packed Salads**:\n\t* Quinoa and Black Bean Salad with roasted chicken or tofu, mixed veggies, and a citrus vinaigrette.\n\t* Spinac\n\nUser: I'm really interested in trying out those protein-packed salads, especially the quinoa and black bean one. Can you give me some tips on how to cook quinoa perfectly? I've had some issues with it being too mushy in the past.\n\nAssistant: Quinoa can be a bit finicky, but with some simple tips, you'll be a pro in no time! \n\n**The Secret to Perfectly Cooked Quinoa:**\n\n1. **Rinse, Rinse, Rinse**: Quinoa has a natural coating called saponin that can give it a bitter taste. Rinsing the quinoa before cooking can help remove some of this coating and give it a milder flavor. Rinse the quinoa in a fine-mesh strainer under cold running water\n\nUser: I'll definitely try out those tips to cook quinoa perfectly. By the way, do you have any recommendations for vegan protein sources that I can add to my salads? I'm looking for something that's high in protein and low in carbs.\n\nAssistant: As a vegan, it's awesome that you're focusing on protein-rich ingredients to support your fitness goals. Here are some high-protein, low-carb vegan options that are perfect for adding to your salads:\n\n1. **Tofu**: A 3-ounce serving of tofu contains about 9-10 grams of protein and only 2-3 grams of carbs. Look for extra-firm or super-firm tofu for the highest protein content.\n2. **Tempeh**: A 3-oun\n\nUser: That's really helpful! I've been looking for some new vegan protein sources to add to my salads. I'll definitely try out seitan and tempeh. By the way, do you have any recommendations for some healthy and tasty vegan sauces or dressings that I can use on my salads? I'm looking for something that's low in sugar and unhealthy fats.\n\nAssistant: Vegan sauces and dressings can make or break a salad, don't you think? I've got some delicious and healthy options that are low in sugar and unhealthy fats. Here are some vegan sauce and dressing recommendations:\n\n1. **Lemon-Tahini Dressing**: Mix together lemon juice, tahini, garlic, and olive oil for a creamy and tangy dressing. This one's low in sugar and rich in healthy fats from the tahini.\n2\n\nUser: I'm so excited to try out these vegan sauces and dressings! I've been looking for some new ideas to spice up my salads. By the way, I recently posted a recipe for vegan chili on Instagram using the hashtag #FoodieAdventures, and it got a lot of attention. Do you have any suggestions for other vegan recipes that I could share on my Instagram account?\n\nAssistant: Congratulations on the success of your vegan chili recipe! I'd be happy to help you with some more vegan recipe ideas that are perfect for sharing on Instagram. Here are some suggestions:\n\n1. **Vegan Quinoa Stuffed Bell Peppers**: A colorful and nutritious recipe that's perfect for a healthy lunch or dinner. Simply fill bell peppers with a mixture of quinoa, black beans, diced tomatoes, and vegan "
+    },
+    {
+      "ts": "2023-03-15T15:37:00.000Z",
+      "run": "gpt4_68e",
+      "date": "2023/03/15 (Wed) 15:37",
+      "sessionId": "answer_9793daa4_1",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 12,
+        "fillerDropped": 0,
+        "chars": 3400
+      },
+      "text": "Session with the user on 2023/03/15 (Wed) 15:37 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to stay consistent with my fitness goals and I was wondering if you could suggest some new workout routines I could try at home. By the way, I participated in a social media challenge called #PlankChallenge today, and it was a great way to stay motivated!\n\nAssistant: Congratulations on completing the #PlankChallenge! That's a great way to stay motivated and accountable.\n\nI'd be happy to suggest some new workout routines you can try at home. Here are a few options:\n\n**Bodyweight Workouts**\n\n1. **7-Minute Workout**: A quick and intense circuit workout that targets all major muscle groups.\n2. **Burpees**: A full-body exercise that works your arms, legs, and core.\n\nUser: I'm interested in trying the bodyweight workouts, especially the 7-Minute Workout. Can you provide more details on how to do each exercise in the circuit and how many rounds I should aim to complete?\n\nAssistant: The 7-Minute Workout is a great choice! It's a quick, effective, and convenient way to fit in a workout at home. Here's a breakdown of the exercises, how to do them, and how to structure your workout:\n\n**The 7-Minute Workout:**\n\n**Warm-up (1 minute):**\n\n* Jumping jacks: 30 seconds\n* Dynamic stretching: 30 seconds (leg swings, arm circles, hip openers)\n\n**Circuit Workout (6 minutes):**\n\n* Complete \n\nUser: I'm thinking of doing 3 rounds of the 7-Minute Workout, 3 times a week. Do you think that's a good starting point, and how can I track my progress?\n\nAssistant: That's a great starting point! Doing 3 rounds of the 7-Minute Workout, 3 times a week, is a good way to challenge yourself and make progress towards your fitness goals.\n\n**Tracking Progress:**\n\nTo track your progress, consider the following methods:\n\n1. **Workout Log:** Keep a workout log or journal to record your workouts, including the date, time, and number of rounds you completed. You can also\n\nUser: Can you suggest some healthy meal prep ideas that can help me fuel my body for my workouts and support my fitness goals?\n\nAssistant: Here are some healthy meal prep ideas that can help fuel your body for your workouts and support your fitness goals:\n\n**Protein-Packed Meals:**\n\n1. **Grilled Chicken and Veggies:** Marinate chicken breast in your favorite seasonings and grill with roasted veggies like broccoli, carrots, and bell peppers.\n2. **Salmon and Quinoa Bowl:** Bake salmon fillets with lemon and herbs, served with cooked qu\n\nUser: I'm thinking of meal prepping on Sundays to save time during the week. What are some tips for meal prepping and how can I make sure I'm getting the right nutrients for my workouts?\n\nAssistant: Meal prepping on Sundays is a great idea! It can save you time, money, and stress during the week. Here are some tips to help you meal prep like a pro and ensure you're getting the right nutrients for your workouts:\n\n**Meal Prep Tips:**\n\n1. **Plan Your Meals:** Decide on the meals you want to prep for the week, considering your dietary needs, preferences, and workout schedule.\n2. **Make a Grocery \n\nUser: I'm thinking of meal prepping on Sundays to save time during the week. What are some tips for meal prepping and how can I make sure I'm getting the right nutrients for my workouts?\n\nAssistant: Meal prepping on Sundays is a great idea!"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    [],
+    []
+  ],
+  "notesInput": "--- note (2023-03-15T15:37:00.000Z) run=gpt4_68e ---\nSession with the user on 2023/03/15 (Wed) 15:37 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to stay consistent with my fitness goals and I was wondering if you could suggest some new workout routines I could try at home. By the way, I participated in a social media challenge called #PlankChallenge today, and it was a great way to stay motivated!\n\nAssistant: Congratulations on completing the #PlankChallenge! That's a great way to stay motivated and accountable.\n\nI'd be happy to suggest some new workout routines you can try at home. Here are a few options:\n\n**Bodyweight Workouts**\n\n1. **7-Minute Workout**: A quick and intense circuit workout that targets all major muscle groups.\n2. **Burpees**: A full-body exercise that works your arms, legs, and core.\n\nUser: I'm interested in trying the bodyweight workouts, especially the 7-Minute Workout. Can you provide more details on how to do each exercise in the circuit and how many rounds I should aim to complete?\n\nAssistant: The 7-Minute Workout is a great choice! It's a quick, effective, and convenient way to fit in a workout at home. Here's a breakdown of the exercises, how to do them, and how to structure your workout:\n\n**The 7-Minute Workout:**\n\n**Warm-up (1 minute):**\n\n* Jumping jacks: 30 seconds\n* Dynamic stretching: 30 seconds (leg swings, arm circles, hip openers)\n\n**Circuit Workout (6 minutes):**\n\n* Complete \n\nUser: I'm thinking of doing 3 rounds of the 7-Minute Workout, 3 times a week. Do you think that's a good starting point, and how can I track my progress?\n\nAssistant: That's a great starting point! Doing 3 rounds of the 7-Minute Workout, 3 times a week, is a good way to challenge yourself and make progress towards your fitness goals.\n\n**Tracking Progress:**\n\nTo track your progress, consider the following methods:\n\n1. **Workout Log:** Keep a workout log or journal to record your workouts, including the date, time, and number of rounds you completed. You can also\n\nUser: Can you suggest some healthy meal prep ideas that can help me fuel my body for my workouts and support my fitness goals?\n\nAssistant: Here are some healthy meal prep ideas that can help fuel your body for your workouts and support your fitness goals:\n\n**Protein-Packed Meals:**\n\n1. **Grilled Chicken and Veggies:** Marinate chicken breast in your favorite seasonings and grill with roasted veggies like broccoli, carrots, and bell peppers.\n2. **Salmon and Quinoa Bowl:** Bake salmon fillets with lemon and herbs, served with cooked qu\n\nUser: I'm thinking of meal prepping on Sundays to save time during the week. What are some tips for meal prepping and how can I make sure I'm getting the right nutrients for my workouts?\n\nAssistant: Meal prepping on Sundays is a great idea! It can save you time, money, and stress during the week. Here are some tips to help you meal prep like a pro and ensure you're getting the right nutrients for your workouts:\n\n**Meal Prep Tips:**\n\n1. **Plan Your Meals:** Decide on the meals you want to prep for the week, considering your dietary needs, preferences, and workout schedule.\n2. **Make a Grocery \n\nUser: I'm thinking of meal prepping on Sundays to save time during the week. What are some tips for meal prepping and how can I make sure I'm getting the right nutrients for my workouts?\n\nAssistant: Meal prepping on Sundays is a great idea!\n\n--- note (2023-03-10T17:06:00.000Z) run=gpt4_68e ---\nSession with the user on 2023/03/10 (Fri) 17:06 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some healthy meal prep ideas for my fitness journey. I shared a recipe for vegan chili using #FoodieAdventures yesterday that got a lot of attention. Do you have any suggestions for high-protein meals that are easy to prepare?\n\nAssistant: Congratulations on your fitness journey and the success of your vegan chili recipe! I'd be happy to help you with some high-protein meal prep ideas that are easy to prepare and perfect for your fitness goals.\n\nHere are some delicious and nutritious options:\n\n1. **Protein-Packed Salads**:\n\t* Quinoa and Black Bean Salad with roasted chicken or tofu, mixed veggies, and a citrus vinaigrette.\n\t* Spinac\n\nUser: I'm really interested in trying out those protein-packed salads, especially the quinoa and black bean one. Can you give me some tips on how to cook quinoa perfectly? I've had some issues with it being too mushy in the past.\n\nAssistant: Quinoa can be a bit finicky, but with some simple tips, you'll be a pro in no time! \n\n**The Secret to Perfectly Cooked Quinoa:**\n\n1. **Rinse, Rinse, Rinse**: Quinoa has a natural coating called saponin that can give it a bitter taste. Rinsing the quinoa before cooking can help remove some of this coating and give it a milder flavor. Rinse the quinoa in a fine-mesh strainer under cold running water\n\nUser: I'll definitely try out those tips to cook quinoa perfectly. By the way, do you have any recommendations for vegan protein sources that I can add to my salads? I'm looking for something that's high in protein and low in carbs.\n\nAssistant: As a vegan, it's awesome that you're focusing on protein-rich ingredients to support your fitness goals. Here are some high-protein, low-carb vegan options that are perfect for adding to your salads:\n\n1. **Tofu**: A 3-ounce serving of tofu contains about 9-10 grams of protein and only 2-3 grams of carbs. Look for extra-firm or super-firm tofu for the highest protein content.\n2. **Tempeh**: A 3-oun\n\nUser: That's really helpful! I've been looking for some new vegan protein sources to add to my salads. I'll definitely try out seitan and tempeh. By the way, do you have any recommendations for some healthy and tasty vegan sauces or dressings that I can use on my salads? I'm looking for something that's low in sugar and unhealthy fats.\n\nAssistant: Vegan sauces and dressings can make or break a salad, don't you think? I've got some delicious and healthy options that are low in sugar and unhealthy fats. Here are some vegan sauce and dressing recommendations:\n\n1. **Lemon-Tahini Dressing**: Mix together lemon juice, tahini, garlic, and olive oil for a creamy and tangy dressing. This one's low in sugar and rich in healthy fats from the tahini.\n2\n\nUser: I'm so excited to try out these vegan sauces and dressings! I've been looking for some new ideas to spice up my salads. By the way, I recently posted a recipe for vegan chili on Instagram using the hashtag #FoodieAdventures, and it got a lot of attention. Do you have any suggestions for other vegan recipes that I could share on my Instagram account?\n\nAssistant: Congratulations on the success of your vegan chili recipe! I'd be happy to help you with some more vegan recipe ideas that are perfect for sharing on Instagram. Here are some suggestions:\n\n1. **Vegan Quinoa Stuffed Bell Peppers**: A colorful and nutritious recipe that's perfect for a healthy lunch or dinner. Simply fill bell peppers with a mixture of quinoa, black beans, diced tomatoes, and vegan ",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 5,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- Fitness goals: working on consistency; doing bodyweight workouts (7-Minute Workout, 3 rounds, 3x/week) [note 4].\n- Meal prep: preps on Sundays to save time; seeks high-protein, low-carb options [note 4].\n- Dietary preference: vegan; seeks high-protein, low-carb vegan protein sources (tofu, tempeh, seitan) [note 5].\n- Social media: shares recipes on Instagram using #FoodieAdventures; posted vegan chili and #PlankChallenge [note 4, note 5].\n- Cooking: wants perfectly cooked quinoa (rinsing key); prefers low-sugar, healthy-fat vegan dressings (lemon-tahini) [note 5].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- Fitness goals: working on consistency; doing bodyweight workouts (7-Minute Workout, 3 rounds, 3x/week) [note 4].\n- Meal prep: preps on Sundays to save time; seeks high-protein, low-carb options [note 4].\n- Dietary preference: vegan; seeks high-protein, low-carb vegan protein sources (tofu, tempeh, seitan) [note 5].\n- Social media: shares recipes on Instagram using #FoodieAdventures; posted vegan chili and #PlankChallenge [note 4, note 5].\n- Cooking: wants perfectly cooked quinoa (rinsing key); prefers low-sugar, healthy-fat vegan dressings (lemon-tahini) [note 5].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 7422
+  },
+  "warm": {
+    "answer": "Based on the project memory, you posted vegan chili and participated in the #PlankChallenge on Instagram using #FoodieAdventures. However, the memory doesn't specify exact dates, so I cannot confirm if that was 5 days ago (March 15).",
+    "error": null,
+    "durationMs": 1422,
+    "match": {
+      "pass": false,
+      "score": 0.333,
+      "hit": 2,
+      "total": 6,
+      "hitWords": [
+        "participated",
+        "plankchallenge"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory doesn't contain any information about your social media activity 5 days ago (March 15, 2023).",
+    "error": null,
+    "durationMs": 925,
+    "match": {
+      "pass": false,
+      "score": 0.333,
+      "hit": 2,
+      "total": 6,
+      "hitWords": [
+        "social",
+        "media"
+      ],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": false,
+    "score": 0.5,
+    "hit": 3,
+    "total": 6,
+    "hitWords": [
+      "social",
+      "media",
+      "plankchallenge"
+    ],
+    "phrase": null
+  }
+}

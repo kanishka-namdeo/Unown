@@ -1,0 +1,134 @@
+{
+  "id": "fca70973",
+  "questionType": "single-session-preference",
+  "question": "I am planning another theme park weekend; do you have any suggestions?",
+  "gtAnswer": "The user would prefer theme park suggestions that cater to their interest in both thrill rides and special events, utilizing their previous experiences at Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, and Universal Studios Hollywood as a reference point. They would also appreciate recommendations that highlight unique food experiences and nighttime shows. The user might not prefer suggestions that focus solely on one aspect of theme parks, such as only thrill rides or only family-friendly attractions, and may not be interested in parks that lack special events or unique dining options.",
+  "questionDate": "2023/08/15 (Tue) 16:25",
+  "model": "kimi-k2.5",
+  "durationMs": 9729,
+  "notes": [
+    {
+      "ts": "2023-08-15T15:58:00.000Z",
+      "run": "fca70973",
+      "date": "2023/08/15 (Tue) 15:58",
+      "sessionId": "answer_a1e169b1",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 12,
+        "fillerDropped": 0,
+        "chars": 3691
+      },
+      "text": "Session with the user on 2023/08/15 (Tue) 15:58 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some recommendations on upcoming theme park events. I recently visited multiple theme parks including Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, and Universal Studios Hollywood. Anything exciting happening soon, like thrill rides, unique food experiences, or nighttime shows?\n\nAssistant: There are several exciting theme park events and updates coming up that you might enjoy:\n\n1. **Disneyland**:\n   - **Halloween Time**: Starting in mid-September, Disneyland transforms with festive decorations, themed food, and special entertainment. The Halloween-themed parade and 'Oogie Boogie Bash' are highlights.\n   - **Holiday Season**: From early November, the park will begin its holiday festi\n\nUser: I'm particularly interested in the Halloween-themed events. What are some must-try food items during these events?\n\nAssistant: You're in for a treat! Halloween-themed events at theme parks in the LA area offer a wide range of spooky-ooky and deliciously themed food items. Here are some must-try food items to add to your bucket list:\n\n**Disneyland Resort - Halloween Time**\n\n1. **Pumpkin Beignets**: A seasonal twist on the classic beignet, these are drizzled with orange glaze and topped with pumpkin spice.\n2. **Mummy Dogs**\n\nUser: What about some unique food experiences at these events? Are there any exclusive dining experiences or restaurants that offer special Halloween-themed menus?\n\nAssistant: You're looking for a more immersive and exclusive culinary experience, aren't you? Yes, some of these Halloween-themed events offer unique dining experiences, special menus, and even character dining opportunities. Here are a few highlights:\n\n**Disneyland Resort - Halloween Time**\n\n1. **Blue Bayou Restaurant's Halloween Menu**: This iconic restaurant offers a special Halloween-themed menu, featuri\n\nUser: I'm interested in the VIP Experience's Gourmet Buffet at Halloween Horror Nights. How much does it cost and what are the perks?\n\nAssistant: The VIP Experience's Gourmet Buffet at Halloween Horror Nights is a premium offering that provides an elevated experience for thrill-seekers and foodies alike. Here are the details:\n\n**Cost:**\n\nThe VIP Experience's Gourmet Buffet is a package deal that varies in price depending on the night and date of your visit. Prices typically range from around $250 to over $400 per person, depending on the pa\n\nUser: I'm interested in the behind-the-scenes tour as an add-on to the VIP Experience. Can you tell me more about what I can expect from this tour?\n\nAssistant: The Behind-the-Scenes Tour is an excellent addition to the VIP Experience at Halloween Horror Nights! This tour provides a unique opportunity to explore the inner workings of the event, getting you up close and personal with the creative process behind the mazes, scare zones, and attractions. Here's what you can expect from this 1-hour tour:\n\n**Tour Highlights:**\n\n1. **Makeup and Special Effects D\n\nUser: I'm interested in the Universal Studios Hollywood VIP Experience's Gourmet Buffet and Behind-the-Scenes Tour. Can I book this package online or do I need to call in to reserve it?\n\nAssistant: You can book the Universal Studios Hollywood VIP Experience's Gourmet Buffet and Behind-the-Scenes Tour package online or by calling the Universal Studios Hollywood VIP Experience team directly. Here are the steps to book your package:\n\n**Online Booking:**\n\n1. Visit the Universal Studios Hollywood website ([www.universalstudioshollywood.com](http://www.universalstudioshollywood.com)) and click on "
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    []
+  ],
+  "notesInput": "--- note (2023-08-15T15:58:00.000Z) run=fca70973 ---\nSession with the user on 2023/08/15 (Tue) 15:58 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some recommendations on upcoming theme park events. I recently visited multiple theme parks including Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, and Universal Studios Hollywood. Anything exciting happening soon, like thrill rides, unique food experiences, or nighttime shows?\n\nAssistant: There are several exciting theme park events and updates coming up that you might enjoy:\n\n1. **Disneyland**:\n   - **Halloween Time**: Starting in mid-September, Disneyland transforms with festive decorations, themed food, and special entertainment. The Halloween-themed parade and 'Oogie Boogie Bash' are highlights.\n   - **Holiday Season**: From early November, the park will begin its holiday festi\n\nUser: I'm particularly interested in the Halloween-themed events. What are some must-try food items during these events?\n\nAssistant: You're in for a treat! Halloween-themed events at theme parks in the LA area offer a wide range of spooky-ooky and deliciously themed food items. Here are some must-try food items to add to your bucket list:\n\n**Disneyland Resort - Halloween Time**\n\n1. **Pumpkin Beignets**: A seasonal twist on the classic beignet, these are drizzled with orange glaze and topped with pumpkin spice.\n2. **Mummy Dogs**\n\nUser: What about some unique food experiences at these events? Are there any exclusive dining experiences or restaurants that offer special Halloween-themed menus?\n\nAssistant: You're looking for a more immersive and exclusive culinary experience, aren't you? Yes, some of these Halloween-themed events offer unique dining experiences, special menus, and even character dining opportunities. Here are a few highlights:\n\n**Disneyland Resort - Halloween Time**\n\n1. **Blue Bayou Restaurant's Halloween Menu**: This iconic restaurant offers a special Halloween-themed menu, featuri\n\nUser: I'm interested in the VIP Experience's Gourmet Buffet at Halloween Horror Nights. How much does it cost and what are the perks?\n\nAssistant: The VIP Experience's Gourmet Buffet at Halloween Horror Nights is a premium offering that provides an elevated experience for thrill-seekers and foodies alike. Here are the details:\n\n**Cost:**\n\nThe VIP Experience's Gourmet Buffet is a package deal that varies in price depending on the night and date of your visit. Prices typically range from around $250 to over $400 per person, depending on the pa\n\nUser: I'm interested in the behind-the-scenes tour as an add-on to the VIP Experience. Can you tell me more about what I can expect from this tour?\n\nAssistant: The Behind-the-Scenes Tour is an excellent addition to the VIP Experience at Halloween Horror Nights! This tour provides a unique opportunity to explore the inner workings of the event, getting you up close and personal with the creative process behind the mazes, scare zones, and attractions. Here's what you can expect from this 1-hour tour:\n\n**Tour Highlights:**\n\n1. **Makeup and Special Effects D\n\nUser: I'm interested in the Universal Studios Hollywood VIP Experience's Gourmet Buffet and Behind-the-Scenes Tour. Can I book this package online or do I need to call in to reserve it?\n\nAssistant: You can book the Universal Studios Hollywood VIP Experience's Gourmet Buffet and Behind-the-Scenes Tour package online or by calling the Universal Studios Hollywood VIP Experience team directly. Here are the steps to book your package:\n\n**Online Booking:**\n\n1. Visit the Universal Studios Hollywood website ([www.universalstudioshollywood.com](http://www.universalstudioshollywood.com)) and click on ",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 2,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User visited multiple theme parks in LA area: Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, Universal Studios Hollywood [note 5].\n- User is particularly interested in Halloween-themed events and exclusive dining experiences at theme parks [note 5].\n- User inquired about Universal Studios Hollywood VIP Experience: Gourmet Buffet ($250-400+), Behind-the-Scenes Tour (1-hour, makeup/FX focus), bookable online or by phone [note 5].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User visited multiple theme parks in LA area: Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, Universal Studios Hollywood [note 5].\n- User is particularly interested in Halloween-themed events and exclusive dining experiences at theme parks [note 5].\n- User inquired about Universal Studios Hollywood VIP Experience: Gourmet Buffet ($250-400+), Behind-the-Scenes Tour (1-hour, makeup/FX focus), bookable online or by phone [note 5].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 6450
+  },
+  "warm": {
+    "answer": "Based on your interests in Halloween-themed events and exclusive dining experiences, I'd suggest returning to Universal Studios Hollywood for their VIP Experience (gourmet buffet $250-400+, 1-hour behind-the-scenes makeup/FX tour, bookable online or by phone) or checking what seasonal Halloween events Knott's Berry Farm or Six Flags Magic Mountain may be running.",
+    "error": null,
+    "durationMs": 1793,
+    "match": {
+      "pass": true,
+      "score": 0.254,
+      "hit": 15,
+      "total": 59,
+      "hitWords": [
+        "events",
+        "experiences",
+        "knott",
+        "berry",
+        "farm",
+        "six",
+        "flags",
+        "magic",
+        "mountain",
+        "universal",
+        "studios",
+        "hollywood",
+        "experiences",
+        "events",
+        "dining"
+      ],
+      "phrase": "knott berry farm six"
+    }
+  },
+  "cold": {
+    "answer": "The project memory doesn't contain any information about theme park preferences or past visits, so I don't have stored suggestions for you. Would you like me to offer general theme park recommendations based on common interests, or do you want to tell me your preferences so I can record them for future sessions?",
+    "error": null,
+    "durationMs": 1485,
+    "match": {
+      "pass": false,
+      "score": 0.102,
+      "hit": 6,
+      "total": 59,
+      "hitWords": [
+        "theme",
+        "park",
+        "suggestions",
+        "recommendations",
+        "suggestions",
+        "theme"
+      ],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": true,
+    "score": 0.441,
+    "hit": 26,
+    "total": 59,
+    "hitWords": [
+      "user",
+      "prefer",
+      "theme",
+      "events",
+      "experiences",
+      "disneyland",
+      "knott",
+      "berry",
+      "farm",
+      "six",
+      "flags",
+      "magic",
+      "mountain",
+      "universal",
+      "studios",
+      "hollywood",
+      "experiences",
+      "user",
+      "prefer",
+      "focus",
+      "theme",
+      "parks",
+      "interested",
+      "parks",
+      "events",
+      "dining"
+    ],
+    "phrase": "disneyland knott berry farm"
+  }
+}

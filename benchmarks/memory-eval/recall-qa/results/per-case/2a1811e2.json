@@ -1,0 +1,102 @@
+{
+  "id": "2a1811e2",
+  "questionType": "temporal-reasoning",
+  "question": "How many days had passed between the Hindu festival of Holi and the Sunday mass at St. Mary's Church?",
+  "gtAnswer": "21 days. 22 days (including the last day) is also acceptable.",
+  "questionDate": "2023/03/26 (Sun) 21:19",
+  "model": "kimi-k2.5",
+  "durationMs": 9931,
+  "notes": [
+    {
+      "ts": "2023-03-26T10:07:00.000Z",
+      "run": "2a1811e2",
+      "date": "2023/03/26 (Sun) 10:07",
+      "sessionId": "answer_1cc3cd0c_1",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 11,
+        "fillerDropped": 1,
+        "chars": 3706
+      },
+      "text": "Session with the user on 2023/03/26 (Sun) 10:07 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some information on Hindu festivals. I just attended the Holi celebration at my local temple on February 26th and had a blast throwing colors and learning about its significance. Can you tell me more about the origins of Holi and its cultural importance in India?\n\nUser: That's really interesting. I didn't know about the legend of Hiranyakashyap and Prahlad. I had a great time at the local temple, especially trying the Gujarati snacks. Do you know any recipes for those?\n\nAssistant: The Gujarati snacks are a delight! Gujarati cuisine is known for its sweet and savory flavors, and during Holi, you'll often find traditional snacks like fafdas, dhoklas, and handvo being served. Here are some recipes for you to try:\n\n**Fafda**\n\nFafda is a crunchy, savory snack made from gram flour (chickpea flour) and spices.\n\nIngredients:\n\n* 1 cup gram flour\n* 1/2 teaspoon salt\n* 1/4 teaspoon ba\n\nUser: That sounds delicious! I'll definitely try making those snacks. By the way, can you tell me more about the significance of colors in Holi? I had a lot of fun throwing colors with my colleague Rohan and his family, but I didn't quite understand the meaning behind it.\n\nAssistant: The colors of Holi! They're an integral part of the festival, and I'd be happy to explain their significance.\n\n**The Colors of Holi:**\n\nIn Hindu mythology, colors are associated with various emotions, gods, and goddesses. During Holi, people throw colored powders, known as gulal or abir, at each other to celebrate the festival of colors. The colors used have different meanings:\n\n1. **Red**: Symbol\n\nUser: That's really interesting. I never knew the colors had such deep meanings. I just threw them because it was fun, but now I understand the significance. By the way, do you know any good places to buy those colorful powders? I want to have some at home for next year's Holi.\n\nAssistant: I'm glad you're interested in continuing the Holi tradition! You can find colorful powders, also known as gulal or abir, at various stores and online platforms. Here are some options:\n\n**Indian Grocery Stores:**\n\n1. **Local Indian grocery stores**: Visit Indian grocery stores in your area, and they'll likely have a variety of gulal powders available. You can check with them about the quality and i\n\nUser: That's great to know! I'll definitely check out those options. By the way, I was wondering if you know any good recipes for traditional Indian sweets like gujiyas or mathris that are often served during Holi?\n\nAssistant: Traditional Indian sweets are a big part of Holi celebrations! Gujiyas and mathris are two popular sweets that are often served during the festival. Here are some recipes to get you started:\n\n**Gujiya Recipe**\n\nGujiyas are deep-fried dumplings filled with a sweet mixture of khoya, nuts, and dried fruits.\n\nIngredients:\n\nFor the dough:\n\n* 2 cups all-purpose flour\n* 1 teaspoon salt\n* 1/4 teaspoon bak\n\nUser: I'm happy to help you with those recipes! However, I noticed that you mentioned attending the Hindu festival of Holi at the local temple on February 26th. Would you like to know more about other Hindu festivals or traditions?\n\nAssistant: I think there's been a misunderstanding! I apologize for the confusion. I'm an AI, I don't have personal experiences or attend festivals. I'm here to provide information and answer your questions to the best of my abilities.\n\nHowever, I'd be happy to help you learn more about Hindu festivals and traditions! Hinduism is a rich and diverse religion with numerous festivals and celebrations throughout"
+    },
+    {
+      "ts": "2023-03-26T22:45:00.000Z",
+      "run": "2a1811e2",
+      "date": "2023/03/26 (Sun) 22:45",
+      "sessionId": "answer_1cc3cd0c_2",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 11,
+        "fillerDropped": 1,
+        "chars": 3824
+      },
+      "text": "Session with the user on 2023/03/26 (Sun) 22:45 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm planning to volunteer at a local community event next weekend and I was wondering if you could suggest some ideas for fundraising activities that have been successful in the past. By the way, I just got back from Sunday mass at St. Mary's Church on March 19th, where Father John's sermon really inspired me to give back to the community.\n\nUser: I like the ideas, especially the bake sale and walk/run event. Do you think it would be a good idea to have a theme for the walk/run event, like a \"Charity Chase\" or something, to make it more appealing to participants? Oh, and by the way, I sat in the third pew from the front at St. Mary's Church, next to my cousin Emma who was visiting from out of town.\n\nAssistant: I'm glad you liked the ideas!\n\nA theme for the walk/run event is a fantastic idea! It can add an extra layer of fun and engagement for participants. \"Charity Chase\" is a great suggestion, but here are a few more ideas to consider:\n\n1. **Color Run**: Participants wear white shirts and are doused with colored powder at various points along the route.\n2. **Superhero Sprint**: Encourage participants t\n\nUser: That's really helpful, thanks! I think the Color Run idea is great, as it's something visually appealing and can be a lot of fun. For the bake sale, do you have any tips on how to organize it effectively, like how to price the items and how to display them?\n\nAssistant: A Color Run can be a fantastic way to create a fun and engaging event.\n\nNow, let's get to the bake sale organization tips!\n\n**Pricing:**\n\n1. **Keep it simple**: Use a simple pricing structure, like $1, $2, or $5 per item, to make it easy for customers to calculate their total.\n2. **Tiered pricing**: Offer different tiers of baked goods at varying price points, such as $1 for small treats, $2 for m\n\nUser: That's super helpful, thank you! I think we can definitely make the bake sale a success with these tips. By the way, I was really moved by Father John's sermon on forgiveness and compassion at St. Mary's Church last Sunday.\n\nAssistant: I'm glad you found the tips helpful!\n\nRegarding Father John's sermon, I'm happy to chat with you about it, but I want to clarify again that I'm a large language model, I don't have personal experiences or knowledge of specific events or locations, including St. Mary's Church or Father John's sermon. I'm here to provide general information and assist with your questions to the best of my abilities.\n\nUser: I'd like to ask about promoting the event on social media. Do you have any tips on how to create engaging posts and tweets to attract participants and donors?\n\nAssistant: Promoting your event on social media is a crucial step in getting the word out and attracting participants and donors. Here are some tips to help you create engaging posts and tweets:\n\n**Facebook Posts:**\n\n1. **Use eye-catching visuals**: Share high-quality images or videos that showcase the event, participants, or the cause you're supporting.\n2. **Keep it concise**: Keep your posts short and to t\n\nUser: I'm excited to share these social media tips with my team to help promote our charity event. By the way, I caught up with my cousin Emma at St. Mary's Church last Sunday, and we exchanged numbers to meet up for brunch later that week.\n\nAssistant: I'm glad you're excited to share the social media tips with your team! It's great that you're taking proactive steps to promote your charity event and make it a success.\n\nRegarding your mention of catching up with your cousin Emma at St. Mary's Church, I'm happy to chat with you about it, but I want to clarify again that I'm a large language model, I don't have personal experiences or knowledge of"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    [],
+    []
+  ],
+  "notesInput": "--- note (2023-03-26T22:45:00.000Z) run=2a1811e2 ---\nSession with the user on 2023/03/26 (Sun) 22:45 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm planning to volunteer at a local community event next weekend and I was wondering if you could suggest some ideas for fundraising activities that have been successful in the past. By the way, I just got back from Sunday mass at St. Mary's Church on March 19th, where Father John's sermon really inspired me to give back to the community.\n\nUser: I like the ideas, especially the bake sale and walk/run event. Do you think it would be a good idea to have a theme for the walk/run event, like a \"Charity Chase\" or something, to make it more appealing to participants? Oh, and by the way, I sat in the third pew from the front at St. Mary's Church, next to my cousin Emma who was visiting from out of town.\n\nAssistant: I'm glad you liked the ideas!\n\nA theme for the walk/run event is a fantastic idea! It can add an extra layer of fun and engagement for participants. \"Charity Chase\" is a great suggestion, but here are a few more ideas to consider:\n\n1. **Color Run**: Participants wear white shirts and are doused with colored powder at various points along the route.\n2. **Superhero Sprint**: Encourage participants t\n\nUser: That's really helpful, thanks! I think the Color Run idea is great, as it's something visually appealing and can be a lot of fun. For the bake sale, do you have any tips on how to organize it effectively, like how to price the items and how to display them?\n\nAssistant: A Color Run can be a fantastic way to create a fun and engaging event.\n\nNow, let's get to the bake sale organization tips!\n\n**Pricing:**\n\n1. **Keep it simple**: Use a simple pricing structure, like $1, $2, or $5 per item, to make it easy for customers to calculate their total.\n2. **Tiered pricing**: Offer different tiers of baked goods at varying price points, such as $1 for small treats, $2 for m\n\nUser: That's super helpful, thank you! I think we can definitely make the bake sale a success with these tips. By the way, I was really moved by Father John's sermon on forgiveness and compassion at St. Mary's Church last Sunday.\n\nAssistant: I'm glad you found the tips helpful!\n\nRegarding Father John's sermon, I'm happy to chat with you about it, but I want to clarify again that I'm a large language model, I don't have personal experiences or knowledge of specific events or locations, including St. Mary's Church or Father John's sermon. I'm here to provide general information and assist with your questions to the best of my abilities.\n\nUser: I'd like to ask about promoting the event on social media. Do you have any tips on how to create engaging posts and tweets to attract participants and donors?\n\nAssistant: Promoting your event on social media is a crucial step in getting the word out and attracting participants and donors. Here are some tips to help you create engaging posts and tweets:\n\n**Facebook Posts:**\n\n1. **Use eye-catching visuals**: Share high-quality images or videos that showcase the event, participants, or the cause you're supporting.\n2. **Keep it concise**: Keep your posts short and to t\n\nUser: I'm excited to share these social media tips with my team to help promote our charity event. By the way, I caught up with my cousin Emma at St. Mary's Church last Sunday, and we exchanged numbers to meet up for brunch later that week.\n\nAssistant: I'm glad you're excited to share the social media tips with your team! It's great that you're taking proactive steps to promote your charity event and make it a success.\n\nRegarding your mention of catching up with your cousin Emma at St. Mary's Church, I'm happy to chat with you about it, but I want to clarify again that I'm a large language model, I don't have personal experiences or knowledge of\n\n--- note (2023-03-26T10:07:00.000Z) run=2a1811e2 ---\nSession with the user on 2023/03/26 (Sun) 10:07 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some information on Hindu festivals. I just attended the Holi celebration at my local temple on February 26th and had a blast throwing colors and learning about its significance. Can you tell me more about the origins of Holi and its cultural importance in India?\n\nUser: That's really interesting. I didn't know about the legend of Hiranyakashyap and Prahlad. I had a great time at the local temple, especially trying the Gujarati snacks. Do you know any recipes for those?\n\nAssistant: The Gujarati snacks are a delight! Gujarati cuisine is known for its sweet and savory flavors, and during Holi, you'll often find traditional snacks like fafdas, dhoklas, and handvo being served. Here are some recipes for you to try:\n\n**Fafda**\n\nFafda is a crunchy, savory snack made from gram flour (chickpea flour) and spices.\n\nIngredients:\n\n* 1 cup gram flour\n* 1/2 teaspoon salt\n* 1/4 teaspoon ba\n\nUser: That sounds delicious! I'll definitely try making those snacks. By the way, can you tell me more about the significance of colors in Holi? I had a lot of fun throwing colors with my colleague Rohan and his family, but I didn't quite understand the meaning behind it.\n\nAssistant: The colors of Holi! They're an integral part of the festival, and I'd be happy to explain their significance.\n\n**The Colors of Holi:**\n\nIn Hindu mythology, colors are associated with various emotions, gods, and goddesses. During Holi, people throw colored powders, known as gulal or abir, at each other to celebrate the festival of colors. The colors used have different meanings:\n\n1. **Red**: Symbol\n\nUser: That's really interesting. I never knew the colors had such deep meanings. I just threw them because it was fun, but now I understand the significance. By the way, do you know any good places to buy those colorful powders? I want to have some at home for next year's Holi.\n\nAssistant: I'm glad you're interested in continuing the Holi tradition! You can find colorful powders, also known as gulal or abir, at various stores and online platforms. Here are some options:\n\n**Indian Grocery Stores:**\n\n1. **Local Indian grocery stores**: Visit Indian grocery stores in your area, and they'll likely have a variety of gulal powders available. You can check with them about the quality and i\n\nUser: That's great to know! I'll definitely check out those options. By the way, I was wondering if you know any good recipes for traditional Indian sweets like gujiyas or mathris that are often served during Holi?\n\nAssistant: Traditional Indian sweets are a big part of Holi celebrations! Gujiyas and mathris are two popular sweets that are often served during the festival. Here are some recipes to get you started:\n\n**Gujiya Recipe**\n\nGujiyas are deep-fried dumplings filled with a sweet mixture of khoya, nuts, and dried fruits.\n\nIngredients:\n\nFor the dough:\n\n* 2 cups all-purpose flour\n* 1 teaspoon salt\n* 1/4 teaspoon bak\n\nUser: I'm happy to help you with those recipes! However, I noticed that you mentioned attending the Hindu festival of Holi at the local temple on February 26th. Would you like to know more about other Hindu festivals or traditions?\n\nAssistant: I think there's been a misunderstanding! I apologize for the confusion. I'm an AI, I don't have personal experiences or attend festivals. I'm here to provide information and answer your questions to the best of my abilities.\n\nHowever, I'd be happy to help you learn more about Hindu festivals and traditions! Hinduism is a rich and diverse religion with numerous festivals and celebrations throughout",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 7,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User attended St. Mary's Church on March 19, 2023; sat third pew from front, next to cousin Emma [note 2].\n- User was inspired by Father John's sermon on forgiveness and compassion [note 2].\n- User exchanged numbers with cousin Emma to meet for brunch [note 2].\n- User attended Holi celebration at local temple on February 26, 2023; enjoyed Gujarati snacks [note 2].\n- User threw colors with colleague Rohan and his family [note 2].\n- User planning to volunteer at community event next weekend (from March 26, 2023 context) [note 2].\n- User prefers \"Color Run\" theme for charity walk/run event [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- User shares personal experiences as if assistant was present; clarify AI nature without being repetitive [note 2].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User attended St. Mary's Church on March 19, 2023; sat third pew from front, next to cousin Emma [note 2].\n- User was inspired by Father John's sermon on forgiveness and compassion [note 2].\n- User exchanged numbers with cousin Emma to meet for brunch [note 2].\n- User attended Holi celebration at local temple on February 26, 2023; enjoyed Gujarati snacks [note 2].\n- User threw colors with colleague Rohan and his family [note 2].\n- User planning to volunteer at community event next weekend (from March 26, 2023 context) [note 2].\n- User prefers \"Color Run\" theme for charity walk/run event [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- User shares personal experiences as if assistant was present; clarify AI nature without being repetitive [note 2].\n",
+    "durationMs": 7878
+  },
+  "warm": {
+    "answer": "21 days passed between Holi on February 26, 2023 and the Sunday mass at St. Mary's Church on March 19, 2023.",
+    "error": null,
+    "durationMs": 1053,
+    "match": {
+      "pass": false,
+      "score": 0.375,
+      "hit": 3,
+      "total": 8,
+      "hitWords": [
+        "21",
+        "days",
+        "days"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory doesn't contain any information about Holi dates or St. Mary's Church Sunday mass dates, so I can't calculate this from the provided context.",
+    "error": null,
+    "durationMs": 998,
+    "match": {
+      "pass": false,
+      "score": 0,
+      "hit": 0,
+      "total": 8,
+      "hitWords": [],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": false,
+    "score": 0,
+    "hit": 0,
+    "total": 8,
+    "hitWords": [],
+    "phrase": null
+  }
+}
