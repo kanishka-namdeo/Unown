@@ -1,5 +1,5 @@
 /**
- * retrieval.mjs — C6 (H21): small-model query rewriting for memory
+ * retrieval.mjs — C6 (H24): small-model query rewriting for memory
  * retrieval, on the recall-qa corpus (40 LongMemEval-adapted questions with
  * oracle evidence sessions).
  *
@@ -15,6 +15,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { embed } from "../../local-llm/lib/openai.mjs";
+import { buildBM25, rrfFuse } from "../../nonllm/lib/bm25.mjs"; // campaign-#2-verified lane (H17 theirs): Lucene-default BM25 + RRF fusion, zero deps
 import { startLane, chatTimed, median, INCUMBENT, EMBED_MODEL } from "./lane.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -131,7 +132,10 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
       row._rwVec = rwE.ok ? rwE.vec : null;
     }
 
-    // scoring
+    // scoring — four arms: embed(raw q), embed(rewritten q), BM25(raw q)
+    // [the nonllm-campaign-2 verified exact-token lane, on THIS corpus], and
+    // RRF fusion(embed-rewrite + BM25-raw). Same pool, same oracle, one
+    // variable per comparison.
     for (const row of rows) {
       const docs = row._docs.filter((d) => d.vec);
       const knn = (vec) => {
@@ -141,6 +145,12 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
       };
       const rawRank = row._rawVec ? knn(row._rawVec) : [];
       const rwRank = row._rwVec ? knn(row._rwVec) : [];
+      const bm25 = buildBM25(docs.map((d) => d.doc));
+      const bm25Rank = bm25.rank(row.question).map((i) => docs[i]);
+      const fused = rrfFuse([
+        rwRank.map((d) => d.sessionId),
+        bm25Rank.map((d) => d.sessionId),
+      ]).map((sid) => docs.find((d) => d.sessionId === sid)).filter(Boolean);
       const recallAt = (rank, k) => (rank.slice(0, k).some((d) => d.hasAnswer) ? 1 : 0);
       results.push({
         caseId: row.caseId, questionType: row.questionType,
@@ -150,6 +160,10 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
         rawRecall10: rawRank.length ? recallAt(rawRank, 10) : null,
         rwRecall5: rwRank.length ? recallAt(rwRank, 5) : null,
         rwRecall10: rwRank.length ? recallAt(rwRank, 10) : null,
+        bm25Recall5: bm25Rank.length ? recallAt(bm25Rank, 5) : null,
+        bm25Recall10: bm25Rank.length ? recallAt(bm25Rank, 10) : null,
+        fusedRecall5: fused.length ? recallAt(fused, 5) : null,
+        fusedRecall10: fused.length ? recallAt(fused, 10) : null,
         rawTop1: rawRank[0]?.sessionId ?? null,
         rwTop1: rwRank[0]?.sessionId ?? null,
       });
@@ -177,7 +191,7 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
   }
   return {
     experiment: "C6-retrieval",
-    hypotheses: ["H21"],
+    hypotheses: ["H24"],
     summary: {
       cases: results.length,
       poolEmbedMs: medianOfArr(embedMs),
@@ -187,6 +201,10 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
       rawRecall10: mean(results.map((r) => r.rawRecall10)),
       rwRecall5: mean(results.map((r) => r.rwRecall5)),
       rwRecall10: mean(results.map((r) => r.rwRecall10)),
+      bm25Recall5: mean(results.map((r) => r.bm25Recall5)),
+      bm25Recall10: mean(results.map((r) => r.bm25Recall10)),
+      fusedRecall5: mean(results.map((r) => r.fusedRecall5)),
+      fusedRecall10: mean(results.map((r) => r.fusedRecall10)),
       recall5Lift: Number(((mean(results.map((r) => r.rwRecall5)) ?? 0) - (mean(results.map((r) => r.rawRecall5)) ?? 0)).toFixed(4)),
       recall10Lift: Number(((mean(results.map((r) => r.rwRecall10)) ?? 0) - (mean(results.map((r) => r.rawRecall10)) ?? 0)).toFixed(4)),
       byQuestionType: byType,

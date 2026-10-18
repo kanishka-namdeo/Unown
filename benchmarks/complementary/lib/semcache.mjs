@@ -1,5 +1,5 @@
 /**
- * semcache.mjs — C5 (H20): a two-tier semantic cache for the learning layer.
+ * semcache.mjs — C5 (H23): a two-tier semantic cache for the learning layer.
  *
  * Tier L1 (exact): sha256(model + canonical messages + sampling params) ->
  *   stored response. Replay of the identical call is byte-identical by
@@ -174,7 +174,7 @@ export async function c5Cache({ noteLimit = 12, noRemote = false, judge = true }
     }
     return {
       experiment: "C5-cache",
-      hypotheses: ["H20"],
+      hypotheses: ["H23"],
       summary: {
         notes: notes.length,
         exactHits: cache.stats.l1Hits,

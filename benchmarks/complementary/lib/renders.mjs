@@ -87,10 +87,12 @@ export function renderRetrieval(s) {
   const q = s?.summary ?? {};
   const rows = [
     { metric: "cases", value: q.cases ?? "—" },
-    { metric: "recall@5 raw question", value: pct(q.rawRecall5, 1) },
-    { metric: "recall@5 rewritten", value: pct(q.rwRecall5, 1) },
-    { metric: "recall@5 lift", value: q.recall5Lift != null ? `${(100 * q.recall5Lift).toFixed(1)}pp` : "—" },
-    { metric: "recall@10 raw / rewritten", value: `${pct(q.rawRecall10, 1)} / ${pct(q.rwRecall10, 1)}` },
+    { metric: "recall@5 embed(raw question)", value: pct(q.rawRecall5, 1) },
+    { metric: "recall@5 embed(rewritten)", value: pct(q.rwRecall5, 1) },
+    { metric: "recall@5 BM25(raw question)", value: pct(q.bm25Recall5, 1) },
+    { metric: "recall@5 RRF(embed-rewrite + BM25)", value: pct(q.fusedRecall5, 1) },
+    { metric: "rewrite lift over embed(raw) @5", value: q.recall5Lift != null ? `${(100 * q.recall5Lift).toFixed(1)}pp` : "—" },
+    { metric: "recall@10 raw / rewritten / bm25 / fused", value: `${pct(q.rawRecall10, 1)} / ${pct(q.rwRecall10, 1)} / ${pct(q.bm25Recall10, 1)} / ${pct(q.fusedRecall10, 1)}` },
     { metric: "rewrite p50 ms", value: q.rewriteP50Ms ?? "—" },
     { metric: "rewrite JSON ok rate", value: pct(q.rewriteJsonOkRate, 0) },
   ];

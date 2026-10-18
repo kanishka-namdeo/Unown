@@ -1,5 +1,5 @@
 /**
- * bakeoff.mjs — C7 (H22): Qwen3.5-0.8B vs the incumbent Qwen3-0.6B lane,
+ * bakeoff.mjs — C7 (H25): Qwen3.5-0.8B vs the incumbent Qwen3-0.6B lane,
  * plus the local-vision acceptance probe (mmproj).
  *
  * Arms:
@@ -169,7 +169,7 @@ function redPng() {
 export async function c7Bakeoff({ noteLimit = 12, noRemote = false, vision = true } = {}) {
   const { bridgeUrl, remoteModel } = cfg();
   const notes = loadNotes().slice(0, noteLimit);
-  const out = { experiment: "C7-bakeoff", hypotheses: ["H22"], llamaBuild: LLAMA_BUILD };
+  const out = { experiment: "C7-bakeoff", hypotheses: ["H25"], llamaBuild: LLAMA_BUILD };
 
   // 1) probes
   out.probes = [

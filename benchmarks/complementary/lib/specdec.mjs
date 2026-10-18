@@ -1,6 +1,6 @@
 /**
  * specdec.mjs — C1 (n-gram speculative decoding), C2 (draft-model specdec),
- * C3 (prefix KV reuse): the local-lane SPEED experiments (H16, H17, H18).
+ * C3 (prefix KV reuse): the local-lane SPEED experiments (H19, H20, H21).
  *
  * Method:
  *  - Replays REAL production prompt assemblies (triage + mining, imported
@@ -181,21 +181,21 @@ async function speedExperiment({ variants, replays, label, ctx, model, grammar }
   return { label, ctx, model, llamaBuild: LLAMA_BUILD, grammar, results };
 }
 
-/** C1 — n-gram specdec (H16). */
+/** C1 — n-gram specdec (H19). Triage (short) runs plain+grammar; mining (the heavy production lane) runs grammar only. */
 export async function c1Ngram(opts = {}) {
   const replays = buildReplays(opts);
   const out = [];
-  for (const family of ["triage", "mining"]) {
-    for (const grammar of [true, false]) {
-      const set = replays[family];
-      if (!set.length) continue;
-      out.push(await speedExperiment({ variants: NGRAM_VARIANTS, replays: set, label: `C1 ngram · ${family} · ${grammar ? "grammar" : "plain"}`, ctx: family === "mining" ? 12288 : 6144, grammar }));
-    }
+  for (const grammar of [true, false]) {
+    const set = replays.triage;
+    if (set.length) out.push(await speedExperiment({ variants: NGRAM_VARIANTS, replays: set, label: `C1 ngram · triage · ${grammar ? "grammar" : "plain"}`, ctx: 6144, grammar }));
   }
-  return { experiment: "C1-ngram", hypotheses: ["H16"], runs: out };
+  if (replays.mining.length) {
+    out.push(await speedExperiment({ variants: NGRAM_VARIANTS, replays: replays.mining, label: `C1 ngram · mining · grammar`, ctx: 12288, grammar: true }));
+  }
+  return { experiment: "C1-ngram", hypotheses: ["H19"], runs: out };
 }
 
-/** C2 — draft-model specdec (H17). */
+/** C2 — draft-model specdec (H20). */
 export async function c2Draft(opts = {}) {
   const replays = buildReplays(opts);
   const out = [];
@@ -205,13 +205,13 @@ export async function c2Draft(opts = {}) {
     if (!set.length) continue;
     out.push(await speedExperiment({ variants: draftVariants(opts.draftModel), replays: set, label: `C2 draft · ${family} · grammar`, ctx: family === "mining" ? 12288 : 6144, grammar }));
   }
-  return { experiment: "C2-draft", hypotheses: ["H17"], runs: out };
+  return { experiment: "C2-draft", hypotheses: ["H20"], runs: out };
 }
 
 // ---------------------------------------------------------------- C3
 
 /**
- * C3 — prefix KV reuse (H18). One server (cache_prompt is llama-server's
+ * C3 — prefix KV reuse (H21). One server (cache_prompt is llama-server's
  * default). Sequences:
  *  - triage-seq: N triage calls, each with the SAME TRIAGE_SYSTEM prefix and
  *    a DIFFERENT note payload — the production call shape.
@@ -267,7 +267,7 @@ export async function c3KvReuse({ noteLimit = 10 } = {}) {
     const repeat = await chatTimed({ baseUrl: server.baseUrl, model: "replay", messages: triageMessages(notes[0]), maxTokens: 120, temperature: 0, extra: NO_THINKING });
     return {
       experiment: "C3-kvreuse",
-      hypotheses: ["H18"],
+      hypotheses: ["H21"],
       llamaBuild: LLAMA_BUILD,
       calls, control,
       summary: {

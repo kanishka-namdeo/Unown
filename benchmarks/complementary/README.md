@@ -22,7 +22,7 @@ fill the memory-retrieval gap.
 ## Layout
 
 ```
-hypotheses.json   the registry: H16–H22, thresholds, guards, verdicts
+hypotheses.json   the registry: H19–H25, thresholds, guards, verdicts
 runner.mjs        CLI driver (pure Node >= 18, no native deps)
 lib/
   lane.mjs        ext-model provisioning + timed chat (/completion /tokenize)
@@ -49,13 +49,13 @@ questions with oracle evidence sessions).
 | # | Hypothesis | Tests | Key metrics |
 |---|---|---|---|
 | C0 | runtime gate (keyless) | llama.cpp b11718 capabilities: specdec flags, timings, /tokenize, KV-reuse engagement, prompt-logprobs availability, draft tokenizer compat, qwen35 arch | checks all green; CI runs this on 3 OSes |
-| C1 | H16 n-gram speculation | triage + mining replays × {plain, grammar} × {baseline, ngram-simple, ngram-mod} | tok/s ratio, greedy byte-identity, RSS |
-| C2 | H17 draft-model speculation | same replays, Qwen2.5-0.5B drafting for Qwen3-0.6B | tok/s ratio (target 1.5x), boot compat, RSS |
-| C3 | H18 prefix KV reuse | shared-SYSTEM call sequences vs broken-prefix control | prompt_n delta, prefill ms saved, identity |
-| C4 | H19 local compression -> remote | mining + dream payloads: local chunk-select (json_schema) then SAME remote model on full vs compressed | payload cut %, remote token/cost saved, validator parity, blind judge |
-| C5 | H20 semantic cache | triage replay ×2 (exact) + adversarial outcome-flipped note edits (danger) | L1 hit rate, L2 hit curve 0.95/0.97/0.99, danger false-serve rate (must be 0) |
-| C6 | H21 query rewriting | recall-qa corpus: raw-question kNN vs 0.6B-rewritten kNN (same pool, same embedder) | recall@5/@10 lift, rewrite p50, JSON ok |
-| C7 | H22 tiny-model bake-off | Qwen3.5-0.8B vs incumbent: probe + triage replay + local-vision acceptance (mmproj) | tok/s, RSS, agreement, vision probe |
+| C1 | H19 n-gram speculation | triage + mining replays × {plain, grammar} × {baseline, ngram-simple, ngram-mod} | tok/s ratio, greedy byte-identity, RSS |
+| C2 | H20 draft-model speculation | same replays, Qwen2.5-0.5B drafting for Qwen3-0.6B | tok/s ratio (target 1.5x), boot compat, RSS |
+| C3 | H21 prefix KV reuse | shared-SYSTEM call sequences vs broken-prefix control | prompt_n delta, prefill ms saved, identity |
+| C4 | H22 local compression -> remote | mining + dream payloads: local chunk-select (json_schema) then SAME remote model on full vs compressed | payload cut %, remote token/cost saved, validator parity, blind judge |
+| C5 | H23 semantic cache | triage replay ×2 (exact) + adversarial outcome-flipped note edits (danger) | L1 hit rate, L2 hit curve 0.95/0.97/0.99, danger false-serve rate (must be 0) |
+| C6 | H24 query rewriting | recall-qa corpus, four arms: embed(raw q) vs embed(0.6B-rewritten q) vs BM25(raw q) [nonllm-c2 lane] vs RRF fusion — same pool, same oracle | recall@5/@10 per arm, rewrite p50, JSON ok |
+| C7 | H25 tiny-model bake-off | Qwen3.5-0.8B vs incumbent: probe + triage replay + local-vision acceptance (mmproj) | tok/s, RSS, agreement, vision probe |
 
 ## Running it
 

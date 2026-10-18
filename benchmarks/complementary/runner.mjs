@@ -9,14 +9,14 @@
  *                   /completion timings, prompt-logprobs availability,
  *                   ngram boot + answer, KV-reuse engagement, (when ext
  *                   models present) qwen35 load + draft tokenizer compat
- *   c1-ngram (C1)   n-gram specdec vs baseline (H16)
- *   c2-draft (C2)   draft-model specdec vs baseline (H17)
- *   c3-kvreuse (C3) prefix KV reuse (H18)
- *   c4-compress (C4) local compression -> remote savings (H19; needs bridge
+ *   c1-ngram (C1)   n-gram specdec vs baseline (H19)
+ *   c2-draft (C2)   draft-model specdec vs baseline (H20)
+ *   c3-kvreuse (C3) prefix KV reuse (H21)
+ *   c4-compress (C4) local compression -> remote savings (H22; needs bridge
  *                   or --no-remote for the local-only lane)
- *   c5-cache (C5)   two-tier semantic cache (H20)
- *   c6-retrieval (C6) query rewriting for memory retrieval (H21)
- *   c7-bakeoff (C7) Qwen3.5-0.8B vs incumbent + vision probe (H22)
+ *   c5-cache (C5)   two-tier semantic cache (H23)
+ *   c6-retrieval (C6) query rewriting for memory retrieval (H24)
+ *   c7-bakeoff (C7) Qwen3.5-0.8B vs incumbent + vision probe (H25)
  *   all             everything (in order; stops at first hard failure)
  *
  * Env: TEST_BRIDGE_URL (default http://127.0.0.1:3031), TEST_REMOTE_MODEL
@@ -237,7 +237,7 @@ async function cmdAll() {
 }
 
 function cmdHelp() {
-  console.log(`complementary testbench — campaign 3 (H16-H22)
+  console.log(`complementary testbench — campaign 3 (H19-H25)
 
 commands: ${Object.keys(COMMANDS).join(" | ")}
 flags:    --no-remote --notes N --runs N --cases N --keep-pct P --draft-model ID --label NAME
