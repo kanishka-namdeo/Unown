@@ -43,10 +43,11 @@ const MINER_SCHEMA = {
 };
 
 /** Build the replay sets once: triage (short outputs, schema) + mining (long, the lane's heavy lane). */
-export function buildReplays({ noteLimit = 12, runLimit = 4 } = {}) {
+export function buildReplays({ noteLimit = 12, runLimit = 2 } = {}) {
   const notes = loadNotes().slice(0, noteLimit);
-  const tasks = loadTasks();
-  const runs = loadRuns().filter((r) => r.status === "FAILED" || r.outcome === "FAILED").slice(0, runLimit);
+  const tasks = loadTasks(); // Map<id, task> (engine DB export)
+  // E3 filter, verbatim: lowercase 'failed' + a real transcript array
+  const runs = loadRuns().filter((r) => r.status === "failed" && Array.isArray(r.transcript) && r.transcript.length > 0).slice(0, runLimit);
   const memoryTiers = loadMemory();
   const triage = notes.map((note, i) => ({
     family: "triage",
@@ -56,7 +57,7 @@ export function buildReplays({ noteLimit = 12, runLimit = 4 } = {}) {
     maxTokens: 300,
   }));
   const mining = runs.map((run, i) => {
-    const task = tasks.find((t) => t.id === run.taskId) ?? tasks[0];
+    const task = tasks.get(run.task_id) ?? tasks.values().next().value;
     return {
       family: "mining",
       id: `mine-${run.id ?? i}`,

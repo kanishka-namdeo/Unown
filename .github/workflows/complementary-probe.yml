@@ -1,6 +1,6 @@
 name: complementary-probe
 
-# Keyless runtime gate for the complementary testbench (campaign 3, H19-H25):
+# Keyless runtime gate for the complementary testbench (campaign 3, H16-H22):
 # asserts the mechanism-level facts on 3 OSes — llama.cpp b11718 speculative-
 # decoding flags exist, the ngram lane boots and answers with grammar, the
 # timings instrument is present, /tokenize works, KV prefix reuse engages.

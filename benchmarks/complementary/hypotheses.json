@@ -33,9 +33,12 @@
         "CI cross-platform probe asserts the flags exist and the lane boots on all 3 OSes"
       ],
       "precedent": "llama.cpp docs/speculative.md (ngram-mod: 'iterating over text/code blocks, reasoning models that repeat thinking'; 'structured, repetitive generation - JSON, fixed templates' per community benchmarks); dev.to 2026-04 ngram experiments: big wins on repeated/templated prompts, ~0 on diverse prose; CPU-only draft-model specdec measured 2.03x on Qwen2.5-Coder-3B (inventiveHQ 2026-06)",
-      "status": "open",
-      "verdict": null,
-      "evidence": []
+      "status": "refuted",
+      "verdict": "REFUTED 2026-10-19 on linux-x64/2vCPU/4GB (llama.cpp b11718, greedy, identity-guarded): n-gram speculation gives 0.92-1.07x median tok/s across triage(plain+grammar, n=12) and mining(grammar, n=2 real failed runs) vs the 1.3x threshold \u2014 and ngram-mod breaks greedy byte-identity on 3/12 triage outputs (9/12 identical; llama.cpp specdec is not byte-guaranteed even greedy \u2014 batched-verification float non-associativity). Novel-JSON mining output does not repeat in-context n-grams: JSON is structurally repetitive but its CONTENT is novel, so the draft acceptance is too low to pay for verification. ngram-simple kept 12/12 identity but 0.95-1.07x. Honest negative result; the lane's speed lever is model choice (see H22), not speculation. Receipts: results/c1-steps/c1-ngram.json (gitignored run dir; tables in results/REPORT.md).",
+      "evidence": [
+        "benchmarks/complementary/results/REPORT.md#c1--n-gram-speculative-decoding-h16",
+        "benchmarks/complementary/results/c1-steps/c1-ngram.json"
+      ]
     },
     {
       "id": "H17",
@@ -62,9 +65,12 @@
         "no EAGLE-3/DFlash/MTP drafts exist for a 0.6B target (trained drafts start at Qwen3-1.7B) \u2014 documented, not measurable"
       ],
       "precedent": "llama.cpp specdec docs: draft/target must share tokenizer; 'target: aim for acceptance >0.6 at K=5 for net speedup'; CPU 2.03x measured on a 3B target (draft compute is cheaper relative to a slower target \u2014 a 0.6B target at ~20 tok/s is the hard case this experiment answers)",
-      "status": "open",
-      "verdict": null,
-      "evidence": []
+      "status": "refuted",
+      "verdict": "REFUTED 2026-10-19 on linux-x64/2vCPU/4GB: Qwen2.5-0.5B Q4_K_M drafting for the Qwen3-0.6B target (tokenizer-compatible \u2014 llama-server accepts the pair, C0) reaches 1.07x mining / 0.97x triage vs the 1.5x threshold at +45MB RSS. The 0.6B target at 6-16 tok/s on 2 vCPU is already compute/memory-saturated: draft forward passes steal the same cycles the target needs, and acceptance cannot overcome it. Small-box CPU ceiling for draft-model specdec documented; the GPU-era 'aim for acceptance >0.6 at K=5' heuristic assumes the draft is ~free, which fails when draft and target are the same size class on the same cores. Identity held 14/14 (greedy). Receipts: results/c2-steps/c2-draft.json (tables in results/REPORT.md).",
+      "evidence": [
+        "benchmarks/complementary/results/REPORT.md#c2--draft-model-speculation-h17",
+        "benchmarks/complementary/results/c2-steps/c2-draft.json"
+      ]
     },
     {
       "id": "H18",
@@ -87,9 +93,12 @@
         "outputs must be identical (KV reuse is exact, not approximate)"
       ],
       "precedent": "llama.cpp slot/KV-reuse tutorial (GH discussion 13606): 2nd identical prompt processes 1 token; partial reuse on shared system prefix; hexdocs ADR-007 measured 1.23-1.31x on multi-turn Qwen3-0.6B",
-      "status": "open",
-      "verdict": null,
-      "evidence": []
+      "status": "verified",
+      "verdict": "VERIFIED 2026-10-19 on linux-x64/2vCPU/4GB (llama.cpp b11718, cache_prompt default-on): on the production call shape (shared TRIAGE_SYSTEM prefix + new note payload), follow-up calls process 37% of the full prompt (median 121/301 tokens; control with broken prefix processes 95% \u2014 the mechanism is prefix-driven, not free) and prefill time drops 54.5% (1372ms -> 625ms median). Repeat-call identity identical (KV reuse is exact). Thresholds: prefillCut >= 25% PASSED at 54.5%, prompt_n engagement PASSED. Production consequence: llama-server's default already gives this to the serve lane \u2014 no flag needed; the finding is DOCUMENTATION (and a caution: hybrid-recurrent archs like qwen35 have partial-checkpoint limits, see H22). Receipts: results/c3-kvreuse/c3-kvreuse.json (tables in results/REPORT.md).",
+      "evidence": [
+        "benchmarks/complementary/results/REPORT.md#c3--prefix-kv-reuse-h18",
+        "benchmarks/complementary/results/c3-kvreuse/c3-kvreuse.json"
+      ]
     },
     {
       "id": "H19",

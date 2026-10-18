@@ -25,7 +25,7 @@
  * Flags: --no-remote (keyless lanes), --notes N, --runs N, --keep-pct P,
  * --draft-model ID, --label NAME, --ctx N.
  */
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { hostInfo, provisionEngine, provisionModel, LLAMA_BUILD } from "../local-llm/lib/llama.mjs";
@@ -33,7 +33,7 @@ import {
   startLane, chatTimed, rawCompletion, tokenize, probePromptLogprobs,
   provisionExt, EXT_MODELS, extModelPath, INCUMBENT, newRunDir, saveJson,
 } from "./lib/lane.mjs";
-import { c1Ngram, c2Draft, c3KvReuse, buildReplays } from "./lib/specdec.mjs";
+import { c1Ngram, c2Draft, c3KvReuse, buildReplays, NGRAM_VARIANTS, draftVariants, runVariant } from "./lib/specdec.mjs";
 import { c4Compress } from "./lib/compress.mjs";
 import { c5Cache } from "./lib/semcache.mjs";
 import { c6Retrieval } from "./lib/retrieval.mjs";
@@ -60,6 +60,44 @@ const COMMANDS = {
   help: cmdHelp,
   provision: cmdProvision,
   probe: cmdProbe,
+  "c1-step": () => withResults("C1-step", async (dir) => {
+    const family = opt("family", "triage");
+    const grammar = opt("grammar", "1") !== "0";
+    const variantId = opt("variant", "baseline");
+    const variant = NGRAM_VARIANTS.find((v) => v.id === variantId);
+    if (!variant) throw new Error(`unknown variant ${variantId} (known: ${NGRAM_VARIANTS.map((v) => v.id).join(", ")})`);
+    const replays = buildReplays({ noteLimit: intOpt("notes", 12), runLimit: intOpt("runs", 2) });
+    const set = replays[family];
+    if (!set?.length) throw new Error(`no replays for family ${family}`);
+    const r = await runVariant({ variant, replays: set, ctx: family === "mining" ? 12288 : 6144, grammar, progress: (m) => console.log(`  ${m}`) });
+    const name = `step-${family}-${grammar ? "g" : "p"}-${variantId}.json`;
+    saveJson(dir, name, r);
+    return `step ${family}/${grammar ? "grammar" : "plain"}/${variantId} saved: ${name}\n${renderSpeed({ label: `C1 step · ${family} · ${grammar ? "grammar" : "plain"}`, results: [r] })}`;
+  }),
+  "c1-merge": () => withResults("C1-merge", async (dir) => {
+    const out = mergeSteps(dir, "c1");
+    saveJson(dir, "c1-ngram.json", out);
+    return out.runs.map(renderSpeed).join("") + `\n_C1 merged · llama.cpp ${LLAMA_BUILD}_\n`;
+  }),
+  "c2-step": () => withResults("C2-step", async (dir) => {
+    const family = opt("family", "mining");
+    const variantId = opt("variant", "baseline");
+    const variants = draftVariants(opt("draft-model", "qwen2.5-0.5b-draft"));
+    const variant = variants.find((v) => v.id === variantId);
+    if (!variant) throw new Error(`unknown variant ${variantId} (known: ${variants.map((v) => v.id).join(", ")})`);
+    const replays = buildReplays({ noteLimit: intOpt("notes", 12), runLimit: intOpt("runs", 2) });
+    const set = replays[family];
+    if (!set?.length) throw new Error(`no replays for family ${family}`);
+    const r = await runVariant({ variant, replays: set, ctx: family === "mining" ? 12288 : 6144, grammar: true, progress: (m) => console.log(`  ${m}`) });
+    const name = `step-${family}-g-${variantId}.json`;
+    saveJson(dir, name, r);
+    return `step ${family}/grammar/${variantId} saved: ${name}\n${renderSpeed({ label: `C2 step · ${family} · grammar`, results: [r] })}`;
+  }),
+  "c2-merge": () => withResults("C2-merge", async (dir) => {
+    const out = mergeSteps(dir, "c2");
+    saveJson(dir, "c2-draft.json", out);
+    return out.runs.map(renderSpeed).join("") + `\n_C2 merged · llama.cpp ${LLAMA_BUILD}_\n`;
+  }),
   "c1-ngram": () => withResults("C1-ngram", async (dir) => {
     const out = await c1Ngram({ noteLimit: intOpt("notes", 12), runLimit: intOpt("runs", 4) });
     saveJson(dir, "c1-ngram.json", out);
@@ -105,6 +143,52 @@ function intOpt(name, dflt) {
 function numOpt(name, dflt) {
   const v = parseFloat(opt(name, String(dflt)));
   return Number.isFinite(v) ? v : dflt;
+}
+
+/** Merge c1/c2 step files into the experiment-shaped output (ratios + identity vs baseline). */
+function mergeSteps(dir, kind) {
+  const files = readdirSync(dir).filter((f) => f.startsWith("step-") && f.endsWith(".json")).sort();
+  const byGroup = new Map(); // `${family}-${g|p}` -> steps[]
+  for (const f of files) {
+    const m = f.match(/^step-([a-z]+)-(g|p)-([a-z0-9-]+)\.json$/);
+    if (!m) continue;
+    const step = JSON.parse(readFileSync(path.join(dir, f), "utf8"));
+    const group = `${m[1]}-${m[2]}`;
+    if (!byGroup.has(group)) byGroup.set(group, []);
+    byGroup.get(group).push(step);
+  }
+  const runs = [];
+  for (const [group, steps] of byGroup) {
+    const [family, gflag] = group.split("-");
+    const baseline = steps.find((s) => s.variant === "baseline");
+    if (!baseline) continue;
+    const results = [baseline];
+    for (const s of steps.filter((x) => x.variant !== "baseline")) {
+      s.identity = identityOf(baseline, s);
+      s.identitySummary = s.identity ? {
+        checked: s.identity.length,
+        identical: s.identity.filter((x) => x.identical).length,
+        differing: s.identity.filter((x) => x.identical === false).length,
+      } : null;
+      s.tokPerSecRatio = s.agg?.medianTokPerSec && baseline.agg?.medianTokPerSec
+        ? Number((s.agg.medianTokPerSec / baseline.agg.medianTokPerSec).toFixed(3)) : null;
+      results.push(s);
+    }
+    runs.push({ label: `C${kind === "c1" ? 1 : 2} · ${family} · ${gflag === "g" ? "grammar" : "plain"}`, results });
+  }
+  return {
+    experiment: kind === "c1" ? "C1-ngram" : "C2-draft",
+    hypotheses: kind === "c1" ? ["H16"] : ["H17"],
+    llamaBuild: LLAMA_BUILD,
+    runs,
+  };
+}
+function identityOf(baseline, spec) {
+  const base = new Map((baseline.rows ?? []).filter((r) => r.ok).map((r) => [r.id, r.content]));
+  return (spec.rows ?? []).filter((r) => r.ok).map((r) => ({
+    id: r.id,
+    identical: base.has(r.id) ? base.get(r.id) === r.content : null,
+  }));
 }
 
 function summaryOf(out) {
