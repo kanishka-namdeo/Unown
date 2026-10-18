@@ -86,6 +86,35 @@ Konami easter egg.
   Entry titles are each bullet's authored `**bold**` lead where it has one, so
   the changelog's own words reach the page; the component lists at most
   `MAX_LISTED` per stop and counts the rest out to `CHANGELOG.md`.
+- **The rail is a horizontal band, and the shape is load-bearing, not styling.**
+  A vertical list of release stops makes the section's height a function of how
+  much work has happened: the page grows every time the project ships, which is
+  the wrong shape for the page and for the claim. So it is one fixed-height
+  band, one tile per stop, newest at the left, and history grows sideways. Four
+  rules come with that:
+  - **no scroll-jacking.** A pinned `translateX` panel needs a container as tall
+    as the travel (500vh for one band), which is the same page-growth problem
+    turned sideways, and it takes the wheel from the reader. Native scroll only:
+    trackpad, thumb, arrow keys once the band has focus, and `◀ ▶` buttons that
+    call `scrollBy` so snap never gates entry.
+  - **the axis is ordinal, never proportional.** Distance encodes order only. A
+    scaled axis would fuse the two releases cut on the same day and print the
+    48-day commit hole as a rhythm, which is the claim this repository cannot
+    support. Every date is printed as text.
+  - **a tile never exceeds the viewport width** (`min(78vw, 21rem)`), so
+    sideways travel moves you between stops, never into the middle of one.
+    That is what keeps a horizontal scroller inside WCAG 1.4.10.
+  - **the band is a named region in the tab order** — `role="region"`,
+    `tabindex="0"`, `aria-label` — around a reversed `<ol role="list">`.
+    `aria-current="date"` and the `▶` mark the newest **cut** stop, not the
+    leftmost one: the frontier stop sits ahead of the record, and conflating
+    them would claim a release that has not happened. `scroll-snap-type` stays
+    `proximity` — `mandatory` can strand content that overflows a snap child and
+    it kills the next-tile peek that signals there is more to read.
+  The route drawing itself in is behind `@supports (animation-timeline: view())`
+  and authored from its finished state (scroll-driven animation is not Baseline:
+  Chrome/Edge 115+ and Safari 26, no Firefox), and it is off under
+  `prefers-reduced-motion`. Nothing on the band reveals by tweening `width`.
 - **Every fact is stated exactly once, in the section that argues it.** A
   measurement audit found the verify-twice rule stated seven times and the
   sandbox three times, which is what made the page's middle read as a wall: the
@@ -267,6 +296,12 @@ parallel ones.
     can address 32,768 colours but its blend and brightness effects move in
     discrete bands, so ramps step and dither; they replace any `blur()` glow,
     which is continuous-tone photography in a world made of switches.
+  - `.gb-rail` / `.gb-rail-track` / `.gb-rail-stop` / `.gb-rail-line` — the
+    shipping band: the native `overflow-x` scroller (snap `proximity`,
+    `scroll-padding-inline`, `scrollbar-color` only, never `::-webkit-scrollbar`
+    because iOS ignores it), the flex row, the viewport-capped tile, and the
+    route segment that the guarded `view()` animation draws. The tile is a
+    `.gb-panel`; nothing here re-derives the look.
   - `PixelCursor` (battle-menu `▶`), `ContinueArrow` (blinking `▼`),
     `HpBar` (label + bar + figure) in `shell.tsx`.
 - **One hue per section, and it carries the whole section.** A GBA screen is
@@ -484,7 +519,18 @@ parallel ones.
   `aria-label` announces its state. `contrast_audit` cannot cover this: it
   emulates `prefers-color-scheme`, while the toggle writes the attribute.
 - Tab through `/`: skip link, alphabet tiles, loop tabs (arrows/Home/End), the
-  session scrubber (arrows/Home/End/Space), the spellbox, the accordion.
+  session scrubber (arrows/Home/End/Space), the release band (focus it, then
+  arrows, then the `◀ ▶` buttons), the spellbox, the accordion.
+- **The band's claims are measured, not asserted in prose.** happy-dom performs
+  no layout, so no unit test can see a tile width or a scroll range. Against the
+  production build, confirm: the section's height is constant as entries
+  accumulate (839px at 1280 and 1055px at 320 with 73 entries — that is the
+  whole point of the shape), every tile is narrower than the viewport minus its
+  padding (336/304/250 at 1280/390/320), `scrollWidth` exceeds `clientWidth`,
+  `Tab` reaches the region and arrows scroll it, the `◀ ▶` buttons move it,
+  nothing is hidden under `prefers-reduced-motion` or with scripting off, and
+  the document has no horizontal overflow. `download/rail_shots.mjs` does all of
+  it and exits non-zero; it is a check, not a committed gate.
 - **Open an FAQ answer and assert it actually moves.** The accordion shipped
   broken for as long as it existed — its `animate-accordion-down` utility
   resolved to nothing because the `--animate-*` tokens were in the wrong file —

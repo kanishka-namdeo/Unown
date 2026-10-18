@@ -1,16 +1,18 @@
 "use client";
 
+import { useRef } from "react";
+import { useReducedMotion } from "framer-motion";
 import { CHANGELOG_STOPS, CHANGELOG_TOTAL_ENTRIES, type ChangelogStop } from "./changelog-data";
-import { FadeUp, GITHUB_URL, SectionHead } from "./shell";
+import { FadeUp, GITHUB_URL, PixelCursor, SectionHead } from "./shell";
 
 const CHANGELOG_URL = `${GITHUB_URL}/blob/main/CHANGELOG.md`;
 const RELEASES_URL = `${GITHUB_URL}/releases`;
 
 /** Which buckets get their titles printed. The rest are counted, not listed. */
 const LISTED = new Set(["Added", "Behavior"]);
-/** Entries a stop prints before the rest are counted and linked out. Exported
- *  so the test can assert the overflow arithmetic instead of hardcoding 8. */
-export const MAX_LISTED = 8;
+/** Titles a stop prints before the rest are counted and linked out. Exported so
+ *  the test asserts the overflow arithmetic instead of hardcoding a number. */
+export const MAX_LISTED = 5;
 
 const NOUNS: Record<string, [string, string]> = {
   Added: ["addition", "additions"],
@@ -27,19 +29,19 @@ const MONTHS = [
 ];
 
 /**
- * `2026-10-18` -> `18 October 2026`, built from the ISO parts by hand.
- * `toLocaleDateString` would read the runtime locale, so a prerender on a UTC
- * server and a hydration in a browser with another locale could disagree.
+ * `2026-10-18` -> `18 Oct 2026`, built from the ISO parts by hand.
+ * `toLocaleDateString` reads the runtime locale, so a prerender on a UTC server
+ * and a hydration in a browser with another locale could disagree — and a short
+ * month keeps a tile from wrapping its date onto a second line.
  */
-function longDate(iso: string) {
+function shortDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
-  return `${d} ${MONTHS[(m ?? 1) - 1]} ${y}`;
+  return `${d} ${MONTHS[(m ?? 1) - 1]?.slice(0, 3)} ${y}`;
 }
 
-function items(stop: ChangelogStop, max = MAX_LISTED) {
+function listedItems(stop: ChangelogStop, max = MAX_LISTED) {
   const listed = stop.groups.filter((g) => LISTED.has(g.bucket)).flatMap((g) => g.items);
-  const shown = listed.slice(0, max);
-  return { shown, hidden: listed.length - shown.length };
+  return { shown: listed.slice(0, max), hidden: Math.max(0, listed.length - max) };
 }
 
 /** `20 additions · 1 fix · 5 alter agent behavior` */
@@ -55,98 +57,143 @@ function tally(stop: ChangelogStop) {
   return parts.join(" · ");
 }
 
-function Stop({ stop }: { stop: ChangelogStop }) {
+/** The newest stop that has actually been cut. That is the one the ▶ marks. */
+export function latestCutIndex(stops: ChangelogStop[]) {
+  return stops.findIndex((s) => s.date);
+}
+
+function Stop({ stop, isLatest }: { stop: ChangelogStop; isLatest: boolean }) {
   const cut = Boolean(stop.date);
-  const { shown, hidden } = items(stop);
+  const { shown, hidden } = listedItems(stop);
   return (
-    <li className="relative pl-6 sm:pl-8">
-      <span
-        aria-hidden="true"
-        className={
-          cut
-            ? "absolute left-[-5px] top-[7px] size-2 border border-line-bright bg-canvas"
-            : "absolute left-[-5px] top-[7px] size-2 border border-line-bright bg-(--hue-accent)"
-        }
-      />
+    <li className="gb-rail-stop" aria-current={isLatest ? "date" : undefined}>
+      {/* The route itself: a node at the stop, the line travelling forward to
+          the next one. Decorative — the version and its date carry the same
+          information as text, so nothing here is the only signal. */}
+      <div aria-hidden="true" className="flex h-7 items-center">
+        <span
+          className={
+            isLatest
+              ? "size-[13px] border-[3px] border-(--hue-accent) bg-(--hue-accent)"
+              : cut
+                ? "size-[13px] border-[3px] border-(--hue-accent) bg-canvas"
+                : "size-[13px] border-[3px] border-dashed border-(--hue-accent) bg-canvas"
+          }
+        />
+        <span className="gb-rail-line h-[3px] flex-1 bg-(--hue-accent)" />
+      </div>
 
-      <h3 className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="gb-label text-[10px] text-(--hue-accent)">
-          {cut ? `v${stop.label}` : "Not cut yet"}
-        </span>
-        {cut ? (
-          <time dateTime={stop.date ?? undefined} className="font-mono text-[12px] text-faint">
-            {longDate(stop.date ?? "")}
-          </time>
-        ) : (
-          <span className="font-mono text-[12px] text-faint">
-            merged on <span className="text-ink">main</span>, no tag yet
-          </span>
-        )}
-      </h3>
+      <div className="gb-panel relative flex flex-1 flex-col p-5">
+        {isLatest ? (
+          <PixelCursor className="absolute -left-[22px] top-[26px] size-4 text-(--hue-accent)" />
+        ) : null}
 
-      <p className="mt-2 text-[12px] leading-relaxed text-faint">{tally(stop)}</p>
+        <p className="font-pixel text-[13px] leading-none text-(--hue-accent)">
+          {cut ? `v${stop.label}` : "UNCUT"}
+        </p>
 
-      <ul role="list" className="mt-3 space-y-1.5">
-        {shown.map((item) => (
-          <li key={item.title} className="text-[13px] leading-snug text-dim">
-            {item.title}
-          </li>
-        ))}
-      </ul>
+        <p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-[12px]">
+          {cut ? (
+            <time dateTime={stop.date ?? undefined} className="font-mono text-faint">
+              {shortDate(stop.date ?? "")}
+            </time>
+          ) : (
+            <span className="font-mono text-faint">no tag yet</span>
+          )}
+          {isLatest ? <span className="gb-label text-[8px] text-gold">latest</span> : null}
+        </p>
 
-      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
-        {hidden > 0 ? (
-          <span className="text-faint">
-            {hidden} more in{" "}
+        <p className="mt-3 text-[11px] leading-snug text-faint">{tally(stop)}</p>
+
+        <ul role="list" className="mt-3 space-y-1.5 border-t border-line pt-3">
+          {shown.map((item) => (
+            <li key={item.title} className="text-[13px] leading-snug text-dim">
+              {item.title}
+            </li>
+          ))}
+        </ul>
+
+        <p className="mt-auto flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-4 text-[12px]">
+          <a
+            href={cut ? `${RELEASES_URL}/tag/v${stop.label}` : CHANGELOG_URL}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="gb-label text-[9px] text-gold hover:text-gold-soft"
+          >
+            {cut ? `v${stop.label} release` : "CHANGELOG.md"}
+          </a>
+          {hidden > 0 ? (
             <a
               href={CHANGELOG_URL}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-gold underline underline-offset-2 hover:text-gold-soft"
+              className="text-faint underline underline-offset-2 hover:text-gold"
             >
-              CHANGELOG.md
+              +{hidden} more
             </a>
-          </span>
-        ) : null}
-        <a
-          href={cut ? `${RELEASES_URL}/tag/v${stop.label}` : CHANGELOG_URL}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="gb-label text-[9px] text-gold hover:text-gold-soft"
-        >
-          {cut ? `v${stop.label} release` : "CHANGELOG.md"}
-        </a>
-      </p>
+          ) : null}
+        </p>
+      </div>
     </li>
   );
 }
 
 /**
- * The shipping rail: what has been added to Unown, in release order.
+ * The shipping rail: what has been added to Unown, laid out as a route you
+ * scroll sideways along.
  *
  * It sits between the FAQ and the finale because that is where a visitor has
- * just finished doubting: the answer to "is this a live project or a screenshot
- * of one" is a list with dates on it. It is also the page's only section whose
- * content is not authored in the component. `CHANGELOG_STOPS` is generated from
- * `CHANGELOG.md` by `scripts/landing_changelog.mjs`, and CI re-runs that script
- * with `--check`, so a feature that landed without the rail being regenerated
- * fails the build rather than quietly making the page stale.
+ * just finished doubting, and the answer to "is this a live project or a
+ * screenshot of one" is a record with dates on it.
  *
- * Three consequences of that wiring, each of which is a rule:
- *   - dates come only from release headings, so the rail never claims a cadence
- *     the repository does not have (two releases, both cut on the same day);
- *   - `[Unreleased]` renders with no date at all, because it has not happened
- *     yet and an undated promise is the one thing this page cannot check;
- *   - totals and tallies are read off the data, never typed into prose, so an
- *     appended changelog entry cannot leave a stale number behind.
+ * **Horizontal, and horizontal for a specific reason.** A vertical list of
+ * releases makes the page grow every time the project ships: the section's
+ * height would be a function of how much work has happened, which is the wrong
+ * shape for both the page and the argument. Here the band is fixed height and
+ * the history grows sideways, so the fortieth release costs the page nothing.
  *
- * And one that the screenshot caught: the entry count never sits in the `h2`.
- * Pixelify Sans renders `57` as `S7` at heading size, and an ambiguous digit on
- * the one page whose argument is that its numbers are checkable is a defect, not
- * a type choice. The count lives in the lead, in Geist with a mono span.
+ * That rules out the flashy version of the same idea. A pinned, scroll-jacked
+ * horizontal panel (a tall container that translates the band sideways) just
+ * moves the page-growth problem somewhere less reachable, takes the wheel from
+ * the reader, and is explicitly the wrong call on touch and for text-heavy
+ * content. So this is a native scroll container: trackpad, thumb, arrow keys
+ * once the band has focus, and `◀ ▶` buttons for everyone else. The only
+ * scroll-linked motion is the route drawing itself in, behind
+ * `@supports (animation-timeline: view())`, authored from its finished state.
+ *
+ * Three constraints the design obeys rather than negotiates:
+ *   - **the axis is ordinal, not proportional.** Two releases cut on the same
+ *     day and a 48-day hole in the commit history would either fuse into one
+ *     pixel or print a gap that reads as a rhythm this repository does not
+ *     have. Distance carries order only; every date is printed as text, and the
+ *     component test greps its own copy for cadence phrasing.
+ *   - **a stop never needs sideways scrolling to be *read*.** Tiles are capped
+ *     below the viewport width, so horizontal travel moves you between stops,
+ *     never into the middle of one.
+ *   - **the newest relevant stop is at the left edge.** The payoff is not
+ *     behind an interaction: the frontier stop and the latest release are what
+ *     you see before touching anything.
+ *
+ * The content is generated. `CHANGELOG_STOPS` comes from `CHANGELOG.md` via
+ * `scripts/landing_changelog.mjs`, CI re-runs that with `--check`, and so a
+ * release that shipped without the rail being regenerated is a red build. Dates
+ * come only from release headings, `[Unreleased]` stays undated, and every
+ * number on a tile is read off the data.
  */
 export function ChangelogRail() {
-  const stops = CHANGELOG_STOPS;
+  const track = useRef<HTMLOListElement>(null);
+  const reduced = useReducedMotion();
+  const latest = latestCutIndex(CHANGELOG_STOPS);
+
+  const nudge = (dir: -1 | 1) => {
+    const el = track.current;
+    if (!el) return;
+    // One tile plus its gap; measured from the track so it survives a tile-width
+    // change and never scrolls by a value the CSS has to agree with by hand.
+    const step = el.firstElementChild?.getBoundingClientRect().width ?? 320;
+    el.scrollBy({ left: dir * (step + 16), behavior: reduced ? "auto" : "smooth" });
+  };
+
   return (
     <section
       data-hue="magma"
@@ -154,70 +201,102 @@ export function ChangelogRail() {
       className="scroll-mt-16 border-y border-line py-20 sm:py-24"
     >
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
-          <div>
-            <FadeUp>
-              <SectionHead
-                kicker="Changelog"
-                lead={
-                  <>
-                    <span className="font-mono text-ink">{CHANGELOG_TOTAL_ENTRIES} entries</span>{" "}
-                    so far, read out of{" "}
-                    <span className="font-mono text-ink">CHANGELOG.md</span>, the same file{" "}
-                    <span className="font-mono text-ink">unown changelog</span> prints in your
-                    terminal. Dates come from release headings, titles from the bullets under them,
-                    so nothing on this rail was written for the page.
-                  </>
-                }
-              >
-                What has been added, and when.
-              </SectionHead>
-            </FadeUp>
-
-            <FadeUp delay={0.08}>
-              <div className="gb-box mt-8 p-5">
-                <p className="gb-term text-[17px] leading-snug text-canvas">
-                  Add a feature, add a changelog entry, re-run one script, and this rail moves. If
-                  the page and the file disagree, CI fails.
-                </p>
-              </div>
-            </FadeUp>
-
-            <FadeUp delay={0.14}>
-              <p className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[13px]">
-                <a
-                  href={CHANGELOG_URL}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-gold underline underline-offset-2 hover:text-gold-soft"
-                >
-                  CHANGELOG.md
-                </a>
-                <a
-                  href={RELEASES_URL}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-gold underline underline-offset-2 hover:text-gold-soft"
-                >
-                  GitHub Releases
-                </a>
-              </p>
-            </FadeUp>
-          </div>
-
-          <FadeUp delay={0.1}>
-            <ol
-              role="list"
-              reversed
-              aria-label="Release stops, newest first"
-              className="space-y-10 border-l border-line pl-0"
+        <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
+          <FadeUp className="max-w-2xl">
+            <SectionHead
+              kicker="Changelog"
+              lead={
+                <>
+                  <span className="font-mono text-ink">{CHANGELOG_TOTAL_ENTRIES} entries</span>{" "}
+                  so far, read out of{" "}
+                  <span className="font-mono text-ink">CHANGELOG.md</span>, the same file{" "}
+                  <span className="font-mono text-ink">unown changelog</span> prints in your
+                  terminal. Dates come from release headings, titles from the bullets under them,
+                  so nothing on this rail was written for the page.
+                </>
+              }
             >
-              {stops.map((stop) => (
-                <Stop key={stop.label} stop={stop} />
-              ))}
-            </ol>
+              What has been added, and when.
+            </SectionHead>
+          </FadeUp>
+
+          <FadeUp delay={0.08}>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => nudge(-1)}
+                aria-label="Scroll the release rail to newer stops"
+                className="gb-btn-dark inline-flex size-9 items-center justify-center"
+              >
+                <PixelCursor className="size-3 rotate-180" />
+              </button>
+              <button
+                type="button"
+                onClick={() => nudge(1)}
+                aria-label="Scroll the release rail to older stops"
+                className="gb-btn-dark inline-flex size-9 items-center justify-center"
+              >
+                <PixelCursor className="size-3" />
+              </button>
+            </div>
           </FadeUp>
         </div>
+      </div>
+
+      <div className="mx-auto mt-10 max-w-6xl px-5 sm:px-6">
+        <FadeUp>
+          <div
+            className="gb-rail"
+            role="region"
+            tabIndex={0}
+            aria-label="Release rail, newest stop first"
+          >
+            <ol ref={track} role="list" reversed className="gb-rail-track">
+              {CHANGELOG_STOPS.map((stop) => (
+                <Stop
+                  key={stop.label}
+                  stop={stop}
+                  isLatest={CHANGELOG_STOPS.indexOf(stop) === latest}
+                />
+              ))}
+              {/* The band's exit. NOT aria-hidden: it holds two links, and a
+                  focusable element inside a hidden-from-screen-readers subtree
+                  is the `aria-hidden-focus` violation axe reports for it. Only
+                  the decorative route stub above it is hidden. */}
+              <li className="gb-rail-stop">
+                <div aria-hidden="true" className="flex h-7 items-center">
+                  <span className="h-[3px] flex-1 border-t-[3px] border-dashed border-(--hue-accent)" />
+                </div>
+                <div className="gb-inset flex-1 border-[3px] border-line p-5">
+                  <p className="gb-label text-[9px] text-faint">the full record</p>
+                  <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+                    <a
+                      href={CHANGELOG_URL}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-gold underline underline-offset-2 hover:text-gold-soft"
+                    >
+                      CHANGELOG.md
+                    </a>
+                    <a
+                      href={RELEASES_URL}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-gold underline underline-offset-2 hover:text-gold-soft"
+                    >
+                      GitHub Releases
+                    </a>
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </FadeUp>
+
+        <p className="gb-term mt-4 text-[15px] leading-snug text-faint">
+          Newest on the left; the trail of cut releases recedes to the right. Scroll it sideways, or
+          use ◀ ▶.
+        </p>
       </div>
     </section>
   );

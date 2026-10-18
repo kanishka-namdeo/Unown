@@ -734,6 +734,74 @@ section[data-hue] {
   );
 }
 
+/* --- the shipping rail --------------------------------------------- */
+
+/*
+ * A native horizontal scroll container, deliberately not a pinned scroll-jack:
+ * the reader keeps the wheel, the thumb and the arrow keys, and the band works
+ * with scripting off. `proximity` rather than `mandatory` because a mandatory
+ * snap on the inline axis can strand content that overflows a snap child, and
+ * because the peek of the next tile is the affordance — snap that pulls each
+ * tile flush kills it.
+ *
+ * `scroll-padding-inline` keeps a snapped tile clear of the container's own
+ * edge, and the block-end padding reserves the scrollbar's lane so it never
+ * lands on a tile's rim. `scrollbar-color` is the only scrollbar styling used:
+ * `::-webkit-scrollbar` is ignored on iOS, so the band must not depend on it.
+ */
+.gb-rail {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 1.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-bright) var(--color-panel);
+  padding-block-end: 0.75rem;
+}
+
+.gb-rail-track {
+  display: flex;
+  gap: 1rem;
+  width: max-content;
+}
+
+/*
+ * The tile is capped below a small viewport on purpose: sideways travel moves
+ * you BETWEEN stops, never into the middle of one, so no stop requires 2-D
+ * scrolling to read (WCAG 1.4.10). The JS nudge measures this box rather than
+ * duplicating the number.
+ */
+.gb-rail-stop {
+  flex: 0 0 min(78vw, 21rem);
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+}
+
+/*
+ * The route draws itself in as the band is reached. Authored from the FINISHED
+ * state — the line is full width by default and the keyframe only supplies the
+ * from-value — so an engine without scroll-driven animation, and every reader
+ * who prefers reduced motion, sees the same completed route. Not Baseline
+ * (Chrome/Edge 115+, Safari 26, no Firefox), hence the guard.
+ */
+@keyframes gb-route-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .gb-rail-line {
+      transform-origin: left center;
+      animation: gb-route-draw linear both;
+      animation-timeline: view(block);
+      animation-range: entry 25% cover 45%;
+    }
+  }
+}
+
 /* --- the hero's survey grid ---------------------------------------- */
 
 /*

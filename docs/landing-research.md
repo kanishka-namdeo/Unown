@@ -792,3 +792,176 @@ green: 3 stops, 57 entries, 2 dated. `public/landing/*.png` regenerated against
 the shipped palette. Mobile 390px and 320px, reduced-motion and no-JS passes
 captured for this section specifically, since the shared shot plan samples only
 first/middle/last for those passes.
+
+
+## 2026-10-18 — the rail goes horizontal, and why not the flashy way
+
+The first cut of the shipping rail was a vertical list of release stops. It
+passed every gate and the owner rejected it on two grounds: it was not cinematic,
+and it could not scale — a vertical list makes the section's height a function of
+how much the project has shipped, so the page grows a screen taller every few
+releases. Both complaints are the same complaint: the shape was wrong for the
+data.
+
+### What the second round of research settled
+
+The structural claim worth having is that **nothing that ships encodes years of
+history as a page-growing vertical list.** It is either a fixed-height chart with
+a calendar axis — the [Node.js release
+schedule](https://nodejs.org/en/about/previous-releases) as a static Gantt,
+[endoflife.date](https://endoflife.date/firefox) rows per version, the [GitHub
+contributions
+graph](https://docs.github.com/en/account-and-profile/concepts/contributions-on-your-profile)
+with its hard 52-week window, [Productboard's](https://support.productboard.com/hc/en-us/articles/25194944993939-Timeline-boards-Flexible-time-based-roadmaps)
+zoomable weeks/months/quarters — or ordinal beads with bucketing and an archive:
+[Vercel](https://vercel.com/changelog) caps and paginates,
+[Firefox](https://www.firefox.com/en-US/firefox/notes/) keeps one full release and
+links the rest, [Factorio](https://wiki.factorio.com/Version_history) splits by
+major, [Minecraft's wiki](https://minecraft.wiki/w/Java_Edition_version_history)
+collapses by era. The rail joins the second family, with native horizontal scroll
+as the thing that makes "and then forty more" cost nothing.
+
+The pattern study also corrected a habit: [Apple's product
+pages](https://www.apple.com/airpods-pro/) — the obvious reference for
+"cinematic" — get it from full-viewport pinned panels, and there is no horizontal
+timeline anywhere on them. That is the technique this section must not copy.
+
+### The decision that mattered most: reject the pinned horizontal panel
+
+The scroll-jacked version (a tall container that translates the band sideways as
+you scroll down) is the form that looks most cinematic in a screenshot. It was
+rejected on evidence, not taste:
+
+- It is the same defect wearing a different coat. A pinned band needs a container
+  as tall as its travel — the reference implementations are multi-hundred-vh
+  wrappers, e.g. [motion.dev's scroll-pinning
+  example](https://motion.dev/examples/js-scroll-pinning). The page still grows;
+  the growth just moves into dead space.
+- [NN/g's list of when horizontal scrolling is
+  acceptable](https://www.nngroup.com/articles/horizontal-scrolling/) is short and
+  excludes this case: below the fold, functional storytelling, and explicitly not
+  on mobile and not for text-heavy content.
+- [The same author's scrolljacking
+  survey](https://www.nngroup.com/articles/scrolljacking-101/) puts hijacked
+  vertical scroll in the annoying-and-harmful category, and [Adrian Roselli is
+  blunt about horizontal containers holding essential
+  content](http://adrianroselli.com/2025/08/horizontal-scrolling-containers-are-not-a-content-strategy.html):
+  keyboard and voice users lose it, focus management gets hard, and people already
+  dislike carousels.
+
+So the band is a plain `overflow-x` scroller. The reader keeps the wheel, the
+thumb and the arrow keys, and the ◀ ▶ buttons exist so that snapping never gates
+entry.
+
+### The accessibility construction, item by item
+
+Each rule here is implemented in `changelog.tsx` and cited in its doc comment:
+
+- The scroller is a **named region in the tab order**: `role="region"`,
+  `tabindex="0"`, `aria-label`. [MDN's region
+  page](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/region_role)
+  requires the role when you add `tabindex="0"` to scrolling content, and a region
+  without a name is not a landmark at all. [axe's
+  `scrollable-region-focusable`](https://dequeuniversity.com/rules/axe/4.11/scrollable-region-focusable)
+  is the check; note the disagreement — axe only fails a region with no focusable
+  descendants, while [Safari never adds scrollers to the tab
+  order](https://th3s4mur41.me/blog/scroll-focus-polyfill/), so the attribute
+  ships regardless of which rule you read.
+- **Chronology is ordered content**, so `<ol>` with `<li>`, `reversed` because the
+  newest stop is first. [ARIA's `list` role does not convey
+  numbering](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/list_role),
+  and [hiding the markers strips list semantics in
+  VoiceOver/Safari](https://www.scottohara.me/blog/2019-01-12/lists-and-safari.html),
+  hence `role="list"` re-declared. [The ARIA APG has no timeline
+  pattern](https://www.w3.org/WAI/ARIA/apg/patterns/), so nothing else is
+  invented: no `listbox` (that is a selection widget), no tabs (there are no
+  tabpanels). [Matuzovic's
+  note](https://www.matuzo.at/blog/2023/removing-list-styles-without-affecting-semantics)
+  is the cleaner fix, but the stylesheet is shared.
+- **"Current" is never colour or position alone**: `aria-current="date"` plus the
+  word `latest` plus the ▶ battle cursor, on the newest *cut* stop. [MDN on
+  `aria-current`](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-current).
+- **`scroll-snap-type: x proximity`, not `mandatory`.** [MDN's basic
+  concepts](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_scroll_snap/Basic_concepts)
+  says never mandatory when a snap child's content can overflow, because the
+  reader cannot scroll the overflow into view. [Roselli's scroll-snap field
+  report](http://adrianroselli.com/2021/07/scroll-snap-challenges.html) adds the
+  keyboard case — mandatory swallows partial arrow-key scrolls — and tells you to
+  test the result against 1.4.4, 1.4.10 and 1.4.12.
+- **1.4.10 Reflow is satisfied structurally, not by argument.** The criterion
+  exempts content that genuinely needs two dimensions, and a horizontal scroller
+  that merely duplicates a vertical list does not qualify. So the tile is capped at
+  `min(78vw, 21rem)`: no stop is ever wider than the viewport, which means sideways
+  travel moves you between stops and never into the middle of one. [Understanding
+  Reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html).
+- The axis line and node markers are `aria-hidden` decoration — [1.3.1
+  Info and Relationships](https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html)
+  is carried by the `<ol>`, the `<time datetime>` and the headings, not by
+  position. They still clear [1.4.11 non-text
+  contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
+  because they are drawn in the section accent (5.18:1 on its own field, dark).
+- [2.3.3 Animation from
+  Interactions](https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html)
+  is served by its CSS technique: the route draw lives inside
+  `@media (prefers-reduced-motion: no-preference)`. [2.2.2 Pause, Stop,
+  Hide](https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html) does not
+  apply — it governs motion that starts automatically, and nothing here autoplays;
+  the day that changes, a pause control becomes mandatory. [Heydon Pickering's
+  content-slider](https://inclusive-components.design/a-content-slider/) is the
+  reference for the controls that do exist.
+
+### What is safe to rely on, and what is a bonus
+
+`overflow-x`, `position: sticky`, scroll snap, container queries and `:has()` are
+all Baseline and used unconditionally. **Scroll-driven animation is not**:
+[Chrome/Edge 115+ and Safari 26, with Firefox still treating it as an open
+request](https://caniuse.com/wf-scroll-driven-animations) (~88% global — [WebKit
+shipped it in
+26](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/), [Mozilla's
+status](https://connect.mozilla.org/t5/ideas/implement-css-scroll-driven-animations-animation-timeline/idi-p/116931)).
+So the route draw sits behind `@supports (animation-timeline: view())` and is
+authored from its finished state — the line is full width by default and the
+keyframe supplies only the `from`, which is the same rule this page already
+applies to `rise` and to the no-JS `<noscript>` restore. [MDN's
+guide](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll-driven_animations)
+and [WebKit's](https://webkit.org/blog/17101/a-guide-to-scroll-driven-animations-with-just-css/)
+both show the guard; [NRK's production
+report](https://developer.chrome.com/blog/nrk-casestudy) is the case that it is
+cheap enough to ship and old enough to gate. `scrollbar-color` is used;
+`scrollbar-gutter` is not relied on ([inert under overlay
+scrollbars](https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-gutter)),
+and `::-webkit-scrollbar` is untouched because iOS ignores it. `overflow-anchor`
+is avoided: it is only newly Baseline
+([Safari 27](https://webkit.org/blog/18325/webkit-features-for-safari-27-0/)), so
+it cannot be the thing that keeps the band from jumping.
+
+### The defect the gate caught on the way
+
+The band's exit tile — the dashed route stub carrying the CHANGELOG.md and
+Releases links — was marked `aria-hidden="true"` because it is chrome, not a
+release. axe failed the page with `aria-hidden-focus`, serious: two Tab-reachable
+links sat inside a subtree screen readers had been told to skip. That is a
+keyboard user focusing an element the assistive technology says is not there, and
+the fix went in the markup, not the rule set. It is the second time this section
+has had a defect that every static check was blind to (the first was `57`
+rendering as `S7`), which is the argument for running the browser gates rather
+than reading the source.
+
+### Measurements, on the production build
+
+`download/rail_shots.mjs` measures the claims happy-dom cannot see, because
+happy-dom performs no layout:
+
+| Case | Section height | Tile width | Rail client / scroll | Verdict |
+|---|---|---|---|---|
+| 1280 dark, light, reduced-motion, no-JS | 839px | 336px | 1104 / 1392 | ok |
+| 390px | 974px | 304px | 350 / 1265 | ok |
+| 320px | 1055px | 250px | 280 / 1046 | ok |
+
+Height is constant in the one variable that matters: it does not move with the 73
+entries the changelog currently holds, only with how the header text wraps. Every
+tile is narrower than its viewport, the band scrolls, Tab reaches the region and
+arrows move it, nothing is hidden with scripting off or reduced motion on, and the
+document has no horizontal overflow. Contrast audit PASS (1375 text nodes, both
+schemes), axe on `/` clean, palette gate PASS, units 241 pass / 0 fail,
+`check:changelog` green (3 stops, 73 entries, 2 dated).
