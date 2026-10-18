@@ -76,16 +76,21 @@ export function accuracy(gold, pred) {
   return ok / gold.length;
 }
 
-/** Macro-F1 (unweighted mean of per-label F1; labels with no gold+pred support are skipped). */
+/**
+ * Macro-F1 (unweighted mean of per-label F1). Predictions OUTSIDE `labels`
+ * (e.g. a model answering "other" when the gold set is {benchmark, terminal})
+ * count as errors: a FN for the gold label, never a TP — they must not be
+ * silently dropped the way confusionMatrix does for matrix display.
+ */
 export function macroF1(gold, pred, labels) {
-  const cm = confusionMatrix(gold, pred, labels);
   const f1s = [];
   for (const l of labels) {
     let tp = 0, fp = 0, fn = 0;
-    for (const [gl, row] of cm) for (const [pl, n] of row) {
-      if (gl === l && pl === l) tp += n;
-      else if (pl === l) fp += n;
-      else if (gl === l) fn += n;
+    for (let i = 0; i < gold.length; i++) {
+      const g = gold[i], p = pred[i];
+      if (g === l && p === l) tp++;
+      else if (g === l) fn++; // gold l, predicted something else (incl. out-of-set)
+      else if (p === l) fp++; // predicted l, gold something else
     }
     if (tp + fp + fn === 0) continue; // label absent from both sides
     const p = tp + fp ? tp / (tp + fp) : 0;

@@ -48,7 +48,8 @@ export function renderN2(r) {
   console.log(mdTable([
     { lane: "minhash", msPerDoc: num(s.minhash?.msPerDoc, 2), estMAE: num(s.minhash?.estMAE, 3), bestF1: num(s.minhash?.bestF1, 3), at: num(s.minhash?.bestThreshold, 2) },
     { lane: "bge-cosine", msPerDoc: num(s.embedding?.msPerDoc, 1), estMAE: "—", bestF1: num(s.embedding?.bestF1, 3), at: num(s.embedding?.bestThreshold, 2) },
-    { lane: "two-stage", msPerDoc: "—", estMAE: "—", bestF1: num(s.twoStage?.f1, 3), at: "LSH>=0.35 & cos>=0.92" },
+    { lane: "two-stage(confirm)", msPerDoc: "—", estMAE: "—", bestF1: num(s.twoStage?.f1, 3), at: "LSH>=0.35 & cos>=0.92" },
+    { lane: "two-stage(union)", msPerDoc: num((s.minhash?.msPerDoc ?? 0) + (s.embedding?.msPerDoc ?? 0), 1), estMAE: "—", bestF1: num(s.union?.f1, 3), at: "minhash>=0.5 | cos>=0.92" },
   ]));
   if (s.byClass?.length) {
     console.log("by perturbation class (recall at each lane's best threshold):");
@@ -84,9 +85,10 @@ export function renderN4(r) {
   const sp = s.spearman ?? {};
   console.log(mdTable([{
     notes: s.notes ?? "—",
-    activationFull: num(sp.activationFull, 3), recencyOnly: num(sp.recencyOnly, 3),
+    full: num(sp.activationFull, 3), noRecency: num(sp.activationNoRecency, 3),
+    recencyOnly: num(sp.recencyOnly, 3),
     relevanceOnly: num(sp.relevanceOnly, 3), frequencyOnly: num(sp.frequencyOnly, 3),
-    structuralOnly: num(sp.structuralOnly, 3), top5Overlap: num(s.top5OverlapVsRemote, 2),
+    structuralOnly: num(sp.structuralOnly, 3), top5: num(s.top5OverlapVsRemote, 2), top5noRec: num(s.top5OverlapNoRecency, 2),
     embedMs: num(s.embedMs, 0), scoreMs: num(s.scoreMs, 1),
   }]));
 }

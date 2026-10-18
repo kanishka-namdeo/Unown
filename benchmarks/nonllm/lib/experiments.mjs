@@ -210,8 +210,10 @@ export async function n1Triage({ noteLimit = 0, noRemote = false, k = 5 } = {}) 
       const rest = train.filter((_, j) => j !== i);
       kindRows.push({ ...knnClassify(rest, train[i].vec, k), index: train[i].index });
     }
-    // LOO kNN — outcome (benchmark-linked notes only)
-    const outTrain = train.filter((t) => corpus[t.index].outcomeGT);
+    // LOO kNN — outcome (benchmark-linked notes only; labels are OUTCOMES, not kinds)
+    const outTrain = train
+      .filter((t) => corpus[t.index].outcomeGT)
+      .map((t) => ({ vec: t.vec, label: corpus[t.index].outcomeGT, index: t.index }));
     const outRows = [];
     for (const t of outTrain) {
       const rest = outTrain.filter((x) => x !== t);
@@ -404,7 +406,10 @@ export async function n2Dedup({ bases = 14, useParaphrase = true, thresholds = [
   const minhashSweep = sweep((p) => p.estJaccard, thresholds);
   const cosineSweep = embedLane.error ? [] : sweep((p) => p.cos, cosThresholds);
 
-  // -- two-stage: LSH candidates (est >= 0.35) then cosine >= 0.92 confirm
+  // -- two-stage lanes.
+  // (a) CONFIRM composition (LSH candidate THEN cosine): fails paraphrases —
+  //     LSH banding (~0.63 threshold) never proposes them. Kept as the ablation
+  //     that proves cheap-candidacy alone is insufficient.
   const lsh = new LshIndex(hasher);
   for (const d of docs) lsh.insert(d.id, d.text);
   const tL = performance.now();
@@ -424,6 +429,18 @@ export async function n2Dedup({ bases = 14, useParaphrase = true, thresholds = [
     const hit = [...dupKeys].filter((k) => candSet.has(k)).length;
     return dupKeys.size ? hit / dupKeys.size : null;
   })() };
+
+  // (b) UNION composition (production shape): dup if MinHash est >= 0.5 (the
+  //     microsecond tier catches structural dups) OR bge cosine >= 0.92 (the
+  //     25ms tier catches paraphrases MinHash structurally cannot see).
+  let uTp = 0, uFp = 0, uFn = 0;
+  for (const p of pairs) {
+    const pred = p.estJaccard >= 0.5 || (p.cos !== null && p.cos >= 0.92);
+    if (pred && p.dup) uTp++;
+    else if (pred && !p.dup) uFp++;
+    else if (!pred && p.dup) uFn++;
+  }
+  const union = { ...prf(uTp, uFp, uFn) };
 
   // -- per-perturbation recall at the best operating points
   const bestMinhash = minhashSweep.filter((s) => s.f1 !== null).sort((a, b) => b.f1 - a.f1)[0] ?? {};
@@ -447,6 +464,7 @@ export async function n2Dedup({ bases = 14, useParaphrase = true, thresholds = [
       minhash: { msPerDoc: minhashMsPerDoc, estMAE, bestF1: bestMinhash.f1 ?? null, bestThreshold: bestMinhash.threshold ?? null, sweep: minhashSweep },
       embedding: embedLane.error ? { error: embedLane.error } : { msPerDoc: embedLane.msPerDoc, okRate: embedLane.okRate, bestF1: bestCos.f1 ?? null, bestThreshold: bestCos.threshold ?? null, sweep: cosineSweep },
       twoStage,
+      union,
       byClass,
     },
   };
@@ -455,89 +473,132 @@ export async function n2Dedup({ bases = 14, useParaphrase = true, thresholds = [
 // =============================================================== N3 rerank
 
 /**
- * N3 — cross-encoder reranking of dream-input candidates (H12): the remote
- * model scores each note 0-10 for consolidation relevance; the local
- * ms-marco cross-encoder (pairwise) and the bge bi-encoder cosine both rank
- * the same candidates. Agreement = Spearman rho + top-5 overlap; latency =
- * ms/pair. Answers: "is a 23M local cross-encoder enough to rank dream
- * inputs instead of an LLM call?"
+ * N3 - cross-encoder reranking of memory/candidate retrieval (H12).
+ *
+ * PRIMARY variant (task-relevance - the reranker's production lane): given a
+ * REAL task prompt as the query and a candidate pool of memory-tier sections
+ * + recent notes, does the local ms-marco cross-encoder rank them like the
+ * remote model does? (The "memory recall for prompt injection" seam: embed
+ * the task context, retrieve top-k, optionally rerank.)
+ *
+ * NEGATIVE CONTROL (value-scoring): the same CE against remote
+ * consolidation-VALUE judgments - relevance-trained models do NOT measure
+ * semantic importance; measured once, reported as the boundary (importance
+ * is N4's activation lane). First measurement of this run: CE vs value =
+ * 0.158 Spearman vs bi-encoder 0.436 - documented in results/REPORT.md.
  */
-export async function n3Rerank({ candidates = 20 } = {}) {
+export async function n3Rerank({ candidates = 20, includeValueControl = true } = {}) {
   const { bridgeUrl, remoteModel } = cfg();
   const corpus = mergedNotes();
-  const notes = corpus.slice(-candidates); // most recent notes = the dream queue
-  const query = CONSOLIDATION_GOAL;
 
-  // -- remote relevance judgments (one call, JSON array)
-  const list = notes.map((n, i) => `${i}: ${n.content.slice(0, 400).replace(/\n/g, " ")}`).join("\n");
+  // -- candidate pool: memory tier sections + most recent notes
+  const tiers = loadFixture("memory.json").tiers ?? {};
+  const tierDocs = Object.entries(tiers)
+    .filter(([, v]) => (v?.content ?? "").length > 80)
+    .map(([name, v]) => ({ id: `tier:${name}`, text: String(v.content).slice(0, 2000) }));
+  const tierCount = Math.min(tierDocs.length, 6);
+  const noteDocs = corpus.slice(-(candidates - tierCount)).map((n) => ({
+    id: `note:${String(n.id).slice(0, 8)}`,
+    text: n.content.slice(0, 2000),
+  }));
+  const docs = [...tierDocs.slice(0, tierCount), ...noteDocs].slice(0, candidates);
+
+  // -- the query: a REAL benchmark task prompt
+  const tasks = loadFixture("tasks.json").tasks;
+  const task = tasks.find((t) => (t.prompt ?? "").length > 120) ?? tasks[0];
+  const query = `Solve this coding task: ${task.prompt}`.slice(0, 1200);
+
+  // -- remote relevance judgments (one call)
+  const list = docs.map((d, i) => `${i}: ${d.text.slice(0, 400).replace(/\n/g, " ")}`).join("\n");
   const res = await chat({
-    baseUrl: bridgeUrl, model: remoteModel, maxTokens: 1500, temperature: 0,
+    baseUrl: bridgeUrl, model: remoteModel, maxTokens: 1800, temperature: 0,
     messages: [
-      { role: "system", content: "You score session notes by how valuable they are to consolidate into long-term memory for future coding sessions. Be discriminating: routine passes score low, novel lessons/failures/workarounds score high." },
-      { role: "user", content: `Score each note 0-10 for consolidation value.\nReturn STRICT JSON: {"scores": [{"i": <index>, "s": <0-10>}, ...]} for every index.\n\n${list}` },
+      { role: "system", content: "You are retrieving context for a coding agent about to solve a task. Score each candidate context document 0-10 by how HELPFUL it would be to include in the agent's context when solving the task. Be discriminating: directly-applicable knowledge scores high, unrelated topics score low." },
+      { role: "user", content: `TASK:\n${task.prompt}\n\nCANDIDATES:\n${list}\n\nScore each candidate 0-10 for task helpfulness.\nReturn STRICT JSON: {"scores": [{"i": <index>, "s": <0-10>}, ...]} for every index.` },
     ],
   });
   const parsed = res.ok ? extractJson(res.content) : { ok: false };
-  const remoteScores = new Array(notes.length).fill(null);
+  const remoteScores = new Array(docs.length).fill(null);
   if (parsed.ok && Array.isArray(parsed.value?.scores)) {
     for (const row of parsed.value.scores) {
       const i = Number(row?.i);
-      if (Number.isInteger(i) && i >= 0 && i < notes.length) remoteScores[i] = Number(row?.s);
+      if (Number.isInteger(i) && i >= 0 && i < docs.length) remoteScores[i] = Number(row?.s);
     }
   }
-  const remoteOk = remoteScores.filter((s) => s !== null).length;
 
-  // -- local lanes
+  // -- local lanes on the same query
   const ceLoaded = await loadModel("rerank");
   const ceLane = { error: ceLoaded.error ?? null };
   if (!ceLoaded.error) {
-    const rows = await rerankAll("rerank", query, notes.map((n) => n.content));
+    const rows = await rerankAll("rerank", query, docs.map((d) => d.text));
     ceLane.scores = rows.map((r) => (r.ok ? r.score : null));
-    ceLane.okRate = rows.filter((r) => r.ok).length / rows.length;
     ceLane.latency = latencyStats(rows.filter((r) => r.ok));
     ceLane.totalMs = rows.filter((r) => r.ok).reduce((a, b) => a + b.latencyMs, 0);
+    ceLane.okRate = rows.filter((r) => r.ok).length / rows.length;
   }
-
   const bgeLoaded = await loadModel("bge-small");
   const biLane = { error: bgeLoaded.error ?? null };
   if (!bgeLoaded.error) {
     const qEmb = await embedText("bge-small", query);
-    const rows = await embedAll("bge-small", notes.map((n) => n.content));
+    const rows = await embedAll("bge-small", docs.map((d) => d.text));
     biLane.scores = rows.map((r) => (r.ok && qEmb.ok ? cosine(qEmb.vec, r.vec) : null));
-    biLane.okRate = rows.filter((r) => r.ok).length / rows.length;
     biLane.latency = latencyStats(rows.filter((r) => r.ok));
   }
 
-  const valid = notes.map((_, i) => i).filter((i) => remoteScores[i] !== null && ceLane.scores?.[i] != null && biLane.scores?.[i] != null);
-  const rankOf = (scores) => {
-    const idx = valid.slice().sort((a, b) => scores[b] - scores[a]);
-    const rank = new Map();
-    idx.forEach((i, r) => rank.set(i, r));
-    return rank;
-  };
-  const remoteRank = rankOf(remoteScores);
+  const valid = docs.map((_, i) => i).filter((i) => remoteScores[i] !== null && ceLane.scores?.[i] != null && biLane.scores?.[i] != null);
   const top5 = (scores) => valid.slice().sort((a, b) => scores[b] - scores[a]).slice(0, 5);
+  const remoteTop5 = top5(remoteScores);
+
+  // -- negative control: value-scoring (importance, NOT relevance)
+  let valueControl = null;
+  if (includeValueControl) {
+    const vcNotes = corpus.slice(-20);
+    const vList = vcNotes.map((n, i) => `${i}: ${n.content.slice(0, 350).replace(/\n/g, " ")}`).join("\n");
+    const vRes = await chat({
+      baseUrl: bridgeUrl, model: remoteModel, maxTokens: 1500, temperature: 0,
+      messages: [
+        { role: "system", content: "You score session notes by how valuable they are to consolidate into long-term memory. Be discriminating: routine passes score low, novel lessons/failures/workarounds score high." },
+        { role: "user", content: `Score each note 0-10 for consolidation value.\nReturn STRICT JSON: {"scores": [{"i": <index>, "s": <0-10>}, ...]} for every index.\n\n${vList}` },
+      ],
+    });
+    const vParsed = vRes.ok ? extractJson(vRes.content) : { ok: false };
+    const vRemote = new Array(vcNotes.length).fill(null);
+    if (vParsed.ok && Array.isArray(vParsed.value?.scores)) {
+      for (const row of vParsed.value.scores) {
+        const i = Number(row?.i);
+        if (Number.isInteger(i) && i >= 0 && i < vcNotes.length) vRemote[i] = Number(row?.s);
+      }
+    }
+    const vCe = await rerankAll("rerank", CONSOLIDATION_GOAL, vcNotes.map((n) => n.content));
+    const vValid = vcNotes.map((_, i) => i).filter((i) => vRemote[i] !== null && vCe[i]?.ok);
+    valueControl = {
+      note: "negative control: relevance-trained CE vs consolidation-VALUE judgments (importance is N4's lane)",
+      spearman: vValid.length >= 3 ? round(spearman(vValid.map((i) => vRemote[i]), vValid.map((i) => vCe[i].score))) : null,
+    };
+  }
 
   return {
     experiment: "N3", hypothesis: "H12",
     summary: {
-      candidates: notes.length,
-      remote: { ok: remoteOk, latencyMs: res.latencyMs, tokens: res.usage },
+      task: task.id,
+      candidates: docs.length,
+      pool: { tiers: tierCount, notes: docs.length - tierCount },
+      remote: { ok: remoteScores.filter((s) => s !== null).length, latencyMs: res.latencyMs },
       crossEncoder: ceLane.error ? { error: ceLane.error } : {
         okRate: ceLane.okRate,
         p50ms: ceLane.latency?.p50 ?? null,
         p90ms: ceLane.latency?.p90 ?? null,
         totalMs: ceLane.totalMs,
         spearmanVsRemote: valid.length >= 3 ? round(spearman(valid.map((i) => remoteScores[i]), valid.map((i) => ceLane.scores[i]))) : null,
-        top5OverlapVsRemote: round(topkOverlap(top5(remoteScores), top5(ceLane.scores))),
+        top5OverlapVsRemote: round(topkOverlap(remoteTop5, top5(ceLane.scores))),
       },
       biEncoder: biLane.error ? { error: biLane.error } : {
-        okRate: biLane.okRate,
         p50ms: biLane.latency?.p50 ?? null,
         spearmanVsRemote: valid.length >= 3 ? round(spearman(valid.map((i) => remoteScores[i]), valid.map((i) => biLane.scores[i]))) : null,
-        top5OverlapVsRemote: round(topkOverlap(top5(remoteScores), top5(biLane.scores))),
+        top5OverlapVsRemote: round(topkOverlap(remoteTop5, top5(biLane.scores))),
       },
       ceVsBiSpearman: valid.length >= 3 && !ceLane.error && !biLane.error ? round(spearman(valid.map((i) => ceLane.scores[i]), valid.map((i) => biLane.scores[i]))) : null,
+      valueControl,
     },
   };
 }
@@ -592,14 +653,20 @@ export async function n4Activation({ noteCount = 40 } = {}) {
   const goal = embs ? await embedText("bge-small", CONSOLIDATION_GOAL) : { ok: false };
 
   const tScore = performance.now();
-  const rows = scoreNotes({
+  const scoreInput = {
     notes: corpus.map((n, i) => ({ id: i, content: n.content, created_at: n.created_at, freq: bySlug.get(n.project_slug ?? n.source) })),
     nowMs,
     goalEmb: goal.ok ? goal.vec : null,
     embedOf: embs ? ((n) => embs[n.id]) : null,
-  });
+  };
+  const rows = scoreNotes(scoreInput);
+  // Park-style recency HURT this corpus (rho -0.2): the remote judges durable
+  // value, and the older failed-run lessons outrank fresh routine passes. Score
+  // the no-recency variant too — the recommended Unown recipe.
+  const rowsNoRecency = scoreNotes({ ...scoreInput, weights: { recency: 0, relevance: 0.75, frequency: 0.25 } });
   const scoreMs = performance.now() - tScore;
   const byId = new Map(rows.map((r) => [r.id, r]));
+  const byIdNR = new Map(rowsNoRecency.map((r) => [r.id, r]));
 
   // component ablations vs remote importance
   const valid = corpus.map((_, i) => i).filter((i) => remoteScores[i] !== null && byId.has(i));
@@ -614,6 +681,7 @@ export async function n4Activation({ noteCount = 40 } = {}) {
       scoreMs: Math.round(scoreMs),
       spearman: {
         activationFull: comp((r) => r.activation),
+        activationNoRecency: comp((r) => byIdNR.get(r.id)?.activation ?? null),
         recencyOnly: comp((r) => r.recency),
         relevanceOnly: comp((r) => r.relevance),
         frequencyOnly: comp((r) => r.frequency),
@@ -622,6 +690,11 @@ export async function n4Activation({ noteCount = 40 } = {}) {
       top5OverlapVsRemote: (() => {
         const remoteTop = valid.slice().sort((a, b) => remoteScores[b] - remoteScores[a]).slice(0, 5);
         const localTop = valid.slice().sort((a, b) => byId.get(b).activation - byId.get(a).activation).slice(0, 5);
+        return round(topkOverlap(remoteTop, localTop));
+      })(),
+      top5OverlapNoRecency: (() => {
+        const remoteTop = valid.slice().sort((a, b) => remoteScores[b] - remoteScores[a]).slice(0, 5);
+        const localTop = valid.slice().sort((a, b) => (byIdNR.get(b)?.activation ?? 0) - (byIdNR.get(a)?.activation ?? 0)).slice(0, 5);
         return round(topkOverlap(remoteTop, localTop));
       })(),
     },
@@ -637,7 +710,7 @@ export async function n4Activation({ noteCount = 40 } = {}) {
  * prompt-token cut and blind-judges whether the resulting NEXT MEMORY is
  * materially worse. The zero-model curation lane.
  */
-export async function n5DreamCuration({ notesCount = 12, judge = true } = {}) {
+export async function n5DreamCuration({ notesCount = 12, judge = true, topK = 2, minRatio = 0.35, mode = "compress" } = {}) {
   const { bridgeUrl, remoteModel, judgeModel } = cfg();
   const memory = currentMemory();
   const corpus = mergedNotes().slice(-notesCount);
@@ -647,12 +720,35 @@ export async function n5DreamCuration({ notesCount = 12, judge = true } = {}) {
   const full = await chat({ baseUrl: bridgeUrl, model: remoteModel, messages: fullMsgs, maxTokens: 2600, temperature: 0.2 });
   const fullParsed = full.ok ? extractJson(full.content) : { ok: false };
 
-  // -- treatment: LexRank top-2-sentence compression per note
-  const compressed = corpus.map((n) => {
-    const c = compressNote(n.content, { topK: 2, minRatio: 0.35 });
-    return { ...n, content: c.text, keptSentences: c.kept, totalSentences: c.total, ratio: c.ratio };
-  });
-  const compMsgs = dreamMessages(memory, compressed);
+  // -- treatment lanes:
+  //   compress — every note LexRank-compressed (topK sentences, minRatio floor)
+  //   hybrid   — H15's integration shape: notes ranked by the N4 no-recency
+  //              activation score; top ceil(30%) stay FULL, the tail is
+  //              compressed. The synthesis of N4 + N5.
+  let treated;
+  if (mode === "hybrid") {
+    const bgeLoaded = await loadModel("bge-small");
+    const embs = bgeLoaded.error ? null : (await embedAll("bge-small", corpus.map((n) => n.content))).map((r) => (r.ok ? r.vec : null));
+    const goal = embs && !bgeLoaded.error ? await embedText("bge-small", CONSOLIDATION_GOAL) : { ok: false };
+    const scored = scoreNotes({
+      notes: corpus.map((n, i) => ({ id: i, content: n.content, created_at: n.created_at, freq: 1 })),
+      goalEmb: goal.ok ? goal.vec : null,
+      embedOf: embs ? ((n) => embs[n.id]) : null,
+      weights: { recency: 0, relevance: 0.75, frequency: 0.25 },
+    });
+    const keepFull = new Set(scored.slice(0, Math.max(1, Math.ceil(corpus.length * 0.3))).map((r) => r.id));
+    treated = corpus.map((n, i) => {
+      if (keepFull.has(i)) return { ...n, keptSentences: null, totalSentences: null, ratio: 1 };
+      const c = compressNote(n.content, { topK, minRatio });
+      return { ...n, content: c.text, keptSentences: c.kept, totalSentences: c.total, ratio: c.ratio };
+    });
+  } else {
+    treated = corpus.map((n) => {
+      const c = compressNote(n.content, { topK, minRatio });
+      return { ...n, content: c.text, keptSentences: c.kept, totalSentences: c.total, ratio: c.ratio };
+    });
+  }
+  const compMsgs = dreamMessages(memory, treated);
   const comp = await chat({ baseUrl: bridgeUrl, model: remoteModel, messages: compMsgs, maxTokens: 2600, temperature: 0.2 });
   const compParsed = comp.ok ? extractJson(comp.content) : { ok: false };
 
@@ -691,7 +787,7 @@ export async function n5DreamCuration({ notesCount = 12, judge = true } = {}) {
 
   const compression = {
     notes: corpus.length,
-    avgKeptRatio: round(mean(compressed.map((c) => c.ratio))),
+    avgKeptRatio: round(mean(treated.map((c) => c.ratio))),
     fullPromptTokens: fullIn,
     compressedPromptTokens: compIn,
     reductionPct: reduction !== null ? round(100 * reduction, 1) : null,
@@ -702,6 +798,7 @@ export async function n5DreamCuration({ notesCount = 12, judge = true } = {}) {
   return {
     experiment: "N5", hypothesis: "H14",
     summary: {
+      mode,
       compression,
       control: { latencyMs: full.latencyMs, ...fullStruct, tokens: full.usage },
       curated: { latencyMs: comp.latencyMs, ...compStruct, tokens: comp.usage },

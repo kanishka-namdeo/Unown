@@ -61,6 +61,7 @@ export function rssMB() {
 
 let tfjs = null; // cached module handle
 let pipelines = new Map(); // key -> loaded pipeline
+let rerankRaw = null; // { tokenizer, model } for the single-logit cross-encoder
 
 async function getTransformers() {
   if (tfjs) return tfjs;
@@ -86,23 +87,38 @@ export async function loadModel(key, { force = false } = {}) {
   const t0 = performance.now();
   const rssBeforeMB = rssMB();
   try {
-    const { pipeline } = await getTransformers();
-    const opts = { dtype: "q8", device: "cpu" };
-    let pipe;
-    try {
-      pipe = await pipeline(spec.task, spec.id, opts);
-    } catch (e1) {
-      // Older artifact sets / registries may not accept dtype:q8 — retry default.
-      pipe = await pipeline(spec.task, spec.id);
+    const mod = await getTransformers();
+    if (spec.pair) {
+      // single-logit cross-encoder: load tokenizer + model directly (the
+      // text-classification pipeline softmaxes the 1-element logit -> always 1.0)
+      let tokenizer, model;
+      try {
+        tokenizer = await mod.AutoTokenizer.from_pretrained(spec.id);
+        model = await mod.AutoModelForSequenceClassification.from_pretrained(spec.id, { dtype: "q8", device: "cpu" });
+      } catch (e1) {
+        tokenizer = await mod.AutoTokenizer.from_pretrained(spec.id);
+        model = await mod.AutoModelForSequenceClassification.from_pretrained(spec.id);
+      }
+      rerankRaw = { tokenizer, model };
+    } else {
+      const opts = { dtype: "q8", device: "cpu" };
+      let pipe;
+      try {
+        pipe = await mod.pipeline(spec.task, spec.id, opts);
+      } catch (e1) {
+        // Older artifact sets / registries may not accept dtype:q8 — retry default.
+        pipe = await mod.pipeline(spec.task, spec.id);
+      }
+      pipelines.set(key, pipe);
     }
-    pipelines.set(key, pipe);
+    pipelines.set(`${key}:ready`, true); // marker so isLoaded() covers the raw lane too
     return { key, loadMs: Math.round(performance.now() - t0), cached: false, cold: false, rssBeforeMB, rssAfterMB: rssMB(), spec };
   } catch (err) {
     return { key, loadMs: Math.round(performance.now() - t0), cached: false, cold: false, rssBeforeMB, rssAfterMB: rssMB(), spec, error: String(err?.message ?? err) };
   }
 }
 
-export function isLoaded(key) { return pipelines.has(key); }
+export function isLoaded(key) { return pipelines.has(key) || (key === "rerank" && rerankRaw !== null); }
 
 // ---------------------------------------------------------------- inference
 
@@ -136,19 +152,20 @@ export async function embedAll(key, texts) {
 
 /**
  * Cross-encoder relevance score of (query, doc). ms-marco-MiniLM is a
- * text-classification model over the PAIR — LABEL_0 probability = relevance
- * (the canonical transformers.js reranker pattern from the model card).
+ * SINGLE-LOGIT binary classifier (logit > 0 = relevant): the text-classification
+ * pipeline softmaxes a 1-element vector and always returns LABEL_0 = 1.0, so
+ * we run the tokenizer + model directly and sigmoid the raw logit
+ * (verified on the canonical pair: +9.27 relevant / -11.19 irrelevant).
  */
 export async function rerankPair(key, query, doc) {
-  const pipe = pipelines.get(key);
-  if (!pipe) return { ok: false, error: `model not loaded: ${key}` };
+  if (!rerankRaw) return { ok: false, error: `model not loaded: ${key}` };
   const t0 = performance.now();
   try {
-    const out = await pipe({ text: String(query).slice(0, 1000), text_pair: String(doc).slice(0, 2000) });
-    const first = Array.isArray(out) ? out[0] : out;
-    const score = Number(first?.score ?? NaN);
-    if (Number.isNaN(score)) return { ok: false, error: "no score in reranker output", latencyMs: Math.round(performance.now() - t0) };
-    return { ok: true, score, label: first?.label ?? null, latencyMs: Math.round(performance.now() - t0) };
+    const inputs = rerankRaw.tokenizer(String(query).slice(0, 1000), { text_pair: String(doc).slice(0, 2000), padding: true, truncation: true });
+    const { logits } = await rerankRaw.model(inputs);
+    const logit = Number(logits.data[0]);
+    if (!Number.isFinite(logit)) return { ok: false, error: "no finite logit in reranker output", latencyMs: Math.round(performance.now() - t0) };
+    return { ok: true, score: 1 / (1 + Math.exp(-logit)), logit, latencyMs: Math.round(performance.now() - t0) };
   } catch (err) {
     return { ok: false, error: String(err?.message ?? err), latencyMs: Math.round(performance.now() - t0) };
   }
@@ -167,5 +184,6 @@ export async function rerankAll(key, query, docs) {
 /** Unload everything (drop native memory) — used between experiment phases. */
 export function unloadAll() {
   pipelines = new Map();
+  rerankRaw = null;
   tfjs = null;
 }

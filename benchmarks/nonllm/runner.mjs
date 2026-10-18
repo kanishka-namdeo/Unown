@@ -90,7 +90,7 @@ async function cmdN4(outDir) {
 
 async function cmdN5(outDir) {
   const dir = outDir ?? newRunDir("n5-dream");
-  const r = await n5DreamCuration({ notesCount: Number(opt("notes", 12)), judge: !flag("skip-judge") });
+  const r = await n5DreamCuration({ notesCount: Number(opt("notes", 12)), judge: !flag("skip-judge"), topK: Number(opt("topk", 2)), minRatio: Number(opt("min-ratio", 0.35)), mode: opt("mode", "compress") });
   saveJson(dir, "n5-dream.json", r);
   renderN5(r);
   return r;
