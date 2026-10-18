@@ -1,0 +1,14 @@
+{
+  "name": "unown-nonllm-testbench",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Non-LLM hypothesis testbench for Unown's learning layer: local ONNX encoders (bge-small / MiniLM / ms-marco cross-encoder) via transformers.js + onnxruntime-node, plus zero-model symbolic lanes (MinHash-LSH, LexRank, activation scoring). Isolated deps on purpose: the repo itself stays native-addon-free; this bench owns its node_modules.",
+  "scripts": {
+    "probe": "node runner.mjs probe",
+    "test": "node --test \"lib/**/*.test.mjs\""
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.1"
+  }
+}

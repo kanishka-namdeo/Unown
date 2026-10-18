@@ -1,0 +1,86 @@
+name: nonllm probe
+
+# Cross-platform validation lane for the NON-LLM testbench (H9 in
+# benchmarks/nonllm/hypotheses.json): proves the transformers.js +
+# onnxruntime-node encoder lane (bge-small q8 embeddings + ms-marco
+# cross-encoder) loads and runs on every OS Unown supports — before any
+# conclusion or integration. Keyless: models download from the HF hub into
+# the gitignored bench cache; remote-comparison experiments (N1-N5) run
+# where a bridge is reachable, never in CI.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "benchmarks/nonllm/**"
+      - ".github/workflows/nonllm-probe.yml"
+  pull_request:
+    paths:
+      - "benchmarks/nonllm/**"
+      - ".github/workflows/nonllm-probe.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: probe (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: benchmarks/nonllm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Gate the render layer first (no install, no models): the null-safety
+      # contract pinned after local-llm's red run 39123722085.
+      - name: Renders unit tests (null-safety contract, no install)
+        run: node --test "lib/renders.test.mjs"
+
+      - name: Install bench deps (transformers.js + onnxruntime-node prebuilt)
+        run: npm install --no-fund --no-audit
+
+      - name: N0 runtime probe (load + embed + rerank, keyless)
+        run: node runner.mjs probe
+
+      - name: Assert H9 thresholds
+        shell: node {0}
+        working-directory: .
+        run: |
+          const fs = require("fs");
+          const path = require("path");
+          const glob = path.join("benchmarks", "nonllm", "results");
+          const dirs = fs.readdirSync(glob).filter((d) => d.startsWith("probe"));
+          if (!dirs.length) { console.error("no probe results dir"); process.exit(1); }
+          const newest = dirs
+            .map((d) => ({ d, m: fs.statSync(path.join(glob, d, "n0-probe.json")).mtimeMs }))
+            .sort((a, b) => b.m - a.m)[0].d;
+          const probe = JSON.parse(fs.readFileSync(path.join(glob, newest, "n0-probe.json"), "utf8"));
+          const fail = [];
+          for (const r of probe.summary.results) {
+            const tag = `${r.model} on ${r.model && probe.summary.runtime.platform}`;
+            if (!r.loadOk) { fail.push(`${tag}: load failed — ${r.error ?? "?"}`); continue; }
+            if (r.embedP50ms !== undefined && r.embedP50ms !== null && r.embedP50ms > 250) fail.push(`${tag}: embed p50 ${r.embedP50ms}ms > 250ms`);
+            if (r.rerankP50ms !== undefined && r.rerankP50ms !== null && r.rerankP50ms > 25) fail.push(`${tag}: rerank p50 ${r.rerankP50ms}ms/pair > 25ms`);
+            if (r.rssDeltaMB !== undefined && r.rssDeltaMB !== null && r.rssDeltaMB > 400) fail.push(`${tag}: rss +${r.rssDeltaMB}MB > 400MB`);
+          }
+          if (fail.length) { console.error("H9 THRESHOLD FAILURES:\n- " + fail.join("\n- ")); process.exit(1); }
+          console.log("H9 thresholds OK on " + process.platform + " (" + probe.summary.results.length + " models)");
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nonllm-probe-${{ matrix.os }}
+          path: benchmarks/nonllm/results/
+          retention-days: 14

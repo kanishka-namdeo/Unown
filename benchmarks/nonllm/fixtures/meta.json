@@ -1,0 +1,22 @@
+{
+ "exportedAt": "2026-10-18T15:37:54.992Z",
+ "notes": 55,
+ "notesByKind": {
+  "terminal": 20,
+  "benchmark": 35
+ },
+ "runs": 35,
+ "runsByStatus": {
+  "passed": 35
+ },
+ "tasks": 5,
+ "dreams": 12,
+ "memoryTiers": [
+  "policy",
+  "project",
+  "user",
+  "local",
+  "project:scratch-proj",
+  "project:scratch-cli"
+ ]
+}

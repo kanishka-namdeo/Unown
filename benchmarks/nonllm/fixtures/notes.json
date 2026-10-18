@@ -1,0 +1,556 @@
+{
+ "exportedAt": "2026-10-18T15:37:54.992Z",
+ "dbPath": "selflearning.db",
+ "notes": [
+  {
+   "id": "fff71f7c-cdec-4b80-87f8-9e667a34fd0c",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-proj (1 min): 1 prompt(s), 1 tool call(s) (read).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331127061,
+   "dream_id": "project-b503b6a4-4d7f-46fd-b445-cb7b9d935893",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "49ad9d67-77dc-44ed-80ba-daf095d7002e",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-proj (1 min): 1 prompt(s), 4 tool call(s) (read, edit, bash).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331165977,
+   "dream_id": "project-b503b6a4-4d7f-46fd-b445-cb7b9d935893",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "2087ba8a-02d6-428a-8623-0ffe6dcf011a",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-proj (1 min): 1 prompt(s), 3 tool call(s) (read, edit).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331183057,
+   "dream_id": "project-b503b6a4-4d7f-46fd-b445-cb7b9d935893",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "85874199-72ca-49f7-ac1e-7d5a3c76a3af",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-proj (1 min): 1 prompt(s), 7 tool call(s) (read, bash, edit).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331207175,
+   "dream_id": "project-b503b6a4-4d7f-46fd-b445-cb7b9d935893",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "4dcf9c68-a874-43ce-ba94-9f7661adb349",
+   "run_id": null,
+   "content": "When using Array.prototype.find() on user-provided arrays in production, always guard against nullish elements. Data from external sources (DB, API) may contain null/undefined entries due to race conditions or data corruption. Use `u && u.property` instead of just `u.property` in the predicate.",
+   "created_at": 1792331279739,
+   "dream_id": "project-b503b6a4-4d7f-46fd-b445-cb7b9d935893",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "7eb9eb96-f67f-4d4f-a81d-5acc48c14dd1",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-proj (1 min): 1 prompt(s), 30 tool call(s) (read, todo, bash, edit, note).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331284105,
+   "dream_id": "project-b503b6a4-4d7f-46fd-b445-cb7b9d935893",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "facba59b-fa24-45ff-a66b-94bb2423248f",
+   "run_id": "01b35af5-8be0-490e-8101-8ff28479ddd2",
+   "content": "Run 01b35af5 (baseline) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 (both 3 and 5) first, before checking for individual multiples of 3 or 5. This ensures that numbers like 15 correctly output \"FizzBuzz\" instead of just \"Fizz\".",
+   "created_at": 1792331351257,
+   "dream_id": "0904cc78-dd69-4fad-9527-f512096601a6",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "ede14a45-3e6e-44cb-a02a-8aea3a7acf85",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-proj (1 min): 1 prompt(s), 15 tool call(s) (read, bash, edit).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331365132,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "1c98e6c6-73ce-4f7c-bf26-788c1c22845c",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-proj (1 min): 1 prompt(s), 8 tool call(s) (read, edit, bash).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331396877,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "bf675bef-8818-4466-b9cf-a5985457579f",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-proj (5 min): 1 prompt(s), 40 tool call(s) (bash, read, todo, write, edit).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331702471,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "a573cbbe-1b29-4fb0-8bbf-8a5f288f0bde",
+   "run_id": null,
+   "content": "Terminal session [subagent] in /home/z/my-project/scratch-proj (1 min): 1 prompt(s), 22 tool call(s) (ls, find, read, grep).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331744991,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "87be2a4a-150e-4dfe-ace1-34419baacba9",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-proj (1 min): 1 prompt(s), 1 tool call(s) (task).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331749984,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "84a3744e-7d0c-4247-8211-59f652c76b33",
+   "run_id": null,
+   "content": "Naming convention for scratch-proj: keep helper functions in src/ private (no export keyword) unless a test file imports them. Exported surface should stay minimal.",
+   "created_at": 1792331780364,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "f32a3647-3e42-489d-8834-936daaef29de",
+   "run_id": null,
+   "content": "Prefer bun:test over vitest in this repo; all tests run with 'bun test' and CI should not install vitest.",
+   "created_at": 1792331780936,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "4c9e9c11-6065-4ffa-bf04-34e7faa1815b",
+   "run_id": null,
+   "content": "Idea: add a CI job that typechecks src/ on every push — currently nothing checks TypeScript in this project.",
+   "created_at": 1792331781529,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "1a7e17a0-cedb-4e2e-936a-62a19d663e10",
+   "run_id": null,
+   "content": "Note to self: scratch-proj is a playground for agent experiments — never productionize or publish it to npm.",
+   "created_at": 1792331790531,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "8a97e137-0678-413c-a9c0-efcbdeba4347",
+   "run_id": null,
+   "content": "Failure observed: 'bun publish' from this directory failed with ENEEDAUTH — the local .npmrc lacks a token; do not retry without fixing auth first.",
+   "created_at": 1792331791089,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "141ad71e-e72b-4d4a-b15c-c218674aed3d",
+   "run_id": null,
+   "content": "Observed: bun occasionally serves stale transpiled TS after switching branches; removing node_modules/.cache fixes it. Unclear root cause.",
+   "created_at": 1792331791638,
+   "dream_id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-proj",
+   "project_slug": "scratch-proj"
+  },
+  {
+   "id": "01cac7e7-7366-4d66-9610-ed1ed4845dc5",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-cli (1 min): 1 prompt(s), 3 tool call(s) (read, edit, bash).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331808062,
+   "dream_id": "project-904f6154-ba45-4ffd-9b37-a1ea3dff1a57",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-cli",
+   "project_slug": "scratch-cli"
+  },
+  {
+   "id": "28ac05d6-02fa-4ae7-a6db-f4c14c0c58e6",
+   "run_id": null,
+   "content": "When fixing off-by-one errors with array.slice(0, count), remember that slice end index is exclusive, so slice(0, 3) returns indices 0,1,2 which is exactly 3 elements.",
+   "created_at": 1792331876996,
+   "dream_id": "project-904f6154-ba45-4ffd-9b37-a1ea3dff1a57",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-cli",
+   "project_slug": "scratch-cli"
+  },
+  {
+   "id": "4f3663d7-1270-4ec0-8625-a1346672df9f",
+   "run_id": null,
+   "content": "Terminal session in /home/z/my-project/scratch-cli (1 min): 1 prompt(s), 29 tool call(s) (bash, read, edit, note).\nIf the session hit failures or discovered project-specific pitfalls, record them as concise imperative rules; otherwise record any durable project conventions worth remembering.",
+   "created_at": 1792331879405,
+   "dream_id": "project-904f6154-ba45-4ffd-9b37-a1ea3dff1a57",
+   "kind": "terminal",
+   "project_path": "/home/z/my-project/scratch-cli",
+   "project_slug": "scratch-cli"
+  },
+  {
+   "id": "c52ce5e1-5a52-4b36-8a89-79b4bb47cda2",
+   "run_id": "c8376f75-2ef4-48ca-bfde-97ce9ae7b69b",
+   "content": "Run c8376f75 (baseline) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: Fixed. The bug was an extra `- 1` in the slice calculation. Changed `arr.length - n - 1` to `arr.length - n`.",
+   "created_at": 1792331959409,
+   "dream_id": "0904cc78-dd69-4fad-9527-f512096601a6",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "dce5cc17-720b-4667-988f-ea0ff6729d9f",
+   "run_id": "f5db5c0d-f2cb-45c7-b4c5-e646c5a7b7be",
+   "content": "Run f5db5c0d (baseline) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. **Simple comma-separated values** (`a,b,c`) - splits on commas\n2. **Empty fields** (`a,,c`) - creates empty string fields\n3. **Quotes inside unquoted fields** (`say \"hi\"`) - treats quotes as literal characters\n4. **Quoted fields with commas** (`\"a,b\"`) - the quot",
+   "created_at": 1792332593214,
+   "dream_id": "0904cc78-dd69-4fad-9527-f512096601a6",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "0a4cc932-16eb-4d22-979c-83048e1c5d39",
+   "run_id": "b619b63b-cbe2-4ea3-af3f-c8421ecf29fc",
+   "content": "Run b619b63b (regression) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 8 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix correctly handles:\n\n1. **Simple values** (`a,b,c`) - splits on commas\n2. **Empty fields** (`a,,c`) - preserves empty strings between commas\n3. **Embedded quotes** (`say \"hi\"`) - quotes not at field start are treated as literal characters\n4. **Quoted fields with commas** (`\"a,",
+   "created_at": 1792332644002,
+   "dream_id": "10237c47-2f42-49c5-ac50-4107dd56105e",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "7c900b54-f931-4cf9-ae22-580201271959",
+   "run_id": "c2d2480a-d313-4c41-adfd-7e454a6b4710",
+   "content": "Run c2d2480a (regression) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was straightforward - removing the extra `- 1` that was causing the off-by-one error. The `slice(0, arr.length - n)` correctly keeps elements from index 0 up to (but not including) the last `n` elements.",
+   "created_at": 1792332650914,
+   "dream_id": "10237c47-2f42-49c5-ac50-4107dd56105e",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "17591757-2de4-49f9-9b52-67a0ec5ffdb5",
+   "run_id": "04dd97fd-2dd0-41b3-abc4-814a10ec1366",
+   "content": "Run 04dd97fd (regression) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 (which are divisible by both 3 and 5) first, before checking for multiples of 3 or 5 individually. This ensures numbers like 15 output \"FizzBuzz\" instead of just \"Fizz\".",
+   "created_at": 1792332660711,
+   "dream_id": "10237c47-2f42-49c5-ac50-4107dd56105e",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "bce9cc74-4406-4086-a544-a375c2ce16d6",
+   "run_id": "ead7acf6-9b54-4310-91c3-2df596a3ac69",
+   "content": "Run ead7acf6 (baseline) on task impl-debounce: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Delays invocation**: Stores the arguments and schedules a future execution time (`scheduledTime = currentTime + delay`)\n\n2. **Injectable clock**: Uses the provided `now` function (defaults to `Date.now`)\n\n3. **Lazy boundary flushing**: When the debounced fun",
+   "created_at": 1792333208833,
+   "dream_id": "10237c47-2f42-49c5-ac50-4107dd56105e",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "ee847eb3-4d8b-4a86-b7c0-22238e7f6bfc",
+   "run_id": "64eaf9b7-47ed-4205-9a8d-70efb76ec3e6",
+   "content": "Run 64eaf9b7 (regression) on task impl-debounce: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Tracks scheduled time and pending args** - Each call schedules the function to run after `delay` ms from the current time\n2. **Lazy boundary flushing** - When the debounced function is called, it first checks if a pending call should have already fired (if `",
+   "created_at": 1792333283554,
+   "dream_id": "9b744587-36e3-474f-8725-027f0dd02bbc",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "d2fba315-3a92-4d4f-b046-6c8776d3d49f",
+   "run_id": "9947f308-6c9c-4e78-9176-fddcc5f96287",
+   "content": "Run 9947f308 (regression) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n1. Simple comma-separated fields\n2. Empty fields (consecutive commas)\n3. Unquoted fields containing literal quotes (preserved as-is)\n4. Quoted fields that may contain commas\n5. Escaped quotes (`\"\"`) inside quoted fields becoming single quotes\n6. Whitespace preservati",
+   "created_at": 1792333311217,
+   "dream_id": "9b744587-36e3-474f-8725-027f0dd02bbc",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "443c6b8e-05bc-40bb-b17d-333daac2730d",
+   "run_id": "b8302de0-0147-485d-a4d0-88732f5bad16",
+   "content": "Run b8302de0 (regression) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: Fixed! The bug was an extra `- 1` in the slice calculation. Changed `arr.length - n - 1` to `arr.length - n` so that `dropRight([1, 2, 3, 4], 2)` correctly returns `[1, 2]` (keeping the first `4 - 2 = 2` elements) instead of `[1]` (keeping only `4 - 2 - 1 = 1` element).",
+   "created_at": 1792333320210,
+   "dream_id": "9b744587-36e3-474f-8725-027f0dd02bbc",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "1d6e04dc-9798-40e1-8e7f-95ef60709110",
+   "run_id": "c9437391-c2ec-490c-9413-1eaf34e20d3c",
+   "content": "Run c9437391 (baseline) on task impl-map-limit: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Maintains order**: Uses `results[currentIndex]` to store results at their original index position\n2. **Respects concurrency limit**: Uses an `active` counter and only starts new tasks when `active < limit`\n3. **Propagates errors**: Sets a `rejected` flag and",
+   "created_at": 1792333825678,
+   "dream_id": "9b744587-36e3-474f-8725-027f0dd02bbc",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "52436df1-f500-4cb5-9206-1273dd1bb909",
+   "run_id": "38f4dfbd-c7b7-43e4-a59d-6bc9af25d278",
+   "content": "Run 38f4dfbd (regression) on task impl-map-limit: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Maintains order** by storing results at `results[currentIndex]` where `currentIndex` is captured before the async operation starts\n2. **Respects concurrency limit** by tracking `active` count and only starting new tasks when `active < limit`\n3. **Propagates ",
+   "created_at": 1792333946450,
+   "dream_id": "384aff03-27b4-4fe4-a390-b52b64eec833",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "18c6be1c-6a7a-4770-8080-bb6611562bbb",
+   "run_id": "5a535cc5-2303-41bf-89e0-3ef0cd4654cb",
+   "content": "Run 5a535cc5 (regression) on task impl-debounce: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation follows the lazy boundary flushing semantics described in the test file:\n\n1. **Delay and rescheduling**: Each call to the debounced function schedules (or reschedules) the function to fire after `delay` ms from the current time.\n\n2. **Lazy boundary flushing**: The ",
+   "created_at": 1792333958885,
+   "dream_id": "384aff03-27b4-4fe4-a390-b52b64eec833",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "bb46109e-bca5-467a-9d05-0ce1e5be0793",
+   "run_id": "5efa2612-1f36-4358-b927-9f9add6bbee6",
+   "content": "Run 5efa2612 (regression) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. **Simple fields** - comma-separated values\n2. **Empty fields** - consecutive commas or trailing comma\n3. **Quoted fields with commas** - `\"a,b\"` is parsed as a single field `a,b`\n4. **Escaped quotes** - `\"\"` inside quoted fields becomes a single `\"` in the output",
+   "created_at": 1792333974519,
+   "dream_id": "384aff03-27b4-4fe4-a390-b52b64eec833",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "de1e0d21-801a-40cc-ad52-4189728f2a94",
+   "run_id": "a44efe23-6e43-4468-ab45-df0f566854fb",
+   "content": "Run a44efe23 (baseline) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 (which are multiples of both 3 and 5) first, before checking for individual multiples of 3 or 5. This ensures that numbers like 15 correctly output \"FizzBuzz\" instead of just \"Fizz\".",
+   "created_at": 1792334442947,
+   "dream_id": "384aff03-27b4-4fe4-a390-b52b64eec833",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "403f42dc-3414-4091-8cd7-58860cea26f8",
+   "run_id": "4671d36a-47c9-41f9-883c-861bb1ab089f",
+   "content": "Run 4671d36a (regression) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 first (using `i % 15 === 0`), before checking for multiples of 3 or 5 individually. This ensures that numbers divisible by both 3 and 5 correctly output \"FizzBuzz\" instead of just \"Fizz\".",
+   "created_at": 1792334597019,
+   "dream_id": "69d67ae1-c189-4cef-828a-f12bf0454139",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "f68162a0-9a78-4dd0-9ce0-e7cc310f3a03",
+   "run_id": "2d1a52f4-59d7-4f56-9e26-f43853b04dda",
+   "content": "Run 2d1a52f4 (regression) on task impl-map-limit: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Maintains order** by storing results at their original index: `results[currentIndex] = value`\n2. **Respects concurrency limit** using an `active` counter that increments when starting a mapper and decrements when it completes\n3. **Propagates errors** by sett",
+   "created_at": 1792334611214,
+   "dream_id": "69d67ae1-c189-4cef-828a-f12bf0454139",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "38a5bac6-e444-45ac-a292-13efe764ec81",
+   "run_id": "12898540-cf90-4e8d-a5fe-8344845739ad",
+   "content": "Run 12898540 (regression) on task impl-debounce: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Tracks `scheduledTime`** - the time when the pending call should fire\n2. **Tracks `pendingArgs`** - the arguments to pass to the function when it fires\n3. **Lazy boundary flushing** - When the debounced function is called, it first checks if `currentTime >= ",
+   "created_at": 1792334627470,
+   "dream_id": "69d67ae1-c189-4cef-828a-f12bf0454139",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "10e323ed-7cc3-487a-9481-d9a970ae004b",
+   "run_id": "a13b26de-5964-4748-9a93-1181331ef92e",
+   "content": "Run a13b26de (baseline) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was simple: removed the extra `- 1` from the slice calculation. The correct formula is `arr.slice(0, Math.max(0, arr.length - n))` which keeps elements from index 0 up to (but not including) `arr.length - n`, effectively dropping the last `n` elements.",
+   "created_at": 1792335051843,
+   "dream_id": "69d67ae1-c189-4cef-828a-f12bf0454139",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "2e061e3c-ce08-4049-8056-a1e1a62e7bfa",
+   "run_id": "8e466740-f5ed-431a-aafb-3bd6246d00b4",
+   "content": "Run 8e466740 (regression) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: Fixed! The off-by-one bug was caused by an extra `- 1` in the slice calculation. Removing it makes all tests pass.",
+   "created_at": 1792335245360,
+   "dream_id": "fc3b4af6-f074-43f3-af6b-8c71b1a03a4a",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "12696d29-8658-451c-9f0f-a1bfae74f76c",
+   "run_id": "0dcbbbec-0f5c-4977-8c4f-20d334c1504a",
+   "content": "Run 0dcbbbec (regression) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 (which are divisible by both 3 and 5) first, before checking for multiples of 3 or 5 individually. This ensures that numbers like 15 output \"FizzBuzz\" instead of just \"Fizz\".",
+   "created_at": 1792335255698,
+   "dream_id": "fc3b4af6-f074-43f3-af6b-8c71b1a03a4a",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "bbf84c7d-0d3e-4286-85da-a9f59ce53da8",
+   "run_id": "6e348e17-5e3e-4597-876e-ec58fe5920de",
+   "content": "Run 6e348e17 (regression) on task impl-map-limit: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Maintains order** by storing results at `results[currentIndex]` where `currentIndex` is captured before the async operation starts\n2. **Respects concurrency limit** by starting only `limit` workers initially and only spawning new ones when previous ones comp",
+   "created_at": 1792335270378,
+   "dream_id": "fc3b4af6-f074-43f3-af6b-8c71b1a03a4a",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "6eba8c56-8af9-46ec-afb6-759d44438f6a",
+   "run_id": "502d936d-c1c9-4b9a-a160-1cf76f07682b",
+   "content": "Run 502d936d (baseline) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. **Simple fields** (`a,b,c`) - splits on commas\n2. **Empty fields** (`a,,c`) - preserves empty strings between commas\n3. **Quotes in unquoted fields** (`say \"hi\"`) - quotes are treated as literal characters when not at field start\n4. **Quoted fields with commas** ",
+   "created_at": 1792335691350,
+   "dream_id": "fc3b4af6-f074-43f3-af6b-8c71b1a03a4a",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "467203e7-7275-4129-971b-c62d94524006",
+   "run_id": "15127d44-015a-48cd-a13d-f94a45ca6027",
+   "content": "Run 15127d44 (regression) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. **Basic comma-separated fields** - `a,b,c` → `[\"a\", \"b\", \"c\"]`\n2. **Empty fields** - `a,,c` → `[\"a\", \"\", \"c\"]`\n3. **Quotes as literals when not at field start** - `say \"hi\",world` → `['say \"hi\"', \"world\"]`\n4. **Quoted fields with commas** - `\"a,b\",c` → `[\"a,b\", \"",
+   "created_at": 1792335903056,
+   "dream_id": "c92e9c48-afed-457b-9700-4b266ed50067",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "ce9b1072-5c84-4862-a72b-57a30f904b6b",
+   "run_id": "4ab91562-67dd-415d-9c52-fab8f90606d2",
+   "content": "Run 4ab91562 (regression) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: Fixed the off-by-one bug by removing the extra `- 1` from the slice calculation. The corrected implementation `arr.slice(0, Math.max(0, arr.length - n))` correctly removes exactly `n` elements from the end of the array.",
+   "created_at": 1792335911052,
+   "dream_id": "c92e9c48-afed-457b-9700-4b266ed50067",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "0d715498-393f-4788-ac5b-aade8bfbef60",
+   "run_id": "84eedd6a-676b-4889-8b38-d2fd4231949b",
+   "content": "Run 84eedd6a (regression) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: Fixed. The issue was that multiples of 15 were caught by the `i % 3 === 0` check first, so they never reached a \"FizzBuzz\" case. The fix checks for `i % 15 === 0` first, then falls through to the individual Fizz/Buzz cases, then the default number.",
+   "created_at": 1792335921540,
+   "dream_id": "c92e9c48-afed-457b-9700-4b266ed50067",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "58e2421c-57fd-41d8-8652-2d650a1aa51c",
+   "run_id": "6cf57ded-725d-4331-85b3-a745da9f5773",
+   "content": "Run 6cf57ded (baseline) on task impl-debounce: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Tracks scheduled time and pending args** - Stores when the function should fire and with what arguments\n2. **Lazy boundary flushing** - Only checks if it's time to fire when the debounced function is called (not using timers)\n3. **Rescheduling** - Each call ",
+   "created_at": 1792336311486,
+   "dream_id": "c92e9c48-afed-457b-9700-4b266ed50067",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "0c19abb3-a91a-4dd1-b062-21ecebb77118",
+   "run_id": "135ac5db-5413-44ad-84cd-d8cb54abd657",
+   "content": "Run 135ac5db (regression) on task impl-debounce: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Delays invocation**: Uses `scheduledTime = currentTime + delay` to track when the function should fire\n2. **Injectable clock**: Uses the provided `now` function (defaults to `Date.now`)\n3. **Lazy boundary flushing**: On each call, checks if `currentTime >= s",
+   "created_at": 1792336551864,
+   "dream_id": "7c6fd263-24da-4a2d-978e-bdaeb71ebc55",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "3f15816f-7d03-4a63-84b4-e98a198b7e6d",
+   "run_id": "b186807e-3265-42fb-aad1-75482ebf822e",
+   "content": "Run b186807e (regression) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. **Simple fields** (`a,b,c`) - splits on commas\n2. **Empty fields** (`a,,c`) - consecutive commas produce empty strings\n3. **Quotes in unquoted fields** (`say \"hi\"`) - quotes are preserved as literals when not at field start\n4. **Quoted fields with commas** (`\"a,b",
+   "created_at": 1792336580326,
+   "dream_id": "7c6fd263-24da-4a2d-978e-bdaeb71ebc55",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "8304933c-fbac-4f6c-94e4-018c0f835a99",
+   "run_id": "edc10ac2-c514-469a-b331-fd8b3acc7048",
+   "content": "Run edc10ac2 (regression) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: Fixed. The bug was an extra `- 1` in the slice calculation. Changed `arr.length - n - 1` to `arr.length - n`.",
+   "created_at": 1792336588466,
+   "dream_id": "7c6fd263-24da-4a2d-978e-bdaeb71ebc55",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "e65c49c3-f568-4303-a69b-697c2c25582d",
+   "run_id": "a6f5e249-0381-48b3-bb46-f78b6eaecfdf",
+   "content": "Run a6f5e249 (baseline) on task impl-map-limit: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n1. Uses an array `results` to store outputs at their original indices, preserving order\n2. Tracks `active` concurrent operations and only starts new ones when below `limit`\n3. Uses a `rejected` flag to stop processing once an error occurs and propagate it\n4. Retur",
+   "created_at": 1792336930278,
+   "dream_id": "7c6fd263-24da-4a2d-978e-bdaeb71ebc55",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "2a69d077-fbc1-49d8-a6b6-34496c01b3ea",
+   "run_id": "24f818d4-38e5-481f-a538-7a02972dc0f2",
+   "content": "Run 24f818d4 (regression) on task impl-map-limit: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Maintains order** by capturing the index before starting each async operation and storing results at that index\n2. **Respects concurrency limit** by starting only `limit` workers initially and having each worker start the next one after completing\n3. **Propa",
+   "created_at": 1792337216541,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "16d3afb8-b50e-473e-b62c-2191bca626e2",
+   "run_id": "71e46be4-4751-43de-8fa6-72b3cabbc982",
+   "content": "Run 71e46be4 (regression) on task impl-debounce: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Delays invocation**: Uses `scheduledTime = currentTime + delay` to track when the function should fire\n2. **Injectable clock**: Uses the `now` parameter (defaults to `Date.now`)\n3. **Lazy boundary flushing**: Pending calls only fire when the debounced functi",
+   "created_at": 1792337232352,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "68f02cbd-68ab-4a6c-8c99-6ad080fdb1da",
+   "run_id": "b9c2ceda-2c11-46c8-b4a9-dac621e40293",
+   "content": "Run b9c2ceda (regression) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. **Simple fields**: `a,b,c` → `[\"a\", \"b\", \"c\"]`\n2. **Empty fields**: `a,,c` → `[\"a\", \"\", \"c\"]`\n3. **Quotes as literals when not at field start**: `say \"hi\"` → `say \"hi\"` (quotes preserved)\n4. **Quoted fields with commas**: `\"a,b\",c` → `[\"a,b\", \"c\"]`\n5. **Escaped q",
+   "created_at": 1792337266238,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "1a35e73c-4763-4271-877b-4637c7848d92",
+   "run_id": "23c914aa-e8fc-4735-86ad-f983b648a72e",
+   "content": "Run 23c914aa (baseline) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 (the combined case) before checking for multiples of 3 or 5 individually, ensuring that numbers like 15 correctly return \"FizzBuzz\" instead of just \"Fizz\".",
+   "created_at": 1792337541129,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  }
+ ]
+}

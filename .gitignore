@@ -96,3 +96,9 @@ benchmarks/local-llm/bin/
 benchmarks/local-llm/models/
 benchmarks/local-llm/results/*/
 !benchmarks/local-llm/results/REPORT.md
+
+# nonllm testbench: isolated deps, HF model cache, raw run outputs (keep fixtures + curated REPORT.md)
+# (package-lock.json IS committed — it pins onnxruntime-node/transformers.js for reproducible CI)
+benchmarks/nonllm/node_modules/
+benchmarks/nonllm/models/
+benchmarks/nonllm/results/*/

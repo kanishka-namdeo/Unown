@@ -1,0 +1,149 @@
+{
+ "exportedAt": "2026-10-18T15:37:54.992Z",
+ "dreams": [
+  {
+   "id": "project-b503b6a4-4d7f-46fd-b445-cb7b9d935893",
+   "started_at": 1792331356217,
+   "ended_at": 1792331356217,
+   "status": "done",
+   "notes_in": 6,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 0,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- This file is maintained by Unown: terminal session notes are consolidated\n  here by AutoDream. Edit freely — your edits are preserved as a new version.\n\n## Conventions\n(empty — AutoDream fills this from session notes)\n\n## Known pitfalls\n- When using Array.prototype.find() on user-provided arrays in production, always guard against nullish elements. Data from external sources (DB, API) may contain null/undefined entries due to race conditions or data corruption. Use `u && u.property` instead of just `u.property` in the predicate [note 2]",
+   "note": "project dream: scratch-proj memory -> v1 (/home/z/my-project/scratch-proj)"
+  },
+  {
+   "id": "project-904f6154-ba45-4ffd-9b37-a1ea3dff1a57",
+   "started_at": 1792331966080,
+   "ended_at": 1792331966080,
+   "status": "done",
+   "notes_in": 3,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 0,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- This file is maintained by Unown: terminal session notes are consolidated\n  here by AutoDream. Edit freely — your edits are preserved as a new version.\n\n## Known pitfalls\n- Remember `array.slice(0, count)` end index is exclusive: `slice(0, 3)` returns indices 0,1,2 (exactly 3 elements) [note 2]",
+   "note": "project dream: scratch-cli memory -> v1 (/home/z/my-project/scratch-cli)"
+  },
+  {
+   "id": "project-23a3064e-24ee-44a5-81f8-b626c67d9a8a",
+   "started_at": 1792331973684,
+   "ended_at": 1792331973684,
+   "status": "done",
+   "notes_in": 11,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 0,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- This file is maintained by Unown: terminal session notes are consolidated\n  here by AutoDream. Edit freely — your edits are preserved as a new version.\n\n## Conventions\n- Keep helper functions in src/ private (no export) unless a test file imports them; minimize exported surface [note 6]\n- Prefer bun:test over vitest; run tests with `bun test` [note 5]\n\n## Known pitfalls\n- When using Array.prototype.find() on user-provided arrays in production, always guard against nullish elements. Data from external sources (DB, API) may contain null/undefined entries due to race conditions or data corruption. Use `u && u.property` instead of just `u.property` in the predicate [note 2]\n- Bun occasionally serves stale transpiled TS after switching branches; remove node_modules/.cache to fix [note 1]\n- `bun publish` fails with ENEEDAUTH if local .npmrc lacks a token; fix auth before retrying [note 2]\n\n## Task playbooks\n- CI: add typecheck job for src/ on every push — currently no TypeScript checking in this project [note 4]",
+   "note": "project dream: scratch-proj memory -> v2 (/home/z/my-project/scratch-proj)"
+  },
+  {
+   "id": "0904cc78-dd69-4fad-9527-f512096601a6",
+   "started_at": 1792332593262,
+   "ended_at": 1792332660712,
+   "status": "done",
+   "notes_in": 3,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 3,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- Off-by-one errors in slice calculations: double-check boundary math [note c8376f75]\n- FizzBuzz-style multiple conditions: check for combined cases (e.g., 15) before individual ones [note 01b35af5]\n\n## Task patterns\n- CSV parsing edge cases: empty fields, quoted fields containing commas, literal quotes in unquoted fields [note f5db5c0d]",
+   "note": "project memory -> v2 · canaries: fix-csv-parser: passed (runners: bun); fix-drop-right: passed (runners: bun); fix-fizzbuzz: passed (runners: bun) · guard: clean (0 unprovenanced new line(s))"
+  },
+  {
+   "id": "10237c47-2f42-49c5-ac50-4107dd56105e",
+   "started_at": 1792333263650,
+   "ended_at": 1792333320211,
+   "status": "done",
+   "notes_in": 4,
+   "entries_merged": 3,
+   "entries_pruned": 0,
+   "entries_added": 1,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- Off-by-one errors in slice calculations: `slice(0, arr.length - n)` keeps elements 0 to `length-n`, exclusive of last `n` elements [note c2d2480a]\n- FizzBuzz-style multiple conditions: check combined cases (e.g., 15) before individual ones [note 04dd97fd]\n\n## Task patterns\n- CSV parsing edge cases: empty fields, quoted fields containing commas, literal quotes in unquoted fields [note f5db5c0d, b619b63b]\n- Debounce implementation: delay via `scheduledTime = currentTime + delay`, use injectable `now` function, lazy boundary flushing [note ead7acf6]",
+   "note": "project memory -> v3 · canaries: impl-debounce: passed (runners: bun); fix-csv-parser: passed (runners: bun); fix-drop-right: passed (runners: bun) · guard: clean (0 unprovenanced new line(s))"
+  },
+  {
+   "id": "9b744587-36e3-474f-8725-027f0dd02bbc",
+   "started_at": 1792333923946,
+   "ended_at": 1792333974522,
+   "status": "done",
+   "notes_in": 4,
+   "entries_merged": 3,
+   "entries_pruned": 0,
+   "entries_added": 1,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- Off-by-one errors in slice calculations: `slice(0, arr.length - n)` keeps elements 0 to `length-n`, exclusive of last `n` elements [note c2d2480a, note b8302de0]\n- FizzBuzz-style multiple conditions: check combined cases (e.g., 15) before individual ones [note 04dd97fd]\n\n## Task patterns\n- CSV parsing edge cases: empty fields, quoted fields containing commas, literal quotes in unquoted fields, escaped quotes (`\"\"` → `\"`) inside quoted fields [note f5db5c0d, b619b63b, note 9947f308]\n- Debounce implementation: delay via `scheduledTime = currentTime + delay`, use injectable `now` function, lazy boundary flushing, track scheduled time and pending args [note ead7acf6, note 64eaf9b7]\n- Map with concurrency limit: maintain order with `results[index]`, use `active` counter to respect limit, propagate errors with `rejected` flag [note c9437391]",
+   "note": "project memory -> v4 · canaries: impl-map-limit: passed (runners: bun); impl-debounce: passed (runners: bun); fix-csv-parser: passed (runners: bun) · guard: clean (0 unprovenanced new line(s))"
+  },
+  {
+   "id": "384aff03-27b4-4fe4-a390-b52b64eec833",
+   "started_at": 1792334579269,
+   "ended_at": 1792334627471,
+   "status": "done",
+   "notes_in": 4,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 0,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- Off-by-one errors in slice calculations: `slice(0, arr.length - n)` keeps elements 0 to `length-n`, exclusive of last `n` elements [note c2d2480a, note b8302de0]\n- FizzBuzz-style multiple conditions: check combined cases (e.g., 15) before individual ones [note 04dd97fd]\n\n## Task patterns\n- CSV parsing edge cases: empty fields, quoted fields containing commas, escaped quotes (`\"\"` → `\"`) inside quoted fields [note f5db5c0d, b619b63b, note 9947f308]\n- Debounce implementation: delay via `scheduledTime = currentTime + delay`, use injectable `now` function, lazy boundary flushing, track scheduled time and pending args [note ead7acf6, note 64eaf9b7]\n- Map with concurrency limit: maintain order with `results[index]`, use `active` counter to respect limit, propagate errors with `rejected` flag [note c9437391]",
+   "note": "project memory -> v5 · canaries: fix-fizzbuzz: passed (runners: bun); impl-map-limit: passed (runners: bun); impl-debounce: passed (runners: bun) · guard: clean (0 unprovenanced new line(s))"
+  },
+  {
+   "id": "69d67ae1-c189-4cef-828a-f12bf0454139",
+   "started_at": 1792335229626,
+   "ended_at": 1792335270379,
+   "status": "done",
+   "notes_in": 4,
+   "entries_merged": 3,
+   "entries_pruned": 0,
+   "entries_added": 0,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- Off-by-one errors in slice calculations: `slice(0, arr.length - n)` keeps elements 0 to `length-n`, exclusive of last `n` elements [note c2d2480a, note b8302de0, note a13b26de]\n- FizzBuzz-style multiple conditions: check combined cases (e.g., 15) before individual ones [note 04dd97fd, note 4671d36a]\n\n## Task patterns\n- CSV parsing edge cases: empty fields, quoted fields containing commas, escaped quotes (`\"\"` → `\"`) inside quoted fields [note f5db5c0d, b619b63b, note 9947f308]\n- Debounce implementation: delay via `scheduledTime = currentTime + delay`, use injectable `now` function, lazy boundary flushing, track scheduled time and pending args [note ead7acf6, note 64eaf9b7, note 12898540]\n- Map with concurrency limit: maintain order with `results[index]`, use `active` counter to respect limit, propagate errors with `rejected` flag [note c9437391, note 2d1a52f4]",
+   "note": "project memory -> v6 · canaries: fix-drop-right: passed (runners: bun); fix-fizzbuzz: passed (runners: bun); impl-map-limit: passed (runners: bun) · guard: clean (0 unprovenanced new line(s))"
+  },
+  {
+   "id": "fc3b4af6-f074-43f3-af6b-8c71b1a03a4a",
+   "started_at": 1792335874976,
+   "ended_at": 1792335921541,
+   "status": "done",
+   "notes_in": 4,
+   "entries_merged": 3,
+   "entries_pruned": 0,
+   "entries_added": 0,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- Off-by-one errors in slice calculations: `slice(0, arr.length - n)` keeps elements 0 to `length-n`, exclusive of last `n` elements [note c2d2480a, note b8302de0, note a13b26de, note 8e466740]\n- FizzBuzz-style multiple conditions: check combined cases (e.g., 15) before individual ones [note 04dd97fd, note 4671d36a, note 0dcbbbec]\n\n## Task patterns\n- CSV parsing: handle empty fields (`a,,c`), quoted fields with commas, escaped quotes (`\"\"` → `\"`) inside quotes, treat quotes as literals when not at field start [note f5db5c0d, b619b63b, note 9947f308, note 502d936d]\n- Debounce: delay via `scheduledTime = currentTime + delay`, use injectable `now` function, lazy boundary flushing, track scheduled time and pending args [note ead7acf6, note 64eaf9b7, note 12898540]\n- Map with concurrency limit: maintain order with `results[index]` captured before async start, use `active` counter to respect limit, propagate errors with `rejected` flag [note c9437391, note 2d1a52f4, note 6e348e17]",
+   "note": "project memory -> v7 · canaries: fix-csv-parser: passed (runners: bun); fix-drop-right: passed (runners: bun); fix-fizzbuzz: passed (runners: bun) · guard: clean (0 unprovenanced new line(s))"
+  },
+  {
+   "id": "c92e9c48-afed-457b-9700-4b266ed50067",
+   "started_at": 1792336525271,
+   "ended_at": 1792336588467,
+   "status": "done",
+   "notes_in": 4,
+   "entries_merged": 3,
+   "entries_pruned": 0,
+   "entries_added": 0,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- Off-by-one errors in slice calculations: `slice(0, arr.length - n)` removes exactly `n` elements from end; `Math.max(0, ...)` guards against negative [note 4ab91562, note c2d2480a, note b8302de0, note a13b26de, note 8e466740]\n- FizzBuzz-style multiple conditions: check combined cases (e.g., 15) before individual ones to avoid early match [note 84eedd6a, note 04dd97fd, note 4671d36a, note 0dcbbbec]\n\n## Task patterns\n- CSV parsing: handle empty fields (`a,,c`), quoted fields with commas, escaped quotes (`\"\"` → `\"`) inside quotes, treat quotes as literals when not at field start [note 15127d44, note f5db5c0d, note b619b63b, note 9947f308, note 502d936d]\n- Debounce: delay via `scheduledTime = currentTime + delay`, use injectable `now` function, lazy boundary flushing, track scheduled time and pending args [note 6cf57ded, note ead7acf6, note 64eaf9b7, note 12898540]\n- Map with concurrency limit: maintain order with `results[index]` captured before async start, use `active` counter to respect limit, propagate errors with `rejected` flag [note c9437391, note 2d1a52f4, note 6e348e17]",
+   "note": "project memory -> v8 · canaries: impl-debounce: passed (runners: bun); fix-csv-parser: passed (runners: bun); fix-drop-right: passed (runners: bun) · guard: clean (0 unprovenanced new line(s))"
+  },
+  {
+   "id": "7c6fd263-24da-4a2d-978e-bdaeb71ebc55",
+   "started_at": 1792337190615,
+   "ended_at": 1792337266240,
+   "status": "done",
+   "notes_in": 4,
+   "entries_merged": 4,
+   "entries_pruned": 0,
+   "entries_added": 0,
+   "output": "# Tier 1 — Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- Off-by-one errors in slice calculations: `slice(0, arr.length - n)` removes exactly `n` elements from end; `Math.max(0, ...)` guards against negative [note 4ab91562, note c2d2480a, note b8302de0, note a13b26de, note 8e466740, note edc10ac2]\n- FizzBuzz-style multiple conditions: check combined cases (e.g., 15) before individual ones to avoid early match [note 84eedd6a, note 04dd97fd, note 4671d36a, note 0dcbbbec]\n\n## Task patterns\n- CSV parsing: handle empty fields (`a,,c`), quoted fields with commas, escaped quotes (`\"\"` → `\"`) inside quotes, treat quotes as literals when not at field start [note 15127d44, note f5db5c0d, note b619b63b, note 9947f308, note 502d936d, note b186807e]\n- Debounce: delay via `scheduledTime = currentTime + delay`, use injectable `now` function, lazy boundary flushing, track scheduled time and pending args [note 6cf57ded, note ead7acf6, note 64eaf9b7, note 12898540, note 135ac5db]\n- Map with concurrency limit: maintain order with `results[index]` captured before async start, use `active` counter to respect limit, propagate errors with `rejected` flag [note c9437391, note 2d1a52f4, note 6e348e17, note a6f5e249]",
+   "note": "project memory -> v9 · canaries: impl-map-limit: passed (runners: bun); impl-debounce: passed (runners: bun); fix-csv-parser: passed (runners: bun) · guard: clean (0 unprovenanced new line(s))"
+  },
+  {
+   "id": "ae36be62-f647-462c-a28a-2ad7e0c8cf00",
+   "started_at": 1792337870985,
+   "ended_at": null,
+   "status": "running",
+   "notes_in": 4,
+   "entries_merged": 0,
+   "entries_pruned": 0,
+   "entries_added": 0,
+   "output": null,
+   "note": null
+  }
+ ]
+}

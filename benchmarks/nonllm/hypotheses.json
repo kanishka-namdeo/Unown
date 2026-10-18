@@ -1,0 +1,120 @@
+{
+  "meta": {
+    "purpose": "Hypothesis registry for evaluating NON-LLM, fully-local, performance-optimized models on Unown's learning-layer subtasks: local ONNX encoders (embeddings + cross-encoder reranking) via transformers.js/onnxruntime-node, and zero-model symbolic lanes (MinHash-LSH dedup, LexRank extractive curation, activation scoring). Companion to benchmarks/local-llm (H1-H8, the small-LLM lane); every hypothesis is falsifiable with explicit metrics, thresholds, guards, and a verdict updated by the testbench (benchmarks/nonllm/runner.mjs).",
+    "created": "2026-10-18",
+    "method": "Fixtures captured from the live engine (benchmarks/nonllm/fixtures, merged with the earlier generation in ../local-llm/fixtures for failed-run coverage). Local lanes run in-process via transformers.js (q8 ONNX, CPU); remote baselines (triage labels, relevance/importance judgments, dream outputs, blind judging) go through the llm-bridge. Cross-platform validated by the N0 probe on GitHub Actions (ubuntu/macos/windows) and locally under BOTH Bun and Node.",
+    "remoteBaseline": "kimi-k2.5 via llm-bridge -> Dashscope (list $0.49/M in, $2.50/M out)",
+    "localEngine": "transformers.js 4.3.1 (Apache-2.0) + onnxruntime-node (MIT) — prebuilds for linux-x64/arm64, darwin-x64/arm64, win32-x64; Bun supported since Bun 1.2.6 fixed bun#18079",
+    "localCandidates": {
+      "bge-small": "Xenova/bge-small-en-v1.5 q8 (~35MB, 33M, MIT, MTEB 62.11) — embedding lane",
+      "minilm": "Xenova/all-MiniLM-L6-v2 q8 (~23MB, 22M, Apache-2.0, MTEB 56.26) — embedding comparison lane",
+      "rerank": "Xenova/ms-marco-MiniLM-L-6-v2 q8 (~23MB, 23M, Apache-2.0, nDCG@10 ~83) — cross-encoder reranking lane"
+    },
+    "symbolicLanes": {
+      "minhash": "hand-rolled MinHash (128 perms, word 3-grams) + LSH banding 16x8 — near-dup detection, ~us/doc, zero deps (no maintained pure-JS MinHash lib exists)",
+      "lexrank": "dependency-free LexRank (IDF-modified cosine + power iteration, d=0.85) — extractive dream-input curation",
+      "activation": "Park-2023/Hou-2024 activation scoring: 0.995^h recency decay x embedding relevance x log frequency + structural heuristics — dream-input ranking"
+    },
+    "statusLegend": "proposed | in-progress | verified | refuted | partially-verified"
+  },
+  "hypotheses": [
+    {
+      "id": "H9",
+      "title": "Cross-platform runtime gate: ONNX encoders via transformers.js load and run everywhere Unown runs, under both Bun and Node",
+      "statement": "transformers.js + onnxruntime-node loads all three q8 models (bge-small, MiniLM, ms-marco cross-encoder) with cold start (cached weights) under 10s, serves embeddings at p50 <= 250ms and reranking at p50 <= 25ms/pair on the 2-vCPU floor, stays within +400MB RSS, on Linux x64 (Bun AND Node) and on the GitHub Actions matrix (ubuntu/macos/windows). The user's explicit cross-platform gate for the whole non-LLM program.",
+      "subtask": "cross-platform compatibility (the gate before any conclusion)",
+      "experiment": "N0-probe (local Bun + Node; CI 3-OS matrix in .github/workflows/nonllm-probe.yml)",
+      "metrics": ["loadOk (3/3 models)", "cold load ms", "embed p50/p90 ms", "rerank p50 ms/pair", "rssDeltaMB", "Bun-vs-Node latency ratio"],
+      "thresholds": { "loadOkAll": true, "embedP50ms": "<= 250", "rerankP50ms": "<= 25", "rssDeltaMB": "<= 400", "bunNodeRatio": "<= 2.0" },
+      "guards": ["isolated package.json — the repo itself stays native-addon-free", "q8 (not q4): int8 > q4f16 on CPU per transformers.js#1567", "pinned @huggingface/transformers 4.3.1 + committed package-lock", "HF cache pinned inside the bench (models/, gitignored)"],
+      "precedent": "transformers.js v3+ officially supports Bun (bun#18079 fixed Mar-2025); onnxruntime-node ships 6-platform prebuilds; SetFit ONNX int8 = 2.19ms/sample on CPU",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H10",
+      "title": "Local embedding kNN triage matches the remote model on note kind/outcome at ~0 marginal cost",
+      "statement": "kNN (k=5, cosine) over bge-small-en-v1.5 q8 embeddings classifies session-note kind at >= 0.90 accuracy and outcome at >= 0.80 accuracy vs the ENGINE's own ground truth (note.kind, run.status) — at $0 marginal cost and p50 <= 250ms/note including embedding. The remote production model's own agreement (byte-faithful TRIAGE prompt) is the comparison row; a confidence-margin cascade (defer low-margin notes to the LLM) is reported as the production shape.",
+      "subtask": "note triage (dream-input gate; the H1/H2 lane without llama.cpp)",
+      "experiment": "N1-triage",
+      "metrics": ["kindAcc (kNN vs engine GT)", "kindMacroF1", "outcomeAcc", "outcome failedRecall", "embed p50 ms", "remote kindAcc (baseline row)", "cascade coverage/accuracy at margin 0.15"],
+      "thresholds": { "kindAcc": ">= 0.90", "outcomeAcc": ">= 0.80", "embedP50ms": "<= 250", "embedOkRate": ">= 0.95" },
+      "guards": ["confidence margin + deferral to remote for low-margin notes (cascade pattern)", "'other' class has no exemplars in the corpus — kNN must NOT be trusted for it (defer)"],
+      "precedent": "SetFit-355M > GPT-3-175B on RAFT (71.3 vs 62.7); BTZSC: embeddings ~0.62 macro-F1 vs sub-1B LLMs 0.28-0.43 at zero-shot; kNN-over-embeddings = 'the dumbest thing that works'",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H11",
+      "title": "Zero-model MinHash-LSH detects near-duplicate notes at microsecond cost; embeddings only confirm the hard cases",
+      "statement": "On a seeded corpus built from real notes (deterministic perturbations + remote-model paraphrases + true negatives), MinHash (128 perms, word 3-grams) + threshold ~0.5 achieves pair-F1 >= 0.90 on structural near-dups at <= 1ms/doc, and the two-stage lane (LSH candidates -> bge-small cosine >= 0.92 confirm) achieves F1 >= 0.85 including paraphrases. Estimated-Jaccard MAE vs exact Jaccard <= 0.05.",
+      "subtask": "note dedup before AutoDream (30+ notes/dream today; duplicate notes inflate dream input tokens)",
+      "experiment": "N2-dedup",
+      "metrics": ["pairF1 at swept thresholds (minhash / cosine / two-stage)", "ms/doc per lane", "estMAE", "per-perturbation recall (dropSentence / shuffle / appendNoise / dropLine / paraphrase)"],
+      "thresholds": { "minhashF1": ">= 0.90 (structural)", "twoStageF1": ">= 0.85 (incl. paraphrase)", "minhashMsPerDoc": "<= 1", "estMAE": "<= 0.05" },
+      "guards": ["thresholds calibrated on Unown's own corpus, not literature values", "dedup only gates dream INPUT (cluster reps + counts), never memory itself"],
+      "precedent": "datasketch MinHash-LSH 0.92-1.0 precision/recall on near-dup corpora; Milvus ships MinHash-LSH for LLM training-data dedup; no maintained pure-JS lib exists -> hand-rolled ~100 LOC",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H12",
+      "title": "A 23M local cross-encoder ranks dream-input candidates in agreement with the remote model at ~10ms/pair",
+      "statement": "ms-marco-MiniLM-L-6-v2 (q8, in-process) reranking of dream-input candidates achieves Spearman rho >= 0.50 and top-5 overlap >= 0.60 against the remote model's 0-10 consolidation-relevance scores, at p50 <= 25ms/pair — replacing a per-dream LLM ranking call with local scoring. The bge bi-encoder cosine is the ablation (is the cross-encoder actually better?).",
+      "subtask": "dream-input ranking / retrieval reranking (memory-recall lane)",
+      "experiment": "N3-rerank",
+      "metrics": ["spearmanVsRemote (cross-encoder, bi-encoder)", "top5OverlapVsRemote", "p50 ms/pair", "total ms for 20 candidates", "ceVsBiSpearman"],
+      "thresholds": { "ceSpearman": ">= 0.50", "ceTop5Overlap": ">= 0.60", "ceP50msPerPair": "<= 25" },
+      "guards": ["rerank only when candidate pool > ~10 (per research: ~5-15ms/pair on 2 vCPU — dream-time, not per-keystroke)", "cap pools at ~20-30 candidates"],
+      "precedent": "Qdrant benched Xenova ms-marco ONNX at p50 29ms/30-pair request on CPU (M4 Max); nDCG@10 ~83 on MS MARCO; BTZSC: rerankers are the strongest zero-shot scorers",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H13",
+      "title": "Non-LLM activation scoring (Park/Hou) approximates the remote model's importance judgments",
+      "statement": "The fully non-LLM activation score — 0.995^h recency decay x embedding relevance-to-goal x log frequency + structural heuristics — correlates with the remote model's per-note long-term-importance ratings (1-10) at Spearman rho >= 0.40, at zero LLM cost (one embedding pass). Ablation reports which component carries the correlation; this is the curation gate for AutoDream input (no published head-to-head exists — a measurement opportunity).",
+      "subtask": "dream-input curation / memory importance (AutoDream input ranking)",
+      "experiment": "N4-activation",
+      "metrics": ["spearman (full activation, recency-only, relevance-only, frequency-only, structural-only)", "top5OverlapVsRemote", "embedMs + scoreMs for the whole corpus"],
+      "thresholds": { "spearmanActivation": ">= 0.40", "top5Overlap": ">= 0.40" },
+      "guards": ["weights are a starting point (Park's shape), not a tuned artifact; ablate before shipping", "structural heuristics must never override explicit guard banners"],
+      "precedent": "Park 2023 recency 0.995^h; Hou et al. CHI-2024 activation model (relevance x elapsed x frequency, fully non-LLM); Hong 2025 keeps decay+similarity as the competitive baseline",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H14",
+      "title": "Zero-model LexRank curation of dream input cuts AutoDream prompt tokens >= 35% without materially worse memory",
+      "statement": "Replaying AutoDream (byte-faithful dream prompt, remote production model) with LexRank-compressed notes (top-2 sentences each, >= 35% kept) instead of full notes cuts prompt tokens >= 35% while the blind position-swapped judge strictly prefers the FULL-input memory at most 60% of the time (ties count for the curated lane), and structural checks (JSON validity, length sanity, injection scan) pass on both lanes.",
+      "subtask": "AutoDream input curation (token economics of the consolidation loop)",
+      "experiment": "N5-dream-curation",
+      "metrics": ["prompt token reduction %", "judge winner distribution (consistency-gated)", "jsonOk/saneLength/suspicious on both lanes", "chars kept ratio"],
+      "thresholds": { "reductionPct": ">= 35", "remoteStrictWinRate": "<= 0.60", "curatedStructuralOk": true },
+      "guards": ["run-header lines always kept (run id/outcome facts live there)", "never compress below a 0.35 sentence floor per note", "guard banners pass through untouched"],
+      "precedent": "extractive ≈ small abstractive on short inputs (MDPI 2023); LexRank = ms-class pure TS; Mem0's >90% token savings came from exactly this input-side dedup/curation",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    },
+    {
+      "id": "H15",
+      "title": "Integration shape: non-LLM lanes slot in as pre-processors around the existing LLM calls — no LLM call is replaced",
+      "statement": "If H10-H14 verify, the minimal-risk integration is per-lane feature flags in self-learning (PI_NOTE_DEDUP=minhash|off, PI_DREAM_RANK=cross-encoder|off, PI_DREAM_CURATE=lexrank|off, PI_TRIAGE=knn|off): dedup clusters notes into reps+counts before AutoDream; activation/rerank orders dream input under the token budget; LexRank compresses below-budget stragglers; kNN triage pre-labels notes and defers low-margin ones to the LLM. The AutoDream/mining/minting LLM calls themselves (and their guards) are untouched — strictly lower blast radius than the H8 local-LLM routing.",
+      "subtask": "integration design (only on success of H10-H14)",
+      "experiment": "shadow-mode replay: same fixtures through the curated pipeline, diff dream outputs + judge (N5 method, extended)",
+      "metrics": ["dream input token delta", "dream output quality (blind judge)", "learning-loop pass-rate parity (canary)"],
+      "thresholds": { "passRateDelta": ">= -1pt", "inputTokenCut": ">= 30%" },
+      "guards": ["every lane individually disableable via env", "shadow-mode dual-run before cutover", "canary gate + rollback (existing dream rollback) unchanged"],
+      "precedent": "H8's per-subtask routing; Mem0/Letta field shape (non-LLM retrieval/curation around LLM consolidation)",
+      "status": "proposed",
+      "verdict": null,
+      "evidence": []
+    }
+  ]
+}

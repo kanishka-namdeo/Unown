@@ -1,0 +1,50 @@
+{
+ "exportedAt": "2026-10-18T15:37:54.992Z",
+ "tasks": [
+  {
+   "id": "fix-csv-parser",
+   "name": "Fix CSV parsing",
+   "description": "Naive comma split breaks on quoted fields and escaped quotes.",
+   "category": "bugfix",
+   "difficulty": 3,
+   "prompt": "The file csv.js contains a naive CSV line parser that breaks on quoted fields. The test file csv.test.mjs describes the expected behavior (quoted fields may contain commas; a doubled double-quote inside a quoted field is an escaped quote). Fix csv.js so all tests pass. Do not modify the test file.",
+   "files": "{\"csv.js\":\"// Parses a single line of CSV (comma-separated, with optional double-quoted\\n// fields that may contain commas and escaped quotes \\\"\\\") into an array of fields.\\nexport function parseCsvLine(line) {\\n  // BUG: naive split breaks quoted fields\\n  return line.split(\\\",\\\");\\n}\\n\",\"csv.test.mjs\":\"import assert from \\\"node:assert/strict\\\";\\nimport { parseCsvLine } from \\\"./csv.js\\\";\\n\\nassert.deepEqual(parseCsvLine(\\\"a,b,c\\\"), [\\\"a\\\", \\\"b\\\", \\\"c\\\"]);\\nassert.deepEqual(parseCsvLine(\\\"a,,c\\\"), [\\\"a\\\", \\\"\\\", \\\"c\\\"]);\\nassert.deepEqual(parseCsvLine('say \\\"hi\\\",world'), ['say \\\"hi\\\"', \\\"world\\\"]);\\nassert.deepEqual(parseCsvLine('\\\"a,b\\\",c'), [\\\"a,b\\\", \\\"c\\\"]);\\nassert.deepEqual(parseCsvLine('\\\"he said \\\"\\\"run\\\"\\\"\\\",ok'), ['he said \\\"run\\\"', \\\"ok\\\"]);\\nassert.deepEqual(parseCsvLine(\\\"  a  ,  b  \\\"), [\\\"  a  \\\", \\\"  b  \\\"]);\\nassert.deepEqual(parseCsvLine(\\\"\\\"), [\\\"\\\"]);\\nconsole.log(\\\"csv tests passed\\\");\\n\"}"
+  },
+  {
+   "id": "fix-drop-right",
+   "name": "Fix dropRight off-by-one",
+   "description": "dropRight removes one element too many; edge cases around empty results fail.",
+   "category": "bugfix",
+   "difficulty": 2,
+   "prompt": "The file dropRight.js implements dropRight with an off-by-one bug. The test file dropRight.test.mjs describes the expected behavior. Fix dropRight.js so all tests pass. Do not modify the test file.",
+   "files": "{\"dropRight.js\":\"// Returns a new array with the last n elements removed.\\nexport function dropRight(arr, n = 1) {\\n  // BUG: off-by-one — removes one element too many\\n  return arr.slice(0, Math.max(0, arr.length - n - 1));\\n}\\n\",\"dropRight.test.mjs\":\"import assert from \\\"node:assert/strict\\\";\\nimport { dropRight } from \\\"./dropRight.js\\\";\\n\\nassert.deepEqual(dropRight([1, 2, 3, 4], 2), [1, 2]);\\nassert.deepEqual(dropRight([1, 2, 3, 4], 0), [1, 2, 3, 4]);\\nassert.deepEqual(dropRight([1, 2], 5), []);\\nassert.deepEqual(dropRight([1], 1), []);\\nassert.deepEqual(dropRight([], 1), []);\\nconsole.log(\\\"dropRight tests passed\\\");\\n\"}"
+  },
+  {
+   "id": "fix-fizzbuzz",
+   "name": "Fix FizzBuzz",
+   "description": "Classic FizzBuzz has a branch-ordering bug: multiples of 15 never print FizzBuzz.",
+   "category": "bugfix",
+   "difficulty": 1,
+   "prompt": "The file fizzbuzz.js contains a buggy fizzbuzz implementation. The test file fizzbuzz.test.mjs describes the expected behavior. Fix fizzbuzz.js so all tests pass. Do not modify the test file.",
+   "files": "{\"fizzbuzz.js\":\"// Returns the fizzbuzz answer for 1..n as an array of strings/numbers.\\nexport function fizzbuzz(n) {\\n  const out = [];\\n  for (let i = 1; i <= n; i++) {\\n    if (i % 3 === 0) out.push(\\\"Fizz\\\");\\n    else if (i % 5 === 0) out.push(\\\"Buzz\\\");\\n    // BUG: multiples of 15 fall into the % 3 branch and never say \\\"FizzBuzz\\\"\\n    else out.push(i);\\n  }\\n  return out;\\n}\\n\",\"fizzbuzz.test.mjs\":\"import assert from \\\"node:assert/strict\\\";\\nimport { fizzbuzz } from \\\"./fizzbuzz.js\\\";\\n\\nconst r16 = fizzbuzz(16);\\nassert.equal(r16.length, 16);\\nassert.deepEqual(r16.slice(0, 5), [1, 2, \\\"Fizz\\\", 4, \\\"Buzz\\\"]);\\nassert.equal(r16[14], \\\"FizzBuzz\\\", \\\"15 must be FizzBuzz\\\");\\nassert.equal(r16[2], \\\"Fizz\\\");\\nassert.equal(r16[4], \\\"Buzz\\\");\\nassert.equal(r16[9], \\\"Buzz\\\");\\nconsole.log(\\\"fizzbuzz tests passed\\\");\\n\"}"
+  },
+  {
+   "id": "impl-debounce",
+   "name": "Implement debounce",
+   "description": "Implement a clock-injectable debounce with cancel(), probed at call boundaries.",
+   "category": "implementation",
+   "difficulty": 4,
+   "prompt": "Implement the debounce function in debounce.js according to its doc comment. The test file debounce.test.mjs describes the exact semantics (including the injectable clock and lazy boundary flushing). Make all tests pass. Do not modify the test file.",
+   "files": "{\"debounce.js\":\"// TODO: implement debounce.\\n// debounce(fn, delay, { now }) returns a debounced fn that:\\n//  - delays invoking fn until `delay` ms have elapsed since the last call\\n//  - `now` is an injectable clock: () => ms (defaults to Date.now)\\n//  - exposes .cancel() which prevents any pending invocation\\n//  - the debounced function returns undefined\\nexport function debounce(fn, delay = 200, { now = Date.now } = {}) {\\n  throw new Error(\\\"not implemented\\\");\\n}\\n\",\"debounce.test.mjs\":\"import assert from \\\"node:assert/strict\\\";\\nimport { debounce } from \\\"./debounce.js\\\";\\n\\nlet clock = 1000;\\nconst now = () => clock;\\nconst events = [];\\n\\nconst push = (x) => events.push(x);\\nconst d = debounce(push, 300, { now });\\n\\nd(1);        // t=1000, schedules fire at 1300\\nclock = 1200; d(2);   // reschedules: fire at 1500\\nclock = 1400; d(3);   // reschedules: fire at 1700\\nclock = 1700;\\n// time passes — flush happens lazily on next call boundary in this impl,\\n// so we probe with a no-op call to let the implementation fire.\\nassert.equal(events.length, 0, \\\"nothing fired before delay elapsed\\\");\\nd(4);        // t=1700: pending fires [3], then schedules fire at 2000\\nassert.deepEqual(events, [3], \\\"only the last args before the boundary fired\\\");\\nclock = 2100; d(5);   // fires [4] at boundary, schedules 2400\\nassert.deepEqual(events, [3, 4]);\\nclock = 2500;\\nd.cancel();          // drops the pending [5] (scheduled for 2400)\\nclock = 3000; d(7);  // boundary probe: nothing pending fires, schedules [7] -> 3300\\nassert.deepEqual(events, [3, 4], \\\"cancel() dropped the pending call\\\");\\nconsole.log(\\\"debounce tests passed\\\");\\n\"}"
+  },
+  {
+   "id": "impl-map-limit",
+   "name": "Implement mapLimit",
+   "description": "Async map with bounded concurrency, ordered results, rejection propagation.",
+   "category": "implementation",
+   "difficulty": 4,
+   "prompt": "Implement the mapLimit function in mapLimit.js according to its doc comment. The test file mapLimit.test.mjs verifies ordering, the concurrency bound and error propagation. Make all tests pass. Do not modify the test file.",
+   "files": "{\"mapLimit.js\":\"// TODO: implement async map with a concurrency limit.\\n// mapLimit(items, limit, mapper) returns Promise<result[]> where result[i]\\n// awaits mapper(items[i], i) — but never runs more than `limit` mappers\\n// concurrently. Results keep the original order. mapper may reject: the\\n// whole promise rejects with that error.\\nexport async function mapLimit(items, limit, mapper) {\\n  throw new Error(\\\"not implemented\\\");\\n}\\n\",\"mapLimit.test.mjs\":\"import assert from \\\"node:assert/strict\\\";\\nimport { mapLimit } from \\\"./mapLimit.js\\\";\\n\\nlet active = 0;\\nlet maxActive = 0;\\nconst track = async (x) => {\\n  active++; maxActive = Math.max(maxActive, active);\\n  await new Promise((r) => setTimeout(r, 10 + (x % 3) * 7));\\n  active--;\\n  return x * 10;\\n};\\n\\nconst res = await mapLimit([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 3, track);\\nassert.deepEqual(res, [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]);\\nassert.ok(maxActive <= 3, \\\"concurrency exceeded limit: \\\" + maxActive);\\nassert.ok(maxActive >= 2, \\\"no parallelism happened: \\\" + maxActive);\\n\\n// rejection propagates\\nawait assert.rejects(\\n  mapLimit([1, 2, 3], 2, async (x) => { if (x === 2) throw new Error(\\\"boom\\\"); return x; }),\\n  /boom/,\\n);\\nconsole.log(\\\"mapLimit tests passed\\\");\\n\"}"
+  }
+ ]
+}

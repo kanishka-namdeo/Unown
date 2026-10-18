@@ -1,0 +1,41 @@
+{
+ "exportedAt": "2026-10-18T15:37:54.992Z",
+ "tiers": {
+  "policy": {
+   "version": 1,
+   "created_at": 1792330742265,
+   "content": "# Tier 0 — Policy (non-negotiable guardrails)\n\n- Never delete or overwrite files outside the current working directory.\n- Never install packages, start network listeners, or contact external hosts.\n- Always verify your work by running the provided tests before declaring success.\n- Keep changes minimal: fix exactly what the task asks for.\n- If a verification fails, inspect the failure output and fix the root cause — never edit tests to make them pass.\n",
+   "resolvedChars": 455
+  },
+  "project": {
+   "version": 9,
+   "created_at": 1792337200591,
+   "content": "# Tier 1 — Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- Off-by-one errors in slice calculations: `slice(0, arr.length - n)` removes exactly `n` elements from end; `Math.max(0, ...)` guards against negative [note 4ab91562, note c2d2480a, note b8302de0, note a13b26de, note 8e466740, note edc10ac2]\n- FizzBuzz-style multiple conditions: check combined cases (e.g., 15) before individual ones to avoid early match [note 84eedd6a, note 04dd97fd, note 4671d36a, note 0dcbbbec]\n\n## Task patterns\n- CSV parsing: handle empty fields (`a,,c`), quoted fields with commas, escaped quotes (`\"\"` → `\"`) inside quotes, treat quotes as literals when not at field start [note 15127d44, note f5db5c0d, note b619b63b, note 9947f308, note 502d936d, note b186807e]\n- Debounce: delay via `scheduledTime = currentTime + delay`, use injectable `now` function, lazy boundary flushing, track scheduled time and pending args [note 6cf57ded, note ead7acf6, note 64eaf9b7, note 12898540, note 135ac5db]\n- Map with concurrency limit: maintain order with `results[index]` captured before async start, use `active` counter to respect limit, propagate errors with `rejected` flag [note c9437391, note 2d1a52f4, note 6e348e17, note a6f5e249]\n",
+   "resolvedChars": 1407
+  },
+  "user": {
+   "version": 1,
+   "created_at": 1792330742265,
+   "content": "# Tier 2 — User Memory\n\n- The user values minimal diffs and clear, idiomatic code.\n- Prefer standard library functions over hand-rolled logic.\n",
+   "resolvedChars": 143
+  },
+  "local": {
+   "version": 1,
+   "created_at": 1792330742265,
+   "content": "# Tier 3 — Local Overrides\n\n(empty — most specific tier; anything here overrides the tiers above)\n",
+   "resolvedChars": 98
+  },
+  "project:scratch-proj": {
+   "version": 2,
+   "created_at": 1792331973684,
+   "content": "# Tier 1 — Project Memory\n\n## Workflow\n- This file is maintained by Unown: terminal session notes are consolidated\n  here by AutoDream. Edit freely — your edits are preserved as a new version.\n\n## Conventions\n- Keep helper functions in src/ private (no export) unless a test file imports them; minimize exported surface [note 6]\n- Prefer bun:test over vitest; run tests with `bun test` [note 5]\n\n## Known pitfalls\n- When using Array.prototype.find() on user-provided arrays in production, always guard against nullish elements. Data from external sources (DB, API) may contain null/undefined entries due to race conditions or data corruption. Use `u && u.property` instead of just `u.property` in the predicate [note 2]\n- Bun occasionally serves stale transpiled TS after switching branches; remove node_modules/.cache to fix [note 1]\n- `bun publish` fails with ENEEDAUTH if local .npmrc lacks a token; fix auth before retrying [note 2]\n\n## Task playbooks\n- CI: add typecheck job for src/ on every push — currently no TypeScript checking in this project [note 4]\n",
+   "resolvedChars": 1063
+  },
+  "project:scratch-cli": {
+   "version": 1,
+   "created_at": 1792331966080,
+   "content": "# Tier 1 — Project Memory\n\n## Workflow\n- This file is maintained by Unown: terminal session notes are consolidated\n  here by AutoDream. Edit freely — your edits are preserved as a new version.\n\n## Known pitfalls\n- Remember `array.slice(0, count)` end index is exclusive: `slice(0, 3)` returns indices 0,1,2 (exactly 3 elements) [note 2]\n",
+   "resolvedChars": 337
+  }
+ }
+}
