@@ -45,21 +45,21 @@ All three live in `~/.unown/agent/` (override the whole dir with `UNOWN_HOME`).
 
 ```json
 {
-	"providers": {
-		"my-provider": {
-			"baseUrl": "https://api.example.com/v1",
-			"api": "openai-completions",
-			"models": [
-				{
-					"id": "my-model",
-					"name": "My Model (via unown)",
-					"contextWindow": 131072,
-					"maxTokens": 8192,
-					"input": ["text", "image"]
-				}
-			]
-		}
-	}
+        "providers": {
+                "my-provider": {
+                        "baseUrl": "https://api.example.com/v1",
+                        "api": "openai-completions",
+                        "models": [
+                                {
+                                        "id": "my-model",
+                                        "name": "My Model (via unown)",
+                                        "contextWindow": 131072,
+                                        "maxTokens": 8192,
+                                        "input": ["text", "image"]
+                                }
+                        ]
+                }
+        }
 }
 ```
 
@@ -71,7 +71,7 @@ All three live in `~/.unown/agent/` (override the whole dir with `UNOWN_HOME`).
 
 ```json
 {
-	"my-provider": { "type": "api_key", "key": "sk-..." }
+        "my-provider": { "type": "api_key", "key": "sk-..." }
 }
 ```
 
@@ -123,8 +123,9 @@ background jobs locally (`PI_MINER_MODEL_ID` / `PI_DREAM_MODEL_ID` /
 agent sessions stay on the remote model — see
 [benchmarks/local-llm/](../benchmarks/local-llm/) for the hypothesis-driven
 evaluation behind this split (a 0.6B local model matched the remote baseline
-on note triage, failure mining and dream consolidation; task minting and the
-main agent stay remote). Start a lane in one line:
+on note triage, failure mining and dream consolidation; pure-local task
+minting was refuted — the opt-in mint cascade below is its verified salvage —
+and the main agent stays remote). Start a lane in one line:
 
 ```bash
 node benchmarks/local-llm/runner.mjs serve --model qwen3-0.6b   # downloads llama.cpp + GGUF on first use
@@ -132,6 +133,16 @@ node benchmarks/local-llm/runner.mjs serve --model qwen3-0.6b   # downloads llam
 
 `GET /health` reports the lane as `local {ok, status, url, models}` alongside
 the upstream probe.
+
+**Mint cascade (opt-in, `PI_MINT_CASCADE=1`):** task minting can draft on the
+local model and pay for the remote one only when needed. The cascade authors
+each draft on `PI_MINT_DRAFT_MODEL_ID` (default `local-qwen3-0.6b`,
+json_schema-grammar-constrained), gates it with the existing validator, and
+escalates only invalid drafts to ONE remote repair call on the regular mint
+model; everything downstream (self-check, sandboxed validation run) is
+unchanged. Verified E8/H10 on the 2-vCPU host: 6/6 accepted vs 5/6
+pure-remote, 10.6× cheaper per accepted task, blind judge 2W/3T/0L — a valid
+local draft never touches the remote API. Unset = remote authoring as before.
 
 **The `BRIDGE_API_KEY` coupling:** if you set a shared secret on the bridge, every client must present it — including the terminal agent. `unown setup --provider bridge` picks it up from the environment; if you set it *after* configuring, re-run setup (or hand-edit the `apiKey` in `~/.unown/agent/models.json`).
 

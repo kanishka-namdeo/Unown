@@ -20,7 +20,7 @@ Routing is enforced by the llm-bridge; the binding rules live in its [AGENTS.md]
 | `kimi-k2.5` | default coder | every request naming an unknown model id routes here (`BRIDGE_ROUTE_DEFAULT`) |
 | `qwen3.7-plus` | fast multimodal | thinking auto-disabled (`enable_thinking:false`; `BRIDGE_QWEN_THINKING=1` re-enables) |
 | `qwen3.6-plus` | long context | 1M-token context window |
-| `local-*` (opt-in) | background learning lane | when `BRIDGE_LOCAL_URL` points at a local server, the learning layer's subtasks (mining / dream / skills / mint) can be pinned to a local model via `PI_MINER_MODEL_ID` etc.; agent sessions stay remote. Unset = the all-remote default, unchanged. Evaluation: [benchmarks/local-llm/](../benchmarks/local-llm/) |
+| `local-*` (opt-in) | background learning lane | when `BRIDGE_LOCAL_URL` points at a local server, the learning layer's subtasks (mining / dream / skills / mint) can be pinned to a local model via `PI_MINER_MODEL_ID` etc.; task minting can also run as an opt-in local-draft + remote-repair cascade (`PI_MINT_CASCADE`, verified H10 — the local model drafts, only invalid drafts cost one remote repair call); agent sessions stay remote. Unset = the all-remote default, unchanged. Evaluation: [benchmarks/local-llm/](../benchmarks/local-llm/) |
 
 Messages, tool-role messages and `image_url` parts pass through the bridge verbatim, so tool calling and vision work end to end.
 

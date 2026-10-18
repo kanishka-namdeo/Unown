@@ -51,6 +51,8 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `PI_DREAM_MODEL_ID` | unset | Same override for AutoDream consolidation calls. |
 | `PI_SKILLS_MODEL_ID` | unset | Same override for skill-minting calls. |
 | `PI_MINT_MODEL_ID` | unset | Same override for task-minting calls. |
+| `PI_MINT_CASCADE` | unset | `1` enables the task-minting cascade (verified [E8/H10](../benchmarks/local-llm/results/REPORT.md#e8--local-draft--remote-repair-mint-cascade-h10)): a small local model authors the draft grammar-constrained, the existing validator gates it, and only an invalid draft costs one remote repair call on the regular mint model. A valid local draft never touches the remote API. Unset = remote authoring, unchanged. |
+| `PI_MINT_DRAFT_MODEL_ID` | `local-qwen3-0.6b` | The local-lane model that authors cascade drafts (only with `PI_MINT_CASCADE=1`). Any `local-*` id routes to the bridge's local lane; the default is the E8-verified triage-class model. |
 | `PI_SELFLEARNING_DATA` | `data/self-learning` (repo-relative) | Runtime data dir for the engine: sandboxes, sessions, memory. |
 | `PI_SELFLEARNING_DB` | `db/selflearning.db` (repo-relative) | SQLite store for runs, dreams, memory versions, skills. |
 
