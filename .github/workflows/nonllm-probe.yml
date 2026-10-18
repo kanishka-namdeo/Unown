@@ -97,7 +97,7 @@ jobs:
           const fs = require("fs");
           const path = require("path");
           const glob = path.join("benchmarks", "nonllm", "results");
-          const dirs = fs.readdirSync(glob).filter((d) => d.startsWith("probe"));
+          const dirs = fs.readdirSync(glob).filter((d) => d.startsWith("probe-"));
           if (!dirs.length) { console.error("no probe results dir"); process.exit(1); }
           const newest = dirs
             .map((d) => ({ d, m: fs.statSync(path.join(glob, d, "n0-probe.json")).mtimeMs }))
