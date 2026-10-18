@@ -58,7 +58,6 @@ jobs:
           const glob = require("path").join("benchmarks", "local-llm", "results");
           const dirs = fs.readdirSync(glob).filter((d) => d.startsWith("probe"));
           if (!dirs.length) { console.error("no probe results dir"); process.exit(1); }
-          const dir = fs.statSync(require("path").join(glob, dirs.at(-1))).mtimeMs;
           const newest = dirs
             .map((d) => ({ d, m: fs.statSync(require("path").join(glob, d, "e0-probe.json")).mtimeMs }))
             .sort((a, b) => b.m - a.m)[0].d;

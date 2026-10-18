@@ -122,8 +122,11 @@ export async function provisionModel(id) {
   const dest = path.join(MODELS_DIR, spec.file);
   if (existsSync(dest) && statSync(dest).size > 10_000_000) return { path: dest, cached: true };
   console.log(`[provision] downloading ${id} (${spec.hf}) …`);
-  const [repo, ...rest] = spec.hf.split("/");
-  const url = `https://huggingface.co/${repo}/resolve/main/${rest.join("/")}`;
+  // hf = "<org>/<repo>/<file>" — repo is the FIRST TWO segments, file the rest
+  const parts = spec.hf.split("/");
+  const repo = parts.slice(0, 2).join("/");
+  const file = parts.slice(2).join("/");
+  const url = `https://huggingface.co/${repo}/resolve/main/${file}`;
   await downloadTo(url, dest + ".part");
   renameSync(dest + ".part", dest);
   return { path: dest, cached: false };
