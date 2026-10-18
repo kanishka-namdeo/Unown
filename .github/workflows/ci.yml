@@ -122,7 +122,7 @@ jobs:
           fi
       - name: Smoke — CLI boots (unown --help)
         run: bun bin/unown --help
-      - name: Smoke — CLI surface: info, doctor --json, completions, changelog, update --check
+      - name: "Smoke — CLI surface (info, doctor --json, completions, changelog, update --check)"
         # The 2026 productization surface, non-interactively:
         #  - unown info / doctor --json must emit valid JSON (node -e parses it)
         #  - completions scripts must pass bash -n (zsh/fish syntax is pinned
