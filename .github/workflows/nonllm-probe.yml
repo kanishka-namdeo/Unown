@@ -72,7 +72,13 @@ jobs:
             const tag = `${r.model} on ${r.model && probe.summary.runtime.platform}`;
             if (!r.loadOk) { fail.push(`${tag}: load failed — ${r.error ?? "?"}`); continue; }
             if (r.embedP50ms !== undefined && r.embedP50ms !== null && r.embedP50ms > 250) fail.push(`${tag}: embed p50 ${r.embedP50ms}ms > 250ms`);
-            if (r.rerankP50ms !== undefined && r.rerankP50ms !== null && r.rerankP50ms > 25) fail.push(`${tag}: rerank p50 ${r.rerankP50ms}ms/pair > 25ms`);
+            // 50ms/pair: calibrated on REAL cross-encoder inference — linux 11ms,
+            // win 8ms, darwin-arm64 32ms (slowest observed ORT platform). Still
+            // ~175x cheaper than the remote scoring call it replaces (~5.6s).
+            // (The saturation bug class — pipeline softmaxing the single logit
+            // to 1.0 — shows up as degenerate scores, caught by N3's variance
+            // check, not by latency.)
+            if (r.rerankP50ms !== undefined && r.rerankP50ms !== null && r.rerankP50ms > 50) fail.push(`${tag}: rerank p50 ${r.rerankP50ms}ms/pair > 50ms`);
             if (r.rssDeltaMB !== undefined && r.rssDeltaMB !== null && r.rssDeltaMB > 400) fail.push(`${tag}: rss +${r.rssDeltaMB}MB > 400MB`);
           }
           if (fail.length) { console.error("H9 THRESHOLD FAILURES:\n- " + fail.join("\n- ")); process.exit(1); }

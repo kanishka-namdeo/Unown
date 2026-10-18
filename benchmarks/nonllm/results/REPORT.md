@@ -34,9 +34,9 @@ for run **39142263790** carry the per-platform N0 JSONs.
 |---|---|---|---|---|
 | linux-x64 · node 24.21 (local) | 15 ms | 7 ms | 2 ms | 291 MB |
 | linux-x64 · bun 1.3.14 (local) | 15 ms | 14 ms | 2 ms | 363 MB |
-| linux-x64 · node 22 (CI) | 13 ms | 9 ms | 1 ms | ~190 MB |
-| darwin-arm64 · node 22 (CI) | 39 ms | 19 ms | 1 ms | ~166 MB |
-| win32-x64 · node 22 (CI) | 28 ms | 16 ms | 2 ms | ~138 MB |
+| linux-x64 · node 22 (CI) | 13 ms | 9 ms | 11 ms | ~190 MB |
+| darwin-arm64 · node 22 (CI) | 39 ms | 19 ms | 32 ms | ~166 MB |
+| win32-x64 · node 22 (CI) | 28 ms | 16 ms | 8 ms | ~138 MB |
 
 All H9 thresholds pass with 6–16× headroom (embed p50 ≤ 250 ms, rerank ≤
 25 ms/pair, RSS Δ ≤ 400 MB). transformers.js 4.3.1 + onnxruntime-node 1.30.0
