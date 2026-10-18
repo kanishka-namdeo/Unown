@@ -51,6 +51,7 @@ import {
     parseGoalCommand,
     renderGoalStatus,
 } from "./goal.ts";
+import { assistantTextOf } from "./messages.ts";
 import {
     buildReviewerTask,
     captureReviewTarget,
@@ -1559,16 +1560,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                 const messages = Array.isArray(event?.messages) ? event.messages : [];
                                 const lastAssistant = [...messages].reverse().find((m: any) => m?.role === "assistant");
                                 if (lastAssistant) {
-                                        const content = lastAssistant.content;
-                                        const text =
-                                                typeof content === "string"
-                                                        ? content
-                                                        : Array.isArray(content)
-                                                          ? content
-                                                                    .filter((b: any) => b?.type === "text" && typeof b.text === "string")
-                                                                    .map((b: any) => b.text)
-                                                                    .join("\n")
-                                                          : "";
+                                        const text = assistantTextOf(lastAssistant);
                                         if (/\[GOAL:COMPLETE\]/i.test(text)) {
                                                 const check = checkGoalCompletion(text, todos);
                                                 if (check.complete) {

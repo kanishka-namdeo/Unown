@@ -633,3 +633,86 @@ describe("buildTerminalNote", () => {
                 }
         });
 });
+
+// ---------------------------------------------------------------------------
+// agent_end final-outcome capture — pi's REAL message shape (audit MEDIUM-2):
+// AssistantMessage.content is an ARRAY of typed blocks (TextContent |
+// ThinkingContent | ToolCall) — never a string. The old string-only check
+// matched nothing, so EVERY terminal note shipped without its "Final
+// outcome:" line (the single most valuable dream input). termhooks.test.ts
+// only fed buildTerminalNote a hand-made lastAssistantText, and goal.test.ts
+// used fake STRING-content messages that never occur in reality.
+// ---------------------------------------------------------------------------
+describe("agent_end final-outcome capture (pi's real message shapes)", () => {
+        test("array-content assistant messages are captured into the note's Final outcome line", async () => {
+                const handlers = attach({});
+                const realFetch = globalThis.fetch;
+                let deliveredBody = "";
+                globalThis.fetch = (async (_url: any, init: any) => {
+                        deliveredBody = String(init?.body ?? "");
+                        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+                }) as typeof fetch;
+                try {
+                        handlers["input"]({ text: "add a sum function" }); // session activity
+                        handlers["agent_end"]({
+                                messages: [
+                                        { role: "user", content: "add a sum function" },
+                                        {
+                                                role: "assistant",
+                                                content: [
+                                                        { type: "thinking", text: "internal reasoning about the request" },
+                                                        { type: "tool_call", id: "t1", name: "write" },
+                                                ],
+                                        },
+                                        {
+                                                role: "assistant",
+                                                content: [{ type: "text", text: "Created sum.ts and verified the tests pass." }],
+                                        },
+                                ],
+                        });
+                        await handlers["session_shutdown"]({ reason: "quit" });
+                        expect(deliveredBody).toContain("Final outcome:");
+                        expect(decoded(deliveredBody)).toContain("Created sum.ts and verified the tests pass.");
+                } finally {
+                        globalThis.fetch = realFetch;
+                }
+        });
+
+        test("thinking/tool-call-only assistant turns contribute NO Final outcome line", async () => {
+                const handlers = attach({});
+                const realFetch = globalThis.fetch;
+                let deliveredBody = "";
+                globalThis.fetch = (async (_url: any, init: any) => {
+                        deliveredBody = String(init?.body ?? "");
+                        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+                }) as typeof fetch;
+                try {
+                        handlers["input"]({ text: "do something" });
+                        handlers["agent_end"]({
+                                messages: [
+                                        { role: "user", content: "do something" },
+                                        {
+                                                role: "assistant",
+                                                content: [
+                                                        { type: "thinking", text: "reasoning" },
+                                                        { type: "tool_call", id: "t1", name: "bash" },
+                                                ],
+                                        },
+                                ],
+                        });
+                        await handlers["session_shutdown"]({ reason: "quit" });
+                        expect(decoded(deliveredBody)).not.toContain("Final outcome:");
+                } finally {
+                        globalThis.fetch = realFetch;
+                }
+        });
+});
+
+/** The delivered note body is JSON — decode the content field for readable assertions. */
+function decoded(body: string): string {
+        try {
+                return String(JSON.parse(body).content ?? "");
+        } catch {
+                return body;
+        }
+}

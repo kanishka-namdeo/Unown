@@ -30,6 +30,7 @@ import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve as resolvePath } from "node:path";
 import { decideBash, jailPath, syntaxCheck } from "./hooks.ts";
+import { assistantTextOf } from "./messages.ts";
 import { deliverTerminalNote } from "./term.ts";
 
 export interface TerminalHookOptions {
@@ -425,12 +426,15 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
 
                 pi.on("agent_end", (event: any) => {
                         // Capture the final assistant message of each turn for the note.
+                        // pi's assistant content is an ARRAY of typed blocks (TextContent |
+                        // ThinkingContent | ToolCall) — the old string-only check matched
+                        // NOTHING, so every note shipped without its "Final outcome:" line.
                         try {
                                 const messages = Array.isArray(event?.messages) ? event.messages : [];
                                 for (let i = messages.length - 1; i >= 0; i--) {
-                                        const m = messages[i];
-                                        if (m?.role === "assistant" && typeof m.content === "string" && m.content.trim()) {
-                                                lastAssistantText = m.content.trim();
+                                        const text = assistantTextOf(messages[i]);
+                                        if (text) {
+                                                lastAssistantText = text;
                                                 break;
                                         }
                                 }
