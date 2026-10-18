@@ -55,6 +55,7 @@ import {
 } from "./term.ts";
 import { createCheckpointsExtension } from "./checkpoints.ts";
 import { createMcpExtension } from "./mcp.ts";
+import { installChildReaper } from "./child-reaper.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 import { cmdUninstall, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
@@ -243,6 +244,10 @@ interface BootOptions {
 
 async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
         const agentDir = ensureUnownAgentDir();
+        // Last-resort child hygiene (child-reaper.ts): LSP/MCP server children get
+        // SIGTERM→SIGKILL on process exit and SIGINT/SIGTERM — idempotent, so every
+        // bootRuntime call (TUI, print, subagents) re-installs it harmlessly.
+        installChildReaper();
         const checkpointsExtension = createCheckpointsExtension({ cwd, verbose });
         const mcpExtension = createMcpExtension({ cwd, verbose });
         const extension = createTerminalExtension({ cwd, engineUrl: ENGINE_URL, strict: STRICT_HOOKS, verbose });

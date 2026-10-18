@@ -380,3 +380,240 @@ describe("LspManager against the mock server", () => {
         expect(manager.disabled).toBe(true);
     });
 });
+
+// ---------------------------------------------------------------------------
+// 4. H1: crash/restart semantics, framing hardening, HANG-killers, env parsing
+// ---------------------------------------------------------------------------
+
+describe("LspManager crash + restart semantics (H1)", () => {
+    test("crash: pending request rejects, crashCount surfaces, cooldown gates, restart re-didOpens", async () => {
+        const dir = join(tmpRoot, "crash1");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "a.ts");
+        writeFileSync(file, "const ERROR_TOKEN = 1;\n");
+        const prevStrict = process.env.MOCK_LSP_STRICT;
+        process.env.MOCK_LSP_STRICT = "1"; // ignore didChange for never-opened docs
+        const manager = new LspManager({
+            cwd: dir,
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+            diagnosticsWaitMs: 3_000,
+            crashCooldownMs: 250,
+            maxRestarts: 3,
+        });
+        try {
+            // healthy first cycle
+            const conn = await manager.connectionFor("typescript");
+            expect(conn).not.toBeNull();
+            await manager.syncDocument(file);
+            const first = await manager.waitForFreshDiagnostics(file, Date.now() - 1000);
+            expect(first).toHaveLength(1);
+
+            // crash mid-session; the in-flight request must REJECT, not hang
+            await expect(conn!.request("$/mockCrash", {}, 5_000)).rejects.toThrow("server exited (code 1)");
+
+            // crash bookkeeping surfaced in status()
+            const entry = manager.status().servers.find((s) => s.command.includes("mock-lsp-server"))!;
+            expect(entry.state).toBe("crashed");
+            expect(entry.crashCount).toBe(1);
+            expect(entry.lastCrashAt).toBeGreaterThan(0);
+            expect(entry.detail).toContain("server exited");
+
+            // within cooldown: syncDocument skips cheaply (no spawn)
+            expect(await manager.syncDocument(file)).toBeNull();
+
+            // cooldown elapses → lazy restart; openDocs was cleared on the
+            // crash, so the STRICT mock (ignores didChange for unknown docs)
+            // still publishes — through a fresh didOpen on the new process.
+            await new Promise((r) => setTimeout(r, 350));
+            writeFileSync(file, "const ERROR_TOKEN = 2;\n");
+            const freshTs = Date.now();
+            const conn2 = await manager.syncDocument(file);
+            expect(conn2).not.toBeNull();
+            const items = await manager.waitForFreshDiagnostics(file, freshTs);
+            expect(items).toHaveLength(1);
+            expect(items[0].message).toContain("ERROR_TOKEN");
+
+            // the crash is still visible once the server runs again
+            const entry2 = manager.status().servers.find((s) => s.command.includes("mock-lsp-server"))!;
+            expect(entry2.state).toBe("running");
+            expect(entry2.crashCount).toBe(1);
+            manager.disposeAll();
+        } finally {
+            if (prevStrict === undefined) delete process.env.MOCK_LSP_STRICT;
+            else process.env.MOCK_LSP_STRICT = prevStrict;
+        }
+    });
+
+    test("restarts exhausted: syncs skip cheaply and status says so", async () => {
+        const dir = join(tmpRoot, "crash2");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "a.ts");
+        writeFileSync(file, "const fine = 1;\n");
+        const manager = new LspManager({
+            cwd: dir,
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+            diagnosticsWaitMs: 500,
+            crashCooldownMs: 50,
+            maxRestarts: 0, // budget already spent
+        });
+        const conn = await manager.connectionFor("typescript");
+        expect(conn).not.toBeNull();
+        await expect(conn!.request("$/mockCrash", {}, 5_000)).rejects.toThrow("server exited");
+        await new Promise((r) => setTimeout(r, 80)); // cooldown passes, budget gone
+        const entry = manager.status().servers.find((s) => s.command.includes("mock-lsp-server"))!;
+        expect(entry.state).toBe("crashed");
+        expect(entry.detail).toContain("restarts exhausted");
+        expect(await manager.syncDocument(file)).toBeNull();
+        manager.disposeAll();
+    });
+});
+
+describe("LspConnection framing hardening (H1)", () => {
+    test("oversized Content-Length header recycles the connection instead of buffering", async () => {
+        const dir = join(tmpRoot, "bighdr");
+        mkdirSync(dir, { recursive: true });
+        const prev = process.env.MOCK_LSP_BIG_HEADER;
+        process.env.MOCK_LSP_BIG_HEADER = "1";
+        const manager = new LspManager({
+            cwd: dir,
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 10_000,
+        });
+        try {
+            const started = Date.now();
+            const conn = await manager.connectionFor("typescript");
+            expect(conn).toBeNull(); // recycled, not wedged
+            expect(Date.now() - started).toBeLessThan(5_000); // violation is immediate, not a timeout burn
+            const entry = manager.status().servers.find((s) => s.command.includes("mock-lsp-server"))!;
+            expect(entry.state).toBe("crashed");
+            expect(entry.crashCount).toBe(1); // recorded once (no double count)
+            expect(entry.detail).toContain("Content-Length");
+            manager.disposeAll();
+        } finally {
+            if (prev === undefined) delete process.env.MOCK_LSP_BIG_HEADER;
+            else process.env.MOCK_LSP_BIG_HEADER = prev;
+        }
+    });
+
+    test("garbage banner block before a valid frame does not eat the frame", async () => {
+        const dir = join(tmpRoot, "noise");
+        mkdirSync(dir, { recursive: true });
+        const prev = process.env.MOCK_LSP_NOISE;
+        process.env.MOCK_LSP_NOISE = "1";
+        const manager = new LspManager({
+            cwd: dir,
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+            diagnosticsWaitMs: 1_000,
+        });
+        try {
+            const conn = await manager.connectionFor("typescript");
+            expect(conn).not.toBeNull(); // initialize parsed despite the banner
+            manager.disposeAll();
+        } finally {
+            if (prev === undefined) delete process.env.MOCK_LSP_NOISE;
+            else process.env.MOCK_LSP_NOISE = prev;
+        }
+    });
+
+    test("LF-only headers (\\n\\n framing) are accepted", async () => {
+        const dir = join(tmpRoot, "lfonly");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "a.ts");
+        writeFileSync(file, "const ERROR_TOKEN = 1;\n");
+        const prev = process.env.MOCK_LSP_LF;
+        process.env.MOCK_LSP_LF = "1";
+        const manager = new LspManager({
+            cwd: dir,
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+            diagnosticsWaitMs: 3_000,
+        });
+        try {
+            await manager.syncDocument(file);
+            const items = await manager.waitForFreshDiagnostics(file, Date.now() - 1000);
+            expect(items).toHaveLength(1); // handshake AND diagnostics parsed
+            manager.disposeAll();
+        } finally {
+            if (prev === undefined) delete process.env.MOCK_LSP_LF;
+            else process.env.MOCK_LSP_LF = prev;
+        }
+    });
+});
+
+describe("waitForFreshDiagnostics HANG-killers (H1)", () => {
+    test("bails out early when the connection dies mid-wait", async () => {
+        const dir = join(tmpRoot, "waitdead");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "a.ts");
+        writeFileSync(file, "const fine = 1;\n");
+        const manager = new LspManager({
+            cwd: dir,
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+            diagnosticsWaitMs: 5_000, // would burn 5 s without the early exit
+        });
+        const conn = await manager.connectionFor("typescript");
+        await manager.syncDocument(file);
+        const crashPromise = conn!.request("$/mockCrash", {}, 5_000);
+        // Attach the rejection handler immediately — otherwise the rejection
+        // fires unhandled while the wait below is asleep.
+        const crashObserved = expect(crashPromise).rejects.toThrow("server exited");
+        const started = Date.now();
+        const items = await manager.waitForFreshDiagnostics(file, Date.now()); // nothing fresh exists
+        const elapsed = Date.now() - started;
+        await crashObserved;
+        expect(items).toHaveLength(0);
+        expect(elapsed).toBeLessThan(2_000); // detected the dead connection, did not burn the window
+        manager.disposeAll();
+    });
+
+    test("skips waiting for servers that never publish (after one learning wait)", async () => {
+        const dir = join(tmpRoot, "silent");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "a.ts");
+        writeFileSync(file, "const fine = 1;\n");
+        const prev = process.env.MOCK_LSP_SILENT;
+        process.env.MOCK_LSP_SILENT = "1";
+        const manager = new LspManager({
+            cwd: dir,
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+            diagnosticsWaitMs: 400,
+        });
+        try {
+            await manager.syncDocument(file);
+            const firstStart = Date.now();
+            await manager.waitForFreshDiagnostics(file, Date.now()); // learning period: waits it out
+            expect(Date.now() - firstStart).toBeGreaterThanOrEqual(350);
+            const secondStart = Date.now();
+            await manager.waitForFreshDiagnostics(file, Date.now()); // never-published → skip
+            expect(Date.now() - secondStart).toBeLessThan(150);
+            manager.disposeAll();
+        } finally {
+            if (prev === undefined) delete process.env.MOCK_LSP_SILENT;
+            else process.env.MOCK_LSP_SILENT = prev;
+        }
+    });
+});
+
+describe("env parsing (H1 parseMsEnv)", () => {
+    test("junk/negative/zero/absurd values fall back to defaults", () => {
+        const junk = new LspManager({
+            cwd: tmpRoot,
+            env: { UNOWN_LSP_TIMEOUT_MS: "abc", UNOWN_LSP_WAIT_MS: "-5", UNOWN_LSP_MAX_MSG_BYTES: "9999999999999999" },
+        });
+        expect(junk.requestTimeoutMs).toBe(15_000);
+        expect(junk.diagnosticsWaitMs).toBe(10_000);
+        expect(junk.maxMessageBytes).toBe(32 * 1024 * 1024);
+    });
+    test("valid values parse; restart cap accepts 0", () => {
+        const ok = new LspManager({ cwd: tmpRoot, env: { UNOWN_LSP_TIMEOUT_MS: "2500", UNOWN_LSP_MAX_MSG_BYTES: "2048" } });
+        expect(ok.requestTimeoutMs).toBe(2_500);
+        expect(ok.maxMessageBytes).toBe(2_048);
+        expect(new LspManager({ cwd: tmpRoot, env: { UNOWN_LSP_MAX_RESTARTS: "0" } }).maxRestarts).toBe(0);
+        expect(new LspManager({ cwd: tmpRoot, env: { UNOWN_LSP_MAX_RESTARTS: "junk" } }).maxRestarts).toBe(3);
+    });
+});

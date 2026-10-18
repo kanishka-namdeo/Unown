@@ -26,11 +26,24 @@
  *   UNOWN_LSP=0                    disable the whole surface
  *   UNOWN_LSP_WAIT_MS   (10000)    max wait for fresh diagnostics after an edit
  *   UNOWN_LSP_TIMEOUT_MS (15000)   per-request timeout
+ *   UNOWN_LSP_MAX_MSG_BYTES (32 MiB)  max accepted Content-Length per message
+ *   UNOWN_LSP_CRASH_COOLDOWN_MS (30000)  restart cooldown after a server crash
+ *   UNOWN_LSP_MAX_RESTARTS (3)     auto-restart budget per server per session
+ *
+ * H1 hardening (research R-a §4 item 1/2/5/6/7): Content-Length is capped
+ * (violations recycle the connection instead of buffering to OOM), header
+ * parsing tolerates LF-only framing and resyncs past garbage blocks, server
+ * exits evict the connection + clear that server's open documents (so the
+ * diagnostics loop re-didOpens on a fresh process — the M1 loop used to die
+ * permanently after one crash), and every env knob parses tolerantly via
+ * the shared parseMsEnv.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readFileSync, type Dirent, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, delimiter as pathDelimiter, join } from "node:path";
+import { registerChild, unregisterChild } from "./child-reaper.ts";
+import { parseMsEnv } from "./mcp.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
@@ -262,16 +275,27 @@ export class LspConnection {
     private nextId = 1;
     private pending = new Map<number, PendingRequest>();
     private disposed = false;
+    private readonly maxMessageBytes: number;
     /** Called for every server → client notification. */
     onNotification: ((method: string, params: unknown) => void) | null = null;
+    /** Called on unplanned child exit (crash bookkeeping lives in the manager). */
+    onExit: ((code: number | null) => void) | null = null;
+    /** Called once on a framing violation before the connection recycles itself. */
+    onError: ((reason: string) => void) | null = null;
 
-    constructor(command: string[], cwd: string) {
+    constructor(command: string[], cwd: string, maxMessageBytes = 32 * 1024 * 1024) {
         this.command = command;
         this.cwd = cwd;
+        this.maxMessageBytes = maxMessageBytes;
     }
 
     get running(): boolean {
         return !this.disposed && this.proc !== null && this.proc.exitCode === null && !this.proc.killed;
+    }
+
+    /** True after an intentional dispose() (vs an unplanned crash). */
+    get intentionallyDisposed(): boolean {
+        return this.disposed;
     }
 
     /** Spawn + initialize. Rejects on spawn failure or timeout. */
@@ -289,8 +313,14 @@ export class LspConnection {
             throw new Error(`failed to spawn ${this.command.join(" ")}: ${(err as Error).message}`);
         }
         this.proc = proc;
+        registerChild(proc); // last-resort reaper (child-reaper.ts)
         proc.on("error", (err) => this.failAllPending(new Error(`server error: ${err.message}`)));
-        proc.once("exit", () => this.failAllPending(new Error("server exited")));
+        proc.once("exit", (code) => {
+            unregisterChild(proc);
+            // In-flight requests must REJECT with the exit reason, never hang.
+            this.failAllPending(new Error(`server exited (code ${code ?? "unknown"})`));
+            this.onExit?.(code);
+        });
         if (!proc.stdout || !proc.stdin) throw new Error("server did not expose stdio pipes");
         proc.stdout.on("data", (chunk: Buffer) => this.feed(chunk));
         const stderrChunks: Buffer[] = [];
@@ -357,17 +387,38 @@ export class LspConnection {
         }
     }
 
-    /** Ask the server to exit politely, then stop reading. */
+    /**
+     * Ask the server to exit politely, then stop reading. Spec-compliant
+     * servers flush/checkpoint on `shutdown` + `exit` (L-16): both frames
+     * are written fire-and-forget (dispose must stay synchronous), the kill
+     * lands after a short grace, and the child-reaper covers the residue.
+     */
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
         this.failAllPending(new Error("connection disposed"));
+        const proc = this.proc;
+        this.proc = null;
+        if (!proc) return;
         try {
-            this.proc?.kill();
+            if (proc.stdin && proc.exitCode === null) {
+                const shutdown = JSON.stringify({ jsonrpc: "2.0", id: this.nextId++, method: "shutdown", params: null }) + "\r\n";
+                const exitNote = JSON.stringify({ jsonrpc: "2.0", method: "exit" }) + "\r\n";
+                proc.stdin.write(frame(shutdown));
+                proc.stdin.write(frame(exitNote));
+            }
         } catch {
             /* already gone */
         }
-        this.proc = null;
+        const kill = setTimeout(() => {
+            try {
+                proc.kill();
+            } catch {
+                /* already gone */
+            }
+            unregisterChild(proc);
+        }, 250);
+        kill.unref?.();
     }
 
     private failAllPending(err: Error): void {
@@ -378,21 +429,63 @@ export class LspConnection {
         this.pending.clear();
     }
 
-    /** Parse complete JSON-RPC messages out of the stdout stream. */
+    /**
+     * Framing violation (oversized Content-Length, unbounded garbage):
+     * surface one line on the error hook, fail pending requests with the
+     * reason, and recycle the connection — lazy restart takes it from there.
+     */
+    private violate(reason: string): void {
+        if (this.disposed) return;
+        this.onError?.(reason);
+        this.failAllPending(new Error(reason));
+        this.dispose();
+    }
+
+    /**
+     * Parse complete JSON-RPC messages out of the stdout stream.
+     *
+     * H1: header termination accepts CRLF and LF-only framing (L-18); a
+     * garbage block without a usable Content-Length no longer drops the
+     * whole buffer — scanning resumes at the next `Content-Length:`
+     * occurrence (L-03), keeping any co-buffered valid frame; and the
+     * accepted Content-Length itself is capped (L-02) so `Content-Length:
+     * 4294967296` cannot buffer unbounded memory.
+     */
     private feed(chunk: Buffer): void {
         this.buffer = Buffer.concat([this.buffer, chunk]);
         for (;;) {
-            const headerEnd = this.buffer.indexOf("\r\n\r\n");
-            if (headerEnd < 0) return;
+            // CRLF first; LF-only fallback for servers that frame with `\n\n`.
+            // A CRLF-framed stream never contains a bare `\n\n`, so taking
+            // the earlier terminator is always the right split.
+            let headerEnd = this.buffer.indexOf("\r\n\r\n");
+            let sepLen = 4;
+            const lfEnd = this.buffer.indexOf("\n\n");
+            if (headerEnd < 0 || (lfEnd >= 0 && lfEnd < headerEnd)) {
+                headerEnd = lfEnd;
+                sepLen = 2;
+            }
+            if (headerEnd < 0) {
+                // No header terminator yet — bound the wait so garbage without
+                // any framing cannot grow the buffer forever.
+                if (this.buffer.length > this.maxMessageBytes) {
+                    this.violate(`LSP stream exceeded ${this.maxMessageBytes} buffered bytes without a complete header`);
+                }
+                return;
+            }
             const header = this.buffer.subarray(0, headerEnd).toString("ascii");
             const match = /Content-Length:\s*(\d+)/i.exec(header);
             if (!match) {
-                // Unframed garbage — drop the buffer rather than hang forever.
-                this.buffer = Buffer.alloc(0);
-                return;
+                // Garbage block (startup banner etc.) — resync instead of
+                // dropping everything behind it.
+                this.resyncPastGarbage(headerEnd + sepLen);
+                continue;
             }
             const length = Number(match[1]);
-            const bodyStart = headerEnd + 4;
+            if (!Number.isFinite(length) || length > this.maxMessageBytes) {
+                this.violate(`LSP Content-Length ${match[1]} exceeds cap ${this.maxMessageBytes} (UNOWN_LSP_MAX_MSG_BYTES)`);
+                return;
+            }
+            const bodyStart = headerEnd + sepLen;
             if (this.buffer.length < bodyStart + length) return;
             const body = this.buffer.subarray(bodyStart, bodyStart + length).toString("utf8");
             this.buffer = this.buffer.subarray(bodyStart + length);
@@ -419,6 +512,25 @@ export class LspConnection {
                 else pending.resolve(message.result);
             }
         }
+    }
+
+    /**
+     * Skip a garbage block: everything before the next `Content-Length:`
+     * occurrence is dropped. When none exists yet, keep only a plausible
+     * partial-header tail (the last line fragment) so a header split across
+     * chunk boundaries still completes; otherwise drop to the last newline.
+     */
+    private resyncPastGarbage(after: number): void {
+        const next = this.buffer.indexOf("Content-Length:", after);
+        if (next >= 0) {
+            this.buffer = this.buffer.subarray(next);
+            return;
+        }
+        const lastNl = this.buffer.lastIndexOf("\n");
+        const tail = lastNl >= 0 ? this.buffer.subarray(lastNl + 1) : Buffer.alloc(0);
+        // A tail without whitespace/colons could still be a growing header
+        // line ("Content-Len…") — keep it; anything else is garbage.
+        this.buffer = /^[A-Za-z-]*$/.test(tail.toString("ascii")) ? tail : Buffer.alloc(0);
     }
 
     private replyNull(id: unknown): void {
@@ -452,12 +564,31 @@ export interface LspManagerOptions {
     env?: Record<string, string | undefined>;
     requestTimeoutMs?: number;
     diagnosticsWaitMs?: number;
+    /** Max accepted Content-Length per message (default 32 MiB; L-02). */
+    maxMessageBytes?: number;
+    /** Restart cooldown after a crash (default 30 s; L-14). */
+    crashCooldownMs?: number;
+    /** Auto-restart budget per server per session (default 3; L-14). */
+    maxRestarts?: number;
 }
 
 export interface ServerStatusEntry {
     language: string;
     command: string;
-    state: "running" | "available" | "missing";
+    state: "running" | "available" | "missing" | "crashed";
+    /** Crashes recorded for this server in this session (unplanned exits + framing violations + failed starts). */
+    crashCount?: number;
+    /** ms-epoch of the last crash, when one was recorded. */
+    lastCrashAt?: number;
+    /** Why the server is not running: crash reason, "restarts exhausted", or cooldown. */
+    detail?: string;
+}
+
+interface CrashRecord {
+    count: number;
+    lastAt: number;
+    restarts: number;
+    reason: string;
 }
 
 /**
@@ -466,25 +597,45 @@ export interface ServerStatusEntry {
  * one typescript-language-server). Tracks open documents, mirrors edits via
  * didChange, and caches the latest publishDiagnostics per file with the
  * timestamp needed to wait for FRESH results after a write.
+ *
+ * H1 restart semantics (L-01/L-14): an unplanned server exit evicts the
+ * connection, clears that server's openDocs (so the next syncDocument
+ * re-didOpens on a fresh process — a didChange for a never-opened doc is a
+ * protocol violation real servers ignore, which silently killed the M1
+ * diagnostics loop), records crashCount/lastCrashAt, and gates lazy restarts
+ * behind a cooldown + a 3-restart budget so a crash-looping server can never
+ * become a spawn storm.
  */
 export class LspManager {
     readonly cwd: string;
     private readonly config: LspConfig;
     private readonly env: Record<string, string | undefined>;
-    private readonly requestTimeoutMs: number;
+    readonly requestTimeoutMs: number;
     readonly diagnosticsWaitMs: number;
+    readonly maxMessageBytes: number;
+    readonly crashCooldownMs: number;
+    readonly maxRestarts: number;
     private connections = new Map<string, LspConnection>(); // key: command.join(" ")
     private commandByLanguage = new Map<string, string[] | null>();
     private openDocs = new Map<string, OpenDoc>(); // key: file path
     private diagnostics = new Map<string, { items: LspDiagnostic[]; ts: number }>(); // key: file path
     private starting = new Map<string, Promise<void>>();
+    private crashes = new Map<string, CrashRecord>(); // key: command.join(" ")
+    /** Per server: has it EVER published diagnostics (wait-skip heuristic). */
+    private publishedEver = new Map<string, boolean>();
+    /** Per server: have we already burned one wait on it (wait-skip heuristic). */
+    private waitedEver = new Map<string, boolean>();
 
     constructor(opts: LspManagerOptions) {
         this.cwd = opts.cwd;
         this.config = opts.config ?? {};
         this.env = opts.env ?? process.env;
-        this.requestTimeoutMs = opts.requestTimeoutMs ?? Number(this.env.UNOWN_LSP_TIMEOUT_MS ?? 15_000);
-        this.diagnosticsWaitMs = opts.diagnosticsWaitMs ?? Number(this.env.UNOWN_LSP_WAIT_MS ?? 10_000);
+        this.requestTimeoutMs = opts.requestTimeoutMs ?? parseMsEnv("UNOWN_LSP_TIMEOUT_MS", 15_000, this.env);
+        this.diagnosticsWaitMs = opts.diagnosticsWaitMs ?? parseMsEnv("UNOWN_LSP_WAIT_MS", 10_000, this.env);
+        this.maxMessageBytes =
+            opts.maxMessageBytes ?? parseMsEnv("UNOWN_LSP_MAX_MSG_BYTES", 32 * 1024 * 1024, this.env, 1024 * 1024 * 1024);
+        this.crashCooldownMs = opts.crashCooldownMs ?? parseMsEnv("UNOWN_LSP_CRASH_COOLDOWN_MS", 30_000, this.env);
+        this.maxRestarts = opts.maxRestarts ?? parseRestartCapEnv(this.env);
     }
 
     get disabled(): boolean {
@@ -504,6 +655,11 @@ export class LspManager {
      * `waitReady: false` returns null while a cold start is in flight —
      * used by the PostToolUse augment so the FIRST edit after boot never
      * blocks on server startup.
+     *
+     * Restart policy: while a crash record exists, restarts are gated by the
+     * cooldown (30 s default) and the per-session restart budget — after the
+     * cap, syncs skip cheaply (null, no spawn) and status reports
+     * "crashed (restarts exhausted)".
      */
     async connectionFor(language: string, waitReady = true): Promise<LspConnection | null> {
         const command = this.serverCommandFor(language);
@@ -518,13 +674,32 @@ export class LspManager {
             const again = this.connections.get(key);
             return again?.running ? again : null;
         }
-        const conn = new LspConnection(command, this.cwd);
+        const crash = this.crashes.get(key);
+        if (crash) {
+            if (crash.restarts >= this.maxRestarts) return null; // exhausted — cheap skip
+            if (Date.now() - crash.lastAt < this.crashCooldownMs) return null; // cooldown
+            crash.restarts++;
+        }
+        const conn = new LspConnection(command, this.cwd, this.maxMessageBytes);
         conn.onNotification = (method, params) => this.handleNotification(method, params);
+        conn.onExit = (code) => {
+            if (conn.intentionallyDisposed) return; // disposeAll/violation already recorded
+            this.evictConnection(key, conn, `server exited (code ${code ?? "unknown"})`);
+        };
+        conn.onError = (reason) => this.evictConnection(key, conn, reason);
         this.connections.set(key, conn);
         const startPromise = conn.start(this.requestTimeoutMs).then(
             () => undefined,
             (err: Error) => {
-                if (this.connections.get(key) === conn) this.connections.delete(key);
+                if (this.connections.get(key) === conn) {
+                    this.connections.delete(key);
+                    // A failed start (spawn failure, initialize timeout) counts
+                    // as a crash: without this, a dead binary would be
+                    // re-spawned on every sync. Violations/crashes that already
+                    // evicted the connection recorded themselves with a better
+                    // reason — don't double-count.
+                    this.recordCrash(key, `start failed: ${err.message}`);
+                }
                 conn.dispose();
                 throw err;
             },
@@ -542,6 +717,29 @@ export class LspManager {
             }
         }
         return conn.running ? conn : null;
+    }
+
+    /** Evict a dead connection: drop it, reset its openDocs, record the crash. */
+    private evictConnection(key: string, conn: LspConnection, reason: string): void {
+        if (this.connections.get(key) === conn) this.connections.delete(key);
+        this.clearOpenDocsFor(key);
+        this.recordCrash(key, reason);
+    }
+
+    /** Remove openDocs served by the server identified by `key`. */
+    private clearOpenDocsFor(key: string): void {
+        for (const [path, doc] of [...this.openDocs]) {
+            const command = this.serverCommandFor(doc.languageId);
+            if (command && command.join(" ") === key) this.openDocs.delete(path);
+        }
+    }
+
+    private recordCrash(key: string, reason: string): void {
+        const record = this.crashes.get(key) ?? { count: 0, lastAt: 0, restarts: 0, reason: "" };
+        record.count++;
+        record.lastAt = Date.now();
+        record.reason = reason;
+        this.crashes.set(key, record);
     }
 
     /** True when a live connection exists for the language's server. */
@@ -603,15 +801,40 @@ export class LspManager {
      * Wait until diagnostics for `path` were published after `afterTs`
      * (bounded by diagnosticsWaitMs). Cold-start aware: returns immediately
      * with whatever is cached when no publish ever arrives.
+     *
+     * H1 HANG-killers (L-08): the PostToolUse loop used to burn the full
+     * 10 s window on every edit for a silent or dead server. Now it also
+     * (a) bails as soon as the connection dies mid-wait, and (b) skips the
+     * wait entirely once a server has demonstrably never published anything
+     * (first wait still runs — that is the learning period; a server that
+     * has never published anything and already made us wait once never
+     * will).
      */
     async waitForFreshDiagnostics(path: string, afterTs: number): Promise<LspDiagnostic[]> {
+        const current = this.diagnostics.get(path);
+        if (current && current.ts >= afterTs) return current.items;
+        const key = this.serverKeyForPath(path);
+        if (key) {
+            if (this.waitedEver.get(key) && this.publishedEver.get(key) !== true) {
+                return current?.items ?? [];
+            }
+            this.waitedEver.set(key, true);
+        }
         const deadline = Date.now() + this.diagnosticsWaitMs;
         for (;;) {
-            const current = this.diagnostics.get(path);
-            if (current && current.ts >= afterTs) return current.items;
-            if (Date.now() >= deadline) return current?.items ?? [];
+            const now = this.diagnostics.get(path);
+            if (now && now.ts >= afterTs) return now.items;
+            if (key && !(this.connections.get(key)?.running)) return now?.items ?? []; // server died mid-wait
+            if (Date.now() >= deadline) return now?.items ?? [];
             await sleep(150);
         }
+    }
+
+    /** Server key (command line) for a file path's language, when resolved. */
+    private serverKeyForPath(path: string): string | null {
+        const language = languageFromPath(path);
+        if (!language) return null;
+        return this.serverCommandFor(language)?.join(" ") ?? null;
     }
 
     /** LSP hover at a 0-based line/character. */
@@ -676,7 +899,12 @@ export class LspManager {
         }
     }
 
-    /** Status snapshot for the /lsp command and the status action. */
+    /**
+     * Status snapshot for the /lsp command and the status action. Servers
+     * with a crash record and no live connection report `crashed` with the
+     * crash count, last-crash timestamp, and why restarts are gated
+     * ("restarts exhausted" or the remaining cooldown).
+     */
     status(): { servers: ServerStatusEntry[]; openDocs: number; diagnostics: number } {
         const servers: ServerStatusEntry[] = [];
         const seen = new Set<string>();
@@ -688,10 +916,36 @@ export class LspManager {
                 if (seen.has(key)) continue;
                 seen.add(key);
                 const conn = this.connections.get(key);
+                const crash = this.crashes.get(key);
+                if (conn?.running) {
+                    servers.push({
+                        language,
+                        command: command.join(" "),
+                        state: "running",
+                        crashCount: crash?.count,
+                        lastCrashAt: crash?.lastAt,
+                    });
+                    continue;
+                }
+                if (crash) {
+                    const exhausted = crash.restarts >= this.maxRestarts;
+                    const cooldownLeft = Math.max(0, this.crashCooldownMs - (Date.now() - crash.lastAt));
+                    servers.push({
+                        language,
+                        command: command.join(" "),
+                        state: "crashed",
+                        crashCount: crash.count,
+                        lastCrashAt: crash.lastAt,
+                        detail: exhausted
+                            ? "restarts exhausted"
+                            : `${cooldownLeft}ms crash cooldown — ${crash.reason}`,
+                    });
+                    continue;
+                }
                 servers.push({
                     language,
                     command: command.join(" "),
-                    state: conn?.running ? "running" : "available",
+                    state: "available",
                 });
             }
         }
@@ -706,6 +960,7 @@ export class LspManager {
         this.connections.clear();
         this.openDocs.clear();
         this.diagnostics.clear();
+        this.crashes.clear();
     }
 
     private handleNotification(method: string, params: unknown): void {
@@ -714,7 +969,18 @@ export class LspManager {
         if (!p?.uri) return;
         const path = uriToPath(p.uri);
         this.diagnostics.set(path, { items: Array.isArray(p.diagnostics) ? p.diagnostics : [], ts: Date.now() });
+        const key = this.serverKeyForPath(path);
+        if (key) this.publishedEver.set(key, true);
     }
+}
+
+/** UNOWN_LSP_MAX_RESTARTS: integer 0..100, junk → default 3. */
+function parseRestartCapEnv(env: Record<string, string | undefined>): number {
+    const raw = env.UNOWN_LSP_MAX_RESTARTS;
+    if (raw === undefined || raw === "") return 3;
+    const parsed = Number(raw);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) return 3;
+    return parsed;
 }
 
 function sleep(ms: number): Promise<void> {

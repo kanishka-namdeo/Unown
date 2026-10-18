@@ -15,9 +15,12 @@
 //      SSE response modes)
 //   5. the extension factory — session_start background-connect registers
 //      mcp__server__tool entries through a fake pi; /mcp renders status
+//   6. H1 hardening — accumulator garbage/cap recovery, HTTP 404 re-init +
+//      replay, 429 backoff, timeout rewriting, bounded notify, cooldown
+//      spawn-storm guard, per-session tool registration, guarded registration
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -30,9 +33,11 @@ import {
     McpManager,
     mcpToolName,
     normalizeInputSchema,
+    parseMsEnv,
     parseSseResponse,
     renderMcpStatus,
     resolveMcpConfig,
+    retryAfterMs,
     stdioSpawnSpec,
 } from "../src/mcp.ts";
 
@@ -490,5 +495,408 @@ describe("createMcpExtension", () => {
             if (prev === undefined) delete process.env.UNOWN_MCP;
             else process.env.UNOWN_MCP = prev;
         }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 6. H1 hardening — accumulator, HTTP recovery, cooldown, per-session state
+// ---------------------------------------------------------------------------
+
+describe("JsonMessageAccumulator garbage recovery (H1)", () => {
+    test("stray closers (depth-negative poison) do not kill the transport", () => {
+        const acc = new JsonMessageAccumulator();
+        const out = acc.feed("}]\n" + JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }) + "\n");
+        expect(out).toHaveLength(1);
+        expect((out[0] as { id?: number }).id).toBe(1);
+    });
+
+    test("garbage banner before a message is isolated; message still delivered", () => {
+        const acc = new JsonMessageAccumulator();
+        const out = acc.feed("listening on port 3000\n" + JSON.stringify({ jsonrpc: "2.0", id: 7, result: { ok: true } }) + "\n");
+        expect(out).toHaveLength(1);
+        expect((out[0] as { id?: number }).id).toBe(7);
+    });
+
+    test("NUL and binary junk outside strings are dropped; next message survives", () => {
+        const acc = new JsonMessageAccumulator();
+        const out = acc.feed("\x00\x01\x02junk\x00" + JSON.stringify({ id: 2, result: null }) + "\n");
+        expect(out).toHaveLength(1);
+        expect((out[0] as { id?: number }).id).toBe(2);
+    });
+
+    test("a corrupt JSON message is skipped without poisoning the next", () => {
+        const acc = new JsonMessageAccumulator();
+        const out = acc.feed('{"id":1,"result":}\n' + JSON.stringify({ id: 2, result: "ok" }) + "\n");
+        expect(out).toHaveLength(1);
+        expect((out[0] as { id?: number }).id).toBe(2);
+    });
+
+    test("cap breaches surface an error and flush; the stream recovers", () => {
+        const acc = new JsonMessageAccumulator(64, 256);
+        const errors: string[] = [];
+        acc.onError = (msg) => errors.push(msg);
+        const out = acc.feed('{"id":1,"result":"' + "x".repeat(100) + '"}\n');
+        expect(out).toHaveLength(0); // oversized message dropped
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toContain("cap exceeded");
+        expect(errors[0]).toContain("message");
+        // total-buffer cap: unstructured junk beyond the cap also surfaces
+        errors.length = 0;
+        acc.feed("y".repeat(300));
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toContain("total buffered output");
+        // and a valid message after the flush still parses
+        const next = acc.feed(JSON.stringify({ id: 3, result: null }) + "\n");
+        expect(next).toHaveLength(1);
+    });
+});
+
+describe("McpManager H1 stdio hardening", () => {
+    test("garbage on a real stdio transport still connects (MOCK_MCP_GARBAGE=1)", async () => {
+        const dir = join(tmpRoot, "h1garbage");
+        mkdirSync(dir, { recursive: true });
+        const m = new McpManager({
+            cwd: dir,
+            config: { servers: { noisy: { command: NODE, args: [MOCK_SERVER], env: { MOCK_MCP_GARBAGE: "1" } } } },
+            requestTimeoutMs: 10_000,
+            connectTimeoutMs: 10_000,
+        });
+        const echo = await m.callTool("noisy", "echo", { message: "still alive" });
+        expect(echo.isError).toBe(false);
+        expect(echo.text).toBe("echo: still alive");
+        m.disposeAll();
+    });
+
+    test("oversized (>1 MiB) message surfaces a cap error, not a wedge", async () => {
+        const dir = join(tmpRoot, "h1bigmsg");
+        mkdirSync(dir, { recursive: true });
+        const m = new McpManager({
+            cwd: dir,
+            config: { servers: { mock: { command: NODE, args: [MOCK_SERVER] } } },
+            requestTimeoutMs: 30_000,
+            connectTimeoutMs: 10_000,
+        });
+        const started = Date.now();
+        const result = await m.callTool("mock", "echo", { message: "x".repeat(1_500_000) });
+        expect(result.isError).toBe(true);
+        expect(result.text).toContain("cap exceeded");
+        expect(Date.now() - started).toBeLessThan(10_000); // bounded failure, not a 120 s timeout wedge
+        m.disposeAll();
+    });
+
+    test("mid-session stdio crash rejects pending requests and cools down reconnects", async () => {
+        const dir = join(tmpRoot, "h1crash");
+        mkdirSync(dir, { recursive: true });
+        const m = new McpManager({
+            cwd: dir,
+            config: { servers: { mock: { command: NODE, args: [MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+            connectTimeoutMs: 5_000,
+        });
+        const conn = await m.connect("mock");
+        expect(conn).not.toBeNull();
+        await expect(conn!.request("$/mockCrash", {}, 5_000)).rejects.toThrow("server exited (code 1)");
+        // within the (default 30 s) cooldown: no respawn, clean degradation
+        const result = await m.callTool("mock", "echo", { message: "hi" });
+        expect(result.isError).toBe(true);
+        expect(result.text).toContain("not connected");
+        m.disposeAll();
+    });
+
+    test("failed server cooldown: exactly one spawn until /mcp force-throughs", async () => {
+        const dir = join(tmpRoot, "h1cooldown");
+        mkdirSync(dir, { recursive: true });
+        const counter = join(dir, "spawns.txt");
+        const script = `require("fs").appendFileSync(${JSON.stringify(counter)}, "x"); process.exit(3);`;
+        const m = new McpManager({
+            cwd: dir,
+            config: { servers: { gone: { command: NODE, args: ["-e", script] } } },
+            requestTimeoutMs: 2_000,
+            connectTimeoutMs: 2_000,
+            reconnectCooldownMs: 60_000,
+        });
+        const r1 = await m.callTool("gone", "t", {});
+        expect(r1.isError).toBe(true);
+        const r2 = await m.callTool("gone", "t", {}); // within cooldown → skipped, no spawn
+        expect(r2.isError).toBe(true);
+        expect(readFileSync(counter, "utf8")).toBe("x"); // exactly ONE spawn so far
+        const ok = await m.connectAll(true); // /mcp reconnect forces through
+        expect(ok).toEqual([]);
+        expect(readFileSync(counter, "utf8")).toBe("xx"); // forced second spawn
+        m.disposeAll();
+    });
+});
+
+describe("McpManager H1 HTTP robustness (Bun.serve mocks)", () => {
+    test("404 → re-initialize with a new session id and replay the request", async () => {
+        let initCount = 0;
+        let currentSession = "sess-1";
+        let expiredOnce = false;
+        const sessionIdsOnCalls: string[] = [];
+        const server = Bun.serve({
+            port: 0,
+            async fetch(req) {
+                const message = (await req.json()) as { id?: number; method?: string; params?: any };
+                if (message.method === "initialize") {
+                    initCount++;
+                    currentSession = `sess-${initCount}`; // server restart rotates ids
+                    return Response.json(
+                        { jsonrpc: "2.0", id: message.id, result: { protocolVersion: "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "mock" } } },
+                        { headers: { "mcp-session-id": currentSession } },
+                    );
+                }
+                const sid = req.headers.get("mcp-session-id");
+                if (sid && message.method === "tools/call") sessionIdsOnCalls.push(sid);
+                if (sid && message.method === "tools/call" && !expiredOnce) {
+                    expiredOnce = true;
+                    return new Response("session expired", { status: 404 });
+                }
+                if (message.method === "tools/list") {
+                    return Response.json({
+                        jsonrpc: "2.0",
+                        id: message.id,
+                        result: { tools: [{ name: "time", inputSchema: { type: "object", properties: {} } }] },
+                    });
+                }
+                if (message.method === "tools/call") {
+                    return Response.json({
+                        jsonrpc: "2.0",
+                        id: message.id,
+                        result: { content: [{ type: "text", text: "after-404-recovery" }] },
+                    });
+                }
+                return Response.json({ jsonrpc: "2.0", id: message.id, result: {} });
+            },
+        });
+        try {
+            const m = new McpManager({
+                cwd: tmpRoot,
+                config: { servers: { remote: { url: `http://127.0.0.1:${server.port}/mcp` } } },
+                requestTimeoutMs: 5_000,
+                connectTimeoutMs: 5_000,
+            });
+            const result = await m.callTool("remote", "time", {});
+            expect(result.isError).toBe(false);
+            expect(result.text).toBe("after-404-recovery");
+            expect(initCount).toBe(2); // original + one re-initialize
+            expect(sessionIdsOnCalls).toEqual(["sess-1", "sess-2"]); // replay adopted the new session id
+            m.disposeAll();
+        } finally {
+            server.stop(true);
+        }
+    });
+
+    test("429 with Retry-After: 0 is retried and succeeds", async () => {
+        let hits = 0;
+        const server = Bun.serve({
+            port: 0,
+            async fetch(req) {
+                const message = (await req.json()) as { id?: number; method?: string };
+                if (message.method === "tools/call") {
+                    hits++;
+                    if (hits === 1) return new Response("busy", { status: 429, headers: { "retry-after": "0" } });
+                    return Response.json({ jsonrpc: "2.0", id: message.id, result: { content: [{ type: "text", text: "ok-after-429" }] } });
+                }
+                return Response.json({ jsonrpc: "2.0", id: message.id, result: { tools: [] } });
+            },
+        });
+        try {
+            const m = new McpManager({
+                cwd: tmpRoot,
+                config: { servers: { busy: { url: `http://127.0.0.1:${server.port}/mcp` } } },
+                requestTimeoutMs: 5_000,
+                connectTimeoutMs: 5_000,
+            });
+            const result = await m.callTool("busy", "time", {});
+            expect(result.isError).toBe(false);
+            expect(result.text).toBe("ok-after-429");
+            expect(hits).toBe(2);
+            m.disposeAll();
+        } finally {
+            server.stop(true);
+        }
+    });
+
+    test("429 exhaustion surfaces a clear error after the retry cap", async () => {
+        let hits = 0;
+        const server = Bun.serve({
+            port: 0,
+            async fetch(req) {
+                const message = (await req.json()) as { id?: number; method?: string };
+                if (message.method === "tools/call") {
+                    hits++;
+                    return new Response("busy", { status: 429, headers: { "retry-after": "0" } });
+                }
+                return Response.json({ jsonrpc: "2.0", id: message.id, result: { tools: [] } });
+            },
+        });
+        try {
+            const m = new McpManager({
+                cwd: tmpRoot,
+                config: { servers: { alwaysbusy: { url: `http://127.0.0.1:${server.port}/mcp` } } },
+                requestTimeoutMs: 5_000,
+                connectTimeoutMs: 5_000,
+            });
+            const result = await m.callTool("alwaysbusy", "time", {});
+            expect(result.isError).toBe(true);
+            expect(result.text).toContain("429");
+            expect(result.text).toContain("retries exhausted");
+            expect(hits).toBe(3); // 1 attempt + 2 retries
+            m.disposeAll();
+        } finally {
+            server.stop(true);
+        }
+    });
+
+    test("aborted HTTP request is rewritten into a clear timeout error", async () => {
+        const server = Bun.serve({
+            port: 0,
+            async fetch(req) {
+                const message = (await req.json()) as { id?: number; method?: string };
+                if (message.method === "tools/call") {
+                    await new Promise(() => {}); // never responds
+                }
+                return Response.json({ jsonrpc: "2.0", id: message.id, result: { tools: [] } });
+            },
+        });
+        try {
+            const m = new McpManager({
+                cwd: tmpRoot,
+                config: { servers: { slow: { url: `http://127.0.0.1:${server.port}/mcp` } } },
+                requestTimeoutMs: 400,
+                connectTimeoutMs: 5_000,
+            });
+            const started = Date.now();
+            const result = await m.callTool("slow", "time", {});
+            expect(result.isError).toBe(true);
+            expect(result.text).toContain("timed out after 400ms");
+            expect(Date.now() - started).toBeLessThan(3_000);
+            m.disposeAll();
+        } finally {
+            server.stop(true);
+        }
+    });
+
+    test("HTTP notify() is bounded by an AbortController", async () => {
+        const server = Bun.serve({
+            port: 0,
+            async fetch(req) {
+                const message = (await req.json()) as { id?: number; method?: string };
+                return Response.json({ jsonrpc: "2.0", id: message.id, result: { tools: [] } });
+            },
+        });
+        const m = new McpManager({
+            cwd: tmpRoot,
+            config: { servers: { remote: { url: `http://127.0.0.1:${server.port}/mcp` } } },
+            requestTimeoutMs: 5_000,
+            connectTimeoutMs: 5_000,
+            keepalive: false,
+        });
+        try {
+            const conn = await m.connect("remote");
+            expect(conn).not.toBeNull();
+            // Swap in a fetch that never resolves and reports aborts — the
+            // notify() bound must fire its AbortController.
+            const originalFetch = globalThis.fetch;
+            let sawAbort = false;
+            globalThis.fetch = ((input: any, init: any) =>
+                new Promise((_resolve, reject) => {
+                    init?.signal?.addEventListener("abort", () => {
+                        sawAbort = true;
+                        reject(new Error("aborted"));
+                    });
+                })) as typeof fetch;
+            try {
+                conn!.notifyTimeoutMs = 120;
+                conn!.notify("notifications/test", {});
+                await new Promise((r) => setTimeout(r, 400));
+                expect(sawAbort).toBe(true);
+            } finally {
+                globalThis.fetch = originalFetch;
+            }
+        } finally {
+            m.disposeAll();
+            server.stop(true);
+        }
+    });
+});
+
+describe("createMcpExtension H1 lifecycle", () => {
+    test("second factory() invocation (new session runtime) registers tools again", async () => {
+        const dir = join(tmpRoot, "h1ext2");
+        mkdirSync(dir, { recursive: true });
+        const ext = createMcpExtension({
+            cwd: dir,
+            config: { servers: { mock: { command: NODE, args: [MOCK_SERVER] } } },
+        });
+        const first = makeFakePi();
+        const second = makeFakePi();
+        ext.factory(first.pi);
+        ext.factory(second.pi);
+        await first.emit("session_start", {});
+        await second.emit("session_start", {});
+        const deadline = Date.now() + 8_000;
+        while ((first.tools.size < 3 || second.tools.size < 3) && Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, 100));
+        }
+        expect(first.tools.has("mcp__mock__echo")).toBe(true);
+        expect(second.tools.has("mcp__mock__echo")).toBe(true);
+        expect(second.tools.has("mcp__mock__add")).toBe(true);
+        expect(second.tools.has("mcp__mock__schemaless")).toBe(true);
+        // the second session's tool actually works end-to-end
+        const echoTool = second.tools.get("mcp__mock__echo")!;
+        const result = await echoTool.execute("t2", { message: "from session two" });
+        expect(result.content[0].text).toBe("echo: from session two");
+        await second.emit("session_shutdown", {});
+    });
+
+    test("registerTool throwing never produces an unhandled rejection; /mcp still works", async () => {
+        const dir = join(tmpRoot, "h1ext3");
+        mkdirSync(dir, { recursive: true });
+        const ext = createMcpExtension({
+            cwd: dir,
+            config: { servers: { mock: { command: NODE, args: [MOCK_SERVER] } } },
+        });
+        const { pi, emit, runCommand } = makeFakePi();
+        ext.factory(pi);
+        const originalRegister = pi.registerTool;
+        pi.registerTool = () => {
+            throw new Error("boom");
+        };
+        await emit("session_start", {}); // must not reject (the crash used to kill the process)
+        await new Promise((r) => setTimeout(r, 1_500)); // background connect + throwing registrations
+        pi.registerTool = originalRegister;
+        // the session is still usable: /mcp renders status and registers now
+        const { ctx, messages } = makeNotify();
+        await runCommand("mcp", "", ctx); // must not reject
+        expect(messages.some((m) => m.text.includes("mock"))).toBe(true);
+        await emit("session_shutdown", {});
+    });
+});
+
+describe("parseMsEnv + retryAfterMs (H1)", () => {
+    test("junk/empty/negative/zero/absurd values fall back to the default", () => {
+        expect(parseMsEnv("X", 1_000, {})).toBe(1_000);
+        expect(parseMsEnv("X", 1_000, { X: "abc" })).toBe(1_000);
+        expect(parseMsEnv("X", 1_000, { X: "" })).toBe(1_000);
+        expect(parseMsEnv("X", 1_000, { X: "-5" })).toBe(1_000);
+        expect(parseMsEnv("X", 1_000, { X: "0" })).toBe(1_000);
+        expect(parseMsEnv("X", 1_000, { X: "999999999999999" })).toBe(1_000); // > 24 h is absurd
+    });
+    test("valid values parse; a custom absurdity bound applies", () => {
+        expect(parseMsEnv("X", 1_000, { X: "2500" })).toBe(2_500);
+        expect(parseMsEnv("X", 500, { X: "2000" }, 1_000)).toBe(500); // over the custom bound
+    });
+    test("manager env fallbacks parse tolerantly", () => {
+        const m = new McpManager({ cwd: tmpRoot, env: { UNOWN_MCP_TIMEOUT_MS: "abc", UNOWN_MCP_CONNECT_TIMEOUT_MS: "" } });
+        expect(m.requestTimeoutMs).toBe(120_000);
+        expect(m.connectTimeoutMs).toBe(20_000);
+    });
+    test("retryAfterMs honors seconds, caps at 30 s, defaults to backoff", () => {
+        expect(retryAfterMs("0", 0)).toBe(0);
+        expect(retryAfterMs("2", 0)).toBe(2_000);
+        expect(retryAfterMs("999999", 0)).toBe(30_000); // capped
+        expect(retryAfterMs(null, 0)).toBe(250); // exponential fallback
+        expect(retryAfterMs(null, 2)).toBe(1_000);
     });
 });

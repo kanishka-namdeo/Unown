@@ -77,9 +77,14 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_LSP` | `1` | `0` disables the `lsp` tool and the PostToolUse diagnostics feedback loop in terminal sessions. |
 | `UNOWN_LSP_WAIT_MS` | `10000` | Max wait for fresh language-server diagnostics after a `write`/`edit` before the tool result continues without them. |
 | `UNOWN_LSP_TIMEOUT_MS` | `15000` | Per-request timeout for LSP JSON-RPC calls (initialize, hover, definition, ...). |
+| `UNOWN_LSP_MAX_MSG_BYTES` | `33554432` | Cap on a single LSP message's `Content-Length`; a violation recycles the connection instead of buffering it. |
+| `UNOWN_LSP_CRASH_COOLDOWN_MS` | `30000` | After a language-server crash, how long before a restart is attempted (max 3 restarts per server per session). |
 | `UNOWN_MCP` | `1` | `0` disables the MCP client surface (no servers connect, no `mcp__*` tools register). |
 | `UNOWN_MCP_TIMEOUT_MS` | `120000` | Per-request timeout for MCP JSON-RPC calls (tools/call, tools/list). |
 | `UNOWN_MCP_CONNECT_TIMEOUT_MS` | `20000` | Timeout for the MCP initialize handshake. |
+| `UNOWN_MCP_RECONNECT_COOLDOWN_MS` | `30000` | After an MCP server dies or fails to connect, how long before reconnect attempts resume (`/mcp` force-throughs). |
+| `UNOWN_MCP_PING_INTERVAL_MS` | `60000` | MCP keepalive ping interval (a failed ping marks the server errored and starts the reconnect cooldown). |
+| `UNOWN_CHECKPOINT_MAX_BLOB_BYTES` | `67108864` | Files larger than this are not checkpointed (the turn still reverts its other files; the ledger notes the exception). |
 | `NO_UPDATE_NOTIFIER` | unset | Any value silences the startup update notice and its background check (ecosystem-standard name). Manual `unown update` still works — see [updating](updating.md). |
 | `UNOWN_DISABLE_AUTOUPDATE` | unset | `1` — same as `NO_UPDATE_NOTIFIER`, the Unown-native spelling. |
 | `DO_NOT_TRACK` | unset | `1` — the standard nonessential-traffic opt-out; suppresses the background update check. |
@@ -101,7 +106,7 @@ curl -s http://127.0.0.1:3031/health   # → upstream.ok, upstreamKeyIsSet, auth
 curl -s http://127.0.0.1:3030/api/overview
 ```
 
-One engine knob exists in code but not yet in `.env.example`: `UNOWN_MAX_MINTED_TASKS` (cap on active minted tasks before the `task-mint` job skips, default 8). Set it in `.env` if you need it — the services read the whole file, not just the documented keys.
+All env knobs shown above are also documented (commented) in `.env.example` — the services read the whole file, not just the uncommented keys.
 
 ## How `.env` gets loaded
 

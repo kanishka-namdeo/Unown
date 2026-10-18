@@ -13,9 +13,13 @@
 //      the full turn lifecycle: input → tool_call(write) → tool_result →
 //      input (seals turn checkpoint) → /undo restores the before-image;
 //      named /checkpoint + /restore; receipts rendering
+//   5. H1 hardening — atomic writes + self-heal, corrupt-blob verification,
+//      GC grace + the two-store GC race, the realpath jail, oversized
+//      captures, ownership (/undo --all, per-owner prune floors), and
+//      crash-safe undo ordering (the R-b §5 reproductions made deterministic)
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { afterAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -24,6 +28,7 @@ import {
     createCheckpointsExtension,
     describeToolInput,
     insideRoot,
+    insideRootReal,
     previewText,
     ReceiptsLedger,
     receiptsDir,
@@ -185,11 +190,18 @@ describe("CheckpointStore", () => {
     test("manifest list is seq-ordered and tolerates broken files; prune GCs blobs", () => {
         const dir = join(tmpRoot, "store4");
         const store = new CheckpointStore(dir);
-        store.writeManifest({ id: "m1", seq: 1, kind: "named", ts: 1, files: [{ path: "a", hash: store.putBlob("aaa"), size: 3 }] });
-        store.writeManifest({ id: "m2", seq: 2, kind: "named", ts: 2, files: [{ path: "b", hash: store.putBlob("bbb"), size: 3 }] });
+        const t0 = Date.now();
+        store.writeManifest({ id: "m1", seq: 1, kind: "named", ts: t0 - 1000, files: [{ path: "a", hash: store.putBlob("aaa"), size: 3 }] });
+        store.writeManifest({ id: "m2", seq: 2, kind: "named", ts: t0, files: [{ path: "b", hash: store.putBlob("bbb"), size: 3 }] });
         writeFileSync(join(dir, `${"cp-"}broken.json`), "{not json");
         const list = store.list();
         expect(list.map((m) => m.id)).toEqual(["m1", "m2"]);
+        // GC keeps a 10-minute mtime grace (concurrency safety) — age the
+        // soon-to-be-orphaned "aaa" blob past it so this prune test stays
+        // deterministic under the grace rule.
+        const aaaHash = sha256("aaa");
+        const aged = new Date(t0 - 15 * 60 * 1000);
+        utimesSync(join(dir, "files", aaaHash.slice(0, 2), aaaHash), aged, aged);
         // prune(1) drops m1 and GCs the "aaa" blob
         const removed = store.prune(1);
         expect(removed).toBe(1);
@@ -253,6 +265,16 @@ function makeNotify() {
         messages,
         ctx: { ui: { notify: (text: string, level: string = "info") => messages.push({ text, level }) } },
     };
+}
+
+/** Drive one full turn through a fake-pi harness: input → write tool_call →
+ *  tool_result → the write landing on disk → next input (seals the turn). */
+async function driveWriteTurn(harness: ReturnType<typeof makeFakePi>, file: string, content: string): Promise<void> {
+    await harness.emit("input", { text: "turn" });
+    await harness.emit("tool_call", { toolName: "write", toolCallId: `t-${file}`, input: { path: file, content } });
+    await harness.emit("tool_result", { toolName: "write", toolCallId: `t-${file}`, input: { path: file }, content: [], isError: false });
+    writeFileSync(file, content); // the write landed
+    await harness.emit("input", { text: "next" }); // seals the turn checkpoint
 }
 
 describe("createCheckpointsExtension — turn lifecycle", () => {
@@ -400,5 +422,412 @@ describe("createCheckpointsExtension — turn lifecycle", () => {
     test("paths helpers point under .unown", () => {
         expect(receiptsDir("/p").endsWith(join(".unown", "receipts"))).toBe(true);
         expect(checkpointsDir("/p").endsWith(join(".unown", "checkpoints"))).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 5. H1 hardening — atomicity, integrity, GC safety, jail, disk budget
+//    (the R-b §5 empirical reproductions, made deterministic)
+// ---------------------------------------------------------------------------
+
+describe("CheckpointStore hardening (H1)", () => {
+    test("truncated blob → restore reports corrupt-blob, never wrong content (R-b §5.2)", () => {
+        const proj = join(tmpRoot, "h1-corrupt");
+        mkdirSync(proj, { recursive: true });
+        const dir = join(tmpRoot, "h1-corrupt-store");
+        const store = new CheckpointStore(dir);
+        const file = join(proj, "victim.txt");
+        writeFileSync(file, "v2");
+        const hash = store.putBlob("0123456789ABCDEF");
+        // crash-truncate the blob at its content-addressed path
+        writeFileSync(join(dir, "files", hash.slice(0, 2), hash), "0123456789ABC");
+        const outcomes = store.restore({ id: "x", seq: 1, kind: "named", ts: Date.now(), files: [{ path: "victim.txt", hash, size: 16 }] }, proj);
+        expect(outcomes[0]).toMatchObject({ ok: false, action: "corrupt-blob" });
+        expect(readFileSync(file, "utf8")).toBe("v2"); // NOT overwritten with truncated content
+    });
+
+    test("putBlob self-heals a truncated blob parked at the hash path (R-b A1)", () => {
+        const dir = join(tmpRoot, "h1-heal");
+        const store = new CheckpointStore(dir);
+        const hash = sha256("full-content-16");
+        mkdirSync(join(dir, "files", hash.slice(0, 2)), { recursive: true });
+        writeFileSync(join(dir, "files", hash.slice(0, 2), hash), "full-cont"); // truncated
+        const h = store.putBlob("full-content-16");
+        expect(h).toBe(hash);
+        expect(store.readBlob(hash)?.toString()).toBe("full-content-16");
+    });
+
+    test("atomic writes leave no .tmp leftovers; binary blobs round-trip byte-exact", () => {
+        const dir = join(tmpRoot, "h1-atomic");
+        const store = new CheckpointStore(dir);
+        const bytes = Buffer.from([0x00, 0x01, 0x80, 0xff, 0xfe, 0x7f, 0xc0, 0x1f, 0x00, 0xff]);
+        const hash = store.putBlob(bytes);
+        expect(hash).toBe(sha256(bytes));
+        expect(Buffer.compare(store.readBlob(hash)!, bytes)).toBe(0);
+        store.writeManifest({ id: "m", seq: 1, kind: "named", ts: Date.now(), files: [] });
+        expect(readdirSync(dir).filter((n) => n.includes(".tmp-"))).toEqual([]);
+        expect(readdirSync(join(dir, "files", hash.slice(0, 2))).filter((n) => n.includes(".tmp-"))).toEqual([]);
+    });
+
+    test("GC grace: young orphan blobs survive a prune, aged orphans are cleaned (R-b C1)", () => {
+        const dir = join(tmpRoot, "h1-grace");
+        const store = new CheckpointStore(dir);
+        const fresh = store.putBlob("fresh-orphan"); // crash between blob write and manifest write
+        const stale = store.putBlob("stale-orphan");
+        const blobFile = (h: string) => join(dir, "files", h.slice(0, 2), h);
+        const aged = new Date(Date.now() - 15 * 60 * 1000);
+        utimesSync(blobFile(stale), aged, aged);
+        store.writeManifest({ id: "m0", seq: 1, kind: "named", ts: Date.now(), files: [] });
+        store.prune(0); // drops m0, GCs with no manifests left → grace is the only rule
+        expect(store.readBlob(fresh)).not.toBe(null); // inside the 10-minute grace window
+        expect(store.readBlob(stale)).toBe(null); // past the grace window → cleaned
+    });
+
+    test("GC never deletes a blob newer than the newest manifest (in-flight past grace)", () => {
+        const dir = join(tmpRoot, "h1-newest");
+        const store = new CheckpointStore(dir);
+        const inflight = store.putBlob("inflight");
+        const stale = store.putBlob("stale");
+        const now = Date.now();
+        store.writeManifest({ id: "drop", seq: 1, kind: "named", ts: now - 31 * 60 * 1000, files: [] });
+        store.writeManifest({ id: "keep", seq: 2, kind: "named", ts: now - 30 * 60 * 1000, files: [] });
+        const blobFile = (h: string) => join(dir, "files", h.slice(0, 2), h);
+        utimesSync(blobFile(inflight), new Date(now - 20 * 60 * 1000), new Date(now - 20 * 60 * 1000)); // past grace, newer than newest manifest
+        utimesSync(blobFile(stale), new Date(now - 45 * 60 * 1000), new Date(now - 45 * 60 * 1000)); // past grace, older than newest manifest
+        store.prune(1); // drops "drop", keeps "keep" (newest manifest: 30 min ago)
+        expect(store.readBlob(inflight)).not.toBe(null); // in-flight → protected
+        expect(store.readBlob(stale)).toBe(null); // genuinely stale → cleaned
+    });
+
+    test("symlink jail: restore refuses to write through an escaping symlink (R-b §5.1)", () => {
+        if (process.platform === "win32") return; // symlink creation needs privileges on Windows
+        const proj = join(tmpRoot, "h1-jail");
+        mkdirSync(proj, { recursive: true });
+        const outsideDir = join(tmpRoot, "h1-jail-outside");
+        mkdirSync(outsideDir, { recursive: true });
+        const outside = join(outsideDir, "target.txt");
+        writeFileSync(outside, "SENTINEL");
+        symlinkSync(outside, join(proj, "link.txt"));
+        const dir = join(tmpRoot, "h1-jail-store");
+        const store = new CheckpointStore(dir);
+        const hash = store.putBlob("PWNED-CONTENT");
+        const outcomes = store.restore({ id: "x", seq: 1, kind: "named", ts: Date.now(), files: [{ path: "link.txt", hash, size: 13 }] }, proj);
+        expect(outcomes[0]).toMatchObject({ ok: false, action: "outside" });
+        expect(readFileSync(outside, "utf8")).toBe("SENTINEL"); // the escape was blocked
+    });
+
+    test("insideRootReal: symlink chains resolved; new files still pass the jail", () => {
+        if (process.platform === "win32") return; // symlink creation needs privileges on Windows
+        const proj = join(tmpRoot, "h1-jail-real");
+        mkdirSync(join(proj, "sub"), { recursive: true });
+        const outsideDir = join(tmpRoot, "h1-jail-real-out");
+        mkdirSync(outsideDir, { recursive: true });
+        symlinkSync(outsideDir, join(proj, "sub", "escape-link"));
+        writeFileSync(join(proj, "sub", "ok-target.txt"), "x");
+        symlinkSync(join(proj, "sub", "ok-target.txt"), join(proj, "in-link.txt"));
+        expect(insideRootReal(proj, join(proj, "a.txt"))).toBe(true); // plain existing-ancestor case
+        expect(insideRootReal(proj, join(proj, "sub", "new.txt"))).toBe(true); // nonexistent tail
+        expect(insideRootReal(proj, join(proj, "in-link.txt"))).toBe(true); // in-project symlink
+        expect(insideRootReal(proj, join(proj, "sub", "escape-link", "f.txt"))).toBe(false); // escapes via symlink dir
+        expect(insideRootReal(proj, "/etc/passwd")).toBe(false);
+    });
+
+    test("oversized capture: no blob, honest oversized entry in the manifest (R-b D1)", () => {
+        const dir = join(tmpRoot, "h1-oversize-store");
+        const srcDir = join(tmpRoot, "h1-oversize-src");
+        mkdirSync(srcDir, { recursive: true });
+        const big = join(srcDir, "big.bin");
+        writeFileSync(big, "x".repeat(4096));
+        const prev = process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES;
+        process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES = "1024";
+        try {
+            const store = new CheckpointStore(dir);
+            const captured = store.captureFile(big);
+            expect(captured).toMatchObject({ oversized: true, hash: null, size: 4096 });
+            expect(store.sizeBytes()).toBe(0); // nothing was blobbed
+        } finally {
+            if (prev === undefined) delete process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES;
+            else process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES = prev;
+        }
+    });
+
+    test("oversized env parse is tolerant: NaN/negative/zero → 64 MiB default", () => {
+        const dir = join(tmpRoot, "h1-env");
+        const srcDir = join(tmpRoot, "h1-env-src");
+        mkdirSync(srcDir, { recursive: true });
+        const small = join(srcDir, "small.txt");
+        writeFileSync(small, "small");
+        const store = new CheckpointStore(dir);
+        const prev = process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES;
+        try {
+            for (const bad of ["abc", "-1", "0", ""]) {
+                process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES = bad;
+                const captured = store.captureFile(small);
+                expect(captured?.oversized).toBeUndefined();
+                expect(captured?.hash).toBe(sha256("small"));
+            }
+            delete process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES;
+            const captured = store.captureFile(small);
+            expect(captured?.hash).toBe(sha256("small"));
+        } finally {
+            if (prev === undefined) delete process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES;
+            else process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES = prev;
+        }
+    });
+
+    test("prune per-owner floor: one session's prune never evicts another owner's checkpoints (R-b C3)", () => {
+        const dir = join(tmpRoot, "h1-floor");
+        const store = new CheckpointStore(dir);
+        for (let i = 1; i <= 45; i++) store.writeManifest({ id: `a${i}`, seq: i, kind: "turn", ts: Date.now(), files: [], owner: "boot-a" });
+        store.writeManifest({ id: "b1", seq: 46, kind: "turn", ts: Date.now(), files: [], owner: "boot-b" });
+        expect(store.prune(40, "boot-b")).toBe(0); // B's own floor is untouched and the global cap is far away
+        expect(store.list()).toHaveLength(46); // A's 45 + B's 1 all survive B's prune
+        expect(store.prune(40, "boot-a")).toBe(5); // A evicts only ITS oldest 5
+        const remaining = store.list();
+        expect(remaining).toHaveLength(41);
+        expect(remaining.some((m) => m.id === "a1")).toBe(false);
+        expect(remaining.some((m) => m.id === "a45")).toBe(true);
+        expect(remaining.some((m) => m.id === "b1")).toBe(true);
+    });
+
+    test("prune global cap evicts the oldest across owners past 200 manifests", () => {
+        const dir = join(tmpRoot, "h1-cap");
+        const store = new CheckpointStore(dir);
+        for (let i = 1; i <= 196; i++) store.writeManifest({ id: `a${i}`, seq: i, kind: "turn", ts: Date.now(), files: [], owner: "boot-a" });
+        for (let i = 1; i <= 5; i++) store.writeManifest({ id: `b${i}`, seq: 200 + i, kind: "turn", ts: Date.now(), files: [], owner: "boot-b" });
+        // B prunes (own 5 ≤ floor 40) but the store is 1 over the global cap → the single oldest goes
+        const removed = store.prune(40, "boot-b");
+        expect(removed).toBe(1);
+        const remaining = store.list();
+        expect(remaining).toHaveLength(200);
+        expect(remaining.some((m) => m.id === "a1")).toBe(false); // oldest evicted even though it is A's
+        expect(remaining.some((m) => m.id === "a2")).toBe(true);
+        expect(remaining.some((m) => m.id === "b5")).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 6. H1 hardening — extension-level: GC race, ownership, oversized /undo,
+//    crash-safe undo ordering, honest failure surfaces
+// ---------------------------------------------------------------------------
+
+describe("createCheckpointsExtension — hardening (H1)", () => {
+    function makeExt(proj: string, boot: string) {
+        const ext = createCheckpointsExtension({
+            cwd: proj,
+            storeDir: join(proj, ".unown", "checkpoints"),
+            receiptsFile: join(proj, ".unown", "receipts", `${boot}.jsonl`),
+            bootId: boot,
+        });
+        const harness = makeFakePi();
+        ext.factory(harness.pi);
+        return harness;
+    }
+
+    test("GC race (R-b §5.3): session B's prune+GC cannot delete session A's in-flight blob", async () => {
+        const proj = join(tmpRoot, "h1-race");
+        mkdirSync(join(proj, ".unown", "checkpoints"), { recursive: true });
+        const storeDir = join(proj, ".unown", "checkpoints");
+        const store = new CheckpointStore(storeDir);
+        const aFile = join(proj, "a.ts");
+        writeFileSync(aFile, "a-original");
+        const A = makeExt(proj, "boot-a");
+        const B = makeExt(proj, "boot-b");
+        // A captures a before-image (tool_call time) — blob written, manifest NOT yet sealed
+        await A.emit("input", { text: "A turn" });
+        await A.emit("tool_call", { toolName: "write", toolCallId: "ta1", input: { path: aFile, content: "a-changed" } });
+        const blobHash = sha256("a-original");
+        expect(store.readBlob(blobHash)).not.toBe(null); // in-flight blob exists, unreferenced
+        // an old orphan that SHOULD be collected by the same prune (proves the GC actually ran)
+        const oldOrphan = store.putBlob("old-orphan");
+        const aged = new Date(Date.now() - 15 * 60 * 1000);
+        utimesSync(join(storeDir, "files", oldOrphan.slice(0, 2), oldOrphan), aged, aged);
+        // B's own backlog pushes its prune past the floor so gcBlobs actually runs
+        for (let i = 1; i <= 45; i++) store.writeManifest({ id: `b-seed-${i}`, seq: i, kind: "turn", ts: Date.now(), files: [], owner: "boot-b" });
+        // B runs a full turn cycle: seal → prune → GC while A's blob is unreferenced
+        await driveWriteTurn(B, join(proj, "b.ts"), "b");
+        expect(store.readBlob(oldOrphan)).toBe(null); // GC ran and collected the aged orphan
+        expect(store.readBlob(blobHash)).not.toBe(null); // A's in-flight blob survived via the grace window
+        // A's write lands and succeeds, A seals (referencing the blob), A's /undo still works
+        writeFileSync(aFile, "a-changed");
+        await A.emit("tool_result", { toolName: "write", toolCallId: "ta1", input: { path: aFile }, content: [], isError: false });
+        await A.emit("input", { text: "A next" });
+        const { ctx, messages } = makeNotify();
+        await A.runCommand("undo", "", ctx);
+        expect(readFileSync(aFile, "utf8")).toBe("a-original");
+        expect(messages.some((m) => m.text.includes("1 turn(s)"))).toBe(true);
+    });
+
+    test("ownership: /undo consumes only this session's turns (R-b C2)", async () => {
+        const proj = join(tmpRoot, "h1-own");
+        mkdirSync(join(proj, ".unown"), { recursive: true });
+        const storeDir = join(proj, ".unown", "checkpoints");
+        const aFile = join(proj, "a.ts");
+        const bFile = join(proj, "b.ts");
+        writeFileSync(aFile, "a0");
+        writeFileSync(bFile, "b0");
+        const A = makeExt(proj, "boot-a");
+        const B = makeExt(proj, "boot-b");
+        await driveWriteTurn(A, aFile, "a1");
+        await driveWriteTurn(B, bFile, "b1");
+        const store = new CheckpointStore(storeDir);
+        expect(store.list().filter((m) => m.kind === "turn")).toHaveLength(2);
+        // a third session with no turns gets pointed at --all, consumes nothing
+        const C = makeExt(proj, "boot-c");
+        const { ctx: ctxC, messages: msgsC } = makeNotify();
+        await C.runCommand("undo", "", ctxC);
+        expect(msgsC.some((m) => m.text.includes("--all"))).toBe(true);
+        expect(store.list().filter((m) => m.kind === "turn")).toHaveLength(2);
+        // B's /undo reverts B's turn only
+        const { ctx: ctxB } = makeNotify();
+        await B.runCommand("undo", "", ctxB);
+        expect(readFileSync(bFile, "utf8")).toBe("b0");
+        expect(readFileSync(aFile, "utf8")).toBe("a1"); // A's file untouched
+        const turns = store.list().filter((m) => m.kind === "turn");
+        expect(turns).toHaveLength(1);
+        expect(turns[0].owner).toBe("boot-a");
+        // then A's own /undo finishes the job
+        const { ctx: ctxA } = makeNotify();
+        await A.runCommand("undo", "", ctxA);
+        expect(readFileSync(aFile, "utf8")).toBe("a0");
+        expect(store.list().filter((m) => m.kind === "turn")).toHaveLength(0);
+    });
+
+    test("ownership: /undo --all consumes other sessions' turns and legacy manifests", async () => {
+        const proj = join(tmpRoot, "h1-own-all");
+        mkdirSync(join(proj, ".unown"), { recursive: true });
+        const storeDir = join(proj, ".unown", "checkpoints");
+        const store = new CheckpointStore(storeDir);
+        const legacyFile = join(proj, "legacy.txt");
+        writeFileSync(legacyFile, "legacy-new");
+        const aFile = join(proj, "a.ts");
+        writeFileSync(aFile, "a0");
+        // a legacy manifest (written before ownership existed): unknown owner — not "own"
+        store.writeManifest({ id: "tlegacy", seq: 1, kind: "turn", ts: Date.now(), files: [{ path: "legacy.txt", hash: store.putBlob("legacy-orig"), size: 11 }] });
+        const A = makeExt(proj, "boot-a");
+        const B = makeExt(proj, "boot-b");
+        await driveWriteTurn(A, aFile, "a1");
+        await driveWriteTurn(B, join(proj, "b.ts"), "b1");
+        // default /undo (A) consumes only A's own turn — legacy stays
+        const { ctx: ctxA } = makeNotify();
+        await A.runCommand("undo", "", ctxA);
+        expect(readFileSync(aFile, "utf8")).toBe("a0");
+        const afterOwn = store.list().filter((m) => m.kind === "turn");
+        expect(afterOwn.map((m) => m.owner ?? "legacy").sort()).toEqual(["boot-b", "legacy"]);
+        // --all opts into the cross-owner + legacy turns
+        const { ctx: ctxAll, messages } = makeNotify();
+        await A.runCommand("undo", "--all 2", ctxAll);
+        expect(readFileSync(legacyFile, "utf8")).toBe("legacy-orig");
+        expect(existsSync(join(proj, "b.ts"))).toBe(false); // tombstone: b.ts did not exist pre-turn
+        expect(store.list().filter((m) => m.kind === "turn")).toHaveLength(0);
+        expect(messages.some((m) => m.text.includes("2 turn(s)"))).toBe(true);
+    });
+
+    test("oversized file: manifest records the tombstone-like entry, /undo reports honestly", async () => {
+        const proj = join(tmpRoot, "h1-oversize");
+        mkdirSync(join(proj, ".unown"), { recursive: true });
+        const storeDir = join(proj, ".unown", "checkpoints");
+        const file = join(proj, "big.bin");
+        writeFileSync(file, "x".repeat(4096));
+        const prev = process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES;
+        process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES = "1024";
+        try {
+            const A = makeExt(proj, "boot-o");
+            await driveWriteTurn(A, file, "y".repeat(4096));
+            const store = new CheckpointStore(storeDir);
+            const turns = store.list().filter((m) => m.kind === "turn");
+            expect(turns).toHaveLength(1);
+            expect(turns[0].files[0]).toMatchObject({ oversized: true, hash: null, size: 4096 });
+            expect(store.sizeBytes()).toBe(0); // no blob was ever written
+            const { ctx, messages } = makeNotify();
+            await A.runCommand("undo", "", ctx);
+            // honest degradation: the file is left as-is (not deleted, not wrongly reverted)
+            expect(readFileSync(file, "utf8")).toBe("y".repeat(4096));
+            expect(messages.some((m) => m.level === "warning" && m.text.includes("oversized"))).toBe(true);
+            // the capture-time warning was noted in the ledger (once)
+            const ledger = new ReceiptsLedger(join(proj, ".unown", "receipts", "boot-o.jsonl"));
+            const notes = ledger.entries().filter((e) => e.kind === "note") as Array<{ preview: string }>;
+            expect(notes.filter((n) => n.preview.includes("too large"))).toHaveLength(1);
+        } finally {
+            if (prev === undefined) delete process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES;
+            else process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES = prev;
+        }
+    });
+
+    test("crash mid-undo: re-run completes the interrupted turns, never an extra one (R-b A3)", async () => {
+        const proj = join(tmpRoot, "h1-crash");
+        mkdirSync(join(proj, ".unown"), { recursive: true });
+        const storeDir = join(proj, ".unown", "checkpoints");
+        const f1 = join(proj, "f1.txt");
+        const f2 = join(proj, "f2.txt");
+        const f3 = join(proj, "f3.txt");
+        writeFileSync(f1, "f1-orig");
+        writeFileSync(f2, "f2-orig");
+        writeFileSync(f3, "f3-orig");
+        const A = makeExt(proj, "boot-c");
+        await driveWriteTurn(A, f1, "f1-new");
+        await driveWriteTurn(A, f2, "f2-new");
+        await driveWriteTurn(A, f3, "f3-new");
+        const store = new CheckpointStore(storeDir);
+        const turns = store.list().filter((m) => m.kind === "turn");
+        expect(turns).toHaveLength(3);
+        // simulate a crash mid-/undo 2 (chosen: t2, t3): the handler marked both
+        // consumed, fully finished t2 (restored + removed), then died before t3
+        const victims = turns.slice(-2);
+        for (const m of victims) store.writeManifest({ ...m, consumed: true });
+        store.restore(victims[0], proj); // t2's files reverted
+        store.removeManifest(victims[0].id); // t2 consumed
+        expect(readFileSync(f2, "utf8")).toBe("f2-orig");
+        // re-run /undo 2: it must complete the interrupted t3 ONLY — without the
+        // pending-first rule it would pick [t1, t3] and over-undo t1
+        const { ctx, messages } = makeNotify();
+        await A.runCommand("undo", "2", ctx);
+        expect(readFileSync(f3, "utf8")).toBe("f3-orig"); // completed
+        expect(readFileSync(f1, "utf8")).toBe("f1-new"); // NOT over-undone
+        const remaining = store.list().filter((m) => m.kind === "turn");
+        expect(remaining.map((m) => m.id)).toEqual([turns[0].id]); // only t1 survives
+        expect(messages.some((m) => m.text.includes("interrupted"))).toBe(true);
+    });
+
+    test("/undo surfaces per-file failures instead of reporting success (R-b U1)", async () => {
+        const proj = join(tmpRoot, "h1-undo-fail");
+        mkdirSync(join(proj, ".unown"), { recursive: true });
+        const storeDir = join(proj, ".unown", "checkpoints");
+        const file = join(proj, "a.ts");
+        writeFileSync(file, "orig");
+        const A = makeExt(proj, "boot-u");
+        await driveWriteTurn(A, file, "changed");
+        // the before-image blob vanishes (over-aggressive GC / disk rot)
+        const hash = sha256("orig");
+        rmSync(join(storeDir, "files", hash.slice(0, 2), hash));
+        const { ctx, messages } = makeNotify();
+        await A.runCommand("undo", "", ctx);
+        expect(readFileSync(file, "utf8")).toBe("changed"); // not revertible — left as-is
+        expect(messages.some((m) => m.level === "warning" && m.text.includes("missing-blob"))).toBe(true);
+        expect(messages.some((m) => m.text.includes("a.ts"))).toBe(true);
+    });
+
+    test("/restore renders corrupt-blob prominently (warning, file untouched)", async () => {
+        const proj = join(tmpRoot, "h1-restore-corrupt");
+        mkdirSync(join(proj, ".unown"), { recursive: true });
+        const storeDir = join(proj, ".unown", "checkpoints");
+        const file = join(proj, "state.txt");
+        const A = makeExt(proj, "boot-r");
+        await A.emit("input", { text: "edit" });
+        await A.emit("tool_call", { toolName: "edit", toolCallId: "t1", input: { path: file, old: "a", new: "b" } });
+        await A.emit("tool_result", { toolName: "edit", toolCallId: "t1", input: { path: file }, content: [], isError: false });
+        writeFileSync(file, "snap-state");
+        const { ctx } = makeNotify();
+        await A.runCommand("checkpoint", "snap", ctx);
+        const store = new CheckpointStore(storeDir);
+        const named = store.list().find((m) => m.kind === "named")!;
+        const hash = named.files[0].hash!;
+        // bit-rot the snapshot blob
+        writeFileSync(join(storeDir, "files", hash.slice(0, 2), hash), "rotted-bytes");
+        writeFileSync(file, "later-state");
+        const { ctx: ctx2, messages } = makeNotify();
+        await A.runCommand("restore", "snap", ctx2);
+        expect(readFileSync(file, "utf8")).toBe("later-state"); // NOT overwritten with wrong content
+        expect(messages.some((m) => m.level === "warning" && m.text.includes("corrupt-blob"))).toBe(true);
     });
 });

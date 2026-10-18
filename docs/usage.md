@@ -128,12 +128,12 @@ Every session also keeps a **receipts audit ledger** and a **checkpoint store** 
 | Command | What it does |
 |---|---|
 | `/checkpoint [label]` | Snapshot the current state of every file this session touched (bash-caused changes are not tracked file-by-file) |
-| `/undo [n]` | Revert the file changes of the last n turn(s) (default 1) — restores pre-turn states; new files created this turn are deleted |
+| `/undo [n\|--all]` | Revert the file changes of the last n turn(s) (default 1) — restores pre-turn states; new files created this turn are deleted. Only **this session's** turns by default; `--all` also consumes other sessions'/subagents' turns |
 | `/restore <id\|label>` | Rewrite the files of a named (or turn) checkpoint; prefix matching works |
 | `/checkpoints` | List checkpoints (turn + named) with the blob-store size |
 | `/receipts [n]` | Show the audit ledger — last n entries (default 20) + totals |
 
-Limits, stated plainly: bash-caused file changes appear in the ledger as commands but are not itemized per-file (no workspace diffing); `/undo` walks only the current process's turn checkpoints — across processes (e.g. after subagent writes), use `/checkpoint` + `/restore`. Restore only ever writes inside the project directory (the same jail the hooks enforce). At most 40 checkpoints are kept (oldest pruned, blobs garbage-collected).
+Limits, stated plainly: bash-caused file changes appear in the ledger as commands but are not itemized per-file (no workspace diffing); `/undo` walks only this session's turn checkpoints by default (`--all` for the rest — across machines/copies of the repo there is no store); restore is jailed to the project directory by both a lexical and a realpath check (a symlink pointing outside the project is refused), and every blob is hash-verified on restore — a corrupt checkpoint reports `corrupt-blob` and touches nothing. Files larger than `UNOWN_CHECKPOINT_MAX_BLOB_BYTES` (default 64 MiB) are not snapshot: the turn still reverts its other files and the ledger notes the exception. Per session at most 40 checkpoints are kept (200 across sessions; oldest pruned, blobs garbage-collected with a 10-minute grace window so concurrent sessions never delete each other's in-flight snapshots).
 
 ## MCP servers
 
@@ -188,7 +188,7 @@ unown adds fourteen commands of its own:
 | `/learning` | Re-print the effective 4-tier memory stack, fresh from disk |
 | `/lsp` | Show LSP status: detected language servers (running/available), open documents, cached diagnostics |
 | `/checkpoint [label]` | Snapshot the current state of the files this session touched |
-| `/undo [n]` | Revert the file changes of the last n turn(s) |
+| `/undo [n\|--all]` | Revert the file changes of the last n turn(s) — this session's turns, or everyone's with `--all` |
 | `/restore <id\|label>` | Restore a checkpoint |
 | `/checkpoints` | List checkpoints + blob-store size |
 | `/receipts [n]` | Show the session receipts audit ledger |

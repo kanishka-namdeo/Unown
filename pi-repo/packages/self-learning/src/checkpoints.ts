@@ -25,14 +25,29 @@
  *
  * Everything is plain fs + crypto — cross-platform by construction (no shell,
  * no git dependency, no native modules). Restore only ever writes inside the
- * project cwd (same jail the terminal hooks enforce on tools).
+ * project cwd — lexically AND through realpath (an in-project symlink whose
+ * target escapes the project is refused; the same jail the terminal hooks
+ * enforce on tools).
+ *
+ * Hardening (R-b workflows audit, Milestone H1 — data integrity): every blob,
+ * manifest and restored file goes through atomicWriteFileSync (temp + fsync +
+ * rename — a crash never parks a truncated file at a content-addressed path);
+ * restores verify sha256(blob) against the manifest hash and report
+ * corrupt-blob instead of silently writing wrong content; blob GC keeps a
+ * 10-minute mtime grace and never deletes blobs newer than the newest
+ * manifest (concurrent sessions sharing one store cannot lose each other's
+ * in-flight before-images); manifests carry owner/consumed fields — /undo
+ * defaults to this session's turns (/undo --all opts into cross-session) and
+ * consumption is journaled before any file is touched, so a crash mid-undo
+ * re-runs safely; files larger than MAX_BLOB_BYTES are never blobbed (honest
+ * oversized entries — /undo says it cannot revert them).
  *
  * Known limits (documented in docs/usage.md): bash-caused file changes are
  * recorded as commands in the ledger but not itemized per-file (no workspace
  * diffing); subagent processes keep their own ledger file under the same
- * `.unown/receipts/` (marked `[subagent]`), and `/undo` walks only the
- * current process's turn checkpoints — use `/checkpoint` + `/restore` to
- * rewind across processes.
+ * `.unown/receipts/` (marked `[subagent]`); capture-time reads follow
+ * symlinks (the jail is enforced on restore writes); turn checkpoints are
+ * sealed at the next input / shutdown, not per write.
  */
 import { createHash } from "node:crypto";
 import {
@@ -40,11 +55,14 @@ import {
     mkdirSync,
     readdirSync,
     readFileSync,
+    realpathSync,
     rmSync,
     statSync,
     writeFileSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+
+import { atomicWriteFileSync } from "./atomic.ts";
 
 // ---------------------------------------------------------------------------
 // Paths + hashing helpers (pure, exported for tests)
@@ -65,6 +83,50 @@ export function sha256(content: string | Buffer): string {
 /** True when `p` resolves inside `root` (the terminal path jail). */
 export function insideRoot(root: string, p: string): boolean {
     const rel = relative(resolve(root), resolve(p));
+    return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+}
+
+/**
+ * Resolve the deepest EXISTING ancestor of `p` to its real (symlink-free)
+ * location and re-attach the non-existent tail lexically (the hooks.ts
+ * jailPath pattern, re-implemented locally — importing hooks.ts would drag
+ * the SQLite store module into every checkpoints importer). Falls back to
+ * the lexical path when nothing exists up to the filesystem root, so
+ * brand-new files still pass the jail (only existing symlinks are resolved).
+ */
+function realpathAncestor(p: string): string {
+    let dir = p;
+    let tail = "";
+    for (;;) {
+        try {
+            const real = realpathSync(dir);
+            // join() (not `${real}/${tail}`): canonical separators on win32.
+            return tail ? join(real, tail) : real;
+        } catch {
+            /* missing path (or broken symlink) — climb one level */
+        }
+        const parent = dirname(dir);
+        if (parent === dir) return p; // reached "/" without an existing ancestor
+        tail = tail ? join(basename(dir), tail) : basename(dir);
+        dir = parent;
+    }
+}
+
+/**
+ * Realpath jail: insideRoot plus symlink resolution — an in-project symlink
+ * chain whose target escapes the root fails here (the lexical check alone is
+ * bypassable: proj/link -> /etc/x passes insideRoot, but restoring THROUGH
+ * it writes outside the project). Restores require BOTH checks; new files
+ * with no existing symlinked ancestor still pass.
+ */
+export function insideRootReal(root: string, p: string): boolean {
+    let rootReal = resolve(root);
+    try {
+        rootReal = realpathSync(root);
+    } catch {
+        /* jail root does not exist yet — keep the lexical prefix */
+    }
+    const rel = relative(rootReal, realpathAncestor(resolve(p)));
     return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
 }
 
@@ -245,9 +307,14 @@ export function describeToolInput(tool: string, input: Record<string, unknown> |
 export interface CheckpointFile {
     /** Project-relative path. */
     path: string;
-    /** Blob sha256 — null is a tombstone (the file did not exist). */
+    /** Blob sha256 — null is a tombstone (the file did not exist) or an
+     *  oversized capture (oversized: true — the content was never blobbed). */
     hash: string | null;
     size: number;
+    /** True when the file exceeded MAX_BLOB_BYTES at capture time: no blob
+     *  exists and /undo cannot revert it — restore reports this honestly
+     *  instead of guessing (never deletes, never writes wrong content). */
+    oversized?: boolean;
 }
 
 export interface CheckpointManifest {
@@ -257,10 +324,51 @@ export interface CheckpointManifest {
     label?: string;
     ts: number;
     files: CheckpointFile[];
+    /** Session boot id that sealed this manifest. Absent on legacy manifests
+     *  (written before ownership existed) — read as "unknown", never as own. */
+    owner?: string;
+    /** Set (atomically, before any file is touched) once /undo has claimed
+     *  this manifest — a durable marker for crash-safe undo ordering. */
+    consumed?: boolean;
+}
+
+/** Per-file outcome of CheckpointStore.restore(). */
+export type RestoreAction = "restored" | "deleted" | "missing-blob" | "corrupt-blob" | "outside" | "oversized";
+export interface RestoreOutcome {
+    path: string;
+    ok: boolean;
+    action: RestoreAction;
 }
 
 const MANIFEST_PREFIX = "cp-";
 const KEEP_MANIFESTS = 40;
+/** Cross-owner ceiling for owner-scoped prunes: past this line the OLDEST
+ *  manifests are evicted across all owners, so one busy session cannot evict
+ *  a quiet session's live checkpoints below its own KEEP_MANIFESTS floor
+ *  until the whole store is genuinely over budget (R-b C3). */
+const GLOBAL_KEEP_MANIFESTS = 200;
+/** Blob GC grace (git's gc.pruneExpire pattern): blobs younger than this are
+ *  never deleted — another process sharing this store may hold them inside
+ *  its put-to-seal window (before-image captured at tool_call time, manifest
+ *  sealed at the next input; /review's subagent processes hit this by
+ *  design — R-b C1). */
+const GC_GRACE_MS = 10 * 60 * 1000;
+const DEFAULT_MAX_BLOB_BYTES = 64 * 1024 * 1024;
+
+/** Per-file blob cap, env-overridable, parsed tolerantly (NaN/negative/zero
+ *  or unset → the 64 MiB default — R-b D1). Read per call so tests can pin
+ *  it without re-importing the module. */
+function maxBlobBytes(): number {
+    const raw = Number.parseInt(process.env.UNOWN_CHECKPOINT_MAX_BLOB_BYTES ?? "", 10);
+    return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_MAX_BLOB_BYTES;
+}
+
+/** atomicWriteFileSync is string-typed, but writeFileSync passes Buffer data
+ *  through verbatim (the utf8 encoding option only applies to strings) — blob
+ *  snapshots stay binary-safe through this one narrow cast. */
+function atomicWriteBlob(file: string, content: string | Buffer): void {
+    atomicWriteFileSync(file, content as unknown as string);
+}
 
 /** Blob store + manifests under <cwd>/.unown/checkpoints/. */
 export class CheckpointStore {
@@ -279,15 +387,23 @@ export class CheckpointStore {
         return join(this.dir, "files", hash.slice(0, 2), hash);
     }
 
-    /** Store content, return its hash. Content-addressed (dedup by write). */
+    /** Store content, return its hash. Content-addressed (dedup by write).
+     *  Atomic (temp+fsync+rename) and self-healing: a crash-truncated blob
+     *  already parked at this content-addressed path would otherwise be
+     *  permanent — the size check below rewrites it (R-b A1). */
     putBlob(content: string | Buffer): string {
         const hash = sha256(content);
         const target = this.blobPath(hash);
-        if (!existsSync(target)) {
-            this.ensure();
-            mkdirSync(join(target, ".."), { recursive: true });
-            writeFileSync(target, content);
+        const expected = typeof content === "string" ? Buffer.byteLength(content) : content.length;
+        let write = true;
+        if (existsSync(target)) {
+            try {
+                write = statSync(target).size !== expected;
+            } catch {
+                write = true;
+            }
         }
+        if (write) atomicWriteBlob(target, content);
         return hash;
     }
 
@@ -313,7 +429,9 @@ export class CheckpointStore {
 
     writeManifest(manifest: CheckpointManifest): void {
         this.ensure();
-        writeFileSync(this.manifestPath(manifest.id), JSON.stringify(manifest, null, 2));
+        // Atomic (temp+fsync+rename): a crash mid-write must never leave a
+        // truncated cp-<id>.json that list() would silently skip (R-b A2).
+        atomicWriteFileSync(this.manifestPath(manifest.id), JSON.stringify(manifest, null, 2));
     }
 
     /** All manifests, oldest first. Tolerates broken files (skipped). */
@@ -332,23 +450,41 @@ export class CheckpointStore {
         return out;
     }
 
-    /** Capture the current on-disk state of one file (tombstone if absent). */
+    /** Capture the current on-disk state of one file (tombstone if absent;
+     *  oversized marker if bigger than MAX_BLOB_BYTES — never blobbed, R-b D1). */
     captureFile(absPath: string): CheckpointFile | null {
         try {
+            const size = statSync(absPath).size;
+            if (size > maxBlobBytes()) return { path: absPath, hash: null, size, oversized: true };
             const content = readFileSync(absPath);
-            return { path: absPath, hash: this.putBlob(content), size: content.length };
+            return { path: absPath, hash: this.putBlob(content), size };
         } catch {
             return { path: absPath, hash: null, size: 0 };
         }
     }
 
-    /** Restore one manifest's files. Returns per-file outcomes. */
-    restore(manifest: CheckpointManifest, cwd: string): Array<{ path: string; ok: boolean; action: "restored" | "deleted" | "missing-blob" | "outside" }> {
-        const out: Array<{ path: string; ok: boolean; action: "restored" | "deleted" | "missing-blob" | "outside" }> = [];
+    /** Restore one manifest's files. Returns per-file outcomes. Every blob is
+     *  hash-verified before it is written (a truncated or bit-rotted blob is
+     *  reported as corrupt-blob, never silently restored as wrong content —
+     *  R-b R1), and every target must pass BOTH the lexical and the realpath
+     *  jail (R-b P1). Writes are atomic per file. */
+    restore(manifest: CheckpointManifest, cwd: string): RestoreOutcome[] {
+        const out: RestoreOutcome[] = [];
         for (const f of manifest.files) {
             const abs = isAbsolute(f.path) ? f.path : join(cwd, f.path);
-            if (!insideRoot(cwd, abs)) {
+            if (!insideRoot(cwd, abs) || !insideRootReal(cwd, abs)) {
                 out.push({ path: f.path, ok: false, action: "outside" });
+                continue;
+            }
+            if (f.oversized === true) {
+                // Oversized captures: the pre-turn content exceeded
+                // MAX_BLOB_BYTES and was never blobbed. DECISION — skip and
+                // report rather than delete: the file existed before the turn,
+                // so tombstone-deleting it would destroy user data the store
+                // never actually captured; the honest degradation (matching
+                // the capture-time "too large to checkpoint — /undo will not
+                // revert it" note) is to leave the file and say so.
+                out.push({ path: f.path, ok: false, action: "oversized" });
                 continue;
             }
             if (f.hash === null) {
@@ -365,9 +501,12 @@ export class CheckpointStore {
                 out.push({ path: f.path, ok: false, action: "missing-blob" });
                 continue;
             }
+            if (sha256(blob) !== f.hash) {
+                out.push({ path: f.path, ok: false, action: "corrupt-blob" });
+                continue;
+            }
             try {
-                mkdirSync(join(abs, ".."), { recursive: true });
-                writeFileSync(abs, blob);
+                atomicWriteBlob(abs, blob);
                 out.push({ path: f.path, ok: true, action: "restored" });
             } catch {
                 out.push({ path: f.path, ok: false, action: "restored" });
@@ -384,32 +523,82 @@ export class CheckpointStore {
         }
     }
 
-    /** Keep the newest KEEP_MANIFESTS manifests; GC unreferenced blobs. */
-    prune(keep = KEEP_MANIFESTS): number {
+    /**
+     * Retention + blob GC. Without `owner` this keeps the newest `keep`
+     * manifests globally (pre-ownership behavior). With `owner` (the
+     * extension always passes its bootId) the prune is owner-scoped: only
+     * THAT owner's manifests are evicted beyond its own `keep` floor, plus a
+     * global cap (GLOBAL_KEEP_MANIFESTS) that evicts the oldest manifests
+     * across all owners — one session's prune can no longer evict another
+     * session's live checkpoints below the cap line (R-b C3).
+     */
+    prune(keep = KEEP_MANIFESTS, owner?: string): number {
         const all = this.list();
-        if (all.length <= keep) return 0;
-        const removed = all.slice(0, all.length - keep);
-        for (const m of removed) this.removeManifest(m.id);
-        this.gcBlobs();
-        return removed.length;
+        if (owner === undefined) {
+            if (all.length <= keep) return 0;
+            const removed = all.slice(0, all.length - keep);
+            for (const m of removed) this.removeManifest(m.id);
+            this.gcBlobs();
+            return removed.length;
+        }
+        const doomed = new Set<string>();
+        const own = all.filter((m) => m.owner === owner);
+        if (own.length > keep) for (const m of own.slice(0, own.length - keep)) doomed.add(m.id);
+        for (const m of all) {
+            // oldest first (list() is seq-ordered) across ALL owners, only
+            // past the global cap — the per-owner floor above is untouched.
+            if (all.length - doomed.size <= GLOBAL_KEEP_MANIFESTS) break;
+            doomed.add(m.id);
+        }
+        for (const id of doomed) this.removeManifest(id);
+        if (doomed.size > 0) this.gcBlobs();
+        return doomed.size;
     }
 
+    /**
+     * Delete unreferenced blobs — with a safety margin: never a blob younger
+     * than GC_GRACE_MS (another process may hold it inside its put-to-seal
+     * window — R-b C1), and never a blob newer than the newest surviving
+     * manifest (in-flight even past the grace while the store is idle).
+     * Shard readdirs are guarded: a concurrent GC removing a shard between
+     * the two readdirs is a skip, not a crash (R-b C6).
+     */
     private gcBlobs(): void {
+        const all = this.list();
         const referenced = new Set<string>();
-        for (const m of this.list()) {
+        let newestTs = -Infinity;
+        for (const m of all) {
             for (const f of m.files) if (f.hash) referenced.add(f.hash);
+            newestTs = Math.max(newestTs, m.ts);
         }
+        const haveManifests = all.length > 0;
         const filesRoot = join(this.dir, "files");
         if (!existsSync(filesRoot)) return;
-        for (const shard of readdirSync(filesRoot)) {
+        let shards: string[];
+        try {
+            shards = readdirSync(filesRoot);
+        } catch {
+            return; // vanished between existsSync and readdir — nothing to do
+        }
+        const now = Date.now();
+        for (const shard of shards) {
             const shardDir = join(filesRoot, shard);
-            for (const hash of readdirSync(shardDir)) {
-                if (!referenced.has(hash)) {
-                    try {
-                        rmSync(join(shardDir, hash));
-                    } catch {
-                        /* best effort */
-                    }
+            let hashes: string[];
+            try {
+                hashes = readdirSync(shardDir);
+            } catch {
+                continue; // shard raced away — skip it
+            }
+            for (const hash of hashes) {
+                if (referenced.has(hash)) continue;
+                const entry = join(shardDir, hash);
+                try {
+                    const st = statSync(entry);
+                    if (now - st.mtimeMs < GC_GRACE_MS) continue;
+                    if (haveManifests && st.mtimeMs > newestTs) continue;
+                    rmSync(entry);
+                } catch {
+                    /* raced away — best effort */
                 }
             }
         }
@@ -420,8 +609,20 @@ export class CheckpointStore {
         const filesRoot = join(this.dir, "files");
         if (!existsSync(filesRoot)) return 0;
         let total = 0;
-        for (const shard of readdirSync(filesRoot)) {
-            for (const hash of readdirSync(join(filesRoot, shard))) {
+        let shards: string[];
+        try {
+            shards = readdirSync(filesRoot);
+        } catch {
+            return 0; // raced away mid-scan — report what we have
+        }
+        for (const shard of shards) {
+            let hashes: string[];
+            try {
+                hashes = readdirSync(join(filesRoot, shard));
+            } catch {
+                continue; // shard vanished between the two readdirs — skip it (R-b C6)
+            }
+            for (const hash of hashes) {
                 try {
                     total += statSync(join(filesRoot, shard, hash)).size;
                 } catch {
@@ -447,8 +648,18 @@ export function renderCheckpoints(manifests: CheckpointManifest[], sizeBytes: nu
             return `${m.id} ${kind} ${time} ${m.files.length} file(s)${m.label ? ` "${m.label}"` : ""}`;
         });
     const kb = Math.max(1, Math.round(sizeBytes / 1024));
-    return `Checkpoints (newest first, ${manifests.length} total, ~${kb} KB of blobs):\n${lines.join("\n")}\n/restore <id|label> rewrites the snapshot; /undo [n] reverts the last n turn(s).`;
+    return `Checkpoints (newest first, ${manifests.length} total, ~${kb} KB of blobs):\n${lines.join("\n")}\n/restore <id|label> rewrites the snapshot; /undo [n] reverts the last n turn(s) of this session; /undo --all also reverts other sessions' turns.`;
 }
+
+/** Friendly render text per failing restore action (/restore hint line). */
+const RESTORE_FAIL_HINTS: Record<RestoreAction, string> = {
+    restored: "",
+    deleted: "",
+    "missing-blob": "blob missing — was the store pruned?",
+    "corrupt-blob": "blob failed its integrity check — checkpoint data is corrupt",
+    outside: "path escapes the project jail",
+    oversized: "file was too large to checkpoint — cannot revert",
+};
 
 // ---------------------------------------------------------------------------
 // The extension
@@ -460,6 +671,8 @@ export interface CheckpointsOptions {
     /** Override dirs (tests). */
     receiptsFile?: string;
     storeDir?: string;
+    /** Override the session boot id stamped into manifests (tests — deterministic owners). */
+    bootId?: string;
 }
 
 export function createCheckpointsExtension(opts: CheckpointsOptions) {
@@ -469,14 +682,17 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
         if (verbose) console.error(`[unown-checkpoints] ${msg}`);
     };
 
-    const bootId = `${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")}-${Math.random().toString(36).slice(2, 6)}`;
+    const bootId =
+        opts.bootId ?? `${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")}-${Math.random().toString(36).slice(2, 6)}`;
     const ledgerFile = opts.receiptsFile ?? join(receiptsDir(opts.cwd), `${subagent ? "sub-" : ""}${bootId}.jsonl`);
     const ledger = new ReceiptsLedger(ledgerFile);
     const store = new CheckpointStore(opts.storeDir ?? checkpointsDir(opts.cwd));
 
     // Per-turn state (in-memory): before-images + which files actually changed.
-    let turnBefore = new Map<string, { hash: string | null; size: number }>();
+    let turnBefore = new Map<string, { hash: string | null; size: number; oversized?: boolean }>();
     let turnWritten = new Set<string>();
+    // Files already noted in the ledger as too large to checkpoint (warn once).
+    const oversizedWarned = new Set<string>();
     // Every file this session successfully wrote/edited (for named snapshots).
     const sessionTouched = new Set<string>();
 
@@ -488,7 +704,9 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
         for (const path of turnWritten) {
             const before = turnBefore.get(path);
             if (!before) continue; // captured outside this turn — not ours to revert
-            files.push({ path: relative(opts.cwd, path), hash: before.hash, size: before.size });
+            const entry: CheckpointFile = { path: relative(opts.cwd, path), hash: before.hash, size: before.size };
+            if (before.oversized) entry.oversized = true;
+            files.push(entry);
         }
         if (files.length === 0) return null;
         const manifest: CheckpointManifest = {
@@ -497,9 +715,10 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
             kind: "turn",
             ts: Date.now(),
             files,
+            owner: bootId,
         };
         store.writeManifest(manifest);
-        store.prune();
+        store.prune(KEEP_MANIFESTS, bootId);
         ledger.append({ kind: "checkpoint", id: manifest.id, files: files.length, turn: true });
         log(`sealed turn checkpoint ${manifest.id} (${files.length} files)`);
         return manifest;
@@ -539,7 +758,17 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
                     const path = resolveFile(raw);
                     if (!turnBefore.has(path)) {
                         const state = store.captureFile(path);
-                        if (state) turnBefore.set(path, { hash: state.hash, size: state.size });
+                        if (state) {
+                            turnBefore.set(path, { hash: state.hash, size: state.size, oversized: state.oversized });
+                            if (state.oversized && !oversizedWarned.has(path)) {
+                                oversizedWarned.add(path);
+                                ledger.append({
+                                    kind: "note",
+                                    preview: `file too large to checkpoint — /undo will not revert it: ${relative(opts.cwd, path)} (${state.size} bytes > ${maxBlobBytes()} cap)`,
+                                });
+                                log(`oversized capture skipped: ${path} (${state.size} bytes)`);
+                            }
+                        }
                     }
                 }
             }
@@ -626,37 +855,67 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
                     label: label || undefined,
                     ts: Date.now(),
                     files,
+                    owner: bootId,
                 };
                 store.writeManifest(manifest);
-                store.prune();
+                store.prune(KEEP_MANIFESTS, bootId);
                 ledger.append({ kind: "checkpoint", id: manifest.id, label: manifest.label, files: files.length, turn: false });
                 ctx.ui.notify(`Checkpoint ${manifest.id} — ${files.length} file(s) snapshot. /restore ${manifest.id} rewinds to this state.`, "info");
             },
         });
 
         pi.registerCommand("undo", {
-            description: "Revert the file changes of the last n turn(s) (default 1): /undo [n]",
+            description: "Revert the file changes of the last n turn(s) of this session (default 1): /undo [n] [--all]",
             handler: async (args: string, ctx: any) => {
-                const n = Math.min(Math.max(Number.parseInt(args ?? "1", 10) || 1, 1), 20);
-                const turns = store.list().filter((m) => m.kind === "turn");
+                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                const all = tokens.includes("--all");
+                const nTok = tokens.find((t) => t !== "--all") ?? "1";
+                const n = Math.min(Math.max(Number.parseInt(nTok, 10) || 1, 1), 20);
+                // Ownership (R-b C2): default to THIS session's turn manifests;
+                // legacy manifests (no owner) count as unknown, never as own;
+                // --all opts into other sessions' turns too.
+                const turns = store.list().filter((m) => m.kind === "turn" && (all || m.owner === bootId));
                 if (turns.length === 0) {
-                    ctx.ui.notify("No turn checkpoints to undo (nothing sealed this session — try /restore <id> for named snapshots).", "warning");
+                    const anyTurns = store.list().some((m) => m.kind === "turn");
+                    ctx.ui.notify(
+                        anyTurns
+                            ? "No turn checkpoints from this session to undo (other sessions' turns exist — /undo --all opts in; /restore <id> for named snapshots)."
+                            : "No turn checkpoints to undo (nothing sealed this session — try /restore <id> for named snapshots).",
+                        "warning",
+                    );
                     return;
                 }
-                const chosen = turns.slice(-n);
+                // Crash-safe ordering (R-b A3): manifests already marked consumed
+                // belong to an interrupted /undo — complete them FIRST (before-image
+                // restores are deterministic, so restoring twice yields the same
+                // content) instead of consuming fresh turns, which is what caused
+                // over-undo when a crash landed between restore and removeManifest.
+                const pending = turns.filter((m) => m.consumed === true);
+                const chosen = pending.length > 0 ? pending.slice(-n) : turns.slice(-n);
+                // Consumption is journaled BEFORE any file is touched: each chosen
+                // manifest is atomically rewritten with consumed: true, so a crash
+                // at any point leaves the store in a state where re-running /undo
+                // re-selects exactly these manifests and re-applies the same
+                // deterministic restores — never an extra turn.
+                for (const manifest of chosen) store.writeManifest({ ...manifest, consumed: true });
                 let files = 0;
                 const restoredPaths: string[] = [];
+                const failures: Array<{ path: string; action: RestoreAction }> = [];
                 for (const manifest of chosen) {
                     const outcomes = store.restore(manifest, opts.cwd);
                     files += outcomes.filter((o) => o.ok).length;
                     restoredPaths.push(...outcomes.filter((o) => o.ok).map((o) => o.path));
+                    failures.push(...outcomes.filter((o) => !o.ok).map((o) => ({ path: o.path, action: o.action })));
                     store.removeManifest(manifest.id);
                 }
                 ledger.append({ kind: "restore", ids: chosen.map((m) => m.id), files });
-                ctx.ui.notify(
-                    `Undid ${chosen.length} turn(s) — ${files} file(s) reverted${restoredPaths.length ? `:\n${restoredPaths.slice(0, 20).join("\n")}` : ""}.`,
-                    "info",
-                );
+                const head = pending.length > 0 ? `Completed an interrupted undo — ${chosen.length} turn(s)` : `Undid ${chosen.length} turn(s)`;
+                const reverted = restoredPaths.length > 0 ? `:\n${restoredPaths.slice(0, 20).join("\n")}` : "";
+                const failed =
+                    failures.length > 0
+                        ? `\n${failures.length} file(s) could NOT be reverted:\n${failures.slice(0, 20).map((f) => `- ${f.path} (${f.action})`).join("\n")}`
+                        : "";
+                ctx.ui.notify(`${head} — ${files} file(s) reverted${reverted}${failed}.`, failures.length > 0 ? "warning" : "info");
             },
         });
 
@@ -680,8 +939,11 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
                 const outcomes = store.restore(manifest, opts.cwd);
                 const ok = outcomes.filter((o) => o.ok).length;
                 ledger.append({ kind: "restore", ids: [manifest.id], files: ok });
+                const failReasons = [...new Set(outcomes.filter((o) => !o.ok).map((o) => o.action))]
+                    .map((a) => `${a}: ${RESTORE_FAIL_HINTS[a]}`)
+                    .join("; ");
                 ctx.ui.notify(
-                    `Restored ${manifest.id} — ${ok}/${outcomes.length} file(s) rewritten${ok ? "" : " (blobs missing — was the store pruned?)"}.`,
+                    `Restored ${manifest.id} — ${ok}/${outcomes.length} file(s) rewritten${failReasons ? ` (${failReasons})` : ""}.`,
                     ok === outcomes.length ? "info" : "warning",
                 );
             },

@@ -26,14 +26,45 @@
  *
  * Env: `UNOWN_MCP=0` disables the surface; `UNOWN_MCP_TIMEOUT_MS` (120000)
  * per JSON-RPC request; `UNOWN_MCP_CONNECT_TIMEOUT_MS` (20000) for
- * initialize; result text capped at 16 k chars.
+ * initialize; `UNOWN_MCP_RECONNECT_COOLDOWN_MS` (30000) blocks reconnect
+ * attempts after a failure (spawn-storm guard; /mcp force-throughs);
+ * `UNOWN_MCP_KEEPALIVE=0` disables the 60 s ping keepalive
+ * (`UNOWN_MCP_PING_INTERVAL_MS`); result text capped at 16 k chars.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { registerChild, unregisterChild } from "./child-reaper.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
+
+// ---------------------------------------------------------------------------
+// Env parsing (shared with lsp.ts — H1 L-15/M-18)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse one ms env knob tolerantly: undefined/empty/NaN/negative/zero/absurd
+ * (> `maxMs`) all fall back to `defaultMs`. `maxMs` also lets byte-count
+ * knobs reuse this helper with a byte-scaled absurdity bound.
+ *
+ * No cross-call memoization on purpose: tests mutate process.env between
+ * cases, and every consumer reads its env once (at manager construction) —
+ * which is the actual "read env once" contract. `Number(env)` without these
+ * guards made `UNOWN_*_TIMEOUT_MS=abc` fail every request instantly.
+ */
+export function parseMsEnv(
+    name: string,
+    defaultMs: number,
+    env: Record<string, string | undefined> = process.env,
+    maxMs = 24 * 60 * 60 * 1000,
+): number {
+    const raw = env[name];
+    if (raw === undefined || raw === "") return defaultMs;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > maxMs) return defaultMs;
+    return parsed;
+}
 
 // ---------------------------------------------------------------------------
 // Config
@@ -142,6 +173,24 @@ export function resolveMcpConfig(cwd: string, userDir: string = UNOWN_AGENT_DIR)
  * Depth-aware line accumulator: feeds chunks, yields complete JSON-RPC
  * messages. Handles newline-delimited JSON AND servers that pretty-print
  * (multi-line objects) by tracking brace depth outside strings.
+ *
+ * H1 hardening (M-02): servers log banners and occasionally emit binary
+ * junk on stdout, and one stray byte used to kill the whole transport:
+ *
+ *   - a stray `}`/`]` while depth is 0 is GARBAGE, not structure: the bytes
+ *     up to and including it are dropped and scanning continues (the old
+ *     code let depth go negative, so every later well-formed message was
+ *     silently swallowed → all requests hit the 120 s timeout);
+ *   - a candidate that fails JSON.parse no longer poisons the stream: the
+ *     garbage prefix before the first `{`/`[` is isolated and dropped, and
+ *     the embedded message is re-scanned; a genuinely corrupt message is
+ *     skipped past its opening brace (always ≥1 byte of progress, so
+ *     recovery terminates);
+ *   - NUL and other control bytes outside strings are dropped as garbage
+ *     instead of accumulating forever;
+ *   - hard caps: 1 MiB per message and 4 MiB total buffered — on breach the
+ *     buffer is flushed and `onError` fires so the manager can mark the
+ *     server errored instead of silently wedging.
  */
 export class JsonMessageAccumulator {
     private buffer = "";
@@ -151,10 +200,23 @@ export class JsonMessageAccumulator {
     /** Chars before this index were already counted (state persists across feeds). */
     private scanIndex = 0;
     private messageStart = 0;
+    /** Cap breaches surface here; wired by McpConnection to kill the connection. */
+    onError: ((message: string) => void) | null = null;
+    private readonly maxMessageChars: number;
+    private readonly maxBufferChars: number;
+
+    constructor(maxMessageChars = 1024 * 1024, maxBufferChars = 4 * 1024 * 1024) {
+        this.maxMessageChars = maxMessageChars;
+        this.maxBufferChars = maxBufferChars;
+    }
 
     /** Feed a text chunk; returns every complete JSON message parsed. */
     feed(chunk: string): unknown[] {
         this.buffer += chunk;
+        if (this.buffer.length > this.maxBufferChars) {
+            this.reportCapBreach("total buffered output", this.maxBufferChars);
+            return [];
+        }
         const out: unknown[] = [];
         while (this.scanIndex < this.buffer.length) {
             const i = this.scanIndex;
@@ -170,20 +232,46 @@ export class JsonMessageAccumulator {
                 this.inString = true;
             } else if (ch === "{" || ch === "[") {
                 this.depth++;
-            } else if (ch === "}" || ch === "]") {
-                this.depth--;
-                if (this.depth === 0) {
-                    const candidate = this.buffer.slice(this.messageStart, i + 1).trim();
-                    if (candidate) out.push(this.parse(candidate));
-                    // The next message starts after this one (skip whitespace).
-                    let next = i + 1;
-                    while (next < this.buffer.length && /\s/.test(this.buffer[next])) next++;
-                    // Drop the consumed prefix so the buffer stays bounded.
-                    this.buffer = this.buffer.slice(next);
-                    this.messageStart = 0;
-                    this.scanIndex = 0;
+                if (i - this.messageStart >= this.maxMessageChars) {
+                    this.reportCapBreach("message", this.maxMessageChars);
                     continue;
                 }
+            } else if (ch === "}" || ch === "]") {
+                if (this.depth <= 0) {
+                    // Stray closer in garbage — drop through it, keep scanning.
+                    this.trimBuffer(i + 1);
+                    continue;
+                }
+                this.depth--;
+                if (this.depth === 0) {
+                    if (i - this.messageStart >= this.maxMessageChars) {
+                        this.reportCapBreach("message", this.maxMessageChars);
+                        continue;
+                    }
+                    const candidate = this.buffer.slice(this.messageStart, i + 1);
+                    let parsed: unknown;
+                    let ok = true;
+                    try {
+                        parsed = JSON.parse(candidate.trim());
+                    } catch {
+                        ok = false;
+                    }
+                    if (ok) {
+                        out.push(parsed);
+                        // The next message starts after this one (skip whitespace).
+                        let next = i + 1;
+                        while (next < this.buffer.length && /\s/.test(this.buffer[next])) next++;
+                        // Drop the consumed prefix so the buffer stays bounded.
+                        this.trimBuffer(next);
+                    } else {
+                        this.recoverGarbage(candidate);
+                    }
+                    continue;
+                }
+            } else if (ch.charCodeAt(0) < 0x20 && ch !== "\t" && ch !== "\n" && ch !== "\r") {
+                // Control junk (NULs, binary noise) outside strings: garbage.
+                this.trimBuffer(i + 1);
+                continue;
             }
             this.scanIndex++;
         }
@@ -196,12 +284,38 @@ export class JsonMessageAccumulator {
         return out;
     }
 
-    private parse(text: string): unknown {
-        try {
-            return JSON.parse(text);
-        } catch {
-            return null;
+    /** Drop `chars` from the front of the buffer and reset scan state. */
+    private trimBuffer(chars: number): void {
+        this.buffer = this.buffer.slice(chars);
+        this.scanIndex = 0;
+        this.messageStart = 0;
+        this.inString = false;
+        this.escaped = false;
+    }
+
+    /**
+     * A depth-0 candidate failed JSON.parse: isolate the garbage instead of
+     * poisoning the next message. Either drop a garbage prefix before the
+     * first opener (and re-scan the embedded message), or — when the opener
+     * itself is the corrupt part — advance past it. Both paths drop ≥1 byte,
+     * so recovery always makes progress.
+     */
+    private recoverGarbage(candidate: string): void {
+        const rel = candidate.search(/[{[]/);
+        if (rel < 0) {
+            this.trimBuffer(this.buffer.length);
+        } else if (rel > 0) {
+            this.trimBuffer(this.messageStart + rel);
+        } else {
+            this.trimBuffer(this.messageStart + 1);
         }
+    }
+
+    /** Flush everything and surface the cap breach (hostile/broken stream). */
+    private reportCapBreach(what: string, cap: number): void {
+        this.onError?.(`MCP stream cap exceeded: ${what} over ${cap} chars; buffer flushed`);
+        this.trimBuffer(this.buffer.length);
+        this.depth = 0;
     }
 }
 
@@ -239,14 +353,23 @@ export class McpConnection {
     private sessionId: string | null = null;
     private baseUrl = "";
     private headers: Record<string, string> = {};
+    /** Bound for fire-and-forget HTTP notifications (M-06: was unbounded). */
+    notifyTimeoutMs = 10_000;
     state: ConnectionState = "idle";
     lastError: string | null = null;
     /** Called for server → client notifications (logged, not acted on). */
     onNotification: ((method: string, params: unknown) => void) | null = null;
+    /** Called when the stdio child exits (crash bookkeeping lives in the manager). */
+    onExit: ((code: number | null) => void) | null = null;
 
-    constructor(serverName: string, cfg: AnyServerConfig, cwd: string, private requestTimeoutMs: number) {
+    private readonly requestTimeoutMs: number;
+    private readonly connectTimeoutMs: number;
+
+    constructor(serverName: string, cfg: AnyServerConfig, cwd: string, requestTimeoutMs: number, connectTimeoutMs?: number) {
         this.serverName = serverName;
         this.cwd = cwd;
+        this.requestTimeoutMs = requestTimeoutMs;
+        this.connectTimeoutMs = connectTimeoutMs ?? requestTimeoutMs;
         this.transport = isHttpConfig(cfg) ? "http" : "stdio";
         if (isHttpConfig(cfg)) {
             this.baseUrl = cfg.url;
@@ -262,6 +385,11 @@ export class McpConnection {
         if (this.disposed) return false;
         if (this.transport === "http") return this.state === "connected";
         return this.proc !== null && this.proc.exitCode === null && !this.proc.killed;
+    }
+
+    /** Requests awaiting a reply (keepalive skips busy connections). */
+    get pendingCount(): number {
+        return this.pending.size;
     }
 
     /** initialize handshake; rejects on timeout/spawn failure. */
@@ -308,13 +436,19 @@ export class McpConnection {
             throw new Error(`failed to spawn ${spec.command}: ${(err as Error).message}`);
         }
         this.proc = proc;
+        registerChild(proc); // last-resort reaper (child-reaper.ts)
+        // Cap breaches in the stdout parser kill this connection loudly
+        // instead of wedging every request into its 120 s timeout.
+        this.acc.onError = (reason) => this.transportError(reason);
         proc.on("error", (err) => this.failPending(new Error(`server error: ${err.message}`)));
         proc.once("exit", (code) => {
+            unregisterChild(proc);
             if (!this.disposed && this.state !== "error") {
                 this.state = "error";
                 this.lastError = `server exited (code ${code})`;
             }
             this.failPending(new Error(`server exited (code ${code})`));
+            this.onExit?.(code);
         });
         if (!proc.stdout || !proc.stdin) throw new Error("server did not expose stdio pipes");
         proc.stdout.setEncoding("utf8");
@@ -342,7 +476,7 @@ export class McpConnection {
         const id = this.nextId++;
         const message = JSON.stringify({ jsonrpc: "2.0", id, method, params });
         if (this.transport === "http") {
-            return this.httpRoundTrip(id, message, timeout);
+            return this.httpRoundTrip(id, message, timeout, method);
         }
         if (!this.proc?.stdin) return Promise.reject(new Error("connection not started"));
         return new Promise((resolve, reject) => {
@@ -373,37 +507,97 @@ export class McpConnection {
         });
     }
 
-    private async httpRoundTrip(id: number, message: string, timeoutMs: number): Promise<unknown> {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
+    /**
+     * HTTP round trip with session-loss recovery (M-04): a 404 means the
+     * server restarted and our `Mcp-Session-Id` expired — re-initialize ONCE
+     * (adopting the new session id) and replay the original request; if the
+     * replay 404s too, the error surfaces.
+     */
+    private async httpRoundTrip(id: number, message: string, timeoutMs: number, method: string): Promise<unknown> {
         try {
-            const headers: Record<string, string> = {
-                "content-type": "application/json",
-                accept: "application/json, text/event-stream",
-                ...this.headers,
-            };
-            if (this.sessionId) headers["mcp-session-id"] = this.sessionId;
-            const res = await fetch(this.baseUrl, {
-                method: "POST",
-                headers,
-                body: message,
-                signal: controller.signal,
-            });
-            const sessionHeader = res.headers.get("mcp-session-id");
-            if (sessionHeader) this.sessionId = sessionHeader;
-            if (!res.ok) throw new Error(`HTTP ${res.status} from ${this.baseUrl}`);
-            const contentType = res.headers.get("content-type") ?? "";
-            let payload: unknown = null;
-            if (contentType.includes("text/event-stream")) {
-                payload = await parseSseResponse(await res.text(), id);
-            } else {
-                payload = await res.json();
+            return await this.httpAttempt(id, message, timeoutMs, method);
+        } catch (err) {
+            if (err instanceof McpHttpError && err.status === 404 && this.sessionId) {
+                this.sessionId = null;
+                await this.reinitialize();
+                return await this.httpAttempt(id, message, timeoutMs, method);
             }
-            const msg = payload as { id?: number; result?: unknown; error?: { message?: string } } | null;
-            if (msg && msg.error) throw new Error(`MCP ${msg.error.message ?? "error"}`);
-            return msg?.result ?? null;
-        } finally {
-            clearTimeout(timer);
+            throw err;
+        }
+    }
+
+    /** Re-run the initialize handshake mid-session (404 recovery path). */
+    private async reinitialize(): Promise<void> {
+        const id = this.nextId++;
+        const message = JSON.stringify({
+            jsonrpc: "2.0",
+            id,
+            method: "initialize",
+            params: {
+                protocolVersion: "2025-06-18",
+                capabilities: {},
+                clientInfo: { name: "unown", version: "0.1.0" },
+            },
+        });
+        await this.httpAttempt(id, message, this.connectTimeoutMs, "initialize");
+        this.notify("notifications/initialized", {});
+    }
+
+    /**
+     * One HTTP exchange with 429/503 backoff. Every fetch is bounded by an
+     * AbortController (headers AND body); aborts are rewritten into a clear
+     * timeout error. `RETRYABLE_HTTP_STATUS` responses are retried at most
+     * `HTTP_MAX_RETRIES` times, honoring `Retry-After` (capped).
+     */
+    private async httpAttempt(id: number, message: string, timeoutMs: number, method: string): Promise<unknown> {
+        for (let attempt = 0; ; attempt++) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const headers: Record<string, string> = {
+                    "content-type": "application/json",
+                    accept: "application/json, text/event-stream",
+                    ...this.headers,
+                };
+                if (this.sessionId) headers["mcp-session-id"] = this.sessionId;
+                const res = await fetch(this.baseUrl, {
+                    method: "POST",
+                    headers,
+                    body: message,
+                    signal: controller.signal,
+                });
+                const sessionHeader = res.headers.get("mcp-session-id");
+                if (sessionHeader) this.sessionId = sessionHeader;
+                if (RETRYABLE_HTTP_STATUS.has(res.status)) {
+                    try {
+                        const body = res.body;
+                        if (body) body.cancel().catch(() => {});
+                    } catch {
+                        /* body not readable — dropping the response anyway */
+                    }
+                    if (attempt >= HTTP_MAX_RETRIES) {
+                        throw new Error(`HTTP ${res.status} from ${this.baseUrl} — retries exhausted`);
+                    }
+                    await sleep(retryAfterMs(res.headers.get("retry-after"), attempt));
+                    continue;
+                }
+                if (!res.ok) throw new McpHttpError(res.status, this.baseUrl);
+                const contentType = res.headers.get("content-type") ?? "";
+                let payload: unknown = null;
+                if (contentType.includes("text/event-stream")) {
+                    payload = await parseSseResponse(await res.text(), id);
+                } else {
+                    payload = await res.json();
+                }
+                const msg = payload as { id?: number; result?: unknown; error?: { message?: string } } | null;
+                if (msg && msg.error) throw new Error(`MCP ${msg.error.message ?? "error"}`);
+                return msg?.result ?? null;
+            } catch (err) {
+                if (err instanceof McpHttpError) throw err;
+                throw rewriteAbortError(err, method, timeoutMs);
+            } finally {
+                clearTimeout(timer);
+            }
         }
     }
 
@@ -411,13 +605,25 @@ export class McpConnection {
     notify(method: string, params: unknown): void {
         const message = JSON.stringify({ jsonrpc: "2.0", method, params });
         if (this.transport === "http") {
+            // M-06: this fetch used to have no bound at all — a hung remote
+            // pinned sockets forever. 10 s cap, best-effort swallow.
             const headers: Record<string, string> = {
                 "content-type": "application/json",
                 accept: "application/json, text/event-stream",
                 ...this.headers,
             };
             if (this.sessionId) headers["mcp-session-id"] = this.sessionId;
-            void fetch(this.baseUrl, { method: "POST", headers, body: message }).catch(() => {});
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), this.notifyTimeoutMs);
+            void fetch(this.baseUrl, { method: "POST", headers, body: message, signal: controller.signal })
+                .then((res) => {
+                    const body = res.body;
+                    if (body) body.cancel().catch(() => {});
+                })
+                .catch(() => {
+                    /* notification — best effort, bounded */
+                })
+                .finally(() => clearTimeout(timer));
             return;
         }
         try {
@@ -425,6 +631,35 @@ export class McpConnection {
         } catch {
             /* server gone */
         }
+    }
+
+    /**
+     * Keepalive probe (M-11): true when the server is demonstrably alive — a
+     * `ping` result OR a JSON-RPC error reply (answering at all proves the
+     * transport works). False only for timeouts/write/HTTP failures.
+     */
+    async ping(timeoutMs = 10_000): Promise<boolean> {
+        try {
+            await this.request("ping", {}, timeoutMs);
+            return true;
+        } catch (err) {
+            const msg = String((err as Error)?.message ?? "");
+            if (
+                msg.includes("timed out") ||
+                msg.includes("failed to write") ||
+                msg.includes("failed to send") ||
+                msg.startsWith("HTTP ") ||
+                msg.startsWith("MCP stream cap")
+            ) {
+                return false;
+            }
+            return true; // JSON-RPC error reply — the server answered
+        }
+    }
+
+    /** Mark the connection dead from the outside (keepalive failure). */
+    markLost(reason: string): void {
+        this.transportError(reason);
     }
 
     /** tools/list with cursor pagination. */
@@ -472,11 +707,13 @@ export class McpConnection {
         if (this.disposed) return;
         this.disposed = true;
         this.failPending(new Error("connection disposed"));
+        const proc = this.proc;
         try {
-            this.proc?.kill();
+            proc?.kill();
         } catch {
             /* already gone */
         }
+        if (proc) unregisterChild(proc);
         this.proc = null;
     }
 
@@ -491,6 +728,18 @@ export class McpConnection {
             p.reject(err);
         }
         this.pending.clear();
+    }
+
+    /**
+     * Fatal transport defect (stdout stream cap breach, keepalive loss):
+     * surface the reason on every pending request, mark errored, dispose.
+     */
+    private transportError(reason: string): void {
+        if (this.disposed) return;
+        this.state = "error";
+        this.lastError = reason;
+        this.failPending(new Error(reason));
+        this.dispose();
     }
 
     private handleMessage(message: unknown): void {
@@ -541,6 +790,58 @@ export function parseSseResponse(body: string, id: number): unknown {
     return null;
 }
 
+// ---------------------------------------------------------------------------
+// HTTP retry/recovery helpers (M-04/M-06)
+// ---------------------------------------------------------------------------
+
+/** Statuses we retry with backoff: rate limit + overload family (audit M-04). */
+const RETRYABLE_HTTP_STATUS = new Set([429, 502, 503]);
+const HTTP_MAX_RETRIES = 2;
+const RETRY_AFTER_MAX_MS = 30_000;
+
+/** Internal marker so `httpRoundTrip` can detect 404 session loss. */
+class McpHttpError extends Error {
+    readonly status: number;
+    readonly url: string;
+    constructor(status: number, url: string) {
+        super(`HTTP ${status} from ${url}`);
+        this.status = status;
+        this.url = url;
+    }
+}
+
+/**
+ * `Retry-After` as a wait in ms (seconds or HTTP-date form), capped at 30 s.
+ * Without a usable header, fall back to short exponential backoff.
+ */
+export function retryAfterMs(header: string | null, attempt: number): number {
+    if (header) {
+        const seconds = Number(header);
+        if (Number.isFinite(seconds) && seconds >= 0) {
+            return Math.min(seconds * 1000, RETRY_AFTER_MAX_MS);
+        }
+        const date = Date.parse(header);
+        if (!Number.isNaN(date)) {
+            return Math.max(0, Math.min(date - Date.now(), RETRY_AFTER_MAX_MS));
+        }
+    }
+    return Math.min(250 * 2 ** attempt, RETRY_AFTER_MAX_MS);
+}
+
+/** Rewrite fetch aborts into a timeout error that names the call and bound. */
+export function rewriteAbortError(err: unknown, method: string, timeoutMs: number): Error {
+    const name = (err as Error)?.name ?? "";
+    const message = String((err as Error)?.message ?? "");
+    if (name === "AbortError" || /abort/i.test(name) || /abort/i.test(message)) {
+        return new Error(`MCP ${method} timed out after ${timeoutMs}ms`);
+    }
+    return err instanceof Error ? err : new Error(message);
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Windows: spawn through cmd.exe so `npx`/`.cmd` shims resolve without a
  * shell. POSIX: direct spawn. Pure — exported for tests.
@@ -573,6 +874,11 @@ export interface McpManagerOptions {
     env?: Record<string, string | undefined>;
     requestTimeoutMs?: number;
     connectTimeoutMs?: number;
+    /** Reconnect cooldown after a failed connect (default 30 s; M-11). */
+    reconnectCooldownMs?: number;
+    /** Ping keepalive (default on, 60 s interval; M-11). */
+    keepalive?: boolean;
+    pingIntervalMs?: number;
 }
 
 export interface McpServerStatus {
@@ -581,6 +887,8 @@ export interface McpServerStatus {
     state: ConnectionState | "not-configured";
     detail: string;
     tools: number;
+    /** Last connect/spawn failure timestamp (ms epoch), when known. */
+    lastFailedAt?: number;
 }
 
 /** Per-session MCP manager: lazy connects, tool cache, dispatch. */
@@ -590,16 +898,25 @@ export class McpManager {
     private readonly env: Record<string, string | undefined>;
     readonly requestTimeoutMs: number;
     readonly connectTimeoutMs: number;
+    readonly reconnectCooldownMs: number;
+    readonly keepaliveEnabled: boolean;
+    readonly pingIntervalMs: number;
     private connections = new Map<string, McpConnection>();
     private toolsByServer = new Map<string, McpToolInfo[]>();
     private connecting = new Map<string, Promise<McpConnection | null>>();
+    /** Per-server last failure (connect failure or mid-session exit). */
+    private lastFailedAt = new Map<string, number>();
+    private keepalives = new Map<string, ReturnType<typeof setInterval>>();
 
     constructor(opts: McpManagerOptions) {
         this.cwd = opts.cwd;
         this.config = opts.config ?? { servers: {} };
         this.env = opts.env ?? process.env;
-        this.requestTimeoutMs = opts.requestTimeoutMs ?? Number(this.env.UNOWN_MCP_TIMEOUT_MS ?? 120_000);
-        this.connectTimeoutMs = opts.connectTimeoutMs ?? Number(this.env.UNOWN_MCP_CONNECT_TIMEOUT_MS ?? 20_000);
+        this.requestTimeoutMs = opts.requestTimeoutMs ?? parseMsEnv("UNOWN_MCP_TIMEOUT_MS", 120_000, this.env);
+        this.connectTimeoutMs = opts.connectTimeoutMs ?? parseMsEnv("UNOWN_MCP_CONNECT_TIMEOUT_MS", 20_000, this.env);
+        this.reconnectCooldownMs = opts.reconnectCooldownMs ?? parseMsEnv("UNOWN_MCP_RECONNECT_COOLDOWN_MS", 30_000, this.env);
+        this.pingIntervalMs = opts.pingIntervalMs ?? parseMsEnv("UNOWN_MCP_PING_INTERVAL_MS", 60_000, this.env);
+        this.keepaliveEnabled = opts.keepalive ?? this.env.UNOWN_MCP_KEEPALIVE !== "0";
     }
 
     get disabled(): boolean {
@@ -610,28 +927,50 @@ export class McpManager {
         return Object.keys(this.config.servers);
     }
 
-    /** Connect (or return the live connection). Single-flight per server. */
-    async connect(server: string): Promise<McpConnection | null> {
+    /**
+     * Connect (or return the live connection). Single-flight per server.
+     *
+     * Failure cooldown (M-11): a server that failed within
+     * `reconnectCooldownMs` is skipped — every `mcp__gone__*` call used to
+     * re-pay a cold spawn (npx ≈ 20 s connect budget each time). `force`
+     * (/mcp reconnect) pushes through the cooldown deliberately. When a
+     * connection is replaced, the old one is disposed first (M-21: kill the
+     * child, drop its listeners) instead of being overwritten alive.
+     */
+    async connect(server: string, opts?: { force?: boolean }): Promise<McpConnection | null> {
         const cfg = this.config.servers[server];
         if (!cfg) return null;
         const existing = this.connections.get(server);
         if (existing?.running && existing.state === "connected") return existing;
         const inFlight = this.connecting.get(server);
         if (inFlight) return inFlight;
-        const conn = new McpConnection(server, cfg, this.cwd, this.requestTimeoutMs);
+        if (!opts?.force) {
+            const failedAt = this.lastFailedAt.get(server);
+            if (failedAt !== undefined && Date.now() - failedAt < this.reconnectCooldownMs) return null;
+        }
+        const conn = new McpConnection(server, cfg, this.cwd, this.requestTimeoutMs, this.connectTimeoutMs);
         conn.onNotification = (method) => {
             if (method === "notifications/tools/list_changed") {
                 // refresh lazily on next list
                 this.toolsByServer.delete(server);
             }
         };
+        conn.onExit = () => {
+            // Mid-session death: remember it so reconnects obey the cooldown
+            // (no respawn storm) and stop this server's keepalive.
+            this.lastFailedAt.set(server, Date.now());
+            this.stopKeepalive(server);
+        };
+        if (existing) existing.dispose(); // replaced, not orphaned
         this.connections.set(server, conn);
         const promise = (async () => {
             try {
                 await conn.start(this.connectTimeoutMs);
                 this.toolsByServer.set(server, await conn.listTools());
+                this.startKeepalive(server);
                 return conn;
             } catch {
+                this.lastFailedAt.set(server, Date.now());
                 return null;
             } finally {
                 this.connecting.delete(server);
@@ -642,15 +981,56 @@ export class McpManager {
     }
 
     /** Connect every configured server; returns the ones that came up. */
-    async connectAll(): Promise<string[]> {
+    async connectAll(force = false): Promise<string[]> {
         const ok: string[] = [];
         await Promise.all(
             this.serverNames().map(async (name) => {
-                const conn = await this.connect(name);
+                const conn = await this.connect(name, { force });
                 if (conn) ok.push(name);
             }),
         );
         return ok;
+    }
+
+    /**
+     * Ping keepalive (M-11): ON by default — a 60 s `ping` request is one
+     * tiny JSON line (stdio) or one POST (HTTP) and catches zombie stdio
+     * processes and silently-expired HTTP sessions long before the user's
+     * next tool call would hang. Skips busy connections (a server deep in a
+     * long tool call may legitimately miss a ping — that is not a death).
+     * Disable with UNOWN_MCP_KEEPALIVE=0. Timers are unref'd so they never
+     * hold the process open.
+     */
+    private startKeepalive(server: string): void {
+        if (!this.keepaliveEnabled) return;
+        this.stopKeepalive(server);
+        const timer = setInterval(() => {
+            void this.pingServer(server);
+        }, this.pingIntervalMs);
+        timer.unref?.();
+        this.keepalives.set(server, timer);
+    }
+
+    private stopKeepalive(server: string): void {
+        const timer = this.keepalives.get(server);
+        if (timer) {
+            clearInterval(timer);
+            this.keepalives.delete(server);
+        }
+    }
+
+    private async pingServer(server: string): Promise<void> {
+        const conn = this.connections.get(server);
+        if (!conn || !conn.running || conn.state !== "connected") {
+            this.stopKeepalive(server);
+            return;
+        }
+        if (conn.pendingCount > 0) return; // busy ≠ dead
+        const alive = await conn.ping(10_000);
+        if (alive) return;
+        conn.markLost("keepalive ping timed out");
+        this.lastFailedAt.set(server, Date.now());
+        this.stopKeepalive(server);
     }
 
     toolsFor(server: string): McpToolInfo[] {
@@ -680,8 +1060,16 @@ export class McpManager {
             const cfg = this.config.servers[name];
             const conn = this.connections.get(name);
             const transport = isHttpConfig(cfg) ? "http" : "stdio";
+            const lastFailedAt = this.lastFailedAt.get(name);
             if (!conn) {
-                out.push({ name, transport, state: "idle", detail: isHttpConfig(cfg) ? cfg.url : cfg.command, tools: 0 });
+                out.push({
+                    name,
+                    transport,
+                    state: "idle",
+                    detail: isHttpConfig(cfg) ? cfg.url : cfg.command,
+                    tools: 0,
+                    lastFailedAt,
+                });
             } else if (conn.state === "connected") {
                 out.push({
                     name,
@@ -697,6 +1085,7 @@ export class McpManager {
                     state: conn.state,
                     detail: conn.lastError ?? (isHttpConfig(cfg) ? cfg.url : (cfg as StdioServerConfig).command),
                     tools: 0,
+                    lastFailedAt,
                 });
             }
         }
@@ -707,6 +1096,8 @@ export class McpManager {
         for (const conn of this.connections.values()) conn.dispose();
         this.connections.clear();
         this.toolsByServer.clear();
+        for (const server of [...this.keepalives.keys()]) this.stopKeepalive(server);
+        this.lastFailedAt.clear();
     }
 }
 
@@ -775,6 +1166,14 @@ const TOOLS_PER_SERVER_CAP = 100;
  * failed server must not block), registers each server's tools dynamically
  * (`pi.registerTool` after initialization is pi's documented capability),
  * and exposes `/mcp` (status + reconnect attempt).
+ *
+ * H1 lifecycle hardening: the `registered` guard Set is SESSION-scoped (it
+ * lives inside factory(), keyed to one pi instance). At extension scope it
+ * survived across factory() invocations — cli.ts registers the same
+ * extension object into every session runtime, so the second session in
+ * one process got zero mcp__* tools (M-12). Every async seam is guarded:
+ * an unhandled rejection from `pi.registerTool` used to kill the whole Bun
+ * process (M-03).
  */
 export function createMcpExtension(opts: McpOptions) {
     const verbose = opts.verbose ?? false;
@@ -783,14 +1182,13 @@ export function createMcpExtension(opts: McpOptions) {
     };
 
     let manager: McpManager | null = null;
-    const registered = new Set<string>();
 
     const getManager = (): McpManager => {
         if (!manager) manager = new McpManager({ cwd: opts.cwd, config: opts.config ?? resolveMcpConfig(opts.cwd) });
         return manager;
     };
 
-    const registerServerTools = (pi: any, server: string): number => {
+    const registerServerTools = (pi: any, server: string, registered: Set<string>): number => {
         const m = getManager();
         const tools = m.toolsFor(server).slice(0, TOOLS_PER_SERVER_CAP);
         let count = 0;
@@ -801,43 +1199,57 @@ export function createMcpExtension(opts: McpOptions) {
             count++;
             const label = `${server}/${tool.name}`;
             const description = capDescription(tool.description) + ` (MCP server: ${server})`;
-            pi.registerTool({
-                name,
-                label,
-                description,
-                parameters: normalizeInputSchema(tool.inputSchema) as any,
-                async execute(_toolCallId: string, params: Record<string, unknown>) {
-                    const result = await m.callTool(server, tool.name, params ?? {});
-                    return {
-                        content: [{ type: "text", text: result.text }],
-                        ...(result.isError ? { isError: true } : {}),
-                    };
-                },
-                renderCall(_args: any, theme: any) {
-                    const head = theme?.fg ? theme.fg("toolTitle", theme.bold(label)) : label;
-                    return new Text(String(head), 0, 0);
-                },
-                renderResult(result: any, _o: any, theme: any) {
-                    const block = result?.content?.[0];
-                    const text = block?.type === "text" ? block.text : "";
-                    const first = text.split("\n")[0] ?? "";
-                    return new Text(String(theme?.fg ? theme.fg("muted", first.slice(0, 100)) : first.slice(0, 100)), 0, 0);
-                },
-            });
+            try {
+                pi.registerTool({
+                    name,
+                    label,
+                    description,
+                    parameters: normalizeInputSchema(tool.inputSchema) as any,
+                    async execute(_toolCallId: string, params: Record<string, unknown>) {
+                        const result = await m.callTool(server, tool.name, params ?? {});
+                        return {
+                            content: [{ type: "text", text: result.text }],
+                            ...(result.isError ? { isError: true } : {}),
+                        };
+                    },
+                    renderCall(_args: any, theme: any) {
+                        const head = theme?.fg ? theme.fg("toolTitle", theme.bold(label)) : label;
+                        return new Text(String(head), 0, 0);
+                    },
+                    renderResult(result: any, _o: any, theme: any) {
+                        const block = result?.content?.[0];
+                        const text = block?.type === "text" ? block.text : "";
+                        const first = text.split("\n")[0] ?? "";
+                        return new Text(String(theme?.fg ? theme.fg("muted", first.slice(0, 100)) : first.slice(0, 100)), 0, 0);
+                    },
+                });
+            } catch (err: any) {
+                // One hostile/duplicate tool must not block the rest (M-03).
+                registered.delete(name);
+                count--;
+                log(`tool ${name} registration failed: ${err?.message ?? err}`);
+            }
         }
         if (count > 0) log(`registered ${count} tool(s) from ${server}`);
         return count;
     };
 
     const factory = (pi: any) => {
+        // Per-session registration state — see the extension doc comment.
+        const registered = new Set<string>();
+
         pi.on("session_start", () => {
             try {
                 const m = getManager();
                 if (m.disabled || m.serverNames().length === 0) return;
                 log(`connecting ${m.serverNames().length} MCP server(s) in the background`);
                 void (async () => {
-                    const okServers = await m.connectAll();
-                    for (const server of okServers) registerServerTools(pi, server);
+                    try {
+                        const okServers = await m.connectAll();
+                        for (const server of okServers) registerServerTools(pi, server, registered);
+                    } catch (err: any) {
+                        log(`background connect failed: ${err?.message ?? err}`);
+                    }
                 })();
             } catch (err: any) {
                 log(`session_start connect failed: ${err?.message ?? err}`);
@@ -847,26 +1259,31 @@ export function createMcpExtension(opts: McpOptions) {
         pi.registerCommand("mcp", {
             description: "Show MCP server status (and attempt to connect/reconnect): /mcp",
             handler: async (_args: string, ctx: any) => {
-                const m = getManager();
-                if (m.disabled) {
-                    ctx.ui.notify("MCP support is disabled (UNOWN_MCP=0 or disabled in mcp.json).", "info");
-                    return;
-                }
-                if (m.serverNames().length === 0) {
-                    ctx.ui.notify(renderMcpStatus([]), "info");
-                    return;
-                }
-                // /mcp doubles as a manual reconnect: retry every server.
-                const before = m.status().filter((s) => s.state === "connected").map((s) => s.name);
-                ctx.ui.notify("Connecting MCP servers…", "info");
-                const okServers = await m.connectAll();
-                for (const server of okServers) registerServerTools(pi, server);
-                const statuses = m.status();
-                ctx.ui.notify(renderMcpStatus(statuses), "info");
-                const newly = okServers.filter((s) => !before.includes(s));
-                if (newly.length > 0) {
-                    const toolCount = newly.reduce((n, s) => n + m.toolsFor(s).length, 0);
-                    ctx.ui.notify(`Connected ${newly.join(", ")} — ${toolCount} tool(s) registered as mcp__<server>__<tool>.`, "info");
+                try {
+                    const m = getManager();
+                    if (m.disabled) {
+                        ctx.ui.notify("MCP support is disabled (UNOWN_MCP=0 or disabled in mcp.json).", "info");
+                        return;
+                    }
+                    if (m.serverNames().length === 0) {
+                        ctx.ui.notify(renderMcpStatus([]), "info");
+                        return;
+                    }
+                    // /mcp doubles as a manual reconnect: retry every server,
+                    // forcing through the failure cooldown.
+                    const before = m.status().filter((s) => s.state === "connected").map((s) => s.name);
+                    ctx.ui.notify("Connecting MCP servers…", "info");
+                    const okServers = await m.connectAll(true);
+                    for (const server of okServers) registerServerTools(pi, server, registered);
+                    const statuses = m.status();
+                    ctx.ui.notify(renderMcpStatus(statuses), "info");
+                    const newly = okServers.filter((s) => !before.includes(s));
+                    if (newly.length > 0) {
+                        const toolCount = newly.reduce((n, s) => n + m.toolsFor(s).length, 0);
+                        ctx.ui.notify(`Connected ${newly.join(", ")} — ${toolCount} tool(s) registered as mcp__<server>__<tool>.`, "info");
+                    }
+                } catch (err: any) {
+                    ctx.ui.notify(`MCP command failed: ${err?.message ?? err}`, "error");
                 }
             },
         });

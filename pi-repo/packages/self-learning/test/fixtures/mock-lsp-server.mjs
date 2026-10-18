@@ -7,14 +7,34 @@
 //   - a line containing "ERROR_TOKEN" → severity 1 (error) at that line
 //   - a line containing "warn_token"  → severity 2 (warning) at that line
 //   - anything else                   → empty diagnostics (the "clean" publish)
+//
+// Fault-injection modes for the H1 transport/restart tests (env vars):
+//   MOCK_LSP_STRICT=1     didChange for a never-opened doc is IGNORED
+//                         (protocol-correct: proves the client re-didOpens
+//                         after a server crash instead of sending a lone
+//                         didChange the new process never saw a didOpen for)
+//   MOCK_LSP_SILENT=1     never publishes diagnostics (wait-skip heuristic)
+//   MOCK_LSP_NOISE=1      emits a garbage banner block ("…\r\n\r\n") before
+//                         the framed initialize response (header resync)
+//   MOCK_LSP_BIG_HEADER=1 answers initialize with a header claiming a 4 GiB
+//                         body (Content-Length cap / connection recycle)
+//   MOCK_LSP_LF=1         frames with LF-only headers ("\n\n")
+//   $/mockCrash request   process.exit(1) — mid-session crash on demand
 import { stdin, stdout } from "node:process";
+
+const strict = process.env.MOCK_LSP_STRICT === "1";
+const silent = process.env.MOCK_LSP_SILENT === "1";
+const noise = process.env.MOCK_LSP_NOISE === "1";
+const bigHeader = process.env.MOCK_LSP_BIG_HEADER === "1";
+const lfOnly = process.env.MOCK_LSP_LF === "1";
 
 let buffer = Buffer.alloc(0);
 const docs = new Map(); // uri -> text
 
 function send(msg) {
     const body = Buffer.from(JSON.stringify(msg), "utf8");
-    stdout.write(Buffer.concat([Buffer.from(`Content-Length: ${body.length}\r\n\r\n`, "ascii"), body]));
+    const sep = lfOnly ? "\n\n" : "\r\n\r\n";
+    stdout.write(Buffer.concat([Buffer.from(`Content-Length: ${body.length}${sep}`, "ascii"), body]));
 }
 
 function rng(sl, sc, el, ec) {
@@ -22,6 +42,7 @@ function rng(sl, sc, el, ec) {
 }
 
 function publish(uri, text) {
+    if (silent) return;
     const diagnostics = [];
     const lines = text.split("\n");
     lines.forEach((line, i) => {
@@ -54,6 +75,16 @@ function handle(msg) {
     const { id, method, params } = msg;
     switch (method) {
         case "initialize":
+            if (bigHeader) {
+                // Poisoned framing: a plausible header claiming a 4 GiB body.
+                stdout.write("Content-Length: 4294967296\r\n\r\n{}");
+                return;
+            }
+            if (noise) {
+                // Startup banner block (no Content-Length, blank-line ended)
+                // co-buffered ahead of the real framed response.
+                stdout.write("mock-ls listening on port 1234\r\n\r\n");
+            }
             send({
                 jsonrpc: "2.0",
                 id,
@@ -76,11 +107,18 @@ function handle(msg) {
         case "exit":
             process.exit(0);
             break;
+        case "$/mockCrash":
+            process.exit(1);
+            break;
         case "textDocument/didOpen":
             docs.set(params.textDocument.uri, params.textDocument.text);
             publish(params.textDocument.uri, params.textDocument.text);
             break;
         case "textDocument/didChange":
+            if (strict && !docs.has(params.textDocument.uri)) {
+                // Protocol-correct servers ignore didChange for unknown docs.
+                return;
+            }
             docs.set(params.textDocument.uri, params.contentChanges[0].text);
             publish(params.textDocument.uri, params.contentChanges[0].text);
             break;

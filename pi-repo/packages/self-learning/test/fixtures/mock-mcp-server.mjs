@@ -4,9 +4,16 @@
 // cursor pagination on demand), tools/call (echo + add), ping, and unknown
 // methods → JSON-RPC error. Set MOCK_MCP_PRETTY=1 to emit pretty-printed
 // multi-line JSON (exercises the depth-aware client parser).
+//
+// Fault-injection modes for the H1 transport tests (env vars):
+//   MOCK_MCP_GARBAGE=1  before the initialize response, emit stray closers,
+//                       NULs and a text banner — exercises the accumulator's
+//                       garbage recovery on a real transport
+//   $/mockCrash method  process.exit(1) — mid-session crash on demand
 import { stdin, stdout } from "node:process";
 
 const pretty = process.env.MOCK_MCP_PRETTY === "1";
+const garbage = process.env.MOCK_MCP_GARBAGE === "1";
 const TOOLS = [
     {
         name: "echo",
@@ -41,6 +48,12 @@ function handle(msg) {
     const { id, method, params } = msg;
     switch (method) {
         case "initialize":
+            if (garbage) {
+                // Stray closers + NULs + a banner line — all classic stdout
+                // pollution. A depth-clamped, garbage-isolating accumulator
+                // must still deliver the initialize response after it.
+                stdout.write("]}\n\0\0mock-mcp starting up\n");
+            }
             send({
                 jsonrpc: "2.0",
                 id,
@@ -55,6 +68,9 @@ function handle(msg) {
             break;
         case "ping":
             send({ jsonrpc: "2.0", id, result: {} });
+            break;
+        case "$/mockCrash":
+            process.exit(1);
             break;
         case "tools/list": {
             const cursor = typeof params?.cursor === "string" ? Number(params.cursor) : 0;
