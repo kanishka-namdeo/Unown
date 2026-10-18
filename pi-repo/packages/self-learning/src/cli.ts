@@ -34,11 +34,11 @@ import {
         SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { netBlocked, osSandboxAvailable, resolveBwrapPath, resolveSandboxExecPath } from "./bwrap.ts";
-import { cmdCompletions } from "./completions.ts";
+import { cmdCompletions, COMPLETIONS_HELP } from "./completions.ts";
 import { cmdInfo } from "./info.ts";
 import { MIGRATIONS, readMigrationState } from "./migrations.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
-import { printModelsOverview, runSetupCommand } from "./setup.ts";
+import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
 import {
         deliverTerminalNote,
         ENGINE_URL,
@@ -680,11 +680,58 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
+const DOCTOR_HELP = `unown doctor — diagnose configuration, bridge, engine and memory
+
+Checks the agent-home layout, model configuration, the chat path (the only
+hard-fail: a broken chat path), engine health, memory materialization and
+the PATH shims. Every failure carries an actionable hint.
+
+usage: unown doctor [--json]
+  --json   machine-readable DoctorCheck[] (schema: docs/usage.md)
+`;
+
+const INFO_HELP = `unown info — print the support bundle
+
+Environment, versions, configuration and health endpoints, redacted for
+sharing (secrets never printed; auth.json never read).
+
+usage: unown info [--json]
+  --json   machine-readable support bundle
+`;
+
+/** clig.dev: `help` is a command too — the word used to fall through to the
+ * generic parser and start a TUI with "help" as the prompt. */
+function cmdHelp(topics: string[]): number {
+        if (topics.length === 0) {
+                console.log(HELP);
+                return 0;
+        }
+        const topic = topics[0];
+        const pages: Record<string, string> = {
+                doctor: DOCTOR_HELP,
+                info: INFO_HELP,
+                update: UPDATE_HELP,
+                uninstall: UNINSTALL_HELP,
+                completions: COMPLETIONS_HELP,
+                setup: SETUP_USAGE,
+        };
+        const page = pages[topic];
+        if (!page) {
+                console.error(`unown help: unknown command "${topic}"`);
+                console.error("Run `unown --help` for the command list.");
+                return 1;
+        }
+        console.log(page);
+        return 0;
+}
+
 export async function runCli(argv: string[]) {
         // `setup`, `models`, `update`, `changelog`, `info`, `completions`,
         // `uninstall` and `doctor` own their own flag grammar — dispatch
         // before the generic parser would eat their flags as prompt text.
         const first = argv[0];
+        // `unown help [command]` — clig.dev: help is a command, not a TUI prompt.
+        if (first === "help") process.exit(cmdHelp(argv.slice(1)));
         if (first === "setup") process.exit(await runSetupCommand(argv.slice(1)));
         if (first === "models") {
                 await printModelsOverview();
@@ -697,6 +744,12 @@ export async function runCli(argv: string[]) {
                         console.error(`unown doctor: unknown argument(s): ${unknown.join(" ")}`);
                         process.exit(1);
                 }
+                // clig.dev: --help never RUNS the command (diagnostics used to execute
+                // instead of helping).
+                if (rest.includes("-h") || rest.includes("--help")) {
+                        console.log(DOCTOR_HELP);
+                        process.exit(0);
+                }
                 process.exit(await cmdDoctor(rest.includes("--json")));
         }
         if (first === "info") {
@@ -705,6 +758,10 @@ export async function runCli(argv: string[]) {
                 if (unknown.length) {
                         console.error(`unown info: unknown argument(s): ${unknown.join(" ")}`);
                         process.exit(1);
+                }
+                if (rest.includes("-h") || rest.includes("--help")) {
+                        console.log(INFO_HELP);
+                        process.exit(0);
                 }
                 process.exit(cmdInfo(rest.includes("--json")));
         }

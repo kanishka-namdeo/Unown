@@ -235,13 +235,33 @@ interface SetupFlags {
 	list: boolean;
 }
 
-function parseSetupFlags(args: string[]): SetupFlags {
+export const SETUP_USAGE = `unown setup — connect a model provider
+
+usage: unown setup [--provider P] [--api-key K] [--model M] [--base-url U] [--force|-f] [--list]
+  --provider P   bridge | openai | openrouter | anthropic | dashscope | deepseek | custom
+  --api-key K    the provider key (stored under ~/.unown/agent, never in the repo)
+  --model M      the model id to use
+  --base-url U   endpoint override (any OpenAI-compatible server)
+  --force, -f    overwrite an existing configuration
+  --list         show the provider presets and exit
+
+With no flags: the interactive wizard.
+`;
+
+/** clig.dev: unknown flags ERROR (they used to be silently dropped and the
+ * wizard launched anyway — `setup --help` opened the wizard, typos were
+ * invisible); -h/--help prints the usage instead of running anything. */
+function parseSetupFlags(args: string[]): { flags: SetupFlags; help: boolean; unknown: string[] } {
+
 	const flags: SetupFlags = { force: false, list: false };
+	const unknown: string[] = [];
+	let help = false;
 	for (let i = 0; i < args.length; i++) {
 		const a = args[i];
 		const next = args[i + 1];
 		if (a === "--force" || a === "-f") flags.force = true;
 		else if (a === "--list") flags.list = true;
+		else if (a === "-h" || a === "--help") help = true;
 		else if (a === "--provider" && next) {
 			flags.provider = next;
 			i++;
@@ -254,9 +274,9 @@ function parseSetupFlags(args: string[]): SetupFlags {
 		} else if (a === "--base-url" && next) {
 			flags.baseUrl = next;
 			i++;
-		}
+		} else unknown.push(a);
 	}
-	return flags;
+	return { flags, help, unknown };
 }
 
 async function ask(rl: readline.Interface, question: string, fallback?: string): Promise<string> {
@@ -448,7 +468,16 @@ async function runInteractiveSetup(): Promise<number> {
 
 /** Entry point for `unown setup [flags]`. Returns the process exit code. */
 export async function runSetupCommand(args: string[]): Promise<number> {
-	const flags = parseSetupFlags(args);
+	const { flags, help, unknown } = parseSetupFlags(args);
+	if (help) {
+		console.log(SETUP_USAGE);
+		return 0;
+	}
+	if (unknown.length) {
+		console.error(`unown setup: unknown argument(s): ${unknown.join(" ")}`);
+		console.error(SETUP_USAGE);
+		return 1;
+	}
 	if (flags.list) {
 		printPresetTable();
 		return 0;

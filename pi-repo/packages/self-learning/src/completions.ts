@@ -31,6 +31,7 @@ const SESSION_FLAGS = [
 	"-p",
 	"--print",
 	"--plan",
+	"--goal",
 	"--verbose",
 	"--mode",
 	"--tools",
