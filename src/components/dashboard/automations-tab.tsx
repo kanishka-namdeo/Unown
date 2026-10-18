@@ -315,7 +315,7 @@ function AutomationCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <span className="text-[11px] text-zinc-500">last run</span>
+          <span className="text-[11px] text-zinc-400">last run</span>
           {lastRun ? (
             <>
               <RunStatusBadge status={lastRun.status} />
@@ -379,10 +379,10 @@ function AutomationCard({
             className="flex flex-col gap-2 border-t border-zinc-800 pt-3"
           >
             <p className="text-[10px] font-semibold tracking-wider text-zinc-400 uppercase">
-              run history <span className="ml-1 normal-case text-zinc-500">({runs.length || "…"})</span>
+              run history <span className="ml-1 normal-case text-zinc-400">({runs.length || "…"})</span>
             </p>
             {runs.length === 0 ? (
-              <p className="text-xs text-zinc-500">no runs recorded yet</p>
+              <p className="text-xs text-zinc-400">no runs recorded yet</p>
             ) : (
               <ul className="flex flex-col gap-2">
                 {runs.map((r) => (
@@ -623,7 +623,7 @@ export function AutomationsTab() {
                         aria-label="delay minutes"
                         className="w-32 border-zinc-800 bg-zinc-950/80 text-sm tabular-nums text-zinc-200 placeholder:text-zinc-500 focus-visible:ring-violet-500/40"
                       />
-                      <span className="text-xs text-zinc-500">
+                      <span className="text-xs text-zinc-400">
                         minutes from now — fires once{mode === "read-only" ? ", observation-only" : ""}
                       </span>
                     </div>
@@ -651,7 +651,7 @@ export function AutomationsTab() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="automation-model" className="text-xs font-medium text-zinc-300">
-                      Model <span className="font-normal text-zinc-500">(optional)</span>
+                      Model <span className="font-normal text-zinc-400">(optional)</span>
                     </label>
                     <Input
                       id="automation-model"
@@ -666,7 +666,7 @@ export function AutomationsTab() {
 
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="automation-max-runs" className="text-xs font-medium text-zinc-300">
-                    Max runs <span className="font-normal text-zinc-500">(optional — completes once reached)</span>
+                    Max runs <span className="font-normal text-zinc-400">(optional — completes once reached)</span>
                   </label>
                   <Input
                     id="automation-max-runs"
