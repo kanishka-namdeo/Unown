@@ -29,7 +29,7 @@ const COMMANDS: [string, string][] = [
 
 const PREREQS: [string, string][] = [
   ["bun", "≥ 1.2"],
-  ["an endpoint", "any OpenAI-compatible base URL + key"],
+  ["an endpoint", "any OpenAI-compatible base URL + key; background learning can also run on a local llama.cpp or Ollama lane, keyless and offline"],
   ["OS", "Windows, macOS or Linux — same commands. OS sandbox: bubblewrap (Linux), Seatbelt (macOS); native Windows runs the in-process jail"],
 ];
 

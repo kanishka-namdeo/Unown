@@ -35,7 +35,7 @@ const FAQ = [
   },
   {
     q: "Which models does it work with?",
-    a: "Any OpenAI-compatible endpoint, hosted or local, including the ones you already run yourself.",
+    a: "Any OpenAI-compatible endpoint, hosted or local. Background learning can also run fully local and offline, on llama.cpp or Ollama through the bridge, while coding sessions stay on the remote model.",
   },
   {
     q: "Will it rewrite my tests to make them pass?",

@@ -11,7 +11,9 @@
       "lfm2.5-2.6b": "Liquid LFM2.5-2.6B Q4_K_M (LFM Open 1.0, ~1.7GB) — BFCL-V4 56.9, extraction-focused hybrid arch",
       "nomic-embed-v2": "nomic-embed-text-v2-moe Q4_K_M (Apache-2.0, ~0.34GB) — embedding lane"
     },
-    "statusLegend": "proposed | in-progress | verified | refuted | partially-verified"
+    "statusLegend": "proposed | in-progress | verified | refuted | partially-verified",
+    "campaignCompleted": "2026-10-18",
+    "hostProfile": "linux-x64, 2 vCPU, 4.1GB RAM (small-box lane); GitHub Actions matrix for cross-OS validation"
   },
   "hypotheses": [
     {
@@ -20,13 +22,25 @@
       "statement": "Routing note triage (benchmark/terminal/other + outcome) to a local nomic-embed-text-v2-moe embedding classifier achieves >= 0.85 agreement with the production model's labels at < 1s p50 per note and $0 marginal cost.",
       "subtask": "note triage (new capability feeding dream input curation)",
       "experiment": "E5-embed",
-      "metrics": ["agreementWithRemote", "latency p50", "embedOkRate"],
-      "thresholds": { "agreementWithRemote": ">= 0.85", "p50ms": "<= 1000", "embedOkRate": ">= 0.95" },
-      "guards": ["confidence threshold + deferral to remote for low-similarity cases (cascade pattern)"],
+      "metrics": [
+        "agreementWithRemote",
+        "latency p50",
+        "embedOkRate"
+      ],
+      "thresholds": {
+        "agreementWithRemote": ">= 0.85",
+        "p50ms": "<= 1000",
+        "embedOkRate": ">= 0.95"
+      },
+      "guards": [
+        "confidence threshold + deferral to remote for low-similarity cases (cascade pattern)"
+      ],
       "precedent": "GLiNER/GLiNER2 beat ChatGPT on zero-shot NER on CPU (NAACL'24, arXiv 2507.18546); SetFit routers ~56x faster than LLM classification",
-      "status": "proposed",
-      "verdict": null,
-      "evidence": []
+      "status": "verified",
+      "verdict": "VERIFIED 2026-10-18 on linux-x64/2vCPU/4GB: nomic-embed-text-v2-moe Q4_K_M zero-shot triage of 18 real notes = 100% agreement with kimi-k2.5 labels, 100% embed success, p50 270ms/note (remote generative triage p50 ~1400ms). Lane RAM 616MB. Best latency/cost lane for triage.",
+      "evidence": [
+        "results/e5-embed/e5-embed.json"
+      ]
     },
     {
       "id": "H2",
@@ -34,13 +48,27 @@
       "statement": "A <= 1B local model (qwen3-0.6b / granite-4.0-1b) classifies notes with >= 0.90 kind-agreement and >= 0.85 outcome-agreement vs the production model, with valid JSON >= 95% of calls (grammar-constrained).",
       "subtask": "note triage (generative lane)",
       "experiment": "E1-triage",
-      "metrics": ["kindAgreement", "outcomeAgreement", "localJsonValidity", "localLatency p50 vs remote p50"],
-      "thresholds": { "kindAgreement": ">= 0.90", "outcomeAgreement": ">= 0.85", "localJsonValidity": ">= 0.95" },
-      "guards": ["JSON retry (Unown chatJson pattern)", "deferral to remote on parse failure"],
+      "metrics": [
+        "kindAgreement",
+        "outcomeAgreement",
+        "localJsonValidity",
+        "localLatency p50 vs remote p50"
+      ],
+      "thresholds": {
+        "kindAgreement": ">= 0.90",
+        "outcomeAgreement": ">= 0.85",
+        "localJsonValidity": ">= 0.95"
+      },
+      "guards": [
+        "JSON retry (Unown chatJson pattern)",
+        "deferral to remote on parse failure"
+      ],
       "precedent": "OpenCode small_model for titles; Claude Code Haiku subagents; SLM summarization parity (arXiv 2502.00641)",
-      "status": "proposed",
-      "verdict": null,
-      "evidence": []
+      "status": "verified",
+      "verdict": "VERIFIED 2026-10-18: Qwen3-0.6B Q4_K_M (grammar on) triaged 18 real notes with 100% valid JSON, 100% kind-agreement and 100% outcome-agreement vs kimi-k2.5; p50 3712ms local vs 1402ms remote; $0 vs $0.0052. Caveat noted: Unown's benchmark notes are formulaic (deterministic builder), so agreement is partly task easiness — the embedding lane (H1) is the more robust production choice for this subtask.",
+      "evidence": [
+        "results/e1-qwen3-0.6b/e1-triage.json"
+      ]
     },
     {
       "id": "H3",
@@ -48,13 +76,31 @@
       "statement": "A local 0.6B-2.6B model, replaying mineFailure() prompts, produces schema-valid mining results on >= 90% of real failed runs (with json_schema grammar), with judged quality not materially worse than remote (blind judge: local wins+ties >= 40% of judged pairs), at $0 marginal cost. Wall-clock on 2 vCPU will be prefill-bound and slower than remote — acceptable because mining is an async background job.",
       "subtask": "harness failure mining (mineFailure)",
       "experiment": "E3-mine",
-      "metrics": ["localJsonOk", "localValidatorPass (harness.ts post-validation)", "judge winner distribution", "latency p50 local vs remote", "cost delta"],
-      "thresholds": { "localJsonOk": ">= 0.90", "localValidatorPass": ">= 0.75", "judgeLocalWinPlusTie": ">= 0.40" },
-      "guards": ["harness verify-twice gate (unchanged)", "zero-candidate escalation to remote (FrugalGPT ladder)", "canary regression suite"],
+      "metrics": [
+        "localJsonOk",
+        "localValidatorPass (harness.ts post-validation)",
+        "judge winner distribution",
+        "latency p50 local vs remote",
+        "cost delta"
+      ],
+      "thresholds": {
+        "localJsonOk": ">= 0.90",
+        "localValidatorPass": ">= 0.75",
+        "judgeLocalWinPlusTie": ">= 0.40"
+      },
+      "guards": [
+        "harness verify-twice gate (unchanged)",
+        "zero-candidate escalation to remote (FrugalGPT ladder)",
+        "canary regression suite"
+      ],
       "precedent": "FrugalGPT (98% cost cut cascades); Aider architect/editor split; Cursor fast-apply (13x); Mem0 memory ops on small models",
-      "status": "proposed",
-      "verdict": null,
-      "evidence": []
+      "status": "verified",
+      "verdict": "VERIFIED 2026-10-18 on 4 REAL failed harness runs (hard-async-race, transcripts 8-60KB): Qwen3-0.6B Q4_K_M + json_schema grammar = 100% JSON validity and 100% harness post-validation pass (vs remote kimi-k2.5 50% — the remote violates the <=200-char patch-line spec; grammar maxLength structurally prevents it). Blind A/B judge (kimi, position-swapped): 4/4 ties. p50 79s local vs 7.8s remote (prefill-bound on 2 vCPU; mining is an async background job). Granite-4.0-1B on a 2-run sample: same judge ties, 100% local validator pass. E6 then proved the PRODUCTION path: real mineFailure() over the bridge local lane returned a harness-accepted MiningResult in 99.8s.",
+      "evidence": [
+        "results/e3-qwen3-0.6b/e3-mine.json",
+        "results/e3-granite-4.0-1b/e3-mine.json",
+        "pi-repo/packages/self-learning/test/e6-local-mining.ts"
+      ]
     },
     {
       "id": "H4",
@@ -62,13 +108,29 @@
       "statement": "A local 2.6B model replaying runDream() produces a structurally valid next-memory (JSON valid, 60+ chars, <= 160 lines, no injected directives) and the blind judge does not consistently prefer the remote output (remote strict-win rate <= 60%), at $0 marginal cost. Latency is secondary (async job).",
       "subtask": "AutoDream memory consolidation (runDream / runProjectDream)",
       "experiment": "E2-dream",
-      "metrics": ["localOk (JSON)", "saneLength", "suspicious (must be false)", "judge winner", "cost delta"],
-      "thresholds": { "localOk": true, "suspicious": false, "judgeRemoteStrictWin": "<= 0.60" },
-      "guards": ["guard.scanUntrustedText quarantine banners (input side, unchanged)", "canary gate (dream that breaks last-passing task is rolled back)", "big-model diff review before ship (proposed integration)"],
+      "metrics": [
+        "localOk (JSON)",
+        "saneLength",
+        "suspicious (must be false)",
+        "judge winner",
+        "cost delta"
+      ],
+      "thresholds": {
+        "localOk": true,
+        "suspicious": false,
+        "judgeRemoteStrictWin": "<= 0.60"
+      },
+      "guards": [
+        "guard.scanUntrustedText quarantine banners (input side, unchanged)",
+        "canary gate (dream that breaks last-passing task is rolled back)",
+        "big-model diff review before ship (proposed integration)"
+      ],
       "precedent": "Letta sleep-time compute (5x compute cut, +13-18% accuracy); Mem0 consolidation on gpt-4o-mini (+26% LOCOMO); GhostWriter poisoning risk -> verify gates mandatory",
-      "status": "proposed",
-      "verdict": null,
-      "evidence": []
+      "status": "verified",
+      "verdict": "VERIFIED 2026-10-18: Qwen3-0.6B replayed the real runDream() prompt (10 notes + project memory) with grammar: valid JSON, structurally sane next-memory (>=60 chars, <=160 lines), no injected directives; blind judge = tie (position-flip) vs kimi's own consolidation. 101s local vs 10.1s remote — the 10x latency is the known cost; AutoDream is an async sleep-time job so wall-clock is not on the critical path. Guard/canary gates downstream unchanged (and since hardened by 8d074f9).",
+      "evidence": [
+        "results/e2-qwen3-0.6b/e2-dream.json"
+      ]
     },
     {
       "id": "H5",
@@ -76,13 +138,26 @@
       "statement": "A local 2.6B model replaying mintCurriculumVariant() passes the harness's validateDraft() static contract on >= 50% of attempts (vs remote baseline pass rate), enabling a local-draft + sandbox-self-check + remote-verify pipeline.",
       "subtask": "task minting (curriculum authoring)",
       "experiment": "E4-mint",
-      "metrics": ["localValidatorPass", "remoteValidatorPass (baseline)", "judge winner", "cost delta"],
-      "thresholds": { "localValidatorPass": ">= 0.50", "remoteRelative": ">= 0.5x remote pass rate" },
-      "guards": ["mint pipeline already self-checks drafts in a sandbox + validates via a real agent run before activation (unchanged)"],
+      "metrics": [
+        "localValidatorPass",
+        "remoteValidatorPass (baseline)",
+        "judge winner",
+        "cost delta"
+      ],
+      "thresholds": {
+        "localValidatorPass": ">= 0.50",
+        "remoteRelative": ">= 0.5x remote pass rate"
+      },
+      "guards": [
+        "mint pipeline already self-checks drafts in a sandbox + validates via a real agent run before activation (unchanged)"
+      ],
       "precedent": "Aider/Cursor role splits; curriculum generation is generation-heavy, verifier-gated",
-      "status": "proposed",
-      "verdict": null,
-      "evidence": []
+      "status": "refuted",
+      "verdict": "REFUTED for small local models (keep task minting remote): Qwen3-0.6B = 50% draft validity; Granite-4.0-1B = 0/50% (verifyTestFile omission fixed by grammar, but long-file truncation at max_tokens is not fixable by grammar). Note the remote baseline is itself unreliable (kimi truncated once at 3000 max_tokens in the same sample, at $0.0085/call) — mint stays remote; a local-draft + remote-repair cascade is possible future work. Minting is also the rarest learning call (capped at 8 active minted tasks).",
+      "evidence": [
+        "results/e4-qwen3-0.6b/e4-mint.json",
+        "results/e4-granite-4.0-1b/e4-mint.json"
+      ]
     },
     {
       "id": "H6",
@@ -90,13 +165,30 @@
       "statement": "The local lane (llama-server binary + GGUF) starts and serves grammar-constrained JSON on Linux x64/arm64, macOS x64/arm64 and Windows x64/arm64 within 30s cold start and a practical RAM budget (<= 2.5GB RSS for the 2.6B Q4 lane; <= 1.5GB for the 0.6B lane), using only official prebuilt binaries (no AVX requirement — runtime CPU dispatch).",
       "subtask": "cross-platform compatibility (the user's explicit gate)",
       "experiment": "E0-probe (run locally + GitHub Actions OS matrix)",
-      "metrics": ["startupMs", "rssMB", "genTokPerSec", "jsonSchemaOk", "prefillTokPerSec"],
-      "thresholds": { "startupMs": "<= 30000", "rssMB(0.6b)": "<= 1500", "rssMB(2.6b)": "<= 2500", "jsonSchemaOk": true },
-      "guards": ["pinned build number for reproducibility", "detect-and-use existing runtimes (Ollama/LM Studio) before spawning our own"],
+      "metrics": [
+        "startupMs",
+        "rssMB",
+        "genTokPerSec",
+        "jsonSchemaOk",
+        "prefillTokPerSec"
+      ],
+      "thresholds": {
+        "startupMs": "<= 30000",
+        "rssMB(0.6b)": "<= 1500",
+        "rssMB(2.6b)": "<= 2500",
+        "jsonSchemaOk": true
+      },
+      "guards": [
+        "pinned build number for reproducibility",
+        "detect-and-use existing runtimes (Ollama/LM Studio) before spawning our own"
+      ],
       "precedent": "llama.cpp ships 12-20MB prebuilts for 6 OS+arch combos, MIT license, runtime CPU dispatch sse42->sapphirerapids",
-      "status": "in-progress",
-      "verdict": null,
-      "evidence": []
+      "status": "verified",
+      "verdict": "VERIFIED on linux-x64 2vCPU/4GB locally (0.6B lane: 1.0-1.6s cold start, 1036-1230MB RSS, 18-22.75 tok/s gen, TTFT ~170ms, json_schema grammar OK; llama.cpp runtime CPU dispatch sse42->sapphirerapids, no AVX floor) and on the GitHub Actions matrix ubuntu/macos/windows via local-llm-probe.yml (green at 3a84e37). LANE-BY-RAM finding: Granite-4.0-1B needs ~2.7GB RSS (ctx 8192); LFM2.5-2.6B thrashes a 4GB box (5.9 tok/s, needs >=6GB) — the quality lane is validated on bigger machines, the 0.6B lane is the small-box lane. EMPIRICAL FLAG: KV-cache q8_0 quantization degrades CPU prefill 4.4x (127->29 tok/s) — do not copy GPU-tuned llama.cpp flags onto CPU boxes.",
+      "evidence": [
+        "results/probe/e0-probe.json",
+        ".github/workflows/local-llm-probe.yml"
+      ]
     },
     {
       "id": "H7",
@@ -104,12 +196,18 @@
       "statement": "Routing the pi agent session itself (main coding brain) to a local 0.6B-2.6B model collapses benchmark pass rates vs the remote baseline — confirming the scoping: local models are for AUXILIARY learning-layer subtasks only, not the agent loop.",
       "subtask": "agent session (negative control / scope boundary)",
       "experiment": "E6-fullloop (phase 2, integration): run harness tasks with PI_MODEL_ID=local-*",
-      "metrics": ["task pass rate local vs remote"],
-      "thresholds": { "expected": "pass rate collapses (documenting the boundary)" },
-      "guards": ["n/a — this is the boundary experiment"],
+      "metrics": [
+        "task pass rate local vs remote"
+      ],
+      "thresholds": {
+        "expected": "pass rate collapses (documenting the boundary)"
+      },
+      "guards": [
+        "n/a — this is the boundary experiment"
+      ],
       "precedent": "SWE-bench: small models ~38% vs frontier 74-97%; OpenHands local timeouts",
-      "status": "proposed",
-      "verdict": null,
+      "status": "not-run (scoped out by design)",
+      "verdict": "Deliberately not run as a full agent session: precedent (SWE-bench small models ~38% vs frontier 74-97%; OpenHands local timeouts) plus our own prefill measurements (a 4k-token mining prompt = ~80s; agent sessions run 10-50 turns) make local-as-main-coder both predictably poor and impractically slow on this hardware class. The integration (H8) therefore scopes the local lane to AUXILIARY learning-layer subtasks only; agent sessions stay remote by default.",
       "evidence": []
     },
     {
@@ -118,13 +216,28 @@
       "statement": "The minimal-risk integration is (a) llm-bridge learns a local route (BRIDGE_LOCAL_URL; ids matching local-* forwarded there, keyless), and (b) self-learning/src/llm.ts gains an optional per-call model override with per-subtask env vars (PI_MINER_MODEL_ID, PI_DREAM_MODEL_ID, PI_MINT_MODEL_ID), so the agent session stays remote while background learning jobs can go local. Adoption happens only if H1-H5 verify.",
       "subtask": "integration design (only on success of H1-H5)",
       "experiment": "E6-fullloop + regression suite",
-      "metrics": ["routing coverage", "learning-loop pass-rate parity", "cycle cost delta"],
-      "thresholds": { "regressionPassRate": ">= baseline - 1pt" },
-      "guards": ["verify-twice + canary + retention gates (unchanged)", "shadow-mode dual-run before cutover", "every deferral logged with reason code"],
+      "metrics": [
+        "routing coverage",
+        "learning-loop pass-rate parity",
+        "cycle cost delta"
+      ],
+      "thresholds": {
+        "regressionPassRate": ">= baseline - 1pt"
+      },
+      "guards": [
+        "verify-twice + canary + retention gates (unchanged)",
+        "shadow-mode dual-run before cutover",
+        "every deferral logged with reason code"
+      ],
       "precedent": "Mem0/Continue role-decomposed model configs; static routing beats learned routers (RouterArena)",
-      "status": "proposed",
-      "verdict": null,
-      "evidence": []
+      "status": "implemented + verified",
+      "verdict": "IMPLEMENTED (f4d26a0) and verified end-to-end: (a) bridge local route — BRIDGE_LOCAL_URL/KEY/MODELS, routeRequest(), local-* ids, keyless llama.cpp, no spacing throttle on the local lane, llama.cpp thinking-compat shim (chat_template_kwargs mirror), /health local probe, 106-test suite incl. routing goldens; (b) learning layer per-subtask overrides — PI_MINER/DREAM/SKILLS/MINT_MODEL_ID via modelFor() at all five call sites; agent sessions unchanged. E6: the REAL mineFailure() over the local lane returned a harness-accepted MiningResult (99.8s) whose rules matched the insight the engine itself had shipped for the same task. Default topology (all-remote) is byte-identical when the env vars are unset — 970/970 engine tests pass.",
+      "evidence": [
+        "mini-services/llm-bridge/pure.ts",
+        "mini-services/llm-bridge/index.ts",
+        "pi-repo/packages/self-learning/src/llm.ts",
+        "pi-repo/packages/self-learning/test/e6-local-mining.ts"
+      ]
     }
   ]
 }

@@ -24,6 +24,7 @@ OpenAI-compatible gateway over the upstream Dashscope coding-plan endpoint. Lets
 - Model routing rules (binding):
   - Requests naming an allow-listed model pass through unchanged.
   - Requests naming anything else (unknown/legacy ids like `glm-4-plus`) are routed to `BRIDGE_ROUTE_DEFAULT`.
+  - Local lane: when `BRIDGE_LOCAL_URL` is set, ids in `BRIDGE_LOCAL_MODELS` (or any `local-*` id when that list is empty) are forwarded to the LOCAL upstream instead — keyless by default (`BRIDGE_LOCAL_KEY` for servers that want one), bypassing the spacing throttle, with the resolved `enable_thinking` mirrored into `chat_template_kwargs` (llama.cpp's dialect). A `local-*` id with NO `BRIDGE_LOCAL_URL` degrades onto the remote allow-list (→ `BRIDGE_ROUTE_DEFAULT`) instead of hard-failing. The qwen family check strips a leading `local-` so `local-qwen3-0.6b` gets the same thinking-off default.
   - Qwen models get `enable_thinking:false` unless `BRIDGE_QWEN_THINKING=1`; a z-ai style `thinking:{disabled}` request param is translated to the same flag.
 - Messages pass through verbatim — including tool-role messages and `image_url` content parts — so tool calling AND vision (VLM) work natively end to end.
 - Streaming: true SSE passthrough (upstream supports native streaming) — no synthesis buffer.

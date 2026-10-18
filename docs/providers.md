@@ -112,6 +112,27 @@ The bridge turns one upstream into a clean local endpoint for the whole stack:
 
 `GET localhost:3031/health` reports the live state — including whether the upstream key is set and whether the upstream answers — which `unown doctor` and `scripts/start.ts` surface as actionable warnings.
 
+**The local lane (optional second upstream):** point `BRIDGE_LOCAL_URL` at any
+local OpenAI-compatible server — llama.cpp `llama-server`, Ollama, LM Studio —
+and model ids matching `BRIDGE_LOCAL_MODELS` (or any `local-*` id when that
+list is empty) are forwarded there instead of the remote upstream: keyless by
+default, no spacing throttle, llama.cpp's `chat_template_kwargs` thinking
+dialect handled automatically. The learning layer can then run selected
+background jobs locally (`PI_MINER_MODEL_ID` / `PI_DREAM_MODEL_ID` /
+`PI_SKILLS_MODEL_ID` / `PI_MINT_MODEL_ID`, e.g. `local-qwen3-0.6b`) while
+agent sessions stay on the remote model — see
+[benchmarks/local-llm/](../benchmarks/local-llm/) for the hypothesis-driven
+evaluation behind this split (a 0.6B local model matched the remote baseline
+on note triage, failure mining and dream consolidation; task minting and the
+main agent stay remote). Start a lane in one line:
+
+```bash
+node benchmarks/local-llm/runner.mjs serve --model qwen3-0.6b   # downloads llama.cpp + GGUF on first use
+```
+
+`GET /health` reports the lane as `local {ok, status, url, models}` alongside
+the upstream probe.
+
 **The `BRIDGE_API_KEY` coupling:** if you set a shared secret on the bridge, every client must present it — including the terminal agent. `unown setup --provider bridge` picks it up from the environment; if you set it *after* configuring, re-run setup (or hand-edit the `apiKey` in `~/.unown/agent/models.json`).
 
 ## Switching models

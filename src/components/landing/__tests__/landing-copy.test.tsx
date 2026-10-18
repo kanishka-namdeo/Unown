@@ -10,14 +10,17 @@
 //   - every "Dashboard" affordance points at the in-page screenshots, not at the
 //     live /dashboard route that has no engine behind it on the hosted marketing page;
 //   - the integrity section gives a reviewer something to click (SECURITY.md, the
-//     sandbox and hook sources) and names the macOS sandbox backend.
+//     sandbox and hook sources) and names the macOS sandbox backend;
+//   - the models band's local lane is wired with the real env var, id scheme and
+//     one-liner, and both it and the FAQ's which-models answer keep the split
+//     honest: background learning goes local, coding sessions stay remote.
 //
 // Rendered under the global happy-dom preload (bunfig.toml [test] preload →
 // src/test-dom-setup.ts). StarCount is an async RSC and cannot render inside a
 // synchronous test, so it is mocked to a no-op; everything else is real.
 
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 mock.module("../star-count", () => ({
   StarCount: () => null,
@@ -27,6 +30,8 @@ mock.module("../star-count", () => ({
 const { Hero } = await import("../hero");
 const { IntegritySection } = await import("../integrity");
 const { MechanismsSection } = await import("../mechanisms");
+const { ModelsBand } = await import("../models");
+const { FaqSection } = await import("../faq");
 const { ShowcaseSection } = await import("../showcase");
 const { Footer, Nav } = await import("../shell");
 const { LEXICON } = await import("../lexicon");
@@ -56,6 +61,29 @@ describe("landing mechanisms", () => {
     expect(
       screen.getByRole("heading", { name: /What goes wrong without persistent memory/i }),
     ).toBeTruthy();
+  });
+});
+
+describe("landing models", () => {
+  test("the local lane is wired with the real env var, id scheme and one-liner", () => {
+    const { container } = render(<ModelsBand />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("BRIDGE_LOCAL_URL");
+    expect(text).toContain("local-*");
+    expect(text).toContain("node benchmarks/local-llm/runner.mjs serve");
+    // The split the page promises: background learning goes local, sessions do not.
+    expect(text).toContain("while sessions stay on the remote one");
+  });
+});
+
+describe("landing faq", () => {
+  test("the which-models answer keeps the local lane scoped to background learning", () => {
+    // Radix unmounts closed answers, so the item has to be opened before its
+    // copy is assertable — which is also how a visitor reads it.
+    render(<FaqSection />);
+    fireEvent.click(screen.getByRole("button", { name: "Which models does it work with?" }));
+    expect(screen.getByText(/fully local and offline/)).toBeTruthy();
+    expect(screen.getByText(/while coding sessions stay on the remote model/)).toBeTruthy();
   });
 });
 

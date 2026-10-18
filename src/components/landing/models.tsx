@@ -75,7 +75,17 @@ export function ModelsBand() {
                 onto an allow-list, injects upstream auth, translates{" "}
                 <code className="font-mono text-dim">thinking</code> flags for qwen, passes
                 tool calls and image content through natively, and streams SSE back
-                untouched.{" "}Or skip the bridge entirely with{" "}
+                untouched. It also has a local lane: point{" "}
+                <code className="font-mono text-dim">BRIDGE_LOCAL_URL</code> at llama.cpp,
+                Ollama or LM Studio and{" "}
+                <code className="font-mono text-dim">local-*</code> ids route there keyless,
+                so the background engine (note triage, failure mining, AutoDream) can run
+                on a small local model while sessions stay on the remote one.{" "}
+                <code className="font-mono text-dim">
+                  node benchmarks/local-llm/runner.mjs serve
+                </code>{" "}
+                downloads llama.cpp and a GGUF on first use and serves the lane. Or skip
+                the bridge entirely with{" "}
                 <code className="font-mono text-dim">unown setup --provider</code>. Marks
                 are{" "}
                 <a

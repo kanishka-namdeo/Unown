@@ -47,6 +47,10 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `PI_BRIDGE_URL` | `http://127.0.0.1:3031` | The OpenAI-compatible LLM endpoint the engine's agent talks to. Point it at the bundled bridge or any direct endpoint. |
 | `PI_MODEL_ID` | `kimi-k2.5` | Model id registered with pi's `models.json`. Any id works through the bridge — unknown ids are routed onto its default. |
 | `PI_PROVIDER` | `zai-bridge` | Provider name registered with pi. |
+| `PI_MINER_MODEL_ID` | unset | Pins the harness's failure-mining calls to a different model id (e.g. a `local-*` id on the bridge's local lane). Unset = `PI_MODEL_ID`. |
+| `PI_DREAM_MODEL_ID` | unset | Same override for AutoDream consolidation calls. |
+| `PI_SKILLS_MODEL_ID` | unset | Same override for skill-minting calls. |
+| `PI_MINT_MODEL_ID` | unset | Same override for task-minting calls. |
 | `PI_SELFLEARNING_DATA` | `data/self-learning` (repo-relative) | Runtime data dir for the engine: sandboxes, sessions, memory. |
 | `PI_SELFLEARNING_DB` | `db/selflearning.db` (repo-relative) | SQLite store for runs, dreams, memory versions, skills. |
 
@@ -64,6 +68,9 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `BRIDGE_MIN_SPACING_MS` | `400` | Minimum spacing between upstream requests (serialized throttle). |
 | `BRIDGE_UPSTREAM_TIMEOUT_MS` | `180000` | Cap on time-to-response-headers per upstream attempt, in ms. Streaming bodies stay uncapped once headers arrive; a stalled upstream fails fast instead of wedging callers. |
 | `BRIDGE_API_KEY` | unset | Optional shared secret. When set, every request to the bridge must carry `Authorization: Bearer <key>`. Recommended whenever the bridge is reachable beyond localhost. |
+| `BRIDGE_LOCAL_URL` | unset | Optional second upstream: a LOCAL OpenAI-compatible server (llama.cpp `llama-server`, Ollama, LM Studio), e.g. `http://127.0.0.1:8080/v1`. When set, `local-*` model ids (or `BRIDGE_LOCAL_MODELS`) are forwarded there — keyless by default, no spacing throttle. Start one with `node benchmarks/local-llm/runner.mjs serve --model qwen3-0.6b`. |
+| `BRIDGE_LOCAL_KEY` | unset | Bearer key for the local upstream (llama.cpp runs keyless — leave empty). |
+| `BRIDGE_LOCAL_MODELS` | unset | Comma-separated local model ids; empty = the `local-*` prefix convention routes locally. |
 
 ### Terminal agent (`unown` CLI)
 
