@@ -26,10 +26,6 @@ function collectBrowserErrors(page: Page) {
   return errors;
 }
 
-test.beforeEach(async ({ page }) => {
-  collectBrowserErrors(page);
-});
-
 test("all seven tabs render engine data", async ({ page }) => {
   const errors = collectBrowserErrors(page);
   await page.goto("/dashboard");

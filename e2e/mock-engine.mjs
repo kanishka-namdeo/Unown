@@ -268,7 +268,16 @@ const server = createServer((req, res) => {
     let body = "";
     req.on("data", (c) => (body += c));
     req.on("end", () => {
-      const data = body ? JSON.parse(body) : {};
+      // A malformed body must answer 400, not crash the whole mock (the
+      // webServer dies with the process — found by review M4-R).
+      let data = {};
+      if (body) {
+        try {
+          data = JSON.parse(body);
+        } catch {
+          return json(res, { error: "invalid JSON body" }, 400);
+        }
+      }
       if (p === "/api/agent/prompt") {
         const id = `run-e2e-prompt-${now() % 100000}`;
         const run = {

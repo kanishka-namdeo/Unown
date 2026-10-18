@@ -383,6 +383,12 @@ jobs:
         # shape generators sample Math.random; the gate pins it (see the
         # script header for the measured, found-live details).
         run: bun scripts/mermaid_check.mjs
+      - name: Brand HTML layout gate (overflow)
+        # Deterministic complement to the VLM design review: no brand source
+        # may contain an element that scrolls beyond its box, and no page may
+        # overflow horizontally. Reuses this job's chromium + network (Geist
+        # via Google Fonts, same as the mermaid render page).
+        run: bun scripts/check_overflow.mjs
       - name: Receipt artifact
         if: always()
         uses: actions/upload-artifact@v4

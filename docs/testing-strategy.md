@@ -527,9 +527,12 @@ preserved in the margin notes where they were cited from history.
   open from the original list: the clipboard-unavailable fallback (needs a
   permissions-denied context) and SSE-driven KPI invalidation asserts (the
   invalidation fires; only the feed text is asserted today).
-- **OPEN** - Accessibility: axe-core per tab, keyboard-only navigation across tabs
-  and dialogs, focus trapping in `AlertDialog`, `sr-only` labels, and contrast for
-  badges in both themes.
+- **SHIPPED (axe half)** - Accessibility: axe-core per tab + the landing page
+  (WCAG 2.0/2.1 A+AA, zero-violation gate in the `e2e` CI job — its first run
+  found 80+ real contrast defects + 1 aria violation, all fixed). Still open:
+  keyboard-only navigation across tabs and dialogs, focus trapping in
+  `AlertDialog`, `sr-only` labels, and Lighthouse >= 90 (§12 criterion 6's
+  other half).
 - **OPEN** - Type/DTO drift: a contract test that the dashboard's
   `agent-types.ts` still accepts a captured `GET /api/overview` fixture. The types
   are hand-maintained and will drift on the next engine change.

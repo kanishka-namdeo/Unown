@@ -32,7 +32,11 @@ import { execFileSync, spawnSync } from "node:child_process";
 const THRESHOLD = 80;
 const runSuite = process.argv[2] === "--run";
 const args = process.argv.slice(2).filter((a) => a !== "--run");
-const reportFile = args[0] ?? "coverage.txt";
+// --run <git-base>: the report goes to a FIXED gitignored path — the base
+// must never double as the report filename (it once did, and a 406-line file
+// literally named "517a4f2" got committed). Report-file mode keeps
+// <report> <base> positional order.
+const reportFile = runSuite ? "download/coverage.txt" : (args[0] ?? "coverage.txt");
 const baseArg = (runSuite ? args[0] : args[1]) ?? process.env.GITHUB_BASE_REF ?? "HEAD~1";
 
 const fail = (msg) => {

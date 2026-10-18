@@ -79,3 +79,7 @@ benchmarks/edit-bench/results/rerun-2026-10-17/*/events/
 # Benchmark runtime scratch (the memory-eval runners' live DBs; receipts are
 # the JSONs under benchmarks/memory-eval/results/, not these).
 /scratch-mem/
+# The engine's runtime tier materialization at the repo root (personal
+# user-tier notes land here — runtime state, like scratch-mem; the per-project
+# tracked surface is <project>/.unown/memory/project.md, not this).
+/memory/

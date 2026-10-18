@@ -82,6 +82,16 @@ for (let i = 0; i < lines.length; i++) {
   }
 }
 if (blocks.length === 0) fail("README.md contains no fenced ```mermaid blocks — the diagrams are gone or the fence syntax changed.");
+// Two blocks under one heading would overwrite each other's PNG — make
+// names unique (second occurrence gets a -2 suffix).
+{
+  const seen = new Map();
+  for (const b of blocks) {
+    const n = (seen.get(b.name) ?? 0) + 1;
+    seen.set(b.name, n);
+    if (n > 1) b.name = `${b.name}-${n}`;
+  }
+}
 console.log(`extracted ${blocks.length} mermaid block(s) from README.md: ${blocks.map((b) => `"${b.heading}"`).join(", ")}`);
 
 /* ---------- 3. the render page (vendored mermaid, no network) ---------- */
