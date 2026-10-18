@@ -24,14 +24,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-	type CreateAgentSessionRuntimeFactory,
-	createAgentSessionFromServices,
-	createAgentSessionRuntime,
-	createAgentSessionServices,
-	InteractiveMode,
-	runPrintMode,
-	SessionManager,
-	SettingsManager,
+        type CreateAgentSessionRuntimeFactory,
+        createAgentSessionFromServices,
+        createAgentSessionRuntime,
+        createAgentSessionServices,
+        InteractiveMode,
+        runPrintMode,
+        SessionManager,
+        SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { netBlocked, osSandboxAvailable, resolveBwrapPath, resolveSandboxExecPath } from "./bwrap.ts";
 import { cmdCompletions } from "./completions.ts";
@@ -40,46 +40,47 @@ import { MIGRATIONS, readMigrationState } from "./migrations.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import { printModelsOverview, runSetupCommand } from "./setup.ts";
 import {
-	deliverTerminalNote,
-	ENGINE_URL,
-	ensureUnownAgentDir,
-	ensureUnownAgentDirInfo,
-	initProjectMemory,
-	projectMemoryPath,
-	resolveTerminalMemory,
-	STRICT_HOOKS,
-	terminalMemoryForAgent,
-	UNOWN_AGENT_DIR,
-	UNOWN_HOME,
-	unownAgentDirInit,
+        deliverTerminalNote,
+        ENGINE_URL,
+        ensureUnownAgentDir,
+        ensureUnownAgentDirInfo,
+        initProjectMemory,
+        projectMemoryPath,
+        resolveTerminalMemory,
+        STRICT_HOOKS,
+        terminalMemoryForAgent,
+        UNOWN_AGENT_DIR,
+        UNOWN_HOME,
+        unownAgentDirInit,
 } from "./term.ts";
+import { createCheckpointsExtension } from "./checkpoints.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 import { cmdUninstall, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
 import {
-	cmdChangelog,
-	cmdUpdate,
-	compareSemver,
-	describeAge,
-	gitShortSha,
-	maybeShowUpdateNotice,
-	parseUpdateFlags,
-	readUpdateCheckCache,
-	realGit,
-	resolveRepoRoot,
-	UPDATE_HELP,
+        cmdChangelog,
+        cmdUpdate,
+        compareSemver,
+        describeAge,
+        gitShortSha,
+        maybeShowUpdateNotice,
+        parseUpdateFlags,
+        readUpdateCheckCache,
+        realGit,
+        resolveRepoRoot,
+        UPDATE_HELP,
 } from "./update.ts";
 
 /** Unown's version — read from the ROOT package.json (the source of truth
  *  CI asserts against). Falls back to "unknown" if the file is unreadable
  *  (e.g. a compiled/bundled CLI detached from the repo layout). */
 const VERSION: string = (() => {
-	try {
-		const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "..", "..", "..", "package.json"), "utf8"));
-		return String(pkg.version ?? "unknown");
-	} catch {
-		return "unknown";
-	}
+        try {
+                const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "..", "..", "..", "package.json"), "utf8"));
+                return String(pkg.version ?? "unknown");
+        } catch {
+                return "unknown";
+        }
 })();
 
 const HELP = `unown — a self-improving terminal coding agent
@@ -137,145 +138,146 @@ Environment:
 // Simple argument parsing
 // ---------------------------------------------------------------------------
 interface CliArgs {
-	command: "tui" | "print" | "init" | "memory" | "doctor" | "note" | "help";
-	prompt?: string;
-	verbose: boolean;
-	jsonMode: boolean;
-	noSession: boolean;
-	tools?: string[];
-	appendSystemPromptPath?: string;
-	plan: boolean;
+        command: "tui" | "print" | "init" | "memory" | "doctor" | "note" | "help";
+        prompt?: string;
+        verbose: boolean;
+        jsonMode: boolean;
+        noSession: boolean;
+        tools?: string[];
+        appendSystemPromptPath?: string;
+        plan: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
-	const rest: string[] = [];
-	let print = false;
-	let verbose = false;
-	let jsonMode = false;
-	let noSession = false;
-	let tools: string[] | undefined;
-	let appendSystemPromptPath: string | undefined;
-	let plan = false;
-	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i];
-		if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan };
-		if (a === "--print" || a === "-p") {
-			print = true;
-			continue;
-		}
-		if (a === "--verbose" || a === "-v") {
-			verbose = true;
-			continue;
-		}
-		if (a === "--mode") {
-			const next = argv[i + 1];
-			if (next === "json") jsonMode = true;
-			else if (next !== "text") rest.push(a); // unknown mode value: treat as prompt text
-			i++;
-			continue;
-		}
-		if (a === "--no-session") {
-			noSession = true;
-			continue;
-		}
-		if (a === "--plan") {
-			plan = true;
-			continue;
-		}
-		if (a === "--tools") {
-			const next = argv[i + 1];
-			if (next !== undefined) {
-				tools = next
-					.split(",")
-					.map((t) => t.trim())
-					.filter(Boolean);
-				i++;
-			}
-			continue;
-		}
-		if (a === "--append-system-prompt") {
-			const next = argv[i + 1];
-			if (next !== undefined) {
-				appendSystemPromptPath = next;
-				i++;
-			}
-			continue;
-		}
-		rest.push(a);
-	}
-	const first = rest[0];
-	if (first === "init" || first === "memory" || first === "doctor" || first === "note") {
-		const prompt = rest.slice(1).join(" ");
-		return { command: first, prompt, verbose, jsonMode, noSession, plan };
-	}
-	const prompt = rest.join(" ");
-	// Non-TTY stdio forces print mode (same behaviour as pi itself).
-	if (print || !process.stdin.isTTY || !process.stdout.isTTY)
-		return { command: "print", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan };
-	return { command: "tui", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan };
+        const rest: string[] = [];
+        let print = false;
+        let verbose = false;
+        let jsonMode = false;
+        let noSession = false;
+        let tools: string[] | undefined;
+        let appendSystemPromptPath: string | undefined;
+        let plan = false;
+        for (let i = 0; i < argv.length; i++) {
+                const a = argv[i];
+                if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan };
+                if (a === "--print" || a === "-p") {
+                        print = true;
+                        continue;
+                }
+                if (a === "--verbose" || a === "-v") {
+                        verbose = true;
+                        continue;
+                }
+                if (a === "--mode") {
+                        const next = argv[i + 1];
+                        if (next === "json") jsonMode = true;
+                        else if (next !== "text") rest.push(a); // unknown mode value: treat as prompt text
+                        i++;
+                        continue;
+                }
+                if (a === "--no-session") {
+                        noSession = true;
+                        continue;
+                }
+                if (a === "--plan") {
+                        plan = true;
+                        continue;
+                }
+                if (a === "--tools") {
+                        const next = argv[i + 1];
+                        if (next !== undefined) {
+                                tools = next
+                                        .split(",")
+                                        .map((t) => t.trim())
+                                        .filter(Boolean);
+                                i++;
+                        }
+                        continue;
+                }
+                if (a === "--append-system-prompt") {
+                        const next = argv[i + 1];
+                        if (next !== undefined) {
+                                appendSystemPromptPath = next;
+                                i++;
+                        }
+                        continue;
+                }
+                rest.push(a);
+        }
+        const first = rest[0];
+        if (first === "init" || first === "memory" || first === "doctor" || first === "note") {
+                const prompt = rest.slice(1).join(" ");
+                return { command: first, prompt, verbose, jsonMode, noSession, plan };
+        }
+        const prompt = rest.join(" ");
+        // Non-TTY stdio forces print mode (same behaviour as pi itself).
+        if (print || !process.stdin.isTTY || !process.stdout.isTTY)
+                return { command: "print", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan };
+        return { command: "tui", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan };
 }
 
 // ---------------------------------------------------------------------------
 // Agent boot (shared by TUI and print mode)
 // ---------------------------------------------------------------------------
 interface BootOptions {
-	jsonMode?: boolean;
-	noSession?: boolean;
-	tools?: string[];
-	appendSystemPromptPath?: string;
-	plan?: boolean;
+        jsonMode?: boolean;
+        noSession?: boolean;
+        tools?: string[];
+        appendSystemPromptPath?: string;
+        plan?: boolean;
 }
 
 async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
-	const agentDir = ensureUnownAgentDir();
-	const extension = createTerminalExtension({ cwd, engineUrl: ENGINE_URL, strict: STRICT_HOOKS, verbose });
-	const toolsExtension = createUnownToolsExtension({ cwd, engineUrl: ENGINE_URL, verbose });
+        const agentDir = ensureUnownAgentDir();
+        const checkpointsExtension = createCheckpointsExtension({ cwd, verbose });
+        const extension = createTerminalExtension({ cwd, engineUrl: ENGINE_URL, strict: STRICT_HOOKS, verbose });
+        const toolsExtension = createUnownToolsExtension({ cwd, engineUrl: ENGINE_URL, verbose });
 
-	const settingsManager = SettingsManager.create(cwd, agentDir);
+        const settingsManager = SettingsManager.create(cwd, agentDir);
 
-	// Per-project unown skills (.unown/skills/) ride alongside pi's own skill dirs.
-	const projectSkillsDir = join(cwd, ".unown", "skills");
-	const additionalSkillPaths = existsSync(projectSkillsDir) ? [projectSkillsDir] : undefined;
+        // Per-project unown skills (.unown/skills/) ride alongside pi's own skill dirs.
+        const projectSkillsDir = join(cwd, ".unown", "skills");
+        const additionalSkillPaths = existsSync(projectSkillsDir) ? [projectSkillsDir] : undefined;
 
-	const createRuntime: CreateAgentSessionRuntimeFactory = async ({
-		cwd: sessionCwd,
-		sessionManager,
-		sessionStartEvent,
-	}) => {
-		const services = await createAgentSessionServices({
-			cwd: sessionCwd,
-			agentDir,
-			settingsManager,
-			extensionFlagValues: bootOpts.plan ? new Map<string, boolean | string>([["plan", true]]) : undefined,
-			resourceLoaderOptions: {
-				extensionFactories: [extension as any, toolsExtension as any],
-				additionalSkillPaths,
-				appendSystemPrompt: bootOpts.appendSystemPromptPath ? [bootOpts.appendSystemPromptPath] : undefined,
-				agentsFilesOverride: (base: any) => ({
-					// Supplement (not replace) the user's own AGENTS.md/CLAUDE.md chain.
-					// Re-resolved per session (re)new so AutoDream's concurrent memory
-					// updates become visible without restarting the CLI.
-					agentsFiles: [
-						...base.agentsFiles,
-						...terminalMemoryForAgent(cwd).map((f) => ({ path: f.path, content: f.content })),
-					],
-				}),
-			},
-		});
-		const created = await createAgentSessionFromServices({
-			services,
-			sessionManager,
-			sessionStartEvent,
-			tools: bootOpts.tools,
-		});
-		return { ...created, services, diagnostics: services.diagnostics };
-	};
+        const createRuntime: CreateAgentSessionRuntimeFactory = async ({
+                cwd: sessionCwd,
+                sessionManager,
+                sessionStartEvent,
+        }) => {
+                const services = await createAgentSessionServices({
+                        cwd: sessionCwd,
+                        agentDir,
+                        settingsManager,
+                        extensionFlagValues: bootOpts.plan ? new Map<string, boolean | string>([["plan", true]]) : undefined,
+                        resourceLoaderOptions: {
+                                extensionFactories: [checkpointsExtension as any, extension as any, toolsExtension as any],
+                                additionalSkillPaths,
+                                appendSystemPrompt: bootOpts.appendSystemPromptPath ? [bootOpts.appendSystemPromptPath] : undefined,
+                                agentsFilesOverride: (base: any) => ({
+                                        // Supplement (not replace) the user's own AGENTS.md/CLAUDE.md chain.
+                                        // Re-resolved per session (re)new so AutoDream's concurrent memory
+                                        // updates become visible without restarting the CLI.
+                                        agentsFiles: [
+                                                ...base.agentsFiles,
+                                                ...terminalMemoryForAgent(cwd).map((f) => ({ path: f.path, content: f.content })),
+                                        ],
+                                }),
+                        },
+                });
+                const created = await createAgentSessionFromServices({
+                        services,
+                        sessionManager,
+                        sessionStartEvent,
+                        tools: bootOpts.tools,
+                });
+                return { ...created, services, diagnostics: services.diagnostics };
+        };
 
-	const sessionManager = bootOpts.noSession
-		? SessionManager.inMemory(cwd)
-		: SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions"));
-	const runtime = await createAgentSessionRuntime(createRuntime, { cwd, agentDir, sessionManager });
-	return { runtime };
+        const sessionManager = bootOpts.noSession
+                ? SessionManager.inMemory(cwd)
+                : SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions"));
+        const runtime = await createAgentSessionRuntime(createRuntime, { cwd, agentDir, sessionManager });
+        return { runtime };
 }
 
 // ---------------------------------------------------------------------------
@@ -283,464 +285,464 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
 // so failures come with instructions instead of a raw "Connection error."
 // ---------------------------------------------------------------------------
 interface PreflightProblem {
-	message: string;
-	hint: string;
+        message: string;
+        hint: string;
 }
 
 async function runPreflight(): Promise<PreflightProblem | null> {
-	if (process.env.UNOWN_NO_PREFLIGHT) return null;
-	if (process.env.UNOWN_SUBAGENT) return null; // subagents inherit the parent's validated path
-	const agentDir = ensureUnownAgentDir();
-	const provider = resolveActiveProvider(agentDir);
-	if (!provider || !provider.baseUrl) return null; // built-in/unknown endpoint — nothing to probe
-	const probe = await probeOpenAiEndpoint(provider.baseUrl, provider.apiKey ?? undefined, 4000);
-	if (probe.ok) return null;
-	if (probe.problem === "auth") {
-		return {
-			message: `the model endpoint rejected the credentials (${provider.baseUrl}, HTTP ${probe.status}).`,
-			hint: "check the API key in ~/.unown/agent/auth.json (or models.json) — or re-run: unown setup",
-		};
-	}
-	return {
-		message: `cannot reach the model endpoint at ${provider.baseUrl}.`,
-		hint: isLoopbackProvider(provider)
-			? "start the stack (bun run agent:start in the Unown repo) — or connect a different provider: unown setup"
-			: "check the endpoint URL — or re-run: unown setup",
-	};
+        if (process.env.UNOWN_NO_PREFLIGHT) return null;
+        if (process.env.UNOWN_SUBAGENT) return null; // subagents inherit the parent's validated path
+        const agentDir = ensureUnownAgentDir();
+        const provider = resolveActiveProvider(agentDir);
+        if (!provider || !provider.baseUrl) return null; // built-in/unknown endpoint — nothing to probe
+        const probe = await probeOpenAiEndpoint(provider.baseUrl, provider.apiKey ?? undefined, 4000);
+        if (probe.ok) return null;
+        if (probe.problem === "auth") {
+                return {
+                        message: `the model endpoint rejected the credentials (${provider.baseUrl}, HTTP ${probe.status}).`,
+                        hint: "check the API key in ~/.unown/agent/auth.json (or models.json) — or re-run: unown setup",
+                };
+        }
+        return {
+                message: `cannot reach the model endpoint at ${provider.baseUrl}.`,
+                hint: isLoopbackProvider(provider)
+                        ? "start the stack (bun run agent:start in the Unown repo) — or connect a different provider: unown setup"
+                        : "check the endpoint URL — or re-run: unown setup",
+        };
 }
 
 function printFirstRunBanner(): void {
-	const init = unownAgentDirInit();
-	if (!init?.created) return;
-	console.error(`unown: first run — using the bundled llm-bridge (${init.provider}/${init.modelId}).`);
-	console.error("  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup");
-	console.error();
+        const init = unownAgentDirInit();
+        if (!init?.created) return;
+        console.error(`unown: first run — using the bundled llm-bridge (${init.provider}/${init.modelId}).`);
+        console.error("  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup");
+        console.error();
 }
 
 // ---------------------------------------------------------------------------
 // Commands
 // ---------------------------------------------------------------------------
 function cmdInit() {
-	const cwd = process.cwd();
-	const dir = initProjectMemory(cwd);
-	console.log(`✓ initialized ${dir.replace(cwd, ".")}`);
-	console.log(`  ${projectMemoryPath(cwd).replace(cwd, ".")}   project memory (commit this — AutoDream maintains it)`);
-	console.log(`  ./.unown/memory/local.md            local overrides (gitignored)`);
-	console.log(`  ./.unown/.gitignore                 ignores local overrides`);
+        const cwd = process.cwd();
+        const dir = initProjectMemory(cwd);
+        console.log(`✓ initialized ${dir.replace(cwd, ".")}`);
+        console.log(`  ${projectMemoryPath(cwd).replace(cwd, ".")}   project memory (commit this — AutoDream maintains it)`);
+        console.log(`  ./.unown/memory/local.md            local overrides (gitignored)`);
+        console.log(`  ./.unown/.gitignore                 ignores local overrides`);
 }
 
 function cmdMemory() {
-	const cwd = process.cwd();
-	const files = resolveTerminalMemory(cwd);
-	for (const f of files) {
-		console.log(`──────────────────────────────────────────────────────────`);
-		console.log(`【${f.tier.toUpperCase()}】 ${f.path}`);
-		console.log(`──────────────────────────────────────────────────────────`);
-		console.log(f.content.trimEnd());
-		console.log();
-	}
+        const cwd = process.cwd();
+        const files = resolveTerminalMemory(cwd);
+        for (const f of files) {
+                console.log(`──────────────────────────────────────────────────────────`);
+                console.log(`【${f.tier.toUpperCase()}】 ${f.path}`);
+                console.log(`──────────────────────────────────────────────────────────`);
+                console.log(f.content.trimEnd());
+                console.log();
+        }
 }
 
 /** One doctor check in structured form — the `--json` schema (see docs/usage.md). */
 interface DoctorCheck {
-	id: string;
-	status: "pass" | "warn" | "fail";
-	detail: string;
+        id: string;
+        status: "pass" | "warn" | "fail";
+        detail: string;
 }
 
 async function cmdDoctor(jsonMode: boolean): Promise<number> {
-	const cwd = process.cwd();
-	const checks: DoctorCheck[] = [];
-	let hardFail = false;
-	let warnings = 0;
-	const check = (label: string, pass: boolean, detail: string, level: "fail" | "warn" = "fail") => {
-		const icon = pass ? "✓" : level === "warn" ? "⚠" : "✗";
-		if (!jsonMode) console.log(`${icon} ${label}${detail ? ` — ${detail}` : ""}`);
-		const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-		checks.push({ id, status: pass ? "pass" : level, detail });
-		if (!pass) {
-			if (level === "fail") hardFail = true;
-			else warnings++;
-		}
-	};
+        const cwd = process.cwd();
+        const checks: DoctorCheck[] = [];
+        let hardFail = false;
+        let warnings = 0;
+        const check = (label: string, pass: boolean, detail: string, level: "fail" | "warn" = "fail") => {
+                const icon = pass ? "✓" : level === "warn" ? "⚠" : "✗";
+                if (!jsonMode) console.log(`${icon} ${label}${detail ? ` — ${detail}` : ""}`);
+                const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+                checks.push({ id, status: pass ? "pass" : level, detail });
+                if (!pass) {
+                        if (level === "fail") hardFail = true;
+                        else warnings++;
+                }
+        };
 
-	// 0. version + update state (from the notifier cache — no network here;
-	// refresh with `unown update --check`)
-	{
-		const root = resolveRepoRoot(realGit);
-		const short = root ? gitShortSha(root, realGit) : null;
-		check("unown version", true, `${VERSION}${short ? ` · ${short}` : ""} · ${root ?? "(not a git checkout)"}`);
-		const cache = readUpdateCheckCache(UNOWN_HOME);
-		if (cache?.latest && compareSemver(cache.latest, VERSION) > 0) {
-			check(
-				"update available",
-				false,
-				`v${cache.latest} — run \`unown update\` (checked ${cache.checkedAt ? describeAge(cache.checkedAt) : "?"})`,
-				"warn",
-			);
-		} else {
-			check(
-				"update available",
-				true,
-				cache?.checkedAt
-					? `up to date as of ${describeAge(cache.checkedAt)}${cache.error ? ` (${cache.error})` : ""}`
-					: "no check yet — run `unown update --check`",
-			);
-		}
-		// 0b. user-state migrations (schema version + pending count)
-		{
-			const mig = readMigrationState(UNOWN_HOME);
-			const pending = MIGRATIONS.filter((m) => m.from >= mig.version).length;
-			check(
-				"user state schema",
-				true,
-				`v${mig.version}${pending ? ` — ${pending} pending (applied by the next \`unown update\`)` : ""}`,
-			);
-		}
-	}
+        // 0. version + update state (from the notifier cache — no network here;
+        // refresh with `unown update --check`)
+        {
+                const root = resolveRepoRoot(realGit);
+                const short = root ? gitShortSha(root, realGit) : null;
+                check("unown version", true, `${VERSION}${short ? ` · ${short}` : ""} · ${root ?? "(not a git checkout)"}`);
+                const cache = readUpdateCheckCache(UNOWN_HOME);
+                if (cache?.latest && compareSemver(cache.latest, VERSION) > 0) {
+                        check(
+                                "update available",
+                                false,
+                                `v${cache.latest} — run \`unown update\` (checked ${cache.checkedAt ? describeAge(cache.checkedAt) : "?"})`,
+                                "warn",
+                        );
+                } else {
+                        check(
+                                "update available",
+                                true,
+                                cache?.checkedAt
+                                        ? `up to date as of ${describeAge(cache.checkedAt)}${cache.error ? ` (${cache.error})` : ""}`
+                                        : "no check yet — run `unown update --check`",
+                        );
+                }
+                // 0b. user-state migrations (schema version + pending count)
+                {
+                        const mig = readMigrationState(UNOWN_HOME);
+                        const pending = MIGRATIONS.filter((m) => m.from >= mig.version).length;
+                        check(
+                                "user state schema",
+                                true,
+                                `v${mig.version}${pending ? ` — ${pending} pending (applied by the next \`unown update\`)` : ""}`,
+                        );
+                }
+        }
 
-	// 1. agent dir & models
-	const agentDir = ensureUnownAgentDir();
-	const modelsExists = existsSync(join(agentDir, "models.json"));
-	check("agent dir", modelsExists, agentDir);
-	const active = resolveActiveProvider(agentDir);
-	if (modelsExists) {
-		const file = readAgentModelsFile(agentDir);
-		if (file.error) check("models.json parses", false, file.error);
-		else
-			check(
-				"model provider configured",
-				file.providers.length > 0,
-				active ? `${active.id} · ${active.modelIds.join(", ") || "no models"}` : "none",
-			);
-	}
+        // 1. agent dir & models
+        const agentDir = ensureUnownAgentDir();
+        const modelsExists = existsSync(join(agentDir, "models.json"));
+        check("agent dir", modelsExists, agentDir);
+        const active = resolveActiveProvider(agentDir);
+        if (modelsExists) {
+                const file = readAgentModelsFile(agentDir);
+                if (file.error) check("models.json parses", false, file.error);
+                else
+                        check(
+                                "model provider configured",
+                                file.providers.length > 0,
+                                active ? `${active.id} · ${active.modelIds.join(", ") || "no models"}` : "none",
+                        );
+        }
 
-	// 2. memory stack
-	initProjectMemory(cwd);
-	check("project memory", existsSync(projectMemoryPath(cwd)), projectMemoryPath(cwd).replace(cwd, "."));
-	check("user memory", true, `${UNOWN_HOME}/memory/user.md`);
+        // 2. memory stack
+        initProjectMemory(cwd);
+        check("project memory", existsSync(projectMemoryPath(cwd)), projectMemoryPath(cwd).replace(cwd, "."));
+        check("user memory", true, `${UNOWN_HOME}/memory/user.md`);
 
-	// 3. model endpoint (the chat path — failures here break sessions)
-	if (active?.baseUrl) {
-		const probe = await probeOpenAiEndpoint(active.baseUrl, active.apiKey ?? undefined, 4000);
-		const serving =
-			probe.models && probe.models.length > 0
-				? ` · serves ${probe.models.slice(0, 4).join(", ")}${probe.models.length > 4 ? " …" : ""}`
-				: "";
-		if (probe.ok) {
-			check("model endpoint reachable", true, `${active.baseUrl}${serving}`);
-		} else if (probe.problem === "auth") {
-			check(
-				"model endpoint reachable",
-				false,
-				`credentials rejected (HTTP ${probe.status}) — check the key in ~/.unown/agent/auth.json or run: unown setup`,
-			);
-		} else {
-			check(
-				"model endpoint reachable",
-				false,
-				`${active.baseUrl} unreachable — ${
-					isLoopbackProvider(active)
-						? "start the stack (bun run agent:start) or run: unown setup"
-						: "check the URL or run: unown setup"
-				}`,
-			);
-		}
-		// 3b. bridge specifics: upstream key, upstream health, routable model
-		if (isLoopbackProvider(active)) {
-			try {
-				const res = await fetch(`${active.baseUrl.replace(/\/v1\/?$/, "")}/health`, {
-					signal: AbortSignal.timeout(4000),
-				});
-				if (res.ok) {
-					const body = (await res.json()) as {
-						requests?: number;
-						errors?: number;
-						upstream?: { ok?: boolean; status?: number };
-						upstreamKeyIsSet?: boolean;
-						defaultModel?: string;
-						models?: string[];
-					};
-					check(
-						"bridge upstream key",
-						body.upstreamKeyIsSet !== false,
-						body.upstreamKeyIsSet === false
-							? "BRIDGE_UPSTREAM_KEY is not set in the repo's .env — chats will fail with 401"
-							: "BRIDGE_UPSTREAM_KEY set",
-					);
-					check(
-						"bridge upstream health",
-						body.upstream?.ok !== false,
-						body.upstream?.ok === false
-							? `upstream unhealthy (${body.upstream.status ?? "no answer"}) — check BRIDGE_UPSTREAM_URL`
-							: `${body.requests ?? 0} requests, ${body.errors ?? 0} errors`,
-					);
-					const model = active.modelIds[0];
-					if (model && Array.isArray(body.models) && body.models.length > 0 && !body.models.includes(model)) {
-						check(
-							"default model routable",
-							false,
-							`"${model}" is not in the bridge allow-list (BRIDGE_KNOWN_MODELS) — requests route to ${
-								body.defaultModel ?? "the default"
-							}`,
-							"warn",
-						);
-					}
-				}
-			} catch {
-				// the endpoint probe above already reported reachability
-			}
-		}
-	} else if (modelsExists) {
-		check(
-			"model endpoint reachable",
-			false,
-			"the configured provider declares no baseUrl — fix ~/.unown/agent/models.json or run: unown setup",
-		);
-	}
+        // 3. model endpoint (the chat path — failures here break sessions)
+        if (active?.baseUrl) {
+                const probe = await probeOpenAiEndpoint(active.baseUrl, active.apiKey ?? undefined, 4000);
+                const serving =
+                        probe.models && probe.models.length > 0
+                                ? ` · serves ${probe.models.slice(0, 4).join(", ")}${probe.models.length > 4 ? " …" : ""}`
+                                : "";
+                if (probe.ok) {
+                        check("model endpoint reachable", true, `${active.baseUrl}${serving}`);
+                } else if (probe.problem === "auth") {
+                        check(
+                                "model endpoint reachable",
+                                false,
+                                `credentials rejected (HTTP ${probe.status}) — check the key in ~/.unown/agent/auth.json or run: unown setup`,
+                        );
+                } else {
+                        check(
+                                "model endpoint reachable",
+                                false,
+                                `${active.baseUrl} unreachable — ${
+                                        isLoopbackProvider(active)
+                                                ? "start the stack (bun run agent:start) or run: unown setup"
+                                                : "check the URL or run: unown setup"
+                                }`,
+                        );
+                }
+                // 3b. bridge specifics: upstream key, upstream health, routable model
+                if (isLoopbackProvider(active)) {
+                        try {
+                                const res = await fetch(`${active.baseUrl.replace(/\/v1\/?$/, "")}/health`, {
+                                        signal: AbortSignal.timeout(4000),
+                                });
+                                if (res.ok) {
+                                        const body = (await res.json()) as {
+                                                requests?: number;
+                                                errors?: number;
+                                                upstream?: { ok?: boolean; status?: number };
+                                                upstreamKeyIsSet?: boolean;
+                                                defaultModel?: string;
+                                                models?: string[];
+                                        };
+                                        check(
+                                                "bridge upstream key",
+                                                body.upstreamKeyIsSet !== false,
+                                                body.upstreamKeyIsSet === false
+                                                        ? "BRIDGE_UPSTREAM_KEY is not set in the repo's .env — chats will fail with 401"
+                                                        : "BRIDGE_UPSTREAM_KEY set",
+                                        );
+                                        check(
+                                                "bridge upstream health",
+                                                body.upstream?.ok !== false,
+                                                body.upstream?.ok === false
+                                                        ? `upstream unhealthy (${body.upstream.status ?? "no answer"}) — check BRIDGE_UPSTREAM_URL`
+                                                        : `${body.requests ?? 0} requests, ${body.errors ?? 0} errors`,
+                                        );
+                                        const model = active.modelIds[0];
+                                        if (model && Array.isArray(body.models) && body.models.length > 0 && !body.models.includes(model)) {
+                                                check(
+                                                        "default model routable",
+                                                        false,
+                                                        `"${model}" is not in the bridge allow-list (BRIDGE_KNOWN_MODELS) — requests route to ${
+                                                                body.defaultModel ?? "the default"
+                                                        }`,
+                                                        "warn",
+                                                );
+                                        }
+                                }
+                        } catch {
+                                // the endpoint probe above already reported reachability
+                        }
+                }
+        } else if (modelsExists) {
+                check(
+                        "model endpoint reachable",
+                        false,
+                        "the configured provider declares no baseUrl — fix ~/.unown/agent/models.json or run: unown setup",
+                );
+        }
 
-	// 4. OS sandbox — fs + network isolation for engine runs. Platform-aware:
-	// Linux checks bubblewrap, macOS checks seatbelt (sandbox-exec), and
-	// Windows reports the native-Windows story (path-jail fallback there —
-	// the same degradation Claude Code ships on native Windows). Always a
-	// non-fatal warning.
-	{
-		const osb = await osSandboxAvailable();
-		const name =
-			process.platform === "darwin"
-				? "OS sandbox (seatbelt)"
-				: process.platform === "win32"
-					? "OS sandbox (Windows)"
-					: "OS sandbox (bubblewrap)";
-		const unavailable =
-			process.platform === "darwin"
-				? "sandbox-exec unavailable — engine runs use the path jail"
-				: process.platform === "win32"
-					? "not available on native Windows — engine runs use the path jail (same as Claude Code's Windows story)"
-					: "unavailable — engine runs fall back to the path jail";
-		const detail =
-			process.platform === "darwin"
-				? `${resolveSandboxExecPath()} — fs isolation active (seatbelt profile${netBlocked() ? "; network denied" : "; network shared"})`
-				: `${resolveBwrapPath()} — fs+net isolation active`;
-		check(name, osb, osb ? detail : unavailable, "warn");
-	}
+        // 4. OS sandbox — fs + network isolation for engine runs. Platform-aware:
+        // Linux checks bubblewrap, macOS checks seatbelt (sandbox-exec), and
+        // Windows reports the native-Windows story (path-jail fallback there —
+        // the same degradation Claude Code ships on native Windows). Always a
+        // non-fatal warning.
+        {
+                const osb = await osSandboxAvailable();
+                const name =
+                        process.platform === "darwin"
+                                ? "OS sandbox (seatbelt)"
+                                : process.platform === "win32"
+                                        ? "OS sandbox (Windows)"
+                                        : "OS sandbox (bubblewrap)";
+                const unavailable =
+                        process.platform === "darwin"
+                                ? "sandbox-exec unavailable — engine runs use the path jail"
+                                : process.platform === "win32"
+                                        ? "not available on native Windows — engine runs use the path jail (same as Claude Code's Windows story)"
+                                        : "unavailable — engine runs fall back to the path jail";
+                const detail =
+                        process.platform === "darwin"
+                                ? `${resolveSandboxExecPath()} — fs isolation active (seatbelt profile${netBlocked() ? "; network denied" : "; network shared"})`
+                                : `${resolveBwrapPath()} — fs+net isolation active`;
+                check(name, osb, osb ? detail : unavailable, "warn");
+        }
 
-	// 5. engine health (notes + dreams + dashboard) — chat works without it;
-	// session notes just queue in the outbox until it returns.
-	try {
-		const res = await fetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
-		const body: any = await res.json();
-		check(
-			"self-learning engine",
-			res.ok && body.ok,
-			`${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`,
-		);
-	} catch {
-		check(
-			"self-learning engine",
-			false,
-			`unreachable — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox`,
-			"warn",
-		);
-	}
+        // 5. engine health (notes + dreams + dashboard) — chat works without it;
+        // session notes just queue in the outbox until it returns.
+        try {
+                const res = await fetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
+                const body: any = await res.json();
+                check(
+                        "self-learning engine",
+                        res.ok && body.ok,
+                        `${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`,
+                );
+        } catch {
+                check(
+                        "self-learning engine",
+                        false,
+                        `unreachable — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox`,
+                        "warn",
+                );
+        }
 
-	if (jsonMode) {
-		console.log(
-			JSON.stringify(
-				{
-					ok: !hardFail,
-					version: VERSION,
-					cwd,
-					agentDir,
-					engineUrl: ENGINE_URL,
-					strictHooks: STRICT_HOOKS,
-					checks,
-					summary: { hardFail, warnings },
-				},
-				null,
-				2,
-			),
-		);
-		process.exit(hardFail ? 1 : 0);
-	}
-	if (hardFail)
-		console.log(
-			`\n✗ unown cannot chat yet — fix the ✗ items above (unown setup, unown --help, docs/troubleshooting.md)`,
-		);
-	else if (warnings > 0) console.log(`\n✓ unown is ready to chat in ${cwd} (⚠ items affect learning features only)`);
-	else console.log(`\n✓ unown is ready in ${cwd}`);
-	process.exit(hardFail ? 1 : 0);
+        if (jsonMode) {
+                console.log(
+                        JSON.stringify(
+                                {
+                                        ok: !hardFail,
+                                        version: VERSION,
+                                        cwd,
+                                        agentDir,
+                                        engineUrl: ENGINE_URL,
+                                        strictHooks: STRICT_HOOKS,
+                                        checks,
+                                        summary: { hardFail, warnings },
+                                },
+                                null,
+                                2,
+                        ),
+                );
+                process.exit(hardFail ? 1 : 0);
+        }
+        if (hardFail)
+                console.log(
+                        `\n✗ unown cannot chat yet — fix the ✗ items above (unown setup, unown --help, docs/troubleshooting.md)`,
+                );
+        else if (warnings > 0) console.log(`\n✓ unown is ready to chat in ${cwd} (⚠ items affect learning features only)`);
+        else console.log(`\n✓ unown is ready in ${cwd}`);
+        process.exit(hardFail ? 1 : 0);
 }
 
 async function cmdNote(text: string) {
-	if (!text.trim()) {
-		console.error('usage: unown note "something worth remembering"');
-		process.exit(1);
-	}
-	const result = await deliverTerminalNote({ content: text, projectPath: process.cwd(), ts: Date.now() });
-	console.log(
-		result.delivered
-			? `✓ note delivered to the engine`
-			: `· engine unreachable — note queued in outbox (${result.detail ?? ""})`,
-	);
-	process.exit(0);
+        if (!text.trim()) {
+                console.error('usage: unown note "something worth remembering"');
+                process.exit(1);
+        }
+        const result = await deliverTerminalNote({ content: text, projectPath: process.cwd(), ts: Date.now() });
+        console.log(
+                result.delivered
+                        ? `✓ note delivered to the engine`
+                        : `· engine unreachable — note queued in outbox (${result.detail ?? ""})`,
+        );
+        process.exit(0);
 }
 
 async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: boolean) {
-	const cwd = process.cwd();
-	// Pre-flight: fail fast with instructions when the model endpoint is
-	// unreachable or rejects credentials (stderr — stdout may carry the
-	// JSON event stream in --mode json).
-	ensureUnownAgentDirInfo();
-	maybeShowUpdateNotice();
-	const pre = await runPreflight();
-	printFirstRunBanner();
-	if (pre) {
-		console.error(`unown: ${pre.message}`);
-		console.error(`  → ${pre.hint}`);
-		console.error("  (set UNOWN_NO_PREFLIGHT=1 to skip this check)");
-		process.exit(1);
-	}
-	// Piped stdin (e.g. `cat error.log | unown -p "fix this"`) joins the prompt.
-	let piped = "";
-	if (!process.stdin.isTTY) {
-		piped = await new Promise<string>((resolveStdin) => {
-			let data = "";
-			process.stdin.setEncoding("utf8");
-			process.stdin.on("data", (c) => {
-				data += c;
-			});
-			process.stdin.on("end", () => resolveStdin(data));
-			setTimeout(() => resolveStdin(data), 500); // short pipe timeout
-		});
-	}
-	const message = [prompt, piped.trim()].filter(Boolean).join("\n\n");
-	if (!message) {
-		console.error("unown: no prompt given (pass one or pipe stdin)");
-		process.exit(1);
-	}
-	const { runtime } = await bootRuntime(cwd, verbose, {
-		jsonMode: args.jsonMode,
-		noSession: args.noSession,
-		tools: args.tools,
-		appendSystemPromptPath: args.appendSystemPromptPath,
-		plan: args.plan,
-	});
-	const code = await runPrintMode(runtime as any, { mode: args.jsonMode ? "json" : "text", messages: [message] });
-	process.exit(code);
+        const cwd = process.cwd();
+        // Pre-flight: fail fast with instructions when the model endpoint is
+        // unreachable or rejects credentials (stderr — stdout may carry the
+        // JSON event stream in --mode json).
+        ensureUnownAgentDirInfo();
+        maybeShowUpdateNotice();
+        const pre = await runPreflight();
+        printFirstRunBanner();
+        if (pre) {
+                console.error(`unown: ${pre.message}`);
+                console.error(`  → ${pre.hint}`);
+                console.error("  (set UNOWN_NO_PREFLIGHT=1 to skip this check)");
+                process.exit(1);
+        }
+        // Piped stdin (e.g. `cat error.log | unown -p "fix this"`) joins the prompt.
+        let piped = "";
+        if (!process.stdin.isTTY) {
+                piped = await new Promise<string>((resolveStdin) => {
+                        let data = "";
+                        process.stdin.setEncoding("utf8");
+                        process.stdin.on("data", (c) => {
+                                data += c;
+                        });
+                        process.stdin.on("end", () => resolveStdin(data));
+                        setTimeout(() => resolveStdin(data), 500); // short pipe timeout
+                });
+        }
+        const message = [prompt, piped.trim()].filter(Boolean).join("\n\n");
+        if (!message) {
+                console.error("unown: no prompt given (pass one or pipe stdin)");
+                process.exit(1);
+        }
+        const { runtime } = await bootRuntime(cwd, verbose, {
+                jsonMode: args.jsonMode,
+                noSession: args.noSession,
+                tools: args.tools,
+                appendSystemPromptPath: args.appendSystemPromptPath,
+                plan: args.plan,
+        });
+        const code = await runPrintMode(runtime as any, { mode: args.jsonMode ? "json" : "text", messages: [message] });
+        process.exit(code);
 }
 
 async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: BootOptions = {}) {
-	const cwd = process.cwd();
-	ensureUnownAgentDirInfo();
-	maybeShowUpdateNotice();
-	const pre = await runPreflight();
-	printFirstRunBanner();
-	if (pre) {
-		// Warn and continue: the user may start the stack in another
-		// terminal — pi's built-in retries cover that window.
-		console.log(`⚠ pre-flight: ${pre.message}`);
-		console.log(`  → ${pre.hint}`);
-		console.log();
-	}
-	const { runtime } = await bootRuntime(cwd, verbose, bootOpts);
-	const mode = new InteractiveMode(runtime as any, prompt ? { initialMessage: prompt } : {});
-	await mode.run(); // blocks until exit; normal exit path is process.exit(0)
+        const cwd = process.cwd();
+        ensureUnownAgentDirInfo();
+        maybeShowUpdateNotice();
+        const pre = await runPreflight();
+        printFirstRunBanner();
+        if (pre) {
+                // Warn and continue: the user may start the stack in another
+                // terminal — pi's built-in retries cover that window.
+                console.log(`⚠ pre-flight: ${pre.message}`);
+                console.log(`  → ${pre.hint}`);
+                console.log();
+        }
+        const { runtime } = await bootRuntime(cwd, verbose, bootOpts);
+        const mode = new InteractiveMode(runtime as any, prompt ? { initialMessage: prompt } : {});
+        await mode.run(); // blocks until exit; normal exit path is process.exit(0)
 }
 
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 export async function runCli(argv: string[]) {
-	// `setup`, `models`, `update`, `changelog`, `info`, `completions`,
-	// `uninstall` and `doctor` own their own flag grammar — dispatch
-	// before the generic parser would eat their flags as prompt text.
-	const first = argv[0];
-	if (first === "setup") process.exit(await runSetupCommand(argv.slice(1)));
-	if (first === "models") {
-		await printModelsOverview();
-		process.exit(0);
-	}
-	if (first === "doctor") {
-		const rest = argv.slice(1);
-		const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
-		if (unknown.length) {
-			console.error(`unown doctor: unknown argument(s): ${unknown.join(" ")}`);
-			process.exit(1);
-		}
-		process.exit(await cmdDoctor(rest.includes("--json")));
-	}
-	if (first === "info") {
-		const rest = argv.slice(1);
-		const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
-		if (unknown.length) {
-			console.error(`unown info: unknown argument(s): ${unknown.join(" ")}`);
-			process.exit(1);
-		}
-		process.exit(cmdInfo(rest.includes("--json")));
-	}
-	if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));
-	if (first === "uninstall") {
-		const { flags, error } = parseUninstallFlags(argv.slice(1));
-		if (error) {
-			console.error(`unown uninstall: ${error}`);
-			console.error("usage: unown uninstall [--dry-run] [--purge-data] [--purge-checkout]");
-			process.exit(1);
-		}
-		if (flags.help) {
-			console.log(UNINSTALL_HELP);
-			process.exit(0);
-		}
-		process.exit(cmdUninstall(flags));
-	}
-	// `update` and `changelog` likewise (update owns --check/--json/etc).
-	if (first === "update") {
-		const { flags, error } = parseUpdateFlags(argv.slice(1));
-		if (error) {
-			console.error(`unown update: ${error}`);
-			console.error("usage: unown update [--check] [--json] [--allow-dirty] [--rollback] [version]");
-			process.exit(1);
-		}
-		if (flags.help) {
-			console.log(UPDATE_HELP);
-			process.exit(0);
-		}
-		process.exit(await cmdUpdate(flags));
-	}
-	if (first === "changelog") process.exit(cmdChangelog(argv.slice(1)));
-	// Version surface: the ROOT package.json is the single source of
-	// truth (the self-learning package carries its own 0.x number); CI
-	// asserts `unown --version` === package.json.version on every run.
-	if (argv.includes("--version") || argv.includes("-V")) {
-		console.log(VERSION);
-		process.exit(0);
-	}
-	const args = parseArgs(argv);
-	switch (args.command) {
-		case "help":
-			console.log(HELP);
-			process.exit(0);
-			break;
-		case "init":
-			cmdInit();
-			process.exit(0);
-			break;
-		case "memory":
-			cmdMemory();
-			process.exit(0);
-			break;
-		case "note":
-			await cmdNote(args.prompt ?? "");
-			break;
-		case "print":
-			await cmdPrint(args.prompt, args, args.verbose);
-			break;
-		case "tui":
-			await cmdTui(args.prompt, args.verbose, {
-				tools: args.tools,
-				appendSystemPromptPath: args.appendSystemPromptPath,
-				plan: args.plan,
-			});
-			break;
-	}
+        // `setup`, `models`, `update`, `changelog`, `info`, `completions`,
+        // `uninstall` and `doctor` own their own flag grammar — dispatch
+        // before the generic parser would eat their flags as prompt text.
+        const first = argv[0];
+        if (first === "setup") process.exit(await runSetupCommand(argv.slice(1)));
+        if (first === "models") {
+                await printModelsOverview();
+                process.exit(0);
+        }
+        if (first === "doctor") {
+                const rest = argv.slice(1);
+                const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
+                if (unknown.length) {
+                        console.error(`unown doctor: unknown argument(s): ${unknown.join(" ")}`);
+                        process.exit(1);
+                }
+                process.exit(await cmdDoctor(rest.includes("--json")));
+        }
+        if (first === "info") {
+                const rest = argv.slice(1);
+                const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
+                if (unknown.length) {
+                        console.error(`unown info: unknown argument(s): ${unknown.join(" ")}`);
+                        process.exit(1);
+                }
+                process.exit(cmdInfo(rest.includes("--json")));
+        }
+        if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));
+        if (first === "uninstall") {
+                const { flags, error } = parseUninstallFlags(argv.slice(1));
+                if (error) {
+                        console.error(`unown uninstall: ${error}`);
+                        console.error("usage: unown uninstall [--dry-run] [--purge-data] [--purge-checkout]");
+                        process.exit(1);
+                }
+                if (flags.help) {
+                        console.log(UNINSTALL_HELP);
+                        process.exit(0);
+                }
+                process.exit(cmdUninstall(flags));
+        }
+        // `update` and `changelog` likewise (update owns --check/--json/etc).
+        if (first === "update") {
+                const { flags, error } = parseUpdateFlags(argv.slice(1));
+                if (error) {
+                        console.error(`unown update: ${error}`);
+                        console.error("usage: unown update [--check] [--json] [--allow-dirty] [--rollback] [version]");
+                        process.exit(1);
+                }
+                if (flags.help) {
+                        console.log(UPDATE_HELP);
+                        process.exit(0);
+                }
+                process.exit(await cmdUpdate(flags));
+        }
+        if (first === "changelog") process.exit(cmdChangelog(argv.slice(1)));
+        // Version surface: the ROOT package.json is the single source of
+        // truth (the self-learning package carries its own 0.x number); CI
+        // asserts `unown --version` === package.json.version on every run.
+        if (argv.includes("--version") || argv.includes("-V")) {
+                console.log(VERSION);
+                process.exit(0);
+        }
+        const args = parseArgs(argv);
+        switch (args.command) {
+                case "help":
+                        console.log(HELP);
+                        process.exit(0);
+                        break;
+                case "init":
+                        cmdInit();
+                        process.exit(0);
+                        break;
+                case "memory":
+                        cmdMemory();
+                        process.exit(0);
+                        break;
+                case "note":
+                        await cmdNote(args.prompt ?? "");
+                        break;
+                case "print":
+                        await cmdPrint(args.prompt, args, args.verbose);
+                        break;
+                case "tui":
+                        await cmdTui(args.prompt, args.verbose, {
+                                tools: args.tools,
+                                appendSystemPromptPath: args.appendSystemPromptPath,
+                                plan: args.plan,
+                        });
+                        break;
+        }
 }

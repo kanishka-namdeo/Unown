@@ -118,9 +118,26 @@ Every unown session registers five tools on top of pi's built-ins:
 
 When you quit a session in which something happened, a session note (prompt count, tool calls, final outcome) is delivered to the engine — or written to `~/.unown/notes/outbox/` if the engine is down, and synced later. That note is the raw material AutoDream consolidates into `.unown/memory/project.md`.
 
+## Checkpoints and receipts
+
+Every session also keeps a **receipts audit ledger** and a **checkpoint store** under `.unown/` (both gitignored, per-machine):
+
+- **Receipts** (`.unown/receipts/<session>.jsonl`, one file per session boot): the ordered audit — session starts, every prompt (first 200 chars), every tool call with its input (file paths, commands, URLs, tasks; inputs capped at 4 KB), every result (ok/fail, usage), every checkpoint and restore. `/receipts [n]` prints the last n entries plus totals (tool calls by tool, distinct files written, errors, checkpoints, restores). Subagent processes write their own ledger (marked `[subagent]`).
+- **Checkpoints** (`.unown/checkpoints/`): content-addressed blob snapshots. A **turn checkpoint** is sealed automatically whenever a turn wrote files — it stores the *pre-turn* state of every file that changed (files that did not exist before are tombstoned). **Named checkpoints** snapshot the current state of every file the session touched.
+
+| Command | What it does |
+|---|---|
+| `/checkpoint [label]` | Snapshot the current state of every file this session touched (bash-caused changes are not tracked file-by-file) |
+| `/undo [n]` | Revert the file changes of the last n turn(s) (default 1) — restores pre-turn states; new files created this turn are deleted |
+| `/restore <id\|label>` | Rewrite the files of a named (or turn) checkpoint; prefix matching works |
+| `/checkpoints` | List checkpoints (turn + named) with the blob-store size |
+| `/receipts [n]` | Show the audit ledger — last n entries (default 20) + totals |
+
+Limits, stated plainly: bash-caused file changes appear in the ledger as commands but are not itemized per-file (no workspace diffing); `/undo` walks only the current process's turn checkpoints — across processes (e.g. after subagent writes), use `/checkpoint` + `/restore`. Restore only ever writes inside the project directory (the same jail the hooks enforce). At most 40 checkpoints are kept (oldest pruned, blobs garbage-collected).
+
 ## Slash commands
 
-unown adds six commands of its own:
+unown adds eleven commands of its own:
 
 | Command | What it does |
 |---|---|
@@ -130,6 +147,11 @@ unown adds six commands of its own:
 | `/agents` | List available subagents (built-ins + `.unown/agents/*.md` + `~/.unown/agent/agents/*.md`) |
 | `/learning` | Re-print the effective 4-tier memory stack, fresh from disk |
 | `/lsp` | Show LSP status: detected language servers (running/available), open documents, cached diagnostics |
+| `/checkpoint [label]` | Snapshot the current state of the files this session touched |
+| `/undo [n]` | Revert the file changes of the last n turn(s) |
+| `/restore <id\|label>` | Restore a checkpoint |
+| `/checkpoints` | List checkpoints + blob-store size |
+| `/receipts [n]` | Show the session receipts audit ledger |
 
 pi ships 23 built-in slash commands. The ones worth learning first:
 

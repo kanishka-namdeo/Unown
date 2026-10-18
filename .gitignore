@@ -83,3 +83,8 @@ benchmarks/edit-bench/results/rerun-2026-10-17/*/events/
 # user-tier notes land here — runtime state, like scratch-mem; the per-project
 # tracked surface is <project>/.unown/memory/project.md, not this).
 /memory/
+
+# Session audit ledgers + checkpoint blob stores (terminal-agent runtime
+# state: /receipts, /undo, /restore — per-machine, per-session, never shared)
+.unown/receipts/
+.unown/checkpoints/
