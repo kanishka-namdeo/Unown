@@ -32,6 +32,7 @@ overrides. Default topology is unchanged.
 | H8 | integration shape | bridge local route + per-subtask env | **implemented + verified** | real `mineFailure()` over the local lane → harness-accepted result (99.8s); 970/970 engine + 106/106 bridge tests |
 | H9 | miner spec compliance via remote `response_format` | kimi-k2.5 + `json_schema` | **refuted** | accepted (HTTP 200, all 3 models) but `maxLength`/`maxItems` NOT enforced → patchSpecOk 0.50 ≠ 1.00; judge 4/4 ties |
 | H10 | task minting via local-draft+remote-repair cascade | Qwen3-0.6B draft + kimi-k2.5 repair | **verified** | accept 1.00 vs 0.83 remote; $0.00065 vs $0.0069 per accepted (**10.6×** cheaper); judge 2W/3T/0L |
+| H11 | LFM2.5-2.6B triage lane on a 4GB host | LFM2.5-2.6B Q4 @ ctx 2048/4096 | **refuted** | OOM-killed during generation at both ctx; idle RSS ~3.3GB either way — hard floor, 2.6B lane needs ≥6GB |
 
 ## E0 — capability probe (small box, idle)
 
@@ -43,7 +44,7 @@ overrides. Default topology is unchanged.
 
 **Lane-by-RAM guidance (the cross-platform answer):** the 0.6B lane fits
 2-vCPU/4GB boxes (~1.2GB RSS at 12k ctx); 1B needs ~2.7GB RSS (6–8GB boxes
-comfortable); 2.6B thrashes a 4GB box (5.9 tok/s) and is the lane for ≥6–8GB
+comfortable); 2.6B OOMs a 4GB box outright (E9: hard floor — MoE compute buffers, ~3.3GB idle RSS regardless of ctx) and is the lane for ≥6–8GB
 machines — validated cross-OS by the `local-llm-probe.yml` GitHub matrix
 (green on ubuntu/macos/windows at 3a84e37).
 
@@ -126,6 +127,25 @@ existing selfcheck → inactive-insert → agent-validation-run gates run
 unchanged. Re-run: `node benchmarks/local-llm/runner.mjs e8-cascade
 --model qwen3-0.6b` (~35 min on this box, resume-safe).
 
+## E9 — LFM2.5-2.6B triage on the 4GB box (H11)
+
+**Question:** E0 showed LFM2.5-2.6B Q4_K_M boots on the 4GB host but thrashes
+at ctx 8192 (3414MB RSS, 5.9 tok/s). Triage prompts are short — does a
+reduced context (2048–4096) make the 2.6B quality lane viable on small-RAM
+boxes with the engine co-resident?
+
+**Answer: no — REFUTED, and the reason changes the guidance.** llama-server
+was OOM-killed during generation at **both** ctx 4096 and ctx 2048. Idle RSS
+was ~3.3GB at either setting (3351MB / 3303MB): the model's MoE compute
+buffers dominate and context reduction recovers only ~50MB. With the
+engine+bridge co-resident (~0.5GB — they run in every real deployment) plus
+the node runner, there is no headroom for KV growth once generation starts.
+E0's boot probe at ctx 8192 survived only because it barely generated. The
+lane-by-RAM guidance is therefore a **hard floor, not a throughput
+suggestion**: the 2.6B lane needs ≥6GB regardless of context; 4GB boxes take
+the 0.6B/1B lane. (Stopping the engine to force the run through would test a
+topology no deployment uses — not run.)
+
 ## Findings that change decisions
 
 1. **KV-cache q8_0 quantization is a CPU trap.** Measured 4.4× prefill
@@ -184,7 +204,9 @@ entirely and makes the learning loop operable offline.
 - **H7** (local as main brain): scoped out by design — see verdict matrix.
 - LFM2.5-2.6B quality-lane experiments (E1–E4) on a ≥8GB machine; the 4GB
   host could only prove the lane boots (E0) — granite/qwen carried the
-  quality verdicts here.
+  quality verdicts here. **E9/H11 closed the 4GB door: OOM at ctx 2048–4096
+  (hard floor — MoE compute buffers, not KV); 2.6B quality verdicts still
+  need a ≥6–8GB machine.**
 - Remote-lane `response_format` adoption for the miner (finding 2): **run as
   E7/H9 — refuted** (accepted but `maxLength`/`maxItems` not enforced); re-run
   `e7-rfmt` if the upstream's JSON-Schema keyword support changes.

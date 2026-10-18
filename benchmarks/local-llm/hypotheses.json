@@ -299,6 +299,34 @@
         "results/e4-qwen3-0.6b/e4-mint.json",
         "results/e4-granite-4.0-1b/e4-mint.json"
       ]
+    },
+    {
+      "id": "H11",
+      "title": "LFM2.5-2.6B can serve the note-triage lane on a 4GB host at reduced context",
+      "statement": "Running LFM2.5-2.6B Q4_K_M with a reduced context (2048-4096, short triage prompts fit) keeps RSS low enough to complete the E1 triage replay on the 4GB host with the Unown engine co-resident, extending the 2.6B quality lane to small-RAM boxes.",
+      "subtask": "note triage (generative) — RAM floor for the 2.6B lane (H6 lane-by-RAM refinement)",
+      "experiment": "E9 (e1-triage --model lfm2.5-2.6b at ctx 4096 then 2048 on the 2-vCPU/4GB host, engine+bridge running as in production)",
+      "metrics": [
+        "survives the 18-note triage replay (no OOM)",
+        "llama-server RSS at idle ctx 2048/4096",
+        "kind/outcome agreement vs remote (if it survives)"
+      ],
+      "thresholds": {
+        "survives": "true",
+        "rssFloor": "< 3.0GB at ctx 2048 (leaves headroom for KV growth + engine + bridge + node)"
+      },
+      "guards": [
+        "the engine + bridge stay running during the test — they are co-resident in every real Unown deployment, so a lane that needs them stopped is not a lane",
+        "LocalLlamaServer stops the server on runner exit (no leaked process)"
+      ],
+      "precedent": "E0 measured 3414MB RSS at ctx 8192 (5.9 tok/s, thrashing) — the open question was whether ctx reduction changes the viability",
+      "status": "refuted",
+      "verdict": "REFUTED — hard RAM floor, not a throughput issue: llama-server OOM-killed during generation at BOTH ctx 4096 and ctx 2048 (kernel oom-kill, task=llama-server). Idle RSS is ~3.3GB at either ctx (3303MB at 2048, 3351MB at 4096) — the MoE compute buffers dominate and ctx reduction recovers only ~50MB, so with the engine+bridge co-resident (~0.5GB) plus the node runner there is no headroom for KV growth during generation. E0's boot probe at ctx 8192 survived only because it barely generated. The 2.6B lane stays a >=6GB-machine option (lane-by-RAM guidance confirmed as a hard floor); small boxes take the 0.6B/1B lane.",
+      "evidence": [
+        "results/e1-lfm2.5-2.6b/ (attempts at ctx 4096 and 2048 — both died during the local arm; the results dirs hold no completed run)",
+        "E0 probe row: RSS 3414MB at ctx 8192 (REPORT.md)",
+        "dmesg: Out of memory: Killed process (llama-server), anon-rss ~1.85GB at kill time"
+      ]
     }
   ]
 }
