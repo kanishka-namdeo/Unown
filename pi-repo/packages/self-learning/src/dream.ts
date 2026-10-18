@@ -19,6 +19,7 @@ import { atomicWriteFileSync } from "./atomic.ts";
 import { emit } from "./bus.ts";
 import { analyzeCanaryRun, canaryK, sampleCanaryTasks } from "./canary.ts";
 import { decideGuardAction, guardSummary, noteGuardBanner, scanUntrustedText, type GuardFlag } from "./guard.ts";
+import { applyDreamNoteLanes, type DreamNoteInput } from "./localml.ts";
 import { chatJson, modelFor } from "./llm.ts";
 import { currentVersion, maxTierChars, readTier, rollback, writeTier } from "./memory.ts";
 import { markDreamed, pendingTerminalNotesByProject, undreamedNotes } from "./notes.ts";
@@ -97,9 +98,20 @@ export async function runDream(
                 // §5.3 adversarial-note filter: each note is scanned; flagged notes
                 // enter the dream input with a quarantine banner (plus the hardened
                 // SYSTEM rule 8 above — defense in depth on the same input).
-                const notesText = notes
+                //
+                // H15 local-ML lanes (dedup / activation rank / hybrid curation,
+                // all OFF by default, shadow-capable) run BEFORE the banner map:
+                // banners are prepended from the ORIGINAL note rows so curation
+                // can never touch them (the N5 guard).
+                const lanes = await applyDreamNoteLanes(notes as DreamNoteInput[], {
+                        goalText: String(currentMemory).slice(0, 2000),
+                });
+                if (lanes.events.mode !== "off") emit("lane:dream", { dreamId: id, ...lanes.events });
+                const notesText = lanes.notes
                         .map((n: any) => {
-                                const scan = scanUntrustedText(String(n.content ?? ""));
+                                // banner from the ORIGINAL row (never curated content — the N5 guard)
+                                const orig = n.origIndex !== undefined ? notes[n.origIndex] : n;
+                                const scan = scanUntrustedText(String(orig?.content ?? n.content ?? ""));
                                 const banner = scan.rules.length > 0 ? `${noteGuardBanner(scan)}\n` : "";
                                 return `--- note (${new Date(n.created_at).toISOString()}) run=${String(n.run_id ?? "").slice(0, 8)} ---\n${banner}${n.content}`;
                         })
@@ -113,7 +125,7 @@ export async function runDream(
                                 { role: "system", content: SYSTEM },
                                 {
                                         role: "user",
-                                        content: `CURRENT PROJECT MEMORY (version ${currentVersion("project")}):\n\n${currentMemory}\n\nSESSION NOTES SINCE LAST DREAM (${notes.length}):\n\n${notesText}`,
+                                        content: `CURRENT PROJECT MEMORY (version ${currentVersion("project")}):\n\n${currentMemory}\n\nSESSION NOTES SINCE LAST DREAM (${lanes.notes.length}):\n\n${notesText}`,
                                 },
                         ],
                         { maxTokens: 3000, model: modelFor("dream") },
@@ -418,9 +430,17 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
                         continue;
                 }
 
-                const notesText = notes
+                // H15 local-ML lanes on the terminal path too (same flags, same
+                // shadow/live semantics; goal = the project's current memory).
+                // Banners still derive from the ORIGINAL rows (N5 guard).
+                const lanes = await applyDreamNoteLanes(notes as DreamNoteInput[], {
+                        goalText: String(current).slice(0, 2000),
+                });
+                if (lanes.events.mode !== "off") emit("lane:dream", { project: group.slug, ...lanes.events });
+                const notesText = lanes.notes
                         .map((n: any) => {
-                                const scan = scanUntrustedText(String(n.content ?? ""));
+                                const orig = n.origIndex !== undefined ? notes[n.origIndex] : n;
+                                const scan = scanUntrustedText(String(orig?.content ?? n.content ?? ""));
                                 const banner = scan.rules.length > 0 ? `${noteGuardBanner(scan)}\n` : "";
                                 return `--- note (${new Date(n.created_at).toISOString()}) terminal session ---\n${banner}${n.content}`;
                         })
@@ -435,7 +455,7 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
                                         { role: "system", content: SYSTEM },
                                         {
                                                 role: "user",
-                                                content: `This is the PROJECT MEMORY of a real user project the agent works on in the terminal (project directory: ${group.projectPath}).\n\nCURRENT PROJECT MEMORY:\n\n${current}\n\nTERMINAL SESSION NOTES (${notes.length}):\n\n${notesText}`,
+                                                content: `This is the PROJECT MEMORY of a real user project the agent works on in the terminal (project directory: ${group.projectPath}).\n\nCURRENT PROJECT MEMORY:\n\n${current}\n\nTERMINAL SESSION NOTES (${lanes.notes.length}):\n\n${notesText}`,
                                         },
                                 ],
                                 { maxTokens: 3000, model: modelFor("dream") },

@@ -1,0 +1,13 @@
+{
+  "name": "unown-local-ml",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "OPTIONAL local ONNX embedding lane for the Unown self-learning engine (H15). NOT a bun/npm workspace member on purpose: this directory owns its own node_modules so the repo and the engine stay native-addon-free. Install on demand: npm install in this directory (downloads onnxruntime-node prebuilds ~287MB unpacked). When absent, the engine's localml lanes degrade to their symbolic-only verified shapes and the dream pipeline is unchanged.",
+  "scripts": {
+    "probe": "node lib/index.mjs --probe"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.1"
+  }
+}

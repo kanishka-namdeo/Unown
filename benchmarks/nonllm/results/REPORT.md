@@ -295,3 +295,48 @@ discriminating, RSS peak 400 MB combined.
 > so campaign #2 is renumbered **H23/H24/H25** to keep the program-level
 > hypothesis sequence unambiguous: local-llm H1–H11, nonllm H9–H15 +
 > H23–H25, complementary H16–H22. Content and verdicts unchanged.
+
+## H15 closed: the integration shipped (2026-10-18, opt-in)
+
+The registry's gate held until every condition was current: H9 verified on
+all three CI OSes (runs 39142263790 + 39156669131 — the latter including the
+campaign-2 lane probe) plus local Bun/Node, H10–H14 evidence standing, and
+the campaign-#1 rerun reproducing every headline. Then:
+
+- `pi-repo/packages/self-learning/src/localml.ts` — the lanes in the engine:
+  MinHash-union dedup, no-recency activation ranking, hybrid curation
+  (all call-time env flags, all off by default, `PI_LOCAL_ML=shadow` as the
+  runtime shadow-mode-replay mode; bus channel `lane:dream`).
+- `pi-repo/packages/self-learning/local-ml/` — the OPTIONAL ONNX embedding
+  sub-package (bge-small q8): not a workspace member, install-on-demand,
+  guarded dynamic import; absent = symbolic-only lanes, dream never fails.
+- Both dream paths (benchmark `runDream` + terminal `runProjectDream`) run
+  the lanes before prompt assembly; guard banners derive from ORIGINAL note
+  rows; dedup-dropped notes are still consumed (marked dreamed).
+- Pinned by `test/localml.test.ts` (17 tests, incl. byte-identity when
+  unset and shadow-mode identity); engine suite 1257/1257.
+
+The live cutover recommendation: run `PI_LOCAL_ML=shadow` against a real
+engine for a few dream cycles first (the `lane:dream` events carry the
+per-lane deltas), then flip to `live` per lane. kNN triage (H10) remains
+bench-verified only — see the H15 verdict for why.
+
+### The live shadow-mode replay (2026-10-18, the registry's final gate)
+
+Against the RUNNING engine (live bridge → Dashscope, real auto-dream router
+job, 8 undreamed notes incl. a seeded base + append-noise near-dup pair):
+
+```json
+{"mode":"shadow","embedder":"bge-small q8 (transformers.js + onnxruntime-node)",
+ "dedup":{"pairs":1,"dropped":1,"via":"minhash+cosine-union"},
+ "rank":{"reordered":true,"scoresTop":0.617},
+ "curate":{"notes":7,"compressed":2,"tokensBefore":539,"tokensAfter":487}}
+```
+
+The `lane:dream` bus event (SSE receipt) proves every layer end-to-end: the
+optional local-ml sub-package loaded IN-PROCESS through the guarded dynamic
+import on a live engine, the embedding tier ENGAGED (`via:
+minhash+cosine-union`, not minhash-only), the seeded near-dup was detected,
+the would-be reorder and compression were computed — and the dream completed
+(`done`) on the byte-identical original prompt. Receipt:
+`results/h15-live-shadow/receipt.json` (gitignored raw dir).

@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 79;
+export const CHANGELOG_TOTAL_ENTRIES = 80;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 39,
+  "Added": 40,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 38,
+    "total": 39,
     "counts": {
-      "Added": 11,
+      "Added": 12,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
@@ -93,6 +93,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "local-ML dream lanes — the H15 integration (opt-in, shadow-capable)",
+            "behavior": true
+          },
           {
             "title": "task tool: structured outputs (oh-my-pi port)",
             "behavior": true
