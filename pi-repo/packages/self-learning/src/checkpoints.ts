@@ -740,8 +740,9 @@ const RESTORE_FAIL_HINTS: Record<RestoreAction, string> = {
 /** .unown/.gitignore entries that must never be committed by `git add .` in
  *  a USER project (R-b V1: receipts hold 4 KB of every tool input including
  *  command lines with secrets, checkpoints hold full file snapshots,
- *  reviews hold source diffs). */
-const RUNTIME_IGNORE_ENTRIES = ["receipts/", "checkpoints/", "reviews/"];
+ *  reviews hold source diffs; worktrees hold isolated repo copies created by
+ *  the task tool's worktree-isolation lane). */
+const RUNTIME_IGNORE_ENTRIES = ["receipts/", "checkpoints/", "reviews/", "worktrees/"];
 const RUNTIME_IGNORE_HEADER = "# unown runtime state — audit ledgers, checkpoint blobs, review artifacts";
 
 /**

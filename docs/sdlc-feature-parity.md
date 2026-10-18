@@ -50,6 +50,33 @@ were:
 
 Each entry: feature → source → the seam it landed on in this repo.
 
+### Round 2 (2026-10-19 — subagent upgrades)
+
+Four parallel reverse-engineering threads re-audited the field (oh-my-pi at
+commit 1a97f79, zcode OSS v3.15.1 + live docs, muse code 1.4.10 + SDK/cookbooks,
+codewhale v0.10.2). Two highest value-per-complexity ports landed first:
+
+| Feature | Source | Unown form |
+|---|---|---|
+| Task structured outputs (`output_schema` + `schema_mode` per task or per batch item; path-annotated validation errors; corrective retries quoting exact defects; permissive/strict verdicts; malformed schemas fail pre-spawn) | oh-my-pi `task` `outputSchema`/`schemaMode` | `src/jsonschema.ts` (dependency-free JSON Schema subset validator: types, properties/required/additionalProperties, items/prefixItems, enum/const, constraints, combinators, local $ref; depth-capped, SchemaError on malformed schemas) + `runSubagent` retry loop in `tools.ts`; validated JSON returned to the parent as the report body |
+| Worktree fan-out isolation (`worktree_isolation` per task or batch item: git worktree at HEAD per child; fail-closed typed rejections; remove_if_clean cleanup; kept trees reported for merge; append-only lifecycle journal; hooks-disabled probes; crash quarantine) | muse code worktree fan-out (`.muse/worktrees`, `cleanup_policy: remove_if_clean`, ADR 33406 hook hardening) | `src/worktree.ts` (git via spawn shell:false, hooks disabled through a private empty `core.hooksPath`, `--no-optional-locks`, GIT_* env stripped; journal at `.unown/worktrees/registry.jsonl`; self-healed `.unown/.gitignore` adds `worktrees/`); task tool runs the child with cwd = tree and surfaces the disposition (`removed`/`kept`/`quarantined`) |
+
+Both are cross-platform native (git + Bun, no OS-specific code paths; hooks
+are disabled via an empty directory rather than the POSIX-only `/dev/null`
+trick). Pinned by `test/jsonschema.test.ts` (37), `test/worktree.test.ts`
+(9, real git: clean/dirty/commit/hooked/quarantine lifecycle) and
+`test/cli/task-structured.test.ts` (5, spawn-level golden runs against the
+real CLI: valid/invalid/strict schema flows + a KEPT worktree end-to-end +
+the not-a-repo typed rejection). Suite: 1203 pass / 0 fail.
+
+Deferred from this round (candidates, with the blocking reason): zcode
+Automations + Repo Wiki (scheduled actor needs its own trust story — designed,
+next milestone), oh-my-pi DAP debug tool (medium, pure-TS feasible),
+`omp commit` (low-medium, consumes structured outputs), codewhale MCP-server
+surface + fleet ledger, muse staged shell review.
+
+### Round 1 (2026-10-18 — the shipped v2.1.0 slice)
+
 | Feature | Source | Unown form |
 |---|---|---|
 | LSP code intelligence (`lsp` tool: status/diagnostics/hover/definition/references/symbols; auto-detected servers; `.unown/lsp.json` config; PostToolUse diagnostics feedback on every write/edit) | oh-my-pi `lsp` + writethrough | `pi-repo/packages/self-learning/src/lsp.ts`, registered by the unown-tools extension — pure-TS stdio JSON-RPC client, zero deps, cold start never blocks a tool result, degrades silently when no server exists |
@@ -105,7 +132,7 @@ in the [CHANGELOG](../CHANGELOG.md) under Unreleased:
 | TTSR stream rules | oh-my-pi | Requires a mid-stream abort+retry seam in pi-ai's provider loop — a fork-level change to the vendored substrate, against the swap-assessment invariant |
 | Advisor/watchdog second model | oh-my-pi | Cost-doubling on every turn; our hooks + harness already play the reviewer role in the learning loop. Revisit as an opt-in profile |
 | Event-sourced session replay | muse | pi's session tree + our receipts cover the audit use; full event sourcing is a substrate rewrite |
-| Worktree fan-out subagents | muse | Valuable, but the engine sandbox already isolates harness runs; terminal subagents today are spawned sequentially against the shared tree. Candidate for a follow-up |
+| ~~Worktree fan-out subagents~~ | muse | **Adopted in Round 2** (see above) — task tool `worktree_isolation` |
 | Scheduled automations (`/loop`-style cron) | zcode Automations · muse `/loop` · Claude routines | Deferred, not declined: the engine learns on intervals but never acts on the repo unattended, and a scheduled actor needs its own trust story (project configs are trust-gated precisely because they execute commands). No router job, no `.unown/automations.json` reader was ever shipped |
 | Repo Wiki | zcode | Attractive; depends on scheduled background generation, deferred with automations |
 | Plugin bundles + marketplace | zcode/codewhale/Claude | Our extension surface is inline + file-based (`.unown/`); a marketplace is ecosystem work, not a feature gap |

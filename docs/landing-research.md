@@ -995,3 +995,26 @@ consolidation stay on the LLM (the nonllm campaign's executive answer — every
 credible agent-memory system keeps generation generative), so the paragraph
 cannot be read as "Unown needs no LLMs", only as "the auxiliary tiers are
 free, local and verified".
+## 2026-10-19 — quickstart copy: subagent structured outputs + worktree isolation
+
+The SDLC-parity round 2 (see `docs/sdlc-feature-parity.md`) shipped two task-tool
+upgrades, and the quickstart's session-tools sentence is the page's canonical
+place where the task tool is described — so the sentence grew the two new
+affordances, in the same shape the existing copy uses (tool name + one-line
+capability, no marketing adjectives):
+
+- `task` … typed replies via `output_schema` (a JSON Schema the subagent's final
+  message must satisfy — validated locally, invalid replies retried with the
+  exact defects quoted back, permissive/strict verdicts), and
+- per-child git `worktree_isolation` (each isolated writer gets its own
+  worktree at HEAD; kept trees are reported for merge).
+
+Sourcing rules, same as every quickstart claim: both affordances are code-backed
+in this checkout (`pi-repo/packages/self-learning/src/jsonschema.ts`,
+`src/worktree.ts`, the `TaskParams` schema in `src/tools.ts`) and pinned by
+`test/jsonschema.test.ts`, `test/worktree.test.ts` and
+`test/cli/task-structured.test.ts`. No numbers were added, so no artifacts
+moved; the claim is existence-only ("ships these two affordances"), which the
+repo can vouch for at any commit. The landing copy test
+(`src/components/landing/__tests__/landing-copy.test.tsx`) is not assertion-bound
+to this sentence, so no test churn was required.

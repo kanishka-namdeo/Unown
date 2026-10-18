@@ -56,6 +56,8 @@ import {
     renderGoalStatus,
 } from "./goal.ts";
 import { assistantTextOf } from "./messages.ts";
+import { checkSchemaShape, SchemaError, validateJsonSchema, type SchemaIssue } from "./jsonschema.ts";
+import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
 import {
     buildReviewerTask,
     captureReviewTarget,
@@ -196,6 +198,106 @@ export interface SubagentRunResult {
          *  incomplete instead of presenting a truncated finding set as whole
          *  (R-b S3). */
         outputTruncated?: boolean;
+        /** Structured-output lane (oh-my-pi task outputSchema port): present
+         *  when the caller requested a schema. `ok` true carries the parsed,
+         *  validated JSON in `data`; false carries the extraction/validation
+         *  error (after retries). */
+        structured?: { ok: boolean; data?: unknown; error?: string };
+        /** Worktree-isolation lane (muse worktree fan-out port): the tree this
+         *  run executed in, plus its cleanup disposition when already
+         *  decided by the runner. */
+        worktree?: { path: string; baseCommit: string; cleanup?: { action: string; detail: string } };
+}
+
+// ---------------------------------------------------------------------------
+// Structured outputs (oh-my-pi `task` outputSchema port)
+// ---------------------------------------------------------------------------
+
+/** Options on a subagent run that engage the structured-output lane. */
+export interface StructuredRunOptions {
+        /** JSON Schema the subagent's final reply must satisfy. */
+        outputSchema?: unknown;
+        /** "permissive" (default): an invalid final reply still returns the
+         *  text with a visible warning; "strict": it is reported as an
+         *  error. Mirrors oh-my-pi's schemaMode semantics. */
+        schemaMode?: "permissive" | "strict";
+}
+
+/** Schema-validation retries before the permissive/strict verdict — the
+ *  oh-my-pi shape is "up to 3 reminder prompts"; ours is one original run +
+ *  2 corrective re-runs (each carries the exact schema defects back to the
+ *  child, same contract omp's reminders implement inside one session). */
+const STRUCTURED_RETRIES = 2;
+
+/** Extract the JSON a model was asked to emit: handles bare JSON, fenced
+ *  ```json blocks, and leading/trailing prose around ONE balanced object or
+ *  array. Pure + exported for tests. */
+export function extractJsonReply(text: string): { ok: true; data: unknown } | { ok: false; error: string } {
+        const trimmed = text.trim();
+        if (!trimmed) return { ok: false, error: "empty reply" };
+        // 1) fenced block (```json … ``` or ``` … ```)
+        const fence = trimmed.match(/^```[a-zA-Z]*\s*\n?([\s\S]*?)\n?```$/);
+        const candidates: string[] = [];
+        if (fence?.[1]) candidates.push(fence[1].trim());
+        // 2) the whole reply
+        candidates.push(trimmed);
+        // 3) first balanced {...} or [...] inside the reply (models like a
+        //    little prose around their JSON despite instructions)
+        const scan = scanBalancedJson(trimmed);
+        if (scan !== null) candidates.push(scan);
+        for (const candidate of candidates) {
+                try {
+                        return { ok: true, data: JSON.parse(candidate) };
+                } catch {
+                        /* try the next candidate shape */
+                }
+        }
+        return { ok: false, error: "reply is not valid JSON (no parseable object or array found)" };
+}
+
+/** Find the first balanced top-level {...} or [...] in `text`, or null. */
+function scanBalancedJson(text: string): string | null {
+        const start = text.search(/[{\[]/);
+        if (start === -1) return null;
+        const open = text[start];
+        const close = open === "{" ? "}" : "]";
+        let depth = 0;
+        let inString = false;
+        let escaped = false;
+        for (let i = start; i < text.length; i++) {
+                const ch = text[i];
+                if (inString) {
+                        if (escaped) escaped = false;
+                        else if (ch === "\\") escaped = true;
+                        else if (ch === '"') inString = false;
+                        continue;
+                }
+                if (ch === '"') inString = true;
+                else if (ch === open) depth++;
+                else if (ch === close) {
+                        depth--;
+                        if (depth === 0) return text.slice(start, i + 1);
+                }
+        }
+        return null;
+}
+
+/** Validate a reply against a schema; issues become one actionable string
+ *  (path-annotated, capped) that the retry loop can quote back. */
+export function formatSchemaIssues(issues: SchemaIssue[], cap = 8): string {
+        const shown = issues.slice(0, cap).map((i) => `${i.path}: ${i.message}`);
+        const more = issues.length > cap ? ` (+${issues.length - cap} more)` : "";
+        return shown.join("; ") + more;
+}
+
+/** The corrective re-run task: same job + the schema + the exact defects. */
+function buildSchemaRetryTask(task: string, schema: unknown, problems: string): string {
+        return (
+                `${task}\n\n` +
+                `STRUCTURED OUTPUT REQUIRED: your previous reply failed validation — ${problems}.\n` +
+                `Reply with ONLY the corrected JSON value (no prose, no markdown fences) that validates against this JSON Schema:\n` +
+                `${JSON.stringify(schema, null, 2)}`
+        );
 }
 
 function getUnownInvocation(args: string[]): { command: string; args: string[] } {
@@ -300,17 +402,15 @@ function killSubagentTree(proc: KillableProc): void {
         }
 }
 
-/** Spawn one unown subagent and collect its JSON event stream. */
-export async function runSubagent(
+/** One subagent attempt: spawn, collect, and (when a schema was requested)
+ *  validate the final reply. Shared by the original run and the corrective
+ *  re-runs. */
+async function runSubagentOnce(
         agent: SubagentConfig,
         task: string,
         cwd: string,
         signal: AbortSignal | undefined,
 ): Promise<SubagentRunResult> {
-        const args: string[] = ["--mode", "json", "-p", "--no-session"];
-        if (agent.tools && agent.tools.length > 0) args.push("--tools", agent.tools.join(","));
-
-        let promptDir: string | null = null;
         const result: SubagentRunResult = {
                 agent: agent.name,
                 task,
@@ -320,7 +420,9 @@ export async function runSubagent(
                 toolResults: 0,
                 usage: { input: 0, output: 0, turns: 0 },
         };
-
+        const args: string[] = ["--mode", "json", "-p", "--no-session"];
+        if (agent.tools && agent.tools.length > 0) args.push("--tools", agent.tools.join(","));
+        let promptDir: string | null = null;
         try {
                 if (agent.systemPrompt.trim()) {
                         promptDir = mkdtempSync(join(tmpdir(), "unown-subagent-"));
@@ -434,6 +536,71 @@ export async function runSubagent(
                 }
         }
         return result;
+}
+
+/** Spawn one unown subagent and collect its JSON event stream. When
+ *  `opts.outputSchema` is set, the final reply is extracted + validated
+ *  against the schema, with up to STRUCTURED_RETRIES corrective re-runs that
+ *  quote the exact defects back to the child (oh-my-pi task outputSchema
+ *  port: permissive keeps an invalid reply with a warning; strict reports
+ *  it as an error). */
+export async function runSubagent(
+        agent: SubagentConfig,
+        task: string,
+        cwd: string,
+        signal: AbortSignal | undefined,
+        opts: StructuredRunOptions = {},
+): Promise<SubagentRunResult> {
+        if (!opts.outputSchema) return runSubagentOnce(agent, task, cwd, signal);
+        const schema = opts.outputSchema;
+        let attempts = 0;
+        let result = await runSubagentOnce(agent, task, cwd, signal);
+        // usage/toolResults accumulate ACROSS retries (the caller bills and
+        // reports the whole structured-output contract, not the last try).
+        let usage = { ...result.usage };
+        let toolResults = result.toolResults;
+        let currentTask = task;
+        for (;;) {
+                attempts++;
+                const problems: string[] = [];
+                if (result.exitCode !== 0) {
+                        problems.push(`subagent exited with code ${result.exitCode}${result.stderr.trim() ? `: ${result.stderr.trim().slice(0, 200)}` : ""}`);
+                } else {
+                        const extracted = extractJsonReply(result.output);
+                        if (!extracted.ok) problems.push(extracted.error);
+                        else {
+                                try {
+                                        const validation = validateJsonSchema(extracted.data, schema);
+                                        if (validation.valid) {
+                                                result.structured = { ok: true, data: extracted.data };
+                                                result.usage = usage;
+                                                result.toolResults = toolResults;
+                                                return result;
+                                        }
+                                        problems.push(formatSchemaIssues(validation.issues));
+                                } catch (err) {
+                                        // SchemaError — the SCHEMA is malformed, not the reply.
+                                        problems.push(`schema error: ${err instanceof Error ? err.message : String(err)}`);
+                                }
+                        }
+                }
+                if (attempts > STRUCTURED_RETRIES || signal?.aborted) {
+                        result.structured = { ok: false, error: problems.join("; ") };
+                        result.usage = usage;
+                        result.toolResults = toolResults;
+                        return result;
+                }
+                // Corrective re-run with the defects quoted back.
+                currentTask = buildSchemaRetryTask(currentTask, schema, problems.join("; "));
+                const retry = await runSubagentOnce(agent, currentTask, cwd, signal);
+                usage = {
+                        input: usage.input + retry.usage.input,
+                        output: usage.output + retry.usage.output,
+                        turns: usage.turns + retry.usage.turns,
+                };
+                toolResults += retry.toolResults;
+                result = retry;
+        }
 }
 
 // ---------------------------------------------------------------------------
@@ -705,7 +872,17 @@ interface TodoDetails {
 }
 
 interface TaskRunDetails {
-        runs: Array<{ agent: string; task: string; exitCode: number; turns: number; toolResults: number }>;
+        runs: Array<{
+                agent: string;
+                task: string;
+                exitCode: number;
+                turns: number;
+                toolResults: number;
+                /** structured-output lane (present when output_schema was set) */
+                structured?: { ok: boolean; error?: string };
+                /** worktree-isolation lane (present when worktree_isolation was set) */
+                worktree?: { action: string; path?: string; detail: string };
+        }>;
 }
 
 const TodoParams = Type.Object({
@@ -736,9 +913,44 @@ const TaskParams = Type.Object({
                         Type.Object({
                                 agent: Type.Optional(Type.String({ description: "Subagent name (default general)" })),
                                 task: Type.String({ description: "Self-contained task" }),
+                                output_schema: Type.Optional(
+                                        Type.Any({
+                                                description:
+                                                        "JSON Schema (object) this subagent's FINAL reply must satisfy — the reply is parsed as JSON and validated; invalid replies are retried with the exact defects quoted back. Use for typed fan-out (findings, reports, structured data).",
+                                        }),
+                                ),
+                                schema_mode: Type.Optional(
+                                        StringEnum(["permissive", "strict"] as const, {
+                                                description:
+                                                        '"permissive" (default): an invalid final reply still returns its text with a warning; "strict": it is reported as an error.',
+                                        }),
+                                ),
+                                worktree_isolation: Type.Optional(
+                                        Type.Boolean({
+                                                description:
+                                                        "Run this subagent in its own git worktree (an isolated copy of the repo at HEAD) so parallel writers never collide. The result reports the kept worktree path when work was committed/left dirty — merge it via your normal source-control workflow. Rejected (never silently shared) outside a git repository.",
+                                        }),
+                                ),
                         }),
                         { description: "Parallel mode: run several subagents at once (max 4)" },
                 ),
+        ),
+        output_schema: Type.Optional(
+                Type.Any({
+                        description:
+                                "JSON Schema (object) the subagent's FINAL reply must satisfy (single-task form; per-item in tasks[]). The reply is parsed as JSON and validated; invalid replies are retried with the exact defects quoted back.",
+                }),
+        ),
+        schema_mode: Type.Optional(
+                StringEnum(["permissive", "strict"] as const, {
+                        description: '"permissive" (default) keeps an invalid final reply with a warning; "strict" reports it as an error.',
+                }),
+        ),
+        worktree_isolation: Type.Optional(
+                Type.Boolean({
+                        description:
+                                "Run the subagent in its own git worktree (isolated copy of the repo at HEAD) — parallel writers never collide; the result reports the kept worktree path for merge. Rejected (never silently shared) outside a git repository.",
+                }),
         ),
 });
 
@@ -992,21 +1204,47 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 name: "task",
                                 label: "Task",
                                 description:
-                                        "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default) and 'explore' (read-only) plus any defined in .unown/agents/*.md. Pass {tasks: [...]} to run up to 4 in parallel. Prefer this whenever a focused investigation would pollute this session's context.",
+                                        "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default) and 'explore' (read-only) plus any defined in .unown/agents/*.md. Pass {tasks: [...]} to run up to 4 in parallel. Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back). Prefer this whenever a focused investigation would pollute this session's context.",
                                 parameters: TaskParams,
                                 async execute(_toolCallId, params, signal) {
                                         const agents = discoverSubagents(opts.cwd);
-                                        const jobs: Array<{ agent: string; task: string }> = params.tasks
+                                        // Job = normalized spawn request (single form + batch form).
+                                        const jobs = params.tasks
                                                 ? params.tasks
                                                                 .slice(0, 4)
-                                                                .map((t: { agent?: string; task: string }) => ({ agent: t.agent ?? "general", task: t.task }))
-                                                : [{ agent: params.agent ?? "general", task: params.task ?? "" }];
+                                                                .map((t: any) => ({
+                                                                        agent: t.agent ?? "general",
+                                                                        task: t.task as string,
+                                                                        worktreeIsolation: t.worktree_isolation === true || params.worktree_isolation === true,
+                                                                        outputSchema: t.output_schema ?? undefined,
+                                                                        schemaMode: t.schema_mode ?? params.schema_mode,
+                                                                }))
+                                                : [
+                                                                {
+                                                                        agent: params.agent ?? "general",
+                                                                        task: params.task ?? "",
+                                                                        worktreeIsolation: params.worktree_isolation === true,
+                                                                        outputSchema: params.output_schema ?? undefined,
+                                                                        schemaMode: params.schema_mode,
+                                                                },
+                                                        ];
                                         if (jobs.length === 0 || jobs.some((j) => !j.task.trim())) {
                                                 return {
                                                         content: [
                                                                 { type: "text", text: "Error: provide task (or tasks[]) — each needs a non-empty task string" },
                                                         ],
                                                 };
+                                        }
+                                        // Malformed schemas fail HERE — before any paid spawn (omp: invalid
+                                        // caller schemas fail preflight).
+                                        for (const job of jobs) {
+                                                if (job.outputSchema === undefined) continue;
+                                                const shape = checkSchemaShape(job.outputSchema);
+                                                if (!shape.ok) {
+                                                        return {
+                                                                content: [{ type: "text", text: `Error: output_schema is not a usable JSON Schema — ${shape.error}` }],
+                                                        };
+                                                }
                                         }
                                         const sections: string[] = new Array(jobs.length).fill("");
                                         const runs: TaskRunDetails["runs"] = [];
@@ -1025,25 +1263,81 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 runs.push({ agent: job.agent, task: job.task, exitCode: 1, turns: 0, toolResults: 0 });
                                                                 continue;
                                                         }
+                                                        // ---- worktree isolation (muse fan-out port): opt-in,
+                                                        // fail-closed — a rejected tree is a typed failure, never
+                                                        // a silent fallback to the shared checkout.
+                                                        let tree: WorktreeHandle | null = null;
+                                                        let treeNote = "";
+                                                        let treeFailure = "";
+                                                        if (job.worktreeIsolation) {
+                                                                const childId = `${agent.name}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+                                                                const created = await createWorktree(opts.cwd, childId);
+                                                                if (created.ok) {
+                                                                        tree = created.handle;
+                                                                        log(`subagent ${agent.name} isolated in worktree ${tree.path}`);
+                                                                } else {
+                                                                        treeFailure = `worktree isolation REJECTED (${created.reason}): ${created.detail} — the subagent was NOT run in the shared tree; retry without worktree_isolation or fix the cause.`;
+                                                                        runs.push({ agent: agent.name, task: job.task, exitCode: 1, turns: 0, toolResults: 0, worktree: { action: "rejected", detail: treeFailure } });
+                                                                        sections[index] = `## ${agent.name}: FAILED\n${treeFailure}`;
+                                                                        continue;
+                                                                }
+                                                        }
                                                         log(`spawning subagent ${agent.name}`);
-                                                        const result = await runSubagent(agent, job.task, opts.cwd, signal);
-                                                        runs.push({
+                                                        const result = await runSubagent(agent, job.task, tree ? tree.path : opts.cwd, signal, {
+                                                                outputSchema: job.outputSchema,
+                                                                schemaMode: job.schemaMode,
+                                                        });
+                                                        const run: TaskRunDetails["runs"][number] = {
                                                                 agent: agent.name,
                                                                 task: job.task,
                                                                 exitCode: result.exitCode,
                                                                 turns: result.usage.turns,
                                                                 toolResults: result.toolResults,
-                                                        });
+                                                        };
+                                                        // ---- worktree disposition: cleanup per remove_if_clean; kept
+                                                        // trees carry the path for merge (nothing merges automatically).
+                                                        if (tree) {
+                                                                const cleanup = await cleanupWorktree(tree);
+                                                                run.worktree = {
+                                                                        action: cleanup.action,
+                                                                        path: tree.path,
+                                                                        detail: cleanup.detail,
+                                                                };
+                                                                treeNote = `\n\n[worktree ${cleanup.action}] ${cleanup.detail}`;
+                                                        }
+                                                        // ---- structured-output verdict (omp schemaMode semantics).
+                                                        if (result.structured) {
+                                                                run.structured = { ok: result.structured.ok, error: result.structured.error };
+                                                        }
+                                                        runs.push(run);
                                                         const header =
                                                                 `## ${agent.name} (${result.exitCode === 0 ? "ok" : `exit ${result.exitCode}`}; ` +
                                                                 `${result.usage.turns} turns, ${formatTokens(result.usage.input)} in / ${formatTokens(result.usage.output)} out, ` +
                                                                 `${result.toolResults} tool calls)`;
-                                                        const body =
-                                                                result.output.trim() ||
-                                                                (result.stderr.trim()
-                                                                        ? `(no output; stderr: ${result.stderr.trim().slice(0, 500)})`
-                                                                        : "(no output)");
-                                                        sections[index] = `${header}\n\n${body}`;
+                                                        const parts: string[] = [];
+                                                        if (result.structured) {
+                                                                if (result.structured.ok) {
+                                                                        // The validated JSON IS the report — the parent asked for
+                                                                        // structured data; print it as the body.
+                                                                        parts.push("```json\n" + JSON.stringify(result.structured.data, null, 2) + "\n```");
+                                                                } else {
+                                                                        const strict = job.schemaMode === "strict";
+                                                                        parts.push(
+                                                                                strict
+                                                                                        ? `**STRUCTURED OUTPUT FAILED (strict): ${result.structured.error}**`
+                                                                                        : `**warning: structured output invalid (permissive): ${result.structured.error}** — raw reply follows`,
+                                                                        );
+                                                                        if (result.output.trim()) parts.push(result.output.trim());
+                                                                }
+                                                        } else {
+                                                                const body =
+                                                                        result.output.trim() ||
+                                                                        (result.stderr.trim()
+                                                                                ? `(no output; stderr: ${result.stderr.trim().slice(0, 500)})`
+                                                                                : "(no output)");
+                                                                parts.push(body);
+                                                        }
+                                                        sections[index] = `${header}${treeNote}\n\n${parts.join("\n\n")}`;
                                                 }
                                         });
                                         await Promise.all(workers);
@@ -1052,9 +1346,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 },
                                 renderCall(args: any, theme: any) {
                                         if (args.tasks) {
+                                                const isolated = args.tasks.filter((t: any) => t?.worktree_isolation === true).length;
+                                                const structured = args.tasks.filter((t: any) => t?.output_schema !== undefined).length;
                                                 return new Text(
                                                         theme.fg("toolTitle", theme.bold("task ")) +
-                                                                theme.fg("muted", `${args.tasks.length} subagents in parallel`),
+                                                                theme.fg("muted", `${args.tasks.length} subagents in parallel`) +
+                                                                (isolated ? theme.fg("accent", ` · ${isolated} worktree`) : "") +
+                                                                (structured ? theme.fg("accent", ` · ${structured} schema`) : ""),
                                                         0,
                                                         0,
                                                 );
@@ -1062,6 +1360,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         return new Text(
                                                 theme.fg("toolTitle", theme.bold("task → ")) +
                                                         theme.fg("accent", String(args.agent ?? "general")) +
+                                                        (args.worktree_isolation === true ? theme.fg("accent", " [worktree]") : "") +
+                                                        (args.output_schema !== undefined ? theme.fg("accent", " [schema]") : "") +
                                                         theme.fg("dim", ` "${String(args.task ?? "").slice(0, 50)}"`),
                                                 0,
                                                 0,
@@ -1071,7 +1371,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         const details = result.details as TaskRunDetails | undefined;
                                         if (!details) return new Text(theme.fg("dim", "subagent finished"), 0, 0);
                                         const summary = details.runs
-                                                .map((r) => `${r.agent}: ${r.exitCode === 0 ? "✓" : "✗"} ${r.turns} turns, ${r.toolResults} tools`)
+                                                .map((r) => {
+                                                        const mark = r.exitCode === 0 ? (r.structured && !r.structured.ok ? "~" : "✓") : "✗";
+                                                        const tree = r.worktree ? ` [${r.worktree.action}]` : "";
+                                                        return `${r.agent}: ${mark} ${r.turns} turns, ${r.toolResults} tools${tree}`;
+                                                })
                                                 .join("\n");
                                         return new Text(theme.fg("muted", summary), 0, 0);
                                 },

@@ -108,7 +108,10 @@ export function QuickstartSection() {
               Every session also ships session tools:{" "}
               <code className="font-mono text-dim">todo</code>,{" "}
               <code className="font-mono text-dim">note</code>,{" "}
-              <code className="font-mono text-dim">task</code> (subagents with a fresh context),{" "}
+              <code className="font-mono text-dim">task</code> (subagents with a fresh context —
+              typed replies via <code className="font-mono text-dim">output_schema</code> and
+              per-child git worktree isolation via{" "}
+              <code className="font-mono text-dim">worktree_isolation</code>),{" "}
               <code className="font-mono text-dim">fetch_url</code> and{" "}
               <code className="font-mono text-dim">lsp</code> (language-server intelligence —
               diagnostics ride every edit). MCP servers configured in{" "}

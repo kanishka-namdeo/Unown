@@ -131,6 +131,13 @@ export function startMockBridge(opts: MockBridgeOptions = {}): MockBridge {
                                 const script = lastIsUser
                                         ? userTexts.map((t) => t.match(/TOOLCALL (\w+) (\{.*\})\s*$/)).find(Boolean)
                                         : null;
+                                // JSONREPLY script: the (subagent) task text embeds
+                                // `JSONREPLY <json>` — the mock replies with exactly that JSON
+                                // (for task-tool structured-output tests: schema-valid/invalid
+                                // replies are scripted per test).
+                                const jsonReply = userTexts
+                                        .map((t) => t.match(/JSONREPLY (\{[\s\S]*\}|\[[\s\S]*\])\s*$/))
+                                        .find(Boolean);
 
                                 requests.push({
                                         ts: Date.now(),
@@ -143,7 +150,7 @@ export function startMockBridge(opts: MockBridgeOptions = {}): MockBridge {
                                 });
 
                                 const model = String(body.model ?? "kimi-k2.5");
-                                const content = "Mock reply: done";
+                                const content = jsonReply ? jsonReply[1] : "Mock reply: done";
                                 const id = `chatcmpl-mock-${++seq}`;
                                 const frame = (choices: unknown[], usage?: unknown) =>
                                         new TextEncoder().encode(

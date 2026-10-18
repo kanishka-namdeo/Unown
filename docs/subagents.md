@@ -3,6 +3,8 @@
 Fresh-context unown agents the model can spawn mid-session with the `task` tool — the built-ins, your own `.unown/agents/*.md` definitions, and their limits.
 
 - [The task tool](#the-task-tool)
+- [Structured outputs](#structured-outputs)
+- [Worktree isolation](#worktree-isolation)
 - [Built-in agents](#built-in-agents)
 - [Authoring custom agents](#authoring-custom-agents)
 - [How the model invokes them](#how-the-model-invokes-them)
@@ -22,6 +24,27 @@ Because it is a real unown process, a subagent gets everything a terminal sessio
 - and on exit it writes its own session note, tagged `[subagent]`, for AutoDream to consolidate — **subagents learn too**.
 
 The subagent does not see the parent conversation. The parent gets back a report: exit status, turns, tokens in/out, tool-call count, and the subagent's final message.
+
+## Structured outputs
+
+Any task call (single or batch item) can demand a **typed reply** with `output_schema` — a JSON Schema the subagent's *final message* must satisfy. The reply is parsed as JSON (bare JSON, a fenced `json` code block, or one JSON object surrounded by prose all work) and validated locally; an invalid reply is retried up to two times with the **exact, path-annotated defects** quoted back to the child (`$.findings[0].severity: expected low | medium | high, got "critical"`), after which:
+
+- `schema_mode: "permissive"` (the default) returns the raw reply **with a visible warning** — good enough to read, honest about the miss;
+- `schema_mode: "strict"` reports the failure as an error and returns no data.
+
+A valid reply is returned to the parent as a fenced JSON block — the structured data *is* the report. A malformed `output_schema` fails immediately, before any subagent is spawned (no paid run on a broken contract). Use it whenever the parent wants to *consume* the result programmatically — findings lists, inventories, typed reports — instead of re-parsing prose.
+
+## Worktree isolation
+
+A writing subagent normally shares your working tree. Pass `worktree_isolation: true` (single task or batch item) and the subagent instead runs in **its own git worktree** — an isolated checkout of the repo at HEAD, created at `<repo>/.unown/worktrees/<id>` — so parallel writers can never collide with each other or with your uncommitted work.
+
+The contract: isolation is opt-in and **fail-closed** — outside a git repository (or with `UNOWN_WORKTREE_ISOLATION=0`) the spawn is rejected with a typed failure, never silently downgraded to the shared tree. When the subagent finishes, a **clean, commit-less** worktree is removed again automatically; a tree with uncommitted files or new commits is **kept** and its path is reported back so you can review and merge it through your normal source-control workflow (nothing is merged automatically, and the parent repo is never touched during the run). Every tree's lifecycle is journaled to `.unown/worktrees/registry.jsonl` (base commit, policy, disposition), probes run with repository **hooks disabled**, and a tree whose state cannot be proven after a crash is quarantined, not deleted.
+
+
+
+| Setting | Meaning |
+|---|---|
+| `UNOWN_WORKTREE_ISOLATION` | `0`/`false`/`no` disables the lane (typed rejections); empty/unset = enabled (the default) |
 
 ## Built-in agents
 
