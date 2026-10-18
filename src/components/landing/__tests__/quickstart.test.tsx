@@ -48,8 +48,32 @@ describe("landing QuickstartSection", () => {
         test("lists the terminal command surface", () => {
                 const { container } = render(<QuickstartSection />);
                 const text = container.textContent ?? "";
-                for (const cmd of ["unown -p", "unown --plan", "unown setup", "unown models", "unown doctor", "unown memory", "unown init", "unown note"]) {
+                for (const cmd of [
+                        "unown -p",
+                        "unown --plan",
+                        "unown --goal",
+                        "unown setup",
+                        "unown models",
+                        "unown doctor",
+                        "unown memory",
+                        "unown init",
+                        "unown note",
+                ]) {
                         expect(text).toContain(cmd);
                 }
+        });
+
+        test("states the SDLC-parity session surface (lsp, MCP, checkpoints, review, goal)", () => {
+                const { container } = render(<QuickstartSection />);
+                const text = container.textContent ?? "";
+                expect(text).toContain("lsp");
+                expect(text).toContain("language-server intelligence");
+                expect(text).toContain(".unown/mcp.json");
+                expect(text).toContain("mcp__server__tool");
+                for (const command of ["/plan", "/review", "/goal", "/undo", "/receipts", "/mcp", "/lsp"]) {
+                        expect(text).toContain(command);
+                }
+                // the --goal line states the evidence contract
+                expect(text).toContain("completion needs cited evidence");
         });
 });

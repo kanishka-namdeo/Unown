@@ -17,6 +17,7 @@ const COMMANDS: [string, string][] = [
   ['unown "fix the failing tests"', "start with a prompt"],
   ['unown -p "explain the build error"', "one-shot headless, pipes to less"],
   ['unown --plan "add auth"', "read-only plan mode, approve before executing"],
+  ['unown --goal "make the build green"', "durable goal — completion needs cited evidence"],
   ["unown setup", "provider wizard, or --provider/--api-key/--model"],
   ["unown models", "configured models plus what the bridge serves"],
   ["unown doctor", "endpoint, keys, upstream and memory, end to end"],
@@ -106,13 +107,23 @@ export function QuickstartSection() {
               Every session also ships session tools:{" "}
               <code className="font-mono text-dim">todo</code>,{" "}
               <code className="font-mono text-dim">note</code>,{" "}
-              <code className="font-mono text-dim">task</code> (subagents with a fresh context) and{" "}
-              <code className="font-mono text-dim">fetch_url</code>. Slash commands:{" "}
+              <code className="font-mono text-dim">task</code> (subagents with a fresh context),{" "}
+              <code className="font-mono text-dim">fetch_url</code> and{" "}
+              <code className="font-mono text-dim">lsp</code> (language-server intelligence —
+              diagnostics ride every edit). MCP servers configured in{" "}
+              <code className="font-mono text-dim">.unown/mcp.json</code> join as{" "}
+              <code className="font-mono text-dim">mcp__server__tool</code>. Slash commands:{" "}
+              <code className="font-mono text-dim">/plan</code>,{" "}
+              <code className="font-mono text-dim">/review</code>,{" "}
+              <code className="font-mono text-dim">/goal</code>,{" "}
+              <code className="font-mono text-dim">/undo</code>,{" "}
+              <code className="font-mono text-dim">/receipts</code>,{" "}
+              <code className="font-mono text-dim">/mcp</code> — plus{" "}
               <code className="font-mono text-dim">/todos</code>,{" "}
               <code className="font-mono text-dim">/note</code>,{" "}
-              <code className="font-mono text-dim">/plan</code>,{" "}
               <code className="font-mono text-dim">/agents</code>,{" "}
-              <code className="font-mono text-dim">/learning</code>.
+              <code className="font-mono text-dim">/learning</code>,{" "}
+              <code className="font-mono text-dim">/lsp</code>.
             </p>
             <a
               href={`${GITHUB_URL}/tree/main/docs`}

@@ -576,3 +576,29 @@ the container, never the measurement.
 the three psychic sections are interleaved on purpose so no two neighbours
 share a hue, and front-loading the lore would run the conversion path
 (benchmarks → integrity → quickstart → finale) together as one technical block.
+## 2026-10-18 — quickstart copy: the SDLC-parity session surface
+
+The quickstart's "The whole command surface" block and its session-tools
+paragraph are the canonical home of the terminal-agent command claims (the
+quickstart test pins every line). The 2026-10-18 feature-parity effort
+(`docs/sdlc-feature-parity.md`) added five capabilities to the terminal agent —
+LSP code intelligence, checkpoints + the receipts audit ledger, the MCP
+client, `/review`, and `/goal` — so this section's copy moved with them:
+
+- `COMMANDS` gains the `unown --goal "…"` line ("durable goal — completion
+  needs cited evidence"), next to `--plan`, matching the same flag-driven
+  framing. The line states the evidence contract because that is the
+  differentiator versus plan mode, and the claim is checkable against
+  `docs/usage.md#goals-goal`.
+- The session-tools paragraph now names `lsp` ("language-server intelligence —
+  diagnostics ride every edit"), the MCP join story (`.unown/mcp.json` →
+  `mcp__server__tool`), and the six load-bearing slash commands
+  (`/plan /review /goal /undo /receipts /mcp`) before the originals. The
+  one-fact-per-section rule is respected: no other landing section states any
+  of these — the mechanisms/integrity sections keep describing the five
+  self-learning mechanisms, which did not change.
+- No palette, layout, or motion changes: the additions reuse the existing
+  `text-faint`/`text-dim`/`font-mono` classes on the same grid, so the palette
+  gate and contrast audit results are unchanged (palette check re-run: PASS,
+  21 dark + 21 light tokens, all AA). The quickstart component test pins the
+  new claims so the changed-line coverage gate stays satisfied.
