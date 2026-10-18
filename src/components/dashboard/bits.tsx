@@ -190,7 +190,7 @@ export function SectionHeading({
     <div className="flex flex-wrap items-baseline justify-between gap-2">
       <div>
         <h2 className="text-sm font-semibold tracking-wide text-zinc-200 uppercase">{title}</h2>
-        {sub && <p className="mt-0.5 text-xs text-zinc-400">{sub}</p>}
+        {sub && <p className="mt-0.5 text-xs text-zinc-300">{sub}</p>}
       </div>
       {right && <div className="flex items-center gap-2">{right}</div>}
     </div>

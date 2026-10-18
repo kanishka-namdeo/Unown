@@ -145,7 +145,7 @@ export function ConsoleTab() {
               className="min-h-24 resize-y border-zinc-800 bg-zinc-950/80 font-mono text-sm text-zinc-200 placeholder:text-zinc-400 focus-visible:ring-emerald-500/40"
             />
             <div className="flex items-center justify-between gap-3">
-              <p className="hidden text-[11px] text-zinc-400 sm:block">
+              <p className="hidden text-[11px] text-zinc-300 sm:block">
                 {busy ? "agent working — transcripts stream below" : "Ctrl/⌘ + Enter to run"}
               </p>
               <Button
