@@ -965,3 +965,33 @@ arrows move it, nothing is hidden with scripting off or reduced motion on, and t
 document has no horizontal overflow. Contrast audit PASS (1375 text nodes, both
 schemes), axe on `/` clean, palette gate PASS, units 241 pass / 0 fail,
 `check:changelog` green (3 stops, 73 entries, 2 dated).
+## 2026-10-19 — models: the zero-LLM tier paragraph (retroactive rationale)
+
+The models section is the canonical home for the model-allow-list, the bridge
+local lane and — since the nonllm campaign receipts landed — the zero-LLM
+tier. The paragraph that shipped with those receipts (MinHash note dedup at
+~0.2ms/note, dream-input ranking on a 33M ONNX encoder at 15ms, curation
+lanes, 3-OS CI under Bun and Node, "the LLM calls that remain are only the
+ones that genuinely generate") never got its rationale entry here, which this
+section records.
+
+Why the copy lives in the models section and nowhere else: the
+one-fact-per-section rule. The local-lane sentence pair above it already owns
+"background learning can run on a small local model"; the zero-LLM paragraph
+is the stronger claim in the same argument (much of the learning layer needs
+no generation at all), so it extends the same block rather than opening a new
+section. Every number in it is a receipt from `benchmarks/nonllm/results/
+REPORT.md`: MinHash 0.18ms/doc (rounded to ~0.2ms on the page), bge-small
+embed p50 13–39ms across the CI matrix with rerank at 10–34ms/pair after the
+chunk-8 batching fix (the page keeps the conservative 15ms headline), and the
+H9 3-OS matrix run 39142263790 is the "verified on Linux/macOS/Windows CI
+under both Bun and Node" claim. The numbers are deliberately NOT test-pinned
+in `landing-copy.test.tsx`: they are campaign receipts, superseded whenever a
+re-run lands, and the checkable-artifact contract is the linked REPORT — the
+same treatment the local-lane lines get.
+
+The sentence deliberately ends on what remains remote: extraction and
+consolidation stay on the LLM (the nonllm campaign's executive answer — every
+credible agent-memory system keeps generation generative), so the paragraph
+cannot be read as "Unown needs no LLMs", only as "the auxiliary tiers are
+free, local and verified".

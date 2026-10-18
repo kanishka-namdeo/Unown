@@ -8,7 +8,7 @@ learning-layer subtasks (note triage, dream-input dedup/ranking/curation)
 on the **broad range of systems Unown supports**, without replacing the LLM
 calls that genuinely need generation?
 
-This is the companion bench to [`../local-llm`](../local-llm) (H1–H8, the
+This is the companion bench to [`../local-llm`](../local-llm) (H1–H11, the
 small-LLM lane). Where local-llm asks "can a 0.6B–2.6B *generative* model do
 the subtasks", this bench asks "how much of the pipeline needs *any* neural
 generation at all" — the research program's executive answer

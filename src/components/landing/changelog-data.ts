@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 74;
+export const CHANGELOG_TOTAL_ENTRIES = 75;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 37,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 12,
+  "Fixed": 13,
   "Security": 3,
   "Behavior": 6
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 33,
+    "total": 34,
     "counts": {
       "Added": 9,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 4,
+      "Fixed": 5,
       "Security": 0,
       "Behavior": 6
     },
@@ -101,6 +101,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
+            "behavior": false
+          },
           {
             "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
             "behavior": false

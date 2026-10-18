@@ -34,6 +34,15 @@ research):
 | 7 | LiveCodeBench v6 subset | Contamination-aware model-tier headline: post-cutoff problems (2025-01→04 window) | `livecodebench/` |
 | 8 | Long-horizon refactor | One hard multi-file contract change under a time cap, scored on the file diff — surfaces context-management cost | `longhorizon/` |
 
+Beside the accuracy tracks sit the two hypothesis testbenches of the research
+program — they don't score the agent, they falsify (or verify) candidate
+mechanics against real engine fixtures before anything ships to production:
+
+| Testbench | Question | Registry | Where |
+|-----------|----------|----------|-------|
+| local-model research | Can fully-local, performance-optimized LLMs (llama.cpp lane) run the learning layer's subtasks at quality parity, across the broad range of systems Unown supports? | H1–H11 (H1–H4 verified, H5 refuted, H8 shipped as the bridge local lane, H10 the mint cascade) | `local-llm/` |
+| non-LLM research | How much of the learning layer needs *any* neural generation at all — ONNX encoders + symbolic lanes for retrieval/dedup/ranking/curation? | H9–H15 (H9–H13 verified, H14 partially — hybrid curation wins, H15 design-validated) | `nonllm/` |
+
 ## Track 1 — pi-repo test suite
 
 `npm run test` across the vendored pi monorepo workspaces. The suite is green only when
