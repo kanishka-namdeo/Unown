@@ -73,7 +73,7 @@ function compressorMessages(family, chunks, keepBudget) {
   return [{ role: "system", content: system }, { role: "user", content: user }];
 }
 
-/** Ask the local model which chunks to keep. Returns ordered keep list (may be shorter than budget). */
+/** Ask the local model which chunks to keep. Budget is HARD-CAPPED post-hoc: the model's ordered keep list is truncated to keepBudget (the grammar cannot enforce a count, and the model over-keeps — measured 35/36 at budget 18). */
 export async function compressPayload({ baseUrl, family, chunks, keepPct = 0.5 }) {
   const keepBudget = Math.max(1, Math.ceil(chunks.length * keepPct));
   const out = await chatTimed({
@@ -86,13 +86,15 @@ export async function compressPayload({ baseUrl, family, chunks, keepPct = 0.5 }
     extra: NO_THINKING,
   });
   const parsed = extractJson(out.content);
-  const keep = parsed.ok && Array.isArray(parsed.value?.keep)
-    ? [...new Set(parsed.value.keep.filter((i) => Number.isInteger(i) && i >= 0 && i < chunks.length))].sort((a, b) => a - b)
-    : null;
+  let keep = null;
+  if (parsed.ok && Array.isArray(parsed.value?.keep)) {
+    const modelKeep = [...new Set(parsed.value.keep.filter((i) => Number.isInteger(i) && i >= 0 && i < chunks.length))];
+    keep = modelKeep.slice(0, keepBudget).sort((a, b) => a - b); // hard cap at budget, model's importance order
+  }
   return {
     ok: keep !== null && keep.length > 0,
     keep: keep ?? [],
-    keepBudget,
+    keepBudget, modelKeepCount: parsed.ok && Array.isArray(parsed.value?.keep) ? parsed.value.keep.length : null,
     completionTokens: out.usage.completionTokens,
     latencyMs: out.latencyMs,
     raw: parsed.ok ? null : out.content.slice(0, 200),

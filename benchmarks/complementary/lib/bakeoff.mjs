@@ -18,6 +18,7 @@ import {
   startLane, chatTimed, chatStreamed, EXT_MODELS, INCUMBENT, extMmprojPath,
 } from "./lane.mjs";
 import { LLAMA_BUILD } from "../../local-llm/lib/llama.mjs";
+import { deflateSync } from "node:zlib";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -34,9 +35,43 @@ const BAKEOFF_SCHEMA = {
   required: ["kind", "outcome", "summary"],
 };
 
-/** 1x1 solid-red PNG (base64), byte-stable across platforms — the vlm-smoke probe image trick. */
+/** 100x100 solid-red PNG (base64) — the vlm-smoke probe image, ported from mini-services/llm-bridge/vlm-smoke.test.ts (a 1x1 pixel proved degenerate: BOTH the local mmproj lane and the remote qwen3.7-plus returned empty content for it). */
 function redPngBase64() {
-  return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  const W = 100, H = 100;
+  const raw = Buffer.alloc(H * (1 + W * 3));
+  for (let y = 0; y < H; y++) {
+    const row = y * (1 + W * 3);
+    raw[row] = 0; // filter: none
+    for (let x = 0; x < W; x++) {
+      const p = row + 1 + x * 3;
+      raw[p] = 0xff; raw[p + 1] = 0x00; raw[p + 2] = 0x00;
+    }
+  }
+  const crc32 = (buf) => {
+    let c, crc = 0xffffffff;
+    for (let n = 0; n < buf.length; n++) {
+      c = (crc ^ buf[n]) & 0xff;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      crc = (crc >>> 8) ^ c;
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td));
+    return Buffer.concat([len, td, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4);
+  ihdr[8] = 8; ihdr[9] = 2; // 8-bit truecolor RGB
+  const png = Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+  return png.toString("base64");
 }
 
 /** Probe one model: E0-style metrics (uses the same thresholds family). */
@@ -120,12 +155,12 @@ async function visionProbe({ model = "qwen3.5-0.8b", noRemote = false }) {
     max_tokens: 30,
     temperature: 0,
   };
-  const local = await startLane({ model, ctx: 4096, extraArgs: ["--mmproj", extMmprojPath(model)] });
+  const local = await startLane({ model, ctx: 4096, extraArgs: ["--mmproj", extMmprojPath(model), "--jinja"] });
   try {
     const t0 = Date.now();
     const res = await fetch(`${local.baseUrl}/v1/chat/completions`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(ask), signal: AbortSignal.timeout(240_000),
+      body: JSON.stringify({ ...ask, chat_template_kwargs: { enable_thinking: false } }), signal: AbortSignal.timeout(240_000),
     });
     const text = await res.text();
     const j = res.ok ? JSON.parse(text) : null;

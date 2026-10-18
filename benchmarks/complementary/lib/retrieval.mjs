@@ -49,6 +49,38 @@ function sessionDoc(session) {
   return text.length > 6000 ? text.slice(0, 3000) + "\n[…]\n" + text.slice(-2500) : text;
 }
 
+/**
+ * Chunked-mean embedding for docs longer than the nomic GGUF's 512-token
+ * embedding ctx (llama.cpp clamps /v1/embeddings to n_ctx_train regardless of
+ * --ctx-size — measured: 1172-token input -> 400 exceed_context_size_error).
+ * Split on whitespace at ~1800 chars (~450 tokens), embed each chunk, mean,
+ * L2-normalize. Standard long-doc practice; deterministic.
+ */
+async function embedLong(server, text, { chunkChars = 1800 } = {}) {
+  const chunks = [];
+  let rest = text;
+  while (rest.length > 0) {
+    if (rest.length <= chunkChars) { chunks.push(rest); break; }
+    let cut = rest.lastIndexOf(" ", chunkChars);
+    if (cut <= 0) cut = chunkChars;
+    chunks.push(rest.slice(0, cut));
+    rest = rest.slice(cut).trimStart();
+  }
+  const vecs = [];
+  for (const ch of chunks) {
+    const r = await embed({ baseUrl: server.baseUrl, model: "nomic", input: ch });
+    if (r.ok) vecs.push(r.vec);
+  }
+  if (!vecs.length) return null;
+  const dim = vecs[0].length;
+  const mean = new Array(dim).fill(0);
+  for (const v of vecs) for (let i = 0; i < dim; i++) mean[i] += v[i];
+  let norm = 0;
+  for (let i = 0; i < dim; i++) { mean[i] /= vecs.length; norm += mean[i] * mean[i]; }
+  norm = Math.sqrt(norm) || 1;
+  return mean.map((x) => x / norm);
+}
+
 export function loadCorpus() {
   const j = JSON.parse(readFileSync(CORPUS, "utf8"));
   return j;
@@ -60,7 +92,7 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
   if (!cases.length) throw new Error("recall-qa corpus empty");
 
   // ---- embed lane (nomic) ----
-  const embedServer = await startLane({ model: EMBED_MODEL, ctx: 2048 });
+  const embedServer = await startLane({ model: EMBED_MODEL, ctx: 2048, extraArgs: ["--ubatch-size", "2048"] });
   const pool = new Map(); // caseId -> [{sessionId, doc, vec}]
   const embedMs = [];
   try {
@@ -68,9 +100,10 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
       const docs = [];
       for (const s of c.sessions ?? []) {
         const doc = sessionDoc(s);
-        const r = await embed({ baseUrl: embedServer.baseUrl, model: "nomic", input: doc });
-        embedMs.push(r.latencyMs);
-        docs.push({ sessionId: s.sessionId, doc, vec: r.ok ? r.vec : null, hasAnswer: (s.turns ?? []).some((t) => t.hasAnswer) });
+        const t0 = Date.now();
+        const vec = await embedLong(embedServer, doc);
+        embedMs.push(Date.now() - t0);
+        docs.push({ sessionId: s.sessionId, doc, vec, hasAnswer: (s.turns ?? []).some((t) => t.hasAnswer) });
       }
       pool.set(c.id, docs);
     }
@@ -80,8 +113,13 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
 
   // ---- build the per-case pools (no LLM needed beyond the embed lane above) ----
   const rows = [];
+  const globalPool = []; // all sessions across all cases — the HARD retrieval
+  // task: the per-case pools are tiny (2-5 sessions, saturated at 100% for any
+  // method — measured), so the discriminative setting is: evidence must rank
+  // top-k among EVERY session the corpus holds.
   for (const c of cases) {
     const docs = pool.get(c.id);
+    for (const d of docs) globalPool.push({ ...d, caseId: c.id });
     const evidence = docs.filter((d) => d.hasAnswer).map((d) => d.sessionId);
     if (!evidence.length) continue; // no oracle — skip
     rows.push({
@@ -91,7 +129,7 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
     });
   }
   // ---- query lane: rewrites (0.6B) + query embeddings (nomic) ----
-  const embedServer2 = await startLane({ model: EMBED_MODEL, ctx: 2048 });
+  const embedServer2 = await startLane({ model: EMBED_MODEL, ctx: 2048, extraArgs: ["--ubatch-size", "2048"] });
   const results = [];
   const rewriteLat = [];
   const rewriteFailures = [];
@@ -132,29 +170,32 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
       row._rwVec = rwE.ok ? rwE.vec : null;
     }
 
-    // scoring — four arms: embed(raw q), embed(rewritten q), BM25(raw q)
-    // [the nonllm campaign-2 lane (their H24), on THIS corpus], and
-    // RRF fusion(embed-rewrite + BM25-raw). Same pool, same oracle, one
-    // variable per comparison.
+    // scoring — four arms over the GLOBAL pool: embed(raw q), embed(rewritten
+    // q), BM25(raw q) [the nonllm campaign-2 lane (their H24), on THIS corpus],
+    // and RRF fusion(embed-rewrite + BM25-raw). Same pool, same oracle, one
+    // variable per comparison. (Per-case pools measured saturated — 2-5
+    // sessions, 100% for every arm — so the discriminative setting ranks
+    // evidence among EVERY session the corpus holds.)
+    const gpool = globalPool.filter((d) => d.vec);
+    const gbm25 = buildBM25(gpool.map((d) => d.doc));
     for (const row of rows) {
-      const docs = row._docs.filter((d) => d.vec);
+      const evidenceSet = new Set(row.evidence);
       const knn = (vec) => {
-        const scored = docs.map((d) => ({ sessionId: d.sessionId, cos: cosineOf(vec, d.vec), hasAnswer: d.hasAnswer }));
+        const scored = gpool.map((d) => ({ sessionId: d.sessionId, cos: cosineOf(vec, d.vec), hasAnswer: evidenceSet.has(d.sessionId) }));
         scored.sort((a, b) => b.cos - a.cos);
         return scored;
       };
       const rawRank = row._rawVec ? knn(row._rawVec) : [];
       const rwRank = row._rwVec ? knn(row._rwVec) : [];
-      const bm25 = buildBM25(docs.map((d) => d.doc));
-      const bm25Rank = bm25.rank(row.question).map((i) => docs[i]);
+      const bm25Rank = gbm25.rank(row.question).map((i) => gpool[i]);
       const fused = rrfFuse([
         rwRank.map((d) => d.sessionId),
         bm25Rank.map((d) => d.sessionId),
-      ]).map((sid) => docs.find((d) => d.sessionId === sid)).filter(Boolean);
+      ]).map((sid) => gpool.find((d) => d.sessionId === sid)).filter(Boolean);
       const recallAt = (rank, k) => (rank.slice(0, k).some((d) => d.hasAnswer) ? 1 : 0);
       results.push({
         caseId: row.caseId, questionType: row.questionType,
-        poolSize: row.poolSize, evidenceCount: row.evidence.length,
+        poolSize: gpool.length, evidenceCount: row.evidence.length,
         rewrites: row._rewrites ?? null,
         rawRecall5: rawRank.length ? recallAt(rawRank, 5) : null,
         rawRecall10: rawRank.length ? recallAt(rawRank, 10) : null,

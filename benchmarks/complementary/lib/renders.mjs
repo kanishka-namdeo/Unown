@@ -110,16 +110,19 @@ export function renderBakeoff(out) {
   }));
   const t = out?.triage ?? {};
   const triRows = [
-    { model: "qwen3-0.6b (incumbent)", "json ok": pct(t.incumbent?.summary?.jsonOkRate, 0), "p50 ms": t.incumbent?.summary?.latency ?? "—" },
-    { model: "qwen3.5-0.8b (candidate)", "json ok": pct(t.candidate?.summary?.jsonOkRate, 0), "p50 ms": t.candidate?.summary?.latency ?? "—" },
+    { model: "qwen3-0.6b (incumbent)", "json ok": pct(t.incumbent?.jsonOkRate, 0), "p50 ms": t.incumbent?.latency ?? "—" },
+    { model: "qwen3.5-0.8b (candidate)", "json ok": pct(t.candidate?.jsonOkRate, 0), "p50 ms": t.candidate?.latency ?? "—" },
   ];
   const extra = [];
-  if (t.candidate?.summary) extra.push({ metric: "candidate agreement with incumbent", value: pct(t.candidate.summary.agreementWithRef, 0) });
+  if (t.candidate?.agreementWithRef != null) extra.push({ metric: "candidate agreement with incumbent", value: pct(t.candidate.agreementWithRef, 0) });
   if (t.remote?.incumbentAgreement != null) extra.push({ metric: "incumbent agreement with remote", value: pct(t.remote.incumbentAgreement, 0) });
   if (t.remote?.candidateAgreement != null) extra.push({ metric: "candidate agreement with remote", value: pct(t.remote.candidateAgreement, 0) });
   let visionTxt = "";
   if (out?.vision && !out.vision.error) {
-    visionTxt = `\nVision probe (local ${out.vision.local?.model} + ${out.vision.local?.mmproj}): boots=${out.vision.local?.boots}, answered=${out.vision.local?.answeredColor}, ${out.vision.local?.latencyMs}ms, $0${out.vision.remote ? ` — remote ${out.vision.remote.model}: ${out.vision.remote.answeredColor ? "answered" : "?"} in ${out.vision.remote.latencyMs}ms` : ""}\n`;
+    const remoteTxt = out.vision.remote
+      ? ` — remote ${out.vision.remote.model}: ${(out.vision.remote.answeredColor ?? out.vision.remote.ok) ? "answered" : "?"} in ${out.vision.remote.latencyMs}ms`
+      : "";
+    visionTxt = `\nVision probe (local ${out.vision.local?.model} + ${out.vision.local?.mmproj}, --jinja + thinking-off): boots=${out.vision.local?.boots}, answered=${out.vision.local?.answeredColor}, ${out.vision.local?.latencyMs}ms, $0${remoteTxt}\n`;
   } else if (out?.vision?.error) {
     visionTxt = `\nVision probe: FAILED — ${String(out.vision.error).slice(0, 120)}\n`;
   }

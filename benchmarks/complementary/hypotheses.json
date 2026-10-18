@@ -127,9 +127,12 @@
         "logprob-driven token-drop (LLMLingua-1 style) probed in C0; chunk-select is the robust fallback if prompt-logprobs are unavailable"
       ],
       "precedent": "LLMLingua-2 (ACL'24 Findings, arXiv 2403.12968): 2-5x compression with minimal loss, 1.6-2.9x e2e latency gain; LLMLingua-1 entropy dropping; nonllm H14 hybrid curation (19.9% cut, judge leans curated) \u2014 the remote-cost angle is unexplored",
-      "status": "open",
-      "verdict": null,
-      "evidence": []
+      "status": "verified",
+      "verdict": "VERIFIED 2026-10-19 on linux-x64/2vCPU/4GB (thresholds all passed, one honest caveat): the 0.6B chunk-select compressor (json_schema grammar, HARD budget cap after the measured 35/36 over-keep) cuts the remote payload 51.3% median and the remote INPUT tokens 47.2% median (2928->2337 and 4719->2337 on the mining replays, dream 42.5%), at 100% compressor JSON validity, p50 70.8s local (async lane \u2014 mining runs after a failed run, dream is scheduled; wall-clock is not on the critical path). Harness validator: compressed arm 33% vs full arm 0% (parity+, the remote's known spec-violation behavior) \u2014 compression did not degrade spec compliance. Blind judge (position-swapped, consistency-gated): 2 ties + 1 LOSS vs 0 wins \u2014 the W+T>=L guard passes, and the loss is DIAGNOSTIC: the DREAM replay lost specific run references at 42.5% payload cut (matching nonllm H14's finding on the same seam), while both MINING replays judged tie (one judge even leaned 'compressed diagnoses the root cause MORE precisely'). Production operating point is family-specific: mining ~50% cut is a win; dream needs keep-pct >=0.7 or the H14 hybrid (activation-ranked head kept full). Local cost per mining call: ~$0.0007 of 2-vCPU time for ~$0.0014 remote savings at mining cadence \u2014 the value is the DREAM+MINING token budget under PI_MEMORY caps and offline operability, not raw dollars.",
+      "evidence": [
+        "benchmarks/complementary/results/REPORT.md#c4--local-compression-remote-savings-h19",
+        "benchmarks/complementary/results/c4-compress/c4-compress.json"
+      ]
     },
     {
       "id": "H20",
@@ -155,9 +158,12 @@
         "GPTCache production literature warns semantic caching is 'disastrous for near-miss high-stakes queries' \u2014 this experiment measures exactly that boundary on Unown's real call shapes"
       ],
       "precedent": "GPTCache (zilliztech) exact + similarity tiers; truefoundry 2026-05 semantic-caching gateway analysis; the bridge already serializes remote calls (MIN_SPACING_MS) \u2014 a cache hit also skips the throttle",
-      "status": "open",
-      "verdict": null,
-      "evidence": []
+      "status": "partially",
+      "verdict": "SPLIT 2026-10-19: the L1 exact tier is verified-trivially (12/12 byte-identical replays, hash-keyed); the L2 near-dup tier is REFUTED \u2014 no safe operating threshold exists on Unown's call shapes. Measured: outcome-flipped note edits (the adversarial danger corpus) embed at cos 0.952-0.974 vs their originals \u2014 i.e., they HIT L2 at 100% rate at t=0.95 and 33% at t=0.97 \u2014 while the nomic embedder's own rerun self-similarity tops out below 0.99 (nondeterministic batched inference), so the threshold that excludes the danger band (0.99) also excludes legitimate replays (0 hits). The two bands OVERLAP; this is the GPTCache 'near-miss' warning measured concretely. The judge on danger L2 hits was unanimous in its reasons ('Output A correctly reflects the EDITED outcome ... while B incorrectly...') though position-flips marked them formal ties. L2 requires a discriminator that sees the delta (e.g., a diff-hash tier for post-edit notes: same system + payload-hash-of-unchanged-lines) \u2014 a different mechanism, filed as future work, not a threshold tuning problem.",
+      "evidence": [
+        "benchmarks/complementary/results/REPORT.md#c5--two-tier-semantic-cache-h20",
+        "benchmarks/complementary/results/c5-cache/c5-cache.json"
+      ]
     },
     {
       "id": "H21",
@@ -182,9 +188,12 @@
         "rewrite failures fall back to the raw question (graceful degradation measured, not assumed)"
       ],
       "precedent": "Mem0 hybrid search (semantic + BM25 + entity) beats pure-vector in production memory systems; HyDE/query-expansion literature; recall-qa README's own open item: 'no retrieval layer exists \u2014 the oracle split hands the pipeline the evidence'",
-      "status": "open",
-      "verdict": null,
-      "evidence": []
+      "status": "refuted",
+      "verdict": "REFUTED 2026-10-19 on the recall-qa corpus (40 cases, global pool = every session in the corpus \u2014 the per-case pools measured saturated: 2-5 sessions, 100% for every arm): the 0.6B question rewrite HURTS embedding retrieval \u2014 recall@5 92.5% raw vs 87.5% rewritten (-5.0pp against the +5pp threshold; worst on single-session-user 75%->50%, where the rewrite drops distinguishing detail), at 2.3s p50 added latency and 100% JSON validity (the mechanism worked; the OUTPUT is worse). The decisive positive control in the same run: BM25(raw question) = 100.0% recall@5 on the global pool, RRF(embed-rewrite + BM25) = 100.0% \u2014 exact-token matching is the complete answer on this corpus (LongMemEval questions quote the user's own words, and the evidence sessions contain them verbatim), independently CONFIRMING nonllm campaign-2's H17 finding on a different corpus+task. Consequence for the missing retrieval layer: the candidate integrator is BM25(+RRF) \u2014 zero-model, zero-cost, 100% recall@5 \u2014 not LLM query rewriting. The rewrite idea is refuted for THIS distribution; multilingual/paraphrase-heavy corpora would need their own campaign.",
+      "evidence": [
+        "benchmarks/complementary/results/REPORT.md#c6--query-rewriting-for-memory-retrieval-h21",
+        "benchmarks/complementary/results/c6-retrieval/c6-retrieval.json"
+      ]
     },
     {
       "id": "H22",
@@ -213,9 +222,12 @@
         "vision probe is an acceptance lane (boots + answers + latency + cost $0), not a quality verdict vs remote \u2014 a follow-up campaign needs a real screenshot corpus"
       ],
       "precedent": "Qwen3.5 release (Mar 2026, Artificial Analysis: 0.8B II 9 vs Qwen3-0.6B 6.5, native vision at sub-1B previously unavailable); unsloth GGUFs + mmproj; Qualcomm AI Hub runs it on-phone at 30 tok/s decode \u2014 the 'broad range of systems' requirement embodied",
-      "status": "open",
-      "verdict": null,
-      "evidence": []
+      "status": "partially",
+      "verdict": "SPLIT 2026-10-19: the LOCAL VISION LANE is verified as an ACCEPTANCE lane \u2014 Qwen3.5-0.8B Q4_K_M + BF16 mmproj boots in llama.cpp b11718 (needs --jinja + chat_template_kwargs.enable_thinking:false, the same H4 empty-content trap now on the vision path \u2014 1x1 AND 100x100 red PNGs answered 'red' at 1470ms p50, $0, RSS 1176MB within the 4GB co-resident budget), opening a pi-side image capability the remote lane pays vision tokens for (remote qwen3.7-plus: 959ms, billed). The MODEL-CLASS UPGRADE is REFUTED on the lane's actual task: candidate agreement with the incumbent on the 12-note triage replay is 58% (all 5 disagreements are kind-only, benchmark->terminal; outcome 100%), agreement with remote also 58% vs the incumbent's 100%, at 15.0 tok/s vs 19.8 (slower on 2 vCPU \u2014 the hybrid DeltaNet arch does not pay off at this size on CPU) and 1.5x triage p50. The incumbent Qwen3-0.6B stays; the 0.8B's value here is its mmproj (vision), not its text lane. A real screenshot-corpus campaign is required before any production vision wiring (the H22 guard).",
+      "evidence": [
+        "benchmarks/complementary/results/REPORT.md#c7--tiny-model-bake-off-h22",
+        "benchmarks/complementary/results/c7-bakeoff/c7-bakeoff.json"
+      ]
     }
   ]
 }
