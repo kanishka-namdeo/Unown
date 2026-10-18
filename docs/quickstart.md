@@ -20,7 +20,13 @@ Related pages: [usage](usage.md) · [providers](providers.md) · [memory](memory
 
 ## 2. Install
 
-Identical on every OS:
+Identical on every OS — and if you prefer a one-liner, the installer script does the prerequisites and the clone for you ([details](install.md)):
+
+```bash
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh
+```
+
+Or the three commands by hand:
 
 ```bash
 git clone https://github.com/kanishka-namdeo/Unown.git

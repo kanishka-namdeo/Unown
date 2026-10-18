@@ -54,6 +54,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { runMigrations } from "./migrations.ts";
 
 // ---------------------------------------------------------------------------
 // Repo/home resolution (mirrors cli.ts VERSION — the ROOT package.json is the
@@ -525,6 +526,12 @@ export async function cmdUpdate(flags: UpdateFlags, ctx: UpdateCtx = {}): Promis
 	}
 
 	writeJsonFile(updateStatePath(home), { ...state, ok: true, completedAt: new Date().toISOString() });
+
+	// User-state migrations (forward-only, non-fatal — a failed cosmetic
+	// migration must never brick the CLI; doctor reports the residue).
+	const mig = await runMigrations(home);
+	if (mig.applied.length) log(`· user state migrated: ${mig.applied.join(", ")} (schema v${mig.version})`);
+	for (const f of mig.failed) log(`⚠ migration "${f.name}" failed: ${f.error} — non-fatal; see unown doctor`);
 
 	// Report.
 	log(`✓ unown updated: ${current} → ${targetTag.replace(/^v/, "")}`);

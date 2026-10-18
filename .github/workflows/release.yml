@@ -159,6 +159,12 @@ jobs:
           (poison-corpus, MPBench-adapted, quality-axes, recall-qa) and
           `docs/testing-strategy.md` §7.2 for the CI trajectory.
           EOF
+      - name: sha256sums.txt (integrity of the release assets)
+        # sha256 of every attached asset, listed sorted — verifiable by anyone:
+        #   curl -sLO <release>/sha256sums.txt && sha256sum -c sha256sums.txt
+        run: |
+          sha256sum release-checklist.md sbom-spdx.json | sort -k2 > sha256sums.txt
+          cat sha256sums.txt
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -167,4 +173,5 @@ jobs:
           files: |
             release-checklist.md
             sbom-spdx.json
+            sha256sums.txt
           body_path: release-checklist.md

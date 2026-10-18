@@ -104,6 +104,7 @@ Full usage docs live in [`docs/`](docs/):
 | Page | What it covers |
 |---|---|
 | [quickstart](docs/quickstart.md) | clone → install → connect a model → first session (5 minutes) |
+| [install](docs/install.md) | the one-line installer, requirements, offline/air-gapped installs, uninstalling |
 | [updating](docs/updating.md) | `unown update`, update notifications, pinned installs, rollback, the privacy model of the update check |
 | [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers |
 | [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
@@ -139,6 +140,12 @@ Identical on every OS:
 git clone https://github.com/kanishka-namdeo/Unown.git
 cd Unown
 bun run agent:install
+```
+
+Or the one-line installer (checks git, installs bun when missing, clones, installs — [docs/install.md](docs/install.md)):
+
+```bash
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 ```
 
 This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.

@@ -34,6 +34,9 @@ import {
 	SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { netBlocked, osSandboxAvailable, resolveBwrapPath, resolveSandboxExecPath } from "./bwrap.ts";
+import { cmdCompletions } from "./completions.ts";
+import { cmdInfo } from "./info.ts";
+import { MIGRATIONS, readMigrationState } from "./migrations.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import { printModelsOverview, runSetupCommand } from "./setup.ts";
 import {
@@ -52,6 +55,7 @@ import {
 } from "./term.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
+import { cmdUninstall, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
 import {
 	cmdChangelog,
 	cmdUpdate,
@@ -94,13 +98,17 @@ Usage:
   unown models             list configured models (+ what a local bridge serves)
   unown init               scaffold .unown/ project memory
   unown memory             print the effective memory stack
-  unown doctor             run configuration diagnostics
+  unown doctor             run configuration diagnostics (--json: machine-readable)
+  unown info               print the support bundle (--json: machine-readable)
   unown note "text"        deliver a session note to the engine
   unown update            check for a newer release and self-update
                            --check (report only; exit 2 when available),
                            --json, --allow-dirty, --rollback, or a version:
                            unown update 2.1.0 (also pins/rolls back)
   unown changelog [n]     print the latest CHANGELOG.md sections (default 1)
+  unown completions <sh>  bash | zsh | fish | powershell completion script
+  unown uninstall         remove the PATH shims (--dry-run, --purge-data,
+                           --purge-checkout)
   unown --help             this help
   unown --version          print the version (matches package.json)
 
@@ -333,13 +341,23 @@ function cmdMemory() {
 	}
 }
 
-async function cmdDoctor() {
+/** One doctor check in structured form — the `--json` schema (see docs/usage.md). */
+interface DoctorCheck {
+	id: string;
+	status: "pass" | "warn" | "fail";
+	detail: string;
+}
+
+async function cmdDoctor(jsonMode: boolean): Promise<number> {
 	const cwd = process.cwd();
+	const checks: DoctorCheck[] = [];
 	let hardFail = false;
 	let warnings = 0;
 	const check = (label: string, pass: boolean, detail: string, level: "fail" | "warn" = "fail") => {
 		const icon = pass ? "✓" : level === "warn" ? "⚠" : "✗";
-		console.log(`${icon} ${label}${detail ? ` — ${detail}` : ""}`);
+		if (!jsonMode) console.log(`${icon} ${label}${detail ? ` — ${detail}` : ""}`);
+		const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+		checks.push({ id, status: pass ? "pass" : level, detail });
 		if (!pass) {
 			if (level === "fail") hardFail = true;
 			else warnings++;
@@ -367,6 +385,16 @@ async function cmdDoctor() {
 				cache?.checkedAt
 					? `up to date as of ${describeAge(cache.checkedAt)}${cache.error ? ` (${cache.error})` : ""}`
 					: "no check yet — run `unown update --check`",
+			);
+		}
+		// 0b. user-state migrations (schema version + pending count)
+		{
+			const mig = readMigrationState(UNOWN_HOME);
+			const pending = MIGRATIONS.filter((m) => m.from >= mig.version).length;
+			check(
+				"user state schema",
+				true,
+				`v${mig.version}${pending ? ` — ${pending} pending (applied by the next \`unown update\`)` : ""}`,
 			);
 		}
 	}
@@ -516,6 +544,25 @@ async function cmdDoctor() {
 		);
 	}
 
+	if (jsonMode) {
+		console.log(
+			JSON.stringify(
+				{
+					ok: !hardFail,
+					version: VERSION,
+					cwd,
+					agentDir,
+					engineUrl: ENGINE_URL,
+					strictHooks: STRICT_HOOKS,
+					checks,
+					summary: { hardFail, warnings },
+				},
+				null,
+				2,
+			),
+		);
+		process.exit(hardFail ? 1 : 0);
+	}
 	if (hardFail)
 		console.log(
 			`\n✗ unown cannot chat yet — fix the ✗ items above (unown setup, unown --help, docs/troubleshooting.md)`,
@@ -605,13 +652,46 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
 // Entry point
 // ---------------------------------------------------------------------------
 export async function runCli(argv: string[]) {
-	// `setup` and `models` own their own flag grammar — dispatch before the
-	// generic parser would eat their flags as prompt text.
+	// `setup`, `models`, `update`, `changelog`, `info`, `completions`,
+	// `uninstall` and `doctor` own their own flag grammar — dispatch
+	// before the generic parser would eat their flags as prompt text.
 	const first = argv[0];
 	if (first === "setup") process.exit(await runSetupCommand(argv.slice(1)));
 	if (first === "models") {
 		await printModelsOverview();
 		process.exit(0);
+	}
+	if (first === "doctor") {
+		const rest = argv.slice(1);
+		const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
+		if (unknown.length) {
+			console.error(`unown doctor: unknown argument(s): ${unknown.join(" ")}`);
+			process.exit(1);
+		}
+		process.exit(await cmdDoctor(rest.includes("--json")));
+	}
+	if (first === "info") {
+		const rest = argv.slice(1);
+		const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
+		if (unknown.length) {
+			console.error(`unown info: unknown argument(s): ${unknown.join(" ")}`);
+			process.exit(1);
+		}
+		process.exit(cmdInfo(rest.includes("--json")));
+	}
+	if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));
+	if (first === "uninstall") {
+		const { flags, error } = parseUninstallFlags(argv.slice(1));
+		if (error) {
+			console.error(`unown uninstall: ${error}`);
+			console.error("usage: unown uninstall [--dry-run] [--purge-data] [--purge-checkout]");
+			process.exit(1);
+		}
+		if (flags.help) {
+			console.log(UNINSTALL_HELP);
+			process.exit(0);
+		}
+		process.exit(cmdUninstall(flags));
 	}
 	// `update` and `changelog` likewise (update owns --check/--json/etc).
 	if (first === "update") {
@@ -648,9 +728,6 @@ export async function runCli(argv: string[]) {
 		case "memory":
 			cmdMemory();
 			process.exit(0);
-			break;
-		case "doctor":
-			await cmdDoctor();
 			break;
 		case "note":
 			await cmdNote(args.prompt ?? "");

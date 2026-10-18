@@ -79,14 +79,26 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown models` | List configured models, plus what a local bridge serves |
 | `unown init` | Scaffold `.unown/` project memory (`memory/project.md`, `memory/local.md`, `.gitignore`) |
 | `unown memory` | Print the effective 4-tier memory stack |
-| `unown doctor` | Run configuration diagnostics (see below) |
+| `unown doctor` | Run configuration diagnostics — `--json` emits a machine-readable report (`{ok, version, checks[{id,status,detail}], summary}`; non-zero exit on failure — scriptable, CI-able) |
+| `unown info` | Print the support bundle — version, platform, git state, provider names, opt-outs — redaction-safe for bug reports; `--json` for the same fields |
 | `unown note "text"` | Deliver a session note to the engine by hand |
 | `unown update` | Check for a newer release and self-update — fast-forward the checkout to the newest ready tag, then re-run the installer. Flags: `--check` (report only; exit `2` when an update is available), `--check --json`, `--allow-dirty`, `--rollback`, or an explicit version (`unown update 2.1.0` — also pins/rolls back). See [updating](updating.md) |
 | `unown changelog [n]` | Print the latest `CHANGELOG.md` sections (default 1) |
+| `unown completions <shell>` | Print a completion script — `bash` \| `zsh` \| `fish` \| `powershell` (stdout; installation one-liners in `unown completions --help` and below) |
+| `unown uninstall` | Remove the CLI — shims by default; `--dry-run`, `--purge-data` (~/.unown), `--purge-checkout` (the repo; refuses uncommitted work). See [install → uninstalling](install.md#uninstalling) |
 | `unown --help` / `-h` | Help text |
 | `unown --version` / `-V` | Print the version (matches `package.json`; CI asserts the contract) |
 
 `-v` / `--verbose` works in session modes: hook decisions and tool activity are printed to stderr.
+
+**Shell completions.** Install once per shell:
+
+```bash
+unown completions bash > ~/.local/share/bash-completion/completions/unown   # bash
+unown completions zsh  > ~/.zfunc/_unown                                  # zsh (compinit on)
+unown completions fish > ~/.config/fish/completions/unown.fish           # fish
+unown completions powershell >> $PROFILE                                  # PowerShell
+```
 
 **Subagent plumbing flags.** `--mode json` (JSON event stream), `--no-session` (don't persist), `--tools a,b,c` (restrict the active toolset), `--append-system-prompt <file>` (append file contents to the system prompt) exist for the `task` tool, which spawns subagents with exactly these flags. You normally never type them yourself — see [subagents](subagents.md).
 

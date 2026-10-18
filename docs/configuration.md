@@ -132,6 +132,7 @@ Where everything lives — all of it deletable, none of it required to pre-exist
     user.md                      tier 2 — global preferences
   update-check.json              update-notifier cache — 24h TTL, remote URL stored credential-free
   update-state.json              last `unown update` record (from/to/fromSha/ok) — what --rollback restores
+  migrations.json                user-state schema version + migration history (forward-only; see [updating](updating.md))
   notes/
     outbox/                      notes queued while the engine was down
     done/                        ingested notes (archive)

@@ -44,10 +44,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: bash -n scripts/*.sh
+      - name: bash -n scripts/*.sh public/*.sh
         run: |
           failed=0
-          for f in scripts/*.sh; do
+          for f in scripts/*.sh public/*.sh; do
+            [ -e "$f" ] || continue
             echo "bash -n $f"
             if ! bash -n "$f"; then
               echo "::error file=$f::syntax error"
@@ -121,6 +122,33 @@ jobs:
           fi
       - name: Smoke — CLI boots (unown --help)
         run: bun bin/unown --help
+      - name: Smoke — CLI surface: info, doctor --json, completions, changelog, update --check
+        # The 2026 productization surface, non-interactively:
+        #  - unown info / doctor --json must emit valid JSON (node -e parses it)
+        #  - completions scripts must pass bash -n (zsh/fish syntax is pinned
+        #    by content tests in the engine suite; bash is the shell every
+        #    runner actually has)
+        #  - changelog prints the current version's section
+        #  - update --check talks to the real remote: accept 0 (up to date)
+        #    and 2 (update available) — never 1 (offline/remote broken)
+        shell: bash
+        run: |
+          bun bin/unown info --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);if(!j.platform)throw new Error('info json missing platform')})"
+          bun bin/unown doctor --json > /tmp/doctor.json || code=$?
+          code=${code:-0}
+          if [ "$code" -gt 1 ]; then echo "::error::doctor --json crashed (exit $code)"; exit 1; fi
+          node -e "const j=require('/tmp/doctor.json');if(!Array.isArray(j.checks)||!j.checks.length)throw new Error('doctor json missing checks')"
+          for sh in bash; do
+            bun bin/unown completions "$sh" > "/tmp/c.$sh"
+            bash -n "/tmp/c.$sh" || { echo "::error::$sh completion has syntax errors"; exit 1; }
+          done
+          bun bin/unown changelog | grep -q "full changelog" || { echo "::error::unown changelog printed no footer (command broken)"; exit 1; }
+          ucode=0
+          bun bin/unown update --check || ucode=$?
+          if [ "$ucode" -ne 0 ] && [ "$ucode" -ne 2 ]; then
+            echo "::error::unown update --check failed with exit $ucode (1 = offline/broken remote)"
+            exit 1
+          fi
       - name: Smoke — doctor prints its table
         # Doctor exit-code semantics (self-learning src/cli.ts cmdDoctor):
         # hard-exit 1 on any ✗ chat-path row. In CI there is no stack and no
