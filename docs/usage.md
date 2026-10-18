@@ -157,9 +157,27 @@ unown is an MCP **client**: tools from any Model Context Protocol server appear 
 - **Connections are lazy and never block the session**: servers connect in the background at session start; a failed server marks itself `error` (last stderr kept as the hint) and stays out of the way — `/mcp` retries every server and reports status. Tools register the moment their server answers.
 - Tools are capped (100 per server), descriptions capped at 500 chars, tool results at 16 k chars; requests time out after `UNOWN_MCP_TIMEOUT_MS` (default 120 s), the initialize handshake after `UNOWN_MCP_CONNECT_TIMEOUT_MS` (default 20 s). `UNOWN_MCP=0` or `disabled: true` in the config disables the surface.
 
+## Code review (/review)
+
+`/review` (TUI) runs a parallel-subagent review of your working tree — the oh-my-pi `/review` + Codex `/review` presets port:
+
+- **Targets**: `/review` = uncommitted work (diff vs HEAD + untracked files); `/review <base-branch>` = what changed on this branch since it diverged from base (merge-base range). The diff snapshot is frozen before reviewers start, so mid-review edits cannot skew results; diffs cap at 40 k chars.
+- **Reviewers**: read-only unown subagents with a review system prompt and a strict output contract. Small diffs (< 6 k chars) get one reviewer; larger diffs get three in parallel with split focuses — correctness/edge cases, security, tests/maintainability.
+- **Output**: findings tagged `[P0]`…`[P3]` with confidence and file:line citations, merged across reviewers (deduplicated by title, most-severe wins), plus one verdict — `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP` (the strictest reviewer wins). The rendered review lands on screen and in `.unown/reviews/<timestamp>.md` (gitignored).
+- **Honest limits**: severity and confidence are the reviewing model's self-reported judgment, not verified facts; reviewers see the frozen diff and can read the repo, but they do not execute code.
+
+## Goals (/goal)
+
+`/goal <objective>` (TUI) or `unown --goal "<objective>"` (print or TUI) starts a **durable, evidence-verified objective** — the zcode Goal Mode / muse goals port:
+
+- While a goal is active, every turn carries the objective plus the completion contract: work incrementally with the `todo` tool; finish ONLY with a line containing the exact tag `[GOAL:COMPLETE]`; the completion line must cite real evidence (changed file paths, command output, test results); unfinished todos block completion.
+- The completion gate runs when the agent ends a turn: the tag must be present, **every session todo must be done**, and the reply must carry at least two distinct evidence markers (file paths and/or command output). Passing marks the goal `complete` and records the evidence; failing prints exactly why (missing tag, N unfinished todos, insufficient evidence).
+- Goal state persists as a session entry — it survives `/new`, `/resume`, `/fork`. `/goal` shows status, `/goal pause` stops the per-turn injection, `/goal resume` restores it, `/goal clear` removes the goal.
+- **Honest limit**: the gate is agent-honest, not cryptographic — it verifies that the model *cited* evidence, not that the evidence is true. Pair it with the LSP diagnostics loop and `/review` for actual verification.
+
 ## Slash commands
 
-unown adds twelve commands of its own:
+unown adds fourteen commands of its own:
 
 | Command | What it does |
 |---|---|
@@ -175,6 +193,8 @@ unown adds twelve commands of its own:
 | `/checkpoints` | List checkpoints + blob-store size |
 | `/receipts [n]` | Show the session receipts audit ledger |
 | `/mcp` | Show MCP server status and (re)connect configured servers |
+| `/goal [objective]` | Set/show/pause/resume/clear a durable, evidence-verified goal |
+| `/review [base]` | Parallel-subagent code review: P0–P3 findings + SHIP verdict |
 
 pi ships 23 built-in slash commands. The ones worth learning first:
 

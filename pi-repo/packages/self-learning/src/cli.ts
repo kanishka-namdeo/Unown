@@ -92,6 +92,8 @@ Usage:
   unown -p "prompt"        one-shot headless run (print mode)
   unown --plan [...]       start (print or TUI) in plan mode: read-only exploration,
                            numbered plan, then execution after approval (also /plan, Ctrl+Alt+P)
+  unown --goal "objective"  start with a durable goal: evidence-verified completion,
+                           unfinished todos block it (also /goal <objective>)
   unown setup              connect a model provider — interactive wizard
                            presets: bridge (bundled), openai, openrouter, anthropic,
                            dashscope, deepseek, custom (any OpenAI-compatible)
@@ -147,6 +149,7 @@ interface CliArgs {
         tools?: string[];
         appendSystemPromptPath?: string;
         plan: boolean;
+        goal?: string;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -158,9 +161,10 @@ function parseArgs(argv: string[]): CliArgs {
         let tools: string[] | undefined;
         let appendSystemPromptPath: string | undefined;
         let plan = false;
+        let goal: string | undefined;
         for (let i = 0; i < argv.length; i++) {
                 const a = argv[i];
-                if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan };
+                if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan, goal };
                 if (a === "--print" || a === "-p") {
                         print = true;
                         continue;
@@ -182,6 +186,14 @@ function parseArgs(argv: string[]): CliArgs {
                 }
                 if (a === "--plan") {
                         plan = true;
+                        continue;
+                }
+                if (a === "--goal") {
+                        const next = argv[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                goal = next;
+                                i++;
+                        }
                         continue;
                 }
                 if (a === "--tools") {
@@ -213,8 +225,8 @@ function parseArgs(argv: string[]): CliArgs {
         const prompt = rest.join(" ");
         // Non-TTY stdio forces print mode (same behaviour as pi itself).
         if (print || !process.stdin.isTTY || !process.stdout.isTTY)
-                return { command: "print", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan };
-        return { command: "tui", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan };
+                return { command: "print", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal };
+        return { command: "tui", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal };
 }
 
 // ---------------------------------------------------------------------------
@@ -226,6 +238,7 @@ interface BootOptions {
         tools?: string[];
         appendSystemPromptPath?: string;
         plan?: boolean;
+        goal?: string;
 }
 
 async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
@@ -250,7 +263,13 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                         cwd: sessionCwd,
                         agentDir,
                         settingsManager,
-                        extensionFlagValues: bootOpts.plan ? new Map<string, boolean | string>([["plan", true]]) : undefined,
+                        extensionFlagValues:
+                                bootOpts.plan || bootOpts.goal
+                                        ? new Map<string, boolean | string>([
+                                                  ...(bootOpts.plan ? ([["plan", true]] as Array<[string, boolean | string]>) : []),
+                                                  ...(bootOpts.goal ? ([["goal", bootOpts.goal]] as Array<[string, boolean | string]>) : []),
+                                          ])
+                                        : undefined,
                         resourceLoaderOptions: {
                                 extensionFactories: [checkpointsExtension as any, extension as any, toolsExtension as any, mcpExtension as any],
                                 additionalSkillPaths,
@@ -629,6 +648,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 tools: args.tools,
                 appendSystemPromptPath: args.appendSystemPromptPath,
                 plan: args.plan,
+                goal: args.goal,
         });
         const code = await runPrintMode(runtime as any, { mode: args.jsonMode ? "json" : "text", messages: [message] });
         process.exit(code);
@@ -744,6 +764,7 @@ export async function runCli(argv: string[]) {
                                 tools: args.tools,
                                 appendSystemPromptPath: args.appendSystemPromptPath,
                                 plan: args.plan,
+                                goal: args.goal,
                         });
                         break;
         }

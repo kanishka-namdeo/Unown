@@ -84,7 +84,9 @@ benchmarks/edit-bench/results/rerun-2026-10-17/*/events/
 # tracked surface is <project>/.unown/memory/project.md, not this).
 /memory/
 
-# Session audit ledgers + checkpoint blob stores (terminal-agent runtime
-# state: /receipts, /undo, /restore — per-machine, per-session, never shared)
+# Session audit ledgers + checkpoint blob stores + review artifacts
+# (terminal-agent runtime state: /receipts, /undo, /restore, /review —
+# per-machine, per-session, never shared)
 .unown/receipts/
 .unown/checkpoints/
+.unown/reviews/

@@ -44,6 +44,23 @@ import {
     resolveLspConfig,
 } from "./lsp.ts";
 import { deliverTerminalNote, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
+import {
+    checkGoalCompletion,
+    goalContextMessage,
+    type GoalState,
+    parseGoalCommand,
+    renderGoalStatus,
+} from "./goal.ts";
+import {
+    buildReviewerTask,
+    captureReviewTarget,
+    mergeReviews,
+    parseReviewOutput,
+    renderReview,
+    REVIEWER_FOCUSES,
+    reviewerAgent,
+    saveReviewArtifact,
+} from "./review.ts";
 
 // ---------------------------------------------------------------------------
 // Subagent registry: built-ins + .unown/agents/*.md + ~/.unown/agent/agents/*.md
@@ -737,6 +754,16 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 let planItems: PlanStep[] = [];
                 let toolsBeforePlanMode: string[] | undefined;
 
+                // ---- goal state (zcode Goal Mode / muse goals port — see goal.ts)
+                let goal: GoalState | null = null;
+                const persistGoal = () => {
+                        try {
+                                pi.appendEntry("unown-goal", goal);
+                        } catch {
+                                /* persistence is best-effort */
+                        }
+                };
+
                 const uniqueTools = (names: string[]) => [...new Set(names)];
                 const planModeTools = (active: string[]) =>
                         uniqueTools([...active.filter((n) => !PLAN_MODE_DISABLED_TOOLS.has(n)), ...PLAN_MODE_TOOLS]);
@@ -1299,6 +1326,105 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         },
                 });
 
+                pi.registerCommand("goal", {
+                        description: "Durable goal with evidence-verified completion: /goal <objective> | pause | resume | clear",
+                        handler: async (args, ctx) => {
+                                const { action, text } = parseGoalCommand(args ?? "");
+                                switch (action) {
+                                        case "status":
+                                                ctx.ui.notify(renderGoalStatus(goal), "info");
+                                                return;
+                                        case "set": {
+                                                goal = { text: text!.trim(), status: "active", createdAt: Date.now() };
+                                                persistGoal();
+                                                ctx.ui.notify(
+                                                        `Goal set: ${text}\n\nCompletion requires ALL of: the [GOAL:COMPLETE] tag in a final reply, every todo done, and cited evidence (changed-file paths and/or command output). /goal shows status; /goal clear removes it.`,
+                                                        "info",
+                                                );
+                                                return;
+                                        }
+                                        case "pause": {
+                                                if (!goal) {
+                                                        ctx.ui.notify("No goal to pause.", "warning");
+                                                        return;
+                                                }
+                                                goal = { ...goal, status: "paused" };
+                                                persistGoal();
+                                                ctx.ui.notify("Goal paused (no per-turn injection until /goal resume).", "info");
+                                                return;
+                                        }
+                                        case "resume": {
+                                                if (!goal) {
+                                                        ctx.ui.notify("No goal to resume.", "warning");
+                                                        return;
+                                                }
+                                                goal = { ...goal, status: "active" };
+                                                persistGoal();
+                                                ctx.ui.notify(`Goal resumed: ${goal.text}`, "info");
+                                                return;
+                                        }
+                                        case "clear": {
+                                                goal = null;
+                                                persistGoal();
+                                                ctx.ui.notify("Goal cleared.", "info");
+                                                return;
+                                        }
+                                }
+                        },
+                });
+
+                pi.registerCommand("review", {
+                        description: "Parallel-subagent code review of uncommitted work (or /review <base-branch>): P0–P3 findings + SHIP verdict",
+                        handler: async (args, ctx) => {
+                                const base = (args ?? "").trim() || undefined;
+                                ctx.ui.notify("Review: freezing the diff snapshot…", "info");
+                                let target;
+                                try {
+                                        target = await captureReviewTarget(opts.cwd, base);
+                                } catch (err: any) {
+                                        ctx.ui.notify(`Review failed while reading git state: ${err?.message ?? err}`, "warning");
+                                        return;
+                                }
+                                if (!target.diff.trim() && target.untracked.length === 0) {
+                                        ctx.ui.notify(
+                                                "Nothing to review — no uncommitted changes and no untracked files. Try /review <base-branch> for a branch diff.",
+                                                "info",
+                                        );
+                                        return;
+                                }
+                                const agent = reviewerAgent(target.diff);
+                                const focuses = target.diff.length < 6000 ? REVIEWER_FOCUSES.slice(0, 1) : REVIEWER_FOCUSES;
+                                ctx.ui.notify(
+                                        `Review: ${focuses.length} reviewer(s) over ${target.label} (${target.diff.length} chars${target.truncated ? ", truncated" : ""}) — subagents spawn with fresh contexts…`,
+                                        "info",
+                                );
+                                const results = await Promise.all(
+                                        focuses.map((f) =>
+                                                runSubagent(
+                                                        agent,
+                                                        buildReviewerTask({
+                                                                label: target.label,
+                                                                diff: target.diff,
+                                                                untracked: target.untracked,
+                                                                focusBrief: f.brief,
+                                                                cwd: opts.cwd,
+                                                        }),
+                                                        opts.cwd,
+                                                        undefined,
+                                                ),
+                                        ),
+                                );
+                                const outputs = results.map((r, i) => parseReviewOutput(r.output, focuses[i].key));
+                                const merged = mergeReviews(outputs);
+                                const text = renderReview(target.label, outputs, merged.findings);
+                                const artifact = saveReviewArtifact(opts.cwd, target.label, text);
+                                ctx.ui.notify(
+                                        text + (artifact ? `\n\nSaved to ${artifact}` : ""),
+                                        merged.verdict === "block" ? "warning" : "info",
+                                );
+                        },
+                });
+
                 // -------------------------------------------------------------------
                 // Plan-mode wiring
                 // -------------------------------------------------------------------
@@ -1307,6 +1433,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         description: "Start in plan mode (read-only exploration)",
                         type: "boolean",
                         default: false,
+                });
+
+                pi.registerFlag("goal", {
+                        description: "Start with a durable goal (evidence-verified completion)",
+                        type: "string",
+                        default: "",
                 });
 
                 pi.on("tool_call", async (event: any) => {
@@ -1323,9 +1455,23 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 
                 pi.on("context", async (event: any) => {
                         if (planModeEnabled || executionMode) return undefined;
+                        const messages = event?.messages ?? [];
+                        // Keep only the NEWEST goal-context message, and only while a
+                        // goal is active — this turn's injection must survive the
+                        // filter, stale ones from earlier turns must not accumulate.
+                        let lastGoalIdx = -1;
+                        for (let i = messages.length - 1; i >= 0; i--) {
+                                if (messages[i]?.customType === "unown-goal-context") {
+                                        lastGoalIdx = i;
+                                        break;
+                                }
+                        }
                         return {
-                                messages: (event?.messages ?? []).filter((m: any) => {
+                                messages: messages.filter((m: any, i: number) => {
                                         if (m?.customType === "unown-plan-context") return false;
+                                        if (m?.customType === "unown-goal-context") {
+                                                return goal?.status === "active" && i === lastGoalIdx;
+                                        }
                                         const content = m?.content;
                                         if (typeof content === "string") return !content.includes("[PLAN MODE ACTIVE]");
                                         if (Array.isArray(content)) {
@@ -1381,6 +1527,15 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                         },
                                 };
                         }
+                        if (goal && goal.status === "active") {
+                                return {
+                                        message: {
+                                                customType: "unown-goal-context",
+                                                content: goalContextMessage(goal),
+                                                display: false,
+                                        },
+                                };
+                        }
                         return undefined;
                 });
 
@@ -1399,6 +1554,45 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                 });
 
                 pi.on("agent_end", async (event: any, ctx: any) => {
+                        // ---- goal completion gate (zcode/muse port): tag + todos + evidence
+                        if (goal && goal.status === "active") {
+                                const messages = Array.isArray(event?.messages) ? event.messages : [];
+                                const lastAssistant = [...messages].reverse().find((m: any) => m?.role === "assistant");
+                                if (lastAssistant) {
+                                        const content = lastAssistant.content;
+                                        const text =
+                                                typeof content === "string"
+                                                        ? content
+                                                        : Array.isArray(content)
+                                                          ? content
+                                                                    .filter((b: any) => b?.type === "text" && typeof b.text === "string")
+                                                                    .map((b: any) => b.text)
+                                                                    .join("\n")
+                                                          : "";
+                                        if (/\[GOAL:COMPLETE\]/i.test(text)) {
+                                                const check = checkGoalCompletion(text, todos);
+                                                if (check.complete) {
+                                                        goal = {
+                                                                ...goal,
+                                                                status: "complete",
+                                                                completedAt: Date.now(),
+                                                                completedEvidence: check.evidence,
+                                                        };
+                                                        persistGoal();
+                                                        if (ctx?.hasUI) {
+                                                                ctx.ui.notify(
+                                                                        "Goal COMPLETE — evidence verified:\n" +
+                                                                                check.evidence.slice(0, 6).map((e) => `  • ${e}`).join("\n"),
+                                                                        "info",
+                                                                );
+                                                        }
+                                                } else if (ctx?.hasUI) {
+                                                        ctx.ui.notify("Goal NOT complete — " + check.reasons.join("; "), "warning");
+                                                }
+                                        }
+                                }
+                        }
+
                         if (executionMode && planItems.length > 0) {
                                 if (planItems.every((t) => t.completed)) {
                                         executionMode = false;
@@ -1539,8 +1733,20 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                         executionMode = planEntry.data.executing ?? executionMode;
                                         toolsBeforePlanMode = planEntry.data.toolsBeforePlanMode ?? toolsBeforePlanMode;
                                 }
+                                const goalEntry = [...entries]
+                                        .reverse()
+                                        .find((e: any) => e?.type === "custom" && e?.customType === "unown-goal") as
+                                        | { data?: GoalState | null }
+                                        | undefined;
+                                if (goalEntry?.data) goal = goalEntry.data;
                         } catch {
                                 /* best effort */
+                        }
+                        // --goal flag: start (print or TUI) with a fresh goal
+                        const flagGoal = pi.getFlag("goal");
+                        if (typeof flagGoal === "string" && flagGoal.trim()) {
+                                goal = { text: flagGoal.trim(), status: "active", createdAt: Date.now() };
+                                persistGoal();
                         }
                         if (planModeEnabled) enablePlanTools();
                         updateStatus(ctx);
