@@ -2,8 +2,29 @@
 
 import { ExternalLink } from "lucide-react";
 import { FadeUp, GITHUB_URL, SectionHead } from "./shell";
+import { ENGINE_JOB_COUNTS } from "./engine-data";
 
 const SRC = (file: string) => `${GITHUB_URL}/blob/main/pi-repo/packages/self-learning/src/${file}`;
+
+const NUM_WORDS = [
+  "zero", "one", "two", "three", "four", "five", "six",
+  "seven", "eight", "nine", "ten", "eleven", "twelve",
+];
+
+/** Spelled out because the sentence reads as prose; a count past twelve falls
+ *  back to digits rather than silently saying "thirteen" wrong. */
+const word = (n: number) => NUM_WORDS[n] ?? String(n);
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * The job tallies are derived from `JOB_DEFS` in `router.ts` via
+ * `scripts/landing_claims.mjs`, so the routing tile cannot drift from the
+ * scheduler the way a hand-typed "seven / five / two" would.
+ */
+const JOB_SENTENCE =
+  `${cap(word(ENGINE_JOB_COUNTS.total))} jobs keep the loop moving in the background ` +
+  `without you: ${word(ENGINE_JOB_COUNTS.interval)} on a timer, ` +
+  `${word(ENGINE_JOB_COUNTS.event)} on events.`;
 
 /* ------------------------------------------------------------------ */
 /* the problem                                                         */
@@ -61,7 +82,7 @@ const MECHANISMS: Mechanism[] = [
     n: "03",
     title: "Routing",
     pain: "improvement only happens when you remember to run it",
-    body: "Seven jobs keep the loop moving in the background without you: five on a timer, two on events. A busy-mutex means the sandbox is never double-driven.",
+    body: `${JOB_SENTENCE} A busy-mutex means the sandbox is never double-driven.`,
     proof: "When the suite saturates, task minting authors harder curriculum variants from real failures.",
     file: "router.ts",
     href: SRC("router.ts"),

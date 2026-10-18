@@ -3,7 +3,26 @@
 import { motion } from "framer-motion";
 import { Glyph } from "./glyph";
 import { DEX_QUOTES } from "./lexicon";
+import { ENGINE_JOBS } from "./engine-data";
 import { ContinueArrow, FadeUp } from "./shell";
+
+/**
+ * The engine's schedule, rendered the way a cron listing reads: the job id,
+ * then its interval right-aligned to a column derived from the ids themselves.
+ * The list is generated from `JOB_DEFS` in `router.ts` by
+ * `scripts/landing_claims.mjs` and CI re-runs it, so this section cannot name a
+ * job the engine does not run, and a schedule change moves the line without
+ * anyone editing copy. Intervals first, then the event-driven jobs.
+ */
+const JOB_LINES = (() => {
+  const timers = ENGINE_JOBS.filter((j) => j.kind === "interval");
+  const events = ENGINE_JOBS.filter((j) => j.kind === "event");
+  const width = Math.max(0, ...timers.map((j) => j.id.length)) + 6;
+  return [
+    ...timers.map((j) => `${j.id}${(j.interval ?? "").padStart(width - j.id.length)}`),
+    ...events.map((j) => `on ${j.event}`),
+  ];
+})();
 
 /* ------------------------------------------------------------------ */
 /* two of them                                                         */
@@ -20,15 +39,7 @@ const TWO = [
     glyph: "B" as const,
     title: "The engine behind it",
     body: "Sandboxed harness cycles and AutoDream consolidation, on a clock instead of in your session. It never touches your editor.",
-    lines: [
-      "harness-cycle   10m",
-      "auto-dream      10m",
-      "note-sync        5m",
-      "task-mint       30m",
-      "sandbox-gc      15m",
-      "on improvement:shipped",
-      "on run:finished",
-    ],
+    lines: JOB_LINES,
   },
 ];
 

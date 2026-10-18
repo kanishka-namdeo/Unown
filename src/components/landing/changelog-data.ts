@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 90;
+export const CHANGELOG_TOTAL_ENTRIES = 92;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 45,
+  "Added": 46,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 19,
+  "Fixed": 20,
   "Security": 3,
   "Behavior": 7
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 49,
+    "total": 51,
     "counts": {
-      "Added": 17,
+      "Added": 18,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 11,
+      "Fixed": 12,
       "Security": 0,
       "Behavior": 7
     },
@@ -86,6 +86,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
+            "behavior": false
+          },
+          {
+            "title": "landing: seven claims the code contradicted…",
             "behavior": false
           },
           {
@@ -188,6 +192,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "landing: the shipping rail",
+            "behavior": false
+          },
+          {
+            "title": "landing: the page stops hand-copying the repository — two more generators and a claims gate",
             "behavior": false
           },
           {

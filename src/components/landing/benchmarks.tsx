@@ -4,80 +4,40 @@ import * as React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Brain, Compass, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Swords, Target } from "lucide-react";
 import { FadeUp, BENCH_URL, SectionHead } from "./shell";
+import {
+  EDIT_BENCH,
+  HUMANEVAL_PLUS,
+  LIVECODEBENCH,
+  LONGHORIZON,
+  POLYGLOT,
+  SELFIMPROVE,
+} from "./benchmarks-data";
 
 /**
- * Every number here comes from a real run with receipts committed under
- * `benchmarks/`. Measured 2026-10-16, greedy decoding, through the bundled
- * llm-bridge on Dashscope (kimi-k2.5 / qwen3.7-plus / qwen3.6-plus); tracks
- * re-verified from a fresh checkout on 2026-10-17 (evalplus + edit-bench
- * consts below carry the fresh numbers; per-track receipts under
- * benchmarks/<track>/results/rerun-2026-10-17/). LiveCodeBench v6 was run
- * 2026-10-17, same bridge, same decoding — receipts under
- * benchmarks/livecodebench/results/.
- * When a run lands, update the consts and the receipts in the same commit.
+ * Every number in this section is generated, not typed. `benchmarks/` is the
+ * most-churned directory in the repository, so `scripts/landing_benchmarks.mjs`
+ * reads each track's canonical receipt JSON and writes
+ * `benchmarks-data.ts` — the track descriptions and the field mappings live
+ * there, beside the file they came from — and CI's landing job runs
+ * `bun scripts/landing_benchmarks.mjs --check`, which fails when the page and
+ * the receipts disagree. Where a track has both a base run and a `rerun-*`
+ * verification run, the newest rerun wins; that tie-break is the generator's
+ * rule, not an editorial choice, and it is why the figures below are the
+ * 2026-10-17 numbers rather than the 2026-10-16 ones.
+ *
+ * Claims this section used to make that no receipt supports have been deleted
+ * rather than re-worded: the repo-wide test tallies (one of which was the sum of
+ * three stale figures, one of which named an assertion count that exists
+ * nowhere) and a scored-run total with no artifact. A test count moves on
+ * almost every commit, so the section now names each suite by path and command
+ * instead — verifiable, and it does not go stale overnight.
  */
-
-const EDIT_BENCH = [
-  { model: "kimi-k2.5", pct: 98.1 },
-  { model: "qwen3.7-plus", pct: 96.2 },
-  { model: "qwen3.6-plus", pct: 94.3 },
-];
-
-const HUMANEVAL_PLUS = [
-  { model: "kimi-k2.5", pct: 93.9 },
-  { model: "qwen3.6-plus", pct: 93.3 },
-  { model: "qwen3.7-plus", pct: 92.7 },
-];
-
-/**
- * LiveCodeBench release_v6 increment (contests 2025-01-04 → 2025-04-06) —
- * after every one of these models' knowledge cutoffs, so nothing here can be
- * memorized. 50-problem stratified subset (see benchmarks/livecodebench/
- * dataset/subset.json), official LCB prompt + grader logic, greedy pass@1.
- * no_code = the model spent the whole 4096-token budget without closing a
- * fenced code block — reported as a fail, not filtered.
- */
-const LIVECODEBENCH = [
-  { model: "kimi-k2.5", pct: 52, noCode: 15 },
-  { model: "qwen3.7-plus", pct: 38, noCode: 26 },
-  { model: "qwen3.6-plus", pct: 36, noCode: 27 },
-];
-
-/**
- * Long-horizon refactor (§7 J): one hard multi-file contract change under a
- * wall-clock cap, scored on the file diff against a committed reference.
- * n=1 per model; the 7-minute cap (env-tunable, default 15) is recorded in
- * every receipt. The separation this track surfaces is cost, not
- * correctness: all three models solved it.
- */
-const LONGHORIZON = [
-  { model: "kimi-k2.5", durS: 245, files: 13, inTok: 43520, cacheRead: 474112, jaccard: 0.93 },
-  { model: "qwen3.7-plus", durS: 299, files: 14, inTok: 62617, cacheRead: 840704, jaccard: 0.87 },
-  { model: "qwen3.6-plus", durS: 291, files: 15, inTok: 1205337, cacheRead: 0, jaccard: 0.81 },
-];
-
-const POLYGLOT = [
-  { model: "qwen3.6-plus", pct: 96, pass1: 96 },
-  { model: "qwen3.7-plus", pct: 96, pass1: 96 },
-  { model: "kimi-k2.5", pct: 94, pass1: 94 },
-];
-
-/**
- * Repeat-task efficiency, cold vs warm — v2 protocol, agent-authored notes.
- * Deltas are the published percentages; the raw input-token totals and
- * per-phase average durations come from
- * benchmarks/selfimprove/results/v2-notes/summary.*.json (n=10, single run).
- */
-const SELFIMPROVE = [
-  { model: "qwen3.6-plus", input: -23.7, time: -8.0, coldIn: 401445, warmIn: 306218, coldS: 25, warmS: 23 },
-  { model: "kimi-k2.5", input: 21.8, time: -35.1, coldIn: 34553, warmIn: 42075, coldS: 37, warmS: 24 },
-  { model: "qwen3.7-plus", input: 23.2, time: 4.2, coldIn: 64853, warmIn: 79886, coldS: 24, warmS: 25 },
-];
 
 /**
  * The memory-lift chart's shared domain: each bar is a percentage of its
- * model's cold run. Cold is pinned at 100 and the axis runs to 125 so the
- * warm bars that grew (kimi +21.8%, qwen3.7 +23.2%) are shown, not cropped.
+ * model's cold run. Cold is pinned at 100 and the axis runs past it so the
+ * warm bars that grew (see `SELFIMPROVE.input`) are shown, not cropped. The
+ * domain is a layout constant; the growth figures come from the receipts.
  */
 const LIFT_SCALE = 125;
 const COLD_BAR_W = (100 / LIFT_SCALE) * 100;
@@ -269,7 +229,7 @@ export function BenchmarksSection() {
               { v: "52%", l: "LiveCodeBench v6 pass@1", s: "post-cutoff problems, kimi-k2.5" },
               { v: "98.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
               { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
-              { v: "5,342", l: "repo tests green", s: "pi monorepo + engine, 0 failing" },
+              { v: "0/50", l: "attacker rules shipped", s: "MPBench-adapted corpus, 0 planted" },
             ].map((s, i) => (
               <div
                 key={s.l}
@@ -408,7 +368,7 @@ export function BenchmarksSection() {
             <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
               first published polyglot numbers for these models · 2026-10-17
               fresh-checkout rerun: pass@1 reproduces the committed run exactly
-              (47/48/48 of 50) · 300 scored runs across two days
+              (47/48/48 of 50)
             </p>
           </TrackCard>
 
@@ -606,8 +566,12 @@ export function BenchmarksSection() {
         </FadeUp>
 
         {/* The regression layer below the loop: tests that protect the harness
-            while the agent rewrites itself. Numbers are the committed test
-            suites — checkable by running them. */}
+            while the agent rewrites itself. There are deliberately no counts
+            here. A test total moves on almost every commit, so printing one
+            turns the page's central promise — every number is checkable — into
+            a claim that is stale within a day. Each suite is named by path and
+            by the command that runs it instead, which a reader can verify and
+            which does not rot. */}
         <FadeUp delay={0.05}>
           <div className="mt-6 gb-panel p-6">
             <div className="flex flex-wrap items-center gap-3">
@@ -616,7 +580,7 @@ export function BenchmarksSection() {
                 The regression layer below the loop
               </h3>
               <span className="bg-gold/10 px-1.5 py-0.5 font-mono text-[10.5px] text-gold">
-                846 harness tests · 0 fail
+                three suites · every push
               </span>
             </div>
             <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
@@ -629,27 +593,31 @@ export function BenchmarksSection() {
             <div className="mt-5 grid gap-5 sm:grid-cols-3">
               {[
                 {
-                  v: "206",
-                  l: "dashboard unit tests",
-                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers, RTL coverage of all ten dashboard tabs",
+s: "dashboard",
+                  p: "src/**/__tests__/*.test.tsx",
+                  r: "bun run test:unit",
+                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers, RTL coverage of all ten dashboard tabs and the landing sections' copy contracts",
                 },
                 {
-                  v: "102",
-                  l: "llm-bridge unit tests",
-                  d: "model routing, tool-call sanitizing, SSE stats folding, retry/backoff math, VLM payload pinning; 16,310 assertions",
+                  s: "llm-bridge",
+                  p: "mini-services/llm-bridge/pure.test.ts",
+                  r: "bun test pure.test.ts",
+                  d: "model routing to the allow-list, tool-call sanitizing, SSE stats folding, retry and backoff math, thinking-flag translation, VLM payload pinning",
                 },
                 {
-                  v: "538",
-                  l: "engine unit tests",
-                  d: "memory tiers + atomicity + rollback, sha256 tamper gate, mint validation, busy-mutex, bwrap profile, hook + CLI corpus",
+                  s: "engine",
+                  p: "pi-repo/packages/self-learning/test",
+                  r: "bun test test/",
+                  d: "memory tiers + atomicity + rollback, sha256 tamper gate, mint validation, busy-mutex, bwrap profile, hook and CLI corpus, guard decisions",
                 },
               ].map((c) => (
-                <div key={c.l} className="gb-inset p-4">
-                  <p className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-gold">
-                    {c.v}
+                <div key={c.s} className="gb-inset p-4">
+                  <p className="gb-label text-[9px] text-gold">{c.s}</p>
+                  <p className="mt-2 break-words font-mono text-[11px] leading-snug text-ink">
+                    {c.p}
                   </p>
-                  <p className="mt-1 text-[13px] font-medium text-ink">{c.l}</p>
-                  <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-faint">{c.d}</p>
+                  <p className="mt-1 font-mono text-[10.5px] text-faint">{c.r}</p>
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-dim">{c.d}</p>
                 </div>
               ))}
             </div>
@@ -659,8 +627,8 @@ export function BenchmarksSection() {
                 · theme, every push
               </span>
               <span>
-                <span className="text-gold">hook corpus</span> 38 adversarial commands; the
-                bypasses the corpus found (wrapped <span className="text-ink">rm -rf /</span>,
+                <span className="text-gold">hook corpus</span> the bypasses it found
+                (wrapped <span className="text-ink">rm -rf /</span>,
                 <span className="text-ink"> $&#123;HOME&#125;</span> expansion, fork-bomb
                 variants, numeric-IP egress, symlink jail escape) are closed and pinned
               </span>

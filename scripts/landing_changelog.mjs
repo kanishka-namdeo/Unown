@@ -124,7 +124,7 @@ function titleOf(body) {
 /* parsing                                                             */
 /* ------------------------------------------------------------------ */
 
-function parseChangelog(raw) {
+function parseChangelog(raw, { reportUnused = false } = {}) {
   const lines = raw.split(/\r?\n/);
   const stops = [];
   const used = new Set();
@@ -176,8 +176,13 @@ function parseChangelog(raw) {
     });
   }
 
-  for (const key of Object.keys(TITLES)) {
-    if (!used.has(key)) console.warn(`landing_changelog: TITLES entry is unused, the bullet moved: ${key}`);
+  // Only meaningful against the real changelog: a fixture parse cannot use
+  // every curated key, so reporting there is a false alarm that trains people
+  // to ignore the one warning that matters.
+  if (reportUnused) {
+    for (const key of Object.keys(TITLES)) {
+      if (!used.has(key)) console.warn(`landing_changelog: TITLES entry is unused, the bullet moved: ${key}`);
+    }
   }
   return stops;
 }
@@ -259,7 +264,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = ${JSON.stringify(data.stops, nul
 /* ------------------------------------------------------------------ */
 
 function run(check) {
-  const data = build(parseChangelog(readFileSync(SOURCE, "utf8")));
+  const data = build(parseChangelog(readFileSync(SOURCE, "utf8"), { reportUnused: true }));
   const out = emit(data);
 
   if (check) {

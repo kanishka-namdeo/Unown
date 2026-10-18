@@ -17,6 +17,8 @@
     "test:coverage": "node scripts/check_coverage.mjs --run",
     "check:docs": "node scripts/check_docs.mjs docs/*.md",
     "check:changelog": "node scripts/landing_changelog.mjs --check",
+    "check:benchmarks": "node scripts/landing_benchmarks.mjs --check",
+    "check:claims": "node scripts/landing_claims.mjs --check",
     "unown": "bun bin/unown",
     "agent:install": "bun scripts/install.ts",
     "agent:start": "bun scripts/start.ts",

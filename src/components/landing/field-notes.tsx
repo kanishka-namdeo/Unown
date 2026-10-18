@@ -37,8 +37,9 @@ const BORROWED: Borrowed[] = [
     d: (
       <>
         Unown&apos;s silhouette <em className="not-italic text-ink">is</em> the letter,
-        which is why the hero here is a glyph with an eye. Every form carries one eye at
-        the centre of its counter.
+        which is why the hero here is a glyph with an eye. Every form carries exactly one
+        eye: inside the counter where the letter has a generous one, and over the centre of
+        mass where it does not.
       </>
     ),
   },

@@ -379,6 +379,30 @@ jobs:
         # a contract: a changelog entry that never reached the rail fails here,
         # and so does a rail that invented a date.
         run: bun scripts/landing_changelog.mjs --check
+      - name: Benchmark receipt extraction
+        # The canonical-run rule (newest `rerun-*` wins), the percentage
+        # validation, and the null-for-missing-receipt path.
+        run: node --test scripts/landing_benchmarks.test.mjs
+      - name: Benchmark figures match the receipts
+        # `benchmarks/` is the most-churned directory in the repo. Every figure
+        # the landing page prints is read from a committed receipt JSON, so a run
+        # that lands without the page being regenerated is a red build rather
+        # than a stale number on the marketing site.
+        run: bun scripts/landing_benchmarks.mjs --check
+      - name: Engine claim extraction
+        # The gate's own regressions: the template-prefix matcher, the
+        # one-directional rule (an omitted command must NOT fail), the
+        # wrapped-line join, and a literal that exists nowhere.
+        run: node --test scripts/landing_claims.test.mjs
+      - name: Page literals resolve in the engine
+        # Two jobs in one script. It generates `engine-data.ts` from `JOB_DEFS`
+        # so the page's job list and tallies are read from the scheduler rather
+        # than retyped, and it gates every quoted engine string on the page —
+        # hook-log reasons, harness log lines, the project-memory excerpt, CLI
+        # command names — against the sources that write them. One direction
+        # only: page implies source. HELP is a superset by design, so a command
+        # the page omits must not fail, or the gate gets ignored.
+        run: bun scripts/landing_claims.mjs --check
 
   security:
     name: Security scan (secrets + advisories)

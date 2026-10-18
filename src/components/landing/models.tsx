@@ -87,13 +87,13 @@ export function ModelsBand() {
                 downloads llama.cpp and a GGUF on first use and serves the lane.
                 Below that sits a zero-LLM tier, measured in{" "}
                 <code className="font-mono text-dim">benchmarks/nonllm</code>:
-                note dedup (MinHash at ~0.2ms/note), dream-input ranking
-                (a 33M ONNX encoder, 15ms) and curation run fully local on
-                CPU, verified on Linux/macOS/Windows CI under both Bun and
-                Node — and since H15 those lanes ship in the engine itself:
-                opt-in flags around the dream call, a{" "}
+                note dedup, input ranking and curation run fully local on CPU
+                around the dream call — MinHash for structural near-dups, an
+                optional 33M bge-small embedder for the paraphrase tier, LexRank
+                for the compressed tail — and since H15 all three ship in the
+                engine itself: opt-in flags, a{" "}
                 <code className="font-mono text-dim">shadow</code> mode that
-                reports what they would change without touching the prompt,
+reports what they would change without touching the prompt,
                 and the embedding model as an install-on-demand side package,
                 so the LLM calls that remain are only the ones that genuinely
                 generate. The third research bench,{" "}
@@ -101,9 +101,15 @@ export function ModelsBand() {
                 measured what a local engine can do around this endpoint:
                 the local lane's shared-prefix calls prefill 54% faster
                 (llama.cpp KV reuse), a small local model can cut the remote
-                lane's input tokens 47% on mining jobs before the call is
+                lane&apos;s input tokens 47% on mining jobs before the call is
                 paid for, and a sub-1B local model answers image questions
-                at $0 where the remote lane bills vision tokens. Or skip
+                at $0 where the remote lane bills vision tokens. Those three
+                ship; the kNN-triage and cross-encoder arms stay
+                bench-verified, not wired in. Per-platform timings and the
+                hypothesis verdicts are in that directory&apos;s{" "}
+                <code className="font-mono text-dim">results/REPORT.md</code>,
+                which is where the figures above are quoted from rather than
+                restated independently. Or skip
                 the bridge entirely with{" "}
                 <code className="font-mono text-dim">unown setup --provider</code>. Marks
                 are{" "}

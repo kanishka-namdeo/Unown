@@ -6,7 +6,7 @@ import { FadeUp, SectionHead, GITHUB_URL, BENCH_URL } from "./shell";
 const SRC = (file: string) => `${GITHUB_URL}/blob/main/pi-repo/packages/self-learning/src/${file}`;
 const RECEIPTS: [string, string][] = [
   ["SECURITY.md", `${GITHUB_URL}/blob/main/SECURITY.md`],
-  ["the threat model", `${GITHUB_URL}/blob/main/docs/configuration.md`],
+  ["the threat model", `${GITHUB_URL}/blob/main/SECURITY.md#agent-threat-surface`],
   ["sandbox profile", SRC("bwrap.ts")],
   ["hook layer", SRC("hooks.ts")],
   ["config trust gate", SRC("config-trust.ts")],
@@ -21,6 +21,11 @@ const GATES = [
     t: "Ship gate",
     d: "A mined patch enters memory only after a candidate run passes verification in a fresh sandbox, and the pass replicates in a second, independent confirmation run.",
     tag: "verify ×2",
+  },
+  {
+    t: "Content guard",
+    d: "A deterministic adversarial-content scan runs at the ship step and on both dream paths, after the two runs pass. A clean candidate ships; a partly flagged one ships with the flagged lines quarantined; a candidate that is mostly adversarial, or a tier's first mint carrying any, gates entirely. This one was found live by our own poisoning corpus.",
+    tag: "ship · sanitize · gate",
   },
   {
     t: "Mint gate",
@@ -53,14 +58,29 @@ const GATES = [
 /* the real decision log                                               */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Every reason below is a literal the engine writes, taken from `hooks.ts` or
+ * `harness.ts` with the interpolated ids and versions filled in. Two rows used
+ * to be paraphrases that match no code: the network deny without its
+ * `in the sandbox` suffix, and a `Stop` line the engine never emits. That is the
+ * exact kind of claim this section exists to make checkable, so
+ * `scripts/landing_claims.mjs` now asserts each literal against its source file
+ * — a deny rule reworded turns the page red rather than making it quietly
+ * wrong. The six hook names here are the six members of `HookName`.
+ */
 const LOG = [
   ["SessionStart", "log", "session started (memory v6)"],
   ["UserPromptSubmit", "log", "prompt submitted: “why does checkout.spec flake…?”"],
   ["PreToolUse", "allow", "allowed"],
   ["PostToolUse", "augment", "syntax gate flagged src/checkout.spec.ts"],
   ["PreToolUse", "deny", "refusing rm on filesystem root"],
-  ["PreToolUse", "deny", "network access to external hosts is denied"],
-  ["Stop", "log", "session ended · note queued → engine"],
+  ["PreToolUse", "deny", "network access to external hosts is denied in the sandbox"],
+  [
+    "SubagentStop",
+    "log",
+    "candidate 8f21c0a3 + confirmation both passed — patch shipped to project memory (v7)",
+  ],
+  ["Stop", "log", "agent loop ended after 12 messages"],
 ] as const;
 
 const DECISION_TONE: Record<string, string> = {
