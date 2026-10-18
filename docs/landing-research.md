@@ -1018,3 +1018,25 @@ moved; the claim is existence-only ("ships these two affordances"), which the
 repo can vouch for at any commit. The landing copy test
 (`src/components/landing/__tests__/landing-copy.test.tsx`) is not assertion-bound
 to this sentence, so no test churn was required.
+## 2026-10-19 — models: the zero-LLM paragraph gains the shipped-integration clause
+
+The H15 integration (src/localml.ts + the optional local-ml side package)
+closed the loop the zero-LLM paragraph opened: the lanes are no longer
+bench-only receipts — they run in the engine. The paragraph gained one
+clause after the CI-verification sentence: "and since H15 those lanes ship
+in the engine itself: opt-in flags around the dream call, a `shadow` mode
+that reports what they would change without touching the prompt, and the
+embedding model as an install-on-demand side package".
+
+Why a clause and not a new section: the one-fact-per-section rule — the
+claim is still "the auxiliary tiers are free, local and verified"; what
+changed is its strength (measured → measured AND shipped). No new numbers
+were added: the shipped-integration facts are structural (flags exist,
+shadow mode exists, the package is optional), all checkable in
+`docs/configuration.md`'s `PI_LOCAL_ML` rows and
+`pi-repo/packages/self-learning/local-ml/README.md` — the receipts behind
+the existing numbers stay in `benchmarks/nonllm/results/REPORT.md`, which
+now also carries the live shadow receipt (the running engine's real
+auto-dream job emitting `lane:dream` with the embedding tier engaged and
+the dream completing on the byte-identical prompt). The deliberate reading
+constraint is unchanged: extraction and consolidation stay on the LLM.

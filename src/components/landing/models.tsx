@@ -90,8 +90,13 @@ export function ModelsBand() {
                 note dedup (MinHash at ~0.2ms/note), dream-input ranking
                 (a 33M ONNX encoder, 15ms) and curation run fully local on
                 CPU, verified on Linux/macOS/Windows CI under both Bun and
-                Node — the LLM calls that remain are only the ones that
-                genuinely generate. Or skip
+                Node — and since H15 those lanes ship in the engine itself:
+                opt-in flags around the dream call, a{" "}
+                <code className="font-mono text-dim">shadow</code> mode that
+                reports what they would change without touching the prompt,
+                and the embedding model as an install-on-demand side package,
+                so the LLM calls that remain are only the ones that genuinely
+                generate. Or skip
                 the bridge entirely with{" "}
                 <code className="font-mono text-dim">unown setup --provider</code>. Marks
                 are{" "}
