@@ -294,7 +294,16 @@ export async function runUnown(args: string[], opts: UnownRunOptions): Promise<U
         env.PI_SELFLEARNING_DATA = join(root, "data");
         for (const [k, v] of Object.entries(opts.env ?? {})) env[k] = v;
 
-        const cmd = opts.viaBun ? ["bun", UNOWN_BIN, ...args] : [UNOWN_BIN, ...args];
+        // Windows: spawn(UNOWN_BIN) resolves to bin/unown.cmd via PATHEXT, and
+        // Node >= 18.20 (CVE-2024-27980) REJECTS args carrying cmd.exe
+        // metacharacters (quotes/braces/parens) for .bat/.cmd executables —
+        // the structured-output tests pass JSON prompts and die with
+        // ERR_INVALID_ARG_VALUE before the CLI even starts. Route through
+        // bun (a real .exe; bin/unown is a bun shebang script, so behavior
+        // is identical) on win32; the interactive human path (unown.cmd from
+        // a shell) is unaffected.
+        const useBun = opts.viaBun || process.platform === "win32";
+        const cmd = useBun ? ["bun", UNOWN_BIN, ...args] : [UNOWN_BIN, ...args];
         const child = spawn(cmd[0], cmd.slice(1), { cwd: projDir, env, stdio: ["ignore", "pipe", "pipe"] });
 
         const timeoutMs = opts.timeoutMs ?? 90_000;
