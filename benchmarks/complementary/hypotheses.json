@@ -2,7 +2,7 @@
   "meta": {
     "purpose": "Hypothesis registry for the THIRD research campaign: non-traditional, fully-local complementary models/mechanisms that speed up or improve the harness around the configured remote endpoint (Dashscope kimi-k2.5/qwen3.7-plus/qwen3.6-plus) \u2014 targeting the pi agent's local lane and the memory system. Each hypothesis is falsifiable, has explicit metrics, thresholds, guards, and a verdict updated by this testbench (benchmarks/complementary/runner.mjs).",
     "created": "2026-10-19",
-    "numbering": "Continues the research program's global H-sequence to avoid cross-bench ambiguity: local-llm holds H1-H11 (small-LLM lane), nonllm holds H9-H15 (campaign 1) and H16-H18 (campaign 2: ettin reranker, BM25+RRF fusion, injection-classifier shadow). THIS registry holds H19-H25 (complementary mechanisms; originally authored as H16-H22 and renumbered after nonllm campaign #2 took H16-H18 in a concurrent session \u2014 the collision is recorded here so the sequence stays unambiguous). New hypotheses must start at H26 or later.",
+    "numbering": "Program-level H-sequence (collision resolved across three concurrent sessions, see 9754e02): local-llm holds H1-H11 (small-LLM lane); nonllm holds H9-H15 (campaign 1) and H23-H25 (campaign 2: ettin reranker, BM25+RRF fusion, injection-classifier shadow \u2014 renumbered from its original H16-H18 to make room for THIS bench). THIS registry holds H16-H22 (complementary mechanisms) \u2014 the allocation the nonllm session recorded. The sequence is now unambiguous; new hypotheses must start at H26 or later.",
     "method": "Replay byte-faithful production prompts (imported from benchmarks/local-llm/lib/prompts.mjs, sync-commented against pi-repo/packages/self-learning/src) with fixtures captured from the live engine, against the pinned llama.cpp lane (b11718, prebuilt, CPU) and the production remote via the llm-bridge. Blind A/B judged by the remote model with position-swap consistency (reuses local-llm judge.mjs). Cross-platform validated via the C0 probe on the GitHub Actions matrix.",
     "remoteBaseline": "kimi-k2.5 via llm-bridge -> Dashscope coding-intl (list $0.49/M in, $2.50/M out)",
     "localEngine": "llama.cpp llama-server b11718 (MIT, official prebuilts, runtime CPU dispatch) \u2014 the SAME engine the shipped BRIDGE_LOCAL_URL lane uses, so a verified mechanism here is a `runner.mjs serve` flag away from production.",
@@ -10,7 +10,7 @@
   },
   "hypotheses": [
     {
-      "id": "H19",
+      "id": "H16",
       "title": "N-gram speculative decoding (model-free) speeds up the local lane's JSON-heavy generation",
       "statement": "llama-server's n-gram speculative decoding (ngram-simple / ngram-mod \u2014 a MODEL-FREE mechanism that drafts from repeated token patterns in context, zero extra RAM, zero model files) accelerates the local lane's schema-constrained learning subtasks (note triage, failure mining) by >= 1.3x median predicted tok/s on CPU with byte-identical greedy outputs, making the async local lane cheaper in wall-clock at no resource cost on any supported platform.",
       "subtask": "local-lane decode speed (triage + mining replays; benefits every PI_*_MODEL_ID=local-* subtask)",
@@ -38,7 +38,7 @@
       "evidence": []
     },
     {
-      "id": "H20",
+      "id": "H17",
       "title": "Draft-model speculative decoding (Qwen2.5-0.5B drafting for Qwen3-0.6B) further speeds up the local lane",
       "statement": "Pairing the lane's Qwen3-0.6B Q4_K_M target with a Qwen2.5-0.5B draft model (same tokenizer family) reaches >= 1.5x median tok/s on the same replays, IF the tokenizer/vocab compatibility holds and the 2-vCPU draft compute does not eat the target's throughput; a failure here documents the small-box ceiling for draft-model specdec (n-gram stays the RAM-free fallback).",
       "subtask": "local-lane decode speed (same replays as C1)",
@@ -67,7 +67,7 @@
       "evidence": []
     },
     {
-      "id": "H21",
+      "id": "H18",
       "title": "llama-server's prefix KV reuse cuts prefill cost on the lane's shared-system-prompt call sequences",
       "statement": "The local lane's calls share long stable prefixes (MINER_SYSTEM/DREAM_SYSTEM/TRIAGE_SYSTEM + memory tiers) with varying payloads; llama-server's default prompt caching (cache_prompt, same-slot prefix match) processes only the new suffix on follow-up calls, cutting prefill time >= 25% on shared-prefix sequences with identical outputs \u2014 a free production win documented for the serve defaults.",
       "subtask": "local-lane prefill speed (triage sequences, dream re-runs, mining batches)",
@@ -92,7 +92,7 @@
       "evidence": []
     },
     {
-      "id": "H22",
+      "id": "H19",
       "title": "Local token-level prompt compression cuts the REMOTE lane's input cost at quality parity",
       "statement": "A tiny local model (Qwen3-0.6B via the lane) can select which payload chunks (transcript lines / note blocks) to keep under a budget BEFORE the expensive remote call, cutting the remote payload >= 30% on mining/dream prompts with harness-validator parity and blind-judge W+T >= L \u2014 the first mechanism that reduces what Unown pays its configured endpoint, complementary to the local lane's $0 offload.",
       "subtask": "remote-lane input cost (failure mining + AutoDream payloads)",
@@ -123,7 +123,7 @@
       "evidence": []
     },
     {
-      "id": "H23",
+      "id": "H20",
       "title": "A two-tier semantic cache serves repeated learning-layer calls with zero quality loss",
       "statement": "The learning layer re-issues near-identical LLM calls (re-triage after note edits, dream re-runs after failed ships, retry ladders); an exact-match tier (sha256 of model+messages+params) is trivially safe, and an embedding-similarity tier (same SYSTEM prefix required + user-payload cosine >= threshold via the local nomic lane) hits on realistic replays with ZERO judge-detected quality regressions on the danger cases \u2014 hit rate and the false-hit curve are both measured, and a single loss at the production threshold refutes the near-dup tier.",
       "subtask": "learning-layer call economics (triage + dream replays)",
@@ -151,7 +151,7 @@
       "evidence": []
     },
     {
-      "id": "H24",
+      "id": "H21",
       "title": "Small-model query rewriting improves memory retrieval recall (the missing retrieval layer)",
       "statement": "Production memory injection has NO retrieval (whole tiers, recall-qa's documented gap); with a kNN retrieval layer over session/note embeddings (nomic lane), a local 0.6B rewrite of the raw question into retrieval keyword phrases improves recall@5 by >= 5pp over raw-question embedding on the recall-qa corpus (40 questions, oracle evidence sessions) at <= 3s added p50 \u2014 the memory-side improvement candidate, integrable as an H15-style pre-processor.",
       "subtask": "memory retrieval quality (recall-qa corpus)",
@@ -178,7 +178,7 @@
       "evidence": []
     },
     {
-      "id": "H25",
+      "id": "H22",
       "title": "Qwen3.5-0.8B (2026 tiny-SOTA, native vision) matches the incumbent 0.6B lane AND opens a local vision lane for pi",
       "statement": "The 2026 generation of sub-1B models (Qwen3.5-0.8B: hybrid Gated DeltaNet+attention, 262K ctx, NATIVE vision via mmproj, Apache-2.0, GGUF Q4_K_M ~0.53GB) matches the incumbent Qwen3-0.6B on the lane's triage replay (JSON validity + label agreement) within the 4GB co-resident RSS budget, and its vision projector loads in llama.cpp and answers the vlm-smoke image probe locally \u2014 upgrading the local lane's model class and adding a pi-side image capability the remote lane currently pays vision tokens for.",
       "subtask": "local-lane model class (triage) + pi vision capability probe",
@@ -199,7 +199,7 @@
         "visionProbe": "correct color answer + boots via --mmproj"
       },
       "guards": [
-        "hybrid DeltaNet arch caveat: KV-prefix checkpointing is limited for recurrent layers (llama.cpp SEQ_RM classes) \u2014 H21's reuse win is NOT assumed to carry; measured as a note",
+        "hybrid DeltaNet arch caveat: KV-prefix checkpointing is limited for recurrent layers (llama.cpp SEQ_RM classes) \u2014 H18's reuse win is NOT assumed to carry; measured as a note",
         "262K native context is NOT the serving ctx: ctx stays at the lane's 4096 for the RSS budget",
         "vision probe is an acceptance lane (boots + answers + latency + cost $0), not a quality verdict vs remote \u2014 a follow-up campaign needs a real screenshot corpus"
       ],

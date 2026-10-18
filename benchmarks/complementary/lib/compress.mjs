@@ -1,5 +1,5 @@
 /**
- * compress.mjs — C4 (H22): local token-level prompt compression for the
+ * compress.mjs — C4 (H19): local token-level prompt compression for the
  * REMOTE lane. The tiny local model selects which payload chunks survive
  * BEFORE the expensive remote call.
  *
@@ -210,7 +210,7 @@ export async function c4Compress({ runLimit = 4, keepPct = 0.5, noRemote = false
   const judged = rows.filter((r) => r.judged);
   const summary = {
     experiment: "C4-compress",
-    hypotheses: ["H22"],
+    hypotheses: ["H19"],
     remoteModel, keepPct, noRemote,
     replays: rows.length,
     compressorOkRate: rows.filter((r) => r.compressorOk).length / (rows.length || 1),

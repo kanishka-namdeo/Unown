@@ -1,5 +1,5 @@
 /**
- * retrieval.mjs — C6 (H24): small-model query rewriting for memory
+ * retrieval.mjs — C6 (H21): small-model query rewriting for memory
  * retrieval, on the recall-qa corpus (40 LongMemEval-adapted questions with
  * oracle evidence sessions).
  *
@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { embed } from "../../local-llm/lib/openai.mjs";
-import { buildBM25, rrfFuse } from "../../nonllm/lib/bm25.mjs"; // campaign-#2-verified lane (H17 theirs): Lucene-default BM25 + RRF fusion, zero deps
+import { buildBM25, rrfFuse } from "../../nonllm/lib/bm25.mjs"; // campaign-2-verified lane (their H24, post-renumber): Lucene-default BM25 + RRF fusion, zero deps
 import { startLane, chatTimed, median, INCUMBENT, EMBED_MODEL } from "./lane.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -133,7 +133,7 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
     }
 
     // scoring — four arms: embed(raw q), embed(rewritten q), BM25(raw q)
-    // [the nonllm-campaign-2 verified exact-token lane, on THIS corpus], and
+    // [the nonllm campaign-2 lane (their H24), on THIS corpus], and
     // RRF fusion(embed-rewrite + BM25-raw). Same pool, same oracle, one
     // variable per comparison.
     for (const row of rows) {
@@ -191,7 +191,7 @@ export async function c6Retrieval({ caseLimit = 40, topK = [5, 10], noRewriteLat
   }
   return {
     experiment: "C6-retrieval",
-    hypotheses: ["H24"],
+    hypotheses: ["H21"],
     summary: {
       cases: results.length,
       poolEmbedMs: medianOfArr(embedMs),
