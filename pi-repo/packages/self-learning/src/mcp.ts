@@ -1645,6 +1645,44 @@ export function createMcpExtension(opts: McpOptions) {
 
     let manager: McpManager | null = null;
 
+    /**
+     * Footer status line (P1-b): pi's `ctx.ui.setStatus(key, text)` seam —
+     * the interactive footer renders one joined, width-truncated row from
+     * all extension statuses (pass undefined to clear the key). Guarded on
+     * every call: the UI shape varies across pi modes/builds, so a missing
+     * or throwing setStatus degrades to no status line — never a crash.
+     */
+    const setStatusLine = (ctx: any, key: string, text: string | undefined): void => {
+        try {
+            if (!ctx?.hasUI || typeof ctx.ui?.setStatus !== "function") return;
+            ctx.ui.setStatus(key, text);
+        } catch {
+            /* the footer is cosmetic — degrade silently */
+        }
+    };
+
+    /**
+     * The one-line integration health summary: "mcp: 3/3 · 14 tools", with
+     * failure/withheld counts appended when not everything is up, and
+     * "mcp: N withheld (untrusted)" when the trust gate is withholding every
+     * configured server. Undefined = nothing worth a footer line (R-c §3
+     * budget discipline: ~40 chars, one key, no animation).
+     */
+    const mcpFooterText = (m: McpManager): string | undefined => {
+        const statuses = m.status();
+        const live = statuses.filter((s) => s.state !== "not-configured");
+        const gated = statuses.length - live.length;
+        if (live.length === 0) return gated > 0 ? `mcp: ${gated} withheld (untrusted)` : undefined;
+        const connected = live.filter((s) => s.state === "connected");
+        const tools = connected.reduce((n, s) => n + s.tools, 0);
+        const failed = live.length - connected.length;
+        let text = `mcp: ${connected.length}/${live.length}`;
+        if (tools > 0) text += ` · ${tools} tool${tools === 1 ? "" : "s"}`;
+        if (failed > 0) text += ` · ${failed} ✗`;
+        if (gated > 0) text += ` · ${gated} withheld`;
+        return text;
+    };
+
     const getManager = (): McpManager => {
         if (!manager) {
             // No TUI prompt exists at module level, so an untrusted project
@@ -1737,15 +1775,25 @@ export function createMcpExtension(opts: McpOptions) {
         // Per-session registration state — see the extension doc comment.
         const registered = new Set<string>();
 
-        pi.on("session_start", () => {
+        pi.on("session_start", (_event: any, ctx: any) => {
             try {
                 const m = getManager();
-                if (m.disabled || m.serverNames().length === 0) return;
+                if (m.serverNames().length === 0) {
+                    // Refuse-first visibility: nothing connectable, but an
+                    // untrusted project config's withheld servers deserve one
+                    // footer line instead of silence.
+                    if (!m.disabled && m.gatedServerCount > 0) {
+                        setStatusLine(ctx, "mcp", mcpFooterText(m));
+                    }
+                    return;
+                }
+                if (m.disabled) return;
                 log(`connecting ${m.serverNames().length} MCP server(s) in the background`);
                 void (async () => {
                     try {
                         const okServers = await m.connectAll();
                         for (const server of okServers) registerServerTools(pi, server, registered);
+                        setStatusLine(ctx, "mcp", mcpFooterText(m));
                     } catch (err: any) {
                         log(`background connect failed: ${err?.message ?? err}`);
                     }
@@ -1798,6 +1846,7 @@ export function createMcpExtension(opts: McpOptions) {
                         const before = m.status().filter((s) => s.state === "connected").map((s) => s.name);
                         const okServers = await m.connectAll(true);
                         for (const server of okServers) registerServerTools(pi, server, registered);
+                        setStatusLine(ctx, "mcp", mcpFooterText(m));
                         ctx.ui.notify(renderMcpStatus(m.status(), m.problems, m.projectNeedsTrust), "info");
                         const newly = okServers.filter((s) => !before.includes(s));
                         if (newly.length > 0) {
@@ -1820,6 +1869,7 @@ export function createMcpExtension(opts: McpOptions) {
                     ctx.ui.notify("Connecting MCP servers…", "info");
                     const okServers = await m.connectAll(true);
                     for (const server of okServers) registerServerTools(pi, server, registered);
+                    setStatusLine(ctx, "mcp", mcpFooterText(m));
                     const statuses = m.status();
                     ctx.ui.notify(renderMcpStatus(statuses, m.problems, m.projectNeedsTrust), "info");
                     const newly = okServers.filter((s) => !before.includes(s));

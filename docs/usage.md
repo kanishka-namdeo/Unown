@@ -102,7 +102,7 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 **Subagent plumbing flags.** `--mode json` (JSON event stream), `--no-session` (don't persist), `--tools a,b,c` (restrict the active toolset), `--append-system-prompt <file>` (append file contents to the system prompt) exist for the `task` tool, which spawns subagents with exactly these flags. You normally never type them yourself — see [subagents](subagents.md).
 
-**`unown doctor`** checks, in order: the unown version and update-check state (from the notifier cache — no network), the agent dir and `models.json`, the memory stack, model-endpoint reachability (and credentials), bridge upstream key / upstream health / model routability when pointed at the bundled bridge, the OS sandbox (bubblewrap), and the self-learning engine. It exits 1 when chat is broken; warnings only affect learning features (notes queue in the outbox until the engine returns). If it fails, see [troubleshooting](troubleshooting.md).
+**`unown doctor`** checks, in order: the unown version and update-check state (from the notifier cache — no network), the agent dir and `models.json`, the memory stack, model-endpoint reachability (and credentials), bridge upstream key / upstream health / model routability when pointed at the bundled bridge, the OS sandbox (bubblewrap), the self-learning engine, plus the SDLC surfaces: **lsp-servers** (which language servers are detected on PATH — a warning here just means the optional diagnostics loop is inactive), **mcp-config** (configured servers, config-validation problems, and the project-config trust state — an untrusted `.unown/mcp.json` warns with the `/mcp trust` action), and **unown-state** (disk usage of the project's `.unown/` runtime state — checkpoints, receipts, reviews; warns past `UNOWN_STATE_WARN_BYTES`, default 512 MiB, with pruning guidance). It exits 1 when chat is broken; warnings only affect learning features (notes queue in the outbox until the engine returns). If it fails, see [troubleshooting](troubleshooting.md).
 
 ## Session tools
 
@@ -158,6 +158,22 @@ unown is an MCP **client**: tools from any Model Context Protocol server appear 
 - **streamable HTTP servers** POST JSON-RPC with `Mcp-Session-Id` capture/replay; `application/json` and `text/event-stream` responses are both handled.
 - **Connections are lazy and never block the session**: servers connect in the background at session start; a failed server marks itself `error` (last stderr kept as the hint) and cools down before reconnect attempts (30 s; `/mcp` force-throughs) — `/mcp` retries every server and reports status. Tools register the moment their server answers. A server that crashes mid-session rejects pending requests and recovers the same way; an HTTP server that rotated its session id (404) is transparently re-initialized once and the call replayed; 429/503 responses back off honoring `Retry-After`.
 - Tools are capped (100 per server), descriptions capped at 500 chars, tool results at 16 k chars; requests time out after `UNOWN_MCP_TIMEOUT_MS` (default 120 s), the initialize handshake after `UNOWN_MCP_CONNECT_TIMEOUT_MS` (default 20 s). `UNOWN_MCP=0` or `disabled: true` in the config disables the surface.
+
+## Managing MCP servers (`unown mcp`)
+
+Hand-editing JSON is optional. `unown mcp` manages server entries with the same validation the session applies (a bad entry is rejected with the exact same message the config loader would produce):
+
+| Command | What it does |
+|---|---|
+| `unown mcp list` | Table of configured servers across both scopes (user/project), type, command or URL, trust state for project entries |
+| `unown mcp get <name>` | Full entry JSON + which file it comes from |
+| `unown mcp add <name> <command> [args...]` | Add a stdio server (`--env KEY=VAL` repeatable, `--cwd <dir>`, `--scope user\|project` — default user) |
+| `unown mcp add-http <name> <url>` | Add a streamable-HTTP server (`--header 'Name: Value'` repeatable, `--scope`) |
+| `unown mcp add-json <name> '<json>'` | Add a raw entry (validated through the config normalizer) |
+| `unown mcp remove <name>` | Remove from whichever scope has it (`--scope` disambiguates) |
+| `unown mcp test <name>` | Live-connect probe: initialize + tools/list with short timeouts, reports tool count or the failure |
+
+Writes are atomic read-modify-write (existing entries and unknown keys are preserved). `add --scope project` writes `.unown/mcp.json` and immediately trusts the exact content it wrote (you just typed it interactively) — a later hand-edit re-arms the trust gate, which `/mcp trust` in a session clears again.
 
 ## Code review (/review)
 

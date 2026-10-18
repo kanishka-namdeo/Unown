@@ -425,9 +425,19 @@ function makeFakePi() {
 
 function makeNotify() {
     const messages: Array<{ text: string; level: string }> = [];
+    // Footer seam recorder (P1-b): ctx.ui.setStatus writes land here so the
+    // extension's status-bar wiring is assertable through the same harness.
+    const statuses: Array<[string, string | undefined]> = [];
     return {
         messages,
-        ctx: { ui: { notify: (text: string, level: string = "info") => messages.push({ text, level }) } },
+        statuses,
+        ctx: {
+            hasUI: true,
+            ui: {
+                notify: (text: string, level: string = "info") => messages.push({ text, level }),
+                setStatus: (key: string, text: string | undefined) => statuses.push([key, text]),
+            },
+        },
     };
 }
 
@@ -442,7 +452,8 @@ describe("createMcpExtension", () => {
         const { pi, emit, tools } = makeFakePi();
         ext.factory(pi);
 
-        await emit("session_start", {});
+        const { ctx, statuses } = makeNotify();
+        await emit("session_start", {}, ctx);
         // background connect — poll briefly for registration
         const deadline = Date.now() + 8000;
         while (tools.size < 3 && Date.now() < deadline) {
@@ -457,6 +468,9 @@ describe("createMcpExtension", () => {
         const result = await echoTool.execute("t1", { message: "via extension" });
         expect(result.content[0].text).toBe("echo: via extension");
         expect(result.isError).toBeUndefined();
+        // P1-b footer line: once the background connect finishes, the footer
+        // carries the one-line integration health summary.
+        expect(statuses.some(([k, t]) => k === "mcp" && t === "mcp: 1/1 · 3 tools")).toBe(true);
     });
 
     test("/mcp renders status and empty-config guidance", async () => {
@@ -950,6 +964,34 @@ describe("H2 trust gate + validation", () => {
             await new Promise((r) => setTimeout(r, 100));
         }
         expect(tools.has("mcp__gated__echo")).toBe(true);
+    });
+
+    test("footer line (P1-b): withheld → 'mcp: N withheld (untrusted)' at session_start, live count after /mcp trust", async () => {
+        const dir = join(tmpRoot, "p1b-footer");
+        mkdirSync(join(dir, ".unown"), { recursive: true });
+        writeFileSync(
+            join(dir, ".unown", "mcp.json"),
+            JSON.stringify({ mcpServers: { gated: { command: NODE, args: [MOCK_SERVER] } } }),
+        );
+        // Real config resolution (isolated UNOWN_HOME via _env.ts) — the
+        // project server is withheld by the trust gate at session_start.
+        const ext = createMcpExtension({ cwd: dir });
+        const { pi, emit, tools, runCommand } = makeFakePi();
+        ext.factory(pi);
+        const { ctx, messages, statuses } = makeNotify();
+        await emit("session_start", {}, ctx);
+        await new Promise((r) => setTimeout(r, 400));
+        expect(tools.size).toBe(0); // refused, never spawned
+        expect(statuses.some(([k, t]) => k === "mcp" && t === "mcp: 1 withheld (untrusted)")).toBe(true);
+        // /mcp trust admits it: connect + registration + a live footer line.
+        await runCommand("mcp", "trust", ctx);
+        expect(messages.some((m) => m.text.includes("Trusted"))).toBe(true);
+        const deadline = Date.now() + 8000;
+        while (!tools.has("mcp__gated__echo") && Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, 100));
+        }
+        expect(tools.has("mcp__gated__echo")).toBe(true);
+        expect(statuses.some(([k, t]) => k === "mcp" && t === "mcp: 1/1 · 3 tools")).toBe(true);
     });
 
     test("URL validation: non-http schemes and unparseable URLs surface actionable problems at config load", () => {

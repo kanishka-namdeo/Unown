@@ -16,7 +16,7 @@
 // These tests run on `bun test` (bun:test is built in — zero new deps).
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { afterAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createUnownToolsExtension, isBunVirtualScriptPath, isSafeCommand, resolveUnownCliScript } from "../src/tools.ts";
@@ -166,5 +166,202 @@ describe("/review wiring", () => {
         // pre-fix no-repo path said "Nothing to review" — both must be gone
         expect(last.text).not.toContain("Nothing to review");
         expect(messages.filter((m) => m.text.includes("reviewer(s) over"))).toHaveLength(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// /lsp wiring (P1-b): the H2 trust gate's approval command + the footer
+// status lines (pi's ctx.ui.setStatus — the seam the interactive footer
+// renders). Driven through a fake pi that records commands AND event
+// handlers, with the real config-resolution path (the suite's _env.ts
+// preload redirects UNOWN_HOME, so trust state is isolated).
+// ---------------------------------------------------------------------------
+const MOCK_LSP_SERVER = join(import.meta.dir, "fixtures", "mock-lsp-server.mjs");
+const NODE = "node";
+
+const lspTmp = mkdtempSync(join(tmpdir(), "unown-tools-lsp-"));
+afterAll(() => {
+    try {
+        rmSync(lspTmp, { recursive: true, force: true });
+    } catch {
+        /* best effort */
+    }
+});
+
+/** Fake pi with event-handler capture (mcp.test.ts's makeFakePi shape). */
+function makeToolsFakePi() {
+    const handlers = new Map<string, Array<(event: any, ctx?: any) => any>>();
+    const commands = new Map<string, { description: string; handler: (args: string, ctx: any) => Promise<void> }>();
+    const pi: any = {
+        on: (event: string, handler: (event: any, ctx?: any) => any) => {
+            if (!handlers.has(event)) handlers.set(event, []);
+            handlers.get(event)!.push(handler);
+        },
+        registerCommand: (name: string, def: any) => commands.set(name, def),
+        registerFlag: () => {},
+        registerTool: () => {},
+        registerShortcut: () => {},
+        appendEntry: () => {},
+        getFlag: () => undefined,
+        getActiveTools: () => ["read", "bash", "edit", "write"],
+        setActiveTools: () => {},
+        sendMessage: () => {},
+    };
+    const emit = async (event: string, payload: any, ctx?: any) => {
+        for (const h of handlers.get(event) ?? []) await h(payload, ctx);
+    };
+    const runCommand = async (name: string, args: string, ctx: any) => {
+        await commands.get(name)!.handler(args, ctx);
+    };
+    return { pi, emit, runCommand, commands };
+}
+
+/** ctx whose ui records notify AND setStatus (the footer seam). */
+function makeStatusCtx() {
+    const messages: Array<{ text: string; level: string }> = [];
+    const statuses: Array<[string, string | undefined]> = [];
+    return {
+        messages,
+        statuses,
+        ctx: {
+            hasUI: true,
+            ui: {
+                notify: (text: string, level: string = "info") => messages.push({ text, level }),
+                setStatus: (key: string, text: string | undefined) => statuses.push([key, text]),
+            },
+        },
+    };
+}
+
+describe("/lsp trust (P1-b)", () => {
+    test("untrusted project lsp.json: /lsp shows guidance, /lsp trust approves it, overrides then apply", async () => {
+        const dir = join(lspTmp, "trust");
+        mkdirSync(join(dir, ".unown"), { recursive: true });
+        writeFileSync(
+            join(dir, ".unown", "lsp.json"),
+            JSON.stringify({ servers: { typescript: { command: [NODE, MOCK_LSP_SERVER] } } }),
+        );
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        const { pi, runCommand } = makeToolsFakePi();
+        ext.factory(pi);
+
+        // Before: the H2 gate withholds the project overrides and /lsp says so.
+        const before = makeStatusCtx();
+        await runCommand("lsp", "", before.ctx);
+        expect(before.messages.some((m) => m.text.includes("untrusted"))).toBe(true);
+        expect(before.messages.some((m) => m.text.includes("/lsp trust"))).toBe(true);
+        expect(before.messages.some((m) => m.text.includes("mock-lsp-server.mjs"))).toBe(false); // withheld
+
+        // Trust: approves the file, rebuilds the manager, re-renders clean.
+        const trust = makeStatusCtx();
+        await runCommand("lsp", "trust", trust.ctx);
+        expect(trust.messages.some((m) => m.text.includes("Trusted"))).toBe(true);
+        expect(trust.messages.some((m) => m.text.includes("untrusted"))).toBe(false);
+
+        // After: the project overrides are live (the mock server is listed).
+        const after = makeStatusCtx();
+        await runCommand("lsp", "", after.ctx);
+        expect(after.messages.some((m) => m.text.includes("untrusted"))).toBe(false);
+        expect(after.messages.some((m) => m.text.includes("mock-lsp-server.mjs"))).toBe(true);
+    });
+
+    test("no project lsp.json: /lsp trust reports nothing to trust", async () => {
+        const dir = join(lspTmp, "no-file");
+        mkdirSync(dir, { recursive: true });
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        const { pi, runCommand } = makeToolsFakePi();
+        ext.factory(pi);
+        const { ctx, messages } = makeStatusCtx();
+        await runCommand("lsp", "trust", ctx);
+        expect(messages.some((m) => m.text.includes("nothing to trust"))).toBe(true);
+    });
+
+    test("UNOWN_TRUST_PROJECT_CONFIG set: /lsp trust reports the bypass instead", async () => {
+        const dir = join(lspTmp, "bypass");
+        mkdirSync(join(dir, ".unown"), { recursive: true });
+        writeFileSync(join(dir, ".unown", "lsp.json"), JSON.stringify({ servers: {} }));
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        const { pi, runCommand } = makeToolsFakePi();
+        ext.factory(pi);
+        const prev = process.env.UNOWN_TRUST_PROJECT_CONFIG;
+        process.env.UNOWN_TRUST_PROJECT_CONFIG = "1";
+        try {
+            const { ctx, messages } = makeStatusCtx();
+            await runCommand("lsp", "trust", ctx);
+            expect(messages.some((m) => m.text.includes("already bypassed"))).toBe(true);
+        } finally {
+            if (prev === undefined) delete process.env.UNOWN_TRUST_PROJECT_CONFIG;
+            else process.env.UNOWN_TRUST_PROJECT_CONFIG = prev;
+        }
+    });
+
+    test("unknown /lsp argument surfaces usage, not silence", async () => {
+        const dir = join(lspTmp, "usage");
+        mkdirSync(dir, { recursive: true });
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        const { pi, runCommand } = makeToolsFakePi();
+        ext.factory(pi);
+        const { ctx, messages } = makeStatusCtx();
+        await runCommand("lsp", "frobnicate", ctx);
+        expect(messages.some((m) => m.text.includes("Unknown /lsp argument"))).toBe(true);
+    });
+});
+
+describe("footer status lines (P1-b)", () => {
+    test("lsp line appears once a warmed server runs, and only on transitions", async () => {
+        const dir = join(lspTmp, "footer");
+        mkdirSync(join(dir, ".unown"), { recursive: true });
+        // A REAL server command the warm can bring up: the mock LSP server,
+        // reached through the project override (bypassed gate for focus).
+        writeFileSync(
+            join(dir, ".unown", "lsp.json"),
+            JSON.stringify({ servers: { typescript: { command: [NODE, MOCK_LSP_SERVER] } } }),
+        );
+        writeFileSync(join(dir, "a.ts"), "const x: number = 1;\n");
+        const prev = process.env.UNOWN_TRUST_PROJECT_CONFIG;
+        process.env.UNOWN_TRUST_PROJECT_CONFIG = "1";
+        try {
+            const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+            const { pi, emit } = makeToolsFakePi();
+            ext.factory(pi);
+            const { ctx, statuses } = makeStatusCtx();
+
+            // First edit: cold start — the warm kicks the server off and the
+            // footer line lands when it is running.
+            await emit("tool_result", { toolName: "write", input: { path: join(dir, "a.ts") } }, ctx);
+            const deadline = Date.now() + 8000;
+            while (!statuses.some(([k, t]) => k === "lsp" && t === "lsp: typescript ready") && Date.now() < deadline) {
+                await new Promise((r) => setTimeout(r, 100));
+            }
+            expect(statuses.some(([k, t]) => k === "lsp" && t === "lsp: typescript ready")).toBe(true);
+
+            // Transition discipline: a second edit (server already live → the
+            // sync path) must NOT repaint the unchanged line.
+            const paints = statuses.filter(([k]) => k === "lsp").length;
+            await emit("tool_result", { toolName: "write", input: { path: join(dir, "a.ts") } }, ctx);
+            expect(statuses.filter(([k]) => k === "lsp").length).toBe(paints);
+
+            await emit("session_shutdown", {}); // disposes the mock server
+        } finally {
+            if (prev === undefined) delete process.env.UNOWN_TRUST_PROJECT_CONFIG;
+            else process.env.UNOWN_TRUST_PROJECT_CONFIG = prev;
+        }
+    });
+
+    test("/goal sets, updates and clears its footer line", async () => {
+        const dir = join(lspTmp, "goal");
+        mkdirSync(dir, { recursive: true });
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        const { pi, runCommand } = makeToolsFakePi();
+        ext.factory(pi);
+        const { ctx, statuses } = makeStatusCtx();
+        await runCommand("goal", "ship the status bar", ctx);
+        expect(statuses.some(([k, t]) => k === "goal" && t === "goal: active")).toBe(true);
+        await runCommand("goal", "pause", ctx);
+        expect(statuses.some(([k, t]) => k === "goal" && t === "goal: paused")).toBe(true);
+        await runCommand("goal", "resume", ctx);
+        expect(statuses.filter(([k, t]) => k === "goal" && t === "goal: active").length).toBe(2);
+        await runCommand("goal", "clear", ctx);
+        expect(statuses.some(([k, t]) => k === "goal" && t === undefined)).toBe(true);
     });
 });

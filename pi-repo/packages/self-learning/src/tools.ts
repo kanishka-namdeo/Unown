@@ -33,6 +33,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { type ExtensionAPI, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { trustBypassed } from "./config-trust.ts";
 import {
     characterForLine,
     countErrors,
@@ -42,6 +43,7 @@ import {
     renderDiagnostics,
     renderLocations,
     resolveLspConfig,
+    trustProjectLspConfig,
 } from "./lsp.ts";
 import { deliverTerminalNote, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
 import {
@@ -649,6 +651,35 @@ export function markCompletedSteps(text: string, items: PlanStep[]): number {
 // The extension
 // ---------------------------------------------------------------------------
 
+/**
+ * Footer status line (P1-b): pi's `ctx.ui.setStatus(key, text)` seam — the
+ * interactive footer renders one joined, width-truncated row from all
+ * extension statuses (`FooterDataProvider.getExtensionStatuses()`; pass
+ * undefined to clear the key). Plan mode already used it; the LSP surface,
+ * unown-mcp, /review and /goal now do too (R-c §3: the API existed and was
+ * simply unused — state was only visible via /lsp and /mcp popups).
+ *
+ * Guarded on every call: the UI shape varies across pi modes/builds (print
+ * mode has no ui, older builds may lack setStatus), so a missing or throwing
+ * setStatus degrades to no status line — never a crash.
+ */
+const setStatusLine = (ctx: any, key: string, text: string | undefined): void => {
+        try {
+                if (!ctx?.hasUI || typeof ctx.ui?.setStatus !== "function") return;
+                ctx.ui.setStatus(key, text);
+        } catch {
+                /* the footer is cosmetic — degrade silently */
+        }
+};
+
+/** The /goal footer line for a goal state (undefined = clear the key). */
+const goalFooterLine = (g: GoalState | null): string | undefined => {
+        if (!g) return undefined;
+        if (g.status === "active") return "goal: active";
+        if (g.status === "paused") return "goal: paused";
+        return "goal: \u2713 complete";
+};
+
 export interface UnownToolsOptions {
         cwd: string; // the user's real project directory
         engineUrl: string;
@@ -1079,15 +1110,51 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 // -------------------------------------------------------------------
 
                 let lspManager: LspManager | null = null;
+                let lspExitHooked = false;
                 const getLsp = (): LspManager => {
                         if (!lspManager) {
                                 lspManager = new LspManager({ cwd: opts.cwd, config: resolveLspConfig(opts.cwd) });
-                                // Safety net for hard exits: language servers must not outlive us.
-                                process.once("exit", () => lspManager?.disposeAll());
+                                // Safety net for hard exits: language servers must not outlive
+                                // us. Registered once — /lsp trust rebuilds the manager and this
+                                // closure always reads the CURRENT lspManager.
+                                if (!lspExitHooked) {
+                                        lspExitHooked = true;
+                                        process.once("exit", () => lspManager?.disposeAll());
+                                }
                         }
                         return lspManager;
                 };
                 const resolveFile = (p: string): string => (isAbsolute(p) ? p : join(opts.cwd, p));
+
+                // ---- LSP footer line (P1-b): "lsp: ts,py ready" once servers
+                // are live, "lsp: ts (restarting)" while a crashed server sits
+                // in its cooldown, "lsp: ts paused" once restarts are
+                // exhausted. Updates are TRANSITION-ONLY: composing the line
+                // from manager.status() is cheap, but every setStatus call
+                // repaints the shared footer row (R-c budget discipline).
+                let lspFooter: string | null | undefined; // undefined = never rendered
+                const lspStatusLine = (m: LspManager): string | null => {
+                        const s = m.status();
+                        const running = s.servers.filter((e) => e.state === "running").map((e) => e.language);
+                        if (running.length > 0) return `lsp: ${running.join(",")} ready`;
+                        const crashed = s.servers.filter((e) => e.state === "crashed");
+                        if (crashed.length > 0) {
+                                const exhausted = crashed.some((e) => e.detail?.includes("restarts exhausted"));
+                                return `lsp: ${crashed.map((e) => e.language).join(",")}${exhausted ? " paused" : " (restarting)"}`;
+                        }
+                        return null;
+                };
+                const refreshLspFooter = (ctx: any) => {
+                        try {
+                                if (!lspManager) return;
+                                const line = lspStatusLine(lspManager);
+                                if (lspFooter !== undefined && line === lspFooter) return; // no transition
+                                lspFooter = line;
+                                setStatusLine(ctx, "lsp", line ?? undefined);
+                        } catch {
+                                /* never break the edit path for a cosmetic line */
+                        }
+                };
 
                 pi.registerTool({
                         name: "lsp",
@@ -1108,15 +1175,23 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         const s = manager.status();
                                                         const servers = s.servers.length
                                                                 ? s.servers
-                                                                          .map(
-                                                                                  (e) =>
-                                                                                          `  ${e.state === "running" ? "●" : "○"} ${e.language}: ${e.command}` +
-                                                                                          (e.state === "running" ? " (running)" : " (available)"),
-                                                                          )
+                                                                          .map((e) => {
+                                                                                  const mark = e.state === "running" ? "●" : e.state === "crashed" ? "✗" : "○";
+                                                                                  const state =
+                                                                                          e.state === "running"
+                                                                                                  ? " (running)"
+                                                                                                  : e.state === "crashed"
+                                                                                                    ? ` (crashed${e.crashCount ? ` ${e.crashCount}×` : ""})`
+                                                                                                    : " (available)";
+                                                                                  return `  ${mark} ${e.language}: ${e.command}${state}`;
+                                                                          })
                                                                           .join("\n")
                                                                 : "  (no language servers detected on PATH — configure .unown/lsp.json)";
+                                                        // H2 trust gate: the agent sees the withheld state and the
+                                                        // approval action (/lsp trust), not silence.
+                                                        const guidance = s.needsTrust && s.trustGuidance ? `\n  ⚠ ${s.trustGuidance}` : "";
                                                         const text =
-                                                                `LSP status:\n${servers}\n  open documents: ${s.openDocs}\n  cached diagnostics: ${s.diagnostics}`;
+                                                                `LSP status:\n${servers}${guidance}\n  open documents: ${s.openDocs}\n  cached diagnostics: ${s.diagnostics}`;
                                                         return { content: [{ type: "text", text }] };
                                                 }
                                                 case "diagnostics": {
@@ -1315,23 +1390,78 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 });
 
                 pi.registerCommand("lsp", {
-                        description: "Show LSP status: detected servers, open documents, diagnostics",
-                        handler: async (_args, ctx) => {
-                                const manager = getLsp();
-                                if (manager.disabled) {
-                                        ctx.ui.notify("LSP support is disabled (UNOWN_LSP=0 or lsp.json).", "info");
-                                        return;
+                        description: "LSP status + trust: /lsp — /lsp trust approves a project .unown/lsp.json",
+                        handler: async (args, ctx) => {
+                                try {
+                                        const sub = ((args ?? "").trim().split(/\s+/)[0] ?? "").toLowerCase();
+                                        const manager = getLsp();
+                                        if (manager.disabled) {
+                                                ctx.ui.notify("LSP support is disabled (UNOWN_LSP=0 or lsp.json).", "info");
+                                                return;
+                                        }
+                                        if (sub === "trust") {
+                                                // /lsp trust (P1-b): approve the project lsp.json the
+                                                // H2 gate is withholding — same shape as /mcp trust.
+                                                const projectFile = join(opts.cwd, ".unown", "lsp.json");
+                                                if (!existsSync(projectFile)) {
+                                                        ctx.ui.notify("No project .unown/lsp.json found — nothing to trust.", "info");
+                                                        return;
+                                                }
+                                                if (trustBypassed()) {
+                                                        ctx.ui.notify(
+                                                                "UNOWN_TRUST_PROJECT_CONFIG is set — the trust gate is already bypassed.",
+                                                                "info",
+                                                        );
+                                                        return;
+                                                }
+                                                if (!trustProjectLspConfig(opts.cwd)) {
+                                                        ctx.ui.notify(
+                                                                `Trusting ${projectFile} failed (unreadable file or unwritable trust state).`,
+                                                                "error",
+                                                        );
+                                                        return;
+                                                }
+                                                log(`trusted ${projectFile}`);
+                                                // LspManager snapshots config + trust state at
+                                                // construction (no reload seam like McpManager's),
+                                                // so rebuild it: dispose the old servers (none may
+                                                // leak), then re-resolve with the now-trusted
+                                                // project overrides in place.
+                                                try {
+                                                        manager.disposeAll();
+                                                } catch {
+                                                        /* best effort */
+                                                }
+                                                lspManager = null;
+                                                ctx.ui.notify(
+                                                        `Trusted ${projectFile} — server overrides apply from the next status refresh.`,
+                                                        "info",
+                                                );
+                                                // falls through: the status render below re-resolves
+                                        } else if (sub !== "") {
+                                                ctx.ui.notify(`Unknown /lsp argument "${sub}". Usage: /lsp [trust]`, "info");
+                                                return;
+                                        }
+                                        const m = getLsp();
+                                        const s = m.status();
+                                        const servers = s.servers.length
+                                                ? s.servers
+                                                          .map((e) => {
+                                                                  const mark = e.state === "running" ? "●" : e.state === "crashed" ? "✗" : "○";
+                                                                  const suffix = e.state === "crashed" && e.detail ? ` (${e.detail})` : "";
+                                                                  return `${mark} ${e.language} — ${e.command}${suffix}`;
+                                                          })
+                                                          .join("\n")
+                                                : "no language servers detected on PATH (configure .unown/lsp.json)";
+                                        const guidance = s.needsTrust && s.trustGuidance ? `\n⚠ ${s.trustGuidance}` : "";
+                                        ctx.ui.notify(
+                                                `LSP servers:\n${servers}${guidance}\nopen documents: ${s.openDocs} · cached diagnostics: ${s.diagnostics}`,
+                                                "info",
+                                        );
+                                        refreshLspFooter(ctx);
+                                } catch (err: any) {
+                                        ctx.ui.notify(`LSP command failed: ${err?.message ?? err}`, "error");
                                 }
-                                const s = manager.status();
-                                const servers = s.servers.length
-                                        ? s.servers
-                                                  .map((e) => `${e.state === "running" ? "●" : "○"} ${e.language} — ${e.command}`)
-                                                  .join("\n")
-                                        : "no language servers detected on PATH (configure .unown/lsp.json)";
-                                ctx.ui.notify(
-                                        `LSP servers:\n${servers}\nopen documents: ${s.openDocs} · cached diagnostics: ${s.diagnostics}`,
-                                        "info",
-                                );
                         },
                 });
 
@@ -1346,6 +1476,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         case "set": {
                                                 goal = { text: text!.trim(), status: "active", createdAt: Date.now() };
                                                 persistGoal();
+                                                setStatusLine(ctx, "goal", goalFooterLine(goal));
                                                 ctx.ui.notify(
                                                         `Goal set: ${text}\n\nCompletion requires ALL of: the [GOAL:COMPLETE] tag in a final reply, every todo done, and cited evidence (changed-file paths and/or command output). /goal shows status; /goal clear removes it.`,
                                                         "info",
@@ -1359,6 +1490,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 }
                                                 goal = { ...goal, status: "paused" };
                                                 persistGoal();
+                                                setStatusLine(ctx, "goal", goalFooterLine(goal));
                                                 ctx.ui.notify("Goal paused (no per-turn injection until /goal resume).", "info");
                                                 return;
                                         }
@@ -1369,12 +1501,14 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 }
                                                 goal = { ...goal, status: "active" };
                                                 persistGoal();
+                                                setStatusLine(ctx, "goal", goalFooterLine(goal));
                                                 ctx.ui.notify(`Goal resumed: ${goal.text}`, "info");
                                                 return;
                                         }
                                         case "clear": {
                                                 goal = null;
                                                 persistGoal();
+                                                setStatusLine(ctx, "goal", undefined);
                                                 ctx.ui.notify("Goal cleared.", "info");
                                                 return;
                                         }
@@ -1410,49 +1544,57 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         `Review: ${focuses.length} reviewer(s) over ${target.label} (${target.diff.length} chars${target.truncated ? ", truncated" : ""}) — subagents spawn with fresh contexts…`,
                                         "info",
                                 );
+                                // Footer progress line (P1-b): the multi-minute fan-out is
+                                // otherwise invisible after the notify scrolls away. Cleared
+                                // when the verdict lands (or the handler throws).
+                                setStatusLine(ctx, "review", `review: ${focuses.length} reviewer(s) running`);
                                 // S4: thread the command ctx abort signal when pi provides one
                                 // (usually undefined for idle-context commands — full cancel UI
                                 // needs restructuring runSubagent's caller; runSubagent itself
                                 // already handles a signal by tree-killing the reviewers).
                                 const signal = (ctx as any)?.signal as AbortSignal | undefined;
-                                const results = await Promise.all(
-                                        focuses.map((f) =>
-                                                runSubagent(
-                                                        agent,
-                                                        buildReviewerTask({
-                                                                label: target.label,
-                                                                diff: target.diff,
-                                                                untracked: target.untracked,
-                                                                focusBrief: f.brief,
-                                                                cwd: opts.cwd,
-                                                        }),
-                                                        opts.cwd,
-                                                        signal,
+                                try {
+                                        const results = await Promise.all(
+                                                focuses.map((f) =>
+                                                        runSubagent(
+                                                                agent,
+                                                                buildReviewerTask({
+                                                                        label: target.label,
+                                                                        diff: target.diff,
+                                                                        untracked: target.untracked,
+                                                                        focusBrief: f.brief,
+                                                                        cwd: opts.cwd,
+                                                                }),
+                                                                opts.cwd,
+                                                                signal,
+                                                        ),
                                                 ),
-                                        ),
-                                );
-                                // Reviewer honesty (R-b S1): a non-zero exit, timeout or empty
-                                // output marks the reviewer FAILED — its silence must never
-                                // render as "the diff looked clean". Truncated outputs are
-                                // marked too (S3).
-                                const outputs = results.map((r, i) =>
-                                        parseReviewOutput(
-                                                r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""),
-                                                focuses[i].key,
-                                                {
-                                                        failed: r.exitCode !== 0 || !r.output.trim(),
-                                                        truncated: r.outputTruncated,
-                                                },
-                                        ),
-                                );
-                                const merged = mergeReviews(outputs);
-                                const text = renderReview(target.label, outputs, merged.findings);
-                                const artifact = saveReviewArtifact(opts.cwd, target.label, text);
-                                const allFailed = outputs.length > 0 && outputs.every((o) => o.failed);
-                                ctx.ui.notify(
-                                        text + (artifact ? `\n\nSaved to ${artifact}` : ""),
-                                        merged.verdict === "block" || allFailed ? "warning" : "info",
-                                );
+                                        );
+                                        // Reviewer honesty (R-b S1): a non-zero exit, timeout or empty
+                                        // output marks the reviewer FAILED — its silence must never
+                                        // render as "the diff looked clean". Truncated outputs are
+                                        // marked too (S3).
+                                        const outputs = results.map((r, i) =>
+                                                parseReviewOutput(
+                                                        r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""),
+                                                        focuses[i].key,
+                                                        {
+                                                                failed: r.exitCode !== 0 || !r.output.trim(),
+                                                                truncated: r.outputTruncated,
+                                                        },
+                                                ),
+                                        );
+                                        const merged = mergeReviews(outputs);
+                                        const text = renderReview(target.label, outputs, merged.findings);
+                                        const artifact = saveReviewArtifact(opts.cwd, target.label, text);
+                                        const allFailed = outputs.length > 0 && outputs.every((o) => o.failed);
+                                        ctx.ui.notify(
+                                                text + (artifact ? `\n\nSaved to ${artifact}` : ""),
+                                                merged.verdict === "block" || allFailed ? "warning" : "info",
+                                        );
+                                } finally {
+                                        setStatusLine(ctx, "review", undefined);
+                                }
                         },
                 });
 
@@ -1604,6 +1746,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                                                 completedEvidence: check.evidence,
                                                         };
                                                         persistGoal();
+                                                        setStatusLine(ctx, "goal", goalFooterLine(goal));
                                                         if (ctx?.hasUI) {
                                                                 ctx.ui.notify(
                                                                         "Goal COMPLETE — evidence verified:\n" +
@@ -1696,7 +1839,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                 // ---- LSP PostToolUse feedback loop: fresh diagnostics after edits.
                 // Cold start never blocks: the first edit kicks off the server,
                 // the second one onward gets compiler feedback appended.
-                pi.on("tool_result", async (event: any) => {
+                pi.on("tool_result", async (event: any, ctx: any) => {
                         const tool = event?.toolName as string;
                         if (tool !== "write" && tool !== "edit") return undefined;
                         const raw = String(event?.input?.path ?? "");
@@ -1712,13 +1855,16 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                         }
                         if (manager.disabled) return undefined;
                         if (!manager.isLiveFor(language)) {
-                                void manager.warmFor(language);
+                                void manager
+                                        .warmFor(language)
+                                        .then(() => refreshLspFooter(ctx)); // "lsp: ts ready" once the server is up
                                 return undefined;
                         }
                         try {
                                 const changedTs = Date.now();
                                 await manager.syncDocument(path);
                                 const items = await manager.waitForFreshDiagnostics(path, changedTs);
+                                refreshLspFooter(ctx); // crash/respawn transitions surface here
                                 if (items.length === 0) return undefined;
                                 const errors = countErrors(items);
                                 const text =
@@ -1730,6 +1876,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                 }
                                 return { content: [...(event.content ?? []), { type: "text", text }] };
                         } catch {
+                                refreshLspFooter(ctx);
                                 return undefined; // LSP must never break the edit path
                         }
                 });
@@ -1782,6 +1929,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                         }
                         if (planModeEnabled) enablePlanTools();
                         updateStatus(ctx);
+                        setStatusLine(ctx, "goal", goalFooterLine(goal));
                 });
 
                 pi.on("session_tree", async (_event: any, ctx: any) => {

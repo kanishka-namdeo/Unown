@@ -19,9 +19,10 @@
  *   unown init            scaffold .unown/ memory scaffold in this project
  *   unown memory          print the effective 4-tier memory stack
  *   unown doctor          diagnose configuration, bridge, engine and memory
+ *   unown mcp <sub>        manage MCP server configs (add/list/get/remove/test)
  *   unown note "text"     hand a note to the engine (for AutoDream)
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import {
         type CreateAgentSessionRuntimeFactory,
@@ -53,8 +54,10 @@ import {
         UNOWN_HOME,
         unownAgentDirInit,
 } from "./term.ts";
-import { createCheckpointsExtension } from "./checkpoints.ts";
-import { createMcpExtension } from "./mcp.ts";
+import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDir } from "./checkpoints.ts";
+import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
+import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
+import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
@@ -104,6 +107,8 @@ Usage:
   unown init               scaffold .unown/ project memory
   unown memory             print the effective memory stack
   unown doctor             run configuration diagnostics (--json: machine-readable)
+  unown mcp <sub>         manage MCP servers: add | add-http | add-json |
+                           list | get | remove | test (see 'unown help mcp')
   unown info               print the support bundle (--json: machine-readable)
   unown note "text"        deliver a session note to the engine
   unown update            check for a newer release and self-update
@@ -572,7 +577,100 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                 );
         }
 
-        // 6. PATH shim shadowing — a foreign `unown` earlier on PATH is this
+        // 6. SDLC surfaces (P1 productization — research R-c §2): LSP servers,
+        //    MCP config health (incl. the project trust gate) and .unown disk
+        //    usage. ALL warn-level by doctor's contract: the chat path is the
+        //    only hard-fail, every optional feature degrades to a warning.
+        {
+                // 6a. LSP servers — the DEFAULT_SERVERS registry probed on PATH
+                // (commandExists is a pure fs probe — no spawning here).
+                const detected: string[] = [];
+                for (const spec of DEFAULT_SERVERS) {
+                        if (spec.candidates.some((candidate) => commandExists(candidate[0]))) detected.push(spec.label);
+                }
+                check(
+                        "LSP servers",
+                        detected.length > 0,
+                        detected.length > 0
+                                ? `${detected.join(", ")} on PATH`
+                                : "none detected — LSP diagnostics inactive (optional; install a server or configure .unown/lsp.json)",
+                        "warn",
+                );
+
+                // 6b. MCP config — the merged user+project config with its
+                // validation problems and trust gate surfaced actionably.
+                const mcp = resolveMcpConfig(cwd);
+                const mcpNames = Object.keys(mcp.config.servers);
+                const gated = Object.keys(mcp.gatedServers).length;
+                const serverDetail = `${mcpNames.length} server(s)${
+                        mcpNames.length > 0 ? `: ${mcpNames.slice(0, 5).join(", ")}${mcpNames.length > 5 ? " …" : ""}` : ""
+                }${gated > 0 ? ` · ${gated} withheld (untrusted project config)` : ""}`;
+                if (mcp.needsTrust) {
+                        // Surface a validation problem too when one exists (the
+                        // gate problem itself is the message; formatConfigProblem
+                        // on it would be redundant).
+                        const validationProblem = mcp.problems.find((p) => !p.message.startsWith("project mcp.json is untrusted"));
+                        check(
+                                "MCP config",
+                                false,
+                                `project .unown/mcp.json untrusted — run /mcp trust in a session (${serverDetail})${
+                                        validationProblem ? ` · also: ${formatConfigProblem(validationProblem)}` : ""
+                                }`,
+                                "warn",
+                        );
+                } else if (mcp.problems.length > 0) {
+                        check(
+                                "MCP config",
+                                false,
+                                `${formatConfigProblem(mcp.problems[0])}${mcp.problems.length > 1 ? ` (+${mcp.problems.length - 1} more)` : ""} · ${serverDetail}`,
+                                "warn",
+                        );
+                } else {
+                        check("MCP config", true, mcpNames.length > 0 ? serverDetail : "no servers configured (optional — unown mcp add)");
+                }
+
+                // 6c. unown state — checkpoint blob store size + receipts +
+                // reviews counts under <cwd>/.unown/. Warns past
+                // UNOWN_STATE_WARN_BYTES (default 512 MiB; tolerant parse —
+                // same pattern as UNOWN_CHECKPOINT_MAX_BLOB_BYTES, tests pin
+                // it without re-importing the module).
+                const store = new CheckpointStore(checkpointsDir(cwd));
+                const blobs = store.sizeBytes();
+                const manifests = store.list().length;
+                const countFiles = (dir: string): number => {
+                        try {
+                                return readdirSync(dir).length;
+                        } catch {
+                                return 0; // missing/unreadable — no state there yet
+                        }
+                };
+                const receipts = countFiles(receiptsDir(cwd));
+                const reviews = countFiles(join(cwd, ".unown", "reviews"));
+                const rawWarn = Number.parseInt(process.env.UNOWN_STATE_WARN_BYTES ?? "", 10);
+                const warnBytes = Number.isFinite(rawWarn) && rawWarn > 0 ? rawWarn : 512 * 1024 * 1024;
+                const formatBytes = (n: number): string =>
+                        n >= 1024 ** 3
+                                ? `${(n / 1024 ** 3).toFixed(1)} GiB`
+                                : n >= 1024 ** 2
+                                          ? `${(n / 1024 ** 2).toFixed(1)} MiB`
+                                          : n >= 1024
+                                                    ? `${Math.max(1, Math.round(n / 1024))} KiB`
+                                                    : `${n} B`;
+                const hasState = blobs > 0 || manifests > 0 || receipts > 0 || reviews > 0;
+                const stateDetail = hasState
+                        ? `${manifests} checkpoint(s), ${formatBytes(blobs)} blobs · ${receipts} receipt file(s) · ${reviews} review(s)`
+                        : "no .unown state yet (checkpoints/receipts/reviews appear as sessions run)";
+                check(
+                        "unown state",
+                        blobs <= warnBytes,
+                        blobs <= warnBytes
+                                ? stateDetail
+                                : `${stateDetail} — over ${formatBytes(warnBytes)}: consider pruning old checkpoints (/undo consumes turn checkpoints; retention caps apply; UNOWN_STATE_WARN_BYTES adjusts this threshold)`,
+                        "warn",
+                );
+        }
+
+        // 7. PATH shim shadowing — a foreign `unown` earlier on PATH is this
         // repo's OWN observed failure mode (the E2E suite once re-pointed the
         // shim at a throwaway clone and "unown" kept silently being that one).
         // findShims orders by PATH precedence; the FIRST hit is what you get.
@@ -707,8 +805,10 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
 const DOCTOR_HELP = `unown doctor — diagnose configuration, bridge, engine and memory
 
 Checks the agent-home layout, model configuration, the chat path (the only
-hard-fail: a broken chat path), engine health, memory materialization and
-the PATH shims. Every failure carries an actionable hint.
+hard-fail: a broken chat path), engine health, memory materialization, the
+PATH shims, and the SDLC surfaces (LSP servers on PATH, MCP config health
+incl. the project trust gate, .unown disk usage — all warn-level: chat works
+without them). Every failure carries an actionable hint.
 
 usage: unown doctor [--json]
   --json   machine-readable DoctorCheck[] (schema: docs/usage.md)
@@ -733,6 +833,7 @@ function cmdHelp(topics: string[]): number {
         const topic = topics[0];
         const pages: Record<string, string> = {
                 doctor: DOCTOR_HELP,
+                mcp: MCP_HELP,
                 info: INFO_HELP,
                 update: UPDATE_HELP,
                 uninstall: UNINSTALL_HELP,
@@ -751,7 +852,7 @@ function cmdHelp(topics: string[]): number {
 
 export async function runCli(argv: string[]) {
         // `setup`, `models`, `update`, `changelog`, `info`, `completions`,
-        // `uninstall` and `doctor` own their own flag grammar — dispatch
+        // `uninstall`, `doctor` and `mcp` own their own flag grammar — dispatch
         // before the generic parser would eat their flags as prompt text.
         const first = argv[0];
         // `unown help [command]` — clig.dev: help is a command, not a TUI prompt.
@@ -788,6 +889,14 @@ export async function runCli(argv: string[]) {
                         process.exit(0);
                 }
                 process.exit(cmdInfo(rest.includes("--json")));
+        }
+        if (first === "mcp") {
+                // P1 (R-c): Claude Code-style MCP config management — see mcp-cli.ts.
+                // -h/--help inside the subcommand grammar is handled there too.
+                const result = await runMcpCommand(argv.slice(1), { cwd: process.cwd(), userDir: UNOWN_AGENT_DIR });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
         }
         if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));
         if (first === "uninstall") {
