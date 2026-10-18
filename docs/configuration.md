@@ -193,3 +193,9 @@ Notes flow there and show up in that engine's dashboard. One caveat: AutoDream w
 - **Run the engine without hot reload**: `cd mini-services/agent-service && bun index.ts`. The dev scripts use `bun --hot`, which is convenient but can detach in-flight cycles from the router mutex when engine sources change mid-run.
 - **Put `BRIDGE_API_KEY` on the bridge** whenever it is reachable beyond localhost, and front the engine/dashboard with the TLS terminator / reverse proxy of your choice.
 - **The engine is single-tenant by design** (a busy-mutex serializes background work so the sandbox is never double-driven). Scale by running more engine instances against separate data dirs — one pair of `PI_SELFLEARNING_DATA` / `PI_SELFLEARNING_DB` per instance.
+
+## Production notes
+
+- Run the engine **without** hot reload: `cd mini-services/agent-service && bun index.ts` (the dev scripts use `bun --hot`, which is convenient but can detach in-flight cycles from the router mutex when engine sources change mid-run).
+- Put `BRIDGE_API_KEY` on the bridge and front the engine/dashboard with your TLS terminator / reverse proxy of choice.
+- The engine is single-tenant by design (busy-mutex); horizontally scale by running more engine instances against separate data dirs (`PI_SELFLEARNING_DATA` / `PI_SELFLEARNING_DB`).

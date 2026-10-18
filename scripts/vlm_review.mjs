@@ -17,6 +17,7 @@ const CONTEXTS = {
   "banner": "README hero banner for a GitHub repo (renders at ~1012px wide, dark zinc theme, emerald accent; brand: unown, self-improving coding agent)",
   "social": "GitHub social preview image 1280x640 (renders SMALL inside Slack/Twitter link cards; brand: unown)",
   "mermaid": "a Mermaid architecture/flow diagram as GitHub will render it in light mode",
+  "diagram": "a bespoke brand infographic for the unown README (GBA dark palette: navy canvas #102039, Geist/Geist Mono, gold/aqua/leaf/pink accents) — judge layout/legibility, not the navy background, which is the brand",
   "dashboard": "dark analytics dashboard screenshot destined for a README gallery (zinc-950 bg, emerald accents)",
   "gif-frame": "a frame from an animated GIF tour of a dashboard (800px wide)",
 };
@@ -26,6 +27,7 @@ function contextFor(path) {
   if (p.includes("banner")) return CONTEXTS.banner;
   if (p.includes("social")) return CONTEXTS.social;
   if (p.includes("mermaid")) return CONTEXTS.mermaid;
+  if (p.includes("diagram")) return CONTEXTS.diagram;
   if (p.includes("tour_f")) return CONTEXTS["gif-frame"];
   return CONTEXTS.dashboard;
 }

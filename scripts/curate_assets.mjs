@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * curate_assets.mjs — stages the final README asset set into .github/assets/:
- *   - brand: banner.png, social-preview.png (1280x640, <1MB), logo.svg, tour.gif
+ *   - brand: banner.png, diagram-memory.png, social-preview.png (1280x640, <1MB), logo.svg, tour.gif
  *   - dashboard screenshots: top-crops of the tall full-page captures
  *
  * Usage: bun scripts/curate_assets.mjs
@@ -50,6 +50,7 @@ async function copy(src, dst) {
 
 // ---- brand ----
 await copy(join(BRAND, "banner.png"), join(OUT, "banner.png"));
+await copy(join(BRAND, "diagram-memory.png"), join(OUT, "diagram-memory.png")); // four-tier stack infographic (brand_render.mjs -> diagram-memory.html)
 await copy(join(process.cwd(), "public", "logo.svg"), join(OUT, "logo.svg"));
 await copy(join(BRAND, "tour.gif"), join(OUT, "tour.gif"));
 

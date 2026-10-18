@@ -35,7 +35,11 @@ const PW_CANDIDATES = [
 let chromium = null;
 for (const c of PW_CANDIDATES) {
   try {
-    const mod = await import(/^[a-z]+:/i.test(c) ? c : pathToFileURL(c).href);
+    // Absolute paths / URLs resolve via URL; bare specifiers ("playwright")
+    // must stay bare so node resolves them from cwd's node_modules (root
+    // devDependencies — the old download/.pwtools scratch is retired).
+    const spec = /^[a-z]+:/i.test(c) ? c : c.startsWith("/") ? pathToFileURL(c).href : c;
+    const mod = await import(spec);
     chromium = mod.chromium;
     break;
   } catch {
@@ -99,6 +103,7 @@ async function render(htmlFile, pngFile, w, h) {
 try {
   await render("banner.html", "banner.png", 1616, 420);
   await render("social.html", "social@2x.png", 1280, 640);
+  await render("diagram-memory.html", "diagram-memory.png", 1060, 560);
 } finally {
   await browser.close();
 }

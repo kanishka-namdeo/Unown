@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>unown — the four-tier memory stack</title>
+    <!--
+      PALETTE: Game Boy Advance / Pokemon Generation III, dark scheme
+      ("Hoenn at night") — same token table as banner.html and the marketing
+      page's @theme. HARD RULE (self-policed here, gba_palette_check.mjs only
+      gates the CSS): every colour channel is one of the 32 values a 5-bit GBA
+      channel can take, floor(255*v/31). Alpha is its own channel, so rgba()
+      of an on-grid colour stays on-grid.
+
+      Rendered by scripts/brand_render.mjs at 1060x560 CSS px, dsf 2 ->
+      2120x1120. Read it at GitHub's ~880px rendered width (~83% scale):
+      minimum type is 15 CSS px (reads ~12.5px at scale), minimum stroke
+      2 CSS px.
+    -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --canvas: #102039;
+        --panel: #182952;
+        --panel-2: #29315a;
+        --line: #414a6a;
+        --ink: #dee6ee;
+        --dim: #bdcde6;
+        --faint: #8b9cc5;
+        --well: #081020;
+        --gold: #ffc55a;
+        --aqua: #62acee;
+        --leaf: #83c562;
+        --psychic: #f67b9c;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        width: 1060px;
+        height: 560px;
+        background: var(--canvas);
+        font-family: "Geist", sans-serif;
+        color: var(--ink);
+        overflow: hidden;
+      }
+      .frame {
+        width: 100%;
+        height: 100%;
+        padding: 34px 38px 30px;
+        display: flex;
+        flex-direction: column;
+      }
+      header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 26px; }
+      header h1 {
+        font-size: 21px;
+        font-weight: 650;
+        letter-spacing: 0.5px;
+      }
+      header .sub { font-size: 15px; color: var(--dim); font-weight: 400; }
+      header .eye {
+        width: 17px; height: 23px; align-self: center;
+      }
+      .cols { display: flex; gap: 0; flex: 1; align-items: stretch; }
+
+      /* ---- left: the four tiers ---- */
+      .tiers { width: 400px; display: flex; flex-direction: column; gap: 12px; }
+      .tier {
+        flex: 1;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-left-width: 4px;
+        border-radius: 8px;
+        padding: 10px 14px 9px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .tier .top { display: flex; align-items: center; gap: 12px; }
+      .tier .glyph {
+        width: 32px; height: 32px;
+        border-radius: 7px;
+        display: flex; align-items: center; justify-content: center;
+        font-family: "Geist Mono", monospace;
+        font-size: 16px; font-weight: 700;
+        flex-shrink: 0;
+      }
+      .tier .name { font-size: 17px; font-weight: 600; letter-spacing: 0.3px; }
+      .tier .path { font-family: "Geist Mono", monospace; font-size: 13.5px; color: var(--dim); margin-left: auto; }
+      .tier .role { font-size: 14.5px; color: var(--dim); line-height: 1.4; padding-left: 44px; }
+      .t1 { border-left-color: var(--gold); }
+      .t1 .glyph { background: rgba(255, 197, 90, 0.14); color: var(--gold); }
+      .t2 { border-left-color: var(--aqua); }
+      .t2 .glyph { background: rgba(98, 172, 238, 0.14); color: var(--aqua); }
+      .t3 { border-left-color: var(--leaf); }
+      .t3 .glyph { background: rgba(131, 197, 98, 0.14); color: var(--leaf); }
+      .t4 { border-left-color: var(--psychic); }
+      .t4 .glyph { background: rgba(246, 123, 156, 0.14); color: var(--psychic); }
+
+      /* ---- middle: the merge ---- */
+      .merge { width: 172px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+      .merge .chip {
+        font-family: "Geist Mono", monospace;
+        font-size: 13.5px;
+        color: var(--dim);
+        border: 1px dashed var(--line);
+        border-radius: 6px;
+        padding: 8px 10px;
+        text-align: center;
+        line-height: 1.45;
+        width: 148px;
+        box-sizing: border-box;
+      }
+      .merge .chip b { color: var(--ink); font-weight: 650; }
+      .merge .arrow { width: 84px; height: 22px; }
+
+      /* ---- right: resolved + injection ---- */
+      .result { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+      .resolved {
+        background: var(--well);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px 16px 12px;
+        flex: 1;
+      }
+      .resolved .head {
+        font-size: 15px; font-weight: 600; letter-spacing: 0.4px;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .resolved .head span { color: var(--dim); font-weight: 400; }
+      .kv { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+      .kv .key {
+        font-family: "Geist Mono", monospace;
+        font-size: 13.5px;
+        color: var(--dim);
+        flex-shrink: 0;
+      }
+      .kv .val {
+        font-family: "Geist Mono", monospace;
+        font-size: 13.5px;
+        color: var(--ink);
+        margin-left: auto;
+        text-align: right;
+      }
+      .dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+      .dg { background: var(--gold); } .da { background: var(--aqua); }
+      .dl { background: var(--leaf); } .dp { background: var(--psychic); }
+      .inject {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 11px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .inject .bolt { width: 18px; height: 18px; flex-shrink: 0; }
+      .inject .txt { font-size: 15px; line-height: 1.4; }
+      .inject .txt b { font-weight: 650; }
+      .inject .txt span { color: var(--dim); }
+
+      /* ---- footer badges ---- */
+      footer {
+        margin-top: 22px;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+      }
+      .badge {
+        flex: 1;
+        display: flex; align-items: center; gap: 9px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 7px;
+        padding: 10px 14px;
+        min-height: 46px;
+      }
+      .badge .mark { width: 13px; height: 13px; flex-shrink: 0; }
+      .badge .label { font-size: 14px; color: var(--dim); line-height: 1.35; }
+      .badge .label b { color: var(--ink); font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <header>
+        <svg class="eye" viewBox="0 0 17 23" fill="none" aria-hidden="true">
+          <path d="M8.5 0.5 L16 11.5 L8.5 22.5 L1 11.5 Z" fill="#dee6ee" />
+          <ellipse cx="8.5" cy="11.5" rx="4.2" ry="5.4" fill="#102039" />
+          <circle cx="8.5" cy="11.5" r="2.1" fill="#dee6ee" />
+        </svg>
+        <h1>the four-tier memory stack</h1>
+        <div class="sub">every write versioned · attributable · rollback-able</div>
+      </header>
+
+      <div class="cols">
+        <div class="tiers">
+          <div class="tier t1">
+            <div class="top">
+              <div class="glyph">P</div>
+              <div class="name">policy</div>
+              <div class="path">~/.unown/memory/policy.md</div>
+            </div>
+            <div class="role">your global rules — every project, every session</div>
+          </div>
+          <div class="tier t2">
+            <div class="top">
+              <div class="glyph">p</div>
+              <div class="name">project</div>
+              <div class="path">&lt;repo&gt;/.unown/memory/project.md</div>
+            </div>
+            <div class="role">this repo's playbook — AutoDream writes it here</div>
+          </div>
+          <div class="tier t3">
+            <div class="top">
+              <div class="glyph">U</div>
+              <div class="name">user</div>
+              <div class="path">~/.unown/memory/user.md</div>
+            </div>
+            <div class="role">your cross-project preferences and habits</div>
+          </div>
+          <div class="tier t4">
+            <div class="top">
+              <div class="glyph">l</div>
+              <div class="name">local</div>
+              <div class="path">&lt;repo&gt;/.unown/memory/local.md</div>
+            </div>
+            <div class="role">machine-private notes — gitignored</div>
+          </div>
+        </div>
+
+        <div class="merge">
+          <div class="chip">resolve<br /><b>most specific<br />wins</b></div>
+          <svg class="arrow" viewBox="0 0 84 22" fill="none" aria-hidden="true">
+            <path d="M0 11 H72" stroke="#bdcde6" stroke-width="2" />
+            <path d="M70 4 L82 11 L70 18 Z" fill="#bdcde6" />
+          </svg>
+          <div class="chip">per key,<br />not wholesale</div>
+        </div>
+
+        <div class="result">
+          <div class="resolved">
+            <div class="head">resolved stack <span>— what a session actually sees</span></div>
+            <div class="kv"><span class="dot da"></span><span class="key">testing.style</span><span class="val">project rule wins</span></div>
+            <div class="kv"><span class="dot dg"></span><span class="key">safety.denies</span><span class="val">policy rule wins</span></div>
+            <div class="kv"><span class="dot dl"></span><span class="key">editor.tips</span><span class="val">user rule wins</span></div>
+            <div class="kv"><span class="dot dp"></span><span class="key">todo: flaky spec</span><span class="val">local note wins</span></div>
+          </div>
+          <div class="inject">
+            <svg class="bolt" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M10.5 1 L3 10 H8 L7.5 17 L15 8 H10 L10.5 1 Z" fill="#ffc55a" />
+            </svg>
+            <div class="txt"><b>injected into every session</b><br /><span>engine sandboxes · terminal sessions, re-read on /new /resume</span></div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="badge">
+          <svg class="mark" viewBox="0 0 13 13" fill="none" aria-hidden="true"><rect x="1" y="1" width="11" height="11" rx="2.5" stroke="#62acee" stroke-width="1.6" /><path d="M4 6.6 L5.8 8.4 L9 4.6" stroke="#62acee" stroke-width="1.6" /></svg>
+          <div class="label"><b>versioned</b> — every write lands in history</div>
+        </div>
+        <div class="badge">
+          <svg class="mark" viewBox="0 0 13 13" fill="none" aria-hidden="true"><circle cx="6.5" cy="6.5" r="5.5" stroke="#83c562" stroke-width="1.6" /><circle cx="6.5" cy="6.5" r="2.2" fill="#83c562" /></svg>
+          <div class="label"><b>attributable</b> — seed · harness · dream</div>
+        </div>
+        <div class="badge">
+          <svg class="mark" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M6.5 1 A5.5 5.5 0 1 1 1.6 8.6" stroke="#f67b9c" stroke-width="1.6" /><path d="M6.5 1 L6.5 4" stroke="#f67b9c" stroke-width="1.6" /></svg>
+          <div class="label"><b>rollback-able</b> — one click on the Memory tab</div>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

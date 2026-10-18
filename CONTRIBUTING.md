@@ -60,6 +60,49 @@ benchmarks+engine: MPBench-adapted corpus + memory-quality axes; security-bypass
 
 Prefixes in use: `engine:`, `docs:`, `benchmarks:`, `landing:`, `scripts:`, `ci:`, `memory:`, `canary:`, `budget:`, `repo:`, `bin:`, `merge:`. The summary says what; the body says why — the history is its own best example.
 
+## Repository layout
+
+```
+bin/unown                     the `unown` terminal agent entry point
+docs/                         usage docs: quickstart, providers, usage, subagents,
+                              skills, memory, configuration, troubleshooting
+.github/assets/               README brand + dashboard screenshot assets
+pi-repo/                      the pi coding agent (badlogic/pi-mono)
+  packages/self-learning/     ★ the transformation — the self-learning layer
+    src/memory.ts             tiered memory (pattern 1, engine side)
+    src/term.ts               terminal-agent config: ~/.unown state, per-project memory resolution, note outbox, starter-skill seeding
+    src/termhooks.ts          terminal guardrails + session-note capture (+ [subagent] provenance)
+    src/tools.ts              session tools: todo / note / task (subagents) / fetch_url + plan mode
+    src/skill-seeds.ts        starter Agent Skills seeded into ~/.unown/agent/skills/
+    src/cli.ts                the `unown` command (TUI + headless + doctor/memory/init/note)
+    src/hooks.ts              6-layer hook guardrails (pattern 5, engine side)
+    src/harness.ts            self-improving loop + statistical ship gate + retention auto-unship (pattern 2)
+    src/mint.ts               task minting: real failures / curriculum variants → capability evals → graduation
+    src/router.ts             background jobs + events (pattern 3)
+    src/dream.ts              AutoDream consolidation + canary gate + per-project dreams (pattern 4)
+    src/skills.ts             skill acquisition: dream-minted Agent Skills (.unown/skills/), versioned
+    src/notes.ts              session-note capture (benchmark + terminal kinds)
+    src/outbox.ts             offline note delivery (engine-side sync)
+    src/sandbox.ts            sandbox library: jails, snapshots, verification
+    src/bwrap.ts              bubblewrap profile builder + OS-sandbox wrapper
+    src/runner.ts             headless pi deployment + transcripts
+    src/store.ts              SQLite persistence (runs, versions, logs)
+    src/server.ts             REST + SSE API for the dashboard
+    src/tasks.ts              seeded benchmark tasks
+    native/bin/bwrap          vendored bubblewrap binary (sha256-pinned)
+mini-services/
+  llm-bridge/                 OpenAI-compatible gateway: routing, auth, SSE passthrough
+  agent-service/              boots the engine (memory/tasks/router/API)
+src/                          dashboard (Next.js App Router + shadcn/ui)
+e2e/                          Playwright E2E + axe-core suite against a mock engine
+scripts/                      install/start/stop/link + verification tooling
+data/self-learning/           runtime state (sandboxes, sessions, memory) — created on first run
+db/selflearning.db            runtime SQLite store — created on first run
+~/.unown/                     terminal-agent state (agent config, global memory, note outbox)
+<project>/.unown/             per-project memory (commit project.md, ignore local.md)
+blueprint/                    Unown v1 — the Claude Code harness blueprint this project grew out of
+```
+
 ## PR Checklist
 
 Before opening the PR:

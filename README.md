@@ -17,15 +17,11 @@ Use it two ways:
   <a href="https://github.com/kanishka-namdeo/Unown/actions/workflows/ci.yml"><img src="https://github.com/kanishka-namdeo/Unown/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.4.3-black?logo=bun" alt="Bun"></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-7.0.2-3178C6?logo=typescript&amp;logoColor=white" alt="TypeScript"></a>
-  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-16.4-black?logo=nextdotjs" alt="Next.js"></a>
-  <a href="https://react.dev"><img src="https://img.shields.io/badge/React-19.3-61DAFB?logo=react&amp;logoColor=black" alt="React"></a>
-  <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind_CSS-4.3-06B6D4?logo=tailwindcss" alt="Tailwind CSS"></a>
-  <a href="https://www.prisma.io"><img src="https://img.shields.io/badge/Prisma-7.10-2D3748?logo=prisma" alt="Prisma"></a>
-  <a href="https://github.com/containers/bubblewrap"><img src="https://img.shields.io/badge/bubblewrap-OS%20sandbox-00557F" alt="bubblewrap"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/MIT-License-3DA639?logo=opensourceinitiative" alt="MIT License"></a>
+  <a href="https://github.com/kanishka-namdeo/Unown/issues"><img src="https://img.shields.io/badge/PRs-welcome-ff8b41" alt="PRs welcome"></a>
 </p>
 
-**[Quickstart](#quickstart)** · **[Documentation](#documentation)** · **[Landing page](#landing-page)** · **[Dashboard tour](#mission-control)** · **[Architecture](#architecture)** · **[The learning loop](#the-learning-loop)** · **[Configuration](#configuration)** · **[Security](#security-model)** · **[What it learned](#what-a-learning-session-looks-like)**
+**[Quickstart](#quickstart)** · **[Documentation](#documentation)** · **[Landing page](#landing-page)** · **[Dashboard tour](#mission-control)** · **[Architecture](#architecture)** · **[The learning loop](#the-learning-loop)** · **[Security](#security-model)** · **[What it learned](docs/memory.md#what-a-learning-session-looks-like)**
 
 ![unown dashboard tour — Overview, Learning Lab and Memory tabs](.github/assets/tour.gif)
 
@@ -38,6 +34,10 @@ Use it two ways:
 | 3 | **Routing** | [`router.ts`](pi-repo/packages/self-learning/src/router.ts) | Seven jobs keep the agent learning in the background: interval jobs `harness-cycle`, `task-mint`, `auto-dream`, `note-sync`, `sandbox-gc`, plus event jobs on `improvement:shipped` and `run:finished` — with a busy-mutex so the sandbox is never double-driven. |
 | 4 | **AutoDreaming + Skill Acquisition** | [`dream.ts`](pi-repo/packages/self-learning/src/dream.ts) · [`skills.ts`](pi-repo/packages/self-learning/src/skills.ts) | Session notes are consolidated: benchmark notes into the engine's project memory (gated by a canary run — a dream that breaks the last-passing task is rolled back), terminal notes into **your project's own** `.unown/memory/project.md`. When the notes reveal recurring multi-step procedures, AutoDream also mints them as **Agent Skills** — concrete `SKILL.md` procedures written into `.unown/skills/`, versioned and rollback-able — that the next session picks up through progressive disclosure. |
 | 5 | **Hooks** | [`hooks.ts`](pi-repo/packages/self-learning/src/hooks.ts) · [`termhooks.ts`](pi-repo/packages/self-learning/src/termhooks.ts) | A pi inline extension enforcing guardrails at every layer: `SessionStart`, `UserPromptSubmit`, `PreToolUse` (bash deny-list + path jail), `PostToolUse` (syntax gate that feeds errors back to the agent), `Stop`, `SubagentStop`. Every decision is logged. |
+
+<p align="center">
+  <img src=".github/assets/diagram-memory.png" alt="the four-tier memory stack: policy, project, user and local tiers resolved most-specific-wins into a single injected stack; every write versioned, attributable and rollback-able" width="880">
+</p>
 
 Everything is observable from a **mission-control dashboard** (Next.js) with live SSE activity, run transcripts, memory version history, dream journals, hook decision logs, an interactive console, and the job router.
 
@@ -108,12 +108,12 @@ Full usage docs live in [`docs/`](docs/):
 | [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
 | [subagents](docs/subagents.md) | the `task` tool, built-in `general`/`explore`, authoring `.unown/agents/*.md` |
 | [skills](docs/skills.md) | the Agent Skills format, the four starters, skills AutoDream mints on its own |
-| [memory](docs/memory.md) | the 4-tier memory stack, session notes, AutoDream consolidation |
+| [memory](docs/memory.md) | the 4-tier memory stack, session notes, AutoDream consolidation, the six integrity gates, [what a learning session looks like](docs/memory.md#what-a-learning-session-looks-like) |
 | [memory-classifier-evaluation](docs/memory-classifier-evaluation.md) | objective evaluation of Jev/GLiNER-style classifiers in the memory system |
 | [memory-system-review](docs/memory-system-review.md) | the memory subsystem's critical review: findings F1–F10, each status-tagged with receipts where live, and the matrix for re-running them |
 | [oh-my-pi-swap-assessment](docs/oh-my-pi-swap-assessment.md) | decision record: why the vendored pi harness stays, and what would reopen that call |
 | [opencode-swap-assessment](docs/opencode-swap-assessment.md) | decision record: opencode clears both harness chokepoints, and is still not adoptable — why the blocker moved to the artifact |
-| [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout |
+| [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout, [production notes](docs/configuration.md#production-notes) |
 | [windows guide](docs/windows.md) | native Windows: install, cmd/PowerShell shims, Git Bash + the powershell tool, sandbox story, WSL2 |
 | [macos guide](docs/macos.md) | macOS: seatbelt sandbox notes, darwin prebuilds, install one-liners |
 | [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |
@@ -247,7 +247,7 @@ The engine seeds itself on first boot: default memory tiers, five benchmark task
 
 `bun run agent:start` (or `bun run dev`) serves a **marketing landing page at `/`** and **mission control at `/dashboard`**.
 
-The landing page is built around the name. Unown is the Symbol Pokémon — a flat black letter with one eye, alive since 1999, found on the walls of ruins reading what is written there — and `unown` is a pun you have to read twice. So the page carries a **28-form alphabet drawn from scratch for this project** (inline SVG, no font file, no sprite sheet): hover or focus any form in the wall to decode the lore it borrows and the real mechanism it stands for here. A typed session, the engine's literal note template and harness log strings, benchmark receipts, the six integrity gates and a working install command fill out the rest.
+The landing page is built around the name. Unown is the Symbol Pokémon — a flat black letter with one eye, alive since 1999, found on the walls of ruins reading what is written there — and `unown` is a pun you have to read twice. So the page carries a **28-form alphabet drawn from scratch for this project** (inline SVG, no font file, no sprite sheet): hover or focus any form in the wall to decode the lore it borrows and the real mechanism it stands for here.
 
 ![unown landing page — the terminal coding agent that remembers](public/landing/landing-hero.png)
 
@@ -275,35 +275,11 @@ It is fully responsive — the same live KPIs, chart and activity feed on a phon
 
 ## Configuration
 
-All variables are optional; defaults in parentheses. Author `.env` from [`.env.example`](.env.example).
-
-| Variable | Applies to | Meaning |
-|----------|------------|---------|
-| `PI_AGENT_PORT` | engine | REST+SSE API port (3030) |
-| `PI_BRIDGE_URL` | engine + terminal | LLM endpoint the agent talks to (http://127.0.0.1:3031) |
-| `PI_MODEL_ID` / `PI_PROVIDER` | engine + terminal | model / provider registered with pi (kimi-k2.5 / zai-bridge) |
-| `PI_SELFLEARNING_DATA` / `PI_SELFLEARNING_DB` | engine | runtime data dir & SQLite path (`data/self-learning`, `db/selflearning.db`, resolved relative to the repo) |
-| `PI_DREAM_GATE` | engine | `0` disables the dream canary gate (default on) |
-| `BRIDGE_PORT` | bridge | listen port (3031) |
-| `BRIDGE_UPSTREAM_URL` | bridge | upstream OpenAI-compatible base URL — any provider works |
-| `BRIDGE_UPSTREAM_KEY` | bridge | upstream bearer key |
-| `BRIDGE_MODEL` / `BRIDGE_ROUTE_DEFAULT` | bridge | advertised default model + fallback for unknown model ids (kimi-k2.5) |
-| `BRIDGE_KNOWN_MODELS` | bridge | comma-separated passthrough allow-list (kimi-k2.5,qwen3.7-plus,qwen3.6-plus) |
-| `BRIDGE_QWEN_THINKING` | bridge | `1` keeps qwen thinking models in thinking mode (default: off, for snappy agent turns) |
-| `BRIDGE_MIN_SPACING_MS` | bridge | minimum spacing between upstream requests in ms (400) |
-| `BRIDGE_UPSTREAM_TIMEOUT_MS` | bridge | cap on time-to-response-headers per upstream attempt in ms (180000) — a stalled upstream fails fast instead of wedging callers; streaming bodies stay uncapped |
-| `BRIDGE_API_KEY` | bridge | when set, require `Authorization: Bearer <key>` on every request (unset = open, localhost-only use) |
-| `NEXT_PUBLIC_AGENT_API_BASE` | dashboard | point the dashboard directly at the engine (`http://localhost:3030`) or an API-gateway prefix; unset keeps the sandbox gateway mode |
-| `UNOWN_HOME` | terminal | state dir for the `unown` CLI: agent config, global memory, note outbox (`~/.unown`) |
-| `UNOWN_ENGINE_URL` | terminal | where the CLI delivers session notes (`http://127.0.0.1:3030`) |
-| `UNOWN_STRICT_HOOKS` | terminal | `1` = sandbox-grade hooks in terminal sessions (blocks network, git push, sudo); unset allows normal developer operations |
-| `UNOWN_OS_SANDBOX` / `UNOWN_SANDBOX_NET` / `UNOWN_BWRAP` | engine | bubblewrap toggle (`1`) / keep network shared (`0`) / explicit bwrap binary path (vendored by default) |
-| `UNOWN_MAX_MINTED_TASKS` | engine | cap on ACTIVE minted tasks before the `task-mint` job skips (8) |
-| `UNOWN_NO_PREFLIGHT` | terminal | `1` skips the model-endpoint reachability check before sessions |
+All variables are optional with sane defaults; author `.env` from [`.env.example`](.env.example). The **full reference** — engine, bridge, dashboard, terminal and sandbox variables, `.env` loading semantics, state files and agent config files — lives in [docs/configuration.md](docs/configuration.md), alongside the [production notes](docs/configuration.md#production-notes) (run the engine without hot reload, put `BRIDGE_API_KEY` on the bridge, scale by running more single-tenant instances).
 
 ### Using a different model provider
 
-The bundled `llm-bridge` turns **any OpenAI-compatible upstream** (Dashscope, OpenAI, OpenRouter, vLLM, llama.cpp server, …) into a local endpoint the pi agent can use: it injects upstream authentication, routes requested model ids onto its allow-list (unknown ids fall back to the default model), translates `thinking` flags for qwen models, passes tool calls and image content through natively, streams SSE back untouched, and serializes/throttles/retries requests. Or skip the bridge entirely — `unown setup` connects the terminal agent straight to any provider (see [docs/providers.md](docs/providers.md)).
+The bundled `llm-bridge` turns **any OpenAI-compatible upstream** (Dashscope, OpenAI, OpenRouter, vLLM, llama.cpp server, …) into a local endpoint the pi agent can use: it injects upstream authentication, routes requested model ids onto its allow-list, translates `thinking` flags for qwen models, passes tool calls and image content through natively, streams SSE back untouched, and serializes/throttles/retries requests. Or skip the bridge entirely — `unown setup` connects the terminal agent straight to any provider (see [docs/providers.md](docs/providers.md)).
 
 ```bash
 PI_BRIDGE_URL=https://api.openai.com/v1 \
@@ -312,90 +288,22 @@ PI_PROVIDER=openai \
 bun run agent:engine
 ```
 
-The engine writes the provider into `data/self-learning/pi-agent-dir/models.json` for pi automatically. For the **terminal agent**, `unown setup` handles the same wiring (or edit `~/.unown/agent/models.json` by hand — it accepts any pi-supported provider; see [docs/providers.md](docs/providers.md)).
-
-### Production notes
-
-- Run the engine **without** hot reload: `cd mini-services/agent-service && bun index.ts` (the dev scripts use `bun --hot`, which is convenient but can detach in-flight cycles from the router mutex when engine sources change mid-run).
-- Put `BRIDGE_API_KEY` on the bridge and front the engine/dashboard with your TLS terminator / reverse proxy of choice.
-- The engine is single-tenant by design (busy-mutex); horizontally scale by running more engine instances against separate data dirs (`PI_SELFLEARNING_DATA` / `PI_SELFLEARNING_DB`).
-
 ## Security model
 
-- **Sandboxes (OS-level)**: every engine run — verify scripts *and* the agent's own bash commands — executes under the OS sandbox: **bubblewrap** on Linux (the same foundation Flatpak, Claude Code and Codex use for Linux sandboxing: read-only root filesystem, private `/home` `/tmp` `/run`, killed network namespace, dropped capabilities) and **seatbelt (`sandbox-exec`)** on macOS with a bwrap-equivalent profile. **Native Windows has no OS sandbox** — engine runs there use the in-process path jail, the same degradation Claude Code ships on native Windows (WSL2 gives you kernel-grade isolation). On hosts without the OS sandbox the engine falls back to the path jail everywhere. Set `UNOWN_OS_SANDBOX=0` to disable, `UNOWN_SANDBOX_NET=1` to keep the network shared. A verified bwrap binary is vendored in `pi-repo/packages/self-learning/native/` with recorded sha256 provenance (Linux only).
+- **Sandboxes (OS-level)**: every engine run — verify scripts *and* the agent's own bash commands — executes under the OS sandbox: **bubblewrap** on Linux (read-only root filesystem, private `/home` `/tmp` `/run`, killed network namespace, dropped capabilities) and **seatbelt (`sandbox-exec`)** on macOS with a bwrap-equivalent profile. **Native Windows has no OS sandbox** — engine runs there use the in-process path jail, the same degradation Claude Code ships on native Windows (WSL2 gives you kernel-grade isolation). A verified bwrap binary is vendored in `pi-repo/packages/self-learning/native/` with recorded sha256 provenance (Linux only). Set `UNOWN_OS_SANDBOX=0` to disable, `UNOWN_SANDBOX_NET=1` to keep the network shared.
 - **Sandboxes (process)**: executed commands are jailed to the workspace with timeouts and output caps; benchmark tests are sha256-pinned so the agent cannot tamper with verification.
 - **Hooks (engine)**: `PreToolUse` denies destructive shell (`rm -rf /`, `sudo`, outbound `curl`/`wget` to external hosts…), the path jail blocks escapes, and the `PostToolUse` syntax gate feeds transpiler errors back to the agent instead of letting broken code compound.
-- **Hooks (terminal)**: the same gate protects interactive sessions but scoped for real work — catastrophic commands (filesystem-root deletion, fork bombs, disk formats) and writes outside your project/`/tmp` are blocked; network, `git push` and installs stay available. `UNOWN_STRICT_HOOKS=1` restores the sandbox-grade policy.
+- **Hooks (terminal)**: the same gate protects interactive sessions but scoped for real work — catastrophic commands and writes outside your project/`/tmp` are blocked; network, `git push` and installs stay available. `UNOWN_STRICT_HOOKS=1` restores the sandbox-grade policy.
 - **LLM bridge**: optional bearer auth, request serialization and rate-limit backoff.
 - **No secrets in the repo**: the engine reads credentials from its environment at runtime.
 
-## Learning integrity (how the system polices itself)
-
-Self-modification without gates degenerates fast, so every memory write is controlled:
-
-- **Ship gate** — a mined patch only enters memory after its candidate run passes verification in a fresh sandbox — **and the pass replicates** in a second confirmation run (a built-in noise gate: a lucky pass does not ship).
-- **Mint gate** — a minted task only becomes an active capability eval if the agent genuinely FAILS it in a fresh sandbox; tasks the agent already solves are discarded (honest outcome), and minted tasks graduate into the regression suite only by passing a later harness cycle.
-- **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`).
-- **Retention check** — if a task later fails after its improvement shipped, the improvement is marked `regressed` and the memory is rolled back to the pre-ship version (auto-unship).
-- **Skill mint gate** — skills are minted only from recurring multi-step procedures in consolidated notes, max 2 per dream, validated against the Agent Skills contract, deduplicated against everything already on disk; every version is recorded and rollback-able, retirement is a deliberate dashboard action (the engine never deletes your files on its own).
-- **Full version history** — every write to every engine tier is versioned and attributable; engine tiers and minted skills roll back from the dashboard. Project memory (`.unown/memory/project.md`) is a plain versioned Markdown file — the engine records every version it writes, and restoring means pasting a prior version back (skills additionally have one-click rollback/retire with file writeback).
-
-## What a learning session looks like
-
-From the original development session (a weaker model driving the engine): `impl-debounce` **failed its baseline** (placeholder implementation, `setTimeout` against a mocked clock) → the harness mined the transcript, proposed rules ("drive time manually via an injectable `now()`", "flush the boundary lazily") → the **candidate run passed** → the rules were **shipped to project memory** → AutoDream later consolidated them into a reusable *Task playbook* section. Router jobs self-healed across service restarts and kept retrying the honestly-still-failing CSV task; memory reached project-tier v6 with every version attributable and rollback-able.
-
-In this checkout — running kimi-k2.5 through the bridge — the engine has autonomously accumulated 60+ verified runs, 30+ AutoDream sessions consolidating 60+ session notes, 500+ hook decisions and a 20-version project-memory history. kimi-k2.5 solves all five seeded benchmark tasks unaided, so the improvement machinery finds nothing to ship — the honest outcome: **the loop only earns its keep when the model struggles**. That is exactly what task minting addresses: when the suite saturates, the `task-mint` job keeps authoring harder curriculum variants (each one validated by a real agent run — variants the model already solves are discarded just as honestly). Point it at a weaker model (or harder tasks) and the mining, patching and shipping above starts firing on its own.
-
-## Repository layout
-
-```
-bin/unown                     the `unown` terminal agent entry point
-docs/                         usage docs: quickstart, providers, usage, subagents,
-                              skills, memory, configuration, troubleshooting
-.github/assets/               README brand + dashboard screenshot assets
-pi-repo/                      the pi coding agent (badlogic/pi-mono)
-  packages/self-learning/     ★ the transformation — the self-learning layer
-    src/memory.ts             tiered memory (pattern 1, engine side)
-    src/term.ts               terminal-agent config: ~/.unown state, per-project memory resolution, note outbox, starter-skill seeding
-    src/termhooks.ts          terminal guardrails + session-note capture (+ [subagent] provenance)
-    src/tools.ts              session tools: todo / note / task (subagents) / fetch_url + plan mode
-    src/skill-seeds.ts        starter Agent Skills seeded into ~/.unown/agent/skills/
-    src/cli.ts                the `unown` command (TUI + headless + doctor/memory/init/note)
-    src/hooks.ts              6-layer hook guardrails (pattern 5, engine side)
-    src/harness.ts            self-improving loop + statistical ship gate + retention auto-unship (pattern 2)
-    src/mint.ts               task minting: real failures / curriculum variants → capability evals → graduation
-    src/router.ts             background jobs + events (pattern 3)
-    src/dream.ts              AutoDream consolidation + canary gate + per-project dreams (pattern 4)
-    src/skills.ts             skill acquisition: dream-minted Agent Skills (.unown/skills/), versioned
-    src/notes.ts              session-note capture (benchmark + terminal kinds)
-    src/outbox.ts             offline note delivery (engine-side sync)
-    src/sandbox.ts            sandbox library: jails, snapshots, verification
-    src/bwrap.ts              bubblewrap profile builder + OS-sandbox wrapper
-    src/runner.ts             headless pi deployment + transcripts
-    src/store.ts              SQLite persistence (runs, versions, logs)
-    src/server.ts             REST + SSE API for the dashboard
-    src/tasks.ts              seeded benchmark tasks
-    native/bin/bwrap          vendored bubblewrap binary (sha256-pinned)
-mini-services/
-  llm-bridge/                 OpenAI-compatible gateway: routing, auth, SSE passthrough
-  agent-service/              boots the engine (memory/tasks/router/API)
-src/                          dashboard (Next.js App Router + shadcn/ui)
-scripts/                      install/start/stop/link + verification tooling
-data/self-learning/           runtime state (sandboxes, sessions, memory) — created on first run
-db/selflearning.db            runtime SQLite store — created on first run
-~/.unown/                     terminal-agent state (agent config, global memory, note outbox)
-<project>/.unown/             per-project memory (commit project.md, ignore local.md)
-blueprint/                    Unown v1 — the Claude Code harness blueprint this project grew out of
-```
-
-## Unown v1 — the blueprint
-
-The first iteration of this project was a lightweight **Claude Code harness blueprint** (Python hooks, GitHub workflows, docs). It is preserved under [`blueprint/`](blueprint/) as reference material; Unown v2 — the pi-based autonomous engine in this README — supersedes it.
+The six **learning-integrity gates** that police self-modification (ship gate, mint gate, dream canary, retention check, skill mint gate, full version history) are documented in [docs/memory.md](docs/memory.md#learning-integrity-how-the-system-polices-itself).
 
 ## Credits
 
 - [badlogic/pi-mono](https://github.com/badlogic/pi-mono) — Mario Zechner's pi coding agent, bundled and extended here.
 - The five self-improvement patterns popularized by Anthropic's engineering blog on improving Claude Code with Claude Code.
+- Unown v1 — the Claude Code harness blueprint this project grew out of — is preserved under [`blueprint/`](blueprint/) as reference material.
 
 ## License
 

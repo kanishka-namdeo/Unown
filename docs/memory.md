@@ -146,6 +146,23 @@ What a teammate gets when they clone the repo: the shared project memory and the
 - `unown doctor` — verifies the project and user memory files exist ([troubleshooting](troubleshooting.md)).
 - Dashboard → **Memory** tab — the engine's four tiers with contents, full version history and one-click rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files).
 
+## Learning integrity (how the system polices itself)
+
+Self-modification without gates degenerates fast, so every memory write is controlled:
+
+- **Ship gate** — a mined patch only enters memory after its candidate run passes verification in a fresh sandbox — **and the pass replicates** in a second confirmation run (a built-in noise gate: a lucky pass does not ship).
+- **Mint gate** — a minted task only becomes an active capability eval if the agent genuinely FAILS it in a fresh sandbox; tasks the agent already solves are discarded (honest outcome), and minted tasks graduate into the regression suite only by passing a later harness cycle.
+- **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`).
+- **Retention check** — if a task later fails after its improvement shipped, the improvement is marked `regressed` and the memory is rolled back to the pre-ship version (auto-unship).
+- **Skill mint gate** — skills are minted only from recurring multi-step procedures in consolidated notes, max 2 per dream, validated against the Agent Skills contract, deduplicated against everything already on disk; every version is recorded and rollback-able, retirement is a deliberate dashboard action (the engine never deletes your files on its own).
+- **Full version history** — every write to every engine tier is versioned and attributable; engine tiers and minted skills roll back from the dashboard. Project memory (`.unown/memory/project.md`) is a plain versioned Markdown file — the engine records every version it writes, and restoring means pasting a prior version back (skills additionally have one-click rollback/retire with file writeback).
+
+## What a learning session looks like
+
+From the original development session (a weaker model driving the engine): `impl-debounce` **failed its baseline** (placeholder implementation, `setTimeout` against a mocked clock) → the harness mined the transcript, proposed rules ("drive time manually via an injectable `now()`", "flush the boundary lazily") → the **candidate run passed** → the rules were **shipped to project memory** → AutoDream later consolidated them into a reusable *Task playbook* section. Router jobs self-healed across service restarts and kept retrying the honestly-still-failing CSV task; memory reached project-tier v6 with every version attributable and rollback-able.
+
+In this checkout — running kimi-k2.5 through the bridge — the engine has autonomously accumulated 60+ verified runs, 30+ AutoDream sessions consolidating 60+ session notes, 500+ hook decisions and a 20-version project-memory history. kimi-k2.5 solves all five seeded benchmark tasks unaided, so the improvement machinery finds nothing to ship — the honest outcome: **the loop only earns its keep when the model struggles**. That is exactly what task minting addresses: when the suite saturates, the `task-mint` job keeps authoring harder curriculum variants (each one validated by a real agent run — variants the model already solves are discarded just as honestly). Point it at a weaker model (or harder tasks) and the mining, patching and shipping above starts firing on its own.
+
 ## Honesty: what the loop actually ships
 
 The engine only earns improvements when the model struggles. A model that already passes every task leaves the mining-and-patching machinery nothing to ship — the honest outcome is "nothing shipped", not a fabricated improvement. With kimi-k2.5 all five seeded benchmark tasks pass unaided, so the engine's own memory grows slowly (mostly through dream consolidation), while your project memory grows from real session notes. Point the engine at a weaker model or harder tasks and the mining, patching and shipping fires on its own — see [configuration](configuration.md) for switching models.
