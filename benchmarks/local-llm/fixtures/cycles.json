@@ -1,6 +1,33 @@
 {
- "exportedAt": "2026-10-18T10:31:31.068625+00:00",
+ "exportedAt": "2026-10-18T11:05:30.120857+00:00",
  "cycles": [
+  {
+   "id": "f55261d8-41da-4b88-b61d-85e6ff58a07e",
+   "task_id": "fix-csv-parser",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792321344640,
+   "ended_at": 1792321378703,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
+  {
+   "id": "04db625b-9170-4cfe-97a5-f5a1b059453f",
+   "task_id": "fix-drop-right",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792320704303,
+   "ended_at": 1792320711502,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
+  {
+   "id": "33a38f01-f308-4ea6-8258-82a3f89892f9",
+   "task_id": "hard-csv-types",
+   "status": "already-passing",
+   "iteration": 1,
+   "created_at": 1792320073988,
+   "ended_at": 1792320101526,
+   "summary": "baseline passed \u2014 no improvement needed"
+  },
   {
    "id": "9a569cf0-52f1-409f-951e-353e03b0912a",
    "task_id": "hard-async-race",

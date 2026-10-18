@@ -1,5 +1,5 @@
 {
- "exportedAt": "2026-10-18T10:31:31.066756+00:00",
+ "exportedAt": "2026-10-18T11:05:30.117353+00:00",
  "notes": [
   {
    "id": "7b2388cc-7ddc-4102-8bde-0e3050c25953",
@@ -146,7 +146,7 @@
    "run_id": "11670f37-29a0-4e3c-9a35-020f17ccc53d",
    "content": "Run 11670f37 (regression) on task hard-lru-cache: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation uses:\n\n1. **A `Map`** for O(1) key-to-node lookups\n2. **A doubly-linked list** (via `head`/`tail` pointers and `prev`/`next` on nodes) to track access order:\n   - `head` = Most Recently Used (MRU)\n   - `tail` = Least Recently Used (LRU)\n\n**Operations:**\n- `get(key)",
    "created_at": 1792319277212,
-   "dream_id": null,
+   "dream_id": "bbc5a240-2935-45ef-943b-0570a5ce6ce8",
    "kind": "benchmark",
    "project_path": null,
    "project_slug": null
@@ -156,7 +156,7 @@
    "run_id": "c351f9bb-622d-429e-a298-962bedc32a29",
    "content": "Run c351f9bb (regression) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 (LCM of 3 and 5) first, before checking for multiples of 3 or 5 individually. This ensures that numbers divisible by both 3 and 5 output \"FizzBuzz\" instead of just \"Fizz\".",
    "created_at": 1792319291524,
-   "dream_id": null,
+   "dream_id": "bbc5a240-2935-45ef-943b-0570a5ce6ce8",
    "kind": "benchmark",
    "project_path": null,
    "project_slug": null
@@ -166,7 +166,7 @@
    "run_id": "756b785d-ca96-4687-a71e-372a70d7e153",
    "content": "Run 756b785d (regression) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. Simple comma-separated fields (`a,b,c`)\n2. Empty fields (`a,,c`)\n3. Quotes inside unquoted fields that should be preserved as literals (`say \"hi\"`)\n4. Quoted fields containing commas (`\"a,b\"`)\n5. Escaped quotes inside quoted fields (`\"he said \"\"run\"\"\"` \u2192 `he said",
    "created_at": 1792319335511,
-   "dream_id": null,
+   "dream_id": "bbc5a240-2935-45ef-943b-0570a5ce6ce8",
    "kind": "benchmark",
    "project_path": null,
    "project_slug": null
@@ -176,6 +176,126 @@
    "run_id": "4122f79a-d0c8-43f9-93be-0a2eb1f93f2c",
    "content": "Run 4122f79a (baseline) on task hard-async-race: PASSED\nVerification: all tests passed\nTools used: 19 calls (read, edit, bash)\nAgent's final words: All tests pass consistently. The solution:\n\n1. **Reads the starting value once** - This avoids the race condition where multiple reads get the same value\n2. **Schedules all n writes immediately** - This creates overlap because `pendingSets` is incremented synchronously for each call, but the actual ",
    "created_at": 1792319472458,
+   "dream_id": "bbc5a240-2935-45ef-943b-0570a5ce6ce8",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "6fc4ab00-14c9-4bae-8f64-906c4583ca69",
+   "run_id": "fbdee3f4-ca12-4055-9aea-4d2513a34cac",
+   "content": "Run fbdee3f4 (regression) on task hard-async-race: PASSED\nVerification: all tests passed\nTools used: 5 calls (read, edit, bash)\nAgent's final words: The fix addresses the race condition by:\n\n1. **Reading the starting value once** (`const start = await store.value`) - this establishes the baseline\n2. **Pre-computing all target values** (`start + i` for i from 1 to n) - each write is calculated upfront, avoiding read-modify-write races\n3. **Schedu",
+   "created_at": 1792319964295,
+   "dream_id": "c6edd510-8fed-4a1d-8573-691bb1779ab7",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "c9513b7d-1da9-4718-8591-3ede4bbec36a",
+   "run_id": "8d469cd6-a573-490a-a54e-dd91d1f33e42",
+   "content": "Run 8d469cd6 (regression) on task hard-lru-cache: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation uses:\n\n1. **A `Map`** for O(1) key-to-node lookups\n2. **A doubly-linked list** with dummy head/tail nodes for O(1) access order tracking:\n   - Head.next points to the most-recently-used (MRU) item\n   - Tail.prev points to the least-recently-used (LRU) item\n3. **Hel",
+   "created_at": 1792319985902,
+   "dream_id": "c6edd510-8fed-4a1d-8573-691bb1779ab7",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "c8be539e-9a2a-45cd-83bf-0984fae1f655",
+   "run_id": "f1ac033f-5c7d-4e3a-97a5-45a715241540",
+   "content": "Run f1ac033f (regression) on task fix-fizzbuzz: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was to check for multiples of 15 (LCM of 3 and 5) first, before checking for multiples of 3 or 5 individually. This ensures that numbers like 15 output \"FizzBuzz\" instead of just \"Fizz\".",
+   "created_at": 1792319996217,
+   "dream_id": "c6edd510-8fed-4a1d-8573-691bb1779ab7",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "53c88524-b0de-4cbf-9f68-8e3fddd2d48b",
+   "run_id": "93f9cbe2-9352-4cfb-b3b4-fa1cad75682f",
+   "content": "Run 93f9cbe2 (baseline) on task hard-csv-types: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Parses CSV with proper quote handling**: \n   - Fields wrapped in `\"` can contain commas\n   - Escaped quotes `\"\"` inside quoted fields become single `\"` in the value\n   - Handles `\\n`, `\\r\\n`, and `\\r` line endings\n\n2. **Infers column types**:\n   - `'empty'` ",
+   "created_at": 1792320101526,
+   "dream_id": "c6edd510-8fed-4a1d-8573-691bb1779ab7",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "d1abcf6e-70bc-4ba9-b6a1-0e86c4d45112",
+   "run_id": "bc3c89e3-7022-47e4-b177-00fbf127facb",
+   "content": "Run bc3c89e3 (regression) on task hard-csv-types: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Parses CSV** with proper handling of:\n   - Quoted fields containing commas\n   - Escaped quotes (`\"\"`) inside quoted fields\n   - Various line endings (`\\n`, `\\r\\n`, `\\r`)\n\n2. **Infers column types** by:\n   - Skipping empty cells for numeric inference\n   - Ret",
+   "created_at": 1792320635051,
+   "dream_id": "3d9c589f-b35e-4913-bc41-beae8c3f6b6f",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "da0a3748-6742-4b97-9e44-808a71c89523",
+   "run_id": "d863bde2-8573-48d1-a597-8b9fe7a72186",
+   "content": "Run d863bde2 (regression) on task hard-async-race: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: The fix works. The solution:\n\n1. **Read once**: `const start = await store.value;` - reads the starting value once before any writes\n2. **Pre-compute values**: Each iteration schedules a write with a pre-computed value (`start + i`), avoiding the read-modify-write race\n3. **Concurrent writes**: All ",
+   "created_at": 1792320649255,
+   "dream_id": "3d9c589f-b35e-4913-bc41-beae8c3f6b6f",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "1542cec0-3e89-4539-9ce4-b12e56f31d34",
+   "run_id": "87cf7263-fbe4-4c4e-ae51-09ca9cef38fb",
+   "content": "Run 87cf7263 (regression) on task hard-lru-cache: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation uses:\n\n1. **A `Map`** for O(1) key-to-node lookups\n2. **A doubly-linked list** with dummy head/tail nodes for O(1) access order management:\n   - Head.next = most recently used (MRU)\n   - Tail.prev = least recently used (LRU)\n3. **`_addToHead`** - adds a node as MRU",
+   "created_at": 1792320669082,
+   "dream_id": "3d9c589f-b35e-4913-bc41-beae8c3f6b6f",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "f34bd5a0-82c5-42e8-811b-a467d37fb949",
+   "run_id": "32d2a3d4-f3e6-41ae-86a2-5d1427fa6f40",
+   "content": "Run 32d2a3d4 (baseline) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was simple: removed the extra `- 1` from the slice calculation. The correct formula is `arr.length - n` to drop `n` elements from the right, not `arr.length - n - 1`.",
+   "created_at": 1792320711495,
+   "dream_id": "3d9c589f-b35e-4913-bc41-beae8c3f6b6f",
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "27d88294-f51c-4095-8c9b-019700b95bed",
+   "run_id": "2174ce34-26a4-421f-886e-ae5927766799",
+   "content": "Run 2174ce34 (regression) on task fix-drop-right: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix was simple - removing the extra `- 1` that was causing the off-by-one error. The correct formula for slicing is `arr.length - n` (not `arr.length - n - 1`).",
+   "created_at": 1792321289934,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "1b9a2cf0-811a-4281-a450-8a50d3187e5f",
+   "run_id": "9ed55830-0943-477d-b976-6fb022365ae9",
+   "content": "Run 9ed55830 (regression) on task hard-csv-types: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: All tests pass. The implementation:\n\n1. **Parses CSV** with proper handling of:\n   - Quoted fields containing commas (`\"a,b\"`)\n   - Escaped quotes inside quoted fields (`\"he said \"\"hi\"\"\"`)\n   - Different line endings (`\\n`, `\\r\\n`, `\\r`)\n   - Trailing newlines\n\n2. **Infers column types** by:\n   - Sk",
+   "created_at": 1792321316552,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "2fd8c356-82d5-43a8-857a-8cbdf2f99d38",
+   "run_id": "8147cf52-4d94-4759-ac50-5ed4eb52cdf4",
+   "content": "Run 8147cf52 (regression) on task hard-async-race: PASSED\nVerification: all tests passed\nTools used: 4 calls (read, edit, bash)\nAgent's final words: The fix works. The key insight from the project memory (notes fbdee3f4 and d863bde2) is to avoid the read-modify-write race by reading the starting value once, then scheduling all writes immediately with pre-computed values. This allows concurrent execution (satisfying the overlap requirement) while",
+   "created_at": 1792321334155,
+   "dream_id": null,
+   "kind": "benchmark",
+   "project_path": null,
+   "project_slug": null
+  },
+  {
+   "id": "f0e5a0af-d0e0-447e-8f1b-210ab66d4567",
+   "run_id": "c16c86ce-6809-4bfa-828c-ae9c2cf47bec",
+   "content": "Run c16c86ce (baseline) on task fix-csv-parser: PASSED\nVerification: all tests passed\nTools used: 6 calls (read, edit, bash)\nAgent's final words: All tests pass. The fix handles:\n\n1. **Simple fields** (`a,b,c`) - split by comma\n2. **Empty fields** (`a,,c`) - consecutive commas create empty strings\n3. **Quotes in unquoted fields** (`say \"hi\"`) - quotes are preserved as literals\n4. **Quoted fields with commas** (`\"a,b\"`) - commas inside quotes ",
+   "created_at": 1792321378701,
    "dream_id": null,
    "kind": "benchmark",
    "project_path": null,

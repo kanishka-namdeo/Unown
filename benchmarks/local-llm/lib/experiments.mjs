@@ -119,10 +119,11 @@ export async function e2Dream({ localServer, localModel, grammar = true, noteLim
       baseUrl: target.baseUrl,
       model: target.model,
       messages,
-      maxTokens: 3000,
       temperature: 0.2,
+      maxTokens: target.local ? 2200 : 3000, // local grammar gen ~7 tok/s on 2 vCPU: cap to fit the window
       jsonSchema: target.local && grammar ? DREAM_SCHEMA : undefined,
       extra: target.local ? NO_THINKING : undefined,
+      timeoutMs: target.local ? 540_000 : 300_000,
     });
     const parsed = res.ok ? extractJson(res.content) : { ok: false, error: res.error };
     return { res, parsed };
@@ -292,7 +293,7 @@ const MINER_SCHEMA = {
   properties: {
     diagnosis: { type: "string" },
     proposal: { type: "string" },
-    patchLines: { type: "array", items: { type: "string" }, maxItems: 6 },
+    patchLines: { type: "array", items: { type: "string", maxLength: 200 }, maxItems: 6 },
     targetTier: { type: "string", enum: ["project", "local"] },
   },
   required: ["diagnosis", "proposal", "patchLines", "targetTier"],

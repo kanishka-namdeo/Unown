@@ -137,7 +137,7 @@ async function cmdDetect() {
 // ---------------------------------------------------------------- experiments
 
 async function withLocal(modelId, ctx, fn) {
-  const server = new LocalLlamaServer({ model: modelId, ctx });
+  const server = new LocalLlamaServer({ model: modelId, ctx: Number(opt("ctx", 0)) || ctx });
   await server.start();
   console.log(`[server] ${modelId} up in ${server.startupMs}ms on :${server.actualPort} (rss ${await server.rssMB()}MB)`);
   try {

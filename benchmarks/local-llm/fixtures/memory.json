@@ -9,10 +9,10 @@
   },
   {
    "tier": "project",
-   "version": 3,
-   "content": "# Tier 1 \u2014 Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- **FizzBuzz ordering**: Check multiples of 15 (LCM of 3 and 5) before checking 3 or 5 individually to avoid incorrect \"Fizz\" or \"Buzz\" outputs [note 5]\n- **Array slice indices**: When slicing from end, use `arr.length - n` not `arr.length - n - 1` [note 4]\n- **Async race conditions**: Concurrent reads before writes cause lost updates; all tasks may read stale value (0) then all write 1, losing 9 increments [note 6]\n- **Sequential await chains**: `await lastWriteSettled` forces sequential execution, preventing concurrency overlap [note 7]\n\n## Implementation patterns\n- **CSV parsing**: Handle unquoted quotes as literals, quoted commas as non-delimiters, and empty fields [note 1]\n- **Map with concurrency limit**: Use `active` counter with loop starting at most `limit` tasks; store results at fixed indices to preserve order [note 2]\n- **Debounce**: Store `lastArgs` and `scheduledTime = currentTime + delay`; use injectable `now` function; flush lazily on calls [note 3]\n- **LRU cache**: Doubly-linked list for access order (head=MRU, tail=LRU) + Map for O(1) key-to-node lookups [note 8]\n- **Async concurrent writes**: To allow overlap, don't await previous write; use atomic compare-and-swap or cursor-based coordination, not sequential chaining [note 6,7]\n",
-   "chars": 1520,
-   "updatedAt": 1792319257871
+   "version": 6,
+   "content": "# Tier 1 \u2014 Project Memory\n\n## Workflow\n- The workspace contains a small Node/Bun project with tests. Run tests with `bun <testfile>`.\n- Verification is automated: a verify script executes after your turn; its output is ground truth.\n\n## Known pitfalls\n- **FizzBuzz ordering**: Check multiples of 15 (LCM of 3 and 5) before checking 3 or 5 individually to avoid incorrect \"Fizz\" or \"Buzz\" outputs [note f1ac033f]\n- **Array slice indices**: When slicing from end, use `arr.length - n` not `arr.length - n - 1` [note 4, note 32d2a3d4]\n- **Async race conditions**: Concurrent reads before writes cause lost updates; all tasks may read stale value (0) then all write 1, losing 9 increments [note 6]\n- **Sequential await chains**: `await lastWriteSettled` forces sequential execution, preventing concurrency overlap [note 7]\n\n## Implementation patterns\n- **CSV parsing**: Handle unquoted quotes as literals, quoted commas as non-delimiters, empty fields, and escaped quotes (`\"\"`) inside quoted fields; support `\\n`, `\\r\\n`, `\\r` line endings [note 1, note 93f9cbe2]\n- **Map with concurrency limit**: Use `active` counter with loop starting at most `limit` tasks; store results at fixed indices to preserve order [note 2]\n- **Debounce**: Store `lastArgs` and `scheduledTime = currentTime + delay`; use injectable `now` function; flush lazily on calls [note 3]\n- **LRU cache**: Doubly-linked list for access order (head=MRU, tail=LRU) + Map for O(1) key-to-node lookups; use dummy head/tail nodes for O(1) operations [note 8, note 8d469cd6, note 87cf7263]\n- **Async concurrent writes**: To allow overlap, don't await previous write; use atomic compare-and-swap or cursor-based coordination, not sequential chaining [note 6, note 7]\n- **Race-safe increments**: Read starting value once, then schedule all writes immediately with pre-computed values to avoid read-modify-write races [note fbdee3f4, note d863bde2]\n- **Type inference**: Empty fields \u2192 `'empty'`, numeric strings \u2192 `'number'`, boolean-like \u2192 `'boolean'`, else `'string'` [note 93f9cbe2]\n",
+   "chars": 2043,
+   "updatedAt": 1792321282893
   },
   {
    "tier": "user",
@@ -29,5 +29,5 @@
    "updatedAt": 1792316212372
   }
  ],
- "resolvedChars": 3361
+ "resolvedChars": 3884
 }

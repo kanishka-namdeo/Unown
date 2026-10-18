@@ -1,5 +1,5 @@
 {
- "exportedAt": "2026-10-18T10:31:31.067123+00:00",
+ "exportedAt": "2026-10-18T11:05:30.118371+00:00",
  "tasks": [
   {
    "id": "fix-fizzbuzz",
@@ -29,7 +29,7 @@
    "verify": "import { createHash } from \"node:crypto\";\nimport { readFileSync } from \"node:fs\";\n\nconst expected = {\n  \"dropRight.test.mjs\": \"a28949773a88499f0b1b016d0167f8c7291b5dd4000535683cfde0c0255603da\"\n};\n\nlet tampered = [];\nfor (const [file, hash] of Object.entries(expected)) {\n  try {\n    const actual = createHash(\"sha256\").update(readFileSync(file, \"utf8\")).digest(\"hex\");\n    if (actual !== hash) tampered.push(file);\n  } catch {\n    tampered.push(file + \" (missing)\");\n  }\n}\nif (tampered.length > 0) {\n  console.log(\"TEST FILES WERE MODIFIED \u2014 this is forbidden: \" + tampered.join(\", \"));\n  console.log(\"VERIFY_RESULT: \" + JSON.stringify({ passed: false, summary: \"test tampering detected: \" + tampered.join(\", \") }));\n  process.exit(1);\n}\n\nawait import(\"./dropRight.test.mjs\");\nconsole.log(\"VERIFY_RESULT: \" + JSON.stringify({ passed: true, summary: \"all tests passed\" }));\n",
    "created_at": 1792316212373,
    "active": 1,
-   "pass_count": 1,
+   "pass_count": 2,
    "fail_count": 0,
    "origin": "seed",
    "status": "regression",
@@ -80,7 +80,7 @@
    "verify": "import { createHash } from \"node:crypto\";\nimport { readFileSync } from \"node:fs\";\n\nconst expected = {\n  \"csv.test.mjs\": \"c5c019156d973e5c8f44192a984ee011d66dae01db74aed8603fc06ed5232852\"\n};\n\nlet tampered = [];\nfor (const [file, hash] of Object.entries(expected)) {\n  try {\n    const actual = createHash(\"sha256\").update(readFileSync(file, \"utf8\")).digest(\"hex\");\n    if (actual !== hash) tampered.push(file);\n  } catch {\n    tampered.push(file + \" (missing)\");\n  }\n}\nif (tampered.length > 0) {\n  console.log(\"TEST FILES WERE MODIFIED \u2014 this is forbidden: \" + tampered.join(\", \"));\n  console.log(\"VERIFY_RESULT: \" + JSON.stringify({ passed: false, summary: \"test tampering detected: \" + tampered.join(\", \") }));\n  process.exit(1);\n}\n\nawait import(\"./csv.test.mjs\");\nconsole.log(\"VERIFY_RESULT: \" + JSON.stringify({ passed: true, summary: \"all tests passed\" }));\n",
    "created_at": 1792316212373,
    "active": 1,
-   "pass_count": 1,
+   "pass_count": 2,
    "fail_count": 0,
    "origin": "seed",
    "status": "regression",
@@ -131,7 +131,7 @@
    "verify": "import { createHash } from \"node:crypto\";\nimport { readFileSync } from \"node:fs\";\n\nconst expected = {\n  \"csvtypes.test.mjs\": \"fe0f3d3a5f6b9e301ff7bafacb2dd651a59fe6c16fe349a2b40f662ebc0b2b45\"\n};\n\nlet tampered = [];\nfor (const [file, hash] of Object.entries(expected)) {\n  try {\n    const actual = createHash(\"sha256\").update(readFileSync(file, \"utf8\")).digest(\"hex\");\n    if (actual !== hash) tampered.push(file);\n  } catch {\n    tampered.push(file + \" (missing)\");\n  }\n}\nif (tampered.length > 0) {\n  console.log(\"TEST FILES WERE MODIFIED \u2014 this is forbidden: \" + tampered.join(\", \"));\n  console.log(\"VERIFY_RESULT: \" + JSON.stringify({ passed: false, summary: \"test tampering detected: \" + tampered.join(\", \") }));\n  process.exit(1);\n}\n\nawait import(\"./csvtypes.test.mjs\");\nconsole.log(\"VERIFY_RESULT: \" + JSON.stringify({ passed: true, summary: \"all tests passed\" }));\n",
    "created_at": 1792317084631,
    "active": 1,
-   "pass_count": 0,
+   "pass_count": 1,
    "fail_count": 0,
    "origin": "seed",
    "status": "regression",
