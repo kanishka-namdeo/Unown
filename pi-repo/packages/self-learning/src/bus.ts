@@ -24,13 +24,22 @@ export function emitAsync(event: string, payload?: any) {
 	setImmediate(() => bus.emit(event, payload));
 }
 
+/**
+ * Register an async handler; returns an unsubscriber that ACTUALLY removes
+ * the listener. The old version returned `bus.off(event, handler)` — but the
+ * registered listener was the error-trapping WRAPPER, not `handler`, so the
+ * unsubscriber removed nothing: router.stop() left every event handler live
+ * on the bus forever (stale routers kept double-executing event jobs after
+ * stop — found live by test/router.test.ts's queue tests).
+ */
 export function onAsync(event: string, handler: (payload: any) => void | Promise<void>) {
-	bus.on(event, async (payload) => {
+	const wrapper = async (payload: any) => {
 		try {
 			await handler(payload);
 		} catch (err: any) {
 			emit("router:error", { event, error: err?.message ?? String(err) });
 		}
-	});
-	return () => bus.off(event, handler);
+	};
+	bus.on(event, wrapper);
+	return () => bus.off(event, wrapper);
 }

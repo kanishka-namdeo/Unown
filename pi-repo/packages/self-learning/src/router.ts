@@ -86,6 +86,13 @@ export class Router {
 	private busy = false;
 	private timer: any = null;
 	private handlers: Array<() => void> = [];
+	/** Event jobs that arrived while the engine was busy, drained by tick(). */
+	private pendingEvents: Array<{ id: string; payload: any }> = [];
+	private tickMs: number;
+
+	constructor(tickMs = 5_000) {
+		this.tickMs = tickMs;
+	}
 
 	async start() {
 		for (const def of JOB_DEFS) {
@@ -116,13 +123,13 @@ export class Router {
 					const pending = undreamedNotes(50).length;
 					if (pending < 3) return;
 				}
-				await this.execute(def.id, payload);
+				this.dispatchEventJob(def.id, payload);
 			});
 			this.handlers.push(off);
 		}
 
 		// interval scheduler tick
-		this.timer = setInterval(() => this.tick(), 5_000);
+		this.timer = setInterval(() => this.tick(), this.tickMs);
 		emit("router:started", { jobs: JOB_DEFS.length });
 		console.log(`[router] started with ${JOB_DEFS.length} jobs`);
 	}
@@ -130,6 +137,7 @@ export class Router {
 	stop() {
 		if (this.timer) clearInterval(this.timer);
 		for (const off of this.handlers) off();
+		this.pendingEvents = []; // no zombie queued jobs after stop
 	}
 
 	private isEnabled(id: string): boolean {
@@ -137,8 +145,49 @@ export class Router {
 		return Boolean(row?.enabled);
 	}
 
+	/**
+	 * Route an event job: run immediately when idle, QUEUE when busy.
+	 *
+	 * Until this queue existed, every event job that fired while busy — which
+	 * is the ONLY time they fire: improvement:shipped is emitted from inside
+	 * runCycle, which always holds the mutex — threw "router is busy" and
+	 * died as a router:error. The regression-on-ship sweep (the documented
+	 * post-ship safety net) had never once executed automatically.
+	 */
+	private dispatchEventJob(id: string, payload: any) {
+		if (!this.busy) {
+			this.execute(id, payload).catch(() => this.enqueueEventJob(id, payload)); // busy race -> queue
+			return;
+		}
+		this.enqueueEventJob(id, payload);
+	}
+
+	/** A queued id replaces its still-pending twin: a sweep delayed behind a busy stretch does not need two sweeps; run:finished storms stay bounded. */
+	private enqueueEventJob(id: string, payload: any) {
+		const existing = this.pendingEvents.findIndex((p) => p.id === id);
+		if (existing >= 0) this.pendingEvents[existing].payload = payload;
+		else this.pendingEvents.push({ id, payload });
+		console.log(`[router] ${id} queued behind busy engine (${this.pendingEvents.length} pending)`);
+	}
+
+	/** Queued event jobs (diagnostics + tests). */
+	pendingEventJobs(): Array<{ id: string }> {
+		return this.pendingEvents.map((p) => ({ id: p.id }));
+	}
+
 	private async tick() {
 		if (this.busy) return;
+		// Drain ONE queued event job per tick before interval scheduling —
+		// the events that arrived while the engine was busy (audit HIGH-1).
+		if (this.pendingEvents.length > 0) {
+			const next = this.pendingEvents.shift()!;
+			try {
+				await this.execute(next.id, next.payload);
+			} catch {
+				this.pendingEvents.unshift(next); // raced with a manual trigger — try next tick
+			}
+			return;
+		}
 		const now = Date.now();
 		const due = store.get<{ id: string }>(
 			`SELECT id FROM jobs WHERE kind = 'interval' AND enabled = 1 AND status != 'running' AND next_run IS NOT NULL AND next_run <= ? ORDER BY next_run LIMIT 1`,

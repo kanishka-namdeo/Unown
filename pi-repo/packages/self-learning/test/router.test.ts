@@ -11,7 +11,9 @@
 // These tests run on `bun test` (bun:test is built in — zero new deps).
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
 import { describe, expect, test } from "bun:test";
+import { emit } from "../src/bus.ts";
 import { JOB_DEFS, listJobs, Router, router } from "../src/router.ts";
+import { store } from "../src/store.ts";
 
 describe("JOB_DEFS", () => {
 	test("defines the seven engine jobs", () => {
@@ -110,5 +112,91 @@ describe("Router.start()/stop() (jobs table on the redirected test store)", () =
 		expect(listJobs().length).toBe(JOB_DEFS.length);
 		r.stop();
 		r2.stop();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Event-job queue (audit HIGH-1): improvement:shipped is emitted from INSIDE
+// runCycle, which always holds the busy mutex — the old handler called
+// execute() directly, which always threw "router is busy", so the
+// regression-on-ship sweep NEVER executed automatically (dead automation:
+// run_count stayed 0 forever, only a router:error SSE event appeared).
+// These tests pin the queue: busy events are held (coalesced), then drained
+// by the tick loop as soon as the engine frees.
+// ---------------------------------------------------------------------------
+describe("Router event-job queue (HIGH-1)", () => {
+	const jobRow = () => store.get<{ run_count: number; status: string }>(
+		`SELECT run_count, status FROM jobs WHERE id = 'regression-on-ship'`,
+	)!;
+
+	/** Poll until fn() is truthy (bounded ~2s — the tick loop runs at 5ms in these tests). */
+	async function until(fn: () => boolean, ms = 2000): Promise<boolean> {
+		const deadline = Date.now() + ms;
+		while (Date.now() < deadline) {
+			if (fn()) return true;
+			await Bun.sleep(10);
+		}
+		return fn();
+	}
+
+	test("an event fired while the engine is busy is QUEUED and DRAINED, not dropped", async () => {
+		// Hermetic: regression-on-ship with an empty tasks table runs no
+		// agent runs (runRegression samples only tasks with passes+fails>0).
+		store.run(`DELETE FROM tasks`);
+		// Keep the fast tick from misfiring stale-due interval jobs
+		// (shared jobs table across suites): push them 1h out.
+		store.run(`UPDATE jobs SET next_run = ? WHERE kind = 'interval'`, [Date.now() + 3_600_000]);
+		const before = jobRow().run_count;
+		const r = new Router(5); // tick every 5ms
+		await r.start();
+		try {
+			// The HIGH-1 shape: the event fires from inside a busy stretch.
+			await r.withBusy(async () => {
+				emit("improvement:shipped", { id: "imp-1", tier: "project", memoryVersion: 3 });
+			});
+			// The handler ran synchronously under the mutex: the job must be queued.
+			expect(r.pendingEventJobs().map((p) => p.id)).toEqual(["regression-on-ship"]);
+			// The engine is free now; the tick loop drains the queue...
+			const ran = await until(() => jobRow().run_count > before);
+			expect(ran).toBe(true); // ...the sweep finally executes automatically
+			expect(r.pendingEventJobs()).toEqual([]);
+			expect(jobRow().status).toBe("idle");
+		} finally {
+			r.stop();
+		}
+	});
+
+	test("duplicate queued ids coalesce (one pending instance, newest payload wins)", async () => {
+		const r = new Router(60_000); // slow tick: nothing drains during the test
+		await r.start();
+		try {
+			let release!: () => void;
+			const gate = new Promise<void>((res) => (release = res));
+			const busy = r.withBusy(() => gate.then(() => "done"));
+			emit("improvement:shipped", { id: "a", memoryVersion: 1 });
+			emit("improvement:shipped", { id: "b", memoryVersion: 2 });
+			expect(r.pendingEventJobs().length).toBe(1); // coalesced, not stacked
+			release();
+			await busy;
+		} finally {
+			r.stop();
+		}
+		expect(r.pendingEventJobs()).toEqual([]); // stop() clears the queue
+	});
+
+	test("an event fired while idle executes immediately (no queue detour)", async () => {
+		store.run(`DELETE FROM tasks`);
+		store.run(`UPDATE jobs SET next_run = ? WHERE kind = 'interval'`, [Date.now() + 3_600_000]);
+		const before = jobRow().run_count;
+		const r = new Router(60_000); // slow tick: immediate path must not depend on it
+		await r.start();
+		try {
+			emit("improvement:shipped", { id: "imp-2" });
+			const ran = await until(() => jobRow().run_count > before);
+			expect(ran).toBe(true);
+			expect(r.pendingEventJobs()).toEqual([]);
+		} finally {
+			r.stop();
+		}
 	});
 });
