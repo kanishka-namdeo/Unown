@@ -124,7 +124,7 @@ jobs:
         # anchore/sbom-action runs syft in a container; the SBOM covers the
         # installed node_modules + vendored pi-repo tree (the runtime
         # dependency surface a clone-to-install user actually gets).
-        uses: anchore/sbom-action@v17
+        uses: anchore/sbom-action@v0.24.3
         with:
           format: spdx-json
           artifact-name: sbom-spdx.json
