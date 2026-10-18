@@ -365,6 +365,112 @@ describe("chatJson: single corrective retry", () => {
 });
 
 // ---------------------------------------------------------------------------
+// chatJson/chat: responseSchema — json_schema structured output + the 400
+// portability fallback (other OpenAI-compat endpoints lack json_schema
+// support; one retry without response_format, logged on the bus).
+// ---------------------------------------------------------------------------
+
+describe("chatJson/chat: responseSchema (json_schema structured output)", () => {
+        const realFetch = globalThis.fetch;
+        let bodies: any[] = [];
+
+        afterEach(() => {
+                globalThis.fetch = realFetch;
+        });
+
+        /** Serve one canned reply per request ({ status?, content? }); the last repeats. */
+        function mockBridge(replies: Array<{ status?: number; content?: string }>): void {
+                bodies = [];
+                globalThis.fetch = (async (_input: unknown, init?: any) => {
+                        bodies.push(JSON.parse(String(init?.body ?? "{}")));
+                        const reply = replies[Math.min(bodies.length - 1, replies.length - 1)];
+                        if (reply.status && reply.status !== 200) {
+                                return new Response(JSON.stringify({ error: { message: `upstream rejected (${reply.status})` } }), {
+                                        status: reply.status,
+                                        headers: { "content-type": "application/json" },
+                                });
+                        }
+                        return new Response(
+                                JSON.stringify({ choices: [{ message: { role: "assistant", content: reply.content ?? "" }, finish_reason: "stop" }] }),
+                                { headers: { "content-type": "application/json" } },
+                        );
+                }) as typeof fetch;
+        }
+
+        const SCHEMA = { type: "object", properties: { a: { type: "string" } }, required: ["a"] };
+
+        test("responseSchema attaches response_format {type:json_schema, name:result, strict:true, schema}", async () => {
+                mockBridge([{ content: '{"a":"x"}' }]);
+                const result = await chatJson([{ role: "user", content: "u" }], { responseSchema: SCHEMA });
+                expect(result).toEqual({ a: "x" });
+                expect(bodies).toHaveLength(1);
+                expect(bodies[0].response_format).toEqual({
+                        type: "json_schema",
+                        json_schema: { name: "result", strict: true, schema: SCHEMA },
+                });
+        });
+
+        test("no schema → the body carries no response_format key at all", async () => {
+                mockBridge([{ content: '{"a":1}' }]);
+                await chatJson([{ role: "user", content: "u" }]);
+                expect(bodies).toHaveLength(1);
+                expect("response_format" in bodies[0]).toBe(false);
+        });
+
+        test("400 with a schema attached → ONE retry without response_format, then success", async () => {
+                mockBridge([{ status: 400 }, { content: '{"a":"recovered"}' }]);
+                const result = await chatJson([{ role: "user", content: "u" }], { responseSchema: SCHEMA });
+                expect(result).toEqual({ a: "recovered" });
+                expect(bodies).toHaveLength(2);
+                expect(bodies[0].response_format).toBeDefined();
+                expect("response_format" in bodies[1]).toBe(false);
+                // The fallback retry keeps the caller's model + token budget.
+                expect(bodies[1].model).toBe(bodies[0].model);
+                expect(bodies[1].max_tokens).toBe(bodies[0].max_tokens);
+        });
+
+        test("the 400 fallback is observable on the bus ('llm:schema-fallback')", async () => {
+                const seen: Array<{ event: string; payload: any }> = [];
+                const unsub = subscribe((e) => seen.push(e));
+                try {
+                        mockBridge([{ status: 400 }, { content: '{"a":1}' }]);
+                        await chatJson([{ role: "user", content: "u" }], { responseSchema: SCHEMA, model: "local-qwen3-0.6b" });
+                } finally {
+                        unsub();
+                }
+                const events = seen.filter((e) => e.event === "llm:schema-fallback");
+                expect(events).toHaveLength(1);
+                expect(events[0].payload.model).toBe("local-qwen3-0.6b");
+                expect(String(events[0].payload.reason)).toContain("llm-bridge 400");
+        });
+
+        test("non-400 failure with a schema → no fallback retry, the error propagates", async () => {
+                mockBridge([{ status: 500 }]);
+                await expect(chatJson([{ role: "user", content: "u" }], { responseSchema: SCHEMA })).rejects.toThrow(
+                        "llm-bridge 500",
+                );
+                expect(bodies).toHaveLength(1); // a 500 is neither transient-retried nor a schema fallback
+        });
+
+        test("fallback retry also 400s → the second 400 propagates (never a third call)", async () => {
+                mockBridge([{ status: 400 }, { status: 400 }]);
+                await expect(chatJson([{ role: "user", content: "u" }], { responseSchema: SCHEMA })).rejects.toThrow(
+                        "llm-bridge 400",
+                );
+                expect(bodies).toHaveLength(2);
+        });
+
+        test("the corrective JSON retry keeps the schema attached (opts forwarded wholesale)", async () => {
+                mockBridge([{ content: "prose, no json" }, { content: '{"a":1}' }]);
+                const result = await chatJson([{ role: "user", content: "u" }], { responseSchema: SCHEMA });
+                expect(result).toEqual({ a: 1 });
+                expect(bodies).toHaveLength(2);
+                expect(bodies[0].response_format).toBeDefined();
+                expect(bodies[1].response_format).toEqual(bodies[0].response_format);
+        });
+});
+
+// ---------------------------------------------------------------------------
 // bridge health/log — dead-endpoint fallbacks only (hermetic)
 // ---------------------------------------------------------------------------
 

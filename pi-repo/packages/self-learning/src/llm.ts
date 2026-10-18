@@ -50,24 +50,39 @@ export interface LlmTool {
 
 export async function chat(
         messages: ChatMsg[],
-        opts: { tools?: LlmTool[]; toolChoice?: unknown; maxTokens?: number; timeoutMs?: number; model?: string } = {},
+        opts: {
+                tools?: LlmTool[];
+                toolChoice?: unknown;
+                maxTokens?: number;
+                timeoutMs?: number;
+                model?: string;
+                /** JSON Schema for the response: attaches OpenAI-style response_format */
+                responseSchema?: Record<string, unknown>;
+        } = {},
 ): Promise<any> {
-        const attempt = async (): Promise<any> => {
+        const attempt = async (withSchema: boolean): Promise<any> => {
                 const ctrl = new AbortController();
                 const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 240_000);
                 try {
+                        const body: Record<string, unknown> = {
+                                model: opts.model ?? LLM_MODEL,
+                                messages,
+                                tools: opts.tools,
+                                tool_choice: opts.toolChoice,
+                                max_tokens: opts.maxTokens ?? 4096,
+                                stream: false,
+                                thinking: { type: "disabled" },
+                        };
+                        if (withSchema && opts.responseSchema) {
+                                body.response_format = {
+                                        type: "json_schema",
+                                        json_schema: { name: "result", strict: true, schema: opts.responseSchema },
+                                };
+                        }
                         const res = await fetch(`${bridgeUrl()}/v1/chat/completions`, {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                        model: opts.model ?? LLM_MODEL,
-                                        messages,
-                                        tools: opts.tools,
-                                        tool_choice: opts.toolChoice,
-                                        max_tokens: opts.maxTokens ?? 4096,
-                                        stream: false,
-                                        thinking: { type: "disabled" },
-                                }),
+                                body: JSON.stringify(body),
                                 signal: ctrl.signal,
                         });
                         if (!res.ok) {
@@ -80,16 +95,34 @@ export async function chat(
                 }
         };
         // bridge already retries 429s; this is a safety net for transient network resets
-        for (let i = 0; i < 3; i++) {
-                try {
-                        return await attempt();
-                } catch (err: any) {
-                        const msg = String(err?.message ?? err);
-                        if (i === 2 || !/abort|network|socket|ECONN|fetch failed|timeout/i.test(msg)) throw err;
-                        await Bun.sleep(2000 * (i + 1));
+        const transientRetry = async (withSchema: boolean): Promise<any> => {
+                for (let i = 0; i < 3; i++) {
+                        try {
+                                return await attempt(withSchema);
+                        } catch (err: any) {
+                                const msg = String(err?.message ?? err);
+                                if (i === 2 || !/abort|network|socket|ECONN|fetch failed|timeout/i.test(msg)) throw err;
+                                await Bun.sleep(2000 * (i + 1));
+                        }
                 }
+                throw new Error("unreachable");
+        };
+        // PORTABILITY FALLBACK: response_format json_schema is not universal —
+        // other OpenAI-compatible endpoints (e.g. some Dashscope/proxy stacks)
+        // reject the field outright with a 400. Retry ONCE without it and log
+        // the fallback on the bus (SSE stream + router event jobs); extractJson
+        // remains the second line of defense either way.
+        if (!opts.responseSchema) return transientRetry(false);
+        try {
+                return await transientRetry(true);
+        } catch (err: any) {
+                if (!/^llm-bridge 400:/.test(String(err?.message ?? err))) throw err;
+                emit("llm:schema-fallback", {
+                        model: opts.model ?? LLM_MODEL,
+                        reason: String(err?.message ?? err).slice(0, 240),
+                });
+                return transientRetry(false);
         }
-        throw new Error("unreachable");
 }
 
 /**
@@ -204,7 +237,13 @@ function jsonFromTexts<T>(texts: string[]): { ok: true; value: T } | { ok: false
 
 export async function chatJson<T = any>(
         messages: ChatMsg[],
-        opts: { maxTokens?: number; timeoutMs?: number; model?: string } = {},
+        opts: {
+                maxTokens?: number;
+                timeoutMs?: number;
+                model?: string;
+                /** JSON Schema for the response: chat() attaches response_format (json_schema, strict) — see the portability fallback there. */
+                responseSchema?: Record<string, unknown>;
+        } = {},
 ): Promise<T> {
         const firstTexts = completionTexts(await chat(messages, opts));
         const first = jsonFromTexts<T>(firstTexts);
