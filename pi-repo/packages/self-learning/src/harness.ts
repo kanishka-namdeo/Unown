@@ -16,9 +16,10 @@
  */
 import { randomUUID } from "node:crypto";
 import { emit } from "./bus.ts";
+import { decideGuardAction, guardSummary } from "./guard.ts";
 import { logHook } from "./hooks.ts";
 import { chatJson } from "./llm.ts";
-import { appendRules, readTier, rollback, type Tier } from "./memory.ts";
+import { appendRules, currentVersion, readTier, rollback, type Tier } from "./memory.ts";
 import { graduateTask } from "./mint.ts";
 import { type RunResult, runAgent } from "./runner.ts";
 import { store } from "./store.ts";
@@ -100,6 +101,28 @@ export interface CycleResult {
 	baselineRunId: string;
 	improvementIds: string[];
 	summary: string;
+}
+
+// ---------------------------------------------------------------------------
+// Ship gate (F4): the deterministic guard the dream pipeline applies, wired
+// onto the SECOND memory writer. Exported for unit tests — runCycle calls
+// these two helpers at its SHIP step (test/harness-guard.test.ts).
+// ---------------------------------------------------------------------------
+
+/**
+ * Decide the fate of a mined patch: the miner consumes untrusted run
+ * transcripts, and its patch is appended to a tier that rides every future
+ * session's system prompt. firstMint mirrors the dream gate (F4B: the first
+ * write to a tier has no canary and the highest attacker leverage).
+ */
+export function shipGateForPatch(patchText: string, tier: Tier) {
+		return decideGuardAction(patchText, readTier(tier), { firstMint: currentVersion(tier) <= 1 });
+}
+
+/** Map a guard decision onto the rule lines appendRules ships: sanitize drops the quarantined lines. */
+export function shipLinesFrom(guard: ReturnType<typeof decideGuardAction>, patchLines: string[]): string[] {
+		if (guard.action !== "sanitize") return patchLines;
+		return guard.sanitized.split("\n").filter((l) => l.trim().length > 0);
 }
 
 /** Run with one retry when the run died on infrastructure (status 'error'). */
@@ -336,11 +359,39 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
 				}
 
 				// ---- SHIP -------------------------------------------------
+				// Guard first (F4): the miner consumes the failed run's
+				// transcript — untrusted content (task prompts + model
+				// output quoting it) — and its patch is appended to a
+				// tier that rides every future session's system prompt.
+				// This is the same deterministic gate the dream pipeline
+				// applies: ship / sanitize (flagged lines quarantined,
+				// remainder ships) / gate (rejected outright; a first
+				// write to the tier hard-gates on ANY flag — F4B).
+				const guardShip = shipGateForPatch(patchText, tier);
+				if (guardShip.action === "gate") {
+					store.run(
+						`UPDATE improvements SET status = 'rejected', decided_at = ? WHERE id = ?`,
+						[Date.now(), improvementId],
+					);
+					logHook(
+						null,
+						"SubagentStop",
+						null,
+						"log",
+						`candidate ${candidate.id.slice(0, 8)} + confirmation passed but the GUARD gated the patch (${guardShip.reason}) — nothing shipped, mining continues`,
+					);
+					summary = `iteration ${i} patch passed twice but was gated by the adversarial-content guard — not shipped`;
+					continue;
+				}
+				const shipLines = shipLinesFrom(guardShip, mining.patchLines);
+
 				const shippedVersion = appendRules(
 					tier,
-					mining.patchLines,
+					shipLines,
 					"harness",
-					`fixed ${taskId} (cycle ${cycleId.slice(0, 8)}, iteration ${i})`,
+					`fixed ${taskId} (cycle ${cycleId.slice(0, 8)}, iteration ${i})${
+							guardShip.action === "sanitize" ? ` · ${guardSummary(guardShip)}` : ""
+						}`,
 				);
 				store.run(`UPDATE improvements SET status = 'shipped', decided_at = ?, memory_version = ? WHERE id = ?`, [
 					Date.now(),
