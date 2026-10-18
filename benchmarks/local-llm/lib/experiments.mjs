@@ -42,6 +42,8 @@ function costOf(model, promptTokens, completionTokens) {
   if (!c || !promptTokens) return 0;
   return (promptTokens / 1e6) * c.in + ((completionTokens ?? 0) / 1e6) * c.out;
 }
+// exported for e8.mjs (the E8 cascade experiment reuses the same cost accounting)
+export { costOf };
 
 // =============================================================== E1 triage
 
@@ -304,7 +306,7 @@ const MINER_SCHEMA = {
 /** E4 — curriculum task-mint replay (H6): author a harder variant of a task. */
 const flagNoGrammarMint = process.env.TEST_E4_NO_GRAMMAR === "1";
 
-const MINT_SCHEMA = {
+export const MINT_SCHEMA = {
   type: "object",
   properties: {
     id: { type: "string" },
@@ -318,6 +320,31 @@ const MINT_SCHEMA = {
   },
   required: ["id", "name", "description", "category", "difficulty", "prompt", "files", "verifyTestFile"],
 };
+
+/**
+ * mint.ts validateDraft essentials (L101-139), shared by E4 + E8: parsed JSON,
+ * 1-6 files, exactly ONE *.test.mjs (== verifyTestFile), per-file/total size
+ * caps, category whitelist, difficulty 1-5. Returns
+ * { val, files, names, testFiles, validator, failReasons }.
+ */
+export function validateMintDraft(parsed) {
+  const val = parsed.ok ? parsed.value : null;
+  const files = val && typeof val.files === "object" ? val.files : null;
+  const names = files ? Object.keys(files) : [];
+  const testFiles = names.filter((f) => /\.test\.mjs$/.test(f));
+  const failReasons = [];
+  if (!parsed.ok) failReasons.push("json");
+  if (parsed.ok && (!files || names.length < 1)) failReasons.push("no-files");
+  if (parsed.ok && files && names.length > 6) failReasons.push("too-many-files");
+  if (parsed.ok && files && testFiles.length !== 1) failReasons.push("test-file-count:" + testFiles.length);
+  if (parsed.ok && files && testFiles.length === 1 && val.verifyTestFile !== testFiles[0]) failReasons.push("verifyTestFile-mismatch:" + String(val.verifyTestFile));
+  if (parsed.ok && files && !names.every((f) => (files[f] ?? "").length <= 12_000)) failReasons.push("file-too-big");
+  if (parsed.ok && files && Object.values(files).reduce((a, c) => a + c.length, 0) > 40_000) failReasons.push("total-too-big");
+  if (parsed.ok && !["bugfix", "implementation", "algorithm", "refactor"].includes(val.category)) failReasons.push("category:" + String(val.category));
+  if (parsed.ok && (!Number.isInteger(val.difficulty) || val.difficulty < 1 || val.difficulty > 5)) failReasons.push("difficulty:" + String(val.difficulty));
+  const validator = parsed.ok && failReasons.length === 0;
+  return { val, files, names, testFiles, validator, failReasons };
+}
 
 export async function e4Mint({ localServer, localModel } = {}) {
   const { bridgeUrl, remoteModel, judgeModel } = cfg();
@@ -337,22 +364,8 @@ export async function e4Mint({ localServer, localModel } = {}) {
         jsonSchema: target.local && !flagNoGrammarMint ? MINT_SCHEMA : undefined,
       });
       const parsed = res.ok ? extractJson(res.content) : { ok: false, error: res.error };
-      const val = parsed.ok ? parsed.value : null;
-      // mint.ts validateDraft essentials (L101-139): 1-6 files, exactly one *.test.mjs, sizes, category/difficulty
-      const files = val && typeof val.files === "object" ? val.files : null;
-      const names = files ? Object.keys(files) : [];
-      const testFiles = names.filter((f) => /\.test\.mjs$/.test(f));
-      const failReasons = [];
-      if (!parsed.ok) failReasons.push("json");
-      if (parsed.ok && (!files || names.length < 1)) failReasons.push("no-files");
-      if (parsed.ok && files && names.length > 6) failReasons.push("too-many-files");
-      if (parsed.ok && files && testFiles.length !== 1) failReasons.push("test-file-count:" + testFiles.length);
-      if (parsed.ok && files && testFiles.length === 1 && val.verifyTestFile !== testFiles[0]) failReasons.push("verifyTestFile-mismatch:" + String(val.verifyTestFile));
-      if (parsed.ok && files && !names.every((f) => (files[f] ?? "").length <= 12_000)) failReasons.push("file-too-big");
-      if (parsed.ok && files && Object.values(files).reduce((a, c) => a + c.length, 0) > 40_000) failReasons.push("total-too-big");
-      if (parsed.ok && !["bugfix", "implementation", "algorithm", "refactor"].includes(val.category)) failReasons.push("category:" + String(val.category));
-      if (parsed.ok && (!Number.isInteger(val.difficulty) || val.difficulty < 1 || val.difficulty > 5)) failReasons.push("difficulty:" + String(val.difficulty));
-      const validator = parsed.ok && failReasons.length === 0;
+      // mint.ts validateDraft essentials (L101-139) — via the shared validateMintDraft helper
+      const { val, names, testFiles, validator, failReasons } = validateMintDraft(parsed);
       return {
         res, val, validator,
         record: {

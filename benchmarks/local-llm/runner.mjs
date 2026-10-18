@@ -18,6 +18,7 @@
  *   node runner.mjs e4-mint     --model lfm2.5-2.6b
  *   node runner.mjs e5-embed                        # needs nomic-embed-v2
  *   node runner.mjs e7-rfmt                          # remote response_format arms (H9)
+ *   node runner.mjs e8-cascade   --model qwen3-0.6b  # H10 mint cascade
  *   node runner.mjs all [--models a,b] [--quick]    # full suite -> results/<run>/
  *
  * Env: TEST_BRIDGE_URL (default http://127.0.0.1:3031), TEST_REMOTE_MODEL
@@ -32,6 +33,7 @@ import { chat } from "./lib/openai.mjs";
 import { newRunDir, saveJson, mdTable } from "./lib/report.mjs";
 import { e1Triage, e2Dream, e3Mine, e4Mint, e5Embed, cfg } from "./lib/experiments.mjs";
 import { e7ResponseFormat, renderE7 } from "./lib/e7.mjs";
+import { e8MintCascade, renderE8 } from "./lib/e8.mjs";
 import { renderE1, renderE2, renderE3, renderE4, renderE5 } from "./lib/renders.mjs";
 
 const args = process.argv.slice(2);
@@ -203,6 +205,37 @@ async function cmdE7(outDir) {
   return r;
 }
 
+async function cmdE8(outDir) {
+  const model = opt("model", "qwen3-0.6b");
+  const dir = outDir ?? newRunDir("e8-mint-cascade");
+  const ctx = Number(opt("ctx", 0)) || MODELS[model].ctxDefault;
+  // one server for the whole cascade arm; on RAM-pressure start failure, wait + retry once
+  let server = new LocalLlamaServer({ model, ctx });
+  try {
+    await server.start();
+  } catch (e) {
+    console.error(`[e8] llama-server start failed (${e?.message ?? e}) — waiting 30s, retrying once`);
+    await sleep(30_000);
+    server = new LocalLlamaServer({ model, ctx });
+    await server.start();
+  }
+  console.log(`[server] ${model} up in ${server.startupMs}ms on :${server.actualPort} (rss ${await server.rssMB()}MB)`);
+  try {
+    const r = await e8MintCascade({
+      localServer: server, localModel: model,
+      samplesPerSource: Number(opt("samples", 3)),
+      resumeFile: flag("resume") ? `${dir}/e8-cascade.json` : undefined,
+      onPartial: (p) => saveJson(dir, "e8-cascade.json", p), // survive interruption mid-run
+    });
+    saveJson(dir, "e8-cascade.json", r);
+    renderE8(r);
+    return r;
+  } finally {
+    await server.stop();
+    console.log(`[server] ${model} stopped`);
+  }
+}
+
 // ---------------------------------------------------------------- all
 
 async function cmdAll() {
@@ -289,6 +322,7 @@ const COMMANDS = {
   provision: cmdProvision, probe: cmdProbe, detect: cmdDetect,
   "e1-triage": cmdE1, "e2-dream": cmdE2, "e3-mine": cmdE3, "e4-mint": cmdE4, "e5-embed": cmdE5,
   "e7-rfmt": cmdE7,
+  "e8-cascade": cmdE8,
   all: cmdAll,
   serve: cmdServe,
 };
@@ -306,6 +340,7 @@ Commands:
   e4-mint    --model <id>                                 task-mint replay + validator
   e5-embed                                                nomic-embed classification lane
   e7-rfmt                                                remote response_format arms + acceptance matrix (E7/H9)
+  e8-cascade --model <id> [--samples N] [--resume]         local-draft+remote-repair mint cascade (H10)
   all [--models id,id] [--quick] [--label NAME]           full suite
 
 Models: ${[...CHAT_MODEL_IDS, "nomic-embed-v2"].join(", ")}
