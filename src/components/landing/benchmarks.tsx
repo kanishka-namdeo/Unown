@@ -340,7 +340,7 @@ export function BenchmarksSection() {
             <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
               pass 10/10 → 10/10 on every model, both passes. What memory actually bought
               is in the{" "}
-              <a href="#memory-lift" className="text-gold underline-offset-2 hover:underline">
+              <a href="#memory-lift" className="text-gold underline underline-offset-2">
                 cold-vs-warm chart
               </a>
               .
@@ -546,7 +546,7 @@ export function BenchmarksSection() {
                   href={`${BENCH_URL}/memory-eval/results`}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="text-gold underline-offset-4 hover:underline"
+                  className="text-gold underline underline-offset-4"
                 >
                   benchmarks/memory-eval/results/
                 </a>{" "}
@@ -555,7 +555,7 @@ export function BenchmarksSection() {
                   href="https://github.com/kanishka-namdeo/Unown/blob/main/docs/memory-system-review.md"
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="text-gold underline-offset-4 hover:underline"
+                  className="text-gold underline underline-offset-4"
                 >
                   docs/memory-system-review.md
                 </a>

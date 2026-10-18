@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 92;
+export const CHANGELOG_TOTAL_ENTRIES = 93;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 46,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 20,
+  "Fixed": 21,
   "Security": 3,
   "Behavior": 7
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 51,
+    "total": 52,
     "counts": {
       "Added": 18,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 12,
+      "Fixed": 13,
       "Security": 0,
       "Behavior": 7
     },
@@ -82,6 +82,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "bun run lint was red on a fresh clone while CI's lint job stayed green",
+            "behavior": false
+          },
+          {
+            "title": "landing: three WCAG 1.4.1 violations that the a11y gate could not see, and the gate that could not see them",
             "behavior": false
           },
           {
