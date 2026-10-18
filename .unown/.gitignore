@@ -1,3 +1,7 @@
 # local overrides & scratch
 local.md
 *.local.md
+# unown runtime state — audit ledgers, checkpoint blobs, review artifacts
+receipts/
+checkpoints/
+reviews/
