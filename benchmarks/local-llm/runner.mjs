@@ -28,8 +28,9 @@ import {
   platformSpec, hostInfo, llamaBinPath, RESULTS_DIR, sleep,
 } from "./lib/llama.mjs";
 import { chat } from "./lib/openai.mjs";
-import { newRunDir, saveJson, mdTable, latencyStats } from "./lib/report.mjs";
+import { newRunDir, saveJson, mdTable } from "./lib/report.mjs";
 import { e1Triage, e2Dream, e3Mine, e4Mint, e5Embed, cfg } from "./lib/experiments.mjs";
+import { renderE1, renderE2, renderE3, renderE4, renderE5 } from "./lib/renders.mjs";
 
 const args = process.argv.slice(2);
 const cmd = args[0] ?? "help";
@@ -157,32 +158,12 @@ async function cmdE1(outDir) {
   return r;
 }
 
-function renderE1(r) {
-  const s = r.summary;
-  console.log("\n=== E1 note triage ===");
-  console.log(mdTable([{
-    model: s.localModel, notes: s.notes,
-    localJSON: s.localJsonValidity.toFixed(2), remoteJSON: s.remoteJsonValidity.toFixed(2),
-    kindAgree: s.kindAgreement.toFixed(2), outcomeAgree: s.outcomeAgreement.toFixed(2),
-    localP50ms: s.localLatency.p50, remoteP50ms: s.remoteLatency.p50,
-    remoteCost: `$${s.remoteCostUsd}`, localCost: "$0",
-  }]));
-}
-
 async function cmdE2(outDir) {
   const model = opt("model", "lfm2.5-2.6b");
   const dir = outDir ?? newRunDir(`e2-${model}`);
   const r = await withLocal(model, MODELS[model].ctxDefault, (server) => e2Dream({ localServer: server, localModel: model, grammar: !flag("no-grammar"), noteLimit: Number(opt("notes", 12)) }));
   saveJson(dir, "e2-dream.json", r);
-  const s = r.summary;
-  console.log("\n=== E2 dream replay ===");
-  console.log(mdTable([{
-    model: s.localModel, grammar: s.grammar,
-    remoteOk: s.remote.ok, localOk: s.local.ok, localValidatorSane: s.local.saneLength,
-    remoteP50ms: s.remote.latencyMs, localMs: s.local.latencyMs,
-    judge: s.judged ? `${s.judged.winner} (${s.judged.consistent ? "consistent" : "flip"})` : "unjudged",
-    remoteCost: `$${s.remote.costUsd?.toFixed(4)}`, localCost: "$0",
-  }]));
+  renderE2(r);
   return r;
 }
 
@@ -191,16 +172,7 @@ async function cmdE3(outDir) {
   const dir = outDir ?? newRunDir(`e3-${model}`);
   const r = await withLocal(model, MODELS[model].ctxDefault, (server) => e3Mine({ localServer: server, localModel: model, grammar: !flag("no-grammar"), runLimit: Number(opt("runs", 4)) }));
   saveJson(dir, "e3-mine.json", r);
-  const s = r.summary;
-  console.log("\n=== E3 mine replay ===");
-  console.log(mdTable([{
-    model: s.localModel, grammar: s.grammar, runs: s.runs,
-    remoteJSON: s.remote.jsonOk.toFixed(2), localJSON: s.local.jsonOk.toFixed(2),
-    remoteValid: s.remote.validatorPass.toFixed(2), localValid: s.local.validatorPass.toFixed(2),
-    remoteP50ms: s.remote.latency.p50, localP50ms: s.local.latency.p50,
-    remoteCost: `$${s.remote.costUsd}`, localCost: "$0",
-  }]));
-  for (const j of s.judged) console.log(`  judge ${j.taskId}: ${j.winner}`);
+  renderE3(r);
   return r;
 }
 
@@ -209,14 +181,7 @@ async function cmdE4(outDir) {
   const dir = outDir ?? newRunDir(`e4-${model}`);
   const r = await withLocal(model, MODELS[model].ctxDefault, (server) => e4Mint({ localServer: server, localModel: model }));
   saveJson(dir, "e4-mint.json", r);
-  const s = r.summary;
-  console.log("\n=== E4 mint replay ===");
-  console.log(mdTable([{
-    model: s.localModel, remoteJSON: s.remote.jsonOk.toFixed(2), localJSON: s.local.jsonOk.toFixed(2),
-    remoteValid: s.remote.validatorPass.toFixed(2), localValid: s.local.validatorPass.toFixed(2),
-    remoteMs: s.remote.latency.p50, localMs: s.local.latency.p50,
-    remoteCost: `$${s.remote.costUsd}`, localCost: "$0",
-  }]));
+  renderE4(r);
   return r;
 }
 
@@ -224,9 +189,7 @@ async function cmdE5(outDir) {
   const dir = outDir ?? newRunDir("e5-embed");
   const r = await withLocal("nomic-embed-v2", 2048, (server) => e5Embed({ localServer: server, noteLimit: Number(opt("notes", 30)) }));
   saveJson(dir, "e5-embed.json", r);
-  const s = r.summary;
-  console.log("\n=== E5 embed triage ===");
-  console.log(mdTable([{ n: s.n, embedOkRate: s.embedOkRate.toFixed(2), agreementWithRemote: s.agreementWithRemote.toFixed(2), p50ms: s.latency.p50 }]));
+  renderE5(r);
   return r;
 }
 

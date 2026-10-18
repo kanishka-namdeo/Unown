@@ -39,6 +39,13 @@ jobs:
         with:
           node-version: 22
 
+      - name: Renders unit tests (receipt null-safety — red-run 39123722085 class)
+        # The experiment SUCCEEDED in that run; the receipt render crashed
+        # (.toFixed on null in --no-remote mode). Gate the render layer
+        # before spending provision time: no model, no server, no key.
+        # Quoted glob: node expands it (node >= 21), works on all three OSes.
+        run: node --test "benchmarks/local-llm/**/*.test.mjs"
+
       - name: Provision llama.cpp + Qwen3-0.6B Q4_K_M
         run: node benchmarks/local-llm/runner.mjs provision --models qwen3-0.6b
         env:

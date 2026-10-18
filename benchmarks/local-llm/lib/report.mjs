@@ -58,3 +58,14 @@ export function pct(x, digits = 0) {
   if (x === null || x === undefined || Number.isNaN(x)) return "—";
   return (100 * x).toFixed(digits) + "%";
 }
+
+/**
+ * Nullable fixed-point number formatting for receipt tables. A lane can be
+ * legitimately absent (e.g. E1 in --no-remote mode nulls every remote stat;
+ * an empty aggregate yields {n:0} with no p50) — those render as "—", never
+ * a thrown TypeError. Mirrors pct()'s null contract for raw numbers.
+ */
+export function num(v, digits = 2) {
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  return Number(v).toFixed(digits);
+}
