@@ -139,6 +139,40 @@ if (!fs.existsSync(path.join(REPO_ROOT, ".env"))) {
   console.log(`${sym.ok} created .env from .env.example`);
 }
 
+// ---------------------------------------- step 5b: .env symlinks for mini-services
+// bun auto-loads `.env` from the process CWD — but the two mini-services run
+// from mini-services/<name>/ (`bun --hot index.ts`). `bun run agent:start`
+// delivers the root config by parsing and exporting it (scripts/start.ts);
+// any OTHER supervisor that just runs the service `dev` script from the
+// service dir (the sandbox's .zscripts/dev.sh scans mini-services/*/package.json)
+// does not. Symlink the repo-root .env into each service dir so BOTH launch
+// paths read one file. Idempotent: a correct symlink is left alone; a stray
+// regular file is replaced (it would silently shadow the root config).
+// Non-fatal on Windows without symlink rights — agent:start still covers it.
+for (const name of ["llm-bridge", "agent-service"]) {
+  const linkPath = path.join(REPO_ROOT, "mini-services", name, ".env");
+  const target = "../../.env";
+  try {
+    const st = fs.lstatSync(linkPath); // ENOENT (absent) falls through to create
+    if (st.isSymbolicLink() && fs.readlinkSync(linkPath) === target) {
+      console.log(`${sym.dot} mini-services/${name}/.env symlink already correct`);
+      continue;
+    }
+    fs.rmSync(linkPath, { force: true });
+  } catch {
+    // absent — create below
+  }
+  try {
+    fs.symlinkSync(target, linkPath);
+    console.log(`${sym.ok} linked mini-services/${name}/.env → ${target}`);
+  } catch (err) {
+    console.log(
+      `${sym.dot} mini-services/${name}/.env symlink failed (${String(err)}) — ` +
+        `non-fatal; 'bun run agent:start' still exports the root .env itself`,
+    );
+  }
+}
+
 // ------------------------------------------------------------- step 6: link
 // Put `unown` on PATH (shim → this checkout). Opt out with UNOWN_NO_LINK=1.
 if (process.env.UNOWN_NO_LINK === "1") {

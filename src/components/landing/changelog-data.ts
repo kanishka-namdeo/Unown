@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 75;
+export const CHANGELOG_TOTAL_ENTRIES = 79;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 37,
+  "Added": 39,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 13,
+  "Fixed": 15,
   "Security": 3,
   "Behavior": 6
 };
@@ -46,20 +46,61 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 34,
+    "total": 38,
     "counts": {
-      "Added": 9,
+      "Added": 11,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 5,
+      "Fixed": 7,
       "Security": 0,
       "Behavior": 6
     },
     "groups": [
       {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
+            "behavior": false
+          },
+          {
+            "title": "bun run lint was red on a fresh clone while CI's lint job stayed green",
+            "behavior": false
+          },
+          {
+            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
+            "behavior": false
+          },
+          {
+            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
+            "behavior": false
+          },
+          {
+            "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
+            "behavior": false
+          },
+          {
+            "title": "dashboard: Console-tab contrast (wcag2aa color-contrast, serious)",
+            "behavior": false
+          },
+          {
+            "title": "engine: hardening batch from the deep audit (6 defects)",
+            "behavior": false
+          }
+        ]
+      },
+      {
         "bucket": "Added",
         "items": [
+          {
+            "title": "task tool: structured outputs (oh-my-pi port)",
+            "behavior": true
+          },
+          {
+            "title": "task tool: worktree fan-out isolation (muse code port)",
+            "behavior": true
+          },
           {
             "title": "local model lane for background learning",
             "behavior": true
@@ -94,31 +135,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "/lsp trust",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
-            "behavior": false
-          },
-          {
-            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
-            "behavior": false
-          },
-          {
-            "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: Console-tab contrast (wcag2aa color-contrast, serious)",
-            "behavior": false
-          },
-          {
-            "title": "engine: hardening batch from the deep audit (6 defects)",
             "behavior": false
           }
         ]
