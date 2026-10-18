@@ -54,6 +54,7 @@ import {
         unownAgentDirInit,
 } from "./term.ts";
 import { createCheckpointsExtension } from "./checkpoints.ts";
+import { createMcpExtension } from "./mcp.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 import { cmdUninstall, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
@@ -230,6 +231,7 @@ interface BootOptions {
 async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
         const agentDir = ensureUnownAgentDir();
         const checkpointsExtension = createCheckpointsExtension({ cwd, verbose });
+        const mcpExtension = createMcpExtension({ cwd, verbose });
         const extension = createTerminalExtension({ cwd, engineUrl: ENGINE_URL, strict: STRICT_HOOKS, verbose });
         const toolsExtension = createUnownToolsExtension({ cwd, engineUrl: ENGINE_URL, verbose });
 
@@ -250,7 +252,7 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                         settingsManager,
                         extensionFlagValues: bootOpts.plan ? new Map<string, boolean | string>([["plan", true]]) : undefined,
                         resourceLoaderOptions: {
-                                extensionFactories: [checkpointsExtension as any, extension as any, toolsExtension as any],
+                                extensionFactories: [checkpointsExtension as any, extension as any, toolsExtension as any, mcpExtension as any],
                                 additionalSkillPaths,
                                 appendSystemPrompt: bootOpts.appendSystemPromptPath ? [bootOpts.appendSystemPromptPath] : undefined,
                                 agentsFilesOverride: (base: any) => ({

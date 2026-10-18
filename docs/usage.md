@@ -135,9 +135,31 @@ Every session also keeps a **receipts audit ledger** and a **checkpoint store** 
 
 Limits, stated plainly: bash-caused file changes appear in the ledger as commands but are not itemized per-file (no workspace diffing); `/undo` walks only the current process's turn checkpoints — across processes (e.g. after subagent writes), use `/checkpoint` + `/restore`. Restore only ever writes inside the project directory (the same jail the hooks enforce). At most 40 checkpoints are kept (oldest pruned, blobs garbage-collected).
 
+## MCP servers
+
+unown is an MCP **client**: tools from any Model Context Protocol server appear in every session as `mcp__<server>__<tool>`. Configure servers in `.unown/mcp.json` (project) or `~/.unown/agent/mcp.json` (user; project wins per server name) — the Claude-Code-compatible shape:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"],
+      "env": { "SOME_TOKEN": "${SOME_TOKEN}" }
+    },
+    "remote": { "url": "https://mcp.example.com/sse", "headers": { "Authorization": "Bearer ..." } }
+  }
+}
+```
+
+- **stdio servers** spawn as subprocesses (newline-delimited JSON-RPC; a pretty-print-tolerant parser); `${VAR}` expands from your environment in `command`, `args`, `env` values and URLs. On Windows, commands spawn through `cmd.exe` so `npx`/`.cmd` shims resolve.
+- **streamable HTTP servers** POST JSON-RPC with `Mcp-Session-Id` capture/replay; `application/json` and `text/event-stream` responses are both handled.
+- **Connections are lazy and never block the session**: servers connect in the background at session start; a failed server marks itself `error` (last stderr kept as the hint) and stays out of the way — `/mcp` retries every server and reports status. Tools register the moment their server answers.
+- Tools are capped (100 per server), descriptions capped at 500 chars, tool results at 16 k chars; requests time out after `UNOWN_MCP_TIMEOUT_MS` (default 120 s), the initialize handshake after `UNOWN_MCP_CONNECT_TIMEOUT_MS` (default 20 s). `UNOWN_MCP=0` or `disabled: true` in the config disables the surface.
+
 ## Slash commands
 
-unown adds eleven commands of its own:
+unown adds twelve commands of its own:
 
 | Command | What it does |
 |---|---|
@@ -152,6 +174,7 @@ unown adds eleven commands of its own:
 | `/restore <id\|label>` | Restore a checkpoint |
 | `/checkpoints` | List checkpoints + blob-store size |
 | `/receipts [n]` | Show the session receipts audit ledger |
+| `/mcp` | Show MCP server status and (re)connect configured servers |
 
 pi ships 23 built-in slash commands. The ones worth learning first:
 
