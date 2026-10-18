@@ -268,6 +268,37 @@
         "results/e7-response-format/e7-rfmt.json",
         "results/e7-response-format/e7-enforcement-probe.json"
       ]
+    },
+    {
+      "id": "H10",
+      "title": "Local-draft + remote-repair cascade for task minting (H5 salvage path)",
+      "statement": "A cascade that drafts the curriculum variant on a small local model (Qwen3-0.6B, json_schema grammar), validates with the production validateDraft() contract, and repairs only the invalid drafts with the remote model achieves an accept-rate within 10 points of pure-remote minting, at strictly lower expected remote cost per accepted task, with blind-judge quality parity.",
+      "subtask": "task minting (curriculum authoring) — cascade topology",
+      "experiment": "E8-cascade (2 fixture sources x 3 samples per arm: cascade arm local-draft->validate->repair, fresh pure-remote baseline arm; blind judge on accepts)",
+      "metrics": [
+        "cascadeAcceptRate vs remoteAcceptRate",
+        "remote cost per ACCEPTED variant (each arm)",
+        "blind judge winner distribution (cascade-accepts vs remote-accepts)",
+        "per-stage latency (local draft / repair / remote arm)"
+      ],
+      "thresholds": {
+        "acceptRateGap": "cascade >= remote - 0.10",
+        "costPerAccepted": "cascade < remote",
+        "judgeParity": "cascade wins+ties >= losses (consistency-gated)"
+      },
+      "guards": [
+        "mint pipeline still runs its full gate chain after the draft exists: validateDraft -> selfcheck -> inactive insert -> real agent validation run -> activate (unchanged)",
+        "repair prompt carries the validator errors verbatim; repaired drafts re-enter the same validateDraft gate",
+        "cascade is opt-in production wiring (PI_MINT_CASCADE), default topology unchanged"
+      ],
+      "precedent": "FrugalGPT/cascade routing; Aider architect/editor role split; H5's own salvage recommendation",
+      "status": "verified",
+      "verdict": "VERIFIED: cascade acceptRate 1.00 (6/6: 5 straight local drafts valid, 1 repaired valid, 0 rejected) vs fresh pure-remote baseline 0.83 (5/6) — gap +0.17 (needed >= -0.10). Remote cost per accepted variant $0.00065 vs $0.0069 (10.6x cheaper: 5 of 6 drafts needed no remote call at all). Blind judge on the 5 judgeable pairs (1 remote draft was rejected, nothing to judge): cascade 2 wins / 3 ties / 0 losses. Latency: local draft p50 30.6s (mean 62s, CPU) + repair p50 28.8s when needed vs remote arm p50 43.4s — comparable, and minting is the rarest learning call (async, capped at 8 active minted tasks).",
+      "evidence": [
+        "results/e8-mint-cascade/e8-cascade.json",
+        "results/e4-qwen3-0.6b/e4-mint.json",
+        "results/e4-granite-4.0-1b/e4-mint.json"
+      ]
     }
   ]
 }

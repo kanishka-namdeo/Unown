@@ -31,6 +31,7 @@ overrides. Default topology is unchanged.
 | H7 | local as main brain | — | **scoped out** | precedent + prefill math; agent sessions stay remote |
 | H8 | integration shape | bridge local route + per-subtask env | **implemented + verified** | real `mineFailure()` over the local lane → harness-accepted result (99.8s); 970/970 engine + 106/106 bridge tests |
 | H9 | miner spec compliance via remote `response_format` | kimi-k2.5 + `json_schema` | **refuted** | accepted (HTTP 200, all 3 models) but `maxLength`/`maxItems` NOT enforced → patchSpecOk 0.50 ≠ 1.00; judge 4/4 ties |
+| H10 | task minting via local-draft+remote-repair cascade | Qwen3-0.6B draft + kimi-k2.5 repair | **verified** | accept 1.00 vs 0.83 remote; $0.00065 vs $0.0069 per accepted (**10.6×** cheaper); judge 2W/3T/0L |
 
 ## E0 — capability probe (small box, idle)
 
@@ -88,6 +89,42 @@ it — the harness's own post-validation and the local lane's llama.cpp grammar
 (which DOES enforce maxLength) remain the two working mechanisms. The whole
 check re-runs in ~4 min via `node benchmarks/local-llm/runner.mjs e7-rfmt` if
 the upstream's keyword support ever changes.
+
+## E8 — local-draft + remote-repair mint cascade (H10)
+
+**Question:** H5 refuted *pure-local* minting (Qwen3-0.6B 50% draft validity,
+truncation not grammar-fixable) but pointed at a salvage path: does a cascade
+— local 0.6B drafts (json_schema grammar), production `validateDraft()` gates,
+and the remote model only *repairs* the invalid drafts — match pure-remote
+minting quality at lower remote cost?
+
+**Answer: yes — VERIFIED on all three thresholds (n=6 per arm, 2 fixture
+sources × 3 samples).** Cascade accepted **6/6** variants (5 straight local
+drafts valid at 83% first-pass validity, 1 repaired, 0 rejected); the fresh
+pure-remote baseline accepted **5/6** (the remote model itself produced an
+invalid draft once). Remote cost per *accepted* variant: **$0.00065 vs
+$0.0069** — 10.6× cheaper, because 5 of 6 drafts never touched the remote
+API. Blind judge over the 5 judgeable pairs (one remote draft was rejected,
+nothing to judge): **2 cascade wins / 3 ties / 0 losses**. Latency: local
+draft p50 30.6s (mean 62s on this 2-vCPU box) + repair p50 28.8s when needed
+vs remote arm p50 43.4s — comparable wall-clock, and minting is the rarest
+learning call (async, capped at 8 active minted tasks).
+
+**Why it works:** the 0.6B's drafts are *structurally* spec-clean (llama.cpp
+enforces maxLength — E3's result) and mostly *semantically* valid (83%);
+the remote model is only asked to fix what validateDraft() can precisely
+describe — a much smaller, cheaper, more reliable job than authoring from
+scratch. The repair prompt carries the validator errors verbatim, and the
+repaired draft re-enters the same gate.
+
+**Production wiring sketch** (opt-in, default topology unchanged): in
+`mint.ts`'s `mintTaskFromRun`, when `PI_MINT_CASCADE=1`, author the draft via
+the bridge local lane (`PI_MINT_DRAFT_MODEL_ID`, default a local-* id),
+validate with the existing `validateDraft()`; on failure, one remote repair
+call (default mint model) with the invalid draft + validator errors; then the
+existing selfcheck → inactive-insert → agent-validation-run gates run
+unchanged. Re-run: `node benchmarks/local-llm/runner.mjs e8-cascade
+--model qwen3-0.6b` (~35 min on this box, resume-safe).
 
 ## Findings that change decisions
 
@@ -151,7 +188,10 @@ entirely and makes the learning loop operable offline.
 - Remote-lane `response_format` adoption for the miner (finding 2): **run as
   E7/H9 — refuted** (accepted but `maxLength`/`maxItems` not enforced); re-run
   `e7-rfmt` if the upstream's JSON-Schema keyword support changes.
-- A local-draft + remote-repair cascade for minting (H5's salvage path).
+- A local-draft + remote-repair cascade for minting (H5's salvage path):
+  **run as E8/H10 — verified** (accept 1.00 vs 0.83 remote, 10.6× cheaper per
+  accepted, judge 2W/3T/0L); production wiring is the sketch in the E8
+  section, opt-in behind `PI_MINT_CASCADE`.
 - Longer-horizon A/B: run the engine for a week with mining+dream local and
   compare improvement-ship rate + benchmark pass-rate drift vs the all-remote
   baseline (the verify-twice, canary and retention gates stay the safety net).
