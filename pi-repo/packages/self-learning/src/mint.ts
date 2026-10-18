@@ -1,5 +1,5 @@
 import { emit } from "./bus.ts";
-import { chatJson } from "./llm.ts";
+import { chatJson, modelFor } from "./llm.ts";
 import { type RunResult, runAgent } from "./runner.ts";
 import { createSandbox, seedFiles, verifyInSandbox } from "./sandbox.ts";
 import { store } from "./store.ts";
@@ -211,7 +211,7 @@ async function authorDraft(userContent: string): Promise<{ ok: true; def: TaskDe
 			{ role: "system", content: MINT_SYSTEM },
 			{ role: "user", content: userContent },
 		],
-		{ maxTokens: 3000 },
+		{ maxTokens: 3000, model: modelFor("mint") },
 	);
 	return validateDraft(draft);
 }

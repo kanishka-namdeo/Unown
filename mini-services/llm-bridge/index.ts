@@ -35,13 +35,21 @@
  *                          (default: disable thinking for snappy agent turns)
  *   BRIDGE_API_KEY         optional local shared secret for this bridge
  *   BRIDGE_MIN_SPACING_MS  min ms between upstream requests (default 400)
+ *   BRIDGE_LOCAL_URL       optional second upstream: a LOCAL OpenAI-compatible
+ *                          server (llama.cpp llama-server, Ollama, LM Studio…)
+ *                          e.g. http://127.0.0.1:8080/v1 — enables the local lane
+ *   BRIDGE_LOCAL_KEY       optional bearer key for the local upstream
+ *                          (llama.cpp runs keyless — leave empty)
+ *   BRIDGE_LOCAL_MODELS    comma-separated local model ids; empty = any id
+ *                          with the `local-` prefix routes locally
  */
 
 import {
         loadConfig,
         upstreamTimeoutMs,
-        routeModel,
+        routeRequest,
         buildUpstreamBody,
+        withLocalThinkingCompat,
         completionStats,
         foldSseLine,
         isRetryableError,
@@ -62,6 +70,9 @@ const {
         knownModels: KNOWN_MODELS,
         qwenThinking: QWEN_THINKING,
         minSpacingMs: MIN_SPACING_MS,
+        localUrl: LOCAL_URL,
+        localKey: LOCAL_KEY,
+        localModels: LOCAL_MODELS,
 } = loadConfig();
 
 // ---------------------------------------------------------------------------
@@ -96,19 +107,24 @@ async function acquireSlot() {
  * Time-to-HEADERS is capped (BRIDGE_UPSTREAM_TIMEOUT_MS, default 180s): a
  * stalled upstream can no longer wedge requests forever, while streaming
  * bodies remain uncapped once headers have arrived.
+ *
+ * target: { url, key } — the REMOTE upstream by default, or the LOCAL
+ * OpenAI-compatible server (llama.cpp / Ollama / LM Studio) for `local-*`
+ * model ids. A local target sends no Authorization header when its key is
+ * empty (llama.cpp runs keyless by default).
  */
-async function upstreamFetch(body: any, signal?: AbortSignal): Promise<Response> {
+async function upstreamFetch(body: any, signal?: AbortSignal, target: { url: string; key: string } = { url: UPSTREAM_URL, key: UPSTREAM_KEY }): Promise<Response> {
         const timeoutMs = upstreamTimeoutMs();
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(new Error(`upstream timeout: no response headers after ${timeoutMs}ms`)), timeoutMs);
         const onOuterAbort = () => ctrl.abort(signal?.reason);
         signal?.addEventListener("abort", onOuterAbort, { once: true });
         try {
-                const res = await fetch(`${UPSTREAM_URL}/chat/completions`, {
+                const res = await fetch(`${target.url}/chat/completions`, {
                         method: "POST",
                         headers: {
                                 "Content-Type": "application/json",
-                                ...(UPSTREAM_KEY ? { Authorization: `Bearer ${UPSTREAM_KEY}` } : {}),
+                                ...(target.key ? { Authorization: `Bearer ${target.key}` } : {}),
                         },
                         body: JSON.stringify(body),
                         signal: ctrl.signal,
@@ -125,13 +141,16 @@ async function upstreamFetch(body: any, signal?: AbortSignal): Promise<Response>
         }
 }
 
-/** Upstream call with serialized spacing + retry on 429/5xx/network. */
-async function callUpstream(body: any): Promise<Response> {
-        await acquireSlot();
+/** Upstream call with serialized spacing + retry on 429/5xx/network.
+ *  Local-lane calls skip the spacing throttle (localhost, no rate limit to
+ *  respect — CPU-bound llama.cpp serializes itself). */
+async function callUpstream(body: any, route: "remote" | "local" = "remote"): Promise<Response> {
+        const target = route === "local" ? { url: LOCAL_URL, key: LOCAL_KEY } : { url: UPSTREAM_URL, key: UPSTREAM_KEY };
+        if (route === "remote") await acquireSlot();
         let lastError: any;
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
                 try {
-                        return await upstreamFetch(body);
+                        return await upstreamFetch(body, undefined, target);
                 } catch (err: any) {
                         lastError = err;
                         const msg = String(err?.message ?? err);
@@ -139,7 +158,7 @@ async function callUpstream(body: any): Promise<Response> {
                         const backoff = backoffDelayMs(attempt);
                         console.log(`[llm-bridge] retryable error (attempt ${attempt}/${MAX_ATTEMPTS}), backing off ${Math.round(backoff)}ms: ${msg.slice(0, 120)}`);
                         await Bun.sleep(backoff);
-                        lastRequestAt = Date.now();
+                        if (route === "remote") lastRequestAt = Date.now();
                 }
         }
         throw lastError;
@@ -252,7 +271,7 @@ const server = Bun.serve({
                 if (req.method === "GET" && url.pathname === "/v1/models") {
                         return Response.json({
                                 object: "list",
-                                data: KNOWN_MODELS.map((id) => ({
+                                data: [...KNOWN_MODELS, ...(LOCAL_URL ? LOCAL_MODELS : [])].map((id) => ({
                                         id,
                                         object: "model",
                                         created: Math.floor(Date.now() / 1000),
@@ -275,12 +294,26 @@ const server = Bun.serve({
                                 upstreamHealthy = false;
                                 upstream = { ok: false };
                         }
+                        // local-lane probe (only when configured): reachable / keyless-friendly
+                        let local: any = null;
+                        if (LOCAL_URL) {
+                                try {
+                                        const res = await fetch(`${LOCAL_URL}/models`, {
+                                                headers: LOCAL_KEY ? { Authorization: `Bearer ${LOCAL_KEY}` } : {},
+                                                signal: AbortSignal.timeout(4000),
+                                        });
+                                        local = { ok: res.ok, status: res.status, url: LOCAL_URL, models: LOCAL_MODELS };
+                                } catch {
+                                        local = { ok: false, url: LOCAL_URL, models: LOCAL_MODELS };
+                                }
+                        }
                         return Response.json({
                                 ok: true,
                                 port: PORT,
                                 requests: totalRequests,
                                 errors: totalErrors,
                                 upstream,
+                                local,
                                 upstreamKeyIsSet: Boolean(UPSTREAM_KEY),
                                 authRequired: Boolean(BRIDGE_API_KEY),
                                 upstreamUrl: UPSTREAM_URL,
@@ -318,15 +351,16 @@ const server = Bun.serve({
                         try {
                                 const body = await req.json();
                                 const wantsStream = body.stream === true;
-                                const { upstream, requested } = routeModel(body.model, KNOWN_MODELS, ROUTE_DEFAULT, DEFAULT_MODEL);
+                                const { route, upstream, requested } = routeRequest(body.model, KNOWN_MODELS, ROUTE_DEFAULT, DEFAULT_MODEL, LOCAL_URL, LOCAL_MODELS);
                                 entry.stream = wantsStream;
                                 entry.model = requested;
-                                entry.upstreamModel = upstream;
+                                entry.upstreamModel = `${route === "local" ? "local:" : ""}${upstream}`;
                                 entry.messages = Array.isArray(body.messages) ? body.messages.length : 0;
                                 entry.tools = Array.isArray(body.tools) ? body.tools.length : 0;
 
-                                const upstreamBody = buildUpstreamBody(body, upstream, QWEN_THINKING);
-                                const res = await callUpstream(upstreamBody);
+                                let upstreamBody = buildUpstreamBody(body, upstream, QWEN_THINKING);
+                                if (route === "local") upstreamBody = withLocalThinkingCompat(upstreamBody);
+                                const res = await callUpstream(upstreamBody, route);
 
                                 if (wantsStream) {
                                         // True SSE passthrough. Push the log entry at stream
@@ -364,6 +398,9 @@ const server = Bun.serve({
 
 if (!UPSTREAM_KEY) {
         console.warn("[llm-bridge] WARNING: BRIDGE_UPSTREAM_KEY is not set — upstream requests will be unauthenticated.");
+}
+if (LOCAL_URL) {
+        console.log(`[llm-bridge] local lane ENABLED: ${LOCAL_URL} (models: ${LOCAL_MODELS.length ? LOCAL_MODELS.join(", ") : "any local-* id"})`);
 }
 console.log(
         `[llm-bridge] listening on http://127.0.0.1:${server.port} (OpenAI-compatible, proxying ${UPSTREAM_URL}; models: ${KNOWN_MODELS.join(", ")}; route default: ${ROUTE_DEFAULT})`,

@@ -30,7 +30,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { emit } from "./bus.ts";
-import { chatJson } from "./llm.ts";
+import { chatJson, modelFor } from "./llm.ts";
 import { scanMemoryCandidate } from "./guard.ts";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { store } from "./store.ts";
@@ -198,7 +198,7 @@ EXISTING SKILLS (do not duplicate): ${[...existing].join(", ") || "(none)"}
 Propose the skills.`,
 				},
 			],
-			{ maxTokens: 3000 },
+			{ maxTokens: 3000, model: modelFor("skills") },
 		);
 
 		const proposals = Array.isArray(result.skills) ? result.skills.slice(0, MAX_SKILLS_PER_DREAM) : [];

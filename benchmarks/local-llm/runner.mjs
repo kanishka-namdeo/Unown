@@ -257,10 +257,29 @@ async function cmdAll() {
 function pick(obj, keys) { const o = {}; for (const k of keys) o[k] = obj[k]; return o; }
 function round2(x) { return Math.round(x * 100) / 100; }
 
+
+// ---------------------------------------------------------------- serve
+
+/** Start llama-server and keep it alive (for the bridge local lane). */
+async function cmdServe() {
+  const model = opt("model", "qwen3-0.6b");
+  const port = Number(opt("port", 8080));
+  const ctx = Number(opt("ctx", 0)) || MODELS[model].ctxDefault;
+  const server = new LocalLlamaServer({ model, ctx, port });
+  await server.start();
+  const rss = await server.rssMB();
+  console.log(`[serve] ${model} on http://127.0.0.1:${server.actualPort}/v1 (rss ${rss}MB, ctx ${ctx})`);
+  console.log(`[serve] bridge wiring: BRIDGE_LOCAL_URL=http://127.0.0.1:${server.actualPort}/v1  BRIDGE_LOCAL_MODELS=local-${model}`);
+  console.log(`[serve] engine wiring: PI_MINER_MODEL_ID=local-${model}  (or PI_DREAM_MODEL_ID / PI_SKILLS_MODEL_ID / PI_MINT_MODEL_ID)`);
+  console.log(`[serve] Ctrl-C to stop`);
+  await new Promise(() => {}); // hold the process open; cleanup handlers do the rest
+}
+
 const COMMANDS = {
   provision: cmdProvision, probe: cmdProbe, detect: cmdDetect,
   "e1-triage": cmdE1, "e2-dream": cmdE2, "e3-mine": cmdE3, "e4-mint": cmdE4, "e5-embed": cmdE5,
   all: cmdAll,
+  serve: cmdServe,
 };
 
 if (cmd === "help" || !COMMANDS[cmd]) {

@@ -17,6 +17,7 @@
 import { randomUUID } from "node:crypto";
 import { emit } from "./bus.ts";
 import { decideGuardAction, guardSummary } from "./guard.ts";
+import { modelFor } from "./llm.ts";
 import { logHook } from "./hooks.ts";
 import { chatJson } from "./llm.ts";
 import { appendRules, currentVersion, readTier, rollback, type Tier } from "./memory.ts";
@@ -78,7 +79,7 @@ ${run.verify?.log?.slice(0, 4000) ?? "(none)"}
 Propose the memory patch.`,
 			},
 		],
-		{ maxTokens: 1500 },
+		{ maxTokens: 1500, model: modelFor("miner") },
 	);
 	const patchLines = (result.patchLines ?? [])
 		.filter((l) => typeof l === "string" && l.trim().length > 0)

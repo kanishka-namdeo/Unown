@@ -302,6 +302,23 @@ const MINER_SCHEMA = {
 // =============================================================== E4 mint
 
 /** E4 — curriculum task-mint replay (H6): author a harder variant of a task. */
+const flagNoGrammarMint = process.env.TEST_E4_NO_GRAMMAR === "1";
+
+const MINT_SCHEMA = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    name: { type: "string" },
+    description: { type: "string" },
+    category: { type: "string", enum: ["bugfix", "implementation", "algorithm", "refactor"] },
+    difficulty: { type: "integer" },
+    prompt: { type: "string" },
+    files: { type: "object", additionalProperties: { type: "string" } },
+    verifyTestFile: { type: "string" },
+  },
+  required: ["id", "name", "description", "category", "difficulty", "prompt", "files", "verifyTestFile"],
+};
+
 export async function e4Mint({ localServer, localModel } = {}) {
   const { bridgeUrl, remoteModel, judgeModel } = cfg();
   const tasks = loadTasks();
@@ -314,25 +331,32 @@ export async function e4Mint({ localServer, localModel } = {}) {
     const messages = mintCurriculumMessages(task);
 
     const runOne = async (target) => {
-      const res = await chat({ baseUrl: target.baseUrl, model: target.model, messages, maxTokens: 3000, temperature: 0.3, extra: target.local ? NO_THINKING : undefined });
+      const res = await chat({
+        baseUrl: target.baseUrl, model: target.model, messages, maxTokens: 3000, temperature: 0.3,
+        extra: target.local ? NO_THINKING : undefined,
+        jsonSchema: target.local && !flagNoGrammarMint ? MINT_SCHEMA : undefined,
+      });
       const parsed = res.ok ? extractJson(res.content) : { ok: false, error: res.error };
       const val = parsed.ok ? parsed.value : null;
       // mint.ts validateDraft essentials (L101-139): 1-6 files, exactly one *.test.mjs, sizes, category/difficulty
       const files = val && typeof val.files === "object" ? val.files : null;
       const names = files ? Object.keys(files) : [];
       const testFiles = names.filter((f) => /\.test\.mjs$/.test(f));
-      const validator = !!(
-        parsed.ok && files && names.length >= 1 && names.length <= 6 &&
-        testFiles.length === 1 && val.verifyTestFile === testFiles[0] &&
-        names.every((f) => (files[f] ?? "").length <= 12_000) &&
-        Object.values(files).reduce((a, c) => a + c.length, 0) <= 40_000 &&
-        ["bugfix", "implementation", "algorithm", "refactor"].includes(val.category) &&
-        Number.isInteger(val.difficulty) && val.difficulty >= 1 && val.difficulty <= 5
-      );
+      const failReasons = [];
+      if (!parsed.ok) failReasons.push("json");
+      if (parsed.ok && (!files || names.length < 1)) failReasons.push("no-files");
+      if (parsed.ok && files && names.length > 6) failReasons.push("too-many-files");
+      if (parsed.ok && files && testFiles.length !== 1) failReasons.push("test-file-count:" + testFiles.length);
+      if (parsed.ok && files && testFiles.length === 1 && val.verifyTestFile !== testFiles[0]) failReasons.push("verifyTestFile-mismatch:" + String(val.verifyTestFile));
+      if (parsed.ok && files && !names.every((f) => (files[f] ?? "").length <= 12_000)) failReasons.push("file-too-big");
+      if (parsed.ok && files && Object.values(files).reduce((a, c) => a + c.length, 0) > 40_000) failReasons.push("total-too-big");
+      if (parsed.ok && !["bugfix", "implementation", "algorithm", "refactor"].includes(val.category)) failReasons.push("category:" + String(val.category));
+      if (parsed.ok && (!Number.isInteger(val.difficulty) || val.difficulty < 1 || val.difficulty > 5)) failReasons.push("difficulty:" + String(val.difficulty));
+      const validator = parsed.ok && failReasons.length === 0;
       return {
         res, val, validator,
         record: {
-          ok: parsed.ok, validator,
+          ok: parsed.ok, validator, failReasons,
           latencyMs: res.latencyMs, ttftMs: res.ttftMs,
           promptTokens: res.usage.promptTokens, completionTokens: res.usage.completionTokens,
           costUsd: costOf(remoteModel, res.usage.promptTokens, res.usage.completionTokens),
@@ -359,6 +383,8 @@ export async function e4Mint({ localServer, localModel } = {}) {
       sourceTask: srcId,
       remote: remote.record, local: local.record,
       judged: judged ? { winner: judged.winner, consistent: judged.consistent, aScore: judged.aScore, bScore: judged.bScore } : null,
+      localDraft: local.val ? { id: local.val.id, category: local.val.category, difficulty: local.val.difficulty, verifyTestFile: local.val.verifyTestFile, fileNames: local.val.files ? Object.keys(local.val.files) : [] } : null,
+      remoteDraft: remote.val ? { id: remote.val.id, category: remote.val.category, difficulty: remote.val.difficulty, verifyTestFile: remote.val.verifyTestFile, fileNames: remote.val.files ? Object.keys(remote.val.files) : [] } : null,
     });
   }
 

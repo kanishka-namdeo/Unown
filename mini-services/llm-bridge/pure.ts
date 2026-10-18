@@ -67,6 +67,11 @@ export interface BridgeConfig {
         knownModels: string[];
         qwenThinking: boolean;
         minSpacingMs: number;
+        /** Optional SECOND upstream: a local OpenAI-compatible server (llama.cpp/Ollama/LM Studio). */
+        localUrl: string;
+        localKey: string;
+        /** Model ids served by the local upstream (advertised on /v1/models, routed when BRIDGE_LOCAL_URL is set). */
+        localModels: string[];
 }
 
 /**
@@ -93,6 +98,12 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
                         .filter(Boolean),
                 qwenThinking: /^(1|true|yes)$/i.test(env.BRIDGE_QWEN_THINKING ?? ""),
                 minSpacingMs: Number(env.BRIDGE_MIN_SPACING_MS ?? 400),
+                localUrl: (env.BRIDGE_LOCAL_URL ?? "").replace(/\/+$/, ""),
+                localKey: env.BRIDGE_LOCAL_KEY ?? "",
+                localModels: (env.BRIDGE_LOCAL_MODELS ?? "")
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean),
         };
 }
 
@@ -168,6 +179,39 @@ export function routeModel(
         return { upstream, requested: asked };
 }
 
+/** A model id is served by the local upstream when it is listed in localModels,
+ *  or (when localModels is empty) when it carries the `local-` prefix — the
+ *  convention for the bundled local lane (e.g. `local-qwen3-0.6b`). */
+export function isLocalModel(requested: string, localModels: string[]): boolean {
+        return localModels.includes(requested) || (localModels.length === 0 && requested.startsWith("local-"));
+}
+
+/**
+ * Full routing decision for a request: which upstream (remote allow-list or
+ * local server) and which model id to send there.
+ *
+ * - local candidates: ids in localModels, or `local-*` ids when the list is
+ *   empty — but ONLY when a localUrl is configured. A `local-*` id with no
+ *   BRIDGE_LOCAL_URL falls back to the remote allow-list (which routes it to
+ *   routeDefault) so a missing local server degrades instead of hard-failing.
+ * - everything else: the existing routeModel allow-list behavior, unchanged.
+ */
+export function routeRequest(
+        requested: unknown,
+        knownModels: string[],
+        routeDefault: string,
+        defaultModel: string,
+        localUrl: string,
+        localModels: string[],
+): { route: "remote" | "local"; upstream: string; requested: string } {
+        const asked = typeof requested === "string" && requested.trim() ? requested.trim() : defaultModel;
+        if (localUrl && isLocalModel(asked, localModels)) {
+                return { route: "local", upstream: asked, requested: asked };
+        }
+        const { upstream } = routeModel(asked, knownModels, routeDefault, defaultModel);
+        return { route: "remote", upstream, requested: asked };
+}
+
 /**
  * Build the upstream request body.
  *
@@ -195,17 +239,36 @@ export function buildUpstreamBody(body: any, upstreamModel: string, qwenThinking
 
         // thinking-mode resolution:
         //   explicit client `enable_thinking` wins; then the z-ai style
-        //   `thinking` translation; then per-model defaults.
+        //   `thinking` translation; then per-model defaults. The qwen check
+        //   strips a leading `local-` first so local-lane ids naming qwen
+        //   models (e.g. `local-qwen3-0.6b` on a llama.cpp server) get the
+        //   same thinking-off default — otherwise the hybrid model burns the
+        //   whole completion on reasoning_content and returns empty content.
+        const modelFamily = upstreamModel.replace(/^local-/, "");
         let enableThinking: boolean | undefined = body.enable_thinking;
         if (body.thinking?.type === "disabled") enableThinking = false;
         else if (body.thinking?.type === "enabled") enableThinking = true;
-        if (enableThinking === undefined && /^qwen/i.test(upstreamModel)) {
+        if (enableThinking === undefined && /^qwen/i.test(modelFamily)) {
                 enableThinking = qwenThinking;
         }
-        if (enableThinking !== undefined && /^qwen/i.test(upstreamModel)) {
+        if (enableThinking !== undefined && /^qwen/i.test(modelFamily)) {
                 out.enable_thinking = enableThinking;
         }
         return out;
+}
+
+/**
+ * Local-lane compatibility: llama.cpp's OpenAI endpoint controls template
+ * flags via `chat_template_kwargs` (e.g. {enable_thinking:false} for hybrid
+ * qwen models), while Dashscope reads the top-level `enable_thinking`.
+ * When a resolved body carries enable_thinking and is headed to a LOCAL
+ * server, mirror it into chat_template_kwargs so both dialects work.
+ */
+export function withLocalThinkingCompat(body: any): any {
+        if (body && body.enable_thinking !== undefined && body.chat_template_kwargs === undefined) {
+                return { ...body, chat_template_kwargs: { enable_thinking: body.enable_thinking } };
+        }
+        return body;
 }
 
 /**

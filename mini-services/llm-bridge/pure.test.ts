@@ -28,6 +28,9 @@ import {
 	isRetryableError,
 	loadConfig,
 	routeModel,
+	routeRequest,
+	isLocalModel,
+	withLocalThinkingCompat,
 	sanitizeToolCalls,
 	spacingWaitMs,
 	upstreamTimeoutMs,
@@ -731,6 +734,9 @@ describe("loadConfig", () => {
 			knownModels: ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"],
 			qwenThinking: false,
 			minSpacingMs: 400,
+			localUrl: "",
+			localKey: "",
+			localModels: [],
 		});
 	});
 
@@ -757,6 +763,9 @@ describe("loadConfig", () => {
 			knownModels: ["a", "b", "c"],
 			qwenThinking: true,
 			minSpacingMs: 250,
+			localUrl: "",
+			localKey: "",
+			localModels: [],
 		});
 	});
 
@@ -808,5 +817,130 @@ describe("upstreamTimeoutMs", () => {
 	// rather than falling back to 5s.
 	test("non-numeric value yields NaN (floor does not guard NaN)", () => {
 		expect(Number.isNaN(upstreamTimeoutMs({ BRIDGE_UPSTREAM_TIMEOUT_MS: "abc" }))).toBe(true);
+	});
+});
+
+// routeRequest — the local lane (second upstream)
+describe("routeRequest", () => {
+	const KNOWN = ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"];
+
+	test("no localUrl: everything routes remote (local-* falls back to the allow-list -> routeDefault)", () => {
+		expect(routeRequest("local-qwen3-0.6b", KNOWN, "kimi-k2.5", "kimi-k2.5", "", [])).toEqual({
+			route: "remote",
+			upstream: "kimi-k2.5", // degrade, not hard-fail
+			requested: "local-qwen3-0.6b",
+		});
+	});
+
+	test("localUrl set: local-* ids route to the local upstream, id passed through", () => {
+		expect(routeRequest("local-qwen3-0.6b", KNOWN, "kimi-k2.5", "kimi-k2.5", "http://127.0.0.1:8080/v1", [])).toEqual({
+			route: "local",
+			upstream: "local-qwen3-0.6b",
+			requested: "local-qwen3-0.6b",
+		});
+	});
+
+	test("localUrl set: non-local ids route remote exactly as routeModel", () => {
+		expect(routeRequest("kimi-k2.5", KNOWN, "kimi-k2.5", "kimi-k2.5", "http://127.0.0.1:8080/v1", [])).toEqual({
+			route: "remote",
+			upstream: "kimi-k2.5",
+			requested: "kimi-k2.5",
+		});
+		expect(routeRequest("gpt-4", KNOWN, "kimi-k2.5", "kimi-k2.5", "http://127.0.0.1:8080/v1", [])).toEqual({
+			route: "remote",
+			upstream: "kimi-k2.5",
+			requested: "gpt-4",
+		});
+	});
+
+	test("explicit localModels list: listed ids route local even without the prefix; the prefix alone does NOT when a list exists", () => {
+		const models = ["my-gguf-model"];
+		expect(routeRequest("my-gguf-model", KNOWN, "kimi-k2.5", "kimi-k2.5", "http://127.0.0.1:8080/v1", models)).toEqual({
+			route: "local",
+			upstream: "my-gguf-model",
+			requested: "my-gguf-model",
+		});
+		// QUIRK (documented behavior): with a non-empty localModels list, the
+		// local- prefix convention is disabled — an unlisted local-* id falls
+		// back to the remote allow-list.
+		expect(routeRequest("local-qwen3-0.6b", KNOWN, "kimi-k2.5", "kimi-k2.5", "http://127.0.0.1:8080/v1", models)).toEqual({
+			route: "remote",
+			upstream: "kimi-k2.5",
+			requested: "local-qwen3-0.6b",
+		});
+	});
+
+	test("whitespace is trimmed; missing model falls back to the default (remote)", () => {
+		expect(routeRequest("  local-x  ", KNOWN, "kimi-k2.5", "kimi-k2.5", "http://127.0.0.1:8080/v1", [])).toEqual({
+			route: "local",
+			upstream: "local-x",
+			requested: "local-x",
+		});
+		expect(routeRequest(undefined, KNOWN, "kimi-k2.5", "kimi-k2.5", "http://127.0.0.1:8080/v1", [])).toEqual({
+			route: "remote",
+			upstream: "kimi-k2.5",
+			requested: "kimi-k2.5",
+		});
+	});
+});
+
+// isLocalModel
+describe("isLocalModel", () => {
+	test("prefix convention applies only when the list is empty", () => {
+		expect(isLocalModel("local-foo", [])).toBe(true);
+		expect(isLocalModel("local-foo", ["other"])).toBe(false);
+		expect(isLocalModel("other", ["other"])).toBe(true);
+		expect(isLocalModel("kimi-k2.5", [])).toBe(false);
+	});
+});
+
+// loadConfig local fields
+describe("loadConfig local lane", () => {
+	test("defaults: no local upstream, no local models, empty key", () => {
+		const cfg = loadConfig({});
+		expect(cfg.localUrl).toBe("");
+		expect(cfg.localKey).toBe("");
+		expect(cfg.localModels).toEqual([]);
+	});
+
+	test("BRIDGE_LOCAL_URL trailing slashes are stripped; models list is split+trimmed", () => {
+		const cfg = loadConfig({ BRIDGE_LOCAL_URL: "http://127.0.0.1:8080/v1///", BRIDGE_LOCAL_MODELS: " local-a, local-b ,, " });
+		expect(cfg.localUrl).toBe("http://127.0.0.1:8080/v1");
+		expect(cfg.localModels).toEqual(["local-a", "local-b"]);
+	});
+});
+
+// local-lane qwen family detection (thinking translation)
+describe("buildUpstreamBody local qwen models", () => {
+	test("local-qwen3-0.6b gets the qwen thinking-off default (prefix stripped for family detection)", () => {
+		const out = buildUpstreamBody({ messages: [], thinking: { type: "disabled" } }, "local-qwen3-0.6b", false);
+		expect(out.enable_thinking).toBe(false);
+	});
+
+	test("local- ids NOT naming qwen models are untouched", () => {
+		const out = buildUpstreamBody({ messages: [] }, "local-granite-4.0-1b", false);
+		expect(out.enable_thinking).toBeUndefined();
+	});
+
+	test("remote behavior is byte-identical: kimi unaffected, qwen3.7-plus thinking-off", () => {
+		expect(buildUpstreamBody({ messages: [] }, "kimi-k2.5", false).enable_thinking).toBeUndefined();
+		expect(buildUpstreamBody({ messages: [] }, "qwen3.7-plus", false).enable_thinking).toBe(false);
+	});
+});
+
+// withLocalThinkingCompat
+describe("withLocalThinkingCompat", () => {
+	test("mirrors enable_thinking into chat_template_kwargs for llama.cpp-style servers", () => {
+		const out = withLocalThinkingCompat({ model: "local-qwen3-0.6b", enable_thinking: false, messages: [] });
+		expect(out.chat_template_kwargs).toEqual({ enable_thinking: false });
+		expect(out.enable_thinking).toBe(false);
+	});
+
+	test("no enable_thinking or existing chat_template_kwargs -> untouched", () => {
+		expect(withLocalThinkingCompat({ a: 1 })).toEqual({ a: 1 });
+		expect(withLocalThinkingCompat({ enable_thinking: true, chat_template_kwargs: { x: 1 } })).toEqual({
+			enable_thinking: true,
+			chat_template_kwargs: { x: 1 },
+		});
 	});
 });

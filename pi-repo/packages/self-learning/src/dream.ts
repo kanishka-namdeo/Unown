@@ -19,7 +19,7 @@ import { atomicWriteFileSync } from "./atomic.ts";
 import { emit } from "./bus.ts";
 import { analyzeCanaryRun, canaryK, sampleCanaryTasks } from "./canary.ts";
 import { decideGuardAction, guardSummary, noteGuardBanner, scanUntrustedText, type GuardFlag } from "./guard.ts";
-import { chatJson } from "./llm.ts";
+import { chatJson, modelFor } from "./llm.ts";
 import { currentVersion, maxTierChars, readTier, rollback, writeTier } from "./memory.ts";
 import { markDreamed, pendingTerminalNotesByProject, undreamedNotes } from "./notes.ts";
 import { mintSkillsForProject } from "./skills.ts";
@@ -113,7 +113,7 @@ export async function runDream(): Promise<DreamResult> {
                                         content: `CURRENT PROJECT MEMORY (version ${currentVersion("project")}):\n\n${currentMemory}\n\nSESSION NOTES SINCE LAST DREAM (${notes.length}):\n\n${notesText}`,
                                 },
                         ],
-                        { maxTokens: 3000 },
+                        { maxTokens: 3000, model: modelFor("dream") },
                 );
 
                 const next = String(result.projectMd ?? "").trim();
@@ -386,7 +386,7 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
                                                 content: `This is the PROJECT MEMORY of a real user project the agent works on in the terminal (project directory: ${group.projectPath}).\n\nCURRENT PROJECT MEMORY:\n\n${current}\n\nTERMINAL SESSION NOTES (${notes.length}):\n\n${notesText}`,
                                         },
                                 ],
-                                { maxTokens: 3000 },
+                                { maxTokens: 3000, model: modelFor("dream") },
                         );
                         const next = String(result.projectMd ?? "").trim();
                         if (!next || next.length < 60) throw new Error("project dream produced empty memory");

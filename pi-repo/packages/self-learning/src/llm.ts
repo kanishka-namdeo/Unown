@@ -19,6 +19,25 @@ function bridgeUrl(): string {
         return process.env.PI_BRIDGE_URL ?? BRIDGE_URL;
 }
 
+/**
+ * Per-subtask model overrides (the local lane): each learning-layer call
+ * site can name a different model id than PI_MODEL_ID — e.g. a `local-*`
+ * id served by a llama.cpp / Ollama server through the bridge's local route
+ * (BRIDGE_LOCAL_URL). Unset/empty falls back to PI_MODEL_ID, so the default
+ * topology (everything remote) is unchanged.
+ */
+const SUBTASK_MODELS = {
+        miner: process.env.PI_MINER_MODEL_ID ?? "",
+        dream: process.env.PI_DREAM_MODEL_ID ?? "",
+        skills: process.env.PI_SKILLS_MODEL_ID ?? "",
+        mint: process.env.PI_MINT_MODEL_ID ?? "",
+};
+
+/** Resolve a subtask override onto the default model id. */
+export function modelFor(subtask?: keyof typeof SUBTASK_MODELS): string {
+        return (subtask && SUBTASK_MODELS[subtask]) || LLM_MODEL;
+}
+
 export interface ChatMsg {
         role: "system" | "user" | "assistant";
         content: string;
@@ -31,7 +50,7 @@ export interface LlmTool {
 
 export async function chat(
         messages: ChatMsg[],
-        opts: { tools?: LlmTool[]; toolChoice?: unknown; maxTokens?: number; timeoutMs?: number } = {},
+        opts: { tools?: LlmTool[]; toolChoice?: unknown; maxTokens?: number; timeoutMs?: number; model?: string } = {},
 ): Promise<any> {
         const attempt = async (): Promise<any> => {
                 const ctrl = new AbortController();
@@ -41,7 +60,7 @@ export async function chat(
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                        model: LLM_MODEL,
+                                        model: opts.model ?? LLM_MODEL,
                                         messages,
                                         tools: opts.tools,
                                         tool_choice: opts.toolChoice,
@@ -185,7 +204,7 @@ function jsonFromTexts<T>(texts: string[]): { ok: true; value: T } | { ok: false
 
 export async function chatJson<T = any>(
         messages: ChatMsg[],
-        opts: { maxTokens?: number; timeoutMs?: number } = {},
+        opts: { maxTokens?: number; timeoutMs?: number; model?: string } = {},
 ): Promise<T> {
         const firstTexts = completionTexts(await chat(messages, opts));
         const first = jsonFromTexts<T>(firstTexts);
