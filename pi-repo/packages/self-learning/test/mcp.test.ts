@@ -165,9 +165,11 @@ describe("stdioSpawnSpec", () => {
         try {
             const spec = stdioSpawnSpec("srv", ["--key", "${MY_TEST_KEY}"], { SECRET: "${MY_TEST_SECRET}" }, "/w");
             if (process.platform === "win32") {
-                // non-.exe commands wrap in cmd.exe: ["/d","/s","/c", <cmd>, ...args]
+                // non-.exe commands wrap in cmd.exe: ["/d","/s","/c", <pre-quoted line>]
+                // — the line is ONE arg (args[3]), command + args are not flattened.
                 expect(spec.command).toBe("cmd.exe");
-                expect(spec.args[5]).toBe("key-value");
+                expect(spec.verbatim).toBe(true);
+                expect(spec.args[3]).toContain("key-value"); // expanded inside the /c line
             } else {
                 expect(spec.args[1]).toBe("key-value");
             }
@@ -1076,7 +1078,9 @@ describe("H2 trust gate + validation", () => {
         expect(nix.args).toEqual(["-y", "pkg"]);
         expect(nix.verbatim).toBe(false);
         // ${VAR} expansion through expandWith applies to command and args.
-        const expanded = stdioSpawnSpec("${BIN}", ["-${MODE}-"], {}, "/tmp", { expandWith: { BIN: "node", MODE: "fast" } });
+        // (platform forced: this asserts EXPANSION, not platform routing —
+        // without the force, win32 wraps "node" in the cmd.exe wrapper.)
+        const expanded = stdioSpawnSpec("${BIN}", ["-${MODE}-"], {}, "/tmp", { platform: "linux", expandWith: { BIN: "node", MODE: "fast" } });
         expect(expanded.command).toBe("node");
         expect(expanded.args).toEqual(["-fast-"]);
     });

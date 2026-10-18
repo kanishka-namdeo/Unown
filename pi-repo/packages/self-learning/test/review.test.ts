@@ -249,6 +249,10 @@ describe("captureReviewTarget", () => {
     });
 
     test("weird filenames (spaces/quotes/newline) ride the untracked listing byte-faithfully (G3, -z + core.quotepath=false)", async () => {
+        if (process.platform === "win32") return; // NTFS cannot represent this test's
+        // fixtures: `"` is forbidden in filenames, control chars (\n) are
+        // forbidden, and leading/trailing spaces get path-normalized away —
+        // the byte-fidelity concern is POSIX-only by construction.
         const dir = join(tmpRoot, "repo-weird");
         gitInit(dir);
         writeFileSync(join(dir, "committed.txt"), "base\n");
