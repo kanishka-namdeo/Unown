@@ -156,7 +156,8 @@ async function withLocal(modelId, ctx, fn) {
 async function cmdE1(outDir) {
   const model = opt("model", "qwen3-0.6b");
   const dir = outDir ?? newRunDir(`e1-${model}`);
-  const r = await withLocal(model, MODELS[model].ctxDefault, (server) => e1Triage({ localServer: server, localModel: model, noteLimit: Number(opt("notes", 30)), noRemote: flag("no-remote") }));
+  const ctx = Number(opt("ctx", 0)) || MODELS[model].ctxDefault;
+  const r = await withLocal(model, ctx, (server) => e1Triage({ localServer: server, localModel: model, noteLimit: Number(opt("notes", 30)), noRemote: flag("no-remote") }));
   saveJson(dir, "e1-triage.json", r);
   renderE1(r);
   return r;
@@ -334,7 +335,7 @@ Commands:
   provision [--models id,id] [--engine-only] [--force]   download llama.cpp + GGUFs
   probe [models...]                                       E0 capability probe
   detect                                                  find existing local runtimes
-  e1-triage --model <id> [--notes N]                      note triage vs remote
+  e1-triage --model <id> [--notes N] [--ctx N]            note triage vs remote
   e2-dream   --model <id> [--no-grammar] [--notes N]      AutoDream replay + judge
   e3-mine    --model <id> [--no-grammar]                  failure-mining replay + judge
   e4-mint    --model <id>                                 task-mint replay + validator
