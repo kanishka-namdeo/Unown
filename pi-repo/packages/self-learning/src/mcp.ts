@@ -30,13 +30,25 @@
  * attempts after a failure (spawn-storm guard; /mcp force-throughs);
  * `UNOWN_MCP_KEEPALIVE=0` disables the 60 s ping keepalive
  * (`UNOWN_MCP_PING_INTERVAL_MS`); result text capped at 16 k chars.
+ *
+ * H2 hardening (research R-a §4 items 1-4/6-7, audit M-01/M-08/M-09/M-10/
+ * M-14/M-15/M-17/M-20): project-scoped `.unown/mcp.json` is TRUST-GATED
+ * (config-trust.ts — refuse-first; a cloned repo's config used to execute
+ * arbitrary commands at session_start). HTTP entries validate their URL
+ * (http/https + host, actionable problems), never follow redirects
+ * (`redirect: "error"` — a 302 must not bounce our headers to another
+ * host), keep protocol headers un-clobberable, and expand `${VAR}` in
+ * url/headers/cwd like everywhere else. Windows stdio spawns go through a
+ * shared, escaped cmd.exe wrapper (also used by lsp.ts). Config validation
+ * surfaces actionable problems instead of silently swallowing them.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { registerChild, unregisterChild } from "./child-reaper.ts";
+import { trustApprovalNeeded, trustBypassed, trustConfig, trustStatePath } from "./config-trust.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
@@ -67,6 +79,51 @@ export function parseMsEnv(
 }
 
 // ---------------------------------------------------------------------------
+// Client identity (M-17) + shared config-validation vocabulary (L-06/M-10)
+// ---------------------------------------------------------------------------
+
+/** Unown's version — read from the ROOT package.json (the source of truth CI
+ * asserts against; same pattern as cli.ts's VERSION). "unknown" when the
+ * module is detached from the repo layout. Never hardcoded: the initialize
+ * handshake used to claim 0.1.0 while the shipped package was 2.1.x. */
+export const UNOWN_VERSION: string = (() => {
+    try {
+        const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "..", "..", "..", "package.json"), "utf8"));
+        return String(pkg.version ?? "unknown");
+    } catch {
+        return "unknown";
+    }
+})();
+
+/** clientInfo sent in every initialize handshake. */
+export const UNOWN_CLIENT_INFO: { name: string; version: string } = { name: "unown", version: UNOWN_VERSION };
+
+/** The protocol revision we speak (MCP streamable-HTTP/stdio, 2025-06-18). */
+export const MCP_PROTOCOL_VERSION = "2025-06-18";
+
+/** One actionable config problem (bad shape, bad URL, untrusted file…). */
+export interface ConfigProblem {
+    file: string;
+    /** JSON key path inside the file, e.g. `mcpServers.example.url`. */
+    key: string;
+    message: string;
+    /** Fix suggestion. */
+    hint?: string;
+}
+
+/** Render one problem compactly for logs and the /mcp problems block. */
+export function formatConfigProblem(p: ConfigProblem): string {
+    return `${basename(p.file)}: ${p.key} — ${p.message}${p.hint ? ` (${p.hint})` : ""}`;
+}
+
+function describeValue(v: unknown): string {
+    if (v === null) return "null";
+    if (Array.isArray(v)) return "an array";
+    if (typeof v === "string") return `the string ${JSON.stringify(v.slice(0, 60))}`;
+    return `a ${typeof v}`;
+}
+
+// ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
@@ -93,55 +150,184 @@ export function isHttpConfig(cfg: AnyServerConfig): cfg is HttpServerConfig {
     return typeof (cfg as HttpServerConfig).url === "string" && (cfg as HttpServerConfig).url.length > 0;
 }
 
-function normalizeServerEntry(value: unknown): AnyServerConfig | null {
-    if (typeof value !== "object" || value === null) return null;
-    const v = value as Record<string, unknown>;
-    if (typeof v.url === "string" && v.url) {
-        const headers =
-            typeof v.headers === "object" && v.headers !== null
-                ? Object.fromEntries(
-                      Object.entries(v.headers as Record<string, unknown>)
-                          .filter(([, h]) => typeof h === "string")
-                          .map(([k, h]) => [k, h as string]),
-                  )
-                : undefined;
-        return { url: v.url, headers };
+/** Validate an HTTP server URL (M-09): http/https with a hostname. Returns
+ * the actionable problem message, or null when valid. `file://`, `unix://`,
+ * `ftp:` and host-less strings are refused at config load so they can never
+ * reach fetch (Bun's fetch would happily GET a `file://` URL). */
+export function validateHttpUrl(url: string): string | null {
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return `url is not a valid absolute URL: ${JSON.stringify(url.slice(0, 80))}`;
     }
-    if (typeof v.command === "string" && v.command) {
-        const args = Array.isArray(v.args)
-            ? v.args.filter((a): a is string => typeof a === "string")
-            : undefined;
-        const env =
-            typeof v.env === "object" && v.env !== null
-                ? Object.fromEntries(
-                      Object.entries(v.env as Record<string, unknown>)
-                          .filter(([, e]) => typeof e === "string")
-                          .map(([k, e]) => [k, e as string]),
-                  )
-                : undefined;
-        const cwd = typeof v.cwd === "string" && v.cwd ? v.cwd : undefined;
-        return { command: v.command, args, env, cwd };
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return `url scheme must be http or https, got ${parsed.protocol} (in ${JSON.stringify(url.slice(0, 80))})`;
     }
+    if (!parsed.hostname) return `url is missing a host: ${JSON.stringify(url.slice(0, 80))}`;
     return null;
 }
 
-/** Parse one mcp.json (tolerantly). Null when absent/broken. */
-export function loadMcpConfigFile(filePath: string): McpConfig | null {
-    if (!existsSync(filePath)) return null;
-    try {
-        const parsed = JSON.parse(readFileSync(filePath, "utf8"));
-        const raw = (parsed as { mcpServers?: unknown })?.mcpServers;
-        if (typeof raw !== "object" || raw === null) return { servers: {} };
-        const servers: Record<string, AnyServerConfig> = {};
-        for (const [name, value] of Object.entries(raw as Record<string, unknown>)) {
-            const cfg = normalizeServerEntry(value);
-            if (cfg) servers[name] = cfg;
+export interface HttpHeaderProblem {
+    name: string;
+    message: string;
+}
+
+/**
+ * Expand `${VAR}` in header values and validate names/values (M-09/M-10): a
+ * CR/LF/NUL in a header is a request-splitting vector, so offending headers
+ * are DROPPED with a reported problem instead of being sent (fetch would
+ * otherwise fail with a bare TypeError at connect time).
+ */
+export function normalizeHttpHeaders(
+    raw: Record<string, unknown>,
+    env: Record<string, string | undefined> = process.env,
+): { headers: Record<string, string>; problems: HttpHeaderProblem[] } {
+    const headers: Record<string, string> = {};
+    const problems: HttpHeaderProblem[] = [];
+    for (const [name, value] of Object.entries(raw)) {
+        if (typeof value !== "string") {
+            problems.push({ name, message: `header value must be a string, got ${typeof value} — header ignored` });
+            continue;
         }
-        const disabled = (parsed as { disabled?: unknown })?.disabled === true;
-        return { disabled, servers };
-    } catch {
+        if (!name || /[\r\n\0]/.test(name)) {
+            problems.push({ name: name || "(empty)", message: "header name is empty or contains a line break — header ignored" });
+            continue;
+        }
+        const expanded = expandEnv(value, env);
+        if (/[\r\n\0]/.test(expanded)) {
+            problems.push({ name, message: `header value contains a line break (request splitting) — header ignored` });
+            continue;
+        }
+        headers[name] = expanded;
+    }
+    return { headers, problems };
+}
+
+function normalizeServerEntry(
+    name: string,
+    value: unknown,
+    file: string,
+    env: Record<string, string | undefined>,
+    problems: ConfigProblem[],
+): AnyServerConfig | null {
+    const key = `mcpServers.${name}`;
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        problems.push({ file, key, message: `server entry must be an object, got ${describeValue(value)}` });
         return null;
     }
+    const v = value as Record<string, unknown>;
+    if (v.url !== undefined) {
+        if (typeof v.url !== "string" || !v.url) {
+            problems.push({ file, key: `${key}.url`, message: `'url' must be a non-empty string, got ${describeValue(v.url)}` });
+            return null;
+        }
+        const url = expandEnv(v.url, env);
+        const urlProblem = validateHttpUrl(url);
+        if (urlProblem) {
+            problems.push({ file, key: `${key}.url`, message: urlProblem, hint: "only http:// and https:// URLs with a hostname are supported" });
+            return null;
+        }
+        let headersIn: Record<string, unknown> = {};
+        if (v.headers !== undefined) {
+            if (typeof v.headers !== "object" || v.headers === null || Array.isArray(v.headers)) {
+                problems.push({ file, key: `${key}.headers`, message: `expected an object of name → value, got ${describeValue(v.headers)}` });
+            } else {
+                headersIn = v.headers as Record<string, unknown>;
+            }
+        }
+        const { headers, problems: headerProblems } = normalizeHttpHeaders(headersIn, env);
+        for (const hp of headerProblems) problems.push({ file, key: `${key}.headers.${hp.name}`, message: hp.message });
+        return { url, headers: Object.keys(headers).length > 0 ? headers : undefined };
+    }
+    if (typeof v.command === "string" && v.command) {
+        let args: string[] | undefined;
+        if (v.args !== undefined) {
+            if (!Array.isArray(v.args)) {
+                problems.push({ file, key: `${key}.args`, message: `'args' must be an array of strings, got ${describeValue(v.args)}` });
+            } else {
+                const strings = v.args.filter((a): a is string => typeof a === "string");
+                if (strings.length !== v.args.length) {
+                    problems.push({ file, key: `${key}.args`, message: `'args' contains ${v.args.length - strings.length} non-string element(s) — those are dropped` });
+                }
+                args = strings.length > 0 ? strings : undefined;
+            }
+        }
+        let envOut: Record<string, string> | undefined;
+        if (v.env !== undefined) {
+            if (typeof v.env !== "object" || v.env === null || Array.isArray(v.env)) {
+                problems.push({ file, key: `${key}.env`, message: `expected an object of name → value, got ${describeValue(v.env)}` });
+            } else {
+                const entries = Object.entries(v.env as Record<string, unknown>).filter(([, e]) => typeof e === "string") as Array<[string, string]>;
+                const dropped = Object.keys(v.env as Record<string, unknown>).length - entries.length;
+                if (dropped > 0) {
+                    problems.push({ file, key: `${key}.env`, message: `'env' contains ${dropped} non-string value(s) — those are dropped` });
+                }
+                envOut = entries.length > 0 ? Object.fromEntries(entries) : undefined;
+            }
+        }
+        const cwd = typeof v.cwd === "string" && v.cwd ? expandEnv(v.cwd, env) : undefined;
+        return { command: v.command, args, env: envOut, cwd };
+    }
+    problems.push({
+        file,
+        key,
+        message: `server entry needs either 'command' (stdio) or 'url' (http) — found ${Object.keys(v).length > 0 ? `only ${Object.keys(v).map((k) => `'${k}'`).join(", ")}` : "no keys"}`,
+    });
+    return null;
+}
+
+export interface McpConfigFileResult {
+    config: McpConfig | null;
+    problems: ConfigProblem[];
+}
+
+/**
+ * Parse + validate one mcp.json. NEVER crashes on a bad config (L-06/M-10):
+ * parse failures and invalid shapes come back as actionable `problems`, and
+ * unusable entries are dropped instead of silently swallowed. `${VAR}` is
+ * expanded in url/headers/cwd values with `env` (unknown vars stay literal).
+ */
+export function loadMcpConfigFile(
+    filePath: string,
+    env: Record<string, string | undefined> = process.env,
+): McpConfigFileResult {
+    if (!existsSync(filePath)) return { config: null, problems: [] };
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(readFileSync(filePath, "utf8"));
+    } catch (err) {
+        return {
+            config: null,
+            problems: [
+                {
+                    file: filePath,
+                    key: "(root)",
+                    message: `invalid JSON — ${(err as Error).message}`,
+                    hint: "fix the syntax; the file is ignored until then",
+                },
+            ],
+        };
+    }
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        return { config: null, problems: [{ file: filePath, key: "(root)", message: `expected a JSON object, got ${describeValue(parsed)}` }] };
+    }
+    const root = parsed as { mcpServers?: unknown; disabled?: unknown };
+    const problems: ConfigProblem[] = [];
+    if (root.mcpServers !== undefined && (typeof root.mcpServers !== "object" || root.mcpServers === null || Array.isArray(root.mcpServers))) {
+        problems.push({ file: filePath, key: "mcpServers", message: `expected an object of server entries, got ${describeValue(root.mcpServers)}` });
+        return { config: { disabled: root.disabled === true, servers: {} }, problems };
+    }
+    if (root.disabled !== undefined && typeof root.disabled !== "boolean") {
+        problems.push({ file: filePath, key: "disabled", message: `expected true or false, got ${describeValue(root.disabled)} — ignored` });
+    }
+    const raw = (root.mcpServers ?? {}) as Record<string, unknown>;
+    const servers: Record<string, AnyServerConfig> = {};
+    for (const [name, value] of Object.entries(raw)) {
+        const cfg = normalizeServerEntry(name, value, filePath, env, problems);
+        if (cfg) servers[name] = cfg;
+    }
+    return { config: { disabled: root.disabled === true, servers }, problems };
 }
 
 /** `${VAR}` expansion from the environment (unknown vars left literal). */
@@ -152,17 +338,57 @@ export function expandEnv(value: string, env: Record<string, string | undefined>
     });
 }
 
-/** Merged config: user file ← project file (project wins per server name). */
-export function resolveMcpConfig(cwd: string, userDir: string = UNOWN_AGENT_DIR): McpConfig {
+/** Merged config: user file ← project file (project wins per server name).
+ *
+ * TRUST GATE (H2, M-01 — the audit's top security gap): the project file is
+ * attacker-controlled in a cloned repo, so an untrusted project file's
+ * servers are WITHHELD into `gatedServers` (never spawned) and `needsTrust`
+ * flips true; the status surface renders the approval action (`/mcp trust`).
+ * Files under `userDir` are user-owned and always trusted.
+ * `UNOWN_TRUST_PROJECT_CONFIG=1|true` bypasses the gate (CI/headless). */
+export interface ResolvedMcpConfig {
+    config: McpConfig;
+    problems: ConfigProblem[];
+    /** Project config path when one exists. */
+    projectFile: string | null;
+    /** Project config present but untrusted (entries withheld). */
+    needsTrust: boolean;
+    /** Servers withheld by the trust gate (shown as not-configured). */
+    gatedServers: Record<string, AnyServerConfig>;
+}
+
+export function resolveMcpConfig(
+    cwd: string,
+    userDir: string = UNOWN_AGENT_DIR,
+    env: Record<string, string | undefined> = process.env,
+): ResolvedMcpConfig {
     const merged: McpConfig = { servers: {} };
-    for (const file of [join(userDir, "mcp.json"), join(cwd, ".unown", "mcp.json")]) {
-        const cfg = loadMcpConfigFile(file);
+    const problems: ConfigProblem[] = [];
+    const gatedServers: Record<string, AnyServerConfig> = {};
+    const projectFile = join(cwd, ".unown", "mcp.json");
+    const trustOpts = { statePath: trustStatePath(userDir), userDir, env };
+    let needsTrust = false;
+    for (const file of [join(userDir, "mcp.json"), projectFile]) {
+        const isProject = file === projectFile;
+        const { config: cfg, problems: fileProblems } = loadMcpConfigFile(file, env);
+        problems.push(...fileProblems);
         if (!cfg) continue;
+        if (isProject && trustApprovalNeeded(file, trustOpts)) {
+            needsTrust = true;
+            Object.assign(gatedServers, cfg.servers);
+            problems.push({
+                file,
+                key: "mcpServers",
+                message: `project mcp.json is untrusted — ${Object.keys(cfg.servers).length} server(s) withheld`,
+                hint: "run /mcp trust (or set UNOWN_TRUST_PROJECT_CONFIG=1)",
+            });
+            continue;
+        }
         if (cfg.disabled === true) merged.disabled = true;
         if (cfg.disabled === false) merged.disabled = false;
         Object.assign(merged.servers, cfg.servers);
     }
-    return merged;
+    return { config: merged, problems, projectFile: existsSync(projectFile) ? projectFile : null, needsTrust, gatedServers };
 }
 
 // ---------------------------------------------------------------------------
@@ -337,6 +563,30 @@ export interface McpToolInfo {
 
 export type ConnectionState = "idle" | "connecting" | "connected" | "error";
 
+/** Surface a JSON-RPC error with its code (M-20/L-12): -32601 vs -32800
+ * (server-cancelled) used to be indistinguishable behind a bare message. */
+export function mcpErrorMessage(error: { code?: number; message?: string } | undefined | null): string {
+    const code = error?.code;
+    const message = error?.message ?? "MCP error";
+    return code !== undefined ? `MCP error ${code}: ${message}` : `MCP ${message}`;
+}
+
+/** JSON-RPC ids echoed as numeric strings ("7") must still match numeric
+ * pending keys (M-15/M-20); non-numeric ids pass through unchanged. */
+export function normalizeRpcId(id: unknown): number | string | null {
+    if (typeof id === "number") return id;
+    if (typeof id === "string") return /^-?\d+$/.test(id) ? Number(id) : id;
+    return null;
+}
+
+/** Loose id equality for SSE stream matching (numeric-string tolerant). */
+export function sameJsonRpcId(a: unknown, b: unknown): boolean {
+    if (a === b) return true;
+    if (typeof a === "string" && typeof b === "number") return Number(a) === b;
+    if (typeof a === "number" && typeof b === "string") return a === Number(b);
+    return false;
+}
+
 /**
  * One live MCP server connection. `transport` picks the wire; both speak
  * JSON-RPC 2.0 with request ids and bounded timeouts.
@@ -353,6 +603,8 @@ export class McpConnection {
     private sessionId: string | null = null;
     private baseUrl = "";
     private headers: Record<string, string> = {};
+    /** Header problems found at construction (surfaced once, at connect). */
+    private headerProblems: string[] = [];
     /** Bound for fire-and-forget HTTP notifications (M-06: was unbounded). */
     notifyTimeoutMs = 10_000;
     state: ConnectionState = "idle";
@@ -361,25 +613,47 @@ export class McpConnection {
     onNotification: ((method: string, params: unknown) => void) | null = null;
     /** Called when the stdio child exits (crash bookkeeping lives in the manager). */
     onExit: ((code: number | null) => void) | null = null;
+    /** Verbose log sink (caps, header problems, pagination stops). */
+    onLog: ((message: string) => void) | null = null;
 
     private readonly requestTimeoutMs: number;
     private readonly connectTimeoutMs: number;
 
-    constructor(serverName: string, cfg: AnyServerConfig, cwd: string, requestTimeoutMs: number, connectTimeoutMs?: number) {
+    constructor(
+        serverName: string,
+        cfg: AnyServerConfig,
+        cwd: string,
+        requestTimeoutMs: number,
+        connectTimeoutMs?: number,
+        env: Record<string, string | undefined> = process.env,
+    ) {
         this.serverName = serverName;
         this.cwd = cwd;
         this.requestTimeoutMs = requestTimeoutMs;
         this.connectTimeoutMs = connectTimeoutMs ?? requestTimeoutMs;
         this.transport = isHttpConfig(cfg) ? "http" : "stdio";
         if (isHttpConfig(cfg)) {
-            this.baseUrl = cfg.url;
-            this.headers = { ...(cfg.headers ?? {}) };
+            // ${VAR} expansion + header validation for directly-passed configs
+            // (M-10/M-09); loadMcpConfigFile already did both for disk loads.
+            this.baseUrl = expandEnv(cfg.url, env);
+            const { headers, problems } = normalizeHttpHeaders({ ...(cfg.headers ?? {}) } as Record<string, unknown>, env);
+            for (const hp of problems) this.headerProblems.push(hp.message);
+            this.headers = headers;
         } else {
-            this.spawnSpec = stdioSpawnSpec(cfg.command, cfg.args ?? [], cfg.env ?? {}, cfg.cwd ?? cwd);
+            try {
+                this.spawnSpec = stdioSpawnSpec(cfg.command, cfg.args ?? [], cfg.env ?? {}, expandEnv(cfg.cwd ?? cwd, env), { expandWith: env });
+                this.spawnError = null;
+            } catch (err) {
+                // Refuse-first for unsafe command lines (M-08): never spawn them.
+                this.spawnSpec = null;
+                this.spawnError = `MCP server "${serverName}": ${(err as Error).message}`;
+            }
         }
     }
 
     private spawnSpec: { command: string; args: string[]; env: Record<string, string>; cwd: string } | null = null;
+    /** Unsafe command line (CRLF / unescapable % through cmd.exe) — start() fails with this. */
+    private spawnError: string | null = null;
 
     get running(): boolean {
         if (this.disposed) return false;
@@ -396,6 +670,7 @@ export class McpConnection {
     async start(connectTimeoutMs: number): Promise<void> {
         this.state = "connecting";
         try {
+            if (this.spawnError) throw new Error(this.spawnError);
             if (this.transport === "stdio") {
                 await this.startStdio();
             } else {
@@ -404,9 +679,9 @@ export class McpConnection {
             const result = (await this.request(
                 "initialize",
                 {
-                    protocolVersion: "2025-06-18",
+                    protocolVersion: MCP_PROTOCOL_VERSION,
                     capabilities: {},
-                    clientInfo: { name: "unown", version: "0.1.0" },
+                    clientInfo: { ...UNOWN_CLIENT_INFO },
                 },
                 connectTimeoutMs,
             )) as { protocolVersion?: string; serverInfo?: { name?: string; version?: string } } | null;
@@ -467,7 +742,12 @@ export class McpConnection {
     private lastStderr = "";
 
     private async startHttp(): Promise<void> {
-        // Nothing to do ahead of initialize — HTTP connects per request.
+        // M-09: validate before the first fetch — an invalid URL would
+        // otherwise surface as a bare fetch TypeError at connect time.
+        const urlProblem = validateHttpUrl(this.baseUrl);
+        if (urlProblem) throw new Error(`MCP server "${this.serverName}": ${urlProblem}`);
+        for (const hp of this.headerProblems) this.onLog?.(`MCP server "${this.serverName}": ${hp}`);
+        this.headerProblems.length = 0;
     }
 
     /** Send a JSON-RPC request and await its result. */
@@ -534,9 +814,9 @@ export class McpConnection {
             id,
             method: "initialize",
             params: {
-                protocolVersion: "2025-06-18",
+                protocolVersion: MCP_PROTOCOL_VERSION,
                 capabilities: {},
-                clientInfo: { name: "unown", version: "0.1.0" },
+                clientInfo: { ...UNOWN_CLIENT_INFO },
             },
         });
         await this.httpAttempt(id, message, this.connectTimeoutMs, "initialize");
@@ -554,16 +834,21 @@ export class McpConnection {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeoutMs);
             try {
+                // Protocol headers LAST (M-09): a user header could otherwise
+                // clobber content-type/accept and silently break the transport.
                 const headers: Record<string, string> = {
+                    ...this.headers,
                     "content-type": "application/json",
                     accept: "application/json, text/event-stream",
-                    ...this.headers,
                 };
                 if (this.sessionId) headers["mcp-session-id"] = this.sessionId;
                 const res = await fetch(this.baseUrl, {
                     method: "POST",
                     headers,
                     body: message,
+                    // M-09: never follow redirects — a 302 must not bounce our
+                    // custom headers (api keys, session id) to another host.
+                    redirect: "error",
                     signal: controller.signal,
                 });
                 const sessionHeader = res.headers.get("mcp-session-id");
@@ -589,11 +874,17 @@ export class McpConnection {
                 } else {
                     payload = await res.json();
                 }
-                const msg = payload as { id?: number; result?: unknown; error?: { message?: string } } | null;
-                if (msg && msg.error) throw new Error(`MCP ${msg.error.message ?? "error"}`);
+                const msg = payload as { id?: number; result?: unknown; error?: { message?: string; code?: number } } | null;
+                if (msg && msg.error) throw new Error(mcpErrorMessage(msg.error));
                 return msg?.result ?? null;
             } catch (err) {
                 if (err instanceof McpHttpError) throw err;
+                const message = String((err as Error)?.message ?? "");
+                if (/redirect/i.test(message)) {
+                    throw new Error(
+                        `MCP ${method}: ${this.baseUrl} answered with a redirect — refused (redirects are disabled so our headers cannot bounce to another host)`,
+                    );
+                }
                 throw rewriteAbortError(err, method, timeoutMs);
             } finally {
                 clearTimeout(timer);
@@ -608,14 +899,14 @@ export class McpConnection {
             // M-06: this fetch used to have no bound at all — a hung remote
             // pinned sockets forever. 10 s cap, best-effort swallow.
             const headers: Record<string, string> = {
+                ...this.headers,
                 "content-type": "application/json",
                 accept: "application/json, text/event-stream",
-                ...this.headers,
             };
             if (this.sessionId) headers["mcp-session-id"] = this.sessionId;
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), this.notifyTimeoutMs);
-            void fetch(this.baseUrl, { method: "POST", headers, body: message, signal: controller.signal })
+            void fetch(this.baseUrl, { method: "POST", headers, body: message, redirect: "error", signal: controller.signal })
                 .then((res) => {
                     const body = res.body;
                     if (body) body.cancel().catch(() => {});
@@ -666,7 +957,7 @@ export class McpConnection {
     async listTools(): Promise<McpToolInfo[]> {
         const tools: McpToolInfo[] = [];
         let cursor: string | undefined = undefined;
-        for (let page = 0; page < 20; page++) {
+        for (let page = 0; page < TOOLS_LIST_MAX_PAGES; page++) {
             const result = (await this.request("tools/list", cursor ? { cursor } : {}, undefined)) as
                 | { tools?: McpToolInfo[]; nextCursor?: string }
                 | null;
@@ -677,6 +968,10 @@ export class McpConnection {
             }
             cursor = result?.nextCursor;
             if (!cursor) break;
+        }
+        if (cursor) {
+            // M-14: silent truncation is the worst kind — say it happened.
+            this.onLog?.(`tools/list for "${this.serverName}" still paginates after ${TOOLS_LIST_MAX_PAGES} pages — stopping with a partial list`);
         }
         return tools;
     }
@@ -699,7 +994,10 @@ export class McpConnection {
             }
         }
         let text = parts.join("\n") || "(empty result)";
-        if (text.length > maxResultChars) text = text.slice(0, maxResultChars) + `\n… (truncated at ${maxResultChars} chars)`;
+        if (text.length > maxResultChars) {
+            // M-14: truncation must be VISIBLE to the model, never silent.
+            text = text.slice(0, maxResultChars) + `\n(truncated at ${maxResultChars} chars)`;
+        }
         return { text, isError: Boolean(result?.isError) };
     }
 
@@ -743,31 +1041,47 @@ export class McpConnection {
     }
 
     private handleMessage(message: unknown): void {
-        const msg = message as { id?: number; method?: string; params?: unknown; result?: unknown; error?: unknown } | null;
+        const msg = message as
+            | { id?: number | string; method?: string; params?: unknown; result?: unknown; error?: { code?: number; message?: string } }
+            | null;
         if (!msg || typeof msg !== "object") return;
         if (msg.method && msg.id === undefined) {
             this.onNotification?.(msg.method, msg.params);
             return;
         }
         if (msg.method && msg.id !== undefined) {
-            // server → client request: reply null (we implement no server-side capabilities)
-            this.replyNull(msg.id);
+            this.replyToServerRequest(msg.id, msg.method);
             return;
         }
-        const pending = this.pending.get(msg.id as number);
+        // M-15/M-20: servers echoing ids as strings ("7") are valid JSON-RPC;
+        // without normalization the response was dropped and the request
+        // burned its full 120 s timeout.
+        const id = normalizeRpcId(msg.id);
+        const pending = typeof id === "number" ? this.pending.get(id) : undefined;
         if (pending) {
-            this.pending.delete(msg.id as number);
+            this.pending.delete(id as number);
             clearTimeout(pending.timer);
-            if (msg.error) pending.reject(new Error(String((msg.error as { message?: string }).message ?? "MCP error")));
+            if (msg.error) pending.reject(new Error(mcpErrorMessage(msg.error)));
             else pending.resolve(msg.result);
         }
     }
 
-    private replyNull(id: unknown): void {
+    /**
+     * Dispatch a server → client request (M-20): we implement no server-side
+     * capabilities, so `roots/list` answers `{roots: []}` and everything else
+     * gets -32601 MethodNotFound — a fake `result: null` made well-behaved
+     * servers wait on (or crash on) a shape we never sent. Stdio transport
+     * only; HTTP servers deliver these via the response stream.
+     */
+    private replyToServerRequest(id: unknown, method: string): void {
+        const reply =
+            method === "roots/list"
+                ? { jsonrpc: "2.0" as const, id, result: { roots: [] } }
+                : { jsonrpc: "2.0" as const, id, error: { code: -32601, message: `method not found: ${method}` } };
         try {
-            this.proc?.stdin?.write(JSON.stringify({ jsonrpc: "2.0", id, result: null }) + "\n");
+            this.proc?.stdin?.write(JSON.stringify(reply) + "\n");
         } catch {
-            /* ignore */
+            /* server gone */
         }
     }
 }
@@ -780,8 +1094,8 @@ export function parseSseResponse(body: string, id: number): unknown {
             const data = line.slice(5).trim();
             if (!data || data === "[DONE]") continue;
             try {
-                const parsed = JSON.parse(data) as { id?: number };
-                if (parsed.id === id) return parsed;
+                const parsed = JSON.parse(data) as { id?: number | string };
+                if (sameJsonRpcId(parsed.id, id)) return parsed;
             } catch {
                 continue;
             }
@@ -842,26 +1156,71 @@ function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** tools/list pagination stop (M-14: logging, not silent truncation). */
+const TOOLS_LIST_MAX_PAGES = 20;
+
 /**
- * Windows: spawn through cmd.exe so `npx`/`.cmd` shims resolve without a
- * shell. POSIX: direct spawn. Pure — exported for tests.
+ * Windows: spawn through cmd.exe so `npx`/`.cmd`/`.bat` shims resolve
+ * without a shell. POSIX: direct spawn. Pure — exported for tests (and used
+ * by lsp.ts so BOTH modules share one Windows-correct spec builder).
+ *
+ * H2 (M-08/L-05) — the old wrapper had three defects, all fixed here:
+ *
+ *   1. `.bat` was EXCLUDED from wrapping (exactly backwards — direct `.bat`
+ *      spawn throws EINVAL on CVE-2024-27980-patched runtimes). Now only
+ *      `.exe`/`.com` spawn directly; `.cmd`, `.bat` and extensionless
+ *      commands (npm shims) go through `cmd.exe /d /s /c`.
+ *   2. args were re-joined onto the cmd.exe line unescaped, so `& | ^ < > "`
+ *      inside an arg (e.g. via a `${VAR}`-expanded value) became command
+ *      separators — injection. Every arg is now cross-spawn-style escaped
+ *      and quoted.
+ *   3. `%` cannot be escaped AT ALL in cmd.exe context (variable expansion
+ *      happens even inside double quotes) — args or a command containing
+ *      `%` on the Windows path are REJECTED with an actionable error
+ *      instead of executed. CR/LF/NUL anywhere is likewise rejected (line
+ *      splitting = command splitting).
  */
 export function stdioSpawnSpec(
     command: string,
     args: string[],
     env: Record<string, string>,
     cwd: string,
+    opts: { platform?: string; expandWith?: Record<string, string | undefined> } = {},
 ): { command: string; args: string[]; env: Record<string, string>; cwd: string } {
-    const expandedEnv = Object.fromEntries(Object.entries(env).map(([k, v]) => [k, expandEnv(v)]));
-    if (process.platform === "win32" && !/\.(exe|com|bat)$/i.test(command)) {
-        return {
-            command: "cmd.exe",
-            args: ["/d", "/s", "/c", expandEnv(command), ...args.map((a) => expandEnv(a))],
-            env: expandedEnv,
-            cwd,
-        };
+    const platform = opts.platform ?? process.platform;
+    const expandSource = opts.expandWith ?? process.env;
+    const expandedEnv = Object.fromEntries(Object.entries(env).map(([k, v]) => [k, expandEnv(v, expandSource)]));
+    const expandedCommand = expandEnv(command, expandSource);
+    const expandedArgs = args.map((a) => expandEnv(a, expandSource));
+    const parts: Array<[string, string]> = [["command", expandedCommand], ...expandedArgs.map((a, i) => [`args[${i}]`, a] as [string, string])];
+    for (const [kind, value] of parts) {
+        if (/[\r\n\0]/.test(value)) {
+            throw new Error(`stdio ${kind} contains a line break — refused (command injection vector): ${JSON.stringify(value.slice(0, 80))}`);
+        }
     }
-    return { command: expandEnv(command), args: args.map((a) => expandEnv(a)), env: expandedEnv, cwd };
+    if (platform === "win32" && !/\.(exe|com)$/i.test(expandedCommand)) {
+        for (const [kind, value] of parts) {
+            if (value.includes("%")) {
+                throw new Error(
+                    `stdio ${kind} contains '%' — cmd.exe variable expansion cannot be escaped, refusing to spawn: ${JSON.stringify(value.slice(0, 80))}`,
+                );
+            }
+        }
+        const line = [escapeCmdArg(expandedCommand), ...expandedArgs.map(escapeCmdArg)].join(" ");
+        return { command: "cmd.exe", args: ["/d", "/s", "/c", `"${line}"`], env: expandedEnv, cwd };
+    }
+    return { command: expandedCommand, args: expandedArgs, env: expandedEnv, cwd };
+}
+
+/**
+ * One cmd.exe-safe token (cross-spawn's escape): double the backslashes
+ * before a quote, escape the quote, and always wrap in double quotes so
+ * cmd treats `& | ^ < >` inside the token as literals. (`%` is unescapable —
+ * rejected upstream in stdioSpawnSpec instead.)
+ */
+function escapeCmdArg(arg: string): string {
+    const escaped = arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\*)$/, "$1$1");
+    return `"${escaped}"`;
 }
 
 // ---------------------------------------------------------------------------
@@ -879,6 +1238,16 @@ export interface McpManagerOptions {
     /** Ping keepalive (default on, 60 s interval; M-11). */
     keepalive?: boolean;
     pingIntervalMs?: number;
+    /** Config-validation problems from resolution (H2 L-06/M-10 — surfaced in /mcp). */
+    problems?: ConfigProblem[];
+    /** Project servers withheld by the trust gate (H2 M-01 — status shows them as not-configured). */
+    gatedServers?: Record<string, AnyServerConfig>;
+    /** True when a project config exists but is untrusted (H2 M-01). */
+    needsTrust?: boolean;
+    /** The project config path (guidance + /mcp trust). */
+    projectFile?: string | null;
+    /** Verbose log sink for cap notices (extension wires its stderr log). */
+    onLog?: (message: string) => void;
 }
 
 export interface McpServerStatus {
@@ -894,13 +1263,23 @@ export interface McpServerStatus {
 /** Per-session MCP manager: lazy connects, tool cache, dispatch. */
 export class McpManager {
     readonly cwd: string;
-    private readonly config: McpConfig;
+    private config: McpConfig;
     private readonly env: Record<string, string | undefined>;
     readonly requestTimeoutMs: number;
     readonly connectTimeoutMs: number;
     readonly reconnectCooldownMs: number;
     readonly keepaliveEnabled: boolean;
     readonly pingIntervalMs: number;
+    /** Config-validation problems (actionable, from resolveMcpConfig). */
+    readonly problems: ConfigProblem[];
+    /** Project servers withheld by the trust gate. */
+    private gatedServers: Record<string, AnyServerConfig>;
+    /** Project config present but untrusted. */
+    private needsTrust: boolean;
+    /** The project config path (null when none exists). */
+    private projectFile: string | null;
+    /** Verbose log sink (cap notices, pagination stops). */
+    private readonly onLog: ((message: string) => void) | null;
     private connections = new Map<string, McpConnection>();
     private toolsByServer = new Map<string, McpToolInfo[]>();
     private connecting = new Map<string, Promise<McpConnection | null>>();
@@ -917,6 +1296,42 @@ export class McpManager {
         this.reconnectCooldownMs = opts.reconnectCooldownMs ?? parseMsEnv("UNOWN_MCP_RECONNECT_COOLDOWN_MS", 30_000, this.env);
         this.pingIntervalMs = opts.pingIntervalMs ?? parseMsEnv("UNOWN_MCP_PING_INTERVAL_MS", 60_000, this.env);
         this.keepaliveEnabled = opts.keepalive ?? this.env.UNOWN_MCP_KEEPALIVE !== "0";
+        this.problems = opts.problems ?? [];
+        this.gatedServers = opts.gatedServers ?? {};
+        this.needsTrust = opts.needsTrust ?? false;
+        this.projectFile = opts.projectFile ?? null;
+        this.onLog = opts.onLog ?? null;
+    }
+
+    /** True when the project config is gated by the trust gate (refuse-first). */
+    get projectNeedsTrust(): boolean {
+        return this.needsTrust;
+    }
+
+    /** Number of servers withheld by the trust gate. */
+    get gatedServerCount(): number {
+        return Object.keys(this.gatedServers).length;
+    }
+
+    /** The gated project config path, when any (for /mcp trust + guidance). */
+    get projectConfigFile(): string | null {
+        return this.projectFile;
+    }
+
+    /**
+     * Swap the config after `/mcp trust` re-resolves with the project file
+     * included. Existing connections stay live (their closures read
+     * `this.config` at call time); the newly-admitted servers connect lazily.
+     */
+    reload(config: McpConfig, extra?: { problems?: ConfigProblem[]; gatedServers?: Record<string, AnyServerConfig>; needsTrust?: boolean; projectFile?: string | null }): void {
+        this.config = config;
+        if (extra?.problems) {
+            this.problems.length = 0;
+            this.problems.push(...extra.problems);
+        }
+        if (extra?.gatedServers) this.gatedServers = extra.gatedServers;
+        if (extra?.needsTrust !== undefined) this.needsTrust = extra.needsTrust;
+        if (extra?.projectFile !== undefined) this.projectFile = extra.projectFile;
     }
 
     get disabled(): boolean {
@@ -948,7 +1363,8 @@ export class McpManager {
             const failedAt = this.lastFailedAt.get(server);
             if (failedAt !== undefined && Date.now() - failedAt < this.reconnectCooldownMs) return null;
         }
-        const conn = new McpConnection(server, cfg, this.cwd, this.requestTimeoutMs, this.connectTimeoutMs);
+        const conn = new McpConnection(server, cfg, this.cwd, this.requestTimeoutMs, this.connectTimeoutMs, this.env);
+        conn.onLog = (message) => this.onLog?.(message);
         conn.onNotification = (method) => {
             if (method === "notifications/tools/list_changed") {
                 // refresh lazily on next list
@@ -1089,6 +1505,17 @@ export class McpManager {
                 });
             }
         }
+        // Gated project servers (H2 M-01): visible but never spawned until
+        // approved — "needs approval" instead of silence.
+        for (const [name, cfg] of Object.entries(this.gatedServers)) {
+            out.push({
+                name,
+                transport: isHttpConfig(cfg) ? "http" : "stdio",
+                state: "not-configured",
+                detail: isHttpConfig(cfg) ? cfg.url : cfg.command,
+                tools: 0,
+            });
+        }
         return out;
     }
 
@@ -1112,7 +1539,9 @@ export function mcpToolName(server: string, tool: string): string {
     return raw.slice(0, 64).replace(/_+$/, "");
 }
 
-/** Only object-shaped JSON Schemas pass through; everything else becomes a permissive object. */
+/** Only object-shaped JSON Schemas pass through; everything else becomes a
+ * permissive object. Serialized schemas over 32 KB (M-16 — hostile prompt
+ * bloat) also fall back to the permissive wrap. */
 export function normalizeInputSchema(schema: unknown): unknown {
     if (
         typeof schema === "object" &&
@@ -1120,20 +1549,29 @@ export function normalizeInputSchema(schema: unknown): unknown {
         (schema as { type?: unknown }).type === "object" &&
         typeof (schema as { properties?: unknown }).properties === "object"
     ) {
-        return schema;
+        try {
+            if (JSON.stringify(schema).length <= MAX_SERIALIZED_SCHEMA_CHARS) return schema;
+        } catch {
+            /* circular/unserializable — use the permissive wrap */
+        }
     }
     return Type.Object({}, { additionalProperties: true });
 }
 
+/** Cap for a tool's serialized inputSchema (M-16). */
+const MAX_SERIALIZED_SCHEMA_CHARS = 32 * 1024;
+
 export function capDescription(description: string | undefined, max = 500): string {
     const text = (description ?? "").replace(/\s+/g, " ").trim();
     if (!text) return "MCP tool (no description provided by the server).";
-    return text.length > max ? text.slice(0, max - 1) + "…" : text;
+    // M-14: truncation is visible, never silent.
+    return text.length > max ? text.slice(0, max - 13) + "… (truncated)" : text;
 }
 
-/** Render the /mcp status listing. */
-export function renderMcpStatus(statuses: McpServerStatus[]): string {
-    if (statuses.length === 0) {
+/** Render the /mcp status listing (config problems + trust guidance when
+ * present — H2 L-06/M-01). */
+export function renderMcpStatus(statuses: McpServerStatus[], problems: ConfigProblem[] = [], needsTrust = false): string {
+    if (statuses.length === 0 && problems.length === 0 && !needsTrust) {
         return "No MCP servers configured. Add them to .unown/mcp.json (project) or ~/.unown/agent/mcp.json (user):\n" +
             '{ "mcpServers": { "example": { "command": "npx", "args": ["-y", "@example/mcp-server"] } } }\n' +
             'HTTP servers: { "mcpServers": { "remote": { "url": "https://example.com/mcp" } } }\n' +
@@ -1141,10 +1579,21 @@ export function renderMcpStatus(statuses: McpServerStatus[]): string {
     }
     const lines = statuses.map((s) => {
         const mark = s.state === "connected" ? "●" : s.state === "error" ? "✗" : "○";
-        const detail = s.state === "error" ? ` — ${s.detail}` : ` — ${s.detail}`;
-        return `${mark} ${s.name} [${s.transport}] ${s.state}${s.tools ? `, ${s.tools} tool(s)` : ""}${detail}`;
+        const suffix =
+            s.state === "not-configured"
+                ? " — untrusted project mcp.json: run /mcp trust (or set UNOWN_TRUST_PROJECT_CONFIG=1)"
+                : ` — ${s.detail}`;
+        return `${mark} ${s.name} [${s.transport}] ${s.state}${s.tools ? `, ${s.tools} tool(s)` : ""}${suffix}`;
     });
-    return `MCP servers:\n${lines.join("\n")}\nTools are named mcp__<server>__<tool>; /mcp reconnects failed servers.`;
+    const parts = [`MCP servers:\n${lines.join("\n")}`];
+    if (needsTrust) {
+        parts.push("⚠ a project .unown/mcp.json is UNTRUSTED — its servers are withheld until approved. Run /mcp trust, or set UNOWN_TRUST_PROJECT_CONFIG=1 (CI/headless bypass).");
+    }
+    if (problems.length > 0) {
+        parts.push(`Config problems:\n${problems.map((p) => `  ${formatConfigProblem(p)}`).join("\n")}`);
+    }
+    parts.push("Tools are named mcp__<server>__<tool>; /mcp reconnects failed servers; /mcp trust approves a project mcp.json.");
+    return parts.join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -1165,7 +1614,8 @@ const TOOLS_PER_SERVER_CAP = 100;
  * server at session_start (never blocking the session — zcode's rule that a
  * failed server must not block), registers each server's tools dynamically
  * (`pi.registerTool` after initialization is pi's documented capability),
- * and exposes `/mcp` (status + reconnect attempt).
+ * and exposes `/mcp` (status + reconnect) and `/mcp trust` (approves the
+ * project-scoped .unown/mcp.json the trust gate is withholding).
  *
  * H1 lifecycle hardening: the `registered` guard Set is SESSION-scoped (it
  * lives inside factory(), keyed to one pi instance). At extension scope it
@@ -1174,6 +1624,11 @@ const TOOLS_PER_SERVER_CAP = 100;
  * one process got zero mcp__* tools (M-12). Every async seam is guarded:
  * an unhandled rejection from `pi.registerTool` used to kill the whole Bun
  * process (M-03).
+ *
+ * H2 trust gate (M-01): resolveMcpConfig withholds an untrusted project
+ * config's servers entirely (REFUSE-FIRST — they are never spawned), and
+ * `/mcp trust` records the file's fingerprint (config-trust.ts), reloads
+ * the config, and connects the newly-admitted servers.
  */
 export function createMcpExtension(opts: McpOptions) {
     const verbose = opts.verbose ?? false;
@@ -1184,17 +1639,54 @@ export function createMcpExtension(opts: McpOptions) {
     let manager: McpManager | null = null;
 
     const getManager = (): McpManager => {
-        if (!manager) manager = new McpManager({ cwd: opts.cwd, config: opts.config ?? resolveMcpConfig(opts.cwd) });
+        if (!manager) {
+            // No TUI prompt exists at module level, so an untrusted project
+            // config is never loaded or executed — the status surfaces the
+            // approval action instead (refuse-first).
+            const resolved = opts.config
+                ? { config: opts.config, problems: [] as ConfigProblem[], projectFile: null, needsTrust: false, gatedServers: {} }
+                : resolveMcpConfig(opts.cwd);
+            manager = new McpManager({
+                cwd: opts.cwd,
+                config: resolved.config,
+                problems: resolved.problems,
+                gatedServers: resolved.gatedServers,
+                needsTrust: resolved.needsTrust,
+                projectFile: resolved.projectFile,
+                onLog: (message) => log(message),
+            });
+            if (resolved.needsTrust) {
+                log(`project mcp.json is untrusted — ${Object.keys(resolved.gatedServers).length} server(s) withheld; run /mcp trust`);
+            }
+            for (const p of resolved.problems) log(formatConfigProblem(p));
+        }
         return manager;
     };
 
     const registerServerTools = (pi: any, server: string, registered: Set<string>): number => {
         const m = getManager();
-        const tools = m.toolsFor(server).slice(0, TOOLS_PER_SERVER_CAP);
+        const all = m.toolsFor(server);
+        if (all.length > TOOLS_PER_SERVER_CAP) {
+            // M-14: the per-server tool cap used to slice silently.
+            log(`server "${server}" exposes ${all.length} tools — registering the first ${TOOLS_PER_SERVER_CAP}`);
+        }
+        const tools = all.slice(0, TOOLS_PER_SERVER_CAP);
         let count = 0;
         for (const tool of tools) {
-            const name = mcpToolName(server, tool.name);
-            if (registered.has(name)) continue;
+            let name = mcpToolName(server, tool.name);
+            if (registered.has(name)) {
+                // M-14: two server tools can sanitize to the same name — the
+                // second used to be silently skipped. Disambiguate instead.
+                let n = 2;
+                let candidate: string;
+                do {
+                    const suffix = `_${n}`;
+                    candidate = `${name.slice(0, 64 - suffix.length)}${suffix}`;
+                    n++;
+                } while (registered.has(candidate));
+                name = candidate;
+                log(`tool name collision: "${server}/${tool.name}" registered as ${name}`);
+            }
             registered.add(name);
             count++;
             const label = `${server}/${tool.name}`;
@@ -1257,15 +1749,61 @@ export function createMcpExtension(opts: McpOptions) {
         });
 
         pi.registerCommand("mcp", {
-            description: "Show MCP server status (and attempt to connect/reconnect): /mcp",
-            handler: async (_args: string, ctx: any) => {
+            description: "MCP server status + reconnect: /mcp — /mcp trust approves a project .unown/mcp.json",
+            handler: async (args: string, ctx: any) => {
                 try {
+                    const sub = ((args ?? "").trim().split(/\s+/)[0] ?? "").toLowerCase();
                     const m = getManager();
                     if (m.disabled) {
                         ctx.ui.notify("MCP support is disabled (UNOWN_MCP=0 or disabled in mcp.json).", "info");
                         return;
                     }
-                    if (m.serverNames().length === 0) {
+                    if (sub === "trust") {
+                        // /mcp trust: approve the project mcp.json the gate is
+                        // withholding, reload, and connect its servers.
+                        if (opts.config) {
+                            ctx.ui.notify("Config was injected programmatically — there is no project file to trust.", "info");
+                            return;
+                        }
+                        const projectFile = join(opts.cwd, ".unown", "mcp.json");
+                        if (!existsSync(projectFile)) {
+                            ctx.ui.notify("No project .unown/mcp.json found — nothing to trust.", "info");
+                            return;
+                        }
+                        if (trustBypassed()) {
+                            ctx.ui.notify("UNOWN_TRUST_PROJECT_CONFIG is set — the trust gate is already bypassed.", "info");
+                            return;
+                        }
+                        const ok = trustConfig(projectFile, { statePath: trustStatePath() });
+                        if (!ok) {
+                            ctx.ui.notify(`Trusting ${projectFile} failed (unreadable file or unwritable trust state).`, "error");
+                            return;
+                        }
+                        log(`trusted ${projectFile}`);
+                        const resolved = resolveMcpConfig(opts.cwd);
+                        m.reload(resolved.config, {
+                            problems: resolved.problems,
+                            gatedServers: resolved.gatedServers,
+                            needsTrust: resolved.needsTrust,
+                            projectFile: resolved.projectFile,
+                        });
+                        ctx.ui.notify(`Trusted ${projectFile} — connecting its servers…`, "info");
+                        const before = m.status().filter((s) => s.state === "connected").map((s) => s.name);
+                        const okServers = await m.connectAll(true);
+                        for (const server of okServers) registerServerTools(pi, server, registered);
+                        ctx.ui.notify(renderMcpStatus(m.status(), m.problems, m.projectNeedsTrust), "info");
+                        const newly = okServers.filter((s) => !before.includes(s));
+                        if (newly.length > 0) {
+                            const toolCount = newly.reduce((n, s) => n + m.toolsFor(s).length, 0);
+                            ctx.ui.notify(`Connected ${newly.join(", ")} — ${toolCount} tool(s) registered as mcp__<server>__<tool>.`, "info");
+                        }
+                        return;
+                    }
+                    if (sub !== "") {
+                        ctx.ui.notify(`Unknown /mcp argument "${sub}". Usage: /mcp [trust]`, "info");
+                        return;
+                    }
+                    if (m.serverNames().length === 0 && m.gatedServerCount === 0 && m.problems.length === 0) {
                         ctx.ui.notify(renderMcpStatus([]), "info");
                         return;
                     }
@@ -1276,7 +1814,7 @@ export function createMcpExtension(opts: McpOptions) {
                     const okServers = await m.connectAll(true);
                     for (const server of okServers) registerServerTools(pi, server, registered);
                     const statuses = m.status();
-                    ctx.ui.notify(renderMcpStatus(statuses), "info");
+                    ctx.ui.notify(renderMcpStatus(statuses, m.problems, m.projectNeedsTrust), "info");
                     const newly = okServers.filter((s) => !before.includes(s));
                     if (newly.length > 0) {
                         const toolCount = newly.reduce((n, s) => n + m.toolsFor(s).length, 0);

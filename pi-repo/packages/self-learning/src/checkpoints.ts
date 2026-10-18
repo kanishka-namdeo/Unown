@@ -42,6 +42,17 @@
  * re-runs safely; files larger than MAX_BLOB_BYTES are never blobbed (honest
  * oversized entries — /undo says it cannot revert them).
  *
+ * Hardening (R-b workflows audit, Milestone H2 — privacy): every boot
+ * self-heals `<project>/.unown/.gitignore` so receipts/, checkpoints/ and
+ * reviews/ are ignored in USER projects too (previously only Unown's own
+ * repo covered them — `git add .` committed full file snapshots, tool
+ * inputs and source diffs); tool_call inputs are REDACTED before they hit
+ * the ledger — write/edit file content persists as a size note only
+ * (`content: <n chars>`), secret-looking values (KEY=VALUE assignments with
+ * token/secret/password/api-key/authorization/bearer keys, Authorization
+ * headers, long sk-/Bearer tokens) are masked at the single input
+ * chokepoint AND at render time for legacy entries (defense in depth).
+ *
  * Known limits (documented in docs/usage.md): bash-caused file changes are
  * recorded as commands in the ledger but not itemized per-file (no workspace
  * diffing); subagent processes keep their own ledger file under the same
@@ -227,6 +238,65 @@ export function previewText(content: unknown): string {
     return "";
 }
 
+// ---------------------------------------------------------------------------
+// Privacy redaction (R-b V2/U4)
+// ---------------------------------------------------------------------------
+
+/** Secret-bearing KEY substrings: assignments, object fields and headers
+ *  whose key contains one of these get their value masked in the ledger. */
+const SECRET_KEY = /(token|secret|password|api[_-]?key|authorization|bearer)/i;
+
+/**
+ * Redact secret-looking values from free text (R-b V2):
+ *   - `KEY=VALUE` assignments whose KEY looks secret-bearing → `KEY=***`
+ *     (`export API_TOKEN=sk-…`, `--api_key=x` in command lines)
+ *   - `Authorization: <token>` headers (any case) → `Authorization: ***`
+ *   - long `Bearer <token>` and `sk-…` tokens (8+ chars — short `sk-x`
+ *     literals in prose are left alone)
+ * Applied at the ledger's tool_call input chokepoint AND at render time
+ * (U4: legacy entries written before redaction existed must not leak on
+ * screen either). Idempotent — re-running it on redacted text is a no-op.
+ */
+export function redactSecrets(text: string): string {
+    let out = text.replace(
+        /\b([A-Za-z_][A-Za-z0-9_-]{0,40})\s*=\s*("[^"]{0,256}"|'[^']{0,256}'|[^\s;&|>"']{1,256})/g,
+        (whole, key: string) => (SECRET_KEY.test(key) ? `${key}=***` : whole),
+    );
+    // "Authorization: Bearer <tok>" and bare "Authorization: <tok>" alike —
+    // the optional Bearer prefix is consumed so the token cannot survive as
+    // a separate match for the sk-/Bearer rules below; surrounding quotes
+    // (curl -H "Authorization: …") are left in place.
+    out = out.replace(/\b(authorization\s*:\s*)(?:bearer\s+)?[^\s"']+/gi, "$1***");
+    out = out.replace(/\bBearer\s+[A-Za-z0-9._+/=-]{8,}/gi, "Bearer ***");
+    out = out.replace(/\bsk-[A-Za-z0-9_-]{8,}/g, "sk-***");
+    return out;
+}
+
+/**
+ * Redact a tool_call input before it is persisted to the ledger (R-b V2 —
+ * the single chokepoint the extension's tool_call handler uses):
+ *   - write/edit `content` → `<n chars>` (file content NEVER persists —
+ *     the audit's 4 KB-of-every-tool-input included full file bodies)
+ *   - any input field whose NAME looks secret-bearing → `***`
+ *   - every string value → `redactSecrets` (command lines, prompts, URLs)
+ * Non-string leaves (numbers, booleans, nested structures) pass through.
+ */
+export function redactToolInput(tool: string, input: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(input ?? {})) {
+        if ((tool === "write" || tool === "edit") && key === "content" && typeof value === "string") {
+            out[key] = `<${value.length} chars>`;
+        } else if (SECRET_KEY.test(key) && typeof value === "string" && value.length > 0) {
+            out[key] = "***";
+        } else if (typeof value === "string") {
+            out[key] = redactSecrets(value);
+        } else {
+            out[key] = value;
+        }
+    }
+    return out;
+}
+
 /** Totals block + the last `limit` entries, human-readable. */
 export function renderReceipts(entries: ReceiptEntry[], limit = 20): string {
     const totals = {
@@ -289,7 +359,9 @@ export function describeToolInput(tool: string, input: Record<string, unknown> |
     const p = typeof input.path === "string" ? input.path : undefined;
     if (tool === "bash" || tool === "powershell") {
         const cmd = typeof input.command === "string" ? input.command : "";
-        return `"${cmd.slice(0, 120).replace(/\s+/g, " ")}"`;
+        // U4: render-time redaction — legacy entries persisted before the V2
+        // chokepoint existed must not leak their command-line secrets on screen.
+        return `"${redactSecrets(cmd).replace(/\s+/g, " ").slice(0, 120)}"`;
     }
     if (p) return p.length > 100 ? `…${p.slice(-99)}` : p;
     if (typeof input.url === "string") return input.url.slice(0, 100);
@@ -665,6 +737,44 @@ const RESTORE_FAIL_HINTS: Record<RestoreAction, string> = {
 // The extension
 // ---------------------------------------------------------------------------
 
+/** .unown/.gitignore entries that must never be committed by `git add .` in
+ *  a USER project (R-b V1: receipts hold 4 KB of every tool input including
+ *  command lines with secrets, checkpoints hold full file snapshots,
+ *  reviews hold source diffs). */
+const RUNTIME_IGNORE_ENTRIES = ["receipts/", "checkpoints/", "reviews/"];
+const RUNTIME_IGNORE_HEADER = "# unown runtime state — audit ledgers, checkpoint blobs, review artifacts";
+
+/**
+ * Append-if-missing the runtime ignore entries to `<cwd>/.unown/.gitignore`
+ * (R-b V1 self-heal — covers projects scaffolded before the fix). Creates
+ * the file with a header when absent; appends ONLY the missing entries when
+ * present, append-only, so user content is never rewritten, reordered or
+ * lost. Best-effort: never breaks a session.
+ */
+export function ensureUnownGitignore(cwd: string): void {
+    try {
+        const unownDir = join(cwd, ".unown");
+        mkdirSync(unownDir, { recursive: true });
+        const file = join(unownDir, ".gitignore");
+        let existing = "";
+        try {
+            existing = readFileSync(file, "utf8");
+        } catch {
+            /* absent — created by the append below */
+        }
+        const have = new Set(existing.split("\n").map((l) => l.trim()));
+        const missing = RUNTIME_IGNORE_ENTRIES.filter((e) => !have.has(e));
+        if (missing.length === 0) return;
+        const block: string[] = [];
+        if (existing.trim().length > 0 && !existing.endsWith("\n")) block.push(""); // keep the user's last line intact
+        if (!existing.includes(RUNTIME_IGNORE_HEADER)) block.push(RUNTIME_IGNORE_HEADER);
+        block.push(...missing);
+        writeFileSync(file, block.join("\n") + "\n", { flag: "a" });
+    } catch {
+        /* never break a session over the ignore file */
+    }
+}
+
 export interface CheckpointsOptions {
     cwd: string;
     verbose?: boolean;
@@ -735,6 +845,9 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
     const factory = (pi: any) => {
         pi.on("session_start", () => {
             ledger.append({ kind: "session_start", subagent, cwd: opts.cwd });
+            // V1 self-heal: runtime state dirs must be gitignored in USER
+            // projects — every boot re-checks (idempotent, append-only).
+            ensureUnownGitignore(opts.cwd);
             log(`ledger at ${ledgerFile}`);
         });
 
@@ -772,11 +885,15 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
                     }
                 }
             }
-            // Bound the recorded input payload.
-            let bounded: Record<string, unknown> = input;
+            // Bound + REDACT the recorded input payload (R-b V2): write/edit
+            // file content persists as a size note only; secret-looking
+            // values are masked at this single chokepoint — nothing downstream
+            // (ledger file, /receipts render) ever sees the raw input.
+            let bounded: Record<string, unknown>;
             try {
-                const json = JSON.stringify(input);
-                if (json.length > INPUT_CAP) bounded = { truncated: true, preview: json.slice(0, INPUT_CAP) };
+                bounded = redactToolInput(tool ?? "", input);
+                const json = JSON.stringify(bounded);
+                if (json.length > INPUT_CAP) bounded = { truncated: true, preview: redactSecrets(json.slice(0, INPUT_CAP)) };
             } catch {
                 bounded = { unserializable: true };
             }

@@ -11,20 +11,38 @@
  *     or a base branch, or an explicit commit range) plus the untracked-file
  *     list, capped at 40 k chars — reviewers see the SAME snapshot even if
  *     the tree changes mid-review.
- *   - reviewers = read-only unown subagents (`reviewer` config: read/bash/ls
- *     with a review system prompt), 1 for small diffs, 2–3 in parallel with
- *     split focuses (correctness · security · tests/maintainability) for
- *     larger ones — the omp reviewer-count heuristic.
+ *   - reviewers = read-only unown subagents (`reviewer` config: read/grep/
+ *     find/ls — NO bash, no execution: a review is judgment on the frozen
+ *     diff, not a process that gets to mutate the tree under review), 1 for
+ *     small diffs, 2–3 in parallel with split focuses (correctness ·
+ *     security · tests/maintainability) for larger ones — the omp
+ *     reviewer-count heuristic.
  *   - `parseReviewOutput` extracts findings tagged [P0]–[P3] with optional
  *     confidence and a VERDICT line; `mergeReviews` dedupes by normalized
  *     title and orders by severity; the merged verdict is the strictest.
+ *
+ * Git plumbing hardening (R-b workflows audit, Milestone H2): every git call
+ * goes through one `git()` helper — spawnSync with array args (no shell), a
+ * 30 s timeout, bounded buffering, stdout and stderr kept APART, exit codes
+ * consulted at every call site. A non-repo or a missing git binary aborts
+ * with an actionable message instead of feeding git's fatal stderr to the
+ * reviewers as "the diff"; merge-base failures surface as "is it a valid
+ * branch?"; untracked files come from `status --porcelain -z` with
+ * `core.quotepath=false` so filenames with spaces, quotes or newlines ride
+ * the capture byte-faithfully; the 40 k cap applies to the CONCATENATED
+ * artifact (diff + untracked listing) and the cut is a visible marker line.
+ *
+ * Reviewer honesty (R-b S1–S3): a reviewer that crashed, timed out or
+ * produced no output is tracked as `failed` — the render says "N/M
+ * reviewer(s) failed", and when ALL reviewers failed the verdict is forced
+ * to UNKNOWN (never "clean"). Truncated reviewer output is marked too.
  *
  * Honest limits: the review is only as good as the reviewing model; severity
  * and confidence are the reviewer's self-reported judgment, not verified
  * facts. The command lives in the unown-tools extension (TUI `/review`); the
  * merge artifact is written to `.unown/reviews/` (gitignored runtime state).
  */
-import { spawn } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { slugify } from "./checkpoints.ts";
@@ -43,56 +61,193 @@ export interface ReviewTarget {
 }
 
 const DIFF_CAP = 40_000;
+/** Untracked entries listed in the frozen artifact (the task prompt shows 50). */
+const UNTRACKED_LISTED = 400;
+const GIT_TIMEOUT_MS = 30_000;
+/** Bounded git buffering (R-b G5): the old stream accumulation was unbounded
+ *  (a 100 MB minified diff was fully buffered before the 40 k cap sliced
+ *  it). 2 MB is ~25× the diff cap — room for status on pathological repos,
+ *  hard ceiling on memory. A diff bigger than this arrives as a partial
+ *  stdout + MAXBUFFER error and is still reviewed (truncated), never
+ *  buffered whole. */
+const GIT_MAX_BUFFER = 2 * 1024 * 1024;
+/** stderr snippet cap surfaced in abort messages (~500 chars per R-b G1). */
+const GIT_STDERR_SNIPPET = 500;
 
-function git(cwd: string, args: string[]): Promise<{ code: number; out: string }> {
-    return new Promise((resolve) => {
-        const proc = spawn("git", args, { cwd, windowsHide: true });
-        let out = "";
-        proc.stdout?.on("data", (c: Buffer) => (out += c.toString("utf8")));
-        proc.stderr?.on("data", (c: Buffer) => (out += c.toString("utf8")));
-        proc.on("error", () => resolve({ code: 1, out: "" }));
-        proc.on("close", (code) => resolve({ code: code ?? 1, out }));
-    });
+interface GitResult {
+    ok: boolean;
+    /** Process exit code; -1 for spawn-level failures. */
+    code: number;
+    stdout: string;
+    stderr: string;
+    /** Spawn-level failure kind: ENOENT (git missing), ETIMEDOUT (hung git),
+     *  MAXBUFFER (output over the cap — stdout carries the partial data). */
+    spawnError?: "ENOENT" | "ETIMEDOUT" | "MAXBUFFER" | "SPAWN_FAILED";
+}
+
+/** Git binary to run: `git` from PATH, overridable via UNOWN_GIT_BIN
+ *  (primarily a test seam that exercises the ENOENT branch deterministically;
+ *  also an escape hatch for unusual installs — Nix store paths etc.). Read
+ *  per call so tests can pin it without re-importing the module. */
+function gitBinary(): string {
+    const bin = process.env.UNOWN_GIT_BIN;
+    return typeof bin === "string" && bin.trim() ? bin.trim() : "git";
+}
+
+/**
+ * The ONE git runner review.ts uses (R-b G1–G6). spawnSync with array args
+ * (no shell), cwd, a 30 s timeout and bounded buffering; stdout and stderr
+ * are captured SEPARATELY and each decoded exactly once from the whole
+ * accumulated Buffer (per-chunk toString would split multi-byte UTF-8 across
+ * pipe boundaries and mojibake diffs with non-ASCII paths/content).
+ */
+function git(cwd: string, args: string[]): GitResult {
+    let res: ReturnType<typeof spawnSync>;
+    try {
+        res = spawnSync(gitBinary(), args, {
+            cwd,
+            timeout: GIT_TIMEOUT_MS,
+            maxBuffer: GIT_MAX_BUFFER,
+            shell: false,
+            windowsHide: true,
+            encoding: "buffer",
+        });
+    } catch (err) {
+        return { ok: false, code: -1, stdout: "", stderr: String(err), spawnError: "SPAWN_FAILED" };
+    }
+    // One whole-buffer utf8 decode per stream, never per chunk.
+    const stdout = Buffer.from(res.stdout ?? []).toString("utf8");
+    const stderr = Buffer.from(res.stderr ?? []).toString("utf8");
+    if (res.error) {
+        const code = (res.error as NodeJS.ErrnoException).code;
+        if (code === "ENOENT") return { ok: false, code: -1, stdout, stderr, spawnError: "ENOENT" };
+        if (code === "ETIMEDOUT") return { ok: false, code: -1, stdout, stderr, spawnError: "ETIMEDOUT" };
+        if (code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") return { ok: false, code: -1, stdout, stderr, spawnError: "MAXBUFFER" };
+        return { ok: false, code: -1, stdout, stderr, spawnError: "SPAWN_FAILED" };
+    }
+    const code = res.status ?? -1;
+    return { ok: res.status === 0, code, stdout, stderr };
+}
+
+/** `<what> (git said: <stderr>)` — stderr surfaced, truncated to ~500 chars. */
+function gitFailure(what: string, res: GitResult): Error {
+    const why = res.stderr.trim().replace(/\s+/g, " ").slice(0, GIT_STDERR_SNIPPET);
+    return new Error(why ? `${what} (git said: ${why})` : what);
+}
+
+/** Abort-message helpers for the spawn-level failure kinds. */
+function gitSpawnFailure(res: GitResult): Error | null {
+    if (res.spawnError === "ENOENT")
+        return new Error("git executable not found on PATH — /review needs git to freeze a diff");
+    if (res.spawnError === "ETIMEDOUT")
+        return new Error(`git timed out after ${GIT_TIMEOUT_MS / 1000}s while reading the diff — /review aborted`);
+    return null;
+}
+
+/** Every git call site consults exit codes (R-b G1): failure aborts with
+ *  stderr in the message instead of silently becoming "the diff". */
+function requireOk(res: GitResult, what: string): void {
+    const spawnFailure = gitSpawnFailure(res);
+    if (spawnFailure) throw spawnFailure;
+    if (res.spawnError === "MAXBUFFER")
+        throw new Error(`${what} produced more than ${GIT_MAX_BUFFER} bytes of output — refusing to buffer it whole`);
+    if (!res.ok) throw gitFailure(what, res);
+}
+
+/**
+ * Cap the CONCATENATED frozen artifact — diff text + untracked listing —
+ * at DIFF_CAP (R-b G-cap + S3 kin): the listing counts against the same
+ * budget (a 30 k listing used to ride on top of a 40 k diff uncapped), and
+ * the cut is VISIBLE — the artifact itself carries a truncation marker
+ * line so reviewers know they are seeing a slice, not the whole diff.
+ */
+function capArtifact(diff: string, untracked: string[]): { diff: string; untracked: string[]; truncated: boolean } {
+    const listed = untracked.slice(0, UNTRACKED_LISTED);
+    const listingLen = listed.length > 0 ? `Untracked files:\n${listed.join("\n")}`.length + 2 : 0;
+    if (diff.length + listingLen <= DIFF_CAP && untracked.length <= listed.length) {
+        return { diff, untracked: listed, truncated: false };
+    }
+    const room = Math.max(2_000, DIFF_CAP - listingLen);
+    const markers: string[] = [];
+    if (diff.length > room) markers.push(`(diff truncated at ${DIFF_CAP} chars)`);
+    if (untracked.length > listed.length) markers.push(`(untracked list truncated at ${UNTRACKED_LISTED} entries)`);
+    return {
+        diff: diff.slice(0, room) + (markers.length > 0 ? `\n${markers.join("\n")}` : ""),
+        untracked: listed.slice(0, 50),
+        truncated: true,
+    };
 }
 
 /**
  * Freeze the review target. `base` empty = uncommitted work (diff vs HEAD +
  * untracked files); otherwise the diff of HEAD..base is NOT what we want —
  * we want base...HEAD (what changed on this branch since diverging).
+ *
+ * Throws actionable errors (rendered as command results by the caller):
+ * non-repo, git binary missing, merge-base failure, failed/timed-out git
+ * calls — never a frozen "diff" that is actually git's stderr.
  */
 export async function captureReviewTarget(cwd: string, base?: string): Promise<ReviewTarget> {
+    // Repo + binary preflight (R-b G1/G2): in a non-repo, status/diff exit
+    // 128 with git's fatal message — the old code concatenated that stderr
+    // into `out` and the reviewers received it (×3) as "the diff".
+    const inside = git(cwd, ["rev-parse", "--is-inside-work-tree"]);
+    const spawnFailure = gitSpawnFailure(inside);
+    if (spawnFailure) throw spawnFailure;
+    if (inside.spawnError === "MAXBUFFER" || !inside.ok) {
+        if (inside.code === 128 && /not a git repository/i.test(inside.stderr)) {
+            throw new Error("not a git repository — /review needs git history to freeze a diff");
+        }
+        throw gitFailure("not a git repository — /review needs git history to freeze a diff", inside);
+    }
     if (base && base.trim()) {
         const trimmed = base.trim();
-        const mergeBase = await git(cwd, ["merge-base", trimmed, "HEAD"]);
-        const ref = mergeBase.code === 0 ? mergeBase.out.trim() || trimmed : trimmed;
-        const diff = await git(cwd, ["diff", `${ref}...HEAD`, "--no-color"]);
+        const mergeBase = git(cwd, ["merge-base", trimmed, "HEAD"]);
+        requireOk(mergeBase, `no merge-base with ${trimmed} — is it a valid branch?`);
+        const ref = mergeBase.stdout.trim() || trimmed;
+        const diff = git(cwd, ["-c", "core.quotepath=false", "diff", `${ref}...HEAD`, "--no-color"]);
+        // MAXBUFFER is honest truncation, not a failure — review the partial
+        // diff (capArtifact marks it); everything else aborts.
+        const spawnFail = gitSpawnFailure(diff);
+        if (spawnFail) throw spawnFail;
+        if (!diff.ok && diff.spawnError !== "MAXBUFFER")
+            throw gitFailure(`git diff ${ref}...HEAD failed while freezing the review snapshot`, diff);
+        const capped = capArtifact(diff.stdout, []);
         return {
             label: `diff vs ${trimmed} (since ${ref.slice(0, 8)})`,
-            diff: cap(diff.out),
+            diff: capped.diff,
             untracked: [],
-            truncated: diff.out.length > DIFF_CAP,
+            truncated: capped.truncated,
         };
     }
-    const status = await git(cwd, ["status", "--porcelain", "-uall"]);
-    const untracked = status.out
-        .split("\n")
-        .filter((l) => l.startsWith("??"))
-        .map((l) => l.slice(3).trim())
-        .filter(Boolean);
-    const diff = await git(cwd, ["diff", "HEAD", "--no-color"]);
-    const stat = await git(cwd, ["diff", "HEAD", "--stat", "--no-color"]);
-    const combined = `${stat.out}\n${diff.out}`.trim();
+    // -z + core.quotepath=false (R-b G3): NUL-separated records keep
+    // filenames with spaces, quotes or embedded newlines byte-faithful —
+    // no line-splitting (a filename may contain \n), no trim (leading /
+    // trailing spaces in a name are significant), no quote-unescaping.
+    const status = git(cwd, ["-c", "core.quotepath=false", "status", "--porcelain", "-z", "-uall"]);
+    requireOk(status, "git status failed while freezing the review snapshot");
+    const untracked: string[] = [];
+    for (const record of status.stdout.split("\0")) {
+        // Each record is "XY <path>" (untracked = "?? <path>"); rename
+        // records carry the old path as a trailing NUL record that never
+        // starts with "??" and is ignored here.
+        if (record.startsWith("?? ")) untracked.push(record.slice(3));
+    }
+    const diff = git(cwd, ["-c", "core.quotepath=false", "diff", "HEAD", "--no-color"]);
+    const diffFail = gitSpawnFailure(diff);
+    if (diffFail) throw diffFail;
+    if (!diff.ok && diff.spawnError !== "MAXBUFFER")
+        throw gitFailure("git diff HEAD failed while freezing the review snapshot", diff);
+    const stat = git(cwd, ["-c", "core.quotepath=false", "diff", "HEAD", "--stat", "--no-color"]);
+    requireOk(stat, "git diff --stat HEAD failed while freezing the review snapshot");
+    const combined = `${stat.stdout}\n${diff.stdout}`.trim();
+    const capped = capArtifact(combined, untracked);
     return {
         label: "uncommitted work (diff vs HEAD + untracked files)",
-        diff: cap(combined),
-        untracked,
-        truncated: combined.length > DIFF_CAP,
+        diff: capped.diff,
+        untracked: capped.untracked,
+        truncated: capped.truncated,
     };
-}
-
-function cap(text: string): string {
-    if (text.length <= DIFF_CAP) return text;
-    return text.slice(0, DIFF_CAP) + `\n… (diff truncated at ${DIFF_CAP} chars)`;
 }
 
 // ---------------------------------------------------------------------------
@@ -117,9 +272,9 @@ export const REVIEWER_FOCUSES = [
 export function reviewerAgent(diff: string): SubagentConfig {
     return {
         name: "reviewer",
-        description: "Read-only code-review subagent.",
-        tools: ["read", "grep", "find", "ls", "bash"],
-        systemPrompt: `You are unown's code-review subagent — read-only. You cannot write or edit anything; bash is limited to read-only inspection (git diff/log/show, cat, grep).
+        description: "Read-only code-review subagent (no bash, no execution — judgment on the frozen diff only).",
+        tools: ["read", "grep", "find", "ls"],
+        systemPrompt: `You are unown's code-review subagent — strictly read-only judgment, no execution. You have no bash and no write tools: only read/grep/find/ls to verify claims against the repository. You cannot run anything, change anything, or commit anything — the review IS the deliverable.
 
 You receive ONE frozen diff snapshot plus the repository. Review it and answer in this exact format:
 
@@ -175,12 +330,25 @@ export interface ReviewOutput {
     findings: ReviewFinding[];
     verdict: "ship" | "block" | "unknown";
     verdictRationale: string;
+    /** True when the reviewer itself failed — non-zero exit, timeout, crash
+     *  or empty output (R-b S1). A failed reviewer's silence must never
+     *  render as "the diff looked clean". */
+    failed?: boolean;
+    /** True when the reviewer's stdout was cut at the subagent output cap —
+     *  the finding set may be incomplete (R-b S3). */
+    truncated?: boolean;
 }
 
 const SEVERITIES = ["P0", "P1", "P2", "P3"] as const;
 
-/** Parse one reviewer's output into findings + verdict (tolerant). */
-export function parseReviewOutput(output: string, from: string): ReviewOutput {
+/** Parse one reviewer's output into findings + verdict (tolerant). The
+ *  optional failure flags ride the parsed output so merge/render can be
+ *  honest about crashed/timed-out/truncated reviewers (R-b S1/S3). */
+export function parseReviewOutput(
+    output: string,
+    from: string,
+    opts?: { failed?: boolean; truncated?: boolean },
+): ReviewOutput {
     const findings: ReviewFinding[] = [];
     let verdict: ReviewOutput["verdict"] = "unknown";
     let verdictRationale = "";
@@ -212,12 +380,21 @@ export function parseReviewOutput(output: string, from: string): ReviewOutput {
             verdictRationale = verdictMatch[2].trim();
         }
     }
-    return { findings, verdict, verdictRationale };
+    return {
+        findings,
+        verdict,
+        verdictRationale,
+        failed: opts?.failed,
+        truncated: opts?.truncated,
+    };
 }
 
 const severityRank = (s: ReviewFinding["severity"]) => SEVERITIES.indexOf(s);
 
-/** Merge reviews: dedupe by normalized title (keep the most severe), strictest verdict wins. */
+/** Merge reviews: dedupe by normalized title (keep the most severe), strictest verdict wins.
+ *  Failed reviewers keep their conservative "unknown" verdict in the merge —
+ *  a crash must never soften a strict result — and renderReview adds the
+ *  honest N/M failure line on top (R-b S1). */
 export function mergeReviews(reviews: ReviewOutput[]): ReviewOutput {
     const byTitle = new Map<string, ReviewFinding>();
     for (const review of reviews) {
@@ -245,24 +422,46 @@ function normalizeTitle(title: string): string {
     return title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).slice(0, 8).join(" ");
 }
 
-/** The merged review as text (notify + artifact share it). */
+/** The merged review as text (notify + artifact share it). Reviewer
+ *  honesty (R-b S1/S3): any failed reviewer gains a prominent N/M line;
+ *  when ALL reviewers failed the verdict is forced to UNKNOWN — never
+ *  "clean" — and truncated outputs are called out. */
 export function renderReview(label: string, reviews: ReviewOutput[], findings: ReviewFinding[]): string {
     const counts = SEVERITIES.map((sev) => {
         const n = findings.filter((f) => f.severity === sev).length;
         return n > 0 ? `${sev}×${n}` : null;
     }).filter(Boolean);
     const merged = mergeReviews(reviews);
-    const verdictLine =
-        merged.verdict === "ship"
-            ? "VERDICT: SHIP"
-            : merged.verdict === "block"
-              ? "VERDICT: DO-NOT-SHIP"
-              : "VERDICT: unclear (reviewers did not commit)";
+    const failedCount = reviews.filter((r) => r.failed).length;
+    const truncatedCount = reviews.filter((r) => r.truncated).length;
+    const allFailed = reviews.length > 0 && failedCount === reviews.length;
+    const verdictLine = allFailed
+        ? "VERDICT: UNKNOWN (reviewers failed — re-run /review)"
+        : merged.verdict === "ship"
+          ? "VERDICT: SHIP"
+          : merged.verdict === "block"
+            ? "VERDICT: DO-NOT-SHIP"
+            : "VERDICT: unclear (reviewers did not commit)";
     const lines: string[] = [];
     lines.push(`Review — ${label} (${reviews.length} reviewer(s)${counts.length ? `, ${counts.join(", ")}` : ", no findings"})`);
     lines.push("");
+    if (failedCount > 0) {
+        lines.push(
+            `${failedCount}/${reviews.length} reviewer(s) failed (timeout/crash)` +
+                (allFailed ? " — NO reviewer produced a review" : " — findings may be incomplete"),
+        );
+    }
+    if (truncatedCount > 0) {
+        lines.push(`${truncatedCount} reviewer output(s) truncated — the finding list may be incomplete`);
+    }
     if (findings.length === 0) {
-        lines.push("No findings — the diff looked clean to every reviewer.");
+        if (allFailed) {
+            lines.push("No findings recorded — every reviewer failed; this is NOT a clean review. Re-run /review.");
+        } else if (failedCount > 0) {
+            lines.push(`No findings from the reviewer(s) that completed — ${failedCount}/${reviews.length} failed, so "clean" is not guaranteed.`);
+        } else {
+            lines.push("No findings — the diff looked clean to every reviewer.");
+        }
     } else {
         for (const f of findings) {
             lines.push(`[${f.severity}] ${f.title} (confidence: ${f.confidence})`);

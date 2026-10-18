@@ -92,6 +92,8 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_MCP_RECONNECT_COOLDOWN_MS` | `30000` | After an MCP server dies or fails to connect, how long before reconnect attempts resume (`/mcp` force-throughs). |
 | `UNOWN_MCP_PING_INTERVAL_MS` | `60000` | MCP keepalive ping interval (a failed ping marks the server errored and starts the reconnect cooldown). |
 | `UNOWN_CHECKPOINT_MAX_BLOB_BYTES` | `67108864` | Files larger than this are not checkpointed (the turn still reverts its other files; the ledger notes the exception). |
+| `UNOWN_LSP_MAX_SYNC_BYTES` | `4194304` | Files larger than this skip LSP document sync (didOpen/didChange) — the server cannot help on huge files; logged once per file. |
+| `UNOWN_TRUST_PROJECT_CONFIG` | unset | `1`/`true` bypasses the project-config trust gate (`.unown/mcp.json` / `.unown/lsp.json` load without approval — CI/headless). Any other value keeps the gate on; approve interactively with `/mcp trust`. |
 | `NO_UPDATE_NOTIFIER` | unset | Any value silences the startup update notice and its background check (ecosystem-standard name). Manual `unown update` still works — see [updating](updating.md). |
 | `UNOWN_DISABLE_AUTOUPDATE` | unset | `1` — same as `NO_UPDATE_NOTIFIER`, the Unown-native spelling. |
 | `DO_NOT_TRACK` | unset | `1` — the standard nonessential-traffic opt-out; suppresses the background update check. |

@@ -20,6 +20,26 @@
 //                         body (Content-Length cap / connection recycle)
 //   MOCK_LSP_LF=1         frames with LF-only headers ("\n\n")
 //   $/mockCrash request   process.exit(1) — mid-session crash on demand
+//
+// H2 modes:
+//   MOCK_LSP_PROBE=1      right after the initialize reply, SENDS two
+//                         server→client requests — workspace/configuration
+//                         (numeric id 9101) and an unknown method (string id
+//                         "probe-2") — and records the client's replies;
+//                         the $/probeStatus request reports them (deferred
+//                         until both replies arrived, so the test cannot
+//                         race the round-trip).
+//   MOCK_LSP_STRING_ID=1  echoes every RESPONSE id as a STRING — proves the
+//                         client normalizes pending-request keys with
+//                         String(id) instead of strict numeric matching.
+//
+// URI handling is spec-correct (H2): incoming document URIs are decoded to
+// file PATHS (fragment/query split + percent-decoding, like a real server
+// mapping URI→filename), documents are keyed by path, and every outgoing URI
+// (publishDiagnostics, definition/references results) is re-encoded. A
+// client that leaves '#', '?', '%' or control bytes raw in its URIs names a
+// different document than the file on disk, so didOpen↔publishDiagnostics
+// stop agreeing — exactly what the exotic-filename tests pin down.
 import { stdin, stdout } from "node:process";
 
 const strict = process.env.MOCK_LSP_STRICT === "1";
@@ -27,21 +47,61 @@ const silent = process.env.MOCK_LSP_SILENT === "1";
 const noise = process.env.MOCK_LSP_NOISE === "1";
 const bigHeader = process.env.MOCK_LSP_BIG_HEADER === "1";
 const lfOnly = process.env.MOCK_LSP_LF === "1";
+const probe = process.env.MOCK_LSP_PROBE === "1";
+const stringifyIds = process.env.MOCK_LSP_STRING_ID === "1";
 
 let buffer = Buffer.alloc(0);
-const docs = new Map(); // uri -> text
+const docs = new Map(); // decoded file path -> text
+const probeReplies = { config: null, unknown: null };
+const probeStatusWaiters = [];
 
 function send(msg) {
+    if (stringifyIds && msg.method === undefined && msg.id !== undefined) {
+        msg = { ...msg, id: String(msg.id) };
+    }
     const body = Buffer.from(JSON.stringify(msg), "utf8");
     const sep = lfOnly ? "\n\n" : "\r\n\r\n";
     stdout.write(Buffer.concat([Buffer.from(`Content-Length: ${body.length}${sep}`, "ascii"), body]));
+}
+
+// --- spec-correct URI ↔ path conversion (mirrors the client's H2 encoder) ---
+
+const URI_PATH_SAFE = /^[A-Za-z0-9\-._~!$&'()*+,;=:@/]$/;
+
+function encodePath(p) {
+    let out = "";
+    for (const ch of p) {
+        if (URI_PATH_SAFE.test(ch)) {
+            out += ch;
+            continue;
+        }
+        for (const b of Buffer.from(ch, "utf8")) out += "%" + b.toString(16).toUpperCase().padStart(2, "0");
+    }
+    return out;
+}
+
+function decodePath(uri) {
+    let raw = uri.startsWith("file://") ? uri.slice("file://".length) : uri;
+    const hash = raw.indexOf("#");
+    if (hash >= 0) raw = raw.slice(0, hash); // a real server parses the fragment OFF
+    const query = raw.indexOf("?");
+    if (query >= 0) raw = raw.slice(0, query); // …and the query too
+    try {
+        return decodeURIComponent(raw);
+    } catch {
+        return raw;
+    }
+}
+
+function fileUri(path) {
+    return `file://${encodePath(path)}`;
 }
 
 function rng(sl, sc, el, ec) {
     return { start: { line: sl, character: sc }, end: { line: el, character: ec } };
 }
 
-function publish(uri, text) {
+function publish(key, text) {
     if (silent) return;
     const diagnostics = [];
     const lines = text.split("\n");
@@ -58,7 +118,7 @@ function publish(uri, text) {
             diagnostics.push({ range: rng(i, 0, i, 1), severity: 2, message: "warn_token found", source: "mock-ls" });
         }
     });
-    send({ jsonrpc: "2.0", method: "textDocument/publishDiagnostics", params: { uri, diagnostics } });
+    send({ jsonrpc: "2.0", method: "textDocument/publishDiagnostics", params: { uri: fileUri(key), diagnostics } });
 }
 
 function wordAt(text, line, char) {
@@ -71,7 +131,23 @@ function wordAt(text, line, char) {
     return l.slice(s, e) || "unknown";
 }
 
+/** Record the client's replies to the H2 probe requests (mock asserts on stdin). */
+function recordProbeReply(msg) {
+    if (msg.id === 9101) probeReplies.config = msg;
+    if (msg.id === "probe-2") probeReplies.unknown = msg;
+    if (probeReplies.config && probeReplies.unknown) {
+        for (const w of probeStatusWaiters.splice(0)) w();
+    }
+}
+
 function handle(msg) {
+    // A RESPONSE from the client (no method): either a probe reply (record
+    // it) or nothing the mock needs — never fall through to the request
+    // switch, which would "reply" to a reply.
+    if (msg.method === undefined && msg.id !== undefined) {
+        if (probe) recordProbeReply(msg);
+        return;
+    }
     const { id, method, params } = msg;
     switch (method) {
         case "initialize":
@@ -98,6 +174,13 @@ function handle(msg) {
                     },
                 },
             });
+            if (probe) {
+                // H2 probe: a known server→client request with a NUMERIC id
+                // and an unknown one with a STRING id — the client must reply
+                // result [] / error -32601 respectively, echoing both id forms.
+                send({ jsonrpc: "2.0", id: 9101, method: "workspace/configuration", params: { items: [{ section: "ts" }] } });
+                send({ jsonrpc: "2.0", id: "probe-2", method: "workspace/unknownProbe", params: {} });
+            }
             break;
         case "initialized":
             break;
@@ -110,20 +193,31 @@ function handle(msg) {
         case "$/mockCrash":
             process.exit(1);
             break;
-        case "textDocument/didOpen":
-            docs.set(params.textDocument.uri, params.textDocument.text);
-            publish(params.textDocument.uri, params.textDocument.text);
+        case "$/probeStatus": {
+            const reply = () =>
+                send({ jsonrpc: "2.0", id, result: { config: probeReplies.config, unknown: probeReplies.unknown } });
+            if (!probe || (probeReplies.config && probeReplies.unknown)) reply();
+            else probeStatusWaiters.push(reply); // flush when both probes are answered
             break;
-        case "textDocument/didChange":
-            if (strict && !docs.has(params.textDocument.uri)) {
+        }
+        case "textDocument/didOpen": {
+            const key = decodePath(params.textDocument.uri);
+            docs.set(key, params.textDocument.text);
+            publish(key, params.textDocument.text);
+            break;
+        }
+        case "textDocument/didChange": {
+            const key = decodePath(params.textDocument.uri);
+            if (strict && !docs.has(key)) {
                 // Protocol-correct servers ignore didChange for unknown docs.
                 return;
             }
-            docs.set(params.textDocument.uri, params.contentChanges[0].text);
-            publish(params.textDocument.uri, params.contentChanges[0].text);
+            docs.set(key, params.contentChanges[0].text);
+            publish(key, params.contentChanges[0].text);
             break;
+        }
         case "textDocument/hover": {
-            const text = docs.get(params.textDocument.uri) ?? "";
+            const text = docs.get(decodePath(params.textDocument.uri)) ?? "";
             send({
                 jsonrpc: "2.0",
                 id,
@@ -131,16 +225,19 @@ function handle(msg) {
             });
             break;
         }
-        case "textDocument/definition":
-            send({ jsonrpc: "2.0", id, result: [{ uri: params.textDocument.uri, range: rng(0, 0, 0, 1) }] });
+        case "textDocument/definition": {
+            const key = decodePath(params.textDocument.uri);
+            send({ jsonrpc: "2.0", id, result: [{ uri: fileUri(key), range: rng(0, 0, 0, 1) }] });
             break;
-        case "textDocument/references":
+        }
+        case "textDocument/references": {
+            const key = decodePath(params.textDocument.uri);
             send({
                 jsonrpc: "2.0",
                 id,
                 result: [
                     {
-                        uri: params.textDocument.uri,
+                        uri: fileUri(key),
                         range: rng(
                             params.position.line,
                             params.position.character,
@@ -151,6 +248,7 @@ function handle(msg) {
                 ],
             });
             break;
+        }
         case "textDocument/documentSymbol":
             send({
                 jsonrpc: "2.0",

@@ -25,15 +25,19 @@ import {
     flattenSymbols,
     languageFromPath,
     loadLspConfigFile,
+    LspConnection,
     LspManager,
+    lspSpawnSpec,
     normalizeLocations,
     pathToUri,
+    renderAllDiagnostics,
     renderDiagnostics,
     renderHoverContents,
     renderLocations,
     resolveLspConfig,
     resolveServerCommand,
     severityLabel,
+    trustProjectLspConfig,
     uriToPath,
 } from "../src/lsp.ts";
 
@@ -249,13 +253,16 @@ describe("lsp.json config files", () => {
             join(project, ".unown", "lsp.json"),
             JSON.stringify({ servers: { go: { command: ["proj-gopls"] }, rust: { command: ["ra"] } } }),
         );
-        const cfg = resolveLspConfig(project, userDir);
+        // The project file is untrusted by default (H2 trust gate — dedicated
+        // tests below), so exercise the merge semantics under the env bypass.
+        const bypass = { UNOWN_TRUST_PROJECT_CONFIG: "1" };
+        const cfg = resolveLspConfig(project, userDir, bypass);
         expect(cfg.servers?.go).toEqual({ command: ["proj-gopls"] });
         expect(cfg.servers?.rust).toEqual({ command: ["ra"] });
-        expect(resolveLspConfig(project, userDir).disabled).toBeUndefined();
+        expect(resolveLspConfig(project, userDir, bypass).disabled).toBeUndefined();
         // disabled: true in project wins over absent user setting
         writeFileSync(join(project, ".unown", "lsp.json"), JSON.stringify({ disabled: true }));
-        expect(resolveLspConfig(project, userDir).disabled).toBe(true);
+        expect(resolveLspConfig(project, userDir, bypass).disabled).toBe(true);
     });
 });
 
@@ -615,5 +622,343 @@ describe("env parsing (H1 parseMsEnv)", () => {
         expect(ok.maxMessageBytes).toBe(2_048);
         expect(new LspManager({ cwd: tmpRoot, env: { UNOWN_LSP_MAX_RESTARTS: "0" } }).maxRestarts).toBe(0);
         expect(new LspManager({ cwd: tmpRoot, env: { UNOWN_LSP_MAX_RESTARTS: "junk" } }).maxRestarts).toBe(3);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 5. H2: project-config trust gate
+// ---------------------------------------------------------------------------
+
+describe("project lsp.json trust gate (H2)", () => {
+    test("untrusted project lsp.json: entries withheld, needsTrust + guidance, user config still loads", () => {
+        const userDir = join(tmpRoot, "trust-user");
+        const project = join(tmpRoot, "trust-proj");
+        mkdirSync(userDir, { recursive: true });
+        mkdirSync(join(project, ".unown"), { recursive: true });
+        writeFileSync(join(userDir, "lsp.json"), JSON.stringify({ servers: { go: { command: ["user-gopls"] } } }));
+        writeFileSync(
+            join(project, ".unown", "lsp.json"),
+            JSON.stringify({ servers: { go: { command: ["evil-gopls"] }, rust: { command: ["evil-ra"] } }, disabled: true }),
+        );
+        const resolved = resolveLspConfig(project, userDir, {});
+        expect(resolved.needsTrust).toBe(true);
+        expect(resolved.projectFile).toBe(join(project, ".unown", "lsp.json"));
+        expect(resolved.trustGuidance).toContain("/lsp trust");
+        expect(resolved.trustGuidance).toContain("UNOWN_TRUST_PROJECT_CONFIG=1");
+        // user config still loads; the project's overrides AND its disabled
+        // flag are withheld — a cloned repo cannot configure execution.
+        expect(resolved.servers?.go).toEqual({ command: ["user-gopls"] });
+        expect(resolved.servers?.rust).toBeUndefined();
+        expect(resolved.disabled).toBeUndefined();
+    });
+
+    test("UNOWN_TRUST_PROJECT_CONFIG bypass applies the project override", () => {
+        const userDir = join(tmpRoot, "trust-user2");
+        const project = join(tmpRoot, "trust-proj2");
+        mkdirSync(userDir, { recursive: true });
+        mkdirSync(join(project, ".unown"), { recursive: true });
+        writeFileSync(join(project, ".unown", "lsp.json"), JSON.stringify({ servers: { go: { command: ["proj-gopls"] } } }));
+        for (const value of ["1", "true", "TRUE"]) {
+            const resolved = resolveLspConfig(project, userDir, { UNOWN_TRUST_PROJECT_CONFIG: value });
+            expect(resolved.needsTrust).toBe(false);
+            expect(resolved.trustGuidance).toBe(null);
+            expect(resolved.servers?.go).toEqual({ command: ["proj-gopls"] });
+        }
+        // any other value keeps the gate on
+        const refused = resolveLspConfig(project, userDir, { UNOWN_TRUST_PROJECT_CONFIG: "0" });
+        expect(refused.needsTrust).toBe(true);
+        expect(refused.servers?.go).toBeUndefined();
+    });
+
+    test("user-scoped config is always trusted (no approval state exists)", () => {
+        const userDir = join(tmpRoot, "trust-user3");
+        mkdirSync(userDir, { recursive: true });
+        writeFileSync(join(userDir, "lsp.json"), JSON.stringify({ servers: { go: { command: ["user-gopls"] } } }));
+        const resolved = resolveLspConfig(join(tmpRoot, "no-such-project"), userDir, {});
+        expect(resolved.needsTrust).toBe(false);
+        expect(resolved.projectFile).toBe(null);
+        expect(resolved.servers?.go).toEqual({ command: ["user-gopls"] });
+    });
+
+    test("trustProjectLspConfig approves the file; a changed file re-gates", () => {
+        const userDir = join(tmpRoot, "trust-user4");
+        const project = join(tmpRoot, "trust-proj4");
+        mkdirSync(userDir, { recursive: true });
+        mkdirSync(join(project, ".unown"), { recursive: true });
+        const file = join(project, ".unown", "lsp.json");
+        writeFileSync(file, JSON.stringify({ servers: { go: { command: ["proj-gopls"] } } }));
+        const opts = { statePath: join(userDir, "trusted-configs.json"), userDir, env: {} };
+        expect(resolveLspConfig(project, userDir, {}).needsTrust).toBe(true);
+        expect(trustProjectLspConfig(project, opts)).toBe(true);
+        const approved = resolveLspConfig(project, userDir, {});
+        expect(approved.needsTrust).toBe(false);
+        expect(approved.servers?.go).toEqual({ command: ["proj-gopls"] });
+        // the fingerprint pins content: mutating the file re-arms the gate
+        writeFileSync(file, JSON.stringify({ servers: { go: { command: ["proj-gopls-2"] } } }));
+        const changed = resolveLspConfig(project, userDir, {});
+        expect(changed.needsTrust).toBe(true);
+        expect(changed.servers?.go).toBeUndefined();
+    });
+
+    test("LspManager.status() surfaces the trust state", () => {
+        const userDir = join(tmpRoot, "trust-user5");
+        const project = join(tmpRoot, "trust-proj5");
+        mkdirSync(userDir, { recursive: true });
+        mkdirSync(join(project, ".unown"), { recursive: true });
+        writeFileSync(join(project, ".unown", "lsp.json"), JSON.stringify({ servers: { go: { command: ["evil"] } } }));
+        const gated = new LspManager({ cwd: project, env: {}, userDir }).status();
+        expect(gated.needsTrust).toBe(true);
+        expect(gated.trustGuidance).toContain("/lsp trust");
+        const bypassed = new LspManager({ cwd: project, env: { UNOWN_TRUST_PROJECT_CONFIG: "1" }, userDir }).status();
+        expect(bypassed.needsTrust).toBe(false);
+        expect(bypassed.trustGuidance).toBe(null);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 6. H2: file-URI percent-encoding
+// ---------------------------------------------------------------------------
+
+describe("pathToUri percent-encoding (H2)", () => {
+    test("encodes #, ?, %, space, non-ASCII and C0 controls per path segment", () => {
+        expect(pathToUri("/d/a#b.ts")).toBe("file:///d/a%23b.ts");
+        expect(pathToUri("/d/a?b.ts")).toBe("file:///d/a%3Fb.ts");
+        expect(pathToUri("/d/a%20b.ts")).toBe("file:///d/a%2520b.ts");
+        expect(pathToUri("/d/with space.ts")).toBe("file:///d/with%20space.ts");
+        expect(pathToUri("/d/uni-ünïcode.ts")).toBe("file:///d/uni-%C3%BCn%C3%AFcode.ts");
+        expect(pathToUri("/d/a\x01b.ts")).toBe("file:///d/a%01b.ts");
+        // '/' stays literal (segment separator) and the drive form survives
+        expect(pathToUri("/d/sub/a.ts")).toBe("file:///d/sub/a.ts");
+        expect(pathToUri("C:\\proj\\a#b.ts")).toBe("file:///C:/proj/a%23b.ts");
+    });
+    test.each(["a#b.ts", "a?b.ts", "a%20b.ts", "with space.ts", "uni-ünïcode.ts", "a\x01b.ts"])(
+        "%s: uriToPath(pathToUri(p)) round-trips",
+        (name) => {
+            const path = join("/d", name);
+            const uri = pathToUri(path);
+            expect(uri).not.toContain("#");
+            expect(uri).not.toContain("?");
+            expect(uri).not.toContain(" ");
+            expect(uriToPath(uri)).toBe(path);
+        },
+    );
+});
+
+describe("LspManager exotic filenames (H2 URI encoding)", () => {
+    test("didOpen ↔ publishDiagnostics round-trip through the spec-correct mock", async () => {
+        const dir = join(tmpRoot, "urinames");
+        mkdirSync(dir, { recursive: true });
+        // '?' is not a legal filename on win32 — keep those cases where they
+        // can exist; the pure round-trip test above covers the encoding.
+        const names = ["a#b.ts", "a?b.ts", "a%20b.ts", "with space.ts", "uni-ünïcode.ts"];
+        const runnable = process.platform === "win32" ? names.filter((n) => !n.includes("?")) : names;
+        const manager = mockManager(dir);
+        for (const name of runnable) {
+            const file = join(dir, name);
+            writeFileSync(file, `// ${name}\nconst ERROR_TOKEN = 1;\n`);
+            const conn = await manager.syncDocument(file);
+            expect(conn).not.toBeNull();
+            const items = await manager.waitForFreshDiagnostics(file, Date.now() - 1000);
+            expect(items).toHaveLength(1); // the publish mapped back to THIS file
+            expect(items[0].message).toContain("ERROR_TOKEN");
+            expect(manager.diagnosticsFor(file)?.items).toHaveLength(1);
+            const hover = await manager.hover(file, 0, 7);
+            expect(hover).toContain("hover(");
+        }
+        manager.disposeAll();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 7. H2: server→client request replies
+// ---------------------------------------------------------------------------
+
+describe("server→client request replies (H2)", () => {
+    test("workspace/configuration → [], unknown request → -32601 (number and string ids)", async () => {
+        const dir = join(tmpRoot, "probe");
+        mkdirSync(dir, { recursive: true });
+        const prev = process.env.MOCK_LSP_PROBE;
+        process.env.MOCK_LSP_PROBE = "1";
+        const manager = new LspManager({
+            cwd: dir,
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+        });
+        try {
+            const conn = await manager.connectionFor("typescript");
+            expect(conn).not.toBeNull();
+            // the mock sent its probes right after the initialize reply; the
+            // $/probeStatus reply is deferred until both client replies landed.
+            const status = (await conn!.request("$/probeStatus", {}, 5_000)) as {
+                config?: { id?: unknown; result?: unknown; error?: unknown };
+                unknown?: { id?: unknown; result?: unknown; error?: { code?: number; message?: string } };
+            };
+            // numeric-id probe: workspace/configuration → result []
+            expect(status.config?.id).toBe(9101);
+            expect(status.config?.result).toEqual([]);
+            expect(status.config?.error).toBeUndefined();
+            // string-id probe: unknown method → -32601 with the method named
+            expect(status.unknown?.id).toBe("probe-2");
+            expect(status.unknown?.error?.code).toBe(-32601);
+            expect(status.unknown?.error?.message).toContain("workspace/unknownProbe");
+            expect(status.unknown?.result).toBeUndefined();
+            manager.disposeAll();
+        } finally {
+            if (prev === undefined) delete process.env.MOCK_LSP_PROBE;
+            else process.env.MOCK_LSP_PROBE = prev;
+        }
+    });
+
+    test("string response ids still resolve pending requests", async () => {
+        const dir = join(tmpRoot, "strid");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "a.ts");
+        writeFileSync(file, "const ERROR_TOKEN = 1;\n");
+        const prev = process.env.MOCK_LSP_STRING_ID;
+        process.env.MOCK_LSP_STRING_ID = "1";
+        const manager = new LspManager({
+            cwd: dir,
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+            diagnosticsWaitMs: 3_000,
+        });
+        try {
+            // initialize itself would time out without String(id)-keyed
+            // pending lookups: the mock echoes "1" instead of 1.
+            const conn = await manager.connectionFor("typescript");
+            expect(conn).not.toBeNull();
+            await manager.syncDocument(file);
+            const items = await manager.waitForFreshDiagnostics(file, Date.now() - 1000);
+            expect(items).toHaveLength(1);
+            const hover = await manager.hover(file, 0, 6);
+            expect(hover).toContain("hover(");
+            manager.disposeAll();
+        } finally {
+            if (prev === undefined) delete process.env.MOCK_LSP_STRING_ID;
+            else process.env.MOCK_LSP_STRING_ID = prev;
+        }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 8. H2: output/sync bounds
+// ---------------------------------------------------------------------------
+
+describe("diagnostics all-action bounds (H2)", () => {
+    const mk = (line: number) => ({
+        range: { start: { line, character: 0 }, end: { line, character: 1 } },
+        severity: 1,
+        message: `e${line}`,
+    });
+
+    test("renderAllDiagnostics caps at 200 findings with a +N more findings line", () => {
+        const files = ["/a.ts", "/b.ts", "/c.ts"].map((path) => ({
+            path,
+            items: Array.from({ length: 90 }, (_, i) => mk(i)),
+        }));
+        const text = renderAllDiagnostics(files);
+        expect(text.split("\n").filter((l) => l.includes("[error]"))).toHaveLength(200);
+        expect(text).toContain("+70 more findings");
+        // per-file truncation stays off while the global cap governs
+        expect(text).not.toContain("… ");
+    });
+
+    test("renderAllDiagnostics: no truncation line at the cap; empty input", () => {
+        const files = [{ path: "/a.ts", items: Array.from({ length: 200 }, (_, i) => mk(i)) }];
+        expect(renderAllDiagnostics(files)).not.toContain("more findings");
+        expect(renderAllDiagnostics([])).toBe("No diagnostics.");
+    });
+
+    test("allDiagnostics caps cached findings at 200; overflow + status report the rest", async () => {
+        const dir = join(tmpRoot, "allcap");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "big.ts");
+        writeFileSync(file, `${Array.from({ length: 250 }, (_, i) => `const x${i} = "ERROR_TOKEN";`).join("\n")}\n`);
+        const manager = mockManager(dir);
+        await manager.syncDocument(file);
+        const items = await manager.waitForFreshDiagnostics(file, Date.now() - 1000);
+        expect(items).toHaveLength(250);
+        const all = manager.allDiagnostics();
+        expect(all.reduce((n, d) => n + d.items.length, 0)).toBe(200);
+        expect(manager.allDiagnosticsOverflow()).toBe(50);
+        expect(manager.status().diagnostics).toBe(250); // raw total stays visible
+        // the renderer stays truthful when fed the capped entries + overflow
+        const text = renderAllDiagnostics(all, 200, manager.allDiagnosticsOverflow());
+        expect(text).toContain("+50 more findings");
+        manager.disposeAll();
+    });
+});
+
+describe("syncDocument size bound (H2)", () => {
+    test("files over maxSyncBytes skip didOpen/didChange and surface in status", async () => {
+        const dir = join(tmpRoot, "oversize");
+        mkdirSync(dir, { recursive: true });
+        const big = join(dir, "big.ts");
+        const small = join(dir, "small.ts");
+        writeFileSync(big, `// ${"x".repeat(200)}\nconst ERROR_TOKEN = 1;\n`);
+        writeFileSync(small, "const ERROR_TOKEN = 1;\n");
+        const manager = new LspManager({
+            cwd: dir,
+            env: { UNOWN_LSP_MAX_SYNC_BYTES: "64" }, // tiny override: big.ts > 64 B
+            config: { servers: { typescript: { command: [NODE, MOCK_SERVER] } } },
+            requestTimeoutMs: 5_000,
+            diagnosticsWaitMs: 500,
+        });
+        expect(manager.maxSyncBytes).toBe(64);
+        expect(await manager.syncDocument(big)).toBeNull();
+        expect(await manager.hover(big, 0, 6)).toBeNull(); // never opened → no hover
+        expect(manager.status().oversizeSkipped).toBe(1);
+        // repeated skips stay quiet (logged once per file) and cheap
+        expect(await manager.syncDocument(big)).toBeNull();
+        expect(manager.status().oversizeSkipped).toBe(1);
+        // the small file still syncs and gets diagnostics
+        await manager.syncDocument(small);
+        const items = await manager.waitForFreshDiagnostics(small, Date.now() - 1000);
+        expect(items).toHaveLength(1);
+        expect(manager.status().openDocs).toBe(1);
+        manager.disposeAll();
+    });
+
+    test("UNOWN_LSP_MAX_SYNC_BYTES parses tolerantly (default 4 MiB)", () => {
+        expect(new LspManager({ cwd: tmpRoot, env: {} }).maxSyncBytes).toBe(4 * 1024 * 1024);
+        expect(new LspManager({ cwd: tmpRoot, env: { UNOWN_LSP_MAX_SYNC_BYTES: "junk" } }).maxSyncBytes).toBe(4 * 1024 * 1024);
+        expect(new LspManager({ cwd: tmpRoot, env: { UNOWN_LSP_MAX_SYNC_BYTES: "-1" } }).maxSyncBytes).toBe(4 * 1024 * 1024);
+        expect(new LspManager({ cwd: tmpRoot, env: { UNOWN_LSP_MAX_SYNC_BYTES: "2048" } }).maxSyncBytes).toBe(2_048);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 9. H2: Windows spawn parity (stdioSpawnSpec)
+// ---------------------------------------------------------------------------
+
+describe("Windows spawn parity (H2 stdioSpawnSpec)", () => {
+    test("lspSpawnSpec wraps .cmd shims through cmd.exe on win32, spawns directly on posix", () => {
+        const win = lspSpawnSpec(["typescript-language-server.cmd", "--stdio"], "/w", {}, "win32");
+        expect(win.command).toBe("cmd.exe");
+        expect(win.args.slice(0, 3)).toEqual(["/d", "/s", "/c"]);
+        expect(win.args[3]).toContain('"typescript-language-server.cmd"');
+        expect(win.args[3]).toContain('"--stdio"');
+        expect(win.cwd).toBe("/w");
+        const posix = lspSpawnSpec(["typescript-language-server", "--stdio"], "/w", {}, "linux");
+        expect(posix.command).toBe("typescript-language-server");
+        expect(posix.args).toEqual(["--stdio"]);
+        // ${VAR} expansion from the manager env; unknown vars stay literal
+        const expanded = lspSpawnSpec(["srv", "${LSP_TOOL_VAR_XYZ}"], "/w", { LSP_TOOL_VAR_XYZ: "v1" }, "linux");
+        expect(expanded.args).toEqual(["v1"]);
+        const literal = lspSpawnSpec(["srv", "${LSP_TOOL_VAR_XYZ}"], "/w", {}, "linux");
+        expect(literal.args).toEqual(["${LSP_TOOL_VAR_XYZ}"]);
+    });
+
+    test("LspConnection builds (or refuses) its spawn spec at construction", async () => {
+        const cwd = join(tmpRoot, "spec-choice");
+        mkdirSync(cwd, { recursive: true });
+        const conn = new LspConnection(["typescript-language-server.cmd", "--stdio"], cwd, 1024, {}, "win32");
+        expect(conn.spawnSpec?.command).toBe("cmd.exe");
+        expect(conn.spawnError).toBe(null);
+        // unescapable '%' on the win32 path is refused before any spawn
+        const refused = new LspConnection(["bad%.cmd"], cwd, 1024, {}, "win32");
+        expect(refused.spawnSpec).toBe(null);
+        expect(refused.spawnError).toContain("%");
+        await expect(refused.start(1_000)).rejects.toThrow("refused to spawn");
     });
 });

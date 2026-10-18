@@ -72,14 +72,18 @@ describe("config helpers", () => {
                 },
             }),
         );
-        const cfg = loadMcpConfigFile(file)!;
-        expect(Object.keys(cfg.servers).sort()).toEqual(["http", "std"]);
-        expect(isHttpConfig(cfg.servers.http!)).toBe(true);
-        expect(isHttpConfig(cfg.servers.std!)).toBe(false);
-        expect(loadMcpConfigFile(join(dir, "missing.json"))).toBe(null);
+        const { config: cfg, problems } = loadMcpConfigFile(file)!;
+        expect(Object.keys(cfg!.servers).sort()).toEqual(["http", "std"]);
+        expect(isHttpConfig(cfg!.servers.http!)).toBe(true);
+        expect(isHttpConfig(cfg!.servers.std!)).toBe(false);
+        // The junk entry surfaces as an actionable problem, not a crash.
+        expect(problems.some((p) => p.key.startsWith("mcpServers.broken"))).toBe(true);
+        expect(loadMcpConfigFile(join(dir, "missing.json")).config).toBe(null);
         const broken = join(dir, "broken.json");
         writeFileSync(broken, "{");
-        expect(loadMcpConfigFile(broken)).toBe(null);
+        const brokenResult = loadMcpConfigFile(broken);
+        expect(brokenResult.config).toBe(null);
+        expect(brokenResult.problems[0]!.message).toContain("invalid JSON");
     });
     test("resolveMcpConfig: project wins per server name; disabled flags merge", () => {
         const userDir = join(tmpRoot, "user");
@@ -88,11 +92,22 @@ describe("config helpers", () => {
         mkdirSync(join(project, ".unown"), { recursive: true });
         writeFileSync(join(userDir, "mcp.json"), JSON.stringify({ mcpServers: { a: { command: "user-a" }, b: { command: "user-b" } } }));
         writeFileSync(join(project, ".unown", "mcp.json"), JSON.stringify({ mcpServers: { b: { command: "proj-b" } } }));
-        const cfg = resolveMcpConfig(project, userDir);
-        expect((cfg.servers.a as { command: string }).command).toBe("user-a");
-        expect((cfg.servers.b as { command: string }).command).toBe("proj-b");
+        // Project file is untrusted by default → its entries are WITHHELD
+        // (gatedServers), and the user entries still load. Bypass the gate
+        // to exercise the merge semantics (project wins per name).
+        const gated = resolveMcpConfig(project, userDir, { UNOWN_TRUST_PROJECT_CONFIG: "1" });
+        expect((gated.config.servers.a as { command: string }).command).toBe("user-a");
+        expect((gated.config.servers.b as { command: string }).command).toBe("proj-b");
+        // Un-bypassed: the project override is withheld with needsTrust —
+        // the user's own "b" stays as the effective config.
+        const refused = resolveMcpConfig(project, userDir, {});
+        expect(refused.needsTrust).toBe(true);
+        expect(Object.keys(refused.gatedServers)).toEqual(["b"]);
+        expect((refused.gatedServers.b as { command: string }).command).toBe("proj-b");
+        expect((refused.config.servers.a as { command: string }).command).toBe("user-a");
+        expect((refused.config.servers.b as { command: string }).command).toBe("user-b");
         writeFileSync(join(project, ".unown", "mcp.json"), JSON.stringify({ mcpServers: {}, disabled: true }));
-        expect(resolveMcpConfig(project, userDir).disabled).toBe(true);
+        expect(resolveMcpConfig(project, userDir, { UNOWN_TRUST_PROJECT_CONFIG: "1" }).config.disabled).toBe(true);
     });
     test("expandEnv expands known vars, leaves unknown literal", () => {
         expect(expandEnv("key-${HOME}-tail", { HOME: "/home/u" })).toBe("key-/home/u-tail");
@@ -898,5 +913,180 @@ describe("parseMsEnv + retryAfterMs (H1)", () => {
         expect(retryAfterMs("999999", 0)).toBe(30_000); // capped
         expect(retryAfterMs(null, 0)).toBe(250); // exponential fallback
         expect(retryAfterMs(null, 2)).toBe(1_000);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// H2: trust gate, URL validation, spawn spec, clientInfo, truncation
+// ---------------------------------------------------------------------------
+
+describe("H2 trust gate + validation", () => {
+    test("untrusted project mcp.json never spawns: session_start registers nothing; /mcp shows the approval action; /mcp trust admits it", async () => {
+        const dir = join(tmpRoot, "h2-trust");
+        mkdirSync(join(dir, ".unown"), { recursive: true });
+        writeFileSync(
+            join(dir, ".unown", "mcp.json"),
+            JSON.stringify({ mcpServers: { gated: { command: NODE, args: [MOCK_SERVER] } } }),
+        );
+        // No opts.config → the real resolveMcpConfig path runs; the suite's
+        // _env.ts preload redirects UNOWN_HOME so trust state is isolated.
+        const ext = createMcpExtension({ cwd: dir });
+        const { pi, emit, tools, runCommand } = makeFakePi();
+        ext.factory(pi);
+        await emit("session_start", {});
+        await new Promise((r) => setTimeout(r, 600));
+        expect(tools.size).toBe(0); // REFUSE FIRST: nothing spawned, nothing registered
+
+        const status = makeNotify();
+        await runCommand("mcp", "", status.ctx);
+        expect(status.messages.some((m) => m.text.includes("UNTRUSTED"))).toBe(true);
+
+        const trust = makeNotify();
+        await runCommand("mcp", "trust", trust.ctx);
+        expect(trust.messages.some((m) => m.text.includes("Trusted"))).toBe(true);
+        // Poll for the post-trust background registration.
+        const deadline = Date.now() + 8000;
+        while (tools.size < 1 && Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, 100));
+        }
+        expect(tools.has("mcp__gated__echo")).toBe(true);
+    });
+
+    test("URL validation: non-http schemes and unparseable URLs surface actionable problems at config load", () => {
+        const dir = join(tmpRoot, "h2-url");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "mcp.json");
+        writeFileSync(
+            file,
+            JSON.stringify({
+                mcpServers: {
+                    badScheme: { url: "file:///etc/passwd" },
+                    unparseable: { url: "http://" },
+                    good: { url: "https://example.com/mcp" },
+                },
+            }),
+        );
+        const { config, problems } = loadMcpConfigFile(file)!;
+        expect(config!.servers.good).toBeDefined();
+        expect(config!.servers.badScheme).toBeUndefined(); // rejected, not spawned
+        expect(config!.servers.unparseable).toBeUndefined();
+        const keys = problems.map((p) => p.key);
+        expect(keys.some((k) => k.includes("badScheme"))).toBe(true);
+        expect(keys.some((k) => k.includes("unparseable"))).toBe(true);
+        expect(problems.some((p) => p.hint?.includes("http"))).toBe(true);
+    });
+
+    test("header values with line breaks are dropped with an actionable problem (request splitting)", () => {
+        const dir = join(tmpRoot, "h2-headers");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "mcp.json");
+        writeFileSync(
+            file,
+            JSON.stringify({
+                mcpServers: {
+                    evil: { url: "https://x.example/mcp", headers: { Authorization: "Bearer t\r\nX-Injected: 1", "X-Ok": "fine" } },
+                },
+            }),
+        );
+        const { config, problems } = loadMcpConfigFile(file)!;
+        // The dangerous header is dropped (never sent); the sane one survives.
+        const entry = config!.servers.evil as { url: string; headers?: Record<string, string> };
+        expect(entry.url).toBe("https://x.example/mcp");
+        expect(entry.headers?.Authorization).toBeUndefined();
+        expect(entry.headers?.["X-Ok"]).toBe("fine");
+        expect(problems.some((p) => p.key.includes("Authorization") && p.message.includes("line break"))).toBe(true);
+    });
+
+    test("${VAR} expands in url and cwd (H2 M-10)", () => {
+        const dir = join(tmpRoot, "h2-var");
+        mkdirSync(dir, { recursive: true });
+        const file = join(dir, "mcp.json");
+        writeFileSync(
+            file,
+            JSON.stringify({ mcpServers: { h: { url: "https://${H2_HOST}/mcp", command: undefined } } }),
+        );
+        const { config } = loadMcpConfigFile(file, { H2_HOST: "expanded.example" })!;
+        expect((config!.servers.h as { url: string }).url).toBe("https://expanded.example/mcp");
+        // Unknown vars stay literal (existing contract).
+        const { config: lit } = loadMcpConfigFile(file, {})!;
+        expect((lit!.servers.h as { url: string }).url).toBe("https://${H2_HOST}/mcp");
+    });
+
+    test("stdioSpawnSpec: CRLF refused, % refused on win32 cmd path, metachars escaped, non-win32 passthrough", () => {
+        // Line-break injection refused on every platform.
+        expect(() => stdioSpawnSpec("echo", ["a\r\nb"], {}, "/tmp")).toThrow("line break");
+        expect(() => stdioSpawnSpec("ec\nho", [], {}, "/tmp")).toThrow("line break");
+        // win32: non-exe commands wrap through cmd.exe with escaped args.
+        const win = stdioSpawnSpec("npx.cmd", ["-y", "pkg&evil"], {}, "C:\\proj", { platform: "win32" });
+        expect(win.command).toBe("cmd.exe");
+        expect(win.args[0]).toBe("/d");
+        expect(win.args[3]).toContain("pkg&evil"); // wrapped in quotes → literal
+        // win32: % is unescapable through cmd.exe — refused.
+        expect(() => stdioSpawnSpec("npx.cmd", ["%VAR%"], {}, "C:\\proj", { platform: "win32" })).toThrow("'%'");
+        // win32: .exe binaries spawn directly (no cmd wrapper).
+        const exe = stdioSpawnSpec("C:\\tool\\srv.exe", ["-v"], {}, "C:\\proj", { platform: "win32" });
+        expect(exe.command).toBe("C:\\tool\\srv.exe");
+        // posix: passthrough untouched.
+        const nix = stdioSpawnSpec("npx", ["-y", "pkg"], {}, "/tmp", { platform: "linux" });
+        expect(nix.command).toBe("npx");
+        expect(nix.args).toEqual(["-y", "pkg"]);
+        // ${VAR} expansion through expandWith applies to command and args.
+        const expanded = stdioSpawnSpec("${BIN}", ["-${MODE}-"], {}, "/tmp", { expandWith: { BIN: "node", MODE: "fast" } });
+        expect(expanded.command).toBe("node");
+        expect(expanded.args).toEqual(["-fast-"]);
+    });
+
+    test("initialize carries clientInfo {name:'unown'} and protocolVersion (HTTP capture)", async () => {
+        const seen: any[] = [];
+        const server = Bun.serve({
+            port: 0,
+            async fetch(req) {
+                const message = (await req.json()) as { id?: number; method?: string; params?: any };
+                if (message.method === "initialize") seen.push(message.params);
+                if (message.method === "initialize") {
+                    return Response.json(
+                        { jsonrpc: "2.0", id: message.id, result: { protocolVersion: "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "mock" } } },
+                        { headers: { "mcp-session-id": "s1" } },
+                    );
+                }
+                if (message.method === "tools/list") {
+                    return Response.json({ jsonrpc: "2.0", id: message.id, result: { tools: [] } });
+                }
+                return Response.json({ jsonrpc: "2.0", id: message.id, result: {} });
+            },
+        });
+        try {
+            const m = new McpManager({
+                cwd: tmpRoot,
+                config: { servers: { probe: { url: `http://127.0.0.1:${server.port}/mcp` } } },
+                requestTimeoutMs: 5_000,
+                connectTimeoutMs: 5_000,
+            });
+            await m.connectAll();
+            expect(seen).toHaveLength(1);
+            expect(seen[0]!.clientInfo?.name).toBe("unown");
+            expect(typeof seen[0]!.clientInfo?.version).toBe("string");
+            expect(seen[0]!.protocolVersion).toBe("2025-06-18");
+            m.disposeAll();
+        } finally {
+            server.stop(true);
+        }
+    });
+
+    test("oversized tool results are visibly truncated (M-14)", async () => {
+        const m = new McpManager({
+            cwd: tmpRoot,
+            config: { servers: { mock: { command: NODE, args: [MOCK_SERVER] } } },
+            requestTimeoutMs: 10_000,
+            connectTimeoutMs: 10_000,
+        });
+        try {
+            const big = "x".repeat(20_000);
+            const result = await m.callTool("mock", "echo", { message: big });
+            expect(result.text!.length).toBeLessThan(17_000);
+            expect(result.text!.endsWith("(truncated at 16000 chars)")).toBe(true);
+        } finally {
+            m.disposeAll();
+        }
     });
 });

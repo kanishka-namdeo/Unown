@@ -16,7 +16,9 @@ import { join } from "node:path";
 import {
     checkGoalCompletion,
     goalContextMessage,
+    hasGoalTag,
     parseGoalCommand,
+    parseGoalEntry,
     renderGoalStatus,
     resolveEvidencePath,
     type GoalState,
@@ -93,16 +95,17 @@ describe("checkGoalCompletion", () => {
         "Ran `bun test src/auth.test.ts` — 12/12 passed, exit code 0.",
         "[GOAL:COMPLETE]",
     ].join("\n");
+    const doneTodos = [{ done: true }, { done: true }];
 
     test("accepts tag + done todos + evidence", () => {
-        const check = checkGoalCompletion(goodMessage, [{ done: true }, { done: true }]);
+        const check = checkGoalCompletion(goodMessage, doneTodos);
         expect(check.complete).toBe(true);
         expect(check.reasons).toHaveLength(0);
         expect(check.evidence.length).toBeGreaterThanOrEqual(2);
     });
 
     test("rejects: no tag", () => {
-        const check = checkGoalCompletion("did the work in src/a.ts, tests 5/5 passed", []);
+        const check = checkGoalCompletion("did the work in src/a.ts, tests 5/5 passed", doneTodos);
         expect(check.complete).toBe(false);
         expect(check.reasons.join(" ")).toContain("no [GOAL:COMPLETE] tag");
     });
@@ -114,15 +117,121 @@ describe("checkGoalCompletion", () => {
     });
 
     test("rejects: tag without evidence", () => {
-        const check = checkGoalCompletion("All done, trust me.\n[GOAL:COMPLETE]", []);
+        const check = checkGoalCompletion("All done, trust me.\n[GOAL:COMPLETE]", doneTodos);
         expect(check.complete).toBe(false);
         expect(check.reasons.join(" ")).toContain("insufficient evidence");
     });
 
     test("counts file paths and command output as evidence markers", () => {
-        const check = checkGoalCompletion(goodMessage, []);
+        const check = checkGoalCompletion(goodMessage, doneTodos);
         expect(check.evidence.some((e) => e.startsWith("file:"))).toBe(true);
         expect(check.evidence.some((e) => e.startsWith("output:"))).toBe(true);
+    });
+
+    // ---- T1 hardening: distinct kinds + tightened regexes (R-b §5.4 fixtures)
+
+    test("T1: two file paths alone FAIL — evidence kinds must be distinct", () => {
+        const check = checkGoalCompletion("Changed src/a.ts and src/b.ts.\n[GOAL:COMPLETE]", doneTodos);
+        expect(check.complete).toBe(false);
+        expect(check.reasons.join(" ")).toContain("insufficient evidence");
+        expect(check.reasons.join(" ")).toContain("command-output marker");
+    });
+
+    test("T1: one file path + one $-prompt output line PASS", () => {
+        const check = checkGoalCompletion(
+            ["Changed src/a.ts for the fix.", "$ bun test src/a.test.ts", "[GOAL:COMPLETE]"].join("\n"),
+            doneTodos,
+        );
+        expect(check.complete).toBe(true);
+    });
+
+    test("T1: prose slash-words and either/or no longer count as paths", () => {
+        const check = checkGoalCompletion(
+            "I considered tabs/spaces and either/or options.\n$ ran the thing\n[GOAL:COMPLETE]",
+            doneTodos,
+        );
+        expect(check.evidence.some((e) => e.startsWith("file:"))).toBe(false);
+    });
+
+    test("T1: 'will pass' prose, '$ 100' amounts and bare 'exit 0' are not output evidence", () => {
+        const check = checkGoalCompletion(
+            [
+                "This change will pass review and the tests will pass too.",
+                "The cost was $ 100 total.",
+                "[GOAL:COMPLETE] exit 0",
+            ].join("\n"),
+            doneTodos,
+        );
+        expect(check.evidence.some((e) => e.startsWith("output:"))).toBe(false);
+        expect(check.complete).toBe(false);
+    });
+
+    test("T1: a blockquoted line never counts as evidence ('> Fixed src/app.ts')", () => {
+        const check = checkGoalCompletion("> Fixed src/app.ts\n[GOAL:COMPLETE]", doneTodos);
+        expect(check.evidence).toHaveLength(0);
+        expect(check.complete).toBe(false);
+    });
+
+    test("T1: exit code reports and test tallies still count as output evidence", () => {
+        const check = checkGoalCompletion(
+            ["Fixed src/auth.ts.", "exit code 0", "12/12 passed"].join("\n"),
+            doneTodos,
+        );
+        expect(check.evidence.filter((e) => e.startsWith("output:")).length).toBeGreaterThanOrEqual(2);
+        // the tag is missing → not complete, but the EVIDENCE kinds are there
+        expect(check.evidence.some((e) => e.startsWith("file:"))).toBe(true);
+    });
+
+    // ---- T2: vacuous-todo rejection
+
+    test("T2: zero todos reject with a 'track todos' reason even with tag + evidence", () => {
+        const check = checkGoalCompletion(goodMessage, []);
+        expect(check.complete).toBe(false);
+        expect(check.reasons.join(" ")).toContain("no todos tracked");
+    });
+
+    // ---- T6: the tag must sit on its own line
+
+    test("T6: mid-text tag mention is not a completion claim", () => {
+        const check = checkGoalCompletion(
+            "I will add the [GOAL:COMPLETE] tag to my final reply once the tests are green — not yet.\n$ bun test\nsrc/a.ts changed",
+            doneTodos,
+        );
+        expect(check.complete).toBe(false);
+        expect(check.reasons.join(" ")).toContain("no [GOAL:COMPLETE] tag");
+        expect(hasGoalTag("prose about [GOAL:COMPLETE] mid-sentence")).toBe(false);
+        expect(hasGoalTag("[GOAL:COMPLETE]")).toBe(true);
+        expect(hasGoalTag("[goal:complete] \n")).toBe(true); // case-insensitive, own line
+        expect(hasGoalTag("  [GOAL:COMPLETE]  ")).toBe(true); // trimmed own line
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 2b. Session-entry validation (T7)
+// ---------------------------------------------------------------------------
+
+describe("parseGoalEntry", () => {
+    test("null/undefined data = legitimate clear, no warning", () => {
+        expect(parseGoalEntry(null)).toEqual({ goal: null });
+        expect(parseGoalEntry(undefined)).toEqual({ goal: null });
+    });
+    test("valid entry round-trips; optional completed fields survive", () => {
+        const saved: GoalState = {
+            text: "ship it",
+            status: "complete",
+            createdAt: 123,
+            completedAt: 456,
+            completedEvidence: ["file: src/a.ts"],
+        };
+        expect(parseGoalEntry(saved).goal).toEqual(saved);
+    });
+    test("malformed shapes load as null + a one-line warning, never an object", () => {
+        for (const bad of [{ status: "active" }, { text: "x", status: "bogus" }, { text: "x", status: "active" }, "text", 42]) {
+            const parsed = parseGoalEntry(bad);
+            expect(parsed.goal).toBeNull();
+            expect(typeof parsed.warning).toBe("string");
+            expect(parsed.warning!.length).toBeGreaterThan(0);
+        }
     });
 });
 
@@ -180,12 +289,38 @@ function makeNotify() {
 }
 
 describe("/goal wiring in the unown-tools extension", () => {
+    /** Session entries that reconstruct a todo list (all done) — the T2 rule
+     *  requires tracked todos, so the accept-path wiring needs a todo trail. */
+    const todoBranch = (todos: Array<{ id: number; text: string; done: boolean }>) => [
+        {
+            type: "message",
+            message: { role: "toolResult", toolName: "todo", details: { action: "list", todos, nextId: todos.length + 1 } },
+        },
+    ];
+
     test("set → per-turn context injection → agent_end completion gate accepts evidence", async () => {
         const dir = join(tmpRoot, "ext1");
         const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
         const fake = makeFakePi([]);
         ext.factory(fake.pi);
         const notify = makeNotify();
+
+        // session_start reconstructs the todo trail the completion gate checks
+        await fake.emit(
+            "session_start",
+            {},
+            {
+                hasUI: true,
+                ui: { notify: () => {}, setStatus: () => {}, setWidget: () => {} },
+                sessionManager: {
+                    getEntries: () => [],
+                    getBranch: () => todoBranch([
+                        { id: 1, text: "fix the build", done: true },
+                        { id: 2, text: "run the tests", done: true },
+                    ]),
+                },
+            },
+        );
 
         await fake.runCommand("goal", "make the build green", notify.ctx);
         expect(notify.messages.some((m) => m.text.includes("Goal set: make the build green"))).toBe(true);
@@ -196,7 +331,7 @@ describe("/goal wiring in the unown-tools extension", () => {
         expect(context?.message?.content).toContain("make the build green");
         expect(context?.message?.content).toContain("[GOAL:COMPLETE]");
 
-        // Completion: assistant claims done with evidence, todos empty (all done)
+        // Completion: assistant claims done with evidence + todos all done
         const agentEnd = await fake.emit(
             "agent_end",
             {
@@ -281,5 +416,36 @@ describe("/goal wiring in the unown-tools extension", () => {
         const notify = makeNotify();
         await fake.runCommand("goal", "", notify.ctx);
         expect(notify.messages[0].text).toContain("survive the restart");
+    });
+
+    test("T7: malformed goal entry loads as null, /goal renders instead of crashing", async () => {
+        const dir = join(tmpRoot, "ext6");
+        const fake = makeFakePi([{ type: "custom", customType: "unown-goal", data: { text: "drifted shape" } }]);
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        ext.factory(fake.pi);
+        await fake.emit("session_start", {}, fake.ctx); // must not throw on the malformed entry
+        const notify = makeNotify();
+        await fake.runCommand("goal", "", notify.ctx);
+        expect(notify.messages[0].text).toContain("No goal set"); // renders instead of crashing
+    });
+
+    test("T7 wiring: the malformed-entry warning is notified at session_start", async () => {
+        const dir = join(tmpRoot, "ext7");
+        const fake = makeFakePi([{ type: "custom", customType: "unown-goal", data: { status: "active" } }]);
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        ext.factory(fake.pi);
+        const notify = makeNotify();
+        await fake.emit("session_start", {}, {
+            hasUI: true,
+            ui: {
+                notify: (text: string, level: string = "info") => notify.messages.push({ text, level }),
+                setStatus: () => {},
+                setWidget: () => {},
+            },
+            sessionManager: { getEntries: () => fake.ctx.sessionManager.getEntries() },
+        });
+        const warning = notify.messages.find((m) => m.level === "warning");
+        expect(warning).toBeDefined();
+        expect(warning!.text).toContain("malformed unown-goal");
     });
 });

@@ -47,8 +47,10 @@ import { deliverTerminalNote, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./t
 import {
     checkGoalCompletion,
     goalContextMessage,
+    hasGoalTag,
     type GoalState,
     parseGoalCommand,
+    parseGoalEntry,
     renderGoalStatus,
 } from "./goal.ts";
 import { assistantTextOf } from "./messages.ts";
@@ -187,6 +189,11 @@ export interface SubagentRunResult {
         stderr: string;
         toolResults: number;
         usage: { input: number; output: number; turns: number };
+        /** True when the output was cut at SUBAGENT_OUTPUT_CAP — callers that
+         *  parse the output (e.g. /review) mark the result as possibly
+         *  incomplete instead of presenting a truncated finding set as whole
+         *  (R-b S3). */
+        outputTruncated?: boolean;
 }
 
 function getUnownInvocation(args: string[]): { command: string; args: string[] } {
@@ -338,6 +345,7 @@ export async function runSubagent(
                                 if (settled) return;
                                 settled = true;
                                 clearTimeout(watchdog);
+                                result.outputTruncated = lastText.length > SUBAGENT_OUTPUT_CAP;
                                 result.output = lastText.slice(0, SUBAGENT_OUTPUT_CAP);
                                 result.stderr = stderrBuffer.slice(0, SUBAGENT_STDERR_CAP);
                                 resolve();
@@ -1383,7 +1391,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 try {
                                         target = await captureReviewTarget(opts.cwd, base);
                                 } catch (err: any) {
-                                        ctx.ui.notify(`Review failed while reading git state: ${err?.message ?? err}`, "warning");
+                                        // Git-plumbing aborts (non-repo, git missing, merge-base
+                                        // failure, timeout) arrive as actionable messages —
+                                        // rendered as a command result, never a crash (R-b G1/G2).
+                                        ctx.ui.notify(`Review aborted: ${err?.message ?? err}`, "warning");
                                         return;
                                 }
                                 if (!target.diff.trim() && target.untracked.length === 0) {
@@ -1399,6 +1410,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         `Review: ${focuses.length} reviewer(s) over ${target.label} (${target.diff.length} chars${target.truncated ? ", truncated" : ""}) — subagents spawn with fresh contexts…`,
                                         "info",
                                 );
+                                // S4: thread the command ctx abort signal when pi provides one
+                                // (usually undefined for idle-context commands — full cancel UI
+                                // needs restructuring runSubagent's caller; runSubagent itself
+                                // already handles a signal by tree-killing the reviewers).
+                                const signal = (ctx as any)?.signal as AbortSignal | undefined;
                                 const results = await Promise.all(
                                         focuses.map((f) =>
                                                 runSubagent(
@@ -1411,17 +1427,31 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 cwd: opts.cwd,
                                                         }),
                                                         opts.cwd,
-                                                        undefined,
+                                                        signal,
                                                 ),
                                         ),
                                 );
-                                const outputs = results.map((r, i) => parseReviewOutput(r.output, focuses[i].key));
+                                // Reviewer honesty (R-b S1): a non-zero exit, timeout or empty
+                                // output marks the reviewer FAILED — its silence must never
+                                // render as "the diff looked clean". Truncated outputs are
+                                // marked too (S3).
+                                const outputs = results.map((r, i) =>
+                                        parseReviewOutput(
+                                                r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""),
+                                                focuses[i].key,
+                                                {
+                                                        failed: r.exitCode !== 0 || !r.output.trim(),
+                                                        truncated: r.outputTruncated,
+                                                },
+                                        ),
+                                );
                                 const merged = mergeReviews(outputs);
                                 const text = renderReview(target.label, outputs, merged.findings);
                                 const artifact = saveReviewArtifact(opts.cwd, target.label, text);
+                                const allFailed = outputs.length > 0 && outputs.every((o) => o.failed);
                                 ctx.ui.notify(
                                         text + (artifact ? `\n\nSaved to ${artifact}` : ""),
-                                        merged.verdict === "block" ? "warning" : "info",
+                                        merged.verdict === "block" || allFailed ? "warning" : "info",
                                 );
                         },
                 });
@@ -1561,7 +1591,10 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                 const lastAssistant = [...messages].reverse().find((m: any) => m?.role === "assistant");
                                 if (lastAssistant) {
                                         const text = assistantTextOf(lastAssistant);
-                                        if (/\[GOAL:COMPLETE\]/i.test(text)) {
+                                        // T6: the tag counts only as its own line in the final
+                                        // message — a mid-text mention (the agent discussing the
+                                        // tag) neither completes the goal nor triggers reject noise.
+                                        if (hasGoalTag(text)) {
                                                 const check = checkGoalCompletion(text, todos);
                                                 if (check.complete) {
                                                         goal = {
@@ -1730,7 +1763,14 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                         .find((e: any) => e?.type === "custom" && e?.customType === "unown-goal") as
                                         | { data?: GoalState | null }
                                         | undefined;
-                                if (goalEntry?.data) goal = goalEntry.data;
+                                // T7: validate the restored entry — a drifted/old shape
+                                // (missing text, unknown status) must load as null with a
+                                // one-line warning instead of crashing /goal's renderer.
+                                const restored = parseGoalEntry(goalEntry?.data);
+                                goal = restored.goal;
+                                if (restored.warning && ctx?.hasUI) {
+                                        ctx.ui.notify(restored.warning, "warning");
+                                }
                         } catch {
                                 /* best effort */
                         }

@@ -15,10 +15,11 @@
 //
 // These tests run on `bun test` (bun:test is built in — zero new deps).
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
-import { describe, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
+import { afterAll, describe, expect, test } from "bun:test";
+import { existsSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { isBunVirtualScriptPath, isSafeCommand, resolveUnownCliScript } from "../src/tools.ts";
+import { createUnownToolsExtension, isBunVirtualScriptPath, isSafeCommand, resolveUnownCliScript } from "../src/tools.ts";
 
 // ---------------------------------------------------------------------------
 // isSafeCommand — plan-mode vocabulary
@@ -117,4 +118,53 @@ describe("resolveUnownCliScript", () => {
                 expect(cli!.endsWith(join("bin", "unown"))).toBe(true);
                 expect(existsSync(cli!)).toBe(true);
         });
+});
+
+// ---------------------------------------------------------------------------
+// /review wiring — the git-plumbing abort path (H2, R-b G1/G2): a non-repo
+// renders an actionable command result, never a crash and never reviewers
+// receiving git's fatal stderr as "the diff". (Reviewer-failure rendering is
+// covered in review.test.ts through the exported parse/merge/render layer.)
+// ---------------------------------------------------------------------------
+const reviewTmp = mkdtempSync(join(tmpdir(), "unown-tools-review-"));
+afterAll(() => {
+    try {
+        rmSync(reviewTmp, { recursive: true, force: true });
+    } catch {
+        /* best effort */
+    }
+});
+
+describe("/review wiring", () => {
+    test("non-repo cwd aborts with an actionable warning, no reviewer spawn", async () => {
+        const dir = join(reviewTmp, "not-a-repo");
+        mkdirSync(dir, { recursive: true });
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        const commands = new Map<string, { description: string; handler: (args: string, ctx: any) => Promise<void> }>();
+        const pi: any = {
+            on: () => {},
+            registerCommand: (name: string, def: any) => commands.set(name, def),
+            registerFlag: () => {},
+            registerTool: () => {},
+            registerShortcut: () => {},
+            appendEntry: () => {},
+            getFlag: () => undefined,
+            getActiveTools: () => ["read", "bash", "edit", "write"],
+            setActiveTools: () => {},
+            sendMessage: () => {},
+        };
+        ext.factory(pi);
+        expect(commands.has("review")).toBe(true);
+        const messages: Array<{ text: string; level: string }> = [];
+        const ctx = { hasUI: true, ui: { notify: (text: string, level: string = "info") => messages.push({ text, level }) } };
+        await commands.get("review")!.handler("", ctx);
+        const last = messages[messages.length - 1];
+        expect(last.level).toBe("warning");
+        expect(last.text).toContain("Review aborted");
+        expect(last.text).toContain("not a git repository");
+        // the old bug fed git's fatal stderr to reviewers as "the diff"; the
+        // pre-fix no-repo path said "Nothing to review" — both must be gone
+        expect(last.text).not.toContain("Nothing to review");
+        expect(messages.filter((m) => m.text.includes("reviewer(s) over"))).toHaveLength(0);
+    });
 });

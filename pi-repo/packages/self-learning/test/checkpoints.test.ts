@@ -17,6 +17,7 @@
 //      GC grace + the two-store GC race, the realpath jail, oversized
 //      captures, ownership (/undo --all, per-owner prune floors), and
 //      crash-safe undo ordering (the R-b §5 reproductions made deterministic)
+import { spawnSync } from "node:child_process";
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
@@ -27,11 +28,14 @@ import {
     CheckpointStore,
     createCheckpointsExtension,
     describeToolInput,
+    ensureUnownGitignore,
     insideRoot,
     insideRootReal,
     previewText,
     ReceiptsLedger,
     receiptsDir,
+    redactSecrets,
+    redactToolInput,
     renderCheckpoints,
     renderReceipts,
     sha256,
@@ -76,6 +80,47 @@ describe("pure helpers", () => {
         expect(describeToolInput("fetch_url", { url: "https://example.com/page" })).toBe("https://example.com/page");
         expect(describeToolInput("task", { agent: "explore", task: "map the repo" })).toBe('→ explore "map the repo"');
         expect(describeToolInput("read", {})).toBe("");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 1b. Privacy redaction (R-b V2/U4)
+// ---------------------------------------------------------------------------
+
+describe("redactSecrets + redactToolInput", () => {
+    test("redactSecrets masks env assignments with secret-bearing keys", () => {
+        expect(redactSecrets("export API_TOKEN=sk-abcdefgh1234")).toBe("export API_TOKEN=***");
+        expect(redactSecrets("MY_SECRET=hunter2 other=stuff")).toBe("MY_SECRET=*** other=stuff");
+        expect(redactSecrets("--api_key=xyz --verbose")).toBe("--api_key=*** --verbose");
+        // non-secret keys untouched
+        expect(redactSecrets("NODE_ENV=production")).toBe("NODE_ENV=production");
+    });
+    test("redactSecrets masks Authorization headers and long tokens", () => {
+        expect(redactSecrets('curl -H "Authorization: Bearer sk-abcdefgh1234" https://x')).toBe(
+            'curl -H "Authorization: ***" https://x',
+        );
+        expect(redactSecrets("Bearer tokentokentoken123")).toBe("Bearer ***");
+        expect(redactSecrets("key is sk-abcdefgh1234 here")).toBe("key is sk-*** here");
+        // short sk- literals (prose) left alone
+        expect(redactSecrets("the sk-x prefix")).toBe("the sk-x prefix");
+    });
+    test("redactSecrets is idempotent", () => {
+        const once = redactSecrets("export API_TOKEN=sk-abcdefgh1234");
+        expect(redactSecrets(once)).toBe(once);
+    });
+    test("redactToolInput: write/edit content → size note only; secret-named fields → ***", () => {
+        const out = redactToolInput("write", { path: "/p/a.ts", content: "const x = 1;" });
+        expect(out.content).toBe("<12 chars>");
+        expect(out.path).toBe("/p/a.ts");
+        expect(redactToolInput("edit", { path: "/p/a.ts", content: "x" }).content).toBe("<1 chars>");
+        expect(redactToolInput("bash", { command: "echo hi", api_key: "k-1234567890" }).api_key).toBe("***");
+    });
+    test("describeToolInput renders bash commands redacted (U4 legacy defense)", () => {
+        expect(describeToolInput("bash", { command: 'curl -H "Authorization: Bearer sk-abcdefgh1234" https://api' })).not.toContain(
+            "sk-abcdefgh1234",
+        );
+        expect(describeToolInput("bash", { command: "export PASSWORD=hunter2" })).not.toContain("hunter2");
+        expect(describeToolInput("bash", { command: "ls -la" })).toBe('"ls -la"'); // no false positives
     });
 });
 
@@ -829,5 +874,124 @@ describe("createCheckpointsExtension — hardening (H1)", () => {
         await A.runCommand("restore", "snap", ctx2);
         expect(readFileSync(file, "utf8")).toBe("later-state"); // NOT overwritten with wrong content
         expect(messages.some((m) => m.level === "warning" && m.text.includes("corrupt-blob"))).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 6. H2 privacy hardening — .unown/.gitignore self-heal (V1) + ledger
+//    redaction at rest (V2) and at render (U4)
+// ---------------------------------------------------------------------------
+
+describe("privacy hardening (H2)", () => {
+    /** Minimal git fixture (spawnSync without a shell — no /bin/sh on every
+     *  host; mkdir FIRST: bun reports a missing cwd as spawn ENOENT). */
+    function gitOk(dir: string, args: string[]): boolean {
+        const res = spawnSync("git", args, { cwd: dir });
+        return res.status === 0;
+    }
+
+    test("V1: fresh project → session_start creates .unown/.gitignore with header + the 3 runtime entries", async () => {
+        const proj = join(tmpRoot, "h2-fresh");
+        mkdirSync(proj, { recursive: true });
+        expect(gitOk(proj, ["init", "-q", "-b", "main"])).toBe(true);
+        expect(gitOk(proj, ["config", "user.email", "t@t"])).toBe(true);
+        expect(gitOk(proj, ["config", "user.name", "t"])).toBe(true);
+        const ext = createCheckpointsExtension({ cwd: proj, receiptsFile: join(proj, ".unown", "receipts", "r.jsonl") });
+        const { pi, emit } = makeFakePi();
+        ext.factory(pi);
+        await emit("session_start", {});
+        const file = join(proj, ".unown", ".gitignore");
+        expect(existsSync(file)).toBe(true);
+        const text = readFileSync(file, "utf8");
+        expect(text).toContain("# unown runtime state");
+        expect(text).toContain("receipts/");
+        expect(text).toContain("checkpoints/");
+        expect(text).toContain("reviews/");
+        // the entries actually ignore the runtime dirs (audit's verification)
+        expect(gitOk(proj, ["check-ignore", "-q", ".unown/receipts/x.jsonl"])).toBe(true);
+        expect(gitOk(proj, ["check-ignore", "-q", ".unown/checkpoints/files/aa/bb"])).toBe(true);
+        expect(gitOk(proj, ["check-ignore", "-q", ".unown/reviews/some-review.md"])).toBe(true);
+    });
+
+    test("V1: existing user .gitignore is preserved; only missing entries are appended; idempotent", async () => {
+        const proj = join(tmpRoot, "h2-existing");
+        mkdirSync(join(proj, ".unown"), { recursive: true });
+        const user = join(proj, ".unown", ".gitignore");
+        writeFileSync(user, "# my project ignores\nnode_modules/\nreceipts/\n");
+        const ext = createCheckpointsExtension({ cwd: proj, receiptsFile: join(proj, ".unown", "receipts", "r.jsonl") });
+        const { pi, emit } = makeFakePi();
+        ext.factory(pi);
+        await emit("session_start", {});
+        const text = readFileSync(user, "utf8");
+        // user content intact, receipts/ not duplicated
+        expect(text).toContain("# my project ignores");
+        expect(text).toContain("node_modules/");
+        expect(text.match(/^receipts\/$/gm)).toHaveLength(1);
+        // missing entries appended
+        expect(text).toContain("checkpoints/");
+        expect(text).toContain("reviews/");
+        // second boot changes nothing (append-if-missing is idempotent)
+        const before = readFileSync(user, "utf8");
+        await emit("session_start", {});
+        expect(readFileSync(user, "utf8")).toBe(before);
+    });
+
+    test("V2: write tool_call input persists content as a size note, never the file body", async () => {
+        const proj = join(tmpRoot, "h2-write-redact");
+        mkdirSync(proj, { recursive: true });
+        const receiptsFile = join(proj, ".unown", "receipts", "r.jsonl");
+        const ext = createCheckpointsExtension({ cwd: proj, receiptsFile });
+        const { pi, emit } = makeFakePi();
+        ext.factory(pi);
+        await emit("input", { text: "write the file" });
+        const body = "const secret = 'CLASSIFIED-BODY';\n";
+        await emit("tool_call", {
+            toolName: "write",
+            toolCallId: "t1",
+            input: { path: join(proj, "a.ts"), content: body },
+        });
+        const raw = readFileSync(receiptsFile, "utf8");
+        expect(raw).not.toContain("CLASSIFIED-BODY");
+        expect(raw).toContain(`<${body.length} chars>`);
+        const entry = new ReceiptsLedger(receiptsFile).entries().find((e) => e.kind === "tool_call") as any;
+        expect(entry.input.content).toBe(`<${body.length} chars>`);
+        expect(entry.input.path).toBe(join(proj, "a.ts")); // paths survive — they are the audit trail
+    });
+
+    test("V2: bash tool_call inputs are secret-redacted at rest", async () => {
+        const proj = join(tmpRoot, "h2-bash-redact");
+        mkdirSync(proj, { recursive: true });
+        const receiptsFile = join(proj, ".unown", "receipts", "r.jsonl");
+        const ext = createCheckpointsExtension({ cwd: proj, receiptsFile });
+        const { pi, emit } = makeFakePi();
+        ext.factory(pi);
+        await emit("input", { text: "deploy" });
+        await emit("tool_call", {
+            toolName: "bash",
+            toolCallId: "t1",
+            input: { command: 'export API_TOKEN=sk-abcdefgh1234 && curl -H "Authorization: Bearer sk-token123456" https://api' },
+        });
+        const raw = readFileSync(receiptsFile, "utf8");
+        expect(raw).not.toContain("sk-abcdefgh1234");
+        expect(raw).not.toContain("sk-token123456");
+        expect(raw).toContain("API_TOKEN=***");
+        expect(raw).toContain("Authorization: ***");
+    });
+
+    test("U4: renderReceipts masks secrets from LEGACY entries persisted before the redaction", () => {
+        // an old ledger line, written pre-H2 with the raw command inline
+        const legacy = [
+            {
+                seq: 1,
+                ts: Date.now(),
+                kind: "tool_call",
+                id: "t9",
+                tool: "bash",
+                input: { command: 'curl -H "Authorization: Bearer sk-legacysecret" https://x' },
+            },
+        ] as any[];
+        const text = renderReceipts(legacy, 10);
+        expect(text).not.toContain("sk-legacysecret");
+        expect(text).toContain("Authorization: ***");
     });
 });

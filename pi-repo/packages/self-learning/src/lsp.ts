@@ -37,13 +37,27 @@
  * diagnostics loop re-didOpens on a fresh process — the M1 loop used to die
  * permanently after one crash), and every env knob parses tolerantly via
  * the shared parseMsEnv.
+ *
+ * H2 hardening (research R-a SEC + M-08/L-05/L-06): the project `.unown/lsp.json`
+ * is gated by config-trust.ts (a cloned repo's server overrides are RCE until
+ * approved — same gate mcp.ts got), file URIs percent-encode `#`/`?`/`%`/C0
+ * per path segment so didOpen ↔ publishDiagnostics agree on exotic names,
+ * server→client requests get spec-shaped replies instead of hanging the
+ * server's promise, syncDocument skips files over 4 MiB, the `all` diagnostics
+ * listing is capped at 200 findings, and spawns route through mcp.ts's
+ * hardened stdioSpawnSpec (Windows `.cmd`/`.bat` shims EINVAL without it).
+ *
+ * H2 env additions:
+ *   UNOWN_LSP_MAX_SYNC_BYTES (4 MiB)  files larger than this skip LSP sync
+ *   UNOWN_TRUST_PROJECT_CONFIG (off)  bypass the project-config trust gate
  */
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readFileSync, type Dirent, readdirSync } from "node:fs";
+import { existsSync, readFileSync, statSync, type Dirent, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, delimiter as pathDelimiter, join } from "node:path";
 import { registerChild, unregisterChild } from "./child-reaper.ts";
-import { parseMsEnv } from "./mcp.ts";
+import { trustApprovalNeeded, trustConfig, trustStatePath } from "./config-trust.ts";
+import { parseMsEnv, stdioSpawnSpec } from "./mcp.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
@@ -176,19 +190,87 @@ export function loadLspConfigFile(filePath: string): LspConfig | null {
     }
 }
 
-/** Merged config: defaults ← user file ← project file (later wins). */
-export function resolveLspConfig(cwd: string, userDir: string = UNOWN_AGENT_DIR): LspConfig {
+/**
+ * Trust options for the LSP project-config gate (see config-trust.ts): the
+ * trust-state file, the always-trusted user-owned directory, and the env
+ * carrying the UNOWN_TRUST_PROJECT_CONFIG bypass.
+ */
+export interface LspTrustOptions {
+    statePath?: string;
+    userDir?: string;
+    env?: Record<string, string | undefined>;
+}
+
+/**
+ * The approval guidance status surfaces render while a project lsp.json is
+ * gated. tools.ts wires the actual `/lsp trust` command next milestone —
+ * trustProjectLspConfig below is the helper that command will call.
+ */
+export function lspTrustGuidance(projectFile: string | null = null): string {
+    const where = projectFile ? `${projectFile} is untrusted` : "project lsp.json is untrusted";
+    return `${where} — server overrides withheld; approve via /lsp trust (tools.ts wiring lands next milestone) or set UNOWN_TRUST_PROJECT_CONFIG=1`;
+}
+
+/**
+ * Approve the project-scoped `.unown/lsp.json` under `cwd` (records its
+ * fingerprint via config-trust.ts). Idempotent; false when the file is
+ * missing or the trust state is unwritable — the gate then stays closed,
+ * never a silent success.
+ */
+export function trustProjectLspConfig(cwd: string, opts: LspTrustOptions = {}): boolean {
+    return trustConfig(join(cwd, ".unown", "lsp.json"), opts);
+}
+
+/**
+ * Merged config: defaults ← user file ← project file (later wins).
+ *
+ * TRUST GATE (H2 — the same RCE class resolveMcpConfig got): the project
+ * file is attacker-controlled in a cloned repo (its `servers` entries are
+ * arbitrary command lines), so an untrusted project file is SKIPPED
+ * entirely — user config + defaults still load — and `needsTrust` flips
+ * true with `trustGuidance`. Files under `userDir` are user-owned and
+ * always trusted; `UNOWN_TRUST_PROJECT_CONFIG=1|true` bypasses (CI/headless).
+ *
+ * Extends LspConfig so existing callers (tools.ts: `config:
+ * resolveLspConfig(cwd)`) keep working unchanged while the gate takes effect.
+ */
+export interface ResolvedLspConfig extends LspConfig {
+    /** Project config path when one exists (for /lsp trust + guidance). */
+    projectFile: string | null;
+    /** Project config present but untrusted (entries withheld). */
+    needsTrust: boolean;
+    /** Approval guidance when needsTrust, null otherwise. */
+    trustGuidance: string | null;
+}
+
+export function resolveLspConfig(
+    cwd: string,
+    userDir: string = UNOWN_AGENT_DIR,
+    env: Record<string, string | undefined> = process.env,
+): ResolvedLspConfig {
     const merged: LspConfig = {};
-    for (const file of [join(userDir, "lsp.json"), join(cwd, ".unown", "lsp.json")]) {
+    const projectFile = join(cwd, ".unown", "lsp.json");
+    const trustOpts = { statePath: trustStatePath(userDir), userDir, env };
+    let needsTrust = false;
+    for (const file of [join(userDir, "lsp.json"), projectFile]) {
         const cfg = loadLspConfigFile(file);
         if (!cfg) continue;
+        if (file === projectFile && trustApprovalNeeded(file, trustOpts)) {
+            needsTrust = true; // entries withheld — user config + defaults still apply
+            continue;
+        }
         if (cfg.disabled === true) merged.disabled = true;
         if (cfg.disabled === false) merged.disabled = false;
         if (cfg.servers && typeof cfg.servers === "object") {
             merged.servers = { ...(merged.servers ?? {}), ...cfg.servers };
         }
     }
-    return merged;
+    return {
+        ...merged,
+        projectFile: existsSync(projectFile) ? projectFile : null,
+        needsTrust,
+        trustGuidance: needsTrust ? lspTrustGuidance(projectFile) : null,
+    };
 }
 
 /**
@@ -215,11 +297,32 @@ export function resolveServerCommand(
 // URI conversion
 // ---------------------------------------------------------------------------
 
+/**
+ * RFC 3986 path characters kept literal in a file URI (pchar + "/").
+ * Everything else — `#`, `?`, `%`, C0 controls, spaces, non-ASCII — is
+ * percent-encoded per UTF-8 byte: leaving `#`/`?` raw leaks a filename into
+ * the fragment/query component (the URI then names a DIFFERENT document),
+ * and a raw `%` can be misread as the start of someone else's escape.
+ */
+const URI_PATH_SAFE = /^[A-Za-z0-9\-._~!$&'()*+,;=:@/]$/;
+
+function encodeUriPath(path: string): string {
+    let out = "";
+    for (const ch of path) {
+        if (URI_PATH_SAFE.test(ch)) {
+            out += ch;
+            continue;
+        }
+        for (const byte of Buffer.from(ch, "utf8")) out += `%${byte.toString(16).toUpperCase().padStart(2, "0")}`;
+    }
+    return out;
+}
+
 /** File path → file URI (Windows drive letters get the three-slash form). */
 export function pathToUri(path: string): string {
     const normalized = path.replace(/\\/g, "/");
-    if (/^[a-zA-Z]:/.test(normalized)) return `file:///${encodeURI(normalized)}`;
-    return `file://${encodeURI(normalized)}`;
+    const encoded = encodeUriPath(normalized);
+    return /^[a-zA-Z]:/.test(normalized) ? `file:///${encoded}` : `file://${encoded}`;
 }
 
 /** file URI → file path (decode + platform separators). */
@@ -227,7 +330,11 @@ export function uriToPath(uri: string): string {
     const raw = uri.startsWith("file://") ? uri.slice("file://".length) : uri;
     let decoded: string;
     try {
-        decoded = decodeURI(raw);
+        // decodeURIComponent (not decodeURI): inside the PATH component even
+        // reserved-character escapes (%23 '#', %3F '?') are literal data, and
+        // decodeURI deliberately leaves those encoded — which broke the
+        // diagnostics-cache round-trip for exactly those filenames.
+        decoded = decodeURIComponent(raw);
     } catch {
         decoded = raw;
     }
@@ -263,6 +370,24 @@ interface PendingRequest {
 }
 
 /**
+ * Build the spawn spec for a server command line through mcp.ts's hardened
+ * stdioSpawnSpec (H2 Windows parity, M-08/L-05): `.cmd`/`.bat`/extensionless
+ * npm shims spawn via the escaped cmd.exe wrapper instead of EINVALing on
+ * CVE-2024-27980-patched runtimes, `${VAR}`s expand from `env`, and
+ * unescapable command lines (CRLF, `%` on the win32 path) are refused
+ * outright. Pure — exported for tests.
+ */
+export function lspSpawnSpec(
+    command: string[],
+    cwd: string,
+    env: Record<string, string | undefined> = process.env,
+    platform: string = process.platform,
+): { command: string; args: string[]; env: Record<string, string>; cwd: string } {
+    if (command.length === 0) throw new Error("empty command line");
+    return stdioSpawnSpec(command[0], command.slice(1), {}, cwd, { expandWith: env, platform });
+}
+
+/**
  * One live language-server process. Speaks LSP over stdio with
  * Content-Length framing. Buffer-based parsing keeps multi-byte UTF-8
  * characters intact across stdout chunk boundaries.
@@ -270,10 +395,15 @@ interface PendingRequest {
 export class LspConnection {
     readonly command: string[];
     readonly cwd: string;
+    /** H2: the Windows-correct spawn spec (cmd.exe wrapper for shims). */
+    readonly spawnSpec: { command: string; args: string[]; env: Record<string, string>; cwd: string } | null;
+    /** Refused command line (CRLF / unescapable `%`) — start() fails with this. */
+    readonly spawnError: string | null;
     private proc: ChildProcess | null = null;
     private buffer: Buffer = Buffer.alloc(0);
     private nextId = 1;
-    private pending = new Map<number, PendingRequest>();
+    /** Keyed by String(id): servers occasionally echo numeric ids as strings. */
+    private pending = new Map<string, PendingRequest>();
     private disposed = false;
     private readonly maxMessageBytes: number;
     /** Called for every server → client notification. */
@@ -283,10 +413,24 @@ export class LspConnection {
     /** Called once on a framing violation before the connection recycles itself. */
     onError: ((reason: string) => void) | null = null;
 
-    constructor(command: string[], cwd: string, maxMessageBytes = 32 * 1024 * 1024) {
+    constructor(
+        command: string[],
+        cwd: string,
+        maxMessageBytes = 32 * 1024 * 1024,
+        env: Record<string, string | undefined> = process.env,
+        platform: string = process.platform,
+    ) {
         this.command = command;
         this.cwd = cwd;
         this.maxMessageBytes = maxMessageBytes;
+        try {
+            this.spawnSpec = lspSpawnSpec(command, cwd, env, platform);
+            this.spawnError = null;
+        } catch (err) {
+            // Refuse-first for unsafe command lines: never spawn them.
+            this.spawnSpec = null;
+            this.spawnError = (err as Error).message;
+        }
     }
 
     get running(): boolean {
@@ -302,10 +446,13 @@ export class LspConnection {
     async start(timeoutMs: number): Promise<void> {
         if (this.running) return;
         this.disposed = false;
+        if (this.spawnError) throw new Error(`refused to spawn ${this.command.join(" ")}: ${this.spawnError}`);
+        const spec = this.spawnSpec!;
         let proc: ChildProcess;
         try {
-            proc = spawn(this.command[0], this.command.slice(1), {
-                cwd: this.cwd,
+            proc = spawn(spec.command, spec.args, {
+                cwd: spec.cwd,
+                env: { ...process.env, ...spec.env },
                 stdio: ["pipe", "pipe", "pipe"],
                 windowsHide: true,
             });
@@ -348,29 +495,30 @@ export class LspConnection {
     request(method: string, params: unknown, timeoutMs: number): Promise<unknown> {
         if (!this.proc || !this.proc.stdin) return Promise.reject(new Error("connection not started"));
         const id = this.nextId++;
+        const key = String(id); // normalize: server replies may echo ids as strings
         const message = JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\r\n";
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
-                this.pending.delete(id);
+                this.pending.delete(key);
                 reject(new Error(`LSP request ${method} timed out after ${timeoutMs}ms`));
             }, timeoutMs);
-            this.pending.set(id, { resolve, reject, timer });
+            this.pending.set(key, { resolve, reject, timer });
             try {
                 this.proc!.stdin!.write(frame(message), (err) => {
                     if (err) {
-                        const p = this.pending.get(id);
+                        const p = this.pending.get(key);
                         if (p) {
                             clearTimeout(p.timer);
-                            this.pending.delete(id);
+                            this.pending.delete(key);
                             p.reject(new Error(`failed to write ${method}: ${err.message}`));
                         }
                     }
                 });
             } catch (err) {
-                const p = this.pending.get(id);
+                const p = this.pending.get(key);
                 if (p) {
                     clearTimeout(p.timer);
-                    this.pending.delete(id);
+                    this.pending.delete(key);
                 }
                 reject(new Error(`failed to send ${method}: ${(err as Error).message}`));
             }
@@ -496,17 +644,18 @@ export class LspConnection {
                 continue;
             }
             if (message?.method && message.id !== undefined && message.result === undefined && message.error === undefined) {
-                // server → client request (window/workDoneRow/create etc.) — reply null
-                this.replyNull(message.id);
+                // server → client request (workspace/configuration etc.) —
+                // reply so the server's promise resolves instead of hanging.
+                this.replyToServerRequest(message.id, message.method);
                 continue;
             }
             if (message?.method && message.id === undefined) {
                 this.onNotification?.(message.method, message.params);
                 continue;
             }
-            const pending = this.pending.get(message.id);
+            const pending = this.pending.get(String(message.id));
             if (pending) {
-                this.pending.delete(message.id);
+                this.pending.delete(String(message.id));
                 clearTimeout(pending.timer);
                 if (message.error) pending.reject(new Error(`LSP ${message.error.message ?? "error"}`));
                 else pending.resolve(message.result);
@@ -533,10 +682,42 @@ export class LspConnection {
         this.buffer = /^[A-Za-z-]*$/.test(tail.toString("ascii")) ? tail : Buffer.alloc(0);
     }
 
-    private replyNull(id: unknown): void {
+    /**
+     * Server → client REQUEST replies (H2 protocol politeness): the four
+     * lifecycle requests real servers actually send get spec-shaped empty
+     * results so their promises resolve instead of hanging; ANY other
+     * server→client request gets -32601 MethodNotFound so a probing server
+     * falls back gracefully instead of retrying forever. Both string and
+     * numeric request ids are echoed verbatim.
+     */
+    private replyToServerRequest(id: unknown, method: string): void {
+        switch (method) {
+            case "workspace/configuration":
+            case "workspace/workspaceFolders":
+                this.replyResult(id, []);
+                return;
+            case "client/registerCapability":
+            case "window/workDoneProgress/create":
+                this.replyResult(id, null);
+                return;
+            default:
+                this.replyError(id, -32601, `method not found: ${method}`);
+        }
+    }
+
+    private replyResult(id: unknown, result: unknown): void {
         if (!this.proc?.stdin) return;
         try {
-            this.proc.stdin.write(frame(JSON.stringify({ jsonrpc: "2.0", id, result: null }) + "\r\n"));
+            this.proc.stdin.write(frame(JSON.stringify({ jsonrpc: "2.0", id, result }) + "\r\n"));
+        } catch {
+            /* ignore */
+        }
+    }
+
+    private replyError(id: unknown, code: number, message: string): void {
+        if (!this.proc?.stdin) return;
+        try {
+            this.proc.stdin.write(frame(JSON.stringify({ jsonrpc: "2.0", id, error: { code, message } }) + "\r\n"));
         } catch {
             /* ignore */
         }
@@ -562,6 +743,13 @@ export interface LspManagerOptions {
     cwd: string;
     config?: LspConfig;
     env?: Record<string, string | undefined>;
+    /**
+     * User-owned config directory for the project-config trust gate (default
+     * UNOWN_AGENT_DIR). Only used to evaluate the gate — the effective config
+     * comes from `config` (typically resolveLspConfig, which gates with the
+     * same inputs).
+     */
+    userDir?: string;
     requestTimeoutMs?: number;
     diagnosticsWaitMs?: number;
     /** Max accepted Content-Length per message (default 32 MiB; L-02). */
@@ -570,6 +758,8 @@ export interface LspManagerOptions {
     crashCooldownMs?: number;
     /** Auto-restart budget per server per session (default 3; L-14). */
     maxRestarts?: number;
+    /** Files above this size skip LSP sync (default 4 MiB; UNOWN_LSP_MAX_SYNC_BYTES). */
+    maxSyncBytes?: number;
 }
 
 export interface ServerStatusEntry {
@@ -591,6 +781,12 @@ interface CrashRecord {
     reason: string;
 }
 
+/** UNOWN_LSP_MAX_SYNC_BYTES default: files above 4 MiB skip LSP sync. */
+const DEFAULT_MAX_SYNC_BYTES = 4 * 1024 * 1024;
+
+/** Total-findings cap for the `diagnostics --all` listing. */
+const ALL_DIAGNOSTICS_MAX_FINDINGS = 200;
+
 /**
  * Per-session LSP manager. One connection per resolved server command
  * (languages sharing a spec share the process — e.g. all four TS/JS ids ride
@@ -610,17 +806,28 @@ export class LspManager {
     readonly cwd: string;
     private readonly config: LspConfig;
     private readonly env: Record<string, string | undefined>;
+    private readonly userDir: string;
     readonly requestTimeoutMs: number;
     readonly diagnosticsWaitMs: number;
     readonly maxMessageBytes: number;
     readonly crashCooldownMs: number;
     readonly maxRestarts: number;
+    /** Files above this size skip didOpen/didChange (UNOWN_LSP_MAX_SYNC_BYTES). */
+    readonly maxSyncBytes: number;
+    /** The project-scoped lsp.json, when one exists (trust gate + /lsp trust). */
+    readonly projectFile: string;
+    /** True while the project lsp.json is gated by the trust gate (H2). */
+    readonly needsTrust: boolean;
+    /** Approval guidance when needsTrust, null otherwise (status renders it). */
+    readonly trustGuidance: string | null;
     private connections = new Map<string, LspConnection>(); // key: command.join(" ")
     private commandByLanguage = new Map<string, string[] | null>();
     private openDocs = new Map<string, OpenDoc>(); // key: file path
     private diagnostics = new Map<string, { items: LspDiagnostic[]; ts: number }>(); // key: file path
     private starting = new Map<string, Promise<void>>();
     private crashes = new Map<string, CrashRecord>(); // key: command.join(" ")
+    /** Files skipped for exceeding maxSyncBytes (logged once per path). */
+    private oversizeSkipped = new Map<string, number>(); // key: file path → size
     /** Per server: has it EVER published diagnostics (wait-skip heuristic). */
     private publishedEver = new Map<string, boolean>();
     /** Per server: have we already burned one wait on it (wait-skip heuristic). */
@@ -630,12 +837,23 @@ export class LspManager {
         this.cwd = opts.cwd;
         this.config = opts.config ?? {};
         this.env = opts.env ?? process.env;
+        this.userDir = opts.userDir ?? UNOWN_AGENT_DIR;
         this.requestTimeoutMs = opts.requestTimeoutMs ?? parseMsEnv("UNOWN_LSP_TIMEOUT_MS", 15_000, this.env);
         this.diagnosticsWaitMs = opts.diagnosticsWaitMs ?? parseMsEnv("UNOWN_LSP_WAIT_MS", 10_000, this.env);
         this.maxMessageBytes =
             opts.maxMessageBytes ?? parseMsEnv("UNOWN_LSP_MAX_MSG_BYTES", 32 * 1024 * 1024, this.env, 1024 * 1024 * 1024);
         this.crashCooldownMs = opts.crashCooldownMs ?? parseMsEnv("UNOWN_LSP_CRASH_COOLDOWN_MS", 30_000, this.env);
         this.maxRestarts = opts.maxRestarts ?? parseRestartCapEnv(this.env);
+        this.maxSyncBytes = opts.maxSyncBytes ?? parseBytesEnv("UNOWN_LSP_MAX_SYNC_BYTES", DEFAULT_MAX_SYNC_BYTES, this.env);
+        // Trust state of the project lsp.json — the same policy resolveLspConfig
+        // gated the config with, so status() can surface the withheld state.
+        this.projectFile = join(opts.cwd, ".unown", "lsp.json");
+        this.needsTrust = trustApprovalNeeded(this.projectFile, {
+            statePath: trustStatePath(this.userDir),
+            userDir: this.userDir,
+            env: this.env,
+        });
+        this.trustGuidance = this.needsTrust ? lspTrustGuidance(this.projectFile) : null;
     }
 
     get disabled(): boolean {
@@ -680,7 +898,7 @@ export class LspManager {
             if (Date.now() - crash.lastAt < this.crashCooldownMs) return null; // cooldown
             crash.restarts++;
         }
-        const conn = new LspConnection(command, this.cwd, this.maxMessageBytes);
+        const conn = new LspConnection(command, this.cwd, this.maxMessageBytes, this.env);
         conn.onNotification = (method, params) => this.handleNotification(method, params);
         conn.onExit = (code) => {
             if (conn.intentionallyDisposed) return; // disposeAll/violation already recorded
@@ -763,15 +981,50 @@ export class LspManager {
         return this.diagnostics.get(path);
     }
 
-    /** Every file with cached diagnostics (the `all: true` action). */
-    allDiagnostics(): Array<{ path: string; items: LspDiagnostic[] }> {
-        return [...this.diagnostics.entries()].map(([path, d]) => ({ path, items: d.items }));
+    /**
+     * Every file with cached diagnostics (the `all: true` action). H2 bound:
+     * TOTAL findings are capped at `maxFindings` (default 200) so a sweep over
+     * a big workspace cannot render unbounded output; the withheld count is
+     * available via allDiagnosticsOverflow for the "+N more findings" line
+     * (renderAllDiagnostics).
+     */
+    allDiagnostics(maxFindings = ALL_DIAGNOSTICS_MAX_FINDINGS): Array<{ path: string; items: LspDiagnostic[] }> {
+        const out: Array<{ path: string; items: LspDiagnostic[] }> = [];
+        let budget = maxFindings;
+        for (const [path, d] of this.diagnostics) {
+            if (budget <= 0) break;
+            const items = d.items.length > budget ? d.items.slice(0, budget) : d.items;
+            out.push({ path, items });
+            budget -= items.length;
+        }
+        return out;
+    }
+
+    /** Findings withheld by the allDiagnostics() cap (for "+N more findings"). */
+    allDiagnosticsOverflow(maxFindings = ALL_DIAGNOSTICS_MAX_FINDINGS): number {
+        let total = 0;
+        for (const d of this.diagnostics.values()) total += d.items.length;
+        return Math.max(0, total - maxFindings);
     }
 
     /** Ensure a file is open on its server; send the current disk content. */
     async syncDocument(path: string): Promise<LspConnection | null> {
         const language = languageFromPath(path);
         if (!language) return null;
+        // H2 bound: oversized files skip the sync entirely — the server can't
+        // help on them anyway, and a multi-MiB didOpen per edit would dominate
+        // the PostToolUse loop. Logged once per file, surfaced via status().
+        const size = fileSizeOf(path);
+        if (size !== null && size > this.maxSyncBytes) {
+            if (!this.oversizeSkipped.has(path)) {
+                this.oversizeSkipped.set(path, size);
+                console.error(
+                    `[unown-lsp] ${path} is ${(size / (1024 * 1024)).toFixed(1)} MiB (limit ${this.maxSyncBytes} bytes, ` +
+                        `UNOWN_LSP_MAX_SYNC_BYTES) — skipping LSP sync`,
+                );
+            }
+            return null;
+        }
         const conn = await this.connectionFor(language, true);
         if (!conn) return null;
         const uri = pathToUri(path);
@@ -903,9 +1156,18 @@ export class LspManager {
      * Status snapshot for the /lsp command and the status action. Servers
      * with a crash record and no live connection report `crashed` with the
      * crash count, last-crash timestamp, and why restarts are gated
-     * ("restarts exhausted" or the remaining cooldown).
+     * ("restarts exhausted" or the remaining cooldown). H2: also carries the
+     * project-config trust state (needsTrust + trustGuidance) and the count
+     * of files skipped for exceeding maxSyncBytes.
      */
-    status(): { servers: ServerStatusEntry[]; openDocs: number; diagnostics: number } {
+    status(): {
+        servers: ServerStatusEntry[];
+        openDocs: number;
+        diagnostics: number;
+        needsTrust: boolean;
+        trustGuidance: string | null;
+        oversizeSkipped: number;
+    } {
         const servers: ServerStatusEntry[] = [];
         const seen = new Set<string>();
         for (const spec of DEFAULT_SERVERS) {
@@ -951,7 +1213,14 @@ export class LspManager {
         }
         let diagnostics = 0;
         for (const d of this.diagnostics.values()) diagnostics += d.items.length;
-        return { servers, openDocs: this.openDocs.size, diagnostics };
+        return {
+            servers,
+            openDocs: this.openDocs.size,
+            diagnostics,
+            needsTrust: this.needsTrust,
+            trustGuidance: this.trustGuidance,
+            oversizeSkipped: this.oversizeSkipped.size,
+        };
     }
 
     /** Kill every connection (session shutdown). */
@@ -961,6 +1230,7 @@ export class LspManager {
         this.openDocs.clear();
         this.diagnostics.clear();
         this.crashes.clear();
+        this.oversizeSkipped.clear();
     }
 
     private handleNotification(method: string, params: unknown): void {
@@ -981,6 +1251,33 @@ function parseRestartCapEnv(env: Record<string, string | undefined>): number {
     const parsed = Number(raw);
     if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) return 3;
     return parsed;
+}
+
+/**
+ * Parse one byte-count env knob with parseMsEnv's tolerant semantics
+ * (undefined/empty/NaN/≤0/absurd fall back to the default) — a local twin so
+ * byte knobs read naturally at the call site.
+ */
+function parseBytesEnv(
+    name: string,
+    defaultBytes: number,
+    env: Record<string, string | undefined>,
+    maxBytes = 1024 * 1024 * 1024,
+): number {
+    const raw = env[name];
+    if (raw === undefined || raw === "") return defaultBytes;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > maxBytes) return defaultBytes;
+    return parsed;
+}
+
+/** File size in bytes, null when the file is missing/unstattable. */
+function fileSizeOf(path: string): number | null {
+    try {
+        return statSync(path).size;
+    } catch {
+        return null;
+    }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -1028,6 +1325,41 @@ export function renderDiagnostics(path: string, items: LspDiagnostic[], maxItems
 
 export function countErrors(items: LspDiagnostic[]): number {
     return items.filter((d) => d.severity === undefined || d.severity === 1).length;
+}
+
+/**
+ * Render the `diagnostics --all` listing (H2 bound): per-file
+ * renderDiagnostics under a GLOBAL findings cap (default 200) with a
+ * `+N more findings` truncation line. `overflow` lets a caller pass findings
+ * already withheld upstream (allDiagnostics() caps its output) so the line
+ * stays truthful; pass RAW files to have the renderer do all the counting.
+ * Pure — exported for tests and the tools.ts wiring (next milestone; the
+ * live `all` action already gets the bound via allDiagnostics()'s cap).
+ */
+export function renderAllDiagnostics(
+    files: Array<{ path: string; items: LspDiagnostic[] }>,
+    maxFindings = ALL_DIAGNOSTICS_MAX_FINDINGS,
+    overflow = 0,
+): string {
+    if (files.length === 0) return "No diagnostics.";
+    let shown = 0;
+    let withheld = overflow;
+    const parts: string[] = [];
+    for (const { path, items } of files) {
+        if (shown >= maxFindings) {
+            withheld += items.length;
+            continue;
+        }
+        const budget = maxFindings - shown;
+        const render = items.length > budget ? items.slice(0, budget) : items;
+        withheld += items.length - render.length;
+        shown += render.length;
+        // Per-file cap = the global cap, so only the global budget truncates
+        // and renderDiagnostics never adds its own "… N more" on top.
+        parts.push(renderDiagnostics(path, render, maxFindings));
+    }
+    const text = parts.join("\n\n");
+    return withheld > 0 ? `${text}\n\n+${withheld} more findings` : text;
 }
 
 export function renderHoverContents(contents: unknown): string | null {
