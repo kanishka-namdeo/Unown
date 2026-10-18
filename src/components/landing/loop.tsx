@@ -239,7 +239,7 @@ export function LoopSection() {
                           {beat.filename}
                         </span>
                       </div>
-                      <pre className="term-lines overflow-x-auto px-4 py-4 font-mono text-[11px] leading-relaxed text-dim sm:text-[11.5px]">
+                      <pre tabIndex={0} aria-label="terminal — session transcript" className="term-lines overflow-x-auto px-4 py-4 font-mono text-[11px] leading-relaxed text-dim focus:outline-none focus-visible:ring-2 focus-visible:ring-gold sm:text-[11.5px]">
                         {beat.body}
                       </pre>
                     </div>

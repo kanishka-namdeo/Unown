@@ -57,7 +57,7 @@ export function QuickstartSection() {
                 title="unown — install"
                 actions={<CopyButton text={INSTALL.join("\n")} label="Copy the install commands" />}
               >
-                <pre className="term-lines overflow-x-auto p-4 font-mono text-[12px] leading-relaxed sm:p-5">
+                <pre tabIndex={0} aria-label="terminal — quickstart commands" className="term-lines overflow-x-auto p-4 font-mono text-[12px] leading-relaxed focus:outline-none focus-visible:ring-2 focus-visible:ring-gold sm:p-5">
                   {INSTALL.map((line, i) => {
                     const hash = line.indexOf("#");
                     const cmd = hash === -1 ? line : line.slice(0, hash);

@@ -166,7 +166,7 @@ export function Hero() {
                 </span>
                 <CopyButton text={INSTALL} label="Copy the install commands" />
               </div>
-              <pre className="term-lines overflow-x-auto px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-dim">
+              <pre tabIndex={0} aria-label="terminal — install and start the stack" className="term-lines overflow-x-auto px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-dim focus:outline-none focus-visible:ring-2 focus-visible:ring-gold">
                 {INSTALL}
               </pre>
             </div>
