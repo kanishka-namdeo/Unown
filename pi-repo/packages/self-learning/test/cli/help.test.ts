@@ -32,7 +32,9 @@ describe("clig.dev help surface — `unown help`", () => {
 		expect(run.stdout).toContain("Usage:");
 	});
 
-	test("`unown help doctor|info|update|uninstall|completions|setup` each print their own page", async () => {
+	test(
+		"`unown help doctor|info|update|uninstall|completions|setup` each print their own page",
+		async () => {
 		for (const [topic, marker] of [
 			["doctor", "usage: unown doctor"],
 			["info", "usage: unown info"],
@@ -45,7 +47,11 @@ describe("clig.dev help surface — `unown help`", () => {
 			expect(run.exitCode).toBe(0);
 			expect(run.stdout).toContain(marker);
 		}
-	});
+	},
+		// six spawned CLI runs take ~5.4s on the Windows runner — over bun's
+		// default 5s test timeout (killed mid-loop there); match golden.test.ts.
+		{ timeout: 60_000 },
+	);
 
 	test("`unown help <unknown>` exits 1 and suggests `unown --help`", async () => {
 		const run = await unown(["help", "definitely-not-a-command"], base());

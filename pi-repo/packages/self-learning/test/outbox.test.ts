@@ -12,7 +12,7 @@
 import "./_env.ts";
 import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { UNOWN_NOTES_DIR, UNOWN_NOTES_DONE_DIR, UNOWN_OUTBOX_DIR, writeOutboxNote } from "../src/term.ts";
 import { syncNoteOutbox } from "../src/outbox.ts";
 import { store } from "../src/store.ts";
@@ -69,7 +69,7 @@ describe("syncNoteOutbox idempotency (MEDIUM-5)", () => {
 		expect(third).toBe(0); // deduped, but the archive retry happens
 		expect(terminalNotes()).toHaveLength(1);
 		expect(existsSync(file)).toBe(false); // archived now
-		expect(existsSync(join(UNOWN_NOTES_DONE_DIR, file.split("/").pop()!))).toBe(true);
+		expect(existsSync(join(UNOWN_NOTES_DONE_DIR, basename(file)))).toBe(true); // basename: POSIX split("/") breaks on Windows paths
 	});
 
 	test("distinct sessions with different content are both ingested (dedup does not over-block)", () => {
