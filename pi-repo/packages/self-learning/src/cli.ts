@@ -58,7 +58,7 @@ import { createMcpExtension } from "./mcp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
-import { cmdUninstall, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
+import { cmdUninstall, findShims, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
 import {
         cmdChangelog,
         cmdUpdate,
@@ -570,6 +570,30 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                         `unreachable — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox`,
                         "warn",
                 );
+        }
+
+        // 6. PATH shim shadowing — a foreign `unown` earlier on PATH is this
+        // repo's OWN observed failure mode (the E2E suite once re-pointed the
+        // shim at a throwaway clone and "unown" kept silently being that one).
+        // findShims orders by PATH precedence; the FIRST hit is what you get.
+        {
+                const root = resolveRepoRoot(realGit);
+                if (root) {
+                        const shims = findShims(root);
+                        const first = shims[0];
+                        if (!first) {
+                                check("PATH shim", true, "no shim on PATH — running from the repo checkout directly", "warn");
+                        } else if (first.ours) {
+                                check("PATH shim", true, first.path);
+                        } else {
+                                check(
+                                        "PATH shim",
+                                        false,
+                                        `shadowed: ${first.path} runs ${first.target ?? "another install"} — this checkout's unown is NOT first on PATH; fix the PATH order or remove the foreign shim`,
+                                        "warn",
+                                );
+                        }
+                }
         }
 
         if (jsonMode) {

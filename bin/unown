@@ -8,8 +8,14 @@
  * this project's .unown/memory/project.md via AutoDream.
  */
 import { runCli } from "../pi-repo/packages/self-learning/src/cli.ts";
+import { writeCrashRecord } from "../pi-repo/packages/self-learning/src/crash.ts";
 
 runCli(process.argv.slice(2)).catch((err) => {
+	// A crash used to print one bare line and vanish. The privacy-first
+	// answer (zero telemetry: nothing is ever SENT) is a LOCAL crash record
+	// the user can attach to a report themselves — see src/crash.ts.
+	const crashPath = writeCrashRecord(err);
 	console.error("unown:", err?.message ?? err);
+	if (crashPath) console.error(`crash record: ${crashPath} — attach it if you report this (also: unown info)`);
 	process.exit(1);
 });

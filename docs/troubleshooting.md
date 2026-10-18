@@ -134,6 +134,7 @@ The same logs apply as everywhere (`.run\bridge.log`, `.run\engine.log`, `.run\d
 | `curl -s localhost:3031/health` | Live bridge state: `upstream {ok, status}`, `upstreamKeyIsSet`, `authRequired`, served `models` |
 | `curl -s localhost:3031/v1/log` | The bridge's request log ring buffer — per-request model, tokens, durations, errors |
 | `curl -s localhost:3030/api/overview` | Engine health + KPIs (runs, dreams) |
+| `~/.unown/crashes/*.json` | Local crash records — if the `unown` CLI itself dies, a sanitized record (error, version, platform; never your prompts or environment) lands here. Nothing is ever sent anywhere: attach the file yourself when you report, and delete freely. |
 
 While reproducing a chat problem, a second terminal with `tail -f .run/bridge.log .run/engine.log` in the unown repo covers most of it: the bridge logs every upstream attempt and the engine logs router activity.
 
