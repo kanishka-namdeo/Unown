@@ -144,7 +144,13 @@ describe("stdioSpawnSpec", () => {
         process.env.MY_TEST_SECRET = "secret-value";
         try {
             const spec = stdioSpawnSpec("srv", ["--key", "${MY_TEST_KEY}"], { SECRET: "${MY_TEST_SECRET}" }, "/w");
-            expect(spec.args[1]).toBe("key-value");
+            if (process.platform === "win32") {
+                // non-.exe commands wrap in cmd.exe: ["/d","/s","/c", <cmd>, ...args]
+                expect(spec.command).toBe("cmd.exe");
+                expect(spec.args[5]).toBe("key-value");
+            } else {
+                expect(spec.args[1]).toBe("key-value");
+            }
             expect(spec.env.SECRET).toBe("secret-value");
         } finally {
             delete process.env.MY_TEST_KEY;

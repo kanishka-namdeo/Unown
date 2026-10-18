@@ -58,24 +58,35 @@ test("findShims marks ours vs foreign (no cross-install deletion)", () => {
         const other = join(home, "other-repo");
         const bin = join(home, "bin");
         for (const d of [join(repo, "bin"), join(other, "bin"), bin]) mkdirSync(d, { recursive: true });
-        writeFileSync(join(bin, "unown"), `#!/usr/bin/env bash\nexec "/b/bun" "${join(repo, "bin", "unown")}" "$@"\n`);
-        writeFileSync(
-                join(bin, "unown-foreign"),
-                `#!/usr/bin/env bash\nexec "/b/bun" "${join(other, "bin", "unown")}" "$@"\n`,
-        );
+        const shim = writePlatformShim(bin, repo);
         const ours = findShims(repo, { UNOWN_BIN_DIR: bin });
         expect(ours.length).toBe(1);
         expect(ours[0].ours).toBe(true);
         // from the OTHER checkout's perspective, the same file is foreign
         const foreign = findShims(other, { UNOWN_BIN_DIR: bin });
         expect(foreign[0].ours).toBe(false);
+        expect(foreign[0].path).toBe(shim);
 });
+
+/** Write the shim dialect the CURRENT platform's link.ts would write. */
+function writePlatformShim(bin: string, repo: string): string {
+        const target = join(repo, "bin", "unown");
+        if (process.platform === "win32") {
+                const p = join(bin, "unown.cmd");
+                writeFileSync(p, `@"C:\\bun.exe" "${target}" %*\n`);
+                return p;
+        }
+        const p = join(bin, "unown");
+        writeFileSync(p, `#!/usr/bin/env bash\nexec "/b/bun" "${target}" "$@"\n`);
+        return p;
+}
 
 describe("cmdUninstall", () => {
         function setup(): {
                 repo: string;
                 home: string;
                 bin: string;
+                shim: string;
                 removed: string[];
                 removedDirs: string[];
                 lines: string[];
@@ -85,12 +96,12 @@ describe("cmdUninstall", () => {
                 const home = join(base, "unown-home");
                 const bin = join(base, "bin");
                 for (const d of [join(repo, "bin"), join(home, "agent"), bin]) mkdirSync(d, { recursive: true });
-                writeFileSync(join(bin, "unown"), `#!/usr/bin/env bash\nexec "/b/bun" "${join(repo, "bin", "unown")}" "$@"\n`);
+                const shim = writePlatformShim(bin, repo);
                 writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "unown", version: "9.9.9" }));
                 const removed: string[] = [];
                 const removedDirs: string[] = [];
                 const lines: string[] = [];
-                return { repo, home, bin, removed, removedDirs, lines };
+                return { repo, home, bin, shim, removed, removedDirs, lines };
         }
 
         function run(flags: UninstallFlags, s: ReturnType<typeof setup>): number {
@@ -115,7 +126,7 @@ describe("cmdUninstall", () => {
                 const s = setup();
                 const code = run({}, s);
                 expect(code).toBe(0);
-                expect(s.removed).toEqual([join(s.bin, "unown")]);
+                expect(s.removed).toEqual([s.shim]);
                 expect(s.removedDirs).toEqual([]);
                 expect(s.lines.join("\n")).toContain("kept");
                 expect(s.lines.join("\n")).toContain("uninstalled");
