@@ -10,7 +10,8 @@
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { cleanup, screen } from "@testing-library/react";
-import { useActivityStore, type ActivityItem } from "@/lib/agent-store";
+import { useActivityStore } from "@/lib/agent-store";
+import type { ActivityItem } from "@/lib/agent-types";
 import { ActivityFeed } from "../activity-feed";
 import { installToastSpy, renderWithProviders, resetActivityStore, resetToasts } from "./helpers";
 

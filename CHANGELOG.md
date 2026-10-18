@@ -11,19 +11,23 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 ### Added
 
-- Community-health surface: `SECURITY.md` (coordinated disclosure + the agent threat model), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SUPPORT.md`, the bug/feature issue forms and PR template under `.github/`, and `docs/BEHAVIOR.md` — the agent behavior card.
-- CI: the mermaid byte-identity gate (README-extracted diagram sources, vendored sha-pinned mermaid 11.16.1 — the version github.com renders — dual fresh-context render with sha256 identity; found and pinned mermaid's `Math.random` shape-generator wobble) and the E2E + a11y gate (`e2e/mock-engine.mjs` zero-dep mock of the engine's REST + SSE contract, 11 Playwright tests: dashboard flows + axe-core WCAG 2.0/2.1 A/AA scans of the landing page and all seven dashboard tabs).
-
-### Fixed
-
-- Dashboard accessibility: 80+ real WCAG 2.1 AA contrast defects (zinc-500/zinc-600 small text on the dark theme, `opacity-70` stat-chip labels, zinc-700 mono captions) and one aria violation (`aria-label` on a role-less span in the difficulty stars) — found by the new axe gate's first run and fixed across `src/components/dashboard/`.
-- CI: the Windows `build-test` leg failed at the version-consistency step since 6f134c7 (POSIX `if [ ... ]` under the runner's default pwsh — the same bug class the integration step had fixed one commit earlier); the step now runs under `shell: bash`. The "all 15 green" receipt that shipped at 8163db3 referenced a typo'd run id and a run that was actually red — corrected in `AGENTS.md` with the observed 16-job green run.
+- README: bespoke four-tier memory-stack diagram (`.github/assets/diagram-memory.png`, GBA brand palette, regenerable from `scripts/brand/diagram-memory.html`, layout-gated by `scripts/check_overflow.mjs`); README restructured 34 KB → 24.5 KB with every moved section landing in `docs/` (integrity gates + session walkthrough → `docs/memory.md`, production notes → `docs/configuration.md`, repository layout → `CONTRIBUTING.md`).
 
 Pending for the next release: user-preference consolidation (the weakest recall-qa axis — single-session-preference warm 0.33 — needs a user-tier dream path) and release/productization standards.
 
 ## [2.0.0] - 2026-10-18
 
-No git tag has been cut yet; 2.0.0 is the version in `package.json` at HEAD. This entry seeds the changelog from the v2 history — the pi-based engine that superseded the v1 Claude Code harness blueprint (preserved under `blueprint/`).
+Tagged as v2.0.0. This entry seeds the changelog from the v2 history — the pi-based engine that superseded the v1 Claude Code harness blueprint (preserved under `blueprint/`).
+
+### Added (folded from Unreleased)
+
+- Community-health surface: `SECURITY.md` (coordinated disclosure + the agent threat model), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SUPPORT.md`, the bug/feature issue forms and PR template under `.github/`, and `docs/BEHAVIOR.md` — the agent behavior card.
+- CI: the mermaid byte-identity gate (README-extracted diagram sources, vendored sha-pinned mermaid 11.16.1 — the version github.com renders — dual fresh-context render with sha256 identity; found and pinned mermaid's `Math.random` shape-generator wobble) and the E2E + a11y gate (`e2e/mock-engine.mjs` zero-dep mock of the engine's REST + SSE contract, 11 Playwright tests: dashboard flows + axe-core WCAG 2.0/2.1 A/AA scans of the landing page and all seven dashboard tabs).
+
+### Fixed (folded from Unreleased)
+
+- Dashboard accessibility: 80+ real WCAG 2.1 AA contrast defects (zinc-500/zinc-600 small text on the dark theme, `opacity-70` stat-chip labels, zinc-700 mono captions) and one aria violation (`aria-label` on a role-less span in the difficulty stars) — found by the new axe gate's first run and fixed across `src/components/dashboard/`.
+- CI: the Windows `build-test` leg failed at the version-consistency step since 6f134c7 (POSIX `if [ ... ]` under the runner's default pwsh); the step now runs under `shell: bash`. The "all 15 green" receipt that shipped at 8163db3 referenced a typo'd run id and a run that was actually red — corrected in `AGENTS.md` with the observed green run.
 
 ### Added
 
