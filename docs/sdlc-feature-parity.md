@@ -50,6 +50,41 @@ were:
 
 Each entry: feature → source → the seam it landed on in this repo.
 
+### Round 4 (2026-10-19 — native web tools: web_search + webfetch)
+
+The field has converged on two native tools every agent ships: **web search**
+(OpenCode `websearch`, Claude Code `WebSearch` with `allowed_domains`/
+`blocked_domains`, Gemini CLI google_web_search, Codex server-side web_search)
+and **web fetch** (OpenCode `webfetch` with HTML→markdown, Claude Code
+`WebFetch` with model summarization). Unown had only `fetch_url` — a plain
+GET-and-strip with no search and a documented-open SSRF gap. The
+implementation is reverse-engineered from the competitors' sources (OpenCode's
+`packages/core/src/tool/plugin/websearch.ts` + provider plugins, Claude
+Code's tool docs, the Roo/OpenClaw provider stacks) and lands in
+`pi-repo/packages/self-learning/src/websearch.ts`:
+
+- **`web_search`** — 17-provider registry with a keyless-first chain that
+  works with zero signup (searxng-self-host → duckduckgo → tavily keyless →
+  youcom free-MCP → stackexchange → wikipedia → hn) and eleven keyed
+  providers that auto-join when their env key appears (tavily, serper, exa,
+  brave, perplexity, dashscope enable_search, jina, zhipu, firecrawl, kagi,
+  serpapi — quality-then-cost priority). Claude-Code-parity domain filters,
+  per-provider failure notes surfaced to the model, `UNOWN_WEB_SEARCH_PROVIDER`
+  override. Live-verified receipts: `benchmarks/websearch-live/` (5 free
+  providers answering real queries from a hostile datacenter IP; a real
+  end-to-end agent session — model calls `web_search`, the chain cascades
+  dashscope-429 → ddg-challenge → tavily-keyless, returns 8 results, the
+  model answers with a source URL).
+- **`webfetch`** — the hardened fetch pipeline `fetch_url` now shares:
+  `assertFetchableUrl` SSRF guard (private/reserved IPv4+IPv6 refused literal
+  AND post-DNS — closes testing-strategy §7.3), robots.txt honoring with a
+  15-min cache, 4 MB caps, and an extraction fallback chain for bot-walled
+  sites (direct → Tavily extract keyless → Jina reader → Firecrawl) —
+  Claude/OpenCode ship the fallback idea too; ours is keyless-first.
+- Seams: registered through the unown-tools extension (TUI/print/subagents/
+  plan mode all inherit), sandbox runs gated on `UNOWN_SANDBOX_NET=1`, kill
+  switches per tool, all env read call-time per the package convention.
+
 ### Round 3 (2026-10-19 — dashboard engine-parity + observability + automations surface)
 
 The dashboard's own contract outran its code: two fully-typed data sources

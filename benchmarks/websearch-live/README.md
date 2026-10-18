@@ -50,3 +50,23 @@ The harness also exercises the fetch pipeline's direct path (HTML → text).
 The fallback chain (Tavily extract keyless → Jina reader → Firecrawl) is
 exercised by the unit suite against mock payloads; Tavily keyless extract
 was live-verified manually (returns full markdown without a key).
+
+## End-to-end agent receipt
+
+`results/e2e-agent-web-search-session.jsonl` — a real terminal-agent session
+(kimi-k2.5 through the llm-bridge) where the model invokes the native
+`web_search` tool: the query "Bun javascript runtime latest version"
+cascaded dashscope-429 (hourly quota) → searxng-down → duckduckgo-challenge
+→ **tavily keyless, 8 results**, and the model answered "**Bun v1.4.3** —
+Source: npm registry". The chain's per-provider notes are visible in the
+tool result — the fallback design doing exactly what it was built to do
+under partial outage.
+
+## Cross-platform
+
+The implementation is pure `fetch` + `node:dns/promises` — no child
+processes, no file paths, no `process.platform` branches — so it is
+cross-platform by construction. The 3-OS CI matrix (`build-test` job) runs
+the engine suite including `test/websearch.test.ts` on ubuntu, macos and
+windows. Proxy note: unown runs on Bun, whose `fetch` honors
+`HTTP_PROXY`/`HTTPS_PROXY` natively.

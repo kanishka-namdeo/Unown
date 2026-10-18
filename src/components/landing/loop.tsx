@@ -87,7 +87,7 @@ const BEATS: Beat[] = [
       "",
       "## Workflow",
       "- Unown sessions have access to: todo, note, task,",
-      "  fetch_url, read, ls, grep.",
+      "  web_search, webfetch, fetch_url, read, ls, grep.",
       "",
       "## Engine restart procedure",
       "- Find bun --hot PID with cwd mini-services/agent-service.",

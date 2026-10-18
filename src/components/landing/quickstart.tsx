@@ -113,6 +113,9 @@ export function QuickstartSection() {
               typed replies via <code className="font-mono text-dim">output_schema</code> and
               per-child git worktree isolation via{" "}
               <code className="font-mono text-dim">worktree_isolation</code>),{" "}
+              <code className="font-mono text-dim">web_search</code> +{" "}
+              <code className="font-mono text-dim">webfetch</code> (native web access —
+              keyless providers work out of the box, 17 total),{" "}
               <code className="font-mono text-dim">fetch_url</code> and{" "}
               <code className="font-mono text-dim">lsp</code> (language-server intelligence —
               diagnostics ride every edit). MCP servers configured in{" "}
