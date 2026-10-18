@@ -34,9 +34,12 @@ const runSuite = process.argv[2] === "--run";
 const args = process.argv.slice(2).filter((a) => a !== "--run");
 // --run <git-base>: the report goes to a FIXED gitignored path — the base
 // must never double as the report filename (it once did, and a 406-line file
-// literally named "517a4f2" got committed). Report-file mode keeps
+// literally named "517a4f2" got committed). "coverage.txt" at the repo root
+// is the gitignored location this script has always used (see .gitignore);
+// it must NOT move under download/ — that dir does not exist on a fresh CI
+// checkout (found red in run 39105506055). Report-file mode keeps
 // <report> <base> positional order.
-const reportFile = runSuite ? "download/coverage.txt" : (args[0] ?? "coverage.txt");
+const reportFile = runSuite ? "coverage.txt" : (args[0] ?? "coverage.txt");
 const baseArg = (runSuite ? args[0] : args[1]) ?? process.env.GITHUB_BASE_REF ?? "HEAD~1";
 
 const fail = (msg) => {
