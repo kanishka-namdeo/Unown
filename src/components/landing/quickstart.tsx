@@ -8,7 +8,8 @@ const INSTALL = [
   "cd Unown",
   "bun run agent:install     # deps + pi build + .env",
   "unown setup               # connect any model",
-  "unown                     # first session — memory on",
+  "bun run agent:start       # engine :3030 + bridge :3031 + dashboard :3000",
+  "unown                     # first session — notes queue for the engine",
 ];
 
 const COMMANDS: [string, string][] = [
@@ -43,7 +44,7 @@ export function QuickstartSection() {
               Quickstart
             </p>
             <h2 className="mt-3 font-display text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-              Three commands and a model key.
+              Clone it, point it at a model, run it.
             </h2>
             <p className="mt-4 max-w-md text-pretty leading-relaxed text-dim">
               It is a clone-and-run tool. There is no account, no cloud, and no key that

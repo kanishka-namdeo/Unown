@@ -1,7 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FadeUp, SectionHead } from "./shell";
+import { FadeUp, SectionHead, GITHUB_URL, BENCH_URL } from "./shell";
+
+const SRC = (file: string) => `${GITHUB_URL}/blob/main/pi-repo/packages/self-learning/src/${file}`;
+const RECEIPTS: [string, string][] = [
+  ["SECURITY.md", `${GITHUB_URL}/blob/main/SECURITY.md`],
+  ["the threat model", `${GITHUB_URL}/blob/main/docs/configuration.md`],
+  ["sandbox profile", SRC("bwrap.ts")],
+  ["hook layer", SRC("hooks.ts")],
+];
 
 /* ------------------------------------------------------------------ */
 /* the gates                                                           */
@@ -116,8 +124,16 @@ export function IntegritySection() {
                 And one eval we report at zero
               </p>
               <p className="mt-2 text-[13px] leading-relaxed text-canvas">
-                Our own <span className="font-medium">extension-authoring eval</span> scores{" "}
-                <span className="font-medium">0.0</span> for every model. Reported as-is.
+                Our own{" "}
+                <a
+                  href={BENCH_URL}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="font-medium underline underline-offset-2"
+                >
+                  extension-authoring eval
+                </a>{" "}
+                scores <span className="font-medium">0.0</span> for every model. Reported as-is.
               </p>
             </div>
           </FadeUp>
@@ -170,8 +186,9 @@ export function IntegritySection() {
                   your <span className="font-mono text-ink">.env</span> and the engine
                   database are not visible from inside. The network namespace is killed and
                   capabilities are dropped. A vendored bwrap binary with recorded sha256
-                  provenance means this works even where bubblewrap is not installed; hosts
-                  without it fall back to the in-process path jail.
+                  provenance means this works even where bubblewrap is not installed; on macOS the
+                  same profile runs under Seatbelt, and hosts with neither fall back to the
+                  in-process path jail.
                 </p>
               </div>
               <div>
@@ -186,6 +203,21 @@ export function IntegritySection() {
                   restores sandbox-grade strictness.
                 </p>
               </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-4">
+              <span className="gb-label text-[9px] text-gold">Read the receipts</span>
+              {RECEIPTS.map(([label, href]) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="font-mono text-[11.5px] text-gold underline-offset-4 hover:underline"
+                >
+                  {label}
+                </a>
+              ))}
             </div>
           </FadeUp>
         </div>

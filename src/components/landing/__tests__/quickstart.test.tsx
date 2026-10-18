@@ -21,12 +21,13 @@ afterEach(() => {
 describe("landing QuickstartSection", () => {
         test("renders the clone-and-run install sequence", () => {
                 const { container } = render(<QuickstartSection />);
-                expect(container.textContent).toContain("Three commands and a model key.");
+                expect(container.textContent).toContain("Clone it, point it at a model, run it.");
                 for (const line of [
                         "git clone https://github.com/kanishka-namdeo/Unown.git",
                         "cd Unown",
                         "bun run agent:install",
                         "unown setup",
+                        "bun run agent:start",
                 ]) {
                         const escaped = line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                         expect(screen.getAllByText(new RegExp(escaped)).length).toBeGreaterThan(0);

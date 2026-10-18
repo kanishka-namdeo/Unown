@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { BrowserFrame, FadeUp, SectionHead } from "./shell";
 
@@ -30,7 +29,7 @@ export function ShowcaseSection() {
               </>
             }
           >
-            A self-improving agent you cannot watch is a rumour.
+            What the running engine looks like.
           </SectionHead>
         </FadeUp>
 
@@ -74,13 +73,13 @@ export function ShowcaseSection() {
                   </FadeUp>
                 ))}
               </ul>
-              <Link
-                href="/dashboard"
+              <a
+                href="#quickstart"
                 className="mt-6 inline-flex items-center gap-2 text-sm text-gold underline-offset-4 hover:underline"
               >
-                Open the dashboard
+                Install it and open the dashboard
                 <ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
+              </a>
               <p className="mt-3 text-[11px] leading-relaxed text-faint">
                 Needs the engine on{" "}
                 <span className="font-mono">:3030</span>, start it with{" "}

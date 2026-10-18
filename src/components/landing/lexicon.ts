@@ -56,7 +56,7 @@ export const LEXICON: LexiconEntry[] = [
     lore: "A lenticular decoder card shipped with Pokémon 3 to read the hidden messages.",
     loreSrc: "Gen III special edition",
     means: "Cold against warm. The same ten tasks, fresh memory versus dreamed memory.",
-    proof: "benchmarks/self-improvement",
+    proof: "benchmarks/selfimprove",
   },
   {
     id: "D",
@@ -196,7 +196,7 @@ export const LEXICON: LexiconEntry[] = [
     lore: "336 base stats, one essentially-random move, and the fandom learned the alphabet anyway.",
     loreSrc: "Base stats · reception",
     means: "Warm memory. Repeat tasks with dreamed memory carried into fresh workspaces.",
-    proof: "benchmarks/self-improvement",
+    proof: "benchmarks/selfimprove",
   },
   {
     id: "X",

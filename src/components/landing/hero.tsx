@@ -8,7 +8,8 @@ import { StarCount } from "./star-count";
 const INSTALL = [
   "git clone https://github.com/kanishka-namdeo/Unown.git",
   "cd Unown && bun run agent:install",
-  "unown setup --provider dashscope --api-key sk-…",
+  "unown setup",
+  "bun run agent:start",
   "unown",
 ].join("\n");
 
@@ -114,7 +115,7 @@ export function Hero() {
               column's intrinsic width and the section clips it on phones. */}
           <div className="max-w-2xl min-w-0">
             <p className="gb-label text-[10px] text-gold">
-              Open source · MIT · built on the pi agent
+              Open-source AI coding agent · built on pi
             </p>
 
             <h1 className="mt-5 font-display text-balance text-[2.75rem] font-semibold leading-[1.04] tracking-tight sm:text-6xl lg:text-[4.25rem]">
@@ -161,7 +162,7 @@ export function Hero() {
             <div className="mt-8 max-w-xl overflow-hidden gb-panel">
               <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-                  five minutes to a smarter terminal
+                  five commands to a terminal that remembers
                 </span>
                 <CopyButton text={INSTALL} label="Copy the install commands" />
               </div>

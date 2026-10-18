@@ -98,8 +98,8 @@ const INFRA = [
   {
     title: "The dashboard",
     body: "Runs, cycles, dreams and memory versions stream live, and any of them roll back in one click.",
-    file: "/dashboard",
-    href: "/dashboard",
+    file: "see it in screenshots",
+    href: "#showcase",
   },
 ];
 
@@ -114,7 +114,7 @@ export function MechanismsSection() {
         {/* the problem, stated plainly */}
         <FadeUp className="max-w-2xl">
           <SectionHead kicker="The problem">
-            An agent that forgets is a tax you pay every morning.
+            What goes wrong without persistent memory.
           </SectionHead>
         </FadeUp>
 

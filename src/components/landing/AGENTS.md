@@ -23,6 +23,14 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
   order in `page.tsx` is the page's argument — the comment above the component
   explains each placement, and `NAV_LINKS` in `shell.tsx` mirrors the anchors.
   Adding a section means adding it in both places or the page grows an orphan.
+- **Dashboard affordances link in-page, never to `/dashboard`.** The marketing
+  route is the only thing Vercel hosts; the live `/dashboard` there has no
+  engine behind it and would show an empty app. So the nav "Dashboard", the
+  footer "Dashboard" and the mechanisms infrastructure tile point at
+  `#showcase` (the captured screenshots), and the showcase call-to-action points
+  at `#quickstart` ("Install it and open the dashboard"). `__tests__/landing-copy.test.tsx`
+  asserts these targets — restoring a `/dashboard` href is a regression, not a
+  fix.
 - **The Unown script is the identity.** `glyphs.ts` holds 28 stroke paths on a
   100×100 grid plus `EYES[]` (per-form eye placement) and `MARKS` (decorative
   non-letters). It is drawn from scratch: no Pokémon sprite, card, logo or font
@@ -288,8 +296,9 @@ parallel ones.
      Rule: **one line per section, and each line earns its place by being a
      different kind of thing** — aphorism, reveal, callback, joke, admission,
      plain instruction. Six aphorisms in a row is a drumbeat. `quickstart.tsx`
-     is deliberately a plain instruction ("Three commands and a model key.")
-     to break that run, and `integrity.tsx` carries the page's only admission.
+     is deliberately a plain instruction ("Clone it, point it at a model, run
+     it.") to break that run, and `integrity.tsx` carries the page's only
+     admission.
   3. **Raise the lore share by cutting, not by writing.** A duplicate fact is
      the cheapest word on the page to delete and the only lever that raises the
      ratio without inventing prose. The second audit deleted ~450 words of

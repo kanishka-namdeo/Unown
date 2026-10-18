@@ -467,13 +467,13 @@ export function Nav() {
               {l.label}
             </a>
           ))}
-          <Link
-            href="/dashboard"
+          <a
+            href="#showcase"
             className="group relative text-[13px] text-dim transition-colors hover:text-gold focus-visible:text-gold focus:outline-none"
           >
             <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
             Dashboard
-          </Link>
+          </a>
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5 lg:ml-0">
@@ -630,9 +630,9 @@ export function Footer() {
             <a href={DOCS_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-gold">
               Documentation
             </a>
-            <Link href="/dashboard" className="text-dim transition-colors hover:text-gold">
+            <a href="#showcase" className="text-dim transition-colors hover:text-gold">
               Dashboard
-            </Link>
+            </a>
             <a href={BENCH_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-gold">
               Benchmarks
             </a>
