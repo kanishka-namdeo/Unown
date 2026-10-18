@@ -84,7 +84,14 @@ export function ModelsBand() {
                 <code className="font-mono text-dim">
                   node benchmarks/local-llm/runner.mjs serve
                 </code>{" "}
-                downloads llama.cpp and a GGUF on first use and serves the lane. Or skip
+                downloads llama.cpp and a GGUF on first use and serves the lane.
+                Below that sits a zero-LLM tier, measured in{" "}
+                <code className="font-mono text-dim">benchmarks/nonllm</code>:
+                note dedup (MinHash at ~0.2ms/note), dream-input ranking
+                (a 33M ONNX encoder, 15ms) and curation run fully local on
+                CPU, verified on Linux/macOS/Windows CI under both Bun and
+                Node — the LLM calls that remain are only the ones that
+                genuinely generate. Or skip
                 the bridge entirely with{" "}
                 <code className="font-mono text-dim">unown setup --provider</code>. Marks
                 are{" "}
