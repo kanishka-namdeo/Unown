@@ -36,7 +36,7 @@ const RUNNER_LIST = ["node", "npm", "npx", "pnpm", "yarn", "bun", "deno", "pytho
 
 /** Canary sample size (env-tunable; 0 or negative disables sampling). */
 export function canaryK(): number {
-        const n = Number(process.env.PI_DREAM_CANARY_K ?? 3);
+        const n = Number(process.env.PI_DREAM_CANARY_K || 3); // `||`: Number("") is 0
         if (!Number.isFinite(n)) return 3;
         return Math.floor(n);
 }

@@ -7,7 +7,7 @@
 import { emit } from "./bus.ts";
 import { BRIDGE_URL } from "./store.ts";
 
-const LLM_MODEL = process.env.PI_MODEL_ID ?? "kimi-k2.5";
+const LLM_MODEL = process.env.PI_MODEL_ID || "kimi-k2.5"; // `||`: empty .env value means unset
 
 /**
  * Bridge endpoint, read at CALL time (not module-load time): tests and
@@ -16,7 +16,7 @@ const LLM_MODEL = process.env.PI_MODEL_ID ?? "kimi-k2.5";
  * pre-existing process-wide behavior.
  */
 function bridgeUrl(): string {
-        return process.env.PI_BRIDGE_URL ?? BRIDGE_URL;
+        return process.env.PI_BRIDGE_URL || BRIDGE_URL; // `||`: empty .env value means unset
 }
 
 /**

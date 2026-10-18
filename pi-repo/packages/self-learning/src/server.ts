@@ -17,7 +17,7 @@ import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from 
 import { store } from "./store.ts";
 import { getTask, listTasks, seedTasks } from "./tasks.ts";
 
-const PORT = Number(process.env.PI_AGENT_PORT ?? 3030);
+const PORT = Number(process.env.PI_AGENT_PORT || 3030); // `||`: Number("") is 0, not the default
 
 export interface ApiRequest {
         method: string;
@@ -351,7 +351,7 @@ export function startServer(port: number = PORT) {
                 // all interfaces would expose the whole learning surface to the LAN.
                 // Opt in deliberately (LAN/dashboard-from-another-device) via
                 // UNOWN_ENGINE_HOST=0.0.0.0.
-                hostname: process.env.UNOWN_ENGINE_HOST ?? "127.0.0.1",
+                hostname: process.env.UNOWN_ENGINE_HOST || "127.0.0.1", // `||`: empty means unset
                 idleTimeout: 255, // SSE streams + long-lived API connections
                 async fetch(req) {
                         const url = new URL(req.url);

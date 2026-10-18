@@ -84,20 +84,23 @@ export interface BridgeConfig {
  *   BRIDGE_MIN_SPACING_MS 400.
  */
 export function loadConfig(env: Record<string, string | undefined> = process.env): BridgeConfig {
-        const defaultModel = env.BRIDGE_MODEL ?? "kimi-k2.5";
+        // `||` (never `??`) on every defaulted var: bun auto-loads the repo .env
+        // where optional vars ship EMPTY ("KEY=") — an empty value must mean
+        // "unset, use the default", or Number("") = 0 flips ports/thresholds.
+        const defaultModel = env.BRIDGE_MODEL || "kimi-k2.5";
         return {
-                port: Number(env.BRIDGE_PORT ?? 3031),
+                port: Number(env.BRIDGE_PORT || 3031),
                 apiKey: env.BRIDGE_API_KEY ?? "",
                 defaultModel,
-                upstreamUrl: (env.BRIDGE_UPSTREAM_URL ?? "https://coding-intl.dashscope.aliyuncs.com/v1").replace(/\/+$/, ""),
+                upstreamUrl: (env.BRIDGE_UPSTREAM_URL || "https://coding-intl.dashscope.aliyuncs.com/v1").replace(/\/+$/, ""),
                 upstreamKey: env.BRIDGE_UPSTREAM_KEY ?? "",
-                routeDefault: env.BRIDGE_ROUTE_DEFAULT ?? defaultModel,
-                knownModels: (env.BRIDGE_KNOWN_MODELS ?? "kimi-k2.5,qwen3.7-plus,qwen3.6-plus")
+                routeDefault: env.BRIDGE_ROUTE_DEFAULT || defaultModel,
+                knownModels: (env.BRIDGE_KNOWN_MODELS || "kimi-k2.5,qwen3.7-plus,qwen3.6-plus")
                         .split(",")
                         .map((s) => s.trim())
                         .filter(Boolean),
                 qwenThinking: /^(1|true|yes)$/i.test(env.BRIDGE_QWEN_THINKING ?? ""),
-                minSpacingMs: Number(env.BRIDGE_MIN_SPACING_MS ?? 400),
+                minSpacingMs: Number(env.BRIDGE_MIN_SPACING_MS || 400),
                 localUrl: (env.BRIDGE_LOCAL_URL ?? "").replace(/\/+$/, ""),
                 localKey: env.BRIDGE_LOCAL_KEY ?? "",
                 localModels: (env.BRIDGE_LOCAL_MODELS ?? "")
@@ -114,7 +117,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
  * BRIDGE_UPSTREAM_TIMEOUT_MS yields NaN (pinned as a QUIRK in pure.test.ts).
  */
 export function upstreamTimeoutMs(env: Record<string, string | undefined> = process.env): number {
-        return Math.max(5000, Number(env.BRIDGE_UPSTREAM_TIMEOUT_MS ?? 180_000));
+        return Math.max(5000, Number(env.BRIDGE_UPSTREAM_TIMEOUT_MS || 180_000)); // `||`: Number("") is 0
 }
 
 // ---------------------------------------------------------------------------
