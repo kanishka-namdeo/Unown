@@ -69,7 +69,9 @@ jobs:
         run: bun test test/
       - name: Engine integration suite (real server + mock bridge)
         working-directory: pi-repo/packages/self-learning
-        run: PI_TEST_SCOPE=integration bun test test/integration/
+        env:
+          PI_TEST_SCOPE: integration
+        run: bun test test/integration/
       - name: Bridge unit suite
         working-directory: mini-services/llm-bridge
         run: bun test pure.test.ts

@@ -93,9 +93,13 @@ jobs:
       - name: Engine integration suite (real server + mock bridge)
         # testing-strategy.md §6 gate 12: 10 tests, in-process scratch engine
         # (ephemeral port, temp DB/data) against a mock OpenAI-compatible
-        # bridge — hermetic, no network, runs on all three OSes.
+        # bridge — hermetic, no network, runs on all three OSes. The env var
+        # goes through `env:` (NOT the POSIX `VAR=x cmd` prefix, which
+        # windows pwsh treats as a command name and fails).
         working-directory: pi-repo/packages/self-learning
-        run: PI_TEST_SCOPE=integration bun test test/integration/
+        env:
+          PI_TEST_SCOPE: integration
+        run: bun test test/integration/
       - name: Version consistency (unown --version === package.json)
         # clig.dev: the version flag is a contract. The ROOT package.json is
         # the source of truth; cli.ts reads it directly — this asserts the
