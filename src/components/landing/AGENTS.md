@@ -6,16 +6,22 @@ The marketing landing page served at `/` and auto-deployed to Vercel by a push t
 `main`. Fourteen self-contained sections plus the shared primitives they are
 built from: a hand-drawn 28-form "Unown script", the Pokédex-derived lexicon
 each form decodes, an accessible terminal session replay, the shipping rail that
-renders `CHANGELOG.md` (the one section whose content is generated, not authored
-here), and the effects layer that owns scroll reveals, the letter-rain and the
-Konami easter egg.
+renders `CHANGELOG.md`, and the effects layer that owns scroll reveals, the
+letter-rain and the Konami easter egg. Three of those sections are derived from
+repository artifacts instead of authored here — the rail, the benchmark figures
+and the engine's job cadence — and a fourth (the quoted hook decisions) is
+hand-written but gated against the code that emits it. The generators and the
+gate are what make "every number on this page is checkable" a build result
+rather than a caption; the contracts live under Local Contracts.
 
 ## Ownership
 
 - Owns: everything in this folder, plus `src/app/landing.css` (its stylesheet),
   `src/app/page.tsx` (composition only) and `scripts/vendor-provider-marks.mjs`.
-  It also owns the contract of `scripts/landing_changelog.mjs`, which lives in
-  `scripts/` but exists only to feed `changelog-data.ts` in this folder.
+  It also owns the contracts of `scripts/landing_changelog.mjs`,
+  `scripts/landing_benchmarks.mjs` and `scripts/landing_claims.mjs`, which live
+  in `scripts/` but exist only to feed `changelog-data.ts`, `benchmarks-data.ts`
+  and `engine-data.ts` in this folder.
 - Owns the landing palette, which is declared in `src/app/globals.css` — see
   Local Contracts for why it cannot live here.
 - Children: none. A flat folder.
@@ -56,8 +62,9 @@ Konami easter egg.
   `benchmarks/`. Unverifiable live counters ("60+ verified runs") must never
   appear — they are not checkable in this checkout and the page's whole argument
   is that its numbers are checkable.
-- **The shipping rail (`changelog.tsx`) is the page's only generated section,
-  and that is what makes the rule above enforceable instead of aspirational.**
+- **The shipping rail (`changelog.tsx`) is the generated section this folder's
+  other two derivations copy, and together they are what make the rule above
+  enforceable instead of aspirational.**
   `changelog-data.ts` is written by `scripts/landing_changelog.mjs` from
   `CHANGELOG.md` and is never hand-edited: `bun scripts/landing_changelog.mjs`
   regenerates it, and `bun scripts/landing_changelog.mjs --check` (CI's landing
@@ -115,6 +122,39 @@ Konami easter egg.
   and authored from its finished state (scroll-driven animation is not Baseline:
   Chrome/Edge 115+ and Safari 26, no Firefox), and it is off under
   `prefers-reduced-motion`. Nothing on the band reveals by tweening `width`.
+- **The benchmark figures are generated too, for the same reason.**
+  `benchmarks-data.ts` is written by `scripts/landing_benchmarks.mjs` from the
+  receipt JSON under `benchmarks/` — the most-churned directory in the
+  repository — and `bun scripts/landing_benchmarks.mjs --check` is a CI step in
+  the landing job. The tie-break is the script's rule, not an editorial choice:
+  where a track has a `rerun-*` verification directory, the newest rerun wins
+  over the base receipt. Track descriptions and field mappings live in the
+  generated file, beside the receipts they describe, so this section file holds
+  layout and argument only.
+  - **no count that moves with every commit may be printed here.** The section
+    carried a test-count card whose headline figure was the sum of three stale
+    numbers, and an assertion total that exists nowhere in the repository. It
+    now names each suite by path and by the command that runs it: verifiable,
+    and it does not rot overnight. A test total is not a checkable artifact, it
+    is a timestamp.
+  - **a figure with no receipt is cut, never re-worded.** `2.4–5.4× fewer input
+    tokens` stays because `benchmarks/edit-bench/results/RESULTS.md` states it;
+    `300 scored runs across two days` went because nothing anywhere did.
+- **Quoted engine strings are gated, and the job list is generated.**
+  `scripts/landing_claims.mjs` does two jobs this folder's honesty rule depends
+  on. It writes `engine-data.ts` from `JOB_DEFS` in `router.ts`, so
+  `origin.tsx`'s job listing and `mechanisms.tsx`'s "seven jobs … five on a
+  timer, two on events" are read from the scheduler rather than retyped:
+  `ENGINE_JOBS` and `ENGINE_JOB_COUNTS` are the only legal source for a job id,
+  interval or tally on this page. And it gates every literal the page presents
+  as engine output — `integrity.tsx`'s hook log, all three `loop.tsx` beats
+  including the `.unown/memory/project.md` excerpt, `quickstart.tsx`'s command
+  names — against the files that write them. Two consequences for anyone editing
+  that copy: a quoted line may be **wrapped** for the terminal column but never
+  **re-worded**, and a paraphrase of a real message is a failing gate, not a
+  style choice. The check is strictly one-directional (page implies source)
+  because `cli.ts` HELP is a superset by design — a gate that punished a
+  deliberate omission would be switched off within a week.
 - **Every fact is stated exactly once, in the section that argues it.** A
   measurement audit found the verify-twice rule stated seven times and the
   sandbox three times, which is what made the page's middle read as a wall: the
@@ -503,6 +543,20 @@ parallel ones.
   `node --test scripts/landing_changelog.test.mjs` (the extractor's rules and
   failure modes). Regenerate with `bun scripts/landing_changelog.mjs`; never
   edit `changelog-data.ts` to make a check pass.
+- **The receipts gate for the benchmark section, same job, same shape:**
+  `bun scripts/landing_benchmarks.mjs` regenerates `benchmarks-data.ts` from the
+  receipt JSON, `bun scripts/landing_benchmarks.mjs --check` fails when the page
+  and the receipts disagree, and
+  `node --test scripts/landing_benchmarks.test.mjs` pins the canonical-run rule
+  and the percentage validation. All three are CI steps in the landing job.
+- **The quoted-string gate, run it whenever you touch engine copy:**
+  `bun scripts/landing_claims.mjs --check` (root `check:claims`) regenerates the
+  jobs data check and resolves every quoted literal;
+  `node --test scripts/landing_claims.test.mjs` pins the matcher itself,
+  including the one-directional rule. When it fails, it prints
+  `FAIL <file>:<line> "<literal>" not found in <source>` — fix the page or fix
+  the claim, never the matcher, unless the matcher is genuinely wrong about the
+  source.
 - Visual check is required, not optional. Serve the production build
   (`$env:PORT=3111; $env:NODE_ENV=production; bun .next/standalone/server.js`)
   and run `bun scripts/landing_shots.mjs --mobile` — it photographs every

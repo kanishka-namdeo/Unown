@@ -1135,3 +1135,197 @@ not tab count — unchanged). Sourcing: the tab exists and is pinned by
 `__tests__/automations-tab.test.tsx` (12 tests) and the e2e specs scan it;
 no screenshots claim to show it (same posture as the previous two additions —
 the visible BrowserFrames still depict Overview/Learning Lab/Hooks).
+
+## 2026-10-19 — the page stops hand-copying the repository (audits ran 10-18)
+
+The rail went horizontal, and the same question was then asked of every other
+section: **is this content hand-copied from a source of truth that moves?** Six
+read-only audits ran over the section files, the engine, the receipts and the
+docs. The finding was not that the page was ugly; it was that the page had been
+quietly becoming a copy of the repository rather than a view onto it, and copies
+drift.
+
+### What the audits actually found
+
+Ranked the way the folder's own rule ranks things — a contradiction with the code
+is worse than a stale count, which is worse than a voice tell:
+
+- **Two figures with no artifact anywhere in the repository.**
+  `16,310 assertions` appears in exactly one place in the whole tree: the page
+  that asserts it. `300 scored runs across two days` likewise — nothing in
+  `benchmarks/polyglot/` states it, and the run files do not add up to it on
+  their own.
+- **An aggregate that was the sum of three stale numbers.** The card's headline
+  `846 harness tests · 0 fail` was `206 + 102 + 538`. The real figures at audit
+  time were 241, 109 and ~729, and the docs themselves quote three different
+  bridge counts (95 / 102 / 109) depending on the file. A number that is wrong
+  in the source is wrong in the sum regardless of the arithmetic.
+- **A superseded receipt printed as if current.** `5,342 repo tests green` still
+  has its snapshot under `benchmarks/snapshots/`, but
+  `docs/testing-strategy.md` says in as many words that the figure predates the
+  fixture fix and that the standing rule is per-platform, not one global total.
+- **A log row the engine never writes.** `integrity.tsx`'s `Stop` row read
+  `session ended · note queued → engine`. No such string exists in
+  `hooks.ts` or `termhooks.ts`; the real ones are `agent loop ended after N
+  messages` and `session note delivered to engine` / `queued in outbox`. The
+  network-deny row was also truncated mid-string, dropping `in the sandbox`.
+- **A whole beat of the loop section that is not in the code.** `loop.tsx`'s
+  Learn panel opened with `baseline failed impl-map-limit - 0/1 verification`
+  and `diagnosis loop drops the trailing window edge`. Grepping the package for
+  either returns zero hits. The section's own doc comment claimed "every `body`
+  below is the literal format the engine writes, not a paraphrase".
+- **A link pointing at the wrong file.** The receipts row labelled
+  "the threat model" went to `docs/configuration.md`, which is an env-var
+  reference with no threat-model content. The threat model is
+  `SECURITY.md#agent-threat-surface`.
+- **A false statement about the page's own art.** `field-notes.tsx` said "Every
+  form carries one eye at the centre of its counter". `glyphs.ts`'s header
+  comment says the opposite, and documents the split: seven forms (T, I, H, N,
+  X, E, F) have no counter to sit in, so their eye is over the centre of mass.
+- **Figures that contradicted their own campaign.** The zero-LLM paragraph said
+  "33M ONNX encoder, 15ms" for the ranking lane. `benchmarks/nonllm` says the
+  33M model is the bge-small *embedder*, the reranker is 23M, and the per-platform
+  timings are 13/28/39 ms and 11/8/32 ms — the 15 ms and the older "1-2 ms/pair"
+  being saturated-pipeline artifacts that the report itself flags as superseded.
+- **A command list titled "The whole command surface" that omitted five commands
+  and three slash commands** — and a test that could not notice, because it
+  asserted only that a chosen subset was present.
+
+### The taxonomy the fixes follow
+
+Every hand-copied claim got one of five verdicts, and the interesting part is
+that the answer is different per claim rather than one policy for the page:
+
+| Verdict | Applied to | Why |
+|---|---|---|
+| **GENERATE** | benchmark figures, the shipping rail, the job cadence | a machine-readable source exists and churns; a script can read it and CI can re-derive it |
+| **GATE** | quoted hook/harness literals, the project-memory excerpt, the CLI command names | the text is authored for rhythm but must still exist in code; assert page→source, one direction |
+| **LINK** | the zero-LLM timings, the regression-layer suites | the honest claim is "the receipt says so", not a number re-typed into markup |
+| **CUT** | every test-count aggregate, the two invented figures, the run total | no artifact, and the claim cannot be repaired without inventing one |
+| **LEAVE** | lore, layout, argument, the provider tiles | genuinely authored; the provider list and `setup.ts` presets are deliberately different sets, so gating them would be wrong |
+
+`scripts/landing_benchmarks.mjs` and `scripts/landing_claims.mjs` are the first
+two verdicts made executable, next to `landing_changelog.mjs`. All three follow
+the same shape: committed generated file, `--check` in CI, and a separate unit
+suite that pins the *extraction rules* — because a `--check` that compares the
+committed file against the same parser cannot see a parser that mislabels
+something.
+
+### Why the page no longer prints test counts
+
+This is a content decision, not a tooling one, and it is worth stating because
+it removes the page's biggest number. A test total changes on almost every
+commit. A page whose entire argument is "every number here is checkable" gains
+nothing from printing a number that is a timestamp: it is checkable for about an
+hour, and after that it is a small lie that nobody wrote. The regression-layer
+card now names each suite by path and by the command that runs it, which is
+checkable indefinitely and says something the count never said — where the tests
+live and how to run them.
+
+The same reasoning killed `5,342 repo tests green` in the headline stat row and
+replaced it with `0/50 attacker rules shipped`, which is a measured result in
+`benchmarks/memory-eval/mpbench/RESULTS.md` and does not move when someone adds
+a test.
+
+### Two defects in the gates themselves, found while wiring this up
+
+Both are in the rail's tooling, and both are the "gate that lies" class this doc
+keeps hitting:
+
+- The curated-title override warning fired on every *fixture* parse, because the
+  parser was being asked to report unused keys even when it was handed a
+  three-line test document. A warning that cries wolf is a warning that gets
+  ignored, so it is now scoped to real-file parses.
+- The parser's own test suite spawned the CLI and asserted `--check` passes. That
+  couples "the extractor's rules are correct" to "the repository happens to be in
+  sync at this commit", and it duly turned the parser suite red on someone
+  else's commit for a drift reason. The test now asserts only that the CLI
+  *speaks* — exit 0 with its verdict, or exit 1 naming the drift and the fix —
+  which is the thing that could otherwise rot silently into a no-op.
+
+### Receipts
+
+Figures now resolve as: `benchmarks-data.ts` ← 6 tracks ← their receipt JSON,
+with the newest `rerun-*` winning; `engine-data.ts` ← `JOB_DEFS` in
+`router.ts`; the rail ← `CHANGELOG.md`. Gates: `check:changelog`,
+`check:benchmarks`, `check:claims`, plus the three `node --test` suites
+(8 + 15 + 19), all steps in CI's landing job. The claims gate currently resolves
+50 page literals against `hooks.ts`, `termhooks.ts`, `harness.ts`, the CLI HELP
+block and `.unown/memory/project.md`; the memory excerpt is gated rather than
+exempted precisely because AutoDream rewrites that file on a schedule.
+Verification on the production build: units 241 pass / 0 fail, changed-line
+coverage 100% on all ten changed `src/` files, palette PASS, contrast PASS
+(1396 text nodes, both schemes), axe on `/` clean, theme toggle PASS, 28 section
+shots with no console errors, the rail's band claims re-measured, build green.
+
+One process note worth keeping: three gates in this round failed *loudly on
+someone else's commit* within an hour of landing, which is the intended
+behaviour, and one of them failed on a test that had been written to require the
+repository be in sync. A unit suite should assert that a tool is correct and that
+it speaks; a `--check` step should assert that the repository agrees. Conflating
+the two turns a drift failure into a confusing red suite, and that is how a
+reviewer learns to ignore the gate.
+
+### The gates were measured saying no
+
+A drift gate that cannot fail is worse than no gate, because it buys the page a
+false certificate. Each of the three was therefore mutated on purpose, checked,
+and restored byte-identically:
+
+| Injected drift | Verdict |
+|---|---|
+| `CHANGELOG_TOTAL_ENTRIES` 76 → 77 | `check:changelog` exit 1, names the regeneration command |
+| `EDIT_BENCH` kimi `pct` 98.1 → 99.4 | `check:benchmarks` exit 1, names the regeneration command |
+| an `interval` job 10m → 11m | `check:claims` exit 1, `the committed jobs data no longer matches JOB_DEFS` |
+
+The stronger test is the retrospective one: `landing_claims.mjs` was run against
+the page **as committed before this round's copy fixes** — in a detached worktree
+at that commit, so the new script read the old prose. It named six literals the
+engine never writes (`session ended · note queued → engine`, `candidate passed`
+twice, three re-worded `.unown/memory/project.md` lines) and failed 6 of 59. That
+is the difference between a gate that was tuned until it agreed with the page and
+a gate that would have caught the drift when it happened.
+
+### Deliberately out of scope, recorded so it outlives the session
+
+The scope chosen for this round was *contradictions with the code*. Four findings
+are real, unfixed, and each is a one-line or one-section decision:
+
+- **`quickstart.tsx`'s "The whole command surface" is not it.**
+  `src/completions.ts`'s `COMMANDS` list is the authoritative thirteen subcommands
+  (setup, models, init, memory, doctor, mcp, automations, note, update,
+  changelog, info, completions, uninstall); the page shows nine of them plus five
+  invocation forms, so `changelog`, `info`, `completions` and `uninstall` are
+  missing. Either the heading goes (e.g. "what people start with") or the four
+  rows are added — the claims gate already verifies any command name the page
+  prints, so the second option costs four lines. (Measured again after
+  `automations` landed mid-rebase: twelve became thirteen, the missing set did
+  not move.)
+- **Duplication was not cut.** The verify-twice rule and the sandbox description
+  still appear in more than one section; the folder's one-fact-one-home rule is
+  violated on the page even though the audits counted it. That is an editorial
+  pass over voice and length, not a correctness defect, so it did not belong in
+  this round.
+- **No per-section anchors were added** — deep links exist only where a nav or
+  footer needed one. `landing-page.test.tsx` does gate every in-page `href^="#"`
+  against a real id, which is what caught `#showcase` being dead.
+- **Two dated records now disagree with the repository.** `docs/testing-strategy.md`
+  says twelve CI jobs; `.github/workflows/ci.yml` defines fifteen (its own
+  `[V: ci.yml]` annotation marks it as a measurement at a named commit, which is
+  why it was left as a record rather than rewritten). And the `benchmarks/` result
+  tables carry figures that later `rerun-*` receipts superseded — the landing page
+  no longer restates any of them, which was the point of generating rather than
+  copying.
+
+**One merge note, because it is the interesting kind.** While this round's copy
+fixes were uncommitted, another session landed the H15 clause on the same
+paragraph of `models.tsx` — the one whose timings this round deleted. The two
+edits overlap by three lines and agree on nothing but the sentence boundary: one
+added "since H15 those lanes ship in the engine itself", the other removed
+"15 ms" and the single-model attribution. The rebase kept both, and the shipped
+paragraph now distinguishes the three lanes that actually run in `localml.ts`
+(MinHash dedup with an optional bge-small cosine tier, activation ranking,
+LexRank curation) from the two that stay bench-verified (kNN triage, the 23M
+cross-encoder) — a distinction neither side's copy stated on its own. A page
+edited by three sessions in one day is exactly why the derived content is
+generated rather than typed: a merge cannot conflict inside a build result.

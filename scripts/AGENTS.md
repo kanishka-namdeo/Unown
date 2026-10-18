@@ -8,7 +8,7 @@ The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`
 
 ## Ownership
 
-- Owns: the lifecycle scripts (`install.ts`, `link.ts`, `start.ts`, `stop.ts`, `serve-dashboard.ts`, `lib.ts` + their `.sh` wrappers; `dev-all.sh` POSIX-only), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), the README asset pipeline (`scripts/brand/` HTML sources, `shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`), the landing-page verification gates (`gba_palette_check.mjs`, `landing_shots.mjs`, `contrast_audit.mjs`, `theme_toggle_check.mjs`, `landing_og_shots.mjs`), the landing rail generator (`landing_changelog.mjs` + its `node --test` suite `landing_changelog.test.mjs`), the sandbox verification suites (`bwrap_smoke.sh`, `verify_sandbox.mjs`), and the CI gate scripts (`check_coverage.mjs`, `coverage-exempt.txt`, `check_docs.mjs`).
+- Owns: the lifecycle scripts (`install.ts`, `link.ts`, `start.ts`, `stop.ts`, `serve-dashboard.ts`, `lib.ts` + their `.sh` wrappers; `dev-all.sh` POSIX-only), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), the README asset pipeline (`scripts/brand/` HTML sources, `shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`), the landing-page verification gates (`gba_palette_check.mjs`, `landing_shots.mjs`, `contrast_audit.mjs`, `theme_toggle_check.mjs`, `landing_og_shots.mjs`), the landing rail generator (`landing_changelog.mjs` + its `node --test` suite `landing_changelog.test.mjs`), the landing receipts generator (`landing_benchmarks.mjs` + `landing_benchmarks.test.mjs`), the landing engine-claim gate (`landing_claims.mjs` + `landing_claims.test.mjs`), the sandbox verification suites (`bwrap_smoke.sh`, `verify_sandbox.mjs`), and the CI gate scripts (`check_coverage.mjs`, `coverage-exempt.txt`, `check_docs.mjs`).
 - Sandbox-template artifacts also parked here (NOT part of Unown): `init-fullstack.sh`, `scaffold.tar` — installed by the hosting sandbox, tracked only for provenance.
 
 ## Local Contracts
@@ -57,6 +57,51 @@ The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`
   the extraction rules, the fail-loud paths, and spawns the CLI to assert it
   still prints a verdict — a self-invocation guard that never matches would exit
   0 having done nothing, which is how a gate becomes decorative.
+- Landing receipts contract: `landing_benchmarks.mjs` is the same pattern
+  applied to the benchmark figures. It reads each track's receipt JSON under
+  `benchmarks/` and writes `src/components/landing/benchmarks-data.ts`, which
+  `benchmarks.tsx` renders; `--check` (root `check:benchmarks`, a CI step in the
+  landing job) fails when the page and the receipts disagree. The rules that must
+  survive edits:
+  - **canonical-run tie-break**: where a track has one or more `rerun-<date>`
+    directories, the newest wins over `results/summary.json`; selection sorts by
+    name, never by filesystem order. This matters because the receipts
+    genuinely disagree (evalplus kimi 93.29 vs 93.9, edit-bench qwen 99.1 vs
+    96.2, polyglot pass@2 100 vs 96) and `benchmarks/RESULTS.md`'s own headline
+    table still carries the older numbers — gate against the JSON, not the
+    markdown, or the gate cries wolf.
+  - **a figure with no receipt field is `null` and is announced on stdout**,
+    never silently defaulted; the page must not print what it cannot point at.
+  - hard failures: no track resolved, an unparseable JSON, or a percentage
+    outside 0-100. A generator that emits nothing and exits 0 is the decorative
+    gate this repo has been bitten by twice.
+  - `landing_benchmarks.test.mjs` (`node --test`, CI) pins the tie-break, the
+    validation and the null path against fixtures. It deliberately does NOT
+    assert that the repo is currently in sync — that is `--check`'s job, and
+    conflating them makes a drift failure look like a broken test suite.
+- Landing engine-claim contract: `landing_claims.mjs` is the generator+gate for
+  everything the page quotes from the engine. `node scripts/landing_claims.mjs`
+  writes `src/components/landing/engine-data.ts` from `JOB_DEFS` in
+  `pi-repo/packages/self-learning/src/router.ts` and runs the gates; `--check`
+  (root `check:claims`, a CI step) does both without writing. Rules that must
+  survive edits:
+  - **one direction only.** Page implies source. `cli.ts` HELP is a superset the
+    page deliberately trims, so a completeness check would fail every commit and
+    get the gate ignored — `landing_claims.test.mjs` pins that an omitted command
+    does NOT fail, and that a stale one the page still shows DOES.
+  - **match template prefixes, never rendered instances.** Real sources
+    interpolate (`session started (memory v${ctx.memoryVersion})`); the page
+    shows an instance. Compare up to the first `${`, with a shared-window test for
+    the middle of a line, and treat a wrapped continuation line as part of the
+    previous literal. `MIN_LITERAL` keeps a 9-char prefix like `candidate`
+    from letting a paraphrase pass.
+  - **a TS-aware template lexer, not a backtick pair scan.** The engine's own
+    comments contain odd numbers of backticks, and a naive pair scan mis-lexes
+    them, which is exactly the false positive that discredits a gate.
+  - the `.unown/memory/project.md` excerpt is gated, not exempted: AutoDream
+    rewrites that file on a schedule, so a verbatim quote is the claim most
+    likely to go stale with nobody editing the page.
+  - zero jobs parsed from `JOB_DEFS`, or a job without an id, is a hard failure.
 - Deployment contract: `verify-deploy.mjs` asserts the **live** deployment, not
   the local build: `bun scripts/verify-deploy.mjs [url]` (defaults to the
   production alias, exits non-zero on failure). It checks the routes, that the
@@ -168,6 +213,19 @@ The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`
   `node scripts/landing_changelog.mjs` to regenerate, then
   `node --test scripts/landing_changelog.test.mjs` if the extractor moved. All
   three are CI steps in the landing job.
+- `bun run check:benchmarks` and `bun run check:claims` — the same three-part
+  shape for the page's other two generated surfaces: regenerate with
+  `node scripts/landing_benchmarks.mjs` / `node scripts/landing_claims.mjs`,
+  prove agreement with `--check`, pin the extraction rules with
+  `node --test scripts/landing_benchmarks.test.mjs` /
+  `scripts/landing_claims.test.mjs`. `check:claims` fails in two distinct ways
+  and both name the fix: the committed `engine-data.ts` disagreeing with
+  `JOB_DEFS`, or a page literal no longer existing in the source it quotes.
+- Every one of these gates has been measured failing on injected drift (a rail
+  tally, one benchmark percentage, one job interval) and the claims gate run
+  against the pre-fix page in a detached worktree — six literals it named there
+  were exactly the six that got corrected. A gate that has only ever been seen
+  green is not proven to be a gate.
 - `node scripts/check_coverage.mjs --run` — changed-line coverage gate (also a CI job; pass a git base explicitly when running against a branch whose diff is non-empty).
 - `bun scripts/install.ts` from a clean worktree must go green end-to-end (includes first-run model-data hydration).
 - `bun run agent:stop; bun run agent:start` round trip: all three services healthy (see mini-services doc for endpoints). Use `;` — stop exits 1 when nothing was running.
