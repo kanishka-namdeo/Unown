@@ -76,6 +76,11 @@ jobs:
         working-directory: mini-services/llm-bridge
         run: bun test pure.test.ts
       - name: Version consistency
+        # shell: bash is NOT optional on the windows leg (default pwsh makes
+        # this POSIX step a ParserError) — the exact bug the CI workflow's
+        # twin step fixed at 517a4f2; this copy was missed then and went red
+        # in the first release run (39106607335).
+        shell: bash
         run: |
           expected=$(node -p "require('./package.json').version")
           actual=$(bun bin/unown --version)
