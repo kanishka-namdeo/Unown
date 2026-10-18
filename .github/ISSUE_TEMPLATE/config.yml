@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/kanishka-namdeo/Unown/tree/main/docs
+    about: Usage docs — quickstart, providers, usage, memory, configuration, troubleshooting.
+  - name: Troubleshooting
+    url: https://github.com/kanishka-namdeo/Unown/blob/main/docs/troubleshooting.md
+    about: Symptom → cause → fix, including `unown doctor` semantics. Check here before filing a bug.

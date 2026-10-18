@@ -1,0 +1,69 @@
+# Agent behavior
+
+The behavior card: what Unown's agents do by default — models, memory, tools, sandbox, hooks — and the rule for changing any of it. This page is the single reference for "what does the agent look like today"; it moves with the code, and every behavior change lands with a CHANGELOG [Agent Behavior](../CHANGELOG.md) entry that must agree with it.
+
+Related pages: [usage](usage.md) · [memory](memory.md) · [configuration](configuration.md) · [providers](providers.md) · [memory-system-review](memory-system-review.md) · [testing-strategy](testing-strategy.md) · [../CHANGELOG.md](../CHANGELOG.md)
+
+- [Default models](#default-models)
+- [Memory stack](#memory-stack)
+- [Session tools](#session-tools)
+- [Sandbox model](#sandbox-model)
+- [Hooks policy](#hooks-policy)
+- [Behavior-change policy](#behavior-change-policy)
+
+## Default models
+
+Routing is enforced by the llm-bridge; the binding rules live in its [AGENTS.md](../mini-services/llm-bridge/AGENTS.md), defaults are tuned in the root `.env` (see [configuration](configuration.md)).
+
+| Model | Role | Notes |
+|---|---|---|
+| `kimi-k2.5` | default coder | every request naming an unknown model id routes here (`BRIDGE_ROUTE_DEFAULT`) |
+| `qwen3.7-plus` | fast multimodal | thinking auto-disabled (`enable_thinking:false`; `BRIDGE_QWEN_THINKING=1` re-enables) |
+| `qwen3.6-plus` | long context | 1M-token context window |
+
+Messages, tool-role messages and `image_url` parts pass through the bridge verbatim, so tool calling and vision work end to end.
+
+## Memory stack
+
+Four Markdown tiers, most-specific-wins, injected into every session — terminal sessions and engine sandbox runs alike. Full detail in [memory](memory.md):
+
+| Tier | File | Maintained by |
+|---|---|---|
+| 0 · policy | `~/.unown/memory/policy.md` | you (ops); a built-in default applies when the file is absent |
+| 1 · project | `<project>/.unown/memory/project.md` | AutoDream and you — the learning surface |
+| 2 · user | `~/.unown/memory/user.md` | you |
+| 3 · local | `<project>/.unown/memory/local.md` | you (gitignored) — highest precedence |
+
+The dream consolidation loop (AutoDream) turns session notes into the next version of the project tier and mints skills. Guard layers wrap the whole pipeline: a deterministic note-level flag layer, quarantine banners on flagged content in the dream, and a deterministic ship gate on the final candidate. Every write is versioned and roll-backable; a dream that breaks the most recently passing canary task is rolled back (status `gated`); a shipped improvement that later regresses auto-unships. Live receipts: poison-corpus and MPBench — 0 adversarial directives shipped, 0 benign guard false positives (`benchmarks/memory-eval/mpbench/RESULTS.md`).
+
+## Session tools
+
+Every terminal session registers four tools (see [usage](usage.md)): `todo` (visible task tracking), `note` (mid-session learning notes — the raw material AutoDream consolidates), `task` (subagents with a fresh context; project agents defined in `.unown/agents/*.md`), `fetch_url` (HTTP reads). Slash commands: `/todos`, `/note`, `/agents`, `/learning` — `/learning` re-prints the effective memory stack fresh from disk. Starter Agent Skills ride along from `~/.unown/agent/skills/` and `<project>/.unown/skills/`.
+
+## Sandbox model
+
+Engine runs — verify scripts and the agent's own bash commands — execute under the OS sandbox: bubblewrap on Linux (read-only root filesystem, private `/home` `/tmp` `/run`, killed network namespace, dropped capabilities; a verified binary is vendored with sha256 provenance under `pi-repo/packages/self-learning/native/`), seatbelt (`sandbox-exec`) on macOS with a bwrap-equivalent profile, and the in-process path jail on native Windows and as the fallback on hosts without the OS sandbox. Executed commands are additionally jailed to the workspace with timeouts and output caps. `UNOWN_OS_SANDBOX=0` disables the OS sandbox; `UNOWN_SANDBOX_NET=1` keeps the network shared.
+
+## Hooks policy
+
+- Engine runs: `PreToolUse` denies destructive shell (`rm -rf /`, `sudo`, outbound `curl`/`wget` to external hosts, ...); the path jail blocks escapes; `PostToolUse` feeds transpiler errors back to the agent instead of letting broken code compound.
+- Terminal sessions: the same gate scoped for real work — catastrophic commands (filesystem-root deletion, fork bombs, disk formats) and writes outside your project and `/tmp` are blocked; network, `git push` and package installs stay available. `UNOWN_STRICT_HOOKS=1` restores sandbox-grade strictness.
+- Both layers are in-process pattern gates, not shell scripts. `unown -v` prints every hook decision to stderr.
+
+## Behavior-change policy
+
+Any change to prompts, default models, routing, guard rules, hook policy, or memory injection must land with all three:
+
+1. a [CHANGELOG](../CHANGELOG.md) entry tagged **Agent Behavior**, so behavior history stays auditable in one place;
+2. tests pinning the change — the suite fails if the behavior regresses;
+3. receipts where the claim is measured.
+
+A behavior change missing any of the three is not done.
+
+Worked example — the `security-bypass` guard rule (`pi-repo/packages/self-learning/src/guard.ts`), found live by the MPBench corpus (ADV_1590: a process-gate bypass framed as an observation shipped as an "observed, not policy" pattern):
+
+- CHANGELOG: the Security **Agent Behavior** entry records the finding and the live re-run verdict (flagged → not planted → nothing shipped).
+- Tests: `pi-repo/packages/self-learning/test/guard.test.ts` pins both sides — the flagged family (bypass verbs near process-gate objects, however framed) and the benign gate-adjacent observations that must stay clean.
+- Receipts: `benchmarks/memory-eval/mpbench/RESULTS.md` (post-fix: 0/50 planted, 0/50 shipped, 0 benign false positives).
+
+Guard-bypass findings are security reports: private disclosure via [../SECURITY.md](../SECURITY.md), never a public issue.

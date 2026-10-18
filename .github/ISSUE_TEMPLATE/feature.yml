@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a change to Unown.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that Unown makes hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: The change you propose
+      description: What should change, and where it should live (agent CLI / engine / bridge / dashboard / landing / docs / benchmarks).
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+    validations:
+      required: false
+  - type: checkboxes
+    id: willingness
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to open a PR for this (read CONTRIBUTING.md first — the AGENTS.md DOX contract applies).

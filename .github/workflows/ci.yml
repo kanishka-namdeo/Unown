@@ -90,6 +90,24 @@ jobs:
         # redirects the DB/bridge away from anything live.
         working-directory: pi-repo/packages/self-learning
         run: bun test test/
+      - name: Engine integration suite (real server + mock bridge)
+        # testing-strategy.md §6 gate 12: 10 tests, in-process scratch engine
+        # (ephemeral port, temp DB/data) against a mock OpenAI-compatible
+        # bridge — hermetic, no network, runs on all three OSes.
+        working-directory: pi-repo/packages/self-learning
+        run: PI_TEST_SCOPE=integration bun test test/integration/
+      - name: Version consistency (unown --version === package.json)
+        # clig.dev: the version flag is a contract. The ROOT package.json is
+        # the source of truth; cli.ts reads it directly — this asserts the
+        # wiring never drifts (e.g. a moved file or a changed layout).
+        run: |
+          expected=$(node -p "require('./package.json').version")
+          actual=$(bun bin/unown --version)
+          echo "package.json: $expected / unown --version: $actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::version mismatch: package.json=$expected unown=$actual"
+            exit 1
+          fi
       - name: Smoke — CLI boots (unown --help)
         run: bun bin/unown --help
       - name: Smoke — doctor prints its table
@@ -159,6 +177,46 @@ jobs:
         # (testing-strategy.md §6 gates 10-13 / §11 item 2).
         working-directory: mini-services/llm-bridge
         run: bun test pure.test.ts
+
+  build:
+    name: Production build (dashboard)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: Generate Prisma client
+        # src/generated/prisma is gitignored output; the standalone build
+        # needs it for src/lib/db.ts.
+        run: bun run db:generate
+      - name: Build
+        # testing-strategy.md §6 gate 14: `bun run build` = next build +
+        # standalone static/ public/ copy — the exact artifact
+        # scripts/serve-dashboard.ts serves in production. Vercel builds the
+        # landing page on every push; this gate catches non-landing breakage
+        # (dashboard routes, standalone server) before a release.
+        run: bun run build
+      - name: Standalone server smoke
+        # The production entry must actually boot: NODE_ENV=production +
+        # .next/standalone/server.js on a scratch port, then 200 on / and
+        # /dashboard. No engine behind it — the dashboard renders its
+        # disconnected state (the SSE client retries silently), which is the
+        # correct degraded behavior to assert.
+        run: |
+          PORT=3210 node .next/standalone/server.js &
+          server_pid=$!
+          for i in $(seq 1 30); do
+            if curl -sf -m 2 http://127.0.0.1:3210/ >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -sf -m 5 http://127.0.0.1:3210/ >/dev/null || { echo "::error::landing route did not answer"; kill $server_pid; exit 1; }
+          curl -sf -m 5 http://127.0.0.1:3210/dashboard >/dev/null || { echo "::error::dashboard route did not answer"; kill $server_pid; exit 1; }
+          kill $server_pid
+          echo "standalone server: / and /dashboard answered 200"
 
   lint:
     name: Lint dashboard

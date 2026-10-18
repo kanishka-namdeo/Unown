@@ -21,7 +21,7 @@
  *   unown doctor          diagnose configuration, bridge, engine and memory
  *   unown note "text"     hand a note to the engine (for AutoDream)
  */
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
         type CreateAgentSessionRuntimeFactory,
@@ -53,6 +53,18 @@ import {
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 
+/** Unown's version — read from the ROOT package.json (the source of truth
+ *  CI asserts against). Falls back to "unknown" if the file is unreadable
+ *  (e.g. a compiled/bundled CLI detached from the repo layout). */
+const VERSION: string = (() => {
+        try {
+                const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "..", "..", "..", "package.json"), "utf8"));
+                return String(pkg.version ?? "unknown");
+        } catch {
+                return "unknown";
+        }
+})();
+
 const HELP = `unown — a self-improving terminal coding agent
 
 Usage:
@@ -72,6 +84,7 @@ Usage:
   unown doctor             run configuration diagnostics
   unown note "text"        deliver a session note to the engine
   unown --help             this help
+  unown --version          print the version (matches package.json)
 
 Session tools (registered in every session):
   todo / note / task / fetch_url   visible task tracking, mid-session learning notes,
@@ -551,6 +564,13 @@ export async function runCli(argv: string[]) {
         if (first === "setup") process.exit(await runSetupCommand(argv.slice(1)));
         if (first === "models") {
                 await printModelsOverview();
+                process.exit(0);
+        }
+        // Version surface: the ROOT package.json is the single source of
+        // truth (the self-learning package carries its own 0.x number); CI
+        // asserts `unown --version` === package.json.version on every run.
+        if (argv.includes("--version") || argv.includes("-V")) {
+                console.log(VERSION);
                 process.exit(0);
         }
         const args = parseArgs(argv);

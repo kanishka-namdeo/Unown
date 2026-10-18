@@ -82,6 +82,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown doctor` | Run configuration diagnostics (see below) |
 | `unown note "text"` | Deliver a session note to the engine by hand |
 | `unown --help` / `-h` | Help text |
+| `unown --version` / `-V` | Print the version (matches `package.json`; CI asserts the contract) |
 
 `-v` / `--verbose` works in session modes: hook decisions and tool activity are printed to stderr.
 

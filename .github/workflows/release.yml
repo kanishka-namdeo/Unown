@@ -1,0 +1,153 @@
+# Release workflow — runs on version tags (vX.Y.Z).
+#
+# Unown is clone-to-install (the vendored pi-repo workspace layout is NOT
+# npm-publishable by design — see AGENTS.md "Root Contracts"), so a release
+# is a VERIFIED GIT TAG, not a package upload:
+#
+#   1. the full install path on all three OSes (the same real-installer
+#      matrix CI runs — a release that does not install cleanly does not
+#      exist),
+#   2. the production dashboard build + standalone-server smoke,
+#   3. the engine suite + integration suite + bridge suite + version
+#      consistency + CLI smokes (the release assertion: strategy §12
+#      criterion 2),
+#   4. an SBOM (SPDX, syft) of the installed tree + a build-provenance
+#      attestation for the checkout,
+#   5. a GitHub Release with auto-generated notes from the commit history,
+#      the SBOM and the release checklist attached.
+#
+# Tagging: `git tag v2.0.1 && git push origin v2.0.1`. The tag MUST match
+# package.json version — asserted below before anything else runs.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Release assertion (3-OS install + full suites + build)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Enable git long paths (Windows)
+        if: runner.os == 'Windows'
+        run: git config --global core.longpaths true
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Tag matches package.json version
+        shell: bash
+        run: |
+          expected="v$(node -p "require('./package.json').version")"
+          actual="${GITHUB_REF_NAME}"
+          echo "tag: $actual / package.json: $expected"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::tag $actual does not match package.json $expected — bump before tagging"
+            exit 1
+          fi
+      - name: Install via the real installer
+        env:
+          UNOWN_NO_LINK: "1"
+        run: bun scripts/install.ts
+      - name: Engine unit suite
+        working-directory: pi-repo/packages/self-learning
+        run: bun test test/
+      - name: Engine integration suite (real server + mock bridge)
+        working-directory: pi-repo/packages/self-learning
+        run: PI_TEST_SCOPE=integration bun test test/integration/
+      - name: Bridge unit suite
+        working-directory: mini-services/llm-bridge
+        run: bun test pure.test.ts
+      - name: Version consistency
+        run: |
+          expected=$(node -p "require('./package.json').version")
+          actual=$(bun bin/unown --version)
+          [ "$expected" = "$actual" ] || { echo "::error::version mismatch: $expected vs $actual"; exit 1; }
+      - name: CLI smokes (help + doctor table)
+        shell: bash
+        run: |
+          bun bin/unown --help >/dev/null
+          code=0
+          out="$(bun bin/unown doctor 2>&1)" || code=$?
+          [ "$code" -le 1 ] || { echo "::error::doctor crashed (exit $code)"; exit 1; }
+          printf '%s\n' "$out" | grep -q "agent dir" || { echo "::error::doctor table missing"; exit 1; }
+
+  build:
+    name: Production build + SBOM + release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install + Prisma client + build
+        run: |
+          bun install --frozen-lockfile
+          bun run db:generate
+          bun run build
+      - name: Standalone server smoke
+        run: |
+          PORT=3210 node .next/standalone/server.js &
+          server_pid=$!
+          for i in $(seq 1 30); do
+            curl -sf -m 2 http://127.0.0.1:3210/ >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -sf -m 5 http://127.0.0.1:3210/ >/dev/null && \
+          curl -sf -m 5 http://127.0.0.1:3210/dashboard >/dev/null
+          kill $server_pid
+      - name: SBOM (SPDX) of the dependency tree
+        # anchore/sbom-action runs syft in a container; the SBOM covers the
+        # installed node_modules + vendored pi-repo tree (the runtime
+        # dependency surface a clone-to-install user actually gets).
+        uses: anchore/sbom-action@v17
+        with:
+          format: spdx-json
+          artifact-name: sbom-spdx.json
+          upload-artifact: true
+      - name: Build provenance attestation
+        # SLSA Build L3 provenance for the source checkout the release was
+        # verified against (the repo's release artifact IS the tag).
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: "kanishka-namdeo/Unown@${{ github.ref_name }}"
+          subject-digest: sha256:${{ github.sha }}
+      - name: Release checklist (what was verified)
+        run: |
+          cat > release-checklist.md <<'EOF'
+          ## Release verification receipt
+
+          - 3-OS real-installer matrix (ubuntu/macos/windows): install.ts → engine unit suite → integration suite (real server + mock bridge) → bridge suite (95) → version consistency → CLI smokes — all green
+          - Production dashboard build + standalone server smoke (/ and /dashboard answered 200)
+          - SBOM (SPDX) attached; build-provenance attestation recorded
+          - `unown --version` === package.json.version === tag
+
+          Memory-system receipts for this release: see `benchmarks/memory-eval/*/RESULTS.md`
+          (poison-corpus, MPBench-adapted, quality-axes, recall-qa) and
+          `docs/testing-strategy.md` §7.2 for the CI trajectory.
+          EOF
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          files: |
+            release-checklist.md
+          body_path: release-checklist.md

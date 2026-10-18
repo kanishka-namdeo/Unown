@@ -495,9 +495,9 @@ Notes on the two decisions that changed from the original proposal:
 | 9 | Changed-line coverage >= 80% in `src/` | SHIPPED (this revision) | `bun test --coverage` + `scripts/check_coverage.mjs`; measured baseline 91.1% lines |
 | 10 | Engine suite `bun test test/` in `self-learning` | SHIPPED (upstream, `build-test` matrix) | ubuntu green; post-`ae7b01b` (run 39071373372): windows 687/79/3, macos 726/40/4; locally on Windows 600/79/25 - 22 of the local 25 pass on the runner (privilege environment), 3 are real (§7.2). Hermetic means green on **every** runner |
 | 11 | Bridge suite `bun test pure.test.ts` | **SHIPPED** (this revision, round three) | 95 tests, sub-second, no deps/network — dedicated `bridge` CI job | 
-| 12 | Engine integration suite (`test:integration`) | **OPEN** | 10 tests, real server + mock bridge |
+| 12 | Engine integration suite (`test:integration`) | **SHIPPED** (this revision, round three) | 10 tests, real server + mock bridge — `PI_TEST_SCOPE=integration` step in the 3-OS `build-test` matrix |
 | 13 | Sandbox suite in CI | SHIPPED (upstream, unconditional ubuntu `sandbox-smoke` job) | **GREEN** as of run 39072290887 (`a13cf9d`): trajectory red 10/11/1 -> profile green 21/0/1 + engine red 10/2 -> fully green. The red phase proved the value of the early-canary design (§7.5) |
-| 14 | `bun run build` before deploy | **OPEN** | Vercel builds on push; GitHub CI should too |
+| 14 | `bun run build` before deploy | **SHIPPED** (this revision) | dedicated `build` job: frozen-lockfile install + prisma generate + `bun run build` + standalone-server smoke (/ and /dashboard 200 on a scratch port) |
 | 15 | Mermaid byte-identity (`scripts/mermaid_check.mjs`) | **OPEN** | needs Playwright + a browser; belongs to the visual pipeline |
 | 16 | Playwright E2E + axe-core | **OPEN** | the largest untouched surface |
 | 17 | Docs link and anchor integrity on `docs/*.md` | SHIPPED (this revision; verified green against upstream's new `windows.md`/`macos.md`) | `scripts/check_docs.mjs` as the `docs` CI job; the CLI-surface and env-var cross-checks in `docs/AGENTS.md` remain prose (§7.10) |

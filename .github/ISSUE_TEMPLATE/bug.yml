@@ -1,0 +1,71 @@
+name: Bug report
+description: Something in Unown did the wrong thing.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: run `unown doctor` and check the troubleshooting page
+        (docs/troubleshooting.md in the repo) — the symptom you hit may
+        already have a fix there.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: A clear description of the bug. If it threw, paste the exact error text.
+      placeholder: |
+        Steps to reproduce: ...
+        What happened: ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect
+      description: The behavior you expected instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: >
+        Output of `unown --version`. The flag lands in the 2.0.0 milestone —
+        if your build errors on it, paste your clone's commit instead:
+        `git rev-parse HEAD`.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Windows (WSL2)
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Setup
+      options:
+        - git clone + `bun run agent:install`, bridge stack (`.env` upstream)
+        - git clone + `bun run agent:install`, direct provider (`unown setup --provider ...`)
+        - Terminal agent only (no engine / bridge)
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >
+        Relevant lines from `.run/*.log` (engine, bridge, dashboard) and, for
+        terminal-side issues, the `unown -v` hook decisions. Remove secrets
+        first.
+      placeholder: Paste log lines here (secrets removed).
+    validations:
+      required: false
