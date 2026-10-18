@@ -238,6 +238,36 @@
         "pi-repo/packages/self-learning/src/llm.ts",
         "pi-repo/packages/self-learning/test/e6-local-mining.ts"
       ]
+    },
+    {
+      "id": "H9",
+      "title": "Remote-lane response_format:json_schema makes the failure miner spec-compliant",
+      "statement": "The Dashscope upstream accepts per-call response_format for kimi-k2.5, and adopting response_format:json_schema for the miner's chatJson call eliminates the <=200-char patch-line spec violations with no quality regression (blind judge parity).",
+      "subtask": "harness failure mining — remote-lane structured output (E3 finding 2 follow-up)",
+      "experiment": "E7-rfmt (three arms over the same 4 E3 failed-run fixtures + acceptance matrix + keyword-enforcement probes + blind judge)",
+      "metrics": [
+        "json_schema acceptance (httpOk) on kimi-k2.5",
+        "patchSpecOk (all patch lines <=200 chars, <=6 lines)",
+        "validatorPass (harness post-validation, e3's check)",
+        "blind judge winner distribution (json_schema vs baseline)"
+      ],
+      "thresholds": {
+        "jsonSchemaHttpOk": "= 1.0",
+        "patchSpecOk(json_schema)": "= 1.0 AND > baseline",
+        "validatorPass(json_schema)": ">= baseline",
+        "judgeWinPlusTie": ">= losses (consistency-gated)"
+      },
+      "guards": [
+        "production wiring gated on ALL thresholds (skipped: refuted)",
+        "would-have-needed portability fallback for other OpenAI-compat endpoints (400-with-schema -> one retry without response_format)"
+      ],
+      "precedent": "OpenAI structured outputs enforce a JSON-Schema subset and explicitly do NOT support minLength/maxLength; llama.cpp grammar decoding (the local lane) DOES enforce maxLength — the E3 structural result",
+      "status": "refuted",
+      "verdict": "REFUTED 2026-10-18: Dashscope ACCEPTS response_format on all three routed models (kimi-k2.5 / qwen3.7-plus / qwen3.6-plus x json_object / json_schema — HTTP 200 on every probe and every arm call, no error shape), and the schema demonstrably reaches kimi-k2.5 (output shaped to the required keys; enum hard-enforced — a probe forced the enum value against the prompt's explicit instruction). BUT the two keywords the miner needs are NOT enforced: a maxLength:10 probe returned a 137-char string and a maxItems:2 probe returned 5 items (the same subset limitation as OpenAI structured outputs). Three-arm replay over the same 4 E3 failed-run fixtures: patchSpecOk baseline 0.00, json_object 0.50, json_schema 0.50 — 214- and 205-char patch lines survived the schema's maxLength:200, so the decisive threshold patchSpecOk(json_schema)=1.0 FAILS. No quality regression (validatorPass 0.50 >= 0.00; blind judge 4/4 consistency-gated ties, 0/4 position-consistent) and cost/latency parity (+5% cost, +3% p50). Production wiring skipped per the gate; the miner's spec compliance stays with the harness's own post-validation (remote) and llama.cpp grammar (local lane).",
+      "evidence": [
+        "results/e7-response-format/e7-rfmt.json",
+        "results/e7-response-format/e7-enforcement-probe.json"
+      ]
     }
   ]
 }

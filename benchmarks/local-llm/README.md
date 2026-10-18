@@ -21,7 +21,7 @@ failed-run transcripts — see `fixtures/`), against:
 ## Layout
 
 ```
-hypotheses.json   the registry: H1–H8, thresholds, guards, verdicts, evidence
+hypotheses.json   the registry: H1–H9, thresholds, guards, verdicts, evidence
 runner.mjs        cross-platform driver (pure Node ≥18, no native deps)
 lib/
   llama.mjs       llama-server lifecycle + cross-platform provisioning
@@ -47,6 +47,7 @@ bin/, models/     llama.cpp binary + GGUF weights (gitignored)
 | E4 | H5 task minting | `mint.ts` curriculum authoring | validateDraft() static contract, blind judge |
 | E5 | H1 note triage (embedding) | nomic-embed zero-shot classification | agreement vs remote labels, latency |
 | E6 | H7+H8 integration (phase 2) | full harness cycles w/ local routing | pass-rate parity, cycle cost — **only if E1–E5 verify** |
+| E7 | H9 remote-lane `response_format` for the miner | `harness.ts mineFailure` 3-arm (baseline / `json_object` / `json_schema`) | acceptance matrix, patchSpecOk, validator pass, blind judge — **refuted** (upstream accepts but doesn't enforce `maxLength`/`maxItems`) |
 
 ## Running it
 

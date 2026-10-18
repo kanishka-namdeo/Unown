@@ -30,6 +30,7 @@ overrides. Default topology is unchanged.
 | H6 | cross-platform | llama.cpp prebuilts | **verified** | 1.0-1.6s cold start; 0.6B lane 1.0-1.2GB RSS; CI green on ubuntu/macos/windows |
 | H7 | local as main brain | — | **scoped out** | precedent + prefill math; agent sessions stay remote |
 | H8 | integration shape | bridge local route + per-subtask env | **implemented + verified** | real `mineFailure()` over the local lane → harness-accepted result (99.8s); 970/970 engine + 106/106 bridge tests |
+| H9 | miner spec compliance via remote `response_format` | kimi-k2.5 + `json_schema` | **refuted** | accepted (HTTP 200, all 3 models) but `maxLength`/`maxItems` NOT enforced → patchSpecOk 0.50 ≠ 1.00; judge 4/4 ties |
 
 ## E0 — capability probe (small box, idle)
 
@@ -44,6 +45,49 @@ overrides. Default topology is unchanged.
 comfortable); 2.6B thrashes a 4GB box (5.9 tok/s) and is the lane for ≥6–8GB
 machines — validated cross-OS by the `local-llm-probe.yml` GitHub matrix
 (green on ubuntu/macos/windows at 3a84e37).
+
+## E7 — remote-lane response_format (H9)
+
+**Question:** E3's finding 2 showed the remote kimi-k2.5 violates the miner's
+≤200-char patch-line spec on 50% of calls, while the local lane's json_schema
+grammar makes the violation structurally impossible. Does the Dashscope
+upstream accept per-call `response_format` for kimi-k2.5 — and does adopting
+`response_format:json_schema` on the miner's chatJson call eliminate the spec
+violations with no quality regression?
+
+**Answer: accepted but not enforced — REFUTED on the decisive threshold.**
+The upstream returns HTTP 200 for both `json_object` and `json_schema` on all
+three routed models, and the schema demonstrably reaches the model (required
+keys shape the output; `enum` is hard-enforced — a probe forced the enum value
+against the prompt's explicit instruction to pick another). But the two
+keywords the miner needs — `maxLength` (≤200 chars/line) and `maxItems`
+(≤6 lines) — are NOT enforced (a `maxLength:10` probe returned a 137-char
+string; a `maxItems:2` probe returned 5 items) — the same JSON-Schema subset
+limitation as OpenAI structured outputs.
+
+| arm (kimi-k2.5, same 4 real failed runs each) | httpOk | jsonOk | patchSpecOk | validatorPass | p50 | cost |
+|---|---|---|---|---|---|---|
+| baseline (production client: extractJson + corrective retry) | 100% | 100% | 0% | 0% | 7.5s | $0.0100 |
+| + `json_object` | 100% | 100% | 50% | 50% | 7.3s | $0.0100 |
+| + `json_schema` (strict, mining schema) | 100% | 100% | 50% | 50% | 7.8s | $0.0105 |
+
+- **Acceptance matrix** (1 tiny probe each): kimi-k2.5 / qwen3.7-plus /
+  qwen3.6-plus × `json_object` / `json_schema` — all six ACCEPTED (HTTP 200,
+  no error shape; the one non-JSON probe reply was a maxTokens-64 truncation
+  artifact, still accepted).
+- **Blind judge** (position-swapped, consistency-gated): 4/4 ties — every
+  pair flipped positions (0/4 position-consistent), i.e. the judge cannot
+  distinguish the arms: no quality regression, and no quality gain either.
+- **Thresholds:** json_schema accepted ✓ (httpOk 1.0); validatorPass parity ✓
+  (0.50 ≥ 0.00); judge wins+ties ≥ losses ✓ (4 ≥ 0); **patchSpecOk(json_schema)
+  = 1.00 ✗ — measured 0.50** (214- and 205-char patch lines survived
+  `maxLength:200`). **H9 refuted** → production wiring skipped per the gate.
+
+**Consequence:** the miner's remote-lane spec compliance stays where E3 left
+it — the harness's own post-validation and the local lane's llama.cpp grammar
+(which DOES enforce maxLength) remain the two working mechanisms. The whole
+check re-runs in ~4 min via `node benchmarks/local-llm/runner.mjs e7-rfmt` if
+the upstream's keyword support ever changes.
 
 ## Findings that change decisions
 
@@ -104,7 +148,9 @@ entirely and makes the learning loop operable offline.
 - LFM2.5-2.6B quality-lane experiments (E1–E4) on a ≥8GB machine; the 4GB
   host could only prove the lane boots (E0) — granite/qwen carried the
   quality verdicts here.
-- Remote-lane `response_format` adoption for the miner (finding 2).
+- Remote-lane `response_format` adoption for the miner (finding 2): **run as
+  E7/H9 — refuted** (accepted but `maxLength`/`maxItems` not enforced); re-run
+  `e7-rfmt` if the upstream's JSON-Schema keyword support changes.
 - A local-draft + remote-repair cascade for minting (H5's salvage path).
 - Longer-horizon A/B: run the engine for a week with mining+dream local and
   compare improvement-ship rate + benchmark pass-rate drift vs the all-remote

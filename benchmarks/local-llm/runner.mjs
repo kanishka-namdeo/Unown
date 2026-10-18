@@ -17,6 +17,7 @@
  *   node runner.mjs e3-mine     --model qwen3-0.6b [--no-grammar]
  *   node runner.mjs e4-mint     --model lfm2.5-2.6b
  *   node runner.mjs e5-embed                        # needs nomic-embed-v2
+ *   node runner.mjs e7-rfmt                          # remote response_format arms (H9)
  *   node runner.mjs all [--models a,b] [--quick]    # full suite -> results/<run>/
  *
  * Env: TEST_BRIDGE_URL (default http://127.0.0.1:3031), TEST_REMOTE_MODEL
@@ -30,6 +31,7 @@ import {
 import { chat } from "./lib/openai.mjs";
 import { newRunDir, saveJson, mdTable } from "./lib/report.mjs";
 import { e1Triage, e2Dream, e3Mine, e4Mint, e5Embed, cfg } from "./lib/experiments.mjs";
+import { e7ResponseFormat, renderE7 } from "./lib/e7.mjs";
 import { renderE1, renderE2, renderE3, renderE4, renderE5 } from "./lib/renders.mjs";
 
 const args = process.argv.slice(2);
@@ -193,6 +195,14 @@ async function cmdE5(outDir) {
   return r;
 }
 
+async function cmdE7(outDir) {
+  const dir = outDir ?? newRunDir("e7-response-format");
+  const r = await e7ResponseFormat({ runLimit: Number(opt("runs", 4)) });
+  saveJson(dir, "e7-rfmt.json", r);
+  renderE7(r);
+  return r;
+}
+
 // ---------------------------------------------------------------- all
 
 async function cmdAll() {
@@ -278,6 +288,7 @@ async function cmdServe() {
 const COMMANDS = {
   provision: cmdProvision, probe: cmdProbe, detect: cmdDetect,
   "e1-triage": cmdE1, "e2-dream": cmdE2, "e3-mine": cmdE3, "e4-mint": cmdE4, "e5-embed": cmdE5,
+  "e7-rfmt": cmdE7,
   all: cmdAll,
   serve: cmdServe,
 };
@@ -294,6 +305,7 @@ Commands:
   e3-mine    --model <id> [--no-grammar]                  failure-mining replay + judge
   e4-mint    --model <id>                                 task-mint replay + validator
   e5-embed                                                nomic-embed classification lane
+  e7-rfmt                                                remote response_format arms + acceptance matrix (E7/H9)
   all [--models id,id] [--quick] [--label NAME]           full suite
 
 Models: ${[...CHAT_MODEL_IDS, "nomic-embed-v2"].join(", ")}
