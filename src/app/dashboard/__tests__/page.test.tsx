@@ -4,12 +4,12 @@
 // coverage) — page.tsx was never imported by a test (0% on a one-line change,
 // run 39102353721). This renders the REAL page tree — its own
 // DashboardProviders (QueryClient + SseBridge + Toaster), Header, the radix
-// tab strip with all seven tabs, and the footer — with the engine fetch
+// tab strip with all nine tabs, and the footer — with the engine fetch
 // double and the FakeEventSource from the shared harness.
 //
 // Scope note: tab switching and SSE frame delivery are integration flows —
 // they are covered end-to-end by the e2e suite (e2e/smoke.spec.ts clicks all
-// seven tabs and asserts the SSE feed against a real browser); here they
+// nine tabs and asserts the SSE feed against a real browser); here they
 // would only fight happy-dom's animation timing (framer-motion enter fades).
 // The unit scope is the shell itself: header, tab strip, default panel,
 // footer, and the EventSource connection the page's SseBridge opens.
@@ -53,7 +53,7 @@ function routeOverview() {
 }
 
 describe("dashboard page shell", () => {
-  test("renders header, all seven tabs, the Overview panel, the footer — and connects the SSE stream", async () => {
+  test("renders header, all nine tabs, the Overview panel, the footer — and connects the SSE stream", async () => {
     routeOverview();
     render(<Page />);
 
@@ -61,7 +61,7 @@ describe("dashboard page shell", () => {
     expect(await screen.findByText("unown · self-learning agent")).toBeTruthy();
 
     // The full tab strip from the page's tabs array.
-    for (const name of ["Overview", "Learning Lab", "Memory", "Dreams", "Hooks", "Console", "Router"]) {
+    for (const name of ["Overview", "Learning Lab", "Memory", "Dreams", "Hooks", "Console", "Sandboxes", "Gateway", "Router"]) {
       expect(screen.getByRole("tab", { name })).toBeTruthy();
     }
 

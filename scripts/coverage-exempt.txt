@@ -5,6 +5,6 @@
 # Format:
 #   src/path/to/file.tsx   reason the rule cannot apply here
 #
-# Current exemptions: none. Keep it that way unless a path genuinely cannot be
-# exercised from bun test (a type-only declaration file, a generated artifact).
-src/lib/agent-types.ts   type-only declarations (the automations port added 54 lines of interfaces/types — no runtime statements to exercise; importing the module in a test changes nothing bun coverage can measure)
+# Current exemptions: type-only declaration modules (no runtime statements to
+# exercise; importing the module in a test changes nothing bun coverage measures).
+src/lib/agent-types.ts   type-only declaration module (interfaces and unions — no runtime surface to exercise; imported type-side by every component test)

@@ -50,6 +50,38 @@ were:
 
 Each entry: feature → source → the seam it landed on in this repo.
 
+### Round 3 (2026-10-19 — dashboard engine-parity + observability)
+
+The dashboard's own contract outran its code: two fully-typed data sources
+(`GET /api/sandboxes`, `GET /api/bridge`) had client functions and query keys
+but no component, and five documented action endpoints (`POST /api/tasks/mint`,
+`GET /api/tasks/:id`, `GET /api/skills/:id`, `POST /api/notes`,
+`POST /api/notes/sync`) had no UI. The gap analysis came from the same
+field-survey method applied to observability products (LangSmith, Langfuse,
+Vercel AI Gateway, Braintrust: trace-linking, gateway/cost panels, live-tail
+consoles, command palettes, URL-synced views). Ports, each mapped to its
+source:
+
+| Feature | Source | Unown form |
+|---|---|---|
+| Gateway/usage panel | Vercel AI Gateway's Usage + Logs views | `gateway-tab.tsx` — the bridge request log as a first-class ops surface (KPI row, per-model breakdown, latency chart, request table) |
+| Sandboxes / workspace inspection | trace-artifact drill-down (LangSmith span detail) | `sandboxes-tab.tsx` — the engine's sandbox inventory, previously fetched but never rendered |
+| Task minting controls | experiment/dataset management (Braintrust eval-driven loop) | Overview "Mint task" + per-outcome toasts — curriculum growth is operable, not dark |
+| Task detail view | prompt/trace inspection | `task-detail.tsx` — prompt, seeded files, verify script, provenance, run-cycle action |
+| Live-tail console | "follow requests live" (Vercel Logs) | Console transcript now renders `run:tool`/`run:text` SSE frames ahead of the poll |
+| ⌘K command palette | table stakes across the field (Vercel, Linear, every IDE-grade tool) | `command-palette.tsx` (cmdk) — tab navigation, refresh, links |
+| URL-synced views / deep links | every observability UI deep-links a filtered list | `tab-store.ts` — `?tab=` synced tab strip with working back/forward |
+| Skill version history + arbitrary restore | versioned prompt management (Langfuse/LangSmith) | Memory tab History toggle + restore-to-any-version |
+| Notes pipeline controls | manual-feedback ingestion surfaces | Dreams tab note delivery + outbox sync |
+| Evidence cross-linking | trace ↔ experiment linkage | Improvement cards link baseline/candidate runs; `memory_version` badged |
+| Trust surfaces | NN/g error/empty/loading distinction | engine-down alert banner, KPI skeletons, error/notes/regression KPI fields |
+| SSE contract completion | — (Unown's own documented contract) | every engine event family now invalidates + renders friendly feed text |
+
+Verification receipts: unit suite 280/0 across 25 files (39 new tests), e2e
+specs extended to all nine tabs, live browser pass against a running engine
+(9 tabs, real DashScope traffic in the Gateway view, palette navigation, deep
+links, zero console errors).
+
 ### Round 2 (2026-10-19 — subagent upgrades)
 
 Four parallel reverse-engineering threads re-audited the field (oh-my-pi at

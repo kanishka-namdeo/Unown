@@ -124,6 +124,78 @@ describe("DreamsTab — dream-run mutation", () => {
   });
 });
 
+describe("DreamsTab — notes pipeline (manual note + outbox sync)", () => {
+  test("delivering a manual note POSTs /api/notes with the content and project path, then clears the textarea", async () => {
+    routeHappy();
+    // The list GET and the note POST share the /api/notes path — dispatch on
+    // method so the POST gets the create-response shape.
+    engine.route("/api/notes", (call) =>
+      call.method === "POST" ? { ok: true, id: "note-99" } : fx.notesResponse()
+    );
+
+    const user = userEvent.setup();
+    const view = renderWithProviders(<DreamsTab />);
+    expect(await screen.findByText("dream-00")).toBeTruthy();
+
+    const textarea = screen.getByLabelText("manual note") as HTMLTextAreaElement;
+    await user.type(textarea, "cookie scope must be checked before redirecting");
+
+    await user.click(screen.getByRole("button", { name: /deliver note/i }));
+
+    const posts = engine.callsFor("/api/notes").filter((c) => c.method === "POST");
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.body).toEqual({
+      content: "cookie scope must be checked before redirecting",
+      project_path: ".",
+    });
+
+    expect(textarea.value).toBe(""); // draft cleared on success
+
+    const delivered = toastsWithTitle("Note delivered");
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0]?.kind).toBe("success");
+    expect(view.invalidatedKeys()).toContainEqual(qk.notes);
+  });
+
+  test("sync outbox POSTs /api/notes/sync and toasts the synced count", async () => {
+    routeHappy();
+    engine.route("/api/notes/sync", { ok: true, synced: 3 });
+
+    const user = userEvent.setup();
+    const view = renderWithProviders(<DreamsTab />);
+    expect(await screen.findByText("dream-00")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: /sync outbox/i }));
+
+    const syncs = engine.callsFor("/api/notes/sync");
+    expect(syncs).toHaveLength(1);
+    expect(syncs[0]?.method).toBe("POST");
+
+    const synced = toastsWithTitle("Synced 3 notes");
+    expect(synced).toHaveLength(1);
+    expect(synced[0]?.kind).toBe("success");
+    expect(view.invalidatedKeys()).toContainEqual(qk.notes);
+    expect(toastsWithTitle("Outbox empty")).toHaveLength(0); // not the empty branch
+  });
+
+  test("sync outbox with 0 synced shows the empty info toast, no false success", async () => {
+    routeHappy();
+    engine.route("/api/notes/sync", { ok: true, synced: 0 });
+
+    const user = userEvent.setup();
+    renderWithProviders(<DreamsTab />);
+    expect(await screen.findByText("dream-00")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: /sync outbox/i }));
+
+    expect(engine.callsFor("/api/notes/sync")).toHaveLength(1);
+    const empty = toastsWithTitle("Outbox empty");
+    expect(empty).toHaveLength(1);
+    expect(empty[0]?.kind).toBe("info");
+    expect(toastsWithTitle("Synced 0 notes")).toHaveLength(0); // no false success
+  });
+});
+
 describe("DreamsTab — empty state", () => {
   test("no dreams, no pending notes", async () => {
     engine.route("/api/dreams", { dreams: [] });

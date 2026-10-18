@@ -1065,3 +1065,27 @@ No numbers were added, so no artifacts moved. The quickstart component test
 pins the `COMMANDS` list, so the line is covered by the existing changed-line
 gate; the landing rail was regenerated in the same change because the
 CHANGELOG entry is part of the feature (`bun run check:changelog` green).
+
+## 2026-10-19 — showcase copy: nine tabs (dashboard engine-parity round)
+
+The dashboard engine-parity round (see `CHANGELOG.md` [Unreleased] "Added" and
+`docs/sdlc-feature-parity.md`) added two tabs — `Sandboxes` (the isolated
+workspaces view) and `Gateway` (the llm-bridge request log) — plus the ⌘K
+command palette and the `?tab=` URL-synced tab strip. The showcase section is
+the page's canonical home for "what the dashboard shows" (its `TABS` array is
+the claim, the section copy around it the framing), so it moved in the same
+change: seven → nine entries, the Console line now says the transcript streams
+over SSE (it literally does since this round — `run:tool`/`run:text` frames),
+and the lead sentence drops the ⌘K mention so the tab list stays the only
+enumerated claim. The `Router` line keeps "the seven background jobs" — that
+seven is the engine's job count (`router.ts`), not the tab count, and it is
+still correct.
+
+Sourcing: the two new entries describe views that exist in this checkout
+(`src/components/dashboard/sandboxes-tab.tsx`, `gateway-tab.tsx`, pinned by
+`__tests__/sandboxes-tab.test.tsx` + `gateway-tab.test.tsx`); the
+`benchmarks.tsx` mermaid diagram's "RTL coverage of all nine dashboard tabs"
+node moved in lockstep (suite now covers all nine). No numbers were added; the
+existing screenshots (`public/landing/dash-*.png`) still show the tabs they
+were captured from, so the asset pipeline was not re-run — the two new tabs
+have no screenshots yet and none of the visible frames claim they do.

@@ -3,14 +3,16 @@
 import { ArrowRight } from "lucide-react";
 import { BrowserFrame, FadeUp, SectionHead } from "./shell";
 
-/** The seven tabs, and what each one is actually for. */
+/** The nine tabs, and what each one is actually for. */
 const TABS: [string, string][] = [
   ["Overview", "pass rate, shipped improvements, dream count, memory version, hook decisions, token usage"],
   ["Learning Lab", "every harness cycle: baseline → diagnosis → patch → candidate → ship or reject, with transcripts"],
   ["Memory", "the four tiers, full version history, one-click rollback, plus minted skills"],
   ["Dreams", "AutoDream sessions: merged, pruned and added notes, and the memory they produced"],
   ["Hooks", "the decision log of every guardrail: allow, deny, augment"],
-  ["Console", "drive the sandboxed agent live and watch the transcript stream"],
+  ["Console", "drive the sandboxed agent live and watch the transcript stream over SSE"],
+  ["Sandboxes", "the isolated workspaces where verified runs execute — files, age, GC cadence"],
+  ["Gateway", "every model call through the llm-bridge: tokens, latency, finish reasons, per-model breakdown"],
   ["Router", "the seven background jobs: enable, disable, trigger manually, next fire time"],
 ];
 
@@ -24,7 +26,7 @@ export function ShowcaseSection() {
             lead={
               <>
                 Everything the engine does is streamed over SSE into a dashboard: every run,
-                every dream, every memory version, every guardrail decision. Seven tabs, each
+                every dream, every memory version, every guardrail decision. Nine tabs, each
                 of which drives something real.
               </>
             }

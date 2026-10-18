@@ -47,10 +47,20 @@ function TierCard({
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-colors",
+        "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/60",
         selected ? "border-emerald-500/50 bg-emerald-500/5" : cn(cardCls, "hover:border-zinc-700")
       )}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`${meta.label} memory tier, version ${tier.version} — select to view history`}
+      aria-pressed={selected}
     >
       <CardContent className="flex flex-col gap-2 p-4">
         <div className="flex items-center justify-between gap-2">
@@ -104,11 +114,18 @@ function SkillCard({
 }: {
   skill: Skill;
   busy: boolean;
-  onRollback: () => void;
+  onRollback: (version: number) => void;
   onRetire: () => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
+  const [showHistory, setShowHistory] = React.useState(false);
   const retired = skill.status === "retired";
+  const { data: detail } = useQuery({
+    queryKey: qk.skill(skill.id),
+    queryFn: () => api.skill(skill.id),
+    enabled: showHistory,
+  });
+  const versions = detail?.versions ?? [];
   return (
     <Card className={cn(cardCls, !retired && "border-emerald-500/30")}>
       <CardContent className="flex flex-col gap-2 p-4">
@@ -122,13 +139,23 @@ function SkillCard({
           <Mono className="text-zinc-400">{skill.project_slug}</Mono>
           <Mono className="text-zinc-400">{timeAgo(skill.updated_at)}</Mono>
           <span className="ml-auto flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1.5 px-2 text-xs text-zinc-400 hover:text-zinc-100"
+              onClick={() => setShowHistory((v) => !v)}
+              aria-expanded={showHistory}
+            >
+              <History className="size-3.5" />
+              {showHistory ? "Hide history" : "History"}
+            </Button>
             {skill.version > 1 && (
               <Button
                 size="sm"
                 variant="ghost"
                 className="h-8 gap-1.5 px-2 text-xs text-zinc-400 hover:text-zinc-100"
                 disabled={busy}
-                onClick={onRollback}
+                onClick={() => onRollback(skill.version - 1)}
               >
                 <RotateCcw className="size-3.5" />
                 Rollback to v{skill.version - 1}
@@ -149,6 +176,42 @@ function SkillCard({
           </span>
         </div>
         {skill.description && <p className="text-xs text-zinc-400">{skill.description}</p>}
+        {showHistory && (
+          <div className="flex flex-col gap-1.5 rounded-md border border-zinc-800 bg-zinc-950/50 p-2.5" aria-label="skill version history">
+            <p className="text-[10px] font-semibold tracking-wider text-zinc-400 uppercase">
+              version history <span className="ml-1 normal-case text-zinc-500">({versions.length || "…"})</span>
+            </p>
+            {versions.length === 0 && <p className="text-xs text-zinc-500">loading versions…</p>}
+            {versions.map((v) => {
+              const isCurrent = v.version === skill.version;
+              return (
+                <div key={v.version} className="flex flex-wrap items-center gap-2 text-[11px]">
+                  <Pill tone={isCurrent ? "emerald" : "zinc"}>v{v.version}</Pill>
+                  <Mono className="text-zinc-400">{v.changed_by}</Mono>
+                  {v.note && (
+                    <span className="max-w-[300px] truncate text-zinc-400" title={v.note}>
+                      {v.note}
+                    </span>
+                  )}
+                  <Mono className="text-zinc-500">{timeAgo(v.created_at)}</Mono>
+                  {!isCurrent && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="ml-auto h-6 gap-1 px-1.5 text-[11px] text-zinc-400 hover:text-zinc-100"
+                      disabled={busy}
+                      onClick={() => onRollback(v.version)}
+                      title={`restore this skill to v${v.version}`}
+                    >
+                      <RotateCcw className="size-3" />
+                      Restore
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div>
           <pre
             className={cn(
@@ -186,7 +249,7 @@ export function MemoryTab() {
 
   const { data: skillsData } = useQuery({
     queryKey: qk.skills,
-    queryFn: api.skills,
+    queryFn: () => api.skills(),
     refetchInterval: 8000,
   });
 
@@ -223,13 +286,18 @@ export function MemoryTab() {
   const [confirmSkillAction, setConfirmSkillAction] = React.useState<{
     skill: Skill;
     action: "rollback" | "retire";
+    version?: number;
   } | null>(null);
 
   const skillRollback = useMutation({
-    mutationFn: (skill: Skill) => mutations.skillRollback(skill.id, skill.version - 1),
-    onSuccess: (_d, skill) => {
-      toast.success("Skill rolled back", { description: `${skill.name} restored to v${skill.version - 1}.` });
+    mutationFn: (target: { skill: Skill; version: number }) =>
+      mutations.skillRollback(target.skill.id, target.version),
+    onSuccess: (_d, target) => {
+      toast.success("Skill rolled back", {
+        description: `${target.skill.name} restored to v${target.version}.`,
+      });
       queryClient.invalidateQueries({ queryKey: qk.skills });
+      queryClient.invalidateQueries({ queryKey: qk.skill(target.skill.id) });
     },
     onError: (err: Error) => toast.error("Skill rollback failed", { description: err.message }),
   });
@@ -352,7 +420,9 @@ export function MemoryTab() {
                 key={s.id}
                 skill={s}
                 busy={skillActionPending}
-                onRollback={() => setConfirmSkillAction({ skill: s, action: "rollback" })}
+                onRollback={(version) =>
+                  setConfirmSkillAction({ skill: s, action: "rollback", version })
+                }
                 onRetire={() => setConfirmSkillAction({ skill: s, action: "retire" })}
               />
             ))
@@ -391,7 +461,9 @@ export function MemoryTab() {
               <AlertDialogTitle>
                 {confirmSkillAction.action === "retire"
                   ? `Retire skill "${confirmSkillAction.skill.name}"?`
-                  : `Roll back "${confirmSkillAction.skill.name}" to v${confirmSkillAction.skill.version - 1}?`}
+                  : `Roll back "${confirmSkillAction.skill.name}" to v${
+                      confirmSkillAction.version ?? confirmSkillAction.skill.version - 1
+                    }?`}
               </AlertDialogTitle>
               <AlertDialogDescription className="text-zinc-400">
                 {confirmSkillAction.action === "retire"
@@ -411,7 +483,11 @@ export function MemoryTab() {
                   const target = confirmSkillAction;
                   setConfirmSkillAction(null);
                   if (target.action === "retire") skillRetire.mutate(target.skill);
-                  else skillRollback.mutate(target.skill);
+                  else
+                    skillRollback.mutate({
+                      skill: target.skill,
+                      version: target.version ?? target.skill.version - 1,
+                    });
                 }}
               >
                 {confirmSkillAction.action === "retire" ? "Retire" : "Rollback"}

@@ -7,15 +7,19 @@
 // a 409-busy response degrades to a warning toast with no false success.
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useRunStreamStore } from "@/lib/agent-store";
 import type { Run } from "@/lib/agent-types";
 import { ConsoleTab } from "../console-tab";
+import { DashboardProviders } from "../providers";
 import * as fx from "./fixtures";
 import {
   busyResponse,
   createEngine,
   type EngineStub,
+  type EventSourceStub,
+  installFakeEventSource,
   installToastSpy,
   isDisabled,
   renderWithProviders,
@@ -153,6 +157,133 @@ describe("ConsoleTab — prompt mutation", () => {
     // Mutation failed → not busy anymore, submit is usable again.
     const submit = await screen.findByRole("button", { name: "Run agent" });
     expect(isDisabled(submit)).toBe(false);
+  });
+});
+
+describe("ConsoleTab — live SSE streaming (run:tool / run:text)", () => {
+  let esStub: EventSourceStub;
+
+  beforeEach(() => {
+    esStub = installFakeEventSource();
+    useRunStreamStore.setState({ streams: {} }); // module singleton — fresh buffers
+  });
+
+  afterEach(() => {
+    esStub.restore();
+    useRunStreamStore.setState({ streams: {} });
+  });
+
+  test("run:tool / run:text SSE frames render live transcript lines while the run is running, without new fetches", async () => {
+    routeInteractive([fx.run({ id: "run-0009", kind: "interactive", status: "running", ended_at: null })]);
+    engine.route(
+      "/api/runs/",
+      fx.runDetailResponse({
+        id: "run-0009",
+        kind: "interactive",
+        status: "running",
+        ended_at: null,
+        prompt: null,
+        transcript: [{ type: "text", ts: 1000, text: "old entry from the 3s poll" }],
+        verify_output: null,
+      })
+    );
+
+    const user = userEvent.setup();
+    // DashboardProviders mounts the SseBridge that forwards run:tool/run:text
+    // frames into useRunStreamStore; ConsoleTab renders them ahead of the poll.
+    render(
+      <DashboardProviders>
+        <ConsoleTab />
+      </DashboardProviders>
+    );
+    expect(await screen.findByText("run-0009")).toBeTruthy();
+
+    await user.click(screen.getByText("run-0009").closest("button") as HTMLElement);
+    expect(await screen.findByText("old entry from the 3s poll")).toBeTruthy();
+    expect(screen.getByText("run in progress — polling every 3s")).toBeTruthy();
+    const fetchesBefore = engine.callsFor("/api/runs/run-0009").length;
+
+    const sse = esStub.latest();
+    sse.simulateOpen();
+    sse.deliver(
+      JSON.stringify({
+        event: "run:text",
+        payload: { runId: "run-0009", preview: "live SSE token line" },
+        ts: 5000,
+      })
+    );
+    sse.deliver(
+      JSON.stringify({
+        event: "run:tool",
+        payload: { runId: "run-0009", tool: "bash", phase: "start" },
+        ts: 6000,
+      })
+    );
+
+    // The live text preview and the tool name render in the transcript area…
+    expect(await screen.findByText("live SSE token line")).toBeTruthy();
+    expect(screen.getByText("bash")).toBeTruthy();
+    // …the old polled entry is still there…
+    expect(screen.getByText("old entry from the 3s poll")).toBeTruthy();
+    // …the SSE banner replaces the polling hint…
+    expect(screen.getByText("streaming live over SSE")).toBeTruthy();
+    // …and no new fetch happened: the frames carried the update, not the poll.
+    expect(engine.callsFor("/api/runs/run-0009").length).toBe(fetchesBefore);
+  });
+});
+
+describe("ConsoleTab — run search timeout", () => {
+  // SEARCH_TIMEOUT_MS = 25s: patch globalThis.setTimeout to record (and still
+  // forward) every 25s callback so the give-up path can be driven manually —
+  // bun:test has no fake-timers API.
+  const searchTimeouts: Array<() => void> = [];
+  let realSetTimeout: (...args: unknown[]) => unknown;
+
+  beforeEach(() => {
+    searchTimeouts.length = 0;
+    realSetTimeout = globalThis.setTimeout as unknown as (...args: unknown[]) => unknown;
+    (globalThis as unknown as { setTimeout: unknown }).setTimeout = (
+      cb: unknown,
+      delay?: number,
+      ...rest: unknown[]
+    ) => {
+      if (typeof cb === "function" && delay === 25_000) searchTimeouts.push(cb as () => void);
+      return realSetTimeout(cb, delay, ...rest);
+    };
+  });
+
+  afterEach(() => {
+    (globalThis as unknown as { setTimeout: unknown }).setTimeout = realSetTimeout as typeof globalThis.setTimeout;
+  });
+
+  test("the run search gives up after 25s with a warning toast and frees the console", async () => {
+    routeInteractive([fx.run({ id: "run-0004", kind: "interactive", status: "passed" })]);
+    engine.route("/api/agent/prompt", { started: true });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ConsoleTab />);
+    expect(await screen.findByText("run-0004")).toBeTruthy();
+
+    await user.type(screen.getByLabelText("agent prompt"), "reverse a linked list");
+    await user.click(screen.getByRole("button", { name: "Run agent" }));
+
+    // Submitted and now searching for the engine to create the run — the
+    // 25s give-up timer is scheduled.
+    expect(await screen.findByRole("button", { name: /working/i })).toBeTruthy();
+    expect(searchTimeouts.length).toBeGreaterThan(0);
+
+    // Fire the give-up callback manually (time has "elapsed").
+    await act(async () => {
+      searchTimeouts[0]();
+    });
+
+    const warn = toastsWithTitle("The engine did not start the run");
+    expect(warn).toHaveLength(1);
+    expect(warn[0]?.kind).toBe("warning");
+    expect(warn[0]?.description).toContain("unreachable");
+    // Searching cleared → the console is usable again (idle hint, idle button).
+    expect(screen.getByText("Ctrl/⌘ + Enter to run")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Run agent" })).toBeTruthy();
   });
 });
 

@@ -1,11 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Bot, Radio, ServerCog } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bot, Command, Home, Radio, RefreshCw, ServerCog, TriangleAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { api, qk } from "@/lib/agent-api";
 import { formatClock } from "@/lib/agent-format";
 import { useActivityStore } from "@/lib/agent-store";
+import { useCommandPaletteStore } from "./command-palette";
 import { Pill } from "./bits";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +23,13 @@ function Clock() {
 }
 
 export function Header() {
-  const { data } = useQuery({ queryKey: qk.overview, queryFn: api.overview, refetchInterval: 5000 });
+  const queryClient = useQueryClient();
+  const setCommandOpen = useCommandPaletteStore((s) => s.setOpen);
+  const { data, isError, isFetching } = useQuery({
+    queryKey: qk.overview,
+    queryFn: api.overview,
+    refetchInterval: 5000,
+  });
   const connected = useActivityStore((s) => s.connected);
 
   const bridgeOk = data?.agent.bridge.ok ?? false;
@@ -29,6 +37,25 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/75">
+      {isError && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-2 border-b border-rose-500/40 bg-rose-500/10 px-4 py-1.5 text-xs text-rose-300 sm:px-6"
+        >
+          <TriangleAlert className="size-3.5 shrink-0" />
+          <span className="font-medium">engine unreachable</span>
+          <span className="text-rose-300/80">— retrying every 5s; data below may be stale</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto h-7 gap-1.5 border-rose-500/40 bg-transparent text-[11px] text-rose-300 hover:bg-rose-500/20"
+            onClick={() => queryClient.invalidateQueries()}
+          >
+            <RefreshCw className={cn("size-3", isFetching && "animate-spin")} />
+            retry now
+          </Button>
+        </div>
+      )}
       <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10">
@@ -57,6 +84,24 @@ export function Header() {
         </div>
 
         <div className="ml-auto flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setCommandOpen(true)}
+            className="hidden items-center gap-1.5 rounded-md border border-zinc-800 px-2 py-1 font-mono text-[11px] text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-200 md:inline-flex"
+            title="open the command palette"
+            aria-label="open command palette"
+          >
+            <Command className="size-3" />
+            K
+          </button>
+          <a
+            href="/"
+            className="hidden items-center gap-1 rounded-md border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-200 sm:inline-flex"
+            title="back to the landing page"
+          >
+            <Home className="size-3" />
+            home
+          </a>
           <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400" title="self-learning engine state">
             <ServerCog className="size-3.5" />
             <Pill tone={busy ? "amber" : "emerald"} pulse={busy}>

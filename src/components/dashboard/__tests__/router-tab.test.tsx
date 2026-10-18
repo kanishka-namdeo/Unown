@@ -74,7 +74,7 @@ describe("RouterTab — happy state", () => {
 });
 
 describe("RouterTab — job toggle", () => {
-  test("flipping a switch POSTs the toggle, toasts, and invalidates qk.jobs", async () => {
+  test("flipping a switch confirms, POSTs the toggle, toasts, and invalidates qk.jobs", async () => {
     routeHappy();
     engine.route("/api/jobs/autodream/toggle", { job: fx.job({ id: "autodream", name: "autodream", enabled: 1 }) });
 
@@ -82,7 +82,14 @@ describe("RouterTab — job toggle", () => {
     const view = renderWithProviders(<RouterTab />);
     expect(await screen.findByRole("switch", { name: "toggle autodream" })).toBeTruthy();
 
+    // The toggle is destructive (pauses the learning loop) — it now confirms first.
     await user.click(screen.getByRole("switch", { name: "toggle autodream" }));
+    expect(engine.callsFor("/api/jobs/autodream/toggle")).toHaveLength(0);
+
+    const confirm = await screen.findByRole("alertdialog");
+    expect(confirm).toBeTruthy();
+    expect(screen.getByText('Enable "autodream"?')).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Enable" }));
 
     expect(engine.callsFor("/api/jobs/autodream/toggle")).toHaveLength(1);
     expect(engine.callsFor("/api/jobs/autodream/toggle")[0]?.method).toBe("POST");
@@ -90,6 +97,20 @@ describe("RouterTab — job toggle", () => {
     expect(enabled).toHaveLength(1);
     expect(enabled[0]?.kind).toBe("success");
     expect(view.invalidatedKeys()).toContainEqual(qk.jobs);
+  });
+
+  test("cancelling the confirm dialog leaves the job untouched", async () => {
+    routeHappy();
+    engine.route("/api/jobs/autodream/toggle", { job: fx.job({ id: "autodream", name: "autodream", enabled: 1 }) });
+
+    const user = userEvent.setup();
+    renderWithProviders(<RouterTab />);
+    expect(await screen.findByRole("switch", { name: "toggle autodream" })).toBeTruthy();
+
+    await user.click(screen.getByRole("switch", { name: "toggle autodream" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(engine.callsFor("/api/jobs/autodream/toggle")).toHaveLength(0);
   });
 });
 

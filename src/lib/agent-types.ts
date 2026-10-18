@@ -4,20 +4,22 @@ export type RunKind = "baseline" | "candidate" | "regression" | "interactive";
 export type RunStatus = "running" | "passed" | "failed" | "error";
 export type MemoryTier = "policy" | "project" | "user" | "local";
 export type CycleStatus = "improved" | "no-fix" | "already-passing" | "running";
-export type ImprovementStatus = "proposed" | "validated" | "shipped" | "rejected";
-export type DreamStatus = "done" | "running" | "no-notes" | "error";
+export type ImprovementStatus = "proposed" | "validated" | "shipped" | "rejected" | "regressed";
+export type DreamStatus = "done" | "running" | "no-notes" | "error" | "gated";
 export type HookName =
   | "SessionStart"
   | "UserPromptSubmit"
   | "PreToolUse"
   | "PostToolUse"
   | "Stop"
-  | "SubagentStop";
-export type HookDecision = "allow" | "deny" | "augment" | "log" | "log-error";
+  | "SubagentStop"
+  | "MemoryBudget";
+export type HookDecision = "allow" | "deny" | "augment" | "log" | "log-error" | "warn";
 export type ChangedBy = "autodream" | "harness" | "seed" | "manual" | "rollback";
 export type TaskOrigin = "seed" | "minted";
-export type TaskStatus = "capability" | "regression" | "discarded";
+export type TaskStatus = "capability" | "regression" | "discarded" | "validating";
 export type SkillStatus = "shipped" | "retired";
+export type NoteKind = "benchmark" | "terminal";
 
 export interface BridgeInfo {
   ok: boolean;
@@ -88,6 +90,33 @@ export interface Task {
   // Provenance from task minting; null on rows that predate it (origin defaults to "seed", status to "regression").
   origin?: TaskOrigin | null;
   status?: TaskStatus | null;
+}
+
+export interface TaskDetail extends Task {
+  // Path → content map, parsed from the files JSON column by the engine's getTask.
+  files: Record<string, string>;
+  verify: string;
+  // The full prompt handed to the agent for this task.
+  prompt?: string | null;
+  source_run_id?: string | null;
+}
+
+export interface TaskDetailResponse {
+  task: TaskDetail;
+}
+
+// One minting decision from POST /api/tasks/mint.
+export interface MintOutcome {
+  status: "minted" | "discarded" | "skipped" | "error";
+  taskId?: string;
+  reason?: string;
+  validationRunId?: string | null;
+  source?: string;
+}
+
+export interface MintResponse {
+  ok: boolean;
+  outcome: MintOutcome;
 }
 
 export interface TasksResponse {
@@ -195,6 +224,9 @@ export interface Improvement {
   score_after: string;
   created_at: number;
   decided_at: number | null;
+  // Memory version the improvement shipped into; set at ship time, null while
+  // proposed/rejected. Absent on rows that predate the column.
+  memory_version?: number | null;
 }
 
 export interface ImprovementsResponse {
@@ -247,7 +279,9 @@ export interface HooksResponse {
 export interface Note {
   id: string;
   run_id: string;
+  kind?: NoteKind | null;
   project_slug?: string | null;
+  project_path?: string | null;
   content: string;
   created_at: number;
   dream_id: string | null;
@@ -255,6 +289,16 @@ export interface Note {
 
 export interface NotesResponse {
   notes: Note[];
+}
+
+export interface NoteCreateResponse {
+  ok: boolean;
+  id: string;
+}
+
+export interface NotesSyncResponse {
+  ok: boolean;
+  synced: number;
 }
 
 // Agent Skills minted by AutoDream into user projects (skills minting).
@@ -274,6 +318,18 @@ export interface Skill {
 
 export interface SkillsResponse {
   skills: Skill[];
+}
+
+export interface SkillVersion {
+  version: number;
+  changed_by: string;
+  note: string | null;
+  created_at: number;
+}
+
+export interface SkillDetailResponse {
+  skill: Skill;
+  versions: SkillVersion[];
 }
 
 export interface Job {
@@ -395,3 +451,9 @@ export interface ActivityItem {
   text: string;
   tone: "emerald" | "amber" | "rose" | "zinc";
 }
+
+// Live run-stream frames (run:tool / run:text SSE events) for the Console's
+// true streaming view — one ring buffer per runId, newest last.
+export type RunStreamEntry =
+  | { kind: "tool"; ts: number; tool: string; phase: "start" | "end"; isError?: boolean }
+  | { kind: "text"; ts: number; preview: string };

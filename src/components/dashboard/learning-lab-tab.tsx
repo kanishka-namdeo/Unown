@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 const cardCls = "border-zinc-800 bg-zinc-900/60";
 
-function ImprovementCard({ imp }: { imp: Improvement }) {
+function ImprovementCard({ imp, onOpenRun }: { imp: Improvement; onOpenRun: (runId: string) => void }) {
   const [expanded, setExpanded] = React.useState(false);
   return (
     <Card className={cardCls}>
@@ -35,7 +35,34 @@ function ImprovementCard({ imp }: { imp: Improvement }) {
           <Mono className="text-zinc-400">{imp.task_id}</Mono>
           <Pill tone="zinc">iter {imp.iteration}</Pill>
           <Pill tone="emerald">→ {imp.target_tier}</Pill>
+          {imp.memory_version != null && (
+            <span title="the memory version this patch shipped into">
+              <Pill tone="violet">memory v{imp.memory_version}</Pill>
+            </span>
+          )}
           <span className="ml-auto font-mono text-[10px] text-zinc-400">{timeAgo(imp.created_at)}</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+          <span className="text-zinc-500">evidence:</span>
+          <button
+            type="button"
+            onClick={() => onOpenRun(imp.baseline_run_id)}
+            className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-zinc-300 transition-colors hover:border-rose-500/40 hover:text-rose-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-500/50"
+            title="open the failing baseline run"
+          >
+            <span className="size-1.5 rounded-full bg-rose-400" aria-hidden="true" />
+            baseline {imp.baseline_run_id.slice(0, 8)}
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenRun(imp.candidate_run_id)}
+            className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-zinc-300 transition-colors hover:border-emerald-500/40 hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50"
+            title="open the validating candidate run"
+          >
+            <span className="size-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
+            candidate {imp.candidate_run_id.slice(0, 8)}
+          </button>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
@@ -168,7 +195,7 @@ export function LearningLabTab() {
                 hint="When a baseline fails, the harness diagnoses it and proposes a memory patch."
               />
             ) : (
-              improvements.map((imp) => <ImprovementCard key={imp.id} imp={imp} />)
+              improvements.map((imp) => <ImprovementCard key={imp.id} imp={imp} onOpenRun={openRun} />)
             )}
           </div>
         </div>
@@ -202,7 +229,16 @@ export function LearningLabTab() {
                         <tr
                           key={r.id}
                           onClick={() => openRun(r.id)}
-                          className="cursor-pointer border-b border-zinc-800/60 last:border-0 hover:bg-zinc-900/70"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openRun(r.id);
+                            }
+                          }}
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`open run ${r.id.slice(0, 8)} — ${r.status} ${r.kind}`}
+                          className="cursor-pointer border-b border-zinc-800/60 last:border-0 hover:bg-zinc-900/70 focus-visible:bg-zinc-900/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
                         >
                           <td className="px-4 py-2.5"><RunStatusBadge status={r.status} /></td>
                           <td className="px-4 py-2.5"><RunKindBadge kind={r.kind} /></td>

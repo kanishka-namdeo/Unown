@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The mission-control dashboard: a single-page Next.js 16 App Router client that visualizes and drives the self-learning engine — 7 tabs (Overview, Learning Lab, Memory, Dreams, Hooks, Console, Router) fed by live SSE from `:3030`.
+The mission-control dashboard: a single-page Next.js 16 App Router client that visualizes and drives the self-learning engine — 9 tabs (Overview, Learning Lab, Memory, Dreams, Hooks, Console, Sandboxes, Gateway, Router) fed by live SSE from `:3030`.
 
 ## Ownership
 

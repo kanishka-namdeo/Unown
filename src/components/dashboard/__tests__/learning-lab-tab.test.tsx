@@ -8,7 +8,7 @@
 // (run ids only appear inside the opened detail dialog).
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LearningLabTab } from "../learning-lab-tab";
 import * as fx from "./fixtures";
@@ -93,6 +93,76 @@ describe("LearningLabTab — happy state", () => {
     await user.click(cycleButton);
     expect(screen.getByText("3 runs")).toBeTruthy();
     expect(screen.getByText("The agent missed that the cookie path was scoped to /auth only.")).toBeTruthy();
+  });
+});
+
+describe("LearningLabTab — improvement evidence + run-row activation", () => {
+  // The file-level beforeEach installs the engine but never resets it; reset
+  // here so routes/calls from the earlier describes stay isolated.
+  beforeEach(() => {
+    engine.reset();
+  });
+
+  test("improvement cards show baseline/candidate evidence buttons and the memory version pill", async () => {
+    engine.route("/api/cycles", fx.cyclesResponse());
+    engine.route("/api/improvements", {
+      improvements: [fx.improvement({ memory_version: 4 })],
+    });
+    engine.route("/api/runs", fx.runsResponse());
+
+    renderWithProviders(<LearningLabTab />);
+    await screen.findByText("The agent missed that the cookie path was scoped to /auth only.");
+
+    // Evidence buttons are labelled with the 8-char run id slices.
+    expect(screen.getByRole("button", { name: /baseline run-0001/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /candidate run-0002/ })).toBeTruthy();
+    // The shipped-into memory version pill.
+    expect(screen.getByText("memory v4")).toBeTruthy();
+  });
+
+  test("clicking the baseline evidence button opens the run detail dialog", async () => {
+    engine.route("/api/cycles", fx.cyclesResponse());
+    // A single improvement card so the baseline evidence button is unique
+    // (the default fixture pair would render two of them).
+    engine.route("/api/improvements", { improvements: [fx.improvement()] });
+    engine.route("/api/runs", fx.runsResponse());
+    engine.route("/api/runs/run-0001", fx.runDetailResponse());
+
+    const user = userEvent.setup();
+    renderWithProviders(<LearningLabTab />);
+    await screen.findByText("3 runs");
+
+    await user.click(screen.getByRole("button", { name: /baseline run-0001/ }));
+
+    expect(await screen.findByText("Reproduce the login redirect bug and fix it.")).toBeTruthy();
+    expect(screen.getByText("PASSED")).toBeTruthy();
+    expect(screen.getByText("I will start by reproducing the bug.")).toBeTruthy();
+    expect(engine.callsFor("/api/runs/run-0001")).toHaveLength(1);
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryAllByRole("dialog")).toHaveLength(0));
+  });
+
+  test("run rows are keyboard activatable — Enter on a focused row opens the run dialog", async () => {
+    routeHappy();
+    engine.route("/api/runs/run-0001", fx.runDetailResponse());
+
+    const user = userEvent.setup();
+    renderWithProviders(<LearningLabTab />);
+    await screen.findByText("3 runs");
+
+    // The run row is a real tab stop (tabIndex=0, role=button).
+    const row = screen.getByRole("button", { name: /open run run-0001/ }) as HTMLElement;
+    row.focus();
+    expect(document.activeElement).toBe(row);
+
+    await user.keyboard("{Enter}");
+
+    expect(await screen.findByText("Reproduce the login redirect bug and fix it.")).toBeTruthy();
+    expect(engine.callsFor("/api/runs/run-0001")).toHaveLength(1);
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryAllByRole("dialog")).toHaveLength(0));
   });
 });
 

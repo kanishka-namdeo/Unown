@@ -10,7 +10,7 @@
 // why the Toaster is not mounted).
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { qk } from "@/lib/agent-api";
 import { OverviewTab } from "../overview-tab";
@@ -169,5 +169,122 @@ describe("OverviewTab — run-cycle mutation", () => {
     expect(busy[0]?.kind).toBe("warning");
     expect(toastsWithTitle("Cycle started")).toHaveLength(0); // no false success
     expect(view.invalidatedKeys()).not.toContainEqual(qk.overview);
+  });
+});
+
+describe("OverviewTab — mint-task mutation", () => {
+  // The file-level beforeEach installs the engine but does not reset it;
+  // reset here so the per-test /api/tasks/mint call counts stay isolated.
+  beforeEach(() => {
+    engine.reset();
+  });
+
+  test("minted outcome POSTs /api/tasks/mint, toasts success, invalidates qk.tasks + qk.overview", async () => {
+    routeHappy();
+    engine.route("/api/tasks/mint", {
+      ok: true,
+      outcome: {
+        status: "minted",
+        taskId: "minted-001",
+        reason: "authored from failure mining",
+        source: "failed-run",
+      },
+    });
+
+    const user = userEvent.setup();
+    const view = renderWithProviders(<OverviewTab />);
+    await screen.findByText("fix login flow redirect");
+
+    await user.click(screen.getByRole("button", { name: /mint task/i }));
+
+    const mints = engine.callsFor("/api/tasks/mint");
+    expect(mints).toHaveLength(1);
+    expect(mints[0]?.method).toBe("POST");
+
+    const minted = toastsWithTitle("Task minted — minted-001");
+    expect(minted).toHaveLength(1);
+    expect(minted[0]?.kind).toBe("success");
+    expect(minted[0]?.description).toBe("authored from failure mining");
+    expect(view.invalidatedKeys()).toContainEqual(qk.tasks);
+    expect(view.invalidatedKeys()).toContainEqual(qk.overview);
+  });
+
+  test("skipped outcome surfaces an info toast, no false success", async () => {
+    routeHappy();
+    engine.route("/api/tasks/mint", {
+      ok: true,
+      outcome: { status: "skipped", reason: "no unmined failed runs" },
+    });
+
+    const user = userEvent.setup();
+    const view = renderWithProviders(<OverviewTab />);
+    await screen.findByText("fix login flow redirect");
+
+    await user.click(screen.getByRole("button", { name: /mint task/i }));
+
+    const skipped = toastsWithTitle("Minting skipped");
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0]?.kind).toBe("info");
+    expect(skipped[0]?.description).toBe("no unmined failed runs");
+    expect(toastsWithTitle("Task minted — minted-001")).toHaveLength(0); // no false success
+    expect(engine.callsFor("/api/tasks/mint")).toHaveLength(1);
+    expect(engine.callsFor("/api/tasks/mint")[0]?.method).toBe("POST");
+    expect(view.invalidatedKeys()).toContainEqual(qk.tasks); // list still refreshed
+  });
+
+  test("409-busy: warning toast, no false success, no invalidation", async () => {
+    routeHappy();
+    engine.route("/api/tasks/mint", busyResponse());
+
+    const user = userEvent.setup();
+    const view = renderWithProviders(<OverviewTab />);
+    await screen.findByText("fix login flow redirect");
+
+    await user.click(screen.getByRole("button", { name: /mint task/i }));
+
+    const busy = toastsWithTitle("Engine busy — a background job is learning right now");
+    expect(busy).toHaveLength(1);
+    expect(busy[0]?.kind).toBe("warning");
+    expect(toastsWithTitle("Task minted — minted-001")).toHaveLength(0); // no false success
+    expect(toastsWithTitle("Minting skipped")).toHaveLength(0);
+    expect(view.invalidatedKeys()).not.toContainEqual(qk.tasks);
+    expect(view.invalidatedKeys()).not.toContainEqual(qk.overview);
+    expect(engine.callsFor("/api/tasks/mint")).toHaveLength(1);
+  });
+});
+
+describe("OverviewTab — task detail dialog", () => {
+  beforeEach(() => {
+    engine.reset();
+  });
+
+  test("clicking a task name opens the task detail dialog (prompt, files, verify) and Escape closes it", async () => {
+    routeHappy();
+    engine.route("/api/tasks/fix-login-flow", {
+      task: {
+        ...fx.task(),
+        files: { "a.js": "content" },
+        verify: "node --test",
+        prompt: "fix it",
+      },
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<OverviewTab />);
+    await screen.findByText("fix login flow redirect");
+
+    // The task name is a button in the tasks table.
+    await user.click(screen.getByText("fix login flow redirect").closest("button") as HTMLElement);
+
+    expect(await screen.findByText("AGENT PROMPT", { exact: false })).toBeTruthy();
+    expect(screen.getByText("fix it")).toBeTruthy();
+    expect(screen.getByText("a.js")).toBeTruthy();
+    expect(screen.getByText("node --test")).toBeTruthy();
+    expect(engine.callsFor("/api/tasks/fix-login-flow")).toHaveLength(1);
+
+    // Escape dismisses the dialog.
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryAllByRole("dialog")).toHaveLength(0));
+    expect(screen.queryAllByText("fix it")).toHaveLength(0);
   });
 });

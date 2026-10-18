@@ -42,12 +42,17 @@ import type {
   MemoryHistoryResponse,
   MemoryResponse,
   MemoryTier,
+  MintResponse,
+  NoteCreateResponse,
   NotesResponse,
+  NotesSyncResponse,
   OverviewResponse,
   RunDetailResponse,
   RunsResponse,
   SandboxesResponse,
+  SkillDetailResponse,
   SkillsResponse,
+  TaskDetailResponse,
   TasksResponse,
 } from "./agent-types";
 
@@ -81,6 +86,7 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
 export const qk = {
   overview: ["overview"] as const,
   tasks: ["tasks"] as const,
+  task: (id: string) => ["task", id] as const,
   runs: ["runs"] as const,
   run: (id: string) => ["run", id] as const,
   memory: ["memory"] as const,
@@ -94,12 +100,14 @@ export const qk = {
   jobs: ["jobs"] as const,
   sandboxes: ["sandboxes"] as const,
   skills: ["skills"] as const,
+  skill: (id: string) => ["skill", id] as const,
   bridge: ["bridge"] as const,
 };
 
 export const api = {
   overview: () => getJson<OverviewResponse>("/api/overview"),
   tasks: () => getJson<TasksResponse>("/api/tasks"),
+  task: (id: string) => getJson<TaskDetailResponse>(`/api/tasks/${id}`),
   runs: (opts?: { limit?: number; task?: string; kind?: string }) =>
     getJson<RunsResponse>("/api/runs", { limit: opts?.limit ?? 200, task: opts?.task, kind: opts?.kind }),
   run: (id: string) => getJson<RunDetailResponse>(`/api/runs/${id}`),
@@ -114,7 +122,9 @@ export const api = {
   notes: (limit = 40) => getJson<NotesResponse>("/api/notes", { limit }),
   jobs: () => getJson<JobsResponse>("/api/jobs"),
   sandboxes: () => getJson<SandboxesResponse>("/api/sandboxes"),
-  skills: () => getJson<SkillsResponse>("/api/skills"),
+  skills: (project?: string) =>
+    getJson<SkillsResponse>("/api/skills", project ? { project } : undefined),
+  skill: (id: string) => getJson<SkillDetailResponse>(`/api/skills/${id}`),
   bridge: () => getJson<BridgeResponse>("/api/bridge"),
 };
 
@@ -132,4 +142,8 @@ export const mutations = {
   skillRetire: (id: string) => postJson<{ ok: boolean }>(`/api/skills/${id}/retire`),
   jobTrigger: (id: string) => postJson<{ ok: boolean; result?: unknown }>(`/api/jobs/${id}/trigger`),
   jobToggle: (id: string) => postJson<{ job: Job }>(`/api/jobs/${id}/toggle`),
+  mintTask: () => postJson<MintResponse>("/api/tasks/mint"),
+  noteCreate: (content: string, projectPath: string) =>
+    postJson<NoteCreateResponse>("/api/notes", { content, project_path: projectPath }),
+  notesSync: () => postJson<NotesSyncResponse>("/api/notes/sync"),
 };

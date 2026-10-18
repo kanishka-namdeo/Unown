@@ -15,6 +15,8 @@ const TABS = [
   { name: "Memory", ready: "mock rule 1: prefer standard library functions" },
   { name: "Dreams", ready: "consolidated retry discipline into project memory", expand: true },
   { name: "Hooks", ready: "bash redirect escape" },
+  { name: "Sandboxes", ready: "task-e2e-4/baseline" },
+  { name: "Gateway", ready: "qwen3.7-plus" },
   { name: "Router", ready: "Pick a task, run it in a fresh sandbox, mine failures." },
 ] as const;
 

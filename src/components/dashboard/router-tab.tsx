@@ -9,9 +9,20 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { api, mutations, qk } from "@/lib/agent-api";
 import { formatAbsolute, humanizeInterval, timeAgo } from "@/lib/agent-format";
-import type { ActivityItem } from "@/lib/agent-types";
+import type { ActivityItem, Job } from "@/lib/agent-types";
 import { EmptyState, Mono, Pill, SectionHeading } from "./bits";
 import { ActivityFeed } from "./activity-feed";
 import { cn } from "@/lib/utils";
@@ -19,6 +30,53 @@ import { cn } from "@/lib/utils";
 const cardCls = "border-zinc-800 bg-zinc-900/60";
 
 const jobEventFilter = (item: ActivityItem) => item.event.startsWith("job:");
+
+// Job toggles pause/resume the learning loop — the dashboard contract lists
+// them among the destructive actions that require an explicit confirm.
+function ToggleConfirm({
+  job,
+  disabled,
+  onConfirm,
+}: {
+  job: Job;
+  disabled: boolean;
+  onConfirm: () => void;
+}) {
+  const disabling = job.enabled === 1;
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Switch
+          checked={job.enabled === 1}
+          disabled={disabled}
+          aria-label={`toggle ${job.name}`}
+          className="data-[state=checked]:bg-emerald-500"
+        />
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {disabling ? `Disable "${job.name}"?` : `Enable "${job.name}"?`}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {disabling
+              ? "The router stops scheduling this job until it is re-enabled. Jobs already running finish normally."
+              : "The router resumes scheduling this job on its interval/event."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className={disabling ? "bg-rose-500 text-zinc-950 hover:bg-rose-400" : "bg-emerald-500 text-zinc-950 hover:bg-emerald-400"}
+          >
+            {disabling ? "Disable" : "Enable"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 export function RouterTab() {
   const queryClient = useQueryClient();
@@ -95,12 +153,10 @@ export function RouterTab() {
                         <Pill tone={running ? "amber" : "zinc"} pulse={running}>
                           {running ? "running" : "idle"}
                         </Pill>
-                        <Switch
-                          checked={j.enabled === 1}
+                        <ToggleConfirm
+                          job={j}
                           disabled={toggle.isPending}
-                          onCheckedChange={() => toggle.mutate(j.id)}
-                          aria-label={`toggle ${j.name}`}
-                          className="data-[state=checked]:bg-emerald-500"
+                          onConfirm={() => toggle.mutate(j.id)}
                         />
                       </div>
                     </div>

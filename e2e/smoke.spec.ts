@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Dashboard E2E smoke (gate 16, part 1): the seven tabs render live engine
+ * Dashboard E2E smoke (gate 16, part 1): the nine tabs render live engine
  * data against the mock engine, the SSE stream feeds the activity strip, the
  * console prompt round-trips, and the browser console stays clean.
  */
@@ -13,6 +13,8 @@ const TABS = [
   { name: "Dreams", proof: "consolidated retry discipline into project memory", expand: true },
   { name: "Hooks", proof: "bash redirect escape" },
   { name: "Console", proof: "Send your first prompt." },
+  { name: "Sandboxes", proof: "task-e2e-4/baseline" },
+  { name: "Gateway", proof: "qwen3.7-plus" },
   { name: "Router", proof: "Pick a task, run it in a fresh sandbox, mine failures." },
 ] as const;
 
@@ -26,7 +28,7 @@ function collectBrowserErrors(page: Page) {
   return errors;
 }
 
-test("all seven tabs render engine data", async ({ page }) => {
+test("all nine tabs render engine data", async ({ page }) => {
   const errors = collectBrowserErrors(page);
   await page.goto("/dashboard");
 

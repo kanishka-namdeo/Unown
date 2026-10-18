@@ -21,11 +21,13 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api, mutations, qk } from "@/lib/agent-api";
 import { formatTokens } from "@/lib/agent-format";
 import { useActivityStore } from "@/lib/agent-store";
 import type { TaskOrigin, TaskStatus } from "@/lib/agent-types";
 import { DifficultyStars, EmptyState, Mono, Pill, SectionHeading } from "./bits";
+import { TaskDetailDialog } from "./task-detail";
 import { ActivityFeed } from "./activity-feed";
 import { cn } from "@/lib/utils";
 
@@ -169,7 +171,12 @@ function TrendChart({ data }: { data: { ts: number; cumulativePass: number }[] }
 
 export function OverviewTab() {
   const queryClient = useQueryClient();
-  const { data: overview } = useQuery({ queryKey: qk.overview, queryFn: api.overview, refetchInterval: 5000 });
+  const [detailTaskId, setDetailTaskId] = React.useState<string | null>(null);
+  const { data: overview, isLoading: overviewLoading } = useQuery({
+    queryKey: qk.overview,
+    queryFn: api.overview,
+    refetchInterval: 5000,
+  });
   const { data: tasksData } = useQuery({ queryKey: qk.tasks, queryFn: api.tasks, refetchInterval: 8000 });
   const { data: jobsData } = useQuery({ queryKey: qk.jobs, queryFn: api.jobs, refetchInterval: 8000 });
   const connected = useActivityStore((s) => s.connected);
@@ -207,10 +214,54 @@ export function OverviewTab() {
 
   const tasks = tasksData?.tasks ?? [];
 
+  const mintTask = useMutation({
+    mutationFn: () => mutations.mintTask(),
+    onSuccess: (d) => {
+      const o = d.outcome;
+      if (o.status === "minted") {
+        toast.success(`Task minted — ${o.taskId ?? "new task"}`, {
+          description: o.reason ?? `authored from ${o.source ?? "failure mining"}, validated by a real agent run`,
+        });
+      } else if (o.status === "skipped") {
+        toast.info("Minting skipped", { description: o.reason ?? "no minable material right now" });
+      } else if (o.status === "discarded") {
+        toast.warning("Draft discarded", { description: o.reason ?? "validation rejected the draft" });
+      } else {
+        toast.error("Minting failed", { description: o.reason ?? "engine error" });
+      }
+      queryClient.invalidateQueries({ queryKey: qk.tasks });
+      queryClient.invalidateQueries({ queryKey: qk.overview });
+    },
+    onError: (err: Error & { status?: number }) => {
+      if (err.status === 409) {
+        toast.warning("Engine busy — a background job is learning right now", {
+          description: "Try minting again once the current cycle finishes.",
+        });
+      } else {
+        toast.error("Failed to mint task", { description: err.message });
+      }
+    },
+  });
+
   return (
     <div className="flex flex-col gap-6">
       {/* KPI row */}
       <section aria-label="key metrics" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
+        {overviewLoading && (
+          <div className="col-span-2 grid grid-cols-2 gap-3 md:col-span-3 md:grid-cols-3 xl:col-span-7 xl:grid-cols-7" aria-hidden="true">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Card key={i} className={cardCls}>
+                <CardContent className="flex flex-col gap-2.5 p-4">
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-7 w-1/3" />
+                  <Skeleton className="h-2.5 w-2/3" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+        {!overviewLoading && (
+          <>
         <KpiCard
           label="Pass rate"
           value={`${k?.passRate ?? 0}%`}
@@ -221,6 +272,12 @@ export function OverviewTab() {
               <span className="text-rose-400">{k?.failed ?? 0} failed</span>
               <span className="text-zinc-400">·</span>
               <span>{k?.totalRuns ?? 0} runs</span>
+              {(k?.errors ?? 0) > 0 && (
+                <>
+                  <span className="text-zinc-400">·</span>
+                  <span className="text-amber-400" title="runs that errored before verification">{k?.errors ?? 0} errors</span>
+                </>
+              )}
             </span>
           }
           icon={<CheckCircle2 className="text-emerald-500/70" />}
@@ -233,7 +290,7 @@ export function OverviewTab() {
               <span className="inline-flex flex-wrap items-center gap-1.5">
                 <span className="text-amber-400">{k.suite.capability} capability</span>
                 <span className="text-zinc-400">·</span>
-                <span>{k.suite.minted} minted</span>
+                <span className="text-rose-400/90" title="tasks that regressed after passing">{k.suite.regression} regression</span>
                 <span className="text-zinc-400">·</span>
                 <span className="text-emerald-400">{k.suite.graduated} graduated</span>
                 {k.suite.saturated && <Pill tone="amber">saturated</Pill>}
@@ -247,7 +304,7 @@ export function OverviewTab() {
         <KpiCard
           label="Improvements"
           value={k?.improvementsShipped ?? 0}
-          sub="memory patches shipped"
+          sub={<span>memory patches shipped{(k?.notes.total ?? 0) > 0 && <span> · {k?.notes.total} notes total</span>}</span>}
           icon={<Sparkles className="text-emerald-500/70" />}
         />
         <KpiCard label="Dreams" value={k?.dreams ?? 0} sub={`${k?.notes.pending ?? 0} notes pending`} icon={<Moon className="text-amber-500/70" />} />
@@ -273,6 +330,8 @@ export function OverviewTab() {
           }
           icon={<Cpu className="text-emerald-500/70" />}
         />
+          </>
+        )}
       </section>
 
       {/* 5 patterns strip */}
@@ -324,7 +383,23 @@ export function OverviewTab() {
 
       {/* tasks */}
       <section aria-label="benchmark tasks">
-        <SectionHeading title="Benchmark tasks" sub="each row triggers a full self-improvement cycle" />
+        <SectionHeading
+          title="Benchmark tasks"
+          sub="each row triggers a full self-improvement cycle"
+          right={
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={mintTask.isPending}
+              onClick={() => mintTask.mutate()}
+              title="Mine the latest unmined failed run into a new benchmark task (or author a curriculum variant when the suite is saturated)"
+              className="h-8 gap-1.5 border-violet-500/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 disabled:opacity-40"
+            >
+              <Sparkles className="size-3.5" />
+              {mintTask.isPending ? "minting…" : "Mint task"}
+            </Button>
+          }
+        />
         <Card className={cn(cardCls, "mt-3")}>
           <CardContent className="p-0">
             {tasks.length === 0 ? (
@@ -350,7 +425,14 @@ export function OverviewTab() {
                         <tr key={t.id} className="border-b border-zinc-800/60 last:border-0 hover:bg-zinc-900/70">
                           <td className="px-4 py-3">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <p className="font-medium text-zinc-200">{t.name}</p>
+                              <button
+                                type="button"
+                                onClick={() => setDetailTaskId(t.id)}
+                                className="font-medium text-zinc-200 underline decoration-zinc-700 underline-offset-4 transition-colors hover:text-emerald-400 hover:decoration-emerald-500/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/60"
+                                title="inspect the task — prompt, seeded files, verify script"
+                              >
+                                {t.name}
+                              </button>
                               <TaskOriginBadge origin={t.origin ?? "seed"} />
                               <TaskStatusBadge status={t.status ?? "regression"} />
                             </div>
@@ -394,9 +476,17 @@ export function OverviewTab() {
           </CardContent>
         </Card>
         <p className="mt-2 text-[11px] text-zinc-400">
-          Cycles mine failures, propose memory patches, validate them against a candidate run and ship only what helps — details in Learning Lab.
+          Cycles mine failures, propose memory patches, validate them against a candidate run and ship only what helps — details in Learning Lab. Task names open the full spec: prompt, seeded files and the verify script.
         </p>
       </section>
+
+      <TaskDetailDialog
+        taskId={detailTaskId}
+        open={detailTaskId !== null}
+        onOpenChange={(v) => !v && setDetailTaskId(null)}
+        onRunCycle={(id) => runTask.mutate(id)}
+        runPending={runTask.isPending}
+      />
     </div>
   );
 }

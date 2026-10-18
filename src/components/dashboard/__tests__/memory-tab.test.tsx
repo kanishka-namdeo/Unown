@@ -165,6 +165,72 @@ describe("MemoryTab — skill actions", () => {
   });
 });
 
+describe("MemoryTab — skill version history", () => {
+  function routeSkillDetail() {
+    engine.route("/api/skills/skill-0001", {
+      skill: fx.skill(),
+      versions: [
+        { version: 2, changed_by: "autodream", note: "tightened", created_at: 1 },
+        { version: 1, changed_by: "seed", note: null, created_at: 1 },
+      ],
+    });
+  }
+
+  test("the History toggle fetches /api/skills/:id and lists versions with a Restore button on non-current rows", async () => {
+    routeHappy();
+    routeSkillDetail();
+
+    const user = userEvent.setup();
+    renderWithProviders(<MemoryTab />);
+    expect(await screen.findByText("bun-test-conventions")).toBeTruthy();
+
+    // First skill card in the list is skill-0001 (version 2).
+    await user.click(screen.getAllByRole("button", { name: "History" })[0]);
+
+    const hist = await screen.findByLabelText("skill version history");
+    await within(hist).findByText("tightened"); // versions arrived
+    expect(within(hist).getByText("v2")).toBeTruthy();
+    expect(within(hist).getByText("v1")).toBeTruthy();
+    expect(within(hist).getByText("autodream")).toBeTruthy();
+    expect(within(hist).getByText("seed")).toBeTruthy();
+    // v2 is the current version → no Restore; only v1 carries one.
+    expect(within(hist).getAllByRole("button", { name: "Restore" })).toHaveLength(1);
+    expect(engine.callsFor("/api/skills/skill-0001")).toHaveLength(1);
+  });
+
+  test("Restore targets the chosen version — confirm dialog, POST body { version: 1 }", async () => {
+    routeHappy();
+    routeSkillDetail();
+    engine.route("/api/skills/skill-0001/rollback", { ok: true });
+
+    const user = userEvent.setup();
+    const view = renderWithProviders(<MemoryTab />);
+    expect(await screen.findByText("bun-test-conventions")).toBeTruthy();
+
+    await user.click(screen.getAllByRole("button", { name: "History" })[0]);
+    const hist = await screen.findByLabelText("skill version history");
+    await within(hist).findByText("tightened");
+
+    // Restore on the v1 row.
+    await user.click(within(hist).getByRole("button", { name: "Restore" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText('Roll back "bun-test-conventions" to v1?')).toBeTruthy();
+
+    await user.click(within(dialog).getByRole("button", { name: "Rollback" }));
+
+    const calls = engine.callsFor("/api/skills/skill-0001/rollback");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.method).toBe("POST");
+    expect(calls[0]?.body).toEqual({ version: 1 });
+
+    const rolled = toastsWithTitle("Skill rolled back");
+    expect(rolled).toHaveLength(1);
+    expect(rolled[0]?.kind).toBe("success");
+    expect(view.invalidatedKeys()).toContainEqual(qk.skills);
+  });
+});
+
 describe("MemoryTab — empty state", () => {
   test("no tiers, no history, no skills", async () => {
     engine.route("/api/overview", fx.overviewResponse());

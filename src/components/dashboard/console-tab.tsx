@@ -1,21 +1,26 @@
 "use client";
 
-// Console tab: talk to the agent directly; live transcript streaming.
+// Console tab: talk to the agent directly; live transcript streaming —
+// SSE run:tool / run:text frames render instantly, the 3s poll stays as the
+// authoritative fallback (and the final transcript once the run finishes).
 
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, History, Play, Send, SquareTerminal, XCircle } from "lucide-react";
+import { CheckCircle2, History, Play, Radio, Send, SquareTerminal, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { api, mutations, qk } from "@/lib/agent-api";
+import { useRunStreamStore } from "@/lib/agent-store";
+import type { TranscriptEntry } from "@/lib/agent-types";
 import { formatDuration, formatTokens, timeAgo } from "@/lib/agent-format";
 import { EmptyState, Mono, RunStatusBadge, SectionHeading } from "./bits";
 import { TranscriptLine } from "./run-detail";
 import { cn } from "@/lib/utils";
 
 const cardCls = "border-zinc-800 bg-zinc-900/60";
+const SEARCH_TIMEOUT_MS = 25_000; // give up waiting for the engine to create the run
 
 export function ConsoleTab() {
   const queryClient = useQueryClient();
@@ -41,6 +46,19 @@ export function ConsoleTab() {
     }
   }, [interactiveRuns, baselineRunId]);
 
+  // Give up on a run the engine never created (busy / down / dropped) instead
+  // of spinning "working…" forever.
+  React.useEffect(() => {
+    if (baselineRunId === undefined) return;
+    const t = setTimeout(() => {
+      setBaselineRunId(undefined);
+      toast.warning("The engine did not start the run", {
+        description: "It may be busy with a background job, or unreachable — try again.",
+      });
+    }, SEARCH_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [baselineRunId]);
+
   const activeRun = useQuery({
     queryKey: qk.run(activeRunId ?? ""),
     queryFn: () => api.run(activeRunId as string),
@@ -52,18 +70,42 @@ export function ConsoleTab() {
   const isRunning = run?.status === "running";
   const searching = baselineRunId !== undefined;
 
+  // Live SSE frames for the active run — rendered ahead of the polled transcript.
+  const streamEntries = useRunStreamStore((s) => (activeRunId ? s.streams[activeRunId] : undefined)) ?? [];
+  const transcript: TranscriptEntry[] = React.useMemo(() => {
+    if (!run) return [];
+    if (!isRunning) return run.transcript; // finished: the API transcript is authoritative
+    const lastTs = run.transcript.length
+      ? Math.max(...run.transcript.map((e) => e.ts))
+      : 0;
+    const live: TranscriptEntry[] = [];
+    for (const e of streamEntries) {
+      if (e.ts <= lastTs) continue;
+      if (e.kind === "tool") {
+        live.push(
+          e.phase === "start"
+            ? { type: "tool_start", ts: e.ts, tool: e.tool, input: "" }
+            : { type: "tool_end", ts: e.ts, tool: e.tool, output: "", isError: e.isError === true },
+        );
+      } else {
+        live.push({ type: "text", ts: e.ts, text: e.preview });
+      }
+    }
+    return [...run.transcript, ...live];
+  }, [run, isRunning, streamEntries]);
+
   // Auto-scroll transcript while streaming.
-  const transcriptLen = run?.transcript.length ?? 0;
   React.useEffect(() => {
     const el = scrollRef.current;
     if (el && isRunning) el.scrollTop = el.scrollHeight;
-  }, [transcriptLen, isRunning]);
+  }, [transcript.length, isRunning]);
 
   const sendPrompt = useMutation({
     mutationFn: (p: string) => mutations.prompt(p),
     onSuccess: () => {
       // remember the current newest run so we can detect the new one
       setBaselineRunId(interactiveRuns[0]?.id ?? null);
+      setPrompt("");
       toast.success("Prompt submitted", { description: "The agent is spinning up…" });
       queryClient.invalidateQueries({ queryKey: ["runs", "interactive"] });
     },
@@ -214,13 +256,14 @@ export function ConsoleTab() {
                   className="scroll-thin max-h-[52vh] min-h-32 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2"
                   role="log"
                   aria-label="agent transcript"
+                  aria-live="polite"
                 >
-                  {run.transcript.length === 0 ? (
+                  {transcript.length === 0 ? (
                     <p className="py-6 text-center font-mono text-xs text-zinc-400">
                       {isRunning ? "waiting for first token…" : "no transcript entries"}
                     </p>
                   ) : (
-                    run.transcript.map((entry, i) => <TranscriptLine key={i} entry={entry} />)
+                    transcript.map((entry, i) => <TranscriptLine key={i} entry={entry} />)
                   )}
                 </div>
 
@@ -245,7 +288,13 @@ export function ConsoleTab() {
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
                       <span className="relative inline-flex size-2 rounded-full bg-amber-400" />
                     </span>
-                    run in progress — polling every 3s
+                    {streamEntries.length > 0 ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Radio className="size-3" /> streaming live over SSE
+                      </span>
+                    ) : (
+                      "run in progress — polling every 3s"
+                    )}
                   </p>
                 )}
 

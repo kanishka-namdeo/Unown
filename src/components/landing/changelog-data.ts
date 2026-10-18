@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 81;
+export const CHANGELOG_TOTAL_ENTRIES = 80;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 41,
+  "Added": 40,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 40,
+    "total": 39,
     "counts": {
-      "Added": 13,
+      "Added": 12,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
@@ -58,48 +58,11 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
     },
     "groups": [
       {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
-            "behavior": false
-          },
-          {
-            "title": "bun run lint was red on a fresh clone while CI's lint job stayed green",
-            "behavior": false
-          },
-          {
-            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
-            "behavior": false
-          },
-          {
-            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
-            "behavior": false
-          },
-          {
-            "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: Console-tab contrast (wcag2aa color-contrast, serious)",
-            "behavior": false
-          },
-          {
-            "title": "engine: hardening batch from the deep audit (6 defects)",
-            "behavior": false
-          }
-        ]
-      },
-      {
         "bucket": "Added",
         "items": [
           {
-            "title": "local-ML dream lanes — the H15 integration (opt-in, shadow-capable)",
-            "behavior": true
-          },
-          {
-            "title": "Automations — scheduled recurring agent runs (zcode port)",
-            "behavior": true
+            "title": "dashboard: engine-parity round — every documented surface now has a view",
+            "behavior": false
           },
           {
             "title": "task tool: structured outputs (oh-my-pi port)",
@@ -143,6 +106,39 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "/lsp trust",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
+            "behavior": false
+          },
+          {
+            "title": "bun run lint was red on a fresh clone while CI's lint job stayed green",
+            "behavior": false
+          },
+          {
+            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
+            "behavior": false
+          },
+          {
+            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
+            "behavior": false
+          },
+          {
+            "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
+            "behavior": false
+          },
+          {
+            "title": "dashboard: Console-tab contrast (wcag2aa color-contrast, serious)",
+            "behavior": false
+          },
+          {
+            "title": "engine: hardening batch from the deep audit (6 defects)",
             "behavior": false
           }
         ]
