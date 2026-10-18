@@ -631,3 +631,164 @@ manageable without hand-editing JSON and hardened it against hostile configs
   `public/landing/*.png` regenerated via the og-shots pipeline (the hero
   renders the quickstart command list). Quickstart component test extended
   to pin the new line.
+
+## 2026-10-18 — the shipping rail: a timeline the repository can vouch for
+
+The brief was to show the project's continuous feature additions as a timeline.
+The research changed that design twice before a line of the section was written,
+and the second change was the reason the section exists at all.
+
+### What was studied
+
+Live fetches of the changelog/roadmap surfaces dev tools actually maintain.
+Every row below was read on the day; the fetches that failed are listed after
+the table rather than filled in from memory.
+
+| Site | Metaphor | Dates shown | Grouping | Shipped vs planned | Depth before linking out |
+|---|---|---|---|---|---|
+| [Linear](https://linear.app/changelog) | date-grouped cards, one column | `October 8, 2026` | none | shipped only | paginated |
+| [Vercel](https://vercel.com/changelog) | date-headed cards | `17 Oct` | none | shipped only | 10, then "Show more" |
+| [Raycast](https://www.raycast.com/changelog) | version-led cards | `v2.8` + full date | **by version** | shipped only | numbered pages |
+| [Cursor](https://cursor.com/changelog) | flat reverse-chronology | `Oct 16, 2026` | none | shipped only | **4** |
+| [Supabase](https://supabase.com/changelog) | list | `YYYY-MM-DD` | none | shipped | type + product tags |
+| [GitHub changelog](https://github.blog/changelog/) | month-headed cards | `Oct.16` | by month | shipped | product tags, RSS |
+| [PostHog](https://posthog.com/changelog) | month → date | month headers | by month | shipped | tags |
+| [Plaid](https://plaid.com/docs/changelog/) | list | `Month Day, Year` | none | shipped | "Filter by product" |
+| [Devin release notes](https://docs.devin.ai/release-notes/overview) | date-headed blocks | `October 16, 2026` | by date | shipped | docs index |
+| [Bun](https://bun.com/blog) | **year-grouped** | `Oct 10, 2026` | by year | shipped | RSS |
+| [Figma What's new](https://www.figma.com/whats-new/) | topic grid | loose | by topic | **"In progress" / "Shipped"** | detail links |
+| [Astro roadmap](https://github.com/withastro/roadmap) | repo process | none | by stage | Proposal → RFC → Ship it | stage |
+| [shadcn/ui](https://ui.shadcn.com/docs/changelog) | `Month Year – Title` | absolute | none | shipped | **2**, then "More Updates" |
+
+Failed fetches, recorded so nobody re-cites them: OpenAI release notes (403),
+Fathom `/changelog` (404), Plus UI (network), Height.io roadmap (522 twice),
+`supabase.com/roadmap` (404), `astro.build/blog/releases` (404), Carbon's
+timeline usage page (404), and the roadmap-example roundups that ship as a JS
+shell. Resend returned a bare link list, which is inconclusive rather than
+evidence.
+
+Four decisions came out of it, and each is visible in the section:
+
+1. **A window, not an archive.** Cursor shows 4 entries, shadcn 2, Vercel 10.
+   The rail lists at most 8 titles per stop and counts the remainder out to
+   `CHANGELOG.md`. A landing section that reproduces the changelog is a worse
+   copy of the changelog.
+2. **Absolute dates only.** Relative dates ("last week") rot the moment an
+   entry is appended, and a stale relative date is a lie that no edit caused.
+3. **Unshipped work carries no date.** [NN/g on roadmaps vs
+   timelines](https://www.nngroup.com/videos/roadmaps-vs-project-timelines/):
+   roadmaps deliberately avoid dates because a dated plan is a promise, and
+   Figma's two-label split is the minimum honest version of the same idea. So
+   `[Unreleased]` renders as "Not cut yet" with no date at all.
+4. **Every entry links to an artifact**, which is also the only way to satisfy
+   the page's own sourcing rule. [Keep a Changelog
+   1.1.0](https://keepachangelog.com/en/1.1.0/) supplies the heading and
+   category grammar the parser reads, and [Common
+   Changelog](https://common-changelog.org/) the stricter four-category variant;
+   the repo follows KaC, so the parser follows KaC.
+
+Rejected: commit-graph and contribution-heatmap metaphors (decorative, and the
+underlying counts are not in the checkout), colour-only status (fails
+[WCAG 1.4.1](https://www.w3.org/WAI/WCAG21/Understanding/use-of-color.html)
+against this page's five section hues), and any hover-revealed detail, which
+Part 12 already rules out.
+
+### The finding that killed the obvious design
+
+A timeline invites a cadence sentence, and this repository cannot support one.
+`git log` (measured in this checkout, `[V]`): 190 commits, and only **seven
+distinct commit days**, with a 48-day hole between 2026-08-28 and 2026-10-15.
+Two tags, `v2.0.0` and `v2.1.0`, both dated 2026-10-18 and cut 2.6 hours apart,
+with 13 untagged commits since. `gh release list` `[V]`: both published,
+08:22:44Z and 11:06:10Z.
+
+So "shipping weekly", "a release every two weeks", or a rail whose spacing
+implies rhythm would have been the page's first fabricated claim, in the section
+whose entire purpose is being a record. The section states dates and says nothing
+about rhythm; `__tests__/changelog.test.tsx` greps its own rendered text for
+weekly/monthly/continuous phrasing so a later copy-edit cannot add it by
+accident. The honest version of "continuous" here is the top stop: work merged
+and waiting to be cut, which is what a rail with an undated head actually shows.
+
+Writing the parser surfaced the `CHANGELOG.md` hazards that a naive one would
+swallow silently `[V]`: two `### Fixed` blocks inside one stop (a `###`-keyed map
+merges them into a bucket of the wrong size), `### Added (Agent Behavior)` and
+`### Added (folded from Unreleased)` as non-spec suffixes, behavior entries filed
+as a heading in `[Unreleased]` but as `**Agent Behavior:**` bullet prefixes in
+`[2.1.0]`, and bottom-of-file link defs that are stale in both directions (no
+`[2.1.0]` def, and the comment "No tags exist yet" sitting under two tags). Each
+is now either handled by a stated rule or a hard failure.
+
+### Generated, not authored
+
+The section is the page's only content that is not typed into a component.
+`scripts/landing_changelog.mjs` derives
+`src/components/landing/changelog-data.ts` from `CHANGELOG.md`, and CI's landing
+job runs `--check`, so the rail and the changelog cannot disagree. That is the
+answer to the question this doc keeps having to re-answer, namely how a landing
+page stays true after the session that wrote it: the entry the next agent is
+already required to add to `CHANGELOG.md` *is* the update to the page. The
+binding rule is recorded in root `AGENTS.md`'s same-change sync map and in
+`CONTRIBUTING.md`'s checklist, and it is enforced by a red build rather than by
+good intentions.
+
+Because `--check` compares the committed file against the same parser, it cannot
+detect a parser that mislabels an entry, so the extractor has its own suite
+(`node --test scripts/landing_changelog.test.mjs`, also a CI step). One of its
+tests spawns the CLI purely to assert it still prints a verdict: a
+self-invocation guard that never matches would exit 0 having checked nothing,
+which is how a gate becomes decorative.
+
+### Accessibility shape, and what it forbade
+
+The ARIA authoring practices define no timeline pattern, so the markup invents
+nothing: an `<ol role="list" reversed>` of stops, each with a real heading so
+heading navigation reaches the dates
+([WCAG 1.3.1](https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html),
+techniques H42 and H48), entries as a nested `<ul role="list">` (the
+`role="list"` is required because Safari drops list semantics when markers are
+hidden, per [Scott O'Hara's
+note](https://www.scottohara.me/blog/2019-01-12/lists-and-safari.html)), and
+`<time datetime>` carrying the ISO date with no element descendants. The
+`shipped`/`not cut` distinction is carried by the words "Not cut yet" and the
+version label, never by the node marker's fill. The rail is a single column at
+every width, so there is no narrow-screen reflow to get wrong.
+
+Motion follows the folder's existing rule rather than adding a new one: the
+vertical rail is a static `border-l`, and stops arrive through `FadeUp`, which
+carries both `opacity:0` and a `transform` and is therefore reachable by the
+`<noscript>` restore. A `scaleY` rail tween would have been the width-tween bug
+reopened, and the no-JS pass confirms it is not: with scripting disabled the
+section renders complete, as it does under `prefers-reduced-motion`.
+
+### Two defects the verification pass caught
+
+- **`57` rendered as `S7`.** The first draft set the entry count in the `h2`,
+  and Pixelify Sans's 5 and 7 are indistinguishable at that size in both
+  schemes. On the one page whose argument is that its numbers are checkable, an
+  ambiguous digit is a defect, so counts now live in the lead (Geist, with a
+  `font-mono` span) and the component test asserts its own `h2` holds no digit.
+  The rule is in `src/components/landing/AGENTS.md` under the type system.
+- **Four landing gates could not run on a clean checkout.** `landing_shots`,
+  `contrast_audit`, `theme_toggle_check` and `landing_og_shots` resolve
+  chromium from a candidate list ending in the bare specifier `playwright`, but
+  passed every candidate through `pathToFileURL`, which turns it into
+  `file:///playwright`. The documented fallback was dead code, and with the
+  retired `download/.pwtools/` scratch install absent the gates exited with
+  "playwright not resolvable". Bare specifiers now stay bare (as
+  `brand_render`/`mermaid_check`/`shots_capture` already did); recorded in
+  `scripts/AGENTS.md`.
+
+### Receipts
+
+Palette gate PASS (21 dark + 21 light tokens, all AA, no hex in the new
+component). Contrast audit PASS, 1372 text nodes across both schemes (up from
+1059 before the section). axe-core on `/` PASS, zero WCAG 2.1 AA violations.
+Theme-toggle check PASS. `landing_shots --mobile` PASS: 28 section shots in two
+schemes with no console errors, the new section picked up by the DOM-derived
+plan without editing the script. Unit suite 237 pass / 0 fail; parser suite
+8 pass / 0 fail; `bun run build` green with `/` prerendered; `check:changelog`
+green: 3 stops, 57 entries, 2 dated. `public/landing/*.png` regenerated against
+the shipped palette. Mobile 390px and 320px, reduced-motion and no-JS passes
+captured for this section specifically, since the shared shot plan samples only
+first/middle/last for those passes.

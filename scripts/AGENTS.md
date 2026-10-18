@@ -8,7 +8,7 @@ The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`
 
 ## Ownership
 
-- Owns: the lifecycle scripts (`install.ts`, `link.ts`, `start.ts`, `stop.ts`, `serve-dashboard.ts`, `lib.ts` + their `.sh` wrappers; `dev-all.sh` POSIX-only), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), the README asset pipeline (`scripts/brand/` HTML sources, `shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`), the landing-page verification gates (`gba_palette_check.mjs`, `landing_shots.mjs`, `contrast_audit.mjs`, `theme_toggle_check.mjs`, `landing_og_shots.mjs`), the sandbox verification suites (`bwrap_smoke.sh`, `verify_sandbox.mjs`), and the CI gate scripts (`check_coverage.mjs`, `coverage-exempt.txt`, `check_docs.mjs`).
+- Owns: the lifecycle scripts (`install.ts`, `link.ts`, `start.ts`, `stop.ts`, `serve-dashboard.ts`, `lib.ts` + their `.sh` wrappers; `dev-all.sh` POSIX-only), the verification artifacts (`probe_*.py`, `test_bridge.py`, `search_*.json`, `modelsdev.json`, `dash_*.png`), the README asset pipeline (`scripts/brand/` HTML sources, `shots_capture.mjs`, `brand_render.mjs`, `mermaid_check.mjs`, `vlm_review.mjs`, `curate_assets.mjs`), the landing-page verification gates (`gba_palette_check.mjs`, `landing_shots.mjs`, `contrast_audit.mjs`, `theme_toggle_check.mjs`, `landing_og_shots.mjs`), the landing rail generator (`landing_changelog.mjs` + its `node --test` suite `landing_changelog.test.mjs`), the sandbox verification suites (`bwrap_smoke.sh`, `verify_sandbox.mjs`), and the CI gate scripts (`check_coverage.mjs`, `coverage-exempt.txt`, `check_docs.mjs`).
 - Sandbox-template artifacts also parked here (NOT part of Unown): `init-fullstack.sh`, `scaffold.tar` — installed by the hosting sandbox, tracked only for provenance.
 
 ## Local Contracts
@@ -26,6 +26,37 @@ The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`
   `download/providers/` (gitignored; refetch from the pinned Simple Icons CDN
   first). Labels live in the script, path data is lifted from the SVG — never
   hand-edit the generated component, and never hotlink the CDN at runtime.
+- Landing rail contract: `landing_changelog.mjs` is the same vendoring pattern
+  applied to prose — it parses `CHANGELOG.md` and writes
+  `src/components/landing/changelog-data.ts`, which `changelog.tsx` renders.
+  `node scripts/landing_changelog.mjs` writes; `--check` (root `check:changelog`,
+  and a CI step in the landing job) re-derives and fails on any difference, so
+  the committed file is never edited by hand and the rail never lags the
+  changelog. What it guarantees, and why each rule is there:
+  - a stop is `## [label] - YYYY-MM-DD`; `[Unreleased]` must stay undated, and
+    the run fails if a changelog has no dated stop at all (a rail of nothing but
+    promises is not a timeline);
+  - `###` headings normalise to the six Keep a Changelog categories plus
+    `Behavior` for `### Agent Behavior`. Same-category headings merge (the file
+    has shipped two `### Fixed` blocks in one stop) and an unrecognised heading
+    **fails the run** rather than dropping its entries silently;
+  - the `Agent Behavior` flag is read per heading, not per bucket:
+    `[Unreleased]` has `### Added (Agent Behavior)` followed by a plain
+    `### Added`, and a bucket-level flag labelled the second block's entry a
+    behavior change while its own text says it is not one;
+  - titles come from each bullet's authored `**bold**` lead, else the clause
+    before the first ` — `/`: `; backticks, `**` and link targets are stripped;
+    no title may end inside an unclosed bracket; past `TITLE_MAX` it clips at a
+    separator. `TITLES` is the curated escape hatch, and an entry that stops
+    matching is warned about rather than left to rot;
+  - it is dependency-free node builtins, splits on `/\r?\n/` (this checkout is
+    CRLF under `core.autocrlf` while the blobs are LF) and compares
+    EOL-normalised, so the gate cannot fail over line endings alone.
+  Because `--check` compares the file against the same parser, it cannot see a
+  parser bug: `landing_changelog.test.mjs` (`node --test`, also a CI step) pins
+  the extraction rules, the fail-loud paths, and spawns the CLI to assert it
+  still prints a verdict — a self-invocation guard that never matches would exit
+  0 having done nothing, which is how a gate becomes decorative.
 - Deployment contract: `verify-deploy.mjs` asserts the **live** deployment, not
   the local build: `bun scripts/verify-deploy.mjs [url]` (defaults to the
   production alias, exits non-zero on failure). It checks the routes, that the
@@ -41,7 +72,15 @@ The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`
 - Landing verification contract (the palette + visual + contrast gate for
   `src/components/landing/`). `gba_palette_check.mjs` reads the CSS and needs
   neither browser nor server; the other three need the production standalone
-  server, not the dev server, because that is what Vercel serves:
+  server, not the dev server, because that is what Vercel serves. All four
+  resolve chromium through the same candidate list (`download/.pwtools/` first,
+  then the installed package), and that list only works if a **bare specifier
+  stays bare** — `pathToFileURL("playwright")` yields `file:///playwright`, which
+  made the documented fallback dead code in `landing_shots`, `contrast_audit`,
+  `theme_toggle_check` and `landing_og_shots`: any checkout without the retired
+  `.pwtools` scratch install could not run them at all (fixed 2026-10-18;
+  `brand_render`/`mermaid_check`/`shots_capture` already pass it through). The
+  four, in the order worth running them:
   - `gba_palette_check.mjs` — the palette's static gate: `bun scripts/gba_palette_check.mjs`
     from the repo root; reads `src/app/globals.css`, `src/app/landing.css` and
     `src/components/landing/`, exits non-zero. Six rules: every `--color-*` literal is one
@@ -124,6 +163,11 @@ The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`
 
 - `bash -n scripts/*.sh` (syntax — the wrappers must stay valid bash) — cheap gate before committing script changes.
 - `node scripts/check_docs.mjs docs/*.md` — link/anchor gate (also a CI job).
+- `bun run check:changelog` (`node scripts/landing_changelog.mjs --check`) — the
+  landing rail must equal what `CHANGELOG.md` yields today; run
+  `node scripts/landing_changelog.mjs` to regenerate, then
+  `node --test scripts/landing_changelog.test.mjs` if the extractor moved. All
+  three are CI steps in the landing job.
 - `node scripts/check_coverage.mjs --run` — changed-line coverage gate (also a CI job; pass a git base explicitly when running against a branch whose diff is non-empty).
 - `bun scripts/install.ts` from a clean worktree must go green end-to-end (includes first-run model-data hydration).
 - `bun run agent:stop; bun run agent:start` round trip: all three services healthy (see mini-services doc for endpoints). Use `;` — stop exits 1 when nothing was running.

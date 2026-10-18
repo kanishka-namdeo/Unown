@@ -43,7 +43,11 @@ const PW_CANDIDATES = [
 let chromium = null;
 for (const c of PW_CANDIDATES) {
   try {
-    const mod = await import(/^[a-z]+:/i.test(c) ? c : pathToFileURL(c).href);
+    // An absolute path becomes a file: URL; a bare specifier must stay bare,
+    // because pathToFileURL turns "playwright" into file:///playwright and the
+    // documented fallback to the installed package could never resolve.
+    const absolute = c.startsWith("/") || /^[A-Za-z]:[\\/]/.test(c);
+    const mod = await import(/^[a-z]+:/i.test(c) || !absolute ? c : pathToFileURL(c).href);
     chromium = mod.chromium;
     break;
   } catch {

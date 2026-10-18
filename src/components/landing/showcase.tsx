@@ -16,7 +16,7 @@ const TABS: [string, string][] = [
 
 export function ShowcaseSection() {
   return (
-    <section data-hue="gold" className="py-20 sm:py-24">
+    <section data-hue="gold" id="showcase" className="scroll-mt-16 py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead

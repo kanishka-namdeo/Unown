@@ -3,15 +3,19 @@
 ## Purpose
 
 The marketing landing page served at `/` and auto-deployed to Vercel by a push to
-`main`. Thirteen self-contained sections plus the shared primitives they are
+`main`. Fourteen self-contained sections plus the shared primitives they are
 built from: a hand-drawn 28-form "Unown script", the Pokédex-derived lexicon
-each form decodes, an accessible terminal session replay, and the effects layer
-that owns scroll reveals, the letter-rain and the Konami easter egg.
+each form decodes, an accessible terminal session replay, the shipping rail that
+renders `CHANGELOG.md` (the one section whose content is generated, not authored
+here), and the effects layer that owns scroll reveals, the letter-rain and the
+Konami easter egg.
 
 ## Ownership
 
 - Owns: everything in this folder, plus `src/app/landing.css` (its stylesheet),
   `src/app/page.tsx` (composition only) and `scripts/vendor-provider-marks.mjs`.
+  It also owns the contract of `scripts/landing_changelog.mjs`, which lives in
+  `scripts/` but exists only to feed `changelog-data.ts` in this folder.
 - Owns the landing palette, which is declared in `src/app/globals.css` — see
   Local Contracts for why it cannot live here.
 - Children: none. A flat folder.
@@ -52,6 +56,36 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
   `benchmarks/`. Unverifiable live counters ("60+ verified runs") must never
   appear — they are not checkable in this checkout and the page's whole argument
   is that its numbers are checkable.
+- **The shipping rail (`changelog.tsx`) is the page's only generated section,
+  and that is what makes the rule above enforceable instead of aspirational.**
+  `changelog-data.ts` is written by `scripts/landing_changelog.mjs` from
+  `CHANGELOG.md` and is never hand-edited: `bun scripts/landing_changelog.mjs`
+  regenerates it, and `bun scripts/landing_changelog.mjs --check` (CI's landing
+  job, also `bun run check:changelog`) fails when the two disagree. So
+  "add a feature, the page follows" is a build result, not a habit: a changelog
+  entry that never reached the rail is red, and so is a rail that invented a
+  date. Four rules follow from the wiring:
+  - **dates come only from `## [x.y.z] - YYYY-MM-DD` headings.** This repository
+    has two releases, both cut on 2026-10-18, and 190 commits spread over seven
+    distinct days with a 48-day hole in the middle — so any sentence about a
+    shipping *cadence* is false here. The section must never acquire one, and
+    `__tests__/changelog.test.tsx` greps its own rendered text for
+    weekly/monthly/continuous phrasing to keep that from arriving by copy-edit.
+  - **`[Unreleased]` renders undated** ("Not cut yet"). An undated entry is a
+    promise, and a promise is the one thing this page cannot check.
+  - **every number on the rail is read off the data** — the entry count in the
+    lead, the per-stop tallies, the `+N more` overflow — because a typed figure
+    cannot survive an appended changelog entry, which is how a number becomes a
+    lie without anyone editing it.
+  - **the extractor is tested, not trusted.** `--check` compares the committed
+    file against the same parser, so it cannot see a parser that mislabels an
+    entry; `node --test scripts/landing_changelog.test.mjs` (also CI, in the same
+    job) pins the title rules, the duplicate-bucket merge, the heading-level
+    `Agent Behavior` scope, the fail-loud paths, and that the CLI still prints a
+    verdict instead of exiting 0 having done nothing.
+  Entry titles are each bullet's authored `**bold**` lead where it has one, so
+  the changelog's own words reach the page; the component lists at most
+  `MAX_LISTED` per stop and counts the rest out to `CHANGELOG.md`.
 - **Every fact is stated exactly once, in the section that argues it.** A
   measurement audit found the verify-twice rule stated seven times and the
   sandbox three times, which is what made the page's middle read as a wall: the
@@ -86,7 +120,12 @@ that owns scroll reveals, the letter-rain and the Konami easter egg.
   - **the project-config trust gate** (`integrity.tsx`, the cloned-configs
     block, receipts-linked to `config-trust.ts`) — the quickstart names
     `.unown/mcp.json` as where servers are configured without restating the
-    gate.
+    gate;
+  - **the release record** (`changelog.tsx` — the rail is the page's only home
+    for what shipped and when; no other section may list features as a
+    chronology, and the rail never restates what a mechanism does, which is
+    `mechanisms.tsx` and `integrity.tsx`'s job — it names the addition, not the
+    argument for it).
 - **`lexicon.ts` `means` is a DECODE, not a specification, and stays under
   ~12 words.** Twenty-eight entries at eighteen words each is a wall; at eleven
   it is a reference table you can skim, which is the only instrument that suits
@@ -207,6 +246,11 @@ parallel ones.
   (Pixelify Sans) for every `h1`/`h2`; `font-term` (VT323) for terminal
   bodies, dialogue text and `.quote`. Geist Sans stays for paragraphs — a
   pixel body face is a nostalgia trap that also costs the Lighthouse 1.00.
+  **No digit may be set in `font-display`:** Pixelify Sans renders `57` as `S7`
+  at heading size, and an ambiguous number on the one page whose argument is that
+  its numbers are checkable is a defect, not a type choice. Counts go in the
+  lead (Geist) or in `font-mono`; `changelog.tsx`'s test asserts its own `h2`
+  holds none.
 - **Console furniture lives in `landing.css` and `shell.tsx`.** Use these
   rather than re-deriving the look:
   - `.gb-box` — the game's text window (accent fill, field-coloured gutter, lit
@@ -237,10 +281,13 @@ parallel ones.
   and `toneAttr()`. `[data-tone="…"]` on a furniture element still overrides
   just that element's `--tone-fill` / `--tone-rim`.
   - **Allocation is a rule, not taste:** `psychic` is reserved for the three
-    sections about Unown itself (hero, alphabet, field-notes); the other ten
+    sections about Unown itself (hero, alphabet, field-notes); the other eleven
     cycle `aqua → leaf → magma → gold` in page order, so no two adjacent
     sections share a hue and "which hue does this get" is answerable without
-    opening the file.
+    opening the file. When the cycle's next hue would collide with a neighbour,
+    take the next one after it and say so here: `changelog` sits between `faq`
+    (aqua) and `finale` (leaf) and takes `magma`, because `leaf` — the hue the
+    rotation offers next — is already finale's.
   - `SectionHead`, `TerminalWindow` and `BrowserFrame` take **no** hue prop —
     they inherit their section. A header that could disagree with its section is
     how the page gets eleven hues fighting each other.
@@ -295,7 +342,9 @@ parallel ones.
      `field-notes`, which sit at positions 2, 3 and 11 — so positions 4-10
      (loop, mechanisms, showcase, models, benchmarks, integrity, quickstart)
      were seven consecutive sections at 0% lore across ~2,300 words. Rule:
-     **no more than three consecutive sections at zero.**
+     **no more than three consecutive sections at zero.** The tail run is now
+     `faq` → `changelog` → `finale`, which sits exactly on that limit: a fourth
+     zero-lore section belongs before position 11, not after it.
   2. **A repeated punchline register, which is what actually reads as boring.**
      Sections 4-10 were all aphorisms, and several were the *same* aphorism:
      "An agent that forgets is a tax you pay every morning" and "Most agents
@@ -305,8 +354,9 @@ parallel ones.
      different kind of thing** — aphorism, reveal, callback, joke, admission,
      plain instruction. Six aphorisms in a row is a drumbeat. `quickstart.tsx`
      is deliberately a plain instruction ("Clone it, point it at a model, run
-     it.") to break that run, and `integrity.tsx` carries the page's only
-     admission.
+     it.") to break that run, `integrity.tsx` carries the page's only
+     admission, and `changelog.tsx` states a fact and editorialises about
+     nothing ("What has been added, and when.") — its punch is the dates.
   3. **Raise the lore share by cutting, not by writing.** A duplicate fact is
      the cheapest word on the page to delete and the only lever that raises the
      ratio without inventing prose. The second audit deleted ~450 words of
@@ -408,6 +458,13 @@ parallel ones.
 - `bunx eslint src --quiet` — clean.
 - `bun run build` — exit 0. `/` must prerender; the star-count fetch is the only
   network call and it is wrapped.
+- **The rail's own two gates, both in CI's landing job, whenever
+  `CHANGELOG.md` or the extractor moves:**
+  `bun scripts/landing_changelog.mjs --check` (the committed data must equal
+  what the parser derives from `CHANGELOG.md` today) and
+  `node --test scripts/landing_changelog.test.mjs` (the extractor's rules and
+  failure modes). Regenerate with `bun scripts/landing_changelog.mjs`; never
+  edit `changelog-data.ts` to make a check pass.
 - Visual check is required, not optional. Serve the production build
   (`$env:PORT=3111; $env:NODE_ENV=production; bun .next/standalone/server.js`)
   and run `bun scripts/landing_shots.mjs --mobile` — it photographs every

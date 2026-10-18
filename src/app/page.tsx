@@ -1,6 +1,7 @@
 import "./landing.css";
 
 import { AlphabetSection } from "@/components/landing/alphabet";
+import { ChangelogRail } from "@/components/landing/changelog";
 import {
   AlphabetWakeProvider,
   LetterRainProvider,
@@ -39,6 +40,7 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *   quickstart                               the five commands
  *   field notes                              where the name came from
  *   faq                                      the remaining hard questions
+ *   changelog (from CHANGELOG.md)            the record, still being written
  *   finale                                   the last ask, plus the toy
  *
  * `NAV_LINKS` in `shell.tsx` mirrors the top-level anchors. If you add a
@@ -74,6 +76,7 @@ export default function LandingPage() {
             <QuickstartSection />
             <FieldNotesSection />
             <FaqSection />
+            <ChangelogRail />
             <FinaleSection />
           </main>
           <Footer />

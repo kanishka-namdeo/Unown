@@ -47,6 +47,7 @@ Terminal-agent-only contributions (docs, CLI) need nothing beyond step 3's direc
 
 - All suites green before you ask for review: dashboard (`bun run test:unit`), engine (`pi-repo/packages/self-learning`), bridge (`mini-services/llm-bridge`). CI runs all three plus the 3-OS matrix.
 - New behavior needs pinning tests. Changes to prompts, default models, routing, guard rules, hooks or memory injection additionally need a **CHANGELOG "Agent Behavior" entry** — the worked example (the `security-bypass` rule and its tests) is in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
+- A user-visible feature or fix does not stop at `CHANGELOG.md`: the landing page's shipping rail is generated from that file. Run `bun scripts/landing_changelog.mjs` to regenerate `src/components/landing/changelog-data.ts`, and never hand-edit the generated file. `bun run check:changelog` proves the two agree, and CI's landing job runs it next to `node --test scripts/landing_changelog.test.mjs` — so an entry that never reached the page is a red build, not a stale marketing site.
 - Measured claims cite receipts. `docs/testing-strategy.md` and `benchmarks/memory-eval/*/RESULTS.md` are the established formats.
 
 ## Commit Messages
@@ -111,6 +112,6 @@ Before opening the PR:
 - [ ] `git status` reviewed, then **explicit-path staging only**: `git add <paths>` — never `git add -A` or `git add .` (the engine auto-commits learning artifacts into the tree; blanket staging ships them by accident).
 - [ ] All suites green locally; receipts attached for measured claims.
 - [ ] DOX pass done: nearest `AGENTS.md` updated (parents too, if structure changed); stale text removed.
-- [ ] `CHANGELOG.md` updated for user-visible changes; **Agent Behavior** entry plus pinning tests for behavior changes.
+- [ ] `CHANGELOG.md` updated for user-visible changes; **Agent Behavior** entry plus pinning tests for behavior changes. Then `bun scripts/landing_changelog.mjs`, so the landing rail carries the new entry (`bun run check:changelog` is the same check CI runs).
 - [ ] Secrets clean: keys only in `.env` (gitignored), PAT only in the git remote URL — never in tracked files, docs, logs, or commit messages.
 - [ ] `bun run check:docs` passes.

@@ -368,6 +368,17 @@ jobs:
         # makes the "every colour is a legal Game Boy Advance colour" claim a
         # gate rather than a caption.
         run: bun scripts/gba_palette_check.mjs
+      - name: Changelog rail extraction
+        # The parser's own regressions (duplicate bucket headings merging, a
+        # bucket-level Agent Behavior flag leaking onto its sibling block, an
+        # unknown heading being dropped instead of failing).
+        run: node --test scripts/landing_changelog.test.mjs
+      - name: Changelog rail matches CHANGELOG.md
+        # The landing page's shipping rail is GENERATED from CHANGELOG.md. This
+        # step is what turns "add a feature, the page follows" from a habit into
+        # a contract: a changelog entry that never reached the rail fails here,
+        # and so does a rail that invented a date.
+        run: bun scripts/landing_changelog.mjs --check
 
   security:
     name: Security scan (secrets + advisories)

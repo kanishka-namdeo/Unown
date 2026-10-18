@@ -163,8 +163,8 @@ export function HpBar({
  * The five Gen 3 hues. These are names, not colours: each maps to a
  * `[data-hue="…"]` / `[data-tone="…"]` rule in `landing.css` that swaps the
  * CSS custom properties `--hue-bg` / `--hue-accent` / `--tone-fill` /
- * `--tone-rim`. A section may never pass a hex — that is what keeps thirteen
- * sections restyled in parallel from drifting into fourteen different reds,
+ * `--tone-rim`. A section may never pass a hex — that is what keeps fourteen
+ * sections restyled in parallel from drifting into fifteen different reds,
  * and what lets every hue be contrast-checked once, centrally, in both colour
  * schemes.
  *
@@ -198,8 +198,8 @@ export function toneAttr(tone?: Tone): { "data-tone"?: Tone } {
  * The section header every section shares: pixel kicker, pixel heading,
  * optional lead.
  *
- * It exists because thirteen sections restyled in parallel drift — the most
- * likely failure of this page is not any one ugly section but fourteen
+ * It exists because fourteen sections restyled in parallel drift — the most
+ * likely failure of this page is not any one ugly section but fifteen
  * different heading sizes. Reach for this first; only drop to manual markup
  * when the section genuinely needs something else, and keep the same classes
  * when you do.
@@ -425,6 +425,7 @@ const NAV_LINKS = [
   { href: "#benchmarks", label: "Benchmarks" },
   { href: "#integrity", label: "Integrity" },
   { href: "#faq", label: "FAQ" },
+  { href: "#changelog", label: "Changelog" },
 ];
 
 /**
@@ -623,7 +624,7 @@ export function Footer() {
             </p>
           </div>
 
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-12 gap-y-2 text-[13px] sm:grid-cols-3">
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-12 gap-y-2 text-[13px] sm:grid-cols-4">
             <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener" className="text-dim transition-colors hover:text-gold">
               GitHub
             </a>
@@ -641,6 +642,9 @@ export function Footer() {
             </a>
             <a href="#quickstart" className="text-dim transition-colors hover:text-gold">
               Install
+            </a>
+            <a href="#changelog" className="text-dim transition-colors hover:text-gold">
+              Changelog
             </a>
           </nav>
         </div>

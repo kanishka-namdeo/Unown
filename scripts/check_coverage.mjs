@@ -146,7 +146,12 @@ for (const line of diff.split(/\r?\n/)) {
 	}
 }
 
-const targets = [...changed.entries()].filter(([p]) => !isSrcTest(p));
+const isCode = (p) => /\.tsx?$/.test(p);
+// Only code lines are targets. `src/` also carries DOX (`src/components/landing/AGENTS.md`)
+// and the generated rail data is code, but a markdown work contract can never be
+// "imported by a test": counting it made every doc-touching PR red on lines no
+// test could ever execute, which is how this gate gets ignored instead of obeyed.
+const targets = [...changed.entries()].filter(([p]) => !isSrcTest(p) && isCode(p));
 if (targets.length === 0) {
 	console.log(`ok  no changed src/ code lines against ${base}; coverage gate has nothing to assert`);
 	process.exit(0);
