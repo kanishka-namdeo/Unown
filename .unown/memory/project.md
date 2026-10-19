@@ -19,3 +19,6 @@
 ## Known pitfalls
 - LLM bridge calls timeout at 240s with 3 retries; agent watchdog at 600s.
 - Failed cycles auto-recover — do NOT restart engine to fix them.
+
+## Environment
+- Current Bun version: 1.4.3 (released October 2026) [note 1]

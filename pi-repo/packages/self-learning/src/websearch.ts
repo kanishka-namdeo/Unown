@@ -22,8 +22,9 @@
 //                    github (repo search; optional GITHUB_TOKEN),
 //                    searxng (self-hosted via UNOWN_SEARXNG_URL)
 //   paid (API key):  tavily, brave, serper, exa, perplexity, jina, zhipu,
-//                    dashscope (enable_search grounding), kagi, serpapi,
-//                    firecrawl
+//                    dashscope (enable_search grounding — standard keys
+//                    only; coding-plan sk-sp-* keys are refused up front
+//                    with an actionable note), kagi, serpapi, firecrawl
 //
 // All provider keys are read at call time (the unown env convention: `||`
 // never `??`, empty string means unset) so a user can drop keys into a
@@ -952,10 +953,30 @@ async function zhipuSearch(query: string, opts: WebSearchOptions): Promise<WebSe
 /** DashScope (Qwen) enable_search grounding — model-mediated search: the
  *  query is answered by a Qwen model with live web results injected. Works
  *  with any OpenAI-compatible DashScope endpoint (override base/model via
- *  UNOWN_DASHSCOPE_BASE_URL / UNOWN_DASHSCOPE_MODEL). */
+ *  UNOWN_DASHSCOPE_BASE_URL / UNOWN_DASHSCOPE_MODEL).
+ *
+ *  Key classes (verified live 2026-10-19, receipts in
+ *  benchmarks/websearch-live/): STANDARD keys (sk-…) get real grounding on
+ *  the standard endpoints, where enable_search is a documented, metered
+ *  feature. CODING-PLAN keys (sk-sp-…) are accepted only by the coding
+ *  endpoints — which silently ignore enable_search (the model answers from
+ *  training data and, asked directly, reports no live access; no search
+ *  fields come back) — while both standard endpoints reject them with 401.
+ *  A coding key therefore cannot ground a search anywhere; presenting its
+ *  ungrounded answer as "search results" would be dishonest, so the
+ *  adapter refuses up front with an actionable note and the chain
+ *  cascades transparently. */
 async function dashscopeSearch(query: string, opts: WebSearchOptions): Promise<WebSearchResult[]> {
         const key = process.env.DASHSCOPE_API_KEY || "";
         if (!key) throw new Error("dashscope needs DASHSCOPE_API_KEY");
+        if (/^sk-sp-/.test(key)) {
+                throw new Error(
+                        "coding-plan keys (sk-sp-…) cannot power enable_search grounding — the coding " +
+                                "endpoints silently ignore the flag and the standard endpoints reject these keys (401). " +
+                                "Set a standard DashScope API key (sk-…) for this provider, or unset DASHSCOPE_API_KEY " +
+                                "to let the chain use the keyless providers.",
+                );
+        }
         const base = (process.env.UNOWN_DASHSCOPE_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1").replace(
                 /\/+$/,
                 "",

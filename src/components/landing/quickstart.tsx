@@ -115,7 +115,7 @@ export function QuickstartSection() {
               <code className="font-mono text-dim">worktree_isolation</code>),{" "}
               <code className="font-mono text-dim">web_search</code> +{" "}
               <code className="font-mono text-dim">webfetch</code> (native web access —
-              keyless providers work out of the box, 17 total),{" "}
+              keyless providers work out of the box, 19 total),{" "}
               <code className="font-mono text-dim">fetch_url</code> and{" "}
               <code className="font-mono text-dim">lsp</code> (language-server intelligence —
               diagnostics ride every edit). MCP servers configured in{" "}

@@ -68,7 +68,11 @@ Code's tool docs, the Roo/OpenClaw provider stacks) and lands in
   youcom free-MCP → stackexchange → wikipedia → hn → npm → github) and eleven keyed
   providers that auto-join when their env key appears (tavily, serper, exa,
   brave, perplexity, dashscope enable_search, jina, zhipu, firecrawl, kagi,
-  serpapi — quality-then-cost priority). Claude-Code-parity domain filters,
+  serpapi — quality-then-cost priority; dashscope takes standard keys only —
+  coding-plan `sk-sp-…` keys are refused up front with an actionable note,
+  because the coding endpoints silently ignore `enable_search` and the
+  standard endpoints reject them, verified live 2026-10-19).
+  Claude-Code-parity domain filters,
   per-provider failure notes surfaced to the model, `UNOWN_WEB_SEARCH_PROVIDER`
   override. Live-verified receipts: `benchmarks/websearch-live/` (7 free
   providers answering real queries from a hostile datacenter IP; a real

@@ -539,6 +539,119 @@ describe("runWebSearch + fetchPageContent against a mock provider server", () =>
 });
 
 // ---------------------------------------------------------------------------
+// DashScope provider: coding-plan-key honesty (fast refusal) + standard-key
+// request shape, both against a local mock endpoint.
+// ---------------------------------------------------------------------------
+
+describe("dashscope provider — coding-plan keys refused, standard keys grounded", () => {
+        let server: Server;
+        let port = 0;
+        const hits: Array<{ method: string; url: string; auth?: string; body?: string }> = [];
+        const saved: Record<string, string | undefined> = {};
+        const envKeys = ["DASHSCOPE_API_KEY", "UNOWN_DASHSCOPE_BASE_URL", "UNOWN_DASHSCOPE_MODEL", "UNOWN_SEARXNG_URL"];
+
+        beforeAll(async () => {
+                for (const key of envKeys) {
+                        saved[key] = process.env[key];
+                        delete process.env[key];
+                }
+                server = createServer((req, res) => {
+                        const url = req.url ?? "";
+                        let body = "";
+                        req.on("data", (chunk) => (body += chunk));
+                        req.on("end", () => {
+                                hits.push({
+                                        method: req.method ?? "GET",
+                                        url,
+                                        auth: req.headers.authorization,
+                                        body: body || undefined,
+                                });
+                                if (url.startsWith("/chat/completions")) {
+                                        res.writeHead(200, { "content-type": "application/json" });
+                                        res.end(
+                                                JSON.stringify({
+                                                        choices: [
+                                                                {
+                                                                        message: {
+                                                                                content:
+                                                                                        "Bun is at 1.4.3. Sources:\nhttps://bun.sh\nhttps://github.com/oven-sh/bun/releases",
+                                                                        },
+                                                                },
+                                                        ],
+                                                }),
+                                        );
+                                } else if (url.startsWith("/search?") && url.includes("format=json")) {
+                                        res.writeHead(200, { "content-type": "application/json" });
+                                        res.end(
+                                                JSON.stringify({
+                                                        results: [{ url: "https://bun.sh", title: "Bun", content: "runtime", engine: "google" }],
+                                                }),
+                                        );
+                                } else {
+                                        res.writeHead(404);
+                                        res.end("not found");
+                                }
+                        });
+                });
+                await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+                port = (server.address() as { port: number }).port;
+        });
+        afterAll(() => {
+                server.close();
+                for (const key of envKeys) {
+                        if (saved[key] === undefined) delete process.env[key];
+                        else process.env[key] = saved[key];
+                }
+        });
+
+        test("coding-plan key (sk-sp-…): refused before any request, even with an explicit base override", async () => {
+                hits.length = 0;
+                process.env.DASHSCOPE_API_KEY = "sk-sp-testcodingkey";
+                process.env.UNOWN_DASHSCOPE_BASE_URL = `http://127.0.0.1:${port}`;
+                await expect(runWebSearch("bun runtime", { provider: "dashscope" })).rejects.toThrow(
+                        /coding-plan keys \(sk-sp-…\) cannot power enable_search grounding/,
+                );
+                // The refusal must be up front: the mock endpoint saw nothing.
+                expect(hits).toHaveLength(0);
+        });
+
+        test("coding-plan refusal cascades to the next provider with a transparent note", async () => {
+                hits.length = 0;
+                process.env.DASHSCOPE_API_KEY = "sk-sp-testcodingkey";
+                process.env.UNOWN_DASHSCOPE_BASE_URL = `http://127.0.0.1:${port}`;
+                process.env.UNOWN_SEARXNG_URL = `http://127.0.0.1:${port}`;
+                const outcome = await runWebSearch("bun runtime", { provider: "dashscope,searxng", maxResults: 5 });
+                expect(outcome.provider).toBe("searxng");
+                expect(outcome.results[0]?.url).toBe("https://bun.sh");
+                expect(outcome.attempted[0]?.ok).toBe(false);
+                expect(outcome.attempted[0]?.note).toContain("coding-plan");
+                expect(outcome.attempted[1]?.ok).toBe(true);
+                // Only the searxng leg hit the wire — no dashscope request was made.
+                expect(hits.filter((h) => h.url.startsWith("/chat/completions"))).toHaveLength(0);
+        });
+
+        test("standard key (sk-…): posts the documented enable_search shape and maps the grounded answer", async () => {
+                hits.length = 0;
+                process.env.DASHSCOPE_API_KEY = "sk-teststandardkey";
+                process.env.UNOWN_DASHSCOPE_BASE_URL = `http://127.0.0.1:${port}`;
+                const outcome = await runWebSearch("bun runtime", { provider: "dashscope", maxResults: 5 });
+                expect(outcome.provider).toBe("dashscope");
+                expect(outcome.results[0]?.title).toBe("Qwen grounded answer");
+                expect(outcome.results[0]?.snippet).toContain("Bun is at 1.4.3");
+                const urls = outcome.results.map((r) => r.url);
+                expect(urls).toContain("https://bun.sh");
+                expect(urls).toContain("https://github.com/oven-sh/bun/releases");
+                expect(hits).toHaveLength(1);
+                expect(hits[0]?.url).toBe("/chat/completions");
+                expect(hits[0]?.auth).toBe("Bearer sk-teststandardkey");
+                const body = JSON.parse(hits[0]?.body ?? "{}");
+                expect(body.model).toBe("qwen-plus");
+                expect(body.enable_search).toBe(true);
+                expect(body.messages[0]?.role).toBe("user");
+        });
+});
+
+// ---------------------------------------------------------------------------
 // Fake-pi registration test
 // ---------------------------------------------------------------------------
 

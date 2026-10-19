@@ -1,0 +1,281 @@
+{
+  "ts": "2026-10-19T06:17:42.533Z",
+  "query": "bun javascript runtime",
+  "env": {
+    "UNOWN_SEARXNG_URL": "",
+    "keyedProvidersConfigured": [
+      "tavily",
+      "dashscope"
+    ]
+  },
+  "summary": {
+    "freeLiveVerified": [
+      "tavily",
+      "youcom",
+      "wikipedia",
+      "hn",
+      "npm",
+      "github"
+    ],
+    "paidLiveVerified": [],
+    "paidLivenessVerified": [
+      "searxng",
+      "brave",
+      "serper",
+      "exa",
+      "perplexity",
+      "jina",
+      "zhipu",
+      "kagi",
+      "serpapi",
+      "firecrawl"
+    ],
+    "failed": [
+      "duckduckgo",
+      "stackexchange",
+      "dashscope"
+    ],
+    "floorMet": true
+  },
+  "providers": [
+    {
+      "id": "duckduckgo",
+      "ok": false,
+      "ms": 20002,
+      "nResults": 0,
+      "note": "all web-search providers failed — duckduckgo: The operation timed out.",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "tavily",
+      "ok": true,
+      "ms": 1571,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "Bun (software) - Wikipedia",
+          "url": "https://en.wikipedia.org/wiki/Bun_(software)"
+        },
+        {
+          "title": "Bun - Products, Competitors, Financials, Employees, Headquarters Locations",
+          "url": "https://www.cbinsights.com/company/oven"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "youcom",
+      "ok": true,
+      "ms": 1186,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "Bun (software)",
+          "url": "https://en.wikipedia.org/wiki/Bun_(software)"
+        },
+        {
+          "title": "Bun.js: What It Is, How It Works, and When to Use It (2026)",
+          "url": "https://last9.io/blog/getting-started-with-bun-js/"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "wikipedia",
+      "ok": true,
+      "ms": 474,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "Bun (software)",
+          "url": "https://en.wikipedia.org/wiki/Bun_(software)"
+        },
+        {
+          "title": "V8 (JavaScript engine)",
+          "url": "https://en.wikipedia.org/wiki/V8_(JavaScript_engine)"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "hn",
+      "ok": true,
+      "ms": 375,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "Bun: Fast JavaScript runtime, transpiler, and NPM client written in Zig",
+          "url": "https://bun.sh/?launch"
+        },
+        {
+          "title": "Bun: Fast JavaScript runtime, bundler, transpiler and package manager",
+          "url": "https://github.com/Jarred-Sumner/bun"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "npm",
+      "ok": true,
+      "ms": 382,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "mcp-bun@1.3.0",
+          "url": "https://www.npmjs.com/package/mcp-bun"
+        },
+        {
+          "title": "bun-types@1.4.3",
+          "url": "https://www.npmjs.com/package/bun-types"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "github",
+      "ok": true,
+      "ms": 588,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "oven-sh/bun",
+          "url": "https://github.com/oven-sh/bun"
+        },
+        {
+          "title": "af/envalid",
+          "url": "https://github.com/af/envalid"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "stackexchange",
+      "ok": false,
+      "ms": 44,
+      "nResults": 0,
+      "note": "all web-search providers failed — stackexchange: api.stackexchange.com HTTP 429 (rate limited — retry later or pick another provider): <!DOCTYPE html> <html> <head> <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" /> <title>Too Many Requests - Stack Exchange</title> <style type=\"te",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "searxng",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — searxng: API key not set)",
+      "tier": "free",
+      "configured": false
+    },
+    {
+      "id": "brave",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — brave: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "serper",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — serper: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "exa",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — exa: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "perplexity",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — perplexity: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "jina",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — jina: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "zhipu",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — zhipu: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "dashscope",
+      "ok": false,
+      "ms": 187,
+      "nResults": 0,
+      "note": "all web-search providers failed — dashscope: dashscope.aliyuncs.com HTTP 401 (authentication failed — check the provider API key): {\"error\":{\"message\":\"Incorrect API key provided. For details, see: https://help.aliyun.com/zh/model-studio/error-code#apikey-error\",\"type\":\"invalid_request_error\",\"param",
+      "tier": "paid",
+      "configured": true
+    },
+    {
+      "id": "kagi",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — kagi: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "serpapi",
+      "ok": true,
+      "ms": 1,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — serpapi: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "firecrawl",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — firecrawl: API key not set)",
+      "tier": "paid",
+      "configured": false
+    }
+  ],
+  "fetch": [
+    {
+      "name": "direct-fetch",
+      "ok": true,
+      "ms": 119,
+      "chars": 3085
+    }
+  ]
+}

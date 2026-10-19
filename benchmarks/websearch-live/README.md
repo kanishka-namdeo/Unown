@@ -29,22 +29,25 @@ the hostile case; residential IPs fare strictly better):
 
 | Tier | Provider | State from a datacenter IP |
 |---|---|---|
-| free | tavily | live-verified (keyless mode) |
+| free | tavily | live-verified (keyless mode), newest receipt 2026-10-19 |
 | free | youcom | live-verified (keyless MCP, 100 q/day) |
 | free | wikipedia | live-verified (policy-compliant UA) |
 | free | hn | live-verified (Algolia) |
 | free | npm | live-verified (registry search, package research) |
 | free | github | live-verified (repo search, unauthenticated) |
-| free | searxng | live-verified (self-hosted instance) |
-| free | duckduckgo | works from residential IPs; datacenter IPs receive the 202 anomaly challenge — detected, surfaced, chain cascades |
-| free | stackexchange | works keyless (300 q/day per IP); this shared datacenter IP is throttled — detected and surfaced |
-| paid | dashscope | live-verified with a real key (Qwen `enable_search` grounding; hourly-metered — a 429 triggers one backoff retry) |
+| free | searxng | live-verified against a self-hosted instance (receipt `…0667517`); the 2026-10-19 runs had no local instance up, so searxng reports endpoint-liveness there |
+| free | duckduckgo | works from residential IPs; this datacenter IP times out at the anomaly challenge — detected, surfaced, chain cascades |
+| free | stackexchange | works keyless (300 q/day per IP); this shared datacenter IP is throttled (429) — detected and surfaced |
+| paid | dashscope | **key-class-honest, verified live 2026-10-19**: coding-plan keys (`sk-sp-…`) are refused up front with an actionable note — the coding endpoints silently ignore `enable_search` (the model answers from training data and, asked directly, reports no live access; no search fields come back) while both standard endpoints reject these keys with 401. Standard keys (`sk-…`) use the documented `enable_search` grounding; request/parse shape pinned by mock tests in `test/websearch.test.ts` |
 | paid | brave / serper / exa / perplexity / jina / zhipu / kagi / serpapi / firecrawl | endpoint-liveness-verified: live endpoints answering with their documented auth-gated errors; request/response shapes pinned by the parser tests in `test/websearch.test.ts`, and the full request path mock-verified there — add the provider's key to the environment and the same adapter runs live |
 
-The 5-free + 5-paid floor is met: seven free providers verified with live
-queries from a hostile datacenter IP, and ten paid providers shipped (one live-verified with a key, nine
-liveness-verified + mock-pinned). Re-running the harness after adding keys
-upgrades the affected providers to live-verified automatically.
+The 5-free + 5-paid floor is met: six free providers live-verified with real
+queries in the newest receipt (seven across receipt history, counting the
+self-hosted searxng run), and ten paid providers shipped — nine
+liveness-verified + mock-pinned, plus dashscope (refusal path live-verified
+for coding keys, standard-key request shape mock-pinned). Re-running the
+harness after adding keys upgrades the affected providers to live-verified
+automatically.
 
 ## webfetch side
 

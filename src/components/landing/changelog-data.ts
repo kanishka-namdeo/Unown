@@ -30,33 +30,115 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 88;
+export const CHANGELOG_TOTAL_ENTRIES = 90;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 45,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 18,
+  "Fixed": 19,
   "Security": 3,
-  "Behavior": 6
+  "Behavior": 7
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 47,
+    "total": 49,
     "counts": {
       "Added": 17,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 10,
+      "Fixed": 11,
       "Security": 0,
-      "Behavior": 6
+      "Behavior": 7
     },
     "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "web tools: the dashscope search provider is now key-class-honest",
+            "behavior": false
+          },
+          {
+            "title": "automations: two live-E2E breaks in the control surfaces — the engine's HTTP layer dropped PATCH bodies…",
+            "behavior": false
+          },
+          {
+            "title": "dashboard: the engine-parity round went red on the axe gate — three WCAG violation classes across four new…",
+            "behavior": false
+          },
+          {
+            "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
+            "behavior": false
+          },
+          {
+            "title": "coverage gate: duplicate module-instance rows could shadow well-covered files (bun 1.3.x)",
+            "behavior": false
+          },
+          {
+            "title": "bun run lint was red on a fresh clone while CI's lint job stayed green",
+            "behavior": false
+          },
+          {
+            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
+            "behavior": false
+          },
+          {
+            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
+            "behavior": false
+          },
+          {
+            "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
+            "behavior": false
+          },
+          {
+            "title": "dashboard: Console-tab contrast (wcag2aa color-contrast, serious)",
+            "behavior": false
+          },
+          {
+            "title": "engine: hardening batch from the deep audit (6 defects)",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "web_search: coding-plan DashScope keys (sk-sp-…) are refused up front",
+            "behavior": true
+          },
+          {
+            "title": "/undo is session-scoped by default (--all for the rest)",
+            "behavior": true
+          },
+          {
+            "title": "LSP crash recovery",
+            "behavior": true
+          },
+          {
+            "title": "MCP resilience",
+            "behavior": true
+          },
+          {
+            "title": "Project-config trust gate",
+            "behavior": true
+          },
+          {
+            "title": "/review reviewers are read-only",
+            "behavior": true
+          },
+          {
+            "title": "/goal completion requires both evidence kinds and a todo trail",
+            "behavior": true
+          }
+        ]
+      },
       {
         "bucket": "Added",
         "items": [
@@ -131,51 +213,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         ]
       },
       {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "automations: two live-E2E breaks in the control surfaces — the engine's HTTP layer dropped PATCH bodies…",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: the engine-parity round went red on the axe gate — three WCAG violation classes across four new…",
-            "behavior": false
-          },
-          {
-            "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
-            "behavior": false
-          },
-          {
-            "title": "coverage gate: duplicate module-instance rows could shadow well-covered files (bun 1.3.x)",
-            "behavior": false
-          },
-          {
-            "title": "bun run lint was red on a fresh clone while CI's lint job stayed green",
-            "behavior": false
-          },
-          {
-            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
-            "behavior": false
-          },
-          {
-            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
-            "behavior": false
-          },
-          {
-            "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: Console-tab contrast (wcag2aa color-contrast, serious)",
-            "behavior": false
-          },
-          {
-            "title": "engine: hardening batch from the deep audit (6 defects)",
-            "behavior": false
-          }
-        ]
-      },
-      {
         "bucket": "Changed",
         "items": [
           {
@@ -233,35 +270,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "/goal gate hardening",
             "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Behavior",
-        "items": [
-          {
-            "title": "/undo is session-scoped by default (--all for the rest)",
-            "behavior": true
-          },
-          {
-            "title": "LSP crash recovery",
-            "behavior": true
-          },
-          {
-            "title": "MCP resilience",
-            "behavior": true
-          },
-          {
-            "title": "Project-config trust gate",
-            "behavior": true
-          },
-          {
-            "title": "/review reviewers are read-only",
-            "behavior": true
-          },
-          {
-            "title": "/goal completion requires both evidence kinds and a todo trail",
-            "behavior": true
           }
         ]
       }
