@@ -57,6 +57,153 @@ Engine runs — verify scripts and the agent's own bash commands — execute und
 - Terminal sessions: the same gate scoped for real work — catastrophic commands (filesystem-root deletion, fork bombs, disk formats) and writes outside your project and `/tmp` are blocked; network, `git push` and package installs stay available. `UNOWN_STRICT_HOOKS=1` restores sandbox-grade strictness.
 - Both layers are in-process pattern gates, not shell scripts. `unown -v` prints every hook decision to stderr.
 
+### User-configurable hooks (Milestone 1 — 2026-10-19)
+
+User-configured handlers ride on top of the built-in policies. They live in
+`.unown/hooks.json` (project-scoped, trust-gated like `.unown/mcp.json` —
+`UNOWN_TRUST_PROJECT_CONFIG=1` bypasses for CI) and `~/.unown/agent/hooks.json`
+(user-scoped, always trusted). When both exist, the project config wins
+per-event-name. Handler types and the new event surface, reverse-engineered
+from the converged hook contract in claude code, codex, cursor and goose:
+
+| Event | When fired | Handler types |
+|---|---|---|
+| `SessionStart` | pi `session_start` | all |
+| `UserPromptSubmit` | pi `input` (the user's message text) | all |
+| `PreToolUse` | pi `tool_call` (matcher: tool name or `*`/`bash\|powershell`) | all — `deny`/`stop` blocks, `mutate` rewrites input |
+| `PostToolUse` | pi `tool_result` | all — `feedback`/`warning`/`error` outputs surface to the model |
+| `Stop` | pi `agent_end` | all |
+| `SubagentStop` | harness emits when a sub-run finishes | all |
+| `PreModelRequest` | pi `before_provider_request` | all |
+| `PostModelRequest` | pi `after_provider_response` | all |
+| `PreCompact` | pi `session_before_compact` | all |
+| `PostCompact` | pi `session_compact` | all |
+| `SubagentStart` | `task` tool emits when a sub-run starts | all |
+| `TaskCompleted` | `task` tool emits when a sub-run finishes | all |
+| `PermissionRequest` | emitted when a tool_call would be denied | all |
+
+Handler types (the `type` field):
+
+| `type` | What it does | Decision protocol |
+|---|---|---|
+| `command` | Runs a shell command; `{{tool}}`, `{{input.path}}`, `{{input.command}}`, `{{prompt}}` interpolated | exit 0 + stdout (text or JSON) → `allow` + feedback; exit 2 + stderr → `deny`; other non-zero → `warn` |
+| `http` | POSTs the event JSON to a URL | 200 + JSON body → parsed structured output; non-200 → `warn` or `deny` (if `failClosed`) |
+| `mcp` | Calls an MCP tool on a configured server (`mcpServer` + `mcpTool`) | result parsed as structured output |
+| `prompt` | Calls the LLM with a templated prompt (uses `callLlm`) | reply parsed as JSON or surfaced as feedback |
+| `agent` | Same as `prompt` but with a fresh sub-agent context | same |
+
+Common handler fields: `timeoutMs` (default 10 000, max 60 000), `async` (fire-and-forget — don't block the turn), `failClosed` (runner error → `deny` instead of `allow`).
+
+Semantic output entries (the `outputs[].kind` field) surface to the model and the dashboard:
+
+- `feedback` — informational, model sees it
+- `warning` — model sees it; non-blocking
+- `error` — model sees it; non-blocking unless paired with `decision: deny`
+- `stop` — terminal; like deny but with a different reason
+- `context` — injected into the model's next prompt as additional context
+
+```json
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "bash",
+        "type": "command",
+        "command": "echo \"bash called: {{input.command}}\" >> ~/.unown/audit.log",
+        "timeoutMs": 5000
+      },
+      {
+        "matcher": "write",
+        "type": "prompt",
+        "prompt": "Review this write for security issues. Path: {{input.path}}. Reply with JSON: {\"decision\":\"allow|deny\",\"reason\":\"...\"}",
+        "model": "qwen3.7-plus",
+        "timeoutMs": 30000
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "http",
+        "url": "https://internal-approval.example.com/hooks/post-tool",
+        "apiKey": "${INTERNAL_API_KEY}",
+        "timeoutMs": 5000
+      }
+    ],
+    "PreCompact": [
+      { "type": "command", "command": "notify-send 'compacting context'" }
+    ]
+  }
+}
+```
+
+### Adversary Mode (Milestone 1.4 — 2026-10-19)
+
+A file-gated PreToolUse LLM reviewer, reverse-engineered from goose's
+`adversary_inspector.rs`. When the gate file
+`~/.config/unown/adversary.md` exists, every `bash`/`powershell`/`write`/`edit`
+call goes through an LLM review pass before the built-in policies' verdict
+is final. The gate file is a Markdown document the user writes:
+
+```markdown
+# Adversary Policy
+
+Review every destructive operation. Default-deny if uncertain.
+
+## Disallow
+- Writes to `.github/workflows/*.yml` (CI tampering)
+- `rm` without explicit `-rf` and a path under the project root
+- `git push --force` to `main`/`master`
+
+## Allow
+- Routine edits to `src/`, `docs/`, `tests/`
+
+## Notes
+- Cost is bounded: per-action review, not per-turn. ~5-10% extra tokens.
+```
+
+The reviewer sends the tool name + a snippet of the input (truncated to 2 KB per field, 8 KB total) to the configured model (default `PI_MODEL_ID`). Common secret patterns (`sk-…`, `ghp_…`, `github_pat_…`, `AKIA…`, `Bearer …`, PEM blocks) are redacted before the call. The model's reply is parsed for `BLOCK`/`ALLOW` keywords; ambiguous replies default-allow (the adversary augments, never replaces, the built-in policies). On LLM error or timeout: `failClosed: true` blocks, else allows. Cross-platform native (no shell tricks).
+
+### Prompt-injection scanner (Milestone 1.5 — 2026-10-19)
+
+A pure-regex pattern scanner with risk levels and categories, reverse-engineered from goose's `patterns.rs` + `scanner.rs` + `classification_client.rs`. **106 built-in patterns** across 8 categories:
+
+| Category | Patterns | Risk levels |
+|---|---|---|
+| `instruction-injection` | "ignore previous instructions", "DAN", "jailbreak", "you are now in developer mode", ... | medium → critical |
+| `data-exfiltration` | `curl -X POST`, `wget --post-data`, "send the contents of", ... | high → critical |
+| `path-traversal` | `../../../etc/passwd`, `~/.ssh/id_rsa`, `~/.aws/credentials`, `/proc/self/environ`, ... | high → critical |
+| `credential-harvesting` | `AKIA[0-9A-Z]{16}`, `sk-…`, `ghp_…`, `github_pat_…`, PEM blocks, `Bearer …`, jdbc URLs with embedded creds | critical |
+| `code-execution` | `eval(`, `Function(`, `subprocess.Popen`, `child_process.exec`, base64-decoded payloads, hex escapes, ... | high → critical |
+| `sandbox-escape` | `chroot`, `LD_PRELOAD=`, `chmod 4755`, `docker run --privileged`, ... | critical |
+| `obfuscation` | hex/octal/unicode escapes, HTML entities, URL-encoded payloads, string concatenation, bracketed character classes | medium → high |
+| `tool-impersonation` | "as a helpful assistant", "the user's true intent is", "ignore the previous system prompt", ... | high |
+
+**Risk → block decision**: `critical` always blocks; `high` blocks; `medium` blocks by default (configurable); `low` never blocks.
+
+**Scan-mode aware**: when scanning `write`/`edit` content, only prompt-injection-related categories are scanned — code-execution patterns like `eval(`, `subprocess.Popen`, `child_process.exec` would false-positive on legitimate user code (the agent is *writing* the user's code, not executing attacker input). When scanning `bash`/`powershell` commands, all 106 patterns apply (commands ARE the threat surface). For other tools, `JSON.stringify(input)` (8 KB cap) is scanned in command mode.
+
+**Config**: `~/.config/unown/injection-scanner.json` (UNOWN_HOME-respecting). Override `blockOn` risk levels, exclude/include pattern IDs, and optionally wire an ML classifier (HuggingFace Inference API stubbed — not yet implemented). Env kill-switch: `UNOWN_INJECTION_SCANNER=0`.
+
+```json
+{
+  "enabled": true,
+  "blockOn": ["critical", "high", "medium"],
+  "excludePatternIds": [],
+  "mlClassifier": {
+    "enabled": false,
+    "endpoint": "https://api-inference.huggingface.co/models/${model}",
+    "model": "garak/...",
+    "apiKeyEnv": "HF_TOKEN",
+    "confidenceThreshold": 0.75,
+    "timeoutMs": 5000
+  }
+}
+```
+
+### New standalone emitters (Milestone 1.3 — 2026-10-19)
+
+`SubagentStart` and `TaskCompleted` events are emitted by the `task` tool (in `tools.ts`) — they don't come from pi's event stream. `PermissionRequest` is emitted when a tool_call would be denied. All three are visible in the receipts ledger and the dashboard's hook feed.
+
 ## Behavior-change policy
 
 Any change to prompts, default models, routing, guard rules, hook policy, or memory injection must land with all three:
