@@ -115,9 +115,18 @@ test("build refuses a rail that cannot be dated, or that has gone empty", () => 
 test("the real CHANGELOG.md parses into the rail the page renders", () => {
   const data = build(parseChangelog(readFileSync(join(ROOT, "CHANGELOG.md"), "utf8")));
   assert.ok(data.stops.length >= 2, "at least one cut release plus the in-flight stop");
-  assert.equal(data.stops[0].label, "Unreleased");
-  assert.equal(data.stops[0].date, null, "the in-flight stop must stay undated");
-  assert.ok(data.stops.slice(1).every((s) => iso(s.date)), "every cut release carries an ISO date");
+  // Release-aware: the first stop is `Unreleased` mid-flight (undated) or the
+  // just-cut version stop (dated) — between releases there is no [Unreleased]
+  // section at all (an empty stop fails build() by contract).
+  const first = data.stops[0];
+  if (first.label === "Unreleased") {
+    assert.equal(first.date, null, "the in-flight stop must stay undated");
+    assert.ok(iso(data.stops[1].date), "the previous release follows with an ISO date");
+  } else {
+    assert.ok(iso(first.date), "right after a cut, the first stop is the dated release");
+    assert.ok(/^\d+\.\d+\.\d+$/.test(first.label), "…and its label is the bare version");
+  }
+  assert.ok(data.stops.slice(1).every((s) => iso(s.date)), "every other stop carries an ISO date");
   const items = data.stops.flatMap((s) => s.groups.flatMap((g) => g.items));
   assert.equal(items.length, data.total);
   assert.ok(items.every((i) => i.title.length > 0 && i.title.length <= TITLE_MAX));

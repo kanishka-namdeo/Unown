@@ -47,13 +47,19 @@ describe("landing changelog rail", () => {
       expect(stop.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
 
+    // Release-aware: right after a cut there is no [Unreleased] section at
+    // all (an empty stop fails the extractor's build() by contract), so the
+    // uncut assertions only apply mid-flight.
     const uncut = CHANGELOG_STOPS.filter((s) => !s.date);
-    expect(uncut.length).toBeGreaterThan(0);
-    for (const stop of uncut) {
-      const li = [...container.querySelectorAll("li")].find((el) => el.textContent?.includes("UNCUT"));
-      expect(li).toBeTruthy();
-      expect(li?.querySelector("time")).toBeNull();
-      expect(li?.textContent).toContain("no tag yet");
+    if (uncut.length > 0) {
+      for (const stop of uncut) {
+        const li = [...container.querySelectorAll("li")].find((el) => el.textContent?.includes("UNCUT"));
+        expect(li).toBeTruthy();
+        expect(li?.querySelector("time")).toBeNull();
+        expect(li?.textContent).toContain("no tag yet");
+      }
+    } else {
+      expect(container.textContent).not.toContain("no tag yet");
     }
   });
 
@@ -87,13 +93,17 @@ describe("landing changelog rail", () => {
     expect(container.innerHTML).not.toMatch(/<ul[^>]*>\s*<div/);
   });
 
-  test("the current marker sits on the newest CUT stop, not the frontier stop", () => {
+  test("the current marker sits on the newest CUT stop (the frontier when a release is just cut)", () => {
     const { container } = rail();
-    expect(latestCutIndex(CHANGELOG_STOPS)).toBeGreaterThan(0); // frontier is first
+    // Release-aware: mid-flight the frontier stop is the uncut [Unreleased]
+    // and the marker must sit further back; right after a cut the newest CUT
+    // release IS the frontier (index 0) until the next Unreleased opens.
+    const idx = latestCutIndex(CHANGELOG_STOPS);
+    expect(idx).toBeGreaterThanOrEqual(0);
     const current = container.querySelectorAll('[aria-current="date"]');
     expect(current.length).toBe(1);
     const label = current[0]?.textContent ?? "";
-    const latest = CHANGELOG_STOPS[latestCutIndex(CHANGELOG_STOPS)];
+    const latest = CHANGELOG_STOPS[idx];
     expect(label).toContain(`v${latest.label}`);
     expect(label).toContain("latest");
     expect(label).not.toContain("UNCUT");
