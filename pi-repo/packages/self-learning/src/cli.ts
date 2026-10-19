@@ -134,8 +134,8 @@ Session tools (registered in every session):
                                          language-server code intelligence
   automation_list (+create/update/delete outside automation runs)
                                          scheduled runs managed by the engine
-  /plan /todos /note /agents /learning /lsp /checkpoint /undo /restore
-  /checkpoints /receipts /mcp /goal /review   session commands
+  /plan /todos /note /agents /learning /lsp /checkpoint /undo /redo
+  /restore /checkpoints /receipts /mcp /goal /review   session commands
 
 Subagent flags (used internally by the task tool):
   --mode json              stream JSON events instead of text (print mode)

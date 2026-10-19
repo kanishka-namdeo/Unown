@@ -110,7 +110,7 @@ blueprint/                    Unown v1 — the Claude Code harness blueprint thi
 
 Before opening the PR:
 
-- [ ] `git status` reviewed, then **explicit-path staging only**: `git add <paths>` — never `git add -A` or `git add .` (the engine auto-commits learning artifacts into the tree; blanket staging ships them by accident).
+- [ ] `git status` reviewed, then **explicit-path staging only**: `git add <paths>` — never `git add -A` or `git add .` (sessions leave untracked learning artifacts under `.unown/`, and nothing auto-commits this repo — the terminal agent's `/commit` and its opt-in `UNOWN_AUTO_COMMIT` session-end snapshot are off-by-default user-project features — so blanket staging ships those artifacts by accident).
 - [ ] All suites green locally; receipts attached for measured claims.
 - [ ] DOX pass done: nearest `AGENTS.md` updated (parents too, if structure changed); stale text removed.
 - [ ] `CHANGELOG.md` updated for user-visible changes; **Agent Behavior** entry plus pinning tests for behavior changes. Then `bun scripts/landing_changelog.mjs`, so the landing rail carries the new entry (`bun run check:changelog` is the same check CI runs).

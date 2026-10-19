@@ -49,7 +49,7 @@ Stack lifecycle:
 - Vercel (landing page): the marketing site at `/` auto-deploys on every push to `main` via Vercel's GitHub integration — project `unown` under `kane111s-projects`, production alias `https://unown-nine.vercel.app`. Tunable in root `vercel.json` (framework `nextjs`, build `bun run build`, install `bun install`); re-deploy manually with `vercel deploy --prod`. The dashboard and engine stay local — only the landing route (+ `/dashboard` shell) is hosted.
 - Toolchain: host bun is 1.4.3 at `~/.bun/bin` (PATH-first). `/usr/local/bin/bun` (1.3.14) remains the binary visible INSIDE the bwrap sandbox (the `/home` tmpfs hides `~/.bun`), so host bun upgrades do not change the sandboxed agent runtime.
 
-Git: PAT-authenticated remote (pull/push need no re-auth). Every task opens with the Git Preflight below and re-runs it before committing. Meaningful work is committed with explicit-path staging (`git add <paths>`, never `git add -A` / `git add .`); the engine itself auto-commits learning artifacts, so verify `git status` before staging.
+Git: PAT-authenticated remote (pull/push need no re-auth). Every task opens with the Git Preflight below and re-runs it before committing. Meaningful work is committed with explicit-path staging (`git add <paths>`, never `git add -A` / `git add .`); nothing auto-commits this repository — the terminal agent's `/commit` command and its opt-in `UNOWN_AUTO_COMMIT=1` session-end snapshot are user-invoked features for user projects (default OFF), not engine behavior here — but sessions do leave untracked learning artifacts (`.unown/` memory, receipts), so verify `git status` before staging.
 
 ## Git Preflight
 
