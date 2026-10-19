@@ -35,8 +35,12 @@ describe("clig.dev help surface — `unown help`", () => {
 	test("`unown help` lists the session surface (lsp tool, 14 commands, kill-switches — drift guard)", async () => {
 		const run = await unown(["help"], base());
 		expect(run.exitCode).toBe(0);
-		// the session-tools line carries the lsp tool (R-D A1)
-		expect(run.stdout).toContain("todo / note / task / fetch_url / lsp");
+		// the session-tools lines carry the lsp tool (R-D A1) and the web
+		// tools (web_search + webfetch — a fresh-clone user must learn the
+		// agent can search the web from --help alone)
+		expect(run.stdout).toContain("todo / note / task / fetch_url / web_search");
+		expect(run.stdout).toContain("webfetch / lsp");
+		expect(run.stdout).toContain("live web search + page reads");
 		// every unown session command is advertised (R-D A1)
 		for (const cmd of [
 			"/plan",

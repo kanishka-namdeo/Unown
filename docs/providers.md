@@ -152,4 +152,13 @@ local draft never touches the remote API. Unset = remote authoring as before.
 - **Persistently**: pick with Ctrl+S in the picker, or re-run `unown setup`.
 - **Check what's live**: `unown models` lists your configured models plus what a local bridge actually serves (with an allow-list cross-check).
 
+## Web-search providers (the `web_search` tool)
+
+Separate from the LLM providers above: unown's `web_search` / `webfetch` tools ship their own provider registry — 19 adapters, keyless-first. Nothing here needs setup; the tools work on a fresh clone with zero keys:
+
+- **Keyless chain (free)**: SearXNG (self-hosted, `UNOWN_SEARXNG_URL`) → DuckDuckGo → Tavily keyless → You.com (free profile) → StackExchange (300 req/day per IP) → Wikipedia → HN → npm registry → GitHub repo search (`GITHUB_TOKEN` optional).
+- **API-key providers (paid tiers / free tiers with signup)**: Tavily, Brave, Serper, Exa, Perplexity, Jina, Zhipu, DashScope (`enable_search` grounding — standard `sk-…` keys only; coding-plan `sk-sp-…` keys are refused up front with an actionable note), Kagi, SerpApi — plus Firecrawl on the fetch side. Any key set in `.env` **prepends** that provider to the chain; `UNOWN_WEB_SEARCH_PROVIDER` pins an explicit provider or comma-separated chain.
+
+Full auto-selection order, per-provider quirks, and every env key: [usage](usage.md#session-tools) · [configuration](configuration.md). Live-verification receipts: [benchmarks/websearch-live/](../benchmarks/websearch-live/).
+
 Full variable reference: [configuration](configuration.md).

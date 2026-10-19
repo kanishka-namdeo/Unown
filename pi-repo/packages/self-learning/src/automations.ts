@@ -37,8 +37,12 @@
  *   `unown --mode json -p --no-session [--tools <read-only set>] <prompt>`
  * spawned with UNOWN_AUTOMATION=1 (+ PI_MODEL_ID when the automation pins a
  * model). Read-only mode toolset: read, grep, find, ls, todo, note,
- * fetch_url, lsp — no bash, no write, no edit. The run's note tool still
- * works, so scheduled sessions feed the learning loop like any other.
+ * fetch_url, web_search, webfetch, lsp — no bash, no write, no edit. The
+ * web tools are read-only network reads (the same classification plan
+ * mode gives them) and an unattended "morning brief" that cannot search
+ * the web would be half a product — so they join the allowlist alongside
+ * fetch_url. The run's note tool still works, so scheduled sessions feed
+ * the learning loop like any other.
  */
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -62,8 +66,11 @@ export const AUTOMATION_CREATE_LIMIT = 20;
 export const MAX_CONCURRENT_AUTOMATION_RUNS = 2;
 export const AUTOMATION_RUN_TIMEOUT_MS = 30 * 60_000;
 
-/** The read-only toolset for unattended runs (no bash/write/edit). */
-export const READ_ONLY_TOOLS = "read,grep,find,ls,todo,note,fetch_url,lsp";
+/** The read-only toolset for unattended runs (no bash/write/edit). The web
+ * tools are read-only network reads (same classification plan mode gives
+ * them) — without them an unattended "check upstream for new releases"
+ * automation could not do its job. */
+export const READ_ONLY_TOOLS = "read,grep,find,ls,todo,note,fetch_url,web_search,webfetch,lsp";
 
 // ---------------------------------------------------------------------------
 // Types

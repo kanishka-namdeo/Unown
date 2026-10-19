@@ -128,10 +128,13 @@ Usage:
   unown --version          print the version (matches package.json)
 
 Session tools (registered in every session):
-  todo / note / task / fetch_url / lsp   visible task tracking, mid-session learning notes,
+  todo / note / task / fetch_url / web_search /
+  webfetch / lsp                         visible task tracking, mid-session learning notes,
                                          subagents with a fresh context (output_schema
                                          structured replies, worktree_isolation), HTTP reads,
-                                         language-server code intelligence
+                                         live web search + page reads (keyless out of the
+                                         box; provider keys optional), language-server code
+                                         intelligence
   automation_list (+create/update/delete outside automation runs)
                                          scheduled runs managed by the engine
   /plan /todos /note /agents /learning /lsp /checkpoint /undo /redo

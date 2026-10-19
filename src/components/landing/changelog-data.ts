@@ -30,31 +30,31 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 98;
+export const CHANGELOG_TOTAL_ENTRIES = 100;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 49,
   "Changed": 17,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 22,
+  "Fixed": 23,
   "Security": 3,
-  "Behavior": 7
+  "Behavior": 8
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 57,
+    "total": 59,
     "counts": {
       "Added": 21,
       "Changed": 15,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 14,
+      "Fixed": 15,
       "Security": 0,
-      "Behavior": 7
+      "Behavior": 8
     },
     "groups": [
       {
@@ -219,6 +219,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
+            "title": "web tools: the integration-audit round — every surface a fresh-clone user touches now says the agent can search…",
+            "behavior": false
+          },
+          {
             "title": "web tools: the dashscope search provider is now key-class-honest",
             "behavior": false
           },
@@ -277,6 +281,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "web_search: coding-plan DashScope keys (sk-sp-…) are refused up front",
+            "behavior": true
+          },
+          {
+            "title": "automations (read-only mode): the unattended toolset gains web_search + webfetch",
             "behavior": true
           },
           {
