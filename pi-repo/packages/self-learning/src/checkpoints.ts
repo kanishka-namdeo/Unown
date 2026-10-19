@@ -1060,6 +1060,16 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
                 ledger.append({ kind: "input", preview: previewText(text) });
             }
         });
+        pi.on("agent_end", () => {
+            // Seal at TURN END, not only on the next input: /undo and
+            // /checkpoints are extension slash commands, and prompt() dispatches
+            // those BEFORE the "input" event fires — without this, the turn that
+            // just finished stays unsealed and /undo finds nothing to revert
+            // until the user sends another (non-slash) message.
+            sealTurnCheckpoint();
+            turnBefore = new Map();
+            turnWritten = new Set();
+        });
 
         pi.on("tool_call", (event: any) => {
             const tool = event?.toolName as string;

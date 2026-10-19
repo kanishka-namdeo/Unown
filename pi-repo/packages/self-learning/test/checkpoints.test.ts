@@ -995,3 +995,40 @@ describe("privacy hardening (H2)", () => {
         expect(text).toContain("Authorization: ***");
     });
 });
+
+// ---------------------------------------------------------------------------
+// 5. agent_end turn sealing — the /undo-right-after-the-turn regression
+// ---------------------------------------------------------------------------
+
+describe("createCheckpointsExtension — agent_end sealing", () => {
+    test("agent_end seals the finished turn — /undo works with no further input event", async () => {
+        const proj = join(tmpRoot, "ext-agent-end");
+        mkdirSync(proj, { recursive: true });
+        const file = join(proj, "src.ts");
+        writeFileSync(file, "original();\n");
+
+        const ext = createCheckpointsExtension({ cwd: proj, receiptsFile: join(proj, ".unown", "receipts", "r.jsonl") });
+        const { pi, emit, runCommand } = makeFakePi();
+        ext.factory(pi);
+        const { ctx, messages } = makeNotify();
+
+        await emit("session_start", {});
+        await emit("input", { text: "change the file" });
+        await emit("tool_call", { toolName: "write", toolCallId: "tc1", input: { path: file, content: "changed();" } });
+        await emit("tool_result", { toolName: "write", toolCallId: "tc1", input: { path: file }, content: [{ type: "text", text: "ok" }], isError: false });
+        // the write lands on disk
+        writeFileSync(file, "changed();");
+
+        // the turn ENDS — no further user input. The slash command path in
+        // agent-session prompt() must not matter: agent_end seals now.
+        await emit("agent_end", {});
+
+        const store = new CheckpointStore(checkpointsDir(proj));
+        expect(store.list().filter((m) => m.kind === "turn")).toHaveLength(1);
+
+        // /undo immediately after the turn must revert to the before-image
+        await runCommand("undo", "", ctx);
+        expect(readFileSync(file, "utf8")).toBe("original();\n");
+        expect(messages.some((m) => m.text.includes("1 turn(s)"))).toBe(true);
+    });
+});
