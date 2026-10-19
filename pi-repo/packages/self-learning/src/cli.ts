@@ -62,6 +62,8 @@ import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
 import { runAutomationsCommand } from "./automations-cli.ts";
 import { runUsageCommand } from "./usage-cli.ts";
 import { runSessionsCommand } from "./sessions-cli.ts";
+import { runRecipesCommand } from "./recipes-cli.ts";
+import { runWikiCommand } from "./wiki-cli.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createPermissionsExtension, createPermissionGate, permissionsDoctorSummary } from "./permissions.ts";
@@ -140,6 +142,14 @@ Usage:
                            UNOWN_PRICE_* pins exact prices)
   unown sessions <sub>  session export / import / list (Milestone 3.5):
                            export <id> [--out <file>] | import <file> | list
+  unown recipes <sub>    declarative agent instruction bundles (Milestone 4.1,
+                           the goose Recipes port): list | run <name> [--k v] |
+                           create <name> | validate <file>; discovered from
+                           .unown/recipes/*.md (project) + $UNOWN_HOME/recipes/*.md
+  unown wiki <sub>      auto-generated repo documentation with file:line
+                           cross-links (Milestone 4.2, the zcode Repo Wiki
+                           port): generate [--force] | search <q> | list |
+                           show <page>; written to .unown/wiki/*.md
   unown acp               run the ACP editor server on stdio (JSON-RPC 2.0,
                            newline-delimited) — point Zed or any ACP client at
                            it: agent program 'unown', args 'acp' (see
@@ -178,6 +188,16 @@ Session tools (registered in every session):
   /sessions <sub>         export|import|list — the in-session alias for the
                           \`unown sessions\` CLI (Milestone 3.5); \`/sessions export\`
                           writes to .unown/sessions/export-<id>.json
+  /recipe <name> [args]  run a declarative agent instruction bundle (Milestone
+                          4.1, the goose Recipes port): \`/recipe list\` prints
+                          available recipes; \`/recipe <name> --key value\` runs
+                          one with parameters interpolated into the body
+  /wiki <sub>           auto-generated repo documentation with file:line
+                          cross-links (Milestone 4.2, the zcode Repo Wiki
+                          port): \`/wiki generate\` writes the wiki to
+                          .unown/wiki/ (parallel subagents per module);
+                          \`/wiki search <q>\` / \`list\` / \`show <page>\`
+                          read from the existing wiki
   /edit-resend <n> <msg>  edit the Nth user message + revert files to the
                           pre-message checkpoint, then resend (all-or-nothing
                           file reset; aborts if any file was edited out-of-band —
@@ -1424,6 +1444,20 @@ export async function runCli(argv: string[]) {
                 // opencode session/transfer.ts port). Dispatch before the
                 // generic parser would eat subcommand tokens as prompt text.
                 const code = await runSessionsCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "recipes") {
+                // Milestone 4.1 — `unown recipes list|run|create|validate` (the
+                // goose Recipes port). Dispatch before the generic parser would
+                // eat subcommand tokens as prompt text.
+                const code = await runRecipesCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "wiki") {
+                // Milestone 4.2 — `unown wiki generate|search|list|show` (the
+                // zcode Repo Wiki port). Dispatch before the generic parser would
+                // eat subcommand tokens as prompt text.
+                const code = await runWikiCommand(argv.slice(1));
                 process.exit(code);
         }
         if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));

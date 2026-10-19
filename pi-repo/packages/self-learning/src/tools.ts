@@ -79,6 +79,7 @@ import {
         BACKGROUND_EXPLORE_AGENT,
         buildSubagentArgs,
         parseAgentFrontmatterExtras,
+        type SubagentEffort,
         type SubagentRoutingFields,
 } from "./subagent-routing.ts";
 import { generateAgentsMd } from "./init-agents.ts";
@@ -86,6 +87,8 @@ import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit 
 import { postPrComment } from "./pr-review.ts";
 import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
 import { receiptsDir } from "./checkpoints.ts";
+import { loadRecipes, parseRecipe, runRecipe, userRecipesDir } from "./recipes.ts";
+import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
 
 // ---------------------------------------------------------------------------
 // Subagent registry: built-ins + .unown/agents/*.md + ~/.unown/agent/agents/*.md
@@ -2331,6 +2334,307 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 }
                                 ctx.ui.notify(
                                         `Usage: /sessions export|import|list (got "${sub}")`,
+                                        "info",
+                                );
+                        },
+                });
+
+                // Milestone 4.1 — `/recipe <name> [args]` slash command: the
+                // in-session alias for the `unown recipes` CLI. Loads recipes
+                // from .unown/recipes/*.md (project) and $UNOWN_HOME/recipes/*.md
+                // (user), interpolates parameters into the body, instantiates
+                // templates, then spawns a subagent with the body as its task.
+                // If the recipe declares a response_schema, the subagent's reply
+                // is validated against it (with corrective retries, same shape
+                // as the `task` tool's structured-output lane).
+                //   /recipe list                                   print all available recipes
+                //   /recipe <name> [--param value]...              run a recipe with args
+                //   /recipe show <name>                            print a recipe's frontmatter + body
+                pi.registerCommand("recipe", {
+                        description: "Run a declarative agent instruction bundle: /recipe list | <name> [--key value]... | show <name>",
+                        handler: async (args, ctx) => {
+                                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                                const sub = tokens[0] ?? "list";
+                                if (sub === "list") {
+                                        const { recipes, sources } = loadRecipes(opts.cwd);
+                                        if (recipes.length === 0) {
+                                                ctx.ui.notify(
+                                                        "No recipes found. Create one with `unown recipes create <name>` " +
+                                                                "or add .md files to .unown/recipes/ or " +
+                                                                userRecipesDir() +
+                                                                ".",
+                                                        "info",
+                                                );
+                                                return;
+                                        }
+                                        const lines = recipes.map((r) => {
+                                                const srcTag = r.source === "project" ? "project" : "user";
+                                                const params = r.parameters ? " [params]" : "";
+                                                const resp = r.responseSchema ? " [resp]" : "";
+                                                const tools = r.allowedTools ? ` [tools:${r.allowedTools.length}]` : "";
+                                                return `${r.name} (${srcTag})${params}${resp}${tools}\n    ${r.description}`;
+                                        });
+                                        ctx.ui.notify(
+                                                `Recipes (${recipes.length}):\n${lines.join("\n")}\n\nSources: ${sources.project.length} project, ${sources.user.length} user.`,
+                                                "info",
+                                        );
+                                        return;
+                                }
+                                if (sub === "show") {
+                                        const name = tokens[1];
+                                        if (!name) {
+                                                ctx.ui.notify("Usage: /recipe show <name>", "info");
+                                                return;
+                                        }
+                                        const { recipes } = loadRecipes(opts.cwd);
+                                        const recipe = recipes.find((r) => r.name === name);
+                                        if (!recipe) {
+                                                ctx.ui.notify(`No recipe named "${name}".`, "warning");
+                                                return;
+                                        }
+                                        ctx.ui.notify(
+                                                `name: ${recipe.name}\ndescription: ${recipe.description}\n` +
+                                                        `parameters: ${recipe.parameters ? "yes" : "no"}\n` +
+                                                        `sub_recipes: ${recipe.subRecipes ? recipe.subRecipes.map((s) => s.name).join(", ") : "none"}\n` +
+                                                        `response_schema: ${recipe.responseSchema ? "yes" : "no"}\n` +
+                                                        `templates: ${recipe.templates ? recipe.templates.map((t) => t.path).join(", ") : "none"}\n` +
+                                                        `allowed_tools: ${recipe.allowedTools ? recipe.allowedTools.join(", ") : "default"}\n` +
+                                                        `model: ${recipe.model ?? "default"}\neffort: ${recipe.effort ?? "default"}\n\n` +
+                                                        `--- body ---\n${recipe.body}`,
+                                                "info",
+                                        );
+                                        return;
+                                }
+                                // Otherwise, treat the first token as the recipe name and the
+                                // rest as `--key value` arg pairs.
+                                const name = sub;
+                                const { recipes } = loadRecipes(opts.cwd);
+                                const recipe = recipes.find((r) => r.name === name);
+                                if (!recipe) {
+                                        ctx.ui.notify(
+                                                `No recipe named "${name}". Available: ${recipes.map((r) => r.name).join(", ") || "(none)"}`,
+                                                "warning",
+                                        );
+                                        return;
+                                }
+                                const recipeArgs: Record<string, unknown> = {};
+                                for (let i = 1; i < tokens.length; i++) {
+                                        const t = tokens[i];
+                                        if (!t.startsWith("--")) continue;
+                                        const key = t.replace(/^--/, "").replace(/[-_]([a-z])/g, (_m, c: string) => c.toUpperCase());
+                                        const val = tokens[i + 1];
+                                        if (val === undefined || val.startsWith("--")) {
+                                                recipeArgs[key] = true;
+                                        } else {
+                                                recipeArgs[key] = val;
+                                                i++;
+                                        }
+                                }
+                                ctx.ui.notify(`Running recipe ${recipe.name}…`, "info");
+                                try {
+                                        const result = await runRecipe(recipe, recipeArgs, {
+                                                cwd: opts.cwd,
+                                                callSubagent: async (task, callOpts) => {
+                                                        // Single-shot spawn — runRecipe owns the retry loop
+                                                        // for response_schema validation. The general agent
+                                                        // is the default; recipe overrides (model, effort,
+                                                        // tools) are applied per-spawn.
+                                                        const base = BUILTIN_AGENTS[0];
+                                                        const agent: SubagentConfig = {
+                                                                ...base,
+                                                                model: callOpts?.model,
+                                                                effort: callOpts?.effort as SubagentEffort | undefined,
+                                                                tools: callOpts?.tools,
+                                                        };
+                                                        const signal = (ctx as any)?.signal as AbortSignal | undefined;
+                                                        const res = await runSubagent(agent, task, opts.cwd, signal);
+                                                        return res.output;
+                                                },
+                                        });
+                                        if (result.success) {
+                                                const filesNote =
+                                                        result.templateFiles && result.templateFiles.length > 0
+                                                                ? `\nTemplates written: ${result.templateFiles.join(", ")}`
+                                                                : "";
+                                                const warn = result.error ? `\nWarnings: ${result.error}` : "";
+                                                if (result.structuredOutput !== undefined) {
+                                                        ctx.ui.notify(
+                                                                `✓ Recipe ${recipe.name} done.${filesNote}${warn}\n\nStructured output:\n${JSON.stringify(result.structuredOutput, null, 2)}`,
+                                                                "info",
+                                                        );
+                                                } else {
+                                                        ctx.ui.notify(`✓ Recipe ${recipe.name} done.${filesNote}${warn}\n\n${result.output}`, "info");
+                                                }
+                                        } else {
+                                                ctx.ui.notify(
+                                                        `✗ Recipe ${recipe.name} failed: ${result.error ?? "unknown error"}${result.output ? `\n\nOutput:\n${result.output}` : ""}`,
+                                                        "warning",
+                                                );
+                                        }
+                                } catch (err: any) {
+                                        ctx.ui.notify(`✗ Recipe ${recipe.name} aborted: ${err?.message ?? err}`, "warning");
+                                }
+                        },
+                });
+
+                // Milestone 4.2 — `/wiki <sub>` slash command: the in-session
+                // alias for `unown wiki`. Generates a repo wiki (markdown pages
+                // with file:line cross-links) by spawning parallel read-only
+                // `task` subagents — one per module. Searches / lists / shows
+                // pages from the existing wiki at .unown/wiki/.
+                //   /wiki generate [--force]              generate (or regenerate) the wiki
+                //   /wiki search <query>                  search the wiki for <query>
+                //   /wiki list                            list all wiki pages
+                //   /wiki show <page>                     print a specific page
+                // Reverse-engineered from zcode's Repo Wiki feature (per the
+                // 2-b2-report.md proposal #1, "Repo Wiki").
+                pi.registerCommand("wiki", {
+                        description:
+                                "Auto-generated repo documentation with file:line cross-links: /wiki generate | search <q> | list | show <page>",
+                        handler: async (args, ctx) => {
+                                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                                const sub = tokens[0] ?? "help";
+                                const wikiPath = join(opts.cwd, ".unown", "wiki");
+
+                                if (sub === "generate") {
+                                        const force = tokens.includes("--force");
+                                        ctx.ui.notify(`Generating wiki at ${wikiPath}${force ? " (force)" : ""}…`, "info");
+                                        try {
+                                                const ctx2: WikiRunContext = {
+                                                        cwd: opts.cwd,
+                                                        callSubagent: async (task, callOpts) => {
+                                                                // Single-shot spawn — generateModulePage owns
+                                                                // the structured-output retry loop (via
+                                                                // validateJsonSchema + the corrective re-run
+                                                                // shape in extractJson). The general agent is
+                                                                // the default; the prompt's outputSchema is
+                                                                // always MODULE_PAGE_SCHEMA so the subagent's
+                                                                // reply is validated.
+                                                                const base = BUILTIN_AGENTS[0];
+                                                                const agent: SubagentConfig = {
+                                                                        ...base,
+                                                                        model: callOpts?.model,
+                                                                        effort: callOpts?.effort as SubagentEffort | undefined,
+                                                                        tools: callOpts?.tools,
+                                                                };
+                                                                const signal = (ctx as any)?.signal as AbortSignal | undefined;
+                                                                const res = await runSubagent(
+                                                                        agent,
+                                                                        task,
+                                                                        opts.cwd,
+                                                                        signal,
+                                                                        callOpts?.outputSchema ? { outputSchema: callOpts.outputSchema } : {},
+                                                                );
+                                                                return res.output;
+                                                        },
+                                                };
+                                                const result = await generateWiki(opts.cwd, wikiPath, ctx2, { force });
+                                                const failNote =
+                                                        result.errors.length > 0
+                                                                ? `\n⚠ ${result.errors.length} module(s) failed to generate cleanly — see the wiki for error pages.`
+                                                                : "";
+                                                ctx.ui.notify(
+                                                        `✓ Wiki written to ${wikiPath} (${result.pages.length} pages).${failNote}`,
+                                                        result.errors.length > 0 ? "warning" : "info",
+                                                );
+                                        } catch (err: any) {
+                                                ctx.ui.notify(`✗ Wiki generation failed: ${err?.message ?? err}`, "warning");
+                                        }
+                                        return;
+                                }
+
+                                if (sub === "search") {
+                                        const query = tokens.slice(1).filter((t) => !t.startsWith("--")).join(" ").trim();
+                                        if (!query) {
+                                                ctx.ui.notify("Usage: /wiki search <query>", "info");
+                                                return;
+                                        }
+                                        if (!existsSync(wikiPath)) {
+                                                ctx.ui.notify(`No wiki found at ${wikiPath}. Run /wiki generate first.`, "warning");
+                                                return;
+                                        }
+                                        const results = await searchWiki(wikiPath, query);
+                                        if (results.length === 0) {
+                                                ctx.ui.notify(`No matches for "${query}".`, "info");
+                                                return;
+                                        }
+                                        const lines = results.slice(0, 20).map(
+                                                (r) => `[${r.score}] ${r.page} — ${r.title}\n    ${r.snippet}`,
+                                        );
+                                        ctx.ui.notify(
+                                                `Search "${query}" (${results.length} match${results.length === 1 ? "" : "es"}):\n\n${lines.join("\n\n")}`,
+                                                "info",
+                                        );
+                                        return;
+                                }
+
+                                if (sub === "list") {
+                                        if (!existsSync(wikiPath)) {
+                                                ctx.ui.notify(`No wiki found at ${wikiPath}. Run /wiki generate first.`, "warning");
+                                                return;
+                                        }
+                                        const manifestPath = join(wikiPath, "wiki.json");
+                                        if (!existsSync(manifestPath)) {
+                                                ctx.ui.notify(`No manifest at ${manifestPath}. Run /wiki generate.`, "warning");
+                                                return;
+                                        }
+                                        let manifest: { pages: { path: string; title: string }[]; generatedAt: number };
+                                        try {
+                                                manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+                                        } catch (err: any) {
+                                                ctx.ui.notify(`Could not parse manifest: ${err?.message ?? err}`, "warning");
+                                                return;
+                                        }
+                                        const lines = manifest.pages.map((p) => `  ${p.path}  —  ${p.title}`);
+                                        ctx.ui.notify(
+                                                `Wiki (${new Date(manifest.generatedAt).toISOString()}):\n${lines.join("\n")}\n\n${manifest.pages.length} page(s).`,
+                                                "info",
+                                        );
+                                        return;
+                                }
+
+                                if (sub === "show") {
+                                        const page = tokens[1];
+                                        if (!page) {
+                                                ctx.ui.notify("Usage: /wiki show <page>", "info");
+                                                return;
+                                        }
+                                        if (!existsSync(wikiPath)) {
+                                                ctx.ui.notify(`No wiki found at ${wikiPath}. Run /wiki generate first.`, "warning");
+                                                return;
+                                        }
+                                        const candidates = [
+                                                join(wikiPath, page),
+                                                join(wikiPath, `${page}.md`),
+                                                join(wikiPath, "modules", `${page}.md`),
+                                                join(wikiPath, "modules", page),
+                                        ];
+                                        let resolved = "";
+                                        for (const c of candidates) {
+                                                if (existsSync(c)) {
+                                                        resolved = c;
+                                                        break;
+                                                }
+                                        }
+                                        if (!resolved) {
+                                                ctx.ui.notify(`Page "${page}" not found in ${wikiPath}.`, "warning");
+                                                return;
+                                        }
+                                        let content = "";
+                                        try {
+                                                content = readFileSync(resolved, "utf8");
+                                        } catch (err: any) {
+                                                ctx.ui.notify(`Could not read ${resolved}: ${err?.message ?? err}`, "warning");
+                                                return;
+                                        }
+                                        const cap = 8 * 1024;
+                                        const body = content.length <= cap ? content : content.slice(0, cap) + "\n\n…[truncated — run `unown wiki show " + page + "` for the full text]";
+                                        ctx.ui.notify(body, "info");
+                                        return;
+                                }
+
+                                ctx.ui.notify(
+                                        "Usage: /wiki generate | search <query> | list | show <page>\n\nRun /wiki generate to (re)generate the wiki.",
                                         "info",
                                 );
                         },
