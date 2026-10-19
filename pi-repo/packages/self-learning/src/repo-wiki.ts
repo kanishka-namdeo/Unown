@@ -933,6 +933,31 @@ export interface GenerateWikiOptions {
 	maxDepth?: number;
 }
 
+/**
+ * Bounded-concurrency map: runs `fn` over `items` with at most `limit`
+ * workers. Used for the module-page subagent fan-out so memory-scarce
+ * machines don't spawn one process per module at once.
+ */
+export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+	const results: R[] = new Array(items.length);
+	let next = 0;
+	const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length || 1)) }, async () => {
+		while (true) {
+			const i = next++;
+			if (i >= items.length) break;
+			results[i] = await fn(items[i]);
+		}
+	});
+	await Promise.all(workers);
+	return results;
+}
+
+/** Max concurrent module-page subagents (UNOWN_WIKI_CONCURRENCY, default 3, clamped 1..8). */
+export function wikiConcurrency(): number {
+	const raw = Number.parseInt(process.env.UNOWN_WIKI_CONCURRENCY ?? "", 10);
+	return Number.isFinite(raw) && raw >= 1 && raw <= 8 ? raw : 3;
+}
+
 /** The top-level orchestrator: discovers modules, runs the per-module
  *  subagents in parallel (Promise.all), generates the index + architecture
  *  pages, and writes the whole wiki atomically. Partial failures are
@@ -950,9 +975,9 @@ export async function generateWiki(
 	// 1. Discover modules.
 	const modules = discoverModules(cwd, { exclude: opts.exclude, maxDepth: opts.maxDepth });
 
-	// 2. Spawn parallel subagents — Promise.all so they run concurrently
-	//    (mirrors zcode's "one subagent per module" fan-out).
-	const modulePages = await Promise.all(modules.map((m) => generateModulePage(m, ctx)));
+	// 2. Spawn parallel subagents — bounded concurrency so memory-scarce
+	//    machines don't OOM (UNOWN_WIKI_CONCURRENCY, default 3).
+	const modulePages = await mapLimit(modules, wikiConcurrency(), (m) => generateModulePage(m, ctx));
 
 	// Track partial failures (subagent returned an error page).
 	for (let i = 0; i < modulePages.length; i++) {
