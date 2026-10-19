@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 110;
+export const CHANGELOG_TOTAL_ENTRIES = 111;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 53,
+  "Added": 54,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 69,
+    "total": 70,
     "counts": {
-      "Added": 25,
+      "Added": 26,
       "Changed": 16,
       "Deprecated": 0,
       "Removed": 0,
@@ -109,6 +109,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "acp: unown acp — the Agent Client Protocol editor server",
+            "behavior": false
+          },
           {
             "title": "commands: custom slash commands — .unown/commands/*.md + ~/.unown/agent/commands/*.md",
             "behavior": false

@@ -63,6 +63,7 @@ import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createPermissionsExtension, createPermissionGate, permissionsDoctorSummary } from "./permissions.ts";
 import { assembleResultJson, captureStdout, createOutputCapture, createOutputCaptureExtension } from "./output-format.ts";
+import { ACP_HELP, runAcpServer } from "./acp.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 import { cmdUninstall, findShims, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
@@ -120,6 +121,10 @@ Usage:
   unown usage            token & cost report for the LLM bridge
                            (--days N, --model M, --json; estimates unless
                            UNOWN_PRICE_* pins exact prices)
+  unown acp               run the ACP editor server on stdio (JSON-RPC 2.0,
+                           newline-delimited) — point Zed or any ACP client at
+                           it: agent program 'unown', args 'acp' (see
+                           'unown help acp' and docs/acp.md)
   unown info               print the support bundle (--json: machine-readable)
   unown note "text"        deliver a session note to the engine
   unown update            check for a newer release and self-update
@@ -285,7 +290,7 @@ function parseArgs(argv: string[]): CliArgs {
 }
 
 // ---------------------------------------------------------------------------
-// Agent boot (shared by TUI and print mode)
+// Agent boot (shared by TUI, print mode and the ACP server)
 // ---------------------------------------------------------------------------
 interface BootOptions {
         jsonMode?: boolean;
@@ -295,9 +300,12 @@ interface BootOptions {
         plan?: boolean;
         goal?: string;
         extraExtensions?: Array<{ name: string; hidden: boolean; factory: (pi: any) => void | Promise<void> }>;
+        /** Pre-opened session manager (ACP session/load resumes a persisted
+         * session instead of creating a fresh one). */
+        sessionManager?: SessionManager;
 }
 
-async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
+export async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
         const agentDir = ensureUnownAgentDir();
         // Last-resort child hygiene (child-reaper.ts): LSP/MCP server children get
         // SIGTERM→SIGKILL on process exit and SIGINT/SIGTERM — idempotent, so every
@@ -389,9 +397,11 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                 return { ...created, services, diagnostics: services.diagnostics };
         };
 
-        const sessionManager = bootOpts.noSession
-                ? SessionManager.inMemory(cwd)
-                : SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions"));
+        const sessionManager =
+                bootOpts.sessionManager ??
+                (bootOpts.noSession
+                        ? SessionManager.inMemory(cwd)
+                        : SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions")));
         const runtime = await createAgentSessionRuntime(createRuntime, { cwd, agentDir, sessionManager });
         return { runtime };
 }
@@ -966,6 +976,7 @@ function cmdHelp(topics: string[]): number {
                 uninstall: UNINSTALL_HELP,
                 completions: COMPLETIONS_HELP,
                 setup: SETUP_USAGE,
+                acp: ACP_HELP,
         };
         const page = pages[topic];
         if (!page) {
@@ -1040,6 +1051,31 @@ export async function runCli(argv: string[]) {
                 process.exit(result.exitCode);
         }
         if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));
+        if (first === "acp") {
+                // The ACP editor server (Zed et al.): stdio JSON-RPC. Own flag
+                // grammar like mcp/automations — dispatch before the generic
+                // parser would eat flags as prompt text.
+                const rest = argv.slice(1);
+                const verbose = rest.includes("--verbose") || rest.includes("-v");
+                if (rest.includes("-h") || rest.includes("--help")) {
+                        console.log(ACP_HELP);
+                        process.exit(0);
+                }
+                const unknown = rest.filter((a) => a !== "--verbose" && a !== "-v");
+                if (unknown.length) {
+                        console.error(`unown acp: unknown argument(s): ${unknown.join(" ")}`);
+                        console.error("usage: unown acp [--verbose]");
+                        process.exit(1);
+                }
+                ensureUnownAgentDir(); // silent scaffold — no banners: stdout is protocol
+                await runAcpServer({
+                        boot: (cwd, v, bootOpts) => bootRuntime(cwd, v, bootOpts as BootOptions),
+                        agentName: "unown",
+                        agentVersion: VERSION,
+                        verbose,
+                });
+                process.exit(0); // unreachable — runAcpServer exits on stdin EOF/signals
+        }
         if (first === "uninstall") {
                 const { flags, error } = parseUninstallFlags(argv.slice(1));
                 if (error) {

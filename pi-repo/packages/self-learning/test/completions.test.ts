@@ -18,6 +18,7 @@ const ALL_COMMANDS = [
         "mcp",
         "automations",
         "usage",
+        "acp",
         "note",
         "update",
         "changelog",

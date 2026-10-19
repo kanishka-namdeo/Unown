@@ -112,6 +112,7 @@ Full usage docs live in [`docs/`](docs/):
 | [subagents](docs/subagents.md) | the `task` tool, built-in `general`/`explore`, authoring `.unown/agents/*.md` |
 | [skills](docs/skills.md) | the Agent Skills format, the four starters, skills AutoDream mints on its own |
 | [custom commands](docs/custom-commands.md) | authoring `.unown/commands/*.md` — frontmatter, `$ARGUMENTS`/`$1..$N` substitution, project + global scopes |
+| [ACP](docs/acp.md) | `unown acp` — the Agent Client Protocol server: drive the full agent from Zed and other ACP editors (JSON-RPC over stdio) |
 | [permissions](docs/permissions.md) | the granular allow/deny/ask layer: config files, pattern semantics, trust gating |
 | [usage tracking](docs/usage-tracking.md) | `unown usage`, the bridge's usage log, cost estimates and price pinning |
 | [memory](docs/memory.md) | the 4-tier memory stack, session notes, AutoDream consolidation, the six integrity gates, [what a learning session looks like](docs/memory.md#what-a-learning-session-looks-like) |

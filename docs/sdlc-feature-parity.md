@@ -50,6 +50,12 @@ were:
 
 Each entry: feature → source → the seam it landed on in this repo.
 
+### Round 7 (2026-10-19 — ACP editor integration)
+
+| Feature | Source | Unown form |
+|---|---|---|
+| ACP editor protocol | goose ACP adapter · Zed Agent Client Protocol | **Adopted** — `unown acp` (`src/acp.ts`, ~1,200 lines): a stdio JSON-RPC 2.0 server (newline-delimited, v1) turning unown into an ACP agent any ACP-capable editor can drive. Every session boots through cli.ts's `bootRuntime` — the SAME factory as the terminal (memory injection, guardrail hooks, granular permissions, session tools, LSP, MCP), not a stripped headless variant. Server methods: `initialize` (capability negotiation), `session/new` + the pre-v1 `newSession` alias, `session/prompt` (text/resource/resource_link/image blocks → pi input; ACP v1 StopReasons), `session/cancel`, `session/load` (resume a persisted session file, replay the conversation as updates), `session/set_mode` (accepted, none advertised). Agent→editor: streamed `session/update` (user/agent/thought chunks, `tool_call` with kind/title/locations, lifecycle updates with result content — event folding with stream-dedupe and announce-dedupe), `session/request_permission` (the permissions `ask` flow as editor options; cancel/timeout/garbage DENIES — the fail-closed unattended policy), mediated `fs/read_text_file` for absolute paths outside the project jail when the client advertises it. `fs/write_text_file` deliberately NOT advertised — an editor callback must not override the write-path jail (the "restrictions only" reasoning shared with the permissions layer). Stdio discipline mirrors pi's rpc-mode: stdout takeover (console.log degrades to stderr), ordered async write tail, LF-only line reader, stdin EOF exits 0, signal child cleanup, -32601/-32002 JSON-RPC errors, garbage-line tolerance. Pinned by `test/acp.test.ts` (26: every pure translation unit-tested + a hermetic integration test — the real `bin/unown acp` against the mock bridge, full handshake/streaming/-32601/garbage/EOF) and live-verified against a real Dashscope session. Reference: `docs/acp.md` |
+
 ### Round 6 (2026-10-19 — custom slash commands + headless JSON contract)
 
 | Feature | Source | Unown form |
