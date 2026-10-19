@@ -3,77 +3,79 @@
 import { ArrowRight } from "lucide-react";
 import { BrowserFrame, FadeUp, SectionHead } from "./shell";
 
-/** The ten tabs, and what each one is actually for. */
+/**
+ * Mission control — what the running engine looks like. Compressed 2026-10-20:
+ * two screenshots instead of three (the Hooks tab's story is told by the hook
+ * log in the Integrity pane), and the ten-tab index became a tile row in the
+ * models-band shape. The ten tabs each drive something real — the index
+ * names them without pretending each needs a paragraph.
+ */
 const TABS: [string, string][] = [
-  ["Overview", "pass rate, shipped improvements, dream count, memory version, hook decisions, token usage"],
-  ["Learning Lab", "every harness cycle: baseline → diagnosis → patch → candidate → ship or reject, with transcripts"],
-  ["Memory", "the four tiers, full version history, one-click rollback, plus minted skills"],
-  ["Dreams", "AutoDream sessions: merged, pruned and added notes, and the memory they produced"],
-  ["Hooks", "the decision log of every guardrail: allow, deny, augment"],
-  ["Console", "drive the sandboxed agent live and watch the transcript stream over SSE"],
-  ["Sandboxes", "the isolated workspaces where verified runs execute — files, age, GC cadence"],
-  ["Gateway", "every model call through the llm-bridge: tokens, latency, finish reasons, per-model breakdown"],
-  ["Router", "the seven background jobs: enable, disable, trigger manually, next fire time"],
-  ["Automations", "scheduled recurring agent runs — cron rhythms or one-shots, read-only by default, full run history"],
+  ["Overview", "pass rate, dreams, memory version"],
+  ["Learning Lab", "harness cycles, transcripts"],
+  ["Memory", "four tiers, one-click rollback"],
+  ["Dreams", "AutoDream sessions"],
+  ["Hooks", "every allow, deny, augment"],
+  ["Console", "drive the sandboxed agent live"],
+  ["Sandboxes", "isolated workspaces"],
+  ["Gateway", "tokens, latency, per-model"],
+  ["Router", "the seven background jobs"],
+  ["Automations", "scheduled recurring runs"],
 ];
 
 export function ShowcaseSection() {
   return (
-    <section data-hue="gold" id="showcase" className="scroll-mt-16 py-20 sm:py-24">
+    <section data-hue="gold" id="showcase" className="scroll-mt-16 py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
-          <SectionHead
-            kicker="Mission control"
-            lead={
-              <>
-                Everything the engine does is streamed over SSE into a dashboard: every run,
-                every dream, every memory version, every guardrail decision. Ten tabs, each
-                of which drives something real.
-              </>
-            }
-          >
+          <SectionHead kicker="Mission control">
             What the running engine looks like.
           </SectionHead>
         </FadeUp>
 
-        <FadeUp delay={0.06} className="mt-10">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-10">
+        <FadeUp delay={0.06} className="mt-8">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-10">
             <div>
               <BrowserFrame
                 url="localhost:3000/dashboard"
                 src="/landing/dash-overview.png"
                 alt="Unown mission-control dashboard — Overview tab with pass rate, shipped improvements, dream count and live activity"
               />
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="mt-4">
                 <BrowserFrame
                   url="/dashboard · Learning Lab"
                   src="/landing/dash-learning-lab.png"
                   alt="Learning Lab — harness cycles, proposed memory patches and run transcripts"
                 />
-                <BrowserFrame
-                  url="/dashboard · Hooks"
-                  src="/landing/dash-hooks.png"
-                  alt="Hooks — the six guardrail layers and the decision log"
-                />
               </div>
               <p className="mt-3 text-[11px] text-faint">
-                Captured from a live instance with real engine data: runs, dreams, notes
-                and hook decisions.
+                Captured from a live instance with real engine data — runs, dreams, notes
+                and hook decisions, streamed over SSE. Every tab works read-only until
+                you spend tokens on a button (needs the engine on{" "}
+                <span className="font-mono">:3030</span>,{" "}
+                <span className="font-mono">bun run agent:start</span>).
               </p>
             </div>
 
             <div>
-              <ul className="border-t border-line">
-                {TABS.map(([tab, what], i) => (
-                  <FadeUp
+              <p className="gb-label text-[9px] text-gold">
+                Ten tabs · each drives something real
+              </p>
+              <ul className="mt-4 grid grid-cols-2 gap-2">
+                {TABS.map(([tab, what]) => (
+                  <li
                     key={tab}
-                    as="li"
-                    delay={Math.min(i, 4) * 0.04}
-                    className="border-b border-line py-3.5"
+                    className="gb-panel lift flex h-11 items-center gap-2.5 px-3 hover:border-line-bright"
                   >
-                    <p className="text-[13.5px] font-medium text-ink">{tab}</p>
-                    <p className="mt-1 text-[12.5px] leading-relaxed text-dim">{what}</p>
-                  </FadeUp>
+                    <span className="min-w-0">
+                      <span className="block truncate gb-label text-[9px] leading-tight text-ink">
+                        {tab}
+                      </span>
+                      <span className="block truncate font-mono text-[9px] leading-tight text-dim">
+                        {what}
+                      </span>
+                    </span>
+                  </li>
                 ))}
               </ul>
               <a
@@ -83,12 +85,6 @@ export function ShowcaseSection() {
                 Install it and open the dashboard
                 <ArrowRight className="size-4" aria-hidden="true" />
               </a>
-              <p className="mt-3 text-[11px] leading-relaxed text-faint">
-                Needs the engine on{" "}
-                <span className="font-mono">:3030</span>, start it with{" "}
-                <span className="font-mono">bun run agent:start</span>. Every tab works
-                read-only until you spend tokens on a button.
-              </p>
             </div>
           </div>
         </FadeUp>

@@ -1,17 +1,19 @@
 // Composition-root tests for the landing page (`src/app/page.tsx`).
 //
 // The folder contract says a section must be added in `page.tsx` AND be
-// reachable, and that section order is the page's argument. Until now both were
-// prose: `landing-copy.test.tsx` asserts that the Dashboard affordances carry
-// `href="#showcase"`, but nothing asserted that anything answers to
-// `#showcase` — and it did not. Three links on the shipped page pointed at an
-// id no element had, and every gate stayed green, because a string comparison
-// cannot see a missing target. So this file checks the two things only the
-// composition root can check, against the rendered DOM:
+// reachable, and that section order is the page's argument. Both are checked
+// here against the rendered DOM, because a string comparison cannot see a
+// missing anchor target (three links once pointed at an id no element had,
+// and every gate stayed green).
 //
-//   - the fourteen sections are present, in the order the doc comment claims,
+//   - the eight bands are present, in the order the doc comment claims,
 //     with the shipping rail between the FAQ and the finale;
+//   - the hue walk matches the allocation paragraph in the landing AGENTS.md;
 //   - every in-page anchor resolves to an element that exists.
+//
+// The eight-band structure and the walk below are the 2026-10-20 redesign:
+// fourteen sections (21.5 viewports, 5,488 words) merged into eight
+// (~half the scroll) — see docs/landing-research.md for the evidence.
 
 import { describe, expect, mock, test } from "bun:test";
 import { render } from "@testing-library/react";
@@ -23,12 +25,13 @@ mock.module("../../components/landing/star-count", () => ({
 
 // Render the composition without the Web Animations backend. happy-dom's
 // `Element.animate` shim rejects `finished` with an unhandled `AbortError` for
-// every animation it cancels, and rendering fourteen animated sections at once
-// produces 16 of them, which fails the run. Without `animate`, framer-motion
-// takes the same JS fallback path it takes on an old browser, and this file can
-// assert structure. Per-section motion is exercised for real by `loop.test.tsx`
-// and the browser gates (`landing_shots`, `contrast_audit`, the axe e2e test).
-// Nothing is mocked at the library level, so no other test file sees this.
+// every animation it cancels, and rendering the animated sections at once
+// produces several of them, which fails the run. Without `animate`,
+// framer-motion takes the same JS fallback path it takes on an old browser,
+// and this file can assert structure. Per-section motion is exercised for
+// real by `loop.test.tsx` and the browser gates (`landing_shots`,
+// `contrast_audit`, the axe e2e test). Nothing is mocked at the library
+// level, so no other test file sees this.
 // @ts-expect-error deliberately removing a browser API for this run
 Element.prototype.animate = undefined;
 
@@ -40,10 +43,10 @@ const LandingPage = (await import("../page")).default;
 // only inside its own render container, so a tree left mounted cannot make
 // another test's anchor check pass on a borrowed id.
 
-const SECTION_COUNT = 14;
+const SECTION_COUNT = 8;
 
 describe("landing composition root", () => {
-  test("renders fourteen sections with the rail between the FAQ and the finale", () => {
+  test(`renders ${SECTION_COUNT} bands with the rail between the FAQ and the finale`, () => {
     const { container } = render(<LandingPage />);
     const main = container.querySelector("main");
     expect(main).toBeTruthy();
@@ -55,45 +58,30 @@ describe("landing composition root", () => {
     const rail = at("changelog");
     expect(faq).toBeGreaterThan(-1);
     expect(rail).toBe(faq + 1);
-    expect(rail).toBe(SECTION_COUNT - 2); // finale is the last section
+    expect(rail).toBe(SECTION_COUNT - 2); // finale is the last band
+    // the argument's order: mechanism before proof before identity before record
+    expect(at("loop")).toBe(1);
+    expect(at("showcase")).toBe(2);
+    expect(at("proof")).toBe(3);
+    expect(at("alphabet")).toBe(4);
     expect(at("showcase")).toBeLessThan(faq);
-
-    // Field notes (position 8, moved from 11 in 2026-10-19) breaks the
-    // technical run loop → mechanisms → showcase into two runs of exactly
-    // three — the folder's three-at-zero lore rule — by sitting between "what
-    // the engine looks like" and the proof path that answers the objections.
-    const fieldNotes = at("field-notes");
-    expect(fieldNotes).toBe(at("showcase") + 1);
-    // The models band carries no anchor id (it is the page's one unanchored
-    // section), so it is asserted by position: the aqua band right after
-    // field notes, then the proof path — benchmarks → integrity, one scroll.
-    expect(kids[fieldNotes + 1]?.getAttribute("data-hue")).toBe("aqua");
-    expect(kids[fieldNotes + 1]?.id).toBe("");
-    expect(kids[fieldNotes + 2]?.id).toBe("benchmarks");
-    expect(kids[fieldNotes + 3]?.id).toBe("integrity");
   });
 
-  test("the hue walk matches the allocation paragraph: one cycle from quickstart, psychic reserved, no exceptions", () => {
+  test("the hue walk matches the allocation paragraph: psychic reserved, no two neighbours share", () => {
     const { container } = render(<LandingPage />);
     const kids = [...(container.querySelector("main")?.children ?? [])];
     const hues = kids.map((k) => k.getAttribute("data-hue"));
-    // The cycle runs gold → aqua → leaf → magma from quickstart straight
-    // through the finale; `psychic` is reserved for the three sections about
-    // Unown itself (hero, alphabet, field-notes) and interrupts it without
-    // disturbing it. No two neighbours share a hue, and since field-notes
-    // moved to position 8 the walk needs no exception paragraphs at all.
+    // `psychic` is reserved for the two bands about Unown itself (hero,
+    // alphabet) and interrupts the cycle without disturbing it; the rest walk
+    // the four Gen 3 hues with no two neighbours sharing one. The proof
+    // band's three panes carry their own data-hue wrappers (leaf, magma,
+    // aqua) inside the magma section — the walk below is the top level.
     expect(hues).toEqual([
       "psychic", // hero
-      "gold", // quickstart — the walk starts here
-      "aqua", // origin
-      "psychic", // alphabet
-      "leaf", // loop
-      "magma", // mechanisms
-      "gold", // showcase
-      "psychic", // field-notes
-      "aqua", // models
-      "leaf", // benchmarks
-      "magma", // integrity
+      "leaf", // loop — how it learns
+      "gold", // showcase — mission control
+      "magma", // proof — benchmarks | integrity | models
+      "psychic", // alphabet — the identity (+ field notes)
       "gold", // faq
       "aqua", // changelog
       "leaf", // finale
@@ -113,8 +101,13 @@ describe("landing composition root", () => {
       }))
       .filter((a) => a.href.length > 1 && !container.querySelector(`[id="${a.href.slice(1)}"]`));
     expect(dead, JSON.stringify(dead)).toEqual([]);
-    // The three affordances the folder contract pins at the screenshots.
+    // The affordances the folder contract pins at the screenshots: the nav
+    // and the footer "Dashboard" both land on #showcase.
     expect(anchors.filter((a) => a.getAttribute("href") === "#showcase").length)
+      .toBeGreaterThanOrEqual(2);
+    // The install anchor survives in the hero (the quickstart section it
+    // pointed at was folded into the hero on 2026-10-20).
+    expect(anchors.filter((a) => a.getAttribute("href") === "#quickstart").length)
       .toBeGreaterThanOrEqual(3);
   });
 });

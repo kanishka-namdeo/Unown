@@ -7,17 +7,11 @@ import {
   LetterRainProvider,
   LandingStyles,
 } from "@/components/landing/effects";
-import { BenchmarksSection } from "@/components/landing/benchmarks";
 import { FaqSection } from "@/components/landing/faq";
-import { FieldNotesSection } from "@/components/landing/field-notes";
 import { FinaleSection } from "@/components/landing/finale";
 import { Hero } from "@/components/landing/hero";
-import { IntegritySection } from "@/components/landing/integrity";
 import { LoopSection } from "@/components/landing/loop";
-import { MechanismsSection } from "@/components/landing/mechanisms";
-import { ModelsBand } from "@/components/landing/models";
-import { OriginSection } from "@/components/landing/origin";
-import { QuickstartSection } from "@/components/landing/quickstart";
+import { ProofSection } from "@/components/landing/proof";
 import { ShowcaseSection } from "@/components/landing/showcase";
 import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
 
@@ -26,36 +20,31 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  * itself in `src/components/landing/`, and the contracts for that folder live
  * in its own AGENTS.md.
  *
- * The order is the argument, and it is deliberate:
+ * Eight bands, 2026-10-20. The page ran fourteen sections / 21.5 viewports /
+ * 5,488 words, and visitors scrolled past most of it (see
+ * docs/landing-research.md: ~57% of attention lands above the fold, 74%
+ * within two screenfuls). The redesign kept every checkable claim and cut the
+ * scroll roughly in half by merging sections that told one story:
  *
- *   hero (claim + install, per OS)           what it is, and the install chip
- *   quickstart                               clone → model → session, in full
- *   origin (one Unown alone is just pi)      why it is two halves, not one
- *   alphabet (the identity)                  the pun, and the 28 mechanisms
- *   loop (the real artifacts)                what each stage actually writes
- *   mechanisms (problem, then the answers)   the objection, then the receipts
- *   showcase                                 what the engine looks like
- *   field notes                              where the name came from
- *   models                                   the lock-in objection, answered
- *   benchmarks                               proof, including where it loses
- *   integrity                                the objection that decides installs
- *   faq                                      the remaining hard questions
- *   changelog (from CHANGELOG.md)            the record, still being written
- *   finale                                   the last ask, plus the toy
+ *   hero (claim + install + full manual quickstart)   what it is; the one-liner chip,
+ *                                                     the sequence and the command
+ *                                                     surface in collapsed expanders
+ *   loop (origin + loop + mechanisms)                 how it learns: the three
+ *                                                     artifacts, the two halves,
+ *                                                     the five answers + SDLC index
+ *   showcase (mission control)                        what the engine looks like
+ *   proof (benchmarks + integrity + models)           the receipts, one tabbed band
+ *   alphabet (+ field notes)                          the identity: the wall, the
+ *                                                     decode panel, the dex card
+ *   faq                                               the remaining hard questions
+ *   changelog (from CHANGELOG.md)                     the record, still being written
+ *   finale                                            the last ask, plus the toy
  *
- * Quickstart sits at position 2 because for a clone-and-run tool the install
- * IS the argument: the hero's per-OS chip and this section's five commands
- * are the first thing a convinced visitor needs, one scroll apart. The lore
- * sections (origin, alphabet) then take over the explanation.
- *
- * Field notes sits at position 8 (moved from 11, 2026-10-19) so the technical
- * run loop → mechanisms → showcase never exceeds the folder's three-at-zero
- * lore rule: the six-section dry stretch it used to close is now two runs of
- * exactly three (5-7 and 9-11) with the name story as the breather between
- * them. The proof path benchmarks → integrity stays adjacent, and the three
- * psychic sections (hero, alphabet, field-notes) stay spread across the page,
- * so the hue rotation reads clean from quickstart to finale with no
- * exceptions — see the allocation paragraph in the landing folder's AGENTS.md.
+ * The order is still the argument: claim → mechanism → proof → identity →
+ * record. Install sits in the hero because for a clone-and-run tool the
+ * install IS the argument. The proof band's tabs keep all three panes mounted
+ * (inactive ones `hidden`), so every generated number stays in the DOM for
+ * crawlers and for the `landing_*.mjs` gates.
  *
  * `NAV_LINKS` in `shell.tsx` mirrors the top-level anchors. If you add a
  * section, add it there too or the page grows an orphan.
@@ -79,16 +68,10 @@ export default function LandingPage() {
           <Nav />
           <main id="main" className="flex-1">
             <Hero />
-            <QuickstartSection />
-            <OriginSection />
-            <AlphabetSection />
             <LoopSection />
-            <MechanismsSection />
             <ShowcaseSection />
-            <FieldNotesSection />
-            <ModelsBand />
-            <BenchmarksSection />
-            <IntegritySection />
+            <ProofSection />
+            <AlphabetSection />
             <FaqSection />
             <ChangelogRail />
             <FinaleSection />

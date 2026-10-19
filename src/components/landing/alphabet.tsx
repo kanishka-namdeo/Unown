@@ -3,9 +3,19 @@
 import * as React from "react";
 import { Glyph, Mark } from "./glyph";
 import { GLYPH_IDS, MARKS, type GlyphId, type MarkId } from "./glyphs";
-import { LEXICON_BY_ID } from "./lexicon";
+import { LEXICON_BY_ID, DEX_QUOTES } from "./lexicon";
 import { useLetterRain } from "./effects";
 import { FadeUp, SectionHead, TerminalWindow, PixelCursor, toneAttr, type Tone } from "./shell";
+
+/**
+ * The alphabet band — the page's identity section, and since 2026-10-20 also
+ * the home of the field notes. The glyph wall + decode panel stay (they are
+ * the signature interaction: 28 hand-drawn SVG forms, each decoding twice);
+ * the Pokédex card moved in from field-notes.tsx beside the panel; the
+ * borrowed-essays column became a sources footnote. One highlight quote
+ * survives instead of three — the decode panel already carries all 28
+ * entries, and the wall itself is the argument.
+ */
 
 /* ------------------------------------------------------------------ */
 /* background marks                                                    */
@@ -51,21 +61,16 @@ function MarkField() {
  * each tile is a labelled drawer with a lit rim in its hue, and the pinned one
  * fills with it. Cycling by index is a fixed pattern, not random, so the field
  * is stable between renders and does not reflow.
- *
- * The eye is deliberately NOT toned. Twenty-eight lit eyes strobe; a coloured
- * rim around a dim eye reads as a labelled drawer instead.
  */
 const TILE_TONES: readonly Tone[] = ["aqua", "leaf", "magma", "gold"];
 
 /**
- * Three forms lifted out of the wall so the lexicon is readable without
- * hovering anything. The decode panel shows one entry at a time, so 25 of 28
- * verified lore bodies are otherwise reachable only by a visitor who hovers
- * every tile — i.e. nobody. Chosen for register, not fame: one current jab,
- * one technical jab, one 2001 review quote. Read from `LEXICON_BY_ID` so the
- * quotation and its attribution stay single-sourced with the panel.
+ * One form lifted out of the wall so the lexicon is readable without hovering
+ * anything: the Z decode is the model-agnostic objection, answered by an
+ * alphabet. Read from `LEXICON_BY_ID` so the quotation and its attribution
+ * stay single-sourced with the panel.
  */
-const HIGHLIGHTS: readonly GlyphId[] = ["Z", "!", "L"];
+const HIGHLIGHT: GlyphId = "Z";
 
 function FormTile({
   id,
@@ -116,6 +121,64 @@ function FormTile({
 }
 
 /* ------------------------------------------------------------------ */
+/* the dex card (from field-notes.tsx)                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The Pokédex card. Every line is either a short attributed quotation of game
+ * text (commentary/quotation, with the source named) or a verifiable fact from
+ * Bulbapedia / PokémonDB. No artwork, no sprites, no trademarks beyond naming
+ * the thing this project is named after.
+ */
+const FACTS: [string, string][] = [
+  ["Entry", "№ 0201 · Symbol · Psychic"],
+  ["Japanese", "アンノーン — literally the word “Unknown”"],
+  ["Forms", "26 letters since 1999; ! and ? arrived in 2004"],
+  ["Where", "Ruins of Alph, Tanoby Ruins, Solaceon Ruins"],
+];
+
+function DexCard() {
+  return (
+    <div className="gb-panel overflow-hidden">
+      <div className="flex items-start gap-4 border-b border-line p-4">
+        <div className="grid size-14 shrink-0 place-items-center bg-canvas">
+          <Glyph id="?" weight="heavy" tone="lit" className="size-10 text-gold" />
+        </div>
+        <div className="min-w-0 pt-0.5">
+          <p className="gb-label text-[10px] text-gold">Symbol</p>
+          <p className="mt-1 text-lg font-medium leading-none text-ink">Unown</p>
+          <p className="mt-1.5 font-mono text-[10px] text-faint">アンノーン</p>
+        </div>
+      </div>
+
+      <div className="space-y-1.5 border-b border-line px-4 py-3">
+        {FACTS.map(([k, v]) => (
+          <div key={k} className="flex gap-3 text-[11px]">
+            <span className="gb-label w-16 shrink-0 text-[8px] text-faint">{k}</span>
+            <span className="min-w-0 text-dim">{v}</span>
+          </div>
+        ))}
+      </div>
+
+      <figure className="p-4">
+        {/* quotes sit on the dark gb-box — the dex speaks from the screen,
+            and text-canvas only clears AA against the box fill, never the
+            panel (1.18:1 in the light scheme — contrast_audit.mjs catches
+            exactly this) */}
+        <div className="gb-box p-4">
+          <blockquote className="quote text-[18px] leading-relaxed text-canvas">
+            “{DEX_QUOTES.origin}”
+          </blockquote>
+        </div>
+        <figcaption className="mt-2 gb-label text-[9px] text-faint">
+          {DEX_QUOTES.originSrc}
+        </figcaption>
+      </figure>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* section                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -128,17 +191,18 @@ export function AlphabetSection() {
   const active = hovered ?? pinned;
   const entry = LEXICON_BY_ID.get(active)!;
   const ordinal = GLYPH_IDS.indexOf(entry.id) + 1;
+  const highlight = LEXICON_BY_ID.get(HIGHLIGHT)!;
 
   return (
     <section
       data-hue="psychic"
       id="alphabet"
-      className="relative scroll-mt-16 overflow-hidden border-y border-line py-20 sm:py-24"
+      className="relative scroll-mt-16 overflow-hidden border-y border-line py-16 sm:py-20"
     >
       <MarkField />
 
       <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
-        <div className="grid gap-6 max-w-2xl">
+        <div className="grid max-w-2xl gap-5">
           <FadeUp>
             <SectionHead kicker="The alphabet">
               The name is a pun you have to read twice.
@@ -146,47 +210,29 @@ export function AlphabetSection() {
           </FadeUp>
           <FadeUp delay={0.06}>
             <p className="text-pretty leading-relaxed text-dim">
-              <span className="text-ink">un</span>own. Unown is the <em>Symbol Pokémon</em>:
-              a flat black letter with one eye, alive since 1999, found stuck to walls in
-              ruins, shaped like writing on very old tablets. It is the only word in the
-              franchise that is a typo of itself.
+              <span className="text-ink">un</span>own — the <em>Symbol Pokémon</em>: a
+              flat black letter with one eye, alive since 1999, found stuck to walls in
+              ruins. The 28 forms below are ours, drawn from scratch as inline SVG — no
+              font file, no image sprite — and each one decodes twice: the lore it
+              borrows, and the real mechanism it stands for here.
             </p>
           </FadeUp>
           <FadeUp delay={0.12}>
-            <p className="text-pretty leading-relaxed text-dim">
-              An agent with memory earns its keep the same way: it{" "}
-              <span className="text-ink">reads</span>. The 28 forms below are ours, drawn
-              from scratch as inline SVG — no font file, no image sprite — and each one
-              decodes twice: the lore it borrows, and the real mechanism it stands for
-              here.
-            </p>
-          </FadeUp>
-          <FadeUp delay={0.18}>
-            <div className="border-t border-line">
-              {HIGHLIGHTS.map((id) => {
-                const e = LEXICON_BY_ID.get(id)!;
-                return (
-                  <div key={id} className="flex items-start gap-4 border-b border-line py-4">
-                    <Glyph id={e.id} weight="heavy" className="size-10 shrink-0 text-gold" />
-                    <div className="min-w-0">
-                      <blockquote className="quote text-pretty text-[15px] italic leading-relaxed text-dim">
-                        {e.lore}
-                      </blockquote>
-                      <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.14em] text-faint">
-                        {e.loreSrc}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex items-start gap-4 border-t border-line border-b py-4">
+              <Glyph id={highlight.id} weight="heavy" className="size-10 shrink-0 text-gold" />
+              <div className="min-w-0">
+                <blockquote className="quote text-pretty text-[15px] italic leading-relaxed text-dim">
+                  {highlight.lore}
+                </blockquote>
+                <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.14em] text-faint">
+                  {highlight.loreSrc} — one of twenty-eight; the rest are in the wall
+                </p>
+              </div>
             </div>
-            <p className="mt-3 font-mono text-[10px] text-faint">
-              Three of twenty-eight. The rest are in the wall.
-            </p>
           </FadeUp>
         </div>
 
-        <div className="mt-12 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
+        <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
           {/* the forms */}
           <FadeUp className="lg:order-1">
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
@@ -210,9 +256,9 @@ export function AlphabetSection() {
             </p>
           </FadeUp>
 
-          {/* the decoding */}
+          {/* the decoding, then the dex card */}
           <FadeUp delay={0.08} className="lg:order-2">
-            <div className="lg:sticky lg:top-24">
+            <div className="grid gap-5">
               <TerminalWindow title={`form ${ordinal} / 28 · ${entry.id}`}>
                 <div aria-live="polite" className="p-5">
                   <div className="flex items-center gap-4">
@@ -249,16 +295,38 @@ export function AlphabetSection() {
                   </div>
                 </div>
               </TerminalWindow>
+
+              <DexCard />
             </div>
           </FadeUp>
         </div>
 
-        <p className="mt-10 max-w-3xl text-[11px] leading-relaxed text-faint">
+        <div className="mt-10 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-line pt-4">
+          <span className="gb-label text-[9px] text-faint">Field notes read at</span>
+          {[
+            ["Wikipedia", "https://en.wikipedia.org/wiki/Unown"],
+            ["Bulbapedia", "https://bulbapedia.bulbagarden.net/wiki/Unown_(Pok%C3%A9mon)"],
+            ["PokémonDB", "https://pokemondb.net/pokedex/unown"],
+          ].map(([label, href]) => (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-mono text-[10.5px] text-dim underline decoration-line underline-offset-2 transition-colors hover:text-ink hover:decoration-current"
+            >
+              {label}
+            </a>
+          ))}
+        </div>
+        <p className="mt-4 max-w-3xl text-[11px] leading-relaxed text-faint">
           Every line under <span className="text-dim">in unown</span> describes something
-          that actually runs in this repository. An independent open-source project — not
-          affiliated with, endorsed by or sponsored by Nintendo, Game Freak, Creatures Inc.
-          or The Pokémon Company. Pokémon and Unown are trademarks of their respective
-          owners.
+          that actually runs in this repository. Short quotations of game text appear for
+          commentary, with the source named on each one; no sprite, card, logo or audio
+          from any Pokémon release is bundled, linked or reproduced. An independent
+          open-source project — not affiliated with, endorsed by or sponsored by Nintendo,
+          Game Freak, Creatures Inc. or The Pokémon Company. Pokémon and Unown are
+          trademarks of their respective owners.
         </p>
       </div>
     </section>

@@ -21,6 +21,58 @@ const AGENT_PROMPT =
 const WORD: GlyphId[] = ["U", "N", "O", "W", "N"];
 
 /* ------------------------------------------------------------------ */
+/* the quickstart, absorbed from its own section (2026-10-20)          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The command-by-command install sequence. Byte-identical to the README
+ * quickstart and docs/install.md — the hero's one-liner chip is the fast
+ * path, this is the manual one, and it lives collapsed behind the chip so
+ * the fast path stays the default.
+ */
+const INSTALL = [
+  "git clone https://github.com/kanishka-namdeo/Unown.git",
+  "cd Unown",
+  "bun run agent:install     # deps + pi build + .env",
+  "unown setup               # connect any model",
+  "bun run agent:start       # engine :3030 + bridge :3031 + dashboard :3000",
+  "unown                     # first session — notes queue for the engine",
+];
+
+/**
+ * The command surface. Each row is gated by `scripts/landing_claims.mjs`
+ * against the HELP block in `cli.ts` — a command the CLI does not ship turns
+ * the page red. The gate is one-directional (page → source): this list names
+ * the flagship commands, HELP remains the superset.
+ */
+const COMMANDS: [string, string][] = [
+  ["unown", "interactive session in the current project"],
+  ['unown "fix the failing tests"', "start with a prompt"],
+  ['unown -p "explain the build error"', "one-shot headless, pipes to less"],
+  ['unown --plan "add auth"', "read-only plan mode, approve before executing"],
+  ['unown --goal "make the build green"', "durable goal — completion needs cited evidence"],
+  ["unown automations create --cron '0 9 * * 1-5' --title 'brief'", "scheduled unattended runs — read-only by default"],
+  ["unown setup", "provider wizard, or --provider/--api-key/--model"],
+  ["unown models", "configured models plus what the bridge serves"],
+  ["unown doctor", "endpoint, keys, upstream and memory, end to end"],
+  ["unown memory", "print the effective four-tier stack"],
+  ["unown init", "scaffold this project's .unown/memory files"],
+  ["unown mcp add playwright npx @playwright/mcp@latest", "connect any MCP server — its tools join every session"],
+  ['unown note "flaky auth spec"', "hand AutoDream a note directly"],
+  ["unown update", "self-update to the newest release — check, pin, roll back"],
+];
+
+/**
+ * The prerequisites, one line: the runtime version floor, the endpoint
+ * requirement (incl. the local lane), and the three-OS sandbox ladder.
+ */
+const PREREQS =
+  "bun ≥ 1.2 · an endpoint (any OpenAI-compatible base URL + key; background " +
+  "learning can also run on a local llama.cpp or Ollama lane, keyless and " +
+  "offline) · Windows, macOS or Linux — same commands. OS sandbox: bubblewrap " +
+  "(Linux), Seatbelt (macOS); native Windows runs the in-process jail.";
+
+/* ------------------------------------------------------------------ */
 /* the seal                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -83,8 +135,7 @@ function Seal() {
 
 /**
  * Sits directly under the copy rather than below the fold, so "is this real"
- * is answered before the visitor has to ask it. Four of these six used to be
- * said again in a later section; what is left here is what is true of the
+ * is answered before the visitor has to ask it. Every claim here is about the
  * *download* specifically, which no other section argues.
  */
 const TRUST = [
@@ -135,12 +186,6 @@ export function Hero() {
               twice.
             </p>
 
-            {/* A spec-sheet eyebrow used to sit here and restate that paragraph noun
-                for noun — coding agent, terminal, memory, AutoDreaming, sandbox — which
-                is four duplicated facts for the sake of a second block of type. The
-                trust strip below already does the job with six claims that are each
-                about the download rather than the mechanism. */}
-
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <PrimaryLink href="#quickstart">
                 Get started
@@ -166,13 +211,13 @@ export function Hero() {
                 so it sits above the fold rather than at the bottom of the page:
                 one copyable chip per OS tab (macOS/Linux get the one-line
                 installer, which bootstraps bun itself; Windows gets the clone
-                path, since a fresh Windows box has no sh), the chain that
-                follows either command, and the delegation prompt for visitors
-                who would rather have their agent run the install. The tabbed
-                panel is a client island so the chip stays server-rendered
-                around it. The full command-by-command sequence is the next
-                section down. */}
-            <InstallPanel />
+                path, since a fresh Windows box has no sh), and the chain that
+                follows either command. The tabbed panel is a client island so
+                the chip stays server-rendered around it. The full
+                command-by-command sequence is the expander below. */}
+            <div id="quickstart" className="scroll-mt-24">
+              <InstallPanel />
+            </div>
 
             {/* the delegation path: your agent installs Unown */}
             <details className="group mt-3 max-w-xl border border-line bg-panel-2/40">
@@ -196,6 +241,115 @@ export function Hero() {
                 <p className="mt-2 font-mono text-[11.5px] leading-relaxed text-dim">
                   {AGENT_PROMPT}
                 </p>
+              </div>
+            </details>
+
+            {/* the full quickstart, absorbed from its own section (2026-10-20):
+                the sequence, the prerequisites and the command surface live
+                collapsed behind the one-liner chip, so the fast path stays the
+                default and the manual path stays one click away. */}
+            <details className="group mt-3 max-w-xl border border-line bg-panel-2/40">
+              <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 font-mono text-[11px] text-dim transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
+                <span className="gb-label text-[9px] text-gold">manual</span>
+                Clone it, point it at a model, run it.
+                <span
+                  aria-hidden="true"
+                  className="ml-auto text-[9px] text-faint transition-transform group-open:rotate-90"
+                >
+                  {'\u25B8'}
+                </span>
+              </summary>
+              <div className="border-t border-line px-3 py-3">
+                <div
+                  aria-label="terminal — quickstart commands"
+                  className="term-lines font-mono text-[12px] leading-relaxed"
+                >
+                  {INSTALL.map((line, i) => {
+                    const hash = line.indexOf("#");
+                    const cmd = hash === -1 ? line : line.slice(0, hash);
+                    const comment = hash === -1 ? "" : line.slice(hash);
+                    return (
+                      <div key={i} className="flex items-baseline gap-3 whitespace-pre">
+                        <span className="gb-label shrink-0 text-[9px] text-gold">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <span className="text-ink">{cmd}</span>
+                        {comment ? <span className="text-faint">{comment}</span> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 border-t border-line pt-2.5 text-[12px] leading-relaxed text-faint">
+                  {PREREQS}
+                </p>
+              </div>
+            </details>
+
+            {/* the command surface, still collapsed: the flagship commands
+                (gated against cli.ts HELP by landing_claims.mjs) and the
+                session tools every session ships. */}
+            <details className="group mt-3 max-w-xl border border-line bg-panel-2/40">
+              <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 font-mono text-[11px] text-dim transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
+                <span className="gb-label text-[9px] text-gold">cli</span>
+                the whole command surface
+                <span
+                  aria-hidden="true"
+                  className="ml-auto text-[9px] text-faint transition-transform group-open:rotate-90"
+                >
+                  {'\u25B8'}
+                </span>
+              </summary>
+              <div className="border-t border-line px-3 py-3">
+                <ul>
+                  {COMMANDS.map(([cmd, what]) => (
+                    <li
+                      key={cmd}
+                      className="flex flex-col gap-1 border-b border-line py-2.5 last:border-b-0 sm:flex-row sm:items-baseline sm:gap-4"
+                    >
+                      <code className="shrink-0 font-mono text-[11.5px] text-ink sm:w-64">
+                        {cmd}
+                      </code>
+                      <span className="text-[12.5px] leading-relaxed text-dim">{what}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 border-t border-line pt-2.5 text-[12.5px] leading-relaxed text-faint">
+                  Every session also ships session tools:{" "}
+                  <code className="font-mono text-dim">todo</code>,{" "}
+                  <code className="font-mono text-dim">note</code>,{" "}
+                  <code className="font-mono text-dim">task</code> (subagents with a fresh
+                  context — typed replies via{" "}
+                  <code className="font-mono text-dim">output_schema</code> and per-child git
+                  worktree isolation via{" "}
+                  <code className="font-mono text-dim">worktree_isolation</code>),{" "}
+                  <code className="font-mono text-dim">web_search</code> +{" "}
+                  <code className="font-mono text-dim">webfetch</code> (native web access —
+                  keyless providers work out of the box, 19 total),{" "}
+                  <code className="font-mono text-dim">fetch_url</code> and{" "}
+                  <code className="font-mono text-dim">lsp</code> (language-server
+                  intelligence — diagnostics ride every edit). MCP servers configured in{" "}
+                  <code className="font-mono text-dim">.unown/mcp.json</code> join as{" "}
+                  <code className="font-mono text-dim">mcp__server__tool</code>. Slash
+                  commands: <code className="font-mono text-dim">/plan</code>,{" "}
+                  <code className="font-mono text-dim">/review</code>,{" "}
+                  <code className="font-mono text-dim">/goal</code>,{" "}
+                  <code className="font-mono text-dim">/undo</code>,{" "}
+                  <code className="font-mono text-dim">/receipts</code>,{" "}
+                  <code className="font-mono text-dim">/mcp</code> — plus{" "}
+                  <code className="font-mono text-dim">/todos</code>,{" "}
+                  <code className="font-mono text-dim">/note</code>,{" "}
+                  <code className="font-mono text-dim">/agents</code>,{" "}
+                  <code className="font-mono text-dim">/learning</code>,{" "}
+                  <code className="font-mono text-dim">/lsp</code>.
+                </p>
+                <a
+                  href={`${GITHUB_URL}/tree/main/docs`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mt-3 inline-block font-mono text-[11.5px] text-gold underline-offset-4 hover:underline"
+                >
+                  the full usage reference
+                </a>
               </div>
             </details>
 

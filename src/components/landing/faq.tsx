@@ -12,13 +12,16 @@ import { FadeUp, PixelCursor, SectionHead } from "./shell";
  * The skeptic's questions.
  *
  * Every answer here has to survive the question "which section already said
- * this?" — the gates, both sandboxes, the bridge and the non-affiliation notice
- * all have sections of their own, and reprinting them is what once made half
- * the accordion read as terms of service. Two answers are load-bearing:
+ * this?" — the gates, the sandboxes and the bridge all have panes of their
+ * own in the proof band, and reprinting them is what once made half the
+ * accordion read as terms of service. Three answers are load-bearing:
  *   - the naming question, the only place the pun is told straight rather than
  *     through the alphabet wall;
+ *   - the tests question, the only place the anti-tamper contract is quoted;
  *   - "does the loop do anything on its own", the only place the page admits
  *     the loop may correctly find nothing to do.
+ * 2026-10-20: the built-on/cost answer folded into the capabilities answer —
+ * seven items, not eight.
  */
 const FAQ = [
   {
@@ -39,7 +42,7 @@ const FAQ = [
   },
   {
     q: "What can it actually do?",
-    a: "Beyond the five mechanisms above: multi-type hooks (command, HTTP, MCP-tool, prompt, agent) with semantic output and seven new event surfaces; an opt-in Adversary Mode (file-gated PreToolUse LLM reviewer) plus a 106-pattern prompt-injection scanner; per-subagent model + effort + mcpServers routing; declarative Recipes (YAML/JSON instruction bundles with parameters, sub-recipes, response_schema and templates); a Repo Wiki that auto-generates markdown docs with file:line cross-links; `/init` and `/doctor` for instruction-set management; `/blame` and `unown sessions export|import|list` for session forensics; and proportional auto-compact on the token limit. Every one of these is reverse-engineered from the 2026 coding agents (codex, claude code, goose, zcode, opencode, cursor) — the receipts and the design decisions are in docs/sdlc-feature-parity.md Round 5.",
+    a: "Beyond the five mechanisms above: multi-type hooks (command, HTTP, MCP-tool, prompt, agent) with semantic output and seven new event surfaces; an opt-in Adversary Mode (file-gated PreToolUse LLM reviewer) plus a 106-pattern prompt-injection scanner; per-subagent model + effort + mcpServers routing; declarative Recipes (YAML/JSON instruction bundles with parameters, sub-recipes, response_schema and templates); a Repo Wiki that auto-generates markdown docs with file:line cross-links; /init and /doctor for instruction-set management; /blame and unown sessions export|import|list for session forensics; and proportional auto-compact on the token limit. Every one of these is reverse-engineered from the 2026 coding agents (codex, claude code, goose, zcode, opencode, cursor) — the receipts and the design decisions are in docs/sdlc-feature-parity.md Round 5. Built on the open-source pi coding agent by Mario Zechner, MIT licensed end to end, no licence fee and no service tier; the only cost is whatever your model endpoint charges you.",
   },
   {
     q: "Will it rewrite my tests to make them pass?",
@@ -49,15 +52,11 @@ const FAQ = [
     q: "Does the loop actually do anything on its own?",
     a: "Honest answer: only when the model actually struggles. With kimi-k2.5 through the bridge, the seeded benchmark tasks are solved unaided, so the mining and shipping machinery correctly finds nothing to ship: an engine that patched memory for no reason would be a bug. Point it at a weaker model, or let task minting author harder variants once the suite saturates, and the loop starts firing on its own.",
   },
-  {
-    q: "What is it built on, and what does it cost?",
-    a: "The open-source pi coding agent by Mario Zechner, wrapped in a self-learning layer that lives in this repository rather than in a fork. MIT licensed end to end, no licence fee and no service tier; the only cost is whatever your model endpoint charges you.",
-  },
 ];
 
 export function FaqSection() {
   return (
-    <section data-hue="gold" id="faq" className="scroll-mt-16 border-t border-line py-20 sm:py-24">
+    <section data-hue="gold" id="faq" className="scroll-mt-16 border-t border-line py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-14">
           <FadeUp>

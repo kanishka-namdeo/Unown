@@ -35,9 +35,9 @@ mock.module("../star-count", () => ({
 
 const { Hero } = await import("../hero");
 const { detectOS } = await import("../install-panel");
-const { IntegritySection } = await import("../integrity");
-const { MechanismsSection } = await import("../mechanisms");
-const { ModelsBand } = await import("../models");
+const { IntegrityPane } = await import("../integrity");
+const { LoopSection } = await import("../loop");
+const { ModelsPane } = await import("../models");
 const { FaqSection } = await import("../faq");
 const { ShowcaseSection } = await import("../showcase");
 const { Footer, Nav } = await import("../shell");
@@ -111,24 +111,29 @@ describe("landing hero", () => {
     const { container } = render(<Hero />);
     const windowsTab = screen.getByRole("tab", { name: "Windows" });
     fireEvent.click(windowsTab);
-    let text = container.textContent ?? "";
+    // Scoped to the chip's tabpanel: the page carries the full three-OS
+    // sandbox ladder inside the collapsed manual expander (pinned by
+    // quickstart.test.tsx), so the swap assertions must look at what the
+    // CHIP shows, not the whole hero.
+    const chip = () => container.querySelector('[role="tabpanel"]');
+    let chipText = chip()?.textContent ?? "";
     // Windows has no sh on a fresh box, so its tab carries the clone path and
     // the bun prerequisite from docs/windows.md — the page's canonical one-liner.
-    expect(text).toContain(
+    expect(chipText).toContain(
       "git clone https://github.com/kanishka-namdeo/Unown.git && cd Unown && bun run agent:install",
     );
-    expect(text).toContain("irm bun.sh/install.ps1");
-    expect(text).toContain("in-process jail");
+    expect(chipText).toContain("irm bun.sh/install.ps1");
+    expect(chipText).toContain("in-process jail");
     // one command at a time: the installer line left the chip with the tab
-    expect(text).not.toContain("unown-nine.vercel.app/install.sh");
+    expect(chipText).not.toContain("unown-nine.vercel.app/install.sh");
     expect(windowsTab.getAttribute("aria-selected")).toBe("true");
     expect(container.querySelectorAll("pre")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("tab", { name: "Linux" }));
-    text = container.textContent ?? "";
-    expect(text).toContain("curl -fsSL https://unown-nine.vercel.app/install.sh | sh");
-    expect(text).toContain("bubblewrap");
-    expect(text).not.toContain("Seatbelt");
+    chipText = chip()?.textContent ?? "";
+    expect(chipText).toContain("curl -fsSL https://unown-nine.vercel.app/install.sh | sh");
+    expect(chipText).toContain("bubblewrap");
+    expect(chipText).not.toContain("Seatbelt");
   });
 
   test("auto-detection honours the user agent without gating the other tabs", () => {
@@ -169,24 +174,16 @@ describe("landing hero", () => {
   });
 });
 
-describe("landing mechanisms", () => {
-  test("the dashboard tile links to the in-page screenshots, not the live route", () => {
-    render(<MechanismsSection />);
-    const dash = screen.getByRole("link", { name: /see it in screenshots/i });
-    expect(dash.getAttribute("href")).toBe("#showcase");
-    expect(
-      screen.getByRole("heading", { name: /What goes wrong without persistent memory/i }),
-    ).toBeTruthy();
-  });
-
-  test("the SDLC-parity surface lists the M1-M4 capabilities and links their sources", () => {
-    // The 2026-10-19 sweep ported fifteen features; this section surfaces them
-    // as a labelled tile group so the page can't silently drop one. Each tile
-    // must link to a real source file under pi-repo/packages/self-learning/src/.
-    const { container } = render(<MechanismsSection />);
+describe("landing loop (mechanisms bento)", () => {
+  test("the SDLC-parity tile lists the M1-M4 capabilities and links their sources", () => {
+    // The 2026-10-19 sweep ported fifteen features; the loop band's bento
+    // surfaces them as its sixth tile so the page can't silently drop one.
+    // Each ported capability links to a real source file under
+    // pi-repo/packages/self-learning/src/.
+    const { container } = render(<LoopSection />);
     const text = container.textContent ?? "";
     expect(text).toContain("SDLC parity");
-    expect(text).toContain("What the 2026-10-19 sweep ported.");
+    expect(text).toContain("Three pains, five answers.");
     // Every M1-M4 capability is named — the same set the parity doc Round 5
     // table describes, in the same vocabulary so the page cannot drift from
     // the doc.
@@ -206,7 +203,7 @@ describe("landing mechanisms", () => {
     // The receipts link points at the parity doc on GitHub, not a dead route.
     const docLink = screen.getByRole("link", { name: /sdlc-feature-parity\.md/i });
     expect(docLink.getAttribute("href")).toContain("/blob/main/docs/sdlc-feature-parity.md");
-    // Every SDLC-parity tile links to a real src file (the ExternalLink chip).
+    // Every SDLC-parity port links to a real src file (the receipt chip row).
     const SRC_PREFIX =
       "https://github.com/kanishka-namdeo/Unown/blob/main/pi-repo/packages/self-learning/src/";
     const src = (file: string) => `${SRC_PREFIX}${file}`;
@@ -224,6 +221,18 @@ describe("landing mechanisms", () => {
     expect(srcNames.has(src("init-agents.ts"))).toBe(true);
     expect(srcNames.has(src("blame.ts"))).toBe(true);
     expect(srcNames.has(src("auto-compact.ts"))).toBe(true);
+  });
+
+  test("the merged band keeps the pair strip and the job schedule from the generator", () => {
+    const { container } = render(<LoopSection />);
+    const text = container.textContent ?? "";
+    // origin's two-halves argument, absorbed 2026-10-20
+    expect(text).toContain("The terminal agent");
+    expect(text).toContain("The engine behind it");
+    expect(text).toContain("notes → memory → a better next session");
+    // the engine's generated job schedule renders (engine-data.ts ← router.ts)
+    expect(text).toContain("harness-cycle");
+    expect(text).toContain("auto-dream");
   });
 
   test("the FAQ 'What can it actually do?' answer names the M1-M4 capabilities", () => {
@@ -253,7 +262,7 @@ describe("landing mechanisms", () => {
 
 describe("landing models", () => {
   test("the local lane is wired with the real env var, id scheme and one-liner", () => {
-    const { container } = render(<ModelsBand />);
+    const { container } = render(<ModelsPane />);
     const text = container.textContent ?? "";
     expect(text).toContain("BRIDGE_LOCAL_URL");
     expect(text).toContain("local-*");
@@ -263,7 +272,7 @@ describe("landing models", () => {
   });
 
   test("the complementary-bench sentence carries the three measured mechanisms", () => {
-    const { container } = render(<ModelsBand />);
+    const { container } = render(<ModelsPane />);
     const text = container.textContent ?? "";
     // All three headline numbers are receipts from benchmarks/complementary/results/REPORT.md
     // (H18 KV reuse 54.5% prefill cut, H19 remote-input compression 47.2% median,
@@ -296,7 +305,7 @@ describe("landing showcase", () => {
 
 describe("landing integrity", () => {
   test("links the receipts a skeptic would go verify", () => {
-    render(<IntegritySection />);
+    render(<IntegrityPane />);
     const security = screen.getByRole("link", { name: /SECURITY\.md/i });
     expect(security.getAttribute("href")).toContain("/blob/main/SECURITY.md");
     expect(screen.getByRole("link", { name: /hook layer/i })).toBeTruthy();

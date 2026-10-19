@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Brain, Compass, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Swords, Target } from "lucide-react";
-import { FadeUp, BENCH_URL, SectionHead } from "./shell";
+import { FadeUp, BENCH_URL } from "./shell";
 import {
   EDIT_BENCH,
   HUMANEVAL_PLUS,
@@ -14,30 +14,30 @@ import {
 } from "./benchmarks-data";
 
 /**
- * Every number in this section is generated, not typed. `benchmarks/` is the
- * most-churned directory in the repository, so `scripts/landing_benchmarks.mjs`
- * reads each track's canonical receipt JSON and writes
- * `benchmarks-data.ts` — the track descriptions and the field mappings live
- * there, beside the file they came from — and CI's landing job runs
- * `bun scripts/landing_benchmarks.mjs --check`, which fails when the page and
- * the receipts disagree. Where a track has both a base run and a `rerun-*`
- * verification run, the newest rerun wins; that tie-break is the generator's
- * rule, not an editorial choice, and it is why the figures below are the
- * 2026-10-17 numbers rather than the 2026-10-16 ones.
+ * The Benchmarks pane of the proof band (`proof.tsx`).
  *
- * Claims this section used to make that no receipt supports have been deleted
- * rather than re-worded: the repo-wide test tallies (one of which was the sum of
- * three stale figures, one of which named an assertion count that exists
- * nowhere) and a scored-run total with no artifact. A test count moves on
- * almost every commit, so the section now names each suite by path and command
- * instead — verifiable, and it does not go stale overnight.
+ * Every number in this pane is generated, not typed. `benchmarks/` is the
+ * most-churned directory in the repository, so `scripts/landing_benchmarks.mjs`
+ * reads each track's canonical receipt JSON and writes `benchmarks-data.ts`,
+ * and CI's landing job runs `bun scripts/landing_benchmarks.mjs --check`,
+ * which fails when the page and the receipts disagree. All six tracks keep
+ * rendering here — the stat band, the two flagship cards, the lift chart and
+ * the "also run" strip — so the generator's contract holds no matter which
+ * pane a visitor lands on.
+ *
+ * 2026-10-20 compression: this used to be a full section (3.74 viewports,
+ * 1,275 words) with six full cards, a three-suite regression grid and a
+ * four-cell methodology grid. The numbers are kept verbatim; the prose around
+ * them is not — footnotes now say the one load-bearing thing they said at
+ * half the length, the three secondary tracks share one strip, and the
+ * regression + methodology panels merged into a single fine-print row. The
+ * budget contract lives in the landing folder's AGENTS.md.
  */
 
 /**
  * The memory-lift chart's shared domain: each bar is a percentage of its
  * model's cold run. Cold is pinned at 100 and the axis runs past it so the
- * warm bars that grew (see `SELFIMPROVE.input`) are shown, not cropped. The
- * domain is a layout constant; the growth figures come from the receipts.
+ * warm bars that grew (see `SELFIMPROVE.input`) are shown, not cropped.
  */
 const LIFT_SCALE = 125;
 const COLD_BAR_W = (100 / LIFT_SCALE) * 100;
@@ -50,8 +50,6 @@ const COLD_BAR_W = (100 / LIFT_SCALE) * 100;
  * A single stat bar. The finished width lives in `style` and only the reveal is
  * animated, via `scaleX` with `origin-left` — never a `width` tween, which
  * serialises to a state the `<noscript>` restore in `effects.tsx` cannot reach.
- * `LiftBar` uses the same shape. The printed figure beside the bar is a second
- * signal, not a substitute for the bar itself.
  */
 function BarRow({
   label,
@@ -121,8 +119,7 @@ function TimeChip({ coldS, warmS, d }: { coldS: number; warmS: number; d: number
 /**
  * One bar of the memory-lift chart. `width` is a share of the track: cold rows
  * pass the 100%-of-cold baseline, warm rows their measured share of the
- * 0–125% domain. Grows in on scroll like BarRow, transform not width — see
- * BarRow for why that distinction is load-bearing.
+ * 0–125% domain. Grows in on scroll like BarRow, transform not width.
  */
 function LiftBar({
   kind,
@@ -183,527 +180,380 @@ function TrackCard({
 }) {
   return (
     <FadeUp delay={delay} className="h-full">
-      <div className="gb-panel lift flex h-full flex-col p-6 hover:border-line-bright">
+      <div className="gb-panel lift flex h-full flex-col p-5 hover:border-line-bright">
         <div className="flex items-center gap-3">
           <Icon className="size-5 shrink-0 text-gold" aria-hidden="true" />
           <h3 className="text-[15px] font-medium text-ink">{name}</h3>
         </div>
         <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">{source}</p>
-        <div className="mt-5 flex flex-1 flex-col justify-center gap-3">{children}</div>
+        <div className="mt-4 flex flex-1 flex-col justify-center gap-3">{children}</div>
       </div>
     </FadeUp>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* section                                                             */
+/* the pane                                                            */
 /* ------------------------------------------------------------------ */
 
-export function BenchmarksSection() {
+export function BenchmarksPane() {
   return (
-    <section data-hue="leaf" id="benchmarks" className="scroll-mt-16 py-20 sm:py-24">
-      <div className="mx-auto max-w-6xl px-5 sm:px-6">
-        <FadeUp className="max-w-2xl">
-          <SectionHead
-            kicker="Methodology and receipts"
-            lead={
-              <>
-                Official harnesses, pinned datasets, anti-tamper scoring, and per-task JSONL in
-                the repo. Every number below is published as measured, including the ones
-                where memory made things worse.
-              </>
-            }
-          >
-            Benchmarked where it hurts, including where it loses.
-          </SectionHead>
-        </FadeUp>
+    <div data-hue="leaf">
+      {/* the stat band: full-bleed, four numbers the research calls a
+          "proof band" — the cheapest way to say "this is measured" without a
+          paragraph. Dividers are borders on the cells so the row spans the
+          pane without seam bars. */}
+      <div className="border-y border-line bg-panel/30">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { v: "52%", l: "LiveCodeBench v6 pass@1", s: "post-cutoff problems, kimi-k2.5" },
+            { v: "98.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
+            { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
+            { v: "0/50", l: "attacker rules shipped", s: "MPBench-adapted corpus, 0 planted" },
+          ].map((s, i) => (
+            <div
+              key={s.l}
+              className={`rise rise-${i + 1} border-line px-4 py-6 sm:px-5 lg:border-l lg:first:border-l-0 ${i === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b sm:border-b-0 lg:border-b-0" : ""}`}
+            >
+              <p className="gb-h text-3xl tabular-nums tracking-tight text-gold">
+                {s.v}
+              </p>
+              <p className="mt-1.5 text-[13px] font-medium text-ink">{s.l}</p>
+              <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+                {s.s}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        {/* Full-bleed on purpose. Every other section runs inside the container;
-            letting four numbers run edge to edge is the cheapest way to break a
-            page that has started to feel like one long column. Dividers are
-            borders on the cells rather than grid gaps, so the row spans the
-            viewport without seam bars where the grid runs out. */}
-        <div className="mt-12 border-y border-line bg-panel/30">
-          <div className="mx-auto grid max-w-6xl px-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
-            {[
-              { v: "52%", l: "LiveCodeBench v6 pass@1", s: "post-cutoff problems, kimi-k2.5" },
-              { v: "98.1%", l: "edit accuracy", s: "106-fixture oh-my-pi benchmark" },
-              { v: "−35%", l: "warm wall time", s: "repeat tasks, kimi-k2.5" },
-              { v: "0/50", l: "attacker rules shipped", s: "MPBench-adapted corpus, 0 planted" },
-            ].map((s, i) => (
-              <div
-                key={s.l}
-                className={`rise rise-${i + 1} border-line py-8 sm:px-5 lg:border-l lg:first:border-l-0 ${i === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b sm:border-b-0 lg:border-b-0" : ""}`}
-              >
-                <p className="gb-h text-3xl tabular-nums tracking-tight text-gold">
-                  {s.v}
-                </p>
-                <p className="mt-1.5 text-[13px] font-medium text-ink">{s.l}</p>
-                <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-                  {s.s}
-                </p>
+      {/* the two flagship tracks */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <TrackCard
+          icon={Swords}
+          name="LiveCodeBench v6 — the contamination-aware headline"
+          source="50-problem stratified subset of LiveCodeBench's release_v6 increment · contests 2025-01-04 → 2025-04-06 · after every model's cutoff · official LCB prompt + grader · greedy pass@1 · receipts under benchmarks/livecodebench/results/"
+        >
+          {LIVECODEBENCH.map((r, i) => (
+            <div key={r.model} className="flex items-center gap-3">
+              <BarRow label={r.model} pct={r.pct} delay={i * 0.1} />
+              <span className="hidden shrink-0 font-mono text-[10px] text-faint sm:inline">
+                {r.noCode} no_code
+              </span>
+            </div>
+          ))}
+          <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+            Every problem was published after these models&apos; training cutoffs.
+            Easy sweeps everywhere (13/13, 12/13); hard is where it ends (4/23, 1/23,
+            1/23). <span className="text-gold">no_code is the honest failure mode</span>:
+            reasoning past the pinned 4096-token budget gets cut off before the code
+            fence closes — 15/26/27 of 50, reported as measured, not filtered.
+          </p>
+          <a
+            href={`${BENCH_URL}/livecodebench/results`}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
+          >
+            benchmarks/livecodebench/results/
+            <ExternalLink className="size-3" aria-hidden="true" />
+          </a>
+        </TrackCard>
+
+        <TrackCard
+          icon={Target}
+          name="Edit accuracy"
+          source="oh-my-pi typescript-edit-benchmark · 106 fixtures · byte-exact scoring · full Unown agent in the loop · 2026-10-17 fresh-checkout rerun"
+        >
+          {EDIT_BENCH.map((r, i) => (
+            <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
+          ))}
+          <div className="mt-2 space-y-1.5 border border-line bg-canvas/50 p-3">
+            <p className="font-mono text-[10.5px] leading-relaxed text-dim">
+              <span className="text-gold">head-to-head</span> against the oh-my-pi agent
+              itself, same 106 fixtures, 3 runs per task:{" "}
+              <span className="text-ink">identical best-of-3 scores on every model</span>{" "}
+              — and <span className="text-gold">2.4–5.4× fewer input tokens</span> per
+              task.
+            </p>
+          </div>
+        </TrackCard>
+      </div>
+
+      {/* the memory-lift chart — the eval the self-improvement claim rests on.
+          Pass-rate is 10/10 → 10/10 everywhere, so what memory actually buys
+          is efficiency: cold vs warm input tokens and wall time, exactly as
+          measured, including the two models that spent more. */}
+      <FadeUp delay={0.05}>
+        <div id="memory-lift" className="gb-panel mt-6 scroll-mt-16 p-5" data-tone="magma">
+          <div className="flex flex-wrap items-center gap-3">
+            <Repeat className="size-5 shrink-0 text-gold" aria-hidden="true" />
+            <h3 className="text-[15px] font-medium text-ink">Memory lift, cold vs warm</h3>
+            <span className="bg-gold/10 px-1.5 py-0.5 font-mono text-[10.5px] text-gold">
+              n=10 · single run per phase
+            </span>
+            <a
+              href={`${BENCH_URL}/selfimprove/results`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="ml-auto inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
+            >
+              benchmarks/selfimprove/results/
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
+          </div>
+          <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
+            Each model solved the same 10-task Python Exercism set cold (fresh project,
+            fresh memory), then warm: a brand-new workspace carrying only the dreamed
+            memory from its cold pass. Bars are input tokens, normalized per model; the
+            scale runs to 125% so the models that spent more are not cropped.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[10px] text-faint">
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="h-1.5 w-4 bg-line-bright" />
+              cold
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="h-1.5 w-4 bg-gold" />
+              warm · fewer input tokens
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="h-1.5 w-4 bg-amber" />
+              warm · more input tokens
+            </span>
+          </div>
+
+          <div className="mt-4">
+            {SELFIMPROVE.map((r, i) => (
+              <div key={r.model} className={i === 0 ? "" : "mt-5"}>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                  <span className="font-mono text-[11px] text-ink">{r.model}</span>
+                  <Delta v={r.input} unit="in" />
+                  <TimeChip coldS={r.coldS} warmS={r.warmS} d={r.time} />
+                  <span className="ml-auto font-mono text-[10px] tabular-nums text-faint">
+                    pass 10/10 → 10/10
+                  </span>
+                </div>
+                <div className="mt-2 space-y-1">
+                  <LiftBar
+                    kind="cold"
+                    width={COLD_BAR_W}
+                    tokens={r.coldIn}
+                    tone="cold"
+                    delay={i * 0.12}
+                  />
+                  <LiftBar
+                    kind="warm"
+                    width={(r.warmIn / r.coldIn) * COLD_BAR_W}
+                    tokens={r.warmIn}
+                    tone={r.input < 0 ? "win" : "cost"}
+                    delay={i * 0.12 + 0.06}
+                    tick
+                  />
+                </div>
               </div>
             ))}
           </div>
-        </div>
 
-        {/* tracks */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <TrackCard
-            icon={Swords}
-            name="LiveCodeBench v6 — the contamination-aware headline"
-            source="50-problem stratified subset of LiveCodeBench's release_v6 increment · contests 2025-01-04 → 2025-04-06 · after every model's cutoff · official LCB prompt + grader · greedy pass@1 · receipts under benchmarks/livecodebench/results/"
-          >
-            {LIVECODEBENCH.map((r, i) => (
-              <div key={r.model} className="flex items-center gap-3">
-                <BarRow label={r.model} pct={r.pct} delay={i * 0.1} />
-                <span className="hidden shrink-0 font-mono text-[10px] text-faint sm:inline">
-                  {r.noCode} no_code
-                </span>
-              </div>
-            ))}
-            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-              HumanEval+ (below) predates these models, so its 90s cannot separate ability
-              from memorization. These problems were published after their cutoffs. Every
-              model sweeps easy (13/13, 12/13); hard is where it ends (4/23, 1/23, 1/23).
+          <p className="mt-5 font-mono text-[10.5px] leading-relaxed text-dim">
+            <span className="text-gold">Pass-rate lift is 0pp</span> across the board:
+            two of three models spent <em>more</em> input tokens with memory in the
+            loop, and kimi-k2.5 still finished 35% faster; qwen3.6-plus took both wins.
+            On tasks the model can already solve, memory buys efficiency, not
+            correctness.
+          </p>
+
+          <div className="gb-box mt-4 p-4" data-tone="magma">
+            <p className="gb-label text-[10px] text-canvas">
+              Negative controls, published as-is
             </p>
-            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-              <span className="text-gold">no_code is the honest failure mode</span>: at the
-              pinned 4096-token budget, a model that reasons at length gets cut off before
-              closing its code fence — 15/26/27 of 50. Reported as measured, not filtered;
-              larger-budget runs are future work, not a silent re-run.
-            </p>
-            <a
-              href={`${BENCH_URL}/livecodebench/results`}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
-            >
-              benchmarks/livecodebench/results/
-              <ExternalLink className="size-3" aria-hidden="true" />
-            </a>
-          </TrackCard>
-
-          <TrackCard
-            icon={Target}
-            name="Edit accuracy"
-            source="oh-my-pi typescript-edit-benchmark · 106 fixtures · byte-exact scoring · full Unown agent in the loop · 2026-10-17 fresh-checkout rerun"
-          >
-            {EDIT_BENCH.map((r, i) => (
-              <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
-            ))}
-            <div className="mt-2 space-y-1.5 border border-line bg-canvas/50 p-3">
-              <p className="font-mono text-[10.5px] leading-relaxed text-dim">
-                <span className="text-gold">head-to-head</span> against the oh-my-pi agent
-                itself, same 106 fixtures, edit format pinned, 3 runs per task:{" "}
-                <span className="text-ink">identical best-of-3 scores on every model</span>,{" "}
-                — and <span className="text-gold">2.4–5.4× fewer input tokens</span> per
-                task.
-              </p>
-              <p className="font-mono text-[10.5px] leading-relaxed text-dim">
-                2026-10-17 fresh-checkout rerun: kimi reproduces exactly (98.1); the
-                n=1 qwen spread sits inside the flake band the n=3 pass quantified.
-              </p>
-            </div>
-          </TrackCard>
-
-          <TrackCard
-            icon={FlaskConical}
-            name="HumanEval+"
-            source="official evalplus CLI · sanitize → evaluate · pass@1 · greedy · 164 problems · 2026-10-17 fresh-checkout rerun"
-            delay={0.05}
-          >
-            {HUMANEVAL_PLUS.map((r, i) => (
-              <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
-            ))}
-            <p className="mt-1 font-mono text-[10px] text-faint">
-              base HumanEval, for reference: 97.6 / 98.2 / 98.2 · prior committed run:
-              93.3 / 93.9 / 93.3 — ±1 problem, greedy-decoding noise
-            </p>
-          </TrackCard>
-
-          <TrackCard
-            icon={Brain}
-            name="Self-improvement, measured"
-            source="10-task repeat set · cold vs warm, dreamed memory carried into fresh workspaces · 60/60 passed across six passes · v2 agent-authored notes · receipts under benchmarks/selfimprove/results/"
-            delay={0.1}
-          >
-            {SELFIMPROVE.map((r) => (
-              <div key={r.model} className="flex flex-wrap items-center gap-2">
-                <span className="w-28 shrink-0 truncate font-mono text-[11px] text-dim">
-                  {r.model}
-                </span>
-                <Delta v={r.input} unit="in" />
-                <Delta v={r.time} unit="time" />
-              </div>
-            ))}
-            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-              pass 10/10 → 10/10 on every model, both passes. What memory actually bought
-              is in the{" "}
-              <a href="#memory-lift" className="text-gold underline underline-offset-2">
-                cold-vs-warm chart
+            <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-canvas">
+              v1 (thin session notes only): −25.6% input, 64s → 34s warm, with an{" "}
+              <span className="font-medium text-canvas">unchanged memory file</span> —
+              that saving is upstream prompt caching, not memory, and v1 is kept as the
+              control arm that isolates the confound. v3 (six sequential sessions, one
+              evolving repo, real dreams): 6/6 with memory, 6/6 without, 6/6 with
+              wrong-domain memory — learned memory cost +36% billed input tokens,
+              irrelevant memory +30% and bought nothing. The memory system itself now
+              has a live suite — injection proven by a unique marker in the captured
+              upstream request, real dream + canary + rollback roundtrips, and a
+              ten-variant poisoning corpus: every adversarial note flagged at the input
+              layer, 0/10 attacker rules planted into dreamed memory, 0 shipped —
+              receipts in{" "}
+              {/* links inside a dark gb-box inherit the box's canvas colour;
+                  text-gold fails AA on the magma fill in both schemes */}
+              <a
+                href={`${BENCH_URL}/memory-eval/results`}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline underline-offset-4"
+              >
+                benchmarks/memory-eval/results/
               </a>
               .
             </p>
-            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-              A control arm caught us over-claiming on exactly this, so it stayed in the
-              published results.
-            </p>
-          </TrackCard>
+          </div>
+        </div>
+      </FadeUp>
 
-          <TrackCard
-            icon={Layers}
-            name="Aider polyglot subset"
-            source="50-exercise stratified subset of Aider-AI/polyglot-benchmark · 6 languages · Aider's 2-attempt protocol · pass@2 shown · 2026-10-17 fresh-checkout rerun"
-            delay={0.15}
-          >
-            {POLYGLOT.map((r, i) => (
-              <div key={r.model} className="flex items-center gap-3">
-                <BarRow label={r.model} pct={r.pct} delay={i * 0.1} />
-                <span className="hidden shrink-0 font-mono text-[10px] text-faint sm:inline">
-                  @{r.pass1}
-                </span>
-              </div>
-            ))}
-            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-              first published polyglot numbers for these models · 2026-10-17
-              fresh-checkout rerun: pass@1 reproduces the committed run exactly
-              (47/48/48 of 50)
+      {/* also run: the three secondary tracks, one strip instead of three
+          full cards. All three still render their generated numbers, and the
+          receipts are one link away. */}
+      <FadeUp delay={0.05}>
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="gb-panel p-5">
+            <div className="flex items-center gap-3">
+              <FlaskConical className="size-5 shrink-0 text-gold" aria-hidden="true" />
+              <h3 className="text-[15px] font-medium text-ink">HumanEval+</h3>
+            </div>
+            <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">
+              official evalplus CLI · 164 problems · greedy pass@1 · 2026-10-17 rerun
             </p>
-          </TrackCard>
+            <div className="mt-4 space-y-2">
+              {HUMANEVAL_PLUS.map((r) => (
+                <div key={r.model} className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
+                  <span className="truncate text-dim">{r.model}</span>
+                  <span className="tabular-nums text-gold">{r.pct.toFixed(1)}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
+              predates these models, so it cannot separate ability from memorization —
+              LiveCodeBench above is the headline for exactly that reason.
+            </p>
+          </div>
 
-          <TrackCard
-            icon={Compass}
-            name="Long-horizon refactor"
-            source="one hard multi-file contract change (createdBy: string → {id, name} across an 11-module TypeScript app) · full unown agent · hard wall-clock cap · scored on the file diff against a committed reference · n=1 · receipts under benchmarks/longhorizon/results/"
-            delay={0.2}
-          >
-            {LONGHORIZON.map((r) => (
-              <div key={r.model} className="flex flex-wrap items-center gap-2">
-                <span className="w-28 shrink-0 truncate font-mono text-[11px] text-dim">
-                  {r.model}
-                </span>
-                <span
-                  className={`px-1.5 py-0.5 font-mono text-[11px] tabular-nums ${
-                    r.inTok > 200000 ? "bg-amber/10 text-amber" : "bg-gold/10 text-gold"
-                  }`}
-                >
-                  {(r.inTok / 1000).toFixed(r.inTok >= 100000 ? 0 : 1)}k in
-                </span>
-                <span className="font-mono text-[11px] tabular-nums text-faint">
-                  {r.cacheRead > 0 ? `${Math.round(r.cacheRead / 1000)}k cached` : "0 cached"}
-                </span>
-                <span className="ml-auto font-mono text-[10px] tabular-nums text-faint">
-                  {r.durS}s · {r.files} files · jaccard {r.jaccard.toFixed(2)}
-                </span>
-              </div>
-            ))}
-            <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
-              all three solved it: green as-is suites, pristine-restore profiles matching
-              the reference's own 27/12, no timeouts. <span className="text-gold">The
-              separation is cost</span>: qwen3.6-plus spent 1.2M input tokens with zero
-              cache reads — 28× kimi — on the same task; kimi rode 474k of cache for 44k
-              fresh input. Compaction never triggered for any model.
+          <div className="gb-panel p-5">
+            <div className="flex items-center gap-3">
+              <Layers className="size-5 shrink-0 text-gold" aria-hidden="true" />
+              <h3 className="text-[15px] font-medium text-ink">Aider polyglot subset</h3>
+            </div>
+            <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">
+              50 exercises · 6 languages · Aider&apos;s 2-attempt protocol · pass@2
             </p>
+            <div className="mt-4 space-y-2">
+              {POLYGLOT.map((r) => (
+                <div key={r.model} className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
+                  <span className="truncate text-dim">{r.model}</span>
+                  <span className="tabular-nums text-gold">
+                    {r.pct.toFixed(0)} <span className="text-faint">@{r.pass1}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
+              first published polyglot numbers for these models · 2026-10-17 rerun
+              reproduces the committed run exactly
+            </p>
+          </div>
+
+          <div className="gb-panel p-5">
+            <div className="flex items-center gap-3">
+              <Compass className="size-5 shrink-0 text-gold" aria-hidden="true" />
+              <h3 className="text-[15px] font-medium text-ink">Long-horizon refactor</h3>
+            </div>
+            <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">
+              one hard multi-file contract change, 11-module TypeScript app · n=1 ·
+              scored on the file diff
+            </p>
+            <div className="mt-4 space-y-2">
+              {LONGHORIZON.map((r) => (
+                <div key={r.model} className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
+                  <span className="truncate text-dim">{r.model}</span>
+                  <span className="tabular-nums text-faint">
+                    {(r.inTok / 1000).toFixed(r.inTok >= 100000 ? 0 : 1)}k in
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
+              all three solved it; <span className="text-gold">the separation is
+              cost</span> — qwen3.6-plus spent 1.2M input tokens with zero cache reads
+              (28× kimi) on the same task.{" "}
+              <a
+                href={`${BENCH_URL}/longhorizon/results`}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-gold underline underline-offset-4"
+              >
+                receipts
+              </a>
+            </p>
+          </div>
+        </div>
+      </FadeUp>
+
+      {/* regression layer + methodology, one fine-print panel. There are
+          deliberately no test counts here: a total moves on almost every
+          commit, so each suite is named by path and command — verifiable, and
+          it does not rot. */}
+      <FadeUp delay={0.05}>
+        <div className="mt-6 gb-panel p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <ShieldCheck className="size-5 shrink-0 text-gold" aria-hidden="true" />
+            <h3 className="text-[15px] font-medium text-ink">
+              The regression layer below the loop
+            </h3>
+            <span className="bg-gold/10 px-1.5 py-0.5 font-mono text-[10.5px] text-gold">
+              three suites · every push
+            </span>
+          </div>
+          <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
+            A self-improving agent regresses its own harness first: a bad memory ship
+            looks exactly like a better model. The loop sits on a locked suite that
+            must stay green while everything above it evolves — anti-tamper scoring
+            (tests restored to pristine state before scoring), pinned datasets and
+            harness versions, official harnesses only, per-task JSONL receipts under{" "}
             <a
-              href={`${BENCH_URL}/longhorizon/results`}
+              href={BENCH_URL}
               target="_blank"
               rel="noreferrer noopener"
-              className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
+              className="font-mono text-[12px] text-gold underline-offset-4 hover:underline"
             >
-              benchmarks/longhorizon/results/
-              <ExternalLink className="size-3" aria-hidden="true" />
+              benchmarks/
             </a>
-          </TrackCard>
-        </div>
-
-        {/* The memory-lift chart testing-strategy §7A asked for, in the form
-            our data can publish: pass-rate is 10/10 → 10/10 everywhere, so what
-            memory actually buys is efficiency — cold vs warm input tokens and
-            wall time, exactly as measured, including the two models that spent
-            more. Full-width because paired bars plus raw counts need the room;
-            it also breaks the column rhythm between the track grid and the
-            regression panel, the way the stat band does above. */}
-        <FadeUp delay={0.05}>
-          <div id="memory-lift" className="gb-panel mt-6 scroll-mt-16 p-6" data-tone="magma">
-            <div className="flex flex-wrap items-center gap-3">
-              <Repeat className="size-5 shrink-0 text-gold" aria-hidden="true" />
-              <h3 className="text-[15px] font-medium text-ink">Memory lift, cold vs warm</h3>
-              <span className="bg-gold/10 px-1.5 py-0.5 font-mono text-[10.5px] text-gold">
-                n=10 · single run per phase
-              </span>
-              <a
-                href={`${BENCH_URL}/selfimprove/results`}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="ml-auto inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
-              >
-                benchmarks/selfimprove/results/
-                <ExternalLink className="size-3" aria-hidden="true" />
-              </a>
-            </div>
-            <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
-              The eval the self-improvement claim rests on: each model solved the same
-              10-task Python Exercism set cold (fresh project, fresh memory), then warm:
-              a brand-new workspace carrying only the dreamed memory from its cold pass,
-              no source files shared, memory verified changed per task before the warm
-              pass. Bars are input tokens, normalized per model: cold is the 100%
-              baseline, the dashed tick marks it, and the scale runs to 125% so the models
-              that spent more are not cropped.
-            </p>
-
-            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[10px] text-faint">
-              <span className="flex items-center gap-1.5">
-                <span aria-hidden="true" className="h-1.5 w-4 bg-line-bright" />
-                cold
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span aria-hidden="true" className="h-1.5 w-4 bg-gold" />
-                warm · fewer input tokens
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span aria-hidden="true" className="h-1.5 w-4 bg-amber" />
-                warm · more input tokens
-              </span>
-              <span className="ml-auto hidden lg:inline">
-                input tokens per model · dashed tick = cold (100%), scale 0–125%
-              </span>
-            </div>
-
-            <div className="mt-4">
-              {SELFIMPROVE.map((r, i) => (
-                <div key={r.model} className={i === 0 ? "" : "mt-6"}>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                    <span className="font-mono text-[11px] text-ink">{r.model}</span>
-                    <Delta v={r.input} unit="in" />
-                    <TimeChip coldS={r.coldS} warmS={r.warmS} d={r.time} />
-                    <span className="ml-auto font-mono text-[10px] tabular-nums text-faint">
-                      pass 10/10 → 10/10
-                    </span>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    <LiftBar
-                      kind="cold"
-                      width={COLD_BAR_W}
-                      tokens={r.coldIn}
-                      tone="cold"
-                      delay={i * 0.12}
-                    />
-                    <LiftBar
-                      kind="warm"
-                      width={(r.warmIn / r.coldIn) * COLD_BAR_W}
-                      tokens={r.warmIn}
-                      tone={r.input < 0 ? "win" : "cost"}
-                      delay={i * 0.12 + 0.06}
-                      tick
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <p className="mt-5 font-mono text-[10.5px] leading-relaxed text-dim">
-              <span className="text-gold">Pass-rate lift is 0pp</span> across the board:
-              two of three models spent <em>more</em> input tokens with memory in the loop,
-              and kimi-k2.5 still finished 35% faster; qwen3.6-plus took both wins. On
-              tasks the model can already solve, memory buys efficiency, not correctness.
-              Single run per phase, so the deltas are direction rather than significance.
-            </p>
-
-            <div className="gb-box mt-4 p-4" data-tone="magma">
-              <p className="gb-label text-[10px] text-canvas">
-                Negative control (v1): not published as a memory effect
-              </p>
-              <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-canvas">
-                kimi-k2.5 with only thin session summaries as notes showed −25.6% input
-                and 64s → 34s (−46.9%) wall time warm, with an{" "}
-                <span className="font-medium text-canvas">unchanged memory file</span>. That saving is
-                upstream prompt caching on near-identical prompts, not memory; v1 is
-                kept as the control arm that isolates the confound. v2 above is what we
-                publish, with per-task dreamed-memory receipts committed.
-              </p>
-            </div>
-
-            <div className="gb-inset mt-4 p-4">
-              <p className="gb-label text-[10px] text-gold">
-                v3 · the real-life arm + the memory system under test
-              </p>
-              <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-dim">
-                Real life is not re-solving the same task: v3 runs six sequential
-                sessions in one evolving repo with a real dream between them (kimi-k2.5,
-                n=1) — 6/6 with memory, 6/6 without, 6/6 with wrong-domain memory;
-                learned memory cost +36% billed input tokens, irrelevant memory +30%
-                and bought nothing (a clean negative control), while the dreamed rules
-                stayed accurate per-session-auditable. The memory system itself now has
-                a live suite — injection proven by a unique marker in the captured
-                upstream request, real dream + canary + rollback roundtrips,
-                crash-consistency, and a ten-variant poisoning corpus (n=10
-                obfuscation ladder: base64 payloads, zero-width smuggling, authority
-                spoofs, split notes): every adversarial note flagged at the input
-                layer, 0/10 attacker rules planted into dreamed memory, 0 shipped —
-                receipts in{" "}
-                <a
-                  href={`${BENCH_URL}/memory-eval/results`}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-gold underline underline-offset-4"
-                >
-                  benchmarks/memory-eval/results/
-                </a>{" "}
-                and{" "}
-                <a
-                  href="https://github.com/kanishka-namdeo/Unown/blob/main/docs/memory-system-review.md"
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-gold underline underline-offset-4"
-                >
-                  docs/memory-system-review.md
-                </a>
-                .
-              </p>
-            </div>
-          </div>
-        </FadeUp>
-
-        {/* The regression layer below the loop: tests that protect the harness
-            while the agent rewrites itself. There are deliberately no counts
-            here. A test total moves on almost every commit, so printing one
-            turns the page's central promise — every number is checkable — into
-            a claim that is stale within a day. Each suite is named by path and
-            by the command that runs it instead, which a reader can verify and
-            which does not rot. */}
-        <FadeUp delay={0.05}>
-          <div className="mt-6 gb-panel p-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <ShieldCheck className="size-5 shrink-0 text-gold" aria-hidden="true" />
-              <h3 className="text-[15px] font-medium text-ink">
-                The regression layer below the loop
-              </h3>
-              <span className="bg-gold/10 px-1.5 py-0.5 font-mono text-[10.5px] text-gold">
-                three suites · every push
-              </span>
-            </div>
-            <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-dim">
-              A self-improving agent regresses its own harness first: a bad memory ship
-              looks exactly like a better model. So the loop sits on a locked suite that
-              must stay green while everything above it evolves: the dashboard&apos;s pure
-              logic, the bridge&apos;s routing and retry math, the engine&apos;s memory
-              versioning, task tamper-gate, sandbox profile and hook decisions.
-            </p>
-            <div className="mt-5 grid gap-5 sm:grid-cols-3">
-              {[
-                {
-s: "dashboard",
-                  p: "src/**/__tests__/*.test.tsx",
-                  r: "bun run test:unit",
-                  d: "zustand event store, API error mapping, toast reducer, formatting table-drivers, RTL coverage of all ten dashboard tabs and the landing sections' copy contracts",
-                },
-                {
-                  s: "llm-bridge",
-                  p: "mini-services/llm-bridge/pure.test.ts",
-                  r: "bun test pure.test.ts",
-                  d: "model routing to the allow-list, tool-call sanitizing, SSE stats folding, retry and backoff math, thinking-flag translation, VLM payload pinning",
-                },
-                {
-                  s: "engine",
-                  p: "pi-repo/packages/self-learning/test",
-                  r: "bun test test/",
-                  d: "memory tiers + atomicity + rollback, sha256 tamper gate, mint validation, busy-mutex, bwrap profile, hook and CLI corpus, guard decisions",
-                },
-              ].map((c) => (
-                <div key={c.s} className="gb-inset p-4">
-                  <p className="gb-label text-[9px] text-gold">{c.s}</p>
-                  <p className="mt-2 break-words font-mono text-[11px] leading-snug text-ink">
-                    {c.p}
-                  </p>
-                  <p className="mt-1 font-mono text-[10.5px] text-faint">{c.r}</p>
-                  <p className="mt-2 text-[12.5px] leading-relaxed text-dim">{c.d}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[10.5px] leading-relaxed text-faint">
-              <span>
-                <span className="text-gold">CI</span> lint · typecheck · unit · shell-syntax
-                · theme, every push
-              </span>
-              <span>
-                <span className="text-gold">hook corpus</span> the bypasses it found
-                (wrapped <span className="text-ink">rm -rf /</span>,
-                <span className="text-ink"> $&#123;HOME&#125;</span> expansion, fork-bomb
-                variants, numeric-IP egress, symlink jail escape) are closed and pinned
-              </span>
-              <span>
-                <span className="text-gold">runs on</span> bun test · zero new dependencies
-              </span>
-            </div>
-          </div>
-        </FadeUp>
-
-        {/* methodology + what we did not do */}
-        <FadeUp delay={0.08}>
-          <div className="mt-6 grid gap-6 gb-panel p-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-            <div>
-              <p className="gb-label text-[10px] text-gold">
-                Methodology
-              </p>
-              <div className="mt-4 grid gap-5 sm:grid-cols-2">
-                {[
-                  {
-                    t: "Anti-tamper scoring",
-                    d: "Tests are restored to pristine state before scoring; reference solutions never enter the agent workspace.",
-                  },
-                  {
-                    t: "Pinned everything",
-                    d: "Dataset commits, model-catalog snapshots and harness versions are pinned and committed.",
-                  },
-                  {
-                    t: "Official harnesses",
-                    d: "evalplus CLI, oh-my-pi's own edit benchmark, Aider's polyglot protocol; nothing home-rolled.",
-                  },
-                  {
-                    t: "Receipts in the repo",
-                    d: "Per-task JSONL with tokens, durations and outcomes for every run lives under benchmarks/.",
-                  },
-                ].map((m) => (
-                  <div key={m.t}>
-                    <p className="text-[13px] font-medium text-ink">{m.t}</p>
-                    <p className="mt-1 text-[12px] leading-relaxed text-faint">{m.d}</p>
-                  </div>
-                ))}
+            .
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                s: "dashboard",
+                p: "src/**/__tests__/*.test.tsx",
+                r: "bun run test:unit",
+              },
+              {
+                s: "llm-bridge",
+                p: "mini-services/llm-bridge/pure.test.ts",
+                r: "bun test pure.test.ts",
+              },
+              {
+                s: "engine",
+                p: "pi-repo/packages/self-learning/test",
+                r: "bun test test/",
+              },
+            ].map((c) => (
+              <div key={c.s} className="gb-inset p-4">
+                <p className="gb-label text-[9px] text-gold">{c.s}</p>
+                <p className="mt-2 break-words font-mono text-[11px] leading-snug text-ink">
+                  {c.p}
+                </p>
+                <p className="mt-1 font-mono text-[10.5px] text-faint">{c.r}</p>
               </div>
-            </div>
-
-            <div className="gb-box p-4">
-              <p className="gb-label text-[10px] text-canvas">
-                What we did not run
-              </p>
-              <ul className="mt-3 space-y-2 text-[12px] leading-relaxed text-canvas">
-                <li>
-                  <span className="font-medium text-canvas">SWE-bench Verified</span> and{" "}
-                  <span className="font-medium text-canvas">Terminal-Bench 2.0</span> are quoted from
-                  vendor reports, not measured here.
-                </li>
-              </ul>
-              <p className="mt-3 text-[11px] leading-relaxed text-canvas/85">
-                The one eval that scores zero is reported next to the gates, in{" "}
-                <a href="#integrity" className="underline underline-offset-2">
-                  Integrity
-                </a>
-                .
-              </p>
-              <a
-                href={BENCH_URL}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] text-canvas underline-offset-4 hover:underline"
-              >
-                benchmarks/
-                <ExternalLink className="size-3" aria-hidden="true" />
-              </a>
-            </div>
+            ))}
           </div>
-        </FadeUp>
-      </div>
-    </section>
+          <p className="mt-4 font-mono text-[10.5px] leading-relaxed text-faint">
+            <span className="text-gold">not measured here</span> — SWE-bench Verified and
+            Terminal-Bench 2.0 are quoted from vendor reports, never our own runs. The
+            one eval that scores zero (our extension-authoring eval, 0.0 for every
+            model) sits beside the gates in{" "}
+            <a href="#proof" className="underline underline-offset-2">
+              Integrity
+            </a>
+            .
+          </p>
+        </div>
+      </FadeUp>
+    </div>
   );
 }

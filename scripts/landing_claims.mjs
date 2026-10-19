@@ -13,7 +13,7 @@
 //     pi-repo/packages/self-learning/src/router.ts. That data is generated,
 //     not authored: engine-data.ts is this script's output, never hand-edited,
 //     and --check fails when the committed file no longer matches JOB_DEFS.
-//   - integrity.tsx's LOG rows, loop.tsx's BEATS bodies and quickstart.tsx's
+//   - integrity.tsx's LOG rows, loop.tsx's BEATS bodies and hero.tsx's
 //     COMMANDS list and slash-command sentence quote literals the engine
 //     writes. The gate re-reads both sides and fails on any quoted literal
 //     that no longer resolves in the source it claims: hook/log strings
@@ -56,11 +56,13 @@ const ROUTER = `${ENGINE}/router.ts`;
 const TARGET = join(ROOT, "src/components/landing/engine-data.ts");
 const TARGET_REL = "src/components/landing/engine-data.ts";
 
-/** Page files the gate reads, keyed for the routes below. */
+/** Page files the gate reads, keyed for the routes below. The commands and
+ *  slash chips live in hero.tsx since the 2026-10-20 merge (the quickstart
+ *  section folded into the hero's collapsed expanders). */
 const PAGES = {
   integrity: "src/components/landing/integrity.tsx",
   loop: "src/components/landing/loop.tsx",
-  quickstart: "src/components/landing/quickstart.tsx",
+  hero: "src/components/landing/hero.tsx",
 };
 
 /** Engine sources, by the name a FAIL line prints. */
@@ -320,7 +322,7 @@ function parseBeats(text, key) {
   return out;
 }
 
-/** quickstart.tsx COMMANDS rows: the command string each row shows. */
+/** hero.tsx COMMANDS rows: the command string each row shows. */
 function parseCommands(text) {
   const lines = text.split(/\r?\n/);
   const out = [];
@@ -334,11 +336,11 @@ function parseCommands(text) {
     const m = lines[i].match(/^\s*\[(["'])((?:(?!\1)[^\\]|\\.)*)\1\s*,/);
     if (m) out.push({ line: i + 1, cmd: m[2] });
   }
-  if (!out.length) fail(`${PAGES.quickstart}: the COMMANDS array did not parse`);
+  if (!out.length) fail(`${PAGES.hero}: the COMMANDS array did not parse`);
   return out;
 }
 
-/** quickstart.tsx's slash-command sentence: every `<code>/name</code>` chip. */
+/** hero.tsx's slash-command sentence: every `<code>/name</code>` chip. */
 function parseSlashCommands(text) {
   const lines = text.split(/\r?\n/);
   const out = [];
@@ -347,7 +349,7 @@ function parseSlashCommands(text) {
       out.push({ line: i + 1, cmd: m[1] });
     }
   }
-  if (!out.length) fail(`${PAGES.quickstart}: no slash-command <code> chips found — the sentence moved`);
+  if (!out.length) fail(`${PAGES.hero}: no slash-command <code> chips found — the sentence moved`);
   return out;
 }
 
@@ -569,11 +571,11 @@ function gate(pages, sources) {
     // written, so no chaining and no prefix leniency.
     { page: PAGES.loop, rows: parseBeats(pages[PAGES.loop], "dream"), bundles: [sources.memory] },
     {
-      page: PAGES.quickstart,
-      rows: parseCommands(pages[PAGES.quickstart]).map((r) => ({ ...r, match: commandClaim(r.cmd) })),
+      page: PAGES.hero,
+      rows: parseCommands(pages[PAGES.hero]).map((r) => ({ ...r, match: commandClaim(r.cmd) })),
       bundles: [sources.help],
     },
-    { page: PAGES.quickstart, rows: parseSlashCommands(pages[PAGES.quickstart]), bundles: [sources.help] },
+    { page: PAGES.hero, rows: parseSlashCommands(pages[PAGES.hero]), bundles: [sources.help] },
   ];
   const failures = [];
   let checked = 0;
