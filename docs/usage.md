@@ -10,6 +10,7 @@ How to run the `unown` terminal agent, what it does inside a session, and where 
 - [Keybindings](#keybindings)
 - [Sessions](#sessions)
 - [Guardrails](#guardrails)
+- [User-configurable hooks](#user-configurable-hooks)
 - [Memory in sessions](#memory-in-sessions)
 - [Environment variables](#environment-variables)
 
@@ -90,10 +91,17 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown setup --provider openai --api-key sk-... --model gpt-4o` | Non-interactive (scripts/CI). `--force` overwrites an existing config, `--list` prints the presets |
 | `unown models` | List configured models, plus what a local bridge serves |
 | `unown init` | Scaffold `.unown/` project memory (`memory/project.md`, `memory/local.md`, `.gitignore`) |
+| `unown init-agents` | Generate or update the root `AGENTS.md` from repo forensics — language / framework / test-runner / lint / build detection. `--overwrite` writes, `--print` prints, `--json` is machine-readable; the in-session `/init-agents` previews without writing |
 | `unown memory` | Print the effective 4-tier memory stack |
 | `unown doctor` | Run configuration diagnostics — `--json` emits a machine-readable report (`{ok, version, checks[{id,status,detail}], summary}`; non-zero exit on failure — scriptable, CI-able) |
+| `unown doctor-instructions` | Run only the instruction-set audit — AGENTS.md freshness, skills, MCP, hooks, adversary mode, injection scanner, stale config (the same seven sections `unown doctor` folds into its `instruction-set audit` row). `--json` |
+| `unown mcp <sub>` | Manage MCP servers — `add` \| `add-http` \| `add-json` \| `list` \| `get` \| `remove` \| `test` \| `elicitation`. See [Managing MCP servers](#managing-mcp-servers-unown-mcp) |
 | `unown info` | Print the support bundle — version, platform, git state, provider names, opt-outs — redaction-safe for bug reports; `--json` for the same fields |
 | `unown note "text"` | Deliver a session note to the engine by hand |
+| `unown sessions <sub>` | Session export / import / list — `export <id> [--out <file>]` writes one portable JSON (`{version, manifest, messages, todos, notes, skills, files}`), `import <file>` rehydrates under a fresh id, `list` shows sessions with id / createdAt / messageCount / touchedFiles. In-session alias: `/sessions` |
+| `unown recipes <sub>` | Declarative agent instruction bundles (the goose Recipes port) — `list` \| `run <name> [--key value]` \| `create <name>` \| `validate <file>`; discovered from `.unown/recipes/*.md` + `$UNOWN_HOME/recipes/*.md`. In-session alias: `/recipe`. See [recipes](recipes.md) |
+| `unown wiki <sub>` | Auto-generated repo documentation with `file:line` cross-links (the zcode Repo Wiki port) — `generate [--force]` \| `search <q>` \| `list` \| `show <page>`; written to `.unown/wiki/*.md`. In-session alias: `/wiki`. See [repo wiki](repo-wiki.md) |
+| `unown acp` | Run the ACP editor server on stdio (JSON-RPC 2.0, newline-delimited) — point Zed or any ACP client at it: agent program `unown`, args `acp`. See [acp](acp.md) |
 | `unown automations <sub>` | Scheduled recurring agent runs — `list` \| `create` \| `edit` \| `pause` \| `resume` \| `run` \| `history` \| `delete`. Needs the engine running; cron is in your **local** timezone, default mode `read-only`. See [Automations](#automations-unown-automations) |
 | `unown usage` | Token/latency/cost report over the bridge's persistent usage log — `--days N`, `--model M`, `--json`. See [Usage tracking](usage-tracking.md) |
 | `unown update` | Check for a newer release and self-update — fast-forward the checkout to the newest ready tag, then re-run the installer. Flags: `--check` (report only; exit `2` when an update is available), `--check --json`, `--allow-dirty`, `--rollback`, or an explicit version (`unown update 2.1.0` — also pins/rolls back). See [updating](updating.md) |
@@ -116,22 +124,29 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 **Subagent plumbing flags.** `--mode json` (JSON event stream), `--no-session` (don't persist), `--tools a,b,c` (restrict the active toolset), `--append-system-prompt <file>` (append file contents to the system prompt) exist for the `task` tool, which spawns subagents with exactly these flags. You normally never type them yourself — see [subagents](subagents.md).
 
-**`unown doctor`** checks, in order: the unown version and update-check state (from the notifier cache — no network), the agent dir and `models.json`, the memory stack, model-endpoint reachability (and credentials), bridge upstream key / upstream health / model routability when pointed at the bundled bridge, the OS sandbox (bubblewrap), the self-learning engine, plus the SDLC surfaces: **lsp-servers** (which language servers are detected on PATH — a warning here just means the optional diagnostics loop is inactive), **mcp-config** (configured servers, config-validation problems, and the project-config trust state — an untrusted `.unown/mcp.json` warns with the `/mcp trust` action), and **unown-state** (disk usage of the project's `.unown/` runtime state — checkpoints, receipts, reviews; warns past `UNOWN_STATE_WARN_BYTES`, default 512 MiB, with pruning guidance). It exits 1 when chat is broken; warnings only affect learning features (notes queue in the outbox until the engine returns). If it fails, see [troubleshooting](troubleshooting.md).
+**Routing flags.** `--model <id>` (override `PI_MODEL_ID` for this run), `--effort low|medium|high` (`low` → `BRIDGE_QWEN_THINKING=0`, `high` → `=1`, `medium`/unset → the bridge default), `--mcp-servers a,b` (MCP server whitelist — an **empty CSV loads none**), and `--no-agents-md` (skip AGENTS.md / per-tier memory injection) are accepted on any launch — TUI or print — and route that whole session. The `task` tool passes the same flags to per-agent children from `.unown/agents/*.md` frontmatter (`model` / `effort` / `mcpServers` / `injectAgentsMd`), and `UNOWN_SUBAGENT_MODEL` overrides the model for **every** subagent in one line. See [subagents → per-agent routing](subagents.md#per-agent-routing).
+
+**`unown doctor`** checks, in order: the unown version and update-check state (from the notifier cache — no network), the user-state schema version, the agent dir and `models.json`, the memory stack, model-endpoint reachability (and credentials), bridge upstream key / upstream health / model routability when pointed at the bundled bridge, the OS sandbox (platform-aware: bubblewrap on Linux, seatbelt on macOS, the Windows path-jail story), the self-learning engine, and the SDLC surfaces: **lsp-servers** (which language servers are detected on PATH — a warning here just means the optional diagnostics loop is inactive), **mcp-config** (configured servers, config-validation problems, and the project-config trust state — an untrusted `.unown/mcp.json` warns with the `/mcp trust` action), **unown-state** (disk usage of the project's `.unown/` runtime state — checkpoints, receipts, reviews; warns past `UNOWN_STATE_WARN_BYTES`, default 512 MiB, with pruning guidance), **permissions-config** (files, mode, trust gate and learn state of the granular permissions layer), **path-shim** (a foreign `unown` earlier on PATH), and the **instruction-set-audit** — seven sections covering AGENTS.md freshness, skills coverage, MCP health, hooks config validity (`.unown/hooks.json` + `~/.unown/agent/hooks.json`), adversary-mode state, injection-scanner state and stale `.unown/` config; `unown doctor-instructions` runs just that audit. It exits 1 when chat is broken; warnings only affect learning features (notes queue in the outbox until the engine returns). If it fails, see [troubleshooting](troubleshooting.md).
 
 ## Session tools
 
-Every unown session registers six tools on top of pi's built-ins:
+Every unown session registers **thirteen** unown tools on top of pi's built-ins (bash / read / edit / write / grep / find / ls — powershell on Windows):
 
 | Tool | What the agent does with it |
 |---|---|
 | `todo` | Maintains a visible task list (`list` / `add` / `toggle` / `clear`) while working on multi-step tasks. State rides session entries, so branching (`/fork`, `/tree`) keeps the correct list. Inspect it with `/todos`. |
-| `task` | Spawns [subagents](subagents.md) with a fresh context window — `general` (full tools), `explore` (read-only), or your own `.unown/agents/*.md` definitions. Up to 4 tasks per call, executed in parallel. |
+| `task` | Spawns [subagents](subagents.md) with a fresh context window — `general` (full tools), `explore` (read-only), the cheap `background-explore` lane, or your own `.unown/agents/*.md` definitions (with per-agent `model`/`effort`/`mcpServers`/`injectAgentsMd` routing). Up to 4 tasks per call, executed in parallel. |
 | `note` | Records a durable learning note mid-session — delivered to the engine immediately (or queued in the outbox if it is down). AutoDream consolidates notes into project memory. Also `/note <text>`. |
 | `fetch_url` | Read-only HTTP GET. Now delegates to the hardened webfetch pipeline (below): private-address SSRF guard, robots-aware, extraction fallback chain; output is capped at 12,000 chars by default (`max_chars` clamps to 500–60,000). |
 | `web_search` | Searches the live web — ranked results (title, URL, snippet) with provider auto-selection: any configured API key (Tavily/Brave/Serper/Exa/Perplexity/Jina/Zhipu/DashScope/Kagi/SerpApi/Firecrawl) is used first, then the keyless chain (SearXNG if configured → DuckDuckGo → Tavily keyless → You.com → StackExchange → Wikipedia → HN → npm registry → GitHub repos). `allowed_domains`/`blocked_domains` filter results (Claude Code parity). `UNOWN_WEB_SEARCH=0` disables. |
 | `webfetch` | Fetches an http(s) URL as text — same hardening as `fetch_url` (SSRF guard, robots.txt, 4 MB body cap) plus an extraction fallback chain for sites that block plain HTTP clients: direct fetch → Tavily extract (keyless-capable) → Jina reader (keyed) → Firecrawl (keyed). Default cap 20,000 chars (`max_chars` clamps 500–200,000); `raw: true` skips HTML stripping. `UNOWN_WEBFETCH=0` disables. |
 | `lsp` | Language-server code intelligence: `diagnostics` (per file or `all`), `hover`, `definition`, `references`, `symbols`, `status`. Auto-detects servers on PATH (typescript-language-server, pyright/pylsp, gopls, rust-analyzer, clangd, bash-language-server, ruby-lsp, intelephense); configure or override with `.unown/lsp.json` / `~/.unown/agent/lsp.json`. After every `write`/`edit`, fresh diagnostics for that file are appended to the tool result — type errors get fed back to the agent instead of compounding (cold start never blocks; `UNOWN_LSP=0` disables). Also `/lsp`. |
-| `automation_list` | List this project's scheduled [automations](#automations-unown-automations) — id, schedule, next run, last outcome. The mutation tools (`automation_create` / `automation_update` / `automation_delete`) are registered only in interactive sessions: they are hidden inside subagents and inside automation runs themselves, so a scheduled run cannot schedule more runs. |
+| `get_context_remaining` | Reports the live context budget — `{tokensUsed, maxTokens, remainingTokens, remainingPercent}` from pi's `getContextUsage()` seam, falling back to a chars/4 estimate of the message history; `maxTokens` resolves from `PI_MAX_TOKENS` → the session's context window → a 200,000 default. |
+| `view_image` | Loads an image file (PNG / JPEG / GIF / WebP, ≤ 4 MB, magic-byte validated) from the project dir or the system tmp dir as a vision-format image block — jail-checked like `write`/`edit`; missing/non-image/too-big/jail-escape are typed errors. |
+| `automation_list` | List this project's scheduled [automations](#automations-unown-automations) — id, schedule, next run, last outcome. Registered in every session. |
+| `automation_create` | Create a scheduled automation (cron in the local timezone, or a one-shot `--delay-minutes`) — default mode `read-only`. Registered only in interactive sessions: hidden inside subagents and inside automation runs themselves, so a scheduled run cannot schedule more runs. |
+| `automation_update` | Edit an automation (title / prompt / cron / mode / max-runs) or pause/resume it — interactive sessions only. |
+| `automation_delete` | Delete an automation and its non-running history — interactive sessions only. |
 
 When you quit a session in which something happened, a session note (prompt count, tool calls, final outcome) is delivered to the engine — or written to `~/.unown/notes/outbox/` if the engine is down, and synced later. That note is the raw material AutoDream consolidates into `.unown/memory/project.md`.
 
@@ -274,7 +289,7 @@ Limits (zcode's, transliterated): 20 automations total, 2 concurrent runs, a 30-
 
 ## Slash commands
 
-unown adds fifteen commands of its own:
+unown adds twenty-five commands of its own:
 
 | Command | What it does |
 |---|---|
@@ -290,10 +305,19 @@ unown adds fifteen commands of its own:
 | `/restore <id\|label>` | Restore a checkpoint |
 | `/checkpoints` | List checkpoints + blob-store size |
 | `/receipts [n]` | Show the session receipts audit ledger |
-| `/mcp` | Show MCP server status and (re)connect configured servers |
+| `/mcp` | Show MCP server status, (re)connect servers, `/mcp trust` approves a project config, `/mcp elicitation [server]` shows the elicitation policy |
+| `/permissions` | Show the granular-permissions state — mode, project-config trust, rule table; `/permissions trust` approves a project `.unown/permissions.json`. See [permissions](permissions.md) |
+| `/hooks` | Show user-configurable hooks status — per-event handler counts, config sources, trust state; `/hooks trust` approves a project `.unown/hooks.json`. See [User-configurable hooks](#user-configurable-hooks) |
 | `/goal [objective]` | Set/show/pause/resume/clear a durable, evidence-verified goal |
 | `/commit [message]`| Stage and commit all project-dir changes (`git add -A .` + commit — never pushes); without a message one is generated from the session's work. See [Git-native commits](#git-native-commits-commit) |
-| `/review [base]` | Parallel-subagent code review: P0–P3 findings + SHIP verdict |
+| `/review [base]` | Parallel-subagent code review: P0–P3 findings + SHIP verdict. Also accepts a PR URL/number or a commit range; `--comment` posts the verdict as a PR comment (needs `gh`) |
+| `/init-agents` | Preview the generated `AGENTS.md` from repo forensics (no write — `unown init-agents --print` for the full text) |
+| `/doctor-instructions` | Run the instruction-set audit inline (AGENTS.md freshness, skills, MCP, hooks, adversary, injection scanner) |
+| `/blame <file>` | Show which receipts touched a file (write/edit/bash); no argument = summary; `--session <id>` `--since <ts>` `--json` filter |
+| `/sessions <sub>` | `export` \| `import` \| `list` — the in-session alias for `unown sessions`; `/sessions export` writes `.unown/sessions/export-<id>.json` |
+| `/recipe <name> [args]` | Run a declarative agent instruction bundle: `list`, `show <name>`, or `<name> --key value` with parameters interpolated into the body. See [recipes](recipes.md) |
+| `/wiki <sub>` | Auto-generated repo docs with `file:line` cross-links: `generate [--force]` (parallel subagents per module) \| `search <q>` \| `list` \| `show <page>`. See [repo wiki](repo-wiki.md) |
+| `/edit-resend <n> <msg>` | Edit the Nth user message: revert files to the pre-message checkpoint (all-or-nothing; aborts on out-of-band edits), then resend. `/edit-resend list` shows the numbered messages |
 
 pi ships 23 built-in slash commands. The ones worth learning first:
 
@@ -386,6 +410,13 @@ Sessions are append-only trees stored as JSONL files under `~/.unown/agent/sessi
 
 `/name`, `/session`, `/export`, `/import`, and `/share` manage and move sessions around.
 
+Two more session tools ride the same machinery:
+
+- **`/edit-resend <n> <new-message>`** rewrites history in place: it reverts every file to the checkpoint sealed just before the Nth user message (SHA-256-verified — any out-of-band edit aborts the whole operation), appends the edited message as the new leaf, and re-runs from there. The revert is all-or-nothing: a mid-way failure restores what it already rewrote. `/edit-resend list` prints the numbered user messages.
+- **`unown sessions export|import|list`** (in-session alias `/sessions`) moves a session between machines — the export is one self-describing JSON (`{version, manifest, messages, todos, notes, skills, files}`), and `import` rehydrates it under a fresh session id.
+
+**Context budget.** `/compact` (pi's own) compacts manually. Engine sandbox runs add an auto-compact guard on top — after every turn it checks the live context usage against a proportional curve: warn at 70% of the window, auto-compact at 85%, hard-block the next request at 95% (`UNOWN_AUTO_COMPACT_THRESHOLD` / `UNOWN_AUTO_COMPACT_HARD_LIMIT` tune the last two; see [configuration](configuration.md#terminal-agent-unown-cli)). The `get_context_remaining` tool reports the same numbers to the agent.
+
 ## Guardrails
 
 Terminal sessions are guarded by PreToolUse / PostToolUse hooks tuned for real work — normal operations (network access, `git push`, package installs) are allowed. What is blocked, before execution:
@@ -406,6 +437,19 @@ Additionally:
 - **Syntax gate** — when broken JavaScript/TypeScript is written or edited, the transpiler error is appended to the tool result and flagged as an error, so the agent fixes it instead of compounding it.
 - **`UNOWN_STRICT_HOOKS=1`** — restores sandbox-grade strictness: additionally blocks `sudo`, `curl`/`wget`/`nc`/`netcat` to external hosts, and `git push`, plus the engine's full sandbox deny-list. Set it in the environment before starting unown.
 - **Visibility** — run `unown -v` to print every hook decision (`PreToolUse DENY bash: ...`) to stderr.
+
+## User-configurable hooks
+
+On top of the built-in guardrails, you can attach your own handlers to thirteen session events — `SessionStart`, `UserPromptSubmit`, `PreToolUse` (with a `matcher`; `deny`/`stop` blocks, `mutate` rewrites the tool input), `PostToolUse` (feedback/warning/error outputs surface to the model), `Stop`, `SubagentStop`, `PreModelRequest`, `PostModelRequest`, `PreCompact`, `PostCompact`, `SubagentStart`, `TaskCompleted`, `PermissionRequest` — from two files:
+
+| File | Scope | Trust |
+|---|---|---|
+| `~/.unown/agent/hooks.json` | user | always trusted |
+| `.unown/hooks.json` | project | **trust-gated, refuse-first** — an unapproved file contributes nothing until you run `/hooks trust` (or set `UNOWN_TRUST_PROJECT_CONFIG=1` for CI/headless) |
+
+When both exist, the project config wins per event name. Handlers come in five types — `command` (shell command; exit-code protocol: 0 + stdout → allow/feedback, 2 + stderr → deny, other non-zero → warn), `http` (POST the event JSON to a URL), `mcp` (call a tool on a configured MCP server), `prompt` (LLM call with a templated prompt) and `agent` (same, fresh subagent context) — with `timeoutMs`, `async` and `failClosed` fields. They run in interactive sessions and engine runs alike, always **after** the built-in policies (hooks augment, never replace them) and fail-open (a hook error never breaks a turn).
+
+`/hooks` prints the status — per-event handler counts, the config sources, and the untrusted warning when a project file is withheld; `/hooks trust` approves it and reloads live. The full event table, handler contract and composition order live in [BEHAVIOR: user-configurable hooks](BEHAVIOR.md#user-configurable-hooks-milestone-1--2026-10-19); the trust-gate mechanics are shared with `.unown/mcp.json` (see [MCP servers](#mcp-servers) above and [configuration](configuration.md)).
 
 ## Memory in sessions
 
@@ -437,6 +481,7 @@ CLI-only variables. The engine, bridge, and dashboard have their own — see [co
 | `UNOWN_MCP_TIMEOUT_MS` | `120000` | Per-request timeout for MCP JSON-RPC calls |
 | `UNOWN_MCP_CONNECT_TIMEOUT_MS` | `20000` | Timeout for the MCP initialize handshake |
 | `UNOWN_AUTO_COMMIT` | unset | **Opt-in, default OFF.** `1` (also `true`) = commit pending project-dir changes on session end as `unown(auto): session end snapshot <date>` (never pushes). See [Git-native commits](#git-native-commits-commit) |
+| `UNOWN_SUBAGENT_MODEL` | unset | Override `PI_MODEL_ID` for **every** subagent the `task` tool spawns (a per-agent `model` still wins). See [subagents → per-agent routing](subagents.md#per-agent-routing) |
 | `PI_BRIDGE_URL` | `http://127.0.0.1:3031` | LLM endpoint written into `~/.unown/agent/models.json` on first run |
 | `PI_MODEL_ID` / `PI_PROVIDER` | `kimi-k2.5` / `zai-bridge` | Model and provider written on first run; see [providers](providers.md) |
 

@@ -25,7 +25,7 @@ unown doctor
 
 The exit code (1 on any ✗) makes it scriptable — `unown doctor && unown -p "ship it"` refuses to start a session on a known-broken chat path.
 
-It checks the agent dir and `models.json`, the memory stack, the model endpoint (with a live probe), bridge specifics when the endpoint is the bundled bridge (upstream key, upstream health, default model routable), the OS sandbox, engine health, and the session surfaces: which language servers are on PATH, MCP config health (including the project trust gate), and the size of the project's `.unown/` runtime state. Every line is one of:
+It checks the agent dir and `models.json`, the memory stack, the model endpoint (with a live probe), bridge specifics when the endpoint is the bundled bridge (upstream key, upstream health, default model routable), the OS sandbox, engine health, and the session surfaces: which language servers are on PATH, MCP config health (including the project trust gate), the size of the project's `.unown/` runtime state, the permissions layer's configs, and the instruction-set audit (AGENTS.md freshness, skills, hooks schema, adversary mode, injection scanner). Every line is one of:
 
 | Mark | Meaning | Exit code |
 |------|---------|-----------|
@@ -51,6 +51,8 @@ Item by item, this is what doctor looks at:
 | `LSP servers` | ⚠ | which language servers are detected on PATH — a warning just means the optional diagnostics loop is inactive (install a server or configure `.unown/lsp.json`) |
 | `MCP config` | ⚠ | configured servers, config-validation problems, and the project-config trust state — an untrusted `.unown/mcp.json` warns with the `/mcp trust` action |
 | `unown state` | ⚠ | disk usage of the project's `.unown/` runtime state (checkpoints, receipts, reviews); warns past `UNOWN_STATE_WARN_BYTES` (default 512 MiB) with pruning guidance |
+| `permissions config` | ⚠ | the granular permissions layer — config files found / valid / trusted, rule counts, mode and learn state; a missing config is the documented default (hard-coded guardrails alone), an untrusted project `.unown/permissions.json` warns with the `/permissions trust` action ([permissions](permissions.md)) |
+| `instruction-set audit` | ⚠ | the human-authored artifacts that steer the agent — AGENTS.md freshness, skill coverage, MCP orphan servers, hooks config schema, adversary mode, injection scanner, stale config; the detail line says `clean` or points at `unown doctor-instructions` for the full seven-section report |
 
 Related behavior worth knowing: before every session the CLI pre-flights the model endpoint. In TUI mode a failure prints a warning and continues (pi's retries cover the window where you start the stack in another terminal); in print mode (`unown -p`) it exits non-zero with the same hint. `UNOWN_NO_PREFLIGHT=1` skips the check entirely.
 

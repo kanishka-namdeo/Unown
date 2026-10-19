@@ -7,15 +7,16 @@ Fresh-context unown agents the model can spawn mid-session with the `task` tool 
 - [Worktree isolation](#worktree-isolation)
 - [Built-in agents](#built-in-agents)
 - [Authoring custom agents](#authoring-custom-agents)
+- [Per-agent routing](#per-agent-routing)
 - [How the model invokes them](#how-the-model-invokes-them)
 - [What subagents cannot do](#what-subagents-cannot-do)
 - [When to use subagents](#when-to-use-subagents)
 
-Related pages: [usage](usage.md) · [skills](skills.md) · [memory](memory.md)
+Related pages: [usage](usage.md) · [skills](skills.md) · [memory](memory.md) · [recipes](recipes.md)
 
 ## The task tool
 
-The `task` tool (registered in every session that is not itself a subagent) launches a **unown subagent with a fresh context window** to work on one self-contained task. Under the hood each subagent is a full `unown` subprocess — `unown --mode json -p --no-session` — with the agent definition's toolset and system prompt attached via `--tools` and `--append-system-prompt`.
+The `task` tool (registered in every session that is not itself a subagent) launches a **unown subagent with a fresh context window** to work on one self-contained task. Under the hood each subagent is a full `unown` subprocess — `unown --mode json -p --no-session` — with the agent definition's toolset and system prompt attached via `--tools` and `--append-system-prompt`, and its routing overrides (see [Per-agent routing](#per-agent-routing)) via `--model`, `--effort`, `--mcp-servers` and `--no-agents-md`.
 
 Because it is a real unown process, a subagent gets everything a terminal session gets:
 
@@ -52,6 +53,7 @@ The contract: isolation is opt-in and **fail-closed** — outside a git reposito
 |---|---|---|
 | `general` | full toolset (read/write/edit/bash + todo/note/web_search/webfetch), same tiered memory | Self-contained implementation or investigation tasks that deserve a fresh context |
 | `explore` | `read`, `grep`, `find`, `ls` — read-only | Mapping where things live in the repo and returning file:line evidence, whenever broad code search would pollute the parent context |
+| `background-explore` | `read`, `grep`, `find`, `ls` — read-only | Low-cost background sweeps: same evidence-first shape as `explore`, but routed to a cheaper model (`qwen3.7-plus`) at `effort: low`, loading **no MCP servers** and skipping AGENTS.md/memory injection — the minimal-overhead lane for parallel fact-finding |
 
 `general` is the default when no agent is named.
 
@@ -71,8 +73,12 @@ Load order is built-in → global → project; a definition with the same `name`
 | `name` | yes | The agent name the `task` tool and `/agents` display |
 | `description` | yes | Shown to the model when it decides whom to spawn — write it as a retrieval trigger ("Use for ...") |
 | `tools` | no | Comma-separated list restricting the subagent's toolset. Omit for the full set. Valid names: `read`, `bash`, `powershell`, `edit`, `write`, `grep`, `find`, `ls`, plus unown's `todo`, `note`, `fetch_url`, `web_search`, `webfetch` |
+| `model` | no | Model id overriding `PI_MODEL_ID` for this agent's runs only (see [Per-agent routing](#per-agent-routing)) |
+| `effort` | no | `low` / `medium` / `high` — reasoning effort for this agent's runs (see [Per-agent routing](#per-agent-routing)) |
+| `mcpServers` | no | Whitelist of MCP server names this agent may load; an empty list means **load none**. Omit to load all (the default). Also accepted in snake_case (`mcp_servers`) |
+| `injectAgentsMd` | no | `false` skips AGENTS.md / per-tier memory injection into the subagent's system prompt (lighter context, lower cost). Default `true`. Also accepted in snake_case (`inject_agents_md`) |
 
-The Markdown **body (everything after the closing `---`) becomes the subagent's system prompt**. Files without valid `name` and `description` frontmatter are skipped silently. Other frontmatter fields are ignored. Run `/agents` in a session to list everything discovered, with source and toolset.
+The Markdown **body (everything after the closing `---`) becomes the subagent's system prompt**. Files without valid `name` and `description` frontmatter are skipped silently. Invalid values for the routing fields are dropped, never thrown. Other frontmatter fields are ignored. Run `/agents` in a session to list everything discovered, with source and toolset.
 
 **A complete example** — `<project>/.unown/agents/test-triage.md`:
 
@@ -111,6 +117,24 @@ Report format:
 You are read-only. Do not edit files, do not skip tests, do not re-run with
 modified flags to make the suite pass.
 ```
+
+## Per-agent routing
+
+Each agent definition can pin its own model, reasoning effort, MCP surface and context budget. The `task` tool translates the frontmatter into flags on the spawned subprocess (`buildSubagentArgs` in `subagent-routing.ts`), and the child applies them to its own run before the session starts:
+
+| Field | Child flag | Effect in the spawned run |
+|---|---|---|
+| `model` | `--model <id>` | sets `PI_MODEL_ID` — the child's `models.json` and bridge requests use that model |
+| `effort: low` | `--effort low` | sets `BRIDGE_QWEN_THINKING=0` (thinking off) — short, cheap replies |
+| `effort: high` | `--effort high` | sets `BRIDGE_QWEN_THINKING=1` (thinking on) |
+| `effort: medium` | `--effort medium` | leaves the bridge's default alone |
+| `mcpServers: [a, b]` | `--mcp-servers a,b` | sets `UNOWN_MCP_SERVERS` — the MCP client loads only the whitelisted servers |
+| `mcpServers: []` | `--mcp-servers ""` | **loads no MCP servers** (an empty whitelist is meaningful, not a no-op) |
+| `injectAgentsMd: false` | `--no-agents-md` | sets `UNOWN_NO_AGENTS_MD=1` — AGENTS.md and the per-tier memory files are not injected |
+
+Resolution order for the model: the agent's `model` field wins, then the `UNOWN_SUBAGENT_MODEL` env var (a global override — route *every* subagent to a local model with one line), then the default the child would otherwise resolve from `PI_MODEL_ID` / `models.json`. An agent that sets none of the four fields spawns exactly as before — routing is opt-in per definition, and `background-explore` is the shipped example of the full shape (cheap model + low effort + no MCP + no memory injection).
+
+The same four flags are accepted on any `unown` launch (TUI or print mode), where they route **that whole session** the same way — `unown --model kimi-k2.5 --effort low -p "summarize the diff"`, or `--mcp-servers github` to start a session with only one MCP server live. See [usage](usage.md) and [configuration](configuration.md).
 
 ## How the model invokes them
 
@@ -152,6 +176,7 @@ Parallel results are separated by `---` and returned in the order they were requ
 
 - **Fresh context** — a focused investigation (trace one bug, audit one module) whose intermediate tool output would otherwise flood and eventually compact the parent session.
 - **Parallel exploration** — several independent questions about the codebase answered at once via `tasks: [...]`.
+- **Cheap background fact-finding** — `background-explore` runs the same evidence-first sweep as `explore` on a cheaper model at low effort, without MCP servers or memory injection, when the parent just needs facts cited and the question does not deserve a full unown context.
 - **Isolated read-only sweeps** — `explore` maps the repo and returns cited evidence with zero risk of touching anything.
 - **Self-contained implementation** — hand `general` a well-specified task and review its report instead of watching twenty tool calls scroll by.
 

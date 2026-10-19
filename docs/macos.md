@@ -15,17 +15,24 @@ Related pages: [quickstart](quickstart.md) · [windows guide](windows.md) · [tr
 - git (ships with the Xcode Command Line Tools — `xcode-select --install` — or brew).
 - An API key for any OpenAI-compatible provider — same as everywhere ([quickstart §3](quickstart.md#3-connect-a-model)).
 
-Then the standard install: `git clone … && cd Unown && bun run agent:install` (PATH shim goes to `~/.local/bin/unown`; if that dir wasn't on your PATH, the installer prints the exact profile line to add).
+Then the standard install — the one-line installer (checks git, installs bun when missing, clones, installs; [install](install.md)):
+
+```bash
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh
+```
+
+…or the manual route: `git clone … && cd Unown && bun run agent:install`. The PATH shim goes to `~/.local/bin/unown`; if that dir wasn't on your PATH, the installer prints the exact profile line to add.
 
 ## The OS sandbox on macOS
 
-The engine's OS-level sandbox backend for macOS is **seatbelt (`sandbox-exec`)**, landing in parallel with this documentation (the M3 branch). Once merged, engine sandbox runs on macOS get a **bwrap-equivalent seatbelt profile**:
+Shipped since v2.0.0: the OS-level sandbox backend on macOS is **seatbelt (`sandbox-exec`)** with a **bwrap-equivalent profile** — the same defense-in-depth under the in-process path jail that the Linux leg gets from bubblewrap. Every engine run (verify scripts *and* the agent's own bash commands) re-execs under `sandbox-exec -f <profile> -- <command>`, with a profile generated deterministically per workspace (`${TMPDIR:-/tmp}/unown-seatbelt-<hash>.sb`, rewritten when the workspace or the net flag changes):
 
-- filesystem **reads allowed**, writes confined to the workspace + system temp,
+- filesystem **reads stay allowed** — one documented asymmetry: bwrap's `/home` tmpfs *hides* your home directory from the sandbox, seatbelt cannot hide it, only deny writes, so the host `$HOME` remains readable (never writable),
+- **writes confined** to the workspace (at its real path, no path translation), `/private/tmp`, `/var/folders` and `/dev/null`, with `/System` belt-and-braces denied,
 - **network denied by default** (`UNOWN_SANDBOX_NET=1` to share it),
-- the same guarantees the Linux leg gets from bubblewrap, expressed in seatbelt.
+- everything else `(deny default)` — execution and fork allowed, mach-lookup allowed (darwin IPC), signals only to self.
 
-Until that merge, macOS behaves exactly like today: engine runs use the in-process path jail and `unown doctor` reports `OS sandbox (macOS)` ⚠ — chat and learning are unaffected either way.
+`sandbox-exec` ships at `/usr/bin` on every macOS — deprecated by Apple but present, and the same mechanism shipping agents use today — so there is nothing to install. `unown doctor` reports the row as `OS sandbox (seatbelt)` with `fs isolation active (seatbelt profile; network denied|shared)`; knobs: `UNOWN_SANDBOX_EXEC` (explicit binary path), `UNOWN_OS_SANDBOX=0` (kill-switch, falls back to the path jail), `UNOWN_SANDBOX_NET=1`. The cross-platform picture is in the README's Security model.
 
 Two things that are *not* options on macOS:
 

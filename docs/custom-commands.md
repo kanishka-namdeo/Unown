@@ -11,8 +11,8 @@
 - [Security posture](#security-posture)
 - [Ideas](#ideas)
 
-Unown ships fifteen built-in slash commands (`/plan`, `/todos`, `/undo`, …),
-pi ships its own twenty-three, and every discovered
+Unown ships twenty-five built-in slash commands (`/plan`, `/todos`, `/undo`, …,
+plus the newest, `/hooks`), pi ships its own twenty-three, and every discovered
 [skill](skills.md) registers as `/skill:<name>`. This page is about the
 fourth kind: **your own commands** — reusable prompts you keep next to the
 project (or in your user dir) and invoke by name, Claude Code
@@ -133,3 +133,4 @@ cloned repo cannot make you paste text. This matches the Claude Code
 - [skills.md](skills.md) — the other user-extensible surface (SKILL.md format)
 - [permissions.md](permissions.md) — the trust-gated config layers, and why commands deliberately are not
 - [subagents.md](subagents.md) — `/agents` definitions, the other `.unown/` markdown format
+- [recipes.md](recipes.md) — declarative task bundles, the frontmatter-driven `.unown/recipes/` format

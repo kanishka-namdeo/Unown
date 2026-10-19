@@ -1,12 +1,13 @@
 # Configuration reference
 
-Every knob unown has: the one variable you actually must set, the full environment reference (kept in sync with [`.env.example`](../.env.example)), where state lives on disk, and which files are safe to hand-edit.
+Every knob unown has: the one variable you actually must set, the full environment reference (kept in sync with [`.env.example`](../.env.example)), where state lives on disk, which files are safe to hand-edit — and the gate files that switch whole behaviors on (adversary mode, injection scanner, user hooks).
 
 - [The one required thing](#the-one-required-thing)
 - [Environment variables](#environment-variables)
 - [How `.env` gets loaded](#how-env-gets-loaded)
 - [State and files](#state-and-files)
 - [Agent config files](#agent-config-files-modelsjson--authjson--settingsjson)
+- [Behavior gate files](#behavior-gate-files)
 - [Common setups](#common-setups)
 - [Production notes](#production-notes)
 
@@ -88,6 +89,7 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_ENGINE_HOST` | `127.0.0.1` | What network interface the engine server binds. The engine API is unauthenticated, so it stays on loopback by default; set `0.0.0.0` deliberately (e.g. a dedicated LAN box running the dashboard from another machine) — you are exposing note ingestion, memory rollback and sandboxed agent runs to everyone who can reach that interface. |
 | `UNOWN_STRICT_HOOKS` | unset | `1` = sandbox-grade hooks in terminal sessions (blocks network, `git push`, `sudo`); the default allows normal developer operations. |
 | `UNOWN_INJECTION_SHIELD` | `1` | `0` disables the live tool-result injection shield — the deterministic scanner that annotates suspect `bash`/`powershell` stdout, `webfetch` pages, `web_search` snippets and MCP tool results with a `[unown-injection-shield]` banner (see [BEHAVIOR: injection shield](BEHAVIOR.md#injection-shield)). Fail-open: a scanner error never breaks a tool call. |
+| `UNOWN_INJECTION_SCANNER` | `1` | `0` disables the 106-pattern prompt-injection **scanner** — the blocking PreToolUse guard that runs in engine sandbox runs over `bash`/`powershell` commands and `write`/`edit` content (a different layer from the annotate-only shield above; see [BEHAVIOR: prompt-injection scanner](BEHAVIOR.md#prompt-injection-scanner-milestone-15--2026-10-19)). |
 | `UNOWN_PERMISSIONS` | `1` | `0` disables the granular permissions layer entirely (the hard-coded deny-list + path jail are unaffected — they run first regardless). See [permissions](permissions.md). |
 | `UNOWN_PERMISSIONS_LEARN` | unset | `1` persists learned allow rules: when a bash command passes with no matching rule, an allow rule for its leading command is appended to the **user** config (idempotent, capped at 1000 learned rules). |
 | `UNOWN_AUTO_COMMIT` | unset | `1` snapshots pending project-dir work as a `unown(auto): session end snapshot` commit when a session truly ends (opt-in; default OFF — `/commit` is the interactive form). See [usage: git-native commits](usage.md#git-native-commits-commit). |
@@ -98,7 +100,8 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_LSP_WAIT_MS` | `10000` | Max wait for fresh language-server diagnostics after a `write`/`edit` before the tool result continues without them. |
 | `UNOWN_LSP_TIMEOUT_MS` | `15000` | Per-request timeout for LSP JSON-RPC calls (initialize, hover, definition, ...). |
 | `UNOWN_LSP_MAX_MSG_BYTES` | `33554432` | Cap on a single LSP message's `Content-Length`; a violation recycles the connection instead of buffering it. |
-| `UNOWN_LSP_CRASH_COOLDOWN_MS` | `30000` | After a language-server crash, how long before a restart is attempted (max 3 restarts per server per session). |
+| `UNOWN_LSP_CRASH_COOLDOWN_MS` | `30000` | After a language-server crash, how long before a restart is attempted (restarts capped by `UNOWN_LSP_MAX_RESTARTS` per server per session). |
+| `UNOWN_LSP_MAX_RESTARTS` | `3` | Auto-restart budget per crashed language server per session (integer 0–100; junk values fall back to 3). |
 | `UNOWN_MCP` | `1` | `0` disables the MCP client surface (no servers connect, no `mcp__*` tools register). |
 | `UNOWN_MCP_TIMEOUT_MS` | `120000` | Per-request timeout for MCP JSON-RPC calls (tools/call, tools/list). |
 | `UNOWN_MCP_CONNECT_TIMEOUT_MS` | `20000` | Timeout for the MCP initialize handshake. |
@@ -106,9 +109,12 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_MCP_PING_INTERVAL_MS` | `60000` | MCP keepalive ping interval (a failed ping marks the server errored and starts the reconnect cooldown). |
 | `UNOWN_CHECKPOINT_MAX_BLOB_BYTES` | `67108864` | Files larger than this are not checkpointed (the turn still reverts its other files; the ledger notes the exception). |
 | `UNOWN_WORKTREE_ISOLATION` | `1` | `0`/`false`/`no` disables the task tool's worktree-isolation lane (`worktree_isolation: true` spawns are rejected with a typed failure instead of running in the shared tree; see [subagents](subagents.md#worktree-isolation)). |
+| `UNOWN_SUBAGENT_MODEL` | unset | Override `PI_MODEL_ID` for **every** subagent the `task` tool spawns — route all subagents to a cheaper/local model in one line. A per-agent `model` field still wins; the `--model` flag sets the model for one whole session. See [subagents → per-agent routing](subagents.md#per-agent-routing). |
+| `UNOWN_MCP_SERVERS` | unset | Comma-separated whitelist of MCP server names to load — empty means **load none**, unset means load all. Set by the `--mcp-servers` flag before the session starts (both for whole-session routing and per-subagent frontmatter); the MCP extension filters the merged user+project config accordingly. |
+| `UNOWN_NO_AGENTS_MD` | unset | `1` skips AGENTS.md / per-tier memory injection into the session's system prompt (set by the `--no-agents-md` flag; your own `AGENTS.md`/`CLAUDE.md` chain still appends). |
 | `UNOWN_AUTOMATION` | unset | Set to `1` by the engine's scheduler on every [automation](usage.md#automations-unown-automations) run: hides the automation mutation tools inside the unattended session (an automation cannot schedule automations; subagents inherit the flag). You normally never set it by hand. |
 | `UNOWN_LSP_MAX_SYNC_BYTES` | `4194304` | Files larger than this skip LSP document sync (didOpen/didChange) — the server cannot help on huge files; logged once per file. |
-| `UNOWN_TRUST_PROJECT_CONFIG` | unset | `1`/`true` bypasses the project-config trust gate (`.unown/mcp.json` / `.unown/lsp.json` load without approval — CI/headless). Any other value keeps the gate on; approve interactively with `/mcp trust`. |
+| `UNOWN_TRUST_PROJECT_CONFIG` | unset | `1`/`true` bypasses the project-config trust gate — `.unown/mcp.json`, `.unown/lsp.json`, `.unown/permissions.json` and `.unown/hooks.json` load without approval (CI/headless). Any other value keeps the gate on; approve interactively with `/mcp trust`, `/lsp trust`, `/permissions trust` or `/hooks trust`. |
 | `UNOWN_STATE_WARN_BYTES` | `536870912` | `unown doctor`'s unown-state check warns when the project's `.unown/` runtime state (checkpoints + receipts + reviews) exceeds this. |
 | `UNOWN_WEB_SEARCH` | `1` | `0` disables the `web_search` tool. |
 | `UNOWN_WEBFETCH` | `1` | `0` disables the `webfetch` tool. |
@@ -131,6 +137,8 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_DISABLE_UPDATES` | unset | `1` blocks **all** update paths (`unown update`, `--check`, background check) — the org/CI kill switch. |
 | `PI_DREAM_GATE` | on | Dream canary gate: re-run the last-passing benchmark task under freshly dreamed project memory and roll the dream back if it fails. `0` disables. Read by the engine. |
 | `UNOWN_MAX_MINTED_TASKS` | `8` | Cap on ACTIVE minted tasks before the engine's task-mint job skips authoring new curriculum variants (minting resumes as tasks are archived/graduated). Read by the engine. |
+| `UNOWN_AUTO_COMPACT_THRESHOLD` | `85` | Engine-run auto-compact: percent of the context window at which compaction auto-triggers (0–100; a warn receipt starts at a fixed 70%). Read by the engine's runner (`auto-compact.ts`). |
+| `UNOWN_AUTO_COMPACT_HARD_LIMIT` | `95` | Engine-run auto-compact: percent at which the next model request is hard-blocked and the session aborted (0–100) — the session must be compacted or restarted. Read by the engine's runner. |
 
 ### OS-level sandbox (bubblewrap)
 
@@ -139,6 +147,7 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_OS_SANDBOX` | `1` | Runs every engine sandbox command (verify scripts + the agent's bash calls) under bubblewrap: read-only root filesystem, private `/home` `/tmp` `/run`, network namespace killed. `0` disables OS isolation (falls back to the in-process path jail). |
 | `UNOWN_SANDBOX_NET` | `0` | `1` keeps the network namespace shared for sandboxed commands — not recommended: sandboxed code could then reach the LLM bridge and the LAN. |
 | `UNOWN_BWRAP` | vendored binary, then `PATH` | Explicit path to a bwrap binary. Defaults to the vendored copy at `pi-repo/packages/self-learning/native/bin/bwrap`, then `/usr/bin/bwrap`, `/usr/local/bin/bwrap`. |
+| `UNOWN_SANDBOX_EXEC` | `/usr/bin/sandbox-exec` | macOS only: explicit path to the seatbelt `sandbox-exec` binary (darwin is gated explicitly — other hosts never resolve a seatbelt path and fall back to the in-process path jail). |
 
 Quick sanity check of the chat path once the stack is up:
 
@@ -181,6 +190,9 @@ Where everything lives — all of it deletable, none of it required to pre-exist
     skills/                      starter skills + your global skills
     agents/                      your global subagent definitions (*.md)
     commands/                    your global custom slash commands (*.md)
+    mcp.json / permissions.json / hooks.json   your global MCP servers, permission rules, hook handlers
+    keybindings.json             keybinding overrides (/hotkeys shows the defaults)
+  recipes/                       your global recipes (*.md) — every project
   memory/
     policy.md                    tier 0 — optional, you author it
     user.md                      tier 2 — global preferences
@@ -191,6 +203,10 @@ Where everything lives — all of it deletable, none of it required to pre-exist
     outbox/                      notes queued while the engine was down
     done/                        ingested notes (archive)
 
+~/.config/unown/                 behavior gate files (see [Behavior gate files](#behavior-gate-files))
+  adversary.md                   adversary-mode gate — existence activates the LLM reviewer
+  injection-scanner.json         scanner risk levels + pattern ID filters
+
 <project>/.unown/
   memory/project.md              tier 1 — commit this one
   memory/local.md                tier 3 — gitignored by the scaffold
@@ -198,6 +214,10 @@ Where everything lives — all of it deletable, none of it required to pre-exist
   skills/<name>/SKILL.md         AutoDream-minted + your project skills
   agents/*.md                    project-level subagent definitions
   commands/*.md                  project custom slash commands — commit these
+  recipes/*.md                   project recipes — project wins on name collision
+  mcp.json / lsp.json / permissions.json / hooks.json   project-scoped configs — trust-gated, refuse-first
+  wiki/                          generated repo wiki (unown wiki generate)
+  sessions/                      session exports (unown sessions export)
 
 unown repo (runtime state, gitignored)
   data/self-learning/            engine data: sandboxes, sessions, memory (PI_SELFLEARNING_DATA)
@@ -220,6 +240,18 @@ What is safe to delete and what that costs is covered in [troubleshooting](troub
 The first run of `unown` bootstraps the same trio with bridge defaults (`zai-bridge` / `kimi-k2.5` / `http://127.0.0.1:3031/v1`) and seeds the starter skills — so the out-of-the-box path works as soon as the stack and `BRIDGE_UPSTREAM_KEY` are in place.
 
 **The `BRIDGE_API_KEY` coupling.** The bridge-mode key stored in `models.json` is read from `BRIDGE_API_KEY` (falling back to the `bridge-local` placeholder) *only when the file is created*. If you later set `BRIDGE_API_KEY` in the repo's `.env`, the bridge now demands a bearer token — but the terminal agent still sends the old placeholder, and every chat dies with `unauthorized: missing or invalid bearer token (BRIDGE_API_KEY is set)`. Fix: re-run `unown setup` **from the unown repo root** (where bun loads `.env`, so the wizard sees the key), or hand-edit the `apiKey` field in `~/.unown/agent/models.json` to match. Details in [troubleshooting](troubleshooting.md).
+
+## Behavior gate files
+
+Three files switch whole guard behaviors on and off. All are user-authored, none is required to exist, and the two `~/.config/unown/` ones resolve through `UNOWN_HOME` the same way (`${UNOWN_HOME || ~/.config/unown}`).
+
+| File | What it gates | How to switch it |
+|---|---|---|
+| `~/.config/unown/adversary.md` | **Adversary mode** — the file-gated PreToolUse LLM reviewer over `bash`/`powershell`/`write`/`edit` calls | **Existence is the switch**: with the file present, every qualifying call is LLM-reviewed (the file's `## Disallow` / `## Allow` / `## Notes` sections are the policy hints; secrets are redacted before the call; ambiguous replies allow; LLM errors fail-open). The reviewer runs in engine sandbox runs **and** interactive terminal sessions. Delete the file to turn it off — there is no separate enable env var (the `enabled` kill-switch is a caller-level config, not environment-wired). See [BEHAVIOR: adversary mode](BEHAVIOR.md#adversary-mode-milestone-14--2026-10-19). |
+| `~/.config/unown/injection-scanner.json` | The **106-pattern prompt-injection scanner** (engine-run PreToolUse) — `enabled`, `blockOn` risk levels (default `critical`/`high`/`medium`; `low` never blocks), `excludePatternIds` / `includePatternIds`, and an optional `mlClassifier` block (stubbed, not yet wired). Missing file = defaults; loaded mtime-cached so edits apply without a restart | Env kill-switch `UNOWN_INJECTION_SCANNER=0`. Note the split: this is the **blocking** scanner that composes in engine runs — interactive sessions' live tool results are covered by the annotate-only injection shield (`UNOWN_INJECTION_SHIELD` above). See [BEHAVIOR: prompt-injection scanner](BEHAVIOR.md#prompt-injection-scanner-milestone-15--2026-10-19). |
+| `.unown/hooks.json` + `~/.unown/agent/hooks.json` | **User-configurable hooks** — your own handlers on the thirteen session events, in five types (`command` / `http` / `mcp` / `prompt` / `agent`). When both exist, the project config wins per event name | The user file is always trusted; the **project file is trust-gated refuse-first** — an unapproved `.unown/hooks.json` contributes nothing until you run `/hooks trust` in a session (fingerprint-pinned, reloads live) or set `UNOWN_TRUST_PROJECT_CONFIG=1` for CI/headless. Handlers run in interactive sessions and engine runs alike, after the built-in policies, fail-open. Full event table + handler contract: [BEHAVIOR: user-configurable hooks](BEHAVIOR.md#user-configurable-hooks-milestone-1--2026-10-19). |
+
+The same refuse-first trust gate covers the other project-scoped configs — `.unown/mcp.json`, `.unown/lsp.json`, `.unown/permissions.json` — each with its own approval command (`/mcp trust`, `/lsp trust`, `/permissions trust`).
 
 ## Common setups
 

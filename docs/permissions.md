@@ -64,9 +64,10 @@ A tiny built-in matcher — no new dependency:
 - **webfetch / fetch_url** patterns match URLs (scheme + host case-insensitive)
 - **mcp** patterns match `server/tool` against `mcp__server__tool` calls
 
-Tool names: `bash`, `edit`, `write`, `read`, `webfetch`, `web_search`,
-`fetch_url`, `mcp`, `task`, `note`, `todo`, `lsp`, `automation_create`,
-`automation_update`, `automation_delete`, `automation_list`. Unknown tool
+Tool names: `bash`, `powershell`, `edit`, `write`, `read`, `webfetch`,
+`web_search`, `mcp`, `task`, `note`, `todo`, `lsp`, `fetch_url`, plus the
+`automation_*` family (`automation_list`, `automation_create`,
+`automation_update`, `automation_delete`). Unknown tool
 names in the config produce a warning, never a crash.
 
 ## Modes
