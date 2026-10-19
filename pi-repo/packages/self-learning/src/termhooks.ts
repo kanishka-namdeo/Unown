@@ -19,7 +19,11 @@
  *                 UNOWN_STRICT_HOOKS=1 to get the sandbox-grade deny-list
  *                 (adds sudo, ssh, network and git push).
  *   PostToolUse — syntax gate: broken JS/TS gets the transpiler error fed
- *                 back to the agent instead of compounding.
+ *                 back to the agent instead of compounding; injection shield:
+ *                 bash/powershell stdout is scanned for prompt injections and
+ *                 suspect output gets a `[unown-injection-shield]` banner
+ *                 prepended (content unmodified) via the same feedback
+ *                 mechanism (UNOWN_INJECTION_SHIELD=0 disables).
  *   Stop        — captures the last assistant message for the session note.
  *   SessionEnd  — on session_shutdown the accumulated session note is
  *                 delivered to the engine (POST /api/notes) or written to the
@@ -31,6 +35,7 @@ import { tmpdir } from "node:os";
 import { resolve as resolvePath } from "node:path";
 import { decideBash, jailPath, syntaxCheck } from "./hooks.ts";
 import { assistantTextOf } from "./messages.ts";
+import { annotateToolOutput, recordShieldFlag, shieldEnabled } from "./shield.ts";
 import { deliverTerminalNote } from "./term.ts";
 
 export interface TerminalHookOptions {
@@ -419,6 +424,36 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                                 content: [...(event.content ?? []), { type: "text", text: augment.appended }],
                                                 isError: true,
                                         };
+                                }
+                        }
+                        // Injection shield: bash/powershell stdout is live hostile-content
+                        // surface (a booby-trapped command's output, a fetched script's
+                        // banner). Scan it and PREPEND the shield banner to suspect
+                        // output — same feedback mechanism the syntax gate uses, but the
+                        // result is NOT an error: the content passes through unmodified
+                        // below the banner so the agent keeps working with the data.
+                        // annotateToolOutput is fail-open; the wrapper below additionally
+                        // guards content-shape surprises so no result is ever dropped.
+                        if (tool === "bash" || tool === "powershell") {
+                                if (shieldEnabled()) {
+                                        try {
+                                                const blocks = Array.isArray(event.content) ? event.content : [];
+                                                const stdout = blocks
+                                                        .map((b: any) => (b?.type === "text" && typeof b.text === "string" ? b.text : ""))
+                                                        .filter(Boolean)
+                                                        .join("\n");
+                                                const annotated = annotateToolOutput(stdout, tool, {
+                                                        onFlag: (info) => {
+                                                                log(`injection shield flagged ${info.source}: ${info.flags.join(", ")}`);
+                                                                recordShieldFlag(pi, info);
+                                                        },
+                                                });
+                                                if (annotated !== stdout) {
+                                                        return { content: [{ type: "text", text: annotated }] };
+                                                }
+                                        } catch {
+                                                /* fail-open: never break a tool result */
+                                        }
                                 }
                         }
                         return undefined;

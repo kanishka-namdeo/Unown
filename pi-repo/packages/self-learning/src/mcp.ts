@@ -49,6 +49,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { registerChild, unregisterChild } from "./child-reaper.ts";
 import { trustApprovalNeeded, trustBypassed, trustConfig, trustStatePath } from "./config-trust.ts";
+import { annotateToolOutput, recordShieldFlag } from "./shield.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
@@ -1745,7 +1746,22 @@ export function createMcpExtension(opts: McpOptions) {
                     async execute(_toolCallId: string, params: Record<string, unknown>) {
                         const result = await m.callTool(server, tool.name, params ?? {});
                         return {
-                            content: [{ type: "text", text: result.text }],
+                            // Injection shield: MCP tool output is live hostile-content
+                            // surface (a poisoned or hijacked server addressing the
+                            // reading agent). This execute() wrapper is the ONE choke
+                            // point every mcp__ tool result flows through — annotate
+                            // here and every server is covered. Fail-open by contract.
+                            content: [
+                                {
+                                    type: "text",
+                                    text: annotateToolOutput(result.text, `mcp:${server}/${tool.name}`, {
+                                        onFlag: (info) => {
+                                            log(`injection shield flagged ${info.source}: ${info.flags.join(", ")}`);
+                                            recordShieldFlag(pi, info);
+                                        },
+                                    }),
+                                },
+                            ],
                             ...(result.isError ? { isError: true } : {}),
                         };
                     },
