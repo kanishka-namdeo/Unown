@@ -1,9 +1,10 @@
 # Installing Unown
 
-The ways to get Unown on your machine — the one-line installer, the plain git clone, offline/air-gapped installs, and how to remove it afterwards.
+The ways to get Unown on your machine — the one-line installer, the plain git clone, standalone per-OS binaries, offline/air-gapped installs, and how to remove it afterwards.
 
 - [One-line installer](#one-line-installer)
 - [Manual install (git clone)](#manual-install-git-clone)
+- [Standalone per-OS binaries](#standalone-per-os-binaries)
 - [What the installer does](#what-the-installer-does)
 - [Requirements](#requirements)
 - [Offline and air-gapped installs](#offline-and-air-gapped-installs)
@@ -46,6 +47,48 @@ bun run agent:install
 ```
 
 Identical result — the one-liner just does the prerequisite setup and the clone for you.
+
+## Standalone per-OS binaries
+
+Every GitHub Release also carries six standalone builds of the `unown` CLI —
+`unown-darwin-arm64.tar.gz`, `unown-darwin-x64.tar.gz`,
+`unown-linux-arm64.tar.gz`, `unown-linux-x64.tar.gz`,
+`unown-windows-arm64.zip`, `unown-windows-x64.zip` — produced from the tagged
+commit by one Linux runner (`bun build --compile --target=` bundles the target
+platform's runtime, so no Mac or Windows machine is involved in building them).
+Each platform's archive is then downloaded and **executed on that platform** in
+CI before the Release is published; `windows-arm64` is the one asset with no
+runtime smoke, because GitHub hosts no arm64 Windows runner.
+
+They need no bun, no clone and no repo:
+
+```bash
+tar -xzf unown-linux-x64.tar.gz          # creates unown-linux-x64/
+export PATH="$PWD/unown-linux-x64:$PATH"
+unown --version                          # prints the release version
+unown setup                              # connect a model provider
+```
+
+Verify what you downloaded against the release's `sha256sums.txt`:
+
+```bash
+sha256sum -c sha256sums.txt
+```
+
+**These builds are not signed or notarized.** The repository holds no Apple
+Developer certificate and no code-signing secret, so the first run of a freshly
+downloaded binary is blocked by macOS Gatekeeper and warned about by Windows
+SmartScreen. `INSTALL.txt` inside every archive gives the unblock step
+(`xattr -d com.apple.quarantine unown` on macOS, `Unblock-File unown.exe` on
+Windows). Check the checksum before you unblock anything.
+
+The binary is the terminal agent only. The self-learning engine, `llm-bridge`
+and the dashboard run from a checkout — see [manual install](#manual-install-git-clone)
+and [quickstart](quickstart.md). State lives under `~/.unown` (memory, agent
+config, crash records, and the engine's data/db directories when it runs), and
+`unown update` is not the update path here: with no git checkout behind it, the
+binary reports `not a git checkout` and refuses. Replace the file with the one
+from a newer release instead. [updating](updating.md) covers the checkout path.
 
 ## What the installer does
 
