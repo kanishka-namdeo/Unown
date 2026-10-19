@@ -284,7 +284,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "hooks: the hooks-config suite is Windows-clean — the CI red on the hooks milestone is fixed at the test layer…",
+            "title": "hooks: the Windows tree-kill the command-handler timeout never had…",
             "behavior": false
           },
           {

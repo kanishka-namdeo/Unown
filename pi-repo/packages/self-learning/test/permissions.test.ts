@@ -18,7 +18,7 @@ import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module
 import { TEST_TMP } from "./_env.ts";
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import {
         bashLearnPattern,
         createPermissionGate,
@@ -157,10 +157,15 @@ describe("subjects (what a rule's pattern matches)", () => {
                 const cwd = join(ROOT, "subj", "proj");
                 mkdirSync(cwd, { recursive: true });
                 expect(normalizePathSubject(cwd, join(cwd, "src", "a.ts"))).toBe("src/a.ts");
-                expect(normalizePathSubject(cwd, join(ROOT, "subj", "other", "x.ts"))).toBe(
+                const escaped = normalizePathSubject(cwd, join(ROOT, "subj", "other", "x.ts"));
+                expect(escaped).toBe(
                         normalizePathSubject(cwd, join(ROOT, "subj", "other", "x.ts")), // stable (absolute form)
                 );
-                expect(normalizePathSubject(cwd, join(ROOT, "subj", "other", "x.ts")).startsWith("/")).toBe(true);
+                // Escapes stay absolute — on the platform's own spelling: a
+                // drive letter on win32 (D:/…), a leading slash on POSIX, so
+                // the assertion asks node:path, not the string's first char.
+                expect(isAbsolute(escaped)).toBe(true);
+                expect(escaped).not.toContain("proj"); // and it was not relativized into the project
                 expect(normalizePathSubject(cwd, "./src/x.ts")).toBe("src/x.ts");
                 expect(normalizePathSubject(cwd, "src\\x.ts")).toBe("src/x.ts"); // windows spelling
                 expect(normalizePathSubject(cwd, "")).toBe("");

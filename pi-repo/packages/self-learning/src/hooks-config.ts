@@ -318,14 +318,32 @@ function runCommand(
         const timer = setTimeout(() => {
             timedOut = true;
             try {
-                // Kill the entire process group so orphaned grandchildren
-                // (e.g. `sleep` under a shell) die with the shell.
                 if (child.pid) {
-                    try {
-                        process.kill(-child.pid, "SIGKILL");
-                    } catch {
-                        // Group kill failed — fall back to direct kill.
-                        child.kill("SIGKILL");
+                    if (process.platform === "win32") {
+                        // No process groups or signals on Windows: taskkill
+                        // /F /T is the tree kill (the convention the Windows
+                        // docs state for the lifecycle scripts), and it is
+                        // what actually reaches the grandchildren — with
+                        // shell:true the direct child is cmd.exe, so killing
+                        // it alone would leave the payload (node.exe, …)
+                        // holding the stdio pipes open, the "close" event
+                        // would never fire, and the timeout would hang the
+                        // caller instead of resolving as timedOut.
+                        spawn(`taskkill /F /T /PID ${child.pid}`, {
+                            shell: true,
+                            windowsHide: true,
+                            stdio: "ignore",
+                        });
+                    } else {
+                        try {
+                            // Kill the entire process group so orphaned
+                            // grandchildren (e.g. `sleep` under a shell) die
+                            // with the shell.
+                            process.kill(-child.pid, "SIGKILL");
+                        } catch {
+                            // Group kill failed — fall back to direct kill.
+                            child.kill("SIGKILL");
+                        }
                     }
                 } else {
                     child.kill("SIGKILL");
