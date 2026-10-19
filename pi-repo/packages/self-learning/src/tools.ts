@@ -73,13 +73,20 @@ import {
         saveReviewArtifact,
 } from "./review.ts";
 import { fetchPageContent, registerWebTools } from "./websearch.ts";
+import { registerContextTools } from "./context-tools.ts";
 import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
+import {
+        BACKGROUND_EXPLORE_AGENT,
+        buildSubagentArgs,
+        parseAgentFrontmatterExtras,
+        type SubagentRoutingFields,
+} from "./subagent-routing.ts";
 
 // ---------------------------------------------------------------------------
 // Subagent registry: built-ins + .unown/agents/*.md + ~/.unown/agent/agents/*.md
 // ---------------------------------------------------------------------------
 
-export interface SubagentConfig {
+export interface SubagentConfig extends SubagentRoutingFields {
         name: string;
         description: string;
         tools?: string[];
@@ -117,12 +124,27 @@ You receive ONE self-contained question about the codebase. Answer it with evide
 Do not propose changes; do not edit anything. If the answer is not in the repo, say so.`,
                 source: "built-in",
         },
+        // Milestone 2.2 — minimal-overhead read-only background explorer.
+        // Defined in subagent-routing.ts (pure module) so the routing config
+        // is hermetically testable; spread here so the discovery + override
+        // semantics (built-in < user < project) apply.
+        BACKGROUND_EXPLORE_AGENT,
 ];
 
 type AgentFrontmatter = {
         name?: unknown;
         description?: unknown;
         tools?: unknown;
+        // Milestone 2.1 + 2.2 — optional routing fields. Parsed via
+        // parseAgentFrontmatterExtras (a pure helper in subagent-routing.ts);
+        // declared as `unknown` here so the YAML parser still accepts any shape
+        // (the type-narrowing lives in that helper).
+        model?: unknown;
+        effort?: unknown;
+        mcpServers?: unknown;
+        mcp_servers?: unknown;
+        injectAgentsMd?: unknown;
+        inject_agents_md?: unknown;
 };
 
 function parseToolList(value: unknown): string[] | undefined {
@@ -161,12 +183,18 @@ function loadAgentsFromDir(dir: string, source: "user" | "project"): SubagentCon
                 const body = content.replace(/^---\n[\s\S]*?\n---\n?/, "");
                 if (!frontmatter) continue;
                 if (typeof frontmatter.name !== "string" || typeof frontmatter.description !== "string") continue;
+                // Milestone 2.1 + 2.2 — pluck the optional routing fields
+                // (model, effort, mcpServers, injectAgentsMd). Pure helper
+                // from subagent-routing.ts; tolerates camelCase + snake_case
+                // keys and drops invalid values silently.
+                const extras = parseAgentFrontmatterExtras(frontmatter);
                 agents.push({
                         name: frontmatter.name,
                         description: frontmatter.description,
                         tools: parseToolList(frontmatter.tools),
                         systemPrompt: body.trim(),
                         source,
+                        ...extras,
                 });
         }
         return agents;
@@ -426,8 +454,11 @@ async function runSubagentOnce(
                 toolResults: 0,
                 usage: { input: 0, output: 0, turns: 0 },
         };
-        const args: string[] = ["--mode", "json", "-p", "--no-session"];
-        if (agent.tools && agent.tools.length > 0) args.push("--tools", agent.tools.join(","));
+        // Milestone 2.1 + 2.2 — the args array is built by the pure helper
+        // buildSubagentArgs (in subagent-routing.ts) so the routing logic is
+        // hermetically testable. Backward-compatible: an agent with no routing
+        // fields yields the same args array as before.
+        const args: string[] = buildSubagentArgs(agent);
         let promptDir: string | null = null;
         try {
                 if (agent.systemPrompt.trim()) {
@@ -438,6 +469,12 @@ async function runSubagentOnce(
                 }
                 args.push(`Task: ${task}`);
 
+                // Milestone 2.1 + 2.2 — the spawned child parses the routing
+                // flags itself (cli.ts:parseArgs → parseSubagentFlags), and its
+                // cmdPrint path applies the effort → BRIDGE_QWEN_THINKING +
+                // PI_MODEL_ID + UNOWN_MCP_SERVERS + UNOWN_NO_AGENTS_MD env
+                // overrides before bootRuntime. No env mutation here: the
+                // child owns its own env (single source of truth).
                 await new Promise<void>((resolve) => {
                         const invocation = getUnownInvocation(args);
                         const proc = spawn(invocation.command, invocation.args, {
@@ -1570,6 +1607,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 // -------------------------------------------------------------------
 
                 registerWebTools(pi, { verbose });
+
+                // -------------------------------------------------------------------
+                // get_context_remaining + view_image (see context-tools.ts —
+                // Milestone 2.4: token-budget estimate + vision-image loader)
+                // -------------------------------------------------------------------
+
+                registerContextTools(pi, { cwd: opts.cwd, verbose });
 
                 // -------------------------------------------------------------------
                 // Git-native commit workflow (aider/Codex port — see src/gittools.ts):

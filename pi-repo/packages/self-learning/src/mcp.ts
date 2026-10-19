@@ -49,6 +49,15 @@ import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { registerChild, unregisterChild } from "./child-reaper.ts";
 import { trustApprovalNeeded, trustBypassed, trustConfig, trustStatePath } from "./config-trust.ts";
+import {
+    decideElicitation,
+    defaultElicitationConfig,
+    ELICITATION_DEFAULT_DUMMY,
+    resolveElicitationConfig as resolveElicitationConfigFromElicitation,
+    type ElicitationConfig as ElicitationConfigFromElicitation,
+    type ElicitationDecision,
+    type ElicitationRequest,
+} from "./elicitation.ts";
 import { annotateToolOutput, recordShieldFlag } from "./shield.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
 
@@ -133,14 +142,101 @@ export interface StdioServerConfig {
     args?: string[];
     env?: Record<string, string>;
     cwd?: string;
+    /**
+     * Per-server elicitation policy (Milestone 2.3). When absent the default
+     * is `autoDecline: true` — a headless agent cannot prompt the user
+     * mid-turn, so server-initiated `elicitation/create` requests are
+     * declined with `defaultReason`. Opt into `autoAccept: true` only when
+     * the model is the "user" and the server is trusted.
+     */
+    elicitation?: ElicitationConfig;
 }
 
 export interface HttpServerConfig {
     url: string;
     headers?: Record<string, string>;
+    /** Per-server elicitation policy (Milestone 2.3 — see StdioServerConfig). */
+    elicitation?: ElicitationConfig;
 }
 
 export type AnyServerConfig = StdioServerConfig | HttpServerConfig;
+
+/**
+ * Per-server elicitation policy (Milestone 2.3 — reverse-engineered from
+ * goose's `elicitation.rs` + the MCP standard's elicitation capability).
+ *
+ * The pure decision logic lives in `./elicitation.ts` (no pi imports,
+ * fully unit-testable). This file re-exports the type for back-compat
+ * with the existing imports + wires the resolved policy into the
+ * `McpConnection` (per-server, captured at construction) and the
+ * `elicitation/create` server→client JSON-RPC request handler.
+ *
+ * A headless agent cannot surface a JSON-schema prompt to the user
+ * mid-turn, so the default behavior is `autoDecline: true` — server
+ * `elicitation/create` requests come back with `action: "decline"` and
+ * the `defaultReason` in the `content.reason` field. Opt into
+ * `autoAccept: true` only when the model is the "user" and the server
+ * is trusted; the client then synthesizes dummy data satisfying the
+ * schema and returns `action: "accept"`. The elicited data is
+ * forwarded to the server and the model never sees the request
+ * directly.
+ */
+export type ElicitationConfig = ElicitationConfigFromElicitation;
+export type { ElicitationDecision, ElicitationRequest } from "./elicitation.ts";
+export { defaultElicitationConfig, ELICITATION_DEFAULT_DUMMY } from "./elicitation.ts";
+
+/** Resolve a server config's elicitation policy to effective defaults. */
+export function resolveElicitationConfig(cfg: AnyServerConfig | undefined): Required<ElicitationConfig> {
+    const e = (cfg as { elicitation?: ElicitationConfig } | undefined)?.elicitation;
+    return resolveElicitationConfigFromElicitation(e);
+}
+
+/**
+ * Validate + normalize the `elicitation` block of a server entry. Returns
+ * `undefined` when no policy is set (the manager falls back to
+ * `autoDecline: true`). Bad shapes surface actionable problems and fall
+ * back to "no policy" so the entry still loads.
+ */
+function normalizeElicitationEntry(
+    raw: unknown,
+    file: string,
+    key: string,
+    problems: ConfigProblem[],
+): ElicitationConfig | undefined {
+    if (raw === undefined) return undefined;
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+        problems.push({ file, key: `${key}.elicitation`, message: `expected an object, got ${describeValue(raw)} — ignored` });
+        return undefined;
+    }
+    const v = raw as Record<string, unknown>;
+    const out: ElicitationConfig = {};
+    if (v.autoAccept !== undefined) {
+        if (typeof v.autoAccept !== "boolean") {
+            problems.push({ file, key: `${key}.elicitation.autoAccept`, message: `expected boolean, got ${describeValue(v.autoAccept)} — ignored` });
+        } else {
+            out.autoAccept = v.autoAccept;
+        }
+    }
+    if (v.autoDecline !== undefined) {
+        if (typeof v.autoDecline !== "boolean") {
+            problems.push({ file, key: `${key}.elicitation.autoDecline`, message: `expected boolean, got ${describeValue(v.autoDecline)} — ignored` });
+        } else {
+            out.autoDecline = v.autoDecline;
+        }
+    }
+    if (v.defaultReason !== undefined) {
+        if (typeof v.defaultReason !== "string") {
+            problems.push({ file, key: `${key}.elicitation.defaultReason`, message: `expected string, got ${describeValue(v.defaultReason)} — ignored` });
+        } else {
+            out.defaultReason = v.defaultReason;
+        }
+    }
+    const unknownKeys = Object.keys(v).filter((k) => k !== "autoAccept" && k !== "autoDecline" && k !== "defaultReason");
+    if (unknownKeys.length > 0) {
+        problems.push({ file, key: `${key}.elicitation`, message: `unknown field(s): ${unknownKeys.map((k) => `'${k}'`).join(", ")} — ignored` });
+    }
+    return out;
+}
 
 export interface McpConfig {
     disabled?: boolean;
@@ -239,7 +335,10 @@ function normalizeServerEntry(
         }
         const { headers, problems: headerProblems } = normalizeHttpHeaders(headersIn, env);
         for (const hp of headerProblems) problems.push({ file, key: `${key}.headers.${hp.name}`, message: hp.message });
-        return { url, headers: Object.keys(headers).length > 0 ? headers : undefined };
+        const elicitation = normalizeElicitationEntry(v.elicitation, file, key, problems);
+        const out: HttpServerConfig = { url, headers: Object.keys(headers).length > 0 ? headers : undefined };
+        if (elicitation) out.elicitation = elicitation;
+        return out;
     }
     if (typeof v.command === "string" && v.command) {
         let args: string[] | undefined;
@@ -268,7 +367,10 @@ function normalizeServerEntry(
             }
         }
         const cwd = typeof v.cwd === "string" && v.cwd ? expandEnv(v.cwd, env) : undefined;
-        return { command: v.command, args, env: envOut, cwd };
+        const elicitation = normalizeElicitationEntry(v.elicitation, file, key, problems);
+        const out: StdioServerConfig = { command: v.command, args, env: envOut, cwd };
+        if (elicitation) out.elicitation = elicitation;
+        return out;
     }
     problems.push({
         file,
@@ -619,6 +721,12 @@ export class McpConnection {
 
     private readonly requestTimeoutMs: number;
     private readonly connectTimeoutMs: number;
+    /**
+     * Per-server elicitation policy (Milestone 2.3). Defaults to
+     * `autoDecline: true` — see resolveElicitationConfig. Drives the
+     * `elicitation/create` server→client request handler.
+     */
+    private readonly elicitation: Required<ElicitationConfig>;
 
     constructor(
         serverName: string,
@@ -633,6 +741,7 @@ export class McpConnection {
         this.requestTimeoutMs = requestTimeoutMs;
         this.connectTimeoutMs = connectTimeoutMs ?? requestTimeoutMs;
         this.transport = isHttpConfig(cfg) ? "http" : "stdio";
+        this.elicitation = resolveElicitationConfig(cfg);
         if (isHttpConfig(cfg)) {
             // ${VAR} expansion + header validation for directly-passed configs
             // (M-10/M-09); loadMcpConfigFile already did both for disk loads.
@@ -681,7 +790,11 @@ export class McpConnection {
                 "initialize",
                 {
                     protocolVersion: MCP_PROTOCOL_VERSION,
-                    capabilities: {},
+                    // Milestone 2.3 — advertise the elicitation capability so
+                    // servers know they can request structured mid-turn input.
+                    // The client (us) decides per-request what to do; the
+                    // default policy is autoDecline (see handleElicitation).
+                    capabilities: { elicitation: {} },
                     clientInfo: { ...UNOWN_CLIENT_INFO },
                 },
                 connectTimeoutMs,
@@ -696,6 +809,11 @@ export class McpConnection {
             this.dispose();
             throw err;
         }
+    }
+
+    /** The effective elicitation policy (Milestone 2.3). */
+    get elicitationPolicy(): Required<ElicitationConfig> {
+        return this.elicitation;
     }
 
     private async startStdio(): Promise<void> {
@@ -819,7 +937,7 @@ export class McpConnection {
             method: "initialize",
             params: {
                 protocolVersion: MCP_PROTOCOL_VERSION,
-                capabilities: {},
+                capabilities: { elicitation: {} },
                 clientInfo: { ...UNOWN_CLIENT_INFO },
             },
         });
@@ -1054,7 +1172,7 @@ export class McpConnection {
             return;
         }
         if (msg.method && msg.id !== undefined) {
-            this.replyToServerRequest(msg.id, msg.method);
+            this.replyToServerRequest(msg.id, msg.method, msg.params);
             return;
         }
         // M-15/M-20: servers echoing ids as strings ("7") are valid JSON-RPC;
@@ -1072,21 +1190,59 @@ export class McpConnection {
 
     /**
      * Dispatch a server → client request (M-20): we implement no server-side
-     * capabilities, so `roots/list` answers `{roots: []}` and everything else
-     * gets -32601 MethodNotFound — a fake `result: null` made well-behaved
-     * servers wait on (or crash on) a shape we never sent. Stdio transport
-     * only; HTTP servers deliver these via the response stream.
+     * capabilities, so `roots/list` answers `{roots: []}`, `elicitation/create`
+     * is routed through handleElicitation (Milestone 2.3), and everything
+     * else gets -32601 MethodNotFound — a fake `result: null` made
+     * well-behaved servers wait on (or crash on) a shape we never sent.
+     * Stdio transport only; HTTP servers deliver these via the response
+     * stream.
      */
-    private replyToServerRequest(id: unknown, method: string): void {
-        const reply =
-            method === "roots/list"
-                ? { jsonrpc: "2.0" as const, id, result: { roots: [] } }
-                : { jsonrpc: "2.0" as const, id, error: { code: -32601, message: `method not found: ${method}` } };
+    private replyToServerRequest(id: unknown, method: string, params?: unknown): void {
+        let reply: unknown;
+        if (method === "roots/list") {
+            reply = { jsonrpc: "2.0" as const, id, result: { roots: [] } };
+        } else if (method === "elicitation/create") {
+            reply = this.handleElicitation(id, params);
+        } else {
+            reply = { jsonrpc: "2.0" as const, id, error: { code: -32601, message: `method not found: ${method}` } };
+        }
         try {
             this.proc?.stdin?.write(JSON.stringify(reply) + "\n");
         } catch {
             /* server gone */
         }
+    }
+
+    /**
+     * Build the JSON-RPC reply for an `elicitation/create` server→client
+     * request (Milestone 2.3 — reverse-engineered from goose's `elicitation.rs`
+     * + the MCP standard). The pure decision logic lives in
+     * `./elicitation.ts:decideElicitation`; this method wraps its result in
+     * the JSON-RPC envelope and attaches Unown's debugging `reason` field
+     * to `decline` responses (the MCP standard's decline carries no content,
+     * but surfacing the per-server `defaultReason` here makes headless
+     * refusals visible in server logs).
+     *
+     * Response shape:
+     *   accept  → { action: "accept",  content: ELICITATION_DEFAULT_DUMMY }
+     *   decline → { action: "decline", content: { reason: <defaultReason> } }
+     *   cancel  → { action: "cancel" }    // malformed request, no content
+     */
+    private handleElicitation(id: unknown, params: unknown): { jsonrpc: "2.0"; id: unknown; result: { action: string; content?: Record<string, unknown> } } {
+        const request = (params ?? null) as ElicitationRequest;
+        const decision = decideElicitation(request, this.elicitation);
+        if (decision.action === "accept") {
+            return { jsonrpc: "2.0", id, result: { action: "accept", content: decision.content } };
+        }
+        if (decision.action === "decline") {
+            // Unown extension: attach the per-server defaultReason to the
+            // decline envelope so a headless refusal is visible in the
+            // server's logs. The pure decision returns no content for
+            // decline (the MCP standard's shape); the transport layer
+            // adds the debugging reason here.
+            return { jsonrpc: "2.0", id, result: { action: "decline", content: { reason: this.elicitation.defaultReason } } };
+        }
+        return { jsonrpc: "2.0", id, result: { action: "cancel" } };
     }
 }
 
@@ -1348,6 +1504,15 @@ export class McpManager {
 
     serverNames(): string[] {
         return Object.keys(this.config.servers);
+    }
+
+    /**
+     * The raw config for a server (or undefined when not configured).
+     * Milestone 2.3: exposes the per-server `elicitation` policy block to
+     * the `/mcp elicitation <server>` subcommand.
+     */
+    serverConfig(name: string): AnyServerConfig | undefined {
+        return this.config.servers[name];
     }
 
     /**
@@ -1692,9 +1857,37 @@ export function createMcpExtension(opts: McpOptions) {
             const resolved = opts.config
                 ? { config: opts.config, problems: [] as ConfigProblem[], projectFile: null, needsTrust: false, gatedServers: {} }
                 : resolveMcpConfig(opts.cwd);
+            // Milestone 2.2 — per-subagent MCP server whitelist. When
+            // UNOWN_MCP_SERVERS is set (cli.ts:applySubagentEnvOverrides sets
+            // it from the parsed --mcp-servers flag), filter the merged
+            // config to only the listed server names. Empty string means
+            // "load none" (the background-explore subagent sets []). Unset
+            // means "load all" (the legacy behavior). The whitelist is
+            // applied to the merged config AFTER the trust gate so untrusted
+            // project servers are still withheld.
+            const whitelistRaw = process.env.UNOWN_MCP_SERVERS;
+            let config = resolved.config;
+            if (whitelistRaw !== undefined) {
+                const allowed = new Set(
+                    whitelistRaw
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                );
+                const filtered: Record<string, AnyServerConfig> = {};
+                for (const [name, cfg] of Object.entries(resolved.config.servers)) {
+                    if (allowed.has(name)) filtered[name] = cfg;
+                }
+                config = { ...resolved.config, servers: filtered };
+                if (verbose) {
+                    const total = Object.keys(resolved.config.servers).length;
+                    const kept = Object.keys(filtered).length;
+                    log(`mcp whitelist UNOWN_MCP_SERVERS=${JSON.stringify(whitelistRaw)} → ${kept}/${total} server(s) loaded`);
+                }
+            }
             manager = new McpManager({
                 cwd: opts.cwd,
-                config: resolved.config,
+                config,
                 problems: resolved.problems,
                 gatedServers: resolved.gatedServers,
                 needsTrust: resolved.needsTrust,
@@ -1820,10 +2013,11 @@ export function createMcpExtension(opts: McpOptions) {
         });
 
         pi.registerCommand("mcp", {
-            description: "MCP server status + reconnect: /mcp — /mcp trust approves a project .unown/mcp.json",
+            description: "MCP server status + reconnect: /mcp — /mcp trust approves a project .unown/mcp.json — /mcp elicitation <server> shows the elicitation policy",
             handler: async (args: string, ctx: any) => {
                 try {
-                    const sub = ((args ?? "").trim().split(/\s+/)[0] ?? "").toLowerCase();
+                    const parts = (args ?? "").trim().split(/\s+/).filter(Boolean);
+                    const sub = (parts[0] ?? "").toLowerCase();
                     const m = getManager();
                     if (m.disabled) {
                         ctx.ui.notify("MCP support is disabled (UNOWN_MCP=0 or disabled in mcp.json).", "info");
@@ -1871,8 +2065,41 @@ export function createMcpExtension(opts: McpOptions) {
                         }
                         return;
                     }
+                    if (sub === "elicitation") {
+                        // /mcp elicitation <server>: show the per-server
+                        // elicitation policy (Milestone 2.3). Headless agents
+                        // default to autoDecline; autoAccept must be opt-in
+                        // per server in .unown/mcp.json.
+                        const name = parts[1] ?? "";
+                        if (!name) {
+                            const lines = m.serverNames().map((n) => {
+                                const cfg = m.serverConfig(n);
+                                const e = resolveElicitationConfig(cfg);
+                                return `  ${n}: autoAccept=${e.autoAccept} autoDecline=${e.autoDecline} reason=${JSON.stringify(e.defaultReason)}`;
+                            });
+                            ctx.ui.notify(
+                                lines.length > 0
+                                    ? `Elicitation policies:\n${lines.join("\n")}`
+                                    : "No MCP servers configured. Set `elicitation` per server in .unown/mcp.json.",
+                                "info",
+                            );
+                            return;
+                        }
+                        const cfg = m.serverConfig(name);
+                        if (!cfg) {
+                            ctx.ui.notify(`MCP server "${name}" is not configured. Add it to .unown/mcp.json under mcpServers, or check the spelling.`, "info");
+                            return;
+                        }
+                        const e = resolveElicitationConfig(cfg);
+                        ctx.ui.notify(
+                            `Elicitation policy for "${name}":\n  autoAccept: ${e.autoAccept}\n  autoDecline: ${e.autoDecline}\n  defaultReason: ${JSON.stringify(e.defaultReason)}\n\n` +
+                                `Set under .unown/mcp.json → mcpServers.${name}.elicitation = { autoAccept, autoDecline, defaultReason }.`,
+                            "info",
+                        );
+                        return;
+                    }
                     if (sub !== "") {
-                        ctx.ui.notify(`Unknown /mcp argument "${sub}". Usage: /mcp [trust]`, "info");
+                        ctx.ui.notify(`Unknown /mcp argument "${sub}". Usage: /mcp [trust | elicitation [server]]`, "info");
                         return;
                     }
                     if (m.serverNames().length === 0 && m.gatedServerCount === 0 && m.problems.length === 0) {

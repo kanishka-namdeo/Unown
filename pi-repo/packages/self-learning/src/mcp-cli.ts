@@ -18,6 +18,9 @@
  *   unown mcp get <name>
  *   unown mcp remove <name> [--scope user|project]
  *   unown mcp test <name>
+ *   unown mcp elicitation [name]   per-server elicitation policy
+ *                 (Milestone 2.3 — prints the autoAccept/autoDecline/
+ *                 defaultReason block; with no name, lists every server)
  *
  * Safety properties:
  *   - every written entry is validated through mcp.ts's OWN config
@@ -49,12 +52,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { trustApprovalNeeded, trustConfig, trustStatePath, type TrustOptions } from "./config-trust.ts";
+import { defaultElicitationConfig } from "./elicitation.ts";
 import {
     formatConfigProblem,
     isHttpConfig,
     loadMcpConfigFile,
     McpManager,
     resolveMcpConfig,
+    resolveElicitationConfig,
     type AnyServerConfig,
     type ConfigProblem,
 } from "./mcp.ts";
@@ -63,10 +68,10 @@ import {
  * `mcp__<name>__<tool>` via mcpToolName — kept 1–64 chars, no spaces). */
 const NAME_RE = /^[a-z0-9_-]{1,64}$/;
 
-const SUBCOMMANDS = ["add", "add-http", "add-json", "list", "get", "remove", "test"] as const;
+const SUBCOMMANDS = ["add", "add-http", "add-json", "list", "get", "remove", "test", "elicitation"] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
-const USAGE_LINE = "usage: unown mcp <add|add-http|add-json|list|get|remove|test> — full grammar: unown help mcp";
+const USAGE_LINE = "usage: unown mcp <add|add-http|add-json|list|get|remove|test|elicitation> — full grammar: unown help mcp";
 
 export const MCP_HELP = `unown mcp — manage MCP server configs (Claude Code-style)
 
@@ -90,6 +95,12 @@ usage:
   unown mcp get <name>   the stored entry JSON + which file it comes from
   unown mcp remove <name> [--scope user|project]
   unown mcp test <name>  live connect probe (initialize + tools/list)
+  unown mcp elicitation [name]   per-server elicitation policy
+                 (Milestone 2.3 — prints the autoAccept/autoDecline/
+                 defaultReason block; with no name, lists every server.
+                 A headless agent defaults to autoDecline=true; opt into
+                 autoAccept only for trusted servers where the model
+                 is the "user")
 
 server names match ^[a-z0-9_-]{1,64}$ (session tools appear as mcp__<name>__<tool>)
 \${VAR} placeholders in env values / urls stay literal in the file and expand
@@ -346,11 +357,12 @@ export async function runMcpCommand(argv: string[], ctx: McpCliContext): Promise
 
     const sub = argv[0] as Subcommand | undefined;
     if (sub === undefined) return usageFail("missing subcommand");
-    if (sub === "-h" || sub === "--help" || sub === "help") {
+    const subAny = sub as string;
+    if (subAny === "-h" || subAny === "--help" || subAny === "help") {
         log(MCP_HELP);
         return finish(0);
     }
-    if (!SUBCOMMANDS.includes(sub)) return usageFail(`unknown subcommand "${sub}"`);
+    if (!SUBCOMMANDS.includes(sub as Subcommand)) return usageFail(`unknown subcommand "${sub}"`);
     const rest = argv.slice(1);
     if (rest[0] === "-h" || rest[0] === "--help") {
         log(MCP_HELP);
@@ -606,6 +618,77 @@ export async function runMcpCommand(argv: string[], ctx: McpCliContext): Promise
             } finally {
                 manager.disposeAll();
             }
+        }
+
+        case "elicitation": {
+            // unown mcp elicitation [name] — print the per-server elicitation
+            // policy (Milestone 2.3 — the headless-agent behavior contract
+            // for `elicitation/create` server→client requests). With no name,
+            // list every configured server. Never connects (the policy is
+            // static config), so this is safe to run offline.
+            const name = rest[0];
+            if (name && rest.length > 1) return usageFail(`elicitation takes at most one server name (got ${rest.join(" ")})`);
+            const resolved = resolveMcpConfig(ctx.cwd, ctx.userDir, env);
+            // The effective config: resolveMcpConfig already merged user ←
+            // project (project wins per name) and applied the trust gate
+            // (untrusted project servers land in `resolved.gatedServers`).
+            // We list every effective + gated entry so the user can see the
+            // policy even for withheld servers (annotated "withheld").
+            const effective: Array<{ name: string; cfg: AnyServerConfig; scope: "user" | "project" | "withheld" }> = [];
+            for (const [serverName, cfg] of Object.entries(resolved.config.servers)) {
+                effective.push({ name: serverName, cfg, scope: "user" }); // scope is informational; resolveMcpConfig has merged
+            }
+            for (const [serverName, cfg] of Object.entries(resolved.gatedServers)) {
+                effective.push({ name: serverName, cfg, scope: "withheld" });
+            }
+            if (effective.length === 0) {
+                log("no MCP servers configured — add one: unown mcp add <name> <command> [args...]");
+                log("(the default elicitation policy for any server is autoDecline=true)");
+                return finish(0);
+            }
+            if (!name) {
+                // List mode: one line per server.
+                log("Elicitation policies (effective after trust gate + project/user merge):");
+                for (const e of effective) {
+                    const policy = resolveElicitationConfig(e.cfg);
+                    const withheld = e.scope === "withheld" ? " (withheld by trust gate)" : "";
+                    log(
+                        `  ${e.name}: autoAccept=${policy.autoAccept} autoDecline=${policy.autoDecline} defaultReason=${JSON.stringify(policy.defaultReason)}${withheld}`,
+                    );
+                }
+                log("");
+                log("Set under .unown/mcp.json → mcpServers.<name>.elicitation = { autoAccept, autoDecline, defaultReason }.");
+                return finish(0);
+            }
+            // Single-server mode: show the full policy block.
+            const found = effective.find((e) => e.name === name);
+            if (!found) {
+                const names = effective.map((e) => e.name);
+                fail(`✗ no server named "${name}" is configured${names.length > 0 ? ` — configured: ${names.join(", ")}` : ""}`);
+                return finish(1);
+            }
+            const policy = resolveElicitationConfig(found.cfg);
+            const defaults = defaultElicitationConfig();
+            const withheldNote = found.scope === "withheld" ? " [WITHHELD by trust gate — /mcp trust]" : "";
+            log(`${name} — elicitation policy${withheldNote}`);
+            log(`  autoAccept:    ${policy.autoAccept}`);
+            log(`  autoDecline:   ${policy.autoDecline}`);
+            log(`  defaultReason: ${JSON.stringify(policy.defaultReason)}`);
+            // Annotate the defaults so the user knows what's effective vs.
+            // inherited — "autoDecline: true (default)" vs. "autoDecline: false
+            // (explicit opt-out)".
+            const annotations: string[] = [];
+            if (policy.autoAccept === defaults.autoAccept) annotations.push(`autoAccept=${policy.autoAccept} is the default`);
+            if (policy.autoDecline === defaults.autoDecline) annotations.push(`autoDecline=${policy.autoDecline} is the default`);
+            if (policy.defaultReason === defaults.defaultReason) annotations.push(`defaultReason is the headless-no-UI default`);
+            if (annotations.length > 0) {
+                log("");
+                log(`Defaults in effect (${annotations.length} of 3):`);
+                for (const a of annotations) log(`  - ${a}`);
+            }
+            log("");
+            log(`Edit .unown/mcp.json → mcpServers.${name}.elicitation to change this.`);
+            return finish(0);
         }
     }
 }

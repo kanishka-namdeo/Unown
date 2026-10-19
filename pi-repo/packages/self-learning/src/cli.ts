@@ -66,6 +66,14 @@ import { assembleResultJson, captureStdout, createOutputCapture, createOutputCap
 import { ACP_HELP, runAcpServer } from "./acp.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
+import {
+        applyEffortToEnv,
+        parseSubagentFlags,
+        SUBAGENT_MCP_SERVERS_ENV,
+        SUBAGENT_MODEL_ENV,
+        SUBAGENT_NO_AGENTS_MD_ENV,
+        type SubagentEffort,
+} from "./subagent-routing.ts";
 import { cmdUninstall, findShims, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
 import {
         cmdChangelog,
@@ -165,6 +173,13 @@ One-shot run flags (print mode; several also used by the task tool):
   --no-session             do not persist the session
   --tools a,b,c            restrict the active tool set
   --append-system-prompt F append the file's contents to the system prompt
+  --model <id>            override PI_MODEL_ID for this run (per-subagent
+                           routing; see UNOWN_SUBAGENT_MODEL below)
+  --effort low|medium|high  reasoning effort (low → BRIDGE_QWEN_THINKING=0,
+                           high → =1, medium/unset = bridge default)
+  --mcp-servers a,b       whitelist of MCP servers to load (empty CSV = load
+                           none; absent = load all)
+  --no-agents-md          skip AGENTS.md / per-tier memory injection
 
 Environment:
   UNOWN_HOME               state dir (default ~/.unown)
@@ -182,6 +197,9 @@ Environment:
   NO_UPDATE_NOTIFIER=1     silence the startup update notice
   UNOWN_DISABLE_UPDATES=1  disable all update paths (org/CI switch)
   PI_BRIDGE_URL/PI_MODEL_ID/PI_PROVIDER   LLM endpoint for ~/.unown/agent/models.json
+  UNOWN_SUBAGENT_MODEL     override PI_MODEL_ID for EVERY subagent (per-agent
+                           model still wins; useful for routing all subagents
+                           to a local model)
 `;
 
 // ---------------------------------------------------------------------------
@@ -198,9 +216,23 @@ interface CliArgs {
         plan: boolean;
         goal?: string;
         outputFormat?: "text" | "json";
+        // Milestone 2.1 + 2.2 — per-subagent routing fields. Set by the new
+        // --model / --effort / --mcp-servers / --no-agents-md flags; consumed by
+        // bootRuntime to set PI_MODEL_ID / BRIDGE_QWEN_THINKING /
+        // UNOWN_MCP_SERVERS / UNOWN_NO_AGENTS_MD before the session starts.
+        model?: string;
+        effort?: SubagentEffort;
+        mcpServers?: string[];
+        noAgentsMd?: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
+        // Milestone 2.1 + 2.2 — strip the four new subagent-routing flags out
+        // first so the main loop does not treat their values as prompt text.
+        // The pure helper parseSubagentFlags (in subagent-routing.ts) is the
+        // canonical parser for these flags; it is hermetically testable.
+        const subagentFlags = parseSubagentFlags(argv);
+        const argvRest = subagentFlags.rest;
         const rest: string[] = [];
         let print = false;
         let verbose = false;
@@ -211,8 +243,8 @@ function parseArgs(argv: string[]): CliArgs {
         let plan = false;
         let goal: string | undefined;
         let outputFormat: "text" | "json" | undefined;
-        for (let i = 0; i < argv.length; i++) {
-                const a = argv[i];
+        for (let i = 0; i < argvRest.length; i++) {
+                const a = argvRest[i];
                 if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan, goal, outputFormat };
                 if (a === "--print" || a === "-p") {
                         print = true;
@@ -223,7 +255,7 @@ function parseArgs(argv: string[]): CliArgs {
                         continue;
                 }
                 if (a === "--mode") {
-                        const next = argv[i + 1];
+                        const next = argvRest[i + 1];
                         if (next === "json") jsonMode = true;
                         else if (next !== "text") rest.push(a); // unknown mode value: treat as prompt text
                         i++;
@@ -249,7 +281,7 @@ function parseArgs(argv: string[]): CliArgs {
                         continue;
                 }
                 if (a === "--goal") {
-                        const next = argv[i + 1];
+                        const next = argvRest[i + 1];
                         if (next !== undefined && !next.startsWith("--")) {
                                 goal = next;
                                 i++;
@@ -257,7 +289,7 @@ function parseArgs(argv: string[]): CliArgs {
                         continue;
                 }
                 if (a === "--tools") {
-                        const next = argv[i + 1];
+                        const next = argvRest[i + 1];
                         if (next !== undefined) {
                                 tools = next
                                         .split(",")
@@ -268,7 +300,7 @@ function parseArgs(argv: string[]): CliArgs {
                         continue;
                 }
                 if (a === "--append-system-prompt") {
-                        const next = argv[i + 1];
+                        const next = argvRest[i + 1];
                         if (next !== undefined) {
                                 appendSystemPromptPath = next;
                                 i++;
@@ -287,6 +319,37 @@ function parseArgs(argv: string[]): CliArgs {
         if (print || !process.stdin.isTTY || !process.stdout.isTTY)
                 return { command: "print", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal, outputFormat };
         return { command: "tui", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal, outputFormat };
+                return {
+                        command: "print",
+                        prompt,
+                        verbose,
+                        jsonMode,
+                        noSession,
+                        tools,
+                        appendSystemPromptPath,
+                        plan,
+                        goal,
+                        // Milestone 2.1 + 2.2 — surface the parsed routing fields.
+                        model: subagentFlags.model,
+                        effort: subagentFlags.effort,
+                        mcpServers: subagentFlags.mcpServers,
+                        noAgentsMd: subagentFlags.noAgentsMd,
+                };
+        return {
+                command: "tui",
+                prompt,
+                verbose,
+                jsonMode,
+                noSession,
+                tools,
+                appendSystemPromptPath,
+                plan,
+                goal,
+                model: subagentFlags.model,
+                effort: subagentFlags.effort,
+                mcpServers: subagentFlags.mcpServers,
+                noAgentsMd: subagentFlags.noAgentsMd,
+        };
 }
 
 // ---------------------------------------------------------------------------
@@ -303,9 +366,66 @@ interface BootOptions {
         /** Pre-opened session manager (ACP session/load resumes a persisted
          * session instead of creating a fresh one). */
         sessionManager?: SessionManager;
+        // Milestone 2.1 + 2.2 — per-subagent routing fields. Set by parseArgs
+        // (from the new --model / --effort / --mcp-servers / --no-agents-md
+        // flags); consumed by bootRuntime to set PI_MODEL_ID /
+        // BRIDGE_QWEN_THINKING / UNOWN_MCP_SERVERS / UNOWN_NO_AGENTS_MD before
+        // the session starts. Undefined values leave the inherited env alone
+        // (legacy behavior).
+        model?: string;
+        effort?: SubagentEffort;
+        mcpServers?: string[];
+        noAgentsMd?: boolean;
 }
 
-export async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
+/**
+ * Apply the Milestone 2.1 + 2.2 routing fields to `process.env` BEFORE the
+ * session is created. Each field is optional; an unset field leaves the
+ * inherited env alone (so the parent's env still applies — subagents that
+ * don't opt into routing behave exactly as before).
+ *
+ * The env writes happen here (not in bootRuntime) so the call site stays
+ * explicit: cmdPrint and cmdTui both invoke this once, before bootRuntime.
+ * Idempotent: re-running with the same opts is a no-op.
+ *
+ * NOTE on `--max-tokens`: pi-coding-agent has no `--max-tokens` flag at this
+ * writing, so `effort: low` only sets BRIDGE_QWEN_THINKING=0. If pi ever
+ * adds `--max-tokens`, the low branch should also pass it (2048) to bound
+ * the reply length — for now only the env var is set.
+ */
+function applySubagentEnvOverrides(opts: BootOptions): void {
+        if (opts.model) {
+                // term.ts:writeModelsJson reads PI_MODEL_ID at call time (inside
+                // ensureUnownAgentDirInfo, called by bootRuntime) — so setting it
+                // here propagates to the spawned session's models.json + bridge.
+                process.env.PI_MODEL_ID = opts.model;
+        }
+        if (opts.effort) {
+                // applyEffortToEnv returns the BRIDGE_QWEN_THINKING mapping; merge
+                // it into process.env (the bridge reads it lazily per request).
+                const effortEnv = applyEffortToEnv(opts.effort);
+                for (const [k, v] of Object.entries(effortEnv)) process.env[k] = v;
+        }
+        if (opts.mcpServers !== undefined) {
+                // Even an empty array is meaningful: empty CSV = "load no MCP
+                // servers" (the background-explore shape). mcp.ts:getManager reads
+                // UNOWN_MCP_SERVERS and filters the merged config accordingly.
+                process.env[SUBAGENT_MCP_SERVERS_ENV] = opts.mcpServers.join(",");
+        }
+        if (opts.noAgentsMd) {
+                // Read by the agentsFilesOverride callback in bootRuntime to skip
+                // the per-tier memory files (AGENTS.md injection).
+                process.env[SUBAGENT_NO_AGENTS_MD_ENV] = "1";
+        }
+}
+
+async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
+        // Milestone 2.1 + 2.2 — apply the per-subagent routing overrides to
+        // process.env BEFORE the session is created, so term.ts:writeModelsJson
+        // (reads PI_MODEL_ID), the bridge (reads BRIDGE_QWEN_THINKING), the
+        // MCP extension (reads UNOWN_MCP_SERVERS) and the agentsFilesOverride
+        // callback (reads UNOWN_NO_AGENTS_MD) all observe the routed values.
+        applySubagentEnvOverrides(bootOpts);
         const agentDir = ensureUnownAgentDir();
         // Last-resort child hygiene (child-reaper.ts): LSP/MCP server children get
         // SIGTERM→SIGKILL on process exit and SIGINT/SIGTERM — idempotent, so every
@@ -377,15 +497,23 @@ export async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootO
                                 additionalSkillPaths,
                                 additionalPromptTemplatePaths,
                                 appendSystemPrompt: bootOpts.appendSystemPromptPath ? [bootOpts.appendSystemPromptPath] : undefined,
-                                agentsFilesOverride: (base: any) => ({
-                                        // Supplement (not replace) the user's own AGENTS.md/CLAUDE.md chain.
-                                        // Re-resolved per session (re)new so AutoDream's concurrent memory
-                                        // updates become visible without restarting the CLI.
-                                        agentsFiles: [
-                                                ...base.agentsFiles,
-                                                ...terminalMemoryForAgent(cwd).map((f) => ({ path: f.path, content: f.content })),
-                                        ],
-                                }),
+                                agentsFilesOverride: (base: any) => {
+                                        // Milestone 2.2 — skip the per-tier AGENTS.md/memory
+                                        // injection when UNOWN_NO_AGENTS_MD=1 (e.g. the
+                                        // background-explore subagent, which wants minimal context
+                                        // overhead). The base chain (the user's own AGENTS.md /
+                                        // CLAUDE.md) is still appended.
+                                        const skipInjection = process.env[SUBAGENT_NO_AGENTS_MD_ENV] === "1";
+                                        const injected = skipInjection
+                                                ? []
+                                                : terminalMemoryForAgent(cwd).map((f) => ({ path: f.path, content: f.content }));
+                                        return {
+                                                // Supplement (not replace) the user's own AGENTS.md/CLAUDE.md chain.
+                                                // Re-resolved per session (re)new so AutoDream's concurrent memory
+                                                // updates become visible without restarting the CLI.
+                                                agentsFiles: [...base.agentsFiles, ...injected],
+                                        };
+                                },
                         },
                 });
                 const created = await createAgentSessionFromServices({
@@ -892,6 +1020,14 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 plan: args.plan,
                 goal: args.goal,
                 extraExtensions: capture ? [createOutputCaptureExtension(capture)] : undefined,
+                // Milestone 2.1 + 2.2 — surface the routing fields (set by
+                // parseSubagentFlags inside parseArgs). bootRuntime applies
+                // them to process.env via applySubagentEnvOverrides BEFORE
+                // the session is created.
+                model: args.model,
+                effort: args.effort,
+                mcpServers: args.mcpServers,
+                noAgentsMd: args.noAgentsMd,
         });
         if (wantResultJson && capture) {
                 const wrap = captureStdout();
@@ -1143,6 +1279,14 @@ export async function runCli(argv: string[]) {
                                 appendSystemPromptPath: args.appendSystemPromptPath,
                                 plan: args.plan,
                                 goal: args.goal,
+                                // Milestone 2.1 + 2.2 — surface the routing fields
+                                // (set by parseSubagentFlags inside parseArgs) into
+                                // the TUI boot path so applySubagentEnvOverrides
+                                // (called inside bootRuntime) honors them.
+                                model: args.model,
+                                effort: args.effort,
+                                mcpServers: args.mcpServers,
+                                noAgentsMd: args.noAgentsMd,
                         });
                         break;
         }
