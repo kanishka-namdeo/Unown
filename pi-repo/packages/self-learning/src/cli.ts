@@ -30,6 +30,7 @@ import {
         createAgentSessionRuntime,
         createAgentSessionServices,
         InteractiveMode,
+        resolveCliModel,
         runPrintMode,
         SessionManager,
         SettingsManager,
@@ -572,6 +573,28 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                         sessionManager,
                         sessionStartEvent,
                         tools: bootOpts.tools,
+                        // Milestone 2.1 — per-session model routing. writeModelsJson
+                        // never clobbers an existing models.json (setup owns it),
+                        // so applySubagentEnvOverrides' PI_MODEL_ID write only
+                        // matters on a FIRST-RUN seed. The --model flag's real
+                        // effect is HERE: resolve the id against the same
+                        // resolver pi's own CLI uses and hand the session the
+                        // resolved Model. --effort maps 1:1 onto pi's
+                        // ThinkingLevel (low/medium/high) on top of the
+                        // BRIDGE_QWEN_THINKING env write (applySubagentEnvOverrides).
+                        model: (() => {
+                                if (!bootOpts.model) return undefined;
+                                const resolved = resolveCliModel({
+                                        cliModel: bootOpts.model,
+                                        modelRuntime: services.modelRuntime,
+                                });
+                                if (resolved.error) {
+                                        console.error(`unown: --model ${bootOpts.model}: ${resolved.error}`);
+                                        return undefined;
+                                }
+                                return resolved.model;
+                        })(),
+                        thinkingLevel: bootOpts.effort,
                 });
                 return { ...created, services, diagnostics: services.diagnostics };
         };

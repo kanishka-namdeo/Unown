@@ -324,7 +324,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "tui: the end-user release audit — four gaps that broke shipped features from the terminal…",
+            "title": "tui: the end-user release audit — five gaps that broke shipped features from the terminal…",
             "behavior": false
           },
           {

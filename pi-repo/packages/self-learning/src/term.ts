@@ -67,6 +67,21 @@ export interface AgentDirInit {
 
 let lastInit: AgentDirInit | null = null;
 
+/** The bridge's served model ids — BRIDGE_KNOWN_MODELS (comma-separated;
+ *  the allow-list the llm-bridge routes, see mini-services/llm-bridge).
+ *  Used wherever models.json is seeded so the FULL catalog is registered
+ *  (one entry per served id, defaultModel first): /model, --model and the
+ *  subagent routing frontmatter can then route between them without a
+ *  manual models.json edit. */
+export function bridgeKnownModels(defaultModel: string): string[] {
+        const raw = process.env.BRIDGE_KNOWN_MODELS || "kimi-k2.5,qwen3.7-plus,qwen3.6-plus";
+        const ids = raw
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+        return [defaultModel, ...ids.filter((id) => id !== defaultModel)];
+}
+
 export function writeModelsJson(agentDir: string): { path: string; fresh: boolean; provider: string; modelId: string } {
         mkdirSync(agentDir, { recursive: true });
         const modelsPath = join(agentDir, "models.json");
@@ -89,15 +104,13 @@ export function writeModelsJson(agentDir: string): { path: string; fresh: boolea
                                                 baseUrl: `${baseUrl}/v1`,
                                                 api: "openai-completions",
                                                 apiKey,
-                                                models: [
-                                                        {
-                                                                id: modelId,
-                                                                name: `${modelId} (via unown)`,
-                                                                contextWindow: 131072,
-                                                                maxTokens: 8192,
-                                                                input: ["text", "image"],
-                                                        },
-                                                ],
+                                                models: bridgeKnownModels(modelId).map((id) => ({
+                                                        id,
+                                                        name: `${id} (via unown)`,
+                                                        contextWindow: 131072,
+                                                        maxTokens: 8192,
+                                                        input: ["text", "image"],
+                                                })),
                                         },
                                 },
                         },

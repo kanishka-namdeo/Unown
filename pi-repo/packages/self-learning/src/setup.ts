@@ -22,7 +22,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { join } from "node:path";
 import * as readline from "node:readline/promises";
 import { probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
-import { UNOWN_AGENT_DIR } from "./term.ts";
+import { bridgeKnownModels, UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
 // Provider presets
@@ -120,6 +120,10 @@ interface WriteConfigInput {
         apiKeyInModelsJson?: string;
         /** Key stored in auth.json (0600) — preferred for real secrets. */
         apiKeyInAuthJson?: string;
+        /** Additional served model ids to register after modelId (the bridge
+         *  preset passes its full allow-list so /model + --model can route
+         *  between the served catalog without a manual models.json edit). */
+        extraModelIds?: string[];
 }
 
 function mergeJson(path: string, patch: Record<string, unknown>): void {
@@ -139,6 +143,9 @@ export function writeAgentConfig(input: WriteConfigInput): void {
         mkdirSync(UNOWN_AGENT_DIR, { recursive: true });
 
         // models.json — full rewrite (setup is an explicit reconfigure action).
+        // The bridge preset registers the FULL served catalog (extraModelIds:
+        // BRIDGE_KNOWN_MODELS) so /model + --model can route between ids.
+        const modelIds = [input.modelId, ...(input.extraModelIds ?? [])];
         const modelsJson: Record<string, unknown> = {
                 providers: {
                         [input.providerId]: {
@@ -146,15 +153,13 @@ export function writeAgentConfig(input: WriteConfigInput): void {
                                 baseUrl: input.baseUrl,
                                 api: input.api,
                                 ...(input.apiKeyInModelsJson ? { apiKey: input.apiKeyInModelsJson } : {}),
-                                models: [
-                                        {
-                                                id: input.modelId,
-                                                name: `${input.modelId} (via unown)`,
-                                                contextWindow: 131072,
-                                                maxTokens: 8192,
-                                                input: input.input,
-                                        },
-                                ],
+                                models: modelIds.map((id) => ({
+                                        id,
+                                        name: `${id} (via unown)`,
+                                        contextWindow: 131072,
+                                        maxTokens: 8192,
+                                        input: input.input,
+                                })),
                         },
                 },
         };
@@ -353,6 +358,9 @@ async function runBridgeSetup(
                 modelId,
                 input: preset.input,
                 apiKeyInModelsJson: apiKey,
+                // Register every id the bridge serves (its allow-list) so the
+                // catalog is routable (/model, --model, agent frontmatter).
+                extraModelIds: bridgeKnownModels(modelId).slice(1),
         });
         console.log(`\n✓ configured the bundled bridge (${modelId})`);
         console.log("  next: unown            # start a session");
