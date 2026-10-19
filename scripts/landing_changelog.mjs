@@ -150,7 +150,10 @@ function parseChangelog(raw, { reportUnused = false } = {}) {
     if (sub) {
       const name = sub[1];
       const first = name.split(/[\s(]/)[0];
-      if (/^Agent Behavior$/i.test(name)) bucket = "Behavior";
+      // "Agent Behavior" — exact, or with a parenthesised milestone suffix
+      // like "Agent Behavior (Milestone 4 — 2026-10-19)" — both map to the
+      // "Behavior" bucket so per-milestone buckets don't fragment the count.
+      if (/^Agent Behavior(\s|$)/i.test(name)) bucket = "Behavior";
       else if (KAC_BUCKETS.includes(first)) bucket = first;
       else fail(`unknown bucket heading "### ${name}" in [${stop.label}] — extend BUCKETS, do not drop it`);
       headingBehavior = /Agent Behavior/i.test(name);

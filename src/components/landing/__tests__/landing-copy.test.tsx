@@ -178,6 +178,77 @@ describe("landing mechanisms", () => {
       screen.getByRole("heading", { name: /What goes wrong without persistent memory/i }),
     ).toBeTruthy();
   });
+
+  test("the SDLC-parity surface lists the M1-M4 capabilities and links their sources", () => {
+    // The 2026-10-19 sweep ported fifteen features; this section surfaces them
+    // as a labelled tile group so the page can't silently drop one. Each tile
+    // must link to a real source file under pi-repo/packages/self-learning/src/.
+    const { container } = render(<MechanismsSection />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("SDLC parity");
+    expect(text).toContain("What the 2026-10-19 sweep ported.");
+    // Every M1-M4 capability is named — the same set the parity doc Round 5
+    // table describes, in the same vocabulary so the page cannot drift from
+    // the doc.
+    const capabilities = [
+      "Multi-type hooks",
+      "Adversary Mode + injection scanner",
+      "Per-subagent routing",
+      "Recipes",
+      "Repo Wiki",
+      "/init + /doctor",
+      "/blame + /sessions",
+      "Auto-compact",
+    ];
+    for (const cap of capabilities) {
+      expect(text).toContain(cap);
+    }
+    // The receipts link points at the parity doc on GitHub, not a dead route.
+    const docLink = screen.getByRole("link", { name: /sdlc-feature-parity\.md/i });
+    expect(docLink.getAttribute("href")).toContain("/blob/main/docs/sdlc-feature-parity.md");
+    // Every SDLC-parity tile links to a real src file (the ExternalLink chip).
+    const SRC_PREFIX =
+      "https://github.com/kanishka-namdeo/Unown/blob/main/pi-repo/packages/self-learning/src/";
+    const src = (file: string) => `${SRC_PREFIX}${file}`;
+    const srcLinks = container.querySelectorAll<HTMLAnchorElement>(
+      'a[href*="/blob/main/pi-repo/packages/self-learning/src/"]',
+    );
+    const srcNames = new Set(
+      Array.from(srcLinks).map((a) => a.getAttribute("href") ?? ""),
+    );
+    expect(srcNames.has(src("hooks-config.ts"))).toBe(true);
+    expect(srcNames.has(src("adversary.ts"))).toBe(true);
+    expect(srcNames.has(src("subagent-routing.ts"))).toBe(true);
+    expect(srcNames.has(src("recipes.ts"))).toBe(true);
+    expect(srcNames.has(src("repo-wiki.ts"))).toBe(true);
+    expect(srcNames.has(src("init-agents.ts"))).toBe(true);
+    expect(srcNames.has(src("blame.ts"))).toBe(true);
+    expect(srcNames.has(src("auto-compact.ts"))).toBe(true);
+  });
+
+  test("the FAQ 'What can it actually do?' answer names the M1-M4 capabilities", () => {
+    // The FAQ is the page's only place to enumerate features in prose — this
+    // assertion keeps the answer honest against drift from the parity doc.
+    render(<FaqSection />);
+    fireEvent.click(screen.getByRole("button", { name: "What can it actually do?" }));
+    const text = document.body.textContent ?? "";
+    for (const fragment of [
+      "multi-type hooks",
+      "Adversary Mode",
+      "106-pattern prompt-injection scanner",
+      "per-subagent",
+      "Recipes",
+      "Repo Wiki",
+      "/init",
+      "/doctor",
+      "/blame",
+      "sessions export",
+      "auto-compact",
+      "Round 5",
+    ]) {
+      expect(text).toContain(fragment);
+    }
+  });
 });
 
 describe("landing models", () => {

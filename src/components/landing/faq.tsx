@@ -38,6 +38,10 @@ const FAQ = [
     a: "Any OpenAI-compatible endpoint, hosted or local. Background learning can also run fully local and offline, on llama.cpp or Ollama through the bridge, while coding sessions stay on the remote model.",
   },
   {
+    q: "What can it actually do?",
+    a: "Beyond the five mechanisms above: multi-type hooks (command, HTTP, MCP-tool, prompt, agent) with semantic output and seven new event surfaces; an opt-in Adversary Mode (file-gated PreToolUse LLM reviewer) plus a 106-pattern prompt-injection scanner; per-subagent model + effort + mcpServers routing; declarative Recipes (YAML/JSON instruction bundles with parameters, sub-recipes, response_schema and templates); a Repo Wiki that auto-generates markdown docs with file:line cross-links; `/init` and `/doctor` for instruction-set management; `/blame` and `unown sessions export|import|list` for session forensics; and proportional auto-compact on the token limit. Every one of these is reverse-engineered from the 2026 coding agents (codex, claude code, goose, zcode, opencode, cursor) — the receipts and the design decisions are in docs/sdlc-feature-parity.md Round 5.",
+  },
+  {
     q: "Will it rewrite my tests to make them pass?",
     a: "The seeded policy tier in memory literally says not to: “If a verification fails, inspect the failure output and fix the root cause — never edit tests to make them pass.” In the terminal session that is an instruction; in the engine it is structural: benchmark tests are sha256-pinned and restored to pristine state before scoring, so an agent that edits them scores zero. Unown writes to .unown/memory/*.md and .unown/skills/*.md — not your source, and not your AGENTS.md.",
   },

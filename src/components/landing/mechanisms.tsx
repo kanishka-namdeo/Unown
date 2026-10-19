@@ -125,6 +125,73 @@ const INFRA = [
 ];
 
 /* ------------------------------------------------------------------ */
+/* the SDLC-parity surface (Milestones 1-4)                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Reverse-engineered from the 2026-10-19 sweep across nine coding agents —
+ * every entry here landed on pi's documented seams (extension factories,
+ * `pi.registerTool`, `pi.registerCommand`, session entries) or in Unown's
+ * own pure modules, never as a fork of the vendored core. The sources and
+ * the design decisions live in `docs/sdlc-feature-parity.md` Round 5; this
+ * tile grid is the user-facing index of what shipped.
+ *
+ * Same shape as `INFRA` (title + body + file link) because these are real
+ * features rather than the page's five load-bearing mechanisms — labelled as
+ * "SDLC parity" so the count above stays honest.
+ */
+const SDLC_PARITY = [
+  {
+    title: "Multi-type hooks",
+    body: "Five handler types — command, HTTP, MCP-tool, prompt, agent — plus seven new event surfaces and semantic output entries (feedback / warning / error / stop / context). Trust-gated like MCP config.",
+    file: "hooks-config.ts",
+    href: SRC("hooks-config.ts"),
+  },
+  {
+    title: "Adversary Mode + injection scanner",
+    body: "A file-gated PreToolUse LLM reviewer revisits goose's adversary inspector — opt-in, per-action, secret-redacted. A 106-pattern injection scanner with scan-mode awareness (write/edit content scans injection-only, not code-exec).",
+    file: "adversary.ts",
+    href: SRC("adversary.ts"),
+  },
+  {
+    title: "Per-subagent routing",
+    body: "Each subagent carries its own model, effort (low/medium/high), mcpServers allowlist and injectAgentsMd toggle. A built-in `background-explore` agent runs read-only, no MCP, no AGENTS.md.",
+    file: "subagent-routing.ts",
+    href: SRC("subagent-routing.ts"),
+  },
+  {
+    title: "Recipes",
+    body: "Declarative YAML/JSON instruction bundles — parameters, sub-recipes, response_schema with corrective retries, file templates, allowed-tools, model/effort overrides. `unown recipes run` CLI + `/recipe` slash command.",
+    file: "recipes.ts",
+    href: SRC("recipes.ts"),
+  },
+  {
+    title: "Repo Wiki",
+    body: "Automatic repo documentation with file:line cross-links. Parallel read-only subagents generate one markdown page per module; an index, architecture graph and changes page synthesise from them. On-demand or scheduled via the Round 3 automations substrate.",
+    file: "repo-wiki.ts",
+    href: SRC("repo-wiki.ts"),
+  },
+  {
+    title: "/init + /doctor",
+    body: "`/init` writes an AGENTS.md from repo forensics — language, framework, test runner, lint, build commands, dependency graph. `/doctor` audits instruction sets: AGENTS.md freshness, skill coverage, hook syntax, orphaned configs.",
+    file: "init-agents.ts",
+    href: SRC("init-agents.ts"),
+  },
+  {
+    title: "/blame + /sessions",
+    body: "`/blame <file>` reads the receipts ledger for every turn that touched a path. `unown sessions export|import|list` rehydrates a session across machines — manifest, messages, todos, notes, skills, files.",
+    file: "blame.ts",
+    href: SRC("blame.ts"),
+  },
+  {
+    title: "Auto-compact",
+    body: "When token usage approaches the model's context window, compaction triggers BEFORE the model loses early turns. A proportional threshold curve (70 / 85 / 95) with env-tunable overrides; telemetry is try/catch-wrapped so it never breaks a run.",
+    file: "auto-compact.ts",
+    href: SRC("auto-compact.ts"),
+  },
+];
+
+/* ------------------------------------------------------------------ */
 /* section                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -189,6 +256,52 @@ export function MechanismsSection() {
             ))}
           </div>
         </div>
+
+        {/* the SDLC-parity surface, reverse-engineered from the 2026-10-19 sweep */}
+        <FadeUp className="mt-20 max-w-2xl">
+          <SectionHead kicker="SDLC parity">
+            What the 2026-10-19 sweep ported.
+          </SectionHead>
+          <p className="mt-4 text-[13.5px] leading-relaxed text-dim">
+            Fifteen ports across four milestones — hooks, subagents, slash
+            commands, recipes and the repo wiki — each landing on pi&apos;s
+            documented seams. The receipts live in{" "}
+            <a
+              href={`${GITHUB_URL}/blob/main/docs/sdlc-feature-parity.md`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-mono text-[12px] text-gold underline-offset-4 hover:underline"
+            >
+              docs/sdlc-feature-parity.md
+            </a>{" "}
+            Round 5.
+          </p>
+        </FadeUp>
+
+        <FadeUp className="mt-10">
+          <div className="grid gap-px overflow-hidden border border-line bg-line sm:grid-cols-2">
+            {SDLC_PARITY.map((item) => (
+              <div key={item.title} className="bg-panel p-6">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="text-[15px] font-medium text-ink">{item.title}</h3>
+                  <span className="gb-label text-[8px] text-faint">
+                    SDLC parity
+                  </span>
+                </div>
+                <p className="mt-2.5 text-[13px] leading-relaxed text-dim">{item.body}</p>
+                <a
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11px] text-gold underline-offset-4 hover:underline"
+                >
+                  {item.file}
+                  <ExternalLink className="size-3" aria-hidden="true" />
+                </a>
+              </div>
+            ))}
+          </div>
+        </FadeUp>
 
         {/* infrastructure, labelled as such so the count stays honest */}
         <FadeUp className="mt-6">

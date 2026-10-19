@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 111;
+export const CHANGELOG_TOTAL_ENTRIES = 120;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 54,
@@ -39,14 +39,14 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Removed": 0,
   "Fixed": 25,
   "Security": 3,
-  "Behavior": 11
+  "Behavior": 20
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 70,
+    "total": 79,
     "counts": {
       "Added": 26,
       "Changed": 16,
@@ -54,12 +54,48 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Removed": 0,
       "Fixed": 17,
       "Security": 0,
-      "Behavior": 11
+      "Behavior": 20
     },
     "groups": [
       {
         "bucket": "Behavior",
         "items": [
+          {
+            "title": "recipes: declarative YAML/JSON agent instruction bundles with parameters, sub-recipes, response-schema…",
+            "behavior": true
+          },
+          {
+            "title": "repo-wiki: automatic repo documentation with file:line cross-links + parallel-subagent generation +…",
+            "behavior": true
+          },
+          {
+            "title": "slash-commands: /init AGENTS.md generator + /doctor instruction-set audit",
+            "behavior": true
+          },
+          {
+            "title": "slash-commands: /review PR URL/number support + /blame receipts reader",
+            "behavior": true
+          },
+          {
+            "title": "session-ux: unown sessions export|import|list + /edit-resend slash commands",
+            "behavior": true
+          },
+          {
+            "title": "auto-compact: proportional threshold curve + runner wiring",
+            "behavior": true
+          },
+          {
+            "title": "subagents: per-subagent model + effort routing + mcpServers allowlist + injectAgentsMd toggle +…",
+            "behavior": true
+          },
+          {
+            "title": "mcp-elicitation: structured mid-turn input + decideElicitation pure module + /mcp elicitation CLI subcommand",
+            "behavior": true
+          },
+          {
+            "title": "context-tools: get_context_remaining + view_image tools",
+            "behavior": true
+          },
           {
             "title": "hooks: multi-type user-configurable hook handlers + semantic output + 7 new event surfaces",
             "behavior": true
