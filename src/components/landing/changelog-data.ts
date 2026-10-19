@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 107;
+export const CHANGELOG_TOTAL_ENTRIES = 108;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 51,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 24,
+  "Fixed": 25,
   "Security": 3,
   "Behavior": 11
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 66,
+    "total": 67,
     "counts": {
       "Added": 23,
       "Changed": 16,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 16,
+      "Fixed": 17,
       "Security": 0,
       "Behavior": 11
     },
@@ -275,6 +275,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "hooks: the hooks-config suite is Windows-clean — the CI red on the hooks milestone is fixed at the test layer…",
+            "behavior": false
+          },
           {
             "title": "git tools: the gittests suite is now identity-hermetic — the CI red from the parallel session's /commit round…",
             "behavior": false

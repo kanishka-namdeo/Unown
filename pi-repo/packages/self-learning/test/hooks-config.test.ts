@@ -19,7 +19,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import {
     configHash,
     countHandlers,
@@ -227,8 +227,12 @@ describe("hooks-config — schema + loader", () => {
     });
 
     test("projectHooksConfigPath + userHooksConfigPath: expected names", () => {
-        expect(projectHooksConfigPath("/proj")).toBe("/proj/.unown/hooks.json");
-        expect(userHooksConfigPath("/agent")).toBe("/agent/hooks.json");
+        // The contract is the shape, not the separator: path.join owns the
+        // separator character, and on win32 it also normalises the leading
+        // slash — so the assertion compares separator-normalised paths.
+        const norm = (p: string) => p.split(sep).join("/");
+        expect(norm(projectHooksConfigPath("/proj"))).toBe("/proj/.unown/hooks.json");
+        expect(norm(userHooksConfigPath("/agent"))).toBe("/agent/hooks.json");
     });
 });
 
@@ -287,8 +291,11 @@ describe("hooks-config — interpolateTemplate", () => {
 
 describe("hooks-config — command handler", () => {
     test("exit 0 + empty stdout → allow", async () => {
+        // `node -e ""` rather than the shell builtin `true`: cmd.exe has no
+        // true, and the suite runs everywhere (spawn uses shell:true, which
+        // is cmd.exe on Windows).
         const r = await runHookHandler(
-            { type: "command", command: "true", timeoutMs: 5000 },
+            { type: "command", command: 'node -e ""', timeoutMs: 5000 },
             { name: "PreToolUse", tool: "bash" },
             ctx(),
         );
@@ -307,10 +314,14 @@ describe("hooks-config — command handler", () => {
     });
 
     test("exit 0 + stdout JSON → parsed structured output (deny)", async () => {
+        // node writes the JSON so the command is shell-portable: cmd.exe
+        // does not strip single quotes, and the JSON needs double quotes that
+        // would fight the shell's own quoting if echoed raw.
         const r = await runHookHandler(
             {
                 type: "command",
-                command: 'echo \'{"decision":"deny","reason":"blocked","outputs":[{"kind":"warning","message":"careful"}]}\'',
+                command:
+                    'node -e "console.log(JSON.stringify({decision:\'deny\',reason:\'blocked\',outputs:[{kind:\'warning\',message:\'careful\'}]}))"',
                 timeoutMs: 5000,
             },
             { name: "PreToolUse", tool: "bash" },
@@ -342,9 +353,12 @@ describe("hooks-config — command handler", () => {
 
     test("timeout → failClosed: deny; else allow with error", async () => {
         // Use a Node one-liner that ignores SIGTERM (sleep ignores it too, but
-        // Node is a more portable choice across OSes). The handler must time
-        // out at timeoutMs=200 and not wait the full command duration.
-        const slow = "node -e 'setInterval(()=>{}, 1000)'";
+        // Node is a more portable choice across OSes). Double quotes, not
+        // single: cmd.exe passes single quotes through literally, which would
+        // hand node a syntax error instead of a long-running script. The
+        // handler must time out at timeoutMs=200 and not wait the full
+        // command duration.
+        const slow = 'node -e "setInterval(()=>{}, 1000)"';
         const r1 = await runHookHandler(
             { type: "command", command: slow, timeoutMs: 200, failClosed: false },
             { name: "PreToolUse", tool: "bash" },
@@ -373,7 +387,9 @@ describe("hooks-config — command handler", () => {
 
     test("template interpolation: {{tool}} and {{input.command}} are injected", async () => {
         const r = await runHookHandler(
-            { type: "command", command: "echo 'tool={{tool}} cmd={{input.command}}'", timeoutMs: 5000 },
+            // node, not echo: the single quotes an echo version needs are
+            // literal characters on cmd.exe.
+            { type: "command", command: 'node -e "console.log(\'tool={{tool}} cmd={{input.command}}\')"', timeoutMs: 5000 },
             { name: "PreToolUse", tool: "bash", input: { command: "ls" } },
             ctx(),
         );
@@ -610,15 +626,17 @@ describe("hooks-config — runHooksForEvent composition", () => {
     });
 
     test("mutate stacks — later mutates overlay earlier ones", async () => {
+        // node writes each JSON decision (shell-portable — see the command
+        // handler tests above for why plain echo with single quotes is not).
         const handlers: HookHandler[] = [
             {
                 type: "command",
-                command: 'echo \'{"decision":"mutate","mutatedInput":{"path":"first.txt"}}\'',
+                command: 'node -e "console.log(JSON.stringify({decision:\'mutate\',mutatedInput:{path:\'first.txt\'}}))"',
                 timeoutMs: 5000,
             },
             {
                 type: "command",
-                command: 'echo \'{"decision":"mutate","mutatedInput":{"content":"new"}}\'',
+                command: 'node -e "console.log(JSON.stringify({decision:\'mutate\',mutatedInput:{content:\'new\'}}))"',
                 timeoutMs: 5000,
             },
         ];
@@ -681,7 +699,7 @@ describe("hooks-config — runHooksForEvent composition", () => {
     test("async handlers do not affect the merged decision", async () => {
         const handlers: HookHandler[] = [
             { type: "command", command: "echo async", async: true, timeoutMs: 5000 },
-            { type: "command", command: "true", timeoutMs: 5000 },
+            { type: "command", command: 'node -e ""', timeoutMs: 5000 },
         ];
         const r = await runHooksForEvent(handlers, { name: "PreToolUse", tool: "bash" }, ctx());
         expect(r.decision).toBe("allow");
@@ -693,7 +711,7 @@ describe("hooks-config — runHooksForEvent composition", () => {
 describe("hooks-config — parseHandlerOutput edge cases", () => {
     test("null → null", async () => {
         const r = await runHookHandler(
-            { type: "command", command: "true", timeoutMs: 5000 },
+            { type: "command", command: 'node -e ""', timeoutMs: 5000 },
             { name: "PreToolUse" },
             ctx(),
         );
