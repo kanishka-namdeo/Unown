@@ -23,6 +23,7 @@ changed no pixels: an audit of what the page says twice, in Part 12.
 - [Part 10 — The second scheme, and where the colour is allowed to live](#part-10--the-second-scheme-and-where-the-colour-is-allowed-to-live)
 - [Part 11 — The generation changes: Game Boy Advance, and a grid you can check](#part-11--the-generation-changes-game-boy-advance-and-a-grid-you-can-check)
 - [Part 12 — The density pass: one fact, one home](#part-12--the-density-pass-one-fact-one-home)
+- [Part 13 — The eight-band compression: scroll, words and the budget that keeps them down](#part-13--the-eight-band-compression-scroll-words-and-the-budget-that-keeps-them-down)
 
 Related pages: [benchmark-research.md](benchmark-research.md) — the numbers the
 page quotes; the page's binding contract lives one level up in
@@ -1507,3 +1508,96 @@ the cycle offers and `changelog` the aqua after it — and the changelog
 exception paragraph is gone from the allocation rule. The composition test
 now pins the entire fourteen-section hue walk, so the allocation paragraph
 cannot silently drift again.
+
+---
+
+## Part 13 — The eight-band compression: scroll, words and the budget that keeps them down
+
+**2026-10-20.** The complaint this round answers: too much vertical scroll, too
+text-heavy. Measured first (`scripts/landing_audit.mjs`, 1440×900, reveal motion
+neutralised): the page was **19,358px = 21.5 viewports** tall, carried **5,488
+words** across **fourteen sections**, and its two heaviest sections were
+benchmarks (3.74vh, 1,275 words, 58 paragraphs) and mechanisms (3.06vh, 745
+words, 40 paragraphs).
+
+### The research
+
+Two research agents ran in parallel (UX practices + creative assets/interaction
+patterns; raw reports under `/home/z/my-project/research/` in the work session,
+condensed here):
+
+- **Attention is front-loaded.** NN/g scroll-and-attention figures: ~57% of
+  visitor attention lands above the fold, ~74% within the first two screenfuls.
+  The back half of a 14-section page — models, benchmarks, integrity, faq — was
+  nearly unread real estate.
+- **Nobody stacks 14 full-height prose sections.** A corpus of 16 dev-tool
+  homepages (Vercel, Linear, Railway, Supabase, Raycast, Bun, Cursor, Resend,
+  cal.com and others) measured **500–1,700 words and ≤ 8 content bands** for the
+  most-copied pages. The text-heavier sites in the corpus (Bun, Cursor) stay
+  scannable only because their headings name visible things — terminals, UI
+  panes — not arguments.
+- **Users read 20–28% of words** on a normal page (NN/g *How Little Do Users
+  Read*); only pages under ~111 words get 50%. Prose density is a cost, not a
+  signal of substance.
+- **The compression patterns that 2025-26 pages converge on**: bento grids for
+  feature density (16/16 corpus sites carry one), tabbed explorers for sibling
+  features (8/16), stat bands instead of prose proof, terminal replays as
+  "show, don't tell" heroes, detail behind expanders, FAQ as accordion. None of
+  these fight this page's GBA identity — the console aesthetic is the
+  differentiator the trend reports (Webflow 2025, Awwwards) say 2026 rewards:
+  "crafted/human/playful" over AI-slop gloss.
+- **Guardrails that survive every pattern**: `prefers-reduced-motion` honoured
+  (already the page's rule), SSR-first hero text for LCP, `aspect-ratio` on
+  tiles for CLS, WCAG 2.2 target sizes, and terminal demos with transcripts —
+  all already landing-folder contracts.
+
+### The redesign (what moved where)
+
+Eight bands, every checkable claim kept — the constraint the whole round was
+solved under. Measured result: **12.3vh, ~2,540 words, 8 sections** (−43%
+height, −54% words), verified by all three landing gates (51 gated literals),
+312 unit tests, the AA contrast audit (1,020 nodes, both schemes), the theme
+gate, both axe passes and the production visual pass.
+
+| Band | Absorbed | The compression move |
+|---|---|---|
+| hero (+ `#quickstart`) | quickstart | the OS-tab one-liner chip stays above the fold; the manual sequence, prerequisites and the full 14-command surface live in collapsed `<details>` expanders (collapsed ≈ 40px vs a viewport) |
+| loop (`#loop`) | origin, mechanisms | the three gated artifact tabs stay byte-identical; origin's pair argument became a two-card strip; the five mechanisms + the SDLC-parity index became one six-tile bento (the 8th tile of the old SDLC grid became receipt links inside the sixth tile) |
+| showcase (`#showcase`) | — | 3 screenshots → 2 (the Hooks tab's story is the Integrity pane's hook log); the 10-row tab index became tiles |
+| proof (`#proof`) | benchmarks, integrity, models | a NEW tabbed band; all panes mounted with `hidden` on inactive ones, so generated numbers stay in the SSR DOM for crawlers and the gates; benchmarks kept the stat band + 2 flagship cards + the lift chart and compressed the three secondary tracks into one "also run" strip |
+| alphabet (`#alphabet`) | field-notes | glyph wall + decode panel + dex card in one band; the borrowed-essays column became a one-line sources footnote; 3 highlight quotes → 1 |
+| faq (`#faq`) | — | 8 → 7 items (cost answer folded into the capabilities answer) |
+| changelog (`#changelog`) | — | untouched — the generated rail is already the fixed-height shape this round wants everywhere |
+| finale | — | untouched |
+
+The claims-gate note: gated copy that moved files (the COMMANDS list, the
+slash-command chips) now reads from `hero.tsx` — the gate's `PAGES` map follows
+the copy, so a move and a map update ship in the same commit or the gate is red.
+
+### The budget that keeps it down
+
+The redesign's regression guard, now a contract in the landing AGENTS.md and a
+CI gate (`e2e/landing-budget.spec.ts` + `node scripts/landing_audit.mjs
+--budget`):
+
+- the page stays **≤ 13 viewports** and **≤ 3,200 words** at 1440×900;
+- no single band exceeds **3 viewports**;
+- a breach is settled by compressing elsewhere — tabs, expanders, cutting a
+  restated fact — **never** by deleting a generated number or a gated literal
+  (those are receipts, not prose).
+
+Viewport pinning matters more than it looks: Playwright's default context is
+1280×720, at which the same page measures ~3vh taller — the spec pins 1440×900
+or it would be gating a different page than the contract describes.
+
+### The VLM review lane
+
+`scripts/agnes_review.mjs` sends landing screenshots through the bridge's
+second upstream (agnes-3.0-flash, vision-capable — see `.env.example`'s
+second-upstream block) and prints a strict `VERDICT / DEFECTS / IMPROVE`
+critique. Findings from this round's runs were triaged against the design
+system: the useful ones (a contrast defect class, the empty-tab observation)
+fed the pass; the rest ("make the buttons modern", "reduce the seal's
+dominance") are exactly what the palette and identity contracts exist to
+refuse. The rule, recorded in the AGENTS.md: **the VLM is a reviewer's aid,
+not a gate — it does not know the seal is the brand.**

@@ -8,7 +8,19 @@
  *     count of visible text, count of <p> elements
  *   - total word count of the page
  *
- * Usage: LANDING_AUDIT_URL=http://localhost:3000 node scripts/landing_audit.mjs
+ * Usage:
+ *   LANDING_AUDIT_URL=http://localhost:3000 node scripts/landing_audit.mjs
+ *   node scripts/landing_audit.mjs --budget   # exit 1 on a budget breach
+ *
+ * The budget (the 2026-10-20 redesign's regression gate, mirrored in the
+ * landing AGENTS.md and CI's landing job):
+ *   - the document must stay ≤ 13 viewports tall at 1440x900
+ *   - the visible word count must stay ≤ 3,200
+ *   - no single top-level band may exceed 3 viewports on its own
+ * Never settle a breach by deleting a generated number or a gated literal —
+ * compress elsewhere (tabs, expanders, cut restated facts). See the scroll
+ * budget contract in src/components/landing/AGENTS.md.
+ *
  * Output: JSON to stdout (also saved to download/landing/audit.json)
  */
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -16,6 +28,10 @@ import { join } from "node:path";
 
 const BASE = process.env.LANDING_AUDIT_URL ?? "http://localhost:3000";
 const OUT = join(process.cwd(), "download", "landing");
+const BUDGET = process.argv.includes("--budget");
+const MAX_VH = 13;
+const MAX_WORDS = 3200;
+const MAX_BAND_VH = 3;
 
 let chromium = null;
 for (const c of [
@@ -78,3 +94,18 @@ for (const s of metrics.sections) {
   );
 }
 await browser.close();
+
+if (BUDGET) {
+  const breaches = [];
+  if (metrics.pageHeightVh > MAX_VH) breaches.push(`page ${metrics.pageHeightVh}vh > ${MAX_VH}vh`);
+  if (metrics.bodyWords > MAX_WORDS) breaches.push(`${metrics.bodyWords} words > ${MAX_WORDS}`);
+  for (const s of metrics.sections) {
+    if (s.heightVh > MAX_BAND_VH) breaches.push(`band "${(s.heading ?? s.id ?? "?").slice(0, 40)}" ${s.heightVh}vh > ${MAX_BAND_VH}vh`);
+  }
+  if (breaches.length) {
+    console.error(`\nFAIL  scroll budget breach: ${breaches.join("; ")}`);
+    console.error("      compress per the AGENTS.md contract — never delete a generated number or gated literal");
+    process.exit(1);
+  }
+  console.log(`\nPASS  scroll budget: ${metrics.pageHeightVh}vh ≤ ${MAX_VH}, ${metrics.bodyWords}w ≤ ${MAX_WORDS}, every band ≤ ${MAX_BAND_VH}vh`);
+}

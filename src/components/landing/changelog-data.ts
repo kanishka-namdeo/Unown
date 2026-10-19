@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 122;
+export const CHANGELOG_TOTAL_ENTRIES = 123;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 55,
-  "Changed": 18,
+  "Changed": 19,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 26,
@@ -71,10 +71,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "2.2.0",
     "date": "2026-10-19",
-    "total": 80,
+    "total": 81,
     "counts": {
       "Added": 26,
-      "Changed": 16,
+      "Changed": 17,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 18,
@@ -279,6 +279,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Changed",
         "items": [
+          {
+            "title": "landing: the eight-band compression — half the scroll, every receipt kept",
+            "behavior": false
+          },
           {
             "title": "landing: the hero's install chip grows OS tabs…",
             "behavior": false

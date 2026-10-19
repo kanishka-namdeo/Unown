@@ -3,16 +3,24 @@
 ## Purpose
 
 The marketing landing page served at `/` and auto-deployed to Vercel by a push to
-`main`. Fourteen self-contained sections plus the shared primitives they are
-built from: a hand-drawn 28-form "Unown script", the Pokédex-derived lexicon
-each form decodes, an accessible terminal session replay, the shipping rail that
+`main`. Eight self-contained bands plus the shared primitives they are built
+from: a hand-drawn 28-form "Unown script", the Pokédex-derived lexicon each
+form decodes, an accessible terminal session replay, the shipping rail that
 renders `CHANGELOG.md`, and the effects layer that owns scroll reveals, the
-letter-rain and the Konami easter egg. Three of those sections are derived from
-repository artifacts instead of authored here — the rail, the benchmark figures
-and the engine's job cadence — and a fourth (the quoted hook decisions) is
-hand-written but gated against the code that emits it. The generators and the
-gate are what make "every number on this page is checkable" a build result
-rather than a caption; the contracts live under Local Contracts.
+letter-rain and the Konami easter egg. Three of those bands carry data
+derived from repository artifacts instead of authored here — the rail, the
+benchmark figures and the engine's job cadence — and the proof band is a
+single tabbed section hosting three panes (benchmarks, integrity, models).
+The generators and the gates are what make "every number on this page is
+checkable" a build result rather than a caption; the contracts live under
+Local Contracts.
+
+The 2026-10-20 redesign (see `docs/landing-research.md`, "2026-10-20 — the
+eight-band compression") merged fourteen sections / 21.5 viewports / 5,488
+words into eight bands / ~12.3vh / ~2,540 words after measuring that ~57% of
+visitor attention lands above the fold and 74% within two screenfuls. Every
+generated number, gated literal and receipt link survived the merge — that
+constraint is what the whole redesign was solved under.
 
 ## Ownership
 
@@ -35,12 +43,12 @@ rather than a caption; the contracts live under Local Contracts.
   Adding a section means adding it in both places or the page grows an orphan.
 - **Dashboard affordances link in-page, never to `/dashboard`.** The marketing
   route is the only thing Vercel hosts; the live `/dashboard` there has no
-  engine behind it and would show an empty app. So the nav "Dashboard", the
-  footer "Dashboard" and the mechanisms infrastructure tile point at
-  `#showcase` (the captured screenshots), and the showcase call-to-action points
-  at `#quickstart` ("Install it and open the dashboard"). `__tests__/landing-copy.test.tsx`
-  asserts these targets — restoring a `/dashboard` href is a regression, not a
-  fix.
+  engine behind it and would show an empty app. So the nav "Dashboard" and the
+  footer "Dashboard" point at `#showcase` (the captured screenshots), and the
+  showcase call-to-action points at `#quickstart` ("Install it and open the
+  dashboard" — an anchor inside the hero since the quickstart merge).
+  `__tests__/landing-copy.test.tsx` asserts these targets — restoring a
+  `/dashboard` href is a regression, not a fix.
 - **The Unown script is the identity.** `glyphs.ts` holds 28 stroke paths on a
   100×100 grid plus `EYES[]` (per-form eye placement) and `MARKS` (decorative
   non-letters). It is drawn from scratch: no Pokémon sprite, card, logo or font
@@ -142,19 +150,22 @@ rather than a caption; the contracts live under Local Contracts.
     `300 scored runs across two days` went because nothing anywhere did.
 - **Quoted engine strings are gated, and the job list is generated.**
   `scripts/landing_claims.mjs` does two jobs this folder's honesty rule depends
-  on. It writes `engine-data.ts` from `JOB_DEFS` in `router.ts`, so
-  `origin.tsx`'s job listing and `mechanisms.tsx`'s "seven jobs … five on a
-  timer, two on events" are read from the scheduler rather than retyped:
+  on. It writes `engine-data.ts` from `JOB_DEFS` in `router.ts`, so the pair
+  strip's job listing in `loop.tsx` and the routing tile's "seven jobs … five
+  on a timer, two on events" are read from the scheduler rather than retyped:
   `ENGINE_JOBS` and `ENGINE_JOB_COUNTS` are the only legal source for a job id,
   interval or tally on this page. And it gates every literal the page presents
   as engine output — `integrity.tsx`'s hook log, all three `loop.tsx` beats
-  including the `.unown/memory/project.md` excerpt, `quickstart.tsx`'s command
-  names — against the files that write them. Two consequences for anyone editing
-  that copy: a quoted line may be **wrapped** for the terminal column but never
-  **re-worded**, and a paraphrase of a real message is a failing gate, not a
-  style choice. The check is strictly one-directional (page implies source)
-  because `cli.ts` HELP is a superset by design — a gate that punished a
-  deliberate omission would be switched off within a week.
+  including the `.unown/memory/project.md` excerpt, `hero.tsx`'s command
+  names (the COMMANDS array and slash-command chips moved there with the
+  quickstart merge; the gate's `PAGES` map follows the copy, so moving gated
+  copy means updating the map in the same commit) — against the files that
+  write them. Two consequences for anyone editing that copy: a quoted line may
+  be **wrapped** for the terminal column but never **re-worded**, and a
+  paraphrase of a real message is a failing gate, not a style choice. The
+  check is strictly one-directional (page implies source) because `cli.ts`
+  HELP is a superset by design — a gate that punished a deliberate omission
+  would be switched off within a week.
 - **Every fact is stated exactly once, in the section that argues it.** A
   measurement audit found the verify-twice rule stated seven times and the
   sandbox three times, which is what made the page's middle read as a wall: the
@@ -163,40 +174,36 @@ rather than a caption; the contracts live under Local Contracts.
   four of the non-affiliation notice, five of the provider list and five of the
   tier resolver. Canonical homes, which are load-bearing — do not restate a
   claim in another section, link to its owner instead:
-  - **the gates** (`integrity.tsx` `GATES[]`) — `mechanisms.tsx` 02/04/05 and
-    `loop.tsx` describe the loop, not the gate table;
-  - **the sandbox, both layers** (`integrity.tsx`) — `mechanisms.tsx` keeps only
-    the Flatpak/Claude Code comparison, which integrity has no equivalent of;
+  - **the gates** (`integrity.tsx` `GATES[]`) — `loop.tsx`'s mechanism tiles and
+    beats describe the loop, not the gate table;
+  - **the sandbox, both layers** (`integrity.tsx` — one merged paragraph);
   - **the model allow-list and the bridge** (`models.tsx`) — `hero.tsx`'s trust
     chip, `faq.tsx`'s "which models" answer and the `Z` decode all point here
     instead of re-listing providers;
   - **the non-affiliation notice** (`shell.tsx` footer, the copy
-    `verify-deploy.mjs` asserts). `alphabet.tsx` and `field-notes.tsx` keep
-    their own one-liners because they are the sections making a Pokémon claim.
-    `faq.tsx` answers the question in one sentence and points at the footer;
-  - **"no font file, no image sprite"** (`alphabet.tsx` only — `finale.tsx` used
-    to restate the weaker "28 forms, all inline SVG" seven sections later);
-  - **`DEX_QUOTES.origin`** (`field-notes.tsx` dex card, which reads it from
-    `lexicon.ts`). `origin.tsx` used to print the same 33 words as a second
-    pull-quote; it now carries only the "odd power" quotation and states the
-    "which came first" argument in prose;
-  - **the caching negative control** (`benchmarks.tsx` only — once as a caption,
-    once as the control box; it used to be three times);
-  - **the terminal-agent command surface and its session tools**
-    (`quickstart.tsx` — the `COMMANDS` list, the `--goal` evidence contract,
+    `verify-deploy.mjs` asserts). `alphabet.tsx` keeps its own one-liner
+    because it is the section making a Pokémon claim. `faq.tsx` answers the
+    question in one sentence and points at the footer;
+  - **"no font file, no image sprite"** (`alphabet.tsx` only);
+  - **`DEX_QUOTES.origin`** (`alphabet.tsx`'s dex card, which reads it from
+    `lexicon.ts` — the card moved in from the merged-away field-notes and is
+    its single home);
+  - **the caching negative control** (`benchmarks.tsx` only — the v1 + v3
+    controls share one box);
+  - **the terminal-agent command surface and its session tools** (`hero.tsx`'s
+    collapsed expanders — the `COMMANDS` list, the `--goal` evidence contract,
     and the session-tools paragraph naming `lsp`, the MCP join and the slash
-    commands) — no other section lists commands or session tools; the
-    `unown automations create` line (2026-10-19, Round 3) carries the
-    read-only-by-default claim, checkable against
-    `docs/usage.md#automations-unown-automations`;
+    commands) — no other band lists commands or session tools; the
+    `unown automations create` line carries the read-only-by-default claim,
+    checkable against `docs/usage.md#automations-unown-automations`;
   - **the project-config trust gate** (`integrity.tsx`, the cloned-configs
-    block, receipts-linked to `config-trust.ts`) — the quickstart names
+    block, receipts-linked to `config-trust.ts`) — the hero names
     `.unown/mcp.json` as where servers are configured without restating the
     gate;
   - **the release record** (`changelog.tsx` — the rail is the page's only home
-    for what shipped and when; no other section may list features as a
+    for what shipped and when; no other band may list features as a
     chronology, and the rail never restates what a mechanism does, which is
-    `mechanisms.tsx` and `integrity.tsx`'s job — it names the addition, not the
+    `loop.tsx`'s and `integrity.tsx`'s job — it names the addition, not the
     argument for it).
 - **`lexicon.ts` `means` is a DECODE, not a specification, and stays under
   ~12 words.** Twenty-eight entries at eighteen words each is a wall; at eleven
@@ -206,11 +213,12 @@ rather than a caption; the contracts live under Local Contracts.
   the benchmark numbers back at the page. Name the mechanism; let the section
   that owns it do the explaining. `proof` stays a bare number or repo path.
 - **Lore must be reachable without interacting.** The decode panel shows one
-  lexicon entry at a time, so `HIGHLIGHTS` in `alphabet.tsx` lifts three forms
-  into the intro column as a static strip. A section narrated as a payoff but
-  built as a hover-revealed reference table delivers nothing to the ~90% of
-  visitors who scroll past it — the page's best writing was behind a pointer
-  event. If you add lore, add it somewhere it can be read without a click.
+  lexicon entry at a time, so `alphabet.tsx` lifts the `Z` form into the
+  intro as a static highlight (one since the 2026-10-20 merge; it used to be
+  three). A section narrated as a payoff but built as a hover-revealed
+  reference table delivers nothing to the ~90% of visitors who scroll past
+  it — the page's best writing was behind a pointer event. If you add lore,
+  add it somewhere it can be read without a click.
 - `lexicon.ts` lore may only contain facts verified against Bulbapedia,
   PokémonDB, Wikipedia or ssbwiki, quoted with the source named. Popular but
   wrong (the sleeping-stick line, Lavender Town, Unown letters in Deltarune
@@ -358,23 +366,19 @@ parallel ones.
   grey card on itself. `shell.tsx` exports `type Hue`, `type Tone`, `hueAttr()`
   and `toneAttr()`. `[data-tone="…"]` on a furniture element still overrides
   just that element's `--tone-fill` / `--tone-rim`.
-  - **Allocation is a rule, not taste:** `psychic` is reserved for the three
-    sections about Unown itself (hero, alphabet, field-notes); the other
-    eleven cycle `aqua → leaf → magma → gold` in page order, so no two
-    adjacent sections share a hue and "which hue does this get" is answerable
-    without opening the file. When the cycle's next hue would collide with a
-    neighbour, take the next one after it and say so here. The walk starts at
-    `quickstart` (gold, position 2, set by the install-first rework) and now
-    runs the whole page with no exceptions: gold, aqua, leaf, magma (origin →
-    loop → mechanisms → showcase), across field-notes (psychic, position 8 —
-    the reserved hue interrupts the cycle without disturbing it), then aqua,
-    leaf, magma, gold, aqua, leaf (models → benchmarks → integrity → faq →
-    changelog → finale). Moving field-notes out of the tail (2026-10-19)
-    let `faq` take the gold the cycle offered and `changelog` the aqua after
-    it, which deleted the old changelog exception. A section that joins or
-    leaves the middle of the page re-walks this paragraph — the composition
-    test pins the whole walk, so a drift fails the run before a review has
-    to catch it.
+  - **Allocation is a rule, not taste:** `psychic` is reserved for the two
+    bands about Unown itself (hero, alphabet); the other six walk the four
+    Gen 3 hues so no two adjacent bands share one, and "which hue does this
+    get" stays answerable without opening the file. The eight-band walk
+    (2026-10-20, pinned by the composition test): psychic (hero) → leaf
+    (loop) → gold (showcase) → magma (proof) → psychic (alphabet — the
+    reserved hue interrupts the cycle without disturbing it) → gold (faq) →
+    aqua (changelog) → leaf (finale). The proof band's three panes carry
+    their own `data-hue` wrappers inside the magma section (leaf / magma /
+    aqua), which keeps each pane's accents on its historical hue without
+    adding top-level sections to the walk. A band that joins or leaves the
+    page re-walks this paragraph — the composition test pins the whole walk,
+    so a drift fails the run before a review has to catch it.
   - `SectionHead`, `TerminalWindow` and `BrowserFrame` take **no** hue prop —
     they inherit their section. A header that could disagree with its section is
     how the page gets eleven hues fighting each other.
@@ -425,18 +429,13 @@ parallel ones.
   number, and the aggregate is actively misleading.** Measured authored prose
   sits near 1:2 lore:tech, but that number hides two different problems, and
   they need opposite fixes:
-  1. **A long dry run.** Lore is carried by `origin`, `alphabet` and
-     `field-notes`, which sit at positions 3, 4 and 8 (quickstart took
-     position 2 in the install-first rework; field-notes moved up from 11
-     later the same day — see its bullet below). Rule:
-     **no more than three consecutive sections at zero.** The page now meets
-     it three times over: loop → mechanisms → showcase (5-7), models →
-     benchmarks → integrity (9-11) and faq → changelog → finale (12-14) are
-     each exactly three, each ended by a lore section. The earlier state —
-     positions 5-10 all technical, six in a row — was recorded residue for a
-     few hours before the field-notes move closed it. If a section ever joins
-     or leaves the middle of the page, re-check all three runs, not just the
-     one it touches.
+  1. **A long dry run.** Lore is carried by `alphabet` (position 5, the
+    dex card + the wall) with a pinch in the hero's seal captions. Rule:
+    **no more than three consecutive bands at zero.** The eight-band page
+    meets it exactly twice: loop → showcase → proof (2-4) is three, ended
+    by alphabet; faq → changelog → finale (6-8) is three, ended by the
+    footer. If a band ever joins or leaves the page, re-check both runs,
+    not just the one it touches.
   2. **A repeated punchline register, which is what actually reads as boring.**
      Sections 4-10 were all aphorisms, and several were the *same* aphorism:
      "An agent that forgets is a tax you pay every morning" and "Most agents
@@ -444,22 +443,22 @@ parallel ones.
      self-improving agent you cannot watch is a rumour" is a third pass at it.
      Rule: **one line per section, and each line earns its place by being a
      different kind of thing** — aphorism, reveal, callback, joke, admission,
-     plain instruction. Six aphorisms in a row is a drumbeat. `quickstart.tsx`
-     is deliberately a plain instruction ("Clone it, point it at a model, run
-     it.") to break that run, `integrity.tsx` carries the page's only
-     admission, and `changelog.tsx` states a fact and editorialises about
-     nothing ("What has been added, and when.") — its punch is the dates.
+     plain instruction. Six aphorisms in a row is a drumbeat. The hero's
+     manual expander summary is deliberately a plain instruction ("Clone it,
+     point it at a model, run it.") to break that run, `integrity.tsx`
+     carries the page's only admission, and `changelog.tsx` states a fact and
+     editorialises about nothing ("What has been added, and when.") — its
+     punch is the dates.
   3. **Raise the lore share by cutting, not by writing.** A duplicate fact is
      the cheapest word on the page to delete and the only lever that raises the
      ratio without inventing prose. The second audit deleted ~450 words of
      restatement across the lexicon, the acts, the FAQ and the hero, which is
      where most of the ratio improvement came from.
   4. **The proof zone stays technical.** Pokémon in a benchmark table would be a
-     costume and would fight the no-fabrication rule. Loop, mechanisms,
-     showcase, models, benchmarks, integrity, quickstart and faq are right at
-     ~0% lore; their job is to be checkable. The reward for scrolling is
-     delivered by origin, alphabet and field-notes, so those have to actually
-     deliver it.
+     costume and would fight the no-fabrication rule. Loop, showcase, proof,
+     faq, changelog and finale are right at ~0% lore; their job is to be
+     checkable. The reward for scrolling is delivered by alphabet, so it has
+     to actually deliver it.
   5. **Convert static text to motion where motion carries the meaning.** A
      process rendered as three cells that fade in together (origin's acts) and
      a log rendered as a static table (integrity's `hook_log`) are both cases
@@ -468,40 +467,58 @@ parallel ones.
      figure that ticks from zero, reads as fabrication on a page whose entire
      argument is that its numbers are checkable — animate the container, never
      the measurement.
-- **`field-notes` sits at position 8 (moved from 11, 2026-10-19) to break the
-  six-at-zero technical run, and position 4 is still wrong for it.** The
-  original objection to moving it up — clustering the three `psychic`
-  sections next to `alphabet` — applies to position 5, not to 8: at 8 the
-  Unown sections stay spread (hero 1, alphabet 4, field-notes 8), the hue
-  cycle continues across the reserved hue untouched, and the proof path
-  (benchmarks → integrity) stays adjacent. What the move buys is rhythm: the
-  name story lands mid-scroll, between "what the engine looks like" and the
-  lock-in objection, so no stretch of the page runs more than three screens
-  without lore. The tail hue re-walk (faq → gold, changelog → aqua) shipped
-  with the move, not around it.
-- **Install first (2026-10-19 rework; OS tabs landed the same day): the hero
-  carries one command per OS tab, and quickstart is the next section down.**
-  For a clone-and-run tool the command is the conversion, so the hero's chip
-  is a three-tab install panel (`install-panel.tsx`, a client island inside
-  the server-rendered hero — it must stay one, or StarCount stops being an
-  RSC): macOS and Linux show the one-line installer (`curl … install.sh |
-  sh`, which refuses root, checks git and bootstraps bun itself), Windows
-  shows the clone path (`git clone … && bun run agent:install` — a fresh
-  Windows box has no sh) with the bun prerequisite and the sandbox reality
-  in the tab's note line. The tab auto-defaults from the user agent
-  (`detectOS()`, pinned branch by branch) and never gates: every tab is one
-  click away, the `unown setup → bun run agent:start → unown` chain is
-  printed under all of them, and a `<details>` delegation prompt serves
-  visitors who would rather have their existing coding agent run the install
-  (the pattern ollama.com/download ships). The tab notes may only quote the
+- **The scroll budget is a contract, enforced by tooling.** The page must stay
+  at **≤ 13 viewports and ≤ 3,200 words at 1440×900**, measured by
+  `node scripts/landing_audit.mjs` (add `--budget` to fail the run on a
+  breach; it is a CI step in the landing job). The 2026-10-20 baseline: 8
+  bands, 12.3vh, ~2,540 words. The budget exists because the page once grew
+  to 21.5 viewports and 5,488 words — fourteen sections whose back half was
+  nearly unread real estate (research: ~57% of attention above the fold,
+  74% within two screenfuls — `docs/landing-research.md`). When a change
+  pushes past the budget, compress elsewhere in the same commit: merge
+  sibling content behind tabs or expanders, cut a restated fact, or move
+  detail behind a receipt link. Never settle it by deleting a generated
+  number or a gated literal — those are receipts, not prose.
+- **Detail lives behind expanders, receipts live on the page.** The quickstart
+  merge set the pattern: the hero shows the one-liner chip (fast path) and
+  carries the manual sequence, prerequisites and full command surface in
+  collapsed `<details>` expanders (manual path, one click away). Collapsed
+  content costs ~40px; the same content laid out costs a viewport. Use the
+  pattern for any future reference material — never for a first-visit claim,
+  and never to hide a number the gates check.
+- **The proof band is tabs, and the panes stay mounted.** `proof.tsx` hosts
+  benchmarks / integrity / models as WAI-ARIA tabs (roving tabindex, same
+  implementation as the loop's stage tabs). All three panes render into the
+  DOM with `hidden` on the inactive ones — that keeps every generated number
+  in the server-rendered HTML for crawlers and for the
+  `landing_benchmarks.mjs --check` contract, and lets in-pane `whileInView`
+  reveals re-trigger when a pane is shown. Do not switch to unmounting
+  panes without a plan for the generated numbers.
+- **Install first (2026-10-19 rework; OS tabs the same day; quickstart folded
+  in 2026-10-20): the hero carries one command per OS tab, and the manual
+  sequence lives collapsed right under it.** For a clone-and-run tool the
+  command is the conversion, so the hero's chip is a three-tab install
+  panel (`install-panel.tsx`, a client island inside the server-rendered
+  hero — it must stay one, or StarCount stops being an RSC): macOS and
+  Linux show the one-line installer (`curl … install.sh | sh`, which
+  refuses root, checks git and bootstraps bun itself), Windows shows the
+  clone path (`git clone … && bun run agent:install` — a fresh Windows box
+  has no sh) with the bun prerequisite and the sandbox reality in the tab's
+  note line. The tab auto-defaults from the user agent (`detectOS()`,
+  pinned branch by branch) and never gates: every tab is one click away,
+  the `unown setup → bun run agent:start → unown` chain is printed under
+  all of them, and a `<details>` delegation prompt serves visitors who
+  would rather have their existing coding agent run the install (the
+  pattern ollama.com/download ships). The tab notes may only quote the
   sandbox trio the page already claims — bubblewrap / Seatbelt /
   in-process jail, with `resolveOsSandboxBackend()` in
-  `pi-repo/packages/self-learning/src/bwrap.ts` as the source of truth — the
-  chip must never grow back into a command wall (exactly one `<pre>`,
-  pinned), and the delegation prompt is an instruction (every command in it
-  is real), not a claim. Research receipts: `docs/landing-research.md`,
-  "2026-10-19 — install and try first" and "2026-10-19 — the OS tabs, after
-  all".
+  `pi-repo/packages/self-learning/src/bwrap.ts` as the source of truth —
+  the chip must never grow back into a command wall (exactly one `<pre>`
+  in the hero, pinned), and the delegation prompt is an instruction (every
+  command in it is real), not a claim. Research receipts:
+  `docs/landing-research.md`, "2026-10-19 — install and try first",
+  "2026-10-19 — the OS tabs, after all" and "2026-10-20 — the eight-band
+  compression".
 - Voice: concrete, honest about limits, no buzzwords. The integrity section gets
   the whole section because for a self-modifying agent that is the objection
   that decides installs. **The 0.0 extension-authoring admission now lives in
@@ -520,14 +537,15 @@ parallel ones.
   a violation of "every factual claim is a real artifact" — and the most
   dangerous kind, because the next editor trusts it as a reason. State the
   reason the section earns its place in terms of what it argues.
-- **`origin.tsx`'s three acts are a stepped pipeline, not a second copy of the
-  loop section.** They used to be three cells that faded in together, carrying
-  the labels `Work` / `Learn` / `Dream` — byte-identical to `loop.tsx`'s tab
-  labels — with bodies that restated `loop.tsx`'s leads almost sentence for
-  sentence. Now: a rail draws `scaleX` left, the three `motion.li` stagger in
-  behind it at 140ms, and each body is one line saying what the act is *for*
-  rather than re-describing the gate `integrity.tsx` tabulates. The page's only
-  genuine sequence must not be presented as simultaneity.
+- **`loop.tsx` is three bands' arguments in one (the 2026-10-20 merge).** The
+  beats tabs are the receipts — every body is the literal format the engine
+  writes, gated literal by literal — and they stay byte-identical. The pair
+  strip carries what `origin.tsx` argued (two halves, the odd power) in two
+  cards and one line; the mechanisms bento carries what `mechanisms.tsx`
+  tabulated as five tiles plus a sixth SDLC-parity tile that links all eight
+  ported sources. The old PAINS cards are gone on purpose: each tile's
+  `pain` caption is the pain it answers. If you re-add prose here, you are
+  re-adding the 745 words the merge deleted.
 - **The copy must not read like a model wrote it.** The tells to edit out on
   sight: contrast-as-staging where the negative half names something nobody
   claimed ("not a diagram of the idea", "proof, not vibes", "neither half is
@@ -544,18 +562,18 @@ parallel ones.
   benchmark figures, or the non-affiliation text. They are quoted or measured,
   and `verify-deploy.mjs` asserts several of them verbatim.
 - **The FAQ is seven questions and that is a decision, not an oversight.** It
-  carried nine; the dream-canary answer, the two-sandbox-policies answer, the
-  bridge spec and the long non-affiliation answer were all reprints of a section
-  the visitor had just scrolled past, and half an accordion of restated
-  material is what made it read as terms-of-service copy. Two answers must not
-  be cut: the naming question, and "does the loop actually do anything on its
-  own" — the only place the page admits the loop may correctly find nothing to
-  do. The `lead` names the *tests* question, which is the install-decider and
-  is in the list; do not write a `lead` that promises a question the list does
-  not contain. Every answer still has to pass "which section already said this?"
-  — the naming answer once carried the whole Symbol-Pokémon paragraph that
-  `alphabet.tsx` already tells, and the affiliation answer once restated the
-  footer notice, which is the copy `verify-deploy.mjs` asserts.
+  carried nine, then eight; the built-on/cost answer folded into the
+  capabilities answer (2026-10-20) because "MIT, no licence fee, only your
+  endpoint's bill" is three facts the capabilities answer was already
+  adjacent to. Two answers must not be cut: the naming question, and "does
+  the loop actually do anything on its own" — the only place the page admits
+  the loop may correctly find nothing to do. The `lead` names the *tests*
+  question, which is the install-decider and is in the list; do not write a
+  `lead` that promises a question the list does not contain. Every answer
+  still has to pass "which section already said this?" — the naming answer
+  once carried the whole Symbol-Pokémon paragraph that `alphabet.tsx`
+  already tells, and the affiliation answer once restated the footer notice,
+  which is the copy `verify-deploy.mjs` asserts.
 - **The Konami hint lives under the alphabet tiles**, next to the click-to-rain
   affordance, not in the footer. It used to sit at 10px under 58 words of
   trademark boilerplate and was `hidden sm:inline`, so it was visible to 30% of
@@ -575,6 +593,24 @@ parallel ones.
 ## Verification
 
 - `bunx eslint src --quiet` — clean.
+- **The scroll budget gate (2026-10-20):** `node scripts/landing_audit.mjs
+  --budget` (root `bun run audit:landing` prints the table; CI's landing job
+  runs the `--budget` form) loads the page at 1440×900, neutralises reveal
+  motion, and fails the run when the document exceeds **13 viewports**,
+  **3,200 words**, or when a top-level band exceeds 3 viewports on its own.
+  Run the plain form whenever you add a section or expand copy — it prints
+  per-band height/words/paragraph counts, which is how the 14-section bloat
+  was found and how regressions get caught before review.
+- **The VLM design-review lane (optional, needs the bridge up):** `node
+  scripts/agnes_review.mjs <image…>` sends landing screenshots through the
+  llm-bridge's second upstream (agnes-3.0-flash, vision-capable; wire it via
+  `BRIDGE_LOCAL_URL`/`BRIDGE_LOCAL_KEY`/`BRIDGE_LOCAL_MODELS` — see
+  `.env.example`) and prints a strict PASS/FIX critique (defects + top
+  improvements). It is a reviewer's aid, not a gate: weigh its findings
+  against the design-system contracts in this file — the VLM does not know
+  the seal is the brand or that Press Start 2P is deliberate, and it will
+  happily recommend the smooth, modern, off-grid thing the palette gate
+  exists to refuse.
 - `bun run build` — exit 0. `/` must prerender; the star-count fetch is the only
   network call and it is wrapped.
 - **The rail's own two gates, both in CI's landing job, whenever
