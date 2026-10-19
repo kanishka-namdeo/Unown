@@ -1285,7 +1285,12 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
                 console.log();
         }
         const { runtime } = await bootRuntime(cwd, verbose, bootOpts);
-        const mode = new InteractiveMode(runtime as any, prompt ? { initialMessage: prompt } : {});
+        const mode = new InteractiveMode(runtime as any, {
+                // Brand the interactive TUI as unown (header, terminal title); suppress pi's own update check.
+                appName: "unown",
+                appVersion: VERSION,
+                ...(prompt ? { initialMessage: prompt } : {}),
+        });
         await mode.run(); // blocks until exit; normal exit path is process.exit(0)
 }
 

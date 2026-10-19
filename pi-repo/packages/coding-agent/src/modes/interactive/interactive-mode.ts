@@ -354,6 +354,10 @@ export interface InteractiveModeOptions {
 	tuiMode?: TuiMode;
 	/** Initial interactive theme setting for this invocation. */
 	initialThemeSetting?: string;
+	/** Branding override for the app name shown in the header/title (defaults to the vendored pi identity). */
+	appName?: string;
+	/** Branding override for the version shown in the header (defaults to the vendored pi version). */
+	appVersion?: string;
 }
 
 interface InteractiveTuiOptions {
@@ -961,7 +965,9 @@ export class InteractiveMode {
 
 		// Add header with keybindings from config (unless silenced)
 		if (this.options.verbose || !this.settingsManager.getQuietStartup()) {
-			const logo = theme.bold(theme.fg("accent", APP_NAME)) + theme.fg("dim", ` v${this.version}`);
+			const headerName = this.options.appName ?? APP_NAME;
+			const headerVersion = this.options.appVersion ?? this.version;
+			const logo = theme.bold(theme.fg("accent", headerName)) + theme.fg("dim", ` v${headerVersion}`);
 
 			// Build startup instructions using keybinding hint helpers
 			const hint = (keybinding: AppKeybinding, description: string) => keyHint(keybinding, description);
@@ -998,9 +1004,10 @@ export class InteractiveMode {
 				"dim",
 				`Press ${keyText("app.tools.expand")} to show full startup help and loaded resources.`,
 			);
+			const helpSubject = this.options.appName ?? "Pi";
 			const onboarding = theme.fg(
 				"dim",
-				`Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.`,
+				`${helpSubject} can explain its own features and look up its docs. Ask it how to use or extend ${helpSubject}.`,
 			);
 			this.builtInHeader = new ExpandableText(
 				() => `${logo}\n${compactInstructions}\n${compactOnboarding}\n\n${onboarding}`,
@@ -1071,10 +1078,11 @@ export class InteractiveMode {
 	private updateTerminalTitle(): void {
 		const cwdBasename = path.basename(this.sessionManager.getCwd());
 		const sessionName = this.sessionManager.getSessionName();
+		const titlePrefix = this.options.appName ?? APP_TITLE;
 		if (sessionName) {
-			this.ui.terminal.setTitle(`${APP_TITLE} - ${sessionName} - ${cwdBasename}`);
+			this.ui.terminal.setTitle(`${titlePrefix} - ${sessionName} - ${cwdBasename}`);
 		} else {
-			this.ui.terminal.setTitle(`${APP_TITLE} - ${cwdBasename}`);
+			this.ui.terminal.setTitle(`${titlePrefix} - ${cwdBasename}`);
 		}
 	}
 
@@ -1094,12 +1102,14 @@ export class InteractiveMode {
 				.finally(() => clearTimeout(timeout));
 		}
 
-		// Start version check asynchronously
-		checkForNewPiVersion(this.version).then((newRelease) => {
-			if (newRelease) {
-				this.showNewVersionNotification(newRelease);
-			}
-		});
+		// Start version check asynchronously (rebranded builds manage their own updates)
+		if (!this.options.appName) {
+			checkForNewPiVersion(this.version).then((newRelease) => {
+				if (newRelease) {
+					this.showNewVersionNotification(newRelease);
+				}
+			});
+		}
 
 		// Start package update check asynchronously
 		this.checkForPackageUpdates()
