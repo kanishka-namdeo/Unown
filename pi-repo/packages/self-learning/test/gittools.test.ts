@@ -60,11 +60,16 @@ afterAll(() => {
     }
 });
 
-/** A fresh git repo with an initial clean commit. */
+/** A fresh git repo with an initial clean commit. Repo-local identity so
+ *  the suite is hermetic on any host: CI runners (and git-less fresh clones
+ *  via the isolated fallback test aside) ship no default user.name/email,
+ *  and the initial commit would die with "Author identity unknown". */
 function makeRepo(name: string): string {
     const dir = join(rootTmp, name);
     mkdirSync(dir, { recursive: true });
     gitSh(dir, ["init"]);
+    gitSh(dir, ["config", "user.name", "unown-test"]);
+    gitSh(dir, ["config", "user.email", "unown-test@local"]);
     writeFileSync(join(dir, "README.md"), "# test\n");
     gitSh(dir, ["add", "-A"]);
     gitSh(dir, ["commit", "-m", "chore: initial state"]);

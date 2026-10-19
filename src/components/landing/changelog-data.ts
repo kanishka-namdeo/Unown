@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 100;
+export const CHANGELOG_TOTAL_ENTRIES = 101;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 49,
   "Changed": 17,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 23,
+  "Fixed": 24,
   "Security": 3,
   "Behavior": 8
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 59,
+    "total": 60,
     "counts": {
       "Added": 21,
       "Changed": 15,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 15,
+      "Fixed": 16,
       "Security": 0,
       "Behavior": 8
     },
@@ -214,6 +214,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "git tools: the gittests suite is now identity-hermetic — the CI red from the parallel session's /commit round…",
+            "behavior": false
+          },
           {
             "title": "docs: staleness audit fixes — five drift spots found by walking the docs against the code and the live stack",
             "behavior": false
