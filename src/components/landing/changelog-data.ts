@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 95;
+export const CHANGELOG_TOTAL_ENTRIES = 98;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 46,
+  "Added": 49,
   "Changed": 17,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 54,
+    "total": 57,
     "counts": {
-      "Added": 18,
+      "Added": 21,
       "Changed": 15,
       "Deprecated": 0,
       "Removed": 0,
@@ -57,6 +57,95 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Behavior": 7
     },
     "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "checkpoints: /redo — the missing half of /undo",
+            "behavior": false
+          },
+          {
+            "title": "git: /commit [message] + opt-in UNOWN_AUTO_COMMIT",
+            "behavior": false
+          },
+          {
+            "title": "security: the injection shield — deterministic prompt-injection detection over live tool results",
+            "behavior": false
+          },
+          {
+            "title": "complementary testbench — campaign 3 (H16–H22): non-traditional local mechanisms around the configured…",
+            "behavior": false
+          },
+          {
+            "title": "dashboard: Automations tab — the scheduled actor gets a mission-control surface",
+            "behavior": false
+          },
+          {
+            "title": "dashboard: engine-parity round — every documented surface now has a view",
+            "behavior": false
+          },
+          {
+            "title": "native web tools — web_search + webfetch (keyless-first, 19 providers)",
+            "behavior": true
+          },
+          {
+            "title": "local-ML dream lanes — the H15 integration (opt-in, shadow-capable)",
+            "behavior": true
+          },
+          {
+            "title": "Automations — scheduled recurring agent runs (zcode port)",
+            "behavior": true
+          },
+          {
+            "title": "task tool: structured outputs (oh-my-pi port)",
+            "behavior": true
+          },
+          {
+            "title": "task tool: worktree fan-out isolation (muse code port)",
+            "behavior": true
+          },
+          {
+            "title": "local model lane for background learning",
+            "behavior": true
+          },
+          {
+            "title": "opt-in mint cascade: local-draft + remote-repair task authoring (H10)",
+            "behavior": true
+          },
+          {
+            "title": "nonllm testbench — the zero-LLM tier, experiments + verdicts (not yet a behavior change)",
+            "behavior": false
+          },
+          {
+            "title": "landing: the shipping rail",
+            "behavior": false
+          },
+          {
+            "title": "landing: the page stops hand-copying the repository — two more generators and a claims gate",
+            "behavior": false
+          },
+          {
+            "title": "local-llm testbench (experiments, not yet a behavior change)",
+            "behavior": false
+          },
+          {
+            "title": "unown mcp — MCP config management without hand-editing JSON",
+            "behavior": false
+          },
+          {
+            "title": "unown doctor now covers the SDLC surfaces",
+            "behavior": false
+          },
+          {
+            "title": "In-session footer status lines",
+            "behavior": false
+          },
+          {
+            "title": "/lsp trust",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Changed",
         "items": [
@@ -213,83 +302,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "/goal completion requires both evidence kinds and a todo trail",
             "behavior": true
-          }
-        ]
-      },
-      {
-        "bucket": "Added",
-        "items": [
-          {
-            "title": "complementary testbench — campaign 3 (H16–H22): non-traditional local mechanisms around the configured…",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: Automations tab — the scheduled actor gets a mission-control surface",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: engine-parity round — every documented surface now has a view",
-            "behavior": false
-          },
-          {
-            "title": "native web tools — web_search + webfetch (keyless-first, 19 providers)",
-            "behavior": true
-          },
-          {
-            "title": "local-ML dream lanes — the H15 integration (opt-in, shadow-capable)",
-            "behavior": true
-          },
-          {
-            "title": "Automations — scheduled recurring agent runs (zcode port)",
-            "behavior": true
-          },
-          {
-            "title": "task tool: structured outputs (oh-my-pi port)",
-            "behavior": true
-          },
-          {
-            "title": "task tool: worktree fan-out isolation (muse code port)",
-            "behavior": true
-          },
-          {
-            "title": "local model lane for background learning",
-            "behavior": true
-          },
-          {
-            "title": "opt-in mint cascade: local-draft + remote-repair task authoring (H10)",
-            "behavior": true
-          },
-          {
-            "title": "nonllm testbench — the zero-LLM tier, experiments + verdicts (not yet a behavior change)",
-            "behavior": false
-          },
-          {
-            "title": "landing: the shipping rail",
-            "behavior": false
-          },
-          {
-            "title": "landing: the page stops hand-copying the repository — two more generators and a claims gate",
-            "behavior": false
-          },
-          {
-            "title": "local-llm testbench (experiments, not yet a behavior change)",
-            "behavior": false
-          },
-          {
-            "title": "unown mcp — MCP config management without hand-editing JSON",
-            "behavior": false
-          },
-          {
-            "title": "unown doctor now covers the SDLC surfaces",
-            "behavior": false
-          },
-          {
-            "title": "In-session footer status lines",
-            "behavior": false
-          },
-          {
-            "title": "/lsp trust",
-            "behavior": false
           }
         ]
       }
