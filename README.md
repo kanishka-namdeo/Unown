@@ -17,7 +17,7 @@ Use it two ways:
   <a href="https://github.com/kanishka-namdeo/Unown/actions/workflows/ci.yml"><img src="https://github.com/kanishka-namdeo/Unown/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/kanishka-namdeo/Unown"><img src="https://api.scorecard.dev/projects/github.com/kanishka-namdeo/Unown/badge" alt="OpenSSF Scorecard"></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.4.3-black?logo=bun" alt="Bun"></a>
-  <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-7.0.2-3178C6?logo=typescript&amp;logoColor=white" alt="TypeScript"></a>
+  <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-6.0.3-3178C6?logo=typescript&amp;logoColor=white" alt="TypeScript"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/MIT-License-3DA639?logo=opensourceinitiative" alt="MIT License"></a>
   <a href="https://github.com/kanishka-namdeo/Unown/issues"><img src="https://img.shields.io/badge/PRs-welcome-ff8b41" alt="PRs welcome"></a>
 </p>
@@ -257,6 +257,11 @@ Open **http://localhost:3000/dashboard**:
 - **Hooks** — the decision log of every guardrail (allow / deny / augment).
 - **Console** — drive the sandboxed agent interactively and watch the transcript stream.
 - **Router** — background jobs: enable/disable, trigger manually, see run counts and next-fire times.
+- **Sandboxes** — the workspace inventory the engine has materialized for sandboxed runs, with ages and file counts.
+- **Gateway** — the llm-bridge request log: per-model traffic, tokens, latency, errors.
+- **Automations** — scheduled headless `unown` runs (cron or one-shot): create, run now, pause/resume, per-run history.
+
+The tab strip is URL-addressable (`?tab=<name>`) and every tab is reachable from the ⌘K command palette.
 
 The engine seeds itself on first boot: default memory tiers, five benchmark tasks (`fizzbuzz`, `impl-debounce`, `map-limit`, `drop-right`, `fix-csv-parser`), and the router jobs. Leave it running and the `harness-cycle` job will keep mining failures and shipping memory improvements on its own.
 

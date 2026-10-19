@@ -57,7 +57,8 @@ Identical result — the one-liner just does the prerequisite setup and the clon
 4. hydrates the pi provider model data on first run (network fetch, ~1–2 min — upstream gitignores that directory, a fresh clone cannot build without it)
 5. builds the pi engine (`bun run build:offline`)
 6. creates `.env` from `.env.example` when absent — never overwrites an existing one
-7. puts `unown` on your PATH: a shim into `~/.local/bin` on macOS/Linux (or the first writable dir of `~/bin`, `/usr/local/bin`), `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows. The shim points INTO the checkout — that is what makes `unown update` a plain git operation later.
+7. links the root `.env` into both mini-services (`mini-services/llm-bridge/.env` and `mini-services/agent-service/.env` → `../../.env`) — bun auto-loads `.env` only from a process's own CWD, so a supervisor that starts a service from its own directory would otherwise miss the root config; idempotent, and a stray regular file that would shadow the root config is replaced
+8. puts `unown` on your PATH: a shim into `~/.local/bin` on macOS/Linux (or the first writable dir of `~/bin`, `/usr/local/bin`), `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows. The shim points INTO the checkout — that is what makes `unown update` a plain git operation later.
 
 ## Requirements
 

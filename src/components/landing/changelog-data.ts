@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 94;
+export const CHANGELOG_TOTAL_ENTRIES = 95;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 46,
   "Changed": 17,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 21,
+  "Fixed": 22,
   "Security": 3,
   "Behavior": 7
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 53,
+    "total": 54,
     "counts": {
       "Added": 18,
       "Changed": 15,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 13,
+      "Fixed": 14,
       "Security": 0,
       "Behavior": 7
     },
@@ -125,6 +125,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "docs: staleness audit fixes — five drift spots found by walking the docs against the code and the live stack",
+            "behavior": false
+          },
           {
             "title": "web tools: the dashscope search provider is now key-class-honest",
             "behavior": false
