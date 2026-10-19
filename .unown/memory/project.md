@@ -4,7 +4,7 @@
 - This file is maintained by Unown: terminal session notes are consolidated here by AutoDream. Edit freely — your edits are preserved as a new version.
 
 ## Tool inventory
-- Unown sessions have access to: todo, note, task, fetch_url, read, ls, grep.
+- Unown sessions have access to: todo, note, task, fetch_url, web_search, webfetch, lsp, read, ls, grep.
 
 ## Engine restart procedure
 - Find bun --hot PID with cwd mini-services/agent-service via /proc/<pid>/cwd.

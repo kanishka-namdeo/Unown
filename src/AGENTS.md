@@ -12,7 +12,7 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 
 ## Local Contracts
 
-- Entry composition lives in `src/app/dashboard/page.tsx` (`DashboardProviders` + `Header` + the seven `*-tab.tsx` surfaces in a shadcn `Tabs`). Adding a tab = new component in `src/components/dashboard/`, registered in `src/app/dashboard/page.tsx`.
+- Entry composition lives in `src/app/dashboard/page.tsx` (`DashboardProviders` + `Header` + the ten `*-tab.tsx` surfaces in a shadcn `Tabs`). Adding a tab = new component in `src/components/dashboard/`, registered in `src/app/dashboard/page.tsx`.
 - `src/app/page.tsx` is the marketing landing page, not the dashboard, and it is **composition only** — every section lives in `src/components/landing/`, which owns its own contract doc. It imports `src/app/landing.css` for its stylesheet and the retro Game Boy Advance / Generation III palette (declared in `globals.css`, see below), which ships in two schemes: a dark Hoenn screen (default) and a light Kanto-daylight screen (via `prefers-color-scheme`, overridable by the nav toggle).
 - The two pages deliberately look different: the dashboard keeps the cool zinc tokens because it is an application, and only the marketing page is retro (Game Boy Advance, Pokémon Generation III). Do not unify them.
 - All engine data flows through `src/lib/agent-api.ts` (REST + SSE) and `src/lib/agent-types.ts` (schema types mirroring the engine's API). Components never fetch engines directly.
@@ -41,5 +41,5 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 ## Child DOX Index
 
 - `src/components/landing/AGENTS.md` — the marketing page: the Unown script, the lexicon, sections, effects and the motion rules
-- `src/components/dashboard/AGENTS.md` — the 7-tab UI surfaces and shared fragments
+- `src/components/dashboard/AGENTS.md` — the 10-tab UI surfaces and shared fragments
 - `src/lib/AGENTS.md` — engine API client, types, state, SSE
