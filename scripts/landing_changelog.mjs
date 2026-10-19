@@ -16,8 +16,11 @@
 //     in-flight stop and MUST stay undated (a dated promise about the future is
 //     the one thing this page cannot check).
 //   - bucket headings normalise to the six Keep a Changelog categories, plus
-//     `Behavior` for `### Agent Behavior`. Same-category headings merge (the
-//     file has shipped two `### Fixed` blocks inside one stop), and an
+//     `Behavior` for `### Agent Behavior`. A heading may carry a parenthetical
+//     suffix (### Added (Agent Behavior), ### Agent Behavior (Milestone 4 —
+//     2026-10-19)); the first word still picks the KAC bucket, and "Agent
+//     Behavior…" is still the Behavior bucket. Same-category headings merge
+//     (the file has shipped two `### Fixed` blocks inside one stop), and an
 //     unrecognised heading fails the run instead of being silently dropped.
 //   - a bullet's title is its authored `**bold**` lead when it has one;
 //     otherwise the clause before the first ` — ` or `: `. Backticks and link

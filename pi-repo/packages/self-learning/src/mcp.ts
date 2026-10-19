@@ -1803,6 +1803,19 @@ const TOOLS_PER_SERVER_CAP = 100;
  * `/mcp trust` records the file's fingerprint (config-trust.ts), reloads
  * the config, and connects the newly-admitted servers.
  */
+/** Module-level reference to the most recently created LIVE manager —
+ *  lets sibling extensions (termhooks' user-hook `mcp` handlers) reach the
+ *  session's connected servers instead of spawning a second MCP client.
+ *  One manager per unown process; subagent children are separate processes
+ *  with their own. Cleared nowhere: a dead manager's callTool already
+ *  errors into the handler's fail-open path. */
+let activeManagerRef: McpManager | null = null;
+
+/** The live interactive MCP manager for this process, when one exists. */
+export function getActiveMcpManager(): McpManager | null {
+        return activeManagerRef;
+}
+
 export function createMcpExtension(opts: McpOptions) {
     const verbose = opts.verbose ?? false;
     const log = (msg: string) => {
@@ -1894,6 +1907,7 @@ export function createMcpExtension(opts: McpOptions) {
                 projectFile: resolved.projectFile,
                 onLog: (message) => log(message),
             });
+            activeManagerRef = manager;
             if (resolved.needsTrust) {
                 log(`project mcp.json is untrusted — ${Object.keys(resolved.gatedServers).length} server(s) withheld; run /mcp trust`);
             }

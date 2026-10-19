@@ -13,11 +13,16 @@ const ALL_COMMANDS = [
         "setup",
         "models",
         "init",
+        "init-agents",
         "memory",
         "doctor",
+        "doctor-instructions",
         "mcp",
         "automations",
         "usage",
+        "sessions",
+        "recipes",
+        "wiki",
         "acp",
         "note",
         "update",
@@ -25,6 +30,7 @@ const ALL_COMMANDS = [
         "info",
         "completions",
         "uninstall",
+        "help",
 ];
 
 const MCP_SUBCOMMANDS = ["add", "add-http", "add-json", "list", "get", "remove", "test"];

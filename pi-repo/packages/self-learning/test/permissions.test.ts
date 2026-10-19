@@ -785,23 +785,30 @@ describe("termhooks integration — granular permissions in the tool_call seam",
                 expect(d.terminate).toBe(false);
         });
 
-        test("no permissions config → the seam stays synchronous and byte-for-byte unchanged", () => {
+        test("no permissions config → the seam's DECISIONS are byte-for-byte unchanged (always-async contract)", async () => {
+                // Milestone 1 (user-configurable hooks) made the tool_call seam
+                // async in all cases — pi's emitToolCall awaits its handlers, so
+                // a thenable is the sanctioned return shape (see the ask-flow
+                // comment in termhooks.ts). The seam contract that must never
+                // drift is the DECISION: with no permissions config the layer is
+                // inert — allows stay allows (undefined), the hard-coded deny
+                // list still returns its exact block shape.
                 const s = freshScope();
                 const { handlers } = attachPerms(s);
                 const out = handlers["tool_call"](bashEvent("ls -la"));
-                expect(out instanceof Promise).toBe(false);
-                expect(out).toBeUndefined();
-                expect(handlers["tool_call"](bashEvent("rm -rf /"))).toEqual({ block: true, reason: expect.any(String), terminate: false });
+                expect(out instanceof Promise).toBe(true); // always-async since M1
+                expect(await out).toBeUndefined();
+                expect(await decide(handlers, bashEvent("rm -rf /"))).toEqual({ block: true, reason: expect.any(String), terminate: false });
         });
 
-        test("session_start surfaces the untrusted-project notice exactly once", () => {
+        test("session_start surfaces the untrusted-project notice exactly once", async () => {
                 const s = freshScope();
                 writeProject(s, { version: 1, rules: [] });
                 const { handlers } = attachPerms(s);
                 const notes: Array<[string, string]> = [];
                 const ctx = { ui: { notify: (msg: string, type: string) => notes.push([msg, type]) } };
-                handlers["session_start"]({}, ctx);
-                handlers["session_start"]({}, ctx);
+                await handlers["session_start"]({}, ctx);
+                await handlers["session_start"]({}, ctx);
                 expect(notes).toHaveLength(1);
                 expect(notes[0][0]).toContain("untrusted");
                 expect(notes[0][1]).toBe("warning");

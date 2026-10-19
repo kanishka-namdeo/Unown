@@ -50,6 +50,28 @@ test("an `Added (Agent Behavior)` heading does not flag the sibling plain Added 
   assert.equal(added[1].behavior, false);
 });
 
+test("a milestone-suffixed `Agent Behavior (…)` heading is the Behavior bucket (M1–M4 shape)", () => {
+  const [stop] = parseChangelog([
+    "## [Unreleased]",
+    "### Agent Behavior (Milestone 4 — 2026-10-19)",
+    "- **recipes** — detail",
+    "### Agent Behavior (Milestone 3 — 2026-10-19)",
+    "- **blame** — detail",
+    "### Agent Behavior",
+    "- **plain block merges in** — detail",
+  ].join("\n"));
+  const behavior = bucket(stop, "Behavior");
+  assert.equal(behavior.length, 3);
+  assert.ok(behavior.every((i) => i.behavior === true));
+});
+
+test("`Agent Behavioral` (a different word) still fails, not silently swallowed", () => {
+  assert.throws(
+    () => parseChangelog(["## [9.9.9] - 2026-01-02", "### Agent Behavioral", "- **thing** — detail"].join("\n")),
+    /unknown bucket heading "### Agent Behavioral"/,
+  );
+});
+
 test("an unrecognised bucket heading fails the run instead of dropping entries", () => {
   assert.throws(
     () => parseChangelog(["## [9.9.9] - 2026-01-02", "### Improvements", "- **thing** — detail"].join("\n")),

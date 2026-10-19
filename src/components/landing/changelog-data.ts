@@ -69,7 +69,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": true
           },
           {
-            "title": "slash-commands: /init AGENTS.md generator + /doctor instruction-set audit",
+            "title": "slash-commands: /init-agents AGENTS.md generator + /doctor-instructions instruction-set audit",
             "behavior": true
           },
           {

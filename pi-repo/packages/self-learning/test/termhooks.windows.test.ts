@@ -79,8 +79,8 @@ function attach(opts: { strict?: boolean }): Record<string, HookHandler> {
         return handlers;
 }
 
-function bashDecision(handlers: Record<string, HookHandler>, command: string): Decision | undefined {
-        return handlers["tool_call"]({ toolName: "bash", input: { command } }) as Decision | undefined;
+async function bashDecision(handlers: Record<string, HookHandler>, command: string): Promise<Decision | undefined> {
+        return (await handlers["tool_call"]({ toolName: "bash", input: { command } })) as Decision | undefined;
 }
 
 const nonStrict = attach({});
@@ -131,14 +131,14 @@ describe("windows catastrophic family — denied across all three policies", () 
                 "echo x > \\\\.\\PhysicalDrive1",
                 "echo x > \\\\.\\C:",
                 "echo x > //./PhysicalDrive2",
-        ])("%s", (command: string) => {
+        ])("%s", async (command: string) => {
                 expect(decideBash(command).block).toBe(true);
                 expect(typeof decideBash(command).reason).toBe("string");
-                expect(Boolean(bashDecision(nonStrict, command)?.block)).toBe(true);
-                expect(Boolean(bashDecision(strict, command)?.block)).toBe(true);
+                expect(Boolean((await bashDecision(nonStrict, command))?.block)).toBe(true);
+                expect(Boolean((await bashDecision(strict, command))?.block)).toBe(true);
         });
 
-        test("reason strings identify the matched rule", () => {
+        test("reason strings identify the matched rule", async () => {
                 expect(decideBash("format C:").reason).toContain("format");
                 expect(decideBash("del /s /q C:\\Users").reason).toContain("Windows system trees");
                 expect(decideBash("reg add HKLM\\X").reason).toContain("registry");
@@ -166,9 +166,9 @@ describe("windows family — benign commands stay allowed", () => {
                 "format output.txt", // no drive letter — not the format verb
                 "ls -la",
                 "git status",
-        ])("%s", (command: string) => {
+        ])("%s", async (command: string) => {
                 expect(decideBash(command).block).toBe(false);
-                expect(bashDecision(nonStrict, command)).toBeUndefined();
+                expect(await bashDecision(nonStrict, command)).toBeUndefined();
         });
 });
 
@@ -176,16 +176,16 @@ describe("windows family — benign commands stay allowed", () => {
 // terminalPathOk — the system temp dir is an allowed write root
 // ---------------------------------------------------------------------------
 describe("terminalPathOk — the system temp dir is an allowed write root", () => {
-        test("writes inside the injected tmp root are allowed", () => {
+        test("writes inside the injected tmp root are allowed", async () => {
                 expect(terminalPathOk(PROJ, join(TMP_ROOT, "x.md"), [TMP_ROOT])).toBe(true);
                 expect(terminalPathOk(PROJ, join(TMP_ROOT, "sub", "y.md"), [TMP_ROOT])).toBe(true);
         });
 
-        test("traversal out of the injected tmp root is NOT allowed", () => {
+        test("traversal out of the injected tmp root is NOT allowed", async () => {
                 expect(terminalPathOk(PROJ, join(TMP_ROOT, "..", "etc", "passwd"), [TMP_ROOT])).toBe(false);
         });
 
-        test("the default policy allows os.tmpdir() and POSIX /tmp, but not /var/tmp or system paths", () => {
+        test("the default policy allows os.tmpdir() and POSIX /tmp, but not /var/tmp or system paths", async () => {
                 expect(terminalPathOk(PROJ, join(tmpdir(), "notes.md"))).toBe(true);
                 if (process.platform === "win32") {
                         // No POSIX /tmp on Windows — the homedir-based fixture root plays
@@ -200,7 +200,7 @@ describe("terminalPathOk — the system temp dir is an allowed write root", () =
                 expect(terminalPathOk(PROJ, "../../etc/passwd")).toBe(false);
         });
 
-        test("the project jail still wins first (in-project writes stay allowed)", () => {
+        test("the project jail still wins first (in-project writes stay allowed)", async () => {
                 expect(terminalPathOk(PROJ, "src/main.ts")).toBe(true);
                 expect(terminalPathOk(PROJ, join(PROJ, "notes.md"))).toBe(true);
         });
@@ -211,9 +211,9 @@ describe("terminalPathOk — the system temp dir is an allowed write root", () =
 // ---------------------------------------------------------------------------
 describe("bashRedirectEscape — win32 twins (drive-letter system trees, \\\\.\\ devices)", () => {
         // The deny-LIST half is lexical and works on every platform:
-        test("the device-namespace redirect is denied by the regex list on every platform", () => {
+        test("the device-namespace redirect is denied by the regex list on every platform", async () => {
                 expect(decideBash("echo x > \\\\.\\PhysicalDrive1").block).toBe(true);
-                expect(Boolean(bashDecision(nonStrict, "echo x > \\\\.\\PhysicalDrive1")?.block)).toBe(true);
+                expect(Boolean((await bashDecision(nonStrict, "echo x > \\\\.\\PhysicalDrive1"))?.block)).toBe(true);
         });
 
         // The resolved-path half (SYSTEM_TREE_WIN / RAW_DEVICE_WIN / SSH_TRUST_DIR)

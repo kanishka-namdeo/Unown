@@ -59,11 +59,11 @@ import {
 import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDir } from "./checkpoints.ts";
 import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
 import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
-import { runAutomationsCommand } from "./automations-cli.ts";
-import { runUsageCommand } from "./usage-cli.ts";
-import { runSessionsCommand } from "./sessions-cli.ts";
-import { runRecipesCommand } from "./recipes-cli.ts";
-import { runWikiCommand } from "./wiki-cli.ts";
+import { runAutomationsCommand, AUTOMATIONS_USAGE } from "./automations-cli.ts";
+import { runUsageCommand, USAGE_HELP } from "./usage-cli.ts";
+import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
+import { runRecipesCommand, RECIPES_USAGE } from "./recipes-cli.ts";
+import { runWikiCommand, WIKI_USAGE } from "./wiki-cli.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createPermissionsExtension, createPermissionGate, permissionsDoctorSummary } from "./permissions.ts";
@@ -270,7 +270,9 @@ interface CliArgs {
         noAgentsMd?: boolean;
 }
 
-function parseArgs(argv: string[]): CliArgs {
+// Exported for tests: the parse contract (routing flags, --output-format
+// pairing, print/TUI selection) is asserted by test/cli/parse-args.test.ts.
+export function parseArgs(argv: string[]): CliArgs {
         // Milestone 2.1 + 2.2 — strip the four new subagent-routing flags out
         // first so the main loop does not treat their values as prompt text.
         // The pure helper parseSubagentFlags (in subagent-routing.ts) is the
@@ -310,7 +312,7 @@ function parseArgs(argv: string[]): CliArgs {
                         continue;
                 }
                 if (a === "--output-format") {
-                        const next = argv[i + 1];
+                        const next = argvRest[i + 1];
                         if (next === "json" || next === "text") {
                                 outputFormat = next;
                                 i++;
@@ -359,10 +361,14 @@ function parseArgs(argv: string[]): CliArgs {
                 return { command: first, prompt, verbose, jsonMode, noSession, plan, outputFormat };
         }
         const prompt = rest.join(" ");
+        // Milestone 2.1 + 2.2 — surface the parsed routing fields (set by
+        // parseSubagentFlags above) on every exit path so bootRuntime's
+        // applySubagentEnvOverrides honors --model / --effort /
+        // --mcp-servers / --no-agents-md (and the task tool's subagent
+        // spawns inherit the same contract).
+        //
         // Non-TTY stdio forces print mode (same behaviour as pi itself).
         if (print || !process.stdin.isTTY || !process.stdout.isTTY)
-                return { command: "print", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal, outputFormat };
-        return { command: "tui", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal, outputFormat };
                 return {
                         command: "print",
                         prompt,
@@ -373,7 +379,7 @@ function parseArgs(argv: string[]): CliArgs {
                         appendSystemPromptPath,
                         plan,
                         goal,
-                        // Milestone 2.1 + 2.2 — surface the parsed routing fields.
+                        outputFormat,
                         model: subagentFlags.model,
                         effort: subagentFlags.effort,
                         mcpServers: subagentFlags.mcpServers,
@@ -389,6 +395,7 @@ function parseArgs(argv: string[]): CliArgs {
                 appendSystemPromptPath,
                 plan,
                 goal,
+                outputFormat,
                 model: subagentFlags.model,
                 effort: subagentFlags.effort,
                 mcpServers: subagentFlags.mcpServers,
@@ -1345,6 +1352,11 @@ function cmdHelp(topics: string[]): number {
                 acp: ACP_HELP,
                 "init-agents": INIT_AGENTS_HELP,
                 "doctor-instructions": DOCTOR_INSTRUCTIONS_HELP,
+                automations: AUTOMATIONS_USAGE,
+                usage: USAGE_HELP,
+                sessions: SESSIONS_USAGE,
+                recipes: RECIPES_USAGE,
+                wiki: WIKI_USAGE,
         };
         const page = pages[topic];
         if (!page) {

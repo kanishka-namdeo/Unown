@@ -21,7 +21,7 @@ export interface CliResult {
         exitCode: number;
 }
 
-const USAGE = `unown automations — scheduled recurring agent runs (need the engine: bun run agent:start)
+export const AUTOMATIONS_USAGE = `unown automations — scheduled recurring agent runs (need the engine: bun run agent:start)
 
 Usage:
   unown automations list
@@ -79,7 +79,7 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
         const sub = rest[0] ?? "list";
 
         if (hasFlag(argv, "-h") || hasFlag(argv, "--help") || sub === "help") {
-                return { stdout: USAGE, exitCode: 0 };
+                return { stdout: AUTOMATIONS_USAGE, exitCode: 0 };
         }
 
         if (sub === "list") {
@@ -118,7 +118,7 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                 const maxRuns = flagNumber(argv, "--max-runs");
                 const workspace = flagValue(argv, "--workspace") ?? opts.cwd;
                 if (!title || !prompt || (cron === undefined && delayMinutes === undefined)) {
-                        return { stderr: `create needs --title, --prompt and (--cron | --delay-minutes)\n\n${USAGE}`, exitCode: 1 };
+                        return { stderr: `create needs --title, --prompt and (--cron | --delay-minutes)\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
                 }
                 const res = await api("POST", "/api/automations", {
                         title,
@@ -146,7 +146,7 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
 
         if (sub === "edit") {
                 const id = rest[1];
-                if (!id) return { stderr: `edit needs an id\n\n${USAGE}`, exitCode: 1 };
+                if (!id) return { stderr: `edit needs an id\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
                 const patch: Record<string, unknown> = {};
                 for (const flag of ["--title", "--prompt", "--cron", "--mode"] as const) {
                         const v = flagValue(argv, flag);
@@ -161,7 +161,7 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
 
         if (sub === "pause" || sub === "resume") {
                 const id = rest[1];
-                if (!id) return { stderr: `${sub} needs an id\n\n${USAGE}`, exitCode: 1 };
+                if (!id) return { stderr: `${sub} needs an id\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
                 const res = await api("PATCH", `/api/automations/${encodeURIComponent(id)}`, { lifecycle: sub === "pause" ? "paused" : "active" });
                 if (!res.ok) return { stderr: String(res.data?.error ?? `${sub} failed`), exitCode: 1 };
                 const a = res.data.automation;
@@ -170,7 +170,7 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
 
         if (sub === "run") {
                 const id = rest[1];
-                if (!id) return { stderr: `run needs an id\n\n${USAGE}`, exitCode: 1 };
+                if (!id) return { stderr: `run needs an id\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
                 const res = await api("POST", `/api/automations/${encodeURIComponent(id)}/run`);
                 if (!res.ok) return { stderr: String(res.data?.error ?? "run failed"), exitCode: 1 };
                 return { stdout: `Run started for ${id} — check progress: unown automations history ${id}`, exitCode: 0 };
@@ -178,7 +178,7 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
 
         if (sub === "history") {
                 const id = rest[1];
-                if (!id) return { stderr: `history needs an id\n\n${USAGE}`, exitCode: 1 };
+                if (!id) return { stderr: `history needs an id\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
                 const limit = flagNumber(argv, "--limit") ?? 20;
                 const res = await api("GET", `/api/automations/${encodeURIComponent(id)}/runs?limit=${limit}`);
                 if (!res.ok) return { stderr: String(res.data?.error ?? "history failed"), exitCode: 1 };
@@ -195,11 +195,11 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
 
         if (sub === "delete") {
                 const id = rest[1];
-                if (!id) return { stderr: `delete needs an id\n\n${USAGE}`, exitCode: 1 };
+                if (!id) return { stderr: `delete needs an id\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
                 const res = await api("DELETE", `/api/automations/${encodeURIComponent(id)}`);
                 if (!res.ok) return { stderr: String(res.data?.error ?? "delete failed"), exitCode: 1 };
                 return { stdout: `Deleted automation ${id}.`, exitCode: 0 };
         }
 
-        return { stderr: `unknown subcommand "${sub}"\n\n${USAGE}`, exitCode: 1 };
+        return { stderr: `unknown subcommand "${sub}"\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
 }

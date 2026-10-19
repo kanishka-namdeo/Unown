@@ -931,3 +931,26 @@ describe("runWikiCommand", () => {
 		}
 	});
 });
+
+// ---------------------------------------------------------------------------
+// extractFinalAssistantText — the print-mode event-stream contract
+// ---------------------------------------------------------------------------
+// Same regression pin as recipes.test.ts: `unown wiki generate` parses the
+// `--mode json` stream of its spawned subagent, which emits finalized
+// assistant messages as `message_end` (agent-session.ts:1505) — the wiki
+// extractor used to key on `message` and every generate resolved "".
+import { extractFinalAssistantText } from "../src/wiki-cli.ts";
+
+describe("wiki-cli extractFinalAssistantText (print-mode event stream)", () => {
+        test("extracts the last assistant message_end text", () => {
+                const stream = [
+                        JSON.stringify({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "module page draft" }] } }),
+                        JSON.stringify({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "final module page" }] } }),
+                ].join("\n");
+                expect(extractFinalAssistantText(stream)).toBe("final module page");
+        });
+
+        test("empty on a stream with no assistant message_end", () => {
+                expect(extractFinalAssistantText(JSON.stringify({ type: "message", message: { role: "assistant", content: "old shape" } }))).toBe("");
+        });
+});

@@ -34,7 +34,7 @@
  *                 outbox for later sync; AutoDream then consolidates it into
  *                 the project's .unown/memory/project.md.
  */
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve as resolvePath } from "node:path";
 import { decideBash, jailPath, syntaxCheck } from "./hooks.ts";
@@ -42,6 +42,18 @@ import { assistantTextOf } from "./messages.ts";
 import { createPermissionGate, type PermissionGate, type ToolCallDecision } from "./permissions.ts";
 import { annotateToolOutput, recordShieldFlag, shieldEnabled } from "./shield.ts";
 import { deliverTerminalNote } from "./term.ts";
+import { decideAdversary } from "./adversary.ts";
+import {
+    hasHandlersFor,
+    loadHooksConfig,
+    projectHooksConfigPath,
+    runHooksForEvent,
+    type HookEvent,
+    type HookEventName,
+    type HookRunContext,
+} from "./hooks-config.ts";
+import { getActiveMcpManager } from "./mcp.ts";
+import { trustBypassed, trustConfig, trustStatePath } from "./config-trust.ts";
 
 export interface TerminalHookOptions {
         cwd: string; // the user's real project directory
@@ -364,6 +376,104 @@ export function bashRedirectEscape(cwd: string, command: string): string | null 
         return null;
 }
 
+// ---------------------------------------------------------------------------
+// User-configurable hooks (Milestone 1) — terminal-session runtime
+//
+// BEHAVIOR.md contract: user handlers in `.unown/hooks.json` (project,
+// trust-gated) and `~/.unown/agent/hooks.json` (user, always trusted) ride
+// on top of the built-in policies in EVERY session, engine runs and terminal
+// sessions alike. hooks-config.ts owns the schema + handler runners; this
+// section gives the terminal its dispatch runtime:
+//   - callLlm for `prompt`/`agent` handlers rides the llm-bridge
+//     (PI_BRIDGE_URL, the recommended stack) — a direct, streamless
+//     /v1/chat/completions call, mirroring llm.ts:chat()'s request shape but
+//     with zero engine imports (no bus, no SQLite). When the bridge is down
+//     the handler reports the error and fails open, exactly like an engine
+//     run whose callLlm is absent.
+//   - callMcp for `mcp` handlers reaches the LIVE interactive MCP session
+//     through mcp.ts:getActiveMcpManager() — never a second client. Before
+//     the session connects any servers the handler errors + fails open.
+//   - a module-level publish (emitTerminalHookEvent) lets sibling modules
+//     emit the standalone events pi does not fire itself: tools.ts' task
+//     tool emits SubagentStart/TaskCompleted; the PreToolUse deny path
+//     emits PermissionRequest (M1.3, docs/BEHAVIOR.md).
+// ---------------------------------------------------------------------------
+
+/** Bridge base URL for terminal hook LLM calls, read at CALL time like llm.ts. */
+function terminalBridgeUrl(): string {
+        return process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031"; // `||`: empty .env value means unset
+}
+
+/** callLlm for `prompt`/`agent` hook handlers in terminal sessions. */
+async function terminalCallLlm(prompt: string, model?: string): Promise<string> {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 60_000);
+        try {
+                const res = await fetch(`${terminalBridgeUrl()}/v1/chat/completions`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                                model: model || process.env.PI_MODEL_ID || "kimi-k2.5",
+                                messages: [{ role: "user", content: prompt }],
+                                max_tokens: 2048,
+                                stream: false,
+                                thinking: { type: "disabled" },
+                        }),
+                        signal: ctrl.signal,
+                });
+                if (!res.ok) {
+                        const text = await res.text().catch(() => "");
+                        throw new Error(`llm-bridge ${res.status}: ${text.slice(0, 200)}`);
+                }
+                const completion = await res.json();
+                const message = completion?.choices?.[0]?.message;
+                const text =
+                        typeof message?.content === "string" && message.content.length > 0
+                                ? message.content
+                                : typeof message?.reasoning_content === "string" && message.reasoning_content.length > 0
+                                  ? message.reasoning_content
+                                  : "";
+                if (!text) throw new Error("llm: empty completion");
+                return text;
+        } finally {
+                clearTimeout(timer);
+        }
+}
+
+/** callMcp for `mcp` hook handlers — reaches the live interactive session. */
+async function terminalCallMcp(server: string, tool: string, args: Record<string, unknown>): Promise<unknown> {
+        const manager = getActiveMcpManager();
+        if (!manager) throw new Error("mcp handler: no live MCP session (servers not connected yet)");
+        const result = await manager.callTool(server, tool, args);
+        if (result.isError) throw new Error(String(result.text).slice(0, 200));
+        return result.text;
+}
+
+/** The active terminal user-hooks runtime (one per process; subagent
+ *  children spawn their own `unown` process with their own extension). */
+let activeTerminalHooks: { handlers: Partial<Record<HookEventName, unknown[]>>; ctx: HookRunContext } | null = null;
+
+/** True when the current terminal session has any user hooks loaded. */
+export function terminalHooksActive(): boolean {
+        return activeTerminalHooks !== null;
+}
+
+/** Emit a standalone user-hook event (SubagentStart / TaskCompleted /
+ *  PermissionRequest) into the active terminal session's hook runtime.
+ *  No-op without a session or without handlers for the event; failures are
+ *  swallowed (hooks augment the session, they can never break it). */
+export async function emitTerminalHookEvent(name: HookEventName, evt: Partial<HookEvent>): Promise<void> {
+        const runtime = activeTerminalHooks;
+        if (!runtime) return;
+        const handlers = runtime.handlers[name];
+        if (!Array.isArray(handlers) || handlers.length === 0) return;
+        try {
+                await runHooksForEvent(handlers as any, { name, ...evt } as HookEvent, runtime.ctx);
+        } catch {
+                /* fail-open by contract */
+        }
+}
+
 export function createTerminalExtension(opts: TerminalHookOptions) {
         const strict = opts.strict ?? false;
         const verbose = opts.verbose ?? false;
@@ -384,8 +494,40 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
         let lastAssistantText = "";
         let sessionStartTs = Date.now();
 
+        // User-configurable hooks (Milestone 1): load once per session;
+        // `/hooks trust` re-runs this loader after an approval. Project-scoped
+        // `.unown/hooks.json` is trust-gated exactly like mcp.json — an
+        // untrusted file contributes NOTHING (refuse-first) and the session
+        // surfaces the approval action.
+        let resolvedHooks = loadHooksConfig(opts.cwd);
+        let userHookHandlers = resolvedHooks.config.hooks;
+        let hasUserHooks = Object.values(userHookHandlers).some((a) => Array.isArray(a) && a.length > 0);
+        const hookRunCtx: HookRunContext = {
+                runId: "terminal",
+                sandboxRoot: opts.cwd,
+                callLlm: terminalCallLlm,
+                callMcp: terminalCallMcp,
+        };
+        const publishHooksRuntime = () => {
+                activeTerminalHooks = hasUserHooks ? { handlers: userHookHandlers, ctx: hookRunCtx } : null;
+        };
+        publishHooksRuntime();
+
+        /** Dispatch one user-hook event; never throws; logs outputs in -v. */
+        const fireUser = async (name: HookEventName, evt: HookEvent) => {
+                if (!hasHandlersFor({ version: 1, hooks: userHookHandlers }, name)) return undefined;
+                try {
+                        const r = await runHooksForEvent((userHookHandlers[name] as any) ?? [], evt, hookRunCtx);
+                        if (verbose) for (const o of r.outputs) log(`user hook ${name}: [${o.kind}] ${o.message}`);
+                        return r;
+                } catch (err: any) {
+                        log(`user hook ${name} failed (fail-open): ${String(err?.message ?? err)}`);
+                        return undefined;
+                }
+        };
+
         const factory = (pi: any) => {
-                pi.on("session_start", (_event: any, ctx: any) => {
+                pi.on("session_start", async (_event: any, ctx: any) => {
                         sessionStartTs = Date.now();
                         log(`session started in ${opts.cwd}`);
                         // One-shot notice when the project permissions config is
@@ -398,15 +540,47 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                         /* non-fatal */
                                 }
                         }
+                        // Same refuse-first UX for the project hooks config.
+                        if (resolvedHooks.approvalNeeded) {
+                                try {
+                                        ctx?.ui?.notify?.(
+                                                `a project .unown/hooks.json is UNTRUSTED — its handlers are withheld until approved. Run /hooks trust, or set UNOWN_TRUST_PROJECT_CONFIG=1 (CI/headless bypass).`,
+                                                "warning",
+                                        );
+                                } catch {
+                                        /* non-fatal */
+                                }
+                        }
+                        await fireUser("SessionStart", { name: "SessionStart" });
                 });
 
-                pi.on("input", (event: any) => {
-                        if (typeof event?.text === "string" && event.text.trim()) prompts++;
+                pi.on("input", async (event: any) => {
+                        const text = typeof event?.text === "string" ? event.text : "";
+                        if (text.trim()) prompts++;
+                        // UserPromptSubmit — full text (capped at 4 KB so a
+                        // template can't interpolate a whole file into a
+                        // command; the engine logs cap at 300 chars but
+                        // prompt-review handlers need the real payload).
+                        if (text.trim()) {
+                                await fireUser("UserPromptSubmit", { name: "UserPromptSubmit", prompt: text.slice(0, 4000) });
+                        }
                 });
 
-                pi.on("tool_call", (event: any, ctx: any) => {
+                pi.on("tool_call", async (event: any, ctx: any) => {
                         const tool = event?.toolName as string;
                         const input = event?.input ?? {};
+                        /** Single deny point: logs, emits the M1.3
+                         *  PermissionRequest user-hook event, returns pi's
+                         *  block shape. Every deny path funnels here. */
+                        const deny = (reason: string) => {
+                                log(`PreToolUse DENY ${tool}: ${reason}`);
+                                void emitTerminalHookEvent("PermissionRequest", {
+                                        name: "PermissionRequest",
+                                        tool,
+                                        context: { reason },
+                                });
+                                return { block: true, reason, terminate: false };
+                        };
                         let decision: { block: boolean; reason?: string } = { block: false };
 
                         if (tool === "bash" || tool === "powershell") {
@@ -428,10 +602,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                 }
                         }
 
-                        if (decision.block) {
-                                log(`PreToolUse DENY ${tool}: ${decision.reason}`);
-                                return { block: true, reason: decision.reason, terminate: false };
-                        }
+                        if (decision.block) return deny(decision.reason!);
 
                         // Granular permissions layer (permissions.ts) — runs only
                         // AFTER the hard-coded deny-list + jail above passed, so it
@@ -440,48 +611,61 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                         // config files the check is inert.
                         try {
                                 const perm = permissionGate.check(tool, input);
-                                if (perm.blocked && perm.reason) {
-                                        log(`PreToolUse DENY ${tool}: ${perm.reason}`);
-                                        return { block: true, reason: perm.reason, terminate: false };
-                                }
+                                if (perm.blocked && perm.reason) return deny(perm.reason);
                                 if (perm.needsAsk && perm.evaluation) {
                                         // The ask flow needs the extension ctx (ui.select).
                                         // Returns a thenable — pi's emitToolCall awaits
                                         // its handlers, so this is the sanctioned seam.
                                         const asking = permissionGate.handleAsk(tool, input, perm.evaluation, ctx);
-                                        return (async () => {
-                                                const resolved: ToolCallDecision | undefined = await asking;
-                                                if (resolved?.block) {
-                                                        log(`PreToolUse DENY ${tool}: ${resolved.reason}`);
-                                                        return {
-                                                                block: true,
-                                                                reason: resolved.reason,
-                                                                terminate: resolved.terminate ?? false,
-                                                        };
-                                                }
-                                                toolCalls++;
-                                                if (tool) toolNames.add(tool);
-                                                return undefined;
-                                        })();
+                                        const resolved: ToolCallDecision | undefined = await asking;
+                                        if (resolved?.block) return deny(resolved.reason!);
                                 }
                         } catch (err: any) {
                                 log(`permissions layer failed (fail-open to the hard-coded guardrails): ${err?.message ?? err}`);
                         }
+
+                        // Adversary mode (M1.4): file-gated LLM reviewer over
+                        // bash/powershell/write/edit — inert until the user opts in
+                        // by creating the gate file (decideAdversary checks its
+                        // existence first). callLlm rides the bridge; LLM errors
+                        // fail OPEN (the built-in policies already passed).
+                        try {
+                                const adv = await decideAdversary(tool, input, undefined, terminalCallLlm);
+                                if (adv.block) return deny(adv.reason ?? "denied by adversary reviewer");
+                        } catch (err: any) {
+                                log(`adversary reviewer error (fail-open): ${String(err?.message ?? err)}`);
+                        }
+
+                        // User-configurable PreToolUse hooks (M1): last word
+                        // after every built-in layer. deny/stop blocks; mutate
+                        // rewrites the tool input (same contract as engine runs).
+                        const pre = await fireUser("PreToolUse", { name: "PreToolUse", tool, input });
+                        if (pre) {
+                                if (pre.decision === "deny" || pre.decision === "stop") {
+                                        return deny(pre.reason ?? `denied by user hook (${pre.decision})`);
+                                }
+                                if (pre.decision === "mutate" && pre.mutatedInput) {
+                                        event.input = pre.mutatedInput;
+                                        log(`PreToolUse user hook MUTATED ${tool} input`);
+                                }
+                        }
+
                         toolCalls++;
                         if (tool) toolNames.add(tool);
                         return undefined;
                 });
 
-                pi.on("tool_result", (event: any) => {
+                pi.on("tool_result", async (event: any) => {
                         const tool = event?.toolName as string;
                         const input = event?.input ?? {};
+                        let result: { content: any[]; isError?: boolean } | undefined;
                         if (tool === "write" || tool === "edit") {
                                 const fileName = String(input.path ?? "");
                                 const content = tool === "write" ? input.content : null;
                                 const augment = syntaxCheck(fileName, content);
                                 if (augment) {
                                         log(`PostToolUse syntax gate flagged ${fileName}`);
-                                        return {
+                                        result = {
                                                 content: [...(event.content ?? []), { type: "text", text: augment.appended }],
                                                 isError: true,
                                         };
@@ -510,17 +694,39 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                                         },
                                                 });
                                                 if (annotated !== stdout) {
-                                                        return { content: [{ type: "text", text: annotated }] };
+                                                        result = { content: [{ type: "text", text: annotated }] };
                                                 }
                                         } catch {
                                                 /* fail-open: never break a tool result */
                                         }
                                 }
                         }
-                        return undefined;
+                        // User-configurable PostToolUse hooks (M1): feedback /
+                        // warning / error outputs surface to the model — same
+                        // merge contract as engine runs (feedback appends a
+                        // [PostToolUse:hook:<kind>] block; error marks isError).
+                        const post = await fireUser("PostToolUse", {
+                                name: "PostToolUse",
+                                tool,
+                                input,
+                                result: event?.result,
+                        });
+                        if (post) {
+                                for (const o of post.outputs) {
+                                        if (o.kind === "feedback" || o.kind === "warning" || o.kind === "error") {
+                                                result = result ?? { content: [...(event.content ?? [])], isError: false };
+                                                result.content = [
+                                                        ...(result.content ?? []),
+                                                        { type: "text", text: `[PostToolUse:hook:${o.kind}] ${o.message}` },
+                                                ];
+                                                if (o.kind === "error") result.isError = true;
+                                        }
+                                }
+                        }
+                        return result;
                 });
 
-                pi.on("agent_end", (event: any) => {
+                pi.on("agent_end", async (event: any) => {
                         // Capture the final assistant message of each turn for the note.
                         // pi's assistant content is an ARRAY of typed blocks (TextContent |
                         // ThinkingContent | ToolCall) — the old string-only check matched
@@ -537,7 +743,88 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                         } catch {
                                 /* best effort */
                         }
+                        // Stop (M1): fired on every agent-loop end, same as engine runs.
+                        await fireUser("Stop", { name: "Stop" });
                 });
+
+                // Pre/PostModelRequest + Pre/PostCompact (M1): the pi seams the
+                // engine's hooks extension rides; identical no-op-until-configured
+                // semantics in terminal sessions.
+                pi.on("before_provider_request", async () => {
+                        await fireUser("PreModelRequest", { name: "PreModelRequest" });
+                });
+                pi.on("after_provider_response", async () => {
+                        await fireUser("PostModelRequest", { name: "PostModelRequest" });
+                });
+                pi.on("session_before_compact", async () => {
+                        await fireUser("PreCompact", { name: "PreCompact" });
+                });
+                pi.on("session_compact", async () => {
+                        await fireUser("PostCompact", { name: "PostCompact" });
+                });
+
+                // /hooks — the user-configurable hooks surface in the TUI:
+                // status (sources, per-event counts, adversary gate) and
+                // `/hooks trust` to approve a withheld project .unown/hooks.json
+                // (the /mcp trust UX, mirrored for the hooks gate). Guarded:
+                // minimal hosts and test harnesses may expose only `on`.
+                if (typeof pi?.registerCommand === "function") {
+                        pi.registerCommand("hooks", {
+                        description:
+                                "User-configurable hooks status: /hooks — /hooks trust approves a project .unown/hooks.json",
+                        handler: async (args: string, ctx: any) => {
+                                const sub = (args ?? "").trim().toLowerCase();
+                                const projectFile = projectHooksConfigPath(opts.cwd);
+                                if (sub === "trust") {
+                                        if (trustBypassed()) {
+                                                ctx.ui.notify("UNOWN_TRUST_PROJECT_CONFIG is set — the trust gate is already bypassed.", "info");
+                                                return;
+                                        }
+                                        if (!existsSync(projectFile)) {
+                                                ctx.ui.notify("No project .unown/hooks.json found — nothing to trust.", "info");
+                                                return;
+                                        }
+                                        const ok = trustConfig(projectFile, { statePath: trustStatePath() });
+                                        if (!ok) {
+                                                ctx.ui.notify(`Trusting ${projectFile} failed (unreadable file or unwritable trust state).`, "error");
+                                                return;
+                                        }
+                                        log(`trusted ${projectFile} — reloading hooks`);
+                                        resolvedHooks = loadHooksConfig(opts.cwd);
+                                        userHookHandlers = resolvedHooks.config.hooks;
+                                        hasUserHooks = Object.values(userHookHandlers).some((a) => Array.isArray(a) && a.length > 0);
+                                        publishHooksRuntime();
+                                        const count = Object.values(userHookHandlers).reduce(
+                                                (n, a) => n + (Array.isArray(a) ? a.length : 0),
+                                                0,
+                                        );
+                                        ctx.ui.notify(`Trusted ${projectFile} — ${count} handler(s) active.`, "info");
+                                        return;
+                                }
+                                // Status report.
+                                const lines: string[] = [];
+                                const anyHandlers = Object.values(userHookHandlers).some((a) => Array.isArray(a) && a.length > 0);
+                                if (!anyHandlers) {
+                                        lines.push("No user hooks configured.");
+                                } else {
+                                        lines.push("User hooks (docs/BEHAVIOR.md):");
+                                        for (const [name, handlers] of Object.entries(userHookHandlers)) {
+                                                if (Array.isArray(handlers) && handlers.length > 0) {
+                                                        lines.push(`  ${name}: ${handlers.length} handler(s)`);
+                                                }
+                                        }
+                                }
+                                if (resolvedHooks.sources.user.length) lines.push(`user config: ${resolvedHooks.sources.user.join(", ")}`);
+                                if (resolvedHooks.sources.project.length) lines.push(`project config (trusted): ${resolvedHooks.sources.project.join(", ")}`);
+                                if (resolvedHooks.approvalNeeded) {
+                                        lines.push(
+                                                `⚠ project .unown/hooks.json is UNTRUSTED — its handlers are withheld. Run /hooks trust, or set UNOWN_TRUST_PROJECT_CONFIG=1 (CI/headless bypass).`,
+                                        );
+                                }
+                                ctx.ui.notify(lines.join("\n"), "info");
+                        },
+                        });
+                }
 
                 pi.on("session_shutdown", async (event: any, _ctx: any) => {
                         if (event?.reason !== "quit") return; // new/resume/fork reloads keep the session alive

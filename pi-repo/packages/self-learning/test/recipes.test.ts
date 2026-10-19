@@ -931,3 +931,54 @@ describe("path helpers", () => {
                 expect(userRecipesDir("/home/user/.unown")).toBe(join("/home/user/.unown", "recipes"));
         });
 });
+
+// ---------------------------------------------------------------------------
+// extractFinalAssistantText — the print-mode event-stream contract
+// ---------------------------------------------------------------------------
+// Regression pin for the recipes/wiki bug: print mode emits finalized
+// assistant messages as `message_end` events (agent-session.ts:1505 — the
+// same contract the task tool's collector keys on in tools.ts), NOT `message`
+// events. The CLI extractor used to key on the wrong type and every
+// `unown recipes run` resolved an empty string.
+import { extractFinalAssistantText } from "../src/recipes-cli.ts";
+
+describe("recipes-cli extractFinalAssistantText (print-mode event stream)", () => {
+        const stream = [
+                JSON.stringify({ type: "session_start", cwd: "/tmp/x" }),
+                JSON.stringify({ type: "message_start", message: { role: "assistant" } }),
+                JSON.stringify({
+                        type: "message_end",
+                        message: {
+                                role: "assistant",
+                                content: [{ type: "text", text: "first turn: exploring the repo" }],
+                                usage: { input: 100, output: 20 },
+                        },
+                }),
+                JSON.stringify({ type: "message_end", message: { role: "user", content: "next prompt" } }),
+                JSON.stringify({
+                        type: "message_end",
+                        message: {
+                                role: "assistant",
+                                content: [{ type: "text", text: "recipe output: all steps done" }],
+                        },
+                }),
+        ].join("\n");
+
+        test("extracts the LAST assistant message_end text (the subagent reply)", () => {
+                expect(extractFinalAssistantText(stream)).toBe("recipe output: all steps done");
+        });
+
+        test("handles a string content field (content-array and string both occur upstream)", () => {
+                const s = [JSON.stringify({ type: "message_end", message: { role: "assistant", content: "plain reply" } })].join("\n");
+                expect(extractFinalAssistantText(s)).toBe("plain reply");
+        });
+
+        test("empty string when the stream has no assistant message_end (the old failure shape)", () => {
+                const oldShape = [JSON.stringify({ type: "message", message: { role: "assistant", content: "old-type reply" } })].join("\n");
+                expect(extractFinalAssistantText(oldShape)).toBe("");
+        });
+
+        test("non-JSON lines are skipped, not fatal", () => {
+                expect(extractFinalAssistantText("noise\n" + stream)).toBe("recipe output: all steps done");
+        });
+});

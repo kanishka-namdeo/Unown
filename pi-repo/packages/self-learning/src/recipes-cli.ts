@@ -134,8 +134,11 @@ function resolveUnownInvocation(args: string[]): { command: string; args: string
 
 /** Pull the final assistant text out of the `unown --mode json` event stream.
  *  The stream is newline-delimited JSON objects; the last assistant message's
- *  text content is the subagent's reply. */
-function extractFinalAssistantText(stream: string): string {
+ *  text content is the subagent's reply. Print mode emits finalized messages
+ *  as `message_end` events (agent-session.ts:1505) — the same contract the
+ *  task tool's subagent collector keys on (tools.ts processLine). Exported for
+ *  tests (test/recipes.test.ts pins the message_end contract). */
+export function extractFinalAssistantText(stream: string): string {
         const lines = stream.split("\n").filter((l) => l.trim().length > 0);
         let lastAssistant = "";
         for (const line of lines) {
@@ -145,7 +148,7 @@ function extractFinalAssistantText(stream: string): string {
                 } catch {
                         continue;
                 }
-                if (evt?.type === "message" && evt?.message?.role === "assistant") {
+                if (evt?.type === "message_end" && evt?.message?.role === "assistant") {
                         const content = evt.message.content;
                         if (typeof content === "string") lastAssistant = content;
                         else if (Array.isArray(content)) {

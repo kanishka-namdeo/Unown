@@ -38,6 +38,7 @@ import { type ExtensionAPI, parseFrontmatter } from "@earendil-works/pi-coding-a
 import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { trustBypassed } from "./config-trust.ts";
+import { emitTerminalHookEvent } from "./termhooks.ts";
 import {
     characterForLine,
     countErrors,
@@ -462,6 +463,16 @@ async function runSubagentOnce(
                 toolResults: 0,
                 usage: { input: 0, output: 0, turns: 0 },
         };
+        // M1.3 standalone emitters (docs/BEHAVIOR.md): the task tool fires
+        // SubagentStart when a sub-run starts. Terminal sessions dispatch it to
+        // user hooks (termhooks.ts emitTerminalHookEvent — no-op when the
+        // session has no SubagentStart handlers); engine sandbox runs emit
+        // through their own hooks.ts emitSubagentStart receipts path.
+        void emitTerminalHookEvent("SubagentStart", {
+                name: "SubagentStart",
+                tool: "task",
+                context: { agent: agent.name, description: task.slice(0, 200) },
+        });
         // Milestone 2.1 + 2.2 — the args array is built by the pure helper
         // buildSubagentArgs (in subagent-routing.ts) so the routing logic is
         // hermetically testable. Backward-compatible: an agent with no routing
@@ -586,6 +597,17 @@ async function runSubagentOnce(
                         }
                 }
         }
+        // M1.3: TaskCompleted — fired when the sub-run finishes, with the
+        // child's coarse outcome. Same dispatch rules as SubagentStart.
+        void emitTerminalHookEvent("TaskCompleted", {
+                name: "TaskCompleted",
+                tool: "task",
+                context: {
+                        agent: agent.name,
+                        status: result.exitCode === 0 ? "passed" : "failed",
+                        exitCode: result.exitCode,
+                },
+        });
         return result;
 }
 

