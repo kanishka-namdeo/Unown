@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 108;
+export const CHANGELOG_TOTAL_ENTRIES = 110;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 51,
+  "Added": 53,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 67,
+    "total": 69,
     "counts": {
-      "Added": 23,
+      "Added": 25,
       "Changed": 16,
       "Deprecated": 0,
       "Removed": 0,
@@ -109,6 +109,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "commands: custom slash commands — .unown/commands/*.md + ~/.unown/agent/commands/*.md",
+            "behavior": false
+          },
+          {
+            "title": "cli: unown -p --output-format json — the headless result contract",
+            "behavior": false
+          },
           {
             "title": "permissions: granular user-configurable allow/deny/ask rules",
             "behavior": false

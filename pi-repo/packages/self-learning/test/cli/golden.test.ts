@@ -27,12 +27,14 @@
 // Spawned CLI runs take seconds each — every test carries an explicit bun
 // timeout well above the default 5s.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
         agentFile,
         type MockBridge,
         parseJsonl,
+        REPO_ROOT,
         startMockBridge,
         unown,
         sweepTestRoots,
@@ -320,6 +322,151 @@ describe("CLI golden — headless print mode", () => {
                         rmSync(root, { recursive: true, force: true });
                 }
         }, LONG);
+});
+
+// ---------------------------------------------------------------------------
+// 5b. Headless result object (--output-format json, Claude Code port)
+// ---------------------------------------------------------------------------
+describe("CLI golden — --output-format json", () => {
+        test(
+                "-p … --output-format json: ONE JSON line, stable key order, accounting fields, exit 0",
+                async () => {
+                        const run = await unown(["-p", "say hi", "--output-format", "json"], base());
+                        expect(run.exitCode).toBe(0);
+
+                        // Exactly one line of JSON on stdout — nothing else.
+                        const lines = run.stdout.split("\n").filter((l) => l.trim().length > 0);
+                        expect(lines).toHaveLength(1);
+                        const obj = JSON.parse(lines[0]);
+
+                        // Stable shape (same key order as src/output-format.ts).
+                        expect(Object.keys(obj)).toEqual([
+                                "type",
+                                "subtype",
+                                "result",
+                                "session_id",
+                                "model",
+                                "usage",
+                                "cost_usd",
+                                "duration_ms",
+                                "num_turns",
+                                "unown_version",
+                        ]);
+
+                        expect(obj.type).toBe("result");
+                        expect(obj.subtype).toBe("success");
+                        expect(obj.result).toBe("Mock reply: done"); // the text-mode channel, captured
+
+                        // The session persisted (default) → a resumable id.
+                        expect(typeof obj.session_id).toBe("string");
+                        expect(obj.session_id.length).toBeGreaterThan(0);
+
+                        expect(obj.model).toBe("kimi-k2.5");
+                        // Mock bridge reports prompt_tokens 11 / completion_tokens 7.
+                        expect(obj.usage.input_tokens).toBeGreaterThan(0);
+                        expect(obj.usage.output_tokens).toBeGreaterThan(0);
+                        expect(obj.usage.cache_read_input_tokens).toBeGreaterThanOrEqual(0);
+                        expect(obj.usage.cache_creation_input_tokens).toBeGreaterThanOrEqual(0);
+                        // The mock serves no price table → cost is an honest null-or-number.
+                        expect(obj.cost_usd === null || typeof obj.cost_usd === "number").toBe(true);
+                        expect(obj.duration_ms).toBeGreaterThanOrEqual(0);
+                        expect(obj.num_turns).toBeGreaterThanOrEqual(1);
+                        // Version is the ROOT package.json (CI asserts the same for --version).
+                        const pkg = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8"));
+                        expect(obj.unown_version).toBe(pkg.version);
+
+                        // Diagnostics never leak into the result channel.
+                        for (const line of run.stderr.split("\n")) {
+                                if (line.trim()) expect(line.trim().startsWith("{")).toBe(false);
+                        }
+                },
+                LONG,
+        );
+
+        test("--no-session: session_id is null (nothing to resume)", async () => {
+                const run = await unown(["-p", "say hi", "--no-session", "--output-format", "json"], base());
+                expect(run.exitCode).toBe(0);
+                const obj = JSON.parse(run.stdout.trim());
+                expect(obj.session_id).toBeNull();
+                expect(obj.subtype).toBe("success");
+        }, LONG);
+
+        test(
+                "--mode json + --output-format json refuse to combine (exit 2, nothing on stdout)",
+                async () => {
+                        const run = await unown(["-p", "say hi", "--mode", "json", "--output-format", "json"], base());
+                        expect(run.exitCode).toBe(2);
+                        expect(run.stderr).toContain("cannot be combined");
+                        expect(run.stdout.trim()).toBe("");
+                },
+                LONG,
+        );
+
+        test("--output-format rejects unknown values (exit 2)", async () => {
+                const run = await unown(["-p", "say hi", "--output-format", "yaml"], base());
+                expect(run.exitCode).toBe(2);
+                expect(run.stderr).toContain("--output-format expects json or text");
+                expect(run.stdout.trim()).toBe("");
+        }, LONG);
+});
+
+// ---------------------------------------------------------------------------
+// 5c. Custom slash commands (.unown/commands, Claude Code .claude/commands port)
+// ---------------------------------------------------------------------------
+describe("CLI golden — custom slash commands", () => {
+        test(
+                "/<name> expands frontmatter + $ARGUMENTS/$1..$N/${N:-default} in print mode (project + global scope)",
+                async () => {
+                        const root = mkdtempSync(join(tmpdir(), "unown-cli-cmds-"));
+                        try {
+                                // Project-scope command (.unown/commands/greet.md)
+                                mkdirSync(join(root, "proj", ".unown", "commands"), { recursive: true });
+                                writeFileSync(
+                                        join(root, "proj", ".unown", "commands", "greet.md"),
+                                        [
+                                                "---",
+                                                "description: greet a person warmly",
+                                                "argument-hint: [name] [greeting]",
+                                                "---",
+                                                'Greet $1 with "$2".',
+                                                "Full args: $ARGUMENTS.",
+                                                "Missing third: ${3:-defaulted}.",
+                                                "",
+                                        ].join("\n"),
+                                        "utf8",
+                                );
+                                // Global-scope command (agent dir)
+                                mkdirSync(join(root, "home", "agent", "commands"), { recursive: true });
+                                writeFileSync(
+                                        join(root, "home", "agent", "commands", "globalsum.md"),
+                                        ["---", "description: global check", "---", "GLOBAL says $ARGUMENTS", ""].join("\n"),
+                                        "utf8",
+                                );
+
+                                const opts = base({ root });
+
+                                // Project command: positional + default substitution
+                                const proj = await unown(["-p", "/greet Ada hello"], opts);
+                                expect(proj.exitCode).toBe(0);
+                                const projReq = bridge.requests[bridge.requests.length - 1];
+                                const projUser = projReq.userTexts.join("\n");
+                                expect(projUser).toContain('Greet Ada with "hello".');
+                                expect(projUser).toContain("Full args: Ada hello.");
+                                expect(projUser).toContain("Missing third: defaulted.");
+                                // The literal command never reaches the model unexpanded.
+                                expect(projUser).not.toContain("/greet");
+
+                                // Global command: $ARGUMENTS substitution from the agent dir
+                                const glob = await unown(["-p", "/globalsum one two"], opts);
+                                expect(glob.exitCode).toBe(0);
+                                const globReq = bridge.requests[bridge.requests.length - 1];
+                                expect(globReq.userTexts.join("\n")).toContain("GLOBAL says one two");
+                        } finally {
+                                rmSync(root, { recursive: true, force: true });
+                        }
+                },
+                LONG,
+        );
 });
 
 // ---------------------------------------------------------------------------

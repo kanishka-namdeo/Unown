@@ -47,6 +47,8 @@ export interface MockChatRequest {
         stream: boolean;
         /** Role sequence of the messages array (turn reconstruction check). */
         roles: string[];
+        /** Text of every user message (slash-command expansion checks). */
+        userTexts: string[];
 }
 
 export interface MockBridge {
@@ -147,6 +149,7 @@ export function startMockBridge(opts: MockBridgeOptions = {}): MockBridge {
                                         ),
                                         stream: body.stream === true,
                                         roles: messages.map((m) => String(m.role)),
+                                        userTexts,
                                 });
 
                                 const model = String(body.model ?? "kimi-k2.5");

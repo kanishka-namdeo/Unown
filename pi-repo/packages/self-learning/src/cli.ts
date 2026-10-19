@@ -62,6 +62,7 @@ import { runUsageCommand } from "./usage-cli.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createPermissionsExtension, createPermissionGate, permissionsDoctorSummary } from "./permissions.ts";
+import { assembleResultJson, captureStdout, createOutputCapture, createOutputCaptureExtension } from "./output-format.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 import { cmdUninstall, findShims, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
@@ -146,9 +147,16 @@ Session tools (registered in every session):
   /restore /checkpoints /receipts /mcp /goal /review   session commands
   /permissions            granular permissions status (mode, rules, trust;
                            /permissions trust approves a project config)
+  /<name> [args]          custom slash commands: .unown/commands/*.md in the
+                           project, ~/.unown/agent/commands/*.md global — markdown
+                           + frontmatter (description, argument-hint), body with
+                           $ARGUMENTS / $1..$N / \${N:-default} substitution
 
-Subagent flags (used internally by the task tool):
+One-shot run flags (print mode; several also used by the task tool):
   --mode json              stream JSON events instead of text (print mode)
+  --output-format json     print ONE final JSON object (result + session id +
+                           model + usage + cost + duration + turns; exit codes
+                           unchanged) — CI/wrapper contract, composes with jq
   --no-session             do not persist the session
   --tools a,b,c            restrict the active tool set
   --append-system-prompt F append the file's contents to the system prompt
@@ -184,6 +192,7 @@ interface CliArgs {
         appendSystemPromptPath?: string;
         plan: boolean;
         goal?: string;
+        outputFormat?: "text" | "json";
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -196,9 +205,10 @@ function parseArgs(argv: string[]): CliArgs {
         let appendSystemPromptPath: string | undefined;
         let plan = false;
         let goal: string | undefined;
+        let outputFormat: "text" | "json" | undefined;
         for (let i = 0; i < argv.length; i++) {
                 const a = argv[i];
-                if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan, goal };
+                if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan, goal, outputFormat };
                 if (a === "--print" || a === "-p") {
                         print = true;
                         continue;
@@ -216,6 +226,17 @@ function parseArgs(argv: string[]): CliArgs {
                 }
                 if (a === "--no-session") {
                         noSession = true;
+                        continue;
+                }
+                if (a === "--output-format") {
+                        const next = argv[i + 1];
+                        if (next === "json" || next === "text") {
+                                outputFormat = next;
+                                i++;
+                        } else {
+                                console.error("unown: --output-format expects json or text");
+                                process.exit(2);
+                        }
                         continue;
                 }
                 if (a === "--plan") {
@@ -254,13 +275,13 @@ function parseArgs(argv: string[]): CliArgs {
         const first = rest[0];
         if (first === "init" || first === "memory" || first === "doctor" || first === "note") {
                 const prompt = rest.slice(1).join(" ");
-                return { command: first, prompt, verbose, jsonMode, noSession, plan };
+                return { command: first, prompt, verbose, jsonMode, noSession, plan, outputFormat };
         }
         const prompt = rest.join(" ");
         // Non-TTY stdio forces print mode (same behaviour as pi itself).
         if (print || !process.stdin.isTTY || !process.stdout.isTTY)
-                return { command: "print", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal };
-        return { command: "tui", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal };
+                return { command: "print", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal, outputFormat };
+        return { command: "tui", prompt, verbose, jsonMode, noSession, tools, appendSystemPromptPath, plan, goal, outputFormat };
 }
 
 // ---------------------------------------------------------------------------
@@ -273,6 +294,7 @@ interface BootOptions {
         appendSystemPromptPath?: string;
         plan?: boolean;
         goal?: string;
+        extraExtensions?: Array<{ name: string; hidden: boolean; factory: (pi: any) => void | Promise<void> }>;
 }
 
 async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
@@ -303,6 +325,22 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         const projectSkillsDir = join(cwd, ".unown", "skills");
         const additionalSkillPaths = existsSync(projectSkillsDir) ? [projectSkillsDir] : undefined;
 
+        // Custom slash commands (Claude Code / opencode command port): markdown
+        // files with frontmatter (description, argument-hint) + $ARGUMENTS /
+        // $1..$N substitution, discovered from the project and the agent dir.
+        // pi's prompt-template loader gives us autocomplete, the /commands listing
+        // and the argument grammar for free (same mechanism as .pi/prompts).
+        // Not trust-gated: a command only expands when the user types its name
+        // (user-initiated, like pasting text - the Claude Code .claude/commands
+        // contract); the injection shield still scans anything the command
+        // fetches at runtime.
+        const projectCommandsDir = join(cwd, ".unown", "commands");
+        const userCommandsDir = join(agentDir, "commands");
+        const additionalPromptTemplatePaths = [
+                ...(existsSync(projectCommandsDir) ? [projectCommandsDir] : []),
+                ...(existsSync(userCommandsDir) ? [userCommandsDir] : []),
+        ];
+
         const createRuntime: CreateAgentSessionRuntimeFactory = async ({
                 cwd: sessionCwd,
                 sessionManager,
@@ -326,8 +364,10 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                         toolsExtension as any,
                                         mcpExtension as any,
                                         permissionsExtension as any,
+                                        ...((bootOpts.extraExtensions ?? []) as any[]),
                                 ],
                                 additionalSkillPaths,
+                                additionalPromptTemplatePaths,
                                 appendSystemPrompt: bootOpts.appendSystemPromptPath ? [bootOpts.appendSystemPromptPath] : undefined,
                                 agentsFilesOverride: (base: any) => ({
                                         // Supplement (not replace) the user's own AGENTS.md/CLAUDE.md chain.
@@ -822,6 +862,18 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 console.error("unown: no prompt given (pass one or pipe stdin)");
                 process.exit(1);
         }
+        // --output-format json (Claude Code port): one final JSON object with
+        // the result AND the accounting. The text channel is captured, not
+        // printed; preflight errors stay on stderr (exit 1) exactly as before.
+        // Mutually exclusive with --mode json (the JSONL event stream) — Claude
+        // Code errors on the same combination rather than silently picking one.
+        if (args.outputFormat === "json" && args.jsonMode) {
+                console.error("unown: --output-format json cannot be combined with --mode json (the event stream)");
+                process.exit(2);
+        }
+        const wantResultJson = args.outputFormat === "json" && !args.jsonMode;
+        const capture = wantResultJson ? createOutputCapture() : undefined;
+        const startedAt = wantResultJson ? Date.now() : 0;
         const { runtime } = await bootRuntime(cwd, verbose, {
                 jsonMode: args.jsonMode,
                 noSession: args.noSession,
@@ -829,7 +881,29 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 appendSystemPromptPath: args.appendSystemPromptPath,
                 plan: args.plan,
                 goal: args.goal,
+                extraExtensions: capture ? [createOutputCaptureExtension(capture)] : undefined,
         });
+        if (wantResultJson && capture) {
+                const wrap = captureStdout();
+                let code = 0;
+                try {
+                        code = await runPrintMode(runtime as any, { mode: "text", messages: [message] });
+                } finally {
+                        const text = wrap.unwrap().trim();
+                        // --no-session: the id names an ephemeral in-memory
+                        // session — nothing to resume, so the contract says null.
+                        if (args.noSession) capture.sessionId = null;
+                        const result = assembleResultJson({
+                                capture,
+                                text,
+                                subtype: code === 0 ? "success" : "error_during_execution",
+                                durationMs: Date.now() - startedAt,
+                                version: VERSION,
+                        });
+                        process.stdout.write(JSON.stringify(result) + "\n");
+                }
+                process.exit(code);
+        }
         const code = await runPrintMode(runtime as any, { mode: args.jsonMode ? "json" : "text", messages: [message] });
         process.exit(code);
 }
@@ -1022,6 +1096,12 @@ export async function runCli(argv: string[]) {
                         await cmdPrint(args.prompt, args, args.verbose);
                         break;
                 case "tui":
+                        // Claude Code parity: --output-format is a print-mode
+                        // contract; in the TUI there is no final object to emit.
+                        if (args.outputFormat === "json") {
+                                console.error("unown: --output-format json requires print mode (-p)");
+                                process.exit(2);
+                        }
                         await cmdTui(args.prompt, args.verbose, {
                                 tools: args.tools,
                                 appendSystemPromptPath: args.appendSystemPromptPath,

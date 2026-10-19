@@ -38,6 +38,18 @@ cat error.log | unown -p "fix this"     # piped stdin joins the prompt
 
 Print mode runs one prompt headlessly and exits. Piped stdin is appended to the prompt (separated by a blank line), so you can feed logs, diffs, or source files without quoting wars. If either stdin or stdout is not a TTY, print mode is forced automatically — the piping above works with or without `-p`. Add `--mode json` to stream JSON events instead of text (this is how the [subagent](subagents.md) machinery consumes runs).
 
+For CI pipelines and editor integrations there is a third output contract: `--output-format json` (Claude Code port) prints **one final JSON object** — the result *and* the accounting — with exit codes unchanged:
+
+```bash
+unown -p "fix the flaky test" --output-format json | jq -r .result
+# {"type":"result","subtype":"success","result":"…","session_id":"…",
+#  "model":"kimi-k2.5","usage":{"input_tokens":…,"output_tokens":…,
+#  "cache_read_input_tokens":…,"cache_creation_input_tokens":…},
+#  "cost_usd":…,"duration_ms":…,"num_turns":…,"unown_version":"…"}
+```
+
+`subtype` is `success` or `error_during_execution`; exit codes stay 0/1 like text mode, so `set -o pipefail` composes with `jq`. `--no-session` reports `session_id: null` (nothing to resume); `cost_usd` is null when the model has no price configured. `--output-format json` cannot be combined with `--mode json` (the event stream) and requires print mode — both misuse shapes exit 2 with a clear error. Custom [slash commands](custom-commands.md) expand in print mode too: `unown -p "/pr-description" --output-format json`.
+
 **3. Plan mode — `unown --plan`**
 
 ```bash
@@ -317,6 +329,8 @@ The rest:
 | `/quit` | Quit the session |
 
 Every discovered [skill](skills.md) also registers itself as `/skill:<name>`, which loads the full SKILL.md and runs it (on by default; toggle in `/settings`).
+
+Slash commands are not a fixed set: drop a markdown file into `.unown/commands/` (project) or `~/.unown/agent/commands/` (global) and it becomes a command — `/pr-description`, `/release-notes 2.1.0`, anything you write — with `$ARGUMENTS` / `$1..$N` substitution and frontmatter autocomplete. See the [custom slash commands](custom-commands.md) page.
 
 ## Keybindings
 

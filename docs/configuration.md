@@ -180,6 +180,7 @@ Where everything lives — all of it deletable, none of it required to pre-exist
     sessions/                    terminal session trees
     skills/                      starter skills + your global skills
     agents/                      your global subagent definitions (*.md)
+    commands/                    your global custom slash commands (*.md)
   memory/
     policy.md                    tier 0 — optional, you author it
     user.md                      tier 2 — global preferences
@@ -196,6 +197,7 @@ Where everything lives — all of it deletable, none of it required to pre-exist
   .gitignore                     ignores local.md / *.local.md
   skills/<name>/SKILL.md         AutoDream-minted + your project skills
   agents/*.md                    project-level subagent definitions
+  commands/*.md                  project custom slash commands — commit these
 
 unown repo (runtime state, gitignored)
   data/self-learning/            engine data: sandboxes, sessions, memory (PI_SELFLEARNING_DATA)
