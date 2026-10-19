@@ -101,7 +101,13 @@ export type HookEventName =
     | "PostCompact"
     | "SubagentStart"
     | "TaskCompleted"
-    | "PermissionRequest";
+    | "PermissionRequest"
+    // Engine-only synthetic events (not user-configurable hooks — the runner
+    // emits these for telemetry / audit receipts; hooks-config's `hooks`
+    // record does not honor them as keys). "MemoryBudget" predates M3.7
+    // (memory.ts); "AutoCompact" is the M3.7 proportional-threshold guard.
+    | "MemoryBudget"
+    | "AutoCompact";
 
 export interface HookConfig {
     version: 1;

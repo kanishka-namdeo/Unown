@@ -22,7 +22,7 @@
  *   unown mcp <sub>        manage MCP server configs (add/list/get/remove/test)
  *   unown note "text"     hand a note to the engine (for AutoDream)
  */
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
         type CreateAgentSessionRuntimeFactory,
@@ -37,6 +37,8 @@ import {
 import { netBlocked, osSandboxAvailable, resolveBwrapPath, resolveSandboxExecPath } from "./bwrap.ts";
 import { cmdCompletions, COMPLETIONS_HELP } from "./completions.ts";
 import { cmdInfo } from "./info.ts";
+import { generateAgentsMd, shouldOverwriteAgentsMd } from "./init-agents.ts";
+import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
 import { MIGRATIONS, readMigrationState } from "./migrations.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
@@ -59,6 +61,7 @@ import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp
 import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
 import { runAutomationsCommand } from "./automations-cli.ts";
 import { runUsageCommand } from "./usage-cli.ts";
+import { runSessionsCommand } from "./sessions-cli.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createPermissionsExtension, createPermissionGate, permissionsDoctorSummary } from "./permissions.ts";
@@ -118,8 +121,14 @@ Usage:
                            non-interactive (--force overwrites, --list shows presets)
   unown models             list configured models (+ what a local bridge serves)
   unown init               scaffold .unown/ project memory
+  unown init-agents        generate or update AGENTS.md (Milestone 3.1)
+                           (--overwrite, --print, --json; reverse-engineered
+                           from opencode /init + Claude Code /init)
   unown memory             print the effective memory stack
   unown doctor             run configuration diagnostics (--json: machine-readable)
+  unown doctor-instructions  run ONLY the instruction-set audit
+                           (AGENTS.md freshness, skills, MCP, hooks, adversary,
+                           injection scanner — Milestone 3.2; --json)
   unown mcp <sub>         manage MCP servers: add | add-http | add-json |
                            list | get | remove | test (see 'unown help mcp')
   unown automations <sub> scheduled agent runs (zcode Automations port):
@@ -129,6 +138,8 @@ Usage:
   unown usage            token & cost report for the LLM bridge
                            (--days N, --model M, --json; estimates unless
                            UNOWN_PRICE_* pins exact prices)
+  unown sessions <sub>  session export / import / list (Milestone 3.5):
+                           export <id> [--out <file>] | import <file> | list
   unown acp               run the ACP editor server on stdio (JSON-RPC 2.0,
                            newline-delimited) — point Zed or any ACP client at
                            it: agent program 'unown', args 'acp' (see
@@ -158,6 +169,19 @@ Session tools (registered in every session):
                                          scheduled runs managed by the engine
   /plan /todos /note /agents /learning /lsp /checkpoint /undo /redo
   /restore /checkpoints /receipts /mcp /goal /review   session commands
+  /init-agents            preview the generated AGENTS.md (no file write —
+                          run \`unown init-agents --print\` for the full text)
+  /doctor-instructions    audit the instruction set inline (AGENTS.md, skills,
+                          MCP, hooks, adversary mode, injection scanner)
+  /blame <file>           show which receipts touched a file (write/edit/bash);
+                          no arg = summary; flags: --session <id> --since <ts> --json
+  /sessions <sub>         export|import|list — the in-session alias for the
+                          \`unown sessions\` CLI (Milestone 3.5); \`/sessions export\`
+                          writes to .unown/sessions/export-<id>.json
+  /edit-resend <n> <msg>  edit the Nth user message + revert files to the
+                          pre-message checkpoint, then resend (all-or-nothing
+                          file reset; aborts if any file was edited out-of-band —
+                          Milestone 3.6)
   /permissions            granular permissions status (mode, rules, trust;
                            /permissions trust approves a project config)
   /<name> [args]          custom slash commands: .unown/commands/*.md in the
@@ -576,6 +600,68 @@ function printFirstRunBanner(): void {
 // ---------------------------------------------------------------------------
 // Commands
 // ---------------------------------------------------------------------------
+
+/**
+ * Best-effort yes/no prompt on stdin (the unown CLI is interactive only when
+ * stdin is a TTY). Non-TTY defaults to `false` — `unown init` must NEVER
+ * clobber an existing AGENTS.md in CI / scripted runs without an explicit
+ * `--yes` flag. Mirrors clig.dev's "default to the safe action" guidance.
+ */
+function promptYesNo(question: string, defaultYes: boolean): boolean {
+        if (!process.stdin.isTTY) return false;
+        process.stdout.write(`${question} ${defaultYes ? "[Y/n]" : "[y/N]"} `);
+        try {
+                const fd = process.stdin.fd;
+                // 1-byte read; the readSync returns the count actually read.
+                const buf = Buffer.alloc(1);
+                const n = require("node:fs").readSync(fd, buf, 0, 1, null);
+                if (n <= 0) return defaultYes;
+                const answer = buf.toString("utf8").trim().toLowerCase();
+                if (answer === "") return defaultYes;
+                return answer === "y" || answer === "yes";
+        } catch {
+                return defaultYes;
+        }
+}
+
+/**
+ * Write an `AGENTS.md` at `<cwd>/AGENTS.md` from repo forensics. Used by
+ * `unown init` (interactive, prompts before overwriting) and `unown
+ * init-agents` (writes by default unless an existing file is found).
+ *
+ * Returns a short status line describing the outcome. Never throws —
+ * generation + write failures come back as `[error] …` strings.
+ */
+function writeAgentsMd(cwd: string, opts: { overwrite?: boolean; prompt?: boolean } = {}): string {
+        const path = join(cwd, "AGENTS.md");
+        const exists = existsSync(path);
+        const overwriteOk = opts.overwrite ?? false;
+        if (exists && !overwriteOk) {
+                if (!opts.prompt) {
+                        return `${path.replace(cwd, ".")}  exists — pass --overwrite to replace, or run \`unown init\` for the interactive prompt`;
+                }
+                const yes = promptYesNo(`AGENTS.md already exists at ${path.replace(cwd, ".")}. Overwrite?`, false);
+                if (!yes) {
+                        return `${path.replace(cwd, ".")}  kept (you declined the overwrite)`;
+                }
+        }
+        if (!shouldOverwriteAgentsMd(path)) {
+                return `${path.replace(cwd, ".")}  is a directory — refusing to overwrite`;
+        }
+        let md: string;
+        try {
+                md = generateAgentsMd(cwd);
+        } catch (err: any) {
+                return `[error] AGENTS.md generation failed: ${err?.message ?? err}`;
+        }
+        try {
+                writeFileSync(path, md + "\n", { encoding: "utf8" });
+        } catch (err: any) {
+                return `[error] AGENTS.md write failed: ${err?.message ?? err}`;
+        }
+        return `${path.replace(cwd, ".")}  ${exists ? "updated (was overwritten)" : "generated"}`;
+}
+
 function cmdInit() {
         const cwd = process.cwd();
         const dir = initProjectMemory(cwd);
@@ -583,6 +669,56 @@ function cmdInit() {
         console.log(`  ${projectMemoryPath(cwd).replace(cwd, ".")}   project memory (commit this — AutoDream maintains it)`);
         console.log(`  ./.unown/memory/local.md            local overrides (gitignored)`);
         console.log(`  ./.unown/.gitignore                 ignores local overrides`);
+        // Milestone 3.1 — also generate AGENTS.md at the project root (interactive
+        // prompt before overwriting; `unown init-agents --overwrite` skips it).
+        const agentsStatus = writeAgentsMd(cwd, { prompt: true });
+        console.log(`✓ ${agentsStatus}`);
+}
+
+/** `unown init-agents` — generate or update AGENTS.md (Milestone 3.1). */
+function cmdInitAgents(args: string[]): number {
+        const cwd = process.cwd();
+        const overwrite = args.includes("--overwrite") || args.includes("-f") || args.includes("--force");
+        const printOnly = args.includes("--print") || args.includes("--stdout");
+        const jsonOut = args.includes("--json");
+        const help = args.includes("-h") || args.includes("--help");
+        if (help) {
+                console.log(INIT_AGENTS_HELP);
+                return 0;
+        }
+        if (printOnly) {
+                // --print: just emit the generated markdown on stdout, no file write.
+                // Composes with `unown init-agents | less` or `> AGENTS.md`.
+                process.stdout.write(generateAgentsMd(cwd) + "\n");
+                return 0;
+        }
+        if (jsonOut) {
+                // --json: emit the structured RepoForensics JSON for tooling.
+                // Lazy import avoids pulling the type into cli.ts's surface.
+                const { scanRepoForensics } = require("./init-agents.ts");
+                process.stdout.write(JSON.stringify(scanRepoForensics(cwd), null, 2) + "\n");
+                return 0;
+        }
+        const status = writeAgentsMd(cwd, { overwrite });
+        const isError = status.startsWith("[error]");
+        console.log(`${isError ? "✗" : "✓"} ${status}`);
+        return isError ? 1 : 0;
+}
+
+/** `unown doctor-instructions` — run ONLY the instruction-set audit (Milestone 3.2). */
+function cmdDoctorInstructions(args: string[]): number {
+        const cwd = process.cwd();
+        const json = args.includes("--json");
+        const report = auditInstructionSet(cwd);
+        if (json) {
+                console.log(JSON.stringify(report, null, 2));
+                return 0;
+        }
+        console.log("unown doctor-instructions — instruction-set audit");
+        console.log(renderInstructionAudit(report));
+        const sum = summarizeInstructionAudit(report);
+        console.log(`\n  summary: ${sum.errors} error(s), ${sum.warnings} warning(s), ${sum.infos} info`);
+        return sum.errors > 0 ? 1 : 0;
 }
 
 function cmdMemory() {
@@ -925,6 +1061,37 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                 }
         }
 
+        // 8. Instruction-set audit (Milestone 3.2 — Claude Code's `/doctor`
+        //    prompt-audit port). Extends doctor with an audit of the
+        //    human-authored artifacts that steer the agent: AGENTS.md freshness,
+        //    skills coverage, MCP orphan servers, hooks schema, adversary mode,
+        //    injection scanner, and cross-file references. Always warn-class —
+        //    broken hooks/skills don't break chat (the existing contract).
+        const instructionReport = auditInstructionSet(cwd);
+        const instructionSummary = summarizeInstructionAudit(instructionReport);
+        const instructionClean = instructionSummary.errors === 0 && instructionSummary.warnings === 0;
+        if (jsonMode) {
+                // surfaced in the JSON envelope below under `instructionAudit`
+        } else {
+                // Render the 7 sections inline; errors use ⚠/✗ so the existing
+                // "ready to chat" summary's icon vocabulary stays consistent.
+                if (!instructionClean || instructionSummary.infos > 0) {
+                        console.log(renderInstructionAudit(instructionReport));
+                }
+        }
+        check(
+                "instruction-set audit",
+                instructionSummary.errors === 0,
+                instructionSummary.errors > 0
+                        ? `${instructionSummary.errors} error(s), ${instructionSummary.warnings} warning(s) — run \`unown doctor-instructions\` for the full report`
+                        : instructionSummary.warnings > 0
+                                ? `${instructionSummary.warnings} warning(s), ${instructionSummary.infos} info — run \`unown doctor-instructions\` for the full report`
+                                : instructionSummary.infos > 0
+                                        ? `${instructionSummary.infos} info note(s) — run \`unown doctor-instructions\` for the full report`
+                                        : "clean (AGENTS.md, skills, MCP, hooks, adversary, injection scanner)",
+                "warn",
+        );
+
         if (jsonMode) {
                 console.log(
                         JSON.stringify(
@@ -936,7 +1103,13 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                         engineUrl: ENGINE_URL,
                                         strictHooks: STRICT_HOOKS,
                                         checks,
-                                        summary: { hardFail, warnings },
+                                        instructionAudit: instructionReport,
+                                        summary: {
+                                                hardFail,
+                                                warnings,
+                                                instructionErrors: instructionSummary.errors,
+                                                instructionWarnings: instructionSummary.warnings,
+                                        },
                                 },
                                 null,
                                 2,
@@ -1096,6 +1269,43 @@ usage: unown info [--json]
   --json   machine-readable support bundle
 `;
 
+const INIT_AGENTS_HELP = `unown init-agents — generate or update AGENTS.md (Milestone 3.1)
+
+Reverse-engineered from opencode's /init plugin and Claude Code's /init skill.
+Scans the repo for package.json / pyproject.toml / Cargo.toml / go.mod /
+biome.json / .eslintrc / vitest / pytest / etc., then writes an AGENTS.md at
+the project root following https://agents.md/ — the file other coding agents
+(Cursor, Claude Code, opencode, cline) read.
+
+usage: unown init-agents [--overwrite] [--print] [--json] [-h]
+  --overwrite   replace an existing AGENTS.md (default: refuse to clobber)
+  -f, --force   alias for --overwrite
+  --print       write the generated markdown to stdout (no file write)
+  --stdout      alias for --print
+  --json        emit the structured RepoForensics JSON to stdout (no file write)
+  -h, --help    this help
+
+Other coding agents consume the result. \`unown init\` runs the same generator
+interactively (prompts before overwriting).
+`;
+
+const DOCTOR_INSTRUCTIONS_HELP = `unown doctor-instructions — instruction-set audit (Milestone 3.2)
+
+Audits the human-authored artifacts that steer the agent: AGENTS.md freshness
+(references that no longer resolve), skills coverage (\`.unown/skills/<name>/SKILL.md\`
+frontmatter + overlap), MCP config (parseability + orphaned server binaries),
+hooks schema (\`.unown/hooks.json\` + \`~/.unown/agent/hooks.json\`), adversary mode
+gate file, injection scanner config, and cross-file references. Always warn-class
+— broken hooks/skills don't break chat.
+
+usage: unown doctor-instructions [--json] [-h]
+  --json   machine-readable InstructionAuditReport
+  -h, --help   this help
+
+\`unown doctor\` runs this audit too (and prints it inline) along with the rest
+of its checks. This command runs ONLY the instruction audit.
+`;
+
 /** clig.dev: `help` is a command too — the word used to fall through to the
  * generic parser and start a TUI with "help" as the prompt. */
 function cmdHelp(topics: string[]): number {
@@ -1113,6 +1323,8 @@ function cmdHelp(topics: string[]): number {
                 completions: COMPLETIONS_HELP,
                 setup: SETUP_USAGE,
                 acp: ACP_HELP,
+                "init-agents": INIT_AGENTS_HELP,
+                "doctor-instructions": DOCTOR_INSTRUCTIONS_HELP,
         };
         const page = pages[topic];
         if (!page) {
@@ -1164,6 +1376,27 @@ export async function runCli(argv: string[]) {
                 }
                 process.exit(cmdInfo(rest.includes("--json")));
         }
+        if (first === "init-agents") {
+                // Milestone 3.1 — `unown init-agents` owns its own flag grammar
+                // (--overwrite / --print / --json); dispatch before the generic
+                // parser would eat the flags as prompt text.
+                process.exit(cmdInitAgents(argv.slice(1)));
+        }
+        if (first === "doctor-instructions") {
+                // Milestone 3.2 — `unown doctor-instructions` owns its own flag
+                // grammar (--json); dispatch before the generic parser.
+                const rest = argv.slice(1);
+                const unknown = rest.filter((a) => a !== "--json" && a !== "-h" && a !== "--help");
+                if (unknown.length) {
+                        console.error(`unown doctor-instructions: unknown argument(s): ${unknown.join(" ")}`);
+                        process.exit(1);
+                }
+                if (rest.includes("-h") || rest.includes("--help")) {
+                        console.log(DOCTOR_INSTRUCTIONS_HELP);
+                        process.exit(0);
+                }
+                process.exit(cmdDoctorInstructions(rest));
+        }
         if (first === "mcp") {
                 // P1 (R-c): Claude Code-style MCP config management — see mcp-cli.ts.
                 // -h/--help inside the subcommand grammar is handled there too.
@@ -1185,6 +1418,13 @@ export async function runCli(argv: string[]) {
                 if (result.stdout) process.stdout.write(result.stdout);
                 if (result.stderr) process.stderr.write(result.stderr);
                 process.exit(result.exitCode);
+        }
+        if (first === "sessions") {
+                // Milestone 3.5 — `unown sessions export|import|list` (the
+                // opencode session/transfer.ts port). Dispatch before the
+                // generic parser would eat subcommand tokens as prompt text.
+                const code = await runSessionsCommand(argv.slice(1));
+                process.exit(code);
         }
         if (first === "completions") process.exit(cmdCompletions(argv.slice(1)));
         if (first === "acp") {

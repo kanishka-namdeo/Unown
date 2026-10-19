@@ -46,6 +46,13 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { slugify } from "./checkpoints.ts";
+import {
+    fetchPrDiff,
+    fetchPrMetadata,
+    GhUnavailableError,
+    isGhAvailable,
+    parseReviewTarget,
+} from "./pr-review.ts";
 import type { SubagentConfig } from "./tools.ts";
 
 // ---------------------------------------------------------------------------
@@ -188,6 +195,17 @@ function capArtifact(diff: string, untracked: string[]): { diff: string; untrack
  * calls — never a frozen "diff" that is actually git's stderr.
  */
 export async function captureReviewTarget(cwd: string, base?: string): Promise<ReviewTarget> {
+    // Milestone 3.3: PR-shaped input (URL/#N/owner/repo#N) delegates to `gh`
+    // before any git preflight — a PR URL is not git-shaped, it's GitHub-
+    // shaped. The `gh`-unavailable branch throws the actionable spec message.
+    if (base && base.trim()) {
+        const parsed = parseReviewTarget(base);
+        if (parsed.kind === "pr-url" || parsed.kind === "pr-number") {
+            return capturePrReviewTarget(cwd, parsed.value);
+        }
+        // commit-range + branch + diff-path fall through to the git-based
+        // flow below (commit-range gets a direct `git diff <range>` call).
+    }
     // Repo + binary preflight (R-b G1/G2): in a non-repo, status/diff exit
     // 128 with git's fatal message — the old code concatenated that stderr
     // into `out` and the reviewers received it (×3) as "the diff".
@@ -202,6 +220,23 @@ export async function captureReviewTarget(cwd: string, base?: string): Promise<R
     }
     if (base && base.trim()) {
         const trimmed = base.trim();
+        const parsed = parseReviewTarget(trimmed);
+        // Milestone 3.3: commit-range gets a direct `git diff <range>` —
+        // `git diff a..b` IS the diff between two refs, no merge-base needed.
+        if (parsed.kind === "commit-range") {
+            const diff = git(cwd, ["-c", "core.quotepath=false", "diff", trimmed, "--no-color"]);
+            const spawnFail = gitSpawnFailure(diff);
+            if (spawnFail) throw spawnFail;
+            if (!diff.ok && diff.spawnError !== "MAXBUFFER")
+                throw gitFailure(`git diff ${trimmed} failed while freezing the review snapshot`, diff);
+            const capped = capArtifact(diff.stdout, []);
+            return {
+                label: `commit range ${trimmed}`,
+                diff: capped.diff,
+                untracked: [],
+                truncated: capped.truncated,
+            };
+        }
         const mergeBase = git(cwd, ["merge-base", trimmed, "HEAD"]);
         requireOk(mergeBase, `no merge-base with ${trimmed} — is it a valid branch?`);
         const ref = mergeBase.stdout.trim() || trimmed;
@@ -246,6 +281,36 @@ export async function captureReviewTarget(cwd: string, base?: string): Promise<R
         label: "uncommitted work (diff vs HEAD + untracked files)",
         diff: capped.diff,
         untracked: capped.untracked,
+        truncated: capped.truncated,
+    };
+}
+
+/**
+ * PR-shaped review target — Milestone 3.3. Fetches the PR metadata + diff
+ * via `gh pr view` / `gh pr diff` (delegated to `pr-review.ts`) and freezes
+ * them into the same `ReviewTarget` shape the git-based path produces, so
+ * the rest of the review pipeline (reviewer count, parseReviewOutput, etc.)
+ * is unchanged.
+ *
+ * Throws `GhUnavailableError` (actionable spec message) when `gh` isn't on
+ * PATH; throws a plain `Error` with `gh`'s stderr when `gh pr view` or
+ * `gh pr diff` fail.
+ */
+async function capturePrReviewTarget(cwd: string, prRef: string): Promise<ReviewTarget> {
+    if (!isGhAvailable()) {
+        throw new GhUnavailableError();
+    }
+    const meta = await fetchPrMetadata(prRef, { cwd });
+    const diff = await fetchPrDiff(prRef, { cwd });
+    const capped = capArtifact(diff, []);
+    const label =
+        `PR ${prRef}: ${meta.title}` +
+        ` (${meta.headRef || "?"} → ${meta.baseRef || "?"},` +
+        ` +${meta.additions}/-${meta.deletions}, ${meta.files.length} file(s))`;
+    return {
+        label,
+        diff: capped.diff,
+        untracked: [],
         truncated: capped.truncated,
     };
 }

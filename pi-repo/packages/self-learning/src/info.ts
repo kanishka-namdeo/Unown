@@ -19,6 +19,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { arch, homedir, platform, release } from "node:os";
 import { join } from "node:path";
+import { summarizeInstructionAudit, auditInstructionSet } from "./doctor-instructions.ts";
 import { describeAge, readRootVersion, readUpdateCheckCache, redactUrl, unownHome } from "./update.ts";
 
 export interface InfoCtx {
@@ -37,6 +38,15 @@ export interface UnownInfo {
         updateCheck: { latest: string; checkedAt: string; age: string } | null;
         state: { home: string; agentDirExists: boolean; authFile: { exists: boolean; mode: number | null } };
         optOuts: string[];
+        /**
+         * Milestone 3.2 — instruction-set audit summary, included so a bug
+         * report carries whether the AGENTS.md / skills / MCP / hooks /
+         * adversary / injection-scanner layer is healthy. Full findings
+         * are available via `unown doctor-instructions`; the bundle ships
+         * ONLY the summary counts to avoid pasting every finding into an
+         * issue (the doctor command renders the full inline report).
+         */
+        instructionAudit: { errors: number; warnings: number; infos: number };
 }
 
 function gitLines(repoRoot: string): { sha: string | null; branch: string | null; dirty: boolean | null } {
@@ -130,6 +140,18 @@ export function collectInfo(ctx: InfoCtx = {}): UnownInfo {
                         authFile: { exists: existsSync(authPath), mode: authMode },
                 },
                 optOuts,
+                // Milestone 3.2 — include the instruction-audit summary in the
+                // bug-report bundle. Errors only (never the full finding text) —
+                // the bundle is paste-safe; the doctor command renders the full
+                // report inline. `cwd` defaults to process.cwd() so the audit
+                // inspects the same project the bug report is being filed about.
+                instructionAudit: (() => {
+                        try {
+                                return summarizeInstructionAudit(auditInstructionSet(process.cwd()));
+                        } catch {
+                                return { errors: 0, warnings: 0, infos: 0 };
+                        }
+                })(),
         };
 }
 
@@ -158,6 +180,10 @@ export function renderInfo(i: UnownInfo): string {
                 `  update:     ${i.updateCheck ? `last check ${i.updateCheck.age} — latest seen: ${i.updateCheck.latest || "?"}` : "never checked"}`,
         );
         lines.push(`  opt-outs:   ${i.optOuts.length ? i.optOuts.join(", ") : "none"}`);
+        // Milestone 3.2 — one line for the instruction audit (paste-safe counts).
+        lines.push(
+                `  instruction-set audit: ${i.instructionAudit.errors} error(s), ${i.instructionAudit.warnings} warning(s), ${i.instructionAudit.infos} info — run \`unown doctor-instructions\` for the full report`,
+        );
         return lines.join("\n");
 }
 

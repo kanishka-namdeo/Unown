@@ -81,6 +81,11 @@ import {
         parseAgentFrontmatterExtras,
         type SubagentRoutingFields,
 } from "./subagent-routing.ts";
+import { generateAgentsMd } from "./init-agents.ts";
+import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
+import { postPrComment } from "./pr-review.ts";
+import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
+import { receiptsDir } from "./checkpoints.ts";
 
 // ---------------------------------------------------------------------------
 // Subagent registry: built-ins + .unown/agents/*.md + ~/.unown/agent/agents/*.md
@@ -2033,16 +2038,21 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 
                 pi.registerCommand("review", {
                         description:
-                                "Parallel-subagent code review of uncommitted work (or /review <base-branch>): P0–P3 findings + SHIP verdict",
+                                "Parallel-subagent code review of uncommitted work (or /review <base-branch> | <PR URL/number> | <commit range>): P0–P3 findings + SHIP verdict. Add --comment to post the verdict as a PR comment (PR review only).",
                         handler: async (args, ctx) => {
-                                const base = (args ?? "").trim() || undefined;
+                                const raw = (args ?? "").trim();
+                                // Milestone 3.3: --comment flag opts into posting the verdict
+                                // as a PR comment (only meaningful for PR-shaped input).
+                                const wantComment = /\s--comment\b/.test(` ${raw}`);
+                                const base = raw.replace(/\s--comment\b/g, "").trim() || undefined;
                                 ctx.ui.notify("Review: freezing the diff snapshot…", "info");
                                 let target;
                                 try {
                                         target = await captureReviewTarget(opts.cwd, base);
                                 } catch (err: any) {
                                         // Git-plumbing aborts (non-repo, git missing, merge-base
-                                        // failure, timeout) arrive as actionable messages —
+                                        // failure, timeout) AND `gh`-unavailable (PR review
+                                        // without the GitHub CLI) arrive as actionable messages —
                                         // rendered as a command result, never a crash (R-b G1/G2).
                                         ctx.ui.notify(`Review aborted: ${err?.message ?? err}`, "warning");
                                         return;
@@ -2108,6 +2118,24 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 text + (artifact ? `\n\nSaved to ${artifact}` : ""),
                                                 merged.verdict === "block" || allFailed ? "warning" : "info",
                                         );
+                                        // Milestone 3.3: optionally post the verdict as a PR comment.
+                                        // Only fires for PR-shaped input (the parsed kind was pr-url or
+                                        // pr-number — i.e. the target label starts with "PR "). A
+                                        // missing `gh` or a failed `gh pr comment` surfaces as a
+                                        // warning AFTER the verdict has been shown — the verdict itself
+                                        // is never lost.
+                                        if (wantComment && target.label.startsWith("PR ")) {
+                                                try {
+                                                        const prRef = target.label.slice("PR ".length).split(":")[0];
+                                                        await postPrComment(prRef, text);
+                                                        ctx.ui.notify(`Posted verdict as a comment on ${prRef}.`, "info");
+                                                } catch (err: any) {
+                                                        ctx.ui.notify(
+                                                                `Could not post PR comment: ${err?.message ?? err}`,
+                                                                "warning",
+                                                        );
+                                                }
+                                        }
                                 } finally {
                                         setStatusLine(ctx, "review", undefined);
                                 }
@@ -2117,6 +2145,278 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 // -------------------------------------------------------------------
                 // Plan-mode wiring
                 // -------------------------------------------------------------------
+
+                // Milestone 3.1 — `/init-agents` slash command: runs the same
+                // repo-forensics generator the CLI exposes, shows the generated
+                // markdown inline (no file write — the slash command is a
+                // preview; the user can copy/paste or run `unown init-agents`
+                // to write the file).
+                pi.registerCommand("init-agents", {
+                        description: "Generate AGENTS.md from repo forensics (preview — does not write)",
+                        handler: async (_args, ctx) => {
+                                let md: string;
+                                try {
+                                        md = generateAgentsMd(opts.cwd);
+                                } catch (err: any) {
+                                        ctx.ui.notify(`AGENTS.md generation failed: ${err?.message ?? err}`, "warning");
+                                        return;
+                                }
+                                // Long markdown in a notify popup is unreadable; cap at
+                                // 6 KB so the user gets the shape but not the whole file.
+                                // (Truncation marker so they know to run `unown init-agents
+                                // --print | less` for the full text.)
+                                const cap = 6 * 1024;
+                                const body = md.length <= cap ? md : md.slice(0, cap) + "\n\n…[truncated — run `unown init-agents --print` for the full text]";
+                                ctx.ui.notify(body, "info");
+                        },
+                });
+
+                // Milestone 3.2 — `/doctor-instructions` slash command: runs the
+                // instruction-set audit and shows the structured findings inline.
+                pi.registerCommand("doctor-instructions", {
+                        description: "Audit the instruction set (AGENTS.md, skills, MCP, hooks, adversary, injection scanner)",
+                        handler: async (_args, ctx) => {
+                                const report = auditInstructionSet(opts.cwd);
+                                const text = renderInstructionAudit(report);
+                                const sum = summarizeInstructionAudit(report);
+                                const verdict =
+                                        sum.errors > 0
+                                                ? `${sum.errors} error(s), ${sum.warnings} warning(s), ${sum.infos} info`
+                                                : sum.warnings > 0
+                                                        ? `${sum.warnings} warning(s), ${sum.infos} info`
+                                                        : sum.infos > 0
+                                                                ? `${sum.infos} info note(s)`
+                                                                : "clean — all 7 sections healthy";
+                                ctx.ui.notify(`${text}\n  summary: ${verdict}`, sum.errors > 0 ? "warning" : "info");
+                        },
+                });
+
+                // Milestone 3.4 — `/blame <file>` slash command: scans the receipts
+                // ledgers at `.unown/receipts/*.jsonl` for entries that touched
+                // `<file>` (write/edit/bash) and shows them grouped by session.
+                // With no arg, shows a summary (counts by tool, files touched).
+                // Flags: `--session <id>`, `--since <timestamp>`, `--json`.
+                pi.registerCommand("blame", {
+                        description:
+                                "Show which receipts touched a file: /blame <file> | /blame [--session <id>] [--since <ts>] [--json]",
+                        handler: async (args, ctx) => {
+                                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                                const json = tokens.includes("--json");
+                                let sessionId: string | undefined;
+                                let since: number | undefined;
+                                let filePath: string | undefined;
+                                for (let i = 0; i < tokens.length; i++) {
+                                        const t = tokens[i];
+                                        if (t === "--json") continue;
+                                        if (t === "--session") {
+                                                sessionId = tokens[i + 1];
+                                                i++;
+                                                continue;
+                                        }
+                                        if (t === "--since") {
+                                                const raw = tokens[i + 1];
+                                                // Accept epoch-ms, ISO 8601, or relative seconds (e.g. "300s").
+                                                const asNum = Number(raw);
+                                                if (!Number.isNaN(asNum)) {
+                                                        since = raw.length >= 10 && /^\d+$/.test(raw) ? asNum : Date.now() - asNum * 1000;
+                                                } else {
+                                                        const parsed = Date.parse(raw);
+                                                        if (!Number.isNaN(parsed)) since = parsed;
+                                                }
+                                                i++;
+                                                continue;
+                                        }
+                                        if (!t.startsWith("--")) filePath = t;
+                                }
+                                const dir = receiptsDir(opts.cwd);
+                                if (!filePath) {
+                                        // Summary mode: counts by tool + distinct files written.
+                                        const summary = blameSummary(dir, { sessionId, since });
+                                        const toolLines = Object.entries(summary.byTool)
+                                                .sort((a, b) => b[1] - a[1])
+                                                .map(([tool, n]) => `- ${tool}: ${n}`)
+                                                .join("\n");
+                                        const filesLines =
+                                                summary.filesTouched.length > 0
+                                                        ? summary.filesTouched.slice(0, 40).map((f) => `- ${f}`).join("\n") +
+                                                          (summary.filesTouched.length > 40
+                                                                  ? `\n- …and ${summary.filesTouched.length - 40} more`
+                                                                  : "")
+                                                        : "(no files written yet)";
+                                        const body = `Blame summary — ${summary.totalEntries} tool call(s) across receipts.\n\nBy tool:\n${toolLines || "(none)"}\n\nFiles written/edited:\n${filesLines}`;
+                                        ctx.ui.notify(json ? JSON.stringify(summary, null, 2) : body, "info");
+                                        return;
+                                }
+                                const entries = blameFile(dir, filePath, { sessionId, since }, opts.cwd);
+                                ctx.ui.notify(
+                                        json ? formatBlameJson(entries) : formatBlameReport(entries, filePath),
+                                        entries.length === 0 ? "info" : "info",
+                                );
+                        },
+                });
+
+                // Milestone 3.5 — `/sessions <sub>` slash command: the in-session
+                // alias for the `unown sessions` CLI. Uses the live session
+                // manager (ctx.sessionManager) so export/import operate on the
+                // CURRENT session without needing the CLI to construct one.
+                //   /sessions export [--out <file>]   export THIS session
+                //   /sessions list                    list sessions in this project
+                //   /sessions import <file>           rehydrate a session file
+                pi.registerCommand("sessions", {
+                        description: "Session export / import / list (Milestone 3.5): /sessions export|import|list",
+                        handler: async (args, ctx) => {
+                                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                                const sub = tokens[0] ?? "list";
+                                if (sub === "list") {
+                                        const { listSessions } = await import("./sessions.ts");
+                                        const sessions = listSessions({ cwd: opts.cwd });
+                                        if (sessions.length === 0) {
+                                                ctx.ui.notify("No sessions found in this project.", "info");
+                                                return;
+                                        }
+                                        const lines = sessions.map((s) => {
+                                                const date = new Date(s.createdAt).toISOString().replace("T", " ").slice(0, 19);
+                                                const fc = s.touchedFiles.length;
+                                                return `${s.id}  ${date}  · ${s.messageCount} msg(s)${fc ? ` · ${fc} file(s)` : ""}`;
+                                        });
+                                        ctx.ui.notify(`Sessions in this project:\n${lines.join("\n")}`, "info");
+                                        return;
+                                }
+                                if (sub === "export") {
+                                        const { exportSession } = await import("./sessions.ts");
+                                        // Find --out
+                                        let out: string | undefined;
+                                        for (let i = 1; i < tokens.length; i++) {
+                                                if (tokens[i] === "--out" && i + 1 < tokens.length) {
+                                                        out = tokens[i + 1];
+                                                        break;
+                                                }
+                                        }
+                                        if (!ctx?.sessionManager) {
+                                                ctx.ui.notify("No active session manager — cannot export.", "warning");
+                                                return;
+                                        }
+                                        try {
+                                                const sessionId = ctx.sessionManager.getSessionId();
+                                                const result = await exportSession(sessionId, {
+                                                        sessionManager: ctx.sessionManager as any,
+                                                        outPath: out,
+                                                });
+                                                ctx.ui.notify(
+                                                        `✓ Exported session ${sessionId} → ${result.path} (${result.bytes} bytes)`,
+                                                        "info",
+                                                );
+                                        } catch (err: any) {
+                                                ctx.ui.notify(`Export failed: ${err?.message ?? err}`, "warning");
+                                        }
+                                        return;
+                                }
+                                if (sub === "import") {
+                                        const { importSession } = await import("./sessions.ts");
+                                        const file = tokens[1];
+                                        if (!file) {
+                                                ctx.ui.notify("Usage: /sessions import <file>", "info");
+                                                return;
+                                        }
+                                        try {
+                                                const result = await importSession(file, { cwd: opts.cwd });
+                                                ctx.ui.notify(
+                                                        `✓ Imported → new session ${result.sessionId} (${result.bytes} bytes). Run 'unown' to resume it.`,
+                                                        "info",
+                                                );
+                                        } catch (err: any) {
+                                                ctx.ui.notify(`Import failed: ${err?.message ?? err}`, "warning");
+                                        }
+                                        return;
+                                }
+                                ctx.ui.notify(
+                                        `Usage: /sessions export|import|list (got "${sub}")`,
+                                        "info",
+                                );
+                        },
+                });
+
+                // Milestone 3.6 — `/edit-resend <n> <new-message>` slash command:
+                // reverts files to the pre-Nth-user-message checkpoint (all-or-nothing
+                // file reset; aborts if any file was edited out-of-band), then appends
+                // the edited message as the new leaf for the next model turn.
+                //   /edit-resend 2 "actually, do X instead"
+                // The in-session alias also accepts `/edit-resend list` to print the
+                // user messages with their 1-based indices.
+                pi.registerCommand("edit-resend", {
+                        description:
+                                "Edit the Nth user message + revert files to the pre-message checkpoint, then resend: /edit-resend <n> <new-message>",
+                        handler: async (args, ctx) => {
+                                const raw = (args ?? "").trim();
+                                if (!raw) {
+                                        ctx.ui.notify(
+                                                "Usage: /edit-resend <n> <new-message>  (or /edit-resend list to see user messages)",
+                                                "info",
+                                        );
+                                        return;
+                                }
+                                if (!ctx?.sessionManager) {
+                                        ctx.ui.notify("No active session manager — cannot edit-resend.", "warning");
+                                        return;
+                                }
+                                if (raw === "list" || raw.startsWith("list ")) {
+                                        const entries = ctx.sessionManager.getEntries?.() ?? [];
+                                        let n = 0;
+                                        const lines: string[] = [];
+                                        for (const entry of entries) {
+                                                if (entry?.type !== "message") continue;
+                                                if (entry.message?.role !== "user") continue;
+                                                n++;
+                                                const text = typeof entry.message.content === "string"
+                                                        ? entry.message.content.replace(/\s+/g, " ").slice(0, 80)
+                                                        : "(non-text user message)";
+                                                lines.push(`  #${n}  ${text}`);
+                                        }
+                                        ctx.ui.notify(
+                                                lines.length > 0 ? `User messages:\n${lines.join("\n")}` : "No user messages yet.",
+                                                "info",
+                                        );
+                                        return;
+                                }
+                                // Parse: first whitespace token = index, rest = message
+                                const sp = raw.indexOf(" ");
+                                if (sp < 0) {
+                                        ctx.ui.notify("Usage: /edit-resend <n> <new-message>", "info");
+                                        return;
+                                }
+                                const nTok = raw.slice(0, sp);
+                                const newMessage = raw.slice(sp + 1).trim();
+                                const n = Number.parseInt(nTok, 10);
+                                if (!Number.isFinite(n) || n < 1) {
+                                        ctx.ui.notify(`Invalid message index "${nTok}" (must be ≥ 1).`, "warning");
+                                        return;
+                                }
+                                const { editAndResend } = await import("./edit-resend.ts");
+                                const { CheckpointStore, checkpointsDir } = await import("./checkpoints.ts");
+                                const store = new CheckpointStore(checkpointsDir(opts.cwd));
+                                try {
+                                        const sessionId = ctx.sessionManager.getSessionId();
+                                        const result = await editAndResend(sessionId, n, newMessage, {
+                                                cwd: opts.cwd,
+                                                sessionManager: ctx.sessionManager as any,
+                                                checkpointStore: store as any,
+                                        });
+                                        const revertedLines = result.revertedFiles.length > 0
+                                                ? `\nReverted files:\n${result.revertedFiles.slice(0, 10).map((p) => `  - ${p}`).join("\n")}${result.revertedFiles.length > 10 ? `\n  …and ${result.revertedFiles.length - 10} more` : ""}`
+                                                : "";
+                                        const tombstonedLines = result.tombstonedFiles.length > 0
+                                                ? `\nDeleted (created during the reverted turn):\n${result.tombstonedFiles.slice(0, 10).map((p) => `  - ${p}`).join("\n")}${result.tombstonedFiles.length > 10 ? `\n  …and ${result.tombstonedFiles.length - 10} more` : ""}`
+                                                : "";
+                                        ctx.ui.notify(
+                                                `✓ Edit-resend: ${result.revertedFiles.length} file(s) reverted, ${result.tombstonedFiles.length} tombstoned. ` +
+                                                        `Edited message appended (session ${result.newSessionId}).${revertedLines}${tombstonedLines}`,
+                                                "info",
+                                        );
+                                } catch (err: any) {
+                                        ctx.ui.notify(`✗ Edit-resend aborted: ${err?.message ?? err}`, "warning");
+                                }
+                        },
+                });
 
                 pi.registerFlag("plan", {
                         description: "Start in plan mode (read-only exploration)",

@@ -16,6 +16,13 @@ import {
         SessionManager,
         SettingsManager,
 } from "@earendil-works/pi-coding-agent";
+import {
+        formatCompactionWarning,
+        formatContextExhaustedError,
+        shouldAutoCompact,
+        type AutoCompactConfig,
+        type AutoCompactDecision,
+} from "./auto-compact.ts";
 import { emit } from "./bus.ts";
 import { writeSandboxShell } from "./bwrap.ts";
 import { createHooksExtension, logHook } from "./hooks.ts";
@@ -29,6 +36,118 @@ export const AGENT_DIR = join(DATA_DIR, "pi-agent-dir");
 export const SESSIONS_DIR = join(DATA_DIR, "sessions");
 export const PROVIDER = process.env.PI_PROVIDER || "zai-bridge"; // `||`: empty .env value means unset
 export const MODEL_ID = process.env.PI_MODEL_ID || "kimi-k2.5";
+
+/**
+ * Max context window (tokens) the runner assumes for auto-compact (Milestone
+ * 3.7). Matches the `contextWindow` field in `ensureAgentDir()`'s models.json
+ * (131 072 — the kimi-k2.5 / Qwen-class default we provision via the bridge).
+ *
+ * Used as the FALLBACK when the pi session does not expose `getContextUsage()`
+ * (the documented ExtensionContext seam — `context-tools.ts:344`). When pi
+ * does report a context window, that value wins (so a model swap to a 200k
+ * context variant is honored automatically).
+ */
+export const RUNNER_MAX_CONTEXT_WINDOW = 131_072;
+
+/**
+ * Auto-compact guard (Milestone 3.7 — goose's auto-compact-on-token-limit port).
+ *
+ * Consulted by `runAgent` after each `turn_end` event. The decision is made by
+ * {@link shouldAutoCompact} against the LIVE context usage (the pi session's
+ * documented `getContextUsage()` seam when available, else the latest reported
+ * `usage.input` from `message_end` as a fallback) and dispatched:
+ *
+ *   - "none"    → no-op
+ *   - "warn"    → log a `AutoCompact` warn receipt (the model sees the warning
+ *                 text injected by `formatCompactionWarning` via the
+ *                 /compact slash command path on the next turn — TODO: a pi
+ *                 PreModelRequest hook (Milestone 1.3) is the cleaner seam)
+ *   - "compact" → trigger pi's compaction API directly when the session exposes
+ *                 `session.compact()` (defensive `typeof` guard — the method
+ *                 is not on every pi version; if missing, the warn receipt
+ *                 still records the trigger so the operator can `/compact`
+ *                 manually)
+ *   - "block"   → log an error receipt AND abort the session (so the next
+ *                 `session.prompt()` does not ship a request the upstream
+ *                 bridge will reject with a context-overflow error)
+ *
+ * The guard is fully defensive: any throw is swallowed (telemetry must NEVER
+ * break the run — same invariant as the existing `session.subscribe` handler).
+ * A null decision is returned when neither pi's seam nor the fallback has
+ * produced a usable token count yet (e.g. before the first LLM response) —
+ * the caller treats null as a no-op.
+ *
+ * @returns the decision (for telemetry), or null when no usage signal is
+ *          available yet.
+ */
+function checkAutoCompact(
+        session: any,
+        runId: string,
+        fallbackTokensUsed: number,
+        fallbackMaxTokens: number,
+        cfg?: AutoCompactConfig,
+): AutoCompactDecision | null {
+        try {
+                // Prefer pi's documented ContextUsage seam when available — it
+                // reflects the active model's true window + the live token count
+                // (including any pending system messages the next request will
+                // send). The same seam powers the `get_context_remaining` tool
+                // (context-tools.ts:344).
+                const usage = typeof session?.getContextUsage === "function" ? session.getContextUsage() : undefined;
+                const tokensUsed =
+                        typeof usage?.tokens === "number" && Number.isFinite(usage.tokens) && usage.tokens >= 0
+                                ? usage.tokens
+                                : fallbackTokensUsed;
+                const maxTokens =
+                        typeof usage?.contextWindow === "number" && Number.isFinite(usage.contextWindow) && usage.contextWindow > 0
+                                ? usage.contextWindow
+                                : fallbackMaxTokens;
+
+                // No signal yet (no model response AND no fallback) — skip silently.
+                if (tokensUsed <= 0 && !usage) return null;
+
+                const decision = shouldAutoCompact(tokensUsed, maxTokens, cfg);
+                if (decision.action === "warn") {
+                        logHook(runId, "AutoCompact", null, "warn", formatCompactionWarning(tokensUsed, maxTokens));
+                } else if (decision.action === "compact") {
+                        logHook(runId, "AutoCompact", null, "log", `auto-compact triggered: ${decision.reason}`);
+                        // Trigger pi's compaction API directly. The /compact slash
+                        // command's underlying entry point is `session.compact()` —
+                        // defensive in case this pi version exposes it under a
+                        // different name (the warn receipt above records the
+                        // trigger regardless, so the operator can `/compact`
+                        // manually if the auto-trigger is a no-op).
+                        // TODO(M3.7-followup): wire the actual pi compaction entry
+                        // point once its API surface stabilizes — the
+                        // PreModelRequest hook (Milestone 1.3) is the cleaner
+                        // seam for "compaction on the next turn" semantics.
+                        if (typeof session?.compact === "function") {
+                                try {
+                                        session.compact();
+                                } catch {
+                                        /* best-effort: the next turn will re-evaluate */
+                                }
+                        }
+                } else if (decision.action === "block") {
+                        const err = formatContextExhaustedError(tokensUsed, maxTokens);
+                        logHook(runId, "AutoCompact", null, "error", err);
+                        // Abort the session so the next `session.prompt()` cannot
+                        // ship a request the bridge will reject. The outer try /
+                        // catch in `runAgent` finalizes the run as 'error' with
+                        // this message.
+                        try {
+                                session?.abort?.();
+                        } catch {
+                                /* best-effort */
+                        }
+                }
+                return decision;
+        } catch {
+                // Telemetry must NEVER break the run — matches the existing
+                // session.subscribe handler invariant.
+                return null;
+        }
+}
 
 export interface TranscriptEntry {
         type: "text" | "tool_start" | "tool_end";
@@ -147,6 +266,12 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
         let tokensOut = 0;
         let turns = 0;
         let lastAssistantText = "";
+        // §3.7 — latest `usage.input` value (the context window size for the
+        // most recent model request — pi resends the whole conversation history
+        // each turn, so the LATEST input-tokens value IS the live context size).
+        // Used as the auto-compact fallback when pi's `getContextUsage()` seam
+        // is unavailable on this session object.
+        let currentContextTokens = 0;
 
         const finalize = async (
                 status: RunResult["status"],
@@ -300,6 +425,14 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                         if (usage) {
                                                 tokensIn += usage.input ?? 0;
                                                 tokensOut += usage.output ?? 0;
+                                                // §3.7 — track the live context window size
+                                                // (the LATEST input-tokens value, not the
+                                                // cumulative sum — see currentContextTokens
+                                                // declaration above for why this is the live
+                                                // context size).
+                                                if (typeof usage.input === "number" && usage.input >= 0) {
+                                                        currentContextTokens = usage.input;
+                                                }
                                         }
                                         const text = (e.message.content ?? [])
                                                 .filter((b: any) => b.type === "text")
@@ -312,6 +445,13 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                         }
                                 } else if (e.type === "turn_end") {
                                         turns++;
+                                        // §3.7 — auto-compact guard. After each turn ends
+                                        // (and BEFORE the next one starts), check whether
+                                        // the session is approaching the context window
+                                        // limit and dispatch warn / compact / block per the
+                                        // proportional threshold curve. Defensive: the
+                                        // helper never throws (telemetry invariant).
+                                        checkAutoCompact(session, runId, currentContextTokens, RUNNER_MAX_CONTEXT_WINDOW);
                                 }
                         } catch {
                                 /* never let telemetry break the run */
