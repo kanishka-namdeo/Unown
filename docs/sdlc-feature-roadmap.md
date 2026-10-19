@@ -141,6 +141,24 @@ After all four milestones ship:
 
 ---
 
+### Milestone 6 — granular permissions + usage/cost tracking (implemented in parallel, 2026-10-19)
+
+While milestones 1–5 were being drafted, a second effort shipped two features
+this roadmap had not scoped (plus the Wave-1 trio: `/redo`, `/commit` +
+`UNOWN_AUTO_COMMIT`, and the deterministic injection shield over live tool
+results — the no-second-model half of 1.5):
+
+- **Granular permissions** — Claude Code/Cline-style declarative
+  allow/deny/ask rules (`.unown/permissions.json` trust-gated +
+  `~/.unown/agent/permissions.json`), permission modes, opt-in rule
+  learning, `/permissions`, doctor coverage. `docs/permissions.md`.
+- **Usage & cost tracking** — persistent bridge usage log, `GET /v1/usage`,
+  `unown usage` CLI with cost estimates + pricing overrides.
+  `docs/usage-tracking.md`.
+
+Milestone 1.5's ML-classifier half and 1.4's adversary mode remain open; the
+shipped shield covers the deterministic base.
+
 ## Out-of-scope this cycle (with reason)
 
 - **Hashline edit format** — Rust parser in pi core; revisit only with measured

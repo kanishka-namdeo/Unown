@@ -16,6 +16,8 @@ const ALL_COMMANDS = [
         "memory",
         "doctor",
         "mcp",
+        "automations",
+        "usage",
         "note",
         "update",
         "changelog",

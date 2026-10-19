@@ -132,9 +132,9 @@ The session features — LSP code intelligence, MCP servers, checkpoints/receipt
 
 A dead server never takes the session down: pending calls reject with error results, the server cools down (30 s) before unown attempts it again, and a keepalive ping (`UNOWN_MCP_PING_INTERVAL_MS`, 60 s) marks silent deaths errored. `/mcp` reconnects immediately — it deliberately pushes through the cooldown — and the footer line (`mcp: <connected>/<total> · <n> tools`) tracks the recovery. HTTP servers additionally self-heal: a 404 from a rotated session id triggers one transparent re-initialize and the call is replayed; 429/503 responses back off honoring `Retry-After`.
 
-#### Checkpoints — `/restore` or `/undo` reports a file it could not revert
+#### Checkpoints — `/restore`, `/undo` or `/redo` reports a file it could not revert
 
-Per-file failures are honest: the checkpoint's other files still apply, the failing file is left untouched, and the reason comes from a fixed vocabulary:
+Per-file failures are honest: the checkpoint's other files still apply, the failing file is left untouched, and the reason comes from a fixed vocabulary (the same one for all three commands — `/redo` re-applies through the identical verified, jailed restore path):
 
 | Report | Meaning | Fix |
 |---|---|---|
@@ -143,7 +143,7 @@ Per-file failures are honest: the checkpoint's other files still apply, the fail
 | `oversized: file was too large to checkpoint — cannot revert` | The file exceeded `UNOWN_CHECKPOINT_MAX_BLOB_BYTES` (default 64 MiB) at capture time and was never blobbed | There is no stored before-image — repair the file by hand; the ledger noted the exception when the turn was sealed |
 | `outside: path escapes the project jail` | A checkpointed path now resolves outside the project (a symlink moved) | The refusal is the feature — restore never writes through a symlink out of the project; copy the intended content manually |
 
-Two look-up failures complete the picture: `/restore <key>` answering `No checkpoint matches "<key>". /checkpoints lists them.` means the id/label (or its prefix) does not exist — `/checkpoints` lists them all. `/undo` answering `No turn checkpoints to undo (nothing sealed this session — try /restore <id> for named snapshots).` means no turn wrote files this session; the variant `No turn checkpoints from this session to undo (other sessions' turns exist — /undo --all opts in; …)` is the session-ownership rule — `/undo` consumes only this session's turns unless you pass `--all`.
+Two look-up failures complete the picture: `/restore <key>` answering `No checkpoint matches "<key>". /checkpoints lists them.` means the id/label (or its prefix) does not exist — `/checkpoints` lists them all. `/undo` answering `No turn checkpoints to undo (nothing sealed this session — try /restore <id> for named snapshots).` means no turn wrote files this session; the variant `No turn checkpoints from this session to undo (other sessions' turns exist — /undo --all opts in; …)` is the session-ownership rule — `/undo` consumes only this session's turns unless you pass `--all`. `/redo` answering `Nothing to redo — the redo stack is empty (/undo pushes entries; any new checkpoint clears them).` is normal after a fresh session, after everything undone was already redone, or after a new checkpoint was sealed (new edits invalidate redo — the classic editor rule); the variant `No undone changes from this session to redo (other sessions' redo entries exist — /redo --all opts in).` is the same ownership rule as `/undo`'s.
 
 #### Goals — `/goal` won't complete
 

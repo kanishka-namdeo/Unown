@@ -507,7 +507,10 @@ describe("automation session tools — the trust gate", () => {
                         expect(allow).not.toContain(banned);
                 }
                 // the reading + reporting set the unattended agent needs
-                for (const needed of ["read", "grep", "find", "ls", "todo", "note", "fetch_url", "lsp"]) {
+                // (web_search/webfetch: read-only network reads, same
+                // classification plan mode gives them — an unattended
+                // "morning brief" automation needs the web)
+                for (const needed of ["read", "grep", "find", "ls", "todo", "note", "fetch_url", "web_search", "webfetch", "lsp"]) {
                         expect(allow).toContain(needed);
                 }
                 // every name must be a real tool (a typo here would silently widen the run)

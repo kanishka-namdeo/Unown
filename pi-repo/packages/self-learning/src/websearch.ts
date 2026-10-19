@@ -34,6 +34,7 @@ import { lookup } from "node:dns/promises";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { annotateToolOutput, recordShieldFlag } from "./shield.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1654,6 +1655,23 @@ export interface WebToolsOptions {
 }
 
 /**
+ * Injection-shield annotation for a web tool result: scan + (when suspect)
+ * prepend the `[unown-injection-shield]` banner, then record the flag in the
+ * session via pi.appendEntry. Wrapped around the execute() returns below —
+ * the cleanest interception point: the text is post-processed BEFORE it goes
+ * back to the model. annotateToolOutput is fail-open by contract, so a shield
+ * error can never fail a webfetch/web_search call.
+ */
+function shieldWebText(pi: ExtensionAPI, log: (msg: string) => void, text: string, source: string): string {
+        return annotateToolOutput(text, source, {
+                onFlag: (info) => {
+                        log(`injection shield flagged ${info.source}: ${info.flags.join(", ")}`);
+                        recordShieldFlag(pi, info);
+                },
+        });
+}
+
+/**
  * Registers `web_search` + `webfetch` on a pi ExtensionAPI. Used by the
  * unown-tools extension (terminal sessions) and by the engine sandbox
  * runner (when the sandbox network namespace is enabled).
@@ -1681,7 +1699,10 @@ export function registerWebTools(pi: ExtensionAPI, opts: WebToolsOptions = {}): 
                                         provider: params.provider,
                                 });
                                 log(`search "${params.query}" via ${outcome.provider}: ${outcome.results.length} results`);
-                                return { content: [{ type: "text", text: formatSearchResults(outcome) }] };
+                                // Injection shield: web_search snippets are hostile-web
+                                // content — scan the rendered results before the model sees them.
+                                const text = shieldWebText(pi, log, formatSearchResults(outcome), "websearch");
+                                return { content: [{ type: "text", text }] };
                         } catch (err: any) {
                                 return {
                                         content: [{ type: "text", text: `web_search failed: ${err?.message ?? String(err)}` }],
@@ -1723,13 +1744,20 @@ export function registerWebTools(pi: ExtensionAPI, opts: WebToolsOptions = {}): 
                                                 content: [
                                                         {
                                                                 type: "text",
-                                                                text: `GET ${params.url} -> ${res.status}\n\n${text.slice(0, maxChars)}${text.length > maxChars ? "\n\n... (truncated)" : ""}`,
+                                                                text: shieldWebText(
+                                                                        pi,
+                                                                        log,
+                                                                        `GET ${params.url} -> ${res.status}\n\n${text.slice(0, maxChars)}${text.length > maxChars ? "\n\n... (truncated)" : ""}`,
+                                                                        `webfetch:${params.url}`,
+                                                                ),
                                                         },
                                                 ],
                                         };
                                 }
                                 const text = await fetchPageContent(params.url, { maxChars: params.max_chars });
-                                return { content: [{ type: "text", text }] };
+                                // Injection shield: fetched pages are first-class injection
+                                // carriers (a hostile page addressing the reading agent).
+                                return { content: [{ type: "text", text: shieldWebText(pi, log, text, `webfetch:${params.url}`) }] };
                         } catch (err: any) {
                                 return {
                                         content: [{ type: "text", text: `webfetch failed: ${err?.message ?? String(err)}` }],

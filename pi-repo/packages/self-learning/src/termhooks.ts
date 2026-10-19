@@ -18,8 +18,16 @@
  *                 is NOT network use and stays denied). Set
  *                 UNOWN_STRICT_HOOKS=1 to get the sandbox-grade deny-list
  *                 (adds sudo, ssh, network and git push).
+ *                 AFTER those hard-coded checks pass, the granular
+ *                 permissions layer (permissions.ts, docs/permissions.md)
+ *                 evaluates user-configured allow/deny/ask rules — it can
+ *                 only ADD restrictions, never weaken the checks above.
  *   PostToolUse — syntax gate: broken JS/TS gets the transpiler error fed
- *                 back to the agent instead of compounding.
+ *                 back to the agent instead of compounding; injection shield:
+ *                 bash/powershell stdout is scanned for prompt injections and
+ *                 suspect output gets a `[unown-injection-shield]` banner
+ *                 prepended (content unmodified) via the same feedback
+ *                 mechanism (UNOWN_INJECTION_SHIELD=0 disables).
  *   Stop        — captures the last assistant message for the session note.
  *   SessionEnd  — on session_shutdown the accumulated session note is
  *                 delivered to the engine (POST /api/notes) or written to the
@@ -31,6 +39,8 @@ import { tmpdir } from "node:os";
 import { resolve as resolvePath } from "node:path";
 import { decideBash, jailPath, syntaxCheck } from "./hooks.ts";
 import { assistantTextOf } from "./messages.ts";
+import { createPermissionGate, type PermissionGate, type ToolCallDecision } from "./permissions.ts";
+import { annotateToolOutput, recordShieldFlag, shieldEnabled } from "./shield.ts";
 import { deliverTerminalNote } from "./term.ts";
 
 export interface TerminalHookOptions {
@@ -38,6 +48,11 @@ export interface TerminalHookOptions {
         engineUrl: string;
         strict?: boolean; // sandbox-grade deny-list (no network, no git push)
         verbose?: boolean; // print hook decisions to stderr
+        /** Injected permission gate (cli.ts shares one with the /permissions
+         *  extension so session state — always-allow rules, trust notices —
+         *  spans both). When absent a private gate is created; the layer is
+         *  inert unless a permissions config exists. */
+        permissions?: PermissionGate;
 }
 
 /** Terminal deny-list: catastrophic only. Network + git push allowed.
@@ -355,6 +370,12 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
         const log = (msg: string) => {
                 if (verbose) console.error(`[unown] ${msg}`);
         };
+        // Granular permissions gate (2-d). Created eagerly — the load is two
+        // file stats + (rarely) a read — and shared with the /permissions
+        // extension when cli.ts injects one. Failures inside the gate fail
+        // OPEN to the hard-coded guardrails by contract (permissions.ts).
+        const permissionGate: PermissionGate =
+                opts.permissions ?? createPermissionGate({ cwd: opts.cwd, strict, verbose });
 
         // Session state accumulated for the exit note
         let prompts = 0;
@@ -364,16 +385,26 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
         let sessionStartTs = Date.now();
 
         const factory = (pi: any) => {
-                pi.on("session_start", () => {
+                pi.on("session_start", (_event: any, ctx: any) => {
                         sessionStartTs = Date.now();
                         log(`session started in ${opts.cwd}`);
+                        // One-shot notice when the project permissions config is
+                        // gated by trust (same UX as /mcp's untrusted banner).
+                        const notice = permissionGate.consumeUntrustedNotice();
+                        if (notice) {
+                                try {
+                                        ctx?.ui?.notify?.(notice, "warning");
+                                } catch {
+                                        /* non-fatal */
+                                }
+                        }
                 });
 
                 pi.on("input", (event: any) => {
                         if (typeof event?.text === "string" && event.text.trim()) prompts++;
                 });
 
-                pi.on("tool_call", (event: any) => {
+                pi.on("tool_call", (event: any, ctx: any) => {
                         const tool = event?.toolName as string;
                         const input = event?.input ?? {};
                         let decision: { block: boolean; reason?: string } = { block: false };
@@ -401,6 +432,41 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                 log(`PreToolUse DENY ${tool}: ${decision.reason}`);
                                 return { block: true, reason: decision.reason, terminate: false };
                         }
+
+                        // Granular permissions layer (permissions.ts) — runs only
+                        // AFTER the hard-coded deny-list + jail above passed, so it
+                        // can only add restrictions: no rule can unlock `rm -rf /`
+                        // or an out-of-jail write. Zero-surprise default: with no
+                        // config files the check is inert.
+                        try {
+                                const perm = permissionGate.check(tool, input);
+                                if (perm.blocked && perm.reason) {
+                                        log(`PreToolUse DENY ${tool}: ${perm.reason}`);
+                                        return { block: true, reason: perm.reason, terminate: false };
+                                }
+                                if (perm.needsAsk && perm.evaluation) {
+                                        // The ask flow needs the extension ctx (ui.select).
+                                        // Returns a thenable — pi's emitToolCall awaits
+                                        // its handlers, so this is the sanctioned seam.
+                                        const asking = permissionGate.handleAsk(tool, input, perm.evaluation, ctx);
+                                        return (async () => {
+                                                const resolved: ToolCallDecision | undefined = await asking;
+                                                if (resolved?.block) {
+                                                        log(`PreToolUse DENY ${tool}: ${resolved.reason}`);
+                                                        return {
+                                                                block: true,
+                                                                reason: resolved.reason,
+                                                                terminate: resolved.terminate ?? false,
+                                                        };
+                                                }
+                                                toolCalls++;
+                                                if (tool) toolNames.add(tool);
+                                                return undefined;
+                                        })();
+                                }
+                        } catch (err: any) {
+                                log(`permissions layer failed (fail-open to the hard-coded guardrails): ${err?.message ?? err}`);
+                        }
                         toolCalls++;
                         if (tool) toolNames.add(tool);
                         return undefined;
@@ -419,6 +485,36 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                                 content: [...(event.content ?? []), { type: "text", text: augment.appended }],
                                                 isError: true,
                                         };
+                                }
+                        }
+                        // Injection shield: bash/powershell stdout is live hostile-content
+                        // surface (a booby-trapped command's output, a fetched script's
+                        // banner). Scan it and PREPEND the shield banner to suspect
+                        // output — same feedback mechanism the syntax gate uses, but the
+                        // result is NOT an error: the content passes through unmodified
+                        // below the banner so the agent keeps working with the data.
+                        // annotateToolOutput is fail-open; the wrapper below additionally
+                        // guards content-shape surprises so no result is ever dropped.
+                        if (tool === "bash" || tool === "powershell") {
+                                if (shieldEnabled()) {
+                                        try {
+                                                const blocks = Array.isArray(event.content) ? event.content : [];
+                                                const stdout = blocks
+                                                        .map((b: any) => (b?.type === "text" && typeof b.text === "string" ? b.text : ""))
+                                                        .filter(Boolean)
+                                                        .join("\n");
+                                                const annotated = annotateToolOutput(stdout, tool, {
+                                                        onFlag: (info) => {
+                                                                log(`injection shield flagged ${info.source}: ${info.flags.join(", ")}`);
+                                                                recordShieldFlag(pi, info);
+                                                        },
+                                                });
+                                                if (annotated !== stdout) {
+                                                        return { content: [{ type: "text", text: annotated }] };
+                                                }
+                                        } catch {
+                                                /* fail-open: never break a tool result */
+                                        }
                                 }
                         }
                         return undefined;

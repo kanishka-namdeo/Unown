@@ -19,6 +19,7 @@
 ## Known pitfalls
 - LLM bridge calls timeout at 240s with 3 retries; agent watchdog at 600s.
 - Failed cycles auto-recover — do NOT restart engine to fix them.
+- Web search may fallback to alternative providers (You.com, DuckDuckGo, Tavily) due to connection/rate-limit issues [note 1].
 
 ## Environment
 - Current Bun version: 1.4.3 (released October 2026) [note 1]

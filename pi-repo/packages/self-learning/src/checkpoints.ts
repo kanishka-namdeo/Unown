@@ -22,6 +22,16 @@
  *     the last n turns and walks the index back; `/restore <label|id>`
  *     restores a named snapshot; tombstones (hash: null) delete files that
  *     did not exist before.
+ *   - Redo stack (the opencode/Cursor undo→redo port) — `/undo` captures,
+ *     per undone turn and BEFORE restoring its before-images, the content it
+ *     is about to overwrite into `redo-*.json` entries in the same store
+ *     (content-addressed blobs make the capture a dedup no-op when nothing
+ *     changed); `/redo [n]` pops entries newest-first and re-applies them
+ *     through the same hash-verified, jailed restore path, so `/undo n` +
+ *     `/redo n` is a byte-exact round trip. Any newly sealed checkpoint
+ *     (turn or named, any session sharing the store) clears the stack — new
+ *     edits invalidate redo, the classic editor rule. Redo is not itself
+ *     undoable: after `/redo`, `/undo` reverts earlier turns.
  *
  * Everything is plain fs + crypto — cross-platform by construction (no shell,
  * no git dependency, no native modules). Restore only ever writes inside the
@@ -178,7 +188,18 @@ export type ReceiptEntry =
       }
     | { seq: number; ts: number; kind: "checkpoint"; id: string; label?: string; files: number; turn: boolean }
     | { seq: number; ts: number; kind: "restore"; ids: string[]; files: number }
+    | { seq: number; ts: number; kind: "redo"; ids: string[]; files: number }
     | { seq: number; ts: number; kind: "note"; preview: string };
+
+/**
+ * Distributive Omit: keeps each union member's own shape instead of
+ * collapsing to the shared keys (plain Omit<ReceiptEntry, ...> would drop
+ * member-specific fields like `ids`/`preview`/`subagent` and type-error on
+ * every append call site).
+ */
+type DistributiveOmit<T, K extends keyof never> = T extends unknown ? Omit<T, K> : never;
+
+export type ReceiptEntryInput = DistributiveOmit<ReceiptEntry, "seq" | "ts">;
 
 const INPUT_CAP = 4096;
 const PREVIEW_CAP = 200;
@@ -195,7 +216,7 @@ export class ReceiptsLedger {
         mkdirSync(dirname(file), { recursive: true });
     }
 
-    append(entry: Omit<ReceiptEntry, "seq" | "ts">): ReceiptEntry {
+    append(entry: ReceiptEntryInput): ReceiptEntry {
         if (this.count >= LEDGER_MAX_ENTRIES) {
             return { ...(entry as any), seq: this.seq, ts: Date.now() };
         }
@@ -306,6 +327,7 @@ export function renderReceipts(entries: ReceiptEntry[], limit = 20): string {
         filesWritten: 0,
         checkpoints: 0,
         restores: 0,
+        redos: 0,
     };
     const byTool = new Map<string, number>();
     const files = new Set<string>();
@@ -319,6 +341,7 @@ export function renderReceipts(entries: ReceiptEntry[], limit = 20): string {
         } else if (e.kind === "tool_result" && e.isError) totals.errors++;
         else if (e.kind === "checkpoint") totals.checkpoints++;
         else if (e.kind === "restore") totals.restores++;
+        else if (e.kind === "redo") totals.redos++;
     }
     totals.filesWritten = files.size;
     const shown = entries.slice(-limit);
@@ -340,6 +363,8 @@ export function renderReceipts(entries: ReceiptEntry[], limit = 20): string {
             lines.push(`#${e.seq} ${time} ckpt   ${e.id}${e.label ? ` ("${e.label}")` : ""} — ${e.files} file(s)${e.turn ? " [turn]" : ""}`);
         } else if (e.kind === "restore") {
             lines.push(`#${e.seq} ${time} rstr   ${e.ids.join(", ")} — ${e.files} file(s)`);
+        } else if (e.kind === "redo") {
+            lines.push(`#${e.seq} ${time} redo   ${e.ids.join(", ")} — ${e.files} file(s)`);
         } else if (e.kind === "note") {
             lines.push(`#${e.seq} ${time} note   "${e.preview}"`);
         }
@@ -348,7 +373,7 @@ export function renderReceipts(entries: ReceiptEntry[], limit = 20): string {
     const head =
         `Receipts — ${totals.inputs} input(s), ${totals.toolCalls} tool call(s)${toolSummary ? ` [${toolSummary}]` : ""}, ` +
         `${totals.filesWritten} distinct file(s) written, ${totals.errors} error(s), ` +
-        `${totals.checkpoints} checkpoint(s), ${totals.restores} restore(s).`;
+        `${totals.checkpoints} checkpoint(s), ${totals.restores} restore(s), ${totals.redos} redo(s).`;
     const tail =
         entries.length > shown.length ? `\n(showing last ${shown.length} of ${entries.length}; /receipts <n> for more)` : "";
     return `${head}\n${lines.join("\n")}${tail}`;
@@ -404,6 +429,26 @@ export interface CheckpointManifest {
     consumed?: boolean;
 }
 
+/** One redo-stack entry — the content /undo is about to overwrite, captured
+ *  per undone turn before its before-images are restored. Same shape as a
+ *  manifest's files (tombstone = the file did not exist at capture time, so
+ *  /redo deletes it again), same content-addressed blob store. */
+export interface RedoManifest {
+    id: string;
+    seq: number;
+    ts: number;
+    files: CheckpointFile[];
+    /** Session boot id that ran the /undo (the session /redo defaults to). */
+    owner?: string;
+}
+
+/** The subset of a manifest restore() needs — shared by cp- manifests and
+ *  RedoManifest entries, so /redo re-uses the exact same hash-verified,
+ *  jailed write path as /restore and /undo. */
+export interface RestoreSource {
+    files: CheckpointFile[];
+}
+
 /** Per-file outcome of CheckpointStore.restore(). */
 export type RestoreAction = "restored" | "deleted" | "missing-blob" | "corrupt-blob" | "outside" | "oversized";
 export interface RestoreOutcome {
@@ -419,6 +464,13 @@ const KEEP_MANIFESTS = 40;
  *  a quiet session's live checkpoints below its own KEEP_MANIFESTS floor
  *  until the whole store is genuinely over budget (R-b C3). */
 const GLOBAL_KEEP_MANIFESTS = 200;
+/** Redo-stack retention (the opencode/Cursor undo→redo port): /undo and
+ *  /redo cap n at 20, so a 20-entry floor per owner keeps every reachable
+ *  stack alive; 60 across owners bounds a shared store the same way
+ *  GLOBAL_KEEP_MANIFESTS bounds the manifests. */
+const REDO_PREFIX = "redo-";
+const KEEP_REDO_ENTRIES = 20;
+const GLOBAL_KEEP_REDO_ENTRIES = 60;
 /** Blob GC grace (git's gc.pruneExpire pattern): blobs younger than this are
  *  never deleted — another process sharing this store may hold them inside
  *  its put-to-seal window (before-image captured at tool_call time, manifest
@@ -539,8 +591,9 @@ export class CheckpointStore {
      *  hash-verified before it is written (a truncated or bit-rotted blob is
      *  reported as corrupt-blob, never silently restored as wrong content —
      *  R-b R1), and every target must pass BOTH the lexical and the realpath
-     *  jail (R-b P1). Writes are atomic per file. */
-    restore(manifest: CheckpointManifest, cwd: string): RestoreOutcome[] {
+     *  jail (R-b P1). Writes are atomic per file. Takes any RestoreSource —
+     *  cp- manifests and redo entries share this exact path. */
+    restore(manifest: RestoreSource, cwd: string): RestoreOutcome[] {
         const out: RestoreOutcome[] = [];
         for (const f of manifest.files) {
             const abs = isAbsolute(f.path) ? f.path : join(cwd, f.path);
@@ -595,6 +648,94 @@ export class CheckpointStore {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Redo stack (opencode/Cursor undo→redo): one redo-*.json entry per
+    // undone turn, holding the content /undo is about to overwrite. Same
+    // atomicity, hash-verification and jail as cp- manifests; /redo pops
+    // entries newest-first; any newly sealed checkpoint clears the stack.
+    // -----------------------------------------------------------------------
+
+    redoPath(id: string): string {
+        return join(this.dir, `${REDO_PREFIX}${id}.json`);
+    }
+
+    /** Next redo seq — rescanned from disk per call (no cache) so sessions
+     *  sharing one store interleave correctly; redo stacks stay tiny, the
+     *  readdir is cheap (the extension's nextStoreSeq pattern). */
+    nextRedoSeq(): number {
+        let max = 0;
+        for (const m of this.listRedo()) max = Math.max(max, m.seq);
+        return max + 1;
+    }
+
+    writeRedo(manifest: RedoManifest): void {
+        this.ensure();
+        // Atomic like writeManifest: a crash mid-write must never leave a
+        // truncated redo-<id>.json that listRedo() would silently skip.
+        atomicWriteFileSync(this.redoPath(manifest.id), JSON.stringify(manifest, null, 2));
+    }
+
+    /** All redo entries, oldest first (push order — /redo pops from the
+     *  end). Tolerates broken files (skipped). */
+    listRedo(): RedoManifest[] {
+        if (!existsSync(this.dir)) return [];
+        const out: RedoManifest[] = [];
+        for (const name of readdirSync(this.dir)) {
+            if (!name.startsWith(REDO_PREFIX) || !name.endsWith(".json")) continue;
+            try {
+                out.push(JSON.parse(readFileSync(join(this.dir, name), "utf8")) as RedoManifest);
+            } catch {
+                continue;
+            }
+        }
+        out.sort((a, b) => a.seq - b.seq);
+        return out;
+    }
+
+    removeRedo(id: string): void {
+        try {
+            rmSync(this.redoPath(id));
+        } catch {
+            /* already gone */
+        }
+    }
+
+    /** Drop redo entries — all of them, or one owner's. Returns how many
+     *  went. Blob reclamation is left to gcBlobs (grace window applies). */
+    clearRedo(owner?: string): number {
+        const all = this.listRedo();
+        const doomed = owner === undefined ? all : all.filter((m) => m.owner === owner);
+        for (const m of doomed) this.removeRedo(m.id);
+        return doomed.length;
+    }
+
+    /** Redo-stack retention — the prune() shape at redo scale: an owner
+     *  floor plus a global cap, so one session's deep undo cannot evict
+     *  another's redo stack below its own floor until the whole store is
+     *  genuinely over budget. */
+    pruneRedo(keep = KEEP_REDO_ENTRIES, owner?: string): number {
+        const all = this.listRedo();
+        if (owner === undefined) {
+            if (all.length <= keep) return 0;
+            const removed = all.slice(0, all.length - keep);
+            for (const m of removed) this.removeRedo(m.id);
+            if (removed.length > 0) this.gcBlobs();
+            return removed.length;
+        }
+        const doomed = new Set<string>();
+        const own = all.filter((m) => m.owner === owner);
+        if (own.length > keep) for (const m of own.slice(0, own.length - keep)) doomed.add(m.id);
+        for (const m of all) {
+            // oldest first (listRedo is seq-ordered) across ALL owners, only
+            // past the global cap — the per-owner floor above is untouched.
+            if (all.length - doomed.size <= GLOBAL_KEEP_REDO_ENTRIES) break;
+            doomed.add(m.id);
+        }
+        for (const id of doomed) this.removeRedo(id);
+        if (doomed.size > 0) this.gcBlobs();
+        return doomed.size;
+    }
+
     /**
      * Retention + blob GC. Without `owner` this keeps the newest `keep`
      * manifests globally (pre-ownership behavior). With `owner` (the
@@ -637,13 +778,21 @@ export class CheckpointStore {
      */
     private gcBlobs(): void {
         const all = this.list();
+        const redos = this.listRedo();
         const referenced = new Set<string>();
         let newestTs = -Infinity;
         for (const m of all) {
             for (const f of m.files) if (f.hash) referenced.add(f.hash);
             newestTs = Math.max(newestTs, m.ts);
         }
-        const haveManifests = all.length > 0;
+        // Redo entries reference blobs too (the pre-undo content /undo
+        // captured) — a live redo stack is as load-bearing as the manifests
+        // it inverts, so its blobs must never be collected out from under it.
+        for (const r of redos) {
+            for (const f of r.files) if (f.hash) referenced.add(f.hash);
+            newestTs = Math.max(newestTs, r.ts);
+        }
+        const haveManifests = all.length > 0 || redos.length > 0;
         const filesRoot = join(this.dir, "files");
         if (!existsSync(filesRoot)) return;
         let shards: string[];
@@ -706,10 +855,13 @@ export class CheckpointStore {
     }
 }
 
-/** Render the /checkpoints listing. */
-export function renderCheckpoints(manifests: CheckpointManifest[], sizeBytes: number): string {
+/** Render the /checkpoints listing. `redoDepth` is this session's redo-stack
+ *  depth — shown when > 0 so the user can see undone work is recoverable. */
+export function renderCheckpoints(manifests: CheckpointManifest[], sizeBytes: number, redoDepth = 0): string {
     if (manifests.length === 0) {
-        return "No checkpoints yet. /checkpoint <label> snapshots the files this session touched; turn checkpoints are sealed automatically when a turn writes files.";
+        return redoDepth > 0
+            ? `No checkpoints yet, but ${redoDepth} undone change(s) are redoable — /redo [n] re-applies them (any new checkpoint clears the redo stack).`
+            : "No checkpoints yet. /checkpoint <label> snapshots the files this session touched; turn checkpoints are sealed automatically when a turn writes files.";
     }
     const lines = manifests
         .slice(-30)
@@ -720,7 +872,8 @@ export function renderCheckpoints(manifests: CheckpointManifest[], sizeBytes: nu
             return `${m.id} ${kind} ${time} ${m.files.length} file(s)${m.label ? ` "${m.label}"` : ""}`;
         });
     const kb = Math.max(1, Math.round(sizeBytes / 1024));
-    return `Checkpoints (newest first, ${manifests.length} total, ~${kb} KB of blobs):\n${lines.join("\n")}\n/restore <id|label> rewrites the snapshot; /undo [n] reverts the last n turn(s) of this session; /undo --all also reverts other sessions' turns.`;
+    const redoLine = redoDepth > 0 ? `\nredo depth: ${redoDepth} — /redo [n] re-applies undone change(s) (any new checkpoint clears the stack).` : "";
+    return `Checkpoints (newest first, ${manifests.length} total, ~${kb} KB of blobs):\n${lines.join("\n")}${redoLine}\n/restore <id|label> rewrites the snapshot; /undo [n] reverts the last n turn(s) of this session; /undo --all also reverts other sessions' turns; /redo [n] re-applies undone changes.`;
 }
 
 /** Friendly render text per failing restore action (/restore hint line). */
@@ -809,6 +962,51 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
 
     const resolveFile = (p: string): string => (isAbsolute(p) ? p : join(opts.cwd, p));
 
+    // Classic redo semantics (the opencode/Cursor undo→redo port): any newly
+    // sealed checkpoint invalidates the redo stack — re-applying pre-undo
+    // content over fresh edits would clobber them. Cleared GLOBALLY: any
+    // session sealing into this store invalidates redo for everyone sharing
+    // it (the conservative direction — stale content never overwrites new).
+    const clearRedoStack = (reason: string): number => {
+        const cleared = store.clearRedo();
+        if (cleared > 0) {
+            ledger.append({
+                kind: "note",
+                preview: `redo stack cleared (${cleared} ${cleared === 1 ? "entry" : "entries"}) — ${reason}; undone work is no longer redoable`,
+            });
+            log(`cleared ${cleared} redo entry(ies) (${reason})`);
+        }
+        return cleared;
+    };
+
+    // Redo material: /undo captures, per undone turn and BEFORE restoring its
+    // before-images, the current content of every file that turn is about to
+    // overwrite. One entry per turn, pushed in walk order — /redo pops them
+    // newest-first and re-applies, so `/undo n` + `/redo n` is a byte-exact
+    // round trip (content-addressed blobs make the capture a dedup no-op
+    // when nothing changed). Tombstones round-trip too: a file that did not
+    // exist at capture time is deleted again on redo.
+    const captureRedoEntry = (undone: CheckpointManifest): RedoManifest | null => {
+        const files: CheckpointFile[] = [];
+        for (const f of undone.files) {
+            const abs = isAbsolute(f.path) ? f.path : join(opts.cwd, f.path);
+            const cur = store.captureFile(abs);
+            if (cur) files.push({ ...cur, path: f.path });
+        }
+        if (files.length === 0) return null;
+        const entry: RedoManifest = {
+            id: `r${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+            seq: store.nextRedoSeq(),
+            ts: Date.now(),
+            files,
+            owner: bootId,
+        };
+        store.writeRedo(entry);
+        store.pruneRedo(KEEP_REDO_ENTRIES, bootId);
+        log(`pushed redo entry ${entry.id} (${files.length} files)`);
+        return entry;
+    };
+
     const sealTurnCheckpoint = (): CheckpointManifest | null => {
         if (turnWritten.size === 0) return null;
         const files: CheckpointFile[] = [];
@@ -831,6 +1029,7 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
         store.writeManifest(manifest);
         store.prune(KEEP_MANIFESTS, bootId);
         ledger.append({ kind: "checkpoint", id: manifest.id, files: files.length, turn: true });
+        clearRedoStack(`new turn checkpoint ${manifest.id} sealed`);
         log(`sealed turn checkpoint ${manifest.id} (${files.length} files)`);
         return manifest;
     };
@@ -943,9 +1142,12 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
         });
 
         pi.registerCommand("checkpoints", {
-            description: "List checkpoints (turn + named) with blob-store size",
+            description: "List checkpoints (turn + named) with blob-store size and redo depth",
             handler: async (_args: string, ctx: any) => {
-                ctx.ui.notify(renderCheckpoints(store.list(), store.sizeBytes()), "info");
+                // Session-scoped depth — the number the default /redo acts on
+                // (mirrors /undo's ownership story; /redo --all for the rest).
+                const redoDepth = store.listRedo().filter((m) => m.owner === bootId).length;
+                ctx.ui.notify(renderCheckpoints(store.list(), store.sizeBytes(), redoDepth), "info");
             },
         });
 
@@ -978,12 +1180,13 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
                 store.writeManifest(manifest);
                 store.prune(KEEP_MANIFESTS, bootId);
                 ledger.append({ kind: "checkpoint", id: manifest.id, label: manifest.label, files: files.length, turn: false });
+                clearRedoStack(`checkpoint ${manifest.id} sealed`);
                 ctx.ui.notify(`Checkpoint ${manifest.id} — ${files.length} file(s) snapshot. /restore ${manifest.id} rewinds to this state.`, "info");
             },
         });
 
         pi.registerCommand("undo", {
-            description: "Revert the file changes of the last n turn(s) of this session (default 1): /undo [n] [--all]",
+            description: "Revert the file changes of the last n turn(s) of this session (default 1); /redo re-applies them: /undo [n] [--all]",
             handler: async (args: string, ctx: any) => {
                 const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
                 const all = tokens.includes("--all");
@@ -1019,7 +1222,14 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
                 let files = 0;
                 const restoredPaths: string[] = [];
                 const failures: Array<{ path: string; action: RestoreAction }> = [];
+                let redoPushed = 0;
                 for (const manifest of chosen) {
+                    // Redo material FIRST: capture what this step is about to
+                    // overwrite (the current on-disk content) BEFORE the
+                    // before-images land — after the restore it is gone. One
+                    // entry per undone turn, in walk order, so /redo pops them
+                    // newest-first and `/undo n` + `/redo n` round-trips.
+                    if (captureRedoEntry(manifest)) redoPushed++;
                     const outcomes = store.restore(manifest, opts.cwd);
                     files += outcomes.filter((o) => o.ok).length;
                     restoredPaths.push(...outcomes.filter((o) => o.ok).map((o) => o.path));
@@ -1033,7 +1243,55 @@ export function createCheckpointsExtension(opts: CheckpointsOptions) {
                     failures.length > 0
                         ? `\n${failures.length} file(s) could NOT be reverted:\n${failures.slice(0, 20).map((f) => `- ${f.path} (${f.action})`).join("\n")}`
                         : "";
-                ctx.ui.notify(`${head} — ${files} file(s) reverted${reverted}${failed}.`, failures.length > 0 ? "warning" : "info");
+                const redoHint = redoPushed > 0 ? " /redo [n] re-applies undone changes." : "";
+                ctx.ui.notify(`${head} — ${files} file(s) reverted${reverted}${failed}.${redoHint}`, failures.length > 0 ? "warning" : "info");
+            },
+        });
+
+        pi.registerCommand("redo", {
+            description: "Re-apply the last n undone change(s) of this session (default 1): /redo [n] [--all]",
+            handler: async (args: string, ctx: any) => {
+                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                const all = tokens.includes("--all");
+                const nTok = tokens.find((t) => t !== "--all") ?? "1";
+                const n = Math.min(Math.max(Number.parseInt(nTok, 10) || 1, 1), 20);
+                // Ownership mirrors /undo (R-b C2): default to THIS session's
+                // redo entries (the undos this session performed); --all opts
+                // into other sessions' redo entries too.
+                const stack = store.listRedo().filter((m) => all || m.owner === bootId);
+                if (stack.length === 0) {
+                    const anyRedo = store.listRedo().length > 0;
+                    ctx.ui.notify(
+                        anyRedo
+                            ? "No undone changes from this session to redo (other sessions' redo entries exist — /redo --all opts in)."
+                            : "Nothing to redo — the redo stack is empty (/undo pushes entries; any new checkpoint clears them).",
+                        "warning",
+                    );
+                    return;
+                }
+                // Pop NEWEST-first (LIFO — the exact reverse of the undo walk)
+                // and apply-then-remove per entry: restores are deterministic
+                // (same verified blobs → same content), so a crash mid-/redo
+                // re-runs at most one already-applied entry as a no-op — the
+                // same crash-safety shape /undo gets from consumed-marking.
+                const chosen = stack.slice(-n).reverse();
+                let files = 0;
+                const redonePaths: string[] = [];
+                const failures: Array<{ path: string; action: RestoreAction }> = [];
+                for (const entry of chosen) {
+                    const outcomes = store.restore(entry, opts.cwd);
+                    files += outcomes.filter((o) => o.ok).length;
+                    redonePaths.push(...outcomes.filter((o) => o.ok).map((o) => o.path));
+                    failures.push(...outcomes.filter((o) => !o.ok).map((o) => ({ path: o.path, action: o.action })));
+                    store.removeRedo(entry.id);
+                }
+                ledger.append({ kind: "redo", ids: chosen.map((m) => m.id), files });
+                const listed = redonePaths.length > 0 ? `:\n${redonePaths.slice(0, 20).join("\n")}` : "";
+                const failed =
+                    failures.length > 0
+                        ? `\n${failures.length} file(s) could NOT be re-applied:\n${failures.slice(0, 20).map((f) => `- ${f.path} (${f.action})`).join("\n")}`
+                        : "";
+                ctx.ui.notify(`Redid ${chosen.length} change(s) — ${files} file(s) re-applied${listed}${failed}.`, failures.length > 0 ? "warning" : "info");
             },
         });
 

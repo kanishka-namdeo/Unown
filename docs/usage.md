@@ -83,6 +83,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown info` | Print the support bundle — version, platform, git state, provider names, opt-outs — redaction-safe for bug reports; `--json` for the same fields |
 | `unown note "text"` | Deliver a session note to the engine by hand |
 | `unown automations <sub>` | Scheduled recurring agent runs — `list` \| `create` \| `edit` \| `pause` \| `resume` \| `run` \| `history` \| `delete`. Needs the engine running; cron is in your **local** timezone, default mode `read-only`. See [Automations](#automations-unown-automations) |
+| `unown usage` | Token/latency/cost report over the bridge's persistent usage log — `--days N`, `--model M`, `--json`. See [Usage tracking](usage-tracking.md) |
 | `unown update` | Check for a newer release and self-update — fast-forward the checkout to the newest ready tag, then re-run the installer. Flags: `--check` (report only; exit `2` when an update is available), `--check --json`, `--allow-dirty`, `--rollback`, or an explicit version (`unown update 2.1.0` — also pins/rolls back). See [updating](updating.md) |
 | `unown changelog [n]` | Print the latest `CHANGELOG.md` sections (default 1) |
 | `unown completions <shell>` | Print a completion script — `bash` \| `zsh` \| `fish` \| `powershell` (stdout; installation one-liners in `unown completions --help` and below) |
@@ -140,17 +141,40 @@ In engine **sandbox runs**, the web tools only register when the sandbox network
 Every session also keeps a **receipts audit ledger** and a **checkpoint store** under `.unown/` (both gitignored, per-machine):
 
 - **Receipts** (`.unown/receipts/<session>.jsonl`, one file per session boot): the ordered audit — session starts, every prompt (first 200 chars), every tool call with its input (file paths, commands, URLs, tasks; inputs capped at 4 KB), every result (ok/fail, usage), every checkpoint and restore. `/receipts [n]` prints the last n entries plus totals (tool calls by tool, distinct files written, errors, checkpoints, restores). Subagent processes write their own ledger (marked `[subagent]`).
-- **Checkpoints** (`.unown/checkpoints/`): content-addressed blob snapshots. A **turn checkpoint** is sealed automatically whenever a turn wrote files — it stores the *pre-turn* state of every file that changed (files that did not exist before are tombstoned). **Named checkpoints** snapshot the current state of every file the session touched.
+- **Checkpoints** (`.unown/checkpoints/`): content-addressed blob snapshots. A **turn checkpoint** is sealed automatically whenever a turn wrote files — it stores the *pre-turn* state of every file that changed (files that did not exist before are tombstoned). **Named checkpoints** snapshot the current state of every file the session touched. The same store also holds the **redo stack**: what `/undo` overwrites is captured before it is reverted, so undone work can be put back.
 
 | Command | What it does |
 |---|---|
 | `/checkpoint [label]` | Snapshot the current state of every file this session touched (bash-caused changes are not tracked file-by-file) |
-| `/undo [n\|--all]` | Revert the file changes of the last n turn(s) (default 1) — restores pre-turn states; new files created this turn are deleted. Only **this session's** turns by default; `--all` also consumes other sessions'/subagents' turns |
+| `/undo [n\|--all]` | Revert the file changes of the last n turn(s) (default 1) — restores pre-turn states; new files created this turn are deleted. Only **this session's** turns by default; `--all` also consumes other sessions'/subagents' turns. The overwritten content lands on the redo stack |
+| `/redo [n\|--all]` | Re-apply the last n undone change(s) (default 1) — the inverse of `/undo`, popping the redo stack newest-first. Only **this session's** undos by default; `--all` also re-applies other sessions' |
 | `/restore <id\|label>` | Rewrite the files of a named (or turn) checkpoint; prefix matching works |
-| `/checkpoints` | List checkpoints (turn + named) with the blob-store size |
+| `/checkpoints` | List checkpoints (turn + named) with the blob-store size and this session's redo depth |
 | `/receipts [n]` | Show the audit ledger — last n entries (default 20) + totals |
+| `/permissions` | Show the granular-permissions state — mode, project-config trust, and the full rule table (tool / effect / pattern / source file). See [Permissions](permissions.md) |
 
-Limits, stated plainly: bash-caused file changes appear in the ledger as commands but are not itemized per-file (no workspace diffing); `/undo` walks only this session's turn checkpoints by default (`--all` for the rest — across machines/copies of the repo there is no store); restore is jailed to the project directory by both a lexical and a realpath check (a symlink pointing outside the project is refused), and every blob is hash-verified on restore — a corrupt checkpoint reports `corrupt-blob` and touches nothing. Files larger than `UNOWN_CHECKPOINT_MAX_BLOB_BYTES` (default 64 MiB) are not snapshot: the turn still reverts its other files and the ledger notes the exception. Per session at most 40 checkpoints are kept (200 across sessions; oldest pruned, blobs garbage-collected with a 10-minute grace window so concurrent sessions never delete each other's in-flight snapshots).
+**Undo/redo semantics** (the opencode/Cursor model): `/undo` captures, per undone turn and *before* restoring its before-images, the content it is about to overwrite into a redo entry — same content-addressed blob store, same sha256 verification, same project-dir jail on re-apply. `/redo [n]` pops entries newest-first (the exact reverse of the undo walk), so `/undo 2` + `/redo 2` restores the byte-identical pre-undo state, and `/redo 1` re-applies the most recently undone state. New files that `/undo` deleted are re-created; a file that did not exist when the undo captured it is deleted again. Any **new checkpoint** — a turn that writes files, or `/checkpoint` — clears the redo stack: new edits invalidate redo, the classic editor rule (clearing is global across sessions sharing the store, and is journaled as a note in the receipts ledger). One limit worth knowing: redo is not itself undoable — after `/redo`, `/undo` reverts earlier turns, not the redo.
+
+Limits, stated plainly: bash-caused file changes appear in the ledger as commands but are not itemized per-file (no workspace diffing); `/undo` walks only this session's turn checkpoints by default (`--all` for the rest — across machines/copies of the repo there is no store); restore is jailed to the project directory by both a lexical and a realpath check (a symlink pointing outside the project is refused), and every blob is hash-verified on restore — a corrupt checkpoint reports `corrupt-blob` and touches nothing. Files larger than `UNOWN_CHECKPOINT_MAX_BLOB_BYTES` (default 64 MiB) are not snapshot: the turn still reverts its other files and the ledger notes the exception. Per session at most 40 checkpoints are kept (200 across sessions; oldest pruned, blobs garbage-collected with a 10-minute grace window so concurrent sessions never delete each other's in-flight snapshots); the redo stack is capped at 20 entries per session (60 across sessions, oldest pruned first).
+
+## Git-native commits (/commit)
+
+The aider/Codex workflow: an agent that edits a git repository should let you seal that work into history without handing over a shell. `/commit` stages and commits — never more:
+
+```text
+/commit                      # message generated from the session's work
+/commit fix: login redirect  # your message, used verbatim
+```
+
+- **Scope** — `git add -A .` from the session's project directory (the same jail `write`/`edit` enforce): when you start unown in a subdirectory, only that subtree is staged. Already-staged changes elsewhere ride along in the commit (the index is committed as-is after staging).
+- **Messages** — with an argument, used verbatim (multi-line included). Without one, a deterministic conventional-commit message is generated — `unown(session): <first line of the session's latest substantive assistant reply>` (sanitized, subject capped at 72 chars), or `unown(session): work snapshot <date>` when no session text is reachable — plus a `Generated-by: unown` trailer. No extra model round-trip: the template is local and predictable.
+- **Never pushes** — only `add` + `commit`, ever. Inspect with `git log -1`, undo with `git reset --soft HEAD~1`.
+- **Your hooks run** — `git commit` executes your pre-commit/commit-msg hooks (husky, lint-staged…). A failing hook fails the commit with its stderr surfaced; a hung one is killed at 30 s. Read-only probes (status, rev-parse) always run with repo hooks disabled — hostile repo config never executes when we merely look.
+- **Identity** — a fresh clone with no `user.name`/`user.email` anywhere still commits: the missing values are supplied per-invocation as `user.name=unown` / `user.email=unown@local` (never written to any config; your configured identity always wins when present).
+- **Clean no-ops** — not a git repo, git missing from PATH, or a clean tree each produce a friendly message, never an error and never git's raw stderr.
+- **Where it doesn't run** — inside subagents (`UNOWN_SUBAGENT=1`) and automation runs (`UNOWN_AUTOMATION=1`) `/commit` is an explicit no-op: commits belong to the interactive session that owns the project.
+
+**Opt-in auto-commit on session end** — set `UNOWN_AUTO_COMMIT=1` (**default OFF**) and every session teardown that actually ends the session (`quit`, `/new`, `/resume`, `/fork` — not `reload`, which keeps the same session) commits pending project-dir changes as `unown(auto): session end snapshot <date>` (with the same `Generated-by: unown` trailer). This is a snapshot, not a publish: nothing is ever pushed, hooks still run, and a clean tree stays silent. Be aware it commits *everything* in the project dir — including files you had lying around uncommitted — so treat it as what it is, an opt-in aider-style workflow.
 
 ## MCP servers
 
@@ -230,7 +254,7 @@ Schedules: a standard **5-field cron expression in your local timezone** (`"0 9 
 **The trust story** (this is why the feature shipped *after* the config trust gates, not before):
 
 - **Config lives in the engine's database, never in the repo.** A cloned repository carries no automation definitions, so the cloned-repo-RCE vector that gates `.unown/mcp.json` does not exist here. Automations are created only by you — via the CLI, the REST API, or the session tools.
-- **Permission is per-task.** The default `read-only` mode runs the unattended agent with a read/grep/find/ls/todo/note/fetch_url/lsp toolset — no bash, no writes. `standard` (the full session toolset) must be chosen explicitly with `--mode standard`; a standard run's file changes land in your working tree, reviewable through git before anything happens to them.
+- **Permission is per-task.** The default `read-only` mode runs the unattended agent with a read/grep/find/ls/todo/note/fetch_url/web_search/webfetch/lsp toolset — no bash, no writes. The web tools are read-only network reads (the same classification plan mode gives them), so an unattended "morning brief" or "watch upstream for new releases" automation can search and read the web without gaining any mutation power. `standard` (the full session toolset) must be chosen explicitly with `--mode standard`; a standard run's file changes land in your working tree, reviewable through git before anything happens to them.
 - **No recursion.** Runs carry `UNOWN_AUTOMATION=1`, which hides the automation mutation tools inside the run — an automation cannot create or schedule automations (subagents inherit the flag too).
 - **Nothing auto-merges.** Every run is recorded with its output; inspect failures and successes with `history` before acting on them.
 
@@ -238,7 +262,7 @@ Limits (zcode's, transliterated): 20 automations total, 2 concurrent runs, a 30-
 
 ## Slash commands
 
-unown adds fourteen commands of its own:
+unown adds fifteen commands of its own:
 
 | Command | What it does |
 |---|---|
@@ -250,11 +274,13 @@ unown adds fourteen commands of its own:
 | `/lsp` | Show LSP status: detected language servers (running/available), open documents, cached diagnostics |
 | `/checkpoint [label]` | Snapshot the current state of the files this session touched |
 | `/undo [n\|--all]` | Revert the file changes of the last n turn(s) — this session's turns, or everyone's with `--all` |
+| `/redo [n\|--all]` | Re-apply the last n undone change(s) — the inverse of `/undo` |
 | `/restore <id\|label>` | Restore a checkpoint |
 | `/checkpoints` | List checkpoints + blob-store size |
 | `/receipts [n]` | Show the session receipts audit ledger |
 | `/mcp` | Show MCP server status and (re)connect configured servers |
 | `/goal [objective]` | Set/show/pause/resume/clear a durable, evidence-verified goal |
+| `/commit [message]`| Stage and commit all project-dir changes (`git add -A .` + commit — never pushes); without a message one is generated from the session's work. See [Git-native commits](#git-native-commits-commit) |
 | `/review [base]` | Parallel-subagent code review: P0–P3 findings + SHIP verdict |
 
 pi ships 23 built-in slash commands. The ones worth learning first:
@@ -396,6 +422,7 @@ CLI-only variables. The engine, bridge, and dashboard have their own — see [co
 | `UNOWN_MCP` | `1` | `0` disables the MCP client surface (no `mcp__*` tools) |
 | `UNOWN_MCP_TIMEOUT_MS` | `120000` | Per-request timeout for MCP JSON-RPC calls |
 | `UNOWN_MCP_CONNECT_TIMEOUT_MS` | `20000` | Timeout for the MCP initialize handshake |
+| `UNOWN_AUTO_COMMIT` | unset | **Opt-in, default OFF.** `1` (also `true`) = commit pending project-dir changes on session end as `unown(auto): session end snapshot <date>` (never pushes). See [Git-native commits](#git-native-commits-commit) |
 | `PI_BRIDGE_URL` | `http://127.0.0.1:3031` | LLM endpoint written into `~/.unown/agent/models.json` on first run |
 | `PI_MODEL_ID` / `PI_PROVIDER` | `kimi-k2.5` / `zai-bridge` | Model and provider written on first run; see [providers](providers.md) |
 

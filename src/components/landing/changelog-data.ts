@@ -30,195 +30,56 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 95;
+export const CHANGELOG_TOTAL_ENTRIES = 103;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 46,
+  "Added": 51,
   "Changed": 17,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 22,
+  "Fixed": 24,
   "Security": 3,
-  "Behavior": 7
+  "Behavior": 8
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 54,
+    "total": 62,
     "counts": {
-      "Added": 18,
+      "Added": 23,
       "Changed": 15,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 14,
+      "Fixed": 16,
       "Security": 0,
-      "Behavior": 7
+      "Behavior": 8
     },
     "groups": [
       {
-        "bucket": "Changed",
-        "items": [
-          {
-            "title": "landing: install-and-try-first — quickstart moves to position 2 and the hero's five-command panel becomes one…",
-            "behavior": false
-          },
-          {
-            "title": "deps: playwright 1.57 → 1.64.1, lockstep pair + root playwright-core pin",
-            "behavior": false
-          },
-          {
-            "title": "ci: action bumps, SHA-pinned as always",
-            "behavior": false
-          },
-          {
-            "title": "deps (deferred): pi-repo highlight.js 10.7.3 → 11.x declined as a routine bump (dependabot #3)",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (integrity): checkpoint store",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (transport): LSP client",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (transport): MCP client",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (lifecycle): child reaper",
-            "behavior": false
-          },
-          {
-            "title": "Env knobs",
-            "behavior": false
-          },
-          {
-            "title": "Security: project-config trust gate (the audit's top gap — cloned-repo RCE)",
-            "behavior": false
-          },
-          {
-            "title": "Security: MCP URL/header/spawn hardening",
-            "behavior": false
-          },
-          {
-            "title": "Security: LSP protocol correctness",
-            "behavior": false
-          },
-          {
-            "title": "Privacy: receipts redaction + runtime-state gitignore",
-            "behavior": false
-          },
-          {
-            "title": "/review git plumbing + reviewer honesty",
-            "behavior": false
-          },
-          {
-            "title": "/goal gate hardening",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "docs: staleness audit fixes — five drift spots found by walking the docs against the code and the live stack",
-            "behavior": false
-          },
-          {
-            "title": "web tools: the dashscope search provider is now key-class-honest",
-            "behavior": false
-          },
-          {
-            "title": "automations: two live-E2E breaks in the control surfaces — the engine's HTTP layer dropped PATCH bodies…",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: the engine-parity round went red on the axe gate — three WCAG violation classes across four new…",
-            "behavior": false
-          },
-          {
-            "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
-            "behavior": false
-          },
-          {
-            "title": "coverage gate: duplicate module-instance rows could shadow well-covered files (bun 1.3.x)",
-            "behavior": false
-          },
-          {
-            "title": "bun run lint was red on a fresh clone while CI's lint job stayed green",
-            "behavior": false
-          },
-          {
-            "title": "landing: three WCAG 1.4.1 violations that the a11y gate could not see, and the gate that could not see them",
-            "behavior": false
-          },
-          {
-            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
-            "behavior": false
-          },
-          {
-            "title": "landing: seven claims the code contradicted…",
-            "behavior": false
-          },
-          {
-            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
-            "behavior": false
-          },
-          {
-            "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: Console-tab contrast (wcag2aa color-contrast, serious)",
-            "behavior": false
-          },
-          {
-            "title": "engine: hardening batch from the deep audit (6 defects)",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Behavior",
-        "items": [
-          {
-            "title": "web_search: coding-plan DashScope keys (sk-sp-…) are refused up front",
-            "behavior": true
-          },
-          {
-            "title": "/undo is session-scoped by default (--all for the rest)",
-            "behavior": true
-          },
-          {
-            "title": "LSP crash recovery",
-            "behavior": true
-          },
-          {
-            "title": "MCP resilience",
-            "behavior": true
-          },
-          {
-            "title": "Project-config trust gate",
-            "behavior": true
-          },
-          {
-            "title": "/review reviewers are read-only",
-            "behavior": true
-          },
-          {
-            "title": "/goal completion requires both evidence kinds and a todo trail",
-            "behavior": true
-          }
-        ]
-      },
-      {
         "bucket": "Added",
         "items": [
+          {
+            "title": "permissions: granular user-configurable allow/deny/ask rules",
+            "behavior": false
+          },
+          {
+            "title": "usage: persistent token/latency/cost accounting for the bridge + unown usage",
+            "behavior": false
+          },
+          {
+            "title": "checkpoints: /redo — the missing half of /undo",
+            "behavior": false
+          },
+          {
+            "title": "git: /commit [message] + opt-in UNOWN_AUTO_COMMIT",
+            "behavior": false
+          },
+          {
+            "title": "security: the injection shield — deterministic prompt-injection detection over live tool results",
+            "behavior": false
+          },
           {
             "title": "complementary testbench — campaign 3 (H16–H22): non-traditional local mechanisms around the configured…",
             "behavior": false
@@ -290,6 +151,177 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "/lsp trust",
             "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "landing: install-and-try-first — quickstart moves to position 2 and the hero's five-command panel becomes one…",
+            "behavior": false
+          },
+          {
+            "title": "deps: playwright 1.57 → 1.64.1, lockstep pair + root playwright-core pin",
+            "behavior": false
+          },
+          {
+            "title": "ci: action bumps, SHA-pinned as always",
+            "behavior": false
+          },
+          {
+            "title": "deps (deferred): pi-repo highlight.js 10.7.3 → 11.x declined as a routine bump (dependabot #3)",
+            "behavior": false
+          },
+          {
+            "title": "Hardening (integrity): checkpoint store",
+            "behavior": false
+          },
+          {
+            "title": "Hardening (transport): LSP client",
+            "behavior": false
+          },
+          {
+            "title": "Hardening (transport): MCP client",
+            "behavior": false
+          },
+          {
+            "title": "Hardening (lifecycle): child reaper",
+            "behavior": false
+          },
+          {
+            "title": "Env knobs",
+            "behavior": false
+          },
+          {
+            "title": "Security: project-config trust gate (the audit's top gap — cloned-repo RCE)",
+            "behavior": false
+          },
+          {
+            "title": "Security: MCP URL/header/spawn hardening",
+            "behavior": false
+          },
+          {
+            "title": "Security: LSP protocol correctness",
+            "behavior": false
+          },
+          {
+            "title": "Privacy: receipts redaction + runtime-state gitignore",
+            "behavior": false
+          },
+          {
+            "title": "/review git plumbing + reviewer honesty",
+            "behavior": false
+          },
+          {
+            "title": "/goal gate hardening",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "git tools: the gittests suite is now identity-hermetic — the CI red from the parallel session's /commit round…",
+            "behavior": false
+          },
+          {
+            "title": "docs: staleness audit fixes — five drift spots found by walking the docs against the code and the live stack",
+            "behavior": false
+          },
+          {
+            "title": "web tools: the integration-audit round — every surface a fresh-clone user touches now says the agent can search…",
+            "behavior": false
+          },
+          {
+            "title": "web tools: the dashscope search provider is now key-class-honest",
+            "behavior": false
+          },
+          {
+            "title": "automations: two live-E2E breaks in the control surfaces — the engine's HTTP layer dropped PATCH bodies…",
+            "behavior": false
+          },
+          {
+            "title": "dashboard: the engine-parity round went red on the axe gate — three WCAG violation classes across four new…",
+            "behavior": false
+          },
+          {
+            "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
+            "behavior": false
+          },
+          {
+            "title": "coverage gate: duplicate module-instance rows could shadow well-covered files (bun 1.3.x)",
+            "behavior": false
+          },
+          {
+            "title": "bun run lint was red on a fresh clone while CI's lint job stayed green",
+            "behavior": false
+          },
+          {
+            "title": "landing: three WCAG 1.4.1 violations that the a11y gate could not see, and the gate that could not see them",
+            "behavior": false
+          },
+          {
+            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
+            "behavior": false
+          },
+          {
+            "title": "landing: seven claims the code contradicted…",
+            "behavior": false
+          },
+          {
+            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
+            "behavior": false
+          },
+          {
+            "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
+            "behavior": false
+          },
+          {
+            "title": "dashboard: Console-tab contrast (wcag2aa color-contrast, serious)",
+            "behavior": false
+          },
+          {
+            "title": "engine: hardening batch from the deep audit (6 defects)",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "web_search: coding-plan DashScope keys (sk-sp-…) are refused up front",
+            "behavior": true
+          },
+          {
+            "title": "automations (read-only mode): the unattended toolset gains web_search + webfetch",
+            "behavior": true
+          },
+          {
+            "title": "/undo is session-scoped by default (--all for the rest)",
+            "behavior": true
+          },
+          {
+            "title": "LSP crash recovery",
+            "behavior": true
+          },
+          {
+            "title": "MCP resilience",
+            "behavior": true
+          },
+          {
+            "title": "Project-config trust gate",
+            "behavior": true
+          },
+          {
+            "title": "/review reviewers are read-only",
+            "behavior": true
+          },
+          {
+            "title": "/goal completion requires both evidence kinds and a todo trail",
+            "behavior": true
           }
         ]
       }

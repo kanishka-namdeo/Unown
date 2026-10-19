@@ -58,8 +58,10 @@ import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDi
 import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
 import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
 import { runAutomationsCommand } from "./automations-cli.ts";
+import { runUsageCommand } from "./usage-cli.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
+import { createPermissionsExtension, createPermissionGate, permissionsDoctorSummary } from "./permissions.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 import { cmdUninstall, findShims, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
@@ -114,6 +116,9 @@ Usage:
                            list | create | edit | pause | resume | run |
                            history | delete — needs the engine running;
                            cron is LOCAL timezone, default mode read-only
+  unown usage            token & cost report for the LLM bridge
+                           (--days N, --model M, --json; estimates unless
+                           UNOWN_PRICE_* pins exact prices)
   unown info               print the support bundle (--json: machine-readable)
   unown note "text"        deliver a session note to the engine
   unown update            check for a newer release and self-update
@@ -128,14 +133,19 @@ Usage:
   unown --version          print the version (matches package.json)
 
 Session tools (registered in every session):
-  todo / note / task / fetch_url / lsp   visible task tracking, mid-session learning notes,
+  todo / note / task / fetch_url / web_search /
+  webfetch / lsp                         visible task tracking, mid-session learning notes,
                                          subagents with a fresh context (output_schema
                                          structured replies, worktree_isolation), HTTP reads,
-                                         language-server code intelligence
+                                         live web search + page reads (keyless out of the
+                                         box; provider keys optional), language-server code
+                                         intelligence
   automation_list (+create/update/delete outside automation runs)
                                          scheduled runs managed by the engine
-  /plan /todos /note /agents /learning /lsp /checkpoint /undo /restore
-  /checkpoints /receipts /mcp /goal /review   session commands
+  /plan /todos /note /agents /learning /lsp /checkpoint /undo /redo
+  /restore /checkpoints /receipts /mcp /goal /review   session commands
+  /permissions            granular permissions status (mode, rules, trust;
+                           /permissions trust approves a project config)
 
 Subagent flags (used internally by the task tool):
   --mode json              stream JSON events instead of text (print mode)
@@ -152,6 +162,10 @@ Environment:
                            (waits/timeouts: UNOWN_LSP_WAIT_MS / UNOWN_LSP_TIMEOUT_MS)
   UNOWN_MCP=0              disable the MCP client (no mcp__* tools register)
                            (timeouts: UNOWN_MCP_TIMEOUT_MS / UNOWN_MCP_CONNECT_TIMEOUT_MS)
+  UNOWN_PERMISSIONS=0      disable the granular permissions layer (the
+                           hard-coded bash deny-list + write jail stay on)
+  UNOWN_PERMISSIONS_LEARN=1  append allow rules for passed bash commands
+                           to ~/.unown/agent/permissions.json (opt-in)
   NO_UPDATE_NOTIFIER=1     silence the startup update notice
   UNOWN_DISABLE_UPDATES=1  disable all update paths (org/CI switch)
   PI_BRIDGE_URL/PI_MODEL_ID/PI_PROVIDER   LLM endpoint for ~/.unown/agent/models.json
@@ -269,7 +283,18 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         installChildReaper();
         const checkpointsExtension = createCheckpointsExtension({ cwd, verbose });
         const mcpExtension = createMcpExtension({ cwd, verbose });
-        const extension = createTerminalExtension({ cwd, engineUrl: ENGINE_URL, strict: STRICT_HOOKS, verbose });
+        // One permission gate shared by the terminal hook seam (tool_call)
+        // and the /permissions command, so session-scoped always-allow rules
+        // and trust notices span both surfaces (docs/permissions.md).
+        const permissionsGate = createPermissionGate({ cwd, strict: STRICT_HOOKS, verbose });
+        const extension = createTerminalExtension({
+                cwd,
+                engineUrl: ENGINE_URL,
+                strict: STRICT_HOOKS,
+                verbose,
+                permissions: permissionsGate,
+        });
+        const permissionsExtension = createPermissionsExtension({ cwd, verbose, gate: permissionsGate });
         const toolsExtension = createUnownToolsExtension({ cwd, engineUrl: ENGINE_URL, verbose });
 
         const settingsManager = SettingsManager.create(cwd, agentDir);
@@ -295,7 +320,13 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                           ])
                                         : undefined,
                         resourceLoaderOptions: {
-                                extensionFactories: [checkpointsExtension as any, extension as any, toolsExtension as any, mcpExtension as any],
+                                extensionFactories: [
+                                        checkpointsExtension as any,
+                                        extension as any,
+                                        toolsExtension as any,
+                                        mcpExtension as any,
+                                        permissionsExtension as any,
+                                ],
                                 additionalSkillPaths,
                                 appendSystemPrompt: bootOpts.appendSystemPromptPath ? [bootOpts.appendSystemPromptPath] : undefined,
                                 agentsFilesOverride: (base: any) => ({
@@ -682,6 +713,14 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                 : `${stateDetail} — over ${formatBytes(warnBytes)}: consider pruning old checkpoints (/undo consumes turn checkpoints; retention caps apply; UNOWN_STATE_WARN_BYTES adjusts this threshold)`,
                         "warn",
                 );
+                // 6d. granular permissions (Claude Code/Cline port) — config
+                //     files, mode, trust gate and learn state. Warn-level by
+                //     doctor's contract: a missing config is the documented
+                //     default (hard-coded guardrails alone), never a failure.
+                {
+                        const pd = permissionsDoctorSummary(cwd, agentDir);
+                        check("permissions config", pd.ok, pd.detail, "warn");
+                }
         }
 
         // 7. PATH shim shadowing — a foreign `unown` earlier on PATH is this
@@ -915,6 +954,13 @@ export async function runCli(argv: string[]) {
         if (first === "automations") {
                 // zcode port: scheduled recurring agent runs — see automations-cli.ts.
                 const result = await runAutomationsCommand(argv.slice(1), { cwd: process.cwd() });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "usage") {
+                // opencode/Cursor-style usage & cost report — see usage-cli.ts.
+                const result = await runUsageCommand(argv.slice(1));
                 if (result.stdout) process.stdout.write(result.stdout);
                 if (result.stderr) process.stderr.write(result.stderr);
                 process.exit(result.exitCode);

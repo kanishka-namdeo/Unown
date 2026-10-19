@@ -456,6 +456,24 @@ describe("completionStats", () => {
                 expect(completionStats(completion).toolCalls).toBe(0);
                 expect(completion.choices[0].message.tool_calls).toBe(null);
         });
+
+        // usage tracking: OpenAI-style usage.prompt_tokens_details.cached_tokens
+        // feeds the persistent usage log (mini-services/llm-bridge/usage.ts).
+        test("prompt_tokens_details.cached_tokens is captured when reported", () => {
+                const stats = completionStats({
+                        choices: [{ finish_reason: "stop", message: { role: "assistant", content: "hi" } }],
+                        usage: { prompt_tokens: 100, completion_tokens: 5, prompt_tokens_details: { cached_tokens: 40 } },
+                });
+                expect(stats.cachedTokens).toBe(40);
+                expect(stats.promptTokens).toBe(100);
+        });
+
+        // The key stays ABSENT (not 0/undefined) when the upstream does not
+        // report it — the exact toEqual shapes above stay stable.
+        test("no prompt_tokens_details → no cachedTokens key", () => {
+                const stats = completionStats({ choices: [{ finish_reason: "stop", message: { content: "hi" } }], usage: { prompt_tokens: 10, completion_tokens: 2 } });
+                expect("cachedTokens" in stats).toBe(false);
+        });
 });
 
 // ---------------------------------------------------------------------------
@@ -558,6 +576,21 @@ describe("foldSseLine", () => {
                         'data: {"choices":[{"delta":{"role":"assistant"}}]}',
                 ]);
                 expect(stats.contentChars).toBe(0);
+        });
+
+        // usage tracking: a usage chunk carrying cached input tokens folds into
+        // the sink (feeds the persistent usage log via the pipe).
+        test("cached_tokens in a usage chunk is folded", () => {
+                const stats = foldFrames([
+                        'data: {"choices":[{"delta":{}}],"usage":{"prompt_tokens":50,"completion_tokens":5}}',
+                        'data: {"choices":[{"delta":{}}],"usage":{"prompt_tokens":50,"completion_tokens":5,"prompt_tokens_details":{"cached_tokens":12}}}',
+                ]);
+                expect(stats.cachedTokens).toBe(12);
+        });
+
+        test("usage chunks without prompt_tokens_details leave cachedTokens untouched", () => {
+                const stats = foldFrames(['data: {"choices":[{"delta":{}}],"usage":{"prompt_tokens":5,"completion_tokens":6}}']);
+                expect("cachedTokens" in stats).toBe(false);
         });
 });
 

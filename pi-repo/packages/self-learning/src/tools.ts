@@ -20,6 +20,10 @@
  *                               numbered "Plan:" extraction, approve-to-execute
  *                               flow with [DONE:n] progress tracking
  *   - /learning                 re-print the effective 4-tier memory stack
+ *   - /commit                   git-native commit workflow (aider/Codex port,
+ *                               see src/gittools.ts): stage + commit all
+ *                               project-dir changes, never pushes; opt-in
+ *                               UNOWN_AUTO_COMMIT=1 snapshots on session end
  *
  * Subagents never nest (UNOWN_SUBAGENT=1 disables the `task` tool inside a
  * subagent) and every subagent session writes its own note — subagents learn
@@ -56,18 +60,8 @@ import {
     renderGoalStatus,
 } from "./goal.ts";
 import { checkSchemaShape, SchemaError, type SchemaIssue, validateJsonSchema } from "./jsonschema.ts";
-import {
-        characterForLine,
-        countErrors,
-        LspManager,
-        languageFromPath,
-        readLineText,
-        renderDiagnostics,
-        renderLocations,
-        resolveLspConfig,
-        trustProjectLspConfig,
-} from "./lsp.ts";
 import { assistantTextOf } from "./messages.ts";
+import { registerGitTools } from "./gittools.ts";
 import {
         buildReviewerTask,
         captureReviewTarget,
@@ -78,7 +72,6 @@ import {
         reviewerAgent,
         saveReviewArtifact,
 } from "./review.ts";
-import { deliverTerminalNote, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
 import { fetchPageContent, registerWebTools } from "./websearch.ts";
 import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
 
@@ -1577,6 +1570,14 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 // -------------------------------------------------------------------
 
                 registerWebTools(pi, { verbose });
+
+                // -------------------------------------------------------------------
+                // Git-native commit workflow (aider/Codex port — see src/gittools.ts):
+                // /commit [message] + the opt-in UNOWN_AUTO_COMMIT session-end
+                // snapshot (its session_shutdown hook is registered in there).
+                // -------------------------------------------------------------------
+
+                registerGitTools(pi, { cwd: opts.cwd, isSubagent, verbose });
 
                 // -------------------------------------------------------------------
                 // LSP code intelligence (oh-my-pi port — see src/lsp.ts)

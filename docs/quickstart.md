@@ -105,6 +105,14 @@ unown --plan "add auth"                # read-only exploration → numbered plan
 
 Before the first message, unown pre-flights the model endpoint — if it can't reach it or the key is rejected you get the exact fix, not a stack trace. When you exit, the session leaves a note for AutoDream; come back tomorrow and the project's `.unown/memory/project.md` remembers what mattered.
 
+Every session also ships **native web access** — no keys, no MCP setup required:
+
+```bash
+unown -p "web_search for the latest React version, then webfetch the release notes and summarize the breaking changes"
+```
+
+The `web_search` tool works keyless out of the box (DuckDuckGo → Tavily keyless → You.com → StackExchange → Wikipedia → HN, plus npm and GitHub repo search); dropping any of the ten API-key provider keys (Tavily, Brave, Serper, Exa, Perplexity, Jina, Zhipu, DashScope, Kagi, SerpApi) into `.env` prepends that provider to the chain. `webfetch` reads any http(s) page as text, SSRF-hardened and robots-aware. Details and the full provider table: [usage](usage.md) · [configuration](configuration.md).
+
 Confirm everything end to end:
 
 ```bash
