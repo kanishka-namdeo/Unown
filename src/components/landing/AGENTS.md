@@ -363,9 +363,16 @@ parallel ones.
     cycle `aqua → leaf → magma → gold` in page order, so no two adjacent
     sections share a hue and "which hue does this get" is answerable without
     opening the file. When the cycle's next hue would collide with a neighbour,
-    take the next one after it and say so here: `changelog` sits between `faq`
-    (aqua) and `finale` (leaf) and takes `magma`, because `leaf` — the hue the
-    rotation offers next — is already finale's.
+    take the next one after it and say so here. Two standing exceptions:
+    `changelog` sits between `faq` (aqua) and `finale` (leaf) and takes
+    `magma`, because `leaf` — the hue the rotation offers next — is already
+    finale's; and since the install-first rework (2026-10-19) `quickstart`
+    holds `gold` at position 2, between hero (psychic) and origin (aqua) — no
+    collision, but it means the rotation now reads from origin: aqua, leaf,
+    magma, gold, aqua, leaf, magma (origin → mechanisms → showcase → models →
+    benchmarks → integrity), restarting at aqua after field-notes (faq,
+    aqua). A section that joins or leaves the middle of the page re-walks this
+    paragraph.
   - `SectionHead`, `TerminalWindow` and `BrowserFrame` take **no** hue prop —
     they inherit their section. A header that could disagree with its section is
     how the page gets eleven hues fighting each other.
@@ -417,12 +424,15 @@ parallel ones.
   sits near 1:2 lore:tech, but that number hides two different problems, and
   they need opposite fixes:
   1. **A long dry run.** Lore is carried by `origin`, `alphabet` and
-     `field-notes`, which sit at positions 2, 3 and 11 — so positions 4-10
-     (loop, mechanisms, showcase, models, benchmarks, integrity, quickstart)
-     were seven consecutive sections at 0% lore across ~2,300 words. Rule:
-     **no more than three consecutive sections at zero.** The tail run is now
-     `faq` → `changelog` → `finale`, which sits exactly on that limit: a fourth
-     zero-lore section belongs before position 11, not after it.
+     `field-notes`, which sit at positions 3, 4 and 11 (quickstart took
+     position 2 in the install-first rework, 2026-10-19) — so positions 5-10
+     (loop, mechanisms, showcase, models, benchmarks, integrity) are six
+     consecutive sections at 0% lore. That still exceeds the rule below; it is
+     recorded residue, not a solved state. Rule:
+     **no more than three consecutive sections at zero.** The tail run is
+     `faq` → `changelog` → `finale` (positions 12-14), which sits exactly on
+     that limit: a fourth zero-lore section belongs before position 11, not
+     after it.
   2. **A repeated punchline register, which is what actually reads as boring.**
      Sections 4-10 were all aphorisms, and several were the *same* aphorism:
      "An agent that forgets is a tax you pay every morning" and "Most agents
@@ -458,9 +468,23 @@ parallel ones.
   next to `alphabet` would cluster the three `psychic` sections adjacently and
   break the hue rule that no two neighbouring sections share a hue — the three
   Unown sections are deliberately interleaved for that reason. Front-loading
-  the lore also pushes the conversion path (benchmarks → integrity → quickstart
-  → finale) into one unbroken technical run. If someone wants that change, the
-  hue allocation has to be rewritten with it, not around it.
+  the lore also pushes the proof path (benchmarks → integrity) into one
+  technical run — but see the install-first rework below: quickstart now sits
+  at position 2, so the page argues install before it argues proof. If someone
+  wants field-notes moved, the hue allocation has to be rewritten with it, not
+  around it.
+- **Install first (2026-10-19 rework): the hero carries one command, and
+  quickstart is the next section down.** For a clone-and-run tool the command
+  is the conversion, so the hero shows a single copyable one-liner
+  (`git clone … && cd Unown && bun run agent:install`) with the
+  `unown setup → bun run agent:start → unown` chain printed under it, plus a
+  `<details>` delegation prompt for visitors who would rather have their
+  existing coding agent run the install (the pattern ollama.com/download
+  ships). The full command-by-command sequence stays the canonical home in
+  `quickstart.tsx` — the hero chip must never grow back into a command wall,
+  and the delegation prompt is an instruction (every command in it is real),
+  not a claim. Research receipts: `docs/landing-research.md`,
+  "2026-10-19 — install and try first".
 - Voice: concrete, honest about limits, no buzzwords. The integrity section gets
   the whole section because for a self-modifying agent that is the objection
   that decides installs. **The 0.0 extension-authoring admission now lives in

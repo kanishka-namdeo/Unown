@@ -1379,3 +1379,86 @@ is a screenshot of the fold. Any axe/pa11y scan of a page whose content reveals
 on scroll must state which state it scanned, and the state it should state is
 the one where the document is complete — which for this page is the
 reduced-motion render, and that fact is a contract test, not a workaround.
+
+## 2026-10-19 — install and try first
+
+**The brief.** The page should lead with install and try, the way the tools a
+developer already installs do, without giving up the retro identity, the
+claim discipline or any of the fourteen sections.
+
+**Products re-studied for this specific question** (hero and install surfaces
+fetched live, extending Part 1): ollama.com (+ /download), bun.sh, astro.build,
+docs.astral.sh/uv, ai-sdk.dev, aider.chat, continue.dev, cline.bot, docker.com,
+deno.com, warp.dev, rust-lang.org, typescriptlang.org, and Microsoft's
+PowerShell install docs as the reference for tabbed OS variants.
+
+**What the study found, compressed to the patterns this page did not have.**
+
+1. One canonical command above the fold, everything else demoted — Astro's
+   hero is a button beside `npm create astro@latest`; Bun, Deno, Ollama and
+   Warp each show exactly one copyable line first. A five-line panel reads as
+   documentation, not invitation.
+2. Installation content sits at position 1–2 of the page, never position 10 —
+   uv's Installation is its first section; Ollama's homepage is one click from
+   /download, which is zero marketing: platform tabs, one command, a manual
+   fallback. Unown's quickstart sat at position 10 of 14, a pattern that
+   existed nowhere in the studied set.
+3. The payoff command is pre-chained under the install command (Bun shows
+   `$ bun run index.tsx` directly under the curl line; uv follows its
+   installer with "First steps"): install → verify → payoff in three visible
+   lines.
+4. A persistent nav install CTA (Ollama's "Download" on every page) — this
+   page already had it: the nav's `Get started` button points at
+   `#quickstart`. Unchanged.
+5. The 2026 pattern ollama.com/download ships: "Get started by installing
+   Ollama, or have your agent install it for you" — a copyable prompt the
+   visitor hands the coding agent they already use. For an agent project this
+   is also a brand statement.
+6. Try-first without install is either a recorded session that plays itself
+   (aider's homepage mp4), an in-hero live editor (TypeScript), or a scripted
+   typing demo that loops. Unown's session replay already autoplays on
+   viewport entry, types itself, honours reduced motion, and keeps its
+   accessible scrubber — that half of the brief was already built, so the
+   rework left it alone.
+
+**What changed on the page.**
+
+- `quickstart` moved from position 10 to position 2, directly after the hero:
+  for a clone-and-run tool the install is the argument. The section's own copy
+  is untouched — "Clone it, point it at a model, run it." was already the
+  plain-instruction register the page wanted up front, and the section remains
+  the canonical home for the command surface.
+- The hero's five-command install panel became one copyable line
+  (`git clone … && cd Unown && bun run agent:install`) with the payoff chain
+  (`unown setup → bun run agent:start → unown`) printed under it — pattern 1
+  plus pattern 3. The hero unit test pins the one-liner, the chain and that
+  exactly one `<pre>` remains.
+- A `<details>` under the chip carries the delegation prompt (pattern 5),
+  worded as an instruction whose every command is the documented install path
+  and whose last step is `unown doctor` — verification, not marketing. The
+  hero test pins it and keeps the no-placeholder-key rule (`sk-` must not
+  appear) from the original hero contract.
+- No hue moved. quickstart keeps `gold` at position 2 (no adjacency collision:
+  hero is psychic, origin is aqua), so the palette, the contrast audit surface
+  and the OG shots are untouched by the reorder. The allocation paragraph in
+  this folder's AGENTS.md documents the rotation as it now stands.
+- Lore-run residue, recorded rather than papered over: the technical run
+  between the lore sections shrinks from seven sections to six (loop through
+  integrity), which still exceeds the folder's own three-at-zero rule. That is
+  a pre-existing condition noted in the AGENTS.md, not something this rework
+  claims to have fixed.
+
+**Why not an OS-tabbed install or a sticky bar.** The one-liner is the same
+three commands on every OS (git + bun; the sandbox ladder differs by OS and is
+stated in quickstart's prerequisite table, which the section owns), so tabs
+would gate a click behind nothing. A sticky install bar duplicates the nav's
+`Get started` button at the cost of one more always-present element on a
+thirty-four-screen page; the nav CTA already covers it.
+
+**Where this is enforced.** `src/app/page.tsx`'s composition comment states
+the new order and why; the folder AGENTS.md carries the install-first rule
+("the hero chip must never grow back into a command wall");
+`__tests__/landing-copy.test.tsx` pins the one-liner, the chain, the
+delegation prompt and the single `<pre>`; `__tests__/landing-page.test.tsx`
+still holds the fourteen-section composition and the FAQ → rail → finale
+order across the move.

@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 93;
+export const CHANGELOG_TOTAL_ENTRIES = 94;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 46,
-  "Changed": 16,
+  "Changed": 17,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 21,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 52,
+    "total": 53,
     "counts": {
       "Added": 18,
-      "Changed": 14,
+      "Changed": 15,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 13,
@@ -57,6 +57,71 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Behavior": 7
     },
     "groups": [
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "landing: install-and-try-first — quickstart moves to position 2 and the hero's five-command panel becomes one…",
+            "behavior": false
+          },
+          {
+            "title": "deps: playwright 1.57 → 1.64.1, lockstep pair + root playwright-core pin",
+            "behavior": false
+          },
+          {
+            "title": "ci: action bumps, SHA-pinned as always",
+            "behavior": false
+          },
+          {
+            "title": "deps (deferred): pi-repo highlight.js 10.7.3 → 11.x declined as a routine bump (dependabot #3)",
+            "behavior": false
+          },
+          {
+            "title": "Hardening (integrity): checkpoint store",
+            "behavior": false
+          },
+          {
+            "title": "Hardening (transport): LSP client",
+            "behavior": false
+          },
+          {
+            "title": "Hardening (transport): MCP client",
+            "behavior": false
+          },
+          {
+            "title": "Hardening (lifecycle): child reaper",
+            "behavior": false
+          },
+          {
+            "title": "Env knobs",
+            "behavior": false
+          },
+          {
+            "title": "Security: project-config trust gate (the audit's top gap — cloned-repo RCE)",
+            "behavior": false
+          },
+          {
+            "title": "Security: MCP URL/header/spawn hardening",
+            "behavior": false
+          },
+          {
+            "title": "Security: LSP protocol correctness",
+            "behavior": false
+          },
+          {
+            "title": "Privacy: receipts redaction + runtime-state gitignore",
+            "behavior": false
+          },
+          {
+            "title": "/review git plumbing + reviewer honesty",
+            "behavior": false
+          },
+          {
+            "title": "/goal gate hardening",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Fixed",
         "items": [
@@ -220,67 +285,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "/lsp trust",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Changed",
-        "items": [
-          {
-            "title": "deps: playwright 1.57 → 1.64.1, lockstep pair + root playwright-core pin",
-            "behavior": false
-          },
-          {
-            "title": "ci: action bumps, SHA-pinned as always",
-            "behavior": false
-          },
-          {
-            "title": "deps (deferred): pi-repo highlight.js 10.7.3 → 11.x declined as a routine bump (dependabot #3)",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (integrity): checkpoint store",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (transport): LSP client",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (transport): MCP client",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (lifecycle): child reaper",
-            "behavior": false
-          },
-          {
-            "title": "Env knobs",
-            "behavior": false
-          },
-          {
-            "title": "Security: project-config trust gate (the audit's top gap — cloned-repo RCE)",
-            "behavior": false
-          },
-          {
-            "title": "Security: MCP URL/header/spawn hardening",
-            "behavior": false
-          },
-          {
-            "title": "Security: LSP protocol correctness",
-            "behavior": false
-          },
-          {
-            "title": "Privacy: receipts redaction + runtime-state gitignore",
-            "behavior": false
-          },
-          {
-            "title": "/review git plumbing + reviewer honesty",
-            "behavior": false
-          },
-          {
-            "title": "/goal gate hardening",
             "behavior": false
           }
         ]

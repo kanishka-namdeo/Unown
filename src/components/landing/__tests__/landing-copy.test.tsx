@@ -51,6 +51,38 @@ describe("landing hero", () => {
     expect(container.innerHTML).toContain("bun run agent:start");
     expect(container.innerHTML).not.toContain("sk-");
   });
+
+  test("the hero install is one copyable command plus the chain that follows it", () => {
+    // One command chip above the fold — the whole clone-and-install path in a
+    // single copyable line (the install-first pattern this page moved to), not
+    // a five-command wall. The full command-by-command sequence stays in the
+    // quickstart section, which sits directly below the hero.
+    const { container } = render(<Hero />);
+    const text = container.textContent ?? "";
+    expect(text).toContain(
+      "git clone https://github.com/kanishka-namdeo/Unown.git && cd Unown && bun run agent:install",
+    );
+    // the payoff chain: connect a model, boot the stack, start a session
+    expect(text).toContain("then: unown setup");
+    expect(text).toContain("bun run agent:start");
+    expect(text).toContain("unown");
+    expect(container.querySelectorAll("pre")).toHaveLength(1);
+  });
+
+  test("offers the delegation path: your agent installs Unown", () => {
+    const { container } = render(<Hero />);
+    const details = container.querySelector("details");
+    expect(details).toBeTruthy();
+    const summary = details?.querySelector("summary");
+    expect(summary?.textContent).toContain("have your agent install it");
+    // The prompt is the documented install path, addressed to another agent —
+    // and `unown doctor` is the verification step, not a marketing claim.
+    const text = details?.textContent ?? "";
+    expect(text).toContain("bun run agent:install");
+    expect(text).toContain("unown setup");
+    expect(text).toContain("unown doctor");
+    expect(text).not.toContain("sk-");
+  });
 });
 
 describe("landing mechanisms", () => {

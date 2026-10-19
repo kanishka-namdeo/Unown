@@ -28,7 +28,8 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *
  * The order is the argument, and it is deliberate:
  *
- *   hero (claim + a real session)            what it is, proven in one screen
+ *   hero (claim + one command)               what it is, and the install chip
+ *   quickstart                               clone → model → session, in full
  *   origin (one Unown alone is just pi)      why it is two halves, not one
  *   alphabet (the identity)                  the pun, and the 28 mechanisms
  *   loop (the real artifacts)                what each stage actually writes
@@ -37,11 +38,15 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *   models                                   the lock-in objection, answered
  *   benchmarks                               proof, including where it loses
  *   integrity                                the objection that decides installs
- *   quickstart                               the five commands
  *   field notes                              where the name came from
  *   faq                                      the remaining hard questions
  *   changelog (from CHANGELOG.md)            the record, still being written
  *   finale                                   the last ask, plus the toy
+ *
+ * Quickstart sits at position 2 because for a clone-and-run tool the install
+ * IS the argument: the hero's one-line chip and this section's five commands
+ * are the first thing a convinced visitor needs, one scroll apart. The lore
+ * sections (origin, alphabet) then take over the explanation.
  *
  * `NAV_LINKS` in `shell.tsx` mirrors the top-level anchors. If you add a
  * section, add it there too or the page grows an orphan.
@@ -65,6 +70,7 @@ export default function LandingPage() {
           <Nav />
           <main id="main" className="flex-1">
             <Hero />
+            <QuickstartSection />
             <OriginSection />
             <AlphabetSection />
             <LoopSection />
@@ -73,7 +79,6 @@ export default function LandingPage() {
             <ModelsBand />
             <BenchmarksSection />
             <IntegritySection />
-            <QuickstartSection />
             <FieldNotesSection />
             <FaqSection />
             <ChangelogRail />
