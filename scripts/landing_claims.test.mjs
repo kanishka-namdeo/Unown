@@ -278,7 +278,7 @@ function fixturePages({
   return {
     [PAGES.integrity]: `const LOG = [\n${hook}] as const;\n`,
     [PAGES.loop]: `const BEATS = [\n{\nkey: "work",\nbody: [\n${work}].join("\\n"),\n},\n{\nkey: "learn",\nbody: [\n${learn}].join("\\n"),\n},\n{\nkey: "dream",\nbody: [\n${dream}].join("\\n"),\n},\n];\n`,
-    [PAGES.quickstart]: `const COMMANDS: [string, string][] = [\n${commands}];\n${slash}`,
+    [PAGES.hero]: `const COMMANDS: [string, string][] = [\n${commands}];\n${slash}`,
   };
 }
 
