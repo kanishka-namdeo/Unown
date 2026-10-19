@@ -1,0 +1,10 @@
+{
+  "name": "task-api",
+  "version": "0.3.0",
+  "description": "A tiny in-memory task API used by the dashboard",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "start": "bun run src/server.ts"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "type": "commonjs",
+  "private": true,
+  "comment": "The capture harness is CommonJS; this override keeps require() working under the repo root type:module package. The harness runs on the host, not as part of the app build."
+}
