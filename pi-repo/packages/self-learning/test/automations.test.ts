@@ -35,7 +35,9 @@ import {
         READ_ONLY_TOOLS,
         updateAutomation,
 } from "../src/automations.ts";
+import { runAutomationsCommand } from "../src/automations-cli.ts";
 import { store } from "../src/store.ts";
+import { apiRequestBody } from "../src/server.ts";
 import { createUnownToolsExtension } from "../src/tools.ts";
 
 // ---------------------------------------------------------------------------
@@ -74,7 +76,9 @@ function dueAutomation(schedule: { cron?: string; delayMinutes?: number }, opts:
 /** A dispatcher the test controls: resolves when the gate opens. */
 function gatedDispatcher() {
         let release!: () => void;
-        const gate = new Promise<void>((res) => (release = res));
+        const gate = new Promise<void>((res) => {
+                release = res;
+        });
         const dispatched: string[] = [];
         const dispatch = async (a: AutomationRow) => {
                 dispatched.push(a.id);
@@ -435,7 +439,7 @@ describe("AutomationsScheduler", () => {
  *  see their flag. */
 function registeredToolNames(env: Record<string, string | undefined>): string[] {
         const names: string[] = [];
-        const saved: Array<[string, string | undefined]> = Object.entries(env).map(([k, v]) => [k, process.env[k]]);
+        const saved: Array<[string, string | undefined]> = Object.entries(env).map(([k]) => [k, process.env[k]]);
         for (const [k, v] of Object.entries(env)) {
                 if (v === undefined) delete process.env[k];
                 else process.env[k] = v;
@@ -509,5 +513,154 @@ describe("automation session tools — the trust gate", () => {
                 // every name must be a real tool (a typo here would silently widen the run)
                 const known = [...registeredToolNames({}), "read", "bash", "powershell", "edit", "write", "grep", "find", "ls"];
                 for (const t of allow) expect(known).toContain(t);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// apiRequestBody — the HTTP layer's body gate (live-E2E regression)
+// ---------------------------------------------------------------------------
+// The engine's fetch handler parsed JSON bodies for POST only, so every
+// PATCH route (automations edit/pause/resume, memory rollback, job toggles)
+// received body = null and answered "nothing to update" — while these unit
+// suites stayed green because they call handleApi() directly with the body
+// already parsed. Found by live E2E (`unown automations pause` -> 400 against
+// the real engine); these tests pin the extracted gate itself.
+// ---------------------------------------------------------------------------
+describe("apiRequestBody (the HTTP body gate)", () => {
+        test("PATCH bodies parse (automations pause/resume/edit depend on this)", async () => {
+                const req = new Request("http://engine/api/automations/auto-x", {
+                        method: "PATCH",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ lifecycle: "paused" }),
+                });
+                expect(await apiRequestBody(req)).toEqual({ lifecycle: "paused" });
+        });
+
+        test("POST bodies parse", async () => {
+                const req = new Request("http://engine/api/automations", {
+                        method: "POST",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ title: "t", prompt: "p", delayMinutes: 5 }),
+                });
+                expect(await apiRequestBody(req)).toEqual({ title: "t", prompt: "p", delayMinutes: 5 });
+        });
+
+        test("body-less methods (GET/HEAD/OPTIONS) never parse", async () => {
+                for (const method of ["GET", "HEAD", "OPTIONS"]) {
+                        const req = new Request("http://engine/api/automations", { method });
+                        expect(await apiRequestBody(req)).toBeNull();
+                }
+        });
+
+        test("invalid JSON parses as null, not a throw (a stray body cannot 500 the route)", async () => {
+                const req = new Request("http://engine/api/automations", {
+                        method: "PATCH",
+                        headers: { "content-type": "application/json" },
+                        body: "not-json{",
+                });
+                expect(await apiRequestBody(req)).toBeNull();
+        });
+});
+
+// ---------------------------------------------------------------------------
+// automations CLI — runAutomationsCommand (live-E2E regression: list --all)
+// ---------------------------------------------------------------------------
+// `list --all` used to filter with `!hasFlag(--all) && workspace === cwd` —
+// always false under --all — and its empty-hint early return was also
+// --all-gated, so the flag printed NOTHING on a machine with automations
+// configured. Found by live E2E; pinned here against a stubbed engine.
+// ---------------------------------------------------------------------------
+describe("automations CLI (runAutomationsCommand against a stubbed engine)", () => {
+        /** REST list rows for the stubbed engine: one in WORKSPACE, one in OTHER_WS. */
+        const stubRows = [
+                {
+                        id: "auto-cli-a",
+                        title: "in this workspace",
+                        workspace: WORKSPACE,
+                        cron_expr: "0 9 * * 1-5",
+                        schedule: "9:00 AM on weekdays",
+                        mode: "read-only",
+                        lifecycle: "active",
+                        run_count: 0,
+                        next_run_at: Date.now() + 3_600_000,
+                        lastRun: null,
+                },
+                {
+                        id: "auto-cli-b",
+                        title: "elsewhere",
+                        workspace: OTHER_WS,
+                        cron_expr: null,
+                        schedule: "one-shot",
+                        mode: "standard",
+                        lifecycle: "paused",
+                        run_count: 1,
+                        next_run_at: null,
+                        lastRun: null,
+                },
+        ];
+
+        /** Install a fetch stub answering GET /api/automations with the rows. */
+        function stubEngine(rows: unknown[]): () => void {
+                const orig = globalThis.fetch;
+                globalThis.fetch = (async () =>
+                        new Response(JSON.stringify({ automations: rows }), {
+                                status: 200,
+                                headers: { "content-type": "application/json" },
+                        })) as typeof fetch;
+                return () => {
+                        globalThis.fetch = orig;
+                };
+        }
+
+        test("list --all prints automations from EVERY workspace (regression: printed nothing)", async () => {
+                const restore = stubEngine(stubRows);
+                try {
+                        const res = await runAutomationsCommand(["list", "--all"], { cwd: WORKSPACE });
+                        expect(res.exitCode).toBe(0);
+                        expect(res.stdout).toContain("auto-cli-a");
+                        expect(res.stdout).toContain("auto-cli-b"); // the --all contract: foreign rows included
+                } finally {
+                        restore();
+                }
+        });
+
+        test("plain list shows only this workspace's rows", async () => {
+                const restore = stubEngine(stubRows);
+                try {
+                        const res = await runAutomationsCommand(["list"], { cwd: WORKSPACE });
+                        expect(res.exitCode).toBe(0);
+                        expect(res.stdout).toContain("auto-cli-a");
+                        expect(res.stdout).not.toContain("auto-cli-b");
+                } finally {
+                        restore();
+                }
+        });
+
+        test("plain list from a foreign cwd prints the filtered hint with the TOTAL count", async () => {
+                const foreign = mkdtempSync(join(tmpdir(), "unown-auto-foreign-"));
+                const restore = stubEngine(stubRows);
+                try {
+                        const res = await runAutomationsCommand(["list"], { cwd: foreign });
+                        expect(res.exitCode).toBe(0);
+                        expect(res.stdout).toContain("No automations in this project");
+                        expect(res.stdout).toContain("2 filtered"); // both rows exist, neither is this cwd's
+                        expect(res.stdout).toContain("--all");
+                } finally {
+                        restore();
+                        rmSync(foreign, { recursive: true, force: true });
+                }
+        });
+
+        test("empty engine + --all still prints the onboarding hint, not silence", async () => {
+                const foreign = mkdtempSync(join(tmpdir(), "unown-auto-empty-"));
+                const restore = stubEngine([]);
+                try {
+                        const res = await runAutomationsCommand(["list", "--all"], { cwd: foreign });
+                        expect(res.exitCode).toBe(0);
+                        expect(res.stdout).toContain("No automations yet");
+                } finally {
+                        restore();
+                        rmSync(foreign, { recursive: true, force: true });
+                }
         });
 });

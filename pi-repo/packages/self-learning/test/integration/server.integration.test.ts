@@ -20,6 +20,9 @@
 //   [x] Router jobs list/toggle (+ manual trigger)     (GET /api/jobs, POST toggle/trigger)
 //   [x] Skills lifecycle over HTTP                     (GET /api/skills, rollback, retire)
 //   [x] GET /api/bridge proxies bridge log shape
+//   [x] Automations CRUD over HTTP                     (POST create, PATCH pause/edit/resume,
+//                                                      GET runs, DELETE 200-then-404 — the
+//                                                      PATCH body-gate regression)
 //
 // Notes on honesty of coverage:
 //   · The mock model never edits task files, so task runs deterministically
@@ -639,5 +642,78 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 const body = (await res.json()) as Record<string, unknown>;
                 expect(body.ok).toBe(true);
                 expect(body.synced).toBe(0);
+        });
+
+        // -------------------------------------------------------------------------
+        // 10. Automations over REAL HTTP — the PATCH body-gate regression
+        // -------------------------------------------------------------------------
+        // The fetch layer parsed JSON bodies for POST only, so every PATCH
+        // (automations pause/resume/edit, but also any future PATCH route)
+        // arrived as body=null -> "nothing to update" 400. Unit tests call
+        // handleApi() directly with the body pre-parsed, and the CLI tests
+        // stub fetch entirely — only this suite round-trips through the REAL
+        // Bun.serve fetch handler, which is where the bug lived.
+        // -------------------------------------------------------------------------
+        test("automations CRUD over HTTP: create -> PATCH pause/edit/resume -> runs -> delete", async () => {
+                // Create a far-future one-shot (scheduler never fires it during the
+                // test; the poll loop runs but nothing is due for hours).
+                const create = await fetch(api("/api/automations"), {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                                title: "it-patch-smoke",
+                                prompt: "say IT_PATCH_OK",
+                                delayMinutes: 600,
+                                mode: "read-only",
+                                maxRuns: 1,
+                        }),
+                });
+                expect(create.status).toBe(200);
+                const { automation } = (await create.json()) as { automation: Record<string, any> };
+                expect(automation.lifecycle).toBe("active");
+                expect(automation.max_runs).toBe(1);
+
+                // THE regression: PATCH with a JSON body must reach the handler
+                // (pre-fix this answered 400 "nothing to update").
+                const pause = await fetch(api(`/api/automations/${automation.id}`), {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ lifecycle: "paused" }),
+                });
+                expect(pause.status).toBe(200);
+                const paused = ((await pause.json()) as { automation: Record<string, any> }).automation;
+                expect(paused.lifecycle).toBe("paused");
+
+                // PATCH again: rename + raise maxRuns through the same gate
+                // (camelCase maxRuns maps to the row's max_runs).
+                const edit = await fetch(api(`/api/automations/${automation.id}`), {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ title: "it-patch-smoke-2", maxRuns: 5 }),
+                });
+                expect(edit.status).toBe(200);
+                const edited = ((await edit.json()) as { automation: Record<string, any> }).automation;
+                expect(edited.title).toBe("it-patch-smoke-2");
+                expect(edited.max_runs).toBe(5);
+
+                // Resume re-arms next_run_at (one-shot: the slot stays scheduled).
+                const resume = await fetch(api(`/api/automations/${automation.id}`), {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ lifecycle: "active" }),
+                });
+                expect(resume.status).toBe(200);
+                const active = ((await resume.json()) as { automation: Record<string, any> }).automation;
+                expect(active.lifecycle).toBe("active");
+                expect(active.next_run_at).not.toBeNull();
+
+                // Runs list over HTTP (empty is fine — nothing has fired).
+                const runs = await fetch(api(`/api/automations/${automation.id}/runs`));
+                expect(runs.status).toBe(200);
+                expect(Array.isArray(((await runs.json()) as { runs: unknown[] }).runs)).toBe(true);
+
+                // Delete is idempotent-shaped: first 200, then 404.
+                expect((await fetch(api(`/api/automations/${automation.id}`), { method: "DELETE" })).status).toBe(200);
+                expect((await fetch(api(`/api/automations/${automation.id}`), { method: "DELETE" })).status).toBe(404);
         });
 });

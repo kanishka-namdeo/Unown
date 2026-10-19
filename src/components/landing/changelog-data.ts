@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 87;
+export const CHANGELOG_TOTAL_ENTRIES = 88;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 45,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 17,
+  "Fixed": 18,
   "Security": 3,
   "Behavior": 6
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 46,
+    "total": 47,
     "counts": {
       "Added": 17,
       "Changed": 14,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 9,
+      "Fixed": 10,
       "Security": 0,
       "Behavior": 6
     },
@@ -133,6 +133,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "automations: two live-E2E breaks in the control surfaces — the engine's HTTP layer dropped PATCH bodies…",
+            "behavior": false
+          },
           {
             "title": "dashboard: the engine-parity round went red on the axe gate — three WCAG violation classes across four new…",
             "behavior": false

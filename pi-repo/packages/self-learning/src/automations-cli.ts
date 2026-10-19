@@ -85,12 +85,17 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
         if (sub === "list") {
                 const res = await api("GET", "/api/automations");
                 if (!res.ok) return { stderr: String(res.data?.error ?? "engine unreachable"), exitCode: 1 };
-                const rows = (res.data.automations ?? []).filter((a: any) => !hasFlag(argv, "--all") && a?.workspace === opts.cwd);
-                if (!hasFlag(argv, "--all") && rows.length === 0) {
+                // `--all` lists every workspace; the default lists this cwd's rows only.
+                // (The old predicate `!hasFlag(--all) && workspace === cwd` inverted to
+                // always-false under --all — the flag printed NOTHING. Found by live
+                // E2E; pinned by test/automations.test.ts "automations CLI".)
+                const all = hasFlag(argv, "--all");
+                const rows = (res.data.automations ?? []).filter((a: any) => all || a?.workspace === opts.cwd);
+                if (rows.length === 0) {
                         const anyAtAll = (res.data.automations ?? []).length > 0;
                         return {
                                 stdout: anyAtAll
-                                        ? `No automations in this project (${rows.length} filtered; --all lists every workspace).`
+                                        ? `No automations in this project (${(res.data.automations ?? []).length} filtered; --all lists every workspace).`
                                         : "No automations yet. Create one:\n  unown automations create --title 'morning brief' --cron '0 9 * * 1-5' \\\n      --prompt \"Summarize yesterday's commits and open TODOs; report risks.\"",
                                 exitCode: 0,
                         };

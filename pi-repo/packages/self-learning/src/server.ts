@@ -36,6 +36,28 @@ export interface ApiRequest {
         body: any;
 }
 
+/**
+ * Parse an API request's JSON body — the HTTP layer's single body gate.
+ *
+ * Must accept a body for EVERY method that can carry one: handleApi routes
+ * exist for POST and PATCH both (automations create / edit / pause / resume,
+ * memory rollback, job toggles). A POST-only gate starved the whole PATCH
+ * family (body = null -> "nothing to update"), a class of bug the unit
+ * suite could not catch — those tests call handleApi() directly with the
+ * body already parsed. Found by live E2E (CLI `automations pause` -> 400);
+ * pinned by test/automations.test.ts ("apiRequestBody"). GET/HEAD/OPTIONS/
+ * DELETE never parse (null), and a body that is not valid JSON parses as
+ * null rather than throwing into the 500 handler.
+ */
+export async function apiRequestBody(req: Request): Promise<any> {
+        if (["GET", "HEAD", "OPTIONS", "DELETE"].includes(req.method)) return null;
+        try {
+                return await req.json();
+        } catch {
+                return null;
+        }
+}
+
 function json(data: unknown, status = 200) {
         return new Response(JSON.stringify(data), {
                 status,
@@ -467,15 +489,7 @@ export function startServer(port: number = PORT) {
                         }
 
                         if (url.pathname.startsWith("/api/")) {
-                                let body: any = null;
-                                if (method_is(req.method, "POST")) {
-                                        try {
-                                                body = await req.json();
-                                        } catch {
-                                                body = null;
-                                        }
-                                }
-                                return handleApi({ method: req.method, path: url.pathname, query: url.searchParams, body });
+                                return handleApi({ method: req.method, path: url.pathname, query: url.searchParams, body: await apiRequestBody(req) });
                         }
 
                         return new Response("pi self-learning agent service\n", {
@@ -487,8 +501,4 @@ export function startServer(port: number = PORT) {
 
         console.log(`[agent-service] REST+SSE API on http://127.0.0.1:${server.port}`);
         return server;
-}
-
-function method_is(m: string, want: string) {
-        return m === want;
 }
