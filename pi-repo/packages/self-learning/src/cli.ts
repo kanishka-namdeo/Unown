@@ -22,7 +22,7 @@
  *   unown mcp <sub>        manage MCP server configs (add/list/get/remove/test)
  *   unown note "text"     hand a note to the engine (for AutoDream)
  */
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
         type CreateAgentSessionRuntimeFactory,
@@ -72,6 +72,7 @@ import { assembleResultJson, captureStdout, createOutputCapture, createOutputCap
 import { ACP_HELP, runAcpServer } from "./acp.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
+import { unownVersion } from "./packaging.ts";
 import {
         applyEffortToEnv,
         parseSubagentFlags,
@@ -95,17 +96,10 @@ import {
         UPDATE_HELP,
 } from "./update.ts";
 
-/** Unown's version — read from the ROOT package.json (the source of truth
- *  CI asserts against). Falls back to "unknown" if the file is unreadable
- *  (e.g. a compiled/bundled CLI detached from the repo layout). */
-const VERSION: string = (() => {
-        try {
-                const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "..", "..", "..", "package.json"), "utf8"));
-                return String(pkg.version ?? "unknown");
-        } catch {
-                return "unknown";
-        }
-})();
+/** Unown's version — the value the release-artifact build injected, else the
+ *  ROOT package.json (the source of truth CI asserts against). "unknown" when
+ *  neither is available (a compiled binary built without --define). */
+const VERSION: string = unownVersion(join(import.meta.dir, "..", "..", "..", "..", "package.json"));
 
 const HELP = `unown — a self-improving terminal coding agent
 

@@ -12,7 +12,8 @@
  */
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { unownVersion } from "./packaging.ts";
 
 /** Write a sanitized local crash record; returns its path, or null when even that failed. */
 export function writeCrashRecord(err: unknown, opts: { home?: string } = {}): string | null {
@@ -28,8 +29,9 @@ export function writeCrashRecord(err: unknown, opts: { home?: string } = {}): st
                         // The ROOT package.json is the version source of truth (same
                         // contract as `unown --version`): <repo-root>/package.json, found
                         // relative to this package's src/ dir (src -> package -> packages ->
-                        // pi-repo -> repo root).
-                        version = JSON.parse(readFileSync(join(import.meta.dir, "..", "..", "..", "..", "package.json"), "utf8")).version;
+                        // pi-repo -> repo root). In a compiled binary the injected define
+                        // wins — this path does not exist there.
+                        version = unownVersion(join(import.meta.dir, "..", "..", "..", "..", "package.json"));
                 } catch {
                         /* version is best-effort */
                 }

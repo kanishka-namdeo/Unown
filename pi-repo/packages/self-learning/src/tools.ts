@@ -38,6 +38,7 @@ import { type ExtensionAPI, parseFrontmatter } from "@earendil-works/pi-coding-a
 import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { trustBypassed } from "./config-trust.ts";
+import { IS_COMPILED_BINARY, isBunVirtualPath } from "./packaging.ts";
 import { emitTerminalHookEvent } from "./termhooks.ts";
 import {
     characterForLine,
@@ -344,6 +345,10 @@ function buildSchemaRetryTask(task: string, schema: unknown, problems: string): 
 }
 
 function getUnownInvocation(args: string[]): { command: string; args: string[] } {
+        // A compiled binary IS unown: execPath runs this exact version. Its
+        // process.argv[1] is Bun's virtual path (nothing on disk), and a PATH
+        // lookup could silently run a different install — so neither is used.
+        if (IS_COMPILED_BINARY) return { command: process.execPath, args };
         const currentScript = process.argv[1];
         if (currentScript && !isBunVirtualScriptPath(currentScript) && existsSync(currentScript)) {
                 return { command: process.execPath, args: [currentScript, ...args] };
@@ -360,17 +365,16 @@ function getUnownInvocation(args: string[]): { command: string; args: string[] }
 }
 
 // Bun compiled binaries run from a virtual filesystem: POSIX spells it
-// /$bunfs/root/…; the Windows form is a drive letter + backslashes,
-// C:\$bunfs\root\… (case-insensitive, either separator). Neither exists on
-// disk, so the primary exec path must never use them as the script.
-const BUN_FS_PREFIX_POSIX = "/$bunfs/root/";
-const BUN_FS_PREFIX_WIN = /^[a-zA-Z]:[\\/]\$bunfs[\\/]root[\\/]/i;
+// /$bunfs/root/…; Windows spells it B:\~BUN\root\… (measured on bun 1.4.2; the
+// older $bunfs form appears there too), and import.meta.url percent-encodes the
+// tilde. None of these exist on disk, so the primary exec path must never use
+// them as the script. Detection lives in packaging.ts — the same module that
+// routes a compiled binary's state away from a repo root it cannot see.
 
 /** True when `script` is Bun's virtual compiled-binary path in either
  *  platform spelling. Exported for tests. */
 export function isBunVirtualScriptPath(script: string | undefined): boolean {
-        if (!script) return false;
-        return script.startsWith(BUN_FS_PREFIX_POSIX) || BUN_FS_PREFIX_WIN.test(script);
+        return isBunVirtualPath(script);
 }
 
 /** Locate the canonical CLI script: walk up from this module until a

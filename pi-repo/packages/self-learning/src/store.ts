@@ -4,14 +4,20 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { stateRoot } from "./packaging.ts";
 
 // Repository root. Resolves correctly whether this module runs from src/ (bun
 // dev) or dist/ (compiled): both sit four levels below the repository root at
-// <repo>/pi-repo/packages/self-learning/{src,dist}.
+// <repo>/pi-repo/packages/self-learning/{src,dist}. In a STANDALONE compiled
+// binary there is no repository root — `import.meta.dir` is Bun's virtual
+// filesystem — so stateRoot() routes state to UNOWN_HOME instead. Without that,
+// the mkdir below resolves to a drive root and the binary dies at import
+// evaluation (EPERM) before printing anything.
 const REPO_ROOT = resolve(import.meta.dir, "../../../..");
+const STATE_ROOT = stateRoot(REPO_ROOT);
 
-export const DATA_DIR = process.env.PI_SELFLEARNING_DATA || join(REPO_ROOT, "data", "self-learning");
-export const DB_PATH = process.env.PI_SELFLEARNING_DB || join(REPO_ROOT, "db", "selflearning.db");
+export const DATA_DIR = process.env.PI_SELFLEARNING_DATA || join(STATE_ROOT, "data", "self-learning");
+export const DB_PATH = process.env.PI_SELFLEARNING_DB || join(STATE_ROOT, "db", "selflearning.db");
 export const BRIDGE_URL = process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031";
 
 mkdirSync(dirname(DB_PATH), { recursive: true });

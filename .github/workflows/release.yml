@@ -1,8 +1,9 @@
 # Release workflow — runs on version tags (vX.Y.Z).
 #
 # Unown is clone-to-install (the vendored pi-repo workspace layout is NOT
-# npm-publishable by design — see AGENTS.md "Root Contracts"), so a release
-# is a VERIFIED GIT TAG, not a package upload:
+# npm-publishable by design — see AGENTS.md "Root Contracts"). A release is
+# therefore a VERIFIED GIT TAG plus, since 2026-10-19, per-OS standalone
+# binaries of the `unown` CLI:
 #
 #   1. the full install path on all three OSes (the same real-installer
 #      matrix CI runs — a release that does not install cleanly does not
@@ -11,10 +12,25 @@
 #   3. the engine suite + integration suite + bridge suite + version
 #      consistency + CLI smokes (the release assertion: strategy §12
 #      criterion 2),
-#   4. an SBOM (SPDX, syft) of the installed tree + a build-provenance
+#   4. an SBOM (SPDX) of the installed tree + a build-provenance
 #      attestation for the checkout,
-#   5. a GitHub Release with auto-generated notes from the commit history,
-#      the SBOM and the release checklist attached.
+#   5. SIX per-OS CLI binaries (darwin/linux/windows × arm64/x64) built by ONE
+#      ubuntu runner — `bun build --compile --target=` cross-compiles by
+#      downloading the target's runtime, so no Mac or Windows machine is
+#      needed to PRODUCE them,
+#   6. smoke tests that download and RUN each platform's own archive on that
+#      platform. A runner can only execute its own OS's output, so this is the
+#      only leg that proves a shipped binary boots — a build job alone compiles
+#      binaries it has never run. windows-arm64 has no GitHub-hosted runner at
+#      all, so it is the one asset shipped without a runtime smoke (the
+#      checklist says so instead of claiming otherwise),
+#   7. a GitHub Release, created only after the smoke passes, with the
+#      archives + checksums + SBOM + checklist attached and generated notes.
+#
+# The binaries are UNSIGNED: no Apple Developer account and no code-signing
+# secret lives in this repo (decision 2026-10-19). Gatekeeper and SmartScreen
+# therefore warn on first run, and each archive carries an INSTALL.txt with the
+# exact workaround, so the friction is documented where it is hit.
 #
 # Tagging: `git tag v2.0.1 && git push origin v2.0.1`. The tag MUST match
 # package.json version — asserted below before anything else runs.
@@ -93,20 +109,37 @@ jobs:
           out="$(bun bin/unown doctor 2>&1)" || code=$?
           [ "$code" -le 1 ] || { echo "::error::doctor crashed (exit $code)"; exit 1; }
           printf '%s\n' "$out" | grep -q "agent dir" || { echo "::error::doctor table missing"; exit 1; }
+      - name: Artifact plan gate
+        # Runs the builder's own unit suite and rejects a bad plan BEFORE
+        # anything is compiled or published: unknown platform, bad flag, or a
+        # platform list that lost a target all exit non-zero here.
+        shell: bash
+        run: |
+          node --test scripts/build-artifacts.test.mjs
+          plan="$(bun scripts/build-artifacts.ts --dry-run | tail -n +2 | wc -l)"
+          [ "$plan" = "6" ] || { echo "::error::the builder plans $plan platforms, expected 6"; exit 1; }
 
   build:
-    name: Production build + SBOM + release
+    name: Production build + per-OS artifacts + SBOM
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.3"
-      - name: Install + Prisma client + build
+      - name: Install (dashboard deps + built pi workspace)
+        # The compiled artifacts import pi's BUILT output: the image-resize
+        # worker is a second compile entrypoint and lives under
+        # pi-repo/packages/coding-agent/dist. So this job runs the same
+        # build:offline step the installer runs — otherwise the builder exits
+        # with its "the vendored pi workspace must be built first" message.
+        env:
+          UNOWN_NO_LINK: "1"
+        run: bun scripts/install.ts
+      - name: Prisma client + production build
         run: |
-          bun install --frozen-lockfile
           bun run db:generate
           bun run build
       - name: Standalone server smoke
@@ -120,6 +153,8 @@ jobs:
           curl -sf -m 5 http://127.0.0.1:3210/ >/dev/null && \
           curl -sf -m 5 http://127.0.0.1:3210/dashboard >/dev/null
           kill $server_pid
+      - name: Build the six per-OS CLI artifacts
+        run: bun scripts/build-artifacts.ts --out release-assets
       - name: SBOM (SPDX) of the dependency tree
         # syft scans the installed node_modules + vendored pi-repo tree (the
         # runtime dependency surface a clone-to-install user actually gets).
@@ -129,8 +164,8 @@ jobs:
         # creation — one run attached the SBOM, the next did not).
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-          syft dir:. -o spdx-json=sbom-spdx.json
-          ls -la sbom-spdx.json
+          syft dir:. -o spdx-json=release-assets/sbom-spdx.json
+          ls -la release-assets/sbom-spdx.json
       - name: Build provenance attestation (subject digest)
         # The attestation action requires a SHA-256 subject digest —
         # github.sha is git's SHA-1, which it rejects (found red in run
@@ -147,31 +182,173 @@ jobs:
           subject-digest: ${{ steps.digest.outputs.sha }}
       - name: Release checklist (what was verified)
         run: |
-          cat > release-checklist.md <<'EOF'
-          ## Release verification receipt
-
-          - 3-OS real-installer matrix (ubuntu/macos/windows): install.ts → engine unit suite → integration suite (real server + mock bridge) → bridge suite (95) → version consistency → CLI smokes — all green
-          - Production dashboard build + standalone server smoke (/ and /dashboard answered 200)
-          - SBOM (SPDX) attached as a release asset; build-provenance attestation recorded
-          - `unown --version` === package.json.version === tag
-
-          Memory-system receipts for this release: see `benchmarks/memory-eval/*/RESULTS.md`
-          (poison-corpus, MPBench-adapted, quality-axes, recall-qa) and
-          `docs/testing-strategy.md` §7.2 for the CI trajectory.
-          EOF
-      - name: sha256sums.txt (integrity of the release assets)
-        # sha256 of every attached asset, listed sorted — verifiable by anyone:
+          {
+            echo "## Release verification receipt"
+            echo
+            echo "- 3-OS real-installer matrix (ubuntu/macos/windows): install.ts → engine unit suite → integration suite (real server + mock bridge) → bridge suite → version consistency → CLI smokes — all green"
+            echo "- Production dashboard build + standalone server smoke (/ and /dashboard answered 200)"
+            echo "- Six per-OS \`unown\` CLI binaries built by one ubuntu runner from $(node -p "require('./package.json').version"); five of the six were then downloaded, extracted and EXECUTED on their own OS (linux arm64+x64, darwin arm64+x64, windows x64). windows-arm64 ships untested: GitHub has no arm64 Windows runner."
+            echo "- SBOM (SPDX) and sha256sums.txt attached; build-provenance attestation recorded for the tag"
+            echo "- \`unown --version\` === package.json.version === tag, in the checkout AND in every smoke-tested binary"
+            echo
+            echo "Binaries are UNSIGNED (no code-signing secret in this repo). macOS"
+            echo "Gatekeeper and Windows SmartScreen warn on first run; INSTALL.txt inside each"
+            echo "archive gives the workaround (xattr -d com.apple.quarantine unown /"
+            echo "Unblock-File unown.exe)."
+          } > release-assets/release-checklist.md
+          cat release-assets/release-checklist.md
+      - name: sha256sums.txt (integrity of every release asset)
+        # One manifest for the whole release, over the archives AND the
+        # metadata — verifiable by anyone:
         #   curl -sLO <release>/sha256sums.txt && sha256sum -c sha256sums.txt
+        # This overwrites the builder's archives-only file of the same name, so
+        # exactly one checksum asset exists on the release page.
+        working-directory: release-assets
+        shell: bash
         run: |
-          sha256sum release-checklist.md sbom-spdx.json | sort -k2 > sha256sums.txt
+          sha256sum release-checklist.md sbom-spdx.json unown-*.tar.gz unown-*.zip | sort -k2 > sha256sums.txt
           cat sha256sums.txt
+          # self-check: the manifest must cover exactly the 6 archives + 2 files
+          [ "$(wc -l < sha256sums.txt)" = "8" ] || { echo "::error::sha256sums.txt has the wrong number of entries"; exit 1; }
+      - name: Upload release payload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-payload-${{ github.ref_name }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+
+  smoke-artifacts:
+    name: Run the artifact on ${{ matrix.runner }} (${{ matrix.platform }})
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Each leg extracts the archive built for ITS OWN os/arch and runs it.
+        # No windows-arm64 leg exists because GitHub hosts no arm64 Windows
+        # runner; that asset is labelled untested in the checklist.
+        include:
+          - runner: ubuntu-latest
+            platform: linux-x64
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+          - runner: macos-latest
+            platform: darwin-arm64
+          - runner: macos-13
+            platform: darwin-x64
+          - runner: windows-latest
+            platform: windows-x64
+    steps:
+      - name: Download release payload
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-payload-${{ github.ref_name }}
+          path: payload
+      - name: Verify the checksum manifest
+        # sha256sum ships in the Git Bash toolchain on all three runner OSes.
+        shell: bash
+        run: cd payload && sha256sum -c sha256sums.txt
+      - name: Extract this platform's archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$(ls payload/unown-${{ matrix.platform }}.* | head -1)"
+          echo "archive: $archive"
+          mkdir -p extracted
+          case "$archive" in
+            *.zip)
+              # Not unzip: not guaranteed on the Windows runner's PATH. The zip
+              # itself is written by bsdtar/GNU zip with "/" separators, which
+              # Expand-Archive reads correctly.
+              export ARCHIVE_PATH="$(cygpath -w "$archive" 2>/dev/null || echo "$archive")"
+              export DESTINATION_PATH="$(cygpath -w extracted 2>/dev/null || echo "$PWD/extracted")"
+              powershell.exe -NoProfile -NonInteractive -Command `
+                'Expand-Archive -LiteralPath $env:ARCHIVE_PATH -DestinationPath $env:DESTINATION_PATH -Force'
+              ;;
+            *)
+              tar -xzf "$archive" -C extracted
+              ;;
+          esac
+          ls -R extracted
+      - name: Run it
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="extracted/unown-${{ matrix.platform }}/unown"
+          [ -f "$bin" ] || bin="$bin.exe"
+          chmod +x "$bin" 2>/dev/null || true
+          version="$("$bin" --version)"
+          echo "binary reports: $version (tag: ${GITHUB_REF_NAME#v})"
+          [ "$version" = "${GITHUB_REF_NAME#v}" ] || {
+            echo "::error::the shipped binary reports $version, the tag is ${GITHUB_REF_NAME#v} — the version define did not land"
+            exit 1; }
+          "$bin" --help | grep -q "self-improving terminal coding agent"
+          code=0
+          out="$("$bin" doctor 2>&1)" || code=$?
+          [ "$code" -le 1 ] || { echo "::error::doctor crashed in the binary (exit $code)"; exit 1; }
+          printf '%s\n' "$out" | grep -q "agent dir" || { echo "::error::doctor table missing in the binary"; exit 1; }
+          # The binary must KNOW it has no checkout: that is what makes
+          # `unown update` refuse instead of running git in a void.
+          printf '%s\n' "$out" | grep -q "not a git checkout" || {
+            echo "::error::the binary does not detect the detached layout — the update path will misbehave"
+            exit 1; }
+      - name: INSTALL.txt documents the signing friction
+        shell: bash
+        run: |
+          set -euo pipefail
+          note="extracted/unown-${{ matrix.platform }}/INSTALL.txt"
+          grep -q "sha256sums.txt" "$note"
+          case "${{ matrix.platform }}" in
+            darwin-*) grep -q "com.apple.quarantine" "$note" ;;
+            windows-*) grep -q "Unblock-File" "$note" ;;
+            *) grep -q "unown setup" "$note" ;;
+          esac
+
+  publish-release:
+    name: Create the GitHub Release
+    needs:
+      - build
+      - smoke-artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download release payload
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-payload-${{ github.ref_name }}
+          path: release-assets
+      - name: Assert the full asset set is present
+        # softprops silently skips a file that is not there, so a release that
+        # quietly lost three of six binaries would still publish green. Count
+        # the archives and pin the expected names before calling the action.
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          for f in release-checklist.md sbom-spdx.json sha256sums.txt; do
+            test -f "$f" || { echo "::error::missing asset: $f"; exit 1; }
+          done
+          for p in darwin-arm64 darwin-x64 linux-arm64 linux-x64 windows-arm64 windows-x64; do
+            ls unown-$p.tar.gz unown-$p.zip >/dev/null 2>&1 || { echo "::error::missing artifact: unown-$p"; exit 1; }
+          done
+          extra="$(ls unown-*.tar.gz unown-*.zip 2>/dev/null | wc -l)"
+          [ "$extra" = "6" ] || { echo "::error::found $extra archives, expected exactly 6"; exit 1; }
+          sha256sum -c sha256sums.txt
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           generate_release_notes: true
           draft: false
           files: |
-            release-checklist.md
-            sbom-spdx.json
-            sha256sums.txt
-          body_path: release-checklist.md
+            release-assets/unown-darwin-arm64.tar.gz
+            release-assets/unown-darwin-x64.tar.gz
+            release-assets/unown-linux-arm64.tar.gz
+            release-assets/unown-linux-x64.tar.gz
+            release-assets/unown-windows-arm64.zip
+            release-assets/unown-windows-x64.zip
+            release-assets/sha256sums.txt
+            release-assets/sbom-spdx.json
+            release-assets/release-checklist.md
+          body_path: release-assets/release-checklist.md

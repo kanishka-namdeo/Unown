@@ -19,6 +19,8 @@
     "check:changelog": "node scripts/landing_changelog.mjs --check",
     "check:benchmarks": "node scripts/landing_benchmarks.mjs --check",
     "check:claims": "node scripts/landing_claims.mjs --check",
+    "release:artifacts": "bun scripts/build-artifacts.ts",
+    "test:artifacts": "node --test scripts/build-artifacts.test.mjs",
     "unown": "bun bin/unown",
     "agent:install": "bun scripts/install.ts",
     "agent:start": "bun scripts/start.ts",

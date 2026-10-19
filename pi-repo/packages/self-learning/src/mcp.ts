@@ -48,6 +48,7 @@ import { basename, join } from "node:path";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { registerChild, unregisterChild } from "./child-reaper.ts";
+import { unownVersion } from "./packaging.ts";
 import { trustApprovalNeeded, trustBypassed, trustConfig, trustStatePath } from "./config-trust.ts";
 import {
     decideElicitation,
@@ -92,18 +93,11 @@ export function parseMsEnv(
 // Client identity (M-17) + shared config-validation vocabulary (L-06/M-10)
 // ---------------------------------------------------------------------------
 
-/** Unown's version — read from the ROOT package.json (the source of truth CI
- * asserts against; same pattern as cli.ts's VERSION). "unknown" when the
- * module is detached from the repo layout. Never hardcoded: the initialize
- * handshake used to claim 0.1.0 while the shipped package was 2.1.x. */
-export const UNOWN_VERSION: string = (() => {
-    try {
-        const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "..", "..", "..", "package.json"), "utf8"));
-        return String(pkg.version ?? "unknown");
-    } catch {
-        return "unknown";
-    }
-})();
+/** Unown's version — the value the release-artifact build injected, else the
+ * ROOT package.json (the source of truth CI asserts against; same contract as
+ * cli.ts's VERSION). "unknown" when neither is available. Never hardcoded: the
+ * initialize handshake used to claim 0.1.0 while the shipped package was 2.1.x. */
+export const UNOWN_VERSION: string = unownVersion(join(import.meta.dir, "..", "..", "..", "..", "package.json"));
 
 /** clientInfo sent in every initialize handshake. */
 export const UNOWN_CLIENT_INFO: { name: string; version: string } = { name: "unown", version: UNOWN_VERSION };
