@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 120;
+export const CHANGELOG_TOTAL_ENTRIES = 121;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 54,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 25,
+  "Fixed": 26,
   "Security": 3,
   "Behavior": 20
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 79,
+    "total": 80,
     "counts": {
       "Added": 26,
       "Changed": 16,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 17,
+      "Fixed": 18,
       "Security": 0,
       "Behavior": 20
     },
@@ -323,6 +323,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "tui: the end-user release audit — four gaps that broke shipped features from the terminal…",
+            "behavior": false
+          },
           {
             "title": "hooks: the Windows tree-kill the command-handler timeout never had…",
             "behavior": false
