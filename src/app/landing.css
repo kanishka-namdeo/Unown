@@ -54,6 +54,24 @@ html {
 }
 
 /* ---------------------------------------------------------------- */
+/* the feature creatures                                             */
+/* ---------------------------------------------------------------- */
+
+/*
+ * The creature sprites ship at 4× their 64px logical grid and are displayed
+ * 1:1 logical (h-16), so the browser samples the ship file back down to the
+ * exact pixel grid the pipeline snapped — `pixelated` keeps every logical
+ * pixel a hard square instead of smoothing them (a smoothed creature reads
+ * as modern flat art, which is the look this page does not want).
+ * `crisp-edges` first is the pre-2017 Safari fallback; pixelated last wins
+ * wherever it is supported, which per MDN is everywhere that matters.
+ */
+.creature {
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+/* ---------------------------------------------------------------- */
 /* the LCD pixel grid                                                */
 /* ---------------------------------------------------------------- */
 

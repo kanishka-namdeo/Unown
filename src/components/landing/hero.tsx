@@ -1,6 +1,8 @@
 import { ArrowRight } from "lucide-react";
 import { Glyph } from "./glyph";
 import type { GlyphId } from "./glyphs";
+import { Creature } from "./creature";
+import type { CreatureId } from "./creature";
 import { InstallPanel } from "./install-panel";
 import { SessionReplay } from "./session-replay";
 import { CopyButton, GhostLink, PrimaryLink, GITHUB_URL, DOCS_URL } from "./shell";
@@ -150,6 +152,21 @@ const TRUST = [
 /* ------------------------------------------------------------------ */
 /* hero                                                                */
 /* ------------------------------------------------------------------ */
+
+/**
+ * The session party: the tools every session ships, each denoted by its
+ * creature (original renders — the non-affiliation wall holds; the pipeline
+ * and its IP gates are `scripts/creature_sprites.mjs`). The chip text is the
+ * tool's real name, so the creature stays decorative (alt="" + aria-hidden)
+ * while the mapping reads at a glance. The prose paragraph inside the cli
+ * expander remains the canonical description of each tool.
+ */
+const PARTY: { id: CreatureId; tool: string }[] = [
+  { id: "websearch", tool: "web_search" },
+  { id: "mcp", tool: "mcp" },
+  { id: "task", tool: "task" },
+  { id: "lsp", tool: "lsp" },
+];
 
 export function Hero() {
   return (
@@ -370,8 +387,26 @@ export function Hero() {
           <Seal />
         </div>
 
+        {/* the session party — the tools every session ships, one creature
+            each, right above the replay of a real session so the party and
+            the session it joins are one thought */}
+        <div className="rise mt-14 flex flex-wrap items-center gap-x-4 gap-y-3 sm:mt-16">
+          <p className="gb-label text-[10px] text-faint">the session party</p>
+          <ul className="flex flex-wrap gap-2">
+            {PARTY.map((p) => (
+              <li
+                key={p.id}
+                className="flex items-center gap-2.5 border border-line bg-panel-2/40 px-3 py-1.5"
+              >
+                <Creature id={p.id} className="h-16 w-auto" />
+                <span className="font-mono text-[10.5px] text-dim">{p.tool}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
         {/* the product itself */}
-        <div className="rise mt-16 sm:mt-24">
+        <div className="rise mt-10 sm:mt-14">
           <SessionReplay />
           <p className="mt-3 text-center font-mono text-[11px] text-faint">
             a real session: the memory banner, hook log line and note template are the

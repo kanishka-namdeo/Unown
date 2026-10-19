@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 123;
+export const CHANGELOG_TOTAL_ENTRIES = 124;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 55,
+  "Added": 56,
   "Changed": 19,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 1,
+    "total": 2,
     "counts": {
-      "Added": 1,
+      "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "landing: the feature creatures — the agent's features denoted by original GBA-style pixel sprites…",
+            "behavior": false
+          },
           {
             "title": "release: per-OS standalone unown binaries, cross-compiled by one runner and smoke-tested on their own OS",
             "behavior": false

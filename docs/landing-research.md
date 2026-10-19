@@ -1601,3 +1601,85 @@ fed the pass; the rest ("make the buttons modern", "reduce the seal's
 dominance") are exactly what the palette and identity contracts exist to
 refuse. The rule, recorded in the AGENTS.md: **the VLM is a reviewer's aid,
 not a gate — it does not know the seal is the brand.**
+
+## Part 14 — The feature creatures: the model draws, the pipeline owns the pixels
+
+The brief: the agent's features (MCP, web search, subagents, …) should be
+denoted by 2D Pokémon-like graphics on the landing page. The first attempt
+generated smooth modern flat-2D chibi illustrations and failed review for
+exactly the reason the page would have predicted: nothing about them was
+Game Boy Advance. Soft cel shading, anti-aliased edges, off-palette colors —
+against Press Start 2P type and a 5-bit palette they read as a different
+product's stickers. The round that shipped inverted the division of labor.
+
+**Research first.** A research pass over legal analyses (TechnoLama on
+Palworld; Blake Crosley's takedown record), sprite-art fundamentals (Lospec,
+GBATEK, the pret/pokeemerald decomp, Bottosson's OKLab post) and practitioner
+pipelines (Pixel Art XL's "generate at 1024, downscale 8× nearest" method)
+produced the constraints that shaped everything after:
+
+- **IP safety is about specific signifiers, not genre.** Copyright protects
+  expression; the vocabulary that stays safe is generic
+  ("creature companion", "chibi monster") and the vocabulary that does not is
+  any species name, ball iconography, or a named artist's style. Round +
+  warm-gold + pointed ears collapses image generators into a Pikachu
+  derivative — observed, caught by a signifier audit (the arbitration method:
+  list the named character's defining features, count how many the sprite
+  carries, NEAR-IDENTICAL needs several; genre resemblance is not a verdict).
+- **GBA sprites are 64×64, 16 colors, 1-bit alpha, 8×8 tiles** (GBATEK;
+  pokeemerald ships Gen-3 front sprites as 64×64 PNGs with 16-color .pal
+  files). Shading is two-tone with sparse ordered dither, never smooth.
+- **Practitioner consensus: the model draws, post-process owns palette and
+  grid.** Ten sprites match each other and the page only if the pixel grid
+  and the palette are imposed by one deterministic stage — prompt style alone
+  drifts per generation.
+
+**The pipeline** (`scripts/creature_sprites.mjs`, and the contract now lives
+in the landing AGENTS.md). Stage 1 generates composition with a locked style
+template — the only free variable is the per-feature CONCEPT line, one prop
+per feature because a 64px sprite stops reading past one idea. Stage 2
+GBA-ifies: box-average downscale to a 64px logical grid (box, not nearest —
+it flattens the cel shading and never rings the outline), 1-bit alpha
+threshold, OKLab nearest-color snap onto **the page's own palette tokens**
+(the mirror list in the script; the sprite inherits the page's world the way
+a glyph inherits `currentColor`), prune to the 8 heaviest entries with the
+outline force-kept (Gen-3 two-tone: 17–20 ramp steps read as smooth modern
+flat art — the measured difference between the rejected and shipped rounds),
+ship at 4× nearest-neighbor, display 1:1 logical through
+`image-rendering: pixelated`. 1.4–1.8 KB per sprite.
+
+**Gates, hard and soft.** Hard (fail the run): background-cut sanity, the
+edge-clip check on the raw (a limb cut at the generator's frame edge reads
+broken at every size; run it on the raw — a trimmed sprite always touches its
+own bounding box, a lesson that cost a false-positive round), and the
+dark-ratio check (a body that snaps mostly to the dark half of the palette is
+a smudge on the light cream scheme — measured on the bento tiles; bodies
+steer coral/gold/aqua/cream). Soft: the Agnes VLM pass with a GBA rubric —
+an aid, not a gate. This round sharpened the policy with evidence: the VLM
+flipped between PASS and FIX on identical files across rounds, twice
+described the seal glyphs when asked about creatures, and once critiqued
+AA-verified token contrast from a downscaled crop. Every Pokémon flag it did
+raise was either confirmed by a signifier audit (one genuine Pikachu
+derivative, regenerated) or dismissed with one (memory: zero signifiers,
+kept). Element-level crops (`scripts/creature_crops.mjs`) replaced
+full-band screenshots for creature review — a 64px sprite in a 1512px band
+is invisible to a reviewer.
+
+**Placement, from review.** The hero's "session party" strip (four chips,
+each a creature labeled with the tool's real name, the prose expander staying
+canonical) sits between the seal grid and the session replay — the party and
+the session it joins read as one thought. The loop bento anchors one creature
+beside each tile's number+title: a first cut floated the creature in its own
+row above the title and two reviews called it disconnected with a dead band;
+beside the title it anchors. A dream+skills pair on tile 04 was read as
+clutter twice — one creature per tile, the second feature argued in prose.
+The proof band stays creature-free (the benchmark costume rule). Both
+schemes verified: dark "looks like native ROM assets", light clean after the
+bright-body steers; the contrast audit carries the real decision (1,036
+nodes, both schemes, no AA failures).
+
+**The VLM lesson in one line:** reviewers that cannot see the design system
+will optimize toward generic modern web — the contracts (palette, pixels,
+one-prop, one-sprite, proof-band purity) are what the creatures are designed
+inside of, and the signifier audit is the tiebreaker when a flag needs
+evidence.

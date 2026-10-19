@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
 import { Glyph } from "./glyph";
 import type { GlyphId } from "./glyphs";
+import { Creature } from "./creature";
+import type { CreatureId } from "./creature";
 import { FadeUp, SectionHead, PixelCursor, GITHUB_URL } from "./shell";
 import { ENGINE_JOBS, ENGINE_JOB_COUNTS } from "./engine-data";
 
@@ -177,6 +179,11 @@ type Mechanism = {
   body: string;
   file: string;
   href: string;
+  /** The mechanism's creature — an original render, decorative beside the
+   *  tile's own title. One per tile: a pair was tried and read as clutter
+   *  (two-reviewer verdict, 2026-10-20), and tile 04 argues its second
+   *  feature (skills) in prose. */
+  creatures?: CreatureId[];
 };
 
 const MECHANISMS: Mechanism[] = [
@@ -187,6 +194,7 @@ const MECHANISMS: Mechanism[] = [
     body: "Four tiers — policy, project, user, local. Most-specific-wins, injected into every prompt; every write versioned and attributed.",
     file: "memory.ts",
     href: SRC("memory.ts"),
+    creatures: ["memory"],
   },
   {
     n: "02",
@@ -195,6 +203,7 @@ const MECHANISMS: Mechanism[] = [
     body: "A failing benchmark task runs in a fresh sandbox; the transcript is mined for the rule that would have prevented it, and the candidate re-runs against the patched memory.",
     file: "harness.ts",
     href: SRC("harness.ts"),
+    creatures: ["harness"],
   },
   {
     n: "03",
@@ -203,6 +212,7 @@ const MECHANISMS: Mechanism[] = [
     body: `${JOB_SENTENCE} A busy-mutex means the sandbox is never double-driven.`,
     file: "router.ts",
     href: SRC("router.ts"),
+    creatures: ["router"],
   },
   {
     n: "04",
@@ -211,6 +221,7 @@ const MECHANISMS: Mechanism[] = [
     body: "Notes consolidate into project memory; recurring procedures get minted as real Agent Skills. The engine never deletes your files — retirement is a dashboard action.",
     file: "dream.ts",
     href: SRC("dream.ts"),
+    creatures: ["dream"],
   },
   {
     n: "05",
@@ -219,6 +230,7 @@ const MECHANISMS: Mechanism[] = [
     body: "Guardrails at six layers — before the prompt, around every tool call, at session and subagent end — every allow, deny and augment logged.",
     file: "hooks.ts",
     href: SRC("hooks.ts"),
+    creatures: ["hooks"],
   },
 ];
 
@@ -236,6 +248,7 @@ const SDLC = {
   body: "Multi-type hooks, Adversary Mode + injection scanner, Per-subagent routing, Recipes, Repo Wiki, /init + /doctor, /blame + /sessions, Auto-compact — 15 ports across four milestones.",
   file: "docs/sdlc-feature-parity.md",
   href: `${GITHUB_URL}/blob/main/docs/sdlc-feature-parity.md`,
+  creatures: ["sdlc"] as CreatureId[],
 };
 
 /** Receipt links for the SDLC tile: one per ported capability, straight at
@@ -444,13 +457,24 @@ export function LoopSection() {
         <div className="mt-8 grid gap-px overflow-hidden border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
           {[...MECHANISMS, SDLC].map((m, i) => (
             <FadeUp key={m.n} delay={Math.min(i, 3) * 0.04} className="bg-panel p-5">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="gb-label text-[10px] tabular-nums text-gold">{m.n}</p>
-                {m.n === "06" ? (
-                  <span className="gb-label text-[8px] text-faint">15 ports · M1-M4</span>
+              {/* The creature anchors the tile's top-right BESIDE the text
+                  stack — floating it in its own row above the title left a
+                  dead band and read as disconnected (review verdict
+                  2026-10-20). */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <p className="gb-label text-[10px] tabular-nums text-gold">{m.n}</p>
+                    {m.n === "06" ? (
+                      <span className="gb-label text-[8px] text-faint">15 ports · M1-M4</span>
+                    ) : null}
+                  </div>
+                  <h3 className="mt-3 text-[15px] font-medium text-ink">{m.title}</h3>
+                </div>
+                {m.creatures?.length ? (
+                  <Creature id={m.creatures[0]} className="mt-1 h-16 w-auto shrink-0" />
                 ) : null}
               </div>
-              <h3 className="mt-3 text-[15px] font-medium text-ink">{m.title}</h3>
               <p className="mt-1.5 font-mono text-[10.5px] uppercase tracking-[0.1em] text-faint">
                 {m.pain}
               </p>

@@ -18,9 +18,20 @@
 // is pinned first — the default must be a decision, not whatever the test
 // runner's navigator happens to claim.
 
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, render, screen } from "@testing-library/react";
-import { Hero } from "../hero";
+
+// StarCount is an async server component whose fetch to api.github.com is
+// both rate-limited (60/hr per IP — a shared CI or sandbox IP burns it) and
+// latency-bound; either way the tree suspends past these synchronous
+// assertions. Mocked to resolve immediately (same pattern as
+// landing-copy.test.tsx) so the suite is deterministic and network-free.
+mock.module("../star-count", () => ({
+  StarCount: () => null,
+  getStars: async () => 128,
+}));
+
+const { Hero } = await import("../hero");
 
 const setUA = (ua: string) => {
   Object.defineProperty(window.navigator, "userAgent", {

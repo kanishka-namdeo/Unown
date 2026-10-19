@@ -664,8 +664,8 @@ export function Footer() {
             , MIT licensed. Unown is an independent open-source project — not affiliated
             with, endorsed by or sponsored by Nintendo, Game Freak, Creatures Inc. or The
             Pokémon Company. Pokémon and Unown are trademarks of their respective owners.
-            No official art ships here: every glyph, box and bar on this page is drawn
-            in code.
+            No official art ships here: every glyph, box and bar on this page is
+            drawn in code, and every creature is an original render.
           </p>
         </div>
       </div>
