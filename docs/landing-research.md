@@ -1462,3 +1462,48 @@ the new order and why; the folder AGENTS.md carries the install-first rule
 delegation prompt and the single `<pre>`; `__tests__/landing-page.test.tsx`
 still holds the fourteen-section composition and the FAQ → rail → finale
 order across the move.
+
+## 2026-10-19 — the OS tabs, after all, and the six-at-zero run they paid for
+
+Two reversals in one afternoon, both user-directed, both recorded here because
+the entries above argue the opposite.
+
+**OS tabs.** "Why not an OS-tabbed install" (above) objected that the hero's
+git-clone line is the same three commands on every OS, so tabs would gate a
+click behind nothing. The objection dissolved when the tab content became the
+thing that actually differs: macOS and Linux carry `curl -fsSL
+https://unown-nine.vercel.app/install.sh | sh` — the documented one-line
+installer (docs/install.md), which refuses root, checks git and bootstraps bun
+itself, and is a shorter line than the clone path into the bargain — while
+Windows carries the clone path plus the bun prerequisite, because a fresh
+Windows box has no sh (docs/windows.md). Each tab's note line quotes one of
+the three sandbox facts the page already claims in quickstart's prerequisite
+table (bubblewrap / Seatbelt / in-process jail), verified against
+`resolveOsSandboxBackend()` in `pi-repo/packages/self-learning/src/bwrap.ts`
+(linux → bwrap, darwin → seatbelt, win32 → null → the in-process TS path
+jail) — the tabs invent no claim, they say the visitor's one out loud. The
+tab auto-defaults from the user agent (the Bun userAgentData pattern from the
+research above) and never gates; the `then:` chain is unchanged under all
+three. The chip stays one `<pre>` — the hero did not grow a command wall, it
+grew a chooser. One implementation constraint worth remembering: the panel is
+a client island (`install-panel.tsx`) precisely so `StarCount` can stay an
+async RSC in the server-rendered hero.
+
+**The six-at-zero run.** The install-first rework recorded, rather than
+fixed, the run of six technical sections between the lore carriers (positions
+5-10, loop → mechanisms → showcase → models → benchmarks → integrity, one
+over-over the folder's own three-at-zero rule). The fix the AGENTS.md had
+already sketched is now applied: `field-notes` moved from position 11 to
+position 8, splitting the run into two runs of exactly three (loop →
+mechanisms → showcase, models → benchmarks → integrity) with the name story
+as the mid-page breather. The old objection to moving field-notes — psychic
+sections clustering next to alphabet — was always an objection to position 5,
+not to 8: at 8 the three Unown sections stay spread (hero, alphabet,
+field-notes at 1, 4, 8) and the proof path stays adjacent. The move re-walked
+the hue allocation, and the re-walk came out cleaner than the original: with
+the reserved hue mid-page instead of in the tail, the gold → aqua → leaf →
+magma cycle runs unbroken from quickstart to finale — `faq` takes the gold
+the cycle offers and `changelog` the aqua after it — and the changelog
+exception paragraph is gone from the allocation rule. The composition test
+now pins the entire fourteen-section hue walk, so the allocation paragraph
+cannot silently drift again.

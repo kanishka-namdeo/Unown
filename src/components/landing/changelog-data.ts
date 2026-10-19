@@ -30,33 +30,82 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 103;
+export const CHANGELOG_TOTAL_ENTRIES = 107;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 51,
-  "Changed": 17,
+  "Changed": 18,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 24,
   "Security": 3,
-  "Behavior": 8
+  "Behavior": 11
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 62,
+    "total": 66,
     "counts": {
       "Added": 23,
-      "Changed": 15,
+      "Changed": 16,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 16,
       "Security": 0,
-      "Behavior": 8
+      "Behavior": 11
     },
     "groups": [
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "hooks: multi-type user-configurable hook handlers + semantic output + 7 new event surfaces",
+            "behavior": true
+          },
+          {
+            "title": "adversary: file-gated PreToolUse LLM reviewer",
+            "behavior": true
+          },
+          {
+            "title": "injection-scanner: 106-pattern prompt-injection scanner with risk levels + categories + scan-mode awareness",
+            "behavior": true
+          },
+          {
+            "title": "web_search: coding-plan DashScope keys (sk-sp-…) are refused up front",
+            "behavior": true
+          },
+          {
+            "title": "automations (read-only mode): the unattended toolset gains web_search + webfetch",
+            "behavior": true
+          },
+          {
+            "title": "/undo is session-scoped by default (--all for the rest)",
+            "behavior": true
+          },
+          {
+            "title": "LSP crash recovery",
+            "behavior": true
+          },
+          {
+            "title": "MCP resilience",
+            "behavior": true
+          },
+          {
+            "title": "Project-config trust gate",
+            "behavior": true
+          },
+          {
+            "title": "/review reviewers are read-only",
+            "behavior": true
+          },
+          {
+            "title": "/goal completion requires both evidence kinds and a todo trail",
+            "behavior": true
+          }
+        ]
+      },
       {
         "bucket": "Added",
         "items": [
@@ -157,6 +206,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Changed",
         "items": [
+          {
+            "title": "landing: the hero's install chip grows OS tabs…",
+            "behavior": false
+          },
           {
             "title": "landing: install-and-try-first — quickstart moves to position 2 and the hero's five-command panel becomes one…",
             "behavior": false
@@ -285,43 +338,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "engine: hardening batch from the deep audit (6 defects)",
             "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Behavior",
-        "items": [
-          {
-            "title": "web_search: coding-plan DashScope keys (sk-sp-…) are refused up front",
-            "behavior": true
-          },
-          {
-            "title": "automations (read-only mode): the unattended toolset gains web_search + webfetch",
-            "behavior": true
-          },
-          {
-            "title": "/undo is session-scoped by default (--all for the rest)",
-            "behavior": true
-          },
-          {
-            "title": "LSP crash recovery",
-            "behavior": true
-          },
-          {
-            "title": "MCP resilience",
-            "behavior": true
-          },
-          {
-            "title": "Project-config trust gate",
-            "behavior": true
-          },
-          {
-            "title": "/review reviewers are read-only",
-            "behavior": true
-          },
-          {
-            "title": "/goal completion requires both evidence kinds and a todo trail",
-            "behavior": true
           }
         ]
       }

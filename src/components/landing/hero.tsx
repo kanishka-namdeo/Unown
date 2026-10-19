@@ -1,12 +1,10 @@
 import { ArrowRight } from "lucide-react";
 import { Glyph } from "./glyph";
 import type { GlyphId } from "./glyphs";
+import { InstallPanel } from "./install-panel";
 import { SessionReplay } from "./session-replay";
 import { CopyButton, GhostLink, PrimaryLink, GITHUB_URL, DOCS_URL } from "./shell";
 import { StarCount } from "./star-count";
-
-const INSTALL_ONE_LINER =
-  "git clone https://github.com/kanishka-namdeo/Unown.git && cd Unown && bun run agent:install";
 
 /**
  * The prompt a visitor can hand the coding agent they already use, so the
@@ -166,33 +164,15 @@ export function Hero() {
 
             {/* Install. For a clone-and-run tool the command is the conversion,
                 so it sits above the fold rather than at the bottom of the page:
-                one copyable chip (the whole clone-and-install path), the chain
-                that follows it, and the delegation prompt for visitors who
-                would rather have their agent run the install. The full
-                command-by-command sequence is the next section down. */}
-            <div className="mt-8 max-w-xl overflow-hidden gb-panel">
-              <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-                  install · one command
-                </span>
-                <CopyButton text={INSTALL_ONE_LINER} label="Copy the install command" />
-              </div>
-              <pre
-                tabIndex={0}
-                aria-label="terminal — clone and install unown"
-                className="term-lines overflow-x-auto px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-              >
-                {INSTALL_ONE_LINER}
-              </pre>
-              <p className="border-t border-line px-3 py-2 font-mono text-[11px] leading-relaxed text-dim">
-                {"then: "}
-                <span className="text-ink">unown setup</span>
-                <span className="text-faint"> {'\u2192'} </span>
-                <span className="text-ink">bun run agent:start</span>
-                <span className="text-faint"> {'\u2192'} </span>
-                <span className="text-ink">unown</span>
-              </p>
-            </div>
+                one copyable chip per OS tab (macOS/Linux get the one-line
+                installer, which bootstraps bun itself; Windows gets the clone
+                path, since a fresh Windows box has no sh), the chain that
+                follows either command, and the delegation prompt for visitors
+                who would rather have their agent run the install. The tabbed
+                panel is a client island so the chip stays server-rendered
+                around it. The full command-by-command sequence is the next
+                section down. */}
+            <InstallPanel />
 
             {/* the delegation path: your agent installs Unown */}
             <details className="group mt-3 max-w-xl border border-line bg-panel-2/40">

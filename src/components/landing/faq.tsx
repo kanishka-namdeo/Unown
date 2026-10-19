@@ -53,7 +53,7 @@ const FAQ = [
 
 export function FaqSection() {
   return (
-    <section data-hue="aqua" id="faq" className="scroll-mt-16 border-t border-line py-20 sm:py-24">
+    <section data-hue="gold" id="faq" className="scroll-mt-16 border-t border-line py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-14">
           <FadeUp>

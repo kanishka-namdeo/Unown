@@ -28,25 +28,34 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *
  * The order is the argument, and it is deliberate:
  *
- *   hero (claim + one command)               what it is, and the install chip
+ *   hero (claim + install, per OS)           what it is, and the install chip
  *   quickstart                               clone → model → session, in full
  *   origin (one Unown alone is just pi)      why it is two halves, not one
  *   alphabet (the identity)                  the pun, and the 28 mechanisms
  *   loop (the real artifacts)                what each stage actually writes
  *   mechanisms (problem, then the answers)   the objection, then the receipts
  *   showcase                                 what the engine looks like
+ *   field notes                              where the name came from
  *   models                                   the lock-in objection, answered
  *   benchmarks                               proof, including where it loses
  *   integrity                                the objection that decides installs
- *   field notes                              where the name came from
  *   faq                                      the remaining hard questions
  *   changelog (from CHANGELOG.md)            the record, still being written
  *   finale                                   the last ask, plus the toy
  *
  * Quickstart sits at position 2 because for a clone-and-run tool the install
- * IS the argument: the hero's one-line chip and this section's five commands
+ * IS the argument: the hero's per-OS chip and this section's five commands
  * are the first thing a convinced visitor needs, one scroll apart. The lore
  * sections (origin, alphabet) then take over the explanation.
+ *
+ * Field notes sits at position 8 (moved from 11, 2026-10-19) so the technical
+ * run loop → mechanisms → showcase never exceeds the folder's three-at-zero
+ * lore rule: the six-section dry stretch it used to close is now two runs of
+ * exactly three (5-7 and 9-11) with the name story as the breather between
+ * them. The proof path benchmarks → integrity stays adjacent, and the three
+ * psychic sections (hero, alphabet, field-notes) stay spread across the page,
+ * so the hue rotation reads clean from quickstart to finale with no
+ * exceptions — see the allocation paragraph in the landing folder's AGENTS.md.
  *
  * `NAV_LINKS` in `shell.tsx` mirrors the top-level anchors. If you add a
  * section, add it there too or the page grows an orphan.
@@ -76,10 +85,10 @@ export default function LandingPage() {
             <LoopSection />
             <MechanismsSection />
             <ShowcaseSection />
+            <FieldNotesSection />
             <ModelsBand />
             <BenchmarksSection />
             <IntegritySection />
-            <FieldNotesSection />
             <FaqSection />
             <ChangelogRail />
             <FinaleSection />

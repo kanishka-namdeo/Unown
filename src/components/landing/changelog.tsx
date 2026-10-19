@@ -196,7 +196,7 @@ export function ChangelogRail() {
 
   return (
     <section
-      data-hue="magma"
+      data-hue="aqua"
       id="changelog"
       className="scroll-mt-16 border-y border-line py-20 sm:py-24"
     >

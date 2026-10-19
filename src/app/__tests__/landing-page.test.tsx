@@ -57,6 +57,50 @@ describe("landing composition root", () => {
     expect(rail).toBe(faq + 1);
     expect(rail).toBe(SECTION_COUNT - 2); // finale is the last section
     expect(at("showcase")).toBeLessThan(faq);
+
+    // Field notes (position 8, moved from 11 in 2026-10-19) breaks the
+    // technical run loop → mechanisms → showcase into two runs of exactly
+    // three — the folder's three-at-zero lore rule — by sitting between "what
+    // the engine looks like" and the proof path that answers the objections.
+    const fieldNotes = at("field-notes");
+    expect(fieldNotes).toBe(at("showcase") + 1);
+    // The models band carries no anchor id (it is the page's one unanchored
+    // section), so it is asserted by position: the aqua band right after
+    // field notes, then the proof path — benchmarks → integrity, one scroll.
+    expect(kids[fieldNotes + 1]?.getAttribute("data-hue")).toBe("aqua");
+    expect(kids[fieldNotes + 1]?.id).toBe("");
+    expect(kids[fieldNotes + 2]?.id).toBe("benchmarks");
+    expect(kids[fieldNotes + 3]?.id).toBe("integrity");
+  });
+
+  test("the hue walk matches the allocation paragraph: one cycle from quickstart, psychic reserved, no exceptions", () => {
+    const { container } = render(<LandingPage />);
+    const kids = [...(container.querySelector("main")?.children ?? [])];
+    const hues = kids.map((k) => k.getAttribute("data-hue"));
+    // The cycle runs gold → aqua → leaf → magma from quickstart straight
+    // through the finale; `psychic` is reserved for the three sections about
+    // Unown itself (hero, alphabet, field-notes) and interrupts it without
+    // disturbing it. No two neighbours share a hue, and since field-notes
+    // moved to position 8 the walk needs no exception paragraphs at all.
+    expect(hues).toEqual([
+      "psychic", // hero
+      "gold", // quickstart — the walk starts here
+      "aqua", // origin
+      "psychic", // alphabet
+      "leaf", // loop
+      "magma", // mechanisms
+      "gold", // showcase
+      "psychic", // field-notes
+      "aqua", // models
+      "leaf", // benchmarks
+      "magma", // integrity
+      "gold", // faq
+      "aqua", // changelog
+      "leaf", // finale
+    ]);
+    for (let i = 1; i < hues.length; i++) {
+      expect(hues[i]).not.toBe(hues[i - 1]);
+    }
   });
 
   test("no in-page anchor points at an element that does not exist", () => {

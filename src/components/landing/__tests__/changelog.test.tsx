@@ -146,7 +146,7 @@ describe("landing changelog rail", () => {
     const { container } = rail();
     const section = container.querySelector("section");
     expect(section?.id).toBe("changelog");
-    expect(section?.getAttribute("data-hue")).toBe("magma");
+    expect(section?.getAttribute("data-hue")).toBe("aqua");
   });
 
   test("no markdown survives from the changelog into the rendered copy", () => {

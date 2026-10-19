@@ -5,6 +5,12 @@
 // edits no test exercises. These tests pin the *decisions* those edits encode:
 //   - the install path actually starts the engine (bun run agent:start), and the
 //     hero copy carries no placeholder key that would paste into a broken command;
+//   - the hero's install chip is tabbed per OS (the Bun/Deno/uv pattern): the
+//     default tab shows the documented one-line installer plus the sandbox
+//     backend the engine really resolves on that platform, Windows carries the
+//     clone path (a fresh Windows box has no sh), exactly one <pre> stays on the
+//     chip, and detectOS is pinned branch by branch — including the darwin/win
+//     substring trap;
 //   - the H1 the deploy gate asserts verbatim ("It reads what you write down") is
 //     still present, so a copy edit cannot silently break verify-deploy;
 //   - every "Dashboard" affordance points at the in-page screenshots, not at the
@@ -28,6 +34,7 @@ mock.module("../star-count", () => ({
 }));
 
 const { Hero } = await import("../hero");
+const { detectOS } = await import("../install-panel");
 const { IntegritySection } = await import("../integrity");
 const { MechanismsSection } = await import("../mechanisms");
 const { ModelsBand } = await import("../models");
@@ -41,7 +48,19 @@ afterEach(() => {
 });
 
 describe("landing hero", () => {
+  // The install chip auto-detects the OS after mount, so every hero test pins
+  // the user agent first — the default must be a decision, not whatever the
+  // test runner's navigator happens to claim.
+  const setUA = (ua: string) => {
+    Object.defineProperty(window.navigator, "userAgent", {
+      value: ua,
+      configurable: true,
+    });
+  };
+  const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
+
   test("states the category, keeps the gated H1, and offers a runnable install", () => {
+    setUA(MAC_UA);
     const { container } = render(<Hero />);
     const text = container.textContent ?? "";
     expect(text).toContain("Open-source AI coding agent");
@@ -52,16 +71,17 @@ describe("landing hero", () => {
     expect(container.innerHTML).not.toContain("sk-");
   });
 
-  test("the hero install is one copyable command plus the chain that follows it", () => {
-    // One command chip above the fold — the whole clone-and-install path in a
-    // single copyable line (the install-first pattern this page moved to), not
-    // a five-command wall. The full command-by-command sequence stays in the
-    // quickstart section, which sits directly below the hero.
+  test("the install chip defaults to the visitor's OS: one command, its sandbox note, the chain", () => {
+    // One command chip above the fold — per OS tab, not a five-command wall.
+    // The full command-by-command sequence stays in the quickstart section,
+    // which sits directly below the hero.
+    setUA(MAC_UA);
     const { container } = render(<Hero />);
     const text = container.textContent ?? "";
-    expect(text).toContain(
-      "git clone https://github.com/kanishka-namdeo/Unown.git && cd Unown && bun run agent:install",
-    );
+    // macOS default tab: the documented one-line installer (docs/install.md),
+    // and the sandbox backend the engine resolves on darwin (bwrap.ts).
+    expect(text).toContain("curl -fsSL https://unown-nine.vercel.app/install.sh | sh");
+    expect(text).toContain("Seatbelt");
     // the payoff chain: connect a model, boot the stack, start a session
     expect(text).toContain("then: unown setup");
     expect(text).toContain("bun run agent:start");
@@ -69,7 +89,71 @@ describe("landing hero", () => {
     expect(container.querySelectorAll("pre")).toHaveLength(1);
   });
 
+  test("the tabs follow the WAI-ARIA pattern and exactly one is selected", () => {
+    setUA(MAC_UA);
+    const { container } = render(<Hero />);
+    const tablist = container.querySelector('[role="tablist"]');
+    expect(tablist?.getAttribute("aria-label")).toBe("Operating system");
+    const tabs = [...container.querySelectorAll('[role="tab"]')];
+    expect(tabs.map((t) => t.textContent)).toEqual(["macOS", "Linux", "Windows"]);
+    const selected = tabs.filter((t) => t.getAttribute("aria-selected") === "true");
+    expect(selected).toHaveLength(1);
+    expect(selected[0]?.textContent).toBe("macOS");
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.getAttribute("aria-labelledby")).toBe(selected[0]?.id);
+    // roving tabindex: the selected tab is the only one in the tab order
+    expect(selected[0]?.getAttribute("tabindex")).toBe("0");
+    expect(tabs.filter((t) => t.getAttribute("tabindex") === "0")).toHaveLength(1);
+  });
+
+  test("switching the OS tab swaps the command and the sandbox note", () => {
+    setUA(MAC_UA);
+    const { container } = render(<Hero />);
+    const windowsTab = screen.getByRole("tab", { name: "Windows" });
+    fireEvent.click(windowsTab);
+    let text = container.textContent ?? "";
+    // Windows has no sh on a fresh box, so its tab carries the clone path and
+    // the bun prerequisite from docs/windows.md — the page's canonical one-liner.
+    expect(text).toContain(
+      "git clone https://github.com/kanishka-namdeo/Unown.git && cd Unown && bun run agent:install",
+    );
+    expect(text).toContain("irm bun.sh/install.ps1");
+    expect(text).toContain("in-process jail");
+    // one command at a time: the installer line left the chip with the tab
+    expect(text).not.toContain("unown-nine.vercel.app/install.sh");
+    expect(windowsTab.getAttribute("aria-selected")).toBe("true");
+    expect(container.querySelectorAll("pre")).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Linux" }));
+    text = container.textContent ?? "";
+    expect(text).toContain("curl -fsSL https://unown-nine.vercel.app/install.sh | sh");
+    expect(text).toContain("bubblewrap");
+    expect(text).not.toContain("Seatbelt");
+  });
+
+  test("auto-detection honours the user agent without gating the other tabs", () => {
+    setUA("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+    const { container } = render(<Hero />);
+    const selected = [...container.querySelectorAll('[role="tab"]')].find(
+      (t) => t.getAttribute("aria-selected") === "true",
+    );
+    expect(selected?.textContent).toBe("Windows");
+  });
+
+  test("detectOS: every branch, including the darwin/win substring trap", () => {
+    // "darwin" contains "win" as a substring — the windows probe must match
+    // whole tokens, or every Mac visitor gets the Windows tab.
+    expect(detectOS(undefined, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")).toBe("macos");
+    expect(detectOS(undefined, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("windows");
+    expect(detectOS("macOS", "anything")).toBe("macos");
+    expect(detectOS("Windows", "anything")).toBe("windows");
+    expect(detectOS(undefined, "Mozilla/5.0 (X11; Linux x86_64)")).toBe("linux");
+    expect(detectOS(undefined, "Mozilla/5.0 (CrOS x86_64 14541.0.0)")).toBe("linux");
+    expect(detectOS(undefined, "something unrecognised")).toBe("macos"); // SSR default
+  });
+
   test("offers the delegation path: your agent installs Unown", () => {
+    setUA(MAC_UA);
     const { container } = render(<Hero />);
     const details = container.querySelector("details");
     expect(details).toBeTruthy();

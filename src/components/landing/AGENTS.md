@@ -359,20 +359,22 @@ parallel ones.
   and `toneAttr()`. `[data-tone="…"]` on a furniture element still overrides
   just that element's `--tone-fill` / `--tone-rim`.
   - **Allocation is a rule, not taste:** `psychic` is reserved for the three
-    sections about Unown itself (hero, alphabet, field-notes); the other eleven
-    cycle `aqua → leaf → magma → gold` in page order, so no two adjacent
-    sections share a hue and "which hue does this get" is answerable without
-    opening the file. When the cycle's next hue would collide with a neighbour,
-    take the next one after it and say so here. Two standing exceptions:
-    `changelog` sits between `faq` (aqua) and `finale` (leaf) and takes
-    `magma`, because `leaf` — the hue the rotation offers next — is already
-    finale's; and since the install-first rework (2026-10-19) `quickstart`
-    holds `gold` at position 2, between hero (psychic) and origin (aqua) — no
-    collision, but it means the rotation now reads from origin: aqua, leaf,
-    magma, gold, aqua, leaf, magma (origin → mechanisms → showcase → models →
-    benchmarks → integrity), restarting at aqua after field-notes (faq,
-    aqua). A section that joins or leaves the middle of the page re-walks this
-    paragraph.
+    sections about Unown itself (hero, alphabet, field-notes); the other
+    eleven cycle `aqua → leaf → magma → gold` in page order, so no two
+    adjacent sections share a hue and "which hue does this get" is answerable
+    without opening the file. When the cycle's next hue would collide with a
+    neighbour, take the next one after it and say so here. The walk starts at
+    `quickstart` (gold, position 2, set by the install-first rework) and now
+    runs the whole page with no exceptions: gold, aqua, leaf, magma (origin →
+    loop → mechanisms → showcase), across field-notes (psychic, position 8 —
+    the reserved hue interrupts the cycle without disturbing it), then aqua,
+    leaf, magma, gold, aqua, leaf (models → benchmarks → integrity → faq →
+    changelog → finale). Moving field-notes out of the tail (2026-10-19)
+    let `faq` take the gold the cycle offered and `changelog` the aqua after
+    it, which deleted the old changelog exception. A section that joins or
+    leaves the middle of the page re-walks this paragraph — the composition
+    test pins the whole walk, so a drift fails the run before a review has
+    to catch it.
   - `SectionHead`, `TerminalWindow` and `BrowserFrame` take **no** hue prop —
     they inherit their section. A header that could disagree with its section is
     how the page gets eleven hues fighting each other.
@@ -424,15 +426,17 @@ parallel ones.
   sits near 1:2 lore:tech, but that number hides two different problems, and
   they need opposite fixes:
   1. **A long dry run.** Lore is carried by `origin`, `alphabet` and
-     `field-notes`, which sit at positions 3, 4 and 11 (quickstart took
-     position 2 in the install-first rework, 2026-10-19) — so positions 5-10
-     (loop, mechanisms, showcase, models, benchmarks, integrity) are six
-     consecutive sections at 0% lore. That still exceeds the rule below; it is
-     recorded residue, not a solved state. Rule:
-     **no more than three consecutive sections at zero.** The tail run is
-     `faq` → `changelog` → `finale` (positions 12-14), which sits exactly on
-     that limit: a fourth zero-lore section belongs before position 11, not
-     after it.
+     `field-notes`, which sit at positions 3, 4 and 8 (quickstart took
+     position 2 in the install-first rework; field-notes moved up from 11
+     later the same day — see its bullet below). Rule:
+     **no more than three consecutive sections at zero.** The page now meets
+     it three times over: loop → mechanisms → showcase (5-7), models →
+     benchmarks → integrity (9-11) and faq → changelog → finale (12-14) are
+     each exactly three, each ended by a lore section. The earlier state —
+     positions 5-10 all technical, six in a row — was recorded residue for a
+     few hours before the field-notes move closed it. If a section ever joins
+     or leaves the middle of the page, re-check all three runs, not just the
+     one it touches.
   2. **A repeated punchline register, which is what actually reads as boring.**
      Sections 4-10 were all aphorisms, and several were the *same* aphorism:
      "An agent that forgets is a tax you pay every morning" and "Most agents
@@ -464,27 +468,40 @@ parallel ones.
      figure that ticks from zero, reads as fabrication on a page whose entire
      argument is that its numbers are checkable — animate the container, never
      the measurement.
-- **`field-notes` stays at position 11 despite reading better at 4.** Moving it
-  next to `alphabet` would cluster the three `psychic` sections adjacently and
-  break the hue rule that no two neighbouring sections share a hue — the three
-  Unown sections are deliberately interleaved for that reason. Front-loading
-  the lore also pushes the proof path (benchmarks → integrity) into one
-  technical run — but see the install-first rework below: quickstart now sits
-  at position 2, so the page argues install before it argues proof. If someone
-  wants field-notes moved, the hue allocation has to be rewritten with it, not
-  around it.
-- **Install first (2026-10-19 rework): the hero carries one command, and
-  quickstart is the next section down.** For a clone-and-run tool the command
-  is the conversion, so the hero shows a single copyable one-liner
-  (`git clone … && cd Unown && bun run agent:install`) with the
-  `unown setup → bun run agent:start → unown` chain printed under it, plus a
-  `<details>` delegation prompt for visitors who would rather have their
-  existing coding agent run the install (the pattern ollama.com/download
-  ships). The full command-by-command sequence stays the canonical home in
-  `quickstart.tsx` — the hero chip must never grow back into a command wall,
-  and the delegation prompt is an instruction (every command in it is real),
-  not a claim. Research receipts: `docs/landing-research.md`,
-  "2026-10-19 — install and try first".
+- **`field-notes` sits at position 8 (moved from 11, 2026-10-19) to break the
+  six-at-zero technical run, and position 4 is still wrong for it.** The
+  original objection to moving it up — clustering the three `psychic`
+  sections next to `alphabet` — applies to position 5, not to 8: at 8 the
+  Unown sections stay spread (hero 1, alphabet 4, field-notes 8), the hue
+  cycle continues across the reserved hue untouched, and the proof path
+  (benchmarks → integrity) stays adjacent. What the move buys is rhythm: the
+  name story lands mid-scroll, between "what the engine looks like" and the
+  lock-in objection, so no stretch of the page runs more than three screens
+  without lore. The tail hue re-walk (faq → gold, changelog → aqua) shipped
+  with the move, not around it.
+- **Install first (2026-10-19 rework; OS tabs landed the same day): the hero
+  carries one command per OS tab, and quickstart is the next section down.**
+  For a clone-and-run tool the command is the conversion, so the hero's chip
+  is a three-tab install panel (`install-panel.tsx`, a client island inside
+  the server-rendered hero — it must stay one, or StarCount stops being an
+  RSC): macOS and Linux show the one-line installer (`curl … install.sh |
+  sh`, which refuses root, checks git and bootstraps bun itself), Windows
+  shows the clone path (`git clone … && bun run agent:install` — a fresh
+  Windows box has no sh) with the bun prerequisite and the sandbox reality
+  in the tab's note line. The tab auto-defaults from the user agent
+  (`detectOS()`, pinned branch by branch) and never gates: every tab is one
+  click away, the `unown setup → bun run agent:start → unown` chain is
+  printed under all of them, and a `<details>` delegation prompt serves
+  visitors who would rather have their existing coding agent run the install
+  (the pattern ollama.com/download ships). The tab notes may only quote the
+  sandbox trio the page already claims — bubblewrap / Seatbelt /
+  in-process jail, with `resolveOsSandboxBackend()` in
+  `pi-repo/packages/self-learning/src/bwrap.ts` as the source of truth — the
+  chip must never grow back into a command wall (exactly one `<pre>`,
+  pinned), and the delegation prompt is an instruction (every command in it
+  is real), not a claim. Research receipts: `docs/landing-research.md`,
+  "2026-10-19 — install and try first" and "2026-10-19 — the OS tabs, after
+  all".
 - Voice: concrete, honest about limits, no buzzwords. The integrity section gets
   the whole section because for a self-modifying agent that is the objection
   that decides installs. **The 0.0 extension-authoring admission now lives in
