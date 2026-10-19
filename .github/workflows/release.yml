@@ -110,14 +110,28 @@ jobs:
           [ "$code" -le 1 ] || { echo "::error::doctor crashed (exit $code)"; exit 1; }
           printf '%s\n' "$out" | grep -q "agent dir" || { echo "::error::doctor table missing"; exit 1; }
       - name: Artifact plan gate
-        # Runs the builder's own unit suite and rejects a bad plan BEFORE
-        # anything is compiled or published: unknown platform, bad flag, or a
-        # platform list that lost a target all exit non-zero here.
+        # Two traps, both measured on bash 5.2.21. (1) `x=$(cmd | wc -l)` under
+        # GitHub's `bash -eo pipefail` does NOT fail the step when cmd dies — the
+        # shell aborts at the assignment with exit status 0, i.e. a green step
+        # that checked nothing; so the producer runs as its own statement and the
+        # count reads a file, with `|| true` so a zero-match grep cannot itself
+        # become that silent pass. (2) `A && B` as a statement returns non-zero
+        # when A is false, which set -e then aborts — every optional test below is
+        # an explicit `if`.
         shell: bash
         run: |
+          set -euo pipefail
+          if ! bun scripts/build-artifacts.ts --dry-run > artifact-plan.txt; then
+            echo "::error::the artifact builder could not even print its plan"; exit 1; fi
+          n=$(grep -c . artifact-plan.txt || true)
+          if [ "$n" != "7" ]; then
+            echo "::error::the plan is $n lines, expected a header plus 6 targets"; cat artifact-plan.txt; exit 1; fi
+          for p in darwin-arm64 darwin-x64 linux-arm64 linux-x64 windows-arm64 windows-x64; do
+            if ! grep -q "^$p" artifact-plan.txt; then
+              echo "::error::$p is not in the build plan — a target disappeared"; exit 1; fi
+          done
+          rm -f artifact-plan.txt
           node --test scripts/build-artifacts.test.mjs
-          plan="$(bun scripts/build-artifacts.ts --dry-run | tail -n +2 | wc -l)"
-          [ "$plan" = "6" ] || { echo "::error::the builder plans $plan platforms, expected 6"; exit 1; }
 
   build:
     name: Production build + per-OS artifacts + SBOM
@@ -155,6 +169,29 @@ jobs:
           kill $server_pid
       - name: Build the six per-OS CLI artifacts
         run: bun scripts/build-artifacts.ts --out release-assets
+      - name: Every planned artifact exists, and no extra
+        # Closest gate to the producer: the builder exits 0 after compiling
+        # whatever it was given, so the plan (verify job) and the payload are
+        # compared here rather than at publish time.
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! bun scripts/build-artifacts.ts --list-platforms > planned.txt; then
+            echo "::error::could not read the build plan"; exit 1; fi
+          for p in $(cat planned.txt); do
+            case "$p" in
+              windows-*) want="unown-$p.zip" ;;
+              *) want="unown-$p.tar.gz" ;;
+            esac
+            if [ ! -f "release-assets/$want" ]; then
+              echo "::error::the builder planned $p but produced no release-assets/$want"; exit 1; fi
+          done
+          rm -f planned.txt
+          # find, not `ls glob | wc -l`: an unmatched glob makes ls exit non-zero,
+          # and inside $(( $(…) )) that is how a count becomes a silent green step.
+          n=$(find release-assets -maxdepth 1 \( -name 'unown-*.tar.gz' -o -name 'unown-*.zip' \) | wc -l)
+          if [ "$n" != "6" ]; then echo "::error::found $n archives, expected exactly 6"; exit 1; fi
+          if [ ! -f release-assets/sha256sums.txt ]; then echo "::error::no sha256sums.txt in the payload"; exit 1; fi
       - name: SBOM (SPDX) of the dependency tree
         # syft scans the installed node_modules + vendored pi-repo tree (the
         # runtime dependency surface a clone-to-install user actually gets).
@@ -254,7 +291,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          archive="$(ls payload/unown-${{ matrix.platform }}.* | head -1)"
+          # Glob loop, not `archive="$(ls payload/unown-<p>.* | head -1)"`: with no
+          # match ls exits non-zero, and inside a command substitution GitHub's
+          # `bash -eo pipefail` aborts the step with status 0 — the missing archive
+          # would have read as a pass. An unmatched glob simply stays literal and
+          # fails the -e test, so the guard below is the thing that speaks.
+          archive=""
+          for f in payload/unown-${{ matrix.platform }}.*; do
+            if [ -e "$f" ]; then archive="$f"; break; fi
+          done
+          if [ -z "$archive" ]; then
+            echo "::error::the payload has no archive for ${{ matrix.platform }}"; exit 1; fi
           echo "archive: $archive"
           mkdir -p extracted
           case "$archive" in
@@ -264,8 +311,7 @@ jobs:
               # Expand-Archive reads correctly.
               export ARCHIVE_PATH="$(cygpath -w "$archive" 2>/dev/null || echo "$archive")"
               export DESTINATION_PATH="$(cygpath -w extracted 2>/dev/null || echo "$PWD/extracted")"
-              powershell.exe -NoProfile -NonInteractive -Command `
-                'Expand-Archive -LiteralPath $env:ARCHIVE_PATH -DestinationPath $env:DESTINATION_PATH -Force'
+              powershell.exe -NoProfile -NonInteractive -Command 'Expand-Archive -LiteralPath $env:ARCHIVE_PATH -DestinationPath $env:DESTINATION_PATH -Force'
               ;;
             *)
               tar -xzf "$archive" -C extracted
@@ -277,13 +323,20 @@ jobs:
         run: |
           set -euo pipefail
           bin="extracted/unown-${{ matrix.platform }}/unown"
-          [ -f "$bin" ] || bin="$bin.exe"
+          if [ ! -f "$bin" ]; then bin="$bin.exe"; fi
+          if [ ! -f "$bin" ]; then
+            echo "::error::the archive for ${{ matrix.platform }} contained no runnable binary"; exit 1; fi
           chmod +x "$bin" 2>/dev/null || true
-          version="$("$bin" --version)"
+          # `if !` because a version probe that dies must be a NAMED failure:
+          # version="$($bin --version)" alone aborts this step with status 0 under
+          # GitHub's pipefail shell, which would publish a release whose binaries
+          # never ran.
+          if ! version="$("$bin" --version 2>&1)"; then
+            echo "::error::the shipped binary could not report a version: $version"; exit 1; fi
           echo "binary reports: $version (tag: ${GITHUB_REF_NAME#v})"
-          [ "$version" = "${GITHUB_REF_NAME#v}" ] || {
+          if [ "$version" != "${GITHUB_REF_NAME#v}" ]; then
             echo "::error::the shipped binary reports $version, the tag is ${GITHUB_REF_NAME#v} — the version define did not land"
-            exit 1; }
+            exit 1; fi
           "$bin" --help | grep -q "self-improving terminal coding agent"
           code=0
           out="$("$bin" doctor 2>&1)" || code=$?
@@ -321,20 +374,26 @@ jobs:
           path: release-assets
       - name: Assert the full asset set is present
         # softprops silently skips a file that is not there, so a release that
-        # quietly lost three of six binaries would still publish green. Count
-        # the archives and pin the expected names before calling the action.
+        # quietly lost three of six binaries would still publish green. The nine
+        # names are spelled out here: they must equal the `files:` list below,
+        # and they are the same six targets the builder's suite and the verify
+        # job's plan gate pin.
         shell: bash
         run: |
           set -euo pipefail
           cd release-assets
-          for f in release-checklist.md sbom-spdx.json sha256sums.txt; do
-            test -f "$f" || { echo "::error::missing asset: $f"; exit 1; }
+          expected=(
+            unown-darwin-arm64.tar.gz unown-darwin-x64.tar.gz
+            unown-linux-arm64.tar.gz unown-linux-x64.tar.gz
+            unown-windows-arm64.zip unown-windows-x64.zip
+            sha256sums.txt sbom-spdx.json release-checklist.md
+          )
+          for f in "${expected[@]}"; do
+            test -f "$f" || { echo "::error::missing release asset: $f"; exit 1; }
           done
-          for p in darwin-arm64 darwin-x64 linux-arm64 linux-x64 windows-arm64 windows-x64; do
-            ls unown-$p.tar.gz unown-$p.zip >/dev/null 2>&1 || { echo "::error::missing artifact: unown-$p"; exit 1; }
-          done
-          extra="$(ls unown-*.tar.gz unown-*.zip 2>/dev/null | wc -l)"
-          [ "$extra" = "6" ] || { echo "::error::found $extra archives, expected exactly 6"; exit 1; }
+          diff -u <(printf '%s\n' "${expected[@]}" | sort) <(ls | sort) || {
+            echo "::error::the payload holds a file the release does not expect, or is missing one"
+            exit 1; }
           sha256sum -c sha256sums.txt
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
