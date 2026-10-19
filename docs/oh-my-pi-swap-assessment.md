@@ -127,9 +127,10 @@ Scope swept: `pi-repo/packages/self-learning/src/**/*.ts` + `bin/unown` +
 > **Figures below re-measured 2026-10-17.** [Sibling record](opencode-swap-assessment.md) §3 swept this same scope and found 12,038 lines, 5 files naming pi, and 34 identifier-bearing lines. The shape of the conclusion is unchanged — the port is small, the risk lives in the chokepoints — but read those as the live counts.
 
 The Next.js app and CI never import pi; the dashboard talks to the engine only
-over HTTP/SSE on :3030. `src/components/landing/mechanisms.tsx:6` and
-`.github/workflows/ci.yml:82` mention pi as **documentation URLs and a script
-path**, not as a dependency **[V-vendor]**.
+over HTTP/SSE on :3030. The landing page (`src/components/landing/loop.tsx:158`
+— the pair strip, since the 2026-10-20 merge; the reference lived in
+`mechanisms.tsx` before it) and `.github/workflows/ci.yml:82` mention pi as
+**documentation URLs and a script path**, not as a dependency **[V-vendor]**.
 
 So the honest headline: the port is small. Under 2% of our code touches the
 harness, and the candidate keeps the event names we subscribe to verbatim
