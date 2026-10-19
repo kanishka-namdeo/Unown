@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 101;
+export const CHANGELOG_TOTAL_ENTRIES = 103;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 49,
+  "Added": 51,
   "Changed": 17,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 60,
+    "total": 62,
     "counts": {
-      "Added": 21,
+      "Added": 23,
       "Changed": 15,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "permissions: granular user-configurable allow/deny/ask rules",
+            "behavior": false
+          },
+          {
+            "title": "usage: persistent token/latency/cost accounting for the bridge + unown usage",
+            "behavior": false
+          },
           {
             "title": "checkpoints: /redo — the missing half of /undo",
             "behavior": false

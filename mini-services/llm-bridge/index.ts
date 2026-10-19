@@ -17,11 +17,16 @@
  *   - true SSE streaming passthrough (the upstream supports native streaming)
  *   - request serialization + spacing + 429/5xx backoff retries
  *   - request log ring buffer + health endpoint for the dashboard
+ *   - persistent usage & cost tracking: every proxied completion is
+ *     appended to <state dir>/usage-log.jsonl (see ./usage.ts) and served
+ *     back as aggregates on GET /v1/usage?days=N&model=M
  *
  * This file is the thin SERVING layer: routing, request shaping, tool-call
  * sanitization, SSE stats folding and retry/backoff math live in ./pure.ts
- * (unit-tested by ./pure.test.ts). Environment parsing goes through
- * loadConfig(env) so tests can construct configs without process.env.
+ * (unit-tested by ./pure.test.ts). Usage persistence, pricing and
+ * aggregation live in ./usage.ts (unit-tested by ./usage.test.ts).
+ * Environment parsing goes through loadConfig(env) so tests can construct
+ * configs without process.env.
  *
  * Environment:
  *   BRIDGE_PORT            listen port (3031)
@@ -42,7 +47,13 @@
  *                          (llama.cpp runs keyless — leave empty)
  *   BRIDGE_LOCAL_MODELS    comma-separated local model ids; empty = any id
  *                          with the `local-` prefix routes locally
+ *   UNOWN_BRIDGE_STATE_DIR where usage-log.jsonl lives (default: <repo>/.run
+ *                          when running from the repo, else ~/.unown/bridge)
+ *   UNOWN_PRICE_<MODEL>_IN/OUT  USD per 1M tokens, overrides the built-in
+ *                          ESTIMATE pricing table (see ./usage.ts)
  */
+
+import { join } from "node:path";
 
 import {
         loadConfig,
@@ -59,6 +70,13 @@ import {
         type BridgeLogEntry,
         type SseStats,
 } from "./pure";
+import {
+        appendUsageRecord,
+        buildUsageSummary,
+        resolveUsageStateDir,
+        USAGE_LOG_FILE_NAME,
+        type UsageRecord,
+} from "./usage";
 
 const {
         port: PORT,
@@ -82,6 +100,41 @@ const log: BridgeLogEntry[] = [];
 let totalRequests = 0;
 let totalErrors = 0;
 let upstreamHealthy: boolean | null = null;
+
+// ---------------------------------------------------------------------------
+// Persistent usage & cost log (survives restarts — see ./usage.ts).
+// PRIVACY: only counts, model ids, timestamps, durations and status are
+// written; prompts, messages and tool payloads never reach this file.
+// ---------------------------------------------------------------------------
+const USAGE_FILE = join(resolveUsageStateDir(process.env, import.meta.dir), USAGE_LOG_FILE_NAME);
+let usageEntries = 0; // appends since process start (health/report only)
+let usageLogFailureLogged = false;
+
+/** Append one settled request to the usage log. NEVER throws — a broken
+ *  usage log must not take the chat path down. */
+function persistUsage(entry: BridgeLogEntry) {
+        const record: UsageRecord = {
+                ts: entry.ts,
+                model: entry.model,
+                upstreamModel: entry.upstreamModel,
+                stream: entry.stream,
+                promptTokens: entry.promptTokens,
+                completionTokens: entry.completionTokens,
+                ...(typeof entry.cachedTokens === "number" ? { cachedTokens: entry.cachedTokens } : {}),
+                durationMs: entry.durationMs,
+                status: entry.error ? "error" : "ok",
+                ...(entry.error ? { error: String(entry.error).slice(0, 200) } : {}),
+        };
+        const res = appendUsageRecord(USAGE_FILE, record);
+        if (res.appended) {
+                usageEntries++;
+                return;
+        }
+        if (!usageLogFailureLogged) {
+                usageLogFailureLogged = true;
+                console.log(`[llm-bridge] usage log append failed (${res.error ?? "unknown error"}) — usage tracking degraded, chats are unaffected`);
+        }
+}
 
 // ---------------------------------------------------------------------------
 // Rate-limit protection: serialize upstream calls with spacing + retry on 429.
@@ -186,6 +239,7 @@ function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Resp
                 toolCalls: entry.toolCalls,
                 promptTokens: entry.promptTokens,
                 completionTokens: entry.completionTokens,
+                cachedTokens: entry.cachedTokens,
         };
         // The reader locks res.body for the forwarding loop; cancel() below must
         // go through it (res.body.cancel() on a locked stream rejects asynchronously
@@ -210,6 +264,7 @@ function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Resp
                                                 entry.toolCalls = stats.toolCalls;
                                                 entry.promptTokens = stats.promptTokens;
                                                 entry.completionTokens = stats.completionTokens;
+                                                entry.cachedTokens = stats.cachedTokens;
                                         }
                                         controller.enqueue(value);
                                 }
@@ -319,7 +374,31 @@ const server = Bun.serve({
                                 upstreamUrl: UPSTREAM_URL,
                                 defaultModel: ROUTE_DEFAULT,
                                 models: KNOWN_MODELS,
+                                // usage tracking (additive, non-breaking): where the
+                                // persistent log lives + appends since process start
+                                usageLog: { file: USAGE_FILE, entries: usageEntries },
                         });
+                }
+
+                if (req.method === "GET" && url.pathname === "/v1/usage") {
+                        // Aggregated usage & cost over the persistent JSONL log.
+                        // ?days=N (default 1, 0 < N <= 365, fractional ok) and
+                        // ?model=M (requested OR upstream id) are the filters.
+                        const daysRaw = url.searchParams.get("days");
+                        let days = 1;
+                        if (daysRaw !== null) {
+                                const n = Number(daysRaw);
+                                if (!Number.isFinite(n) || n <= 0 || n > 365) {
+                                        return Response.json(
+                                                { error: { message: `invalid days parameter "${daysRaw}" (expected 0 < days <= 365)`, type: "usage_error", code: 400 } },
+                                                { status: 400 },
+                                        );
+                                }
+                                days = n;
+                        }
+                        const model = url.searchParams.get("model")?.trim() || undefined;
+                        const summary = buildUsageSummary([USAGE_FILE, `${USAGE_FILE}.1`], { days, model, env: process.env, now: Date.now() });
+                        return Response.json(summary);
                 }
 
                 if (req.method === "GET" && url.pathname === "/v1/log") {
@@ -348,6 +427,11 @@ const server = Bun.serve({
                                 log.push(entry);
                                 if (log.length > 500) log.shift();
                         };
+                        // Settle the request on the persistent usage log. Streams
+                        // persist in settle() once the pipe finishes (token counts
+                        // and duration land there); non-streams and errors persist
+                        // right after their pushLog().
+                        const persist = () => persistUsage(entry);
                         try {
                                 const body = await req.json();
                                 const wantsStream = body.stream === true;
@@ -372,6 +456,7 @@ const server = Bun.serve({
                                                 if (settled) return;
                                                 settled = true;
                                                 entry.durationMs = Date.now() - started;
+                                                persist();
                                         };
                                         return pipeSse(res, entry, settle);
                                 }
@@ -379,11 +464,13 @@ const server = Bun.serve({
                                 const completion = await res.json();
                                 Object.assign(entry, completionStats(completion));
                                 pushLog();
+                                persist();
                                 return Response.json(completion);
                         } catch (err: any) {
                                 totalErrors++;
                                 entry.error = err?.message ?? String(err);
                                 pushLog();
+                                persist();
                                 const status = err?.status ?? (/api key|auth|401|403/i.test(String(entry.error)) ? 401 : 500);
                                 return Response.json(
                                         { error: { message: `llm-bridge: ${entry.error}`, type: "bridge_error", code: status } },
@@ -405,3 +492,4 @@ if (LOCAL_URL) {
 console.log(
         `[llm-bridge] listening on http://127.0.0.1:${server.port} (OpenAI-compatible, proxying ${UPSTREAM_URL}; models: ${KNOWN_MODELS.join(", ")}; route default: ${ROUTE_DEFAULT})`,
 );
+console.log(`[llm-bridge] usage log: ${USAGE_FILE} (GET /v1/usage?days=N for aggregates)`);

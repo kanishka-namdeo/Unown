@@ -83,6 +83,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown info` | Print the support bundle — version, platform, git state, provider names, opt-outs — redaction-safe for bug reports; `--json` for the same fields |
 | `unown note "text"` | Deliver a session note to the engine by hand |
 | `unown automations <sub>` | Scheduled recurring agent runs — `list` \| `create` \| `edit` \| `pause` \| `resume` \| `run` \| `history` \| `delete`. Needs the engine running; cron is in your **local** timezone, default mode `read-only`. See [Automations](#automations-unown-automations) |
+| `unown usage` | Token/latency/cost report over the bridge's persistent usage log — `--days N`, `--model M`, `--json`. See [Usage tracking](usage-tracking.md) |
 | `unown update` | Check for a newer release and self-update — fast-forward the checkout to the newest ready tag, then re-run the installer. Flags: `--check` (report only; exit `2` when an update is available), `--check --json`, `--allow-dirty`, `--rollback`, or an explicit version (`unown update 2.1.0` — also pins/rolls back). See [updating](updating.md) |
 | `unown changelog [n]` | Print the latest `CHANGELOG.md` sections (default 1) |
 | `unown completions <shell>` | Print a completion script — `bash` \| `zsh` \| `fish` \| `powershell` (stdout; installation one-liners in `unown completions --help` and below) |
@@ -150,6 +151,7 @@ Every session also keeps a **receipts audit ledger** and a **checkpoint store** 
 | `/restore <id\|label>` | Rewrite the files of a named (or turn) checkpoint; prefix matching works |
 | `/checkpoints` | List checkpoints (turn + named) with the blob-store size and this session's redo depth |
 | `/receipts [n]` | Show the audit ledger — last n entries (default 20) + totals |
+| `/permissions` | Show the granular-permissions state — mode, project-config trust, and the full rule table (tool / effect / pattern / source file). See [Permissions](permissions.md) |
 
 **Undo/redo semantics** (the opencode/Cursor model): `/undo` captures, per undone turn and *before* restoring its before-images, the content it is about to overwrite into a redo entry — same content-addressed blob store, same sha256 verification, same project-dir jail on re-apply. `/redo [n]` pops entries newest-first (the exact reverse of the undo walk), so `/undo 2` + `/redo 2` restores the byte-identical pre-undo state, and `/redo 1` re-applies the most recently undone state. New files that `/undo` deleted are re-created; a file that did not exist when the undo captured it is deleted again. Any **new checkpoint** — a turn that writes files, or `/checkpoint` — clears the redo stack: new edits invalidate redo, the classic editor rule (clearing is global across sessions sharing the store, and is journaled as a note in the receipts ledger). One limit worth knowing: redo is not itself undoable — after `/redo`, `/undo` reverts earlier turns, not the redo.
 
@@ -278,7 +280,7 @@ unown adds fifteen commands of its own:
 | `/receipts [n]` | Show the session receipts audit ledger |
 | `/mcp` | Show MCP server status and (re)connect configured servers |
 | `/goal [objective]` | Set/show/pause/resume/clear a durable, evidence-verified goal |
-| `/commit [message]` | Stage and commit all project-dir changes (`git add -A .` + commit — never pushes); without a message one is generated from the session's work. See [Git-native commits](#git-native-commits-commit) |
+| `/commit [message]`| Stage and commit all project-dir changes (`git add -A .` + commit — never pushes); without a message one is generated from the session's work. See [Git-native commits](#git-native-commits-commit) |
 | `/review [base]` | Parallel-subagent code review: P0–P3 findings + SHIP verdict |
 
 pi ships 23 built-in slash commands. The ones worth learning first:

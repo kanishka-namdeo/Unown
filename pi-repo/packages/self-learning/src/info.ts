@@ -98,6 +98,10 @@ export function collectInfo(ctx: InfoCtx = {}): UnownInfo {
         if (/^(1|true|yes)$/i.test(env.DO_NOT_TRACK ?? "")) optOuts.push("DO_NOT_TRACK");
         if (/^(1|true|yes)$/i.test(env.UNOWN_STRICT_HOOKS ?? "")) optOuts.push("UNOWN_STRICT_HOOKS");
         if (/^(1|true|yes)$/i.test(env.UNOWN_NO_PREFLIGHT ?? "")) optOuts.push("UNOWN_NO_PREFLIGHT");
+        // granular permissions layer (docs/permissions.md): both directions are
+        // worth seeing in a bug report — the whole layer off, or learning on.
+        if (/^(0|false|no)$/i.test(env.UNOWN_PERMISSIONS ?? "")) optOuts.push("UNOWN_PERMISSIONS=0");
+        if (/^(1|true|yes)$/i.test(env.UNOWN_PERMISSIONS_LEARN ?? "")) optOuts.push("UNOWN_PERMISSIONS_LEARN");
 
         const cache = readUpdateCheckCache(home);
 

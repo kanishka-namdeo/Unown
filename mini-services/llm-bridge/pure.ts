@@ -41,6 +41,8 @@ export interface BridgeLogEntry {
         toolCalls: number;
         promptTokens: number;
         completionTokens: number;
+        /** Cached input tokens (usage.prompt_tokens_details.cached_tokens), when reported. Used by the usage log. */
+        cachedTokens?: number;
         durationMs: number;
         error?: string;
 }
@@ -52,6 +54,8 @@ export interface SseStats {
         toolCalls: number;
         promptTokens: number;
         completionTokens: number;
+        /** Cached input tokens when a usage frame reports them (else untouched). */
+        cachedTokens?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -318,12 +322,17 @@ export function completionStats(completion: any) {
         if (Array.isArray(message.tool_calls)) {
                 message.tool_calls = sanitizeToolCalls(message.tool_calls);
         }
+        const cached = completion?.usage?.prompt_tokens_details?.cached_tokens;
         return {
                 finishReason: choice.finish_reason ?? null,
                 contentChars: typeof message.content === "string" ? message.content.length : 0,
                 toolCalls: Array.isArray(message.tool_calls) ? message.tool_calls.length : 0,
                 promptTokens: completion?.usage?.prompt_tokens ?? 0,
                 completionTokens: completion?.usage?.completion_tokens ?? 0,
+                // Only present when the upstream reports it — keeps the exact
+                // toEqual shapes in pure.test.ts stable for completions without
+                // prompt_tokens_details.
+                ...(typeof cached === "number" ? { cachedTokens: cached } : {}),
         };
 }
 
@@ -352,6 +361,8 @@ export function foldSseLine(line: string, stats: SseStats): void {
                 if (obj?.usage) {
                         stats.promptTokens = obj.usage.prompt_tokens ?? stats.promptTokens;
                         stats.completionTokens = obj.usage.completion_tokens ?? stats.completionTokens;
+                        const cached = obj.usage.prompt_tokens_details?.cached_tokens;
+                        if (typeof cached === "number") stats.cachedTokens = cached;
                 }
         } catch {
                 /* partial JSON frame — ignore */
