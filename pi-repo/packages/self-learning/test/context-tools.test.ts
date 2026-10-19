@@ -15,7 +15,7 @@ import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import {
     buildContextRemaining,
     createContextToolsExtension,
@@ -139,15 +139,19 @@ describe("detectImageMediaType (magic bytes)", () => {
 });
 
 describe("jailImagePath (project root + /tmp)", () => {
+    // resolve() on BOTH sides: jailImagePath resolves through node:path, so
+    // on win32 "/proj/image.png" resolves to "\proj\image.png" — the
+    // expectations must be computed with the impl's own semantics instead
+    // of hardcoded POSIX strings.
     test("accepts a path inside the project root", () => {
         const r = jailImagePath("/proj", "/proj/image.png");
         expect(r.ok).toBe(true);
-        expect(r.resolved).toBe("/proj/image.png");
+        expect(r.resolved).toBe(resolve("/proj/image.png"));
     });
     test("accepts a path inside the system tmp dir", () => {
         const r = jailImagePath("/proj", "/tmp/image.png", "/tmp");
         expect(r.ok).toBe(true);
-        expect(r.resolved).toBe("/tmp/image.png");
+        expect(r.resolved).toBe(resolve("/tmp/image.png"));
     });
     test("rejects a relative path", () => {
         const r = jailImagePath("/proj", "image.png");

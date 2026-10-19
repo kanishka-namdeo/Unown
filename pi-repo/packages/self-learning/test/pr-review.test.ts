@@ -10,7 +10,7 @@ import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import {
     defaultWhich,
     fetchPrDiff,
@@ -145,7 +145,10 @@ describe("isGhAvailable", () => {
         // Drop a fake `gh` (no exec bit needed — defaultWhich uses existsSync)
         // into a temp dir, prepend it to PATH via env, and verify lookup.
         const fakeBinDir = mkdtempSync(join(tmpRoot, "fake-bin-"));
-        const fakeGhPath = join(fakeBinDir, "gh");
+        // win32 executables carry PATHEXT extensions (defaultWhich only
+        // probes those — a bare extensionless file is not runnable there);
+        // POSIX keeps the bare name.
+        const fakeGhPath = join(fakeBinDir, process.platform === "win32" ? "gh.exe" : "gh");
         writeFileSync(fakeGhPath, "#!/bin/sh\necho fake-gh\n");
         const env = { ...process.env, PATH: `${fakeBinDir}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}` };
         expect(defaultWhich("gh", env)).toBe(fakeGhPath);

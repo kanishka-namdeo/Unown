@@ -11,7 +11,8 @@
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
         acpPermissionOptionsFromDialogOptions,
         acpSessionUpdatesFromPiEvent,
@@ -114,9 +115,13 @@ describe("acp — toolKindFromName / toolCallTitle / toolCallLocations", () => {
                 expect(toolCallTitle("todo", {})).toBe("todo");
         });
         test("locations only for file tools; relative paths resolve against cwd", () => {
+                // resolve() on BOTH sides: the impl resolves; on POSIX
+                // join(cwd, p) === resolve(cwd, p) but on win32 resolve adds
+                // the drive while join does not — the expectations must be
+                // computed with the impl's own semantics.
                 const cwd = "/tmp/proj";
                 expect(toolCallLocations("read", { path: "/abs/a.ts" }, cwd)).toEqual([{ path: "/abs/a.ts" }]);
-                expect(toolCallLocations("edit", { path: "src/a.ts" }, cwd)).toEqual([{ path: join(cwd, "src/a.ts") }]);
+                expect(toolCallLocations("edit", { path: "src/a.ts" }, cwd)).toEqual([{ path: resolve(cwd, "src/a.ts") }]);
                 expect(toolCallLocations("bash", { command: "ls" }, cwd)).toEqual([]);
                 expect(toolCallLocations("read", {}, cwd)).toEqual([]);
         });
@@ -196,7 +201,7 @@ describe("acp — acpSessionUpdatesFromPiEvent", () => {
                                 title: "read(a.ts)",
                                 kind: "read",
                                 status: "pending",
-                                locations: [{ path: join("/tmp", "a.ts") }],
+                                locations: [{ path: resolve("/tmp", "a.ts") }],
                         },
                 ]);
                 // same id again: no re-announce
@@ -316,7 +321,7 @@ describe("acp — isPathOutsideProject", () => {
 import { spawn } from "node:child_process";
 import { startMockBridge, type MockBridge } from "./cli/helpers.ts";
 
-const REPO_ROOT = new URL("../../../..", import.meta.url).pathname;
+const REPO_ROOT = fileURLToPath(new URL("../../../..", import.meta.url)); // NOT .pathname — on win32 that yields "/D:/…" and every spawn dies with ENOENT
 const UNOWN_BIN = join(REPO_ROOT, "bin", "unown");
 const LONG = { timeout: 150_000 } as const;
 
@@ -345,7 +350,14 @@ function startAcp(bridge: MockBridge, root: string): Wire {
         env.PI_BRIDGE_URL = bridge.url;
         env.PI_SELFLEARNING_DB = join(root, "db", "selflearning.db");
         env.PI_SELFLEARNING_DATA = join(root, "data");
-        const child = spawn(UNOWN_BIN, ["acp"], { cwd: projDir, env, stdio: ["pipe", "pipe", "pipe"] });
+        // Windows: bin/unown is a bun shebang script (spawn of a POSIX script
+        // dies with ENOENT), and Node's CVE-2024-27980 fix rejects args with
+        // cmd.exe metacharacters for .bat/.cmd shims — route through bun,
+        // the same pattern as test/cli/helpers.ts runUnown.
+        const useBun = process.platform === "win32";
+        const child = useBun
+                ? spawn("bun", [UNOWN_BIN, "acp"], { cwd: projDir, env, stdio: ["pipe", "pipe", "pipe"] })
+                : spawn(UNOWN_BIN, ["acp"], { cwd: projDir, env, stdio: ["pipe", "pipe", "pipe"] });
 
         const pending = new Map<string | number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
         const notifications: Array<{ method: string; params: any }> = [];
