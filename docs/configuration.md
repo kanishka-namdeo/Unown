@@ -162,7 +162,8 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `PI_ENGINE_MAX_TOKENS_DAY` | `2000000` | Budget governor: daily token ceiling (`0` = unlimited). Read by the engine. |
 | `PI_LLM_BREAKER_THRESHOLD` | `3` | Upstream circuit breaker: consecutive engine LLM failures before the backoff window opens. Read by the engine. |
 | `PI_LLM_BACKOFF_BASE_MS` | `30000` | Upstream circuit breaker: base backoff (x4 growth, full jitter, 15-min cap). Read by the engine. |
-| `PI_PRINT_STALL_MS` | `300000` | Print-mode stall deadline: a session silent for this long force-exits (floor 10s; any session event re-arms it). Read by the terminal agent. |
+| `PI_PRINT_STALL_MS` | `180000` | Print-mode stall deadline: a session silent for this long force-exits (floor 10s; any session event re-arms it). Read by the terminal agent. |
+| `PI_PRINT_EXIT_GRACE_MS` | `15000` | Print-mode hard-exit grace after the agent's final turn: once the answer is written the process leaves after this grace, even if idle keep-alive sockets hold the loop (floor 2s; nothing re-arms it). Read by the terminal agent. |
 | `UNOWN_MAX_MINTED_TASKS` | `8` | Cap on ACTIVE minted tasks before the engine's task-mint job skips authoring new curriculum variants (minting resumes as tasks are archived/graduated). Read by the engine. |
 | `UNOWN_AUTO_COMPACT_THRESHOLD` | `85` | Engine-run auto-compact: percent of the context window at which compaction auto-triggers (0–100; a warn receipt starts at a fixed 70%). Read by the engine's runner (`auto-compact.ts`). |
 | `UNOWN_AUTO_COMPACT_HARD_LIMIT` | `95` | Engine-run auto-compact: percent at which the next model request is hard-blocked and the session aborted (0–100) — the session must be compacted or restarted. Read by the engine's runner. |

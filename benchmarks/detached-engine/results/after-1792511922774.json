@@ -1,0 +1,81 @@
+{
+  "phase": "after",
+  "ts": "2026-10-20T15:58:42.771Z",
+  "git": "8d5d3e9",
+  "scenarios": {
+    "arch": {
+      "cli_engine_db_fds": "no live process captured (completed fast)",
+      "cli_session_echoed": true,
+      "cli_start_ms": [
+        13569,
+        7678,
+        7181
+      ],
+      "engine_idle": {
+        "rssKb": 139128,
+        "cpuPct": 3.8
+      },
+      "engine_pid": 11364,
+      "engine_router": {
+        "busy": false,
+        "busyMs": 0,
+        "activeJob": "",
+        "jobTimeoutMs": 300000
+      },
+      "governor": {
+        "budget": {
+          "callsHour": 10,
+          "callsDay": 10,
+          "tokensHour": 142454,
+          "tokensDay": 235884,
+          "limits": {
+            "callsHour": 10,
+            "tokensHour": 200000,
+            "tokensDay": 2000000
+          },
+          "overBudget": true,
+          "reason": "budget:throttled 10 engine LLM calls in the last hour (limit 10)"
+        },
+        "breaker": {
+          "open": false,
+          "consecutiveFailures": 0,
+          "threshold": 3,
+          "retryInMs": 0
+        }
+      }
+    },
+    "crash": {
+      "cases": [
+        {
+          "case": "idle-sigkill",
+          "detectedDown": true,
+          "restartExit": 0,
+          "recoveryMs": 4273,
+          "stuckRunningRowsAfter": 0,
+          "lockStolen": true
+        },
+        {
+          "case": "midcycle-sigkill",
+          "runningRowsBefore": 0,
+          "runningRowsAfterHeal": 0,
+          "healed": "no run was in flight",
+          "recoveryMs": 3926
+        }
+      ]
+    },
+    "autostart": {
+      "stopExit": 0,
+      "engineDownConfirmed": true,
+      "sessionMs": 5227,
+      "sessionEchoed": true,
+      "autostartMs": 6734,
+      "engineUpAfter": true,
+      "enginePid": 11478
+    }
+  },
+  "summary": [
+    "arch: cli_db_fds=no live process captured (completed fast) start=[13569,7678,7181]ms idle={\"rssKb\":139128,\"cpuPct\":3.8}",
+    "crash: idle-sigkill→OK midcycle-sigkill→OK",
+    "autostart: session=5227ms engine_up=true in 6734ms"
+  ]
+}

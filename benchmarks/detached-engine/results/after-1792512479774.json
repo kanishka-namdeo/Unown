@@ -1,0 +1,300 @@
+{
+  "phase": "after",
+  "ts": "2026-10-20T16:07:59.771Z",
+  "git": "8d5d3e9",
+  "scenarios": {
+    "soak": {
+      "minutes": 8,
+      "samples": [
+        {
+          "ts": 1792511991193,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 145812,
+            "cpuPct": 1.7
+          }
+        },
+        {
+          "ts": 1792512021688,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 145840,
+            "cpuPct": 1.3
+          }
+        },
+        {
+          "ts": 1792512052777,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 145856,
+            "cpuPct": 1
+          }
+        },
+        {
+          "ts": 1792512082806,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 145988,
+            "cpuPct": 0.9
+          }
+        },
+        {
+          "ts": 1792512113664,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 145864,
+            "cpuPct": 0.8
+          }
+        },
+        {
+          "ts": 1792512144033,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 146260,
+            "cpuPct": 0.7
+          }
+        },
+        {
+          "ts": 1792512174419,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 146352,
+            "cpuPct": 0.7
+          }
+        },
+        {
+          "ts": 1792512204799,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 146348,
+            "cpuPct": 0.6
+          }
+        },
+        {
+          "ts": 1792512234823,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 147364,
+            "cpuPct": 0.6
+          }
+        },
+        {
+          "ts": 1792512265742,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 146680,
+            "cpuPct": 0.6
+          }
+        },
+        {
+          "ts": 1792512296275,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 141808,
+            "cpuPct": 0.5
+          }
+        },
+        {
+          "ts": 1792512327034,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 141792,
+            "cpuPct": 0.5
+          }
+        },
+        {
+          "ts": 1792512357394,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 141804,
+            "cpuPct": 0.5
+          }
+        },
+        {
+          "ts": 1792512387793,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 141872,
+            "cpuPct": 0.5
+          }
+        },
+        {
+          "ts": 1792512419289,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 141876,
+            "cpuPct": 0.5
+          }
+        },
+        {
+          "ts": 1792512449764,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": true,
+          "breakerOpen": false,
+          "enginePid": 11478,
+          "proc": {
+            "rssKb": 141812,
+            "cpuPct": 0.5
+          }
+        }
+      ],
+      "events": [],
+      "walBytes": 0,
+      "verdict": {
+        "engineUpThroughout": true,
+        "dreamsInWindow": 0,
+        "runsInWindow": 0,
+        "maxCallsHour": 10,
+        "budgetTripped": true,
+        "breakerTripped": false,
+        "rssGrowthKb": -4000,
+        "dreamBursts": 0,
+        "walBytes": 0
+      }
+    }
+  },
+  "summary": [
+    "soak(8m): up=true dreams=0 runs=0 calls/h peak=10 bursts=0 rssDelta=-4000KB wal=0B"
+  ]
+}

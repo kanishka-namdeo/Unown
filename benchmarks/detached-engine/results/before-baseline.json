@@ -1,0 +1,37 @@
+{
+  "phase": "before",
+  "ts": "2026-10-20T14:49:30Z",
+  "git": "25a97fd",
+  "note": "Pre-detachment baseline captured live on the untouched tree (commit 25a97fd) before M1/M2/M3. Sources: /tmp/arch-bench-before run, engine DB forensics, bridge usage log, live observation 13:44-15:04 UTC+0 (session-local 17:44-19:04; timestamps in receipts are session-local).",
+  "scenarios": {
+    "arch": {
+      "cli_cold_start_ms": [11299, 3058, 4436],
+      "cli_engine_db_fds": 3,
+      "cli_engine_db_fds_note": "terminal agent opened db/selflearning.db + -wal + -shm on every boot via termhooks->hooks->store and tools->llm->store import chains; module-scope new Store() also ran schema DDL + a memory_versions dedup DELETE per boot",
+      "engine_idle": { "rssKb": 143660, "cpuPct": 0.3 },
+      "engine_fd_count": 21
+    },
+    "runaway": {
+      "description": "dream-check feedback loop observed live with all jobs enabled, 2026-10-20 13:55-14:45",
+      "dreams_back_to_back": 9,
+      "engine_llm_calls_50min": 75,
+      "prompt_tokens_50min": 629655,
+      "completion_tokens_50min": 5801,
+      "mitigation_at_the_time": "manual: jobs disabled via API"
+    },
+    "stability": {
+      "stuck_regression_run_min": 25,
+      "description": "a regression run sat status=running >25 min holding the router busy mutex; every other job queued behind it; only a manual restart cleared it (no job watchdog existed)"
+    },
+    "crash": {
+      "engine_crash_recovery_ms_manual": 3719,
+      "note": "required the operator to notice and run bun run agent:start; nothing auto-started the engine; recoverOrphans did heal stuck rows at next boot (0 stuck running rows verified)"
+    }
+  },
+  "summary": [
+    "BEFORE: cli_db_fds=3 start=[11299,3058,4436]ms idle_rss=140MB",
+    "BEFORE: runaway dream loop 75 calls / 630k prompt tokens per 50 min (manual kill)",
+    "BEFORE: stuck job wedges engine >25 min (no watchdog)",
+    "BEFORE: crash recovery manual-only"
+  ]
+}

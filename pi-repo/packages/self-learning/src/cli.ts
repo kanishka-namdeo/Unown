@@ -1459,21 +1459,39 @@ async function cmdNote(text: string) {
         process.exit(0);
 }
 
-/** F10 silence budget for print mode (ms). Floor 10s; default 5 min — above every per-call timeout in the stack (llm.ts 240s, bridge 180s headers). */
+/** F10 silence budget for print mode (ms). Floor 10s; default 3 min — above the worst measured upstream round (Agnes direct 2–12 s + bridge queueing), below any acceptable hang. */
 function printStallMs(): number {
         const raw = Number(process.env.PI_PRINT_STALL_MS);
-        return Number.isFinite(raw) && raw >= 10_000 ? raw : 300_000;
+        return Number.isFinite(raw) && raw >= 10_000 ? raw : 180_000;
+}
+
+/** Hard-exit grace AFTER the agent finishes (ms). Nothing re-arms this. */
+function printExitGraceMs(): number {
+        const raw = Number(process.env.PI_PRINT_EXIT_GRACE_MS);
+        return Number.isFinite(raw) && raw >= 2_000 ? raw : 15_000;
 }
 
 /**
  * F10 (docs/detached-engine-architecture.md): print mode must always be
- * bounded. Unattended callers (engine automations, CI) cannot press Ctrl-C,
- * so a session that goes SILENT mid-run — a wedged dispose, a stuck fetch, a
- * stray handle keeping the loop alive — ends via a stall deadline instead of
- * hanging forever. Any session event re-arms the timer (long legitimate turns
- * stream tokens and tool events constantly); a light poll re-subscribes when
- * the runtime rebinds to a new session object. Everything is best-effort:
- * the watchdog must never break the run it guards.
+ * bounded — measured root cause: Bun's fetch leaves KEEP-ALIVE SOCKETS open
+ * (note delivery to the engine, bridge traffic), and an idle pooled socket
+ * holds the event loop alive after the answer is written. The process then
+ * "completes" but never exits (caught live: 2 open sockets, 8 threads, answer
+ * flushed — intermittent because the sockets sometimes close in time).
+ *
+ * Two nets, one milestone each:
+ *   1. STALL watchdog (re-armed by every session event): catches a session
+ *      wedged BEFORE/BEHIND its work (stuck fetch, wedged dispose).
+ *   2. HARD-EXIT timer (armed ONLY at a final agent_end — an assistant turn
+ *      that will not retry — and by NOTHING else): the work is done, the
+ *      answer is written; after the grace, LEAVE. This is the production-CLI
+ *      contract for unattended callers (engine automations, CI) that cannot
+ *      press Ctrl-C.
+ *
+ * Both are unref'd (never delay a clean exit) and best-effort (never break
+ * the run they guard). A hard exit skips --output-format json's envelope in
+ * the pathological case — the streamed text is already flushed; hanging
+ * forever is the worse trade.
  */
 function installPrintStallWatchdog(runtime: any): void {
         try {
@@ -1489,6 +1507,15 @@ function installPrintStallWatchdog(runtime: any): void {
                         timer.unref?.();
                 };
                 arm();
+                let hardExit: any = null;
+                const armHardExit = () => {
+                        if (hardExit) clearTimeout(hardExit);
+                        hardExit = setTimeout(() => {
+                                // The agent finished; dispose had its grace. Leave quietly.
+                                process.exit(0);
+                        }, printExitGraceMs());
+                        hardExit.unref?.();
+                };
                 let lastSession: unknown = null;
                 let off: (() => void) | null = null;
                 const poll = setInterval(() => {
@@ -1500,7 +1527,14 @@ function installPrintStallWatchdog(runtime: any): void {
                                 } catch {
                                         /* best effort */
                                 }
-                                off = typeof s.subscribe === "function" ? s.subscribe(() => arm()) : null;
+                                off = typeof s.subscribe === "function"
+                                        ? s.subscribe((event: any) => {
+                                                        arm();
+                                                        // Final completion: an agent_end that will not retry.
+                                                        // The answer is written; only teardown remains.
+                                                        if (event?.type === "agent_end" && !event?.willRetry) armHardExit();
+                                                })
+                                        : null;
                         }
                 }, 1_000);
                 poll.unref?.();

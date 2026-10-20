@@ -1,0 +1,300 @@
+{
+  "phase": "after",
+  "ts": "2026-10-20T16:16:48.856Z",
+  "git": "8d5d3e9",
+  "scenarios": {
+    "soak": {
+      "minutes": 8,
+      "samples": [
+        {
+          "ts": 1792512518108,
+          "down": false,
+          "dreams": 11,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 10,
+          "tokensHour": 142454,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 161320,
+            "cpuPct": 18.8
+          }
+        },
+        {
+          "ts": 1792512548643,
+          "down": false,
+          "dreams": 11,
+          "runs": 23,
+          "busyMs": 29961,
+          "activeJob": "auto-dream",
+          "callsHour": 11,
+          "tokensHour": 144238,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 177428,
+            "cpuPct": 4.2
+          }
+        },
+        {
+          "ts": 1792512579008,
+          "down": false,
+          "dreams": 11,
+          "runs": 24,
+          "busyMs": 60326,
+          "activeJob": "auto-dream",
+          "callsHour": 11,
+          "tokensHour": 156144,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 162332,
+            "cpuPct": 2.7
+          }
+        },
+        {
+          "ts": 1792512609509,
+          "down": false,
+          "dreams": 11,
+          "runs": 25,
+          "busyMs": 90827,
+          "activeJob": "auto-dream",
+          "callsHour": 11,
+          "tokensHour": 163637,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 165856,
+            "cpuPct": 2.3
+          }
+        },
+        {
+          "ts": 1792512640612,
+          "down": false,
+          "dreams": 11,
+          "runs": 25,
+          "busyMs": 121931,
+          "activeJob": "auto-dream",
+          "callsHour": 11,
+          "tokensHour": 169346,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 162396,
+            "cpuPct": 1.8
+          }
+        },
+        {
+          "ts": 1792512671442,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 2737,
+          "activeJob": "harness-cycle",
+          "callsHour": 13,
+          "tokensHour": 177253,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 152720,
+            "cpuPct": 1.6
+          }
+        },
+        {
+          "ts": 1792512702626,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 33921,
+          "activeJob": "harness-cycle",
+          "callsHour": 13,
+          "tokensHour": 177253,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 152028,
+            "cpuPct": 1.4
+          }
+        },
+        {
+          "ts": 1792512733157,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 64452,
+          "activeJob": "harness-cycle",
+          "callsHour": 13,
+          "tokensHour": 177253,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 152364,
+            "cpuPct": 1.2
+          }
+        },
+        {
+          "ts": 1792512763551,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 94845,
+          "activeJob": "harness-cycle",
+          "callsHour": 13,
+          "tokensHour": 177253,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 154480,
+            "cpuPct": 1.1
+          }
+        },
+        {
+          "ts": 1792512794050,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 125345,
+          "activeJob": "harness-cycle",
+          "callsHour": 13,
+          "tokensHour": 177253,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 163212,
+            "cpuPct": 1.6
+          }
+        },
+        {
+          "ts": 1792512825158,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 156452,
+          "activeJob": "harness-cycle",
+          "callsHour": 13,
+          "tokensHour": 177253,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 154452,
+            "cpuPct": 1.8
+          }
+        },
+        {
+          "ts": 1792512855529,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 186823,
+          "activeJob": "harness-cycle",
+          "callsHour": 13,
+          "tokensHour": 177253,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 161436,
+            "cpuPct": 2.2
+          }
+        },
+        {
+          "ts": 1792512885874,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 217169,
+          "activeJob": "harness-cycle",
+          "callsHour": 13,
+          "tokensHour": 177253,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 152468,
+            "cpuPct": 2.2
+          }
+        },
+        {
+          "ts": 1792512917672,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 11,
+          "tokensHour": 199367,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 151216,
+            "cpuPct": 2.1
+          }
+        },
+        {
+          "ts": 1792512948124,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 11,
+          "tokensHour": 199367,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 151128,
+            "cpuPct": 2
+          }
+        },
+        {
+          "ts": 1792512978848,
+          "down": false,
+          "dreams": 12,
+          "runs": 26,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 11,
+          "tokensHour": 189767,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 11850,
+          "proc": {
+            "rssKb": 151496,
+            "cpuPct": 1.9
+          }
+        }
+      ],
+      "events": [],
+      "walBytes": 0,
+      "verdict": {
+        "engineUpThroughout": true,
+        "dreamsInWindow": 1,
+        "runsInWindow": 4,
+        "maxCallsHour": 13,
+        "budgetTripped": false,
+        "breakerTripped": false,
+        "rssGrowthKb": -9824,
+        "dreamBursts": 0,
+        "walBytes": 0
+      }
+    }
+  },
+  "summary": [
+    "soak(8m): up=true dreams=1 runs=4 calls/h peak=13 bursts=0 rssDelta=-9824KB wal=0B"
+  ]
+}

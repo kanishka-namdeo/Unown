@@ -3,8 +3,8 @@
 ## Workflow
 - This file is maintained by Unown: terminal session notes are consolidated here by AutoDream. Edit freely — your edits are preserved as a new version.
 - Unown sessions have access to: todo, note, task, fetch_url, web_search, webfetch, lsp, read, ls, grep.
-- Benchmark latency probes are ephemeral; prune them during consolidation to prevent memory bloat [note 2026-10-20T14:50:20.263Z].
-- Health-check sessions ending in PONG or greeting outputs are ephemeral; prune them during consolidation [note 2026-10-20T13:52:10.604Z].
+- Prune ephemeral health checks and probes (PONG, HANG*, SLOWCHECK, AUTOSTART, numeric latency IDs) during consolidation [note 2026-10-20T14:50:20.263Z, note 2026-10-20T15:49:00.012Z].
+- Prune ephemeral self-test and fix-check outcomes (CAUGHT, FIX1–FIX6, OK with 0 tool calls) during consolidation [notes 2026-10-20T15:53:47.452Z, 2026-10-20T15:56:35.009Z].
 
 ## Engine restart procedure
 - Find bun --hot PID with cwd mini-services/agent-service via /proc/<pid>/cwd.
