@@ -18,7 +18,7 @@
  *     .gitignore             ignores local.md
  */
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { pruneToBudget } from "./budget.ts";
@@ -252,6 +252,9 @@ export function initProjectMemory(projectDir: string): string {
 
 export interface TerminalMemoryFile {
         path: string; // virtual path shown to the agent
+        /** The real filesystem path (M6: /learning staleness stats this — `path`
+         * carries a display parenthetical and is NOT a valid fs path). */
+        fsPath: string;
         content: string;
         tier: string;
 }
@@ -282,6 +285,7 @@ export function resolveTerminalMemory(projectDir: string): TerminalMemoryFile[] 
         const policyPath = join(UNOWN_MEMORY_DIR, "policy.md");
         files.push({
                 path: "memory/tier0-policy.md (enterprise policy — highest authority)",
+                fsPath: policyPath,
                 content: existsSync(policyPath) ? readFileSync(policyPath, "utf8") : POLICY_SEED,
                 tier: "policy",
         });
@@ -289,6 +293,7 @@ export function resolveTerminalMemory(projectDir: string): TerminalMemoryFile[] 
         // Tier 1 — project (per-project, AutoDream-maintained)
         files.push({
                 path: ".unown/memory/project.md (project memory — maintained by AutoDream & you)",
+                fsPath: projectMemoryPath(projectDir),
                 content: readFileSync(projectMemoryPath(projectDir), "utf8"),
                 tier: "project",
         });
@@ -304,6 +309,7 @@ export function resolveTerminalMemory(projectDir: string): TerminalMemoryFile[] 
         }
         files.push({
                 path: "memory/tier2-user.md (user memory — global preferences)",
+                fsPath: userPath,
                 content: userContent,
                 tier: "user",
         });
@@ -312,6 +318,7 @@ export function resolveTerminalMemory(projectDir: string): TerminalMemoryFile[] 
         const localPath = join(projectDir, ".unown", "memory", "local.md");
         files.push({
                 path: ".unown/memory/local.md (local overrides — highest precedence)",
+                fsPath: localPath,
                 content: existsSync(localPath) ? readFileSync(localPath, "utf8") : LOCAL_SEED,
                 tier: "local",
         });
@@ -378,6 +385,79 @@ export interface OutboxNote {
         ts: number;
 }
 
+/** Content cap parity: the engine's HTTP lane rejects >20k (server.ts) — the
+ * outbox must not become the bypass (an oversized queued note would sail
+ * through ingest uncapped). Truncation, not rejection: the note's value is
+ * mostly in its head. */
+const OUTBOX_CONTENT_CAP = 20_000;
+/** Max queued outbox files before the oldest are dropped (Sentry-style
+ * maxCacheItems; 0 = unlimited). Surfaced via outboxStats(). */
+export const OUTBOX_MAX = (() => {
+        // `||`, not `??`: an unset-or-EMPTY value (the .env.example spelling)
+        // means the DOCUMENTED default of 200 — `Number("") === 0` used to
+        // pass the `>= 0` guard and silently turn every default install
+        // unlimited, dead-lettering the cap M6 exists to add (test-suite find).
+        const raw = process.env.UNOWN_OUTBOX_MAX || "";
+        if (raw === "") return 200;
+        const n = Number(raw);
+        return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 200;
+})();
+
+/** Where the dropped-while-offline counter lives (next to the outbox). */
+const OUTBOX_STATE_FILE = join(UNOWN_NOTES_DIR, "outbox-state.json");
+
+export interface OutboxStats {
+        queued: number;
+        dropped: number;
+}
+
+/** Queued + lifetime-dropped counts for the footer, /engine, doctor and `engine status`. */
+export function outboxStats(): OutboxStats {
+        let queued = 0;
+        try {
+                for (const name of readdirSync(UNOWN_OUTBOX_DIR)) if (name.endsWith(".md")) queued++;
+        } catch {
+                /* no outbox dir yet */
+        }
+        let dropped = 0;
+        try {
+                const raw = JSON.parse(readFileSync(OUTBOX_STATE_FILE, "utf8"));
+                dropped = Number(raw?.dropped) || 0;
+        } catch {
+                /* no counter yet */
+        }
+        return { queued, dropped };
+}
+
+/** Bump the dropped counter (best effort — read-only home keeps count 0). */
+function recordDroppedNote() {
+        try {
+                const dropped = outboxStats().dropped + 1;
+                mkdirSync(UNOWN_NOTES_DIR, { recursive: true });
+                writeFileSync(OUTBOX_STATE_FILE, JSON.stringify({ dropped, lastDroppedAt: Date.now() }), "utf8");
+        } catch {
+                /* cosmetic counter only */
+        }
+}
+
+/** Enforce the outbox cap: drop OLDEST files first, count every drop. */
+function enforceOutboxCap() {
+        if (OUTBOX_MAX <= 0) return;
+        try {
+                const files = readdirSync(UNOWN_OUTBOX_DIR).filter((n) => n.endsWith(".md")).sort(); // names start with Date.now() — sortable
+                for (const victim of files.slice(0, Math.max(0, files.length - OUTBOX_MAX + 1))) {
+                        try {
+                                rmSync(join(UNOWN_OUTBOX_DIR, victim));
+                                recordDroppedNote();
+                        } catch {
+                                /* best effort */
+                        }
+                }
+        } catch {
+                /* no dir / unreadable — the write itself will surface real problems */
+        }
+}
+
 /** Persist a note as an outbox file (delivered to the engine by the sync job). */
 export function writeOutboxNote(note: OutboxNote): string {
         mkdirSync(UNOWN_OUTBOX_DIR, { recursive: true });
@@ -386,52 +466,93 @@ export function writeOutboxNote(note: OutboxNote): string {
         // found live by the outbox dedup test). A short random tail makes the
         // name unique while staying sortable and greppable.
         const name = `${Date.now()}-${randomUUID().slice(0, 6)}-${slugifyPath(note.projectPath)}.md`;
-        const body = `---\nproject: ${note.projectPath}\nts: ${note.ts}\n---\n${note.content}\n`;
+        const content = note.content.length > OUTBOX_CONTENT_CAP ? `${note.content.slice(0, OUTBOX_CONTENT_CAP)}\n(truncated)` : note.content;
+        const body = `---\nproject: ${note.projectPath}\nts: ${note.ts}\n---\n${content}\n`;
         const p = join(UNOWN_OUTBOX_DIR, name);
+        enforceOutboxCap();
         writeFileSync(p, body, "utf8");
         return p;
 }
 
-/** Deliver a terminal note: POST to the engine, fall back to the outbox file. */
+/** Overall deadline for one delivery attempt. The per-fetch timeouts
+ * (probe 1.2s + POST 4s) are worst-case ADDITIVE when the engine URL points
+ * at a hanging (not refusing) port — and session_shutdown awaits this call,
+ * so a wedged network path could hold the TUI exit for ~5.2s. The budget
+ * races the whole attempt; on expiry the note lands in the outbox (the
+ * durable path) and the caller proceeds. */
+const NOTE_DELIVERY_BUDGET_MS = (() => {
+        const n = Number(process.env.UNOWN_NOTE_BUDGET_MS ?? "");
+        return Number.isFinite(n) && n >= 500 ? Math.floor(n) : 2_500;
+})();
+
+/**
+ * Deliver a terminal note: POST to the engine, fall back to the outbox file.
+ *
+ * M6 degraded-mode fast path: `assumeDown: true` (the caller learned the
+ * engine is down from a recent probe — engine-status.ts) skips BOTH the
+ * probe and the POST and goes straight to the outbox, making the common
+ * engine-down quit INSTANT even against a hanging port.
+ */
 export async function deliverTerminalNote(
         note: OutboxNote,
+        opts: { assumeDown?: boolean } = {},
 ): Promise<{ delivered: boolean; via: "engine" | "outbox"; detail?: string }> {
-        // M3 auto-start (docs/detached-engine-architecture.md rule 5): when the
-        // engine is unreachable, spawn it detached — fire-and-forget. The note
-        // itself STILL lands in the outbox (the durable path); the engine's boot
-        // syncNoteOutbox drains it once the spawn comes up. Never awaited here:
-        // session shutdown must not pay the boot latency.
-        let spawnedEngine = false;
-        try {
-                await fetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(1200) });
-        } catch {
-                try {
-                        void spawnEngineDetached();
-                        spawnedEngine = true;
-                } catch {
-                        /* spawn is best-effort — the outbox is the guarantee */
+        const attempt = (async () => {
+                if (opts.assumeDown) {
+                        void spawnEngineDetached(); // gated: backoff / gave-up / kill switch apply
+                        // The durable write this branch promises ("queued"): without it
+                        // the note was silently DROPPED — the race below only writes the
+                        // outbox on the budget-timeout detail string (M6 test-suite find).
+                        writeOutboxNote(note);
+                        return { delivered: false, via: "outbox" as const, detail: "engine known down — queued" };
                 }
-        }
-        try {
-                const res = await fetch(`${ENGINE_URL}/api/notes`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ content: note.content, project_path: note.projectPath }),
-                        signal: AbortSignal.timeout(4000),
-                });
-                if (res.ok) return { delivered: true, via: "engine" };
-                const detail = `engine responded ${res.status}`;
-                writeOutboxNote(note);
-                return { delivered: false, via: "outbox", detail };
-        } catch (err: any) {
-                const detail = err?.message ?? String(err);
-                writeOutboxNote(note);
-                return {
-                        delivered: false,
-                        via: "outbox",
-                        detail: spawnedEngine ? `${detail} (engine spawn kicked)` : detail,
-                };
-        }
+                // M3 auto-start (docs/detached-engine-architecture.md rule 5): when the
+                // engine is unreachable, spawn it detached — fire-and-forget. The note
+                // itself STILL lands in the outbox (the durable path); the engine's boot
+                // syncNoteOutbox drains it once the spawn comes up. Never awaited here:
+                // session shutdown must not pay the boot latency.
+                let spawnedEngine = false;
+                try {
+                        await fetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(1200) });
+                } catch {
+                        try {
+                                void spawnEngineDetached();
+                                spawnedEngine = true;
+                        } catch {
+                                /* spawn is best-effort — the outbox is the guarantee */
+                        }
+                }
+                try {
+                        const res = await fetch(`${ENGINE_URL}/api/notes`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ content: note.content, project_path: note.projectPath }),
+                                signal: AbortSignal.timeout(4000),
+                        });
+                        if (res.ok) return { delivered: true, via: "engine" as const };
+                        const detail = `engine responded ${res.status}`;
+                        writeOutboxNote(note);
+                        return { delivered: false, via: "outbox" as const, detail };
+                } catch (err: any) {
+                        const detail = err?.message ?? String(err);
+                        writeOutboxNote(note);
+                        return {
+                                delivered: false,
+                                via: "outbox" as const,
+                                detail: spawnedEngine ? `${detail} (engine spawn kicked)` : detail,
+                        };
+                }
+        })();
+        // The budget never swallows the note: whichever side of the race wins,
+        // the outbox write inside `attempt` still happens — but a fetch that
+        // IGNORES its abort signal could keep the promise pending past the
+        // budget, so on timeout we write the outbox ourselves and resolve.
+        const budget = new Promise<{ delivered: false; via: "outbox"; detail: string }>((resolve) => {
+                setTimeout(() => resolve({ delivered: false, via: "outbox", detail: "delivery budget exceeded — queued" }), NOTE_DELIVERY_BUDGET_MS).unref?.();
+        });
+        const result = await Promise.race([attempt, budget]);
+        if (!result.delivered && result.detail === "delivery budget exceeded — queued") writeOutboxNote(note);
+        return result;
 }
 
 /** Read + parse every pending outbox file (engine side). */

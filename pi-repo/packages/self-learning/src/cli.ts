@@ -51,6 +51,7 @@ import {
         ensureUnownAgentDir,
         ensureUnownAgentDirInfo,
         initProjectMemory,
+        outboxStats,
         projectMemoryPath,
         resolveTerminalMemory,
         STRICT_HOOKS,
@@ -59,6 +60,7 @@ import {
         UNOWN_HOME,
         unownAgentDirInit,
 } from "./term.ts";
+import { readSpawnState } from "./engine-supervisor.ts";
 import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDir } from "./checkpoints.ts";
 import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
 import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
@@ -143,9 +145,10 @@ Usage:
                            list | create | edit | pause | resume | run |
                            history | delete — needs the engine running;
                            cron is LOCAL timezone, default mode read-only
-  unown engine <sub>      the detached self-learning engine (M3):
-                           status | start | stop | serve — ping, spawn,
-                           graceful drain, or run in-process (supervisor entry)
+  unown engine <sub>      the detached self-learning engine (M3+M6):
+                           status | start | stop | repair | serve — ping,
+                           spawn, graceful drain, corrupt-DB recovery,
+                           or run in-process (supervisor entry)
   unown usage            token & cost report for the LLM bridge
                            (--days N, --model M, --json; estimates unless
                            UNOWN_PRICE_* pins exact prices)
@@ -197,7 +200,7 @@ Session tools (registered in every session):
                                          registered with the fleet lane)
   automation_list (+create/update/delete outside automation runs)
                                          scheduled runs managed by the engine
-  /plan /todos /note /agents /learning /lsp /checkpoint /undo /redo
+  /plan /todos /note /agents /learning /engine /lsp /checkpoint /undo /redo
   /restore /checkpoints /receipts /mcp /goal /review   session commands
   /tasks                  the async subagent fleet: running children + the
                           resume registry (task_control steer <name> resumes)
@@ -1283,12 +1286,30 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                         }
                 }
         } catch {
+                const stats = outboxStats();
                 check(
                         "self-learning engine",
                         false,
-                        `unreachable — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox (start it: unown engine start)`,
+                        `unreachable — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox (${stats.queued} pending; start it: unown engine start)`,
                         "warn",
                 );
+                // M6: the crash-loop circuit explains WHY auto-start isn't fixing
+                // this — surfaced here because doctor is the first place users look.
+                const circuit = readSpawnState();
+                if (circuit.gaveUp) {
+                        check(
+                                "engine auto-start",
+                                false,
+                                `gave up after ${circuit.attempts} failed start(s) — inspect .run/engine.log; then: unown engine repair (corrupt DB?) or unown engine start (resets the circuit)`,
+                                "warn",
+                        );
+                } else if (circuit.attempts > 0) {
+                        check(
+                                "engine auto-start",
+                                true,
+                                `${circuit.attempts} recent attempt(s) — backing off between tries (normal after failures)`,
+                        );
+                }
         }
 
         // 6. SDLC surfaces (P1 productization — research R-c §2): LSP servers,

@@ -5,7 +5,7 @@
 - **Status**: accepted, implementation in progress
 - **Method**: architecture walk of the live system (2026-10-20), empirical failure reproduction, ~90-source research review ([detached-engine-research.md](detached-engine-research.md)), before/after benchmarks (`scripts-dev/arch-bench.sh`, receipts in `benchmarks/detached-engine/`)
 - **Sections**: [Current state](#current-state) · [Target architecture](#target-architecture) · [Responsibility split](#responsibility-split) · [Failure modes & mitigations](#failure-modes--mitigations) · [Resource budget](#resource-budget) · [Implementation plan](#implementation-plan) · [Benchmarks](#benchmarks)
-- **Related pages**: [memory.md](memory.md) · [configuration.md](configuration.md) · [testing-strategy.md](testing-strategy.md) · [install.md](install.md) · [updating.md](updating.md)
+- **Related pages**: [memory.md](memory.md) · [configuration.md](configuration.md) · [resilience.md](resilience.md) · [testing-strategy.md](testing-strategy.md) · [install.md](install.md) · [updating.md](updating.md)
 
 ## Current state
 
@@ -86,7 +86,7 @@ The one deliberate asymmetry: the *agent* never blocks on the engine for anythin
 
 ## Failure modes & mitigations
 
-Each scenario: trigger → observed/expected behavior → mitigation (implemented change).
+Each scenario: trigger → observed/expected behavior → mitigation (implemented change). The operational companion to this section — what each failure looks like from the terminal (footer states, toasts, `/engine`, doctor) and the by-hand recovery playbook — is [resilience.md](resilience.md).
 
 **F1 — Event feedback loop (runaway dreams).** *Observed* [V]: `run:finished` → `dream-check` → dream + canary → its own runs emit `run:finished` → repeat; 9 dreams, ~630k prompt tokens, 50 min. *Mitigation*: (a) `dream-check` now requires ≥ `PI_DREAM_CHECK_MIN_NOTES` **undreamed** notes (default 3 — its documented contract) instead of firing on every event; (b) runs spawned *by* a dream carry `meta.origin=dream` and their `run:finished` events do not re-trigger dream-check (self-trigger guard); (c) a per-job cooldown (default 10 min) collapses queued duplicates; (d) the budget governor (F7) is the hard backstop.
 

@@ -234,6 +234,22 @@ export class Store {
                 const stmt = this.db.prepare(sql);
                 return stmt.all(...params) as T[];
         }
+        /**
+         * PRAGMA quick_check (M6): the fast O(N) integrity pass (skips the
+         * index↔table cross-checks of full integrity_check — sqlite.org/pragma
+         * recommends it for routine boot-time validation). Returns "ok" or the
+         * first failure line. The engine runs it at boot (server.ts startServer)
+         * so a damaged DB fails FAST with the repair hint instead of corrupting
+         * writes mid-dream.
+         */
+        quickCheck(): string {
+                try {
+                        const rows = this.query<{ quick_check?: string }>("PRAGMA quick_check");
+                        return String(rows[0]?.quick_check ?? "unknown");
+                } catch (err: any) {
+                        return `error: ${err?.message ?? err}`;
+                }
+        }
         get<T = any>(sql: string, params: any[] = []): T | undefined {
                 return this.db.prepare(sql).get(...params) as T | undefined;
         }

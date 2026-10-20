@@ -30,31 +30,31 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 174;
+export const CHANGELOG_TOTAL_ENTRIES = 182;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 83,
+  "Added": 90,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 37,
   "Security": 3,
-  "Behavior": 26
+  "Behavior": 27
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 52,
+    "total": 60,
     "counts": {
-      "Added": 29,
+      "Added": 36,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 11,
       "Security": 0,
-      "Behavior": 6
+      "Behavior": 7
     },
     "groups": [
       {
@@ -97,6 +97,26 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
+            "title": "the terminal agent now sees the memory engine and says so (M6) — a persistent footer…",
+            "behavior": false
+          },
+          {
+            "title": "the crash-loop circuit — auto-start that fails repeatedly now backs off and gives up instead of spawning one…",
+            "behavior": false
+          },
+          {
+            "title": "unown engine repair — corrupt-DB quarantine with bounded loss",
+            "behavior": false
+          },
+          {
+            "title": "the outbox is bounded and observable",
+            "behavior": false
+          },
+          {
+            "title": "docs: docs/resilience.md",
+            "behavior": false
+          },
+          {
             "title": "benchmarks/detached-engine/ — before/after receipts for the whole detachment effort",
             "behavior": false
           },
@@ -122,6 +142,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "research record",
+            "behavior": false
+          },
+          {
+            "title": "tui-capture+bench: the beauty-trilogy acceptance run — full re-capture, 39/39 audit gates…",
+            "behavior": false
+          },
+          {
+            "title": "tui: beauty-4 — the feedback release — session diff-stat chip, subagent color lanes…",
             "behavior": false
           },
           {
@@ -175,6 +203,39 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "tui: the split-view display mode — a built-in port of pi-split-view 1.1.0",
             "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "the session now carries an engine-status footer, a /engine slash command (the 28th)…",
+            "behavior": true
+          },
+          {
+            "title": "webcache: stale-while-revalidate — past-TTL answers serve instantly (marked) while a background refresh…",
+            "behavior": true
+          },
+          {
+            "title": "fleet: the public surface — UNOWN_FLEET_TIMEOUT_MS wired for real, the --help contract…",
+            "behavior": true
+          },
+          {
+            "title": "fleet: the interactive subagent fleet — async spawn, mid-run steering, ask_question…",
+            "behavior": true
+          },
+          {
+            "title": "subagents: context briefs — summary mode (pi-cciotti port)",
+            "behavior": true
+          },
+          {
+            "title": "subagents: the advertised catalog, delegation levels, role builtins, the BLOCKED protocol…",
+            "behavior": true
+          },
+          {
+            "title": "addons: the TUI addon framework — ask_user_question, the addon-era todo, and the advisor…",
+            "behavior": true
           }
         ]
       },
@@ -253,35 +314,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "landing: the creature atlas — the sprites redrawn as authored pixel art",
             "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Behavior",
-        "items": [
-          {
-            "title": "webcache: stale-while-revalidate — past-TTL answers serve instantly (marked) while a background refresh…",
-            "behavior": true
-          },
-          {
-            "title": "fleet: the public surface — UNOWN_FLEET_TIMEOUT_MS wired for real, the --help contract…",
-            "behavior": true
-          },
-          {
-            "title": "fleet: the interactive subagent fleet — async spawn, mid-run steering, ask_question…",
-            "behavior": true
-          },
-          {
-            "title": "subagents: context briefs — summary mode (pi-cciotti port)",
-            "behavior": true
-          },
-          {
-            "title": "subagents: the advertised catalog, delegation levels, role builtins, the BLOCKED protocol…",
-            "behavior": true
-          },
-          {
-            "title": "addons: the TUI addon framework — ask_user_question, the addon-era todo, and the advisor…",
-            "behavior": true
           }
         ]
       }

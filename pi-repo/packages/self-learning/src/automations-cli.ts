@@ -21,7 +21,7 @@ export interface CliResult {
         exitCode: number;
 }
 
-export const AUTOMATIONS_USAGE = `unown automations — scheduled recurring agent runs (need the engine: bun run agent:start)
+export const AUTOMATIONS_USAGE = `unown automations — scheduled recurring agent runs (need the engine: unown engine start)
 
 Usage:
   unown automations list
@@ -53,7 +53,7 @@ async function api(method: string, path: string, body?: unknown): Promise<{ ok: 
                 return {
                         ok: false,
                         status: 0,
-                        data: { error: `the self-learning engine is not reachable at ${ENGINE_URL}\n  automations need the stack running: bun run agent:start` },
+                        data: { error: `the self-learning engine is not reachable at ${ENGINE_URL}\n  automations need the engine running: unown engine start` },
                 };
         }
 }

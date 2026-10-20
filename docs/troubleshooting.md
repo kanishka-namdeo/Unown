@@ -2,7 +2,7 @@
 
 Symptom-first fixes for the unown stack: run `unown doctor` first, work the table, then check the logs. Covers the chat path (bridge, credentials, model config), the learning path (engine, notes), the session surface (LSP, MCP, checkpoints, goals, review) and the CLI itself.
 
-Related pages: [usage](usage.md) · [providers](providers.md) · [Memory](memory.md) · [configuration](configuration.md)
+Related pages: [usage](usage.md) · [providers](providers.md) · [Memory](memory.md) · [configuration](configuration.md) · [resilience](resilience.md)
 
 - [Start here: unown doctor](#start-here-unown-doctor)
 - [Symptoms and fixes](#symptoms-and-fixes)
@@ -94,11 +94,12 @@ Chat works; memory / dreams / dashboard do not. All of these are ⚠-class probl
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Doctor: `self-learning engine — unreachable` | Engine down. **Not fatal** — chat is unaffected; session notes queue in `~/.unown/notes/outbox` and sync when it returns | `bun run agent:start` when you want learning back; nothing else required |
+| Doctor: `self-learning engine — unreachable` | Engine down. **Not fatal** — chat is unaffected; session notes queue in `~/.unown/notes/outbox` and sync when it returns | `unown engine start` when you want learning back (auto-start usually beats you to it); nothing else required |
+| Footer `memory: paused · /engine`, or doctor: `engine auto-start — gave up after N failed start(s)` | The engine crash-loops on boot — usually a corrupt DB or an occupied port; auto-start backed off and gave up after 5 failures, by design | `unown engine status` (pidfile + circuit + outbox diagnosis), inspect `.run/engine.log`; corrupt DB → `unown engine repair`; otherwise `unown engine start` (resets the circuit). Full catalog: [resilience](resilience.md) |
 | Doctor: `default model routable` shows ⚠ | Your model id is not in `BRIDGE_KNOWN_MODELS`, so the bridge routes it onto `BRIDGE_ROUTE_DEFAULT` | Requests still work. Add the id to `BRIDGE_KNOWN_MODELS` in `.env` (restart the stack), or `unown setup --model` an allow-listed one |
 | Dashboard loads but shows no data / cannot fetch | `NEXT_PUBLIC_AGENT_API_BASE` unset in a direct deployment, or pointing at the wrong prefix | Set it to `http://localhost:3030` (or your API-gateway prefix) in `.env`, then `bun run agent:stop && bun run agent:start` ([configuration](configuration.md)) |
 | Triggering a router job fails with `engine is busy with another job` | By design — the busy-mutex serializes background work so the sandbox is never double-driven | Wait for the running job to finish; the Router tab shows run counts and next-fire times |
-| Notes never become memory | Engine not running at dream time (notes pile up in the outbox), or dreams failing | Start the engine (`bun run agent:start`), check the Dreams tab for errors, and confirm the outbox is draining: `ls ~/.unown/notes/outbox` |
+| Notes never become memory | Engine not running at dream time (notes pile up in the outbox), or dreams failing | Start the engine (`unown engine start`), check the Dreams tab for errors, and confirm the outbox is draining: `ls ~/.unown/notes/outbox` |
 
 #### Notes are not becoming memory
 

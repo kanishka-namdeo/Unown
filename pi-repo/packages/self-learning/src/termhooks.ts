@@ -42,6 +42,13 @@ import { assistantTextOf } from "./messages.ts";
 import { createPermissionGate, type PermissionGate, type ToolCallDecision } from "./permissions.ts";
 import { annotateToolOutput, recordShieldFlag, shieldEnabled } from "./shield.ts";
 import { deliverTerminalNote } from "./term.ts";
+import {
+        engineAssumedDown,
+        getEngineStatusInfo,
+        describeSpawnCircuit,
+        startEngineStatusLoop,
+        stopEngineStatusLoop,
+} from "./engine-status.ts";
 import { decideAdversary } from "./adversary.ts";
 import {
     hasHandlersFor,
@@ -530,6 +537,28 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                 pi.on("session_start", async (_event: any, ctx: any) => {
                         sessionStartTs = Date.now();
                         log(`session started in ${opts.cwd}`);
+                        // M6 degraded-mode awareness: one unref'd probe loop for the
+                        // process — footer line (memory: up|down|paused), ONE toast
+                        // per state transition, gated auto-start kicks. Started here
+                        // (never in the factory — extensions.md: no timers at factory
+                        // scope); survives /new|resume|fork reloads, stopped at quit.
+                        startEngineStatusLoop({
+                                onFooter: (text) => {
+                                        try {
+                                                if (!ctx?.hasUI || typeof ctx.ui?.setStatus !== "function") return;
+                                                ctx.ui.setStatus("engine", text);
+                                        } catch {
+                                                /* the footer is cosmetic — degrade silently */
+                                        }
+                                },
+                                onToast: (message, level) => {
+                                        try {
+                                                ctx?.ui?.notify?.(message, level);
+                                        } catch {
+                                                /* non-fatal */
+                                        }
+                                },
+                        });
                         // One-shot notice when the project permissions config is
                         // gated by trust (same UX as /mcp's untrusted banner).
                         const notice = permissionGate.consumeUntrustedNotice();
@@ -769,6 +798,42 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                 // (the /mcp trust UX, mirrored for the hooks gate). Guarded:
                 // minimal hosts and test harnesses may expose only `on`.
                 if (typeof pi?.registerCommand === "function") {
+                        pi.registerCommand("engine", {
+                        description:
+                                "Memory-engine status + degraded-mode diagnosis: /engine — what's up/down, queued notes, auto-start circuit, actions",
+                        handler: async (_args: string, ctx: any) => {
+                                try {
+                                        const info = getEngineStatusInfo();
+                                        const lines: string[] = [];
+                                        lines.push(`memory engine — ${opts.engineUrl}`);
+                                        if (info.state === "up") {
+                                                const upMin = Math.max(1, Math.round((Date.now() - info.since) / 60000));
+                                                lines.push(
+                                                        `  status: UP${info.pid ? ` (pid ${info.pid})` : ""}${info.busyMs !== undefined && info.busyMs > 0 ? ` · busy on '${info.activeJob ?? "job"}' ${Math.round(info.busyMs / 1000)}s` : " · router idle"} · observed ${upMin}m ago in this session`,
+                                                );
+                                        } else if (info.state === "starting") {
+                                                lines.push("  status: STARTING — a start was kicked, first probes pending (~seconds)");
+                                        } else if (info.state === "paused") {
+                                                lines.push("  status: PAUSED — chat works, memory reads use the last engine write, notes keep queuing locally");
+                                        } else if (info.state === "down") {
+                                                lines.push("  status: DOWN — chat unaffected; notes queue locally and sync when it returns");
+                                        } else {
+                                                lines.push("  status: unknown (first probe pending)");
+                                        }
+                                        lines.push(`  outbox: ${info.queuedNotes} queued${info.droppedNotes > 0 ? ` · ${info.droppedNotes} dropped while offline (oldest-first, cap ${"UNOWN_OUTBOX_MAX"})` : ""}`);
+                                        lines.push(`  auto-start: ${describeSpawnCircuit(info.spawn)}`);
+                                        if (info.state !== "up") {
+                                                lines.push("  memory files on disk keep serving the agent (last engine write is the fallback)");
+                                                lines.push("  actions: unown engine start · unown engine status · /learning (memory stack)");
+                                        } else {
+                                                lines.push("  actions: /learning (memory stack) · unown engine stop · dashboard :3000");
+                                        }
+                                        ctx.ui?.notify?.(lines.join("\n"), "info");
+                                } catch (err: any) {
+                                        ctx.ui?.notify?.(`/engine failed: ${err?.message ?? err}`, "error");
+                                }
+                        },
+                        });
                         pi.registerCommand("hooks", {
                         description:
                                 "User-configurable hooks status: /hooks — /hooks trust approves a project .unown/hooks.json",
@@ -828,7 +893,10 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
 
                 pi.on("session_shutdown", async (event: any, _ctx: any) => {
                         if (event?.reason !== "quit") return; // new/resume/fork reloads keep the session alive
-                        if (prompts === 0 && toolCalls === 0) return; // nothing happened — no note
+                        if (prompts === 0 && toolCalls === 0) {
+                                stopEngineStatusLoop();
+                                return; // nothing happened — no note
+                        }
                         try {
                                 const note = buildTerminalNote({
                                         cwd: opts.cwd,
@@ -838,10 +906,20 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                         lastAssistantText,
                                         sessionStartTs,
                                 });
-                                const result = await deliverTerminalNote({ content: note, projectPath: opts.cwd, ts: Date.now() });
+                                // M6 fast path: a recent probe says the engine is down
+                                // (or the crash-loop circuit gave up) → skip the probe
+                                // + POST entirely, land in the outbox instantly, keep
+                                // the quit snappy even against a hanging port.
+                                const assumeDown = engineAssumedDown();
+                                const result = await deliverTerminalNote(
+                                        { content: note, projectPath: opts.cwd, ts: Date.now() },
+                                        { assumeDown },
+                                );
                                 log(`session note ${result.delivered ? "delivered to engine" : "queued in outbox"} (${result.via})`);
                         } catch (err: any) {
                                 log(`failed to deliver session note: ${err?.message ?? err}`);
+                        } finally {
+                                stopEngineStatusLoop();
                         }
                 });
         };

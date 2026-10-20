@@ -585,6 +585,17 @@ export function startServer(port: number = PORT) {
                 console.log(`[agent-service] ${lock.reason} — this instance exits`);
                 return null;
         }
+        // M6 boot-time integrity gate: PRAGMA quick_check is the fast O(N)
+        // pass (docs/resilience.md). A damaged DB must fail HERE, with the
+        // repair hint — not mid-dream, corrupting writes. The outbox + the
+        // on-disk memory files make `unown engine repair` loss-bounded.
+        const qc = store.quickCheck();
+        if (qc !== "ok") {
+                console.error(`[agent-service] database integrity check failed: ${qc}`);
+                console.error("  quarantine it and boot fresh with: unown engine repair");
+                lock.release();
+                return null;
+        }
         ensureAgentDir();
         seedMemoryIfEmpty();
         seedTasks();

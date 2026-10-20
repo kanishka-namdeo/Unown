@@ -14,7 +14,7 @@ How to run the `unown` terminal agent, what it does inside a session, and where 
 - [Memory in sessions](#memory-in-sessions)
 - [Environment variables](#environment-variables)
 
-Related pages: [subagents](subagents.md) · [skills](skills.md) · [memory](memory.md) · [providers](providers.md) · [configuration](configuration.md) · [addons](addons.md) · [updating](updating.md)
+Related pages: [subagents](subagents.md) · [skills](skills.md) · [memory](memory.md) · [providers](providers.md) · [configuration](configuration.md) · [addons](addons.md) · [updating](updating.md) · [resilience](resilience.md)
 
 ## Three ways to run
 
@@ -103,7 +103,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown wiki <sub>` | Auto-generated repo documentation with `file:line` cross-links (the zcode Repo Wiki port) — `generate [--force]` \| `search <q>` \| `list` \| `show <page>`; written to `.unown/wiki/*.md`. In-session alias: `/wiki`. See [repo wiki](repo-wiki.md) |
 | `unown acp` | Run the ACP editor server on stdio (JSON-RPC 2.0, newline-delimited) — point Zed or any ACP client at it: agent program `unown`, args `acp`. See [acp](acp.md) |
 | `unown automations <sub>` | Scheduled recurring agent runs — `list` \| `create` \| `edit` \| `pause` \| `resume` \| `run` \| `history` \| `delete`. Needs the engine running; cron is in your **local** timezone, default mode `read-only`. See [Automations](#automations-unown-automations) |
-| `unown engine <sub>` | The detached self-learning engine — `status` (pid, uptime, active job, budget/breaker) \| `start` (spawn detached if down, wait for health) \| `stop` (graceful drain: finish in-flight requests, checkpoint the WAL, release the lock) \| `serve` (run in the foreground — the systemd/launchd/Windows-service entry). Session-note delivery auto-starts the engine when it is down, so the terminal agent never needs it running to be useful. See [the detached engine](detached-engine-architecture.md) |
+| `unown engine <sub>` | The detached self-learning engine — `status` (pid, uptime, active job, budget/breaker, outbox, auto-start circuit) \| `start` (spawn detached if down, wait for health — resets the crash-loop circuit) \| `stop` (graceful drain: finish in-flight requests, checkpoint the WAL, release the lock) \| `repair` (quarantine a corrupt DB — backs it up aside and boots fresh; memory files and queued notes survive by design) \| `serve` (run in the foreground — the systemd/launchd/Windows-service entry). Session-note delivery auto-starts the engine when it is down, so the terminal agent never needs it running to be useful. See [the detached engine](detached-engine-architecture.md) and [engine resilience](resilience.md) |
 | `unown usage` | Token/latency/cost report over the bridge's persistent usage log — `--days N`, `--model M`, `--json`. See [Usage tracking](usage-tracking.md) |
 | `unown webcache <sub>` | Inspect the [web results store](#web-search--webfetch) — `stats` (entries, size vs the byte cap, TTLs, hit rate, saved upstream requests, top providers; `--json` for the raw object; the default) \| `clear` (remove every entry) \| `sweep` (run the byte-capped LRU eviction pass on demand) |
 | `unown update` | Check for a newer release and self-update — fast-forward the checkout to the newest ready tag, then re-run the installer. Flags: `--check` (report only; exit `2` when an update is available), `--check --json`, `--allow-dirty`, `--rollback`, or an explicit version (`unown update 2.1.0` — also pins/rolls back). See [updating](updating.md) |
@@ -297,7 +297,7 @@ Limits (zcode's, transliterated): 20 automations total, 2 concurrent runs, a 30-
 
 ## Slash commands
 
-unown adds twenty-seven commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
+unown adds twenty-eight commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
 
 | Command | What it does |
 |---|---|
@@ -308,7 +308,8 @@ unown adds twenty-seven commands of its own — plus the split-view display mode
 | `/note <text>` | Deliver a learning note to the engine now |
 | `/agents` | List available subagents (built-ins + `.unown/agents/*.md` + `~/.unown/agent/agents/*.md`) |
 | `/tasks` | The [async subagent fleet](subagents.md#the-fleet-widget-and-tasks): running children with live state + the finished ones that are resumable by name (`task_control steer <name> <message>`) |
-| `/learning` | Re-print the effective 4-tier memory stack, fresh from disk |
+| `/learning` | Re-print the effective 4-tier memory stack, fresh from disk — with per-tier staleness ages when the engine is down ([resilience](resilience.md#learning-staleness-headers)) |
+| `/engine` | Memory-engine status + degraded-mode diagnosis — up/down/paused, outbox backlog and drops, the auto-start crash-loop circuit, and the actions to take ([resilience](resilience.md#the-engine-command)) |
 | `/lsp` | Show LSP status: detected language servers (running/available), open documents, cached diagnostics |
 | `/checkpoint [label]` | Snapshot the current state of the files this session touched |
 | `/undo [n\|--all]` | Revert the file changes of the last n turn(s) — this session's turns, or everyone's with `--all` |

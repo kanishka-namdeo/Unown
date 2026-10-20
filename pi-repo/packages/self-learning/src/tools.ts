@@ -34,7 +34,7 @@
  * too.
  */
 import { spawn } from "node:child_process";
-import { type Dirent, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { type Dirent, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
@@ -56,6 +56,7 @@ import {
     trustProjectLspConfig,
 } from "./lsp.ts";
 import { deliverTerminalNote, ENGINE_URL, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
+import { getEngineStatusInfo } from "./engine-status.ts";
 import {
     checkGoalCompletion,
     goalContextMessage,
@@ -1702,12 +1703,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 return {
                                         ok: false,
                                         status: 0,
-                                        data: { error: `the self-learning engine is not reachable at ${ENGINE_URL} — automations need the stack running (bun run agent:start)` },
+                                        data: { error: `the self-learning engine is not reachable at ${ENGINE_URL} — automations need the engine (unown engine start)` },
                                 };
                         }
                 };
                 const ENGINE_DOWN_HINT =
-                        "the self-learning engine is not reachable — automations need the stack running (bun run agent:start); this session's chat is unaffected";
+                        "the self-learning engine is not reachable — automations need the engine (unown engine start); this session's chat is unaffected";
 
                 const AutomationListParams = Type.Object({}, { description: "List the project's scheduled automations (needs the engine running)." });
                 const AutomationCreateParams = Type.Object({
@@ -2150,16 +2151,39 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 });
 
                 pi.registerCommand("learning", {
-                        description: "Show the effective 4-tier memory stack (fresh read from disk)",
+                        description: "Show the effective 4-tier memory stack (fresh read from disk, with per-tier staleness)",
                         handler: async (_args, ctx) => {
                                 const files = resolveTerminalMemory(opts.cwd);
+                                // M6: staleness transparency — with the engine down the
+                                // stack still serves the last-written files, so SAY how
+                                // old each tier is instead of letting a weeks-stale
+                                // project.md read as fresh (k9s "cached as of" pattern).
+                                const ageOf = (path: string): string => {
+                                        try {
+                                                const age = Date.now() - statSync(path).mtimeMs;
+                                                if (age < 60_000) return "updated <1m ago";
+                                                if (age < 3_600_000) return `updated ${Math.max(1, Math.round(age / 60_000))}m ago`;
+                                                if (age < 86_400_000) return `updated ${Math.round(age / 3_600_000)}h ago`;
+                                                return `updated ${Math.round(age / 86_400_000)}d ago`;
+                                        } catch {
+                                                return "";
+                                        }
+                                };
+                                const engine = getEngineStatusInfo();
+                                const header =
+                                        engine.state === "up"
+                                                ? "memory engine: up — files below are engine-maintained (project tier) + user tiers"
+                                                : engine.state === "paused"
+                                                  ? "memory engine: paused (won't start) — files below are the last engine writes; new notes queue locally"
+                                                  : "memory engine: down — files below are the last engine writes; new notes queue locally and sync when it returns";
                                 const parts = files.map((f) => {
                                         const lines = f.content.trimEnd().split("\n");
                                         const shown =
                                                 lines.slice(0, 60).join("\n") + (lines.length > 60 ? `\n… (${lines.length - 60} more lines)` : "");
-                                        return `── ${f.tier.toUpperCase()} · ${f.path} ──\n${shown}`;
+                                        const age = ageOf(f.fsPath);
+                                        return `── ${f.tier.toUpperCase()} · ${f.path}${age ? ` (${age})` : ""} ──\n${shown}`;
                                 });
-                                ctx.ui.notify(parts.join("\n\n"), "info");
+                                ctx.ui.notify(`${header}\n\n${parts.join("\n\n")}`, "info");
                         },
                 });
 

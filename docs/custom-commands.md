@@ -11,8 +11,8 @@
 - [Security posture](#security-posture)
 - [Ideas](#ideas)
 
-Unown ships twenty-seven built-in slash commands (`/plan`, `/todos`, `/undo`, …,
-plus the newest, `/addons` and `/advisor` — and the split-view display mode's
+Unown ships twenty-eight built-in slash commands (`/plan`, `/todos`, `/undo`, …,
+plus the newest, `/engine` — and the split-view display mode's
 `/split` family on top), pi ships its own twenty-three, and every discovered
 [skill](skills.md) registers as `/skill:<name>`. This page is about the
 fourth kind: **your own commands** — reusable prompts you keep next to the
