@@ -160,7 +160,15 @@ export function ensureUnownAgentDirInfo(): AgentDirInit {
                 writeFileSync(
                         settingsPath,
                         `${JSON.stringify(
-                                { defaultProvider: models.provider, defaultModel: models.modelId, theme: UNOWN_THEME_NAME },
+                                {
+                                    defaultProvider: models.provider,
+                                    defaultModel: models.modelId,
+                                    theme: UNOWN_THEME_NAME,
+                                    // Fullscreen alt-screen TUI: the layout engine the split-view display mode
+                                    // (band + files dock) is built on. Switch back any time via /settings
+                                    // (Interface layout); existing installs keep their saved settings.
+                                    tuiMode: "fullscreen",
+                                },
                                 null,
                                 2,
                         )}\n`,

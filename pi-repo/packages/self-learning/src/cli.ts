@@ -67,6 +67,7 @@ import { runRecipesCommand, RECIPES_USAGE } from "./recipes-cli.ts";
 import { runWikiCommand, WIKI_USAGE } from "./wiki-cli.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
+import { createSplitViewExtension } from "./splitview.ts";
 import { createPermissionsExtension, createPermissionGate, permissionsDoctorSummary } from "./permissions.ts";
 import { assembleResultJson, captureStdout, createOutputCapture, createOutputCaptureExtension } from "./output-format.ts";
 import { ACP_HELP, runAcpServer } from "./acp.ts";
@@ -492,6 +493,9 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                 permissions: permissionsGate,
         });
         const permissionsExtension = createPermissionsExtension({ cwd, verbose, gate: permissionsGate });
+        // Split-view TUI display mode (thinking/tool band, files dock, response-only): a built-in
+        // port of pi-split-view, persisted via <agentDir>/ui-panels.json (/split-save).
+        const splitviewExtension = createSplitViewExtension({ agentDir, verbose });
         const toolsExtension = createUnownToolsExtension({ cwd, engineUrl: ENGINE_URL, verbose });
         // The TUI addons (ask_user_question, todo, advisor + /addons): bundled
         // inline extensions with their own user config (~/.unown/agent/addons.json).
@@ -546,6 +550,7 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                         addonsExtension as any,
                                         mcpExtension as any,
                                         permissionsExtension as any,
+                                        splitviewExtension as any,
                                         ...((bootOpts.extraExtensions ?? []) as any[]),
                                 ],
                                 additionalSkillPaths,
