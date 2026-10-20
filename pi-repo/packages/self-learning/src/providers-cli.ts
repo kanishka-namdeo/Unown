@@ -28,7 +28,10 @@ import * as readline from "node:readline/promises";
 import { probeOpenAiEndpoint } from "./probe.ts";
 import { PRESETS, type ProviderPreset } from "./setup.ts";
 import {
+        keyStatusLabel,
         listProviders,
+        looksLikeChatModel,
+        refreshProviderModels,
         removeProvider,
         resolveProviderKey,
         setDefaultModel,
@@ -53,10 +56,12 @@ usage:
       --id ID        registry id override (multiple customs: --id team-gw …)
       --name N       display name override
       --default      make this provider the default (default: first add is)
+      --all-models   import every chat model the endpoint serves (discovery)
   unown providers remove <id>          drop a provider (+ its stored key)
   unown providers key <id> [--api-key K]   rotate the stored key (prompts in TTY)
   unown providers default <id> [model] set the default provider/model
   unown providers test <id>            live endpoint probe with the stored key
+  unown providers refresh <id>         import the endpoint's live model catalog
 
 Files (~/.unown/agent/): models.json (registry), auth.json (keys, 0600),
 settings.json (defaultProvider + defaultModel). Adding NEVER removes other
@@ -66,19 +71,6 @@ providers — that is the point. 'unown setup --force' resets to one.
 // ---------------------------------------------------------------------------
 // list
 // ---------------------------------------------------------------------------
-
-function keyStatusLabel(p: ProviderSummary): string {
-        switch (p.keyStatus) {
-                case "auth-json":
-                        return "key: auth.json";
-                case "models-json":
-                        return "key: in models.json";
-                case "env-ref":
-                        return `key: $${p.keyEnv}`;
-                default:
-                        return "key: none";
-        }
-}
 
 export async function cmdProvidersList(jsonMode: boolean): Promise<number> {
         const list = listProviders(UNOWN_AGENT_DIR);
@@ -124,6 +116,7 @@ interface AddFlags {
         id?: string;
         name?: string;
         default?: boolean;
+        allModels?: boolean;
 }
 
 function parseAddFlags(args: string[]): { flags: AddFlags; help: boolean; unknown: string[] } {
@@ -135,6 +128,7 @@ function parseAddFlags(args: string[]): { flags: AddFlags; help: boolean; unknow
                 const next = args[i + 1];
                 if (a === "-h" || a === "--help") help = true;
                 else if (a === "--default") flags.default = true;
+                else if (a === "--all-models") flags.allModels = true;
                 else if (a === "--provider" && next) {
                         flags.provider = next;
                         i++;
@@ -310,6 +304,18 @@ async function cmdProvidersAdd(args: string[]): Promise<number> {
                 console.log(`\n✓ ${existed ? "updated" : "added"} ${providerId}, but could not reach ${baseUrl}.`);
                 console.log("  check the URL, or probe later with: unown providers test " + providerId);
         }
+        // Discovery on add: --all-models imports every chat model the endpoint
+        // serves (the Cline dropdown experience) instead of just the named one.
+        if (flags.allModels && probe.ok) {
+                const refresh = await refreshProviderModels(UNOWN_AGENT_DIR, providerId);
+                if (refresh.added.length > 0) {
+                        console.log(`  imported ${refresh.added.length} more model${refresh.added.length === 1 ? "" : "s"}: ${refresh.added.slice(0, 8).join(", ")}${refresh.added.length > 8 ? " …" : ""}`);
+                } else if (refresh.problem) {
+                        console.log(`  · model import: ${refresh.problem}`);
+                } else {
+                        console.log("  · no additional chat models served beyond what is registered");
+                }
+        }
         if (willDefault) console.log(`  default → ${providerId}/${modelId}`);
         else console.log(`  keep the current default with: unown providers default ${providerId}`);
         const after = listProviders(UNOWN_AGENT_DIR);
@@ -318,7 +324,7 @@ async function cmdProvidersAdd(args: string[]): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
-// remove / key / default / test
+// remove / key / default / test / refresh
 // ---------------------------------------------------------------------------
 
 async function cmdProvidersRemove(id: string): Promise<number> {
@@ -447,6 +453,46 @@ async function cmdProvidersTest(id: string): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
+// refresh — live model discovery
+// ---------------------------------------------------------------------------
+
+async function cmdProvidersRefresh(id: string): Promise<number> {
+        if (!id || id.startsWith("--")) {
+                console.error("unown providers refresh <id> — which provider? (see: unown providers list)");
+                return 1;
+        }
+        const list = listProviders(UNOWN_AGENT_DIR);
+        const p = list.providers.find((x) => x.id === id);
+        if (!p) {
+                console.error(`unown providers refresh: unknown provider "${id}" — configured: ${list.providers.map((x) => x.id).join(", ") || "(none)"}`);
+                return 1;
+        }
+        const result = await refreshProviderModels(UNOWN_AGENT_DIR, id);
+        if (!result.found) return 1; // unreachable branch (handled above)
+        if (result.problem) {
+                console.log(`· ${id}: ${result.problem}`);
+                if (result.probe?.problem === "auth") {
+                        console.log(`  rotate the key with: unown providers key ${id}`);
+                        return 1;
+                }
+                return 0; // informational — an endpoint without /models is not an error
+        }
+        if (result.added.length === 0 && result.missing.length === 0) {
+                console.log(`✓ ${id} is in sync — ${result.served?.length ?? 0} chat models served, all registered`);
+                return 0;
+        }
+        if (result.added.length > 0) {
+                console.log(`✓ imported ${result.added.length} new model${result.added.length === 1 ? "" : "s"} from ${id}:`);
+                for (const m of result.added) console.log(`      · ${m}`);
+                console.log("  switch to one with: unown providers default " + id + " <model>  (or /model mid-session)");
+        }
+        if (result.missing.length > 0) {
+                console.log(`  ⚠ registered but no longer served (kept — prune by hand if intended): ${result.missing.join(", ")}`);
+        }
+        return 0;
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -482,6 +528,9 @@ export async function runProvidersCommand(argv: string[]): Promise<number> {
                 }
                 case "test":
                         return cmdProvidersTest(rest[0]);
+                case "refresh":
+                case "sync":
+                        return cmdProvidersRefresh(rest[0]);
                 case "-h":
                 case "--help":
                 case "help":

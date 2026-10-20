@@ -20,7 +20,10 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+        keyStatusLabel,
         listProviders,
+        looksLikeChatModel,
+        refreshProviderModels,
         removeProvider,
         resolveProviderKey,
         secureFilePermissions,
@@ -385,6 +388,147 @@ describe("testProvider — live probe", () => {
                 } finally {
                         server.stop(true);
                 }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// refreshProviderModels — live model discovery (M2)
+// ---------------------------------------------------------------------------
+
+describe("refreshProviderModels — model discovery", () => {
+        function discoveryServer(ids: string[], key = "cpk-test-1"): { port: number; stop: () => void } {
+                const server = Bun.serve({
+                        port: 0,
+                        fetch(req) {
+                                if (req.headers.get("authorization") !== `Bearer ${key}`) {
+                                        return new Response("nope", { status: 401 });
+                                }
+                                return Response.json({ data: ids.map((id) => ({ id })) });
+                        },
+                });
+                return { port: server.port, stop: () => server.stop(true) };
+        }
+
+        test("imports NEW chat-model ids; keeps existing records byte-identical", async () => {
+                const srv = discoveryServer(["m-a", "m-b", "m-new-1", "m-new-2"]);
+                try {
+                        upsertProvider(DIR, agnes({ baseUrl: `http://127.0.0.1:${srv.port}/v1`, modelId: "m-a", extraModelIds: ["m-b"] }));
+                        // curate m-b's metadata by hand
+                        const raw = rawModels();
+                        raw.providers.agnes.models.find((m: any) => m.id === "m-b").contextWindow = 999999;
+                        writeFileSync(join(DIR, "models.json"), JSON.stringify(raw, null, 2));
+
+                        const result = await refreshProviderModels(DIR, "agnes");
+                        expect(result.found).toBe(true);
+                        expect(result.added).toEqual(["m-new-1", "m-new-2"]);
+                        expect(result.missing).toEqual([]);
+                        const after = rawModels().providers.agnes.models;
+                        expect(after.map((m: any) => m.id)).toEqual(["m-a", "m-b", "m-new-1", "m-new-2"]);
+                        expect(after.find((m: any) => m.id === "m-b").contextWindow).toBe(999999); // curated survives
+                        expect(after.find((m: any) => m.id === "m-new-1")).toMatchObject({ contextWindow: 131072, maxTokens: 8192 });
+                } finally {
+                        srv.stop();
+                }
+        });
+
+        test("non-chat ids (embeddings, image/video/audio gen, moderation) are filtered out", async () => {
+                const srv = discoveryServer(["chat-1", "text-embedding-3-small", "bge-small-en", "whisper-1", "tts-1", "gpt-image-1", "video-gen", "omni-moderation-latest"]);
+                try {
+                        upsertProvider(DIR, agnes({ baseUrl: `http://127.0.0.1:${srv.port}/v1`, modelId: "chat-1" }));
+                        const result = await refreshProviderModels(DIR, "agnes");
+                        expect(result.added).toEqual([]); // chat-1 already registered; everything else filtered
+                        expect(result.served).toEqual(["chat-1"]); // the filtered view of what counts
+                } finally {
+                        srv.stop();
+                }
+        });
+
+        test("looksLikeChatModel — the filter table", () => {
+                for (const id of ["gpt-4o", "claude-sonnet-4-5", "agnes-3.0-flash", "qwen3.7-plus", "deepseek-chat", "pixtral-12b", "llava-1.5"]) {
+                        expect(looksLikeChatModel(id)).toBe(true);
+                }
+                for (const id of ["text-embedding-ada-002", "bge-base-en", "whisper-large-v3", "tts-1-hd", "dall-e-3", "gpt-image-1", "flux-pro", "stable-diffusion-xl", "omni-moderation-latest", "agnes-video-2.5-flash", "agnes-image-2.5-flash", "bge-reranker-v2"]) {
+                        expect(looksLikeChatModel(id)).toBe(false);
+                }
+        });
+
+        test("ids the endpoint stopped serving are REPORTED, not removed", async () => {
+                const srv = discoveryServer(["m-a"]);
+                try {
+                        upsertProvider(DIR, agnes({ baseUrl: `http://127.0.0.1:${srv.port}/v1`, modelId: "m-a", extraModelIds: ["m-gone"] }));
+                        const result = await refreshProviderModels(DIR, "agnes");
+                        expect(result.added).toEqual([]);
+                        expect(result.missing).toEqual(["m-gone"]);
+                        expect(rawModels().providers.agnes.models.map((m: any) => m.id)).toEqual(["m-a", "m-gone"]); // kept
+                } finally {
+                        srv.stop();
+                }
+        });
+
+        test("a rejected credential reports problem:auth; unreachable reports it too", async () => {
+                const srv = discoveryServer(["m-a"], "right-key");
+                try {
+                        upsertProvider(DIR, agnes({ baseUrl: `http://127.0.0.1:${srv.port}/v1`, modelId: "m-a", apiKeyInAuthJson: "wrong-key" }));
+                        const rejected = await refreshProviderModels(DIR, "agnes");
+                        expect(rejected.problem).toContain("rejected");
+                        expect(rejected.probe?.problem).toBe("auth");
+                } finally {
+                        srv.stop();
+                }
+                upsertProvider(DIR, agnes({ baseUrl: "http://127.0.0.1:9/v1", modelId: "m-a" }));
+                const unreachable = await refreshProviderModels(DIR, "agnes");
+                expect(unreachable.problem).toContain("unreachable");
+        });
+
+        test("a vision-capable provider's new models inherit image input; text-only stays text", async () => {
+                // provider registered with image input (like the agnes preset)
+                const vision = discoveryServer(["m-a", "m-vision-new"]);
+                try {
+                        upsertProvider(DIR, agnes({ baseUrl: `http://127.0.0.1:${vision.port}/v1`, modelId: "m-a" }));
+                        await refreshProviderModels(DIR, "agnes");
+                        expect(rawModels().providers.agnes.models.find((m: any) => m.id === "m-vision-new").input).toEqual(["text", "image"]);
+                } finally {
+                        vision.stop();
+                }
+                // text-only provider
+                const textOnly = discoveryServer(["t-a", "t-new"]);
+                try {
+                        upsertProvider(DIR, agnes({ baseUrl: `http://127.0.0.1:${textOnly.port}/v1`, modelId: "t-a", input: ["text"] }));
+                        await refreshProviderModels(DIR, "agnes");
+                        expect(rawModels().providers.agnes.models.find((m: any) => m.id === "t-new").input).toEqual(["text"]);
+                } finally {
+                        textOnly.stop();
+                }
+        });
+
+        test("unknown provider → found:false; in-sync → no writes", async () => {
+                const missing = await refreshProviderModels(DIR, "ghost");
+                expect(missing.found).toBe(false);
+
+                const srv = discoveryServer(["m-a"]);
+                try {
+                        upsertProvider(DIR, agnes({ baseUrl: `http://127.0.0.1:${srv.port}/v1`, modelId: "m-a" }));
+                        const before = readFileSync(join(DIR, "models.json"), "utf8");
+                        const inSync = await refreshProviderModels(DIR, "agnes");
+                        expect(inSync.added).toEqual([]);
+                        expect(inSync.missing).toEqual([]);
+                        expect(readFileSync(join(DIR, "models.json"), "utf8")).toBe(before); // byte-identical
+                } finally {
+                        srv.stop();
+                }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// keyStatusLabel
+// ---------------------------------------------------------------------------
+
+describe("keyStatusLabel", () => {
+        test("labels for every key source", () => {
+                expect(keyStatusLabel({ id: "x", modelIds: [], keyStatus: "auth-json", isDefault: false })).toBe("key: auth.json");
+                expect(keyStatusLabel({ id: "x", modelIds: [], keyStatus: "models-json", isDefault: false })).toBe("key: in models.json");
+                expect(keyStatusLabel({ id: "x", modelIds: [], keyStatus: "env-ref", keyEnv: "MY_KEY", isDefault: false })).toBe("key: $MY_KEY");
+                expect(keyStatusLabel({ id: "x", modelIds: [], keyStatus: "none", isDefault: false })).toBe("key: none");
         });
 });
 

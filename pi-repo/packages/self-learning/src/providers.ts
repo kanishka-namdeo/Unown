@@ -72,6 +72,20 @@ export interface ProviderSummary {
         isDefault: boolean;
 }
 
+/** One-line human label for a provider's key status (doctor, list, engine). */
+export function keyStatusLabel(p: ProviderSummary): string {
+        switch (p.keyStatus) {
+                case "auth-json":
+                        return "key: auth.json";
+                case "models-json":
+                        return "key: in models.json";
+                case "env-ref":
+                        return `key: $${p.keyEnv}`;
+                default:
+                        return "key: none";
+        }
+}
+
 export interface ProviderList {
         providers: ProviderSummary[];
         /** defaultProvider/defaultModel from settings.json, when set. */
@@ -402,4 +416,97 @@ export async function testProvider(agentDir: string, providerId: string, timeout
         const { key, source, envVar } = resolveProviderKey(agentDir, providerId);
         const probe = await probeOpenAiEndpoint(p.baseUrl, key, timeoutMs);
         return { found: true, probe, keySource: source, keyEnv: envVar };
+}
+
+// ---------------------------------------------------------------------------
+// Discovery: live model import (M2)
+// ---------------------------------------------------------------------------
+
+export interface RefreshResult {
+        found: boolean;
+        /** Endpoint probe outcome (absent when the provider is unknown). */
+        probe?: EndpointProbe;
+        /** Model ids newly registered into models.json. */
+        added: string[];
+        /** Registered ids the endpoint no longer serves (kept — removal is a
+         *  deliberate act; they may be typos, locals, or a temporarily empty list). */
+        missing: string[];
+        /** Everything the endpoint served, when it answered with a list. */
+        served?: string[];
+        /** Why the refresh did nothing, when it did not. */
+        problem?: string;
+}
+
+/**
+ * Import a provider's LIVE model catalog (`GET {baseUrl}/models`) into
+ * models.json — the Cline/Roo "model discovery" flow. New ids are registered
+ * with the provider's existing modality/metadata conventions (new-model
+ * defaults); existing model records are untouched (curated metadata survives);
+ * ids the endpoint stopped serving are REPORTED but kept — silent removal
+ * would eat hand-registered ids whenever an endpoint has a bad /models day.
+ *
+ * Ids that are obviously not chat models are filtered (embeddings, rerankers,
+ * TTS, whisper, guard/moderation, image/video/audio generation) — importing
+ * those into a coding agent's picker is noise.
+ */
+const NON_CHAT_RE =
+        /^(?!.*(embed|rerank|tts|whisper|speech|guard|moderation|bge-|text-embedding|davinci|dall-e|stable-diffusion|sdxl|flux|imagen|image|video|voice|audio|realtime|transcribe|caption)).+$/i;
+
+export function looksLikeChatModel(id: string): boolean {
+        return NON_CHAT_RE.test(id);
+}
+
+export async function refreshProviderModels(agentDir: string, providerId: string, timeoutMs = 8000): Promise<RefreshResult> {
+        const list = listProviders(agentDir);
+        const p = list.providers.find((x) => x.id === providerId);
+        if (!p) return { found: false, added: [], missing: [] };
+        if (!p.baseUrl) return { found: true, added: [], missing: [], problem: "no baseUrl configured — fix models.json" };
+        const { key } = resolveProviderKey(agentDir, providerId);
+        const probe = await probeOpenAiEndpoint(p.baseUrl, key, timeoutMs);
+        if (!probe.ok) {
+                return { found: true, probe, added: [], missing: [], problem: probe.problem === "auth" ? `endpoint rejected the credential (HTTP ${probe.status})` : `endpoint unreachable at ${p.baseUrl}` };
+        }
+        const served = (probe.models ?? []).filter(looksLikeChatModel);
+        if (served.length === 0) {
+                return { found: true, probe, added: [], missing: [], served: probe.models, problem: "endpoint serves no listable models (some APIs do not implement /models)" };
+        }
+
+        // Merge new ids into the provider's models array — preserving every
+        // existing record byte-for-byte (curated contextWindow/cost survive).
+        const modelsPath = join(agentDir, "models.json");
+        const raw = readJson(modelsPath);
+        const providers = (raw.providers ?? {}) as Record<string, any>;
+        const entry = providers[providerId];
+        if (!entry || !Array.isArray(entry.models)) {
+                return { found: true, probe, added: [], missing: [], served, problem: "provider entry has no models array — fix models.json" };
+        }
+        const existingIds: string[] = entry.models.map((m: any) => m?.id).filter(Boolean);
+        const existingSet = new Set(existingIds);
+        const inputModalities = inferInputModalities(entry);
+        const added: string[] = [];
+        for (const id of served) {
+                if (existingSet.has(id)) continue;
+                entry.models.push({
+                        id,
+                        name: `${id} (via unown)`,
+                        contextWindow: 131072,
+                        maxTokens: 8192,
+                        input: inputModalities,
+                });
+                added.push(id);
+        }
+        if (added.length > 0) {
+                writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+        }
+        const missing = existingIds.filter((id) => !served.includes(id));
+        return { found: true, probe, added, missing, served };
+}
+
+/** The provider's input modalities, inherited by newly-discovered models. */
+function inferInputModalities(entry: Record<string, any>): string[] {
+        const models = Array.isArray(entry.models) ? entry.models : [];
+        // A provider whose EXISTING models include image input passes it on;
+        // otherwise new models register text-only (the conservative default).
+        const anyImage = models.some((m: any) => Array.isArray(m?.input) && m.input.includes("image"));
+        return anyImage ? ["text", "image"] : ["text"];
 }

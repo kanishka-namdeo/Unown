@@ -66,6 +66,9 @@ unown providers list [--json]            # what's configured, key status, defaul
 unown providers add --provider agnes --key-env AGNES_API_KEY
 unown providers add --provider custom --base-url http://127.0.0.1:11434/v1 \
   --id ollama --model llama3             # named custom endpoints
+unown providers add --provider openai --api-key sk-... \
+  --model gpt-4o --all-models            # + import every served chat model
+unown providers refresh agnes            # import the endpoint's live catalog
 unown providers remove openai             # drops the provider + its stored key
 unown providers key openai                # rotate a key (prompts; verifies live)
 unown providers default agnes agnes-3.0-flash
@@ -73,6 +76,8 @@ unown providers test agnes               # live endpoint probe with the stored k
 ```
 
 `add` does not steal the default unless `--default` (or the registry was empty); `remove` re-points the default at the first survivor; `key` verifies the new credential against the endpoint immediately — a rejected key fails the command instead of failing your next chat later.
+
+**Model discovery** (`--all-models` / `refresh`) imports the endpoint's live `GET /models` catalog into models.json: new ids register with sane defaults (a vision-capable provider's new models inherit image input), curated per-model metadata is never touched, and ids the endpoint stopped serving are reported but kept (pruning is deliberate). Obviously-not-chat ids (embeddings, rerankers, TTS, image/video generation, moderation) are filtered out of the import — they would only be noise in `/model`.
 
 ## The config files
 

@@ -210,3 +210,43 @@ describe("doctor — bridge route-default coherence (M0)", () => {
                 60_000,
         );
 });
+
+describe("doctor — secondary providers (M2)", () => {
+        test(
+                "multi-provider registry: a reachable secondary passes; a dead secondary warns without failing doctor",
+                async () => {
+                        const { root, projDir } = freshRoot();
+                        try {
+                                const opts = base({ root });
+                                // default: the mock bridge (chat path healthy)
+                                await unown(["providers", "add", "--provider", "openai", "--base-url", `${bridge.url}/v1`, "--api-key", "sk-1", "--model", "m-1"], opts);
+                                // secondary pointing at a dead loopback port
+                                await unown(["providers", "add", "--provider", "deepseek", "--base-url", "http://127.0.0.1:9/v1", "--api-key", "sk-2", "--model", "m-2"], opts);
+
+                                const run = await unown(["doctor", "--json"], opts);
+                                expect(run.exitCode).toBe(0); // doctor contract: only the chat path hard-fails
+                                const secondary = findCheck(run.stdout, "secondary-providers");
+                                expect(secondary.status).toBe("warn");
+                                expect(secondary.detail).toContain("deepseek");
+                                expect(secondary.detail).toContain("unreachable");
+                                // the default provider stayed green
+                                const endpoint = findCheck(run.stdout, "model-endpoint-reachable");
+                                expect(endpoint.status).toBe("pass");
+                        } finally {
+                                rmSync(root, { recursive: true, force: true });
+                        }
+                },
+                60_000,
+        );
+
+        test(
+                "single-provider registry: no secondary-providers check at all",
+                async () => {
+                        const run = await unown(["doctor", "--json"], base());
+                        expect(run.exitCode).toBe(0);
+                        const parsed = JSON.parse(run.stdout) as { checks: Array<{ id: string }> };
+                        expect(parsed.checks.find((c) => c.id === "secondary-providers")).toBeUndefined();
+                },
+                30_000,
+        );
+});

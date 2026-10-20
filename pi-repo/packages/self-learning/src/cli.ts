@@ -44,6 +44,7 @@ import { MIGRATIONS, readMigrationState } from "./migrations.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
 import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
+import { keyStatusLabel, listProviders, resolveProviderKey } from "./providers.ts";
 import {
         deliverTerminalNote,
         ENGINE_URL,
@@ -1191,6 +1192,41 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                         false,
                         "the configured provider declares no baseUrl — fix ~/.unown/agent/models.json or run: unown setup",
                 );
+        }
+
+        // 3c. the OTHER providers (M2) — every non-default provider gets its own
+        // verdict line, warn-class: a broken secondary must never turn doctor's
+        // exit non-zero while the default chat path works (the doctor contract),
+        // but silence would hide a stale secondary until you switch to it.
+        {
+                const file = readAgentModelsFile(agentDir);
+                const others = file.providers.filter((p) => p.id !== active?.id);
+                if (others.length > 0) {
+                        const list = listProviders(agentDir);
+                        const lines: string[] = [];
+                        let anyDown = false;
+                        for (const p of others) {
+                                if (!p.baseUrl) {
+                                        lines.push(`${p.id}: no baseUrl`);
+                                        anyDown = true;
+                                        continue;
+                                }
+                                const { key } = resolveProviderKey(agentDir, p.id);
+                                const probe = await probeOpenAiEndpoint(p.baseUrl, key, 3000);
+                                if (probe.ok) {
+                                        const summary = list.providers.find((x) => x.id === p.id);
+                                        const keyNote = summary ? ` (${keyStatusLabel(summary)})` : "";
+                                        lines.push(`${p.id}: reachable${keyNote}`);
+                                } else if (probe.problem === "auth") {
+                                        lines.push(`${p.id}: key rejected (HTTP ${probe.status}) — unown providers key ${p.id}`);
+                                        anyDown = true;
+                                } else {
+                                        lines.push(`${p.id}: unreachable — unown providers test ${p.id}`);
+                                        anyDown = true;
+                                }
+                        }
+                        check("secondary providers", !anyDown, lines.join(" · "), "warn");
+                }
         }
 
         // 4. OS sandbox — fs + network isolation for engine runs. Platform-aware:

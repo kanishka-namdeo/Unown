@@ -373,6 +373,77 @@ describe("unown providers remove / default / key / test", () => {
                 },
                 LONG,
         );
+
+        test(
+                "--all-models imports every chat model the endpoint serves (discovery on add)",
+                async () => {
+                        const root = sharedRoot("allmodels");
+                        try {
+                                const opts = base({ root });
+                                // the mock bridge serves kimi-k2.5 + mock-kimi on /v1/models
+                                const run = await unown(
+                                        ["providers", "add", "--provider", "openai", "--base-url", `${bridge.url}/v1`, "--api-key", "sk-1", "--model", "kimi-k2.5", "--all-models"],
+                                        opts,
+                                );
+                                expect(run.exitCode).toBe(0);
+                                expect(run.stdout).toContain("imported 1 more model: mock-kimi");
+                                const models = agentJson(run, "models.json");
+                                expect(models.providers.openai.models.map((m: any) => m.id).sort()).toEqual(["kimi-k2.5", "mock-kimi"]);
+                        } finally {
+                                rmSync(root, { recursive: true, force: true });
+                        }
+                },
+                LONG,
+        );
+
+        test(
+                "refresh imports newly-served models and reports (but keeps) retired ones",
+                async () => {
+                        const root = sharedRoot("refresh");
+                        try {
+                                const opts = base({ root });
+                                // register with a model the mock bridge does NOT serve → later "missing"
+                                await unown(
+                                        ["providers", "add", "--provider", "openai", "--base-url", `${bridge.url}/v1`, "--api-key", "sk-1", "--model", "ghost-model"],
+                                        opts,
+                                );
+                                const run = await unown(["providers", "refresh", "openai"], opts);
+                                expect(run.exitCode).toBe(0);
+                                expect(run.stdout).toContain("imported 2 new models");
+                                expect(run.stdout).toContain("kimi-k2.5");
+                                expect(run.stdout).toContain("mock-kimi");
+                                expect(run.stdout).toContain("no longer served");
+                                expect(run.stdout).toContain("ghost-model");
+                                // ghost-model KEPT (removal is deliberate)
+                                const models = agentJson(run, "models.json");
+                                expect(models.providers.openai.models.map((m: any) => m.id)).toContain("ghost-model");
+                        } finally {
+                                rmSync(root, { recursive: true, force: true });
+                        }
+                },
+                LONG,
+        );
+
+        test(
+                "refresh on an unknown provider errors; a second refresh is a no-op in sync",
+                async () => {
+                        const root = sharedRoot("refreshsync");
+                        try {
+                                const opts = base({ root });
+                                const unknown = await unown(["providers", "refresh", "ghost"], opts);
+                                expect(unknown.exitCode).toBe(1);
+                                expect(unknown.stderr).toContain('unknown provider "ghost"');
+
+                                await unown(["providers", "add", "--provider", "openai", "--base-url", `${bridge.url}/v1`, "--api-key", "sk-1", "--model", "kimi-k2.5", "--all-models"], opts);
+                                const again = await unown(["providers", "refresh", "openai"], opts);
+                                expect(again.exitCode).toBe(0);
+                                expect(again.stdout).toContain("in sync");
+                        } finally {
+                                rmSync(root, { recursive: true, force: true });
+                        }
+                },
+                LONG,
+        );
 });
 
 // ---------------------------------------------------------------------------

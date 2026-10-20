@@ -22,7 +22,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as readline from "node:readline/promises";
 import { probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
-import { upsertProvider, type ProviderEntry } from "./providers.ts";
+import { keyStatusLabel, listProviders, upsertProvider, type ProviderEntry } from "./providers.ts";
 import { bridgeKnownModels, UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
@@ -196,10 +196,13 @@ export async function printModelsOverview(): Promise<void> {
                 return;
         }
         const active = resolveActiveProvider(UNOWN_AGENT_DIR);
+        const list = listProviders(UNOWN_AGENT_DIR);
         console.log(`Configured providers (~/.unown/agent/models.json):`);
         for (const p of file.providers) {
                 const marker = active && p.id === active.id ? "  ← default" : "";
-                console.log(`  ${p.id}${p.baseUrl ? `  ${p.baseUrl}` : ""}${marker}`);
+                const summary = list.providers.find((x) => x.id === p.id);
+                const keyNote = summary ? `  [${keyStatusLabel(summary)}]` : "";
+                console.log(`  ${p.id}${p.baseUrl ? `  ${p.baseUrl}` : ""}${keyNote}${marker}`);
                 for (const m of p.modelIds) console.log(`      · ${m}`);
         }
         // Live list when the default provider is a local bridge.
