@@ -117,6 +117,7 @@ Full usage docs live in [`docs/`](docs/):
 | [ACP](docs/acp.md) | `unown acp` — the Agent Client Protocol server: drive the full agent from Zed and other ACP editors (JSON-RPC over stdio) |
 | [permissions](docs/permissions.md) | the granular allow/deny/ask layer: config files, pattern semantics, trust gating |
 | [usage tracking](docs/usage-tracking.md) | `unown usage`, the bridge's usage log, cost estimates and price pinning |
+| [web results store](docs/web-results-store.md) | the persistent cache behind web_search/webfetch — design record: exact-key vs semantic (H20), TTL + ETag revalidation, stale-if-error, the cacache model, prior art |
 | [memory](docs/memory.md) | the 4-tier memory stack, session notes, AutoDream consolidation, the six integrity gates, [what a learning session looks like](docs/memory.md#what-a-learning-session-looks-like) |
 | [memory-classifier-evaluation](docs/memory-classifier-evaluation.md) | objective evaluation of Jev/GLiNER-style classifiers in the memory system |
 | [memory-system-review](docs/memory-system-review.md) | the memory subsystem's critical review: findings F1–F10, each status-tagged with receipts where live, and the matrix for re-running them |

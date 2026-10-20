@@ -92,9 +92,13 @@ export const DEX: readonly DexEntry[] = [
     weakness: "a confident answer with no source",
     practice: [
       "Native web access through web_search and webfetch — keyless providers work out of the box, 19 total, an auto-selecting chain that keeps trying until one answers.",
+      "A persistent web results store answers repeats from disk while fresh, revalidates by ETag (a 304 means the page never changed), and serves the last good answer — flagged stale — when every provider fails.",
     ],
     habitat: "joins every session",
-    receipts: [["websearch.ts", SRC("websearch.ts")]],
+    receipts: [
+      ["websearch.ts", SRC("websearch.ts")],
+      ["webcache.ts", SRC("webcache.ts")],
+    ],
   },
   {
     id: "mcp",

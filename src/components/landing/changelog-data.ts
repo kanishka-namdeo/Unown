@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 127;
+export const CHANGELOG_TOTAL_ENTRIES = 129;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 58,
+  "Added": 59,
   "Changed": 20,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 5,
+    "total": 7,
     "counts": {
-      "Added": 4,
+      "Added": 5,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
@@ -69,6 +69,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "engine: the web results store — a persistent…",
+            "behavior": false
+          },
           {
             "title": "landing: the capability dex — the agent's ten capabilities as an interactive creature catalog…",
             "behavior": false
