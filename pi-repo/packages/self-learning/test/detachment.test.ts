@@ -83,6 +83,15 @@ describe("terminal-agent detachment (M2)", () => {
                 expect(r.dbExists).toBe(false);
         });
 
+        test("providers-command.ts (the /providers slash command) imports without opening the engine DB", () => {
+                // R2's purity contract: the in-chat provider manager is a
+                // terminal surface only — registry + dialogs, never the store.
+                const r = probeTerminalChain(["providers-command.ts"]);
+                expect(r.code).toBe(0);
+                expect(r.opened).toBe(false);
+                expect(r.dbExists).toBe(false);
+        });
+
         test("hooks.ts (ENGINE side) still opens the store on first logHook — the engine keeps its DB", () => {
                 // The engine-side module must keep working: logHook writes hook_log.
                 // This case imports hooks.ts and CALLS a store method through it,

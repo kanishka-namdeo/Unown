@@ -25,114 +25,116 @@ afterAll(() => {
 });
 
 describe("clig.dev help surface — `unown help`", () => {
-	test("`unown help` prints the main help and exits 0 (not a TUI prompt)", async () => {
-		const run = await unown(["help"], base());
-		expect(run.exitCode).toBe(0);
-		expect(run.stdout).toContain("unown — a self-improving terminal coding agent");
-		expect(run.stdout).toContain("Usage:");
-	});
+        test("`unown help` prints the main help and exits 0 (not a TUI prompt)", async () => {
+                const run = await unown(["help"], base());
+                expect(run.exitCode).toBe(0);
+                expect(run.stdout).toContain("unown — a self-improving terminal coding agent");
+                expect(run.stdout).toContain("Usage:");
+        });
 
-	test("`unown help` lists the session surface (lsp tool, 16 commands, kill-switches — drift guard)", async () => {
-		const run = await unown(["help"], base());
-		expect(run.exitCode).toBe(0);
-		// the session-tools lines carry the lsp tool (R-D A1), the web
-		// tools (web_search + webfetch — a fresh-clone user must learn the
-		// agent can search the web from --help alone) and the questionnaire
-		// addon (ask_user_question — the TUI addon framework's tool surface)
-		expect(run.stdout).toContain("todo / ask_user_question / note / task / fetch_url / web_search");
-		expect(run.stdout).toContain("webfetch / lsp");
-		expect(run.stdout).toContain("live web search + page reads");
-		// every unown session command is advertised (R-D A1)
-		for (const cmd of [
-			"/plan",
-			"/todos",
-			"/note",
-			"/agents",
-			"/learning",
-			"/lsp",
-			"/checkpoint",
-			"/undo",
-			"/restore",
-			"/checkpoints",
-			"/receipts",
-			"/mcp",
-			"/goal",
-			"/review",
-			// the TUI addon framework's commands (docs/addons.md)
-			"/addons",
-			"/advisor",
-		]) {
-			expect(run.stdout).toContain(cmd);
-		}
-		// the feature kill-switches are in the Environment section (R-D A2)
-		expect(run.stdout).toContain("UNOWN_LSP=0");
-		expect(run.stdout).toContain("UNOWN_MCP=0");
-	});
+        test("`unown help` lists the session surface (lsp tool, 17 commands, kill-switches — drift guard)", async () => {
+                const run = await unown(["help"], base());
+                expect(run.exitCode).toBe(0);
+                // the session-tools lines carry the lsp tool (R-D A1), the web
+                // tools (web_search + webfetch — a fresh-clone user must learn the
+                // agent can search the web from --help alone) and the questionnaire
+                // addon (ask_user_question — the TUI addon framework's tool surface)
+                expect(run.stdout).toContain("todo / ask_user_question / note / task / fetch_url / web_search");
+                expect(run.stdout).toContain("webfetch / lsp");
+                expect(run.stdout).toContain("live web search + page reads");
+                // every unown session command is advertised (R-D A1)
+                for (const cmd of [
+                        "/plan",
+                        "/todos",
+                        "/note",
+                        "/agents",
+                        "/learning",
+                        "/lsp",
+                        "/checkpoint",
+                        "/undo",
+                        "/restore",
+                        "/checkpoints",
+                        "/receipts",
+                        "/mcp",
+                        "/goal",
+                        "/review",
+                        // the TUI addon framework's commands (docs/addons.md)
+                        "/addons",
+                        "/advisor",
+                        // the in-chat provider manager (R2 — the `unown providers` TUI twin)
+                        "/providers",
+                ]) {
+                        expect(run.stdout).toContain(cmd);
+                }
+                // the feature kill-switches are in the Environment section (R-D A2)
+                expect(run.stdout).toContain("UNOWN_LSP=0");
+                expect(run.stdout).toContain("UNOWN_MCP=0");
+        });
 
-	test(
-		"`unown help doctor|info|update|uninstall|completions|setup` each print their own page",
-		async () => {
-		for (const [topic, marker] of [
-			["doctor", "usage: unown doctor"],
-			["info", "usage: unown info"],
-			["update", "unown update — check for a newer release"],
-			["uninstall", "unown uninstall — remove the unown CLI"],
-			["completions", "unown completions <shell>"],
-			["setup", "usage: unown setup"],
-		] as const) {
-			const run = await unown(["help", topic], base());
-			expect(run.exitCode).toBe(0);
-			expect(run.stdout).toContain(marker);
-		}
-	},
-		// six spawned CLI runs take ~5.4s on the Windows runner — over bun's
-		// default 5s test timeout (killed mid-loop there); match golden.test.ts.
-		{ timeout: 60_000 },
-	);
+        test(
+                "`unown help doctor|info|update|uninstall|completions|setup` each print their own page",
+                async () => {
+                for (const [topic, marker] of [
+                        ["doctor", "usage: unown doctor"],
+                        ["info", "usage: unown info"],
+                        ["update", "unown update — check for a newer release"],
+                        ["uninstall", "unown uninstall — remove the unown CLI"],
+                        ["completions", "unown completions <shell>"],
+                        ["setup", "usage: unown setup"],
+                ] as const) {
+                        const run = await unown(["help", topic], base());
+                        expect(run.exitCode).toBe(0);
+                        expect(run.stdout).toContain(marker);
+                }
+        },
+                // six spawned CLI runs take ~5.4s on the Windows runner — over bun's
+                // default 5s test timeout (killed mid-loop there); match golden.test.ts.
+                { timeout: 60_000 },
+        );
 
-	test("`unown help <unknown>` exits 1 and suggests `unown --help`", async () => {
-		const run = await unown(["help", "definitely-not-a-command"], base());
-		expect(run.exitCode).toBe(1);
-		expect(run.stderr).toContain('unknown command "definitely-not-a-command"');
-		expect(run.stderr).toContain("unown --help");
-	});
+        test("`unown help <unknown>` exits 1 and suggests `unown --help`", async () => {
+                const run = await unown(["help", "definitely-not-a-command"], base());
+                expect(run.exitCode).toBe(1);
+                expect(run.stderr).toContain('unknown command "definitely-not-a-command"');
+                expect(run.stderr).toContain("unown --help");
+        });
 });
 
 describe("clig.dev help surface — `--help` never RUNS the command", () => {
-	test("`unown doctor --help` prints usage, diagnostics never execute", async () => {
-		const run = await unown(["doctor", "--help"], base());
-		expect(run.exitCode).toBe(0);
-		expect(run.stdout).toContain("usage: unown doctor");
-		expect(run.stdout).not.toContain("agent dir"); // a diagnostics-run marker
-	});
+        test("`unown doctor --help` prints usage, diagnostics never execute", async () => {
+                const run = await unown(["doctor", "--help"], base());
+                expect(run.exitCode).toBe(0);
+                expect(run.stdout).toContain("usage: unown doctor");
+                expect(run.stdout).not.toContain("agent dir"); // a diagnostics-run marker
+        });
 
-	test("`unown info --help` prints usage, no support bundle is gathered", async () => {
-		const run = await unown(["info", "--help"], base());
-		expect(run.exitCode).toBe(0);
-		expect(run.stdout).toContain("usage: unown info");
-	});
+        test("`unown info --help` prints usage, no support bundle is gathered", async () => {
+                const run = await unown(["info", "--help"], base());
+                expect(run.exitCode).toBe(0);
+                expect(run.stdout).toContain("usage: unown info");
+        });
 
-	test("`unown setup --help` prints usage, the wizard never launches", async () => {
-		const run = await unown(["setup", "--help"], base());
-		expect(run.exitCode).toBe(0);
-		expect(run.stdout).toContain("usage: unown setup");
-		expect(run.stdout).toContain("--provider P");
-	});
+        test("`unown setup --help` prints usage, the wizard never launches", async () => {
+                const run = await unown(["setup", "--help"], base());
+                expect(run.exitCode).toBe(0);
+                expect(run.stdout).toContain("usage: unown setup");
+                expect(run.stdout).toContain("--provider P");
+        });
 });
 
 describe("clig.dev — setup unknown flags are ERRORS", () => {
-	test("`unown setup --bogus` exits 1 with usage, not a silent wizard", async () => {
-		const run = await unown(["setup", "--bogus"], base());
-		expect(run.exitCode).toBe(1);
-		expect(run.stderr).toContain("unknown argument");
-		expect(run.stderr).toContain("usage: unown setup");
-	});
+        test("`unown setup --bogus` exits 1 with usage, not a silent wizard", async () => {
+                const run = await unown(["setup", "--bogus"], base());
+                expect(run.exitCode).toBe(1);
+                expect(run.stderr).toContain("unknown argument");
+                expect(run.stderr).toContain("usage: unown setup");
+        });
 });
 
 describe("completions drift — session flags carry --goal", () => {
-	test("bash completions include --goal in the session flags", async () => {
-		const run = await unown(["completions", "bash"], base());
-		expect(run.exitCode).toBe(0);
-		expect(run.stdout).toContain("--goal");
-	});
+        test("bash completions include --goal in the session flags", async () => {
+                const run = await unown(["completions", "bash"], base());
+                expect(run.exitCode).toBe(0);
+                expect(run.stdout).toContain("--goal");
+        });
 });

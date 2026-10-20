@@ -124,6 +124,7 @@ import { receiptsDir } from "./checkpoints.ts";
 import { loadRecipes, parseRecipe, runRecipe, userRecipesDir } from "./recipes.ts";
 import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
 import { foregroundTodosForGoalGate } from "./addons/todo.ts";
+import { providersArgumentCompletions, runProvidersCommand } from "./providers-command.ts";
 
 // ---------------------------------------------------------------------------
 // Subagent color lanes (beauty-4)
@@ -2234,6 +2235,15 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 });
                                 ctx.ui.notify(`${header}\n\n${parts.join("\n\n")}\n\ndeep-dive: /dashboard — tiers, version history, rollbacks, dreams, notes, skills`, "info");
                         },
+                });
+
+                // R2 — `/providers`: the in-chat provider manager (the TUI
+                // twin of `unown providers`). Pure module + thin handler: the
+                // registry core (providers.ts) stays the single source of truth.
+                pi.registerCommand("providers", {
+                        description: "manage model providers (list, add, key, test, refresh, defaults)",
+                        getArgumentCompletions: (prefix: string) => providersArgumentCompletions(prefix),
+                        handler: async (args: string, ctx) => runProvidersCommand(args, ctx),
                 });
 
                 pi.registerCommand("lsp", {

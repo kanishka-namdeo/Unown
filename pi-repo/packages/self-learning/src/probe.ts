@@ -50,6 +50,8 @@ export async function probeOpenAiEndpoint(baseUrl: string, apiKey?: string, time
 /** One provider entry from ~/.unown/agent/models.json, normalized. */
 export interface AgentProviderConfig {
         id: string;
+        /** Display name (models.json `name`), when the entry carries one. */
+        name?: string;
         baseUrl?: string;
         api?: string;
         apiKey?: string;
@@ -70,13 +72,14 @@ export function readAgentModelsFile(agentDir: string): AgentModelsFile {
                 const raw = JSON.parse(readFileSync(path, "utf8")) as {
                         providers?: Record<
                                 string,
-                                { baseUrl?: string; api?: string; apiKey?: string; models?: Array<{ id?: string }> }
+                                { name?: string; baseUrl?: string; api?: string; apiKey?: string; models?: Array<{ id?: string }> }
                         >;
                 };
                 const providers: AgentProviderConfig[] = [];
                 for (const [id, p] of Object.entries(raw.providers ?? {})) {
                         providers.push({
                                 id,
+                                name: typeof p?.name === "string" ? p.name : undefined,
                                 baseUrl: typeof p?.baseUrl === "string" ? p.baseUrl : undefined,
                                 api: typeof p?.api === "string" ? p.api : undefined,
                                 apiKey: typeof p?.apiKey === "string" ? p.apiKey : undefined,

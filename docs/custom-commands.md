@@ -11,9 +11,10 @@
 - [Security posture](#security-posture)
 - [Ideas](#ideas)
 
-Unown ships twenty-eight built-in slash commands (`/plan`, `/todos`, `/undo`, …,
-plus the newest, `/engine` — and the split-view display mode's
-`/split` family on top), pi ships its own twenty-three, and every discovered
+Unown ships twenty-nine built-in slash commands (`/plan`, `/todos`, `/undo`, …,
+plus the newest, `/providers` — the in-chat provider manager — and the
+split-view display mode's `/split` family on top), pi ships its own
+twenty-three, and every discovered
 [skill](skills.md) registers as `/skill:<name>`. This page is about the
 fourth kind: **your own commands** — reusable prompts you keep next to the
 project (or in your user dir) and invoke by name, Claude Code

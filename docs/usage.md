@@ -297,7 +297,7 @@ Limits (zcode's, transliterated): 20 automations total, 2 concurrent runs, a 30-
 
 ## Slash commands
 
-unown adds twenty-eight commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
+unown adds twenty-nine commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
 
 | Command | What it does |
 |---|---|
@@ -330,6 +330,7 @@ unown adds twenty-eight commands of its own — plus the split-view display mode
 | `/recipe <name> [args]` | Run a declarative agent instruction bundle: `list`, `show <name>`, or `<name> --key value` with parameters interpolated into the body. See [recipes](recipes.md) |
 | `/wiki <sub>` | Auto-generated repo docs with `file:line` cross-links: `generate [--force]` (parallel subagents per module) \| `search <q>` \| `list` \| `show <page>`. See [repo wiki](repo-wiki.md) |
 | `/edit-resend <n> <msg>` | Edit the Nth user message: revert files to the pre-message checkpoint (all-or-nothing; aborts on out-of-band edits), then resend. `/edit-resend list` shows the numbered messages |
+| `/providers` | The in-chat provider manager — the [`unown providers`](providers.md) CLI's TUI twin over the same registry: bare opens the interactive list/add/key/test/refresh/defaults flow (arrow keys + Enter, Esc backs out; RPC mode degrades to sequential prompts); `/providers list` prints the text summary; `/providers test \| refresh <id>` are headless one-shots; argument completions cover the subcommands + provider ids. See [providers](providers.md#in-the-tui) |
 | `/split` family | The split-view display mode (a built-in port of pi-split-view): `/split` toggles all panels (off = bare pi layout; on = saved startup defaults), `/split-thinking` + `/split-tools` the top band's panels, `/files` the files dock (`/split-diff` its edit-diff subpanel), `/split-tools-view` compact ↔ full tool detail, `/split-height` / `/split-tools-width` / `/split-divider` the geometry, `/split-trim-response` full-transcript ↔ response-only mode, and `/split-save` persists the current layout to `~/.unown/agent/ui-panels.json` as the startup default; `--no-split` starts bare |
 
 The split-view display mode registers eleven more, in every session (the thinking/tool band, files dock and response-only transcript — full story in [split view](split-view.md)):

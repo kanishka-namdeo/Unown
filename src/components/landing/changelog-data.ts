@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 183;
+export const CHANGELOG_TOTAL_ENTRIES = 184;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 90,
+  "Added": 91,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 1,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 61,
+    "total": 62,
     "counts": {
-      "Added": 36,
+      "Added": 37,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 1,
@@ -58,17 +58,12 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
     },
     "groups": [
       {
-        "bucket": "Removed",
-        "items": [
-          {
-            "title": "provider management lives in the terminal now — the dashboard \"Providers\" tab is gone",
-            "behavior": false
-          }
-        ]
-      },
-      {
         "bucket": "Added",
         "items": [
+          {
+            "title": "/providers — the in-chat provider manager: mid-session list/add/key/test/refresh/remove and defaults…",
+            "behavior": false
+          },
           {
             "title": "the multi-provider registry — adding a provider never removes the others",
             "behavior": false
@@ -211,6 +206,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "tui: the split-view display mode — a built-in port of pi-split-view 1.1.0",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Removed",
+        "items": [
+          {
+            "title": "provider management lives in the terminal now — the dashboard \"Providers\" tab is gone",
             "behavior": false
           }
         ]

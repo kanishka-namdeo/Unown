@@ -6,6 +6,7 @@ How unown talks to models: the multi-provider registry, the two connection shape
 - [Multiple providers](#multiple-providers)
 - [unown setup](#unown-setup)
 - [unown providers](#unown-providers)
+- [In the TUI](#in-the-tui)
 - [The config files](#the-config-files)
 - [Direct provider recipes](#direct-provider-recipes)
 - [The bundled bridge](#the-bundled-bridge)
@@ -78,6 +79,33 @@ unown providers test agnes               # live endpoint probe with the stored k
 `add` does not steal the default unless `--default` (or the registry was empty); `remove` re-points the default at the first survivor; `key` verifies the new credential against the endpoint immediately — a rejected key fails the command instead of failing your next chat later.
 
 **Model discovery** (`--all-models` / `refresh`) imports the endpoint's live `GET /models` catalog into models.json: new ids register with sane defaults (a vision-capable provider's new models inherit image input), curated per-model metadata is never touched, and ids the endpoint stopped serving are reported but kept (pruning is deliberate). Obviously-not-chat ids (embeddings, rerankers, TTS, image/video generation, moderation) are filtered out of the import — they would only be noise in `/model`.
+
+## In the TUI
+
+The same management surface lives **inside the chat session**: `/providers` opens the interactive manager, so you never leave the conversation to rotate a key or flip a default. It is the TUI twin of the CLI above — both call the same registry core, so a provider added in the session is exactly a provider `unown providers list` shows (and vice versa).
+
+```
+/providers                      # the interactive manager (TUI + RPC)
+/providers list                 # the text summary, everywhere (print/json too)
+/providers test <id>            # live endpoint probe with the stored key
+/providers refresh <id>         # import the endpoint's live model catalog
+```
+
+Bare `/providers` opens a select over the registry — one row per provider (`✓ agnes — Agnes AI (default) · key: auth.json · 6 models`), plus `+ Add provider…` and `Done`. Picking a provider opens its action menu:
+
+- **Make default…** — pick one of the provider's registered models; writes `settings.json` and reports `default set to <provider>/<model>`. **Use `/model` to switch the current session** — that stays /model's job (the registry default is what the NEXT session boots with).
+- **Set API key** — paste the key; it lands in `auth.json` (mode 0600) and is **verified against the endpoint immediately** — a rejected key fails right there, not in your next chat. Blank keeps the current key; `$ENV` references are the CLI's `--key-env` lane.
+- **Test connection** — the live probe with the stored credential, with the same actionable classification as the CLI: HTTP 401 → rotate the key, unreachable → fix the URL/start the endpoint, plus a `⚠ registered but not served` cross-check.
+- **Refresh models** — the live `GET /models` import: `+N added`, `M no longer served (kept)`.
+- **Remove provider…** — one confirm, then the provider AND its stored key are gone; if it was the default, the fallback is reported (`default fell back to <provider>/<model>`).
+
+**Add provider** walks the preset table (the bundled bridge, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, Agnes, custom endpoints): optional key → live model discovery → a default-model pick from what the endpoint actually serves. Discovery failing (no key yet, endpoint down) is not fatal — the preset's default model registers and the failure is surfaced with the fix. The bundled bridge keeps its special rules (registry id `zai-bridge`, placeholder key, served allow-list); custom endpoints are a four-input form (id, base URL, model, optional key).
+
+Composure notes:
+
+- **Every registry mutation refreshes the model registry in place** — `/model`'s picker and the footer model line see a provider added mid-session without a restart.
+- **No new keybindings** — the manager is arrow-key + Enter selects, Esc backs out at any level, exactly like `/addons`.
+- **RPC mode degrades to sequential prompts** (the same dialogs, one at a time); in print/JSON mode bare `/providers` prints the text summary instead of opening dialogs, and the one-shots (`list`, `test`, `refresh`) work everywhere.
 
 ## The config files
 
@@ -193,7 +221,7 @@ local draft never touches the remote API. Unset = remote authoring as before.
 
 - **Per session**: `/model` or Ctrl+L opens the picker (every configured provider's models); Ctrl+P cycles through enabled models; Shift+Tab cycles thinking levels; `/scoped-models` controls what Ctrl+P cycles through.
 - **One-shot**: `unown --model provider/model "task"` routes that session without touching defaults.
-- **Persistently**: `unown providers default <provider> [model]`, pick with Ctrl+S in the picker, or re-run `unown setup`.
+- **Persistently**: `unown providers default <provider> [model]`, `/providers` → the provider → *Make default…* mid-session, pick with Ctrl+S in the picker, or re-run `unown setup`.
 - **Check what's live**: `unown models` lists your configured models plus what a local bridge actually serves (with an allow-list cross-check); `unown providers test <id>` probes one provider with its stored key.
 
 ## Web-search providers (the `web_search` tool)

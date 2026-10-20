@@ -242,6 +242,10 @@ Session tools (registered in every session):
                           Milestone 3.6)
   /permissions            granular permissions status (mode, rules, trust;
                            /permissions trust approves a project config)
+  /providers              the in-chat provider manager (R2): bare opens the
+                          interactive list/add/key/test/refresh/defaults flow;
+                          /providers list | test <id> | refresh <id> work
+                          headless — the TUI twin of \`unown providers\`
   /<name> [args]          custom slash commands: .unown/commands/*.md in the
                            project, ~/.unown/agent/commands/*.md global — markdown
                            + frontmatter (description, argument-hint), body with

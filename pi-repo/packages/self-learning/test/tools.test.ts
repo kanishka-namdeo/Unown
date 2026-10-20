@@ -450,3 +450,85 @@ describe("advertised-subagent catalog injection", () => {
         }
     });
 });
+
+// ---------------------------------------------------------------------------
+// /providers registration (R2): the unown-tools extension registers the
+// command with completions, and the handler delegates to the pure module
+// (providers-command.ts) against the ACTIVE UNOWN_HOME — flipped here to a
+// private scratch home so the shared _env.ts redirect home stays untouched.
+// ---------------------------------------------------------------------------
+const provTmp = mkdtempSync(join(tmpdir(), "unown-tools-providers-"));
+afterAll(() => {
+    try {
+        rmSync(provTmp, { recursive: true, force: true });
+    } catch {
+        /* best effort */
+    }
+});
+
+describe("/providers registration (R2)", () => {
+    test("registered with a description + argument completions; the handler renders the registry summary", async () => {
+        const dir = join(provTmp, "proj");
+        mkdirSync(dir, { recursive: true });
+        const home = join(provTmp, "home");
+        const agent = join(home, "agent");
+        mkdirSync(agent, { recursive: true });
+        // seed a two-provider registry in the scratch home
+        writeFileSync(
+            join(agent, "models.json"),
+            JSON.stringify(
+                {
+                    providers: {
+                        agnes: {
+                            name: "Agnes AI",
+                            baseUrl: "https://apihub.agnes-ai.com/v1",
+                            api: "openai-completions",
+                            models: [{ id: "agnes-3.0-flash", input: ["text", "image"] }],
+                        },
+                        openai: {
+                            name: "OpenAI",
+                            baseUrl: "https://api.openai.com/v1",
+                            api: "openai-completions",
+                            apiKey: "$OPENAI_API_KEY",
+                            models: [{ id: "gpt-4o", input: ["text", "image"] }],
+                        },
+                    },
+                },
+                null,
+                2,
+            ),
+        );
+        writeFileSync(join(agent, "settings.json"), JSON.stringify({ defaultProvider: "agnes", defaultModel: "agnes-3.0-flash" }));
+
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        const { pi, runCommand, commands } = makeToolsFakePi();
+        ext.factory(pi);
+        expect(commands.has("providers")).toBe(true);
+        const def: any = commands.get("providers");
+        expect(def.description).toContain("manage model providers");
+
+        const prev = process.env.UNOWN_HOME;
+        process.env.UNOWN_HOME = home;
+        try {
+            // the handler delegates to the pure module: /providers list renders
+            // the seeded registry through the REAL registry core
+            const messages: Array<{ text: string; level: string }> = [];
+            const ctx = { hasUI: false, ui: { notify: (text: string, level: string = "info") => messages.push({ text, level }) } };
+            await runCommand("providers", "list", ctx);
+            expect(messages).toHaveLength(1);
+            expect(messages[0].text).toContain("✓ agnes — Agnes AI (default)");
+            expect(messages[0].text).toContain("key: $OPENAI_API_KEY");
+            expect(messages[0].text).toContain("default model: agnes/agnes-3.0-flash");
+
+            // argument completions are wired (subcommands + live provider ids)
+            expect(typeof def.getArgumentCompletions).toBe("function");
+            expect(def.getArgumentCompletions("l")).toEqual([{ value: "list", label: "list" }]);
+            expect(def.getArgumentCompletions("test ")).toContainEqual({ value: "agnes", label: "agnes" });
+            expect(def.getArgumentCompletions("refresh op")).toEqual([{ value: "openai", label: "openai" }]);
+        } finally {
+            if (prev === undefined) delete process.env.UNOWN_HOME;
+            else process.env.UNOWN_HOME = prev;
+        }
+    });
+});
+
