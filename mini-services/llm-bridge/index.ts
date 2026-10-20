@@ -47,6 +47,18 @@
  *                          (llama.cpp runs keyless — leave empty)
  *   BRIDGE_LOCAL_MODELS    comma-separated local model ids; empty = any id
  *                          with the `local-` prefix routes locally
+ *   BRIDGE_FALLBACK_URL    optional FAILOVER upstream: a second REMOTE
+ *                          OpenAI-compatible endpoint (e.g. Agnes AI
+ *                          https://apihub.agnes-ai.com/v1). When the PRIMARY
+ *                          upstream cannot serve a request — 429/quota
+ *                          throttle, 401/403 rejected key, 5xx, network
+ *                          failure — the request is retried once against
+ *                          this endpoint instead of surfacing the error.
+ *                          Empty/unset = failover off (default).
+ *   BRIDGE_FALLBACK_KEY    bearer key for the fallback upstream
+ *   BRIDGE_FALLBACK_MODEL  model id failed-over requests are rewritten onto
+ *                          (e.g. agnes-3.0-flash); empty = keep the routed
+ *                          model id (for fallbacks serving the same catalog)
  *   UNOWN_BRIDGE_STATE_DIR where usage-log.jsonl lives (default: <repo>/.run
  *                          when running from the repo, else ~/.unown/bridge)
  *   UNOWN_PRICE_<MODEL>_IN/OUT  USD per 1M tokens, overrides the built-in
@@ -64,6 +76,7 @@ import {
         completionStats,
         foldSseLine,
         isRetryableError,
+        isFailoverError,
         backoffDelayMs,
         spacingWaitMs,
         MAX_ATTEMPTS,
@@ -91,6 +104,9 @@ const {
         localUrl: LOCAL_URL,
         localKey: LOCAL_KEY,
         localModels: LOCAL_MODELS,
+        fallbackUrl: FALLBACK_URL,
+        fallbackKey: FALLBACK_KEY,
+        fallbackModel: FALLBACK_MODEL,
 } = loadConfig();
 
 // ---------------------------------------------------------------------------
@@ -99,6 +115,7 @@ const {
 const log: BridgeLogEntry[] = [];
 let totalRequests = 0;
 let totalErrors = 0;
+let totalFailovers = 0;
 let upstreamHealthy: boolean | null = null;
 
 // ---------------------------------------------------------------------------
@@ -196,10 +213,27 @@ async function upstreamFetch(body: any, signal?: AbortSignal, target: { url: str
 
 /** Upstream call with serialized spacing + retry on 429/5xx/network.
  *  Local-lane calls skip the spacing throttle (localhost, no rate limit to
- *  respect — CPU-bound llama.cpp serializes itself). */
-async function callUpstream(body: any, route: "remote" | "local" = "remote"): Promise<Response> {
-        const target = route === "local" ? { url: LOCAL_URL, key: LOCAL_KEY } : { url: UPSTREAM_URL, key: UPSTREAM_KEY };
-        if (route === "remote") await acquireSlot();
+ *  respect — CPU-bound llama.cpp serializes itself). The FAILOVER lane is a
+ *  second remote, so it joins the spacing throttle like the primary.
+ *
+ *  Failover short-circuit: when the PRIMARY (route "remote") attempt fails
+ *  with a failover-eligible error (see pure.ts isFailoverError) AND a
+ *  fallback upstream is configured, the error is rethrown immediately with
+ *  `failoverCandidate: true` — no further primary attempts, no backoff burn.
+ *  Without this, a quota throttle (429 for the rest of the hour) would waste
+ *  the full 6-attempt / ~90s backoff budget on a primary that cannot
+ *  possibly recover. The caller (the POST handler) then decides whether to
+ *  retry the request on the fallback lane. The fallback lane itself gets the
+ *  plain retry semantics — there is no third endpoint to fail over to. */
+async function callUpstream(body: any, route: "remote" | "local" | "fallback"): Promise<Response> {
+        const target =
+                route === "local"
+                        ? { url: LOCAL_URL, key: LOCAL_KEY }
+                        : route === "fallback"
+                          ? { url: FALLBACK_URL, key: FALLBACK_KEY }
+                          : { url: UPSTREAM_URL, key: UPSTREAM_KEY };
+        const throttled = route === "remote" || route === "fallback";
+        if (throttled) await acquireSlot();
         let lastError: any;
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
                 try {
@@ -207,11 +241,14 @@ async function callUpstream(body: any, route: "remote" | "local" = "remote"): Pr
                 } catch (err: any) {
                         lastError = err;
                         const msg = String(err?.message ?? err);
+                        if (route === "remote" && FALLBACK_URL && isFailoverError(err)) {
+                                throw Object.assign(new Error(msg), { status: err?.status, failoverCandidate: true });
+                        }
                         if (!isRetryableError(err) || attempt === MAX_ATTEMPTS) throw err;
                         const backoff = backoffDelayMs(attempt);
                         console.log(`[llm-bridge] retryable error (attempt ${attempt}/${MAX_ATTEMPTS}), backing off ${Math.round(backoff)}ms: ${msg.slice(0, 120)}`);
                         await Bun.sleep(backoff);
-                        if (route === "remote") lastRequestAt = Date.now();
+                        if (throttled) lastRequestAt = Date.now();
                 }
         }
         throw lastError;
@@ -362,6 +399,20 @@ const server = Bun.serve({
                                         local = { ok: false, url: LOCAL_URL, models: LOCAL_MODELS };
                                 }
                         }
+                        // failover-lane probe (only when configured): is the
+                        // fallback reachable, should it be able to take over?
+                        let fallback: any = null;
+                        if (FALLBACK_URL) {
+                                try {
+                                        const res = await fetch(`${FALLBACK_URL}/models`, {
+                                                headers: FALLBACK_KEY ? { Authorization: `Bearer ${FALLBACK_KEY}` } : {},
+                                                signal: AbortSignal.timeout(4000),
+                                        });
+                                        fallback = { ok: res.ok, status: res.status, url: FALLBACK_URL, model: FALLBACK_MODEL || null };
+                                } catch {
+                                        fallback = { ok: false, url: FALLBACK_URL, model: FALLBACK_MODEL || null };
+                                }
+                        }
                         return Response.json({
                                 ok: true,
                                 port: PORT,
@@ -369,6 +420,8 @@ const server = Bun.serve({
                                 errors: totalErrors,
                                 upstream,
                                 local,
+                                fallback,
+                                failovers: totalFailovers,
                                 upstreamKeyIsSet: Boolean(UPSTREAM_KEY),
                                 authRequired: Boolean(BRIDGE_API_KEY),
                                 upstreamUrl: UPSTREAM_URL,
@@ -444,7 +497,29 @@ const server = Bun.serve({
 
                                 let upstreamBody = buildUpstreamBody(body, upstream, QWEN_THINKING);
                                 if (route === "local") upstreamBody = withLocalThinkingCompat(upstreamBody);
-                                const res = await callUpstream(upstreamBody, route);
+                                // Primary dispatch with FAILOVER: when the primary lane fails
+                                // with a failover-eligible error (quota/429, rejected key,
+                                // 5xx, network — see pure.ts isFailoverError) and a fallback
+                                // upstream is configured, rewrite the request onto the
+                                // fallback model and retry there instead of surfacing the
+                                // error. Local-lane requests never fail over (they are
+                                // already a deliberate second-endpoint routing choice), and
+                                // the fallback lane itself gets no second-level failover.
+                                let res: Response;
+                                try {
+                                        res = await callUpstream(upstreamBody, route);
+                                } catch (primaryErr: any) {
+                                        const failover = route === "remote" && FALLBACK_URL && Boolean(primaryErr?.failoverCandidate || isFailoverError(primaryErr));
+                                        if (!failover) throw primaryErr;
+                                        const fbModel = FALLBACK_MODEL || upstream;
+                                        const fbBody = buildUpstreamBody(body, fbModel, QWEN_THINKING);
+                                        totalFailovers++;
+                                        entry.upstreamModel = `fb:${fbModel}`;
+                                        console.log(
+                                                `[llm-bridge] primary upstream unavailable (attempt failed: ${String(primaryErr?.message ?? primaryErr).slice(0, 160)}) — failing over to ${FALLBACK_URL} (model: ${fbModel})`,
+                                        );
+                                        res = await callUpstream(fbBody, "fallback");
+                                }
 
                                 if (wantsStream) {
                                         // True SSE passthrough. Push the log entry at stream
@@ -488,6 +563,9 @@ if (!UPSTREAM_KEY) {
 }
 if (LOCAL_URL) {
         console.log(`[llm-bridge] local lane ENABLED: ${LOCAL_URL} (models: ${LOCAL_MODELS.length ? LOCAL_MODELS.join(", ") : "any local-* id"})`);
+}
+if (FALLBACK_URL) {
+        console.log(`[llm-bridge] failover lane ENABLED: ${FALLBACK_URL} (model: ${FALLBACK_MODEL || "<routed id unchanged>"}) — takes over when the primary cannot serve`);
 }
 console.log(
         `[llm-bridge] listening on http://127.0.0.1:${server.port} (OpenAI-compatible, proxying ${UPSTREAM_URL}; models: ${KNOWN_MODELS.join(", ")}; route default: ${ROUTE_DEFAULT})`,

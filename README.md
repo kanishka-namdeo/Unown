@@ -174,6 +174,9 @@ This installs dashboard dependencies, installs and builds the bundled pi monorep
 BRIDGE_UPSTREAM_URL=https://dashscope.aliyuncs.com/compatible-mode/v1   # any OpenAI-compatible base URL
 BRIDGE_UPSTREAM_KEY=<your key>
 BRIDGE_KNOWN_MODELS=kimi-k2.5,qwen3.7-plus,qwen3.6-plus
+# optional: fail over to a second endpoint (e.g. Agnes AI) when the primary cannot serve
+# BRIDGE_FALLBACK_URL=https://apihub.agnes-ai.com/v1
+# BRIDGE_FALLBACK_MODEL=agnes-3.0-flash
 
 unown setup --provider bridge     # point the terminal agent at it
 ```

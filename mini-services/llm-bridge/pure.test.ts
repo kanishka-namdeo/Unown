@@ -26,6 +26,7 @@ import {
         completionStats,
         foldSseLine,
         isRetryableError,
+        isFailoverError,
         loadConfig,
         routeModel,
         routeRequest,
@@ -770,6 +771,9 @@ describe("loadConfig", () => {
                         localUrl: "",
                         localKey: "",
                         localModels: [],
+                        fallbackUrl: "",
+                        fallbackKey: "",
+                        fallbackModel: "",
                 });
         });
 
@@ -799,6 +803,9 @@ describe("loadConfig", () => {
                         localUrl: "",
                         localKey: "",
                         localModels: [],
+                        fallbackUrl: "",
+                        fallbackKey: "",
+                        fallbackModel: "",
                 });
         });
 
@@ -997,5 +1004,119 @@ describe("withLocalThinkingCompat", () => {
                         enable_thinking: true,
                         chat_template_kwargs: { x: 1 },
                 });
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Failover lane (BRIDGE_FALLBACK_*) — classification + config parsing
+// ---------------------------------------------------------------------------
+
+describe("isFailoverError", () => {
+        const withStatus = (status: number, msg = `upstream ${status}: boom`) => Object.assign(new Error(msg), { status });
+
+        test("429 / 402 / 408 / 401 / 403 / 5xx are failover-eligible (primary cannot serve)", () => {
+                for (const status of [429, 402, 408, 401, 403, 500, 502, 503, 504, 529]) {
+                        expect(isFailoverError(withStatus(status))).toBe(true);
+                }
+        });
+
+        test("PIN: Dashscope's live quota-throttle shape (429 + throttling body) is eligible", () => {
+                // Measured 2026-10-20: HTTP 429, body {"error":{"code":"throttling",
+                // "message":"hour allocated quota exceeded."}} — status branch catches it.
+                expect(isFailoverError(withStatus(429, 'upstream 429: {"error":{"code":"throttling","message":"hour allocated quota exceeded."}}'))).toBe(true);
+        });
+
+        test("plain 400 / 404 / 409 / 422 schema-model errors are NOT eligible (the fallback would fail too)", () => {
+                for (const status of [400, 404, 409, 422]) {
+                        expect(isFailoverError(withStatus(status))).toBe(false);
+                }
+        });
+
+        test("quota / throttle / billing wording makes even a plain 400 eligible (providers that ship quota as 400)", () => {
+                for (const msg of [
+                        'upstream 400: {"error":{"code":"throttling","message":"hour allocated quota exceeded."}}',
+                        "upstream 400: Requests quota exceeded",
+                        "upstream 400: Arrearage detected",
+                        "upstream 400: billing not active",
+                        "upstream 400: insufficient balance",
+                ]) {
+                        expect(isFailoverError(new Error(msg))).toBe(true);
+                }
+        });
+
+        test("network / timeout / rate-limit message wording is eligible without a status", () => {
+                for (const msg of [
+                        "fetch failed",
+                        "network error",
+                        "socket hang up",
+                        "ECONNRESET",
+                        "upstream timeout: no response headers after 180000ms",
+                        "terminated",
+                        "Too Many Requests",
+                        "rate limit hit",
+                ]) {
+                        expect(isFailoverError(new Error(msg))).toBe(true);
+                }
+        });
+
+        // PIN: Bun's connection-refused phrasing (measured live — no status, no
+        // "fetch failed", no ECONN in the message; isRetryableError misses it too).
+        test("Bun's 'Unable to connect' phrasing is eligible (dead primary)", () => {
+                expect(isFailoverError(new Error("Unable to connect. Is the computer able to access the url?"))).toBe(true);
+        });
+
+        test("plain non-quota failures without keywords are NOT eligible", () => {
+                for (const msg of ["upstream 400: invalid parameter: temperature", "model not found", "context length exceeded"]) {
+                        expect(isFailoverError(new Error(msg))).toBe(false);
+                }
+        });
+
+        test("undefined / null errors do not throw", () => {
+                expect(isFailoverError(undefined)).toBe(false);
+                expect(isFailoverError(null)).toBe(false);
+        });
+
+        test("broader than isRetryableError: 401/403 fail over but do not retry", () => {
+                expect(isRetryableError(withStatus(401))).toBe(false);
+                expect(isFailoverError(withStatus(401))).toBe(true);
+                expect(isRetryableError(new Error("quota exceeded"))).toBe(false);
+                expect(isFailoverError(new Error("quota exceeded"))).toBe(true);
+        });
+});
+
+describe("loadConfig failover lane", () => {
+        test("defaults: failover off (empty url/key/model)", () => {
+                const cfg = loadConfig({});
+                expect(cfg.fallbackUrl).toBe("");
+                expect(cfg.fallbackKey).toBe("");
+                expect(cfg.fallbackModel).toBe("");
+        });
+
+        test("empty .env values (KEY=) mean OFF — the || convention", () => {
+                const cfg = loadConfig({ BRIDGE_FALLBACK_URL: "", BRIDGE_FALLBACK_KEY: "", BRIDGE_FALLBACK_MODEL: "" });
+                expect(cfg.fallbackUrl).toBe("");
+                expect(cfg.fallbackKey).toBe("");
+                expect(cfg.fallbackModel).toBe("");
+        });
+
+        test("trailing slashes stripped from the url; model id is trimmed", () => {
+                const cfg = loadConfig({ BRIDGE_FALLBACK_URL: "https://apihub.agnes-ai.com/v1///", BRIDGE_FALLBACK_MODEL: "  agnes-3.0-flash " });
+                expect(cfg.fallbackUrl).toBe("https://apihub.agnes-ai.com/v1");
+                expect(cfg.fallbackModel).toBe("agnes-3.0-flash");
+        });
+});
+
+describe("buildUpstreamBody failover shaping", () => {
+        test("agnes-3.0-flash is not qwen: no enable_thinking, z-ai thinking param dropped", () => {
+                const out = buildUpstreamBody({ messages: [], thinking: { type: "disabled" } }, "agnes-3.0-flash", true);
+                expect(out.model).toBe("agnes-3.0-flash");
+                expect(out.enable_thinking).toBeUndefined();
+                expect(out.thinking).toBeUndefined();
+        });
+
+        test("failover rewrite keeps tools + sampling params verbatim", () => {
+                const out = buildUpstreamBody({ messages: [], tools: [{ type: "function", function: { name: "read", arguments: "{}" } }], temperature: 0.2 }, "agnes-3.0-flash", false);
+                expect(out.tools).toHaveLength(1);
+                expect(out.temperature).toBe(0.2);
         });
 });

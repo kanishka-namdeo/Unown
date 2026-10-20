@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 139;
+export const CHANGELOG_TOTAL_ENTRIES = 140;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 60,
+  "Added": 61,
   "Changed": 24,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 17,
+    "total": 18,
     "counts": {
-      "Added": 6,
+      "Added": 7,
       "Changed": 5,
       "Deprecated": 0,
       "Removed": 0,
@@ -94,6 +94,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "bridge: upstream failover — BRIDGE_FALLBACK_* routes requests to a second OpenAI-compatible endpoint (Agnes AI)…",
+            "behavior": false
+          },
           {
             "title": "engine: the web results store — a persistent…",
             "behavior": false

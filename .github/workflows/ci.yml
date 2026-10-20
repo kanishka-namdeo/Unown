@@ -217,13 +217,15 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.3"
-      - name: Bridge unit suite (pure routing/throttle/timeout logic)
-        # 95 hermetic tests, sub-second, no node_modules, no network: the
-        # bridge's pure logic (model routing, thinking-mode handling, request
-        # throttling, upstream timeout parsing). The last un-wired test suite
-        # (testing-strategy.md §6 gates 10-13 / §11 item 2).
+      - name: Bridge unit suite (routing/throttle/failover/usage logic)
+        # 181 tests, 176 hermetic (pure routing/thinking/throttle logic + the
+        # usage-log suite + the failover serving-layer suite that spawns the
+        # real bridge on an ephemeral port against two mock upstreams) and 5
+        # env-gated live-VLM skips, sub-second, no node_modules, no external
+        # network (mocks and the bridge under test all bind 127.0.0.1
+        # ephemeral ports).
         working-directory: mini-services/llm-bridge
-        run: bun test pure.test.ts
+        run: bun test
 
   build:
     name: Production build (dashboard)

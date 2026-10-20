@@ -666,15 +666,25 @@ preserved in the margin notes where they were cited from history.
 
 *(was §4.4; surface: `mini-services/llm-bridge/index.ts`)*
 
-- **SHIPPED** - 95 unit tests over the extracted pure module: routing, tool-call
+- **SHIPPED** - 127 unit tests over the extracted pure module: routing, tool-call
   sanitisation, thinking resolution, retry classification, backoff and spacing
-  math, SSE parse stats.
+  math, SSE parse stats, failover classification — plus, since 2026-10-20, a
+  9-test hermetic serving-layer suite (`failover.test.ts`: the real `index.ts`
+  spawned on an ephemeral port against two mock `Bun.serve` upstreams; 181
+  bridge tests total, 176 pass + 5 env-gated VLM skips).
 - **OPEN** - Contract test against a real OpenAI SDK client pointed at the bridge
   (the failure mode that matters is "a strict client rejects our response", not
   "our own parser accepts our own response").
-- **OPEN** - Load and cancellation: concurrent spacing (inter-request upstream
-  starts >= `BRIDGE_MIN_SPACING_MS`), a 100-request burst, a client-disconnect
-  storm (no socket leak), and 429 injection with backoff.
+- **PARTIAL** - Load and cancellation: concurrent spacing (inter-request upstream
+  starts >= `BRIDGE_MIN_SPACING_MS`), a 100-request burst, and a
+  client-disconnect storm (no socket leak) remain OPEN. The 429-injection half
+  is covered since the failover suite (2026-10-20): `failover.test.ts` injects
+  Dashscope's live 429 quota-throttle shape ("hour allocated quota exceeded")
+  from a hermetic mock upstream and pins the failover short-circuit (exactly
+  one primary attempt, no backoff burn when a fallback is configured). Still
+  uncovered: the no-fallback 429 path through the real backoff loop at the
+  serving layer — the retry classification and backoff math are pure-pinned,
+  and the backward-compat test uses 401 precisely to avoid the ~90 s wait.
 - **OPEN** - `BRIDGE_UPSTREAM_TIMEOUT_MS` bounds headers only; the body stream is
   uncapped by design. Add a slow-trickling-body test so the intent is pinned
   rather than accidental.

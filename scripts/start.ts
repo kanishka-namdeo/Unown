@@ -152,9 +152,15 @@ console.log(`    LLM bridge     http://127.0.0.1:${BRIDGE_PORT}/health`);
 console.log("");
 
 // Honest key/upstream reporting: /health only counts as "ok" for the chat path
-// when the upstream key is set and the upstream actually answers.
+// when the upstream key is set and the upstream actually answers — OR a
+// fallback upstream is configured and serving (failover lane).
 const health = (await fetchJson(`http://127.0.0.1:${BRIDGE_PORT}/health`)) as
-  | { upstreamKeyIsSet?: boolean; upstream?: { ok?: boolean } }
+  | {
+      upstreamKeyIsSet?: boolean;
+      upstream?: { ok?: boolean };
+      fallback?: { ok?: boolean; model?: string | null; url?: string } | null;
+      failovers?: number;
+    }
   | null;
 if (health && health.upstreamKeyIsSet === false) {
   console.log(`  ${sym.warn} BRIDGE_UPSTREAM_KEY is not set in .env — every chat will fail with 401.`);
@@ -162,8 +168,21 @@ if (health && health.upstreamKeyIsSet === false) {
     "    fix: edit .env, set BRIDGE_UPSTREAM_KEY=<your upstream key>, then: bun run agent:stop && bun run agent:start",
   );
 } else if (health && health.upstream && health.upstream.ok === false) {
-  console.log(`  ${sym.warn} The bridge reached the upstream but the upstream is unhealthy —`);
-  console.log("    check BRIDGE_UPSTREAM_URL / BRIDGE_UPSTREAM_KEY in .env.");
+  if (health.fallback && health.fallback.ok) {
+    console.log(
+      `  ${sym.warn} The primary upstream is unhealthy — the bridge is FAILING OVER to ${
+        health.fallback.model ?? "the fallback model"
+      } (${health.fallback.url}).`,
+    );
+    console.log("    Chats continue on the fallback; check BRIDGE_UPSTREAM_URL / BRIDGE_UPSTREAM_KEY when you want the primary back.");
+  } else {
+    console.log(`  ${sym.warn} The bridge reached the upstream but the upstream is unhealthy —`);
+    console.log("    check BRIDGE_UPSTREAM_URL / BRIDGE_UPSTREAM_KEY in .env.");
+  }
+} else if (health && typeof health.failovers === "number" && health.failovers > 0) {
+  console.log(
+    `  ${sym.warn} ${health.failovers} request${health.failovers === 1 ? "" : "s"} served by the fallback upstream so far — the primary upstream is failing some requests.`,
+  );
 }
 
 console.log("  Logs: .run/bridge.log, .run/engine.log, .run/dashboard.log");

@@ -1106,6 +1106,8 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                                 requests?: number;
                                                 errors?: number;
                                                 upstream?: { ok?: boolean; status?: number };
+                                                fallback?: { ok?: boolean; status?: number; url?: string; model?: string | null } | null;
+                                                failovers?: number;
                                                 upstreamKeyIsSet?: boolean;
                                                 defaultModel?: string;
                                                 models?: string[];
@@ -1117,12 +1119,25 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                                         ? "BRIDGE_UPSTREAM_KEY is not set in the repo's .env — chats will fail with 401"
                                                         : "BRIDGE_UPSTREAM_KEY set",
                                         );
+                                        // Failover-aware health: an unhealthy primary only fails this
+                                        // check when no fallback is serving. With a healthy fallback
+                                        // lane the chat path works — report it as such, with the
+                                        // FAILOVER ACTIVE detail naming the lane that took over.
+                                        const fbServing = body.upstream?.ok === false && body.fallback?.ok === true;
+                                        const fbNote =
+                                                typeof body.failovers === "number" && body.failovers > 0
+                                                        ? `, ${body.failovers} failover${body.failovers === 1 ? "" : "s"} served`
+                                                        : "";
                                         check(
                                                 "bridge upstream health",
-                                                body.upstream?.ok !== false,
+                                                body.upstream?.ok !== false || fbServing,
                                                 body.upstream?.ok === false
-                                                        ? `upstream unhealthy (${body.upstream.status ?? "no answer"}) — check BRIDGE_UPSTREAM_URL`
-                                                        : `${body.requests ?? 0} requests, ${body.errors ?? 0} errors`,
+                                                        ? fbServing
+                                                                ? `upstream unhealthy (${body.upstream.status ?? "no answer"}) — FAILOVER ACTIVE: ${
+                                                                          body.fallback?.model ?? "the fallback model"
+                                                                  } via ${body.fallback?.url ?? "the fallback"} is serving`
+                                                                : `upstream unhealthy (${body.upstream.status ?? "no answer"}) — check BRIDGE_UPSTREAM_URL`
+                                                        : `${body.requests ?? 0} requests, ${body.errors ?? 0} errors${fbNote}`,
                                         );
                                         const model = active.modelIds[0];
                                         if (model && Array.isArray(body.models) && body.models.length > 0 && !body.models.includes(model)) {

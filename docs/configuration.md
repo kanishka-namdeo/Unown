@@ -80,6 +80,9 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `BRIDGE_LOCAL_URL` | unset | Optional second upstream: a LOCAL OpenAI-compatible server (llama.cpp `llama-server`, Ollama, LM Studio), e.g. `http://127.0.0.1:8080/v1`. When set, `local-*` model ids (or `BRIDGE_LOCAL_MODELS`) are forwarded there — keyless by default, no spacing throttle. Start one with `node benchmarks/local-llm/runner.mjs serve --model qwen3-0.6b`. |
 | `BRIDGE_LOCAL_KEY` | unset | Bearer key for the local upstream (llama.cpp runs keyless — leave empty). |
 | `BRIDGE_LOCAL_MODELS` | unset | Comma-separated local model ids; empty = the `local-*` prefix convention routes locally. |
+| `BRIDGE_FALLBACK_URL` | unset | Optional FAILOVER upstream: a second REMOTE OpenAI-compatible endpoint (e.g. Agnes AI `https://apihub.agnes-ai.com/v1`, no trailing slash). When the primary fails with a failover-eligible error — 429/quota throttle (Dashscope's "hour allocated quota exceeded" ships as 429), 402/408, 401/403, any 5xx, network — the request is retried once there immediately (no retry-backoff burn) and the client sees a normal 200 or SSE stream. Unset/empty = failover off. |
+| `BRIDGE_FALLBACK_KEY` | unset | Bearer key for the fallback upstream. |
+| `BRIDGE_FALLBACK_MODEL` | unset | Model id failed-over requests are rewritten onto (e.g. `agnes-3.0-flash`); empty keeps the already-routed id, for fallbacks serving the same catalog. |
 
 ### Terminal agent (`unown` CLI)
 

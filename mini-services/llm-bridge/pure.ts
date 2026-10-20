@@ -76,6 +76,12 @@ export interface BridgeConfig {
         localKey: string;
         /** Model ids served by the local upstream (advertised on /v1/models, routed when BRIDGE_LOCAL_URL is set). */
         localModels: string[];
+        /** Optional FAILOVER upstream: a second REMOTE OpenAI-compatible endpoint that serves requests when the primary cannot (quota/429, auth, 5xx, network). Empty = failover off. */
+        fallbackUrl: string;
+        /** Bearer key for the fallback upstream (empty = keyless). */
+        fallbackKey: string;
+        /** Model id failed-over requests are rewritten onto (empty = keep the routed model id). */
+        fallbackModel: string;
 }
 
 /**
@@ -111,6 +117,12 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
                         .split(",")
                         .map((s) => s.trim())
                         .filter(Boolean),
+                // Failover lane: same `||`/`??` conventions — optional vars ship
+                // EMPTY in .env ("KEY="), which must mean "off". Trailing
+                // slashes are stripped like every other URL var.
+                fallbackUrl: (env.BRIDGE_FALLBACK_URL ?? "").replace(/\/+$/, ""),
+                fallbackKey: env.BRIDGE_FALLBACK_KEY ?? "",
+                fallbackModel: (env.BRIDGE_FALLBACK_MODEL ?? "").trim(),
         };
 }
 
@@ -145,6 +157,41 @@ export function isRetryableError(err: any): boolean {
                 (typeof status === "number" && status >= 500) ||
                 /429|too many requests|rate limit|network|socket|ECONN|fetch failed|timeout|terminated/i.test(msg)
         );
+}
+
+/**
+ * FAILOVER classification for a failed PRIMARY attempt: does this error mean
+ * the primary endpoint cannot serve the request right now, such that a
+ * second endpoint should take over? Broader than isRetryableError on
+ * purpose:
+ *   - status 429 (rate limit / quota throttle — Dashscope's "hour allocated
+ *     quota exceeded" ships as 429) and 402/408
+ *   - status 401/403 — a rejected/dead primary key IS "primary not working";
+ *     the fallback (its own provider, its own key) can still serve
+ *   - any 5xx
+ *   - message text: quota/throttle/arrears/billing/balance wording (some
+ *     providers ship quota errors as plain 400s), rate-limit wording, and
+ *     the network-ish set — including Bun's connection-refused phrasing
+ *     ("Unable to connect. Is the computer able to access the url?"),
+ *     which matches NEITHER the retryable set nor any status
+ * NOT failover-eligible: plain 400/404 (schema/model errors — the same
+ * request would fail on the fallback too; the engine has its own schema
+ * retry for those).
+ */
+export function isFailoverError(err: any): boolean {
+        const msg = String(err?.message ?? err);
+        const status = err?.status;
+        if (
+                status === 429 ||
+                status === 402 ||
+                status === 408 ||
+                status === 401 ||
+                status === 403 ||
+                (typeof status === "number" && status >= 500)
+        ) {
+                return true;
+        }
+        return /quota|throttl|arrearage|billing|balance|insufficient|rate.?limit|too many requests|429|network|socket|ECONN|fetch failed|unable to connect|refused|timeout|terminated/i.test(msg);
 }
 
 /**
