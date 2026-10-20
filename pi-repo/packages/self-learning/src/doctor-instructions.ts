@@ -156,6 +156,41 @@ function defaultCommandExists(cmd: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Gitignore awareness — a gitignored path is EXPECTED to be absent on a fresh
+// clone (generated artifacts like src/generated/prisma), so its non-existence
+// is not staleness. One memoized `git check-ignore` per distinct ref; without
+// git (or outside a repo) the answer is simply "not ignored".
+// ---------------------------------------------------------------------------
+const gitIgnoredMemo = new Map<string, boolean>();
+
+export function _resetGitIgnoreMemoForTests(): void {
+        gitIgnoredMemo.clear();
+}
+
+function isGitIgnored(cwd: string, ref: string): boolean {
+        const memoKey = `${cwd}\u0000${ref}`;
+        const cached = gitIgnoredMemo.get(memoKey);
+        if (cached !== undefined) return cached;
+        let ignored = false;
+        try {
+                // `git check-ignore -q <path>`: exit 0 = ignored, 1 = not, other = no
+                // git / not a repo → keep false. Bun.spawnSync avoids the audit's
+                // no-import discipline for child_process (mirrors the pure-stat
+                // approach above: fail closed to current behaviour).
+                const proc = Bun.spawnSync({
+                        cmd: ["git", "-C", cwd, "check-ignore", "-q", "--", ref],
+                        stdout: "ignore",
+                        stderr: "ignore",
+                });
+                ignored = proc.exitCode === 0;
+        } catch {
+                ignored = false;
+        }
+        gitIgnoredMemo.set(memoKey, ignored);
+        return ignored;
+}
+
+// ---------------------------------------------------------------------------
 // AGENTS.md audit
 // ---------------------------------------------------------------------------
 
@@ -228,6 +263,11 @@ function auditAgentsMd(cwd: string): Finding[] {
                         // `./`/`../` refs always carry a resolvable anchor.
                         if (anchor !== "." && anchor !== ".." && !existsSync(join(cwd, anchor))) return;
                 }
+                // Gitignored paths are generated artifacts — their absence on a
+                // fresh clone is expected, not staleness (e.g. this repo's own
+                // `src/generated/prisma`, documented in AGENTS.md but absent until
+                // `prisma generate` runs). Skipped for both links and backticks.
+                if (isGitIgnored(cwd, raw)) return;
                 if (!existsSync(join(cwd, raw))) broken.add(raw);
         };
         let m: RegExpExecArray | null;

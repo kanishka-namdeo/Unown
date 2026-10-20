@@ -69,6 +69,79 @@ function json(data: unknown, status = 200) {
         });
 }
 
+// ---------------------------------------------------------------------------
+// CORS — browser access for the dashboard (M0 of the multi-provider plan)
+// ---------------------------------------------------------------------------
+/**
+ * Which Origin may talk to the engine API from a browser, or null for none.
+ *
+ * The engine is unauthenticated and loopback-bound by default; reflecting any
+ * Origin would let any website the user visits drive the learning surface
+ * through their own browser (CSRF over fetch). The default allow-list is
+ * therefore loopback-only (any port — the dashboard runs on :3000, the e2e
+ * build on :3210, sandbox gateways on 127.0.0.1…). Widen deliberately for
+ * remote dashboards with UNOWN_ENGINE_CORS:
+ *
+ *   UNOWN_ENGINE_CORS=https://dash.example.com,https://other.example.com
+ *       explicit origin allow-list (comma-separated)
+ *   UNOWN_ENGINE_CORS=*        any origin — only sane next to UNOWN_ENGINE_HOST
+ *                               plus an authenticating reverse proxy
+ *   UNOWN_ENGINE_CORS=off      no CORS headers at all (pre-2.3 behaviour)
+ *
+ * Non-browser clients (curl, the CLI, the bridge) send no Origin and are
+ * unaffected. Exported for tests.
+ */
+export function allowedCorsOrigin(req: Request): string | null {
+        const mode = (process.env.UNOWN_ENGINE_CORS ?? "").trim();
+        if (mode === "off") return null;
+        const origin = req.headers.get("origin");
+        if (!origin) return null; // same-origin / non-browser — no CORS headers needed
+        if (mode === "*") return "*";
+        const explicit = mode
+                .split(",")
+                .map((s) => s.trim().replace(/\/+$/, ""))
+                .filter(Boolean);
+        if (explicit.length > 0) {
+                const o = origin.replace(/\/+$/, "");
+                return explicit.includes(o) ? origin : null;
+        }
+        // default allow-list: loopback origins, any port, http(s) only
+        try {
+                const u = new URL(origin);
+                const host = u.hostname.replace(/^\[|\]$/g, ""); // bare ::1
+                const isLoopback =
+                        host === "localhost" ||
+                        host === "::1" ||
+                        /^127(\.\d{1,3}){3}$/.test(host) ||
+                        /^0\.0\.0\.0$/.test(host);
+                const isHttp = u.protocol === "http:" || u.protocol === "https:";
+                return isLoopback && isHttp ? origin : null;
+        } catch {
+                return null;
+        }
+}
+
+/** The CORS headers for an allowed origin (empty object = no CORS). */
+export function corsHeadersFor(origin: string | null): Record<string, string> {
+        if (!origin) return {};
+        return {
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                "Access-Control-Max-Age": "86400",
+                Vary: "Origin",
+        };
+}
+
+/** Re-wrap a Response with CORS headers (streaming bodies pass through). */
+export function withCors(res: Response, origin: string | null): Response {
+        const headers = corsHeadersFor(origin);
+        if (Object.keys(headers).length === 0) return res;
+        const h = new Headers(res.headers);
+        for (const [k, v] of Object.entries(headers)) h.set(k, v);
+        return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+}
+
 export async function handleApi(req: ApiRequest): Promise<Response> {
         const { method, path, query, body } = req;
 
@@ -532,6 +605,13 @@ export function startServer(port: number = PORT) {
                 idleTimeout: 255, // SSE streams + long-lived API connections
                 async fetch(req) {
                         const url = new URL(req.url);
+                        const corsOrigin = allowedCorsOrigin(req);
+
+                        // CORS preflight — answered before any routing (the engine API is
+                        // consumed cross-origin by the local dashboard once CORS is on).
+                        if (req.method === "OPTIONS") {
+                                return new Response(null, { status: 204, headers: corsHeadersFor(corsOrigin) });
+                        }
 
                         // SSE live event stream
                         if (req.method === "GET" && url.pathname === "/api/events") {
@@ -559,19 +639,28 @@ export function startServer(port: number = PORT) {
                                                 if (ping) clearInterval(ping);
                                         },
                                 });
-                                return new Response(stream, {
-                                        headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
-                                });
+                                return withCors(
+                                        new Response(stream, {
+                                                headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+                                        }),
+                                        corsOrigin,
+                                );
                         }
 
                         if (url.pathname.startsWith("/api/")) {
-                                return handleApi({ method: req.method, path: url.pathname, query: url.searchParams, body: await apiRequestBody(req) });
+                                return withCors(
+                                        await handleApi({ method: req.method, path: url.pathname, query: url.searchParams, body: await apiRequestBody(req) }),
+                                        corsOrigin,
+                                );
                         }
 
-                        return new Response("pi self-learning agent service\n", {
-                                status: 200,
-                                headers: { "Content-Type": "text/plain" },
-                        });
+                        return withCors(
+                                new Response("pi self-learning agent service\n", {
+                                        status: 200,
+                                        headers: { "Content-Type": "text/plain" },
+                                }),
+                                corsOrigin,
+                        );
                 },
         });
 

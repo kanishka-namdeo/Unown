@@ -23,6 +23,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+        _resetGitIgnoreMemoForTests,
         auditInstructionSet,
         renderInstructionAudit,
         summarizeInstructionAudit,
@@ -250,6 +251,40 @@ describe("auditInstructionSet — AGENTS.md stale references", () => {
                         const warns = report.agentsMd.filter((f) => f.severity === "warn");
                         expect(warns.some((f) => f.message.includes("docs/guide.md"))).toBe(true);
                         expect(warns.some((f) => f.message.includes("/api/overview"))).toBe(false);
+                } finally {
+                        rmSync(dir, { recursive: true, force: true });
+                }
+        });
+
+        // Gitignore awareness (M0): generated artifacts are EXPECTED to be absent
+        // on a fresh clone — referencing them from AGENTS.md is documentation, not
+        // staleness. Only a real git repo can exercise this (check-ignore needs
+        // .git); the plain temp dirs above are not repos, so they keep the old
+        // behaviour.
+        test("gitignored generated paths (absent on fresh clone) are not flagged", () => {
+                const dir = freshDir("agents-gitignored");
+                const git = Bun.which("git");
+                if (!git) return; // no git on PATH — behaviour degrades to the old rule
+                try {
+                        _resetGitIgnoreMemoForTests();
+                        writeRel(dir, "src/index.ts", "export {};\n"); // anchor for src/generated/prisma
+                        writeFileSync(join(dir, ".gitignore"), "src/generated/\n");
+                        Bun.spawnSync({ cmd: [git, "-C", dir, "init", "-q"], stdout: "ignore", stderr: "ignore" });
+                        writeRel(
+                                dir,
+                                "AGENTS.md",
+                                [
+                                        "# AGENTS.md",
+                                        "",
+                                        "Generated client (gitignored until `prisma generate`): `src/generated/prisma`.",
+                                        "Genuinely missing: `src/missing-file.ts`.",
+                                        "",
+                                ].join("\n"),
+                        );
+                        const report = auditInstructionSet(dir, optsFor(dir));
+                        const warns = report.agentsMd.filter((f) => f.severity === "warn");
+                        expect(warns.some((f) => f.message.includes("src/generated/prisma"))).toBe(false);
+                        expect(warns.some((f) => f.message.includes("src/missing-file.ts"))).toBe(true);
                 } finally {
                         rmSync(dir, { recursive: true, force: true });
                 }

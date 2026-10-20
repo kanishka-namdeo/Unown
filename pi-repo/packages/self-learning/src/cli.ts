@@ -1156,6 +1156,26 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                                         "warn",
                                                 );
                                         }
+                                        // Route-default coherence: unknown model ids route onto
+                                        // BRIDGE_ROUTE_DEFAULT; if that id is NOT in the allow-list
+                                        // either, every routed request 404s at the upstream with no
+                                        // local hint. Classic trigger: BRIDGE_UPSTREAM_URL switched to
+                                        // a new provider while a stale BRIDGE_ROUTE_DEFAULT stayed
+                                        // hard-coded in .env (it overrides BRIDGE_MODEL).
+                                        if (
+                                                typeof body.defaultModel === "string" &&
+                                                body.defaultModel.length > 0 &&
+                                                Array.isArray(body.models) &&
+                                                body.models.length > 0 &&
+                                                !body.models.includes(body.defaultModel)
+                                        ) {
+                                                check(
+                                                        "bridge route default coherent",
+                                                        false,
+                                                        `route default "${body.defaultModel}" is not in the allow-list (BRIDGE_KNOWN_MODELS) — unknown model ids will 404 at the upstream; align BRIDGE_ROUTE_DEFAULT/BRIDGE_MODEL with the upstream catalog`,
+                                                        "warn",
+                                                );
+                                        }
                                 }
                         } catch {
                                 // the endpoint probe above already reported reachability

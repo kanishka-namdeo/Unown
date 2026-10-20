@@ -142,7 +142,7 @@ export function AlphabetSection() {
     <section
       data-hue="psychic"
       id="alphabet"
-      className="relative scroll-mt-16 overflow-hidden border-y border-line py-16 sm:py-20"
+      className="relative scroll-mt-16 overflow-hidden border-y border-line py-16 sm:py-[72px]"
     >
       <MarkField />
 

@@ -61,6 +61,10 @@ export interface MockBridge {
 export interface MockBridgeOptions {
         /** HTTP status GET /v1/models answers with (default 200; 401 simulates rejected credentials). */
         modelsStatus?: number;
+        /** Overrides the /health defaultModel field (route-default coherence tests: set a value OUTSIDE `models` to simulate a stale BRIDGE_ROUTE_DEFAULT). */
+        healthDefaultModel?: string;
+        /** Overrides the /health models allow-list (defaults to ["kimi-k2.5", "mock-kimi"]). */
+        healthModels?: string[];
 }
 
 /**
@@ -92,8 +96,8 @@ export function startMockBridge(opts: MockBridgeOptions = {}): MockBridge {
                                         upstreamKeyIsSet: true,
                                         authRequired: false,
                                         upstreamUrl: `${state.url}/v1`,
-                                        defaultModel: "kimi-k2.5",
-                                        models: ["kimi-k2.5", "mock-kimi"],
+                                        defaultModel: opts.healthDefaultModel ?? "kimi-k2.5",
+                                        models: opts.healthModels ?? ["kimi-k2.5", "mock-kimi"],
                                 });
                         }
 

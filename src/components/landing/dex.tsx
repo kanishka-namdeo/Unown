@@ -266,7 +266,7 @@ export function DexSection() {
     <section
       data-hue="magma"
       id="dex"
-      className="scroll-mt-16 border-y border-line py-16 sm:py-20"
+      className="scroll-mt-16 border-y border-line py-16 sm:py-[72px]"
     >
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">

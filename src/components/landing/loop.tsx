@@ -172,7 +172,7 @@ export function LoopSection() {
   }
 
   return (
-    <section data-hue="leaf" id="loop" className="scroll-mt-16 border-y border-line py-16 sm:py-20">
+    <section data-hue="leaf" id="loop" className="scroll-mt-16 border-y border-line py-16 sm:py-[72px]">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead kicker="The learning loop">

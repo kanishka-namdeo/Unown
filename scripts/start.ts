@@ -97,6 +97,26 @@ function startService(name: string, cwdRel: string, args: string[]): void {
   console.log(`${sym.step} ${name} started (pid ${child.pid})`);
 }
 
+/**
+ * Drain-aware restart (M0): the engine's graceful shutdown DRAINS in-flight
+ * HTTP before exiting (engine-supervisor), and stop.ts removes the pidfile
+ * the moment SIGTERM is sent — so a fast `agent:stop && agent:start` spawns
+ * the new engine while the old one still holds the port, and it dies with
+ * "Failed to start server. Is port 3030 in use?". Wait for the port to
+ * actually stop answering before spawning. Returns false (and lets the
+ * spawn surface the bind error honestly) when the timeout lapses.
+ */
+async function waitForPortFree(url: string, label: string, timeoutMs = 20_000): Promise<boolean> {
+  if (!(await probeHttpOk(url, 750))) return true; // fast path: already free
+  console.log(`${sym.dot} waiting for the previous ${label} to drain and release its port…`);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!(await probeHttpOk(url, 750))) return true;
+    await sleep(500);
+  }
+  return false;
+}
+
 // zai-upstream shim: a local OpenAI-compatible endpoint backed by the
 // sandbox's z-ai-web-dev-sdk gateway. Only started when the bridge is pointed
 // at it (BRIDGE_UPSTREAM_URL=http://127.0.0.1:3032/v1) — a real provider
@@ -114,8 +134,12 @@ if ((process.env.BRIDGE_UPSTREAM_URL ?? "").includes("127.0.0.1:3032")) {
 if (await probeHttpOk(`http://127.0.0.1:${BRIDGE_PORT}/health`)) {
   console.log(`${sym.dot} bridge already healthy on :${BRIDGE_PORT} — reusing it`);
 } else {
+  // A just-stopped bridge can still be mid-drain on its port — wait it out
+  // instead of spawning into EADDRINUSE (same race the engine has).
+  await waitForPortFree(`http://127.0.0.1:${BRIDGE_PORT}/health`, "bridge", 15_000);
   startService("bridge", path.join("mini-services", "llm-bridge"), ["index.ts"]);
 }
+await waitForPortFree(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, "engine", 20_000);
 startService("engine", path.join("mini-services", "agent-service"), ["index.ts"]);
 startService("dashboard", ".", ["run", "dev"]);
 
