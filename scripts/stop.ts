@@ -24,7 +24,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
-import { IS_LINUX, IS_WIN, REPO_ROOT, alive, capture, sym } from "./lib";
+import { IS_LINUX, IS_WIN, REPO_ROOT, alive, capture, probeHttpOk, sym } from "./lib";
 
 const RUN_DIR = path.join(REPO_ROOT, ".run");
 let stoppedAny = false;
@@ -115,5 +115,30 @@ if (IS_LINUX) {
 if (!stoppedAny) {
   console.log(`${sym.dot} nothing was running`);
   process.exit(1);
+}
+
+// Drain wait (M3, mirrors start.ts's waitForPortFree): SIGTERM asks the
+// engine/bridge to DRAIN in-flight work before exiting, and stop used to
+// return while the ports were still bound — an immediate `agent:start` or
+// e2e run then collided with the dying process. Wait (bounded) for the
+// engine/bridge ports to actually stop answering.
+const ENGINE_PORT = process.env.PI_AGENT_PORT || "3030";
+const BRIDGE_PORT = process.env.BRIDGE_PORT || "3031";
+async function waitForPortFree(url: string, label: string, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!(await probeHttpOk(url, 750))) return true;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return false;
+}
+const engineFreed = await waitForPortFree(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, "engine", 15_000);
+const bridgeFreed = await waitForPortFree(`http://127.0.0.1:${BRIDGE_PORT}/health`, "bridge", 10_000);
+if (!engineFreed || !bridgeFreed) {
+  console.log(
+    `${sym.warn} still draining after the wait (engine ${engineFreed ? "released" : "busy"}, bridge ${
+      bridgeFreed ? "released" : "busy"
+    }) — ports may need a moment longer.`,
+  );
 }
 process.exit(0);

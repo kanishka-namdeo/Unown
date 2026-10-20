@@ -247,8 +247,12 @@ One-shot run flags (print mode; several also used by the task tool):
   --no-session             do not persist the session
   --tools a,b,c            restrict the active tool set
   --append-system-prompt F append the file's contents to the system prompt
-  --model <id>            override PI_MODEL_ID for this run (per-subagent
-                           routing; see UNOWN_SUBAGENT_MODEL below)
+  --model <id>            the model for this run — bare id or provider/model
+                           (multi-provider routing, e.g. agnes/agnes-3.0-flash;
+                           also per-subagent routing, see UNOWN_SUBAGENT_MODEL)
+  --provider <id>         pin the provider for this run (its default model is
+                           used unless --model also names one) — e.g. --provider
+                           agnes. Registry: unown providers list
   --effort low|medium|high  reasoning effort (low → BRIDGE_QWEN_THINKING=0,
                            high → =1, medium/unset = bridge default)
   --mcp-servers a,b       whitelist of MCP servers to load (empty CSV = load
@@ -312,6 +316,10 @@ interface CliArgs {
         effort?: SubagentEffort;
         mcpServers?: string[];
         noAgentsMd?: boolean;
+        /** --provider <id>: pin the session's provider (its default model is
+         * used unless --model also names one). Multi-provider parity with pi's
+         * own CLI and the Cline provider dropdown. */
+        provider?: string;
         /** --no-split: start bare, ignoring saved split-view startup defaults. */
         noSplit?: boolean;
 }
@@ -337,6 +345,7 @@ export function parseArgs(argv: string[]): CliArgs {
         let noSplit = false;
         let goal: string | undefined;
         let outputFormat: "text" | "json" | undefined;
+        let provider: string | undefined;
         for (let i = 0; i < argvRest.length; i++) {
                 const a = argvRest[i];
                 if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan, noSplit, goal, outputFormat };
@@ -415,6 +424,14 @@ export function parseArgs(argv: string[]): CliArgs {
                         }
                         continue;
                 }
+                if (a === "--provider") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                provider = next;
+                                i++;
+                        }
+                        continue;
+                }
                 rest.push(a);
         }
         const first = rest[0];
@@ -448,6 +465,7 @@ export function parseArgs(argv: string[]): CliArgs {
                         effort: subagentFlags.effort,
                         mcpServers: subagentFlags.mcpServers,
                         noAgentsMd: subagentFlags.noAgentsMd,
+                        provider,
                 };
         return {
                 command: "tui",
@@ -466,6 +484,7 @@ export function parseArgs(argv: string[]): CliArgs {
                 effort: subagentFlags.effort,
                 mcpServers: subagentFlags.mcpServers,
                 noAgentsMd: subagentFlags.noAgentsMd,
+                provider,
         };
 }
 
@@ -498,6 +517,9 @@ interface BootOptions {
         effort?: SubagentEffort;
         mcpServers?: string[];
         noAgentsMd?: boolean;
+        /** --provider pin (M3): resolved against the multi-provider registry
+         * together with --model by resolveCliModel. */
+        provider?: string;
 }
 
 /**
@@ -549,6 +571,15 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         // callback (reads UNOWN_NO_AGENTS_MD) all observe the routed values.
         applySubagentEnvOverrides(bootOpts);
         const agentDir = ensureUnownAgentDir();
+        // M3: point pi's own agent-dir resolution at unown's dir. The session
+        // gets agentDir passed explicitly, but pi code that calls getAgentDir()/
+        // getAuthPath()/getSettingsPath() DIRECTLY (the /login status line,
+        // AuthStorage defaults) resolved ~/.pi/agent — the wrong dir under
+        // unown, producing messages (and, for /login, key writes) that point
+        // at a config location unown never reads back. PI_CODING_AGENT_DIR is
+        // pi's sanctioned override (config.ts:504); project-level .pi/ paths
+        // are cwd-based and unaffected.
+        process.env.PI_CODING_AGENT_DIR = agentDir;
         // Last-resort child hygiene (child-reaper.ts): LSP/MCP server children get
         // SIGTERM→SIGKILL on process exit and SIGINT/SIGTERM — idempotent, so every
         // bootRuntime call (TUI, print, subagents) re-installs it harmlessly.
@@ -671,15 +702,40 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                         // ThinkingLevel (low/medium/high) on top of the
                         // BRIDGE_QWEN_THINKING env write (applySubagentEnvOverrides).
                         model: (() => {
-                                if (!bootOpts.model) return undefined;
+                                // --provider without --model: pin the provider's default
+                                // model (settings defaultModel when it belongs to that
+                                // provider, else the provider's first registered model) —
+                                // the Cline-dropdown contract. With both flags, the pair
+                                // resolves exactly like pi's own CLI.
+                                let cliModel = bootOpts.model;
+                                if (!cliModel && bootOpts.provider) {
+                                        const list = listProviders(UNOWN_AGENT_DIR);
+                                        const p = list.providers.find((x) => x.id.toLowerCase() === bootOpts.provider!.toLowerCase());
+                                        if (!p) {
+                                                console.error(
+                                                        `unown: --provider ${bootOpts.provider}: unknown provider — configured: ${
+                                                                list.providers.map((x) => x.id).join(", ") || "(none)"
+                                                        }`,
+                                                );
+                                                return undefined;
+                                        }
+                                        cliModel = list.defaultProvider === p.id ? list.defaultModel : p.modelIds[0];
+                                        if (!cliModel) {
+                                                console.error(`unown: --provider ${bootOpts.provider}: the provider has no models — add one first`);
+                                                return undefined;
+                                        }
+                                }
+                                if (!cliModel) return undefined;
                                 const resolved = resolveCliModel({
-                                        cliModel: bootOpts.model,
+                                        cliModel,
+                                        cliProvider: bootOpts.provider,
                                         modelRuntime: services.modelRuntime,
                                 });
                                 if (resolved.error) {
-                                        console.error(`unown: --model ${bootOpts.model}: ${resolved.error}`);
+                                        console.error(`unown: ${[bootOpts.provider && `--provider ${bootOpts.provider}`, bootOpts.model && `--model ${bootOpts.model}`].filter(Boolean).join(" ")}: ${resolved.error}`);
                                         return undefined;
                                 }
+                                if (resolved.warning) console.error(`unown: ${resolved.warning}`);
                                 return resolved.model;
                         })(),
                         thinkingLevel: bootOpts.effort,
@@ -713,13 +769,21 @@ interface PreflightProblem {
         hint: string;
 }
 
-async function runPreflight(): Promise<PreflightProblem | null> {
+async function runPreflight(pinnedProvider?: string): Promise<PreflightProblem | null> {
         if (process.env.UNOWN_NO_PREFLIGHT) return null;
         if (process.env.UNOWN_SUBAGENT) return null; // subagents inherit the parent's validated path
         const agentDir = ensureUnownAgentDir();
-        const provider = resolveActiveProvider(agentDir);
+        // The CLI pin wins: --provider X / --model provider/model probe THAT
+        // provider's endpoint (the registry's default may be a different one —
+        // probing it would report the wrong outage for this session).
+        const provider = resolveActiveProvider(agentDir, pinnedProvider);
         if (!provider || !provider.baseUrl) return null; // built-in/unknown endpoint — nothing to probe
-        const probe = await probeOpenAiEndpoint(provider.baseUrl, provider.apiKey ?? undefined, 4000);
+        // resolveProviderKey is the single key source: auth.json > models.json
+        // literal > $ENV resolved at call time. NEVER provider.apiKey directly —
+        // for env-ref providers that field is the literal "$VAR" string, which
+        // would be sent as the bearer token and 401 against the real endpoint.
+        const effectiveKey = resolveProviderKey(agentDir, provider.id).key;
+        const probe = await probeOpenAiEndpoint(provider.baseUrl, effectiveKey ?? undefined, 4000);
         if (probe.ok) return null;
         if (probe.problem === "auth") {
                 return {
@@ -1631,7 +1695,9 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         // JSON event stream in --mode json).
         ensureUnownAgentDirInfo();
         maybeShowUpdateNotice();
-        const pre = await runPreflight();
+        // The pin for pre-flight: --provider wins; else the --model string's
+        // provider prefix; else the registry default (inside runPreflight).
+        const pre = await runPreflight(args.provider ?? args.model);
         printFirstRunBanner();
         if (pre) {
                 console.error(`unown: ${pre.message}`);
@@ -1687,6 +1753,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 effort: args.effort,
                 mcpServers: args.mcpServers,
                 noAgentsMd: args.noAgentsMd,
+                provider: args.provider,
         });
         installPrintStallWatchdog(runtime);
         // The fleet drain sentinel rides as the final message in orchestrator
@@ -1727,7 +1794,24 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
         const cwd = process.cwd();
         ensureUnownAgentDirInfo();
         maybeShowUpdateNotice();
-        const pre = await runPreflight();
+        // M3 first-run onboarding (W1): a FRESH seed on an interactive TTY gets
+        // the offer to connect a provider BEFORE the TUI boots — the guided
+        // wizard (presets + live verification) instead of discovering the
+        // bundled-bridge default by trial. Declining keeps today's behaviour:
+        // the seeded bridge + the first-run banner.
+        const init = unownAgentDirInit();
+        if (init?.created && process.stdin.isTTY && process.stdout.isTTY && !bootOpts.provider && !bootOpts.model) {
+                if (promptYesNo("\nFirst run — connect a model provider now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  n = use the bundled bridge for now", true)) {
+                        const code = await runSetupCommand([]);
+                        if (code === 0) console.log("\nStarting the session with your provider…\n");
+                        else console.log("\nContinuing with the bundled bridge (re-run `unown setup` anytime)…\n");
+                } else {
+                        console.log("  (anytime: unown setup · unown providers add · unown providers list)");
+                }
+        }
+        // Pre-flight honors the CLI pin: --provider / --model provider/… probe
+        // THAT provider (warn-and-continue here, unlike print mode's exit 1).
+        const pre = await runPreflight(bootOpts.provider ?? bootOpts.model);
         printFirstRunBanner();
         if (pre) {
                 // Warn and continue: the user may start the stack in another
@@ -2095,6 +2179,7 @@ export async function runCli(argv: string[]) {
                                 effort: args.effort,
                                 mcpServers: args.mcpServers,
                                 noAgentsMd: args.noAgentsMd,
+                                provider: args.provider,
                         });
                         break;
         }

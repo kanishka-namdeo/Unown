@@ -8,7 +8,8 @@
  * (harness, router, console) builds on.
  */
 import { randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import {
         createAgentSessionFromServices,
@@ -188,37 +189,99 @@ export interface RunResult {
         error?: string;
 }
 
-/** Ensure the pi agent dir exists with a models.json pointing at the llm-bridge. */
+/** Ensure the pi agent dir exists with a models.json the engine's sandboxed
+ * runs can use. M3 multi-provider: the bridge entry (as always) PLUS the
+ * user's registry from ~/.unown/agent/models.json — so `PI_MODEL_ID=provider/model`
+ * routes a sandboxed run DIRECTLY to any provider the user configured, without
+ * the engine learning anything about keys on disk:
+ *   - `$ENV` refs pass through verbatim (resolved from the engine's env);
+ *   - auth.json secrets are exported as UNOWN_KEY_<ID> env vars and referenced
+ *     as `$UNOWN_KEY_<ID>` — the secret stays in env, never in the data dir;
+ *   - the bridge entry always wins for its own provider id.
+ * Reading the user's agent dir is a pure FILE read — allowed by the detachment
+ * contract (files + HTTP); importing the terminal half's term.ts is not. */
 export function ensureAgentDir() {
         mkdirSync(AGENT_DIR, { recursive: true });
         mkdirSync(SESSIONS_DIR, { recursive: true });
-        const modelsPath = join(AGENT_DIR, "models.json");
-        writeFileSync(
-                modelsPath,
-                JSON.stringify(
-                        {
-                                providers: {
-                                        [PROVIDER]: {
-                                                baseUrl: `${BRIDGE_URL}/v1`,
-                                                api: "openai-completions",
-                                                apiKey: "bridge-local",
-                                                models: [
-                                                        {
-                                                                id: MODEL_ID,
-                                                                name: `${MODEL_ID} (via llm-bridge)`,
-                                                                contextWindow: 131072,
-                                                                maxTokens: 8192,
-                                                                input: ["text", "image"],
-                                                        },
-                                                ],
-                                        },
+        const providers: Record<string, unknown> = {
+                [PROVIDER]: {
+                        baseUrl: `${BRIDGE_URL}/v1`,
+                        api: "openai-completions",
+                        apiKey: "bridge-local",
+                        models: [
+                                {
+                                        id: MODEL_ID,
+                                        name: `${MODEL_ID} (via llm-bridge)`,
+                                        contextWindow: 131072,
+                                        maxTokens: 8192,
+                                        input: ["text", "image"],
                                 },
-                        },
-                        null,
-                        2,
-                ),
-                "utf8",
-        );
+                        ],
+                },
+        };
+        // Best-effort user-registry merge — a missing/garbled ~/.unown must
+        // never break engine runs (the bridge entry above already works).
+        try {
+                const userHome = process.env.UNOWN_HOME || join(homedir(), ".unown");
+                const userModelsPath = join(userHome, "agent", "models.json");
+                if (existsSync(userModelsPath)) {
+                        const raw = JSON.parse(readFileSync(userModelsPath, "utf8")) as {
+                                providers?: Record<string, Record<string, unknown>>;
+                        };
+                        let auth: Record<string, { key?: string }> = {};
+                        const authPath = join(userHome, "agent", "auth.json");
+                        if (existsSync(authPath)) {
+                                try {
+                                        auth = JSON.parse(readFileSync(authPath, "utf8"));
+                                } catch {
+                                        /* keys optional — env-ref/keyless providers still merge */
+                                }
+                        }
+                        for (const [id, entry] of Object.entries(raw.providers ?? {})) {
+                                if (!entry || typeof entry !== "object" || id === PROVIDER) continue;
+                                const copy: Record<string, unknown> = { ...entry };
+                                const key = copy.apiKey;
+                                if (typeof key === "string" && !key.startsWith("$") && auth[id]?.key) {
+                                        // auth.json secret → env var + $REF (never written to disk here)
+                                        const envName = `UNOWN_KEY_${id.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+                                        process.env[envName] = auth[id].key as string;
+                                        copy.apiKey = `$${envName}`;
+                                } else if (key === undefined && auth[id]?.key) {
+                                        const envName = `UNOWN_KEY_${id.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+                                        process.env[envName] = auth[id].key as string;
+                                        copy.apiKey = `$${envName}`;
+                                }
+                                providers[id] = copy;
+                        }
+                }
+        } catch {
+                /* best effort — the bridge entry stands alone */
+        }
+        const modelsPath = join(AGENT_DIR, "models.json");
+        writeFileSync(modelsPath, JSON.stringify({ providers }, null, 2), "utf8");
+}
+
+/** PI_MODEL_ID may carry the canonical "provider/model" form (M3): split it
+ * when the prefix names a provider (else treat the whole string as a model id
+ * on the bridge provider, as before — OpenRouter-style ids contain slashes
+ * that are NOT provider separators). */
+export function resolveRunModel(): { provider: string; model: string } {
+        if (MODEL_ID.includes("/")) {
+                const first = MODEL_ID.split("/")[0];
+                // Known direct provider (the merged registry is written by
+                // ensureAgentDir right before the run — read it back cheaply).
+                try {
+                        const written = JSON.parse(readFileSync(join(AGENT_DIR, "models.json"), "utf8")) as {
+                                providers?: Record<string, unknown>;
+                        };
+                        if (written.providers?.[first]) {
+                                return { provider: first, model: MODEL_ID.slice(first.length + 1) };
+                        }
+                } catch {
+                        /* fall through to bridge semantics */
+                }
+        }
+        return { provider: PROVIDER, model: MODEL_ID };
 }
 
 export async function runAgent(opts: RunOptions): Promise<RunResult> {
@@ -385,8 +448,9 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                         },
                 });
 
-                const model = services.modelRuntime.getModel(PROVIDER, MODEL_ID);
-                if (!model) throw new Error(`model ${PROVIDER}/${MODEL_ID} unavailable`);
+                const runModel = resolveRunModel();
+                const model = services.modelRuntime.getModel(runModel.provider, runModel.model);
+                if (!model) throw new Error(`model ${runModel.provider}/${runModel.model} unavailable`);
 
                 const sessionManager = SessionManager.create(sandbox.workspace, SESSIONS_DIR);
                 const created = await createAgentSessionFromServices({

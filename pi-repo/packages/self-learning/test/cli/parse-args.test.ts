@@ -49,6 +49,22 @@ describe("parseArgs routing flags (Milestone 2.1 + 2.2)", () => {
                 expect(bare.effort).toBeUndefined();
                 expect(bare.mcpServers).toBeUndefined();
                 expect(bare.noAgentsMd).toBeUndefined();
+                expect(bare.provider).toBeUndefined();
+        });
+
+        test("--provider <id> parses on both exit paths; never leaks into the prompt (M3)", () => {
+                const print = parseArgs(["--provider", "agnes", "-p", "hello"]);
+                expect(print.command).toBe("print");
+                expect(print.provider).toBe("agnes");
+                expect(print.prompt).toBe("hello");
+
+                const withModel = parseArgs(["--provider", "agnes", "--model", "agnes-2.5-flash", "-p", "hi"]);
+                expect(withModel.provider).toBe("agnes");
+                expect(withModel.model).toBe("agnes-2.5-flash");
+                expect(withModel.prompt).toBe("hi");
+
+                const noValue = parseArgs(["--provider"]);
+                expect(noValue.provider).toBeUndefined();
         });
 
         test("--mcp-servers csv parses into a whitelist array; empty csv means none", () => {
