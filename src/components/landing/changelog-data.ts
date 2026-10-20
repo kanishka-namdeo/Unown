@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 190;
+export const CHANGELOG_TOTAL_ENTRIES = 194;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 97,
+  "Added": 101,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 1,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 68,
+    "total": 72,
     "counts": {
-      "Added": 43,
+      "Added": 47,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 1,
@@ -60,6 +60,22 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "ctrl+k — the command palette",
+            "behavior": false
+          },
+          {
+            "title": "? — the searchable keybinding reference",
+            "behavior": false
+          },
+          {
+            "title": "the contextual hint line (I3)",
+            "behavior": false
+          },
+          {
+            "title": "onboarding beat (I4)",
+            "behavior": false
+          },
           {
             "title": "/providers — the in-chat provider manager: mid-session list/add/key/test/refresh/remove and defaults…",
             "behavior": false

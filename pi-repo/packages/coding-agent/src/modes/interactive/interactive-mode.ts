@@ -117,6 +117,7 @@ import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.ts";
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
+import { CommandPalette, type PaletteEntry } from "./components/command-palette.ts";
 import { CustomEditor } from "./components/custom-editor.ts";
 import { CustomEntryComponent } from "./components/custom-entry.ts";
 import { CustomMessageComponent, formatSectionLabel } from "./components/custom-message.ts";
@@ -182,6 +183,22 @@ import { InteractiveThemeController } from "./theme/theme-controller.ts";
 /** Interface for components that can be expanded/collapsed */
 interface Expandable {
         setExpanded(expanded: boolean): void;
+}
+
+/** Human category for a keybinding id — groups the `?` reference list. */
+function keybindingCategory(id: string): string {
+        if (id.startsWith("tui.editor")) return "editor";
+        if (id.startsWith("tui.select")) return "selector";
+        if (id.startsWith("tui.altScreen")) return "fullscreen";
+        if (id.startsWith("app.tree")) return "session tree";
+        if (id.startsWith("app.session")) return "sessions";
+        if (id.startsWith("app.model") || id.startsWith("app.models")) return "models";
+        if (id.startsWith("app.thinking")) return "thinking";
+        if (id.startsWith("app.message")) return "messages";
+        if (id.startsWith("app.clipboard")) return "clipboard";
+        if (id.startsWith("app.")) return "app";
+        if (id.startsWith("tui.")) return "tui";
+        return "";
 }
 
 function isExpandable(obj: unknown): obj is Expandable {
@@ -641,6 +658,9 @@ export class InteractiveMode {
                 this.footerDataProvider = new FooterDataProvider(this.sessionManager.getCwd());
                 this.footer = new FooterComponent(this.session, this.footerDataProvider, this.sessionDiffStats);
                 this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
+                // Round 5 (I3): the contextual hint line — the footer evaluates
+                // this at render time so the hints always match live state.
+                this.footer.setHintProvider(() => this.computeHintLine());
                 this.footerContainer = new Container();
                 this.footerContainer.addChild(this.footer);
 
@@ -1025,6 +1045,8 @@ export class InteractiveMode {
                         const compactInstructions = [
                                 hint("app.interrupt", "interrupt"),
                                 rawKeyHint(`${keyText("app.clear")}/${keyText("app.exit")}`, "clear/exit"),
+                                rawKeyHint("?", "help"),
+                                hint("app.palette", "palette"),
                                 rawKeyHint("/", "commands"),
                                 rawKeyHint("!", "bash"),
                                 hint("app.tools.expand", "more"),
@@ -2998,6 +3020,11 @@ export class InteractiveMode {
                 this.defaultEditor.onAction("app.session.fork", () => this.showUserMessageSelector());
                 this.defaultEditor.onAction("app.session.resume", () => this.showSessionSelector());
 
+                // Round 5 (I1/I2): the command palette and the `?` help key —
+                // the two discoverability surfaces.
+                this.defaultEditor.onAction("app.palette", () => this.openCommandPalette());
+                this.defaultEditor.onHelpKey = () => this.openKeybindingHelp();
+
                 this.defaultEditor.onChange = (text: string) => {
                         const wasBashMode = this.isBashMode;
                         this.isBashMode = text.trimStart().startsWith("!");
@@ -4264,6 +4291,42 @@ export class InteractiveMode {
                 this.ui.requestRender();
         }
 
+        /**
+         * Round 5 (I3): the contextual hint line rendered under the footer —
+         * 3–5 state-dependent keys, the CC/Amp discipline: what is shown
+         * matches what is happening (working → the interrupt keys; queued
+         * messages → the queue key; idle → the discoverability set).
+         */
+        private computeHintLine(): string | undefined {
+                const dim = (s: string) => theme.fg("dim", s);
+                const sep = dim(" · ");
+                // Busy = a status indicator is on screen or a turn is actively
+                // streaming (workingVisible alone is not an idle signal — it
+                // boots true and extensions own it).
+                const busy = this.activeStatusIndicator !== undefined || this.session.isStreaming;
+                if (busy) {
+                        // Working: the keys that matter right now.
+                        const interrupt = keyText("app.interrupt");
+                        const tools = keyText("app.tools.expand");
+                        const thinking = keyText("app.thinking.toggle");
+                        return `${dim(interrupt)} ${dim("interrupt")}${sep}${dim(tools)} ${dim("tools")}${sep}${dim(thinking)} ${dim("thinking")}`;
+                }
+                if (this.compactionQueuedMessages.length > 0) {
+                        const dequeue = keyText("app.message.dequeue");
+                        const followUp = keyText("app.message.followUp");
+                        return `${dim(dequeue)} ${dim("edit queue")}${sep}${dim(followUp)} ${dim("queue another")}`;
+                }
+                // Idle: the discoverability set — the two round-5 keys first.
+                const parts = [
+                        `${dim("?")} ${dim("help")}`,
+                        `${dim(keyText("app.palette"))} ${dim("palette")}`,
+                        `${dim("/")} ${dim("commands")}`,
+                        `${dim("!")} ${dim("bash")}`,
+                        `${dim(keyText("app.tools.expand"))} ${dim("tools")}`,
+                ];
+                return parts.join(sep);
+        }
+
         private cycleThinkingLevel(): void {
                 const newLevel = this.session.cycleThinkingLevel();
                 if (newLevel === undefined) {
@@ -5108,6 +5171,223 @@ export class InteractiveMode {
                                 defaultProvider && defaultModel ? { provider: defaultProvider, id: defaultModel } : undefined,
                         );
                         return { component: selector, focus: selector, dispose: () => selector.dispose() };
+                });
+        }
+
+        /**
+         * Round 5 (I2): the command palette — ctrl+k opens a fuzzy dispatcher
+         * over every command surface: the slash commands (builtin + custom
+         * commands + extensions + skills) and the direct actions (model,
+         * thinking, sessions, expansion, exit). Slash entries populate the
+         * editor with `/name ` so arguments and argument completions stay
+         * available; actions run immediately. The dashboard's ⌘K vocabulary,
+         * in the terminal.
+         */
+        private openCommandPalette(initialQuery?: string): void {
+                this.showSelector((done) => {
+                        const entries: PaletteEntry[] = [];
+
+                        // Slash commands — the same sources autocomplete uses.
+                        const builtinNames = new Set(BUILTIN_SLASH_COMMANDS.map((command) => command.name));
+                        for (const command of BUILTIN_SLASH_COMMANDS) {
+                                entries.push({
+                                        id: `cmd:${command.name}`,
+                                        label: `/${command.name}`,
+                                        description: command.description,
+                                        run: () => {
+                                                done();
+                                                this.editor.setText(`/${command.name} `);
+                                                this.ui.setFocus(this.editor);
+                                                this.ui.requestRender();
+                                        },
+                                });
+                        }
+                        for (const cmd of this.session.promptTemplates) {
+                                if (builtinNames.has(cmd.name)) continue;
+                                entries.push({
+                                        id: `cmd:${cmd.name}`,
+                                        label: `/${cmd.name}`,
+                                        description: cmd.description,
+                                        run: () => {
+                                                done();
+                                                this.editor.setText(`/${cmd.name} `);
+                                                this.ui.setFocus(this.editor);
+                                                this.ui.requestRender();
+                                        },
+                                });
+                        }
+                        for (const cmd of this.session.extensionRunner.getRegisteredCommands()) {
+                                if (builtinNames.has(cmd.name)) continue;
+                                entries.push({
+                                        id: `cmd:${cmd.invocationName}`,
+                                        label: `/${cmd.invocationName}`,
+                                        description: cmd.description,
+                                        run: () => {
+                                                done();
+                                                this.editor.setText(`/${cmd.invocationName} `);
+                                                this.ui.setFocus(this.editor);
+                                                this.ui.requestRender();
+                                        },
+                                });
+                        }
+                        if (this.settingsManager.getEnableSkillCommands()) {
+                                for (const skill of this.session.resourceLoader.getSkills().skills) {
+                                        entries.push({
+                                                id: `cmd:skill:${skill.name}`,
+                                                label: `/skill:${skill.name}`,
+                                                description: skill.description,
+                                                run: () => {
+                                                        done();
+                                                        this.editor.setText(`/skill:${skill.name} `);
+                                                        this.ui.setFocus(this.editor);
+                                                        this.ui.requestRender();
+                                                },
+                                        });
+                                }
+                        }
+
+                        // Direct actions — the keys users reach for, nameable by
+                        // what they do rather than what they type.
+                        const actions: Array<{ label: string; description: string; run: () => void }> = [
+                                {
+                                        label: "Select model…",
+                                        description: `${this.getAppKeyDisplay("app.model.select")} · switch this session`,
+                                        run: () => {
+                                                done();
+                                                this.showModelSelector();
+                                        },
+                                },
+                                {
+                                        label: "Cycle thinking level",
+                                        description: `${this.getAppKeyDisplay("app.thinking.cycle")} · reasoning depth`,
+                                        run: () => {
+                                                done();
+                                                this.cycleThinkingLevel();
+                                        },
+                                },
+                                {
+                                        label: "Expand or collapse tool output",
+                                        description: `${this.getAppKeyDisplay("app.tools.expand")} · transcript detail`,
+                                        run: () => {
+                                                done();
+                                                this.toggleToolOutputExpansion();
+                                        },
+                                },
+                                {
+                                        label: "Show or hide thinking blocks",
+                                        description: `${this.getAppKeyDisplay("app.thinking.toggle")}`,
+                                        run: () => {
+                                                done();
+                                                this.toggleThinkingBlockVisibility();
+                                        },
+                                },
+                                {
+                                        label: "Session tree",
+                                        description: "branches, fork points, labels",
+                                        run: () => {
+                                                done();
+                                                this.showTreeSelector();
+                                        },
+                                },
+                                {
+                                        label: "New session",
+                                        description: "clear the conversation",
+                                        run: () => {
+                                                done();
+                                                this.handleClearCommand();
+                                        },
+                                },
+                                {
+                                        label: "Resume a session",
+                                        description: "pick from saved sessions",
+                                        run: () => {
+                                                done();
+                                                this.showSessionSelector();
+                                        },
+                                },
+                                {
+                                        label: "Keyboard shortcuts",
+                                        description: "the ? reference — every binding, live",
+                                        run: () => {
+                                                done();
+                                                this.openKeybindingHelp();
+                                        },
+                                },
+                                {
+                                        label: "Exit",
+                                        description: this.getAppKeyDisplay("app.exit"),
+                                        run: () => {
+                                                done();
+                                                this.handleCtrlD();
+                                        },
+                                },
+                        ];
+                        for (const action of actions) {
+                                entries.push({ id: `action:${action.label}`, ...action });
+                        }
+
+                        const palette = new CommandPalette({
+                                title: "Command palette",
+                                subtitle: "commands, actions, skills — type to filter",
+                                entries,
+                                initialQuery,
+                                onSelect: (entry) => entry.run(),
+                                onCancel: () => {
+                                        done();
+                                        this.ui.requestRender();
+                                },
+                        });
+                        return { component: palette, focus: palette };
+                });
+        }
+
+        /**
+         * Round 5 (I1): the `?` keybinding reference — every binding from the
+         * live registry (so custom keybindings.json shows through), grouped by
+         * category, searchable. `/hotkeys` keeps its readable all-at-once
+         * table; this is the lookup surface.
+         */
+        private openKeybindingHelp(): void {
+                this.showSelector((done) => {
+                        const resolved = this.keybindings.getResolvedBindings();
+                        const entries: PaletteEntry[] = [];
+                        for (const [id, keys] of Object.entries(resolved)) {
+                                const keyList = (Array.isArray(keys) ? keys : [keys]).filter((k) => typeof k === "string" && k.length > 0);
+                                if (keyList.length === 0) continue;
+                                let description: string;
+                                try {
+                                        description = this.keybindings.getDefinition(id as never).description ?? id;
+                                } catch {
+                                        description = id;
+                                }
+                                const category = keybindingCategory(id);
+                                entries.push({
+                                        id: `key:${id}`,
+                                        label: keyList.map((k) => formatKeyText(String(k), { capitalize: true })).join(" / "),
+                                        description: description + (category ? ` · ${category}` : ""),
+                                        run: () => done(),
+                                });
+                        }
+                        // The two discoverability keys that are not bindings-managed.
+                        entries.push({
+                                id: "key:literal:?",
+                                label: "?",
+                                description: "this reference (empty editor)",
+                                run: () => done(),
+                        });
+                        entries.sort((a, b) => a.id.localeCompare(b.id));
+
+                        const help = new CommandPalette({
+                                title: "Keyboard shortcuts",
+                                subtitle: "live from your keybindings.json — type to filter",
+                                entries,
+                                onSelect: () => done(),
+                                onCancel: () => {
+                                        done();
+                                        this.ui.requestRender();
+                                },
+                        });
+                        return { component: help, focus: help };
                 });
         }
 
@@ -6415,6 +6695,7 @@ export class InteractiveMode {
                 const followUp = this.getAppKeyDisplay("app.message.followUp");
                 const dequeue = this.getAppKeyDisplay("app.message.dequeue");
                 const pasteImage = this.getAppKeyDisplay("app.clipboard.pasteImage");
+                const paletteKey = this.getAppKeyDisplay("app.palette");
 
                 let hotkeys = `
 **Navigation**
@@ -6459,6 +6740,8 @@ export class InteractiveMode {
 | \`${followUp}\` | Queue follow-up message |
 | \`${dequeue}\` | Restore queued messages |
 | \`${pasteImage}\` | Paste image or text from clipboard |
+| \`?\` | Searchable keybinding reference (empty editor) |
+| \`${paletteKey}\` | Command palette — commands, actions, skills |
 | \`/\` | Slash commands |
 | \`!\` | Run bash command |
 | \`!!\` | Run bash command (excluded from context) |

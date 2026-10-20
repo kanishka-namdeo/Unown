@@ -23,81 +23,84 @@ import { ensureUnownAgentDirInfo, UNOWN_AGENT_DIR } from "../term.ts";
 /** Boot the standalone dashboard. Returns a promise that resolves with the
  * process exit code when the user quits. */
 export async function runDashboardCommand(args: string[]): Promise<number> {
-	if (!process.stdout.isTTY || !process.stdin.isTTY) {
-		process.stderr.write(
-			"unown dashboard needs an interactive terminal (TTY).\n" +
-				"  · run it directly in your terminal: unown dashboard\n" +
-				"  · from a script, use the engine API instead: curl localhost:3030/api/overview\n",
-		);
-		return 1;
-	}
-	const initialScreen = args.find((a) => !a.startsWith("-"));
+        if (!process.stdout.isTTY || !process.stdin.isTTY) {
+                process.stderr.write(
+                        "unown dashboard needs an interactive terminal (TTY).\n" +
+                                "  · run it directly in your terminal: unown dashboard\n" +
+                                "  · from a script, use the engine API instead: curl localhost:3030/api/overview\n",
+                );
+                return 1;
+        }
+        const initialScreen = args.find((a) => !a.startsWith("-"));
 
-	// Agent dir + theme: the same seeding the chat TUI does on first run
-	// (never clobbers user edits), then pi's sanctioned agent-dir override so
-	// theme discovery + settings read from ~/.unown/agent (cli.ts M3 pattern).
-	ensureUnownAgentDirInfo();
-	process.env.PI_CODING_AGENT_DIR = UNOWN_AGENT_DIR;
-	let themeName: string | undefined;
-	try {
-		const settings = JSON.parse(readFileSync(join(UNOWN_AGENT_DIR, "settings.json"), "utf8")) as {
-			theme?: string;
-		};
-		themeName = typeof settings.theme === "string" && settings.theme ? settings.theme : undefined;
-	} catch {
-		themeName = undefined;
-	}
-	initTheme(themeName);
+        // Agent dir + theme: the same seeding the chat TUI does on first run
+        // (never clobbers user edits), then pi's sanctioned agent-dir override so
+        // theme discovery + settings read from ~/.unown/agent (cli.ts M3 pattern).
+        ensureUnownAgentDirInfo();
+        process.env.PI_CODING_AGENT_DIR = UNOWN_AGENT_DIR;
+        let themeName: string | undefined;
+        try {
+                const settings = JSON.parse(readFileSync(join(UNOWN_AGENT_DIR, "settings.json"), "utf8")) as {
+                        theme?: string;
+                };
+                themeName = typeof settings.theme === "string" && settings.theme ? settings.theme : undefined;
+        } catch {
+                themeName = undefined;
+        }
+        initTheme(themeName);
 
-	const terminal = new ProcessTerminal();
-	const tui = new TuiAltScreen(terminal);
-	const store = new DashboardStore();
+        const terminal = new ProcessTerminal();
+        // Responsive (round 5, R2): the dashboard shares the chat TUI's
+        // minimum-geometry gate — below 48x16 a centered notice explains the
+        // requirement instead of a crushed layout.
+        const tui = new TuiAltScreen(terminal, undefined, undefined, { minSizeNotice: true });
+        const store = new DashboardStore();
 
-	let finished = false;
-	let resolveExit: (() => void) | null = null;
-	const exited = new Promise<void>((resolve) => {
-		resolveExit = resolve;
-	});
+        let finished = false;
+        let resolveExit: (() => void) | null = null;
+        const exited = new Promise<void>((resolve) => {
+                resolveExit = resolve;
+        });
 
-	const shutdown = (): void => {
-		if (finished) return;
-		finished = true;
-		try {
-			store.stop();
-		} catch {
-			/* drain errors never block the exit path */
-		}
-		try {
-			tui.stop({ preserveScreen: false });
-		} catch {
-			/* the terminal restore is best-effort; the OS cleans up on exit */
-		}
-		resolveExit?.();
-	};
+        const shutdown = (): void => {
+                if (finished) return;
+                finished = true;
+                try {
+                        store.stop();
+                } catch {
+                        /* drain errors never block the exit path */
+                }
+                try {
+                        tui.stop({ preserveScreen: false });
+                } catch {
+                        /* the terminal restore is best-effort; the OS cleans up on exit */
+                }
+                resolveExit?.();
+        };
 
-	const app = new DashboardApp(tui, {
-		theme,
-		store,
-		embedded: false,
-		onExit: shutdown,
-		initialScreen,
-	});
+        const app = new DashboardApp(tui, {
+                theme,
+                store,
+                embedded: false,
+                onExit: shutdown,
+                initialScreen,
+        });
 
-	// Signals: the TUI owns Ctrl-C (the app handles it as quit); SIGTERM (and
-	// any late SIGINT) drains through the same path on every platform.
-	process.once("SIGTERM", () => shutdown());
-	process.once("SIGINT", () => {
-		// If the app already handled Ctrl-C as quit, this never fires; if the
-		// TUI passed it through, exit now.
-		shutdown();
-	});
+        // Signals: the TUI owns Ctrl-C (the app handles it as quit); SIGTERM (and
+        // any late SIGINT) drains through the same path on every platform.
+        process.once("SIGTERM", () => shutdown());
+        process.once("SIGINT", () => {
+                // If the app already handled Ctrl-C as quit, this never fires; if the
+                // TUI passed it through, exit now.
+                shutdown();
+        });
 
-	tui.setLayoutRoot(app);
-	tui.setFocus(app);
-	store.start();
-	app.start();
-	tui.start();
+        tui.setLayoutRoot(app);
+        tui.setFocus(app);
+        store.start();
+        app.start();
+        tui.start();
 
-	await exited;
-	return 0;
+        await exited;
+        return 0;
 }

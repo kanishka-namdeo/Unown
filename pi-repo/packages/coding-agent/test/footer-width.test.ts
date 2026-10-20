@@ -338,6 +338,50 @@ describe("FooterComponent responsive tiers (round 5, R3)", () => {
         });
 });
 
+describe("FooterComponent contextual hint line (round 5, I3)", () => {
+        beforeAll(() => {
+                initTheme(undefined, false);
+        });
+
+        function makeFooter(): FooterComponent {
+                return new FooterComponent(createSession({ sessionName: "" }), createFooterData(1));
+        }
+
+        it("appends the hint line at regular and wider tiers", () => {
+                const footer = makeFooter();
+                const withoutHint = footer.render(96).length;
+                footer.setHintProvider(() => "? help · ctrl+k palette");
+                const withHint = footer.render(96);
+                expect(withHint.length).toBe(withoutHint + 1);
+                expect(stripAnsi(withHint[withHint.length - 1]!)).toContain("? help");
+        });
+
+        it("hides the hint line at the narrow tier (chrome budget)", () => {
+                const footer = makeFooter();
+                footer.setHintProvider(() => "? help · ctrl+k palette");
+                const lines = footer.render(72);
+                expect(stripAnsi(lines[lines.length - 1]!)).not.toContain("? help");
+        });
+
+        it("survives a throwing provider (no hint, no crash)", () => {
+                const footer = makeFooter();
+                footer.setHintProvider(() => {
+                        throw new Error("boom");
+                });
+                const lines = footer.render(96);
+                expect(stripAnsi(lines[lines.length - 1]!)).not.toContain("?");
+                for (const line of lines) {
+                        expect(visibleWidth(line)).toBe(96);
+                }
+        });
+
+        it("renders no extra line when no provider is installed", () => {
+                const footer = makeFooter();
+                const lines = footer.render(96);
+                expect(stripAnsi(lines[lines.length - 1]!)).not.toContain("?");
+        });
+});
+
 describe("FooterComponent chrome band (move 2)", () => {
         const width = 60;
         const darkThemePath = new URL("../src/modes/interactive/theme/dark.json", import.meta.url).pathname;

@@ -65,11 +65,22 @@ export class FooterComponent implements Component {
         private session: AgentSession;
         private footerData: ReadonlyFooterDataProvider;
         private diffStats?: ReadonlySessionDiffStats;
+        /**
+         * Round 5 (I3): contextual hint line — evaluated at render time so it
+         * always reflects live state. Rendered as the footer's last line,
+         * never at the `narrow` tier (chrome budget).
+         */
+        private hintProvider?: () => string | undefined;
 
         constructor(session: AgentSession, footerData: ReadonlyFooterDataProvider, diffStats?: ReadonlySessionDiffStats) {
                 this.session = session;
                 this.footerData = footerData;
                 this.diffStats = diffStats;
+        }
+
+        /** Install the contextual hint provider (undefined disables the line). */
+        setHintProvider(provider?: () => string | undefined): void {
+                this.hintProvider = provider;
         }
 
         setSession(session: AgentSession): void {
@@ -330,7 +341,8 @@ export class FooterComponent implements Component {
                 return this.finishRender(lines, width);
         }
 
-        /** Shared tail of render(): extension statuses + the chrome band. */
+        /** Shared tail of render(): extension statuses, the contextual hint
+         *  line (round 5, I3), and the chrome band. */
         private finishRender(lines: string[], width: number): string[] {
                 // Add extension statuses on a single line, sorted by key alphabetically
                 const extensionStatuses = this.footerData.getExtensionStatuses();
@@ -341,6 +353,22 @@ export class FooterComponent implements Component {
                         const statusLine = sortedStatuses.join(" ");
                         // Truncate to terminal width with dim ellipsis for consistency with footer style
                         lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
+                }
+
+                // Contextual hint line (round 5, I3) — evaluated at render time
+                // so it tracks live state (working / queued / idle); hidden at
+                // the narrow tier where the chrome budget is spent on the
+                // status lines themselves.
+                if (viewportTier(width) !== "narrow") {
+                        let hint: string | undefined;
+                        try {
+                                hint = this.hintProvider?.();
+                        } catch {
+                                hint = undefined;
+                        }
+                        if (hint) {
+                                lines.push(truncateToWidth(theme.fg("dim", hint), width, theme.fg("dim", "…")));
+                        }
                 }
 
                 // Chrome band (move 2): the footer is a raised surface — pad to full width
