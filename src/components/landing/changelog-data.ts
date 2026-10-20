@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 184;
+export const CHANGELOG_TOTAL_ENTRIES = 190;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 91,
+  "Added": 97,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 1,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 62,
+    "total": 68,
     "counts": {
-      "Added": 37,
+      "Added": 43,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 1,
@@ -62,6 +62,30 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "/providers — the in-chat provider manager: mid-session list/add/key/test/refresh/remove and defaults…",
+            "behavior": false
+          },
+          {
+            "title": "viewport tiers — the TUI now has a breakpoint vocabulary",
+            "behavior": false
+          },
+          {
+            "title": "the minimum-size gate (fullscreen)",
+            "behavior": false
+          },
+          {
+            "title": "footer priority degradation — segments drop by value, the meter and the model always survive",
+            "behavior": false
+          },
+          {
+            "title": "overlay scaling",
+            "behavior": false
+          },
+          {
+            "title": "selector hint lines degrade instead of wrapping",
+            "behavior": false
+          },
+          {
+            "title": "the responsive PTY lane",
             "behavior": false
           },
           {

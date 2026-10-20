@@ -3,11 +3,11 @@
 export { Marked, type Token, type Tokens } from "marked";
 // Autocomplete support
 export {
-	type AutocompleteItem,
-	type AutocompleteProvider,
-	type AutocompleteSuggestions,
-	CombinedAutocompleteProvider,
-	type SlashCommand,
+        type AutocompleteItem,
+        type AutocompleteProvider,
+        type AutocompleteSuggestions,
+        CombinedAutocompleteProvider,
+        type SlashCommand,
 } from "./autocomplete.ts";
 // Color lanes (stable per-name lane assignment for multi-actor surfaces)
 export { DEFAULT_LANE_COUNT, stableLaneIndex } from "./color-lanes.ts";
@@ -21,28 +21,29 @@ export { Input } from "./components/input.ts";
 export { Loader, type LoaderIndicatorOptions } from "./components/loader.ts";
 export { type DefaultTextStyle, Markdown, type MarkdownOptions, type MarkdownTheme } from "./components/markdown.ts";
 export {
-	ScrollView,
-	type ScrollViewOptions,
-	type ScrollViewScrollbar,
-	type ScrollViewScrollToOptions,
+        ScrollView,
+        type ScrollViewOptions,
+        type ScrollViewScrollbar,
+        type ScrollViewScrollToOptions,
 } from "./components/scroll-view.ts";
 export {
-	type SelectItem,
-	SelectList,
-	type SelectListLayoutOptions,
-	type SelectListTheme,
-	type SelectListTruncatePrimaryContext,
+        type SelectItem,
+        SelectList,
+        type SelectListLayoutOptions,
+        type SelectListTheme,
+        type SelectListTruncatePrimaryContext,
 } from "./components/select-list.ts";
 export { type SettingItem, SettingsList, type SettingsListTheme } from "./components/settings-list.ts";
 export { Spacer } from "./components/spacer.ts";
 export { Text } from "./components/text.ts";
+export { renderTooSmallNotice } from "./components/too-small-notice.ts";
 export { TruncatedText } from "./components/truncated-text.ts";
 export {
-	type StackChild,
-	type StackEntry,
-	type StackEntryOptions,
-	type StackOptions,
-	VStack,
+        type StackChild,
+        type StackEntry,
+        type StackEntryOptions,
+        type StackOptions,
+        VStack,
 } from "./components/v-stack.ts";
 // Editor component interface (for custom editors)
 export type { EditorComponent } from "./editor-component.ts";
@@ -50,29 +51,29 @@ export type { EditorComponent } from "./editor-component.ts";
 export { type FuzzyMatch, fuzzyFilter, fuzzyMatch } from "./fuzzy.ts";
 // Keybindings
 export {
-	getKeybindings,
-	type Keybinding,
-	type KeybindingConflict,
-	type KeybindingDefinition,
-	type KeybindingDefinitions,
-	type Keybindings,
-	type KeybindingsConfig,
-	KeybindingsManager,
-	setKeybindings,
-	TUI_KEYBINDINGS,
+        getKeybindings,
+        type Keybinding,
+        type KeybindingConflict,
+        type KeybindingDefinition,
+        type KeybindingDefinitions,
+        type Keybindings,
+        type KeybindingsConfig,
+        KeybindingsManager,
+        setKeybindings,
+        TUI_KEYBINDINGS,
 } from "./keybindings.ts";
 // Keyboard input handling
 export {
-	decodeKittyPrintable,
-	isKeyRelease,
-	isKeyRepeat,
-	isKittyProtocolActive,
-	Key,
-	type KeyEventType,
-	type KeyId,
-	matchesKey,
-	parseKey,
-	setKittyProtocolActive,
+        decodeKittyPrintable,
+        isKeyRelease,
+        isKeyRepeat,
+        isKittyProtocolActive,
+        Key,
+        type KeyEventType,
+        type KeyId,
+        matchesKey,
+        parseKey,
+        setKittyProtocolActive,
 } from "./keys.ts";
 // LaTeX rendering
 export { type RenderLatexOptions, renderLatex } from "./latex.ts";
@@ -84,70 +85,83 @@ export { StdinBuffer, type StdinBufferEventMap, type StdinBufferOptions } from "
 export { ProcessTerminal, type Terminal } from "./terminal.ts";
 // Terminal colors
 export {
-	parseOsc11BackgroundColor,
-	parseTerminalColorSchemeReport,
-	type RgbColor,
-	type TerminalColorScheme,
+        parseOsc11BackgroundColor,
+        parseTerminalColorSchemeReport,
+        type RgbColor,
+        type TerminalColorScheme,
 } from "./terminal-colors.ts";
 // Terminal image support
 export {
-	allocateImageId,
-	type CellDimensions,
-	calculateImageRows,
-	deleteAllKittyImages,
-	deleteKittyImage,
-	detectCapabilities,
-	encodeITerm2,
-	encodeKitty,
-	getCapabilities,
-	getCellDimensions,
-	getGifDimensions,
-	getImageDimensions,
-	getJpegDimensions,
-	getPngDimensions,
-	getWebpDimensions,
-	hyperlink,
-	type ImageDimensions,
-	type ImageProtocol,
-	type ImageRenderOptions,
-	imageFallback,
-	renderImage,
-	resetCapabilitiesCache,
-	setCapabilities,
-	setCapabilityOverrides,
-	setCellDimensions,
-	type TerminalCapabilities,
+        allocateImageId,
+        type CellDimensions,
+        calculateImageRows,
+        deleteAllKittyImages,
+        deleteKittyImage,
+        detectCapabilities,
+        encodeITerm2,
+        encodeKitty,
+        getCapabilities,
+        getCellDimensions,
+        getGifDimensions,
+        getImageDimensions,
+        getJpegDimensions,
+        getPngDimensions,
+        getWebpDimensions,
+        hyperlink,
+        type ImageDimensions,
+        type ImageProtocol,
+        type ImageRenderOptions,
+        imageFallback,
+        renderImage,
+        resetCapabilitiesCache,
+        setCapabilities,
+        setCapabilityOverrides,
+        setCellDimensions,
+        type TerminalCapabilities,
 } from "./terminal-image.ts";
 export {
-	type Component,
-	Container,
-	CURSOR_MARKER,
-	compositeTuiLine,
-	type Focusable,
-	isFocusable,
-	isViewportTUI,
-	type OverlayAnchor,
-	type OverlayHandle,
-	type OverlayMargin,
-	type OverlayOptions,
-	type OverlayScrimStyle,
-	type OverlayUnfocusOptions,
-	type SizeValue,
-	type TUI,
-	type TuiInputListener,
-	type TuiInputListenerResult,
-	type TuiMode,
-	type TuiStopOptions,
-	type ViewportTUI,
+        type Component,
+        Container,
+        CURSOR_MARKER,
+        compositeTuiLine,
+        type Focusable,
+        isFocusable,
+        isViewportTUI,
+        type OverlayAnchor,
+        type OverlayHandle,
+        type OverlayMargin,
+        type OverlayOptions,
+        type OverlayScrimStyle,
+        type OverlayUnfocusOptions,
+        type SizeValue,
+        type TUI,
+        type TuiInputListener,
+        type TuiInputListenerResult,
+        type TuiMode,
+        type TuiStopOptions,
+        type ViewportTUI,
 } from "./tui.ts";
 export { TuiAltScreen, type TuiAltScreenOptions } from "./tui-alt-screen.ts";
 export { TuiMainScreen, type TuiMainScreenRenderState } from "./tui-main-screen.ts";
+// Viewport tiers (the TUI's breakpoint vocabulary)
+export {
+        isCompactViewport,
+        isTerminalTooSmall,
+        MIN_TERMINAL_COLS,
+        MIN_TERMINAL_ROWS,
+        overlayWidthFor,
+        OVERLAY_MAX_WIDTH,
+        OVERLAY_MIN_WIDTH,
+        viewportTier,
+        VIEWPORT_TIER_BOUNDS,
+        type ViewportTier,
+} from "./viewport-tiers.ts";
 // Utilities
 export {
-	getOsc8LinkAtColumn,
-	sliceByColumn,
-	stripTerminalSequences,
-	truncateToWidth,
-	visibleWidth,
-	wrapTextWithAnsi,
+        getOsc8LinkAtColumn,
+        sliceByColumn,
+        stripTerminalSequences,
+        truncateToWidth,
+        visibleWidth,
+        wrapTextWithAnsi,
 } from "./utils.ts";
