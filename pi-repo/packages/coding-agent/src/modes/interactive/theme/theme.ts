@@ -1344,6 +1344,9 @@ export function getSelectListTheme(): SelectListTheme {
 	return {
 		selectedPrefix: (text: string) => theme.fg("accent", text),
 		selectedText: (text: string) => theme.fg("accent", text),
+		// Beauty move 8: body rows ride the overlayBg surface; the selected row is a selectedBg bar + accent rail.
+		background: (line: string) => theme.bg("overlayBg", line),
+		selectedRowStyle: (line: string) => theme.bg("selectedBg", line),
 		description: (text: string) => theme.fg("muted", text),
 		scrollInfo: (text: string) => theme.fg("muted", text),
 		noMatch: (text: string) => theme.fg("muted", text),

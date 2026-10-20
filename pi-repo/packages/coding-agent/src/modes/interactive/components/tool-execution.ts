@@ -14,7 +14,7 @@ import { createAllToolDefinitions, type ToolName } from "../../../core/tools/ind
 import { getTextOutput as getRenderedTextOutput } from "../../../core/tools/render-utils.ts";
 import { convertToPng } from "../../../utils/image-convert.ts";
 import { theme } from "../theme/theme.ts";
-import { keyHint } from "./keybinding-hints.ts";
+import { keyText } from "./keybinding-hints.ts";
 
 const FALLBACK_PREVIEW_LINES = 10;
 
@@ -161,7 +161,14 @@ export class ToolExecutionComponent extends Container {
 		const remaining = lines.length - displayLines.length;
 		let text = displayLines.map((line) => theme.fg("toolOutput", line)).join("\n");
 		if (remaining > 0) {
-			text += `${theme.fg("muted", `\n... (${remaining} more lines,`)} ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
+			// Move 9: hidden-lines affordance as a dim chip
+			// (`⋯ N earlier hidden · <key>`); the expand key stays dynamic
+			// via the keybinding machinery, never hardcoded.
+			const expandKey = keyText("app.tools.expand");
+			const hint =
+				theme.fg("dim", `⋯ ${remaining} earlier hidden`) +
+				(expandKey ? theme.fg("dim", " · ") + theme.fg("muted", expandKey) : "");
+			text += `\n${hint}`;
 		}
 		return new Text(text, 0, 0);
 	}

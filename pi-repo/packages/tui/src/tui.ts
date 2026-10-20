@@ -161,6 +161,15 @@ export interface OverlayOptions {
 	nonCapturing?: boolean;
 }
 
+/**
+ * Factory producing the one-row scrim painted immediately above and below
+ * each visible overlay body (beauty move 8). Receives the compositing width
+ * and returns the fully styled scrim line; the compositor slices/pads it to
+ * the compositing width. The factory owns ALL styling — even a
+ * whitespace-only result is composited as-is (it blanks the row).
+ */
+export type OverlayScrimStyle = (width: number) => string;
+
 /** Options for {@link OverlayHandle.unfocus}. */
 export interface OverlayUnfocusOptions {
 	/** Explicit target to focus after releasing this overlay. */
@@ -305,6 +314,12 @@ export interface TUI extends Component {
 	showOverlay(component: Component, options?: OverlayOptions): OverlayHandle;
 	hideOverlay(): void;
 	hasOverlay(): boolean;
+	/**
+	 * Set the scrim factory painted one row above and below every visible
+	 * overlay body (beauty move 8), or undefined to restore the historical
+	 * scrim-free rendering. See {@link OverlayScrimStyle}.
+	 */
+	setOverlayScrimStyle(style?: OverlayScrimStyle): void;
 	start(): void;
 	stop(options?: TuiStopOptions): void;
 	renderNow(force?: boolean): void;
@@ -354,6 +369,8 @@ export abstract class TuiBase extends Container implements TUI {
 	// Overlay stack for modal components rendered on top of base content
 	private focusOrderCounter = 0;
 	private overlayStack: OverlayStackEntry[] = [];
+	// Beauty move 8: optional scrim factory for the rows above/below overlay bodies
+	private overlayScrimStyle: OverlayScrimStyle | undefined;
 
 	get hasOverlayEntries(): boolean {
 		return this.overlayStack.length > 0;
@@ -654,6 +671,18 @@ export abstract class TuiBase extends Container implements TUI {
 			this.setFocus(topVisible?.component ?? overlay.preFocus);
 		}
 		if (this.overlayStack.length === 0) this.terminal.hideCursor();
+		this.requestRender();
+	}
+
+	/**
+	 * Set the scrim factory painted one row above and below every visible
+	 * overlay body (beauty move 8). The compositeOverlays pass owns the
+	 * placement; the factory only styles the line. Undefined restores the
+	 * historical scrim-free rendering.
+	 */
+	setOverlayScrimStyle(style: OverlayScrimStyle | undefined): void {
+		if (this.overlayScrimStyle === style) return;
+		this.overlayScrimStyle = style;
 		this.requestRender();
 	}
 
@@ -1150,6 +1179,38 @@ export abstract class TuiBase extends Container implements TUI {
 					const truncatedOverlayLine =
 						visibleWidth(overlayLines[i]) > w ? sliceByColumn(overlayLines[i], 0, w, true) : overlayLines[i];
 					result[idx] = this.compositeLineAt(result[idx], truncatedOverlayLine, col, w, termWidth);
+				}
+			}
+		}
+
+		// Beauty move 8: one scrim row immediately above and below each visible
+		// overlay body, composited over the base document (like the overlay body
+		// itself) so the overlay reads as raised off the page. Scrim rows span
+		// the FULL TERMINAL WIDTH rather than just the overlay box: the dim band
+		// reads as a shadow cast across the whole row and stays attached to the
+		// overlay's horizontal edges even for narrow, centered boxes. Rows
+		// covered by any overlay body never get a scrim, scrims never overwrite
+		// overlay content, and rows at the terminal edge are skipped. The style
+		// factory owns the styling — a whitespace-only line still composites
+		// (it blanks the row); undefined restores legacy behavior.
+		if (this.overlayScrimStyle) {
+			const scrimStyle = this.overlayScrimStyle;
+			const bodyRows = new Set<number>();
+			for (const { row, overlayLines } of rendered) {
+				for (let i = 0; i < overlayLines.length; i++) {
+					bodyRows.add(viewportStart + row + i);
+				}
+			}
+			for (const { row, overlayLines } of rendered) {
+				const scrimLine = scrimStyle(termWidth);
+				const aboveIdx = viewportStart + row - 1;
+				if (row > 0 && aboveIdx >= 0 && !bodyRows.has(aboveIdx)) {
+					result[aboveIdx] = this.compositeLineAt(result[aboveIdx], scrimLine, 0, termWidth, termWidth);
+				}
+				const belowScreenRow = row + overlayLines.length;
+				const belowIdx = viewportStart + belowScreenRow;
+				if (belowScreenRow < termHeight && belowIdx < result.length && !bodyRows.has(belowIdx)) {
+					result[belowIdx] = this.compositeLineAt(result[belowIdx], scrimLine, 0, termWidth, termWidth);
 				}
 			}
 		}

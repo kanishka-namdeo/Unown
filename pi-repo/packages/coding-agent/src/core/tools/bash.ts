@@ -4,7 +4,7 @@ import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Container, Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { spawn } from "child_process";
 import { type Static, Type } from "typebox";
-import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";
+import { keyText } from "../../modes/interactive/components/keybinding-hints.ts";
 import { truncateToVisualLines } from "../../modes/interactive/components/visual-truncate.ts";
 import { theme } from "../../modes/interactive/theme/theme.ts";
 import { waitForChildProcess } from "../../utils/child-process.ts";
@@ -285,9 +285,13 @@ function rebuildBashResultRenderComponent(
 						state.cachedWidth = width;
 					}
 					if (state.cachedSkipped && state.cachedSkipped > 0) {
+						// Move 9: history-compaction affordance as a dim chip
+						// (`⋯ N earlier hidden · <key>`); the expand key stays dynamic
+						// via the keybinding machinery, never hardcoded.
+						const expandKey = keyText("app.tools.expand");
 						const hint =
-							theme.fg("muted", `... (${state.cachedSkipped} earlier lines,`) +
-							` ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
+							theme.fg("dim", `⋯ ${state.cachedSkipped} earlier hidden`) +
+							(expandKey ? theme.fg("dim", " · ") + theme.fg("muted", expandKey) : "");
 						return ["", truncateToWidth(hint, width, "..."), ...(state.cachedLines ?? [])];
 					}
 					return ["", ...(state.cachedLines ?? [])];

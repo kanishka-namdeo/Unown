@@ -180,8 +180,13 @@ export class BashExecutionComponent extends Container {
 						`${theme.fg("muted", "(")}${keyHint("app.tools.expand", "to collapse")}${theme.fg("muted", ")")}`,
 					);
 				} else {
+					// Move 9: hidden-lines affordance as a dim chip
+					// (`⋯ N earlier hidden · <key>`); the expand key stays dynamic
+					// via the keybinding machinery, never hardcoded.
+					const expandKey = keyText("app.tools.expand");
 					statusParts.push(
-						`${theme.fg("muted", `... ${hiddenLineCount} more lines (`)}${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`,
+						theme.fg("dim", `⋯ ${hiddenLineCount} earlier hidden`) +
+							(expandKey ? theme.fg("dim", " · ") + theme.fg("muted", expandKey) : ""),
 					);
 				}
 			}

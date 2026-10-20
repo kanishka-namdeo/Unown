@@ -141,6 +141,10 @@ import { SessionSelectorComponent } from "./components/session-selector.ts";
 import { SettingsSelectorComponent } from "./components/settings-selector.ts";
 import { SkillInvocationMessageComponent } from "./components/skill-invocation-message.ts";
 import {
+	createStreamRenderCoalescer,
+	type StreamRenderScheduler,
+} from "./components/stream-render-coalescer.ts";
+import {
 	BranchSummaryStatusIndicator,
 	CompactionStatusIndicator,
 	describeToolActivity,
@@ -479,6 +483,8 @@ export class InteractiveMode {
 
 	// Streaming message tracking
 	private streamingComponent: AssistantMessageComponent | undefined = undefined;
+	/** Move 9: coalesces streaming re-renders to <=8 fps; flushed at turn boundaries. */
+	private streamRenderScheduler: StreamRenderScheduler | undefined = undefined;
 	private streamingMessage: AssistantMessage | undefined = undefined;
 
 	// Tool execution tracking: toolCallId -> component
@@ -593,6 +599,9 @@ export class InteractiveMode {
 			fullscreenCopyOnSelect: this.settingsManager.getFullscreenCopyOnSelect(),
 		});
 		this.ui = createInteractiveTuiReference(() => this.renderer);
+		// Move 9 (arrival pacing): streaming text arrives in smooth <=8fps
+		// batches instead of per-chunk line flicker.
+		this.streamRenderScheduler = createStreamRenderCoalescer(() => this.ui.requestRender());
 		this.ui.setClearOnShrink(this.settingsManager.getClearOnShrink());
 		this.headerContainer = new Container();
 		this.loadedResourcesContainer = new Container();
@@ -878,6 +887,7 @@ export class InteractiveMode {
 			fullscreenCopyOnSelect: this.settingsManager.getFullscreenCopyOnSelect(),
 		});
 		nextUi.setClearOnShrink(clearOnShrink);
+		this.applyOverlayScrim(nextUi);
 		nextUi.onDebug = onDebug;
 		if (nextUi instanceof TuiMainScreen && this.mainScreenRenderState) {
 			nextUi.restoreRenderState(this.mainScreenRenderState);
@@ -966,6 +976,7 @@ export class InteractiveMode {
 		this.isInitialized = true;
 
 		await this.themeController.applyFromSettings();
+		this.applyOverlayScrim(this.renderer);
 
 		// Add header with keybindings from config (unless silenced)
 		if (this.options.verbose || !this.settingsManager.getQuietStartup()) {
@@ -2212,6 +2223,16 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
+	/**
+	 * Move 8 (overlay choreography): a surface-colored scrim row above and
+	 * below every overlay - dialogs read as raised above the canvas. Plain
+	 * mode skips the scrim entirely (a transparent one would blank the rows).
+	 */
+	private applyOverlayScrim(ui: TUI): void {
+		if (theme.getColorMode() === "plain") return;
+		ui.setOverlayScrimStyle((width) => theme.bg("overlayBg", " ".repeat(width)));
+	}
+
 	private setWorkingIndicator(options?: WorkingIndicatorOptions): void {
 		this.workingIndicatorOptions = options;
 		if (this.activeStatusIndicator?.kind === "working") {
@@ -3330,7 +3351,7 @@ export class InteractiveMode {
 							}
 						}
 					}
-					this.ui.requestRender();
+					this.streamRenderScheduler?.requestRender();
 				}
 				break;
 
@@ -3371,6 +3392,7 @@ export class InteractiveMode {
 					this.streamingMessage = undefined;
 					this.footer.invalidate();
 				}
+				this.streamRenderScheduler?.flush();
 				this.ui.requestRender();
 				break;
 
@@ -3399,6 +3421,7 @@ export class InteractiveMode {
 				}
 				component.markExecutionStarted();
 				this.updateWorkingLabelForTool(event.toolName, event.args);
+				this.streamRenderScheduler?.flush();
 				this.ui.requestRender();
 				break;
 			}
@@ -3433,6 +3456,7 @@ export class InteractiveMode {
 					.map((m) => ("stopReason" in m ? (m as { stopReason?: unknown }).stopReason : undefined))
 					.find((r) => typeof r === "string");
 				const completed = !event.willRetry && lastStopReason !== "aborted" && lastStopReason !== "error";
+				this.streamRenderScheduler?.flush();
 				this.clearStatusIndicator("working", { completionBeat: completed });
 				if (this.streamingComponent) {
 					this.chatContainer.removeChild(this.streamingComponent);
@@ -6613,6 +6637,7 @@ export class InteractiveMode {
 
 	stop(fullscreenExitOutput = this.settingsManager.getFullscreenExitOutput()): void {
 		this.disposeActiveSelector();
+		this.streamRenderScheduler?.dispose();
 		if (this.settingsManager.getShowTerminalProgress()) {
 			this.ui.terminal.setProgress(false);
 		}

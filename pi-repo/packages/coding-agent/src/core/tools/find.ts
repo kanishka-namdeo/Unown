@@ -4,7 +4,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { spawn } from "child_process";
 import path from "path";
 import { type Static, Type } from "typebox";
-import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";
+import { keyText } from "../../modes/interactive/components/keybinding-hints.ts";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { ensureTool } from "../../utils/tools-manager.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.ts";
@@ -105,7 +105,14 @@ function formatFindResult(
 		const remaining = lines.length - maxLines;
 		text += `\n${displayLines.map((line) => theme.fg("toolOutput", line)).join("\n")}`;
 		if (remaining > 0) {
-			text += `${theme.fg("muted", `\n... (${remaining} more lines,`)} ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
+			// Move 9: hidden-lines affordance as a dim chip
+			// (`⋯ N earlier hidden · <key>`); the expand key stays dynamic
+			// via the keybinding machinery, never hardcoded.
+			const expandKey = keyText("app.tools.expand");
+			const hint =
+				theme.fg("dim", `⋯ ${remaining} earlier hidden`) +
+				(expandKey ? theme.fg("dim", " · ") + theme.fg("muted", expandKey) : "");
+			text += `\n${hint}`;
 		}
 	}
 

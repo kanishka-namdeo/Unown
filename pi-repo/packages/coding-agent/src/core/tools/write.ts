@@ -3,7 +3,7 @@ import { Container, Text } from "@earendil-works/pi-tui";
 import { mkdir as fsMkdir, writeFile as fsWriteFile } from "fs/promises";
 import { dirname } from "path";
 import { type Static, Type } from "typebox";
-import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";
+import { keyText } from "../../modes/interactive/components/keybinding-hints.ts";
 import { getLanguageFromPath, highlightCode, type Theme } from "../../modes/interactive/theme/theme.ts";
 import { getExperimentalToolSampling } from "../experimental.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.ts";
@@ -154,13 +154,19 @@ function formatWriteCall(
 			? (cache?.highlightedLines ?? highlightCode(replaceTabs(normalizeDisplayText(fileContent)), lang))
 			: normalizeDisplayText(fileContent).split("\n");
 		const lines = trimTrailingEmptyLines(renderedLines);
-		const totalLines = lines.length;
 		const maxLines = options.expanded ? lines.length : 10;
 		const displayLines = lines.slice(0, maxLines);
 		const remaining = lines.length - maxLines;
 		text += `\n\n${displayLines.map((line) => (lang ? line : theme.fg("toolOutput", replaceTabs(line)))).join("\n")}`;
 		if (remaining > 0) {
-			text += `${theme.fg("muted", `\n... (${remaining} more lines, ${totalLines} total,`)} ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
+			// Move 9: hidden-lines affordance as a dim chip
+			// (`⋯ N earlier hidden · <key>`); the expand key stays dynamic
+			// via the keybinding machinery, never hardcoded.
+			const expandKey = keyText("app.tools.expand");
+			const hint =
+				theme.fg("dim", `⋯ ${remaining} earlier hidden`) +
+				(expandKey ? theme.fg("dim", " · ") + theme.fg("muted", expandKey) : "");
+			text += `\n${hint}`;
 		}
 	}
 

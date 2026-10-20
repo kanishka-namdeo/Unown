@@ -1,12 +1,14 @@
 import { join, resolve } from "node:path";
-import { Text, type TUI } from "@earendil-works/pi-tui";
+import { setKeybindings, Text, type TUI } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { beforeAll, describe, expect, test } from "vitest";
 import { getReadmePath } from "../src/config.ts";
 import type { ToolDefinition } from "../src/core/extensions/types.ts";
+import { KeybindingsManager } from "../src/core/keybindings.ts";
 import { type BashOperations, createBashToolDefinition } from "../src/core/tools/bash.ts";
 import { createReadTool, createReadToolDefinition } from "../src/core/tools/read.ts";
 import { createWriteToolDefinition } from "../src/core/tools/write.ts";
+import { keyText } from "../src/modes/interactive/components/keybinding-hints.ts";
 import { ToolExecutionComponent } from "../src/modes/interactive/components/tool-execution.ts";
 import { initTheme, theme } from "../src/modes/interactive/theme/theme.ts";
 import { stripAnsi } from "../src/utils/ansi.ts";
@@ -33,6 +35,7 @@ function createFakeTui(): TUI {
 describe("ToolExecutionComponent parity", () => {
         beforeAll(() => {
                 initTheme("dark");
+                setKeybindings(new KeybindingsManager());
         });
 
         test("stacks custom call and result renderers like the old implementation", () => {
@@ -367,13 +370,13 @@ describe("ToolExecutionComponent parity", () => {
                 expect(collapsed).toContain("custom_tool");
                 expect(collapsed).toContain("line-10");
                 expect(collapsed).not.toContain("line-11");
-                expect(collapsed).toContain("5 more lines");
-                expect(collapsed).toContain("to expand");
+                expect(collapsed).toContain("⋯ 5 earlier hidden");
+                expect(collapsed).toContain(keyText("app.tools.expand")); // dynamic expand-key lane
 
                 component.setExpanded(true);
                 const expanded = stripAnsi(component.render(120).join("\n"));
                 expect(expanded).toContain("line-15");
-                expect(expanded).not.toContain("more lines");
+                expect(expanded).not.toContain("earlier hidden");
         });
 
         test("trims trailing blank display lines from write previews", () => {

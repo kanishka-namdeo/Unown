@@ -1,6 +1,6 @@
 import { getKeybindings } from "../keybindings.ts";
 import type { Component } from "../tui.ts";
-import { truncateToWidth, visibleWidth } from "../utils.ts";
+import { sliceByColumn, truncateToWidth, visibleWidth } from "../utils.ts";
 
 const DEFAULT_PRIMARY_COLUMN_WIDTH = 32;
 const PRIMARY_COLUMN_GAP = 2;
@@ -21,6 +21,17 @@ export interface SelectListTheme {
 	description: (text: string) => string;
 	scrollInfo: (text: string) => string;
 	noMatch: (text: string) => string;
+	// === Beauty move 8: overlay choreography surface hooks (optional) ===
+	/** Row background applied to every non-selected body row (the overlayBg surface). */
+	background?: (line: string) => string;
+	/** Full-width row background applied instead of background to the selected row. */
+	selectedRowStyle?: (line: string) => string;
+	/**
+	 * Number-keys hint line, dimmed one step below the list body. SelectList
+	 * itself renders no hint line today; this hook exists for the richer
+	 * selectors that render one on the same surface.
+	 */
+	hintStyle?: (text: string) => string;
 }
 
 export interface SelectListTruncatePrimaryContext {
@@ -143,7 +154,17 @@ export class SelectList implements Component {
 		descriptionSingleLine: string | undefined,
 		primaryColumnWidth: number,
 	): string {
-		const prefix = isSelected ? "→ " : "  ";
+		// Beauty move 8: when the theme provides a selectedRowStyle, the selected
+		// row becomes a full-width surface bar and the marker swaps to a 1-cell
+		// accent rail ("▌") plus a space — the same 2-cell lead as the legacy
+		// "→ " marker, so primary columns stay aligned across body rows.
+		const raisedSelectedRow = isSelected && this.theme.selectedRowStyle !== undefined;
+		let prefix: string;
+		if (raisedSelectedRow) {
+			prefix = `${this.theme.selectedPrefix("▌")} `;
+		} else {
+			prefix = isSelected ? "→ " : "  ";
+		}
 		const prefixWidth = visibleWidth(prefix);
 
 		if (descriptionSingleLine && width > 40) {
@@ -158,21 +179,59 @@ export class SelectList implements Component {
 			if (remainingWidth > MIN_DESCRIPTION_WIDTH) {
 				const truncatedDesc = truncateToWidth(descriptionSingleLine, remainingWidth, "");
 				if (isSelected) {
-					return this.theme.selectedText(`${prefix}${truncatedValue}${spacing}${truncatedDesc}`);
+					return this.finishSelectedRow(prefix, `${truncatedValue}${spacing}${truncatedDesc}`, width);
 				}
 
 				const descText = this.theme.description(spacing + truncatedDesc);
-				return prefix + truncatedValue + descText;
+				return this.finishRow(prefix + truncatedValue + descText, width);
 			}
 		}
 
 		const maxWidth = width - prefixWidth - 2;
 		const truncatedValue = this.truncatePrimary(item, isSelected, maxWidth, maxWidth);
 		if (isSelected) {
-			return this.theme.selectedText(`${prefix}${truncatedValue}`);
+			return this.finishSelectedRow(prefix, truncatedValue, width);
 		}
 
-		return prefix + truncatedValue;
+		return this.finishRow(prefix + truncatedValue, width);
+	}
+
+	/**
+	 * Compose the selected row (beauty move 8). Without selectedRowStyle the
+	 * historical bytes are kept: selectedText wrapping marker plus content.
+	 * With selectedRowStyle the marker is the accent rail, content keeps
+	 * selectedText, and the whole row is padded to the component width and
+	 * wrapped in the surface style so the bar spans edge-to-edge.
+	 */
+	private finishSelectedRow(prefix: string, content: string, width: number): string {
+		const rowStyle = this.theme.selectedRowStyle;
+		if (rowStyle === undefined) {
+			return this.theme.selectedText(`${prefix}${content}`);
+		}
+		return this.applyRowSurface(`${prefix}${this.theme.selectedText(content)}`, width, rowStyle);
+	}
+
+	/**
+	 * Compose a non-selected body row (beauty move 8). A theme-provided
+	 * background surface wraps the row padded to the component width
+	 * (pad-then-style, so the surface spans edge-to-edge); without the hook
+	 * the historical unpadded bytes are kept and legacy themes render
+	 * exactly as before.
+	 */
+	private finishRow(content: string, width: number): string {
+		const background = this.theme.background;
+		if (background === undefined) {
+			return content;
+		}
+		return this.applyRowSurface(content, width, background);
+	}
+
+	/** Pad a row to exactly `width` visible cells (slicing overflow), then style. */
+	private applyRowSurface(content: string, width: number, style: (line: string) => string): string {
+		const lineWidth = visibleWidth(content);
+		const padded =
+			lineWidth > width ? sliceByColumn(content, 0, width, true) : content + " ".repeat(width - lineWidth);
+		return style(padded);
 	}
 
 	private getPrimaryColumnWidth(): number {

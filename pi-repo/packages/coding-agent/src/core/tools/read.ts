@@ -6,7 +6,7 @@ import { constants } from "fs";
 import { access as fsAccess, readFile as fsReadFile } from "fs/promises";
 import { type Static, Type } from "typebox";
 import { getReadmePath } from "../../config.ts";
-import { keyHint, keyText } from "../../modes/interactive/components/keybinding-hints.ts";
+import { keyText } from "../../modes/interactive/components/keybinding-hints.ts";
 import { getLanguageFromPath, highlightCode, type Theme } from "../../modes/interactive/theme/theme.ts";
 import { processImage } from "../../utils/image-process.ts";
 import { detectSupportedImageMimeTypeFromFile } from "../../utils/mime.ts";
@@ -190,7 +190,14 @@ function formatReadResult(
 	const remaining = lines.length - maxLines;
 	let text = `\n${displayLines.map((line) => (lang ? replaceTabs(line) : theme.fg("toolOutput", replaceTabs(line)))).join("\n")}`;
 	if (remaining > 0) {
-		text += `${theme.fg("muted", `\n... (${remaining} more lines,`)} ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
+		// Move 9: hidden-lines affordance as a dim chip
+		// (`⋯ N earlier hidden · <key>`); the expand key stays dynamic
+		// via the keybinding machinery, never hardcoded.
+		const expandKey = keyText("app.tools.expand");
+		const hint =
+			theme.fg("dim", `⋯ ${remaining} earlier hidden`) +
+			(expandKey ? theme.fg("dim", " · ") + theme.fg("muted", expandKey) : "");
+		text += `\n${hint}`;
 	}
 
 	const truncation = result.details?.truncation;
