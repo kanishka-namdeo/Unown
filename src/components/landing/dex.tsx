@@ -128,7 +128,10 @@ function DexDetail({ entry, no, shown }: { entry: DexEntry; no: number; shown: b
           unanchored beside the 36px name) */}
       <div className="flex items-start gap-5 border-b border-line p-4 sm:p-5">
         <Creature id={entry.id} className="h-48 w-auto shrink-0" />
-        <div className="min-w-0 flex-1">
+        {/* self-center: the name block centers against the 192px specimen
+            instead of hanging off its top edge (VLM crop review round 1 —
+            the header read left-heavy with dead space below the name) */}
+        <div className="min-w-0 flex-1 self-center">
           <p className="gb-label text-[9px] text-(--hue-accent)">
             № {entry.no} · {entry.category}
           </p>

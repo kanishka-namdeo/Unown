@@ -3,9 +3,10 @@
 ## Purpose
 
 The marketing landing page served at `/` and auto-deployed to Vercel by a push to
-`main`. Eight self-contained bands plus the shared primitives they are built
+`main`. Nine self-contained bands plus the shared primitives they are built
 from: a hand-drawn 28-form "Unown script", the Pokédex-derived lexicon each
-form decodes, an accessible terminal session replay, the shipping rail that
+form decodes, the capability dex that catalogs the feature creatures, an
+accessible terminal session replay, the shipping rail that
 renders `CHANGELOG.md`, and the effects layer that owns scroll reveals, the
 letter-rain and the Konami easter egg. Three of those bands carry data
 derived from repository artifacts instead of authored here — the rail, the
@@ -20,7 +21,10 @@ eight-band compression") merged fourteen sections / 21.5 viewports / 5,488
 words into eight bands / ~12.3vh / ~2,540 words after measuring that ~57% of
 visitor attention lands above the fold and 74% within two screenfuls. Every
 generated number, gated literal and receipt link survived the merge — that
-constraint is what the whole redesign was solved under.
+constraint is what the whole redesign was solved under. The same day's
+capability-dex round (Part 15) then added the ninth band — and paid for it
+before building it, so the nine-band page measures 12.0vh / ~2,490 words:
+half a viewport shorter than the eight-band page it replaced.
 
 ## Ownership
 
@@ -174,8 +178,8 @@ constraint is what the whole redesign was solved under.
   four of the non-affiliation notice, five of the provider list and five of the
   tier resolver. Canonical homes, which are load-bearing — do not restate a
   claim in another section, link to its owner instead:
-  - **the gates** (`integrity.tsx` `GATES[]`) — `loop.tsx`'s mechanism tiles and
-    beats describe the loop, not the gate table;
+  - **the gates** (`integrity.tsx` `GATES[]`) — `loop.tsx`'s beats and
+    `dex.tsx`'s entries describe capabilities, not the gate table;
   - **the sandbox, both layers** (`integrity.tsx` — one merged paragraph);
   - **the model allow-list and the bridge** (`models.tsx`) — `hero.tsx`'s trust
     chip, `faq.tsx`'s "which models" answer and the `Z` decode all point here
@@ -185,25 +189,24 @@ constraint is what the whole redesign was solved under.
     because it is the section making a Pokémon claim. `faq.tsx` answers the
     question in one sentence and points at the footer;
   - **"no font file, no image sprite"** (`alphabet.tsx` only);
-  - **`DEX_QUOTES.origin`** (`alphabet.tsx`'s dex card, which reads it from
-    `lexicon.ts` — the card moved in from the merged-away field-notes and is
-    its single home);
+  - **the capability descriptions** (`dex-data.ts` — one entry per creature,
+    receipts-linked; `hero.tsx`'s cli expander names the session tools and
+    points at `#dex`, it does not describe them — the descriptions moved
+    here from the expander's prose and the retired loop bento, 2026-10-20);
   - **the caching negative control** (`benchmarks.tsx` only — the v1 + v3
     controls share one box);
   - **the terminal-agent command surface and its session tools** (`hero.tsx`'s
     collapsed expanders — the `COMMANDS` list, the `--goal` evidence contract,
-    and the session-tools paragraph naming `lsp`, the MCP join and the slash
-    commands) — no other band lists commands or session tools; the
+    and the session-tools paragraph naming the tools and the slash
+    commands) — no other band lists commands; the
     `unown automations create` line carries the read-only-by-default claim,
     checkable against `docs/usage.md#automations-unown-automations`;
   - **the project-config trust gate** (`integrity.tsx`, the cloned-configs
-    block, receipts-linked to `config-trust.ts`) — the hero names
-    `.unown/mcp.json` as where servers are configured without restating the
-    gate;
+    block, receipts-linked to `config-trust.ts`);
   - **the release record** (`changelog.tsx` — the rail is the page's only home
     for what shipped and when; no other band may list features as a
     chronology, and the rail never restates what a mechanism does, which is
-    `loop.tsx`'s and `integrity.tsx`'s job — it names the addition, not the
+    `dex.tsx`'s and `integrity.tsx`'s job — it names the addition, not the
     argument for it).
 - **`lexicon.ts` `means` is a DECODE, not a specification, and stays under
   ~12 words.** Twenty-eight entries at eighteen words each is a wall; at eleven
@@ -367,11 +370,13 @@ parallel ones.
   and `toneAttr()`. `[data-tone="…"]` on a furniture element still overrides
   just that element's `--tone-fill` / `--tone-rim`.
   - **Allocation is a rule, not taste:** `psychic` is reserved for the two
-    bands about Unown itself (hero, alphabet); the other six walk the four
+    bands about Unown itself (hero, alphabet); the other seven walk the four
     Gen 3 hues so no two adjacent bands share one, and "which hue does this
-    get" stays answerable without opening the file. The eight-band walk
+    get" stays answerable without opening the file. The nine-band walk
     (2026-10-20, pinned by the composition test): psychic (hero) → leaf
-    (loop) → gold (showcase) → magma (proof) → psychic (alphabet — the
+    (loop) → magma (dex — the capability catalog; magma is the Gen-3 red
+    the actual dex device is, and showcase/gold keeps it clear of proof's
+    own magma) → gold (showcase) → magma (proof) → psychic (alphabet — the
     reserved hue interrupts the cycle without disturbing it) → gold (faq) →
     aqua (changelog) → leaf (finale). The proof band's three panes carry
     their own `data-hue` wrappers inside the magma section (leaf / magma /
@@ -413,9 +418,9 @@ parallel ones.
   DMG shades were — it is not somebody's artwork.
 - **The feature creatures** (`creature.tsx`) are the one sanctioned way the
   page carries "monster companion" art: one original render per agent feature
-  (the hero's session party: websearch/mcp/task/lsp; the loop bento's six
-  mechanisms), generated by `scripts/creature_sprites.mjs` and never by hand.
-  The full process — research, the two-stage split, every gate, and the
+  (the four session tools and the six engine mechanisms — ten total,
+  `CREATURE_IDS`), generated by `scripts/creature_sprites.mjs` and never by
+  hand. The full process — research, the two-stage split, every gate, and the
   failure catalogue — is documented as a reusable workflow in
   `docs/agentic-asset-workflow.md`; it applies to any future asset batch,
   not just creatures.
@@ -427,9 +432,11 @@ parallel ones.
     palette tokens** (the mirror list lives in the script; a token move
     updates it in the same change), prune to 8 colors (Gen-3 two-tone
     shading — 20 ramp steps read as smooth modern flat art, the exact
-    complaint that started this), ship 4× nearest, display 1:1 via the
-    `.creature` class (`image-rendering: pixelated`, landing.css). A smoothed
-    or resampled creature is a defect.
+    complaint that started this), ship 4× nearest, display at INTEGER
+    multiples of the 64px logical grid via the `.creature` class
+    (`image-rendering: pixelated`, landing.css) — h-16 is 1:1, the dex
+    detail's h-48 is 3×. A smoothed, resampled or non-integer-scaled
+    creature is a defect.
   - **Hard gates in the pipeline** (these fail the run; the VLM pass is an
     aid): background cut sanity, edge-clip on the raw (a limb cut by the
     generator's frame reads broken at any size), and dark-ratio ≤30% (a
@@ -444,13 +451,24 @@ parallel ones.
     signifier audit (defining features of ONE named character), not by genre
     resemblance — VLMs over-trigger on chibi creatures and flip between
     rounds.
-  - **Placement:** the party strip sits between the seal grid and the session
-    replay (full-width, chips label each creature with the tool's real name —
-    the prose in the cli expander stays canonical); the bento anchors ONE
-    creature beside each tile's number+title (a top-row-floated creature left
-    a dead band; a two-sprite pair read as clutter — both reviewer verdicts,
-    2026-10-20). The proof band stays creature-free ("Pokémon in a benchmark
-    table would be a costume").
+  - **Placement: the capability dex (`dex.tsx` + `dex-data.ts`) is the ONE
+    canonical home — since 2026-10-20, all ten creatures and the capability
+    copy live there.** The dex is band #3 (magma), an FRLG-style two-pane:
+    a searchable numbered list (fuse.js drives the search) and a detail
+    pane that mounts ALL ten entries with the inactive ones `hidden` (the
+    proof band's pane contract — crawlers and gates read every entry), each
+    with its specimen at 3×, its game-voice entry on the gb-box, the moved
+    capability copy under "in practice", the skeptic pain as a weakness
+    row, receipt links, and an original synthesized cry (deterministic
+    square-wave motif via Web Audio — nothing sampled, plays only on
+    explicit click, inert where AudioContext does not exist). The retired
+    placements (the hero's party strip, 2026-10-19→20; the loop bento's
+    tile badges) stay retired — `creature.test.tsx` pins that NO creature
+    renders outside the dex, so re-adding one elsewhere is a regression,
+    not a feature. The proof band stays creature-free ("Pokémon in a
+    benchmark table would be a costume"). The hero's cli expander names
+    the session tools and links `#dex`; it does not describe them
+    (`dex-data.ts` owns the descriptions — see the canonical-homes list).
   - **Accessibility:** a creature is decoration beside its text label —
     `alt=""` + `aria-hidden` (WAI decorative-image rule); the `label` prop
     exists for the day one is the sole content of a meaningful control.
@@ -472,12 +490,15 @@ parallel ones.
   number, and the aggregate is actively misleading.** Measured authored prose
   sits near 1:2 lore:tech, but that number hides two different problems, and
   they need opposite fixes:
-  1. **A long dry run.** Lore is carried by `alphabet` (position 5, the
-    dex card + the wall) with a pinch in the hero's seal captions. Rule:
-    **no more than three consecutive bands at zero.** The eight-band page
-    meets it exactly twice: loop → showcase → proof (2-4) is three, ended
-    by alphabet; faq → changelog → finale (6-8) is three, ended by the
-    footer. If a band ever joins or leaves the page, re-check both runs,
+  1. **A long dry run.** Lore is carried by the capability dex (position 3 —
+    the game-voice entries and categories), `alphabet` (position 6, the wall
+    + the Z highlight) with a pinch in the hero's seal captions. Rule:
+    **no more than three consecutive bands at zero.** The nine-band page
+    meets it with room: loop (2) runs zero alone, ended by the dex;
+    showcase → proof (4-5) is two, ended by alphabet; faq → changelog →
+    finale (7-9) is three, ended by the footer. (The dex joining the page
+    in 2026-10-20 *broke up* the old loop → showcase → proof run of
+    three.) If a band ever joins or leaves the page, re-check both runs,
     not just the one it touches.
   2. **A repeated punchline register, which is what actually reads as boring.**
      Sections 4-10 were all aphorisms, and several were the *same* aphorism:
@@ -513,8 +534,12 @@ parallel ones.
 - **The scroll budget is a contract, enforced by tooling.** The page must stay
   at **≤ 13 viewports and ≤ 3,200 words at 1440×900**, measured by
   `node scripts/landing_audit.mjs` (add `--budget` to fail the run on a
-  breach; it is a CI step in the landing job). The 2026-10-20 baseline: 8
-  bands, 12.3vh, ~2,540 words. The budget exists because the page once grew
+  breach; it is a CI step in the landing job). The 2026-10-20 baseline
+  after the dex round: 9 bands, 12.0vh, ~2,490 words — the dex round is
+  the worked example of the rule below: the ninth band was paid for BEFORE
+  it was built (party strip, bento and DexCard retired; copy moved, not
+  copied), so the page got a new band and half a viewport SHORTER. The
+  budget exists because the page once grew
   to 21.5 viewports and 5,488 words — fourteen sections whose back half was
   nearly unread real estate (research: ~57% of attention above the fold,
   74% within two screenfuls — `docs/landing-research.md`). When a change
@@ -580,15 +605,17 @@ parallel ones.
   a violation of "every factual claim is a real artifact" — and the most
   dangerous kind, because the next editor trusts it as a reason. State the
   reason the section earns its place in terms of what it argues.
-- **`loop.tsx` is three bands' arguments in one (the 2026-10-20 merge).** The
-  beats tabs are the receipts — every body is the literal format the engine
-  writes, gated literal by literal — and they stay byte-identical. The pair
-  strip carries what `origin.tsx` argued (two halves, the odd power) in two
-  cards and one line; the mechanisms bento carries what `mechanisms.tsx`
-  tabulated as five tiles plus a sixth SDLC-parity tile that links all eight
-  ported sources. The old PAINS cards are gone on purpose: each tile's
-  `pain` caption is the pain it answers. If you re-add prose here, you are
-  re-adding the 745 words the merge deleted.
+- **`loop.tsx` is the process band (the 2026-10-20 merge, minus the bento).**
+  The beats tabs are the receipts — every body is the literal format the
+  engine writes, gated literal by literal — and they stay byte-identical. The
+  pair strip carries what `origin.tsx` argued (two halves, the odd power) in
+  two cards and one line. The mechanisms bento that closed the band from
+  2026-10-19 to 2026-10-20 (five mechanism tiles plus a sixth SDLC-parity
+  tile, one creature each) moved to the capability dex with the sprites —
+  `dex-data.ts` carries what `mechanisms.tsx` tabulated, entry by entry,
+  and the skeptic pains live on as the dex's weakness rows. If you re-add
+  mechanism prose here, you are re-stating the dex's copy — the
+  facts-once rule, and `landing-copy.test.tsx` pins the move.
 - **The copy must not read like a model wrote it.** The tells to edit out on
   sight: contrast-as-staging where the negative half names something nobody
   claimed ("not a diagram of the idea", "proof, not vibes", "neither half is

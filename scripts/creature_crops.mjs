@@ -5,9 +5,14 @@
  * to actually see a 64px sprite: the contact-sheet and hero-fit reviews kept
  * describing the seal glyphs instead).
  *
+ * The placements retired 2026-10-20 when the capability dex became the one
+ * canonical home for the creatures: the crops now frame the dex itself —
+ * the list (numbered rows + search) and the visible detail pane (specimen,
+ * entry, practice/weakness/receipt rows), in both schemes.
+ *
  * Usage: node scripts/creature_crops.mjs
  * Env:   LANDING_SHOTS_URL (default http://localhost:3111)
- * Out:   download/creatures/crop-{dark,light}-{party,bento}.png (gitignored)
+ * Out:   download/creatures/crop-{dark,light}-{list,detail}.png (gitignored)
  */
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -37,17 +42,17 @@ for (const scheme of ["dark", "light"]) {
   await page.waitForLoadState("networkidle").catch(() => {});
   await page.waitForTimeout(1200);
 
-  const party = page.getByText("the session party", { exact: true }).locator("xpath=..");
-  await party.scrollIntoViewIfNeeded();
+  const list = page.locator("#dex [role='listbox']").first();
+  await list.scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
-  await party.screenshot({ path: join(OUT, `crop-${scheme}-party.png`) });
+  await list.screenshot({ path: join(OUT, `crop-${scheme}-list.png`) });
 
-  const bento = page.locator("#loop .lg\\:grid-cols-3").first();
-  await bento.scrollIntoViewIfNeeded();
+  const detail = page.locator("#dex article:not([hidden])").first();
+  await detail.scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
-  await bento.screenshot({ path: join(OUT, `crop-${scheme}-bento.png`) });
+  await detail.screenshot({ path: join(OUT, `crop-${scheme}-detail.png`) });
 
   await ctx.close();
 }
 await browser.close();
-console.log(`crops → ${OUT}/crop-{dark,light}-{party,bento}.png`);
+console.log(`crops → ${OUT}/crop-{dark,light}-{list,detail}.png`);
