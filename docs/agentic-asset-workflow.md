@@ -154,6 +154,49 @@ exist); don't build while a standalone server serves the same `.next`; run
 the audit scripts against a live dev server with an explicit
 `LANDING_*_URL` when in doubt.
 
+## The dex round (2026-10-20) — the workflow's second application, to an interactive component
+
+The creature round's brief was "generate assets"; the dex round's was "research
+an interactive Pokédex library and move the sprites there." The workflow held,
+and where it stretched is worth recording:
+
+- **Phase 0 translated cleanly from pixels to interaction.** The acceptance
+  criterion for a sprite batch was checkable art rules; for the dex it became:
+  all ten creatures in one place (pinned by test — nothing renders outside it),
+  search driven by a real dependency, the listbox contract, the pane contract,
+  every entry receipts-linked, and the scroll budget PAID FIRST (the band was
+  priced before it was built: party strip + bento + DexCard retired in the
+  same change, and the nine-band page shipped half a viewport shorter than
+  the eight-band one — 12.0vh / ~2,490 words).
+- **Phase 1's honest negative.** The research found no reusable interactive
+  Pokédex UI component anywhere on npm — everything is a PokéAPI data client
+  or a tutorial app shipping official Nintendo art, which the non-affiliation
+  wall forbids. The deliverable dependency is fuse.js (zero-dep fuzzy search)
+  driving the search; the FRLG pattern itself is hand-built in the page's own
+  furniture. A researched negative plus one honest dependency beat a
+  decorative install.
+- **Phase 3's arbitration protocol, exercised for real.** Three Agnes VLM
+  rounds oscillated FIX↔PASS on UNCHANGED elements (dark PASS→FIX, light
+  FIX→PASS between rounds with no edits in between) — exactly the variance
+  the first round catalogued. The discipline that worked: take only findings
+  that survive a second round AND survive triage against the binding gates
+  (contrast AA, palette, axe, budget); overrule the rest in writing. Two
+  findings made it in (the 3× specimen, all-ten-rows on desktop), one more
+  from the element crops (the centered name block); the "softer/modern"
+  suggestions died as pattern conflicts.
+- **Parameter measurement is part of the pipeline.** fuse.js's default-ish
+  threshold 0.38 matched a third of a ten-item list for a three-letter query
+  — "forgiving" reads as broken. Threshold 0.3 + `minMatchCharLength: 2` was
+  measured against the real entry list before committing, and the measurement
+  lives in the component's comment next to the values it justifies.
+- **Tests follow moved content; they do not merely keep passing.** The bento's
+  SDLC-parity assertions moved to `dex.test.tsx`, the party/bento creature
+  assertions became "the dex mounts all ten + NOTHING renders outside it,"
+  and `landing-copy.test.tsx` gained a moved-not-duplicated assertion that
+  fails if the capability copy grows a second home. When content moves, the
+  tests pin the move — otherwise the next editor re-adds the old placement
+  and every gate stays green.
+
 ## The failure catalogue (what actually happened, so it isn't re-learned)
 
 | Symptom | Cause | Fix |
@@ -168,6 +211,12 @@ the audit scripts against a live dev server with an explicit
 | Review describes the wrong element | Full-page screenshot too wide for the asset | Element-level crops (`creature_crops.mjs`) |
 | PASS/FIX flip-flop between rounds | VLM variance on genre-adjacent art | Repeat-flag rule + signifier-audit arbitration; VLM stays an aid, never a gate |
 | Every build "missing chunks", 500s | Zombie `next-server` serving deleted `.next` | Kill by process name before build/serve; verify all page resources return 200 |
+| 3-letter query matched a third of the dex | fuse.js threshold 0.38 too loose for a 10-item list | Measure the threshold against the real list (0.3 + `minMatchCharLength: 2`) and record it beside the values |
+| `getByRole` finds nothing in the dex detail | testing-library role queries exclude `hidden` panes (by design) | Select the entry first (click the option), then query; or assert on `textContent` |
+| A multi-edit left the file half-applied | Edit batches apply sequentially and stop at the first non-matching string | One edit per call while strings are uncertain; re-read the file after any failure before re-editing |
+| Appended `.env` values ignored by the bridge | bun's .env loading is first-key-wins; an empty earlier definition shadows the append | Set values at the FIRST definition; verify with `bun -e "process.env.VAR"` before starting the service |
+| "local lane ENABLED" missing after restart | `bun --hot` in a subdir does not inherit the root .env the way `bun run` does | Pass the lane's vars explicitly on the command line, or verify loading from the service's own cwd |
+| `EADDRINUSE` restarting the bridge | `bun --hot` survives a pattern-matched pkill | Kill by PID from `ss -tlnp` output, then restart |
 
 ## Reuse checklist
 
