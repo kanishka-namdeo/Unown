@@ -59,13 +59,9 @@ export class ScrollView extends Container {
 		this.overscroll = options.overscroll ?? "chain";
 		this.currentScrollbar = options.scrollbar ?? "hidden";
 		this.scrollbarTrackStyle =
-			options.scrollbarTrackStyle ??
-			options.scrollbarStyle ??
-			((text) => `\x1b[90m${text}\x1b[39m`);
+			options.scrollbarTrackStyle ?? options.scrollbarStyle ?? ((text) => `\x1b[90m${text}\x1b[39m`);
 		this.scrollbarThumbStyle =
-			options.scrollbarThumbStyle ??
-			options.scrollbarStyle ??
-			((text) => `\x1b[37m${text}\x1b[39m`);
+			options.scrollbarThumbStyle ?? options.scrollbarStyle ?? ((text) => `\x1b[37m${text}\x1b[39m`);
 		this.scrollbarHideDelayMs = Math.max(0, Math.floor(options.scrollbarHideDelayMs ?? 1000));
 	}
 
