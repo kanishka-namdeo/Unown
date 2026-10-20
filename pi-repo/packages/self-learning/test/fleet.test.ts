@@ -25,6 +25,7 @@ import {
         nextFleetStatus,
         parseControlCommands,
         readFleetRegistry,
+        resolveFleetTimeoutMs,
         readLoadout,
         uniqueFleetName,
         writeFleetRegistry,
@@ -255,6 +256,27 @@ describe("fleet registry", () => {
                 // The 32 MOST RECENT survive.
                 expect(back.names["n39"]).toBeDefined();
                 expect(back.names["n00"]).toBeUndefined();
+        });
+});
+
+describe("resolveFleetTimeoutMs (UNOWN_FLEET_TIMEOUT_MS)", () => {
+        test("FLEET_TIMEOUT_MS is the documented default", () => {
+                // The public knob (UNOWN_FLEET_TIMEOUT_MS) documents 900000 as the
+                // default — pin it so docs + code can never drift apart silently.
+                expect(resolveFleetTimeoutMs({})).toBe(900_000);
+                expect(resolveFleetTimeoutMs({ UNOWN_FLEET_TIMEOUT_MS: "" })).toBe(900_000);
+        });
+
+        test("UNOWN_FLEET_TIMEOUT_MS overrides when it parses to >= 1000ms", () => {
+                expect(resolveFleetTimeoutMs({ UNOWN_FLEET_TIMEOUT_MS: "120000" })).toBe(120_000);
+                expect(resolveFleetTimeoutMs({ UNOWN_FLEET_TIMEOUT_MS: " 3600000 " })).toBe(3_600_000);
+        });
+
+        test("garbage and sub-second values fall back to the default (a typo can never zero the watchdog)", () => {
+                expect(resolveFleetTimeoutMs({ UNOWN_FLEET_TIMEOUT_MS: "soon" })).toBe(900_000);
+                expect(resolveFleetTimeoutMs({ UNOWN_FLEET_TIMEOUT_MS: "999" })).toBe(900_000);
+                expect(resolveFleetTimeoutMs({ UNOWN_FLEET_TIMEOUT_MS: "-5" })).toBe(900_000);
+                expect(resolveFleetTimeoutMs({ UNOWN_FLEET_TIMEOUT_MS: "0" })).toBe(900_000);
         });
 });
 

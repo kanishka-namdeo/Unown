@@ -42,7 +42,6 @@ import {
         FLEET_CONTROL_ENV,
         FLEET_ID_ENV,
         FLEET_SESSION_ENV,
-        FLEET_TIMEOUT_MS,
         type FleetChildState,
         type FleetLoadout,
         type FleetStatus,
@@ -53,6 +52,7 @@ import {
         mergeFleetResultContents,
         nextFleetStatus,
         readFleetRegistry,
+        resolveFleetTimeoutMs,
         writeFleetRegistry,
         writeLoadout,
 } from "./fleet.ts";
@@ -132,7 +132,7 @@ export class FleetManager {
         constructor(private readonly opts: FleetManagerOptions) {
                 this.fleetDir = opts.fleetDir ?? join(opts.cwd, ".unown", "fleet");
                 this.log = opts.log ?? (() => {});
-                this.timeoutMs = opts.timeoutMs ?? FLEET_TIMEOUT_MS;
+                this.timeoutMs = opts.timeoutMs ?? resolveFleetTimeoutMs();
                 this.spawnProc = opts.spawnProc ?? spawn;
                 this.invocation = opts.invocation;
                 fleetManagers().add(this);
@@ -751,7 +751,7 @@ function fleetManagers(): Set<FleetManager> {
  * Returns true when drained, false on timeout. Results that arrive during
  * the wait trigger their own turns through the session's steer path.
  */
-export async function waitForFleetDrain(timeoutMs = FLEET_TIMEOUT_MS): Promise<boolean> {
+export async function waitForFleetDrain(timeoutMs = resolveFleetTimeoutMs()): Promise<boolean> {
         const deadline = Date.now() + timeoutMs;
         for (;;) {
                 const busy = [...fleetManagers()].some((m) =>

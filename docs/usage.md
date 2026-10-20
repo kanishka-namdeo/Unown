@@ -123,7 +123,7 @@ unown completions fish > ~/.config/fish/completions/unown.fish           # fish
 unown completions powershell >> $PROFILE                                  # PowerShell
 ```
 
-**Subagent plumbing flags.** `--mode json` (JSON event stream), `--no-session` (don't persist), `--tools a,b,c` (restrict the active toolset), `--append-system-prompt <file>` (append file contents to the system prompt) exist for the `task` tool, which spawns subagents with exactly these flags. You normally never type them yourself — see [subagents](subagents.md).
+**Subagent plumbing flags.** `--mode json` (JSON event stream), `--no-session` (don't persist), `--tools a,b,c` (restrict the active toolset), `--append-system-prompt <file>` (append file contents to the system prompt) and `--session <path>` (continue that exact session file — TUI or print mode; the [fleet](subagents.md#the-interactive-fleet-async-subagents) runs its async children on it, which is what makes resume-by-name work) exist for the `task` tool, which spawns subagents with exactly these flags. You normally never type them yourself — see [subagents](subagents.md).
 
 **Routing flags.** `--model <id>` (override `PI_MODEL_ID` for this run), `--effort low|medium|high` (`low` → `BRIDGE_QWEN_THINKING=0`, `high` → `=1`, `medium`/unset → the bridge default), `--mcp-servers a,b` (MCP server whitelist — an **empty CSV loads none**), `--no-agents-md` (skip AGENTS.md / per-tier memory injection), and `--no-split` (start the TUI bare — no split-view panels, ignoring saved startup defaults; see [split view](split-view.md)) are accepted on any launch — TUI or print — and route that whole session. The `task` tool passes the same flags to per-agent children from `.unown/agents/*.md` frontmatter (`model` / `effort` / `mcpServers` / `injectAgentsMd`), and `UNOWN_SUBAGENT_MODEL` overrides the model for **every** subagent in one line. See [subagents → per-agent routing](subagents.md#per-agent-routing).
 
@@ -131,13 +131,13 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 ## Session tools
 
-Every unown session registers **thirteen** unown tools on top of pi's built-ins (bash / read / edit / write / grep / find / ls — powershell on Windows):
+Every unown session registers **fourteen** unown tools on top of pi's built-ins (bash / read / edit / write / grep / find / ls — powershell on Windows):
 
 | Tool | What the agent does with it |
 |---|---|
 | `todo` | Maintains a visible task list (`list` / `add` / `toggle` / `clear`) while working on multi-step tasks. State rides session entries, so branching (`/fork`, `/tree`) keeps the correct list. Inspect it with `/todos`. |
-| `task` | Spawns [subagents](subagents.md) with a fresh context window — `general` (full tools), `explore` (read-only), `scout` (compressed recon handoff on cheap routing), `worker` (completion-guarded implementation), `reviewer` (P0/P1/P2 + merge verdict), `planner` (writes `plan.md`, never executes), the cheap `background-explore` lane, or your own `.unown/agents/*.md` definitions (with per-agent `model`/`effort`/`mcpServers`/`injectAgentsMd` routing, `advertise`/`completionGuard`/`fallbackModels`/`context` catalog knobs). Up to 4 tasks per call, executed in parallel; `async: true` spawns into the [interactive fleet](subagents.md#the-async-fleet) (background, steerable, resumable); the roster is advertised to the model each turn via the [advertised catalog](subagents.md#the-advertised-catalog). |
-| `task_control` | Controls the [async fleet](subagents.md#the-async-fleet): `steer` a running subagent mid-task (or resume a finished one by name), `stop`, `status`, `list`. Answers a subagent's `ask_question` too. |
+| `task` | Spawns [subagents](subagents.md) with a fresh context window — `general` (full tools), `explore` (read-only), `scout` (compressed recon handoff on cheap routing), `worker` (completion-guarded implementation), `reviewer` (P0/P1/P2 + merge verdict), `planner` (writes `plan.md`, never executes), the cheap `background-explore` lane, or your own `.unown/agents/*.md` definitions (with per-agent `model`/`effort`/`mcpServers`/`injectAgentsMd` routing, `advertise`/`completionGuard`/`fallbackModels`/`context` catalog knobs). Up to 4 tasks per call, executed in parallel; the roster is advertised to the model each turn via the [advertised catalog](subagents.md#the-advertised-catalog). `async: true` + `name` spawn into the [interactive fleet](subagents.md#the-interactive-fleet-async-subagents) instead: immediate ack, live status, results delivered as new turns — steerable, resumable. |
+| `task_control` | The [fleet](subagents.md#steering-and-control-task_control) control surface for async subagents: `steer` (mid-run course correction; on a finished child it **resumes** it with full context), `stop`, `status`, `list` — and the answer channel for a subagent's `ask_question`. Registered in every session that is not itself a subagent. |
 | `note` | Records a durable learning note mid-session — delivered to the engine immediately (or queued in the outbox if it is down). AutoDream consolidates notes into project memory. Also `/note <text>`. |
 | `fetch_url` | Read-only HTTP GET. Now delegates to the hardened webfetch pipeline (below): private-address SSRF guard, robots-aware, extraction fallback chain; output is capped at 12,000 chars by default (`max_chars` clamps to 500–60,000). |
 | `web_search` | Searches the live web — ranked results (title, URL, snippet) with provider auto-selection: any configured API key (Tavily/Brave/Serper/Exa/Perplexity/Jina/Zhipu/DashScope/Kagi/SerpApi/Firecrawl) is used first, then the keyless chain (SearXNG if configured → DuckDuckGo → Tavily keyless → You.com → StackExchange → Wikipedia → HN → npm registry → GitHub repos). `allowed_domains`/`blocked_domains` filter results (Claude Code parity). `UNOWN_WEB_SEARCH=0` disables. Answers flow through the shared [web results store](#web-search--webfetch). |
@@ -293,7 +293,7 @@ Limits (zcode's, transliterated): 20 automations total, 2 concurrent runs, a 30-
 
 ## Slash commands
 
-unown adds twenty-five commands of its own:
+unown adds twenty-six commands of its own:
 
 | Command | What it does |
 |---|---|
@@ -301,7 +301,7 @@ unown adds twenty-five commands of its own:
 | `/todos` | Show the session todo list |
 | `/note <text>` | Deliver a learning note to the engine now |
 | `/agents` | List available subagents (built-ins + `.unown/agents/*.md` + `~/.unown/agent/agents/*.md`) |
-| `/tasks` | Show the async subagent fleet — running children with live status + the resumable registry (the human view of `task_control`) |
+| `/tasks` | The [async subagent fleet](subagents.md#the-fleet-widget-and-tasks): running children with live state + the finished ones that are resumable by name (`task_control steer <name> <message>`) |
 | `/learning` | Re-print the effective 4-tier memory stack, fresh from disk |
 | `/lsp` | Show LSP status: detected language servers (running/available), open documents, cached diagnostics |
 | `/checkpoint [label]` | Snapshot the current state of the files this session touched |

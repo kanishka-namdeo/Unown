@@ -173,14 +173,21 @@ Session tools (registered in every session):
   todo / note / task / fetch_url / web_search /
   webfetch / lsp                         visible task tracking, mid-session learning notes,
                                          subagents with a fresh context (output_schema
-                                         structured replies, worktree_isolation), HTTP reads,
+                                         structured replies, worktree_isolation, and
+                                         the async fleet: async:true fire-and-forget
+                                         spawns steered via task_control), HTTP reads,
                                          live web search + page reads (keyless out of the
                                          box; provider keys optional), language-server code
                                          intelligence
+  task_control / ask_question            fleet control surface (steer/stop/status/list
+                                         + the child's ask-the-orchestrator channel;
+                                         registered with the fleet lane)
   automation_list (+create/update/delete outside automation runs)
                                          scheduled runs managed by the engine
   /plan /todos /note /agents /learning /lsp /checkpoint /undo /redo
   /restore /checkpoints /receipts /mcp /goal /review   session commands
+  /tasks                  the async subagent fleet: running children + the
+                          resume registry (task_control steer <name> resumes)
   /init-agents            preview the generated AGENTS.md (no file write —
                           run \`unown init-agents --print\` for the full text)
   /doctor-instructions    audit the instruction set inline (AGENTS.md, skills,
@@ -229,6 +236,8 @@ One-shot run flags (print mode; several also used by the task tool):
   --no-split              start the TUI bare: no split-view panels (thinking/
                           tools band, files dock) even if /split-save left
                           startup defaults behind
+  --session <path>        continue that exact session file (TUI + print mode;
+                          the fleet's resume substrate — children run with it)
 
 Environment:
   UNOWN_HOME               state dir (default ~/.unown)
@@ -249,6 +258,10 @@ Environment:
   UNOWN_SUBAGENT_MODEL     override PI_MODEL_ID for EVERY subagent (per-agent
                            model still wins; useful for routing all subagents
                            to a local model)
+  UNOWN_FLEET_TIMEOUT_MS   hard cap on one async fleet child in ms (default
+                           900000; values < 1000 fall back to the default)
+  UNOWN_WORKTREE_ISOLATION=0  disable the task tool's worktree-isolation lane
+                           (fleet spawns compose with it)
 `;
 
 // ---------------------------------------------------------------------------

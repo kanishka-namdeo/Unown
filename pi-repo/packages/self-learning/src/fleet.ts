@@ -71,8 +71,19 @@ export type FleetStatus =
 export const FLEET_STALL_MS = 120_000;
 
 /** Hard wall-clock cap on one async child (the sync lane's 300s + headroom
- *  for interactive round-trips; overridable via UNOWN_FLEET_TIMEOUT_MS). */
+ *  for interactive round-trips; the default behind resolveFleetTimeoutMs). */
 export const FLEET_TIMEOUT_MS = 900_000;
+
+/** The effective hard cap: UNOWN_FLEET_TIMEOUT_MS (milliseconds) wins when it
+ *  parses as a finite number ≥ 1000 — anything else (unset, empty, garbage,
+ *  sub-second) falls back to the default so a typo can never zero the
+ *  watchdog. Read once per consumer, never cached, so tests stay hermetic. */
+export function resolveFleetTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
+        const raw = env.UNOWN_FLEET_TIMEOUT_MS?.trim();
+        if (!raw) return FLEET_TIMEOUT_MS;
+        const n = Number(raw);
+        return Number.isFinite(n) && n >= 1_000 ? Math.floor(n) : FLEET_TIMEOUT_MS;
+}
 
 /** How long ask_question parks before giving up and telling the child to
  *  proceed with best judgment (the parent may simply be unattended). */

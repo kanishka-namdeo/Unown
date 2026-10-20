@@ -5,13 +5,18 @@ Fresh-context unown agents the model can spawn mid-session with the `task` tool 
 - [The task tool](#the-task-tool)
 - [Structured outputs](#structured-outputs)
 - [Worktree isolation](#worktree-isolation)
+- [The interactive fleet (async subagents)](#the-interactive-fleet-async-subagents)
+- [Fire-and-forget spawns](#fire-and-forget-spawns)
+- [Steering and control: task_control](#steering-and-control-task_control)
+- [Questions mid-task: ask_question](#questions-mid-task-ask_question)
+- [The fleet widget and /tasks](#the-fleet-widget-and-tasks)
+- [Fleet state on disk](#fleet-state-on-disk)
 - [Built-in agents](#built-in-agents)
 - [The advertised catalog](#the-advertised-catalog)
 - [Authoring custom agents](#authoring-custom-agents)
 - [Per-agent routing](#per-agent-routing)
 - [Fallback models](#fallback-models)
 - [Context briefs](#context-briefs)
-- [The async fleet](#the-async-fleet)
 - [The BLOCKED protocol](#the-blocked-protocol)
 - [The completion guard](#the-completion-guard)
 - [How the model invokes them](#how-the-model-invokes-them)
@@ -206,18 +211,6 @@ The discipline (ported from pi-cciotti's summary context mode):
 
 Cheaper than a full fork (the whole conversation copied), more targeted than raw transcript surgery — and the child starts already knowing what the orchestrator has already tried. (Ported from pi-cciotti's `context-brief.ts` + the `defaultContext: summary` agents.)
 
-## The async fleet
-
-The `task` tool's `async: true` mode spawns a **background subagent** and returns an immediate ack; the result arrives later as its own message that triggers your next turn. The fleet is the pi-interactive-subagents model rebuilt on Unown's cross-platform substrate — plain subprocesses + atomic control files, no terminal multiplexer, identical on Windows / macOS / Linux:
-
-- **`task_control`** steers a running child mid-task (the message is absorbed into its current turn or picked up at the next turn boundary), stops it, shows live status, or lists everything. Steering a **finished** child by name **resumes** it — same session file, same sandbox (replayed from the loadout sidecar; a missing loadout is refused, never relaunched unrestricted).
-- **`ask_question`** — a child can ask the orchestrator ONE clarifying question mid-task and parks until the answer arrives (steered back via `task_control`); ten-minute timeout degrades to best-judgment guidance so an unattended parent never wedges the child.
-- **The live widget** above the editor shows every running child — elapsed, current tool, waiting-for-answer, stalled — with a footer status line; `/tasks` is the human view.
-- **Completion batching** — successes coalesce (150 ms debounce, 1 s max wait) so a fan-out of N children wakes the parent once; failures and blocked replies bypass the batch (bad news races).
-- **The resume registry** (`.unown/fleet/registry.json`, bounded to 32 entries) persists name → session across sessions, so a child spawned yesterday resumes today.
-- **Headless runs drain** — a `-p` print-mode run waits (bounded by the fleet timeout) for its async children before exiting, so results still land while the process is alive.
-- Worktree isolation composes: an async writer can run in its own tree.
-
 ## The BLOCKED protocol
 
 Every subagent's system prompt carries boundary instructions ending in one rule: if the task cannot be safely or legitimately completed — missing access, ambiguous target, destructive-looking request — the child returns exactly:
@@ -267,20 +260,155 @@ The header carries the [BLOCKED](#the-blocked-protocol) status (`## worker (BLOC
 
 Parallel results are separated by `---` and returned in the order they were requested. The parent's copy is capped (see below), so tell subagents to end with a concise summary, not a transcript dump.
 
+## The interactive fleet (async subagents)
+
+Everything above is the **synchronous lane**: the `task` call blocks until every child finishes, and the report lands in the tool result. The fleet is the second lane — **`async: true`** — where the call returns an immediate ack and the subagent runs in the background as a live member of your session. It is a port of [amosblomqvist/pi-interactive-subagents](https://github.com/amosblomqvist/pi-interactive-subagents) rebuilt without tmux on plain subprocesses and atomic control files, so the lane is identical on Windows, macOS and Linux — no PTY, no OS-specific terminal plumbing.
+
+The two lanes compose with everything the sync lane has: agent definitions and routing (`--model`/`--effort`/`--mcp-servers`), the [BLOCKED protocol](#the-blocked-protocol), the [completion guard](#the-completion-guard), [fallback models](#fallback-models) and [worktree isolation](#worktree-isolation). What changes is the delivery model:
+
+| | Sync lane (default) | Async lane (`async: true`) |
+|---|---|---|
+| The call returns | when every child finished | immediately, with an ack |
+| The result arrives | in the tool result | later, as its own message that triggers a new turn |
+| Mid-run control | none (abort kills the batch) | `task_control` steer / stop / status / list |
+| Child questions | impossible ([BLOCKED](#the-blocked-protocol) instead) | `ask_question` — the child parks until you answer |
+| After the run | nothing persists | resumable by name, full context intact |
+| Where you watch it | the transcript | the fleet widget above the editor + the footer |
+
+## Fire-and-forget spawns
+
+Add `async: true` to any task call (single or batch item) and optionally give the child a `name` you can steer it by later:
+
+```json
+{ "agent": "explore", "async": true, "name": "mapper",
+  "task": "Map the src/ tree and report the main modules with file:line anchors." }
+```
+
+The tool returns an ack immediately — the call never blocks — and the session keeps running:
+
+```
+## mapper (explore · async)
+Started in the background. The result will arrive as its own message; steer it
+with task_control {action:"steer", id:"mapper", message:"…"} or check
+task_control {action:"status", id:"mapper"}.
+```
+
+When the child finishes, its report arrives as a **new message that triggers a new turn** — the same mechanism as a user steer — so an unattended orchestrator still reacts to results. The report header carries the run's vitals:
+
+```
+Subagent mapper (explore) finished in 01:42
+6 turns · 14 tool calls · 45k in / 3k out
+
+<src/middleware/auth.ts:12 registers requireAuth on the router …>
+
+Follow up with task_control {action:"steer", id:"mapper", message:"…"} to
+continue this subagent with full context.
+```
+
+`BLOCKED` and `FAILED` runs use their own header verbs and append the reason; a result body is capped at 16,000 characters. Two async specifics to know:
+
+- **`output_schema` is sync-only** — structured replies need the blocking lane; an async call carrying a schema is rejected with a typed failure before anything spawns.
+- **`name` is a label, not an id** — names are deduplicated (`scout`, `scout-2`, …) and what every control action addresses. Without one, the child is reachable only by its generated id (shown in `/tasks`).
+
+Batch spawns (`tasks: [...]`, still max 4) run one fleet child per item, and a shared `name` deduplicates across the batch. Abort signals are ignored on this lane by design — stopping a child is `task_control`'s job, not the tool call's.
+
+**Completion batching:** successful results coalesce — a 150 ms debounce window (bounded by a 1 s max wait) collects every child that finishes together into ONE batched message, so a fan-out of N children wakes the parent **once**, not N times. Failures and BLOCKED replies bypass the batch and race in immediately — bad news never waits for good. (Ported from pi-cciotti's completion batching.)
+
+## Steering and control: task_control
+
+The `task_control` tool is the fleet's control surface:
+
+| Action | Parameters | What it does |
+|---|---|---|
+| `steer` | `id`, `message` | Delivers a message to a **running** child — absorbed into its current turn. On a **finished** child it **resumes** it (below). |
+| `stop` | `id` | Stops a running child: a polite wrap-up instruction, then a tree kill 3 s later. The stop is reported as the child's result. |
+| `status` | `id` | One child's live state: task, turns, tool count, steer count, token usage, current tool, and a pending question when parked. |
+| `list` | — | Everything: running children with live state, then the finished ones that are resumable by name. |
+
+**Steering a running child** is a mid-task course correction: the message is queued into the child's control inbox (an atomic file it polls every 250 ms) and delivered through pi's native steer path — it becomes part of the child's current turn, not a new session. A child that just received a steer never reads as stalled.
+
+**Steering a finished child resumes it.** The child relaunches with its **original session file and loadout** — the same transcript, model, effort, toolset, MCP whitelist and system prompt — and your message is its follow-up task. Full context carries over; nothing is re-explained. Resume is fail-closed: if the session file or the loadout sidecar is gone, the steer is refused (`cannot resume` / `refusing to relaunch unrestricted`) — never silently downgraded to a fresh unrestricted child. Finished children stay resumable through the [registry](#fleet-state-on-disk) after the session that spawned them ends.
+
+The `/tasks` session command prints the same picture as `task_control list` without a tool round-trip: running children plus the resume registry.
+
+## Questions mid-task: ask_question
+
+A fleet child can ask **the orchestrating agent** one clarifying question mid-task — the `ask_question` tool, registered in the child's session only when the fleet lane is active. It is not a channel to the human user; it is the child saying "I cannot proceed safely without one more fact":
+
+```
+Subagent mapper (explore) asks a question after 00:31:
+
+Should the module map include test files, or production code only?
+
+Answer it with task_control {action:"steer", id:"mapper", message:"<your answer>"}
+— the subagent is parked until you do (or times out).
+```
+
+While parked, the child sits **inside the tool call** — no turns burn, no tokens flow — and the fleet widget shows it as `waiting for your answer`. The answer is a plain `task_control steer`: the child-side poller consumes the steered text as the answer (a steer while parked *is* the answer) and the child continues with `[orchestrator's answer] <text>` as its next instruction.
+
+The park is bounded at **10 minutes**. With no answer the child is told to proceed with its best judgment, state the assumption in its final report — or reply `BLOCKED: <reason>` when the task genuinely cannot proceed without the answer. `ask_question` degrades to the same best-judgment guidance when no ask channel exists (a child spawned outside the fleet lane), so the tool's contract is the same everywhere.
+
+## The fleet widget and /tasks
+
+While any async child runs, the TUI grows a **fleet widget above the editor** — one row per child, live, theme-aware:
+
+```
+╭─ Subagents ── 2 running ────────────
+  ⟳ 01:04 mapper — running · grep
+  ?  00:12 triage — waiting for your answer
+╰─────────────────────────────────────
+```
+
+Row glyphs: `⟳` running (with the current tool), `○` starting, `?` waiting for your answer, `!` stalled. The list caps at 8 rows (`+N more running.` under it), and the footer carries the one-line summary (`fleet: 2 subagents running · 1 awaiting answer`). When the last child finishes the widget lingers ~1.5 s and disappears.
+
+The watcher behind it polls every second. A child with no activity for **120 s** flips to `stalled` (`!` — steer or stop it); a child parked on a question never stalls (the reply is the orchestrator's obligation, not the child's). Everything the widget shows is derived from the child's own event stream — turns, tools, tokens, current tool — not scraped from a terminal.
+
+## Fleet state on disk
+
+The fleet keeps its runtime state in `<project>/.unown/fleet/` (gitignored — per-machine, per-session, never shared):
+
+```
+.unown/fleet/
+├── registry.json                  # finished children, resumable by name (32 most recent)
+├── <id>.control.json              # parent → child inbox (atomic writes, drained by the child)
+├── <id>.ask.json                  # child → parent ask channel (deleted once answered)
+└── sessions/                      # per-child transcript + resume contract
+    ├── mapper-<id>.jsonl          # the child's full session (--session target)
+    ├── mapper-<id>.jsonl.loadout.json        # model/effort/tools/mcp/system-prompt
+    └── mapper-<id>.jsonl.system-prompt.md
+```
+
+The **registry** is what makes `task_control steer` work across sessions: name → session file, status, finish time and a one-line summary, bounded to the 32 most-recent entries. The **loadout sidecar** is the resume contract — everything needed to relaunch the same child later; resume refuses rather than guess when it is missing. Registry and inbox files are atomic-written and fail closed (a corrupt file reads as empty, never throws).
+
+Print-mode orchestrators (`unown -p`) are not left behind: the run appends an untypeable sentinel message the fleet's input handler intercepts, and the process **waits (up to the fleet timeout) for all children to finish** — async results arrive as real turns while the process is alive, so headless runs deliver the full fleet story to stdout.
+
+**Limits** (the honest table):
+
+| Limit | Value | Override |
+|---|---|---|
+| Hard cap on one async child | 900 s | `UNOWN_FLEET_TIMEOUT_MS` (values < 1000 fall back to the default) |
+| Completion batching window | 150 ms debounce / 1 s max wait | — || Stall watchdog (no child activity) | 120 s | — |
+| ask_question park timeout | 600 s | — |
+| Watcher cadence / control poll | 1 s / 250 ms | — |
+| Result body / question / stderr caps | 16,000 / 4,000 / 2,000 chars | — |
+| Registry size / `list` / `/tasks` rows | 32 / 16 / 10 | — |
+| Widget rows (then `+N more`) | 8 | — |
+
 ## What subagents cannot do
 
 - **No nesting.** Subagents run with `UNOWN_SUBAGENT=1`, which unregisters the `task` tool inside them — a subagent cannot spawn further subagents.
-- **No interactive user.** A subagent cannot ask *you* questions — but it can refuse honestly via the [BLOCKED protocol](#the-blocked-protocol) instead of improvising.
+- **No interactive human.** A subagent cannot ask *you* questions — it can refuse honestly via the [BLOCKED protocol](#the-blocked-protocol) instead of improvising. (An [async fleet child](#questions-mid-task-ask_question) can ask the *orchestrating agent* — that channel exists, and parks, and times out; the human is never prompted.)
 - **Restricted tools.** The definition's `tools` list is passed as `--tools` to the subprocess; the built-in `explore` agent, for example, physically cannot write.
-- **Time limit.** Each subagent is killed after 300 seconds (SIGTERM, then SIGKILL).
+- **Time limit.** Sync-lane subagents are killed after 300 seconds (SIGTERM, then SIGKILL). Async fleet children get 900 s (see the [limits table](#fleet-state-on-disk)).
 - **Output caps.** The final report is capped at 16,000 characters; stderr at 2,000.
-- **No persisted sessions.** Subagents run with `--no-session` — their runs leave notes, not session files.
+- **No persisted sessions (sync lane).** Sync subagents run with `--no-session` — their runs leave notes, not session files. Async children are the exception: each keeps a full session file under `.unown/fleet/sessions/`, which is exactly what [resume](#steering-and-control-task_control) replays.
 - **No pre-flight probe.** The endpoint check runs in the parent only.
 
 ## When to use subagents
 
 - **Fresh context** — a focused investigation (trace one bug, audit one module) whose intermediate tool output would otherwise flood and eventually compact the parent session.
 - **Parallel exploration** — several independent questions about the codebase answered at once via `tasks: [...]`.
+- **Background delegation** — `async: true` hands the job to the [fleet](#the-interactive-fleet-async-subagents) and keeps the session responsive; steer it mid-run, answer its questions, resume it by name when the result raises a follow-up.
 - **Cheap background fact-finding** — `background-explore` runs the same evidence-first sweep as `explore` on a cheaper model at low effort, without MCP servers or memory injection, when the parent just needs facts cited and the question does not deserve a full unown context.
 - **Isolated read-only sweeps** — `explore` maps the repo and returns cited evidence with zero risk of touching anything.
 - **Self-contained implementation** — hand `general` a well-specified task and review its report instead of watching twenty tool calls scroll by.
