@@ -1,6 +1,11 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+import {
+  ADDONS,
+  ADDON_KEY_COUNT,
+  ADDONS_SURFACE_RECEIPTS,
+} from "./addons-data";
 import { BrowserFrame, FadeUp, SectionHead } from "./shell";
 
 /**
@@ -9,6 +14,15 @@ import { BrowserFrame, FadeUp, SectionHead } from "./shell";
  * log in the Integrity pane), and the ten-tab index became a tile row in the
  * models-band shape. The ten tabs each drive something real — the index
  * names them without pretending each needs a paragraph.
+ *
+ * The addons strip (below the grid, added with the TUI addon framework) is
+ * the terminal's share of the same claim: the three addons and their
+ * one-file config surface. The pitches and the derived key count live in
+ * addons-data.ts; `__tests__/addons.test.tsx` drift-gates that data against
+ * pi-repo's addons/config.ts. The tiles reuse the ten-tab row's grammar
+ * (same panels, same hover) with one line of pitch instead of a two-word
+ * gloss — the dex owns the creatures' capability copy, this strip owns the
+ * addon framework's, and neither restates the other.
  */
 const TABS: [string, string][] = [
   ["Overview", "pass rate, dreams, memory version"],
@@ -86,6 +100,73 @@ export function ShowcaseSection() {
                 <ArrowRight className="size-4" aria-hidden="true" />
               </a>
             </div>
+          </div>
+        </FadeUp>
+
+        {/* The terminal's configurable side. The dashboard above is the web
+            face of the running engine; the three TUI addons are its terminal
+            face, and every knob on them is user config. Static markup on
+            purpose: no pane to switch, so the whole strip is in the
+            server-rendered DOM for crawlers and gates alike (the proof band's
+            pane contract). */}
+        <FadeUp delay={0.12} className="mt-10 border-t border-line pt-8">
+          <div className="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-12">
+            <div className="min-w-0">
+              <p className="gb-label text-[9px] text-gold">
+                Three TUI addons · every setting is user config
+              </p>
+              <p className="mt-3 text-[12.5px] leading-relaxed text-dim">
+                One file holds every setting,{" "}
+                <span className="font-mono">~/.unown/agent/addons.json</span>: {ADDON_KEY_COUNT}{" "}
+                user-tunable keys across the three, from the todo panel&apos;s line
+                budget and the advisor&apos;s review cadence to the tool descriptions
+                the model reads. <span className="font-mono">/addons</span> is
+                the live configurator for all of them. Native TypeScript over
+                pi-tui with no native modules, so the same dialogs run on
+                Windows, macOS and Linux.
+              </p>
+              <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px]">
+                <span className="text-faint">receipts:</span>
+                {ADDONS_SURFACE_RECEIPTS.map(([label, href]) => (
+                  <a
+                    key={href}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="text-faint underline underline-offset-2 transition-colors hover:text-gold"
+                  >
+                    {label}
+                  </a>
+                ))}
+              </p>
+            </div>
+
+            <ul
+              aria-label="the three TUI addons"
+              className="grid gap-2 sm:grid-cols-3"
+            >
+              {ADDONS.map((a) => (
+                <li
+                  key={a.name}
+                  className="gb-panel lift flex flex-col p-3.5 hover:border-line-bright"
+                >
+                  <span className="font-mono text-[11.5px] text-ink">
+                    {a.name}
+                  </span>
+                  <p className="mt-2 flex-1 text-[12.5px] leading-relaxed text-dim">
+                    {a.pitch}
+                  </p>
+                  <a
+                    href={a.receipt[1]}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="mt-3 font-mono text-[10px] text-faint underline underline-offset-2 transition-colors hover:text-gold"
+                  >
+                    {a.receipt[0]}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         </FadeUp>
       </div>

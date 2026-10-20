@@ -170,14 +170,18 @@ Usage:
   unown --version          print the version (matches package.json)
 
 Session tools (registered in every session):
-  todo / note / task / fetch_url / web_search /
-  webfetch / lsp                         visible task tracking, mid-session learning notes,
-                                         subagents with a fresh context (output_schema
-                                         structured replies, worktree_isolation, and
-                                         the async fleet: async:true fire-and-forget
-                                         spawns steered via task_control), HTTP reads,
-                                         live web search + page reads (keyless out of the
-                                         box; provider keys optional), language-server code
+  todo / ask_user_question / note / task / fetch_url / web_search /
+  webfetch / lsp                         visible task tracking, structured
+                                         mid-run questions (the run blocks
+                                         until you answer), mid-session
+                                         learning notes, subagents with a fresh
+                                         context (output_schema structured
+                                         replies, worktree_isolation, and the
+                                         async fleet: async:true fire-and-forget
+                                         spawns steered via task_control), HTTP
+                                         reads, live web search + page reads
+                                         (keyless out of the box; provider keys
+                                         optional), language-server code
                                          intelligence
   task_control / ask_question            fleet control surface (steer/stop/status/list
                                          + the child's ask-the-orchestrator channel;
@@ -188,6 +192,11 @@ Session tools (registered in every session):
   /restore /checkpoints /receipts /mcp /goal /review   session commands
   /tasks                  the async subagent fleet: running children + the
                           resume registry (task_control steer <name> resumes)
+  /addons                configure the TUI addons (ask_user_question, todo,
+                         advisor) — every change persists to
+                         ~/.unown/agent/addons.json (docs/addons.md)
+  /advisor status|on|off  advisor status and control — /advisor on enables the
+                         second-model watcher (off by default; /reload applies)
   /init-agents            preview the generated AGENTS.md (no file write —
                           run \`unown init-agents --print\` for the full text)
   /doctor-instructions    audit the instruction set inline (AGENTS.md, skills,
@@ -552,9 +561,10 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         const toolsExtension = createUnownToolsExtension({ cwd, engineUrl: ENGINE_URL, verbose });
         // The TUI addons (ask_user_question, todo, advisor + /addons): bundled
         // inline extensions with their own user config (~/.unown/agent/addons.json).
-        // Subagents boot their own runtimes with UNOWN_SUBAGENT=1 and get NO addons
-        // (no user to answer questionnaires, no foreground overlay, no advisor
-        // double-spend) — see addons/index.ts.
+        // ask_user_question + todo register in subagent sessions too (the
+        // questionnaire is stripped from the active tool set when !ctx.hasUI and
+        // a subagent's todo list rides its own session entries); the advisor is
+        // foreground-only — see addons/index.ts.
         const addonsExtension = createUnownAddonsExtension({ cwd, verbose });
 
         const settingsManager = SettingsManager.create(cwd, agentDir);

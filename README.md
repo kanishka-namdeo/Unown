@@ -110,6 +110,7 @@ Full usage docs live in [`docs/`](docs/):
 | [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers |
 | [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
 | [split view](docs/split-view.md) | the split-view display mode — thinking/tool band, files dock, response-only transcript, every `/split*` command, `ui-panels.json` defaults |
+| [addons](docs/addons.md) | the TUI addon framework: `ask_user_question`, `todo`, `advisor` — the addons.json schema, `/addons` configurator, keybindings, hot-reload semantics, design contracts |
 | [subagents](docs/subagents.md) | the `task` tool, built-in `general`/`explore`/`background-explore`, authoring `.unown/agents/*.md` |
 | [skills](docs/skills.md) | the Agent Skills format, the four starters, skills AutoDream mints on its own |
 | [custom commands](docs/custom-commands.md) | authoring `.unown/commands/*.md` — frontmatter, `$ARGUMENTS`/`$1..$N` substitution, project + global scopes |
@@ -224,7 +225,8 @@ Every session is pre-flighted: if the model endpoint is unreachable or rejects t
 
 Every session ships with **Claude Code-grade session tools** on top of pi:
 
-- **`todo`** — a visible task list the agent maintains as it works (and `/todos` to inspect it). State rides the session tree, so branching keeps the right list.
+- **`todo`** — a live task-graph panel the agent maintains above the editor (and `/todos` to inspect it): a 4-state machine (`pending` → `in_progress` → `completed`, plus deleted tombstones), `blockedBy` dependencies with cycle rejection, `activeForm` progress labels, and completed rows that fade at the next turn boundary. State rides the session tree, so branching keeps the right list.
+- **Addons** — three fully user-configurable TUI addons with one config file (`~/.unown/agent/addons.json`) and an in-session `/addons` configurator: `ask_user_question` (structured mid-run questionnaires — up to 4 tabbed questions, 2–4 options each, side-by-side previews, free-text and notes; the tool **blocks until you answer**, so the turn continues with your decision), the `todo` addon above, and `advisor` (a second model watching the session as compact per-turn deltas, verifying claims with read-only tools, and sending advice mid-run — nits queue as asides, concerns/blockers steer immediately; **off by default**). Ports of @juicesharp/rpiv-ask-user-question + rpiv-todo and oh-my-pi's advisor (all MIT). Full reference: [docs/addons.md](docs/addons.md).
 - **`task`** — subagents with a **fresh context window** (`general` full-tool, `explore` read-only, `background-explore` — the same read-only shape on a cheaper model at low effort, no MCP, no memory injection — or your own `.unown/agents/*.md` definitions; run `/agents` to list). They are full unown agents: same memory, same guardrails — and their sessions write `[subagent]`-tagged notes, so **subagents learn too**. Up to 4 in parallel via `{tasks: [...]}`, with per-agent `model`/`effort`/`mcpServers`/`injectAgentsMd` routing, opt-in git `worktree_isolation` and `output_schema` typed replies (authoring guide: [docs/subagents.md](docs/subagents.md)).
 - **`note`** — record a durable learning note **mid-session**; it reaches the engine immediately and AutoDream consolidates it into your project's memory (also `/note <text>`).
 - **`fetch_url`** — read-only HTTP GET with HTML stripping and size caps.

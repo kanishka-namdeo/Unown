@@ -7,6 +7,7 @@ Every knob unown has: the one variable you actually must set, the full environme
 - [How `.env` gets loaded](#how-env-gets-loaded)
 - [State and files](#state-and-files)
 - [Agent config files](#agent-config-files-modelsjson--authjson--settingsjson--ui-panelsjson)
+- [Addons config](#addons-config-addonsjson)
 - [Behavior gate files](#behavior-gate-files)
 - [Common setups](#common-setups)
 - [Production notes](#production-notes)
@@ -196,6 +197,8 @@ Where everything lives — all of it deletable, none of it required to pre-exist
     auth.json                    API keys, file mode 0600
     settings.json                defaultProvider + defaultModel + tuiMode (interface layout)
     ui-panels.json               split-view startup defaults — written by /split-save only
+    addons.json                  TUI addon config — ask_user_question / todo / advisor
+                                 (see below; safe to hand-edit, never re-clobbered)
     sessions/                    terminal session trees
     skills/                      starter skills + your global skills
     agents/                      your global subagent definitions (*.md)
@@ -258,6 +261,22 @@ The first run of `unown` bootstraps the same trio with bridge defaults (`zai-bri
 **`ui-panels.json` — split-view startup defaults.** A fourth file in the same directory, never written by setup: a template of startup defaults for the [split view](split-view.md) panels. The toggles themselves stay session-local — only `/split-save` writes the file, so concurrent unown windows never clobber each other's layout. Keys, ranges and defaults: [split view: the config file](split-view.md#the-config-file-ui-panelsjson).
 
 **The `BRIDGE_API_KEY` coupling.** The bridge-mode key stored in `models.json` is read from `BRIDGE_API_KEY` (falling back to the `bridge-local` placeholder) *only when the file is created*. If you later set `BRIDGE_API_KEY` in the repo's `.env`, the bridge now demands a bearer token — but the terminal agent still sends the old placeholder, and every chat dies with `unauthorized: missing or invalid bearer token (BRIDGE_API_KEY is set)`. Fix: re-run `unown setup` **from the unown repo root** (where bun loads `.env`, so the wizard sees the key), or hand-edit the `apiKey` field in `~/.unown/agent/models.json` to match. Details in [troubleshooting](troubleshooting.md).
+
+## Addons config (addons.json)
+
+The TUI addons — `ask_user_question`, `todo`, `advisor` — keep every user-tunable knob in one JSON file, editable by hand or through the in-session `/addons` configurator. Full key-by-key semantics, defaults and the design contracts: [addons](addons.md).
+
+- **Path**: `$UNOWN_HOME/agent/addons.json` (`~/.unown/agent/addons.json` by default), next to `settings.json`. Seeded on first run **only when absent** — hand edits always survive reboots and configurator writes; delete the file to reset to defaults (it re-seeds on the next boot).
+- **Writes**: `/addons` and `/advisor on|off` persist through it — atomic (temp file + rename), read-modify-write over the fresh disk state.
+- **Parsing**: unknown keys dropped, malformed values reset to their defaults, unparsable JSON falls back to the default config wholesale with a one-line stderr warning — a bad file degrades, never breaks session boot.
+
+| Section | Keys (default) |
+|---|---|
+| `askUserQuestion` | `enabled` (`true`) · `collapseKey` (`"ctrl+]"`) · `guidance.{description, promptSnippet, promptGuidelines}` (LLM-facing copy overrides) |
+| `todo` | `enabled` (`true`) · `maxWidgetLines` (`12`, clamped 3–64 — the one **hot** key, re-read per render) · `collapseKey` (`"ctrl+shift+t"`) · `guidance.*` |
+| `advisor` | `enabled` (`false`) · `model` (unset = session model; `"provider/model"` or bare id) · `thinkingLevel` (`medium`) · `reviewMode` (`turn`) · `reviewInterval` (`1`) · `maxNotesPerUpdate` (`4`, 1–32) · `immuneTurns` (`3`) · `continueSeverity` (`concern` — parsed, not yet consumed by the runtime) · `instructions` (unset) · `showStatus` (`true`) |
+
+Everything except `todo.maxWidgetLines` binds when the extension registers — `/reload` applies edits.
 
 ## Behavior gate files
 

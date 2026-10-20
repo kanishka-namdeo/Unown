@@ -17,9 +17,10 @@
  * ~/.unown/agent/addons.json immediately. Registration-time fields
  * (guidance, collapse keys, advisor model) need a `/reload` to rebind.
  *
- * Subagent sessions (UNOWN_SUBAGENT=1) load NO addons: the questionnaire
- * needs a user to answer it, the todo overlay belongs to the foreground
- * session, and the advisor would double-spend on every subagent turn.
+ * Subagent sessions (UNOWN_SUBAGENT=1) register ask_user_question + todo (a
+ * subagent's todo list rides its own session entries; the questionnaire is
+ * stripped from the active tool set when no UI can answer it) but never the
+ * advisor — it would double-spend on every subagent turn.
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";

@@ -193,6 +193,13 @@ half a viewport shorter than the eight-band page it replaced.
     receipts-linked; `hero.tsx`'s cli expander names the session tools and
     points at `#dex`, it does not describe them — the descriptions moved
     here from the expander's prose and the retired loop bento, 2026-10-20);
+  - **the TUI addon framework's copy** (`showcase.tsx`'s addons strip, data in
+    `addons-data.ts` — the three pitches, the `addons.json` config surface and
+    the `/addons` configurator; the key count is derived from `ADDON_KEYS`,
+    and `__tests__/addons.test.tsx` re-reads `addons/config.ts` to fail the
+    run when the list drifts, so the figure cannot rot. The dex owns the ten
+    creatures' capabilities, the strip owns the addon framework's, and
+    neither restates the other);
   - **the caching negative control** (`benchmarks.tsx` only — the v1 + v3
     controls share one box);
   - **the terminal-agent command surface and its session tools** (`hero.tsx`'s

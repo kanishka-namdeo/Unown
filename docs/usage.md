@@ -14,7 +14,7 @@ How to run the `unown` terminal agent, what it does inside a session, and where 
 - [Memory in sessions](#memory-in-sessions)
 - [Environment variables](#environment-variables)
 
-Related pages: [subagents](subagents.md) · [skills](skills.md) · [memory](memory.md) · [providers](providers.md) · [split view](split-view.md) · [configuration](configuration.md) · [updating](updating.md)
+Related pages: [subagents](subagents.md) · [skills](skills.md) · [memory](memory.md) · [providers](providers.md) · [configuration](configuration.md) · [addons](addons.md) · [updating](updating.md)
 
 ## Three ways to run
 
@@ -67,7 +67,7 @@ Plan mode is a read-only exploration phase with an explicit approval gate before
 
 While planning:
 
-- `edit`, `write`, and the `task` tool are disabled; `read`, `bash`, `grep`, `find`, `ls`, `todo`, `note`, `fetch_url`, `web_search`, `webfetch`, and `lsp` (code intelligence is read-only; web tools are read-only) stay available.
+- `edit`, `write`, and the `task` tool are disabled; `read`, `bash`, `grep`, `find`, `ls`, `todo`, `note`, `fetch_url`, `web_search`, `webfetch`, `lsp` (code intelligence is read-only; web tools are read-only), and `ask_user_question` (clarifying questions are read-only) stay available.
 - `bash` is restricted to an allowlist of read-only commands — `cat`, `head`, `tail`, `grep`, `find`, `ls`, `diff`, `stat`, `git status/log/diff/show`, `npm list/view`, `curl`, `jq`, `awk`, and similar. Anything that writes, installs, kills, or mutates git state is blocked with a reason. (The full allow/deny pattern lists live in `tools.ts`.)
 
 The flow:
@@ -131,11 +131,12 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 ## Session tools
 
-Every unown session registers **fourteen** unown tools on top of pi's built-ins (bash / read / edit / write / grep / find / ls — powershell on Windows):
+Every unown session registers **fourteen** unown tools on top of pi's built-ins (bash / read / edit / write / grep / find / ls — powershell on Windows); `todo` and `ask_user_question` ride the [addon framework](addons.md) and are user-configurable:
 
 | Tool | What the agent does with it |
 |---|---|
-| `todo` | Maintains a visible task list (`list` / `add` / `toggle` / `clear`) while working on multi-step tasks. State rides session entries, so branching (`/fork`, `/tree`) keeps the correct list. Inspect it with `/todos`. |
+| `todo` | The [addon](addons.md)-era task graph: `create` / `update` / `list` / `get` / `delete` / `clear` over a 4-state machine (`pending` → `in_progress` → `completed`, plus deleted tombstones), with `blockedBy` dependencies (cycle-rejecting), `activeForm` progress labels and free-form `metadata`. A live panel above the editor tracks it (completed rows fade at the next turn; `/todos` prints the grouped view). State rides session entries, so branching (`/fork`, `/tree`) keeps the right list. |
+| `ask_user_question` | Asks you up to 4 structured questions mid-run (2–4 options each, optional side-by-side previews, multi-select, per-question notes) in a tabbed dialog — the tool **blocks the agent until you answer**, so the turn continues with your decision. A "Type something." free-text row is always appended; Esc declines. Stripped from the toolset in headless sessions (print mode / subagents) where nobody could answer. |
 | `task` | Spawns [subagents](subagents.md) with a fresh context window — `general` (full tools), `explore` (read-only), `scout` (compressed recon handoff on cheap routing), `worker` (completion-guarded implementation), `reviewer` (P0/P1/P2 + merge verdict), `planner` (writes `plan.md`, never executes), the cheap `background-explore` lane, or your own `.unown/agents/*.md` definitions (with per-agent `model`/`effort`/`mcpServers`/`injectAgentsMd` routing, `advertise`/`completionGuard`/`fallbackModels`/`context` catalog knobs). Up to 4 tasks per call, executed in parallel; the roster is advertised to the model each turn via the [advertised catalog](subagents.md#the-advertised-catalog). `async: true` + `name` spawn into the [interactive fleet](subagents.md#the-interactive-fleet-async-subagents) instead: immediate ack, live status, results delivered as new turns — steerable, resumable. |
 | `task_control` | The [fleet](subagents.md#steering-and-control-task_control) control surface for async subagents: `steer` (mid-run course correction; on a finished child it **resumes** it with full context), `stop`, `status`, `list` — and the answer channel for a subagent's `ask_question`. Registered in every session that is not itself a subagent. |
 | `note` | Records a durable learning note mid-session — delivered to the engine immediately (or queued in the outbox if it is down). AutoDream consolidates notes into project memory. Also `/note <text>`. |
@@ -149,6 +150,8 @@ Every unown session registers **fourteen** unown tools on top of pi's built-ins 
 | `automation_create` | Create a scheduled automation (cron in the local timezone, or a one-shot `--delay-minutes`) — default mode `read-only`. Registered only in interactive sessions: hidden inside subagents and inside automation runs themselves, so a scheduled run cannot schedule more runs. |
 | `automation_update` | Edit an automation (title / prompt / cron / mode / max-runs) or pause/resume it — interactive sessions only. |
 | `automation_delete` | Delete an automation and its non-running history — interactive sessions only. |
+
+One more addon surface registers **no tool**: the [advisor](addons.md#advisor) — a second model that watches the session as compact per-turn deltas, verifies claims with read-only tools, and sends advice mid-run (nits queue as asides at the next turn boundary; concerns and blockers steer immediately). It ships **off by default**; `/advisor on` or the `/addons` configurator enable it, with its model, cadence and budgets tunable in `~/.unown/agent/addons.json`.
 
 When you quit a session in which something happened, a session note (prompt count, tool calls, final outcome) is delivered to the engine — or written to `~/.unown/notes/outbox/` if the engine is down, and synced later. That note is the raw material AutoDream consolidates into `.unown/memory/project.md`.
 
@@ -293,12 +296,14 @@ Limits (zcode's, transliterated): 20 automations total, 2 concurrent runs, a 30-
 
 ## Slash commands
 
-unown adds twenty-six commands of its own:
+unown adds twenty-seven commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
 
 | Command | What it does |
 |---|---|
 | `/plan` | Toggle plan mode (read-only exploration → numbered plan → execute) |
-| `/todos` | Show the session todo list |
+| `/todos` | Show the session todo list, grouped by status with dependency chains ([todo addon](addons.md)) |
+| `/addons` | Interactive configurator for the [addons](addons.md) — enable/disable `ask_user_question` / `todo` / `advisor` and edit their settings; every change persists to `~/.unown/agent/addons.json` immediately (`/addons status` prints the effective config) |
+| `/advisor [status\|on\|off]` | [Advisor](addons.md#advisor) status and control — model, cadence, budgets, usage, watchdog state; `on`/`off` persist the flag (`/reload` applies). Registered only while the advisor addon is enabled |
 | `/note <text>` | Deliver a learning note to the engine now |
 | `/agents` | List available subagents (built-ins + `.unown/agents/*.md` + `~/.unown/agent/agents/*.md`) |
 | `/tasks` | The [async subagent fleet](subagents.md#the-fleet-widget-and-tasks): running children with live state + the finished ones that are resumable by name (`task_control steer <name> <message>`) |
@@ -323,6 +328,7 @@ unown adds twenty-six commands of its own:
 | `/recipe <name> [args]` | Run a declarative agent instruction bundle: `list`, `show <name>`, or `<name> --key value` with parameters interpolated into the body. See [recipes](recipes.md) |
 | `/wiki <sub>` | Auto-generated repo docs with `file:line` cross-links: `generate [--force]` (parallel subagents per module) \| `search <q>` \| `list` \| `show <page>`. See [repo wiki](repo-wiki.md) |
 | `/edit-resend <n> <msg>` | Edit the Nth user message: revert files to the pre-message checkpoint (all-or-nothing; aborts on out-of-band edits), then resend. `/edit-resend list` shows the numbered messages |
+| `/split` family | The split-view display mode (a built-in port of pi-split-view): `/split` toggles all panels (off = bare pi layout; on = saved startup defaults), `/split-thinking` + `/split-tools` the top band's panels, `/files` the files dock (`/split-diff` its edit-diff subpanel), `/split-tools-view` compact ↔ full tool detail, `/split-height` / `/split-tools-width` / `/split-divider` the geometry, `/split-trim-response` full-transcript ↔ response-only mode, and `/split-save` persists the current layout to `~/.unown/agent/ui-panels.json` as the startup default; `--no-split` starts bare |
 
 The split-view display mode registers eleven more, in every session (the thinking/tool band, files dock and response-only transcript — full story in [split view](split-view.md)):
 
@@ -416,6 +422,13 @@ The most useful defaults (Windows/WSL variants in parentheses):
 | Key | Action |
 |---|---|
 | Ctrl+Alt+P | Toggle plan mode |
+
+**Addons** (defaults — both rebindable in [addons](addons.md))
+
+| Key | Action |
+|---|---|
+| Ctrl+Shift+T | Collapse/expand the todo panel above the editor |
+| Ctrl+] | Collapse/expand an open ask_user_question dialog |
 
 `/hotkeys` shows the full list; `~/.unown/agent/keybindings.json` overrides any default.
 

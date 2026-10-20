@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 135;
+export const CHANGELOG_TOTAL_ENTRIES = 136;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 60,
@@ -39,14 +39,14 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Removed": 0,
   "Fixed": 26,
   "Security": 3,
-  "Behavior": 24
+  "Behavior": 25
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 13,
+    "total": 14,
     "counts": {
       "Added": 6,
       "Changed": 3,
@@ -54,7 +54,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Removed": 0,
       "Fixed": 0,
       "Security": 0,
-      "Behavior": 4
+      "Behavior": 5
     },
     "groups": [
       {
@@ -74,6 +74,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "subagents: the advertised catalog, delegation levels, role builtins, the BLOCKED protocol…",
+            "behavior": true
+          },
+          {
+            "title": "addons: the TUI addon framework — ask_user_question, the addon-era todo, and the advisor…",
             "behavior": true
           }
         ]
