@@ -24,6 +24,7 @@ import {
     type GoalState,
 } from "../src/goal.ts";
 import { createUnownToolsExtension } from "../src/tools.ts";
+import { registerTodoAddon } from "../src/addons/todo.ts";
 
 const tmpRoot = mkdtempSync(join(tmpdir(), "unown-goal-test-"));
 afterAll(() => {
@@ -290,19 +291,36 @@ function makeNotify() {
 
 describe("/goal wiring in the unown-tools extension", () => {
     /** Session entries that reconstruct a todo list (all done) — the T2 rule
-     *  requires tracked todos, so the accept-path wiring needs a todo trail. */
-    const todoBranch = (todos: Array<{ id: number; text: string; done: boolean }>) => [
+     *  requires tracked todos, so the accept-path wiring needs a todo trail.
+     *  Since the todo moved to the addons layer, the wiring registers BOTH
+     *  extensions (mirroring cli.ts bootRuntime) and the branch carries the
+     *  addon's TaskDetails snapshot shape. */
+    const todoBranch = (todos: Array<{ id: number; subject: string; status: string }>) => [
         {
             type: "message",
-            message: { role: "toolResult", toolName: "todo", details: { action: "list", todos, nextId: todos.length + 1 } },
+            message: {
+                role: "toolResult",
+                toolName: "todo",
+                details: { action: "list", params: {}, tasks: todos, nextId: todos.length + 1 },
+            },
         },
     ];
+
+    /** Wire the todo addon onto a fake pi (the goal gate reads its state). */
+    const wireTodoAddon = (fakePi: { pi: any }) => {
+        registerTodoAddon(
+            fakePi.pi,
+            { enabled: true, maxWidgetLines: 12, collapseKey: "off", guidance: {} },
+            () => 12,
+        );
+    };
 
     test("set → per-turn context injection → agent_end completion gate accepts evidence", async () => {
         const dir = join(tmpRoot, "ext1");
         const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
         const fake = makeFakePi([]);
         ext.factory(fake.pi);
+        wireTodoAddon(fake);
         const notify = makeNotify();
 
         // session_start reconstructs the todo trail the completion gate checks
@@ -315,8 +333,8 @@ describe("/goal wiring in the unown-tools extension", () => {
                 sessionManager: {
                     getEntries: () => [],
                     getBranch: () => todoBranch([
-                        { id: 1, text: "fix the build", done: true },
-                        { id: 2, text: "run the tests", done: true },
+                        { id: 1, subject: "fix the build", status: "completed" },
+                        { id: 2, subject: "run the tests", status: "completed" },
                     ]),
                 },
             },

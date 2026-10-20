@@ -72,6 +72,7 @@ import { assembleResultJson, captureStdout, createOutputCapture, createOutputCap
 import { ACP_HELP, runAcpServer } from "./acp.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
+import { createUnownAddonsExtension } from "./addons/index.ts";
 import { unownVersion } from "./packaging.ts";
 import {
         applyEffortToEnv,
@@ -492,6 +493,12 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         });
         const permissionsExtension = createPermissionsExtension({ cwd, verbose, gate: permissionsGate });
         const toolsExtension = createUnownToolsExtension({ cwd, engineUrl: ENGINE_URL, verbose });
+        // The TUI addons (ask_user_question, todo, advisor + /addons): bundled
+        // inline extensions with their own user config (~/.unown/agent/addons.json).
+        // Subagents boot their own runtimes with UNOWN_SUBAGENT=1 and get NO addons
+        // (no user to answer questionnaires, no foreground overlay, no advisor
+        // double-spend) — see addons/index.ts.
+        const addonsExtension = createUnownAddonsExtension({ cwd, verbose });
 
         const settingsManager = SettingsManager.create(cwd, agentDir);
 
@@ -536,6 +543,7 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                         checkpointsExtension as any,
                                         extension as any,
                                         toolsExtension as any,
+                                        addonsExtension as any,
                                         mcpExtension as any,
                                         permissionsExtension as any,
                                         ...((bootOpts.extraExtensions ?? []) as any[]),

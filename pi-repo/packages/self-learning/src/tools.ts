@@ -4,17 +4,15 @@
  * One bundled inline extension (`unown-tools`, wired in cli.ts) that gives a
  * plain pi session the capabilities a 2026 coding agent is expected to have:
  *
- *   - `todo` tool + /todos      visible task tracking (state rides session
- *                               entries, so branching keeps correct todos)
+ *   - `note` tool + /note       record durable learning notes MID-session
+ *                               (delivered to the engine immediately; AutoDream
+ *                               consolidates them into project memory)
  *   - `task` tool + /agents     subagents with a FRESH context window — they
  *                               are full unown agents (memory + guardrails +
  *                               note capture), spawned as `unown --mode json`
  *                               subprocesses; agent definitions live in
  *                               .unown/agents/*.md (project) and
  *                               ~/.unown/agent/agents/*.md (user)
- *   - `note` tool + /note       record durable learning notes MID-session
- *                               (delivered to the engine immediately; AutoDream
- *                               consolidates them into project memory)
  *   - `fetch_url` tool          read-only HTTP GET, HTML stripped, capped
  *   - /plan + --plan flag       plan mode: read-only toolset, bash allowlist,
  *                               numbered "Plan:" extraction, approve-to-execute
@@ -24,6 +22,12 @@
  *                               see src/gittools.ts): stage + commit all
  *                               project-dir changes, never pushes; opt-in
  *                               UNOWN_AUTO_COMMIT=1 snapshots on session end
+ *
+ * The `todo` tool + /todos moved to the addons layer (src/addons/todo.ts, a
+ * port of @juicesharp/rpiv-todo): live overlay panel above the editor,
+ * blockedBy dependencies, turn-scoped completed-row fading, session-branch
+ * persistence. The goal-completion gate here reads that state through the
+ * addons/todo.ts bridge (`foregroundTodosForGoalGate`).
  *
  * Subagents never nest (UNOWN_SUBAGENT=1 disables the `task` tool inside a
  * subagent) and every subagent session writes its own note — subagents learn
@@ -91,6 +95,7 @@ import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./b
 import { receiptsDir } from "./checkpoints.ts";
 import { loadRecipes, parseRecipe, runRecipe, userRecipesDir } from "./recipes.ts";
 import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
+import { foregroundTodosForGoalGate } from "./addons/todo.ts";
 
 // ---------------------------------------------------------------------------
 // Subagent registry: built-ins + .unown/agents/*.md + ~/.unown/agent/agents/*.md
@@ -909,19 +914,6 @@ const PLAN_MODE_TOOLS = [
 const PLAN_MODE_DISABLED_TOOLS = new Set(["edit", "write", "task"]);
 const PLAN_MANAGED_TOOLS = new Set([...PLAN_MODE_TOOLS, ...PLAN_MODE_DISABLED_TOOLS, "edit", "write"]);
 
-interface Todo {
-        id: number;
-        text: string;
-        done: boolean;
-}
-
-interface TodoDetails {
-        action: "list" | "add" | "toggle" | "clear";
-        todos: Todo[];
-        nextId: number;
-        error?: string;
-}
-
 interface TaskRunDetails {
         runs: Array<{
                 agent: string;
@@ -935,12 +927,6 @@ interface TaskRunDetails {
                 worktree?: { action: string; path?: string; detail: string };
         }>;
 }
-
-const TodoParams = Type.Object({
-        action: StringEnum(["list", "add", "toggle", "clear"] as const),
-        text: Type.Optional(Type.String({ description: "Todo text (for add)" })),
-        id: Type.Optional(Type.Number({ description: "Todo ID (for toggle)" })),
-});
 
 const NoteParams = Type.Object({
         text: Type.String({
@@ -1029,29 +1015,6 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
         };
 
         const factory = (pi: ExtensionAPI) => {
-                // ---- todo state (reconstructed from session entries so branching stays correct)
-                let todos: Todo[] = [];
-                let nextId = 1;
-
-                const reconstructTodos = (ctx: any) => {
-                        todos = [];
-                        nextId = 1;
-                        try {
-                                for (const entry of ctx.sessionManager.getBranch()) {
-                                        if (entry?.type !== "message") continue;
-                                        const msg = entry.message;
-                                        if (msg?.role !== "toolResult" || msg.toolName !== "todo") continue;
-                                        const details = msg.details as TodoDetails | undefined;
-                                        if (details) {
-                                                todos = details.todos;
-                                                nextId = details.nextId;
-                                        }
-                                }
-                        } catch {
-                                /* session access is best-effort */
-                        }
-                };
-
                 // ---- plan-mode state
                 let planModeEnabled = false;
                 let executionMode = false;
@@ -1138,84 +1101,6 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 // -------------------------------------------------------------------
                 // Tools
                 // -------------------------------------------------------------------
-
-                pi.registerTool({
-                        name: "todo",
-                        label: "Todo",
-                        description:
-                                "Manage a visible todo list so multi-step work stays on track. Actions: list, add (text), toggle (id), clear. Update the list as you go; the user sees it live.",
-                        parameters: TodoParams,
-                        async execute(_toolCallId, params) {
-                                let details: TodoDetails;
-                                let text: string;
-                                switch (params.action) {
-                                        case "list":
-                                                text = todos.length
-                                                        ? todos.map((t) => `[${t.done ? "x" : " "}] #${t.id}: ${t.text}`).join("\n")
-                                                        : "No todos";
-                                                details = { action: "list", todos: [...todos], nextId };
-                                                break;
-                                        case "add": {
-                                                if (!params.text) {
-                                                        text = "Error: text required for add";
-                                                        details = { action: "add", todos: [...todos], nextId, error: "text required" };
-                                                        break;
-                                                }
-                                                const todo: Todo = { id: nextId++, text: params.text, done: false };
-                                                todos.push(todo);
-                                                text = `Added todo #${todo.id}: ${todo.text}`;
-                                                details = { action: "add", todos: [...todos], nextId };
-                                                break;
-                                        }
-                                        case "toggle": {
-                                                const todo = todos.find((t) => t.id === params.id);
-                                                if (!todo) {
-                                                        text = `Todo #${params.id} not found`;
-                                                        details = { action: "toggle", todos: [...todos], nextId, error: `#${params.id} not found` };
-                                                        break;
-                                                }
-                                                todo.done = !todo.done;
-                                                text = `Todo #${todo.id} ${todo.done ? "completed" : "reopened"}`;
-                                                details = { action: "toggle", todos: [...todos], nextId };
-                                                break;
-                                        }
-                                        case "clear": {
-                                                const count = todos.length;
-                                                todos = [];
-                                                nextId = 1;
-                                                text = `Cleared ${count} todos`;
-                                                details = { action: "clear", todos: [], nextId: 1 };
-                                                break;
-                                        }
-                                }
-                                return { content: [{ type: "text", text }], details };
-                        },
-                        renderCall(args: any, theme: any) {
-                                let text = theme.fg("toolTitle", theme.bold("todo ")) + theme.fg("muted", args.action);
-                                if (args.text) text += ` ${theme.fg("dim", `"${args.text}"`)}`;
-                                if (args.id !== undefined) text += ` ${theme.fg("accent", `#${args.id}`)}`;
-                                return new Text(text, 0, 0);
-                        },
-                        renderResult(result: any, { expanded }: any, theme: any) {
-                                const details = result.details as TodoDetails | undefined;
-                                if (!details) return new Text("", 0, 0);
-                                if (details.error) return new Text(theme.fg("error", `Error: ${details.error}`), 0, 0);
-                                if (details.todos.length === 0) return new Text(theme.fg("dim", "No todos"), 0, 0);
-                                const display = expanded ? details.todos : details.todos.slice(0, 5);
-                                let listText = theme.fg(
-                                        "muted",
-                                        `${details.todos.filter((t) => t.done).length}/${details.todos.length} done:`,
-                                );
-                                for (const t of display) {
-                                        const check = t.done ? theme.fg("success", "✓") : theme.fg("dim", "○");
-                                        listText += `\n${check} ${theme.fg("accent", `#${t.id}`)} ${t.done ? theme.fg("dim", t.text) : theme.fg("muted", t.text)}`;
-                                }
-                                if (!expanded && details.todos.length > 5) {
-                                        listText += `\n${theme.fg("dim", `... ${details.todos.length - 5} more`)}`;
-                                }
-                                return new Text(listText, 0, 0);
-                        },
-                });
 
                 pi.registerTool({
                         name: "note",
@@ -1883,19 +1768,6 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 pi.registerShortcut(Key.ctrlAlt("p"), {
                         description: "Toggle plan mode",
                         handler: async (ctx) => togglePlanMode(ctx),
-                });
-
-                pi.registerCommand("todos", {
-                        description: "Show the session todo list",
-                        handler: async (_args, ctx) => {
-                                if (todos.length === 0) {
-                                        ctx.ui.notify("No todos yet — ask the agent to track its work with the todo tool.", "info");
-                                        return;
-                                }
-                                const list = todos.map((t) => `${t.done ? "✓" : "○"} #${t.id} ${t.text}`).join("\n");
-                                const done = todos.filter((t) => t.done).length;
-                                ctx.ui.notify(`Todos (${done}/${todos.length} done):\n${list}`, "info");
-                        },
                 });
 
                 pi.registerCommand("note", {
@@ -2883,7 +2755,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                         // message — a mid-text mention (the agent discussing the
                                         // tag) neither completes the goal nor triggers reject noise.
                                         if (hasGoalTag(text)) {
-                                                const check = checkGoalCompletion(text, todos);
+                                                const check = checkGoalCompletion(text, foregroundTodosForGoalGate());
                                                 if (check.complete) {
                                                         goal = {
                                                                 ...goal,
@@ -3031,7 +2903,6 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                 // ---- restore state on session (re)start
                 pi.on("session_start", async (_event: any, ctx: any) => {
                         if (pi.getFlag("plan") === true) planModeEnabled = true;
-                        reconstructTodos(ctx);
                         try {
                                 const entries = ctx.sessionManager.getEntries();
                                 const planEntry = [...entries]
@@ -3079,8 +2950,9 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                         setStatusLine(ctx, "goal", goalFooterLine(goal));
                 });
 
-                pi.on("session_tree", async (_event: any, ctx: any) => {
-                        reconstructTodos(ctx);
+                pi.on("session_tree", async (_event: any, _ctx: any) => {
+                        // todo state is session-scoped and lives in the addons
+                        // layer (src/addons/todo.ts) which replays it itself.
                 });
 
                 pi.on("session_shutdown", () => {

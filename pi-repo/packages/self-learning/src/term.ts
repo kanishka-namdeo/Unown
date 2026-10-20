@@ -22,6 +22,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFile
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { pruneToBudget } from "./budget.ts";
+import { seedAddonsConfig } from "./addons/config.ts";
 import { MEMORY_GUIDE, MEMORY_GUIDE_PATH } from "./memory-guide.ts";
 import { STARTER_SKILLS } from "./skill-seeds.ts";
 import { UNOWN_THEME, UNOWN_THEME_NAME } from "./theme.ts";
@@ -168,6 +169,9 @@ export function ensureUnownAgentDirInfo(): AgentDirInit {
         }
         mkdirSync(join(UNOWN_AGENT_DIR, "sessions"), { recursive: true });
         seedStarterSkills(UNOWN_AGENT_DIR);
+        // TUI addons (ask_user_question / todo / advisor) — seeded only when
+        // absent, so user edits always survive (see addons/config.ts).
+        seedAddonsConfig();
         const init: AgentDirInit = {
                 dir: UNOWN_AGENT_DIR,
                 created: models.fresh || !settingsExisted,

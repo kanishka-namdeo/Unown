@@ -39,6 +39,7 @@ import { runAutomationsCommand } from "../src/automations-cli.ts";
 import { store } from "../src/store.ts";
 import { apiRequestBody } from "../src/server.ts";
 import { createUnownToolsExtension } from "../src/tools.ts";
+import { createUnownAddonsExtension } from "../src/addons/index.ts";
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
@@ -433,10 +434,11 @@ describe("AutomationsScheduler", () => {
 // The in-session trust gate (tools.ts)
 // ---------------------------------------------------------------------------
 
-/** Collect the tool names an extension registers for a given env.
+/** Collect the tool names the session extensions register for a given env.
  *  Env is set BEFORE createUnownToolsExtension — isSubagent is captured at
  *  creation time, while isAutomationRun is read at factory time; both must
- *  see their flag. */
+ *  see their flag. Mirrors cli.ts bootRuntime: tools + addons together
+ *  (the todo tool lives in the addons extension since the rpiv port). */
 function registeredToolNames(env: Record<string, string | undefined>): string[] {
         const names: string[] = [];
         const saved: Array<[string, string | undefined]> = Object.entries(env).map(([k]) => [k, process.env[k]]);
@@ -446,12 +448,14 @@ function registeredToolNames(env: Record<string, string | undefined>): string[] 
         }
         try {
                 const ext = createUnownToolsExtension({ cwd: WORKSPACE, engineUrl: "http://127.0.0.1:9" });
+                const addons = createUnownAddonsExtension({ cwd: WORKSPACE });
                 const pi: any = {
                         on: () => {},
                         registerCommand: () => {},
                         registerFlag: () => {},
                         registerTool: (t: { name: string }) => names.push(t.name),
                         registerShortcut: () => {},
+                        registerMessageRenderer: () => {},
                         appendEntry: () => {},
                         getFlag: () => undefined,
                         getActiveTools: () => ["read", "bash", "edit", "write"],
@@ -459,6 +463,7 @@ function registeredToolNames(env: Record<string, string | undefined>): string[] 
                         sendMessage: () => {},
                 };
                 ext.factory(pi);
+                addons.factory(pi);
         } finally {
                 for (const [k, v] of saved) {
                         if (v === undefined) delete process.env[k];
