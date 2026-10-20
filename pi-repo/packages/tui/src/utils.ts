@@ -692,6 +692,16 @@ class AnsiCodeTracker {
 		return result;
 	}
 
+	/**
+	 * Only the background color active at the end of the tracked text, as an
+	 * SGR sequence (e.g. "\x1b[100m"), or "" when no background is set. Used
+	 * by the scrollbar cell replacement to preserve a cell's background when
+	 * repainting it with the track/thumb glyph.
+	 */
+	getActiveBackgroundCode(): string {
+		return this.bgColor ? `\x1b[${this.bgColor}m` : "";
+	}
+
 	hasActiveCodes(): boolean {
 		return (
 			this.bold ||
@@ -737,6 +747,13 @@ function updateTrackerFromText(text: string, tracker: AnsiCodeTracker): void {
 			i++;
 		}
 	}
+}
+
+/** Return only the background color active at the end of an ANSI-styled string. */
+export function getActiveBackgroundAnsi(text: string): string {
+	const tracker = new AnsiCodeTracker();
+	updateTrackerFromText(text, tracker);
+	return tracker.getActiveBackgroundCode();
 }
 
 /**

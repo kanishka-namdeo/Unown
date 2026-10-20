@@ -31,7 +31,8 @@
 		"thinkingText": "muted",
 
 		"selectedBg": "selection",
-		"scrollbarThumb": "selection",
+		"scrollbarTrack": "slateDim",
+		"scrollbarThumb": "muted",
 		"searchMatchBg": "selection",
 		"searchMatchText": "text",
 		"userMessageBg": "",

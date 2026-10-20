@@ -9,6 +9,15 @@ export interface ScrollViewOptions {
 	primary?: boolean;
 	overscroll?: "chain" | "contain";
 	scrollbar?: ScrollViewScrollbar;
+	/** Styling for the scrollbar track (the "│" column). */
+	scrollbarTrackStyle?: (text: string) => string;
+	/** Styling for the scrollbar thumb ("┃" at rest, "█" while actively scrolling). */
+	scrollbarThumbStyle?: (text: string) => string;
+	/**
+	 * Legacy single styling function for the whole scrollbar. When neither
+	 * scrollbarTrackStyle nor scrollbarThumbStyle is given, both derive from
+	 * this. Kept for backwards compatibility with existing callers.
+	 */
 	scrollbarStyle?: (text: string) => string;
 	scrollbarHideDelayMs?: number;
 }
@@ -20,10 +29,11 @@ export interface ScrollViewScrollToOptions {
 
 export class ScrollView extends Container {
 	private readonly child: Component;
-	private readonly followEnd: boolean;
+	readonly followEnd: boolean;
 	readonly primary: boolean;
 	readonly overscroll: "chain" | "contain";
-	readonly scrollbarStyle: (text: string) => string;
+	readonly scrollbarTrackStyle: (text: string) => string;
+	readonly scrollbarThumbStyle: (text: string) => string;
 	private currentScrollbar: ScrollViewScrollbar;
 	private readonly scrollbarHideDelayMs: number;
 	private currentScrollTop = 0;
@@ -48,7 +58,14 @@ export class ScrollView extends Container {
 		this.primary = options.primary ?? false;
 		this.overscroll = options.overscroll ?? "chain";
 		this.currentScrollbar = options.scrollbar ?? "hidden";
-		this.scrollbarStyle = options.scrollbarStyle ?? ((text) => `\x1b[100m${text}\x1b[49m`);
+		this.scrollbarTrackStyle =
+			options.scrollbarTrackStyle ??
+			options.scrollbarStyle ??
+			((text) => `\x1b[90m${text}\x1b[39m`);
+		this.scrollbarThumbStyle =
+			options.scrollbarThumbStyle ??
+			options.scrollbarStyle ??
+			((text) => `\x1b[37m${text}\x1b[39m`);
 		this.scrollbarHideDelayMs = Math.max(0, Math.floor(options.scrollbarHideDelayMs ?? 1000));
 	}
 
@@ -73,6 +90,10 @@ export class ScrollView extends Container {
 		return (
 			this.scrollbar === "auto" && this.contentHeight > this.currentViewportHeight && this.transientScrollbarVisible
 		);
+	}
+
+	get isScrollbarActive(): boolean {
+		return this.scrollbarActive;
 	}
 
 	setScrollbar(scrollbar: ScrollViewScrollbar): void {
@@ -114,6 +135,7 @@ export class ScrollView extends Container {
 		if (active === this.scrollbarActive) return;
 		this.scrollbarActive = active;
 		this.markScrollbarActivity();
+		this.requestRenderCallback?.();
 	}
 
 	scrollTo(scrollTop: number, options: ScrollViewScrollToOptions = {}): void {

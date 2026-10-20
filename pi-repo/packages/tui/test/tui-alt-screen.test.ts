@@ -290,8 +290,10 @@ describe("TuiAltScreen", () => {
 		await terminal.waitForRender();
 		assert.strictEqual(scrollView.scrollTop, 15);
 		assert.deepStrictEqual(
+			// The visible scrollbar paints its column: "│" track rows plus a "█"
+			// thumb while the drag is active (pi-tui 1.3.0-style track/thumb painting).
 			terminal.getViewport().map((line) => line.trimEnd()),
-			["line 16", "line 17", "line 18", "line 19", "line 20"],
+			["line 16  │", "line 17  │", "line 18  │", "line 19  █", "line 20  █"],
 		);
 
 		terminal.sendInput("\x1b[<0;10;4m");

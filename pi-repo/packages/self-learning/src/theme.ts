@@ -51,6 +51,10 @@ export const UNOWN_THEME = {
 		thinkingText: "zinc500",
 
 		selectedBg: "selectedBg",
+		// Scrollbar glyphs (pi-tui 1.3.0-style track/thumb painting): the track
+		// reads like a frame line (borderMuted tone), the thumb like muted text.
+		scrollbarTrack: "zinc800",
+		scrollbarThumb: "zinc500",
 		userMessageBg: "",
 		userMessageText: "text",
 		customMessageBg: "",
