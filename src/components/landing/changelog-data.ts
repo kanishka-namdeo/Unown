@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 136;
+export const CHANGELOG_TOTAL_ENTRIES = 138;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 60,
-  "Changed": 22,
+  "Changed": 23,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 27,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 14,
+    "total": 16,
     "counts": {
       "Added": 6,
-      "Changed": 3,
+      "Changed": 4,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 1,
@@ -123,6 +123,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Changed",
         "items": [
+          {
+            "title": "landing: the scroll budget re-balanced — the addons strip pays for itself as a disclosure…",
+            "behavior": false
+          },
           {
             "title": "tui: fullscreen is the default interface layout for new installs",
             "behavior": false

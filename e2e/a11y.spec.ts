@@ -98,6 +98,10 @@ async function revealAll(page: import("@playwright/test").Page) {
 }
 
 for (const mode of ["reduced (full document)", "animated (as read)"] as const) {
+  // Full-document axe scans of a ~13vh page (plus the revealAll sweep on the
+  // animated pass) measure ~31s on slower runners — the 30s default is a
+  // coin flip there. 60s keeps the gate about violations, not clock speed.
+  test.setTimeout(60_000);
   test(`landing page is axe-clean, ${mode} (wcag2 A/AA + wcag21 A/AA)`, async ({ browser, baseURL }) => {
     const ctx = await browser.newContext({
       baseURL,
