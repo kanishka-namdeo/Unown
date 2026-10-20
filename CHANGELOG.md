@@ -9,6 +9,10 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 ## [Unreleased]
 
+### Removed (the dashboard exit — provider management is terminal-only, 2026-10-20)
+
+- **provider management lives in the terminal now — the dashboard "Providers" tab is gone** — and the engine's `/api/providers` HTTP surface (registry CRUD, discovery, the 30 s health cache) went with it: the web dashboard is a viewer, not a credential surface; the registry (`providers.ts`), the `unown providers` CLI, and the upcoming interactive TUI `/providers` command are the surface. M4 and M5 shipped without changelog entries, so there is nothing to revert — the presets extraction and the engine-reuse fix stay; `/api/overview` is untouched.
+
 ### Added (multi-provider support — M0 + M1, 2026-10-21)
 
 - **the multi-provider registry — adding a provider never removes the others** — `unown setup` used to REWRITE `~/.unown/agent/models.json` with exactly one provider, silently discarding every previous one (the single biggest gap vs Cline / Roo / OpenCode / Codex). A new registry module (`pi-repo/packages/self-learning/src/providers.ts`) owns all mutations with upsert semantics: adding updates in place, preserves hand-edited fields (headers, compat, per-model metadata), and `--force` remains the explicit reset to one provider. Live-verified end to end: a session routes `--model zai-bridge/agnes-3.0-flash` through the local bridge AND `--model agnes/agnes-3.0-flash` direct to the provider in the same registry.

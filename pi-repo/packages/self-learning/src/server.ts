@@ -4,7 +4,6 @@
 
 import { emit, subscribe } from "./bus.ts";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import {
         AutomationsScheduler,
@@ -27,19 +26,6 @@ import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
 import { breakerStatus, budgetStatus, markEngineProcess, pruneLedger } from "./governor.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
-import { PRESETS } from "./presets.ts";
-import {
-        keyStatusLabel,
-        listProviders,
-        refreshProviderModels,
-        removeProvider,
-        resolveProviderKey,
-        setDefaultModel,
-        setProviderKey,
-        testProvider,
-        upsertProvider,
-        type ProviderEntry,
-} from "./providers.ts";
 import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from "./skills.ts";
 import { store, DATA_DIR } from "./store.ts";
 import { getTask, listTasks, seedTasks } from "./tasks.ts";
@@ -520,142 +506,6 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 }
 
                 // ------------------------------------------------------------------
-                // Providers (M4) — the multi-provider registry over HTTP: the
-                // dashboard's management surface. Reads AND writes go to the USER's
-                // ~/.unown/agent (a pure file operation — the detachment contract
-                // allows files+HTTP; the engine's own SQLite stays untouched). All
-                // mutations share the exact providers.ts code path the CLI uses, so
-                // `unown providers *` and the dashboard can never disagree.
-                //
-                // Health is probed once per provider per TTL (30s) — a dashboard
-                // polling every few seconds must not turn into a probe storm.
-                // ------------------------------------------------------------------
-                if (path === "/api/providers" || path.startsWith("/api/providers/")) {
-                        const userAgentDir = join(process.env.UNOWN_HOME || join(homedir(), ".unown"), "agent");
-                        const respond = (status: number, payload: unknown) => json(payload, status);
-
-                        if (method === "GET" && path === "/api/providers") {
-                                const list = listProviders(userAgentDir);
-                                if (list.error) return respond(500, { ok: false, error: `models.json invalid: ${list.error}` });
-                                const providers = await Promise.all(
-                                        list.providers.map(async (p) => {
-                                                const cached = providerHealthCache.get(p.id);
-                                                const fresh = cached && Date.now() - cached.at < 30_000 ? cached : null;
-                                                const health = fresh ? fresh : { at: Date.now(), ...(await providerHealthFor(userAgentDir, p.id)) };
-                                                if (!fresh) providerHealthCache.set(p.id, health);
-                                                return { ...p, keyLabel: keyStatusLabel(p), health: { ok: health.ok, status: health.status, problem: health.problem, checkedAt: health.at } };
-                                        }),
-                                );
-                                return json({
-                                        ok: true,
-                                        providers,
-                                        defaultProvider: list.defaultProvider ?? null,
-                                        defaultModel: list.defaultModel ?? null,
-                                        // The engine's OWN model (env-driven, unchanged by registry
-                                        // writes — restart or .env to change engine routing).
-                                        engine: { provider: PROVIDER, model: MODEL_ID },
-                                        presets: PRESETS.map(({ id, label, baseUrl, api, defaultModel, input, keyEnvHint, note }) => ({
-                                                id, label, baseUrl, api, defaultModel, input, keyEnvHint, ...(note ? { note } : {}),
-                                        })),
-                                });
-                        }
-
-                        if (method === "POST" && path === "/api/providers") {
-                                const b = body ?? {};
-                                const presetId = typeof b.preset === "string" ? b.preset : undefined;
-                                const preset = PRESETS.find((p) => p.id === presetId);
-                                if (!preset) {
-                                        return respond(400, { ok: false, error: `unknown preset "${presetId}" — presets: ${PRESETS.map((p) => p.id).join(", ")}` });
-                                }
-                                const id = typeof b.id === "string" && b.id ? b.id : preset.id;
-                                if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) return respond(400, { ok: false, error: `bad registry id "${id}"` });
-                                const baseUrl = typeof b.baseUrl === "string" && b.baseUrl ? b.baseUrl : preset.baseUrl;
-                                const modelId = typeof b.model === "string" && b.model ? b.model : preset.defaultModel;
-                                if (!modelId) return respond(400, { ok: false, error: "no model id (use `model`)" });
-                                const apiKey = typeof b.apiKey === "string" && b.apiKey ? b.apiKey : undefined;
-                                const keyEnv = typeof b.keyEnv === "string" && b.keyEnv ? b.keyEnv : undefined;
-                                if (apiKey && keyEnv) return respond(400, { ok: false, error: "apiKey and keyEnv are mutually exclusive" });
-                                const entry: ProviderEntry = {
-                                        id,
-                                        name: typeof b.name === "string" && b.name ? b.name : preset.id === "custom" ? id : preset.label.split(" (")[0],
-                                        baseUrl,
-                                        api: preset.api,
-                                        modelId,
-                                        input: preset.input,
-                                        ...(apiKey ? { apiKeyInAuthJson: apiKey } : {}),
-                                        ...(keyEnv ? { apiKeyEnvRef: keyEnv } : {}),
-                                };
-                                // The bridge preset keeps the CLI's exact semantics.
-                                if (preset.id === "bridge") {
-                                        entry.id = process.env.PI_PROVIDER || "zai-bridge";
-                                        entry.apiKeyInModelsJson = process.env.BRIDGE_API_KEY || "bridge-local";
-                                        entry.apiKeyInAuthJson = undefined;
-                                        entry.extraModelIds = (process.env.BRIDGE_KNOWN_MODELS || "kimi-k2.5,qwen3.7-plus,qwen3.6-plus")
-                                                .split(",")
-                                                .map((s) => s.trim())
-                                                .filter((m) => m && m !== modelId);
-                                }
-                                upsertProvider(userAgentDir, entry, { setDefault: b.setDefault === true });
-                                providerHealthCache.delete(entry.id);
-                                // Verification mirrors the CLI (non-fatal write + honest status).
-                                const result = await testProvider(userAgentDir, entry.id, 8000);
-                                if (b.allModels === true && result.probe?.ok) {
-                                        await refreshProviderModels(userAgentDir, entry.id);
-                                }
-                                emit("provider:changed", { action: "add", provider: entry.id, model: modelId });
-                                return json({ ok: true, provider: entry.id, model: modelId, probe: result.probe ?? null });
-                        }
-
-                        const idMatch = /^\/api\/providers\/([a-z0-9-]+)(?:\/(key|default|test|refresh))?$/.exec(path);
-                        if (idMatch) {
-                                const id = idMatch[1];
-                                const action = idMatch[2];
-
-                                if (method === "POST" && action === "key") {
-                                        const key = typeof (body as any)?.apiKey === "string" ? (body as any).apiKey : "";
-                                        if (!key) return respond(400, { ok: false, error: "apiKey required" });
-                                        if (!setProviderKey(userAgentDir, id, key)) return respond(404, { ok: false, error: `unknown provider "${id}"` });
-                                        providerHealthCache.delete(id);
-                                        const result = await testProvider(userAgentDir, id, 8000);
-                                        emit("provider:changed", { action: "key", provider: id });
-                                        return json({ ok: true, provider: id, probe: result.probe ?? null });
-                                }
-
-                                if (method === "POST" && action === "default") {
-                                        const model = typeof (body as any)?.model === "string" && (body as any).model ? (body as any).model : undefined;
-                                        const result = setDefaultModel(userAgentDir, id, model);
-                                        if (!result.ok) return respond(400, { ok: false, error: result.error });
-                                        emit("provider:changed", { action: "default", provider: id });
-                                        return json({ ok: true, provider: id });
-                                }
-
-                                if (method === "GET" && action === "test") {
-                                        providerHealthCache.delete(id);
-                                        const result = await testProvider(userAgentDir, id, 8000);
-                                        if (!result.found) return respond(404, { ok: false, error: `unknown provider "${id}"` });
-                                        return json({ ok: true, provider: id, probe: result.probe ?? null, keySource: result.keySource ?? null });
-                                }
-
-                                if (method === "POST" && action === "refresh") {
-                                        const result = await refreshProviderModels(userAgentDir, id);
-                                        if (!result.found) return respond(404, { ok: false, error: `unknown provider "${id}"` });
-                                        providerHealthCache.delete(id);
-                                        emit("provider:changed", { action: "refresh", provider: id, added: result.added.length });
-                                        return json({ ok: true, provider: id, added: result.added, missing: result.missing, problem: result.problem ?? null });
-                                }
-
-                                if (method === "DELETE" && !action) {
-                                        const result = removeProvider(userAgentDir, id);
-                                        if (!result.removed) return respond(404, { ok: false, error: `unknown provider "${id}"` });
-                                        providerHealthCache.delete(id);
-                                        emit("provider:changed", { action: "remove", provider: id });
-                                        return json({ ok: true, provider: id, defaultFellBack: result.wasDefault, remaining: result.remaining });
-                                }
-                        }
-                        return respond(404, { ok: false, error: `unknown providers route: ${method} ${path}` });
-                }
-
-                // ------------------------------------------------------------------
                 // Web results store (webcache) — stats/clear/sweep for the
                 // dashboard. The store root honors UNOWN_WEB_CACHE_DIR /
                 // UNOWN_HOME exactly like every other process, so these
@@ -716,26 +566,6 @@ export function recoverOrphans() {
  *  equivalent; ours is an in-process poll loop). Created at module scope so
  *  REST handlers (POST .../run) can reach it. */
 export const automationsScheduler = new AutomationsScheduler();
-
-// ---------------------------------------------------------------------------
-// Provider health cache (M4) — one bounded probe per provider per 30s so a
-// polling dashboard cannot become a probe storm. Entries are invalidated on
-// every mutation (add/key/remove/refresh).
-// ---------------------------------------------------------------------------
-interface ProviderHealth {
-        at: number;
-        ok: boolean;
-        status?: number;
-        problem?: string;
-}
-const providerHealthCache = new Map<string, ProviderHealth>();
-
-async function providerHealthFor(userAgentDir: string, providerId: string): Promise<Omit<ProviderHealth, "at">> {
-        const result = await testProvider(userAgentDir, providerId, 5000);
-        if (!result.found) return { ok: false, problem: "unknown" };
-        if (!result.probe) return { ok: true };
-        return { ok: result.probe.ok, status: result.probe.status, problem: result.probe.problem };
-}
 
 export function startServer(port: number = PORT) {
         // Engine-process scope: the governor's ledger/breaker track THIS process's

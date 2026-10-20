@@ -16,7 +16,6 @@ export const DASHBOARD_TABS = [
   "console",
   "sandboxes",
   "gateway",
-  "providers",
   "router",
   "automations",
   "webcache",

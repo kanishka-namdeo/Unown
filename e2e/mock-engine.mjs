@@ -210,47 +210,6 @@ const webcache = {
   ],
 };
 
-// Multi-provider registry (M5): two configured providers (the bundled bridge
-// as default + a direct Agnes entry), the engine's own env-driven model, and
-// the preset table the Add form offers.
-const providers = {
-  ok: true,
-  providers: [
-    {
-      id: "zai-bridge",
-      name: "unown llm-bridge",
-      baseUrl: "http://127.0.0.1:3031/v1",
-      api: "openai-completions",
-      modelIds: ["kimi-k2.5", "qwen3.7-plus"],
-      keyStatus: "models-json",
-      keyLabel: "key: in models.json",
-      isDefault: true,
-      health: { ok: true, checkedAt: T0 },
-    },
-    {
-      id: "agnes",
-      name: "Agnes AI",
-      baseUrl: "https://apihub.agnes-ai.com/v1",
-      api: "openai-completions",
-      modelIds: ["agnes-3.0-flash"],
-      keyStatus: "env-ref",
-      keyEnv: "AGNES_API_KEY",
-      keyLabel: "key: $AGNES_API_KEY",
-      isDefault: false,
-      health: { ok: true, checkedAt: T0 },
-    },
-  ],
-  defaultProvider: "zai-bridge",
-  defaultModel: "kimi-k2.5",
-  engine: { provider: "zai-bridge", model: "kimi-k2.5" },
-  presets: [
-    { id: "bridge", label: "The bundled llm-bridge", baseUrl: "http://127.0.0.1:3031/v1", api: "openai-completions", defaultModel: "kimi-k2.5", input: ["text", "image"], keyEnvHint: "BRIDGE_UPSTREAM_KEY" },
-    { id: "openai", label: "OpenAI", baseUrl: "https://api.openai.com/v1", api: "openai-completions", defaultModel: "gpt-4o", input: ["text", "image"], keyEnvHint: "OPENAI_API_KEY" },
-    { id: "agnes", label: "Agnes AI (OpenAI-compatible, image-capable)", baseUrl: "https://apihub.agnes-ai.com/v1", api: "openai-completions", defaultModel: "agnes-3.0-flash", input: ["text", "image"], keyEnvHint: "AGNES_API_KEY" },
-    { id: "custom", label: "Any other OpenAI-compatible endpoint", baseUrl: "http://127.0.0.1:11434/v1", api: "openai-completions", defaultModel: "", input: ["text"], keyEnvHint: "your endpoint's key" },
-  ],
-};
-
 const overview = () => ({
   ok: true,
   agent: { name: "unown (mock)", layer: "mock", provider: "mock", bridge: { ok: true, port: 3031, requests: bridge.requests, errors: bridge.errors } },
@@ -381,9 +340,6 @@ const server = createServer((req, res) => {
     if (p === "/api/sandboxes") return json(res, { sandboxes });
     if (p === "/api/skills") return json(res, { skills });
     if (p === "/api/bridge") return json(res, bridge);
-    if (p === "/api/providers") return json(res, providers);
-    if (p === "/api/providers/agnes/test")
-      return json(res, { ok: true, provider: "agnes", probe: { ok: true, models: ["agnes-3.0-flash"] }, keySource: "env-ref" });
     if (p === "/api/webcache") return json(res, webcache);
     if (p === "/api/automations") return json(res, { automations });
     const autoRunsMatch = p.match(/^\/api\/automations\/([^/]+)\/runs$/);

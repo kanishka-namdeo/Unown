@@ -1,13 +1,13 @@
 /**
  * presets.ts — the provider preset table (M4).
  *
- * Lives in its own module with NO imports beyond node builtins so BOTH halves
- * can load it: the terminal CLI (setup.ts / providers-cli.ts re-export) AND
- * the detached engine (server.ts's /api/providers, which must never import
- * term.ts — the detachment contract is enforced by import-graph tests).
+ * Lives in its own module with NO imports beyond node builtins so any
+ * consumer can load it without dragging terminal dependencies: the CLI
+ * (setup.ts / providers-cli.ts re-export) and the interactive TUI — the
+ * import-graph detachment tests stay green either way.
  *
- * The engine-backed dashboard provider form offers the same presets the CLI
- * wizard does — one table, two surfaces.
+ * One table for every terminal surface: the registry (providers.ts) and the
+ * CLI wizard offer the same presets.
  */
 
 export interface ProviderPreset {

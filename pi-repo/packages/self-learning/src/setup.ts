@@ -26,8 +26,8 @@ import { keyStatusLabel, listProviders, upsertProvider, type ProviderEntry } fro
 import { bridgeKnownModels, UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
-// Provider presets — re-exported from presets.ts (M4: the detached engine's
-// /api/providers offers the same table; presets.ts imports nothing from the
+// Provider presets — re-exported from presets.ts (M4 extraction: the registry
+// and the CLI share one table; presets.ts imports nothing from the
 // terminal half, so the import-graph detachment tests stay green).
 // ---------------------------------------------------------------------------
 export { PRESETS } from "./presets.ts";

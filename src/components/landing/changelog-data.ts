@@ -30,13 +30,13 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 182;
+export const CHANGELOG_TOTAL_ENTRIES = 183;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 90,
   "Changed": 25,
   "Deprecated": 0,
-  "Removed": 0,
+  "Removed": 1,
   "Fixed": 37,
   "Security": 3,
   "Behavior": 27
@@ -46,17 +46,26 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 60,
+    "total": 61,
     "counts": {
       "Added": 36,
       "Changed": 6,
       "Deprecated": 0,
-      "Removed": 0,
+      "Removed": 1,
       "Fixed": 11,
       "Security": 0,
       "Behavior": 7
     },
     "groups": [
+      {
+        "bucket": "Removed",
+        "items": [
+          {
+            "title": "provider management lives in the terminal now — the dashboard \"Providers\" tab is gone",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Added",
         "items": [
