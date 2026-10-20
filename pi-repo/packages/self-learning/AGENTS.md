@@ -113,7 +113,7 @@ This package is Unowned (modified from upstream pi-mono); sibling packages (`ai`
   the same dir). Post-guard: the attacker's directive NEVER shipping is
   ASSERTED (deterministic guarantee); whether the dream LLM plants the
   poison pre-guard is recorded as measured (prompt-resistance, n=1).
-- `curl -s localhost:3030/api/overview` → up, provider `zai-bridge/kimi-k2.5`.
+- `curl -s localhost:3030/api/overview` → up, provider `zai-bridge` with default model `kimi-k2.5`.
 - `bin/unown doctor` from the repo root → all green (incl. "OS sandbox (bubblewrap)").
 - Sandbox suite (profile + engine) and the OS-sandbox profile contract are defined in `scripts/AGENTS.md`; both `bwrap_smoke.sh` (25 checks) and `verify_sandbox.mjs` (12 checks) must pass before committing sandbox changes or refreshing `native/bin/bwrap`.
 - A Learning Lab cycle passes end to end (sandboxed pi agent → bridge → model, with tool calls) and the router's autonomous runs pass; AutoDream produces a versioned memory update. Mint smoke: `curl -X POST localhost:3030/api/tasks/mint` → an authored task goes through self-check + validation and lands as minted (agent failed it) or discarded (agent solved it — the honest outcome); `GET /api/overview` `kpis.suite` reflects it.

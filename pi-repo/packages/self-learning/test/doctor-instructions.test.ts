@@ -145,6 +145,7 @@ describe("auditInstructionSet — AGENTS.md stale references", () => {
         test("warns when AGENTS.md references a path that does not exist", () => {
                 const dir = freshDir("agents-stale");
                 try {
+                        writeRel(dir, "src/index.ts", "export {};\n"); // anchor for src/missing-file.ts
                         writeRel(
                                 dir,
                                 "AGENTS.md",
@@ -157,13 +158,15 @@ describe("auditInstructionSet — AGENTS.md stale references", () => {
                                 ].join("\n"),
                         );
                         const report = auditInstructionSet(dir, optsFor(dir));
-                        // Both `src/index.ts` and `docs/guide.md` and `src/missing-file.ts`
-                        // are missing — each should produce a warn finding.
+                        // The link to src/index.ts resolves; the link to docs/guide.md
+                        // does not (links stay STRICT — no anchor rule); the backtick
+                        // src/missing-file.ts has an existing src/ anchor, so the
+                        // non-resolving tail is confident staleness. Each warns.
                         const warns = report.agentsMd.filter((f) => f.severity === "warn");
                         expect(warns.length).toBeGreaterThan(0);
-                        expect(warns.some((f) => f.message.includes("src/index.ts"))).toBe(true);
                         expect(warns.some((f) => f.message.includes("docs/guide.md"))).toBe(true);
                         expect(warns.some((f) => f.message.includes("src/missing-file.ts"))).toBe(true);
+                        expect(warns.some((f) => f.message.includes("src/index.ts"))).toBe(false);
                 } finally {
                         rmSync(dir, { recursive: true, force: true });
                 }
@@ -176,11 +179,77 @@ describe("auditInstructionSet — AGENTS.md stale references", () => {
                         writeRel(
                                 dir,
                                 "AGENTS.md",
-                                ["# AGENTS.md", "", "See [the source](src/index.ts).", ""].join("\n"),
+                                ["# AGENTS.md", "", "See [the source](src/index.ts).", "", "Also `src/index.ts` in backticks.", ""].join("\n"),
                         );
                         const report = auditInstructionSet(dir, optsFor(dir));
                         const warns = report.agentsMd.filter((f) => f.severity === "warn");
                         expect(warns.length).toBe(0);
+                } finally {
+                        rmSync(dir, { recursive: true, force: true });
+                }
+        });
+
+        // Confidence ladder for backtick tokens: prose legitimately backticks
+        // package-relative shorthand, git refs, bare filenames, URL paths and
+        // absolute paths — none resolve from the project root, none are
+        // staleness. Only anchored project-relative paths warn. (Measured on
+        // this repo's own AGENTS.md: 31 warns, 0 true positives before this
+        // rule.) Markdown links keep the strict check in both directions.
+        test("backtick confidence ladder: unanchored/bare/absolute prose is not flagged", () => {
+                const dir = freshDir("agents-ladder");
+                try {
+                        writeRel(dir, "src/index.ts", "export {};\n");
+                        writeRel(
+                                dir,
+                                "AGENTS.md",
+                                [
+                                        "# AGENTS.md",
+                                        "",
+                                        "Shorthand from another package's base: `src/elsewhere.ts` (src/ exists here, so this one IS flagged).",
+                                        "Git ref: `origin/main`.",
+                                        "Bare filename: `changelog-data.ts`.",
+                                        "URL path: `/api/overview`.",
+                                        "Absolute path: `/usr/local/bin/bun`.",
+                                        "Anchor the project does not have: `memory/local.md` and `test/_env.ts`.",
+                                        "",
+                                ].join("\n"),
+                        );
+                        const report = auditInstructionSet(dir, optsFor(dir));
+                        const warns = report.agentsMd.filter((f) => f.severity === "warn");
+                        const messages = warns.map((f) => f.message).join("\n");
+                        // The anchored shorthand IS confident staleness (src/ exists,
+                        // the tail does not) — that is the ladder's true positive.
+                        expect(warns.some((f) => f.message.includes("src/elsewhere.ts"))).toBe(true);
+                        // Everything else is prose, not staleness.
+                        expect(messages.includes("origin/main")).toBe(false);
+                        expect(messages.includes("changelog-data.ts")).toBe(false);
+                        expect(messages.includes("/api/overview")).toBe(false);
+                        expect(messages.includes("/usr/local/bin/bun")).toBe(false);
+                        expect(messages.includes("memory/local.md")).toBe(false);
+                        expect(messages.includes("test/_env.ts")).toBe(false);
+                } finally {
+                        rmSync(dir, { recursive: true, force: true });
+                }
+        });
+
+        test("markdown links stay strict: an absolute link path is not a project file, but a broken relative link still warns", () => {
+                const dir = freshDir("agents-links-strict");
+                try {
+                        writeRel(
+                                dir,
+                                "AGENTS.md",
+                                [
+                                        "# AGENTS.md",
+                                        "",
+                                        "Site link [API](/api/overview) — a URL path, not a file.",
+                                        "Broken file link [docs](docs/guide.md).",
+                                        "",
+                                ].join("\n"),
+                        );
+                        const report = auditInstructionSet(dir, optsFor(dir));
+                        const warns = report.agentsMd.filter((f) => f.severity === "warn");
+                        expect(warns.some((f) => f.message.includes("docs/guide.md"))).toBe(true);
+                        expect(warns.some((f) => f.message.includes("/api/overview"))).toBe(false);
                 } finally {
                         rmSync(dir, { recursive: true, force: true });
                 }

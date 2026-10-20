@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 143;
+export const CHANGELOG_TOTAL_ENTRIES = 146;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 63,
   "Changed": 24,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 27,
+  "Fixed": 30,
   "Security": 3,
   "Behavior": 26
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 21,
+    "total": 24,
     "counts": {
       "Added": 9,
       "Changed": 5,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 1,
+      "Fixed": 4,
       "Security": 0,
       "Behavior": 6
     },
@@ -130,6 +130,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "doctor: the AGENTS.md staleness audit now warns only on confident staleness — 31 false positives → 0 on this…",
+            "behavior": false
+          },
+          {
+            "title": "scripts: test_bridge.py repointed at the bridge it actually tests",
+            "behavior": false
+          },
+          {
+            "title": "docs: the dashboard suite's warning noise is now a documented non-issue, not an unchased mystery",
+            "behavior": false
+          },
           {
             "title": "fleet: restricted agents regain ask_question",
             "behavior": false

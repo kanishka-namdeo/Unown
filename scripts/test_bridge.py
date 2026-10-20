@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
-"""End-to-end test of the new llm-bridge (port 3032)."""
-import json, urllib.request, base64, struct, zlib, time
+"""End-to-end probe of the llm-bridge on its default port 3031.
 
-BASE = "http://127.0.0.1:3032/v1"
+Historical note: this harness predates the port split — it was written when
+the bridge itself listened on 3032. That port now belongs to the zai-upstream
+shim (mini-services/zai-upstream, started by scripts/start.ts only when
+BRIDGE_UPSTREAM_URL points at it); the bridge is 3031. Override the target
+with BRIDGE_PORT if you run it non-default. Sends the Bearer token from
+BRIDGE_API_KEY when set (the bridge enforces auth iff that key is set).
+"""
+import json, urllib.request, base64, struct, zlib, time, os
+
+BASE = f"http://127.0.0.1:{os.environ.get('BRIDGE_PORT', '3031')}/v1"
+key = os.environ.get("BRIDGE_API_KEY")
 
 def call(body, stream=False, timeout=120):
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
     req = urllib.request.Request(f"{BASE}/chat/completions", data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json"})
+        headers=headers)
     t0 = time.time()
     with urllib.request.urlopen(req, timeout=timeout) as r:
         if stream:
@@ -80,6 +92,10 @@ else:
 
 print()
 print("Bridge log:")
-with urllib.request.urlopen("http://127.0.0.1:3032/v1/log") as r:
+_log_headers = {}
+if key:
+    _log_headers["Authorization"] = f"Bearer {key}"
+_log_req = urllib.request.Request(f"{BASE}/log", headers=_log_headers)
+with urllib.request.urlopen(_log_req) as r:
     for e in json.loads(r.read())["log"]:
         print(f"  {e['model']} -> {e['upstreamModel']} stream={e['stream']} {e['durationMs']}ms content={e['contentChars']}ch tools={e['toolCalls']} err={e.get('error')}")

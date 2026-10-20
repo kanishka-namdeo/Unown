@@ -515,6 +515,19 @@ preserved in the margin notes where they were cited from history.
   unit tests; `use-toast` reducer; all ten tabs' happy/empty/error states and
   mutation flows; SSE bridge invalidation and `router:error` toasts (206 tests).
   This layer already found a real crash (`refetchInterval` on run-less data).
+- **KNOWN NOISE (measured benign — do not chase)** - `bun test src` prints
+  ~17 identical `not wrapped in act(...)` warnings per run plus ~26 recharts
+  `width(0) and height(0)` warnings. Root cause: radix `Presence`/`ForwardRef`
+  animation ticks and recharts `ResponsiveContainer` measurement updates fire
+  on chained rAF channels in happy-dom AFTER the test's last awaited
+  assertion (mid-test, not post-teardown). Verified benign `[V: 2026-10-20]`:
+  27/27 consecutive green runs on a 2-core box (bridge ×6 incl. failover
+  stress, self-learning ×3, integration ×3, dashboard ×2), byte-identical
+  warning counts run-over-run. Investigation record: a global act-flush
+  `afterEach` in the `bunfig` preload AND a generous in-file flush (2 timer
+  turns + 30 ms window before `cleanup()`) both left the count unchanged —
+  an afterEach-scope flush is the wrong tool for mid-test stragglers. Revisit
+  only if a dashboard test ever actually fails with this signature.
 - **OPEN** - `providers.tsx` is at 58% line coverage and `activity-feed.tsx` at
   54% `[V]`; the uncovered ranges are the SSE frame parser and the activity
   normalisation. These are the two highest-risk pure functions in the dashboard

@@ -201,7 +201,35 @@ function auditAgentsMd(cwd: string): Finding[] {
 
         // Stale check: scan markdown links + backtick paths for references that no
         // longer resolve. Each broken reference is one warn finding.
+        //
+        // Confidence ladder for BACKTICK tokens (prose — a weaker signal than a
+        // link): real AGENTS.md prose legitimately backticks package-relative
+        // shorthand (`src/cli.ts` meaning <some-package>/src/cli.ts), git refs
+        // (`origin/main`), bare filenames (`changelog-data.ts`), URL paths
+        // (`/api/overview`) and absolute paths (`/usr/local/bin/bun`). None of
+        // those resolve from the project root, none of them are staleness, and
+        // warning on all of them buries the signal (measured on this repo's own
+        // AGENTS.md: 31 warns, 0 true positives). So a backtick token only
+        // warns when we are CONFIDENT the author meant a project-relative path:
+        // relative, contains a separator, and its ANCHOR (first path segment)
+        // exists in the project — the author demonstrably knew the tree, so a
+        // non-resolving tail is real staleness. Markdown links keep the strict
+        // check in both directions: a link is an explicit navigation affordance,
+        // not prose emphasis.
         const broken = new Set<string>();
+        const considerRef = (raw: string, strict: boolean) => {
+                // Absolute/URL paths are outside the project's audit scope.
+                if (raw.startsWith("/")) return;
+                if (!strict) {
+                        const segs = raw.split("/");
+                        // Bare filename — no anchor to verify against.
+                        if (segs.length < 2) return;
+                        const anchor = segs[0];
+                        // `./`/`../` refs always carry a resolvable anchor.
+                        if (anchor !== "." && anchor !== ".." && !existsSync(join(cwd, anchor))) return;
+                }
+                if (!existsSync(join(cwd, raw))) broken.add(raw);
+        };
         let m: RegExpExecArray | null;
         MD_LINK_RE.lastIndex = 0;
         while ((m = MD_LINK_RE.exec(text)) !== null) {
@@ -209,15 +237,13 @@ function auditAgentsMd(cwd: string): Finding[] {
                 if (ref === null) continue;
                 // Skip external anchors that start with `#` — they're in-page refs.
                 if (ref.startsWith("#")) continue;
-                const abs = join(cwd, ref);
-                if (!existsSync(abs)) broken.add(ref);
+                considerRef(ref, true);
         }
         BACKTICK_PATH_RE.lastIndex = 0;
         while ((m = BACKTICK_PATH_RE.exec(text)) !== null) {
                 const ref = cleanFileRef(m[1]);
                 if (ref === null) continue;
-                const abs = join(cwd, ref);
-                if (!existsSync(abs)) broken.add(ref);
+                considerRef(ref, false);
         }
         for (const ref of Array.from(broken).sort()) {
                 out.push({
