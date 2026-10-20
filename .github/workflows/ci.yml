@@ -128,6 +128,14 @@ jobs:
           fi
       - name: Smoke — CLI boots (unown --help)
         run: bun bin/unown --help
+      - name: Smoke — dashboard TTY guard (non-TTY exits with guidance)
+        # The TUI dashboard must refuse a non-interactive stdin with the
+        # engine-API hint, not hang or crash — on every OS leg.
+        shell: bash
+        run: |
+          out=$(bun bin/unown dashboard < /dev/null 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "needs an interactive terminal"
       - name: "Smoke — CLI surface (info, doctor --json, completions, changelog, update --check)"
         # The 2026 productization surface, non-interactively:
         #  - unown info / doctor --json must emit valid JSON (node -e parses it)

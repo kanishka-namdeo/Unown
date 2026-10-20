@@ -202,7 +202,12 @@ const INVALIDATIONS: Record<string, ResourceId[]> = {
  * dashboard's describe(); tones map to theme tokens). */
 export function describeEvent(ev: AgentEvent): { text: string; tone: ActivityItem["tone"] } | null {
 	const p = ev.payload ?? {};
-	const str = (k: string, d = "?"): string => (typeof p[k] === "string" ? (p[k] as string) : d);
+	const str = (k: string, d = "?"): string => {
+		const v = p[k];
+		if (typeof v === "string") return v;
+		if (typeof v === "number") return String(v);
+		return d;
+	};
 	const num = (k: string): number | undefined => (typeof p[k] === "number" ? (p[k] as number) : undefined);
 	switch (ev.event) {
 		case "hello":
@@ -728,20 +733,41 @@ export class DashboardStore {
 	}
 
 	private handleFrame(frame: string): void {
-		let event = "message";
+		// The engine writes ENVELOPE-ONLY frames (server.ts /api/events):
+		//   data: {"event":"memory:changed","payload":{…},"ts":…}
+		// Named-event frames ("event: x" + "data: {…}", the browser
+		// EventSource idiom) are also accepted so the mock engine and any
+		// future relay keep working unchanged.
+		let namedEvent: string | null = null;
 		let data = "";
 		for (const line of frame.split("\n")) {
-			if (line.startsWith("event:")) event = line.slice(6).trim();
+			if (line.startsWith("event:")) namedEvent = line.slice(6).trim();
 			else if (line.startsWith("data:")) data += line.slice(5).trim();
 		}
-		if (event === "ping") return;
-		let payload: Record<string, unknown> = {};
+		if (!data) return;
+		let parsed: unknown;
 		try {
-			payload = data ? (JSON.parse(data) as Record<string, unknown>) : {};
+			parsed = JSON.parse(data);
 		} catch {
-			payload = {};
+			return;
 		}
-		const ev: AgentEvent = { event, payload, ts: typeof payload.ts === "number" ? payload.ts : Date.now() };
+		let event: string;
+		let payload: Record<string, unknown>;
+		let ts: number;
+		if (parsed !== null && typeof parsed === "object" && "event" in parsed && typeof (parsed as Record<string, unknown>).event === "string") {
+			const env = parsed as { event: string; payload?: unknown; ts?: unknown };
+			event = env.event;
+			payload = (env.payload !== null && typeof env.payload === "object" ? (env.payload as Record<string, unknown>) : {});
+			ts = typeof env.ts === "number" ? env.ts : Date.now();
+		} else if (namedEvent !== null) {
+			event = namedEvent;
+			payload = (parsed !== null && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {});
+			ts = typeof payload.ts === "number" ? payload.ts : Date.now();
+		} else {
+			return;
+		}
+		if (event === "ping") return;
+		const ev: AgentEvent = { event, payload, ts };
 		this.lastContact = Date.now();
 		// Activity ring.
 		const desc = describeEvent(ev);
