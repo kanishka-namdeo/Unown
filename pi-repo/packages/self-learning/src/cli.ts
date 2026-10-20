@@ -1201,6 +1201,23 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                         res.ok && body.ok,
                         `${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`,
                 );
+                // 5b. wedged-but-alive engine (F4, docs/detached-engine-architecture.md):
+                // the router reports how long its busy mutex has been held; past 2x
+                // the job timeout the watchdog should have cut the job off — if it
+                // hasn't, the engine is wedged at a level the watchdog cannot reach
+                // and the operator should restart it (`bun run agent:stop && agent:start`).
+                const routerInfo = body?.router;
+                if (routerInfo && typeof routerInfo.busyMs === "number" && typeof routerInfo.jobTimeoutMs === "number") {
+                        const limit = 2 * routerInfo.jobTimeoutMs;
+                        if (routerInfo.busyMs > limit) {
+                                check(
+                                        "engine router",
+                                        false,
+                                        `busy mutex held ${Math.round(routerInfo.busyMs / 1000)}s on '${routerInfo.activeJob}' — past 2x the job timeout; restart the engine`,
+                                        "warn",
+                                );
+                        }
+                }
         } catch {
                 check(
                         "self-learning engine",
@@ -1438,6 +1455,56 @@ async function cmdNote(text: string) {
         process.exit(0);
 }
 
+/** F10 silence budget for print mode (ms). Floor 10s; default 5 min — above every per-call timeout in the stack (llm.ts 240s, bridge 180s headers). */
+function printStallMs(): number {
+        const raw = Number(process.env.PI_PRINT_STALL_MS);
+        return Number.isFinite(raw) && raw >= 10_000 ? raw : 300_000;
+}
+
+/**
+ * F10 (docs/detached-engine-architecture.md): print mode must always be
+ * bounded. Unattended callers (engine automations, CI) cannot press Ctrl-C,
+ * so a session that goes SILENT mid-run — a wedged dispose, a stuck fetch, a
+ * stray handle keeping the loop alive — ends via a stall deadline instead of
+ * hanging forever. Any session event re-arms the timer (long legitimate turns
+ * stream tokens and tool events constantly); a light poll re-subscribes when
+ * the runtime rebinds to a new session object. Everything is best-effort:
+ * the watchdog must never break the run it guards.
+ */
+function installPrintStallWatchdog(runtime: any): void {
+        try {
+                let timer: any = null;
+                const arm = () => {
+                        if (timer) clearTimeout(timer);
+                        timer = setTimeout(() => {
+                                console.error(
+                                        `unown: print mode stalled — no session events for ${Math.round(printStallMs() / 1000)}s; forcing exit (tune with PI_PRINT_STALL_MS)`,
+                                );
+                                process.exit(1);
+                        }, printStallMs());
+                        timer.unref?.();
+                };
+                arm();
+                let lastSession: unknown = null;
+                let off: (() => void) | null = null;
+                const poll = setInterval(() => {
+                        const s = runtime?.session;
+                        if (s && s !== lastSession) {
+                                lastSession = s;
+                                try {
+                                        off?.();
+                                } catch {
+                                        /* best effort */
+                                }
+                                off = typeof s.subscribe === "function" ? s.subscribe(() => arm()) : null;
+                        }
+                }, 1_000);
+                poll.unref?.();
+        } catch {
+                /* best effort only */
+        }
+}
+
 async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: boolean) {
         const cwd = process.cwd();
         // Pre-flight: fail fast with instructions when the model endpoint is
@@ -1502,6 +1569,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 mcpServers: args.mcpServers,
                 noAgentsMd: args.noAgentsMd,
         });
+        installPrintStallWatchdog(runtime);
         // The fleet drain sentinel rides as the final message in orchestrator
         // runs: the fleet's input handler intercepts it (never model-visible)
         // and waits for async subagents so their steer-back results land while

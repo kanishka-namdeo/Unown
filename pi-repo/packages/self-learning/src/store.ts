@@ -20,7 +20,10 @@ export const DATA_DIR = process.env.PI_SELFLEARNING_DATA || join(STATE_ROOT, "da
 export const DB_PATH = process.env.PI_SELFLEARNING_DB || join(STATE_ROOT, "db", "selflearning.db");
 export const BRIDGE_URL = process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031";
 
-mkdirSync(dirname(DB_PATH), { recursive: true });
+// M2 (docs/detached-engine-architecture.md): the DB directory is created by
+// the Store CONSTRUCTOR, not at module load — importing this module (which
+// the terminal agent does transitively, for the consts above) must stay
+// side-effect free.
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS runs (
@@ -159,11 +162,23 @@ CREATE INDEX IF NOT EXISTS idx_runs_task ON runs(task_id);
 CREATE INDEX IF NOT EXISTS idx_runs_cycle ON runs(cycle_id);
 CREATE INDEX IF NOT EXISTS idx_notes_dream ON notes(dream_id);
 CREATE INDEX IF NOT EXISTS idx_hook_ts ON hook_log(ts);
+
+-- governor.ts: rolling LLM spend ledger (engine-side calls only; agent-run
+-- tokens are summed from the runs table). Pruned to 24h+margin.
+CREATE TABLE IF NOT EXISTS llm_ledger (
+  ts INTEGER,
+  ok INTEGER,
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  model TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_llm_ledger_ts ON llm_ledger(ts);
 `;
 
 export class Store {
         private db: Database;
         constructor(path: string = DB_PATH) {
+                mkdirSync(dirname(path), { recursive: true });
                 this.db = new Database(path, { create: true });
                 this.db.exec("PRAGMA journal_mode = WAL;");
                 this.db.exec("PRAGMA busy_timeout = 5000;");
@@ -230,4 +245,44 @@ export class Store {
         }
 }
 
-export const store = new Store();
+/**
+ * The lazy, engine-owned store singleton (M2).
+ *
+ * HISTORY: this used to be `export const store = new Store()` at module
+ * scope — every process that imported ANY src module transitively (the
+ * terminal agent via termhooks→hooks and tools→llm) OPENED THE ENGINE'S
+ * SQLITE DB (3 fds: db + -wal + -shm) and ran a schema DDL exec + a
+ * memory_versions dedup DELETE on every CLI boot. On Windows, cross-process
+ * BEGIN IMMEDIATE exclusion is broken in Bun (oven-sh/bun#40659), so a
+ * terminal session contending with a writing engine was a real hazard.
+ *
+ * Now: the proxy defers construction to the first store METHOD call. The
+ * terminal agent's import graph (post bash-policy split) never calls a store
+ * method, so it never opens the DB — pinned by test/detachment.test.ts.
+ * The engine opens it exactly once, at first use, on its own data root.
+ */
+let _store: Store | null = null;
+
+export function getStore(): Store {
+        if (_store === null) {
+                _store = new Store();
+                // Keep a strong global reference: bun:sqlite Databases can be
+                // GC-closed mid-transaction when no JS reference remains (verified
+                // against Bun 1.3 — see docs/detached-engine-research.md §1).
+                (globalThis as any).__unown_engine_store = _store;
+        }
+        return _store;
+}
+
+/** Test/doctor probe: has the DB been opened in this process? */
+export function storeOpened(): boolean {
+        return _store !== null;
+}
+
+export const store: Store = new Proxy({} as Store, {
+        get(_target, prop, receiver) {
+                const s = getStore() as any;
+                const value = s[prop];
+                return typeof value === "function" ? value.bind(s) : value;
+        },
+});

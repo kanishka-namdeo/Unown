@@ -279,8 +279,13 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                 error?: string,
         ): Promise<RunResult> => {
                 const endedAt = Date.now();
-                store.run(
-                        `UPDATE runs SET status = ?, ended_at = ?, transcript = ?, verify_output = ?, tokens_in = ?, tokens_out = ?, tool_calls = ?, turns = ?, error = ? WHERE id = ?`,
+                // STICKY FINALIZE (docs/detached-engine-architecture.md F2): only a
+                // row still in 'running' may be finalized. When the router watchdog
+                // or boot-time recoverOrphans already errored this row, the UPDATE
+                // matches zero rows and the late (zombie) finalize becomes a no-op —
+                // no note, no run:finished event, no overwriting the recovery state.
+                const info = store.run(
+                        `UPDATE runs SET status = ?, ended_at = ?, transcript = ?, verify_output = ?, tokens_in = ?, tokens_out = ?, tool_calls = ?, turns = ?, error = ? WHERE id = ? AND status = 'running'`,
                         [
                                 status,
                                 endedAt,
@@ -294,6 +299,7 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                 runId,
                         ],
                 );
+                const externallyFinalized = info.changes === 0;
                 const result: RunResult = {
                         id: runId,
                         status,
@@ -309,6 +315,10 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                         durationMs: endedAt - startedAt,
                         error,
                 };
+                if (externallyFinalized) {
+                        console.log(`[runner] run ${runId} was finalized externally (watchdog/orphan recovery) — late finalize skipped`);
+                        return result;
+                }
                 // Session note (fuel for AutoDream)
                 const note = noteFromRun({
                         id: runId,

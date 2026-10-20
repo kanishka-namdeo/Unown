@@ -20,7 +20,8 @@ import { history, resolveMemory, rollback, seedMemoryIfEmpty, snapshot, type Tie
 import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
-import { listJobs, router, setJobEnabled } from "./router.ts";
+import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
+import { breakerStatus, budgetStatus } from "./governor.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
 import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from "./skills.ts";
@@ -191,6 +192,20 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 memoryVersions: Object.fromEntries(mem.map((m) => [m.tier, m.version])),
                                 trend,
                                 routerBusy: router.isBusy(),
+                                // Detachment observability (docs/detached-engine-architecture.md F4/F5/F7):
+                                // how long the mutex has been held, by which job, and the
+                                // governor's budget/breaker state — `unown doctor` warns when
+                                // busyMs exceeds 2x the job timeout (wedged-but-alive engine).
+                                router: {
+                                        busy: router.isBusy(),
+                                        busyMs: router.busyMs(),
+                                        activeJob: router.activeJob(),
+                                        jobTimeoutMs: jobTimeoutMs(),
+                                },
+                                governor: {
+                                        budget: budgetStatus(),
+                                        breaker: breakerStatus(),
+                                },
                         });
                 }
 

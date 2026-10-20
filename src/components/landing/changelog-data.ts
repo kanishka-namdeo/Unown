@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 146;
+export const CHANGELOG_TOTAL_ENTRIES = 152;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 63,
-  "Changed": 24,
+  "Added": 66,
+  "Changed": 25,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 30,
+  "Fixed": 32,
   "Security": 3,
   "Behavior": 26
 };
@@ -46,49 +46,61 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 24,
+    "total": 30,
     "counts": {
-      "Added": 9,
-      "Changed": 5,
+      "Added": 12,
+      "Changed": 6,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 4,
+      "Fixed": 6,
       "Security": 0,
       "Behavior": 6
     },
     "groups": [
       {
-        "bucket": "Behavior",
+        "bucket": "Fixed",
         "items": [
           {
-            "title": "webcache: stale-while-revalidate — past-TTL answers serve instantly (marked) while a background refresh…",
-            "behavior": true
+            "title": "the engine's runaway dream loop is closed",
+            "behavior": false
           },
           {
-            "title": "fleet: the public surface — UNOWN_FLEET_TIMEOUT_MS wired for real, the --help contract…",
-            "behavior": true
+            "title": "no router job may hold the engine hostage anymore (job watchdog)",
+            "behavior": false
           },
           {
-            "title": "fleet: the interactive subagent fleet — async spawn, mid-run steering, ask_question…",
-            "behavior": true
+            "title": "doctor: the AGENTS.md staleness audit now warns only on confident staleness — 31 false positives → 0 on this…",
+            "behavior": false
           },
           {
-            "title": "subagents: context briefs — summary mode (pi-cciotti port)",
-            "behavior": true
+            "title": "scripts: test_bridge.py repointed at the bridge it actually tests",
+            "behavior": false
           },
           {
-            "title": "subagents: the advertised catalog, delegation levels, role builtins, the BLOCKED protocol…",
-            "behavior": true
+            "title": "docs: the dashboard suite's warning noise is now a documented non-issue, not an unchased mystery",
+            "behavior": false
           },
           {
-            "title": "addons: the TUI addon framework — ask_user_question, the addon-era todo, and the advisor…",
-            "behavior": true
+            "title": "fleet: restricted agents regain ask_question",
+            "behavior": false
           }
         ]
       },
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "the engine keeps its own books (budget governor + upstream circuit breaker)",
+            "behavior": false
+          },
+          {
+            "title": "print mode always exits (stall deadline)",
+            "behavior": false
+          },
+          {
+            "title": "research record",
+            "behavior": false
+          },
           {
             "title": "webcache: the performance layer — an in-memory index, a hot-entry memo, RAM recency, and cacache-style writes…",
             "behavior": false
@@ -128,29 +140,12 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         ]
       },
       {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "doctor: the AGENTS.md staleness audit now warns only on confident staleness — 31 false positives → 0 on this…",
-            "behavior": false
-          },
-          {
-            "title": "scripts: test_bridge.py repointed at the bridge it actually tests",
-            "behavior": false
-          },
-          {
-            "title": "docs: the dashboard suite's warning noise is now a documented non-issue, not an unchased mystery",
-            "behavior": false
-          },
-          {
-            "title": "fleet: restricted agents regain ask_question",
-            "behavior": false
-          }
-        ]
-      },
-      {
         "bucket": "Changed",
         "items": [
+          {
+            "title": "the terminal agent no longer opens the engine's database (measured)",
+            "behavior": false
+          },
           {
             "title": "landing: the scroll budget re-balanced — the addons strip pays for itself as a disclosure…",
             "behavior": false
@@ -170,6 +165,35 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "landing: the creature atlas — the sprites redrawn as authored pixel art",
             "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "webcache: stale-while-revalidate — past-TTL answers serve instantly (marked) while a background refresh…",
+            "behavior": true
+          },
+          {
+            "title": "fleet: the public surface — UNOWN_FLEET_TIMEOUT_MS wired for real, the --help contract…",
+            "behavior": true
+          },
+          {
+            "title": "fleet: the interactive subagent fleet — async spawn, mid-run steering, ask_question…",
+            "behavior": true
+          },
+          {
+            "title": "subagents: context briefs — summary mode (pi-cciotti port)",
+            "behavior": true
+          },
+          {
+            "title": "subagents: the advertised catalog, delegation levels, role builtins, the BLOCKED protocol…",
+            "behavior": true
+          },
+          {
+            "title": "addons: the TUI addon framework — ask_user_question, the addon-era todo, and the advisor…",
+            "behavior": true
           }
         ]
       }

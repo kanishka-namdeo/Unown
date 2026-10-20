@@ -37,7 +37,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve as resolvePath } from "node:path";
-import { decideBash, jailPath, syntaxCheck } from "./hooks.ts";
+import { decideBash, jailPath, syntaxCheck } from "./bash-policy.ts";
 import { assistantTextOf } from "./messages.ts";
 import { createPermissionGate, type PermissionGate, type ToolCallDecision } from "./permissions.ts";
 import { annotateToolOutput, recordShieldFlag, shieldEnabled } from "./shield.ts";

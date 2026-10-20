@@ -62,3 +62,19 @@ process.env.UNOWN_HOME ??= `${TEST_TMP}/unown-home`;
 process.env.UNOWN_WEB_CACHE ??= "0";
 // Deterministic default for buildTerminalNote's [subagent] tag (read per call).
 process.env.UNOWN_SUBAGENT ??= "";
+// Governor ceilings OFF for the suite by default (governor.test.ts sets its
+// own explicit limits per case): the shared redirected store accumulates
+// llm_ledger rows from every file whose code path touches llm.ts chat()
+// (against the dead bridge above — those are FAILED calls, but they still
+// count toward the CALL budget), and the router tests assert real job
+// executions that a stray 60-call/hour ceiling would silently skip.
+process.env.PI_ENGINE_MAX_CALLS_HOUR ??= "0";
+process.env.PI_ENGINE_MAX_TOKENS_HOUR ??= "0";
+process.env.PI_ENGINE_MAX_TOKENS_DAY ??= "0";
+// Same reasoning for the breaker: files that exercise llm.ts chat() against
+// the dead bridge record consecutive failures, and the breaker state is
+// in-memory for the WHOLE test process — without a huge threshold here, any
+// later router/harness test would see "upstream backoff" and skip its
+// learning jobs (run_count never moves, until() times out). governor.test.ts
+// pins the real threshold semantics with explicit per-case overrides.
+process.env.PI_LLM_BREAKER_THRESHOLD ??= "1000000";

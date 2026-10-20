@@ -6,6 +6,7 @@
  */
 import { emit } from "./bus.ts";
 import { BRIDGE_URL } from "./store.ts";
+import { recordLlmCall, recordLlmFailure, recordLlmSuccess } from "./governor.ts";
 
 const LLM_MODEL = process.env.PI_MODEL_ID || "kimi-k2.5"; // `||`: empty .env value means unset
 
@@ -112,16 +113,40 @@ export async function chat(
         // reject the field outright with a 400. Retry ONCE without it and log
         // the fallback on the bus (SSE stream + router event jobs); extractJson
         // remains the second line of defense either way.
-        if (!opts.responseSchema) return transientRetry(false);
+        //
+        // Governor hooks: every terminal outcome of this call lands in the
+        // spend ledger (successes with their token usage, failures without),
+        // and the upstream circuit breaker sees success/failure — the engine's
+        // auto-mode resource discipline (governor.ts).
+        const governed = async (withSchema: boolean): Promise<any> => {
+                const model = opts.model ?? LLM_MODEL;
+                try {
+                        const completion = await transientRetry(withSchema);
+                        const usage = completion?.usage;
+                        recordLlmCall(
+                                true,
+                                typeof usage?.prompt_tokens === "number" ? usage.prompt_tokens : null,
+                                typeof usage?.completion_tokens === "number" ? usage.completion_tokens : null,
+                                model,
+                        );
+                        recordLlmSuccess();
+                        return completion;
+                } catch (err) {
+                        recordLlmCall(false, null, null, model);
+                        recordLlmFailure();
+                        throw err;
+                }
+        };
+        if (!opts.responseSchema) return governed(false);
         try {
-                return await transientRetry(true);
+                return await governed(true);
         } catch (err: any) {
                 if (!/^llm-bridge 400:/.test(String(err?.message ?? err))) throw err;
                 emit("llm:schema-fallback", {
                         model: opts.model ?? LLM_MODEL,
                         reason: String(err?.message ?? err).slice(0, 240),
                 });
-                return transientRetry(false);
+                return governed(false);
         }
 }
 
