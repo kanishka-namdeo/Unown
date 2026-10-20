@@ -1683,3 +1683,128 @@ will optimize toward generic modern web — the contracts (palette, pixels,
 one-prop, one-sprite, proof-band purity) are what the creatures are designed
 inside of, and the signifier audit is the tiebreaker when a flag needs
 evidence.
+
+## Part 15 — The capability dex: an interactive bestiary for the agent's features
+
+The brief: the agent's capabilities — MCP, web search, subagents, LSP, memory,
+harness, routing, AutoDream, hooks, SDLC parity — shown as the ten original
+creature sprites from Part 14, "all in one place," as an interactive Pokédex.
+The research round (2026-10-20) went looking for a library to install and came
+back with a negative result, a UI pattern, and exactly one honest dependency.
+
+**Research first.** The question: does npm or GitHub hold a reusable
+"interactive Pokédex UI component" — a list-plus-detail bestiary widget we
+could feed our own sprites into? Search across the npm registry, GitHub,
+PokéAPI's own documentation and the tutorial orbit. The answer is no, and the
+shape of the no is the finding:
+
+- **Everything called "pokedex" is a data client for PokéAPI.** The four
+  packages the search surfaced — `pokedex-promise-v2` 4.2.3 (Node, promises —
+  "a library used to get information about Pokemons"), `pokenode-ts` 5.0.0
+  ("a typed PokéAPI client with zero runtime dependencies"),
+  `pokeapi-js-wrapper` 2.0.2 (browser wrapper, cached responses and
+  service-worker image caching), `@sherwinski/pokeapi-ts` 1.1.2 (TypeScript
+  SDK over the REST API) — all fetch Nintendo's species data and render
+  Nintendo's artwork. None of them can display a user's own sprites, because
+  their subject matter is Pokémon, not catalog UI. PokéAPI's own docs
+  (pokeapi.co/docs/v2) list the same wrapper family and nothing else; the
+  fair-use policy there asks consumers to cache locally, and the art it
+  serves is The Pokémon Company's.
+- **The remainder are tutorial and demo apps** — matheusmhq/pokedex-react-js,
+  mauricius/simple-react-pokedex, IdoBouskila/Pokedex, and the codementor /
+  itnext / Medium "build a Pokédex" walkthroughs — every one a PokéAPI
+  consumer shipping official artwork as a portfolio grid. Installable, not
+  drivable: they import precisely what the page may not.
+- **The non-affiliation wall forbids what every one of them would import.**
+  The Pokémon Company's legal page (pokemon.com/us/legal/information) states
+  that fan art grants no license to use Pokémon IP beyond personal,
+  noncommercial home use, and Nintendo/The Pokémon Company actively issued
+  copyright takedowns for fan art featuring their characters through
+  2024–2025. The landing AGENTS.md already drew this exact line ("No official
+  art, still. Nothing Pokémon-derived is vendored, hotlinked or reproduced") —
+  official sprites, cries and species data are the entire payload of every
+  existing pokedex library.
+- **So the dex is a UI pattern, not a package.** The FRLG/Gen-3 two-pane
+  Pokédex — a scrollable numbered list with a search box, and a detail pane
+  with the specimen, its entry text, category, type badges and its cry — is
+  interaction design, not somebody's dependency. It gets built in the page's
+  own design system, the same call the eight-band redesign made for tabs:
+  hand-rolled, WAI-ARIA, inside the GBA furniture.
+- **The one genuine, drivable dependency is fuse.js** (npm `fuse.js`;
+  krisk/Fuse on GitHub; fusejs.io). Zero dependencies, written in TypeScript
+  with the types in the box (`dist/fuse.d.ts`), and small — the README's own
+  table puts the basic fuzzy-only build at ~6.8 kB min+gzip (the round's ~7 kB
+  gz figure) and the full build with extended/logical search at ~8.6 kB;
+  checked against the registry the same day: v7.5.0, zero dependencies. It
+  drives the dex's real interactivity — fuzzy search over each entry's name,
+  category, type and entry text. The brief's rule — research online and
+  install tools that you can drive — is satisfied honestly: a real dependency
+  doing real interactive work, not a decorative install.
+
+**The design decision.** A new band #3, `id="dex"`, `data-hue="magma"` — the
+Gen-3 red the actual Pokédex device is. Magma is the page's only red section
+hue; proof keeps it too, and the allocation rule ("no two adjacent bands share
+one") still holds because showcase/gold separates them — the walk becomes
+psychic (hero) → leaf (loop) → **magma (dex)** → gold (showcase) → magma
+(proof) → psychic (alphabet) → gold (faq) → aqua (changelog) → leaf (finale),
+and the composition walk gets re-pinned for nine bands as the AGENTS.md's walk
+paragraph already demands.
+
+Position — between the loop band and the showcase band — is the argument, not
+a filler slot: the page becomes claim (hero) → how it learns (loop) → **what
+it can do (the catalog)** → what it looks like (showcase) → receipts (proof) →
+identity (alphabet) → record (changelog).
+
+All ten creatures move here, because the requirement is "all in one place":
+the dex becomes the one canonical home for creature art. The hero's
+session-party strip and the loop bento's tile badges are removed in the same
+change — a sprite in two places is two homes, and Part 12's one-fact-one-home
+rule applies to images as much as to words. The same rule decides where the
+copy goes: the bento's mechanism descriptions and the hero cli-expander's tool
+prose **move into** the dex entries rather than being duplicated — the dex is
+the one canonical home for the capability copy too, or it would immediately
+re-fund the restatement debt Part 12 spent a round paying down.
+
+The interaction contract, stated before the build so the build can be tested
+against it:
+
+- the entry list is an ARIA listbox with roving tabindex — arrows, Home, End
+  — and selection follows focus, the way the FRLG cursor moves;
+- the detail pane is `aria-live="polite"`, so a keyboard walk of the list
+  narrates every entry;
+- the search is a labelled input filtering the list through fuse.js, with an
+  N-of-ten counter — "ten" stays a checkable number on the page;
+- every entry carries its receipt link(s) — the source file on GitHub — so
+  the dex keeps the page's every-number-checkable contract inside its newest
+  toy.
+
+**The cry.** One per creature, synthesized live with the Web Audio API: a
+square-wave chiptune chirp whose motif is deterministic per creature (seeded
+by the entry — same creature, same cry, every play). No sampled audio, so
+nothing Nintendo-derived enters the repo through a sound file; it plays only
+on explicit click, which also keeps the sound-never-auto-plays contract
+honest.
+
+**The scroll budget** (the binding constraint: ≤ 13 viewports at 1440×900,
+≤ 3,200 words, ≤ 3vh per band; baseline measured 12.5vh / 2,603 words /
+8 bands). The new band is paid for before it is built:
+
+| Move | Δvh | Why it is free |
+|---|---|---|
+| remove the hero party strip | −0.1 | a four-creature preview of a home the dex now gives all ten |
+| absorb the loop bento | −0.7 | its mechanism copy moves into the dex entries — moved, not duplicated |
+| remove the alphabet's static DexCard | −0.4 | it mostly restated hero-seal facts (№ 0201, アンノーン, Symbol · Psychic); the interactive dex makes a static dex card redundant twice over |
+
+Net target: **~12.6–12.9vh total** — the band arrives inside the budget with
+the word count down, not up, because the copy it hosts was already on the page
+once.
+
+The build will be pinned by `__tests__/dex.test.tsx` and the updated
+composition walk; the negative result above is why the diff shows one new
+dependency instead of a pokedex package.
+
+**The negative-result lesson in one line:** an ecosystem can be full of things
+*named* for the pattern you want and still contain none of it — the search
+returned ten reasons the page must build its own dex and exactly one
+dependency worth installing, and knowing which is which was the whole point of
+looking before building.
