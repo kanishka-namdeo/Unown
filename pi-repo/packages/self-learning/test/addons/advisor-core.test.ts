@@ -5,9 +5,10 @@
 // the WATCHDOG.md guidance reader. The live runtime is exercised through
 // the /advisor command path and the TUI-capture scenarios.
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import {
 	decideDelivery,
 	dedupeKey,
@@ -15,11 +16,10 @@ import {
 	estimateTokens,
 	formatAdvisorBatchContent,
 	isNoise,
-	renderDelta,
 	readWatchdogGuidance,
+	renderDelta,
 	trimToBudget,
 } from "../../src/addons/advisor-core.ts";
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
 
 // ---------------------------------------------------------------------------
 // Emission guard
@@ -169,7 +169,10 @@ describe("token estimation + trimming", () => {
 		const messages: AgentMessage[] = Array.from({ length: 10 }, (_, index) =>
 			userMessage(`message number ${index} with some padding text to give it weight`),
 		);
-		const total = messages.reduce((sum, message) => sum + estimateTokens(JSON.stringify((message as { content?: unknown }).content)) + 8, 0);
+		const total = messages.reduce(
+			(sum, message) => sum + estimateTokens(JSON.stringify((message as { content?: unknown }).content)) + 8,
+			0,
+		);
 		const result = trimToBudget(messages, Math.floor(total / 2));
 		expect(result.trimmed).toBeGreaterThan(0);
 		expect(result.messages.length).toBeLessThan(messages.length);
