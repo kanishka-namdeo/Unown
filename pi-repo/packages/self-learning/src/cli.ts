@@ -43,6 +43,7 @@ import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit 
 import { MIGRATIONS, readMigrationState } from "./migrations.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
+import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
 import {
         deliverTerminalNote,
         ENGINE_URL,
@@ -119,9 +120,12 @@ Usage:
                            unfinished todos block it (also /goal <objective>)
   unown setup              connect a model provider — interactive wizard
                            presets: bridge (bundled), openai, openrouter, anthropic,
-                           dashscope, deepseek, custom (any OpenAI-compatible)
+                           dashscope, deepseek, agnes, custom (any OpenAI-compatible)
   unown setup --provider openai --api-key sk-... --model gpt-4o
-                           non-interactive (--force overwrites, --list shows presets)
+                           non-interactive (--force resets, --list shows presets)
+  unown providers <sub>   manage the multi-provider registry (M1):
+                           list | add | remove | key | default | test —
+                           adding a provider KEEPS the existing ones
   unown models             list configured models (+ what a local bridge serves)
   unown init               scaffold .unown/ project memory
   unown init-agents        generate or update AGENTS.md (Milestone 3.1)
@@ -1788,6 +1792,7 @@ function cmdHelp(topics: string[]): number {
                 uninstall: UNINSTALL_HELP,
                 completions: COMPLETIONS_HELP,
                 setup: SETUP_USAGE,
+                providers: PROVIDERS_HELP,
                 acp: ACP_HELP,
                 "init-agents": INIT_AGENTS_HELP,
                 "doctor-instructions": DOCTOR_INSTRUCTIONS_HELP,
@@ -1816,6 +1821,7 @@ export async function runCli(argv: string[]) {
         // `unown help [command]` — clig.dev: help is a command, not a TUI prompt.
         if (first === "help") process.exit(cmdHelp(argv.slice(1)));
         if (first === "setup") process.exit(await runSetupCommand(argv.slice(1)));
+        if (first === "providers") process.exit(await runProvidersCommand(argv.slice(1)));
         if (first === "models") {
                 await printModelsOverview();
                 process.exit(0);

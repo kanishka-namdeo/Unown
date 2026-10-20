@@ -18,10 +18,11 @@
  *   settings.json — defaultProvider + defaultModel so sessions start on the
  *                   chosen model without any picker
  */
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as readline from "node:readline/promises";
 import { probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
+import { upsertProvider, type ProviderEntry } from "./providers.ts";
 import { bridgeKnownModels, UNOWN_AGENT_DIR } from "./term.ts";
 
 // ---------------------------------------------------------------------------
@@ -96,6 +97,16 @@ export const PRESETS: ProviderPreset[] = [
                 keyEnvHint: "DEEPSEEK_API_KEY",
         },
         {
+                id: "agnes",
+                label: "Agnes AI (OpenAI-compatible, image-capable)",
+                baseUrl: "https://apihub.agnes-ai.com/v1",
+                api: "openai-completions",
+                defaultModel: "agnes-3.0-flash",
+                input: ["text", "image"],
+                keyEnvHint: "AGNES_API_KEY",
+                note: "flash models also take image input (VLM)",
+        },
+        {
                 id: "custom",
                 label: "Any other OpenAI-compatible endpoint (vLLM, llama.cpp, Ollama, …)",
                 baseUrl: "http://127.0.0.1:11434/v1",
@@ -120,6 +131,8 @@ interface WriteConfigInput {
         apiKeyInModelsJson?: string;
         /** Key stored in auth.json (0600) — preferred for real secrets. */
         apiKeyInAuthJson?: string;
+        /** `$ENV_VAR` reference stored in models.json instead of a secret. */
+        apiKeyEnvRef?: string;
         /** Additional served model ids to register after modelId (the bridge
          *  preset passes its full allow-list so /model + --model can route
          *  between the served catalog without a manual models.json edit). */
@@ -138,56 +151,34 @@ function mergeJson(path: string, patch: Record<string, unknown>): void {
         writeFileSync(path, `${JSON.stringify({ ...current, ...patch }, null, 2)}\n`, "utf8");
 }
 
-export function writeAgentConfig(input: WriteConfigInput): void {
-        // A fresh UNOWN_HOME has no agent dir yet — create it before writing.
-        mkdirSync(UNOWN_AGENT_DIR, { recursive: true });
-
-        // models.json — full rewrite (setup is an explicit reconfigure action).
-        // The bridge preset registers the FULL served catalog (extraModelIds:
-        // BRIDGE_KNOWN_MODELS) so /model + --model can route between ids.
-        const modelIds = [input.modelId, ...(input.extraModelIds ?? [])];
-        const modelsJson: Record<string, unknown> = {
-                providers: {
-                        [input.providerId]: {
-                                name: input.providerName,
-                                baseUrl: input.baseUrl,
-                                api: input.api,
-                                ...(input.apiKeyInModelsJson ? { apiKey: input.apiKeyInModelsJson } : {}),
-                                models: modelIds.map((id) => ({
-                                        id,
-                                        name: `${id} (via unown)`,
-                                        contextWindow: 131072,
-                                        maxTokens: 8192,
-                                        input: input.input,
-                                })),
-                        },
-                },
+/**
+ * Write a provider configuration (M1: MERGE semantics — accumulate, never
+ * rewrite). Delegates to providers.ts's upsertProvider so `unown setup`,
+ * `unown providers add` and the engine provider API share ONE mutation path.
+ *
+ *   default: the provider is added/updated IN PLACE; sibling providers in
+ *            models.json are untouched, and this provider becomes the default
+ *            (setup is a "make this my setup" action).
+ *   reset:   models.json is rewritten with EXACTLY this provider — the
+ *            pre-multi-provider `setup --force` escape hatch.
+ *
+ * auth.json keeps its merge + 0600/ACL behaviour (via upsertProvider's
+ * secureFilePermissions, which also hardens ACLs on Windows now).
+ */
+export function writeAgentConfig(input: WriteConfigInput & { reset?: boolean }): void {
+        const entry: ProviderEntry = {
+                id: input.providerId,
+                name: input.providerName,
+                baseUrl: input.baseUrl,
+                api: input.api,
+                modelId: input.modelId,
+                input: input.input,
+                extraModelIds: input.extraModelIds,
+                ...(input.apiKeyInModelsJson ? { apiKeyInModelsJson: input.apiKeyInModelsJson } : {}),
+                ...(input.apiKeyInAuthJson ? { apiKeyInAuthJson: input.apiKeyInAuthJson } : {}),
+                ...(input.apiKeyEnvRef ? { apiKeyEnvRef: input.apiKeyEnvRef } : {}),
         };
-        writeFileSync(join(UNOWN_AGENT_DIR, "models.json"), `${JSON.stringify(modelsJson, null, 2)}\n`, "utf8");
-
-        // auth.json — merge the provider key in (0600).
-        if (input.apiKeyInAuthJson) {
-                const authPath = join(UNOWN_AGENT_DIR, "auth.json");
-                let auth: Record<string, unknown> = {};
-                if (existsSync(authPath)) {
-                        try {
-                                auth = JSON.parse(readFileSync(authPath, "utf8")) as Record<string, unknown>;
-                        } catch {
-                                auth = {};
-                        }
-                }
-                auth[input.providerId] = { type: "api_key", key: input.apiKeyInAuthJson };
-                writeFileSync(authPath, `${JSON.stringify(auth, null, 2)}\n`, "utf8");
-                // POSIX mode bits are a no-op on NTFS (Windows ACL hardening of
-                // auth.json is a documented follow-up); keep 0600 on POSIX hosts.
-                if (process.platform !== "win32") chmodSync(authPath, 0o600);
-        }
-
-        // settings.json — default provider/model so sessions never need a picker.
-        mergeJson(join(UNOWN_AGENT_DIR, "settings.json"), {
-                defaultProvider: input.providerId,
-                defaultModel: input.modelId,
-        });
+        upsertProvider(UNOWN_AGENT_DIR, entry, { setDefault: true, reset: input.reset === true });
 }
 
 // ---------------------------------------------------------------------------
@@ -236,21 +227,27 @@ interface SetupFlags {
         apiKey?: string;
         model?: string;
         baseUrl?: string;
+        keyEnv?: string;
         force: boolean;
         list: boolean;
 }
 
 export const SETUP_USAGE = `unown setup — connect a model provider
 
-usage: unown setup [--provider P] [--api-key K] [--model M] [--base-url U] [--force|-f] [--list]
-  --provider P   bridge | openai | openrouter | anthropic | dashscope | deepseek | custom
+usage: unown setup [--provider P] [--api-key K] [--model M] [--base-url U] [--key-env VAR] [--force|-f] [--list]
+  --provider P   bridge | openai | openrouter | anthropic | dashscope | deepseek | agnes | custom
   --api-key K    the provider key (stored under ~/.unown/agent, never in the repo)
   --model M      the model id to use
   --base-url U   endpoint override (any OpenAI-compatible server)
-  --force, -f    overwrite an existing configuration
+  --key-env VAR  reference $VAR from the environment instead of storing the key
+  --force, -f    RESET: rewrite models.json with exactly this provider (drops others)
   --list         show the provider presets and exit
 
 With no flags: the interactive wizard.
+
+Adding a provider KEEPS existing ones (multi-provider registry; see
+  unown providers list / unown providers add). --force restores the old
+  single-provider rewrite behaviour.
 `;
 
 /** clig.dev: unknown flags ERROR (they used to be silently dropped and the
@@ -278,6 +275,9 @@ function parseSetupFlags(args: string[]): { flags: SetupFlags; help: boolean; un
                         i++;
                 } else if (a === "--base-url" && next) {
                         flags.baseUrl = next;
+                        i++;
+                } else if (a === "--key-env" && next) {
+                        flags.keyEnv = next;
                         i++;
                 } else unknown.push(a);
         }
@@ -361,6 +361,9 @@ async function runBridgeSetup(
                 // Register every id the bridge serves (its allow-list) so the
                 // catalog is routable (/model, --model, agent frontmatter).
                 extraModelIds: bridgeKnownModels(modelId).slice(1),
+                // --force RESETS (drops the other providers — the single-provider
+                // escape hatch); without it the bridge merges in alongside them.
+                ...(flags.force ? { reset: true } : {}),
         });
         console.log(`\n✓ configured the bundled bridge (${modelId})`);
         console.log("  next: unown            # start a session");
@@ -413,9 +416,13 @@ async function runDirectSetup(
                 modelId,
                 input: preset.input,
                 ...(apiKey ? { apiKeyInAuthJson: apiKey } : {}),
+                ...(flags.keyEnv ? { apiKeyEnvRef: flags.keyEnv } : {}),
+                ...(flags.force ? { reset: true } : {}),
         });
-        // Verify reachability (best effort, non-fatal).
-        const probe = await probeOpenAiEndpoint(baseUrl, apiKey || undefined, 4000);
+        // Verify reachability (best effort, non-fatal). With --key-env, probe
+        // with the CURRENT env value so verification works without storing it.
+        const probeKey = apiKey || (flags.keyEnv ? process.env[flags.keyEnv] : undefined);
+        const probe = await probeOpenAiEndpoint(baseUrl, probeKey, 4000);
         if (probe.ok) {
                 const list =
                         probe.models && probe.models.length > 0
@@ -466,10 +473,9 @@ async function runInteractiveSetup(): Promise<number> {
                         return 1;
                 }
                 if (existsSync(join(UNOWN_AGENT_DIR, "models.json"))) {
-                        const overwrite = await ask(rl, "\nOverwrite ~/.unown/agent/models.json with the new provider?", "y");
-                        if (!/^[yY]/.test(overwrite)) {
-                                console.log("Aborted — nothing written.");
-                                return 1;
+                        const others = file.providers.map((p) => p.id).filter((id) => id !== "zai-bridge");
+                        if (others.length > 0) {
+                                console.log(`\nExisting providers are KEPT (added alongside): ${others.join(", ")}`);
                         }
                 }
                 return preset.id === "bridge" ? runBridgeSetup({}, preset, rl) : runDirectSetup({}, preset, rl);
@@ -510,10 +516,17 @@ export async function runSetupCommand(args: string[]): Promise<number> {
                 printPresetTable();
                 return 1;
         }
-        const modelsPath = join(UNOWN_AGENT_DIR, "models.json");
-        if (existsSync(modelsPath) && !flags.force) {
-                console.error(`unown setup: ${modelsPath} already exists — re-run with --force to overwrite it`);
-                return 1;
+        // No exists-guard anymore: setup MERGES (M1) — adding a provider keeps
+        // the existing ones; --force resets models.json to exactly this one.
+        if (flags.force) {
+                const modelsPath = join(UNOWN_AGENT_DIR, "models.json");
+                if (existsSync(modelsPath)) {
+                        const file = readAgentModelsFile(UNOWN_AGENT_DIR);
+                        const others = file.providers.filter((p) => p.id !== preset!.id && p.id !== "zai-bridge").map((p) => p.id);
+                        if (others.length > 0) {
+                                console.log(`  ⚠ --force RESETS ~/.unown/agent/models.json to just ${preset.id} — drops: ${others.join(", ")}`);
+                        }
+                }
         }
         return preset.id === "bridge" ? runBridgeSetup(flags, preset, null) : runDirectSetup(flags, preset, null);
 }

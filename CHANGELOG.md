@@ -9,6 +9,18 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 ## [Unreleased]
 
+### Added (multi-provider support — M0 + M1, 2026-10-21)
+
+- **the multi-provider registry — adding a provider never removes the others** — `unown setup` used to REWRITE `~/.unown/agent/models.json` with exactly one provider, silently discarding every previous one (the single biggest gap vs Cline / Roo / OpenCode / Codex). A new registry module (`pi-repo/packages/self-learning/src/providers.ts`) owns all mutations with upsert semantics: adding updates in place, preserves hand-edited fields (headers, compat, per-model metadata), and `--force` remains the explicit reset to one provider. Live-verified end to end: a session routes `--model zai-bridge/agnes-3.0-flash` through the local bridge AND `--model agnes/agnes-3.0-flash` direct to the provider in the same registry.
+- **`unown providers` — the day-to-day management surface**: `list [--json]` (endpoint, key status, defaults) · `add` (preset or custom endpoint; `--key-env VAR` stores a `$VAR` reference instead of the secret — the headless/CI pattern) · `remove` (drops the provider AND its stored key; re-points the default) · `key` (rotation with live verification — a rejected key fails the command, not your next chat) · `default` (validated) · `test` (live endpoint probe with the stored credential, actionable 401/404 classification). Spawn-level golden tests pin every path.
+- **Agnes AI is a first-class preset** (`agnes`, `https://apihub.agnes-ai.com/v1`, `agnes-3.0-flash`, image input) — add with `unown providers add --provider agnes --key-env AGNES_API_KEY`.
+- **keys are hardened everywhere**: auth.json stays 0600 on POSIX and now gets owner-only ACLs on Windows (`icacls /inheritance:r`) via the shared `secureFilePermissions` path; a secret moving to auth.json clears any old models.json literal (one source of truth).
+- **engine CORS (M0)**: the engine API answers browser preflight/requests for loopback origins by default (`UNOWN_ENGINE_CORS` = explicit list | `*` | `off`) — the local dashboard works in DIRECT mode (`NEXT_PUBLIC_AGENT_API_BASE`) end-to-end now, verified by browser fetch + VLM screenshot review.
+- **doctor: bridge route-default coherence** — warns when `BRIDGE_ROUTE_DEFAULT` is not in the allow-list (the stale-upstream 404 class); `.env.example` no longer hard-codes it over `BRIDGE_MODEL`.
+- **doctor-instructions is gitignore-aware** — a gitignored generated path (`src/generated/prisma` on a fresh clone) is documentation, not staleness; `git check-ignore` decides.
+- **landing scroll budget back inside the contract** — 12.9vh ≤ 13 at 1440×900 (uniform `sm:py-[72px]` on the seven standard bands; receipts untouched); the e2e budget gate is green again (18/18).
+- **drain-aware `agent:start`** — `waitForPortFree` waits out the engine/bridge graceful-drain window after `agent:stop` before spawning, closing the "Is port 3030 in use?" race on rapid restarts.
+
 ### Fixed (detached engine — cross-platform hardening, 2026-10-20)
 
 - **the last runtime detachment leak is closed (governor is engine-only)** — the cross-platform review found the one RUNTIME path the import-graph tests could not see: the terminal agent's summary-context subagent brief (`tools.ts` → `llm.chat`) flows into the governor's ledger hooks, which would have opened the engine's SQLite DB from a CLI process mid-session — on Windows, precisely the bun#40659 cross-process-write hazard the detachment exists to prevent. The governor is now process-scoped: `startServer()` marks the engine process, and every ledger/breaker record is inert elsewhere. Pinned by a fresh-process RUNTIME test (a real `chat()` attempt from a CLI process leaves the DB untouched).

@@ -198,28 +198,33 @@ describe("CLI golden — unown setup", () => {
         );
 
         test(
-                "setup WITHOUT --force exits non-zero and leaves all agent files byte-identical",
+                "setup WITHOUT --force MERGES (M1): the new provider lands alongside the seeded bridge, exit 0",
                 async () => {
-                        const root = join(await import("node:os").then((os) => os.tmpdir()), `unown-cli-noforce-${Date.now()}`);
+                        const root = join(await import("node:os").then((os) => os.tmpdir()), `unown-cli-merge-${Date.now()}`);
                         try {
                                 const opts = base({ root });
                                 const seed = await runUnown(["doctor"], opts); // seeds models.json + settings.json
                                 expect(seed.exitCode).toBe(0);
-
-                                const files = ["models.json", "settings.json", "auth.json"] as const;
-                                const before = new Map(files.map((f) => [f, agentFile(seed, f)]));
+                                expect(JSON.parse(agentFile(seed, "models.json") ?? "{}").providers["zai-bridge"]).toBeTruthy();
 
                                 const attempt = await runUnown(
-                                        ["setup", "--provider", "openai", "--base-url", `${bridge.url}/v1`, "--api-key", "k", "--model", "m"],
+                                        ["setup", "--provider", "openai", "--base-url", `${bridge.url}/v1`, "--api-key", "sk-merge", "--model", "merge-model"],
                                         opts,
                                 );
-                                expect(attempt.exitCode).not.toBe(0);
-                                expect(attempt.stderr).toContain("already exists");
-                                expect(attempt.stderr).toContain("--force");
+                                // M1 contract: accumulate, never rewrite — no refusal, exit 0.
+                                expect(attempt.exitCode).toBe(0);
+                                expect(attempt.stdout).toContain("✓ configured openai");
 
-                                for (const f of files) {
-                                        expect(agentFile(attempt, f)).toBe(before.get(f));
-                                }
+                                const models = JSON.parse(agentFile(attempt, "models.json") ?? "{}");
+                                expect(Object.keys(models.providers).sort()).toEqual(["openai", "zai-bridge"]);
+                                expect(models.providers.openai.baseUrl).toBe(`${bridge.url}/v1`);
+                                // the seeded bridge entry survived byte-for-byte in shape
+                                expect(models.providers["zai-bridge"].models.map((m: any) => m.id)).toContain("kimi-k2.5");
+                                // setup STEALS the default (it is a "make this my setup" action)
+                                const settings = JSON.parse(agentFile(attempt, "settings.json") ?? "{}");
+                                expect(settings).toMatchObject({ defaultProvider: "openai", defaultModel: "merge-model" });
+                                const auth = JSON.parse(agentFile(attempt, "auth.json") ?? "{}");
+                                expect(auth.openai).toEqual({ type: "api_key", key: "sk-merge" });
                         } finally {
                                 rmSync(root, { recursive: true, force: true });
                         }

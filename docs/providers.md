@@ -1,9 +1,11 @@
 # Providers & models
 
-How unown talks to a model: the two connection shapes, the files involved, and how to point them at anything from Dashscope to a local llama.cpp server.
+How unown talks to models: the multi-provider registry, the two connection shapes, the files involved, and how to point them at anything from Dashscope to a local llama.cpp server.
 
 - [The two shapes](#the-two-shapes)
+- [Multiple providers](#multiple-providers)
 - [unown setup](#unown-setup)
+- [unown providers](#unown-providers)
 - [The config files](#the-config-files)
 - [Direct provider recipes](#direct-provider-recipes)
 - [The bundled bridge](#the-bundled-bridge)
@@ -21,7 +23,23 @@ Related pages: [quickstart](quickstart.md) · [configuration](configuration.md) 
 | Model routing / thinking translation / SSE passthrough | whatever your provider does natively | handled by the bridge |
 | Configure with | `unown setup --provider openai --api-key … --model …` | put the upstream key in `.env`, then `unown setup --provider bridge` |
 
-Both write the same three files under `~/.unown/agent/`. You can switch shapes anytime by re-running `unown setup` (add `--force` in flag mode to overwrite an existing config).
+Both write the same three files under `~/.unown/agent/`. You can mix them — the registry below holds any number of providers of either shape.
+
+## Multiple providers
+
+Unown is multi-provider: **adding a provider never removes the ones you already configured**. The registry (`~/.unown/agent/models.json`) accumulates, `/model` lists every configured provider's models, and `--model provider/model` routes a session to any of them:
+
+```bash
+unown --model agnes/agnes-3.0-flash "fix the failing test"
+```
+
+Key rules (the same ones Cline / OpenCode / Codex CLI converged on):
+
+- **Keys live in `auth.json`** (mode 0600 on macOS/Linux, owner-only ACLs on Windows) — never in the repo, never in models.json.
+- **Env-var references instead of secrets**: `unown providers add --provider openai --key-env OPENAI_API_KEY …` writes `$OPENAI_API_KEY` into models.json; the key is read from the environment at session start (the headless/CI pattern).
+- **Everything OpenAI-compatible is one preset shape** — `--provider custom --base-url … --model …` covers vLLM, llama.cpp, Ollama, LM Studio, gateways.
+- **Canonical model ids are `provider/model`** in flags, agent frontmatter and settings.
+- `unown setup --force` is the explicit **reset** back to exactly one provider (the pre-2.3 behaviour) — the only thing that ever drops siblings.
 
 ## unown setup
 
@@ -35,7 +53,26 @@ unown setup --provider custom \
   --base-url http://127.0.0.1:11434/v1 --model llama3   # any OpenAI-compatible server
 ```
 
-Presets: `bridge` (bundled), `openai`, `openrouter`, `anthropic`, `dashscope`, `deepseek`, `custom`. Every direct setup verifies the endpoint is reachable and the key is accepted before declaring success — a rejected key fails setup with the HTTP status instead of failing your first chat later.
+Presets: `bridge` (bundled), `openai`, `openrouter`, `anthropic`, `dashscope`, `deepseek`, `agnes`, `custom`. Every direct setup verifies the endpoint is reachable and the key is accepted before declaring success — a rejected key fails setup with the HTTP status instead of failing your first chat later.
+
+Setup **merges**: re-running it adds or updates that provider in place and keeps the rest of the registry; it also makes the provider the default (setup is a "make this my setup" action). `--force` resets instead — see [Multiple providers](#multiple-providers).
+
+## unown providers
+
+The day-to-day management surface over the registry:
+
+```bash
+unown providers list [--json]            # what's configured, key status, defaults
+unown providers add --provider agnes --key-env AGNES_API_KEY
+unown providers add --provider custom --base-url http://127.0.0.1:11434/v1 \
+  --id ollama --model llama3             # named custom endpoints
+unown providers remove openai             # drops the provider + its stored key
+unown providers key openai                # rotate a key (prompts; verifies live)
+unown providers default agnes agnes-3.0-flash
+unown providers test agnes               # live endpoint probe with the stored key
+```
+
+`add` does not steal the default unless `--default` (or the registry was empty); `remove` re-points the default at the first survivor; `key` verifies the new credential against the endpoint immediately — a rejected key fails the command instead of failing your next chat later.
 
 ## The config files
 
@@ -94,6 +131,7 @@ Swap the values into `unown setup --provider custom --base-url … --model …` 
 | Anthropic | `https://api.anthropic.com` | uses the native `anthropic-messages` API |
 | Dashscope | `https://dashscope.aliyuncs.com/compatible-mode/v1` | Qwen + Kimi families |
 | DeepSeek | `https://api.deepseek.com/v1` | text-only models |
+| Agnes AI | `https://apihub.agnes-ai.com/v1` | first-class preset (`agnes`); flash models take image input |
 | vLLM | `http://localhost:8000/v1` | keyless local |
 | Ollama | `http://127.0.0.1:11434/v1` | keyless local |
 | llama.cpp server | `http://127.0.0.1:8080/v1` | keyless local |
@@ -148,9 +186,10 @@ local draft never touches the remote API. Unset = remote authoring as before.
 
 ## Switching models
 
-- **Per session**: `/model` or Ctrl+L opens the picker; Ctrl+P cycles through enabled models; Shift+Tab cycles thinking levels; `/scoped-models` controls what Ctrl+P cycles through.
-- **Persistently**: pick with Ctrl+S in the picker, or re-run `unown setup`.
-- **Check what's live**: `unown models` lists your configured models plus what a local bridge actually serves (with an allow-list cross-check).
+- **Per session**: `/model` or Ctrl+L opens the picker (every configured provider's models); Ctrl+P cycles through enabled models; Shift+Tab cycles thinking levels; `/scoped-models` controls what Ctrl+P cycles through.
+- **One-shot**: `unown --model provider/model "task"` routes that session without touching defaults.
+- **Persistently**: `unown providers default <provider> [model]`, pick with Ctrl+S in the picker, or re-run `unown setup`.
+- **Check what's live**: `unown models` lists your configured models plus what a local bridge actually serves (with an allow-list cross-check); `unown providers test <id>` probes one provider with its stored key.
 
 ## Web-search providers (the `web_search` tool)
 

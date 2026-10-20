@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 165;
+export const CHANGELOG_TOTAL_ENTRIES = 174;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 74,
+  "Added": 83,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 43,
+    "total": 52,
     "counts": {
-      "Added": 20,
+      "Added": 29,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 0,
@@ -58,57 +58,44 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
     },
     "groups": [
       {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "the last runtime detachment leak is closed (governor is engine-only)",
-            "behavior": false
-          },
-          {
-            "title": "unown engine stop drains over HTTP first — graceful stop now works on Windows too",
-            "behavior": false
-          },
-          {
-            "title": "the Windows engine spawn is actually correct now",
-            "behavior": false
-          },
-          {
-            "title": "docs",
-            "behavior": false
-          },
-          {
-            "title": "unown -p never exits — root cause measured and fixed (F10 final act)",
-            "behavior": false
-          },
-          {
-            "title": "the engine's runaway dream loop is closed",
-            "behavior": false
-          },
-          {
-            "title": "no router job may hold the engine hostage anymore (job watchdog)",
-            "behavior": false
-          },
-          {
-            "title": "doctor: the AGENTS.md staleness audit now warns only on confident staleness — 31 false positives → 0 on this…",
-            "behavior": false
-          },
-          {
-            "title": "scripts: test_bridge.py repointed at the bridge it actually tests",
-            "behavior": false
-          },
-          {
-            "title": "docs: the dashboard suite's warning noise is now a documented non-issue, not an unchased mystery",
-            "behavior": false
-          },
-          {
-            "title": "fleet: restricted agents regain ask_question",
-            "behavior": false
-          }
-        ]
-      },
-      {
         "bucket": "Added",
         "items": [
+          {
+            "title": "the multi-provider registry — adding a provider never removes the others",
+            "behavior": false
+          },
+          {
+            "title": "unown providers — the day-to-day management surface",
+            "behavior": false
+          },
+          {
+            "title": "Agnes AI is a first-class preset",
+            "behavior": false
+          },
+          {
+            "title": "keys are hardened everywhere",
+            "behavior": false
+          },
+          {
+            "title": "engine CORS (M0)",
+            "behavior": false
+          },
+          {
+            "title": "doctor: bridge route-default coherence",
+            "behavior": false
+          },
+          {
+            "title": "doctor-instructions is gitignore-aware",
+            "behavior": false
+          },
+          {
+            "title": "landing scroll budget back inside the contract",
+            "behavior": false
+          },
+          {
+            "title": "drain-aware agent:start",
+            "behavior": false
+          },
           {
             "title": "benchmarks/detached-engine/ — before/after receipts for the whole detachment effort",
             "behavior": false
@@ -187,6 +174,55 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "tui: the split-view display mode — a built-in port of pi-split-view 1.1.0",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "the last runtime detachment leak is closed (governor is engine-only)",
+            "behavior": false
+          },
+          {
+            "title": "unown engine stop drains over HTTP first — graceful stop now works on Windows too",
+            "behavior": false
+          },
+          {
+            "title": "the Windows engine spawn is actually correct now",
+            "behavior": false
+          },
+          {
+            "title": "docs",
+            "behavior": false
+          },
+          {
+            "title": "unown -p never exits — root cause measured and fixed (F10 final act)",
+            "behavior": false
+          },
+          {
+            "title": "the engine's runaway dream loop is closed",
+            "behavior": false
+          },
+          {
+            "title": "no router job may hold the engine hostage anymore (job watchdog)",
+            "behavior": false
+          },
+          {
+            "title": "doctor: the AGENTS.md staleness audit now warns only on confident staleness — 31 false positives → 0 on this…",
+            "behavior": false
+          },
+          {
+            "title": "scripts: test_bridge.py repointed at the bridge it actually tests",
+            "behavior": false
+          },
+          {
+            "title": "docs: the dashboard suite's warning noise is now a documented non-issue, not an unchased mystery",
+            "behavior": false
+          },
+          {
+            "title": "fleet: restricted agents regain ask_question",
             "behavior": false
           }
         ]
