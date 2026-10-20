@@ -14,7 +14,7 @@ How to run the `unown` terminal agent, what it does inside a session, and where 
 - [Memory in sessions](#memory-in-sessions)
 - [Environment variables](#environment-variables)
 
-Related pages: [subagents](subagents.md) · [skills](skills.md) · [memory](memory.md) · [providers](providers.md) · [configuration](configuration.md) · [updating](updating.md)
+Related pages: [subagents](subagents.md) · [skills](skills.md) · [memory](memory.md) · [providers](providers.md) · [split view](split-view.md) · [configuration](configuration.md) · [updating](updating.md)
 
 ## Three ways to run
 
@@ -125,7 +125,7 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 **Subagent plumbing flags.** `--mode json` (JSON event stream), `--no-session` (don't persist), `--tools a,b,c` (restrict the active toolset), `--append-system-prompt <file>` (append file contents to the system prompt) exist for the `task` tool, which spawns subagents with exactly these flags. You normally never type them yourself — see [subagents](subagents.md).
 
-**Routing flags.** `--model <id>` (override `PI_MODEL_ID` for this run), `--effort low|medium|high` (`low` → `BRIDGE_QWEN_THINKING=0`, `high` → `=1`, `medium`/unset → the bridge default), `--mcp-servers a,b` (MCP server whitelist — an **empty CSV loads none**), and `--no-agents-md` (skip AGENTS.md / per-tier memory injection) are accepted on any launch — TUI or print — and route that whole session. The `task` tool passes the same flags to per-agent children from `.unown/agents/*.md` frontmatter (`model` / `effort` / `mcpServers` / `injectAgentsMd`), and `UNOWN_SUBAGENT_MODEL` overrides the model for **every** subagent in one line. See [subagents → per-agent routing](subagents.md#per-agent-routing).
+**Routing flags.** `--model <id>` (override `PI_MODEL_ID` for this run), `--effort low|medium|high` (`low` → `BRIDGE_QWEN_THINKING=0`, `high` → `=1`, `medium`/unset → the bridge default), `--mcp-servers a,b` (MCP server whitelist — an **empty CSV loads none**), `--no-agents-md` (skip AGENTS.md / per-tier memory injection), and `--no-split` (start the TUI bare — no split-view panels, ignoring saved startup defaults; see [split view](split-view.md)) are accepted on any launch — TUI or print — and route that whole session. The `task` tool passes the same flags to per-agent children from `.unown/agents/*.md` frontmatter (`model` / `effort` / `mcpServers` / `injectAgentsMd`), and `UNOWN_SUBAGENT_MODEL` overrides the model for **every** subagent in one line. See [subagents → per-agent routing](subagents.md#per-agent-routing).
 
 **`unown doctor`** checks, in order: the unown version and update-check state (from the notifier cache — no network), the user-state schema version, the agent dir and `models.json`, the memory stack, model-endpoint reachability (and credentials), bridge upstream key / upstream health / model routability when pointed at the bundled bridge, the OS sandbox (platform-aware: bubblewrap on Linux, seatbelt on macOS, the Windows path-jail story), the self-learning engine, and the SDLC surfaces: **lsp-servers** (which language servers are detected on PATH — a warning here just means the optional diagnostics loop is inactive), **mcp-config** (configured servers, config-validation problems, and the project-config trust state — an untrusted `.unown/mcp.json` warns with the `/mcp trust` action), **unown-state** (disk usage of the project's `.unown/` runtime state — checkpoints, receipts, reviews; warns past `UNOWN_STATE_WARN_BYTES`, default 512 MiB, with pruning guidance), **permissions-config** (files, mode, trust gate and learn state of the granular permissions layer), **web-results-store** (the persistent [web results store](#web-search--webfetch) behind `web_search`/`webfetch` — entry count, size, hit rate and saved upstream requests, or the disabled note when `UNOWN_WEB_CACHE=0`; also `unown webcache stats`), **path-shim** (a foreign `unown` earlier on PATH), and the **instruction-set-audit** — seven sections covering AGENTS.md freshness, skills coverage, MCP health, hooks config validity (`.unown/hooks.json` + `~/.unown/agent/hooks.json`), adversary-mode state, injection-scanner state and stale `.unown/` config; `unown doctor-instructions` runs just that audit. It exits 1 when chat is broken; warnings only affect learning features (notes queue in the outbox until the engine returns). If it fails, see [troubleshooting](troubleshooting.md).
 
@@ -321,6 +321,22 @@ unown adds twenty-five commands of its own:
 | `/recipe <name> [args]` | Run a declarative agent instruction bundle: `list`, `show <name>`, or `<name> --key value` with parameters interpolated into the body. See [recipes](recipes.md) |
 | `/wiki <sub>` | Auto-generated repo docs with `file:line` cross-links: `generate [--force]` (parallel subagents per module) \| `search <q>` \| `list` \| `show <page>`. See [repo wiki](repo-wiki.md) |
 | `/edit-resend <n> <msg>` | Edit the Nth user message: revert files to the pre-message checkpoint (all-or-nothing; aborts on out-of-band edits), then resend. `/edit-resend list` shows the numbered messages |
+
+The split-view display mode registers eleven more, in every session (the thinking/tool band, files dock and response-only transcript — full story in [split view](split-view.md)):
+
+| Command | What it does |
+|---|---|
+| `/split` | Toggle all split-view panels: off = bare layout, on = saved startup defaults (thinking + tools when nothing is saved) — needs fullscreen mode |
+| `/split-thinking` | Toggle the thinking panel in the top band |
+| `/split-tools` | Toggle the tool-usage panel in the top band |
+| `/split-tools-view` | Toggle the tools panel compact ↔ full detail (full adds an output preview) |
+| `/split-tools-width <pct>` | Tools panel share of the band width, 20–60 (default 35) |
+| `/files` | Toggle the files panel — docked right in fullscreen, overlay in regular mode |
+| `/split-diff` | Toggle the files panel's edit-diff subpanel |
+| `/split-trim-response` | Full transcript ↔ response-only (user + assistant text) — needs fullscreen mode |
+| `/split-divider [rule\|space]` | Separator between successive assistant answers in response-only mode |
+| `/split-height <n>` | Top band height in rows, 6–40 (default 20) |
+| `/split-save` | Save the current panel layout as the startup defaults for new windows (`~/.unown/agent/ui-panels.json`) |
 
 pi ships 23 built-in slash commands. The ones worth learning first:
 

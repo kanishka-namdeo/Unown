@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 129;
+export const CHANGELOG_TOTAL_ENTRIES = 132;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 59,
-  "Changed": 20,
+  "Added": 60,
+  "Changed": 22,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 26,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 7,
+    "total": 10,
     "counts": {
-      "Added": 5,
-      "Changed": 1,
+      "Added": 6,
+      "Changed": 3,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 0,
@@ -88,12 +88,24 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "release: per-OS standalone unown binaries, cross-compiled by one runner and smoke-tested on their own OS",
             "behavior": false
+          },
+          {
+            "title": "tui: the split-view display mode — a built-in port of pi-split-view 1.1.0",
+            "behavior": false
           }
         ]
       },
       {
         "bucket": "Changed",
         "items": [
+          {
+            "title": "tui: fullscreen is the default interface layout for new installs",
+            "behavior": false
+          },
+          {
+            "title": "tui: the vendored pi-tui scrollbar engine ported to the 1.3.0 design",
+            "behavior": false
+          },
           {
             "title": "landing: the creature atlas — the sprites redrawn as authored pixel art",
             "behavior": false

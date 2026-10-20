@@ -48,6 +48,7 @@ interface Captured {
 	busEvents: Map<string, Array<(data: any) => void>>;
 	widgetFactory: ((tui: any, theme: any) => any) | null;
 	widgetUnset: number;
+	noSplit: boolean;
 	notifications: Array<{ text: string; level: string }>;
 	overlays: Array<{ component: any; options: any }>;
 	layoutRoots: Array<any>;
@@ -61,6 +62,7 @@ function makeFakePi() {
 		busEvents: new Map(),
 		widgetFactory: null,
 		widgetUnset: 0,
+		noSplit: false,
 		notifications: [],
 		overlays: [],
 		layoutRoots: [],
@@ -231,8 +233,8 @@ describe("splitview-layout", () => {
 			},
 		};
 		initLayoutManager(tui);
-		const layerA = (inner: any) => ({ id: "A", inner });
-		const layerB = (inner: any) => ({ id: "B", inner });
+		const layerA = (inner: any) => ({ id: "A", inner, render: () => [] as string[], invalidate: () => {} });
+		const layerB = (inner: any) => ({ id: "B", inner, render: () => [] as string[], invalidate: () => {} });
 		setLayoutLayer("a", layerA);
 		setLayoutLayer("b", layerB);
 		expect(set).toEqual(["A", "B"]);
@@ -256,7 +258,7 @@ describe("splitview-layout", () => {
 			},
 		};
 		initLayoutManager(tui);
-		setLayoutLayer("ui", (inner: any) => ({ id: "wrapped", inner }));
+		setLayoutLayer("ui", (inner: any) => ({ id: "wrapped", inner, render: () => [] as string[], invalidate: () => {} }));
 		expect(set).toEqual(["wrapped"]);
 		// simulate a TUI mode switch: the app re-applied its own base root
 		tui.layoutRoot = base;

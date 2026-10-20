@@ -109,6 +109,7 @@ Full usage docs live in [`docs/`](docs/):
 | [updating](docs/updating.md) | `unown update`, update notifications, pinned installs, rollback, the privacy model of the update check |
 | [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers |
 | [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
+| [split view](docs/split-view.md) | the split-view display mode — thinking/tool band, files dock, response-only transcript, every `/split*` command, `ui-panels.json` defaults |
 | [subagents](docs/subagents.md) | the `task` tool, built-in `general`/`explore`/`background-explore`, authoring `.unown/agents/*.md` |
 | [skills](docs/skills.md) | the Agent Skills format, the four starters, skills AutoDream mints on its own |
 | [custom commands](docs/custom-commands.md) | authoring `.unown/commands/*.md` — frontmatter, `$ARGUMENTS`/`$1..$N` substitution, project + global scopes |

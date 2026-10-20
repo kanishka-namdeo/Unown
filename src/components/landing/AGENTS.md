@@ -3,7 +3,7 @@
 ## Purpose
 
 The marketing landing page served at `/` and auto-deployed to Vercel by a push to
-`main`. Nine self-contained bands plus the shared primitives they are built
+`main`. Ten self-contained bands plus the shared primitives they are built
 from: a hand-drawn 28-form "Unown script", the Pokédex-derived lexicon each
 form decodes, the capability dex that catalogs the feature creatures, an
 accessible terminal session replay, the shipping rail that
@@ -23,7 +23,7 @@ visitor attention lands above the fold and 74% within two screenfuls. Every
 generated number, gated literal and receipt link survived the merge — that
 constraint is what the whole redesign was solved under. The same day's
 capability-dex round (Part 15) then added the ninth band — and paid for it
-before building it, so the nine-band page measures 12.0vh / ~2,490 words:
+before building it, so the nine-band page measured 12.0vh / ~2,490 words:
 half a viewport shorter than the eight-band page it replaced.
 
 ## Ownership
@@ -198,7 +198,10 @@ half a viewport shorter than the eight-band page it replaced.
   - **the terminal-agent command surface and its session tools** (`hero.tsx`'s
     collapsed expanders — the `COMMANDS` list, the `--goal` evidence contract,
     and the session-tools paragraph naming the tools and the slash
-    commands) — no other band lists commands; the
+    commands) — no other band lists commands; the one exception is the
+    split-view display commands, which are `split-view.tsx`'s own surface
+    (the hero keeps the `unown` CLI, the split band keeps the `/split*`
+    family, and `landing_claims.mjs` gates both against their sources); the
     `unown automations create` line carries the read-only-by-default claim,
     checkable against `docs/usage.md#automations-unown-automations`;
   - **the project-config trust gate** (`integrity.tsx`, the cloned-configs
@@ -370,15 +373,17 @@ parallel ones.
   and `toneAttr()`. `[data-tone="…"]` on a furniture element still overrides
   just that element's `--tone-fill` / `--tone-rim`.
   - **Allocation is a rule, not taste:** `psychic` is reserved for the two
-    bands about Unown itself (hero, alphabet); the other seven walk the four
+    bands about Unown itself (hero, alphabet); the other eight walk the four
     Gen 3 hues so no two adjacent bands share one, and "which hue does this
-    get" stays answerable without opening the file. The nine-band walk
+    get" stays answerable without opening the file. The ten-band walk
     (2026-10-20, pinned by the composition test): psychic (hero) → leaf
     (loop) → magma (dex — the capability catalog; magma is the Gen-3 red
     the actual dex device is, and showcase/gold keeps it clear of proof's
-    own magma) → gold (showcase) → magma (proof) → psychic (alphabet — the
-    reserved hue interrupts the cycle without disturbing it) → gold (faq) →
-    aqua (changelog) → leaf (finale). The proof band's three panes carry
+    own magma) → gold (showcase) → aqua (split — the split-view TUI band,
+    which needs a hue clear of showcase's gold and proof's magma) → magma
+    (proof) → psychic (alphabet — the reserved hue interrupts the cycle
+    without disturbing it) → gold (faq) → aqua (changelog) → leaf (finale).
+    The proof band's three panes carry
     their own `data-hue` wrappers inside the magma section (leaf / magma /
     aqua), which keeps each pane's accents on its historical hue without
     adding top-level sections to the walk. A band that joins or leaves the
@@ -516,15 +521,17 @@ parallel ones.
   sits near 1:2 lore:tech, but that number hides two different problems, and
   they need opposite fixes:
   1. **A long dry run.** Lore is carried by the capability dex (position 3 —
-    the game-voice entries and categories), `alphabet` (position 6, the wall
+    the game-voice entries and categories), `alphabet` (position 7, the wall
     + the Z highlight) with a pinch in the hero's seal captions. Rule:
-    **no more than three consecutive bands at zero.** The nine-band page
-    meets it with room: loop (2) runs zero alone, ended by the dex;
-    showcase → proof (4-5) is two, ended by alphabet; faq → changelog →
-    finale (7-9) is three, ended by the footer. (The dex joining the page
-    in 2026-10-20 *broke up* the old loop → showcase → proof run of
-    three.) If a band ever joins or leaves the page, re-check both runs,
-    not just the one it touches.
+    **no more than three consecutive bands at zero.** The ten-band page
+    meets it exactly: loop (2) runs zero alone, ended by the dex;
+    showcase → split → proof (4-6) is three, ended by alphabet; faq →
+    changelog → finale (8-10) is three, ended by the footer. (The dex
+    joining the page in 2026-10-20 *broke up* the old loop → showcase →
+    proof run of three; the split band joining between showcase and proof
+    re-lengthened that run to three, which is the cap, not a breach.) If a
+    band ever joins or leaves the page, re-check both runs, not just the
+    one it touches.
   2. **A repeated punchline register, which is what actually reads as boring.**
      Sections 4-10 were all aphorisms, and several were the *same* aphorism:
      "An agent that forgets is a tax you pay every morning" and "Most agents

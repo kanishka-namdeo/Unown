@@ -19,8 +19,17 @@ the Dashscope bridge), unown v2.2.0 @ 19439ba.
 | subagent-explore | task subagent maps the real unown repo | 4 stills + mp4/webm/gif |
 | wiki | /wiki generate → search with scores | 3 stills + mp4/webm/gif |
 | cli-doctor | shell showcase: doctor, models, usage | 3 stills + mp4/webm/gif |
+| split-view | the split-view display mode: the thinking + tools band, the files dock with its edit-diff subpanel, the geometry commands, live reasoning, an agent turn, response-only mode | 6 stills (see the note below) |
 
 Stills are full-frame (128x36 grid, ~2214px wide, everything the user sees:
 header/transcript, input box, cwd + model status). Videos are paced (8fps,
 spinner-idle compressed, ~6-22s each). Regenerate or extend via the harness —
 this directory is the curatation of audited output, not the source of truth.
+
+The split-view scenario is the exception to the harness paragraph above, and
+this note is the honest provenance: its stills were captured with a PTY driver
+and a terminal-emulator render of real unown sessions at 128x36 (2026-10-20,
+same live stack), not the ttyd pipeline in `scripts/tui-capture/` — and it
+ships stills only (no videos), so the pane-truth + pixel + VLM audit has not
+been applied to it. Consumed by the landing page's split-view band
+(`src/components/landing/split-view.tsx`).

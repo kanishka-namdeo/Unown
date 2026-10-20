@@ -6,7 +6,7 @@ Every knob unown has: the one variable you actually must set, the full environme
 - [Environment variables](#environment-variables)
 - [How `.env` gets loaded](#how-env-gets-loaded)
 - [State and files](#state-and-files)
-- [Agent config files](#agent-config-files-modelsjson--authjson--settingsjson)
+- [Agent config files](#agent-config-files-modelsjson--authjson--settingsjson--ui-panelsjson)
 - [Behavior gate files](#behavior-gate-files)
 - [Common setups](#common-setups)
 - [Production notes](#production-notes)
@@ -72,7 +72,7 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `BRIDGE_UPSTREAM_KEY` | (empty) | Upstream bearer key. **The one required secret** — see above. |
 | `BRIDGE_ROUTE_DEFAULT` | `kimi-k2.5` | Model used when a request names an unknown or legacy model id. |
 | `BRIDGE_KNOWN_MODELS` | `kimi-k2.5,qwen3.7-plus,qwen3.6-plus` | Comma-separated allow-list of model ids that pass through unrouted; anything else maps onto `BRIDGE_ROUTE_DEFAULT`. |
-| `BRIDGE_QWEN_THINKING` | off | `1` leaves qwen thinking models in thinking mode; the default disables thinking for snappier agent turns. |
+| `BRIDGE_QWEN_THINKING` | off | `1` leaves qwen thinking models in thinking mode; the default disables thinking for snappier agent turns. This is also what feeds the split-view [thinking panel](split-view.md#model-notes-the-thinking-panel) — with the default, qwen streams no reasoning and the panel stays idle; with `1`, `qwen3.7-plus` streams reasoning the panel renders live |
 | `BRIDGE_MIN_SPACING_MS` | `400` | Minimum spacing between upstream requests (serialized throttle). |
 | `BRIDGE_UPSTREAM_TIMEOUT_MS` | `180000` | Cap on time-to-response-headers per upstream attempt, in ms. Streaming bodies stay uncapped once headers arrive; a stalled upstream fails fast instead of wedging callers. |
 | `BRIDGE_API_KEY` | unset | Optional shared secret. When set, every request to the bridge must carry `Authorization: Bearer <key>`. Recommended whenever the bridge is reachable beyond localhost. |
@@ -193,7 +193,8 @@ Where everything lives — all of it deletable, none of it required to pre-exist
   agent/
     models.json                  provider + model registry — what unown setup writes
     auth.json                    API keys, file mode 0600
-    settings.json                defaultProvider + defaultModel
+    settings.json                defaultProvider + defaultModel + tuiMode (interface layout)
+    ui-panels.json               split-view startup defaults — written by /split-save only
     sessions/                    terminal session trees
     skills/                      starter skills + your global skills
     agents/                      your global subagent definitions (*.md)
@@ -239,17 +240,21 @@ unown repo (runtime state, gitignored)
 
 What is safe to delete and what that costs is covered in [troubleshooting](troubleshooting.md#resetting-cleanly).
 
-## Agent config files (models.json / auth.json / settings.json)
+## Agent config files (models.json / auth.json / settings.json / ui-panels.json)
 
-`unown setup` writes three files under `~/.unown/agent/`:
+`unown setup` writes three files under `~/.unown/agent/` (the fourth, `ui-panels.json`, is written only by `/split-save` — see below):
 
 | File | Written how | Safe to hand-edit? |
 |------|-------------|--------------------|
 | `models.json` | full rewrite on setup (setup is an explicit reconfigure action) | yes — point it at any OpenAI-compatible endpoint; the first-run bootstrap never clobbers an existing file |
 | `auth.json` | merges your provider key, mode 0600 | yes — secrets only; keep it out of any repo |
-| `settings.json` | merges `defaultProvider` + `defaultModel` | yes — pins the model sessions start on (switch mid-session with `/model`) |
+| `settings.json` | merges `defaultProvider` + `defaultModel`; the first-run seed also pins the theme and `tuiMode` | yes — pins the model sessions start on (switch mid-session with `/model`) and the interface layout (see below) |
 
 The first run of `unown` bootstraps the same trio with bridge defaults (`zai-bridge` / `kimi-k2.5` / `http://127.0.0.1:3031/v1`) and seeds the starter skills — so the out-of-the-box path works as soon as the stack and `BRIDGE_UPSTREAM_KEY` are in place.
+
+**`tuiMode` — the interface layout.** `settings.json` also carries `"tuiMode"`: `regular` (scrollback) or `fullscreen` (alt-screen). New installs seed `fullscreen` — the layout engine the [split view](split-view.md) band and files dock are built on; existing installs keep whatever they saved. Switch live with `/settings` (the "TUI mode" entry) or edit the file by hand (picked up on the next launch).
+
+**`ui-panels.json` — split-view startup defaults.** A fourth file in the same directory, never written by setup: a template of startup defaults for the [split view](split-view.md) panels. The toggles themselves stay session-local — only `/split-save` writes the file, so concurrent unown windows never clobber each other's layout. Keys, ranges and defaults: [split view: the config file](split-view.md#the-config-file-ui-panelsjson).
 
 **The `BRIDGE_API_KEY` coupling.** The bridge-mode key stored in `models.json` is read from `BRIDGE_API_KEY` (falling back to the `bridge-local` placeholder) *only when the file is created*. If you later set `BRIDGE_API_KEY` in the repo's `.env`, the bridge now demands a bearer token — but the terminal agent still sends the old placeholder, and every chat dies with `unauthorized: missing or invalid bearer token (BRIDGE_API_KEY is set)`. Fix: re-run `unown setup` **from the unown repo root** (where bun loads `.env`, so the wizard sees the key), or hand-edit the `apiKey` field in `~/.unown/agent/models.json` to match. Details in [troubleshooting](troubleshooting.md).
 

@@ -224,6 +224,9 @@ One-shot run flags (print mode; several also used by the task tool):
   --mcp-servers a,b       whitelist of MCP servers to load (empty CSV = load
                            none; absent = load all)
   --no-agents-md          skip AGENTS.md / per-tier memory injection
+  --no-split              start the TUI bare: no split-view panels (thinking/
+                          tools band, files dock) even if /split-save left
+                          startup defaults behind
 
 Environment:
   UNOWN_HOME               state dir (default ~/.unown)
@@ -268,6 +271,8 @@ interface CliArgs {
         effort?: SubagentEffort;
         mcpServers?: string[];
         noAgentsMd?: boolean;
+        /** --no-split: start bare, ignoring saved split-view startup defaults. */
+        noSplit?: boolean;
 }
 
 // Exported for tests: the parse contract (routing flags, --output-format
@@ -287,11 +292,12 @@ export function parseArgs(argv: string[]): CliArgs {
         let tools: string[] | undefined;
         let appendSystemPromptPath: string | undefined;
         let plan = false;
+        let noSplit = false;
         let goal: string | undefined;
         let outputFormat: "text" | "json" | undefined;
         for (let i = 0; i < argvRest.length; i++) {
                 const a = argvRest[i];
-                if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan, goal, outputFormat };
+                if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan, noSplit, goal, outputFormat };
                 if (a === "--print" || a === "-p") {
                         print = true;
                         continue;
@@ -326,6 +332,10 @@ export function parseArgs(argv: string[]): CliArgs {
                         plan = true;
                         continue;
                 }
+                if (a === "--no-split") {
+                        noSplit = true;
+                        continue;
+                }
                 if (a === "--goal") {
                         const next = argvRest[i + 1];
                         if (next !== undefined && !next.startsWith("--")) {
@@ -358,7 +368,7 @@ export function parseArgs(argv: string[]): CliArgs {
         const first = rest[0];
         if (first === "init" || first === "memory" || first === "doctor" || first === "note") {
                 const prompt = rest.slice(1).join(" ");
-                return { command: first, prompt, verbose, jsonMode, noSession, plan, outputFormat };
+                return { command: first, prompt, verbose, jsonMode, noSession, plan, noSplit, outputFormat };
         }
         const prompt = rest.join(" ");
         // Milestone 2.1 + 2.2 — surface the parsed routing fields (set by
@@ -378,6 +388,7 @@ export function parseArgs(argv: string[]): CliArgs {
                         tools,
                         appendSystemPromptPath,
                         plan,
+                        noSplit,
                         goal,
                         outputFormat,
                         model: subagentFlags.model,
@@ -394,6 +405,7 @@ export function parseArgs(argv: string[]): CliArgs {
                 tools,
                 appendSystemPromptPath,
                 plan,
+                noSplit,
                 goal,
                 outputFormat,
                 model: subagentFlags.model,
@@ -413,6 +425,8 @@ interface BootOptions {
         appendSystemPromptPath?: string;
         plan?: boolean;
         goal?: string;
+        /** --no-split: seed the split-view extension's flag so the session starts bare. */
+        noSplit?: boolean;
         extraExtensions?: Array<{ name: string; hidden: boolean; factory: (pi: any) => void | Promise<void> }>;
         /** Pre-opened session manager (ACP session/load resumes a persisted
          * session instead of creating a fresh one). */
@@ -539,10 +553,11 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                         agentDir,
                         settingsManager,
                         extensionFlagValues:
-                                bootOpts.plan || bootOpts.goal
+                                bootOpts.plan || bootOpts.goal || bootOpts.noSplit
                                         ? new Map<string, boolean | string>([
                                                   ...(bootOpts.plan ? ([["plan", true]] as Array<[string, boolean | string]>) : []),
                                                   ...(bootOpts.goal ? ([["goal", bootOpts.goal]] as Array<[string, boolean | string]>) : []),
+                                                  ...(bootOpts.noSplit ? ([["no-split", true]] as Array<[string, boolean | string]>) : []),
                                           ])
                                         : undefined,
                         resourceLoaderOptions: {
@@ -1398,6 +1413,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 tools: args.tools,
                 appendSystemPromptPath: args.appendSystemPromptPath,
                 plan: args.plan,
+                noSplit: args.noSplit,
                 goal: args.goal,
                 extraExtensions: capture ? [createOutputCaptureExtension(capture)] : undefined,
                 // Milestone 2.1 + 2.2 — surface the routing fields (set by
@@ -1783,6 +1799,7 @@ export async function runCli(argv: string[]) {
                                 tools: args.tools,
                                 appendSystemPromptPath: args.appendSystemPromptPath,
                                 plan: args.plan,
+                                noSplit: args.noSplit,
                                 goal: args.goal,
                                 // Milestone 2.1 + 2.2 — surface the routing fields
                                 // (set by parseSubagentFlags inside parseArgs) into

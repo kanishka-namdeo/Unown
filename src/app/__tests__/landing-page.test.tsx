@@ -6,16 +6,18 @@
 // missing anchor target (three links once pointed at an id no element had,
 // and every gate stayed green).
 //
-//   - the nine bands are present, in the order the doc comment claims,
+//   - the ten bands are present, in the order the doc comment claims,
 //     with the shipping rail between the FAQ and the finale;
 //   - the hue walk matches the allocation paragraph in the landing AGENTS.md;
 //   - every in-page anchor resolves to an element that exists.
 //
-// The nine-band structure and the walk below are the 2026-10-20 redesign
-// (eight bands) plus the capability dex (added the same day, Part 15):
-// fourteen sections (21.5 viewports, 5,488 words) merged into eight
-// (~half the scroll), then the dex joined as band three when the creatures
-// got their one canonical home — see docs/landing-research.md.
+// The ten-band structure and the walk below are the 2026-10-20 redesign
+// (eight bands) plus the capability dex (added the same day, Part 15), plus
+// the split-view band (also 2026-10-20): fourteen sections (21.5 viewports,
+// 5,488 words) merged into eight (~half the scroll), the dex joined as band
+// three when the creatures got their one canonical home, and the split-view
+// TUI display mode joined as band five between showcase and proof — see
+// docs/landing-research.md.
 
 import { describe, expect, mock, test } from "bun:test";
 import { render } from "@testing-library/react";
@@ -45,7 +47,7 @@ const LandingPage = (await import("../page")).default;
 // only inside its own render container, so a tree left mounted cannot make
 // another test's anchor check pass on a borrowed id.
 
-const SECTION_COUNT = 9;
+const SECTION_COUNT = 10;
 
 describe("landing composition root", () => {
   test(`renders ${SECTION_COUNT} bands with the rail between the FAQ and the finale`, () => {
@@ -66,8 +68,9 @@ describe("landing composition root", () => {
     expect(at("loop")).toBe(1);
     expect(at("dex")).toBe(2);
     expect(at("showcase")).toBe(3);
-    expect(at("proof")).toBe(4);
-    expect(at("alphabet")).toBe(5);
+    expect(at("split")).toBe(4);
+    expect(at("proof")).toBe(5);
+    expect(at("alphabet")).toBe(6);
     expect(at("showcase")).toBeLessThan(faq);
   });
 
@@ -80,14 +83,16 @@ describe("landing composition root", () => {
     // the four Gen 3 hues with no two neighbours sharing one. The dex takes
     // magma — the Gen-3 red the actual dex device is — and sits between the
     // leaf loop and the gold showcase, so it never touches the proof band's
-    // own magma. The proof band's three panes carry their own data-hue
-    // wrappers (leaf, magma, aqua) inside the magma section — the walk below
-    // is the top level.
+    // own magma. The split-view band takes aqua between the gold showcase and
+    // the magma proof band. The proof band's three panes carry their own
+    // data-hue wrappers (leaf, magma, aqua) inside the magma section — the
+    // walk below is the top level.
     expect(hues).toEqual([
       "psychic", // hero
       "leaf", // loop — how it learns
       "magma", // dex — the capability catalog
       "gold", // showcase — mission control
+      "aqua", // split — the split-view TUI display mode
       "magma", // proof — benchmarks | integrity | models
       "psychic", // alphabet — the identity (+ field notes)
       "gold", // faq

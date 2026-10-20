@@ -13,13 +13,14 @@
 //     pi-repo/packages/self-learning/src/router.ts. That data is generated,
 //     not authored: engine-data.ts is this script's output, never hand-edited,
 //     and --check fails when the committed file no longer matches JOB_DEFS.
-//   - integrity.tsx's LOG rows, loop.tsx's BEATS bodies and hero.tsx's
-//     COMMANDS list and slash-command sentence quote literals the engine
-//     writes. The gate re-reads both sides and fails on any quoted literal
-//     that no longer resolves in the source it claims: hook/log strings
-//     against hooks.ts + termhooks.ts + harness.ts (harness calls hooks.ts's
-//     logHook with its own lines), command names against the HELP block in
-//     cli.ts.
+//   - integrity.tsx's LOG rows, loop.tsx's BEATS bodies, hero.tsx's COMMANDS
+//     list and slash-command sentence, and split-view.tsx's display-command
+//     table quote literals the engine writes. The gate re-reads both sides
+//     and fails on any quoted literal that no longer resolves in the source
+//     it claims: hook/log strings against hooks.ts + termhooks.ts + harness.ts
+//     (harness calls hooks.ts's logHook with its own lines), command names
+//     against the HELP block in cli.ts, and the /split* command names against
+//     the registerCommand calls in splitview.ts.
 //
 // The two matching rules the gate lives or dies on:
 //
@@ -58,11 +59,14 @@ const TARGET_REL = "src/components/landing/engine-data.ts";
 
 /** Page files the gate reads, keyed for the routes below. The commands and
  *  slash chips live in hero.tsx since the 2026-10-20 merge (the quickstart
- *  section folded into the hero's collapsed expanders). */
+ *  section folded into the hero's collapsed expanders); the split-view
+ *  display commands live in split-view.tsx, which owns that surface (the
+ *  hero keeps the `unown` CLI). */
 const PAGES = {
   integrity: "src/components/landing/integrity.tsx",
   loop: "src/components/landing/loop.tsx",
   hero: "src/components/landing/hero.tsx",
+  splitview: "src/components/landing/split-view.tsx",
 };
 
 /** Engine sources, by the name a FAIL line prints. */
@@ -71,6 +75,12 @@ const SOURCES = {
   termhooks: { rel: `${ENGINE}/termhooks.ts`, name: `${ENGINE}/termhooks.ts` },
   harness: { rel: `${ENGINE}/harness.ts`, name: `${ENGINE}/harness.ts` },
   help: { rel: `${ENGINE}/cli.ts`, name: `${ENGINE}/cli.ts (HELP)` },
+  /** The split-view extension: the /split* command names the split-view band
+   *  lists are gated against its registerCommand calls. */
+  splitview: {
+    rel: `${ENGINE}/splitview.ts`,
+    name: `${ENGINE}/splitview.ts`,
+  },
   /**
    * The loop section's "dream" beat quotes this repository's own project memory
    * and calls the lines verbatim. AutoDream rewrites that file on a schedule, so
@@ -322,8 +332,10 @@ function parseBeats(text, key) {
   return out;
 }
 
-/** hero.tsx COMMANDS rows: the command string each row shows. */
-function parseCommands(text) {
+/** COMMANDS rows (hero.tsx's CLI table, split-view.tsx's display-command
+ *  table): the command string each row shows. `page` names the file in FAIL
+ *  messages, so a failure blames the table that actually broke. */
+function parseCommands(text, page = PAGES.hero) {
   const lines = text.split(/\r?\n/);
   const out = [];
   let inside = false;
@@ -336,8 +348,13 @@ function parseCommands(text) {
     const m = lines[i].match(/^\s*\[(["'])((?:(?!\1)[^\\]|\\.)*)\1\s*,/);
     if (m) out.push({ line: i + 1, cmd: m[2] });
   }
-  if (!out.length) fail(`${PAGES.hero}: the COMMANDS array did not parse`);
+  if (!out.length) fail(`${page}: the COMMANDS array did not parse`);
   return out;
+}
+
+/** split-view.tsx COMMANDS rows: the /split* display commands each row shows. */
+function parseSplitCommands(text) {
+  return parseCommands(text, PAGES.splitview);
 }
 
 /** hero.tsx's slash-command sentence: every `<code>/name</code>` chip. */
@@ -372,6 +389,16 @@ function commandClaim(cmd) {
     words.push(w);
   }
   return words.join(" ");
+}
+
+/**
+ * The registration a split-view row claims: the page shows "/split" and the
+ * extension registers `pi.registerCommand("split", …)`, so the claim gated
+ * is the registration call itself — the bare command name would match any
+ * mention of the word and the gate would be decorative.
+ */
+function splitCommandClaim(cmd) {
+  return `registerCommand("${cmd.replace(/^\//, "")}"`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -576,6 +603,17 @@ function gate(pages, sources) {
       bundles: [sources.help],
     },
     { page: PAGES.hero, rows: parseSlashCommands(pages[PAGES.hero]), bundles: [sources.help] },
+    // The split-view band's command table: each row names a command the
+    // extension must actually register. The gloss beside each name is
+    // authored copy — the hero's table has the same split.
+    {
+      page: PAGES.splitview,
+      rows: parseSplitCommands(pages[PAGES.splitview]).map((r) => ({
+        ...r,
+        match: splitCommandClaim(r.cmd),
+      })),
+      bundles: [sources.splitview],
+    },
   ];
   const failures = [];
   let checked = 0;
@@ -644,6 +682,7 @@ function run(check) {
     harness: buildSource(SOURCES.harness.name, read(SOURCES.harness.rel)),
     help: buildSource(SOURCES.help.name, helpText),
     memory: buildSource(SOURCES.memory.name, read(SOURCES.memory.rel)),
+    splitview: buildSource(SOURCES.splitview.name, read(SOURCES.splitview.rel)),
   };
   const g = gate(pages, srcBundles);
   for (const f of g.failures) console.log(renderFailure(f));
@@ -673,6 +712,8 @@ export {
   parseBeats,
   parseCommands,
   parseSlashCommands,
+  parseSplitCommands,
+  splitCommandClaim,
   helpBody,
   commandClaim,
   extractTemplates,

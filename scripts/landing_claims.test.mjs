@@ -31,7 +31,9 @@ import {
   parseBeats,
   parseCommands,
   parseSlashCommands,
+  parseSplitCommands,
   renderFailure,
+  splitCommandClaim,
 } from "./landing_claims.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -254,6 +256,14 @@ test("page extractors read the arrays the sections actually author", () => {
     parseSlashCommands('x <code className="c">/plan</code>, y <code>/mcp</code> z <code>todo</code>').map((r) => r.cmd),
     ["/plan", "/mcp"],
   );
+
+  const split = [
+    "const COMMANDS: [string, string][] = [",
+    '  ["/split", "toggle all panels"],',
+    '  ["/split-save", "save the layout"],',
+    "];",
+  ].join("\n");
+  assert.deepEqual(parseSplitCommands(split).map((r) => r.cmd), ["/split", "/split-save"]);
 });
 
 test("command claims name the command, not its arguments", () => {
@@ -274,11 +284,13 @@ function fixturePages({
   dream = '"- A rule AutoDream wrote and kept.",\n  ',
   commands = "",
   slash = "",
+  split = '  ["/split", "toggle all panels"],\n',
 } = {}) {
   return {
     [PAGES.integrity]: `const LOG = [\n${hook}] as const;\n`,
     [PAGES.loop]: `const BEATS = [\n{\nkey: "work",\nbody: [\n${work}].join("\\n"),\n},\n{\nkey: "learn",\nbody: [\n${learn}].join("\\n"),\n},\n{\nkey: "dream",\nbody: [\n${dream}].join("\\n"),\n},\n];\n`,
     [PAGES.hero]: `const COMMANDS: [string, string][] = [\n${commands}];\n${slash}`,
+    [PAGES.splitview]: `const COMMANDS: [string, string][] = [\n${split}];\n`,
   };
 }
 
@@ -291,6 +303,10 @@ function fixtureSources(cliHelp) {
     memory: buildSource(
       ".unown/memory/project.md",
       "# Tier 1 — Project Memory\n\n## Known pitfalls\n- A rule AutoDream wrote and kept.\n",
+    ),
+    splitview: buildSource(
+      "pi-repo/packages/self-learning/src/splitview.ts",
+      'pi.registerCommand("split", { description: "Toggle all panels" });',
     ),
   };
 }
@@ -354,6 +370,32 @@ test("a stale command the page still shows is caught page-side, not excused", ()
   const { failures } = gate(pages, fixtureSources(FULL_HELP));
   assert.equal(failures.length, 1);
   assert.match(renderFailure(failures[0]), /"unown dream".+not found in .+cli\.ts \(HELP\)$/s);
+});
+
+test("split-view rows gate against the registration call, not the bare command word", () => {
+  // The page shows "/split"; the extension registers
+  // `pi.registerCommand("split", …)`. The gated claim is the registration
+  // call itself — "split" appears throughout the module, so matching the
+  // bare name would let any mention of the word vouch for the command.
+  const src = fixtureSources("").splitview;
+  assert.equal(splitCommandClaim("/split"), 'registerCommand("split"');
+  assert.ok(matchLiteral(splitCommandClaim("/split"), [src]));
+  assert.equal(matchLiteral(splitCommandClaim("/split-magic"), [src]), null);
+
+  const pages = fixturePages({
+    hook: '  ["PreToolUse", "deny", "refusing rm on filesystem root"],\n',
+    work: '  "Terminal session in /x (1 min): 2 prompt(s),",\n',
+    learn: '  "baseline passed — no improvement needed",\n',
+    commands: '  ["unown setup", "wizard"],\n',
+    slash: "<code>/plan</code>",
+    split: '  ["/split-magic", "a command the extension never registered"],\n',
+  });
+  const { failures } = gate(pages, fixtureSources(FULL_HELP));
+  assert.equal(failures.length, 1);
+  assert.match(
+    renderFailure(failures[0]),
+    /"registerCommand\(\"split-magic\"".+not found in .+splitview\.ts$/s,
+  );
 });
 
 /* ------------------------------------------------------------------ */
