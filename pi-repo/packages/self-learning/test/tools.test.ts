@@ -208,7 +208,12 @@ function makeToolsFakePi() {
         sendMessage: () => {},
     };
     const emit = async (event: string, payload: any, ctx?: any) => {
-        for (const h of handlers.get(event) ?? []) await h(payload, ctx);
+        let last: any;
+        for (const h of handlers.get(event) ?? []) {
+            const r = await h(payload, ctx);
+            if (r !== undefined) last = r;
+        }
+        return last;
     };
     const runCommand = async (name: string, args: string, ctx: any) => {
         await commands.get(name)!.handler(args, ctx);
@@ -363,5 +368,85 @@ describe("footer status lines (P1-b)", () => {
         expect(statuses.filter(([k, t]) => k === "goal" && t === "goal: active").length).toBe(2);
         await runCommand("goal", "clear", ctx);
         expect(statuses.some(([k, t]) => k === "goal" && t === undefined)).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Advertised-subagent catalog wiring (pi-cciotti port): before_agent_start
+// appends the byte-budgeted <advertised_subagents> block to the system prompt
+// in orchestrator sessions; children (UNOWN_SUBAGENT=1) never see it.
+// ---------------------------------------------------------------------------
+describe("advertised-subagent catalog injection", () => {
+    const catTmp = mkdtempSync(join(tmpdir(), "unown-tools-catalog-"));
+    afterAll(() => {
+        try {
+            rmSync(catTmp, { recursive: true, force: true });
+        } catch {
+            /* best effort */
+        }
+    });
+
+    test("before_agent_start appends the catalog to the system prompt", async () => {
+        const dir = join(catTmp, "repo");
+        mkdirSync(dir, { recursive: true });
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        const { pi, emit } = makeToolsFakePi();
+        ext.factory(pi);
+        const result = await emit("before_agent_start", { systemPrompt: "BASE PROMPT" });
+        expect(result?.systemPrompt).toBeDefined();
+        expect(result!.systemPrompt.startsWith("BASE PROMPT")).toBe(true);
+        expect(result!.systemPrompt.includes("<advertised_subagents>")).toBe(true);
+        expect(result!.systemPrompt.includes("- name: general")).toBe(true);
+        // The role builtins from the cciotti port are advertised...
+        expect(result!.systemPrompt.includes("- name: scout")).toBe(true);
+        expect(result!.systemPrompt.includes("- name: worker")).toBe(true);
+        // ...but the planner opts out.
+        expect(result!.systemPrompt.includes("- name: planner")).toBe(false);
+        // The delegation sentence rides along.
+        expect(result!.systemPrompt.includes("Delegation policy:")).toBe(true);
+    });
+
+    test("no event.systemPrompt (older callers) leaves the prompt untouched", async () => {
+        const dir = join(catTmp, "repo2");
+        mkdirSync(dir, { recursive: true });
+        const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+        const { pi, emit } = makeToolsFakePi();
+        ext.factory(pi);
+        const result = await emit("before_agent_start", {});
+        expect(result?.systemPrompt).toBeUndefined();
+    });
+
+    test("UNOWN_DELEGATION_LEVEL=never withdraws the catalog entirely", async () => {
+        const dir = join(catTmp, "repo3");
+        mkdirSync(dir, { recursive: true });
+        const prev = process.env.UNOWN_DELEGATION_LEVEL;
+        process.env.UNOWN_DELEGATION_LEVEL = "never";
+        try {
+            const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+            const { pi, emit } = makeToolsFakePi();
+            ext.factory(pi);
+            const result = await emit("before_agent_start", { systemPrompt: "BASE PROMPT" });
+            expect(result?.systemPrompt).toBeUndefined();
+        } finally {
+            if (prev === undefined) delete process.env.UNOWN_DELEGATION_LEVEL;
+            else process.env.UNOWN_DELEGATION_LEVEL = prev;
+        }
+    });
+
+    test("subagent sessions (UNOWN_SUBAGENT=1) never get the catalog", async () => {
+        const dir = join(catTmp, "repo4");
+        mkdirSync(dir, { recursive: true });
+        const prev = process.env.UNOWN_SUBAGENT;
+        process.env.UNOWN_SUBAGENT = "1";
+        try {
+            const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:3030" });
+            const { pi, emit } = makeToolsFakePi();
+            ext.factory(pi);
+            const result = await emit("before_agent_start", { systemPrompt: "BASE PROMPT" });
+            expect(result?.systemPrompt).toBeUndefined();
+        } finally {
+            if (prev === undefined) delete process.env.UNOWN_SUBAGENT;
+            else process.env.UNOWN_SUBAGENT = prev;
+        }
     });
 });

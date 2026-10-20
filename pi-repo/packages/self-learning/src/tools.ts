@@ -88,6 +88,28 @@ import {
         type SubagentEffort,
         type SubagentRoutingFields,
 } from "./subagent-routing.ts";
+import {
+        CHILD_BOUNDARY_INSTRUCTIONS,
+        COMPLETION_GUARD_FAILURE,
+        DELEGATION_LEVEL_ENV,
+        isBlockedReply,
+        mutatedPaths,
+        parseAgentCatalogFrontmatter,
+        parseDelegationLevel,
+        renderAdvertisedCatalog,
+        snapshotWorkingTree,
+        treeMutated,
+        type CatalogAgent,
+        type CatalogFields,
+} from "./subagent-catalog.ts";
+import { ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
+import {
+        isProviderStyleFailure,
+        loadModelHealth,
+        markModelUnhealthy,
+        saveModelHealth,
+        trimUnhealthyLeading,
+} from "./model-health.ts";
 import { generateAgentsMd } from "./init-agents.ts";
 import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
 import { postPrComment } from "./pr-review.ts";
@@ -101,7 +123,7 @@ import { foregroundTodosForGoalGate } from "./addons/todo.ts";
 // Subagent registry: built-ins + .unown/agents/*.md + ~/.unown/agent/agents/*.md
 // ---------------------------------------------------------------------------
 
-export interface SubagentConfig extends SubagentRoutingFields {
+export interface SubagentConfig extends SubagentRoutingFields, CatalogFields {
         name: string;
         description: string;
         tools?: string[];
@@ -144,6 +166,12 @@ Do not propose changes; do not edit anything. If the answer is not in the repo, 
         // is hermetically testable; spread here so the discovery + override
         // semantics (built-in < user < project) apply.
         BACKGROUND_EXPLORE_AGENT,
+        // pi-cciotti port — the role-specialized set: scout (compressed recon
+        // handoff), worker (completion-guarded implementation), reviewer
+        // (P0/P1/P2 + verdict), planner (plan.md gate, unadvertised). Same
+        // discovery + override semantics apply (project .md can override any
+        // of them by name).
+        ...ROLE_BUILTIN_AGENTS,
 ];
 
 type AgentFrontmatter = {
@@ -160,6 +188,17 @@ type AgentFrontmatter = {
         mcp_servers?: unknown;
         injectAgentsMd?: unknown;
         inject_agents_md?: unknown;
+        // Catalog fields (pi-cciotti port): advertise / completionGuard /
+        // fallbackModels / context / contextBrief. Same tolerant posture —
+        // parsed by parseAgentCatalogFrontmatter.
+        advertise?: unknown;
+        completionGuard?: unknown;
+        completion_guard?: unknown;
+        fallbackModels?: unknown;
+        fallback_models?: unknown;
+        context?: unknown;
+        contextBrief?: unknown;
+        context_brief?: unknown;
 };
 
 function parseToolList(value: unknown): string[] | undefined {
@@ -203,6 +242,7 @@ function loadAgentsFromDir(dir: string, source: "user" | "project"): SubagentCon
                 // from subagent-routing.ts; tolerates camelCase + snake_case
                 // keys and drops invalid values silently.
                 const extras = parseAgentFrontmatterExtras(frontmatter);
+                const catalog = parseAgentCatalogFrontmatter(frontmatter);
                 agents.push({
                         name: frontmatter.name,
                         description: frontmatter.description,
@@ -210,6 +250,7 @@ function loadAgentsFromDir(dir: string, source: "user" | "project"): SubagentCon
                         systemPrompt: body.trim(),
                         source,
                         ...extras,
+                        ...catalog,
                 });
         }
         return agents;
@@ -247,6 +288,10 @@ export interface SubagentRunResult {
          *  incomplete instead of presenting a truncated finding set as whole
          *  (R-b S3). */
         outputTruncated?: boolean;
+        /** Fallback-model lane (pi-cciotti port): models actually attempted,
+         *  in order — present only when a provider-style failure rotated the
+         *  model away from the agent's primary. */
+        modelsAttempted?: string[];
         /** Structured-output lane (oh-my-pi task outputSchema port): present
          *  when the caller requested a schema. `ok` true carries the parsed,
          *  validated JSON in `data`; false carries the extraction/validation
@@ -456,12 +501,15 @@ function killSubagentTree(proc: KillableProc): void {
 
 /** One subagent attempt: spawn, collect, and (when a schema was requested)
  *  validate the final reply. Shared by the original run and the corrective
- *  re-runs. */
+ *  re-runs. `modelOverride` (fallback-model lane, pi-cciotti port) replaces
+ *  the agent's model for THIS attempt only — used by runSubagent's rotation
+ *  after a provider-style failure. */
 async function runSubagentOnce(
         agent: SubagentConfig,
         task: string,
         cwd: string,
         signal: AbortSignal | undefined,
+        modelOverride?: string,
 ): Promise<SubagentRunResult> {
         const result: SubagentRunResult = {
                 agent: agent.name,
@@ -485,14 +533,21 @@ async function runSubagentOnce(
         // Milestone 2.1 + 2.2 — the args array is built by the pure helper
         // buildSubagentArgs (in subagent-routing.ts) so the routing logic is
         // hermetically testable. Backward-compatible: an agent with no routing
-        // fields yields the same args array as before.
-        const args: string[] = buildSubagentArgs(agent);
+        // fields yields the same args array as before. The fallback-model lane
+        // (pi-cciotti port) substitutes the rotating model for this attempt.
+        const args: string[] = buildSubagentArgs(modelOverride ? { ...agent, model: modelOverride } : agent);
         let promptDir: string | null = null;
         try {
-                if (agent.systemPrompt.trim()) {
+                // BLOCKED protocol (pi-cciotti port): every child gets the
+                // boundary instructions appended to its system prompt — the
+                // machine-readable refusal lane that keeps silent no-op
+                // "success" out of the parent's transcript.
+                const basePrompt = agent.systemPrompt.trim();
+                const systemPrompt = basePrompt ? `${basePrompt}\n\n${CHILD_BOUNDARY_INSTRUCTIONS}` : CHILD_BOUNDARY_INSTRUCTIONS;
+                if (systemPrompt) {
                         promptDir = mkdtempSync(join(tmpdir(), "unown-subagent-"));
                         const promptFile = join(promptDir, "system-prompt.md");
-                        writeFileSync(promptFile, agent.systemPrompt, { encoding: "utf8", mode: 0o600 });
+                        writeFileSync(promptFile, systemPrompt, { encoding: "utf8", mode: 0o600 });
                         args.push("--append-system-prompt", promptFile);
                 }
                 args.push(`Task: ${task}`);
@@ -620,23 +675,22 @@ async function runSubagentOnce(
         return result;
 }
 
-/** Spawn one unown subagent and collect its JSON event stream. When
- *  `opts.outputSchema` is set, the final reply is extracted + validated
- *  against the schema, with up to STRUCTURED_RETRIES corrective re-runs that
- *  quote the exact defects back to the child (oh-my-pi task outputSchema
- *  port: permissive keeps an invalid reply with a warning; strict reports
- *  it as an error). */
-export async function runSubagent(
+/** The per-model attempt: the structured-output retry contract (original +
+ *  up to STRUCTURED_RETRIES corrective re-runs quoting the exact defects
+ *  back) for ONE model slot. The fallback-model chain in runSubagent calls
+ *  this per candidate. */
+async function runSubagentWithRetries(
         agent: SubagentConfig,
         task: string,
         cwd: string,
         signal: AbortSignal | undefined,
-        opts: StructuredRunOptions = {},
+        opts: StructuredRunOptions,
+        modelOverride: string | undefined,
 ): Promise<SubagentRunResult> {
-        if (!opts.outputSchema) return runSubagentOnce(agent, task, cwd, signal);
+        if (!opts.outputSchema) return runSubagentOnce(agent, task, cwd, signal, modelOverride);
         const schema = opts.outputSchema;
         let attempts = 0;
-        let result = await runSubagentOnce(agent, task, cwd, signal);
+        let result = await runSubagentOnce(agent, task, cwd, signal, modelOverride);
         // usage/toolResults accumulate ACROSS retries (the caller bills and
         // reports the whole structured-output contract, not the last try).
         let usage = { ...result.usage };
@@ -676,7 +730,7 @@ export async function runSubagent(
                 }
                 // Corrective re-run with the defects quoted back.
                 currentTask = buildSchemaRetryTask(currentTask, schema, problems.join("; "));
-                const retry = await runSubagentOnce(agent, currentTask, cwd, signal);
+                const retry = await runSubagentOnce(agent, currentTask, cwd, signal, modelOverride);
                 usage = {
                         input: usage.input + retry.usage.input,
                         output: usage.output + retry.usage.output,
@@ -685,6 +739,77 @@ export async function runSubagent(
                 toolResults += retry.toolResults;
                 result = retry;
         }
+}
+
+/**
+ * Spawn one unown subagent and collect its JSON event stream — now wrapped in
+ * the fallback-model chain (pi-cciotti port).
+ *
+ * Chain resolution: `[agent.model]` (or the session default slot when unset)
+ * followed by `agent.fallbackModels`, deduplicated. A candidate advances ONLY
+ * on a provider-style failure (auth / quota / rate / 5xx / timeout / empty)
+ * that happened BEFORE any tool use — a context overflow or a mid-task crash
+ * never rotates. Named models that hard-fail get a 30-minute health mark in
+ * the shared ~/.unown/agent/model-health.json store, so sibling processes skip
+ * them for the TTL window instead of re-paying the failure.
+ *
+ * Usage and tool counts accumulate ACROSS model attempts (the caller bills the
+ * whole delegation, not the surviving attempt).
+ */
+export async function runSubagent(
+        agent: SubagentConfig,
+        task: string,
+        cwd: string,
+        signal: AbortSignal | undefined,
+        opts: StructuredRunOptions = {},
+): Promise<SubagentRunResult> {
+        // Build the candidate chain: slot 0 is the agent's primary (undefined
+        // when unset = the session default, which health marks never trim).
+        const chain: Array<string | undefined> = [agent.model];
+        for (const fb of agent.fallbackModels ?? []) {
+                if (!chain.includes(fb)) chain.push(fb);
+        }
+        if (chain.length === 1) return runSubagentWithRetries(agent, task, cwd, signal, opts, undefined);
+
+        // Trim LEADING unhealthy named candidates (the chain advances from its
+        // head; the default slot and later candidates stay).
+        let health = loadModelHealth(UNOWN_AGENT_DIR);
+        const candidates = [...chain];
+        while (candidates.length > 1 && candidates[0] !== undefined && isModelUnhealthy(candidates[0]!, health)) {
+                candidates.shift();
+        }
+
+        const attempted: string[] = [];
+        let usage = { input: 0, output: 0, turns: 0 };
+        let toolResults = 0;
+        for (let i = 0; i < candidates.length; i++) {
+                const model = candidates[i];
+                if (model) attempted.push(model);
+                const result = await runSubagentWithRetries(agent, task, cwd, signal, opts, model);
+                usage = {
+                        input: usage.input + result.usage.input,
+                        output: usage.output + result.usage.output,
+                        turns: usage.turns + result.usage.turns,
+                };
+                toolResults += result.toolResults;
+                const isLast = i === candidates.length - 1;
+                if (!isLast && !signal?.aborted && isProviderStyleFailure(result)) {
+                        // Provider-style failure before any work: mark + rotate.
+                        if (model) {
+                                health = markModelUnhealthy(model, Date.now(), health);
+                                saveModelHealth(UNOWN_AGENT_DIR, health);
+                        }
+                        continue;
+                }
+                if (attempted.length > 1) {
+                        result.modelsAttempted = [...attempted];
+                        result.usage = usage;
+                        result.toolResults = toolResults;
+                }
+                return result;
+        }
+        // Unreachable: the loop returns on its last iteration.
+        return runSubagentWithRetries(agent, task, cwd, signal, opts, undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -925,6 +1050,17 @@ interface TaskRunDetails {
                 structured?: { ok: boolean; error?: string };
                 /** worktree-isolation lane (present when worktree_isolation was set) */
                 worktree?: { action: string; path?: string; detail: string };
+                /** BLOCKED protocol (pi-cciotti port): the child refused the
+                 *  task machine-readably; carries the short reason. */
+                blocked?: string;
+                /** completion-guard lane (pi-cciotti port): "failed" when a
+                 *  guarded writer finished with zero mutations, "passed" with
+                 *  the mutated-path count, "unavailable" when the guard could
+                 *  not run (not a git repo / git error). */
+                guard?: { status: "failed" | "passed" | "unavailable"; detail: string };
+                /** fallback-model lane: models actually attempted, in order
+                 *  (present when a provider-style failure rotated the model). */
+                modelsAttempted?: string[];
         }>;
 }
 
@@ -1141,7 +1277,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 name: "task",
                                 label: "Task",
                                 description:
-                                        "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default) and 'explore' (read-only) plus any defined in .unown/agents/*.md. Pass {tasks: [...]} to run up to 4 in parallel. Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back). Prefer this whenever a focused investigation would pollute this session's context.",
+                                        "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default), 'explore' / 'scout' (read-only; scout returns a compressed handoff), 'worker' (implementation, completion-guarded), 'reviewer' (P0/P1/P2 + verdict), 'planner' (writes plan.md, never executes), 'background-explore' (cheap sweep) plus any defined in .unown/agents/*.md (also listed in the advertised-subagents block of your system prompt). Pass {tasks: [...]} to run up to 4 in parallel. Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back). Prefer this whenever a focused investigation would pollute this session's context.",
                                 parameters: TaskParams,
                                 async execute(_toolCallId, params, signal) {
                                         const agents = discoverSubagents(opts.cwd);
@@ -1226,8 +1362,16 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                         continue;
                                                                 }
                                                         }
+                                                        // ---- completion guard (pi-cciotti port): snapshot the
+                                                        // run cwd's working tree BEFORE the spawn; a guarded
+                                                        // writer that finishes with an identical tree is a
+                                                        // FAILURE, not a success. The guard runs in the actual
+                                                        // run cwd (worktree when isolated).
+                                                        const runCwd = tree ? tree.path : opts.cwd;
+                                                        const guardActive = agent.completionGuard === true;
+                                                        const guardBefore = guardActive ? snapshotWorkingTree(runCwd) : null;
                                                         log(`spawning subagent ${agent.name}`);
-                                                        const result = await runSubagent(agent, job.task, tree ? tree.path : opts.cwd, signal, {
+                                                        const result = await runSubagent(agent, job.task, runCwd, signal, {
                                                                 outputSchema: job.outputSchema,
                                                                 schemaMode: job.schemaMode,
                                                         });
@@ -1238,6 +1382,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 turns: result.usage.turns,
                                                                 toolResults: result.toolResults,
                                                         };
+                                                        if (result.modelsAttempted) run.modelsAttempted = result.modelsAttempted;
+                                                        // ---- BLOCKED protocol (pi-cciotti port): a machine-readable
+                                                        // refusal is a first-class outcome, never an error.
+                                                        const blocked = isBlockedReply(result.output);
+                                                        if (blocked.blocked && blocked.reason) run.blocked = blocked.reason;
                                                         // ---- worktree disposition: cleanup per remove_if_clean; kept
                                                         // trees carry the path for merge (nothing merges automatically).
                                                         if (tree) {
@@ -1249,17 +1398,48 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 };
                                                                 treeNote = `\n\n[worktree ${cleanup.action}] ${cleanup.detail}`;
                                                         }
+                                                        // ---- guard verdict (fail-closed on the silent no-op).
+                                                        if (guardActive) {
+                                                                const guardAfter = snapshotWorkingTree(runCwd);
+                                                                const mutated = treeMutated(guardBefore, guardAfter);
+                                                                if (mutated === false && result.exitCode === 0 && !blocked.blocked) {
+                                                                        run.guard = { status: "failed", detail: COMPLETION_GUARD_FAILURE };
+                                                                } else if (mutated === null) {
+                                                                        run.guard = {
+                                                                                status: "unavailable",
+                                                                                detail: "guard could not run (not a git repository, or git failed)",
+                                                                        };
+                                                                } else {
+                                                                        const paths = mutatedPaths(guardBefore, guardAfter);
+                                                                        run.guard = {
+                                                                                status: "passed",
+                                                                                detail:
+                                                                                        paths.length > 0
+                                                                                                ? `${paths.length} path(s) mutated: ${paths.slice(0, 5).join(", ")}${paths.length > 5 ? " …" : ""}`
+                                                                                                : "working tree mutated",
+                                                                        };
+                                                                }
+                                                        }
                                                         // ---- structured-output verdict (omp schemaMode semantics).
                                                         if (result.structured) {
                                                                 run.structured = { ok: result.structured.ok, error: result.structured.error };
                                                         }
                                                         runs.push(run);
+                                                        const modelsNote = run.modelsAttempted ? ` · models ${run.modelsAttempted.join(" → ")}` : "";
                                                         const header =
-                                                                `## ${agent.name} (${result.exitCode === 0 ? "ok" : `exit ${result.exitCode}`}; ` +
+                                                                `## ${agent.name} (${blocked.blocked ? "BLOCKED" : run.guard?.status === "failed" ? "GUARD FAILED" : result.exitCode === 0 ? "ok" : `exit ${result.exitCode}`}; ` +
                                                                 `${result.usage.turns} turns, ${formatTokens(result.usage.input)} in / ${formatTokens(result.usage.output)} out, ` +
-                                                                `${result.toolResults} tool calls)`;
+                                                                `${result.toolResults} tool calls${modelsNote})`;
                                                         const parts: string[] = [];
-                                                        if (result.structured) {
+                                                        if (blocked.blocked) {
+                                                                parts.push(`**BLOCKED**: ${blocked.reason ?? "no reason given"}`);
+                                                                if (result.output.trim() && result.output.trim() !== `BLOCKED: ${blocked.reason ?? ""}`) {
+                                                                        parts.push(result.output.trim());
+                                                                }
+                                                        } else if (run.guard?.status === "failed") {
+                                                                parts.push(`**${COMPLETION_GUARD_FAILURE}**`);
+                                                                if (result.output.trim()) parts.push(result.output.trim());
+                                                        } else if (result.structured) {
                                                                 if (result.structured.ok) {
                                                                         // The validated JSON IS the report — the parent asked for
                                                                         // structured data; print it as the body.
@@ -1316,9 +1496,19 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         if (!details) return new Text(theme.fg("dim", "subagent finished"), 0, 0);
                                         const summary = details.runs
                                                 .map((r) => {
-                                                        const mark = r.exitCode === 0 ? (r.structured && !r.structured.ok ? "~" : "✓") : "✗";
+                                                        const mark = r.blocked
+                                                                ? "⊘"
+                                                                : r.guard?.status === "failed"
+                                                                        ? "✗"
+                                                                        : r.exitCode === 0
+                                                                                ? r.structured && !r.structured.ok
+                                                                                        ? "~"
+                                                                                        : "✓"
+                                                                                : "✗";
                                                         const tree = r.worktree ? ` [${r.worktree.action}]` : "";
-                                                        return `${r.agent}: ${mark} ${r.turns} turns, ${r.toolResults} tools${tree}`;
+                                                        const guard = r.guard ? ` [guard ${r.guard.status}]` : "";
+                                                        const models = r.modelsAttempted ? ` (${r.modelsAttempted.join("→")})` : "";
+                                                        return `${r.agent}${models}: ${mark} ${r.turns} turns, ${r.toolResults} tools${tree}${guard}`;
                                                 })
                                                 .join("\n");
                                         return new Text(theme.fg("muted", summary), 0, 0);
@@ -2675,7 +2865,20 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         };
                 });
 
-                pi.on("before_agent_start", async () => {
+                pi.on("before_agent_start", async (event: any) => {
+                        // ---- advertised-subagent catalog (pi-cciotti port): append the
+                        // byte-budgeted <advertised_subagents> block to the system prompt so
+                        // the model SEES user/project agents (not just the two named in the
+                        // task tool description) plus the delegation policy sentence. Only
+                        // in orchestrator sessions (children have no task tool) and only
+                        // when a catalog survived the level + budget gates.
+                        let catalogPrompt: string | undefined;
+                        if (!isSubagent && typeof event?.systemPrompt === "string" && event.systemPrompt) {
+                                const level = parseDelegationLevel(process.env[DELEGATION_LEVEL_ENV]);
+                                const catalog = renderAdvertisedCatalog(discoverSubagents(opts.cwd) as CatalogAgent[], level);
+                                if (catalog) catalogPrompt = `${event.systemPrompt}\n\n${catalog}`;
+                        }
+                        const base = await (async () => {
                         if (planModeEnabled) {
                                 return {
                                         message: {
@@ -2728,6 +2931,13 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                                 };
                         }
                         return undefined;
+                        })();
+                        // Merge the base result (plan/goal context message) with the
+                        // catalog system-prompt append (both are legal return shapes of
+                        // one before_agent_start handler).
+                        if (!catalogPrompt) return base ?? undefined;
+                        if (!base) return { systemPrompt: catalogPrompt };
+                        return { ...base, systemPrompt: catalogPrompt };
                 });
 
                 pi.on("turn_end", async (event: any, ctx: any) => {

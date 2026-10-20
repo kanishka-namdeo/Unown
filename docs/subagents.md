@@ -6,8 +6,12 @@ Fresh-context unown agents the model can spawn mid-session with the `task` tool 
 - [Structured outputs](#structured-outputs)
 - [Worktree isolation](#worktree-isolation)
 - [Built-in agents](#built-in-agents)
+- [The advertised catalog](#the-advertised-catalog)
 - [Authoring custom agents](#authoring-custom-agents)
 - [Per-agent routing](#per-agent-routing)
+- [Fallback models](#fallback-models)
+- [The BLOCKED protocol](#the-blocked-protocol)
+- [The completion guard](#the-completion-guard)
 - [How the model invokes them](#how-the-model-invokes-them)
 - [What subagents cannot do](#what-subagents-cannot-do)
 - [When to use subagents](#when-to-use-subagents)
@@ -53,9 +57,30 @@ The contract: isolation is opt-in and **fail-closed** — outside a git reposito
 |---|---|---|
 | `general` | full toolset (read/write/edit/bash + todo/note/web_search/webfetch), same tiered memory | Self-contained implementation or investigation tasks that deserve a fresh context |
 | `explore` | `read`, `grep`, `find`, `ls` — read-only | Mapping where things live in the repo and returning file:line evidence, whenever broad code search would pollute the parent context |
+| `scout` | `read`, `grep`, `find`, `ls` — read-only, cheap routing (qwen3.7-plus, effort low, no MCP, no memory injection) | First-pass recon that comes back SMALL: a compressed inventory + anchors handoff built to protect the parent's context window — cheaper on context than `explore` |
 | `background-explore` | `read`, `grep`, `find`, `ls` — read-only | Low-cost background sweeps: same evidence-first shape as `explore`, but routed to a cheaper model (`qwen3.7-plus`) at `effort: low`, loading **no MCP servers** and skipping AGENTS.md/memory injection — the minimal-overhead lane for parallel fact-finding |
+| `worker` | full toolset, **completion guard on** | Implementation with evidence: a run that finishes without touching a single file is reported as FAILED (silent no-op success cannot happen), and the reply follows a fixed evidence report — Changed / Commands / Residual risks. Falls back across models on provider failures |
+| `reviewer` | `read`, `grep`, `find`, `ls`, `bash` (read-only inspection) | Second pair of eyes: P0/P1/P2 findings with file:line evidence and an explicit merge verdict — BLOCK, OK, or OK with notes. A P0 forces BLOCK |
+| `planner` | `read`, `grep`, `find`, `ls`, `write` (plan.md only) | Writes a step-by-step `plan.md` to the project root and STOPS — the plan file is the review gate; read it, edit it, then hand the approved steps to a `worker`. Not listed in the advertised catalog (reached explicitly) |
 
 `general` is the default when no agent is named.
+
+## The advertised catalog
+
+Before each turn, the parent's system prompt carries an `<advertised_subagents>` block: every discovered agent (built-ins + your `.md` files, minus any that set `advertise: false`) with its name and description, plus the one-sentence delegation policy. This is how the model *knows* your project agents exist without guessing names — previously only `general` and `explore` were named in the tool description, and a typo'd agent name cost a corrective round-trip.
+
+The block is byte-budgeted like a prompt citizen, not a dump: at most 16 agents, 12,288 rendered bytes, 512-byte descriptions (truncated byte-safely with an ellipsis). Overflow drops whole agents from the front of discovery order (built-ins go first, so project-specific agents survive) and records the drop with `<omitted count="N"/>`. The catalog tells the model to confirm the exact agent before executing; unknown names still fail fast with the available list.
+
+**Delegation levels** shape the policy sentence (and are the dial for cost-sensitive work):
+
+| `UNOWN_DELEGATION_LEVEL` | Policy sentence the model gets |
+|---|---|
+| `never` | Delegate only when the user explicitly asks for a subagent. **The catalog is withdrawn entirely** (the `task` tool still works when invoked explicitly) |
+| `rarely` | Delegate rarely — only for large, clearly separable investigations the user would expect you to hand off |
+| `standard` *(default)* | Delegate focused, self-contained investigations or implementations whenever a fresh context would keep this session sharp |
+| `aggressive` | Delegate aggressively — prefer a subagent for most non-trivial investigation and implementation work; keep orchestration and user-facing decisions here |
+
+The level is policy, not plumbing: it never changes what the tools can do, only what the model is told to prefer. (Ported from pi-cciotti's delegation levels + advertised-agent catalog.)
 
 ## Authoring custom agents
 
@@ -77,6 +102,11 @@ Load order is built-in → global → project; a definition with the same `name`
 | `effort` | no | `low` / `medium` / `high` — reasoning effort for this agent's runs (see [Per-agent routing](#per-agent-routing)) |
 | `mcpServers` | no | Whitelist of MCP server names this agent may load; an empty list means **load none**. Omit to load all (the default). Also accepted in snake_case (`mcp_servers`) |
 | `injectAgentsMd` | no | `false` skips AGENTS.md / per-tier memory injection into the subagent's system prompt (lighter context, lower cost). Default `true`. Also accepted in snake_case (`inject_agents_md`) |
+| `advertise` | no | `false` keeps the agent out of the advertised catalog (it still spawns fine when named explicitly — the `planner` shape). Default `true` |
+| `completionGuard` | no | `true` turns on the [completion guard](#the-completion-guard) for this agent (the `worker` builtin has it on). Default `false` |
+| `fallbackModels` | no | Ordered fallback models for provider-style failures (see [Fallback models](#fallback-models)) |
+| `context` | no | `fresh` (default) or `summary` — reserved for the context-brief lane |
+| `contextBrief` | no | Role-directed instruction shaping the summary brief — reserved for the context-brief lane |
 
 The Markdown **body (everything after the closing `---`) becomes the subagent's system prompt**. Files without valid `name` and `description` frontmatter are skipped silently. Invalid values for the routing fields are dropped, never thrown. Other frontmatter fields are ignored. Run `/agents` in a session to list everything discovered, with source and toolset.
 
@@ -136,6 +166,42 @@ Resolution order for the model: the agent's `model` field wins, then the `UNOWN_
 
 The same four flags are accepted on any `unown` launch (TUI or print mode), where they route **that whole session** the same way — `unown --model kimi-k2.5 --effort low -p "summarize the diff"`, or `--mcp-servers github` to start a session with only one MCP server live. See [usage](usage.md) and [configuration](configuration.md).
 
+## Fallback models
+
+A provider outage used to cost the whole delegation: the subagent died with `429 Too Many Requests` (or a silent non-zero exit) and the parent had to re-plan. Agents can now carry an ordered **fallback chain** (`fallbackModels` in frontmatter; the `worker` builtin ships one):
+
+```markdown
+---
+name: heavy-worker
+description: Implementation worker for large refactors.
+fallbackModels: qwen3.7-plus, qwen3.6-plus
+---
+```
+
+The chain is the agent's `model` (when set) followed by the fallbacks, deduplicated. A candidate advances **only** on a provider-style failure — auth (401/403), quota, rate limits (429), 5xx, timeouts, connection resets, or a silent non-zero exit — **and only when the child had done no work yet** (zero tool calls: rotating mid-task would discard real work). A context overflow or a crash after work started never rotates; the failure surfaces to the parent as before.
+
+Hard-failed models get a **30-minute health mark** in `~/.unown/agent/model-health.json` — a tiny shared store every unown process reads, so the outage is paid once per window across a whole fleet of subagents instead of once per spawn. Marks auto-expire; the store is atomic-written and fails closed (an unreadable store means "try the model", never "skip everything"). The run's report lists the models actually attempted (`worker · models kimi-k2.5 → qwen3.7-plus`) and usage is billed across the whole chain, not just the survivor.
+
+## The BLOCKED protocol
+
+Every subagent's system prompt carries boundary instructions ending in one rule: if the task cannot be safely or legitimately completed — missing access, ambiguous target, destructive-looking request — the child returns exactly:
+
+```
+BLOCKED: <short reason>
+```
+
+instead of improvising a partial answer. The parent parses the marker (tolerantly: fenced, padded, or as the first line — but never a mid-document mention, so discussing the protocol is not using it) and routes it back as a **first-class outcome**: the run's header reads `## worker (BLOCKED; …)`, the reason is quoted in bold, and the parent model can re-plan. A BLOCKED reply is not an error — it is the honest refusal lane that keeps silent no-op "success" out of your transcript. (Ported from pi-cciotti's `CHILD_SUBAGENT_BOUNDARY_INSTRUCTIONS`.)
+
+## The completion guard
+
+"The subagent said it fixed the bug" is not evidence. Agents with `completionGuard: true` (the `worker` builtin) are wrapped in a deterministic git fingerprint check:
+
+1. **Before** the spawn, the run directory's working tree is snapshotted (changed-path list from `git status --porcelain -z` plus a SHA-256 digest of `git diff HEAD`, both with `core.fsmonitor=false` to dodge stale daemons).
+2. **After** the run, a second snapshot is taken.
+3. Identical snapshots + exit 0 + not BLOCKED ⇒ the run is reported as **FAILED** with `Subagent completed without making edits for an implementation task.` — the no-op cannot masquerade as success.
+
+The guard is honest about its own limits: outside a git repository (or when git itself fails) it reports `unavailable` rather than guessing, and a mutation surfaces as evidence — `worker: ✓ 6 turns, 12 tools [guard passed · 3 path(s) mutated: src/a.ts, …]`. Worktree-isolated runs guard inside their worktree, so the lane composes. (Ported from pi-cciotti's mutation-evidence completion guard.)
+
 ## How the model invokes them
 
 The model calls the `task` tool with either a single job or a batch:
@@ -161,11 +227,14 @@ The task string is all the subagent ever sees — it does not see the parent con
 src/middleware/auth.ts:12 registers requireAuth on the router...
 ```
 
+The header carries the [BLOCKED](#the-blocked-protocol) status (`## worker (BLOCKED; …)`), the [guard](#the-completion-guard) failure (`## worker (GUARD FAILED; …)`), and the [fallback chain](#fallback-models) when it rotated (`· models kimi-k2.5 → qwen3.7-plus`). The compact TUI result line marks blocked runs `⊘` and guard failures `✗`.
+
 Parallel results are separated by `---` and returned in the order they were requested. The parent's copy is capped (see below), so tell subagents to end with a concise summary, not a transcript dump.
 
 ## What subagents cannot do
 
 - **No nesting.** Subagents run with `UNOWN_SUBAGENT=1`, which unregisters the `task` tool inside them — a subagent cannot spawn further subagents.
+- **No interactive user.** A subagent cannot ask *you* questions — but it can refuse honestly via the [BLOCKED protocol](#the-blocked-protocol) instead of improvising.
 - **Restricted tools.** The definition's `tools` list is passed as `--tools` to the subprocess; the built-in `explore` agent, for example, physically cannot write.
 - **Time limit.** Each subagent is killed after 300 seconds (SIGTERM, then SIGKILL).
 - **Output caps.** The final report is capped at 16,000 characters; stderr at 2,000.

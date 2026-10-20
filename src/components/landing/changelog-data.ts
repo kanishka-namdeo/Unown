@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 126;
+export const CHANGELOG_TOTAL_ENTRIES = 127;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 58,
@@ -39,14 +39,14 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Removed": 0,
   "Fixed": 26,
   "Security": 3,
-  "Behavior": 20
+  "Behavior": 21
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 4,
+    "total": 5,
     "counts": {
       "Added": 4,
       "Changed": 0,
@@ -54,9 +54,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Removed": 0,
       "Fixed": 0,
       "Security": 0,
-      "Behavior": 0
+      "Behavior": 1
     },
     "groups": [
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "subagents: the advertised catalog, delegation levels, role builtins, the BLOCKED protocol…",
+            "behavior": true
+          }
+        ]
+      },
       {
         "bucket": "Added",
         "items": [
