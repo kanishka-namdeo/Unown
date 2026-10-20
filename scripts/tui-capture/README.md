@@ -31,6 +31,10 @@ python3 scripts/tui-capture/scan_frames.py hero-bugfix       # advisory corrupti
 python3 scripts/tui-capture/audit_video.py hero-bugfix 4     # VLM-samples the assembled MP4
 ```
 
+A second, dependency-light lane — [pty-README.md](pty-README.md) — drives the
+TUI through a plain PTY + pyte when the host lacks tmux/ttyd; use it for
+quick addon-surface verification.
+
 Output lands in `$OUT_ROOT/<scenario>/` (default
 `/home/z/my-project/download/unown-tui-captures/`): `stills/*.png`,
 `frames/*.jpg` + `frames-meta.jsonl`, `geometry.json`, `capture.log` (includes

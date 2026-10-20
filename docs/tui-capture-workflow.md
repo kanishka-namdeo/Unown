@@ -42,6 +42,13 @@ The one thing this stack adds that the others do not: the pane text and the
 pixels can be **cross-checked** (`capture-pane` vs the screenshot), which is
 what makes an unattended capture trustworthy.
 
+When the host lacks tmux/ttyd/Chromium, a dependency-light **PTY lane**
+(`scripts/tui-capture/pty-README.md`) preserves the same invariants for
+addon-surface stills: pyte is the vt100 emulator in-process, so the pane text
+and the pixels come from the same emulator state and the cross-check is exact
+by construction. Use the tmux lane for landing-page assets; use the PTY lane
+for quick addon-surface verification.
+
 ## Principles
 
 1. **Real sessions only.** Every scenario runs the real TUI against the real
@@ -215,6 +222,7 @@ The harness is CommonJS inside a `type: module` package —
 ## Related pages
 
 - [scripts/tui-capture/README.md](../scripts/tui-capture/README.md) — the command surface and scenario catalog
+- [scripts/tui-capture/pty-README.md](../scripts/tui-capture/pty-README.md) — the PTY+pyte dependency-light lane for addon-surface verification
 - [usage.md](usage.md) — the slash commands and CLI shown in the scenarios
 - [BEHAVIOR.md](BEHAVIOR.md) — what the TUI's footer/status chrome means
 - [landing-research.md](landing-research.md) — the landing page's sourcing rules these assets must satisfy
