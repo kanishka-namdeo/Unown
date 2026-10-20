@@ -126,6 +126,13 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_WEBFETCH_MAX_CHARS` | `20000` | Default returned-character cap (clamped 500–200000; the tool's `max_chars` parameter overrides per call). |
 | `UNOWN_WEBFETCH_ROBOTS` | on | `0` disables robots.txt honoring in `webfetch`/`fetch_url`. |
 | `UNOWN_WEBFETCH_ALLOW_PRIVATE` | unset | `1` allows `webfetch` to reach private/LAN hosts and non-standard ports (internal docs mirrors; the http(s)-only check always applies). |
+| `UNOWN_WEB_CACHE` | `1` | `0` disables the [web results store](usage.md#web-search--webfetch) — the persistent cache behind `web_search`/`webfetch`/`fetch_url`. Every web call then goes upstream. |
+| `UNOWN_WEB_CACHE_DIR` | `$UNOWN_HOME/cache/web` | Where the web results store lives (relocate to keep it off a synced home, e.g. a per-machine tmpfs path). |
+| `UNOWN_WEB_SEARCH_CACHE_TTL_MS` | `3600000` | How long a stored `web_search` result set stays fresh (60 min; hit-rate/byte-cap surfaces: `unown webcache`). |
+| `UNOWN_WEBFETCH_CACHE_TTL_MS` | `1800000` | Heuristic freshness for fetched pages when the origin sends no Cache-Control (30 min; an origin `max-age`/`Expires` wins, capped at 24 h). |
+| `UNOWN_WEB_SEARCH_STALE_MS` | `86400000` | Stale-if-error window for search results — after TTL and within this window, the last good answer serves (flagged as stale) when every provider attempt fails. |
+| `UNOWN_WEBFETCH_STALE_MS` | `604800000` | Stale-if-error window for fetched pages (7 d, always flagged). |
+| `UNOWN_WEB_CACHE_MAX_BYTES` | `268435456` | Byte cap of the web results store (256 MiB). LRU-pruned at the cap — oldest-touched entries evict first; `unown webcache sweep` runs the pass on demand. |
 | `UNOWN_SEARXNG_URL` | unset | SearXNG instance URL for the `searxng` provider (self-hosted with `formats: [html, json]` — see `scripts/searxng-test/settings.yml`). |
 | `UNOWN_STACKEXCHANGE_KEY` | unset | Optional free stackapps.com key; lifts the keyless 300 req/day per-IP limit to 10000/day. |
 | `UNOWN_DASHSCOPE_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible base for the `dashscope` (Qwen enable_search) provider; intl users set `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`. |
@@ -203,6 +210,8 @@ Where everything lives — all of it deletable, none of it required to pre-exist
   notes/
     outbox/                      notes queued while the engine was down
     done/                        ingested notes (archive)
+  cache/web/                     the web results store — persistent web_search + webfetch
+                                 results (see below; safe to delete at any time)
 
 ~/.config/unown/                 behavior gate files (see [Behavior gate files](#behavior-gate-files))
   adversary.md                   adversary-mode gate — existence activates the LLM reviewer
@@ -225,6 +234,8 @@ unown repo (runtime state, gitignored)
   db/selflearning.db             engine SQLite: runs, cycles, dreams, versions, skills (PI_SELFLEARNING_DB)
   .run/                          pidfiles + logs for the three services (bridge.log, engine.log, dashboard.log)
 ```
+
+**The web results store** (`~/.unown/cache/web/`, the [usage](usage.md#web-search--webfetch) section has the behavior): content-addressed cache entries at `entries/<xx>/<sha256>.json` plus an append-only `events.jsonl` observability feed (provider/tool tallies, hit-rate — never secrets). It is user-scoped and shared across projects by design (the public web is not project-specific), created `0700`, pruned by LRU at `UNOWN_WEB_CACHE_MAX_BYTES` (default 256 MiB), and safe to delete at any time — `unown webcache stats | clear | sweep` inspects or manages it.
 
 What is safe to delete and what that costs is covered in [troubleshooting](troubleshooting.md#resetting-cleanly).
 

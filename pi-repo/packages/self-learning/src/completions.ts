@@ -23,6 +23,7 @@ const COMMANDS = [
         "mcp",
         "automations",
         "usage",
+        "webcache",
         "sessions",
         "recipes",
         "wiki",
@@ -41,6 +42,7 @@ const AUTOMATIONS_SUBCOMMANDS = ["list", "create", "edit", "pause", "resume", "r
 const SESSIONS_SUBCOMMANDS = ["list", "export", "import"];
 const RECIPES_SUBCOMMANDS = ["list", "run", "create", "validate"];
 const WIKI_SUBCOMMANDS = ["generate", "search", "list", "show"];
+const WEBCACHE_SUBCOMMANDS = ["stats", "clear", "sweep"];
 
 const UPDATE_FLAGS = ["--check", "--json", "--allow-dirty", "--rollback", "--help"];
 const SESSION_FLAGS = [
@@ -140,6 +142,10 @@ export function bashCompletion(): string {
                 `      COMPREPLY=( $(compgen -W "${WIKI_SUBCOMMANDS.join(" ")}" -- "$cur") )`,
                 "      return 0",
                 "      ;;",
+                "    webcache)",
+                `      COMPREPLY=( $(compgen -W "${WEBCACHE_SUBCOMMANDS.join(" ")}" -- "$cur") )`,
+                "      return 0",
+                "      ;;",
                 "    completions)",
                 '      COMPREPLY=( $(compgen -W "bash zsh fish powershell" -- "$cur") )',
                 "      return 0",
@@ -169,6 +175,7 @@ export function zshCompletion(): string {
                 '    "mcp:manage MCP server configs (add/list/get/remove/test)"',
                 '    "automations:scheduled recurring agent runs (list/create/edit/pause/resume/run/history/delete)"',
                 '    "usage:token & cost report for the LLM bridge (--days/--model/--json)"',
+                '    "webcache:inspect the web results store (stats/clear/sweep)"',
                 '    "sessions:session transfer (list/export/import)"',
                 '    "recipes:declarative instruction bundles (list/run/create/validate)"',
                 '    "wiki:auto-generated repo wiki (generate/search/list/show)"',
@@ -218,6 +225,9 @@ export function zshCompletion(): string {
                 "    wiki)",
                 `      _arguments "1:subcommand:(${WIKI_SUBCOMMANDS.join(" ")})"`,
                 "      ;;",
+                "    webcache)",
+                `      _arguments "1:subcommand:(${WEBCACHE_SUBCOMMANDS.join(" ")})"`,
+                "      ;;",
                 "    completions)",
                 '      _arguments "1:shell:(bash zsh fish powershell)"',
                 "      ;;",
@@ -249,6 +259,7 @@ export function fishCompletion(): string {
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from sessions" -a "${SESSIONS_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from recipes" -a "${RECIPES_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from wiki" -a "${WIKI_SUBCOMMANDS.join(" ")}"`);
+        lines.push(`complete -c unown -n "__fish_seen_subcommand_from webcache" -a "${WEBCACHE_SUBCOMMANDS.join(" ")}"`);
         return lines.join("\n");
 }
 

@@ -65,6 +65,7 @@ import { runUsageCommand, USAGE_HELP } from "./usage-cli.ts";
 import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
 import { runRecipesCommand, RECIPES_USAGE } from "./recipes-cli.ts";
 import { runWikiCommand, WIKI_USAGE } from "./wiki-cli.ts";
+import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createSplitViewExtension } from "./splitview.ts";
@@ -137,6 +138,8 @@ Usage:
   unown usage            token & cost report for the LLM bridge
                            (--days N, --model M, --json; estimates unless
                            UNOWN_PRICE_* pins exact prices)
+  unown webcache <sub>   inspect the web results store (stats [--json] |
+                           clear | sweep) shared by web_search + webfetch
   unown sessions <sub>  session export / import / list (Milestone 3.5):
                            export <id> [--out <file>] | import <file> | list
   unown recipes <sub>    declarative agent instruction bundles (Milestone 4.1,
@@ -658,6 +661,29 @@ function printFirstRunBanner(): void {
 // Commands
 // ---------------------------------------------------------------------------
 
+/** Human-readable byte count (1.2 MiB style) — shared by doctor's
+ *  unown-state check, the doctor web results store line and
+ *  `unown webcache stats`. */
+function formatBytes(n: number): string {
+        return n >= 1024 ** 3
+                ? `${(n / 1024 ** 3).toFixed(1)} GiB`
+                : n >= 1024 ** 2
+                        ? `${(n / 1024 ** 2).toFixed(1)} MiB`
+                        : n >= 1024
+                                ? `${Math.max(1, Math.round(n / 1024))} KiB`
+                                : `${n} B`;
+}
+
+/** Human-readable duration for the store's TTL / stale-if-error windows
+ *  (60m, 24h, 7d …). */
+function formatMs(ms: number): string {
+        if (ms >= 86_400_000 && ms % 86_400_000 === 0) return `${ms / 86_400_000}d`;
+        if (ms >= 3_600_000 && ms % 3_600_000 === 0) return `${ms / 3_600_000}h`;
+        if (ms >= 60_000 && ms % 60_000 === 0) return `${ms / 60_000}m`;
+        if (ms >= 1_000 && ms % 1_000 === 0) return `${ms / 1_000}s`;
+        return `${ms}ms`;
+}
+
 /**
  * Best-effort yes/no prompt on stdin (the unown CLI is interactive only when
  * stdin is a TTY). Non-TTY defaults to `false` — `unown init` must NEVER
@@ -790,6 +816,89 @@ function cmdMemory() {
         }
 }
 
+/** `unown webcache` — inspect and manage the web results store (webcache.ts,
+ *  the persistent cache behind web_search + webfetch + fetch_url):
+ *  `stats [--json] | clear | sweep`, with stats as the default subcommand. */
+function cmdWebcache(args: string[]): number {
+        const subs = ["stats", "clear", "sweep"];
+        const first = args[0];
+        if (first !== undefined && !first.startsWith("-") && !subs.includes(first)) {
+                console.error(`unown webcache: unknown subcommand "${first}" (stats | clear | sweep)`);
+                console.error("usage: unown webcache [stats] [--json] | clear | sweep  (see 'unown help webcache')");
+                return 1;
+        }
+        const sub = first !== undefined && subs.includes(first) ? first : "stats";
+        const rest = sub === first ? args.slice(1) : args; // flags-only tail
+        if (rest.includes("-h") || rest.includes("--help")) {
+                console.log(WEBCACHE_HELP);
+                return 0;
+        }
+        const json = rest.includes("--json");
+        const unknown = rest.filter((a) => a !== "--json");
+        if (unknown.length > 0) {
+                console.error(`unown webcache: unknown argument(s): ${unknown.join(" ")}`);
+                console.error("usage: unown webcache [stats] [--json] | clear | sweep  (see 'unown help webcache')");
+                return 1;
+        }
+        if (sub === "clear") {
+                const { removed, bytes } = webCacheClear();
+                if (json) console.log(JSON.stringify({ removed, bytes }, null, 2));
+                else console.log(`✓ removed ${removed} ${removed === 1 ? "entry" : "entries"} (${formatBytes(bytes)})`);
+                return 0;
+        }
+        if (sub === "sweep") {
+                const { evicted, freedBytes, totalBytes } = webCacheSweep();
+                if (json) console.log(JSON.stringify({ evicted, freedBytes, totalBytes }, null, 2));
+                else
+                        console.log(
+                                `✓ sweep — evicted ${evicted} ${evicted === 1 ? "entry" : "entries"} (freed ${formatBytes(
+                                        freedBytes,
+                                )}), ${formatBytes(totalBytes - freedBytes)} of ${formatBytes(webCacheStats().maxBytes)} cap in use`,
+                        );
+                return 0;
+        }
+        // stats (the default)
+        const s = webCacheStats();
+        if (json) {
+                console.log(JSON.stringify(s, null, 2));
+                return 0;
+        }
+        const lookups = s.totals.hit + s.totals.revalidated + s.totals.miss;
+        const hitPct = lookups > 0 ? Math.round(((s.totals.hit + s.totals.revalidated) / lookups) * 100) : null;
+        console.log("unown webcache — the web results store");
+        console.log();
+        console.log(`${s.enabled ? "✓ enabled" : "· disabled (UNOWN_WEB_CACHE=0)"} — ${s.root}`);
+        console.log(`  entries     ${s.entries} (${formatBytes(s.bytes)} of ${formatBytes(s.maxBytes)} cap)`);
+        console.log(
+                `  ttl         search ${formatMs(s.ttl.searchMs)} · fetch ${formatMs(s.ttl.fetchMs)} (origin Cache-Control honored, capped 24h)` +
+                        ` · stale-if-error ${formatMs(s.ttl.searchStaleMs)} search / ${formatMs(s.ttl.fetchStaleMs)} fetch`,
+        );
+        console.log(
+                `  hit rate    ${hitPct === null ? "— (no lookups yet)" : `${hitPct}%`} — ${s.totals.hit} hits, ${s.totals.revalidated} revalidated, ${s.totals.miss} ${
+                        s.totals.miss === 1 ? "miss" : "misses"
+                }`,
+        );
+        console.log(`  saved       ${s.savedRequests} upstream ${s.savedRequests === 1 ? "request" : "requests"}`);
+        const kinds: Array<[string, number]> = [
+                ["hit", s.totals.hit],
+                ["revalidated", s.totals.revalidated],
+                ["miss", s.totals.miss],
+                ["stale", s.totals.stale],
+                ["bypass", s.totals.bypass],
+                ["evict", s.totals.evict],
+                ["clear", s.totals.clear],
+                ["error", s.totals.error],
+        ];
+        console.log(`  totals      ${kinds.map(([k, n]) => `${k} ${n}`).join(" · ")}`);
+        const tools = Object.entries(s.byTool).sort((a, b) => b[1] - a[1]);
+        if (tools.length > 0) console.log(`  tools       ${tools.map(([k, n]) => `${k} ${n}`).join(" · ")}`);
+        const providers = Object.entries(s.byProvider)
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .slice(0, 8);
+        if (providers.length > 0) console.log(`  providers   ${providers.map(([k, n]) => `${k} ${n}`).join(" · ")}`);
+        return 0;
+}
+
 /** One doctor check in structured form — the `--json` schema (see docs/usage.md). */
 interface DoctorCheck {
         id: string;
@@ -797,11 +906,28 @@ interface DoctorCheck {
         detail: string;
 }
 
+/** Doctor's web results store summary — the JSON-mode shape. Counts and
+ *  paths only (the shareable subset of WebCacheStats): the events feed's
+ *  detail lines carry query text, which belongs to `unown webcache --json`,
+ *  not to a support bundle. */
+interface DoctorWebCacheSummary {
+        enabled: boolean;
+        root: string;
+        entries: number;
+        bytes: number;
+        maxBytes: number;
+        hitRate: number | null;
+        savedRequests: number;
+}
+
 async function cmdDoctor(jsonMode: boolean): Promise<number> {
         const cwd = process.cwd();
         const checks: DoctorCheck[] = [];
         let hardFail = false;
         let warnings = 0;
+        // M3 — the web results store summary for the JSON envelope, filled by
+        // check 6e below.
+        let webCacheSummary: DoctorWebCacheSummary | undefined;
         const check = (label: string, pass: boolean, detail: string, level: "fail" | "warn" = "fail") => {
                 const icon = pass ? "✓" : level === "warn" ? "⚠" : "✗";
                 if (!jsonMode) console.log(`${icon} ${label}${detail ? ` — ${detail}` : ""}`);
@@ -1064,14 +1190,6 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                 const reviews = countFiles(join(cwd, ".unown", "reviews"));
                 const rawWarn = Number.parseInt(process.env.UNOWN_STATE_WARN_BYTES ?? "", 10);
                 const warnBytes = Number.isFinite(rawWarn) && rawWarn > 0 ? rawWarn : 512 * 1024 * 1024;
-                const formatBytes = (n: number): string =>
-                        n >= 1024 ** 3
-                                ? `${(n / 1024 ** 3).toFixed(1)} GiB`
-                                : n >= 1024 ** 2
-                                          ? `${(n / 1024 ** 2).toFixed(1)} MiB`
-                                          : n >= 1024
-                                                    ? `${Math.max(1, Math.round(n / 1024))} KiB`
-                                                    : `${n} B`;
                 const hasState = blobs > 0 || manifests > 0 || receipts > 0 || reviews > 0;
                 const stateDetail = hasState
                         ? `${manifests} checkpoint(s), ${formatBytes(blobs)} blobs · ${receipts} receipt file(s) · ${reviews} review(s)`
@@ -1091,6 +1209,37 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                 {
                         const pd = permissionsDoctorSummary(cwd, agentDir);
                         check("permissions config", pd.ok, pd.detail, "warn");
+                }
+
+                // 6e. web results store (the persistent web_search/webfetch
+                //     cache under $UNOWN_HOME/cache/web — webcache.ts).
+                //     Informational: an empty store is the fresh-install
+                //     default, and UNOWN_WEB_CACHE=0 is a deliberate user
+                //     choice — both stay warn-class at most, never a failure.
+                {
+                        const wc = webCacheStats();
+                        const lookups = wc.totals.hit + wc.totals.revalidated + wc.totals.miss;
+                        const hitRate =
+                                lookups > 0 ? Math.round(((wc.totals.hit + wc.totals.revalidated) / lookups) * 100) : null;
+                        webCacheSummary = {
+                                enabled: wc.enabled,
+                                root: wc.root,
+                                entries: wc.entries,
+                                bytes: wc.bytes,
+                                maxBytes: wc.maxBytes,
+                                hitRate,
+                                savedRequests: wc.savedRequests,
+                        };
+                        check(
+                                "web results store",
+                                wc.enabled,
+                                wc.enabled
+                                        ? `${wc.entries} entries, ${formatBytes(wc.bytes)}, ${
+                                                        hitRate === null ? "no lookups yet" : `${hitRate}% hit rate`
+                                                } (saved ${wc.savedRequests} requests)`
+                                        : "disabled (UNOWN_WEB_CACHE=0)",
+                                "warn",
+                        );
                 }
         }
 
@@ -1161,6 +1310,7 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                         strictHooks: STRICT_HOOKS,
                                         checks,
                                         instructionAudit: instructionReport,
+                                        webCache: webCacheSummary,
                                         summary: {
                                                 hardFail,
                                                 warnings,
@@ -1368,6 +1518,32 @@ usage: unown doctor-instructions [--json] [-h]
 of its checks. This command runs ONLY the instruction audit.
 `;
 
+const WEBCACHE_HELP = `unown webcache — inspect the web results store
+
+The web results store is the persistent cache behind web_search + webfetch
+(and the fetch_url alias): one user-scoped on-disk store shared by every
+surface that touches the web — terminal sessions, parallel subagents, engine
+runs, automations. Search results are TTL-fresh (default 60 min); fetched
+pages honor origin Cache-Control (heuristic default 30 min, capped 24 h) and
+revalidate via ETag/Last-Modified — a 304 re-serves the stored body without
+paying for a full fetch. When every upstream attempt fails, the last good
+answer serves within a bounded stale-if-error window (24 h search / 7 d
+fetch), always flagged as stale. \`unown doctor\` reports the same summary.
+
+usage: unown webcache [stats] [--json]
+       unown webcache clear
+       unown webcache sweep
+  stats    the summary: enabled state, store root, entries + size vs the
+           byte cap, TTLs, hit rate (hits + revalidations / lookups), saved
+           upstream requests, event totals, top providers. Default when no
+           subcommand is given. --json prints the raw WebCacheStats object.
+  clear    remove every entry (the events feed is kept, so history stays)
+  sweep    run the byte-capped LRU eviction pass on demand (normally
+           amortized across writes)
+
+Env: UNOWN_WEB_CACHE=0 disables the store entirely; the TTL / stale-window /
+byte-cap / store-dir knobs are documented in docs/configuration.md.`;
+
 /** clig.dev: `help` is a command too — the word used to fall through to the
  * generic parser and start a TUI with "help" as the prompt. */
 function cmdHelp(topics: string[]): number {
@@ -1392,6 +1568,7 @@ function cmdHelp(topics: string[]): number {
                 sessions: SESSIONS_USAGE,
                 recipes: RECIPES_USAGE,
                 wiki: WIKI_USAGE,
+                webcache: WEBCACHE_HELP,
         };
         const page = pages[topic];
         if (!page) {
@@ -1485,6 +1662,13 @@ export async function runCli(argv: string[]) {
                 if (result.stdout) process.stdout.write(result.stdout);
                 if (result.stderr) process.stderr.write(result.stderr);
                 process.exit(result.exitCode);
+        }
+        if (first === "webcache") {
+                // M3 — `unown webcache stats|clear|sweep` manages the web
+                // results store (webcache.ts). Owns its own flag grammar;
+                // dispatch before the generic parser would eat the
+                // subcommand tokens as prompt text.
+                process.exit(cmdWebcache(argv.slice(1)));
         }
         if (first === "sessions") {
                 // Milestone 3.5 — `unown sessions export|import|list` (the

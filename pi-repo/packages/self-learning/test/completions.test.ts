@@ -20,6 +20,7 @@ const ALL_COMMANDS = [
         "mcp",
         "automations",
         "usage",
+        "webcache",
         "sessions",
         "recipes",
         "wiki",
