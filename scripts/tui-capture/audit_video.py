@@ -12,6 +12,46 @@ CAPTURES = os.environ.get("OUT_ROOT", "/home/z/my-project/download/unown-tui-cap
 PROMPT = 'Is this a normal readable terminal frame from an AI coding agent TUI session, or does it show renderer corruption (a solid block with no readable text, garbage or repeated glyph tiles, missing/chopped chrome)? Strict JSON only: {"clean": true/false, "readable": true/false, "notes": "short"}'
 
 
+def _bridge_vlm(prompt: str, image_path: str, timeout: int = 120):
+    """Fallback VLM lane: the repo's own llm-bridge local lane (OpenAI-compatible
+    vision, e.g. agnes-3.0-flash) — used when the z-ai CLI is unavailable/broken
+    on the host. Env: BRIDGE_URL (default http://127.0.0.1:3031),
+    BRIDGE_VLM_MODEL (default agnes-3.0-flash)."""
+    import base64
+    import urllib.request
+
+    url = os.environ.get("BRIDGE_URL", "http://127.0.0.1:3031").rstrip("/")
+    model = os.environ.get("BRIDGE_VLM_MODEL", "agnes-3.0-flash")
+    with open(image_path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("ascii")
+    body = json.dumps(
+        {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+                    ],
+                }
+            ],
+            "max_tokens": 200,
+        }
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        f"{url}/v1/chat/completions",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        raw = json.loads(resp.read().decode("utf-8"))
+    c = raw.get("choices", [{}])[0].get("message", {}).get("content", "")
+    c = c.strip().strip("`").lstrip("json").strip()
+    return json.loads(c)
+
+
 def main():
     name = sys.argv[1]
     samples = int(sys.argv[2]) if len(sys.argv) > 2 else 5
@@ -35,13 +75,20 @@ def main():
         r = subprocess.run(["z-ai", "vision", "-p", PROMPT, "-i", img, "-o", img + ".json"],
                            capture_output=True, text=True, timeout=180)
         verdict = {}
-        try:
-            raw = json.load(open(img + ".json"))
-            c = raw.get("content") or raw.get("choices", [{}])[0].get("message", {}).get("content", "")
-            c = c.strip().strip("`").lstrip("json").strip()
-            verdict = json.loads(c)
-        except Exception:
-            verdict = {"clean": None, "readable": None, "notes": "vlm unavailable"}
+        if r.returncode == 0 and os.path.exists(img + ".json"):
+            try:
+                raw = json.load(open(img + ".json"))
+                c = raw.get("content") or raw.get("choices", [{}])[0].get("message", {}).get("content", "")
+                c = c.strip().strip("`").lstrip("json").strip()
+                verdict = json.loads(c)
+            except Exception:
+                verdict = {"clean": None, "readable": None, "notes": "vlm parse error"}
+        else:
+            # z-ai CLI lane failed — fall back to the bridge
+            try:
+                verdict = _bridge_vlm(PROMPT, img)
+            except Exception as e:
+                verdict = {"clean": None, "readable": None, "notes": f"vlm unavailable: {str(e)[:80]}"}
         ok = verdict.get("clean") is True and verdict.get("readable") is True
         print(f"  {name} @{t:5.1f}s  {'OK' if ok else 'FAIL'} {verdict.get('notes','')[:80]}")
         if not ok:

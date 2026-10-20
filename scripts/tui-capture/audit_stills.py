@@ -252,6 +252,48 @@ def _old_pixel_geometry(path, pane_rows):
     return True, det
 
 
+def _bridge_vlm(prompt: str, image_path: str, timeout: int = 120):
+    """Fallback VLM lane: the repo's own llm-bridge local lane (OpenAI-compatible
+    vision via BRIDGE_LOCAL_MODELS, e.g. agnes-3.0-flash) — used when the z-ai
+    CLI is unavailable/broken on the host. Env: BRIDGE_URL (default
+    http://127.0.0.1:3031), BRIDGE_VLM_MODEL (default agnes-3.0-flash)."""
+    import base64
+    import urllib.request
+
+    url = os.environ.get("BRIDGE_URL", "http://127.0.0.1:3031").rstrip("/")
+    model = os.environ.get("BRIDGE_VLM_MODEL", "agnes-3.0-flash")
+    with open(image_path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("ascii")
+    body = json.dumps(
+        {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                    ],
+                }
+            ],
+            "max_tokens": 400,
+        }
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        f"{url}/v1/chat/completions",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        raw = json.loads(resp.read().decode("utf-8"))
+    content = raw.get("choices", [{}])[0].get("message", {}).get("content", "")
+    content = content.strip()
+    if content.startswith("```"):
+        content = content.strip("`").lstrip("json").strip()
+    return json.loads(content)
+
+
 def vlm_check(path, out_json, attempts=3):
     import time
     for a in range(attempts):
@@ -264,7 +306,11 @@ def vlm_check(path, out_json, attempts=3):
         if a < attempts - 1:
             time.sleep(20 * (a + 1))
             continue
-        return {"cli_error": (r.stderr or r.stdout or "")[:300]}
+        # z-ai CLI lane exhausted — fall back to the bridge before giving up
+        try:
+            return _bridge_vlm(VLM_PROMPT, path)
+        except Exception as e:
+            return {"cli_error": (r.stderr or r.stdout or "")[:300], "bridge_error": str(e)[:300]}
     try:
         with open(out_json) as f:
             raw = json.load(f)
