@@ -447,7 +447,9 @@ parallel ones.
     is GENERATED from the silhouette boundary (every opaque pixel touching
     transparency becomes the outline key — it follows every silhouette and
     island), the face comes from the shared template (low-set 3×4 eyes with
-    top-left glints, cheeks, mouth variants), standing sprites share
+    top-left glints, cheeks, mouth variants — parameterized: `cx` recenters
+    it, eyeW/eyeH resize it, so every body plan carries the same face
+    family), standing sprites share
     baseline row 52, and every sprite ships on the FULL 64px canvas — a
     uniform 256×256 at 4× nearest, so uniform margins + the shared baseline
     carry the specimen-sheet consistency (the DIMS table is uniform for all
@@ -456,6 +458,21 @@ parallel ones.
     (`image-rendering: pixelated`, landing.css) — h-16 is 1:1, the dex
     detail's h-48 is 3×. A smoothed, resampled or non-integer-scaled
     creature is a defect.
+  - **One body plan per creature (the v3 variety doctrine).** The ten
+    sprites do NOT share a base body: websearch is a crawler (spider),
+    mcp an angular golem, task a coiled serpent, lsp a segmented
+    bookwyrm, memory a side-view turtle, harness an upright roo, router
+    a signpost, dream a sheep on its cloud, hooks a stalk-eyed crab,
+    sdlc a walking quadruped — ten plans, ten poses, ten faces. What
+    makes them one bestiary is the kit, the palette discipline, the
+    gates and the baseline, NOT a shared silhouette (a shared silhouette
+    read as ten reskins — the v2 autopsy, docs/landing-research.md Part
+    17). Two dark-ratio lessons are part of the doctrine: MASS BEFORE
+    PARTS (the generated outline taxes every separate part ~35-45% of
+    its pixels, so appendages are short thick stubs on one dominant
+    body) and DETAILS LIVE INTERIOR (a story painted ON the mass —
+    sockets, drawer fronts, vest, blaze — costs no outline; attached
+    parts share an edge and pay half).
   - **The palette is hue-family inheritance, with ramps, gated.**
     Per-family hue-shifted ramps (shadows toward blue/violet, lights toward
     yellow/white — the pret/pokeemerald palettes do the same), every value
@@ -475,9 +492,11 @@ parallel ones.
     8-neighbor orphan rule with the deterministic deOrphan merge pass
     (deliberate white glints exempt), dark-ratio ≤ 30% (a dark-bodied
     sprite is a smudge on the light cream scheme — the gate drove real
-    design decisions: memory's cream drawer face, hooks' cream shield
-    field, sdlc's gold vest, router's thin clock ring, mcp's cream dock
-    face), content margins (nothing within 3px of the frame), the standing
+    design decisions across both atlas versions: mcp's gold treads and
+    flat panels, lsp's lightened amber shadow step B1, harness's 1px
+    magma shadow bands and navy watch bezel, router's arrows grown from
+    the head, the golem's arms grown on at the shoulders), content
+    margins (nothing within 3px of the frame), the standing
     baseline 52±2, and X-mask symmetry where the composition claims it.
   - **IP vocabulary is a contract.** The compositions use generic
     creature-collector words only — never a species name, never

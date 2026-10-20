@@ -145,7 +145,7 @@ function gateSprite(s) {
         if (!dx && !dy) continue;
         if (at(c, x + dx, y + dy) === k) { same = true; break; }
       }
-    if (!same) { orphans++; orphanKeys.push(k); }
+    if (!same) { orphans++; orphanKeys.push(`${k}@${x},${y}`); }
   }
   rows.push(orphans ? `${orphans}orph` : "orph✓");
   if (orphans > 0) fails.push(`orphan pixels: ${orphanKeys.join(",")}`);

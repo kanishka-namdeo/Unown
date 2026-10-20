@@ -85,10 +85,10 @@ export const DEX: readonly DexEntry[] = [
     id: "websearch",
     no: "001",
     name: "Websearch",
-    category: "the signal form",
+    category: "the crawler form",
     type: "session",
     entry:
-      "A round aqua bird with dish ears. It is out the window before the question finishes, and it does not come home without sources.",
+      "A many-legged aqua crawler that laps the whole web before breakfast. It is out the window before the question finishes, and it does not come home without sources.",
     weakness: "a confident answer with no source",
     practice: [
       "Native web access through web_search and webfetch — keyless providers work out of the box, 19 total, an auto-selecting chain that keeps trying until one answers.",
@@ -104,10 +104,10 @@ export const DEX: readonly DexEntry[] = [
     id: "mcp",
     no: "002",
     name: "Mcp",
-    category: "the many-handed form",
+    category: "the many-socketed form",
     type: "session",
     entry:
-      "Four arms, three tools, one shrug. Hand it a server config and the arms multiply.",
+      "A tidy golem with three gold sockets on its chest. Plug a tool in anywhere — its arms already know the shape.",
     weakness: "a tool your stack has that your agent can't reach",
     practice: [
       "Any MCP server configured in .unown/mcp.json joins every session — its tools arrive as mcp__server__tool, permissions and all.",
@@ -122,7 +122,7 @@ export const DEX: readonly DexEntry[] = [
     category: "the splitting form",
     type: "session",
     entry:
-      "It splits off a fresh mind and hands it the job — and now it can split one loose in the background, steer it mid-run, take its questions and wake it again by name.",
+      "One coil, many errands: it balances the glowing job on its tail until a fresh mind comes to take it — and it can split one loose in the background, steer it mid-run, take its questions and wake it again by name. What walks back is typed, and it cleaned up its worktree on the way.",
     weakness: "one context juggling ten jobs",
     practice: [
       "Subagents with a fresh context — typed replies via output_schema, per-child git worktree isolation, a completion guard that fails the silent no-op, and a BLOCKED lane for honest refusals.",
@@ -142,7 +142,7 @@ export const DEX: readonly DexEntry[] = [
     category: "the reading form",
     type: "session",
     entry:
-      "A patient reader that knows the project's grammar by heart. It taps your shoulder mid-edit, not after the commit.",
+      "A patient bookwyrm that keeps its spectacles on. It takes the project line by line and taps your shoulder mid-edit, not after the commit.",
     weakness: "edit first, diagnose later",
     practice: ["Language-server intelligence — diagnostics ride every edit."],
     habitat: "joins every session",
@@ -155,7 +155,7 @@ export const DEX: readonly DexEntry[] = [
     category: "the keeper form",
     type: "engine",
     entry:
-      "It never forgets where it put things — and can always tell you who told it, and when.",
+      "A keeper that carries its whole archive on its back. Ask who told it what, and it opens the right drawer on the first try.",
     weakness: "re-explaining the project every session",
     practice: [
       "Four tiers — policy, project, user, local. Most-specific-wins, injected into every prompt; every write versioned and attributed.",
@@ -170,7 +170,7 @@ export const DEX: readonly DexEntry[] = [
     category: "the proving form",
     type: "engine",
     entry:
-      "It does not trust a trick it has seen once. Everything must pass twice, in a room it has never been in.",
+      "A coach with a stopwatch in its pouch. It does not trust a trick it has seen once — everything must pass twice, in a room it has never been in.",
     weakness: "it fixed the bug by editing the test",
     practice: [
       "A failing benchmark task runs in a fresh sandbox; the transcript is mined for the rule that would have prevented it, and the candidate re-runs against the patched memory.",
@@ -182,10 +182,10 @@ export const DEX: readonly DexEntry[] = [
     id: "router",
     no: "007",
     name: "Router",
-    category: "the clockwork form",
+    category: "the wayfinding form",
     type: "engine",
     entry:
-      "Small, tireless, always counting. It never lets two of anything into the sandbox at once.",
+      "A signpost that walks its own routes. Two arrows, one for each direction of the loop, and never two of anything in the sandbox at once.",
     weakness: "improvement only happens when you remember to run it",
     practice: [
       JOB_SENTENCE,
@@ -201,7 +201,7 @@ export const DEX: readonly DexEntry[] = [
     category: "the sleeping form",
     type: "engine",
     entry:
-      "It works the night shift and keeps a diary the day can read. Nothing is retired without a dashboard's say-so.",
+      "It counts itself to sleep and works the night shift. The diary it keeps is one the day shift can read, and nothing is retired without a dashboard's say-so.",
     weakness: "you find out it learned the wrong thing weeks later",
     practice: [
       "Notes consolidate into project memory; recurring procedures get minted as real Agent Skills. The engine never deletes your files — retirement is a dashboard action.",
@@ -215,7 +215,7 @@ export const DEX: readonly DexEntry[] = [
     name: "Hooks",
     category: "the watchful form",
     type: "engine",
-    entry: "Six eyes, and not one of them blinks.",
+    entry: "Eyes up on stalks, shield planted in front, and not one of them blinks.",
     weakness: "it ran something it had no business running",
     practice: [
       "Guardrails at six layers — before the prompt, around every tool call, at session and subagent end — every allow, deny and augment logged.",

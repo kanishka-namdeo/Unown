@@ -29,8 +29,11 @@ export const COLORS = {
   M0: "#8b3908", M1: "#c55a20", M2: "#ff8b41", M3: "#ffc59c", M4: "#ffe6d5",
   // gold ramp (router's body, accents: stopwatch, badges, stars, handles)
   G1: "#d58b20", G2: "#ffc55a", G3: "#ffe6a4", G4: "#ffffee",
-  // amber ramp (lsp, the scholar)
-  B1: "#c5834a", B2: "#ffbd83", B3: "#ffe6c5",
+  // amber ramp (lsp, the scholar) — B1 is the one shadow step that must
+  // stay LIGHT (lum ≥ 0.3): lsp is a three-island silhouette whose outline
+  // tax is already high, and a dark shadow band on every segment pushed it
+  // over the dark-ratio gate (36%; #d59c5a measures 24% — v3's lesson)
+  B1: "#d59c5a", B2: "#ffbd83", B3: "#ffe6c5",
   // cream ramp (memory, sdlc, task bodies; dream's cloud)
   C1: "#d5c57b", C2: "#eee6a4", C3: "#f6ffee",
   // leaf ramp (mcp, the living toolkit)
@@ -71,6 +74,25 @@ export const inTri = (ax, ay, bx, by, cx, cy) => (x, y) => {
 };
 export const union = (...fns) => (x, y) => fns.some((f) => f(x, y));
 export const minus = (a, b) => (x, y) => a(x, y) && !b(x, y);
+export const both = (a, b) => (x, y) => a(x, y) && b(x, y);
+
+/** tube(pts, r) — the capsule primitive: every pixel within r of the
+ *  polyline through pts. Limbs with elbows, tails, coils, stalks — the
+ *  one primitive a chibi cannot express. Flat-filled by callers: a cel band
+ *  on a 4px-wide tube pinches into orphans, so thin parts stay flat and let
+ *  the generated outline carry their definition. */
+export const tube = (pts, r) => {
+  const segs = [];
+  for (let i = 0; i < pts.length - 1; i++) segs.push([pts[i], pts[i + 1]]);
+  return (x, y) => segs.some(([a, b]) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const len2 = dx * dx + dy * dy;
+    let t = len2 === 0 ? 0 : ((x - a[0]) * dx + (y - a[1]) * dy) / len2;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const qx = a[0] + t * dx, qy = a[1] + t * dy;
+    return (x - qx) ** 2 + (y - qy) ** 2 <= r * r;
+  });
+};
 
 /** Paint a region with one key. */
 export const paint = (c, region, k) => {
@@ -126,10 +148,14 @@ export function outlinePass(c) {
 /* ------------------------------------------------------------------ */
 
 /** Low-set 3×4 eyes with a top-left glint, cheeks, mouth. Mirrored column
- *  math keeps the face symmetric; `closed` draws sleeping arcs instead. */
+ *  math keeps the face symmetric; `closed` draws sleeping arcs instead.
+ *  `cx` re-centers the whole template (default 31.5, the canvas midline) so
+ *  a side-view or off-center head gets the same face — v3's body-plan
+ *  variety moved faces around, and the template travels with them. */
 export function face(c, o = {}) {
+  const cx = o.cx ?? 31.5;
   const eyeY = o.eyeY ?? 23, dx = o.eyeGap ?? 9, w = o.eyeW ?? 3, h = o.eyeH ?? 4;
-  const l = Math.round(31.5 - dx / 2 - w / 2), r = 63 - l - w + 1;
+  const l = Math.round(cx - dx / 2 - w / 2), r = Math.round(2 * cx - l - w + 1);
   for (const ex of [l, r]) {
     if (o.closed) {
       px(c, ex, eyeY + 1, "O"); px(c, ex + 1, eyeY, "O"); px(c, ex + 2, eyeY + 1, "O");
@@ -141,15 +167,17 @@ export function face(c, o = {}) {
   if (o.cheek) {
     const cy = eyeY + (o.cheekDy ?? 4);
     px(c, l - 3, cy, o.cheek); px(c, l - 2, cy, o.cheek);          // left cheek
-    px(c, 63 - (l - 2), cy, o.cheek); px(c, 63 - (l - 3), cy, o.cheek); // mirrored right
+    const rc = Math.round(2 * cx);                                  // mirrored right
+    px(c, rc - (l - 2), cy, o.cheek); px(c, rc - (l - 3), cy, o.cheek);
   }
   const mY = eyeY + (o.mouthDy ?? 6);
   if (o.mouth === "open") {
-    px(c, 31, mY, "O"); px(c, 32, mY, "O"); px(c, 31, mY + 1, "O"); px(c, 32, mY + 1, "O");
+    const a = Math.floor(cx), b = Math.ceil(cx);
+    px(c, a, mY, "O"); px(c, b, mY, "O"); px(c, a, mY + 1, "O"); px(c, b, mY + 1, "O");
   } else if (o.mouth === "smile") {
     const half = Math.floor((o.mouthW ?? 3) / 2);
-    for (let i = -half; i <= half; i++) px(c, Math.round(31.5 + i), mY, "O");
-    if ((o.mouthW ?? 3) >= 5) { px(c, 31 - half - 1, mY - 1, "O"); px(c, 32 + half + 1, mY - 1, "O"); }
+    for (let i = -half; i <= half; i++) px(c, Math.round(cx + i), mY, "O");
+    if ((o.mouthW ?? 3) >= 5) { px(c, Math.floor(cx) - half - 1, mY - 1, "O"); px(c, Math.ceil(cx) + half + 1, mY - 1, "O"); }
   }
   return { eyeCols: [l, r] };
 }
@@ -212,10 +240,13 @@ export function chibi(c, o) {
 export const STAR = ["..g..", ".ggg.", "ggWgg", ".ggg.", "..g.."];
 
 /** The z-z-z of sleep — gold, biggest nearest the sleeper, sized to read
- *  at 1× (the first round's z's were sub-pixel at display size). */
-export const Z_BIG = ["zzzzz", "....z", "..z..", "z....", "zzzzz"];
-export const Z_MID = ["zzzz", "...z", ".z..", "z...", "zzzz"];
-export const Z_SML = ["zzz", "..z", "z..", "zzz"];
+ *  at 1×. The diagonals are TWO pixels wide and step by one: a 1px
+ *  diagonal stepping by two leaves isolated middle pixels that outline
+ *  into orphans (v3 caught O@42,18 — a floating one-pixel island).
+ *  Connected strokes, every glyph one island. */
+export const Z_BIG = ["zzzzz", "...zz", "..zz.", ".zz..", "zzzzz"];
+export const Z_MID = ["zzzz", "..zz", ".zz.", "zzzz"];
+export const Z_SML = ["zzz", ".zz", "zzz"];
 
 /** The magnifier (websearch): gold ring, navy lens, aqua glint, handle. */
 export const MAGNIFIER = [

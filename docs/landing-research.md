@@ -1986,3 +1986,99 @@ construction (one kit, one face, one baseline), IP safety by construction
 palette claim that is now checked pixel-for-pixel by a gate that
 demonstrably fires. Pixel art is not a resolution — it is decisions, and
 decisions belong in code.
+
+## Part 17 — The variety round: one body plan per creature
+
+**The trigger.** v2 shipped in the morning and was rejected on review the
+same evening: *"sprites look too similar, get creative."* The VLM variety
+probe put numbers on it — 9 of 10 sprites shared the same head+torso body
+plan, variety 3/10, "reskins of the same base character rather than
+distinct creature designs." The autopsy was structural, not cosmetic: v2's
+one composition pattern (`chibi()`: head ellipse + body roundrect +
+template face + stubby feet) made every silhouette the same read; ramp and
+prop could not carry the difference, because silhouette is what reads
+first, prop second, palette third. That ordering is the whole visual trick
+of the collector genre — the genre's sprites vary from floating orbs to
+serpents to swarms, and the dex feels alive because no two entries share a
+plan.
+
+**The doctrine.** v3 gives each feature its own body plan — websearch the
+crawler (a round two-part spider, six legs, magnifier held), mcp the socket
+golem (angular, floating cube head, gold sockets, treads — the set's only
+hard-cornered creature), task the coil (a limbless serpent, tail raised,
+the glowing orb balanced on its tip), lsp the bookwyrm (an oval head over
+segments that taper and curve, in round spectacles, holding an open book),
+memory the archive turtle (side view, drawer-shell, one card already out),
+harness the coach (an upright roo: ears, pouch with a stopwatch, big feet
+forward, thick tail), router the signpost (a courier head wearing two
+arrow boards, planted on a pole), dream the sheep (wool bumps asleep on a
+cloud), hooks the guard crab (eyes up on stalks, shield planted across its
+front), sdlc the works badger (a walking quadruped, blaze, vest, one
+badge). Ten plans, ten poses, ten faces. The kit additions that made the
+plans drawable: `tube(pts, r)` — the capsule primitive for legs, tails,
+coils, stalks — and `face()`'s `cx` parameter, which lets the shared face
+template travel to any head position without breaking mirror math.
+
+**The dark-ratio curriculum.** The ≤30% gate taught two laws the hard way
+(the first v3 draft failed 7 of 10 sprites):
+
+1. **The outline is a tax on parts.** The generated 1px outline converts
+   every boundary pixel of every separate part to near-black navy, which
+   bills a thin appendage 35-45% of its own pixels (a 4px-wide leg is half
+   outline). The first spider's long legs measured the whole sprite at
+   31%; the first signpost — six separate parts — at 46%. Law: MASS
+   BEFORE PARTS. One dominant solid body per creature; appendages are
+   short, thick stubs (the spider's legs attach high and stay stubby; the
+   crab's stalks are short with big balls).
+2. **Interior details are free.** A story painted ON the mass — the
+   golem's sockets and visor, the turtle's drawer fronts, the badger's
+   vest, blaze and badge, the roo's pouch — costs no outline at all,
+   because the outline only exists at the transparency boundary. Attached
+   parts (the golem's arms grown on at the shoulders, the router's arrows
+   grown from the head, the crab's shield grown against the shell) share
+   an interior edge and pay half. A detached part pays full tax, so a
+   prop may detach only when it IS the one story (the orb, the stopwatch).
+
+Two palette consequences, both gated and documented in the kit: the amber
+shadow step B1 was lightened (#c5834a → #d59c5a) because lsp's
+three-island silhouette cannot afford a dark shadow band per segment, and
+the magma creatures shade with 1px bands (shadowD [-1,-1]) for the same
+reason — L1 and M1 are dark keys, and 2px bands tipped the sprites over.
+The Z-stamps were redrawn with two-pixel stepping diagonals after the
+orphan gate caught `O@42,18` — a one-pixel diagonal island the outline
+pass had converted to a floating orphan.
+
+**The review rounds, and the arbitration that decided them.** Six
+contact-sheet review rounds plus two element-level crop reviews (the
+Part 14 lesson — a 64px asset is invisible in a full sheet, so contested
+sprites get isolated crops at display scale). The arc: variety 3/10 →
+7/10 (form-read failures: spider read frog, bookwyrm read pancakes, roo
+read salamander) → redesigns → 8/10 → prop-read fixes (contrast: the
+gold-on-amber spectacle rings were a gold mask; the cream-faced stopwatch
+on a cream pouch was one blob) → **9/10, all forms read, IP-safe** (the
+reviewer explicitly cleared the set against Dratini/Snivy/Krabby/Corphish
+comparisons). Three findings were overruled with documented mechanisms:
+lsp's round-5/round-6 flags flipped PASS↔FAIL on unchanged pixels with a
+different rationale each time ("no glasses" → "cyclopean visor") while the
+display-scale crop review confirmed all three signifiers (glasses yes,
+book yes, segments yes) — reviewer noise, not pixel defects, resolved
+2-of-3 by the repeat rule; "harness and sdlc are both quadrupeds" is
+objectively false (the roo is an upright biped with two feet and a tail);
+"dream's wool dithering is noisy" is the deliberate per-bump light arc
+that makes wool read as wool. The one finding that survived arbitration —
+the stopwatch bezel — was taken: navy bezel, bright face, gold crown,
+re-verified by crop.
+
+**Verification.** All ten sprites green on every hard gate (5-bit palette,
+≤15 colors, edge-outline integrity, orphan rule, dark ratio 19-30%,
+margins, baseline, symmetry where claimed); typecheck, eslint, the landing
+test suite, the palette/claims/docs/changelog gates and the scroll budget
+all green (the entry text moved with the forms — words and bands
+unchanged). The sprites ship exactly as v2 shipped: full 64px canvas,
+uniform 256×256, display at integer multiples only.
+
+**The lesson in one line:** a bestiary is not a palette swap — the set
+matches by construction (kit, palette, gates, baseline), and the
+CREATURES differ by plan; silhouette variety is a design contract, now
+written into the landing AGENTS.md so the next sprite starts from a
+different body, not a different color.

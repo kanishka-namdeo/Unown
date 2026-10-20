@@ -11,9 +11,14 @@ import * as React from "react";
  * art — drawn pixel-by-pixel in code (`scripts/creature_sprites.mjs` +
  * `creature_kit.mjs` + `creature_atlas.mjs`), never Pokémon assets and
  * never a named species (the non-affiliation wall, landing AGENTS.md).
- * The atlas redraw (same day) replaced the first AI-generated set: a
- * generated illustration averaged onto a 64px grid reads as mush, while
- * authored pixels read as a sprite — the pipeline gates that difference
+ * Two same-day redraws: the atlas round replaced the first AI-generated
+ * set (a generated illustration averaged onto a 64px grid reads as mush,
+ * while authored pixels read as a sprite — the pipeline gates that
+ * difference), and the variety round gave every creature its own body
+ * plan — crawler, golem, serpent, bookwyrm, turtle, roo, signpost,
+ * sheep, crab, badger — because a set that shares one silhouette reads
+ * as reskins no matter how good each sprite is (the landing AGENTS.md
+ * carries the one-body-plan doctrine). The pipeline gates that difference
  * (edge-outline integrity, orphan clusters, the 5-bit GBA grid, ≤ 15
  * colours, dark-ratio ≤ 30%, shared baseline). Sprites ship at 4× (a
  * uniform 256×256) and display at integer multiples of the 64px logical

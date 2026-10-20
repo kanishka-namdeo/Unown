@@ -265,6 +265,42 @@ sprite of a Jigglypuff flag, and an overrule-by-mechanism of a
 "anti-aliased edges" claim the edge gate makes impossible. The evidence
 and the full reasoning are `docs/landing-research.md` Part 16.
 
+## The variety round (2026-10-20) — the workflow's fourth application: the set audit
+
+The atlas round made every pixel authored; the variety round caught what
+authorship alone cannot see: a set can be pixel-perfect and still fail as
+a SET. The user rejected the second atlas with "sprites look too similar,
+get creative," and the diagnosis came from a new instrument — the variety
+probe, a VLM pass that asks only "how many body plans does this sheet
+share, and which pairs read as reskins?" The answer: 9 of 10 shared one
+composition pattern (v2's standing chibi), variety 3/10, "reskins of the
+same base character." The per-sprite rubric never caught it, because every
+sprite individually met its criterion — the failure only exists BETWEEN
+sprites.
+
+Two workflow additions, both now standing steps:
+
+1. **Phase 0 pins the SET criterion, not just the per-asset criterion.**
+   For any multi-asset batch, write down what makes them a family (kit,
+   palette, gates, baseline) and what must differ (silhouette/body plan,
+   pose, face treatment) BEFORE drawing. The landing AGENTS.md now carries
+   the one-body-plan-per-creature doctrine as a contract.
+2. **Phase 5 runs the variety probe on the contact sheet** alongside the
+   per-sprite rubric, and the probe's number is tracked across rounds like
+   any gate (3/10 → 7 → 8 → 9 here).
+
+The round also paid its tuition to the dark-ratio gate, which is
+generalizable to any outlined-pixel-art pipeline: the generated outline
+taxes every separate part 35-45% of its pixels, so MASS BEFORE PARTS (one
+dominant body, stubby appendages) and DETAILS LIVE INTERIOR (painted-on
+details cost no outline; attached parts pay half; only the one story-prop
+may detach). And the arbitration protocol earned three more receipts:
+unchanged-sprite PASS-then-FAIL oscillation resolved 2-of-3 by
+display-scale element crops, an objectively-false similarity claim
+("both quadrupeds" about a biped) overruled by inspection, and one finding
+that survived arbitration (the low-contrast stopwatch) — taken, fixed, and
+re-verified. The evidence is `docs/landing-research.md` Part 17.
+
 ## The failure catalogue (what actually happened, so it isn't re-learned)
 
 | Symptom | Cause | Fix |

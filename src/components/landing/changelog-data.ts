@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 138;
+export const CHANGELOG_TOTAL_ENTRIES = 139;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 60,
-  "Changed": 23,
+  "Changed": 24,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 27,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 16,
+    "total": 17,
     "counts": {
       "Added": 6,
-      "Changed": 4,
+      "Changed": 5,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 1,
@@ -133,6 +133,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "tui: the vendored pi-tui scrollbar engine ported to the 1.3.0 design",
+            "behavior": false
+          },
+          {
+            "title": "landing: the creature atlas, v3 — the variety round, one body plan per creature",
             "behavior": false
           },
           {
