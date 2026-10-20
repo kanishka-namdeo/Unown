@@ -55,5 +55,10 @@ process.env.PI_BRIDGE_URL ??= "http://127.0.0.1:9";
 // Terminal-agent home away from the developer's real ~/.unown (termhooks.ts
 // pulls term.ts, which reads UNOWN_HOME at module load).
 process.env.UNOWN_HOME ??= `${TEST_TMP}/unown-home`;
+// The web results store stays OFF for the suite by default: the existing
+// websearch/provider tests are cache-blind (they assert upstream call
+// counts), and a warmed store would make them order-dependent. The store's
+// own integration tests re-enable it locally against a per-run temp dir.
+process.env.UNOWN_WEB_CACHE ??= "0";
 // Deterministic default for buildTerminalNote's [subagent] tag (read per call).
 process.env.UNOWN_SUBAGENT ??= "";

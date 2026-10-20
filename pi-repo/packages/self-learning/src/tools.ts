@@ -821,7 +821,7 @@ export async function runSubagent(
 // ---------------------------------------------------------------------------
 
 async function fetchUrlText(url: string, maxChars: number): Promise<string> {
-        return fetchPageContent(url, { maxChars });
+        return fetchPageContent(url, { maxChars, tool: "fetch_url" });
 }
 
 // ---------------------------------------------------------------------------

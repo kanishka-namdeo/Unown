@@ -218,6 +218,8 @@ function sha256(text: string): string {
 
 export interface SearchCacheKey {
         key: string;
+        /** Canonical key material (debugging + stored on the entry). */
+        keyMaterial: string;
         ttlMs: number;
         staleIfErrorMs: number;
 }
@@ -233,11 +235,13 @@ export function searchCacheKey(query: string, opts: { maxResults?: number; allow
                 allowed: [...(opts.allowedDomains ?? [])].sort(),
                 blocked: [...(opts.blockedDomains ?? [])].sort(),
         });
-        return { key: sha256(material), ttlMs: searchCacheTtlMs(), staleIfErrorMs: searchStaleMs() };
+        return { key: sha256(material), keyMaterial: material, ttlMs: searchCacheTtlMs(), staleIfErrorMs: searchStaleMs() };
 }
 
 export interface FetchCacheKey {
         key: string;
+        /** Canonical key material (debugging + stored on the entry). */
+        keyMaterial: string;
         ttlMs: number;
         staleIfErrorMs: number;
 }
@@ -247,7 +251,7 @@ export interface FetchCacheKey {
  * maxChars is NOT part of the key — one entry serves every cap. */
 export function fetchCacheKey(normalizedUrl: string, raw: boolean): FetchCacheKey {
         const material = JSON.stringify({ kind: raw ? "fetch-raw" : "fetch-text", url: normalizedUrl });
-        return { key: sha256(material), ttlMs: fetchCacheTtlMs(), staleIfErrorMs: fetchStaleMs() };
+        return { key: sha256(material), keyMaterial: material, ttlMs: fetchCacheTtlMs(), staleIfErrorMs: fetchStaleMs() };
 }
 
 // ---------------------------------------------------------------------------

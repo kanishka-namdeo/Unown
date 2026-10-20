@@ -29,11 +29,37 @@
 // All provider keys are read at call time (the unown env convention: `||`
 // never `??`, empty string means unset) so a user can drop keys into a
 // shell or `.env` without restarting the session.
+//
+// The web results store (webcache.ts) wraps both tools: searches and
+// fetches are served from a persistent, cross-process cache when fresh
+// ("not too old": TTL windows, origin Cache-Control honored on fetches),
+// revalidated conditionally when the origin sent validators (ETag /
+// Last-Modified — a 304 means "no version change", and the stored body is
+// re-served without paying for a full response), and served stale — always
+// flagged — when every upstream attempt fails within a bounded window.
+// Every answer carries its provenance (`· cached (12m old)` and friends).
+// Kill switch: UNOWN_WEB_CACHE=0. Live verification paths pass noCache.
 
 import { lookup } from "node:dns/promises";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import {
+        coalesce,
+        computeFetchTtlMs,
+        fetchCacheKey,
+        isFresh,
+        lookupFresh,
+        lookupStale,
+        normalizeFetchUrl,
+        resetCoalesce,
+        searchCacheKey,
+        webCacheGet,
+        webCacheLogEvent,
+        webCachePut,
+        webCacheRefresh,
+        type WebCacheHit,
+} from "./webcache.ts";
 import { annotateToolOutput, recordShieldFlag } from "./shield.ts";
 
 // ---------------------------------------------------------------------------
@@ -63,6 +89,16 @@ export interface WebSearchOptions {
         provider?: string;
         /** Abort signal from the agent loop. */
         signal?: AbortSignal;
+        /** Skip the persistent results store (live verification, force-refresh). */
+        noCache?: boolean;
+}
+
+/** Provenance of a served answer — how the web results store answered. */
+export interface WebCacheProvenance {
+        /** hit: served from the store while fresh; revalidated: origin answered
+         * 304 (unchanged); stale: last good answer after upstream failure. */
+        provenance: "hit" | "revalidated" | "stale";
+        ageMs: number;
 }
 
 /** Outcome of a resolved search run. */
@@ -72,6 +108,8 @@ export interface WebSearchOutcome {
         /** Providers attempted with the failure reason (chain transparency). */
         attempted: Array<{ provider: string; ok: boolean; note: string }>;
         query: string;
+        /** Set when the answer came from the web results store. */
+        cache?: WebCacheProvenance;
 }
 
 /** A single provider adapter. */
@@ -1377,6 +1415,76 @@ export function resolveSearchChain(explicit?: string): string[] {
  * per-provider notes (surfaced to the model for transparency).
  */
 export async function runWebSearch(query: string, opts: WebSearchOptions = {}): Promise<WebSearchOutcome> {
+        // The web results store wraps the provider chain: fresh identical
+        // queries answer from disk (zero upstream calls), and every upstream
+        // failure can still be answered stale within the bounded window.
+        // In-process coalescing means parallel subagents asking the same
+        // thing pay for exactly one provider call.
+        const ckey = searchCacheKey(query, opts);
+        if (opts.noCache) {
+                return runWebSearchUncached(query, opts);
+        }
+        return coalesce(`search:${ckey.key}`, async () => {
+                const hit = lookupFresh<WebSearchOutcome>(ckey.key);
+                if (hit) {
+                        webCacheLogEvent({
+                                ts: Date.now(),
+                                kind: "hit",
+                                tool: "web_search",
+                                provider: hit.value.provider,
+                                detail: query.slice(0, 80),
+                                ageMs: hit.ageMs,
+                        });
+                        return { ...hit.value, query, cache: { provenance: hit.provenance, ageMs: hit.ageMs } };
+                }
+                try {
+                        const outcome = await runWebSearchUncached(query, opts);
+                        // Only successful outcomes are cached — the chain throws on
+                        // total failure, and a provider cascade's partial failure
+                        // notes ride `attempted` (kept, they describe the win too).
+                        webCachePut({
+                                schema: 1,
+                                kind: "search",
+                                key: ckey.key,
+                                keyMaterial: ckey.keyMaterial ?? JSON.stringify({ kind: "search", query }),
+                                payload: outcome,
+                                provider: outcome.provider,
+                                storedAt: Date.now(),
+                                ttlMs: ckey.ttlMs,
+                                staleIfErrorMs: ckey.staleIfErrorMs,
+                        });
+                        webCacheLogEvent({
+                                ts: Date.now(),
+                                kind: "miss",
+                                tool: "web_search",
+                                provider: outcome.provider,
+                                detail: query.slice(0, 80),
+                        });
+                        return outcome;
+                } catch (err) {
+                        // Stale-if-error: every provider failed (quota exhausted,
+                        // network down, provider 5xx) — the last good answer is
+                        // better than an error, within the bounded window.
+                        const stale = lookupStale<WebSearchOutcome>(ckey.key);
+                        if (stale) {
+                                webCacheLogEvent({
+                                        ts: Date.now(),
+                                        kind: "stale",
+                                        tool: "web_search",
+                                        provider: stale.value.provider,
+                                        detail: query.slice(0, 80),
+                                        ageMs: stale.ageMs,
+                                });
+                                return { ...stale.value, query, cache: { provenance: "stale", ageMs: stale.ageMs } };
+                        }
+                        throw err;
+                }
+        });
+}
+
+/** The provider chain proper — what runWebSearch shrinks to when the store
+ *  is disabled (UNOWN_WEB_CACHE=0) or bypassed (noCache: live verification). */
+async function runWebSearchUncached(query: string, opts: WebSearchOptions): Promise<WebSearchOutcome> {
         const chain = resolveSearchChain(opts.provider);
         const attempted: Array<{ provider: string; ok: boolean; note: string }> = [];
         if (chain.length === 0) {
@@ -1414,7 +1522,12 @@ export async function runWebSearch(query: string, opts: WebSearchOptions = {}): 
 /** Compact, model-friendly rendering of search results. */
 export function formatSearchResults(outcome: WebSearchOutcome): string {
         const lines: string[] = [];
-        lines.push(`Web search: "${outcome.query}" — ${outcome.results.length} result(s) via ${outcome.provider}`);
+        const cacheNote = renderCacheNote(outcome.cache);
+        lines.push(
+                `Web search: "${outcome.query}" — ${outcome.results.length} result(s) via ${outcome.provider}${
+                        cacheNote ? ` ${cacheNote}` : ""
+                }`,
+        );
         lines.push("");
         for (const [index, result] of outcome.results.entries()) {
                 lines.push(`${index + 1}. ${result.title || result.url}`);
@@ -1433,6 +1546,27 @@ export function formatSearchResults(outcome: WebSearchOutcome): string {
         return lines.join("\n");
 }
 
+/** Human/model-readable provenance note appended to header lines — the
+ *  agent (and the user reading the transcript) always sees where an answer
+ *  came from. Compact on purpose: it rides every cached tool result. */
+function renderCacheNote(cache?: WebCacheProvenance): string {
+        if (!cache) return "";
+        const age = formatAge(cache.ageMs);
+        if (cache.provenance === "hit") return `· cached (${age} old)`;
+        if (cache.provenance === "revalidated") return `· revalidated (unchanged, ${age} old)`;
+        return `· STALE — served after provider error (${age} old)`;
+}
+
+function formatAge(ms: number): string {
+        const minutes = Math.floor(ms / 60_000);
+        if (minutes < 1) return "<1m";
+        if (minutes < 60) return `${minutes}m`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h${minutes % 60 ? ` ${minutes % 60}m` : ""}`;
+        const days = Math.floor(hours / 24);
+        return `${days}d${hours % 24 ? ` ${hours % 24}h` : ""}`;
+}
+
 // ---------------------------------------------------------------------------
 // Fetch pipeline (webfetch): direct → Tavily extract → Jina → Firecrawl
 // ---------------------------------------------------------------------------
@@ -1440,6 +1574,9 @@ export function formatSearchResults(outcome: WebSearchOutcome): string {
 const DEFAULT_FETCH_TIMEOUT_MS = 30_000;
 const DEFAULT_FETCH_MAX_CHARS = 20_000;
 const FETCH_BODY_HARD_CAP = 4_000_000;
+/** Fetches are STORED at the ceiling (fetchMaxChars' clamp max) and sliced
+ *  per-request at render time — one entry serves every max_chars value. */
+const FETCH_STORE_CEILING_CHARS = 200_000;
 
 function fetchTimeoutMs(): number {
         const raw = Number(process.env.UNOWN_WEBFETCH_TIMEOUT_MS || "");
@@ -1456,38 +1593,80 @@ export function fetchMaxChars(requested: number | undefined): number {
 
 interface FetchOutcome {
         url: string;
+        /** Body stored at the ceiling (FETCH_STORE_CEILING_CHARS); sliced to
+         *  the caller's maxChars at render time. */
         content: string;
+        /** Full body length before the ceiling slice (drives `truncated`). */
+        contentLength: number;
         method: "direct" | "tavily-extract" | "jina-reader" | "firecrawl-scrape";
         status?: number;
         contentType?: string;
-        truncated: boolean;
+        /** RFC 9111 validators (direct fetches only) — the "version change"
+         *  detectors for conditional revalidation. */
+        validators?: { etag?: string; lastModified?: string };
+        /** Origin freshness directives (direct fetches only). */
+        cacheControl?: string;
+        expiresMs?: number;
 }
 
-function renderFetchOutcome(outcome: FetchOutcome): string {
+function renderFetchOutcome(outcome: FetchOutcome, maxChars: number, cache?: WebCacheProvenance): string {
+        const content = outcome.content.slice(0, maxChars);
+        const truncated = outcome.contentLength > maxChars;
+        const cacheNote = renderCacheNote(cache);
         const header = `GET ${outcome.url} -> ${outcome.method}${outcome.status ? ` (HTTP ${outcome.status})` : ""}${
                 outcome.contentType ? ` (${outcome.contentType.split(";")[0]})` : ""
-        }`;
-        if (outcome.truncated) {
-                return `${header}\n\n${outcome.content}\n\n... (truncated at ${outcome.content.length} chars)`;
+        }${cacheNote ? ` ${cacheNote}` : ""}`;
+        if (truncated) {
+                return `${header}\n\n${content}\n\n... (truncated at ${maxChars} chars)`;
         }
-        return `${header}\n\n${outcome.content}`;
+        return `${header}\n\n${content}`;
+}
+
+/** Pull the RFC 9111 validators + freshness directives off a direct response. */
+function captureValidators(res: Response): { validators?: { etag?: string; lastModified?: string }; cacheControl?: string; expiresMs?: number } {
+        const etag = res.headers.get("etag") ?? undefined;
+        const lastModified = res.headers.get("last-modified") ?? undefined;
+        const cacheControl = res.headers.get("cache-control") ?? undefined;
+        const expiresHeader = res.headers.get("expires");
+        let expiresMs: number | undefined;
+        if (expiresHeader) {
+                const parsed = Date.parse(expiresHeader);
+                if (Number.isFinite(parsed)) expiresMs = parsed;
+        }
+        const validators = etag || lastModified ? { etag, lastModified } : undefined;
+        return { validators, cacheControl, expiresMs };
 }
 
 /** Direct HTTP GET with the SSRF guard, robots check, real browser-ish UA
- *  and size caps. HTML is stripped to text. */
-async function directFetch(url: URL, maxChars: number, signal?: AbortSignal): Promise<FetchOutcome> {
+ *  and size caps. HTML is stripped to text. When `validators` is passed the
+ *  request becomes a conditional GET (If-None-Match/If-Modified-Since) and
+ *  a 304 resolves as `{ notModified: true }` — the caller serves the stored
+ *  body (this is the "no version change" check). */
+async function directFetch(
+        url: URL,
+        maxChars: number,
+        signal?: AbortSignal,
+        validators?: { etag?: string; lastModified?: string },
+): Promise<FetchOutcome & { notModified?: boolean }> {
         if (!(await isRobotsAllowed(url))) {
                 throw new Error(`robots.txt disallows fetching ${url.pathname} on ${url.host}`);
         }
+        const headers: Record<string, string> = {
+                "user-agent": SEARCH_USER_AGENT,
+                accept: "text/html,application/xhtml+xml,text/plain,application/json;q=0.9,*/*;q=0.5",
+                "accept-language": "en-US,en;q=0.9",
+        };
+        if (validators?.etag) headers["if-none-match"] = validators.etag;
+        if (validators?.lastModified) headers["if-modified-since"] = validators.lastModified;
         const res = await fetch(url, {
                 redirect: "follow",
                 signal: signal ?? AbortSignal.timeout(fetchTimeoutMs()),
-                headers: {
-                        "user-agent": SEARCH_USER_AGENT,
-                        accept: "text/html,application/xhtml+xml,text/plain,application/json;q=0.9,*/*;q=0.5",
-                        "accept-language": "en-US,en;q=0.9",
-                },
+                headers,
         });
+        if (res.status === 304) {
+                return { url: url.toString(), content: "", contentLength: 0, method: "direct", status: 304, notModified: true };
+        }
+        const captured = captureValidators(res);
         const contentType = res.headers.get("content-type") ?? "";
         const declaredLength = Number(res.headers.get("content-length") ?? "0");
         if (declaredLength && declaredLength > FETCH_BODY_HARD_CAP) {
@@ -1500,10 +1679,13 @@ async function directFetch(url: URL, maxChars: number, signal?: AbortSignal): Pr
         return {
                 url: url.toString(),
                 content: text.slice(0, maxChars),
+                contentLength: text.length,
                 method: "direct",
                 status: res.status,
                 contentType,
-                truncated: text.length > maxChars,
+                validators: captured.validators,
+                cacheControl: captured.cacheControl,
+                expiresMs: captured.expiresMs,
         };
 }
 
@@ -1529,8 +1711,8 @@ async function tavilyExtractFetch(url: URL, maxChars: number): Promise<FetchOutc
         return {
                 url: url.toString(),
                 content: text.slice(0, maxChars),
+                contentLength: text.length,
                 method: "tavily-extract",
-                truncated: text.length > maxChars,
         };
 }
 
@@ -1550,8 +1732,8 @@ async function jinaReaderFetch(url: URL, maxChars: number): Promise<FetchOutcome
         return {
                 url: url.toString(),
                 content: text.slice(0, maxChars),
+                contentLength: text.length,
                 method: "jina-reader",
-                truncated: text.length > maxChars,
         };
 }
 
@@ -1572,37 +1754,180 @@ async function firecrawlScrapeFetch(url: URL, maxChars: number): Promise<FetchOu
         return {
                 url: url.toString(),
                 content: markdown.slice(0, maxChars),
+                contentLength: markdown.length,
                 method: "firecrawl-scrape",
-                truncated: markdown.length > maxChars,
         };
 }
 
-const fetchCache = new Map<string, { at: number; outcome: FetchOutcome }>();
-const FETCH_CACHE_TTL_MS = 10 * 60_000;
+// (The old process-local fetch cache — 10-minute Map, 20 URLs — was replaced
+// by the persistent web results store: same lookup semantics, but it survives
+// process exits, is shared by every unown surface on the machine, honors
+// origin Cache-Control/validators, and serves stale on upstream failure.)
+
+/** Origin said no-store/no-cache — the ONE case where a successful direct
+ *  fetch must not enter the store at all (RFC 9111 §5.2.2.3–4). Note the
+ *  contrast: max-age=0 or TTL knobs at 0 mean "never fresh, always
+ *  revalidate" — those entries ARE stored, because revalidation needs the
+ *  body + validators to compare against. */
+function originRefusesStorage(cacheControl?: string): boolean {
+        const cc = (cacheControl ?? "").toLowerCase();
+        return /\bno-store\b/.test(cc) || /\bno-cache\b/.test(cc);
+}
+
+/** Compute the TTL for a freshly fetched outcome: direct fetches honor the
+ *  origin's Cache-Control/Expires (capped 24 h); extraction fallbacks get
+ *  the heuristic default (no origin headers). */
+function outcomeTtlMs(outcome: FetchOutcome, heuristicMs: number): number {
+        if (outcome.method !== "direct") return heuristicMs;
+        return computeFetchTtlMs(outcome.cacheControl, outcome.expiresMs, Date.now());
+}
 
 /**
  * Fetch a page as text with the full hardening + fallback chain:
- * SSRF guard → robots → direct fetch → tavily extract (keyless-capable) →
- * jina reader (keyed) → firecrawl (keyed). Cached 10 minutes per URL.
+ * SSRF guard → robots → web results store → direct fetch → tavily extract
+ * (keyless-capable) → jina reader (keyed) → firecrawl (keyed).
+ *
+ * Store flow: fresh hit → serve (zero upstream). Stale entry with
+ * validators → conditional GET: 304 = "no version change" → revalidate +
+ * serve the stored body; 200 = changed → replace. Every attempt failed →
+ * stale-if-error within the bounded window, always flagged. `noCache`
+ * bypasses the store entirely (live verification, force-refresh).
  */
 export async function fetchPageContent(
         rawUrl: string,
-        opts: { maxChars?: number; signal?: AbortSignal; noCache?: boolean } = {},
+        opts: { maxChars?: number; signal?: AbortSignal; noCache?: boolean; tool?: "webfetch" | "fetch_url" } = {},
 ): Promise<string> {
         const url = await assertFetchableUrl(rawUrl);
         const maxChars = fetchMaxChars(opts.maxChars);
-        const cacheKey = url.toString();
-        if (!opts.noCache) {
-                const cached = fetchCache.get(cacheKey);
-                if (cached && Date.now() - cached.at < FETCH_CACHE_TTL_MS) {
-                        return renderFetchOutcome(cached.outcome);
-                }
+        const tool = opts.tool ?? "webfetch";
+        const ckey = fetchCacheKey(normalizeFetchUrl(rawUrl), false);
+        const storeChars = FETCH_STORE_CEILING_CHARS;
+
+        if (opts.noCache) {
+                // Bypass: live verification, force-refresh. No store reads or
+                // writes — the caller's cap is also the fetch cap.
+                const outcome = await fetchOutcomeUncached(url, opts, maxChars);
+                return renderFetchOutcome(outcome, maxChars);
         }
+        return coalesce(`fetch:${ckey.key}`, async () => {
+                // 1. Fresh hit — zero upstream calls.
+                const hit = lookupFresh<FetchOutcome>(ckey.key);
+                if (hit) {
+                        webCacheLogEvent({
+                                ts: Date.now(),
+                                kind: "hit",
+                                tool,
+                                provider: hit.value.method,
+                                detail: url.host,
+                                ageMs: hit.ageMs,
+                        });
+                        return renderFetchOutcome(hit.value, maxChars, {
+                                provenance: hit.provenance,
+                                ageMs: hit.ageMs,
+                        });
+                }
+
+                // 2. Stale entry with validators → conditional revalidation
+                //    (the "no version change" path).
+                const staleEntry = webCacheGet<FetchOutcome>(ckey.key);
+                if (staleEntry && !isFresh(staleEntry) && staleEntry.validators && staleEntry.payload.method === "direct") {
+                        try {
+                                const probed = await directFetch(url, storeChars, opts.signal, staleEntry.validators);
+                                if (probed.notModified) {
+                                        webCacheRefresh(ckey.key);
+                                        const ageMs = Date.now() - staleEntry.storedAt;
+                                        webCacheLogEvent({
+                                                ts: Date.now(),
+                                                kind: "revalidated",
+                                                tool,
+                                                provider: "direct",
+                                                detail: url.host,
+                                                ageMs,
+                                        });
+                                        return renderFetchOutcome(staleEntry.payload, maxChars, { provenance: "revalidated", ageMs });
+                                }
+                                // 200: the page changed — serve the new body and replace.
+                                if (probed.content.trim().length > 0) {
+                                        storeFetchOutcome(ckey, probed, tool, url);
+                                        return renderFetchOutcome(probed, maxChars);
+                                }
+                        } catch {
+                                // Revalidation itself failed (network) — fall through to
+                                // the full attempt chain below.
+                        }
+                }
+
+                // 3. Full pipeline (fetched at the ceiling so one entry serves
+                //    every max_chars; rendered at the caller's cap).
+                try {
+                        const outcome = await fetchOutcomeUncached(url, opts, storeChars);
+                        storeFetchOutcome(ckey, outcome, tool, url);
+                        return renderFetchOutcome(outcome, maxChars);
+                } catch (err) {
+                        // 4. Stale-if-error: bounded window, always flagged.
+                        const stale = lookupStale<FetchOutcome>(ckey.key);
+                        if (stale) {
+                                webCacheLogEvent({
+                                        ts: Date.now(),
+                                        kind: "stale",
+                                        tool,
+                                        provider: stale.value.method,
+                                        detail: url.host,
+                                        ageMs: stale.ageMs,
+                                });
+                                return renderFetchOutcome(stale.value, maxChars, {
+                                        provenance: "stale",
+                                        ageMs: stale.ageMs,
+                                });
+                        }
+                        throw err;
+                }
+        });
+}
+
+/** Store a fresh fetch outcome under its key (no-store origins skip). */
+function storeFetchOutcome(
+        ckey: { key: string; keyMaterial: string; ttlMs: number; staleIfErrorMs: number },
+        outcome: FetchOutcome,
+        tool: "webfetch" | "fetch_url",
+        url: URL,
+): void {
+        const ttlMs = outcomeTtlMs(outcome, ckey.ttlMs);
+        if (originRefusesStorage(outcome.cacheControl)) return; // origin said no-store — respect it
+        webCachePut({
+                schema: 1,
+                kind: "fetch-text",
+                key: ckey.key,
+                keyMaterial: ckey.keyMaterial,
+                payload: outcome,
+                provider: outcome.method,
+                storedAt: Date.now(),
+                ttlMs,
+                staleIfErrorMs: ckey.staleIfErrorMs,
+                validators: outcome.validators,
+        });
+        webCacheLogEvent({
+                ts: Date.now(),
+                kind: "miss",
+                tool,
+                provider: outcome.method,
+                detail: url.host,
+        });
+}
+
+/** The attempt chain proper: direct → tavily extract → jina → firecrawl,
+ *  returning the winning outcome (throws when every attempt fails). No
+ *  store interaction — callers decide whether to store and how to render. */
+async function fetchOutcomeUncached(
+        url: URL,
+        opts: { signal?: AbortSignal },
+        fetchChars: number,
+): Promise<FetchOutcome> {
         const attempts: Array<() => Promise<FetchOutcome>> = [
-                () => directFetch(url, maxChars, opts.signal),
-                () => tavilyExtractFetch(url, maxChars),
-                () => jinaReaderFetch(url, maxChars),
-                () => firecrawlScrapeFetch(url, maxChars),
+                () => directFetch(url, fetchChars, opts.signal),
+                () => tavilyExtractFetch(url, fetchChars),
+                () => jinaReaderFetch(url, fetchChars),
+                () => firecrawlScrapeFetch(url, fetchChars),
         ];
         const notes: string[] = [];
         for (const attempt of attempts) {
@@ -1613,14 +1938,7 @@ export async function fetchPageContent(
                                 notes.push(`${outcome.method}: empty content`);
                                 continue;
                         }
-                        if (!opts.noCache) {
-                                fetchCache.set(cacheKey, { at: Date.now(), outcome });
-                                if (fetchCache.size > 20) {
-                                        const oldest = fetchCache.keys().next().value;
-                                        if (oldest) fetchCache.delete(oldest);
-                                }
-                        }
-                        return renderFetchOutcome(outcome);
+                        return outcome;
                 } catch (err: any) {
                         if (err?.message?.includes("SSRF guard") || err?.message?.includes("robots.txt disallows")) throw err;
                         notes.push(err?.message ?? String(err));
@@ -1731,28 +2049,112 @@ export function registerWebTools(pi: ExtensionAPI, opts: WebToolsOptions = {}): 
                         }
                         try {
                                 if (params.raw) {
-                                        // Raw mode: bypass the text pipeline, keep the guard + fallbacks.
+                                        // Raw mode: bypass the text pipeline, keep the guard.
+                                        // Same web results store flow: fresh hit → serve,
+                                        // conditional revalidation, stale-if-error.
                                         const url = await assertFetchableUrl(params.url);
-                                        const res = await fetch(url, {
-                                                redirect: "follow",
-                                                signal: AbortSignal.timeout(fetchTimeoutMs()),
-                                                headers: { "user-agent": SEARCH_USER_AGENT, accept: "*/*" },
-                                        });
-                                        const text = await res.text();
                                         const maxChars = fetchMaxChars(params.max_chars);
-                                        return {
-                                                content: [
-                                                        {
-                                                                type: "text",
-                                                                text: shieldWebText(
-                                                                        pi,
-                                                                        log,
-                                                                        `GET ${params.url} -> ${res.status}\n\n${text.slice(0, maxChars)}${text.length > maxChars ? "\n\n... (truncated)" : ""}`,
-                                                                        `webfetch:${params.url}`,
-                                                                ),
-                                                        },
-                                                ],
+                                        const ckey = fetchCacheKey(normalizeFetchUrl(params.url), true);
+                                        const renderRaw = (payload: { status?: number; content: string; contentLength: number }, cache?: WebCacheProvenance) => {
+                                                const cacheNote = renderCacheNote(cache);
+                                                const content = payload.content.slice(0, maxChars);
+                                                const truncated = payload.contentLength > maxChars;
+                                                return `GET ${params.url} -> ${payload.status ?? ""}${cacheNote ? ` ${cacheNote}` : ""}\n\n${content}${
+                                                        truncated ? "\n\n... (truncated)" : ""
+                                                }`;
                                         };
+                                        interface RawPayload {
+                                                status: number;
+                                                content: string;
+                                                contentLength: number;
+                                                validators?: { etag?: string; lastModified?: string };
+                                                cacheControl?: string;
+                                                expiresMs?: number;
+                                        }
+                                        const hit = lookupFresh<RawPayload>(ckey.key);
+                                        if (hit) {
+                                                webCacheLogEvent({ ts: Date.now(), kind: "hit", tool: "webfetch", provider: "direct", detail: url.host, ageMs: hit.ageMs });
+                                                return { content: [{ type: "text", text: shieldWebText(pi, log, renderRaw(hit.value, { provenance: hit.provenance, ageMs: hit.ageMs }), `webfetch:${params.url}`) }] };
+                                        }
+                                        const headers: Record<string, string> = { "user-agent": SEARCH_USER_AGENT, accept: "*/*" };
+                                        const staleEntry = webCacheGet<RawPayload>(ckey.key);
+                                        if (staleEntry && !isFresh(staleEntry) && staleEntry.validators) {
+                                                if (staleEntry.validators.etag) headers["if-none-match"] = staleEntry.validators.etag;
+                                                if (staleEntry.validators.lastModified) headers["if-modified-since"] = staleEntry.validators.lastModified;
+                                        }
+                                        try {
+                                                const res = await fetch(url, {
+                                                        redirect: "follow",
+                                                        signal: AbortSignal.timeout(fetchTimeoutMs()),
+                                                        headers,
+                                                });
+                                                if (res.status === 304 && staleEntry) {
+                                                        webCacheRefresh(ckey.key);
+                                                        const ageMs = Date.now() - staleEntry.storedAt;
+                                                        webCacheLogEvent({ ts: Date.now(), kind: "revalidated", tool: "webfetch", provider: "direct", detail: url.host, ageMs });
+                                                        return {
+                                                                content: [
+                                                                        {
+                                                                                type: "text",
+                                                                                text: shieldWebText(
+                                                                                        pi,
+                                                                                        log,
+                                                                                        renderRaw(staleEntry.payload, { provenance: "revalidated", ageMs }),
+                                                                                        `webfetch:${params.url}`,
+                                                                                ),
+                                                                        },
+                                                                ],
+                                                        };
+                                                }
+                                                const text = await res.text();
+                                                const captured = captureValidators(res);
+                                                const payload: RawPayload = {
+                                                        status: res.status,
+                                                        content: text.slice(0, FETCH_STORE_CEILING_CHARS),
+                                                        contentLength: text.length,
+                                                        validators: captured.validators,
+                                                        cacheControl: captured.cacheControl,
+                                                        expiresMs: captured.expiresMs,
+                                                };
+                                                const ttlMs = computeFetchTtlMs(payload.cacheControl, payload.expiresMs, Date.now());
+                                                if (!originRefusesStorage(payload.cacheControl)) {
+                                                        webCachePut({
+                                                                schema: 1,
+                                                                kind: "fetch-raw",
+                                                                key: ckey.key,
+                                                                keyMaterial: ckey.keyMaterial,
+                                                                payload,
+                                                                provider: "direct",
+                                                                storedAt: Date.now(),
+                                                                ttlMs,
+                                                                staleIfErrorMs: ckey.staleIfErrorMs,
+                                                                validators: payload.validators,
+                                                        });
+                                                        webCacheLogEvent({ ts: Date.now(), kind: "miss", tool: "webfetch", provider: "direct", detail: url.host });
+                                                }
+                                                return {
+                                                        content: [
+                                                                {
+                                                                        type: "text",
+                                                                        text: shieldWebText(pi, log, renderRaw(payload), `webfetch:${params.url}`),
+                                                                },
+                                                        ],
+                                                };
+                                        } catch (err) {
+                                                const stale = lookupStale<RawPayload>(ckey.key);
+                                                if (stale) {
+                                                        webCacheLogEvent({ ts: Date.now(), kind: "stale", tool: "webfetch", provider: "direct", detail: url.host, ageMs: stale.ageMs });
+                                                        return {
+                                                                content: [
+                                                                        {
+                                                                                type: "text",
+                                                                                text: shieldWebText(pi, log, renderRaw(stale.value, { provenance: "stale", ageMs: stale.ageMs }), `webfetch:${params.url}`),
+                                                                        },
+                                                                ],
+                                                        };
+                                                }
+                                                throw err;
+                                        }
                                 }
                                 const text = await fetchPageContent(params.url, { maxChars: params.max_chars });
                                 // Injection shield: fetched pages are first-class injection

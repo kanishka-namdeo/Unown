@@ -37,7 +37,7 @@ const freeVerified = [];
 async function timeProvider(id) {
 	const started = Date.now();
 	try {
-		const outcome = await websearch.runWebSearch(QUERY, { provider: id, maxResults: 5 });
+		const outcome = await websearch.runWebSearch(QUERY, { provider: id, maxResults: 5, noCache: true }); // noCache: live verification must never serve the store
 		const ms = Date.now() - started;
 		return {
 			id,
@@ -58,7 +58,7 @@ async function probeEndpointLiveness(id) {
 	// hits a live endpoint with a well-formed request.
 	const started = Date.now();
 	try {
-		await websearch.runWebSearch(QUERY, { provider: id, maxResults: 3 });
+		await websearch.runWebSearch(QUERY, { provider: id, maxResults: 3, noCache: true });
 		return { id, ok: true, ms: Date.now() - started, note: "unexpectedly succeeded without key" };
 	} catch (err) {
 		const message = String(err?.message ?? err);
