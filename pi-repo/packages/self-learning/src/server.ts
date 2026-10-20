@@ -23,7 +23,7 @@ import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
 import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
-import { breakerStatus, budgetStatus, pruneLedger } from "./governor.ts";
+import { breakerStatus, budgetStatus, markEngineProcess, pruneLedger } from "./governor.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
 import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from "./skills.ts";
@@ -386,6 +386,17 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         const synced = syncNoteOutbox();
                         return json({ ok: true, synced });
                 }
+                if (method === "POST" && path === "/api/shutdown") {
+                        // Cross-platform graceful drain (M3): SIGTERM cannot reach JS
+                        // handlers on Windows (TerminateProcess skips them), so
+                        // `unown engine stop` asks over HTTP first and falls back to
+                        // signals. Same loopback-only threat model as the rest of the
+                        // API surface (UNOWN_ENGINE_HOST, docs/configuration.md).
+                        if (!activeShutdown) return json({ error: "shutdown not armed" }, 503);
+                        const draining = activeShutdown;
+                        setTimeout(() => draining(), 250).unref?.(); // let the response flush
+                        return json({ ok: true, draining: true });
+                }
 
                 // ------------------------------------------------------------------
                 // Routing jobs
@@ -484,6 +495,10 @@ export function recoverOrphans() {
 export const automationsScheduler = new AutomationsScheduler();
 
 export function startServer(port: number = PORT) {
+        // Engine-process scope: the governor's ledger/breaker track THIS process's
+        // unattended LLM spend; the shared llm.ts client is inert in CLI processes
+        // without this flag (governor.ts, the M2 detachment contract).
+        markEngineProcess();
         // ---------------------------------------------------------- single instance
         // The engine lock (M3, docs/detached-engine-architecture.md F9): the
         // port bind is a mutex, but only for THIS port — a second engine with
@@ -647,13 +662,15 @@ function acquireEngineLock(): { ok: true; release: () => void } | { ok: false; r
 }
 
 let shutdownInstalled = false;
+let activeShutdown: (() => void) | null = null;
 
 /**
- * Graceful drain on SIGTERM/SIGINT (M3): stop accepting, let in-flight
- * requests finish (Bun's server.stop() waits for them), stop the router and
- * the automations scheduler, checkpoint + close the WAL store, release the
- * lock, exit 0. Without a handler, Bun dies mid-request on SIGTERM (verified
- * against 1.3 — see docs/detached-engine-research.md §2).
+ * Graceful drain (M3): stop accepting, let in-flight requests finish (Bun's
+ * server.stop() waits for them), stop the router and the automations
+ * scheduler, checkpoint + close the WAL store, release the lock, exit 0.
+ * Shared by the SIGTERM/SIGINT handlers and the cross-platform
+ * POST /api/shutdown endpoint (signals cannot drain on Windows — TerminateProcess
+ * skips JS handlers — so the HTTP path is the portable drain).
  */
 function installGracefulShutdown(server: any, releaseLock: () => void): void {
         if (shutdownInstalled) return;
@@ -684,6 +701,7 @@ function installGracefulShutdown(server: any, releaseLock: () => void): void {
                 releaseLock();
                 process.exit(0);
         };
+        activeShutdown = () => void shutdown("api/shutdown");
         process.on("SIGTERM", () => void shutdown("SIGTERM"));
         process.on("SIGINT", () => void shutdown("SIGINT"));
 }

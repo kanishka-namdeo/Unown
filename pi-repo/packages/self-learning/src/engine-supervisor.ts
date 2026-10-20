@@ -21,7 +21,7 @@
  *     exactly one wins the port + lock; the loser exits cleanly.
  */
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { stateRoot } from "./packaging.ts";
 
@@ -101,31 +101,39 @@ export function spawnEngineDetached(): Promise<boolean> {
                         mkdirSync(runDir(), { recursive: true });
                         const logFd = openSync(join(runDir(), "engine.log"), "a");
                         // The Windows detach escape hatch: Bun's detached:true child dies
-                        // with the parent on win32 (oven-sh/bun#31603). `cmd /c start`
-                        // launches into its own console-attached session that survives.
-                        let child: ReturnType<typeof spawn>;
+                        // with the parent on win32 (oven-sh/bun#31603). `cmd /c start /b`
+                        // launches into its own session that survives. The EMPTY STRING
+                        // before the command is the window-title slot — without it, `start`
+                        // consumes a quoted executable path (spaces: "C:\Program Files\…")
+                        // as the title and runs the wrong command (SS64-documented trap).
                         if (process.platform === "win32") {
-                                child = spawn("cmd", ["/c", "start", "/b", command, ...args], {
+                                const child = spawn("cmd", ["/c", "start", "/b", "", command, ...args], {
                                         cwd: state,
                                         env,
                                         windowsHide: true,
                                         stdio: ["ignore", logFd, logFd],
                                 });
+                                child.unref();
+                                // cmd.exe's own pid is NOT the engine's pid (it exits right after
+                                // `start` returns) — no pidfile write on this branch; health
+                                // probing and /api/overview's pid are the source of truth.
+                                closeSync(logFd);
                         } else {
-                                child = spawn(command, args, {
+                                const child = spawn(command, args, {
                                         cwd: state,
                                         env,
                                         detached: true,
                                         stdio: ["ignore", logFd, logFd],
                                 });
                                 child.unref();
-                        }
-                        if (child.pid) {
-                                try {
-                                        writeFileSync(enginePidFile(), String(child.pid));
-                                } catch {
-                                        /* best effort — health probing is the source of truth */
+                                if (child.pid) {
+                                        try {
+                                                writeFileSync(enginePidFile(), String(child.pid));
+                                        } catch {
+                                                /* best effort — health probing is the source of truth */
+                                        }
                                 }
+                                closeSync(logFd);
                         }
                         return true;
                 } catch {

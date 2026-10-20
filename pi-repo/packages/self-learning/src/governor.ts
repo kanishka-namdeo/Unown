@@ -29,6 +29,30 @@
 import { store } from "./store.ts";
 
 // ---------------------------------------------------------------------------
+// Process scope: governor tracking is ENGINE-ONLY.
+// ---------------------------------------------------------------------------
+
+/**
+ * llm.ts is shared by the engine and the terminal agent, but the spend
+ * ledger and the breaker describe THE ENGINE's unattended behavior. The
+ * terminal agent's own LLM calls (e.g. the summary-context subagent brief,
+ * tools.ts) must NOT write the ledger — that would open the engine's SQLite
+ * DB from the CLI process (the exact M2 detachment violation, and on Windows
+ * the bun#40659 cross-process-write hazard). startServer() sets this flag;
+ * without it every record* is a no-op.
+ */
+let engineProcess = false;
+
+export function markEngineProcess(): void {
+        engineProcess = true;
+}
+
+/** Test seam: reset the scope flag between cases. */
+export function resetEngineProcessForTest(): void {
+        engineProcess = false;
+}
+
+// ---------------------------------------------------------------------------
 // Env knobs (read at call time — tests redirect them after import)
 // ---------------------------------------------------------------------------
 
@@ -67,6 +91,7 @@ const BACKOFF_CAP_MS = 15 * 60_000;
  * not the token budgets.
  */
 export function recordLlmCall(ok: boolean, promptTokens: number | null, completionTokens: number | null, model: string): void {
+        if (!engineProcess) return; // engine-only ledger (see the scope note above)
         try {
                 store.run(`INSERT INTO llm_ledger (ts, ok, prompt_tokens, completion_tokens, model) VALUES (?, ?, ?, ?, ?)`, [
                         Date.now(),
@@ -82,6 +107,7 @@ export function recordLlmCall(ok: boolean, promptTokens: number | null, completi
 
 /** Prune ledger rows older than 24h + a margin (bounded growth; cheap, called rarely). */
 export function pruneLedger(): void {
+        if (!engineProcess) return;
         try {
                 store.run(`DELETE FROM llm_ledger WHERE ts < ?`, [Date.now() - 25 * 60 * 60 * 1000]);
         } catch {
@@ -161,11 +187,13 @@ function backoffForTrip(trips: number): number {
 }
 
 export function recordLlmSuccess(): void {
+        if (!engineProcess) return;
         consecutiveFailures = 0;
         if (backoffUntil !== 0) backoffUntil = 0;
 }
 
 export function recordLlmFailure(): void {
+        if (!engineProcess) return;
         consecutiveFailures++;
         if (consecutiveFailures >= breakerThreshold()) {
                 const trips = consecutiveFailures - breakerThreshold() + 1;

@@ -2082,3 +2082,7 @@ matches by construction (kit, palette, gates, baseline), and the
 CREATURES differ by plan; silhouette variety is a design contract, now
 written into the landing AGENTS.md so the next sprite starts from a
 different body, not a different color.
+
+## 2026-10-20 — the detached-engine round on the integrity pane
+
+The engine's unattended-discipline work (docs/detached-engine-architecture.md; receipts in benchmarks/detached-engine/RESULTS.md) added the eighth gate row — "Unattended discipline" (hourly/daily call + token ceilings, the upstream backoff breaker, the job watchdog; every skip logged with its reason) — and a receipts link pointing at the benchmark RESULTS.md. The proof band's caption moved from "seven gates" to "eight gates". Rationale: the pane's claim is "how the system polices itself", and the governor is the first gate that polices the engine's *spending* rather than its *writes* — the runaway-dream receipt (9 dreams / 75 calls / 630k prompt tokens in 50 minutes, pre-fix) is exactly the class of self-inflicted failure the pane exists to answer. Copy is prose (not a claims-gated literal — no engine output is quoted verbatim); the description's claims are all receipt-backed. Grid balance improved as a side effect: eight rows is an even count for the two-column list.

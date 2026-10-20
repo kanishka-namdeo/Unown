@@ -11,7 +11,7 @@ Unown takes the open-source **[pi coding agent](https://github.com/badlogic/pi-m
 Use it two ways:
 
 - **In your terminal** — `unown` gives you a full interactive coding-agent session (the real pi TUI) in your actual project directory, with tiered memory injected, guardrail hooks active, and session notes captured for learning.
-- **As a learning backend** — the engine keeps running harness cycles, AutoDream consolidation and background jobs; your terminal sessions feed it notes, and it writes improved memory back into your project.
+- **As a learning backend** — the engine runs as an independent daemon (`unown engine start` — or the full stack via `bun run agent:start`): harness cycles, AutoDream consolidation and background jobs continue in auto mode while you are away, within an hourly/daily LLM budget and under a job watchdog; your terminal sessions feed it notes (a down engine is auto-started on note delivery), and it writes improved memory back into your project. The two halves share nothing but files and HTTP — the terminal agent never opens the engine's database (measured: 0 fds; [design record](docs/detached-engine-architecture.md)).
 
 <p align="center">
   <a href="https://github.com/kanishka-namdeo/Unown/actions/workflows/ci.yml"><img src="https://github.com/kanishka-namdeo/Unown/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -121,6 +121,8 @@ Full usage docs live in [`docs/`](docs/):
 | [usage tracking](docs/usage-tracking.md) | `unown usage`, the bridge's usage log, cost estimates and price pinning |
 | [web results store](docs/web-results-store.md) | the persistent cache behind web_search/webfetch — design record: exact-key vs semantic (H20), TTL + ETag revalidation, stale-if-error, the cacache model, prior art |
 | [memory](docs/memory.md) | the 4-tier memory stack, session notes, AutoDream consolidation, the six integrity gates, [what a learning session looks like](docs/memory.md#what-a-learning-session-looks-like) |
+| [detached engine](docs/detached-engine-architecture.md) | decision record: the self-learning engine as an independent daemon — the agent/engine responsibility split, twelve failure modes with mitigations, the budget governor, supervision (`unown engine`), before/after receipts ([benchmarks/detached-engine/](benchmarks/detached-engine/RESULTS.md)) |
+| [detached-engine research](docs/detached-engine-research.md) | ~90 primary sources behind the design: Letta/Devin/Claude-Code memory systems, daemon supervision patterns, SQLite-as-queue, Bun daemon hazards |
 | [memory-classifier-evaluation](docs/memory-classifier-evaluation.md) | objective evaluation of Jev/GLiNER-style classifiers in the memory system |
 | [memory-system-review](docs/memory-system-review.md) | the memory subsystem's critical review: findings F1–F10, each status-tagged with receipts where live, and the matrix for re-running them |
 | [local-model research](benchmarks/local-llm) · [non-LLM research](benchmarks/nonllm) · [complementary research](benchmarks/complementary) | hypothesis testbenches for the learning layer: small local LLMs (llama.cpp lane, H1–H11), the zero-LLM tier (ONNX encoders + MinHash/LexRank/activation lanes, H9–H15 + campaign #2's Ettin-17m reranker / BM25+RRF fusion H23–H24 — H15 shipped as the engine's opt-in dream lanes), and complementary local mechanisms (speculative decoding, semantic cache, H16–H22) — verdicts + receipts in each `results/REPORT.md` |
@@ -206,6 +208,8 @@ Boots three services:
 | dashboard | 3000 | `http://localhost:3000/dashboard` |
 
 Logs land in `.run/*.log`; stop with `bun run agent:stop`. The launcher reads the bridge's `/health` (upstream key set? upstream answering?) and warns loudly instead of letting chats fail with a bare 401 later.
+
+The engine also supervises itself out of the launcher: `unown engine status | start | stop | serve` (status reports pid, uptime, the active job and the governor's budget/breaker; `start` spawns a detached engine when down; `stop` drains gracefully — in-flight requests finish, the WAL is checkpointed, the lock releases; `serve` is the foreground entry a systemd user unit / launchd agent / Windows service should own). A terminal session auto-starts a down engine when it delivers its shutdown note, so the agent never needs the engine running to be useful — notes queue in the outbox and are drained at boot. Unattended learning is disciplined: every engine LLM call lands in a spend ledger with hourly/daily ceilings (`PI_ENGINE_MAX_CALLS_HOUR`…), consecutive upstream failures open an exponential backoff breaker, no router job may hold the engine past the job watchdog, and `unown doctor` reports all of it. Design record with measured before/after receipts: [docs/detached-engine-architecture.md](docs/detached-engine-architecture.md).
 
 ### 4. Use it in your terminal
 

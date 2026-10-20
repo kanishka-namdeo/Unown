@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 157;
+export const CHANGELOG_TOTAL_ENTRIES = 165;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 70,
+  "Added": 74,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 33,
+  "Fixed": 37,
   "Security": 3,
   "Behavior": 26
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 35,
+    "total": 43,
     "counts": {
-      "Added": 16,
+      "Added": 20,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 7,
+      "Fixed": 11,
       "Security": 0,
       "Behavior": 6
     },
@@ -60,6 +60,22 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "the last runtime detachment leak is closed (governor is engine-only)",
+            "behavior": false
+          },
+          {
+            "title": "unown engine stop drains over HTTP first — graceful stop now works on Windows too",
+            "behavior": false
+          },
+          {
+            "title": "the Windows engine spawn is actually correct now",
+            "behavior": false
+          },
+          {
+            "title": "docs",
+            "behavior": false
+          },
           {
             "title": "unown -p never exits — root cause measured and fixed (F10 final act)",
             "behavior": false
@@ -119,6 +135,22 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "research record",
+            "behavior": false
+          },
+          {
+            "title": "tui: beauty-3 — the composure release — overlay choreography, ≤8 fps arrival pacing…",
+            "behavior": false
+          },
+          {
+            "title": "tui: beauty-2 — the typographic release — chrome surfaces, markdown hierarchy, editor focus…",
+            "behavior": false
+          },
+          {
+            "title": "tui: beauty-1 — the stop-shouting release — edge rails, the One-Dark ladder, the footer bar…",
+            "behavior": false
+          },
+          {
+            "title": "tui-capture: the PTY lane — pyte-driven addon-surface verification without tmux/ttyd",
             "behavior": false
           },
           {

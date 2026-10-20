@@ -95,11 +95,31 @@ async function cmdStart(out: (s: string) => void): Promise<number> {
                 return 0;
         }
         out(`engine: spawned but not healthy yet after 20s — it may still be booting; check:`);
-        out(`  unown engine status   ·   tail -f .run/engine.log`);
+        out(`  unown engine status   ·   ${process.platform === "win32" ? "Get-Content -Wait .run\\engine.log" : "tail -f .run/engine.log"}`);
         return 1;
 }
 
 async function cmdStop(out: (s: string) => void): Promise<number> {
+        // HTTP-first (M3, cross-platform): POST /api/shutdown runs the SAME drain
+        // path as the signal handlers and works on Windows, where SIGTERM cannot
+        // reach JS handlers (TerminateProcess skips them). Signals remain the
+        // fallback for an engine that answers neither way.
+        try {
+                const res = await fetch(`${ENGINE_URL}/api/shutdown`, { method: "POST", signal: AbortSignal.timeout(3000) });
+                if (res.ok) {
+                        out("engine: drain requested (in-flight requests finish, WAL checkpointed, lock released)…");
+                        for (let i = 0; i < 20; i++) {
+                                await new Promise((r) => setTimeout(r, 500));
+                                if (!(await engineHealth(600)).up) {
+                                        out("engine: stopped cleanly");
+                                        return 0;
+                                }
+                        }
+                        out("engine: still draining after 10s — falling back to signals");
+                }
+        } catch {
+                /* engine not serving HTTP — fall through to the signal path */
+        }
         const health = await engineHealth(1500);
         let pid = health.pid ?? undefined;
         if (!pid) {
@@ -148,13 +168,19 @@ async function cmdStop(out: (s: string) => void): Promise<number> {
 async function cmdServe(): Promise<number> {
         // DYNAMIC import — the M2 detachment contract: a terminal session must
         // never load the engine half of the package (or its SQLite handle).
-        const { startServer } = await import("./index.ts");
-        const server = startServer(Number(process.env.PI_AGENT_PORT ?? 3030));
-        if (!server) {
-                // startServer already logged why (another engine holds the lock).
-                return 0;
+        try {
+                const { startServer } = await import("./index.ts");
+                const server = startServer(Number(process.env.PI_AGENT_PORT ?? 3030));
+                if (!server) {
+                        // startServer already logged why (another engine holds the lock).
+                        return 0;
+                }
+                // Bun.serve keeps the event loop alive; serve until SIGTERM/SIGINT or
+                // POST /api/shutdown, both handled by server.ts's graceful drain.
+                return new Promise<number>(() => {});
+        } catch (err: any) {
+                console.error(`unown engine: failed to start — ${err?.message ?? err}`);
+                console.error("  (is the port already in use? see .run/engine.log)");
+                return 1;
         }
-        // Bun.serve keeps the event loop alive; serve until SIGTERM/SIGINT, which
-        // server.ts handles with the graceful drain.
-        return new Promise<number>(() => {});
 }

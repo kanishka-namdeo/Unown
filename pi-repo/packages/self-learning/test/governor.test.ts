@@ -16,12 +16,14 @@ import {
         breakerStatus,
         budgetStatus,
         guardLearningJob,
+        markEngineProcess,
         maxCallsHour,
         pruneLedger,
         recordLlmCall,
         recordLlmFailure,
         recordLlmSuccess,
         resetBreakerForTest,
+        resetEngineProcessForTest,
 } from "../src/governor.ts";
 import { dreamCheckCooldownMs, JOB_DEFS, jobTimeoutMs, Router, ROUTER_TEST_ONLY } from "../src/router.ts";
 import { store } from "../src/store.ts";
@@ -35,12 +37,14 @@ function seedJobRow(id: string): void {
 }
 
 beforeAll(() => {
+        markEngineProcess(); // the governor tracks the ENGINE process only
         resetBreakerForTest();
         store.run(`DELETE FROM llm_ledger`);
         store.run(`DELETE FROM runs`);
 });
 afterAll(() => {
         resetBreakerForTest();
+        resetEngineProcessForTest();
         ROUTER_TEST_ONLY.timeoutOverrideMs = undefined;
         store.run(`DELETE FROM llm_ledger`);
 });
@@ -73,6 +77,25 @@ function withEnv(overrides: Record<string, string | undefined>, fn: () => void |
                 }
         };
 }
+
+describe("process scope (the M2 runtime contract)", () => {
+        test("record* calls are inert without the engine-process flag", () => {
+                resetEngineProcessForTest();
+                try {
+                        recordLlmCall(true, 100, 50, "m");
+                        recordLlmFailure();
+                        recordLlmFailure();
+                        recordLlmFailure();
+                        recordLlmSuccess();
+                        pruneLedger();
+                        expect(budgetStatus().callsHour).toBe(0); // nothing landed in the ledger
+                        expect(store.get(`SELECT COUNT(*) AS c FROM llm_ledger`)!.c).toBe(0);
+                        expect(breakerStatus().open).toBe(false); // breaker untouched
+                } finally {
+                        markEngineProcess();
+                }
+        });
+});
 
 describe("budget governor (F7)", () => {
         test("under budget by default — learning allowed", () => {

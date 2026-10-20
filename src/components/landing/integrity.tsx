@@ -12,9 +12,9 @@ import { FadeUp, GITHUB_URL, BENCH_URL } from "./shell";
  * so a deny rule reworded turns the page red rather than making it quietly
  * wrong. The six hook names here are the six members of `HookName`.
  *
- * 2026-10-20 compression: the gates list keeps all seven rows but each
- * description is one line; the three sandbox paragraphs merged into one;
- * the receipts row is unchanged. Nothing gated was touched.
+ * 2026-10-20 compression: the gates list kept all seven rows with one-line
+ * descriptions. The same day's detached-engine round added the eighth —
+ * unattended discipline — plus its receipts link. Nothing gated was touched.
  */
 
 const SRC = (file: string) => `${GITHUB_URL}/blob/main/pi-repo/packages/self-learning/src/${file}`;
@@ -24,6 +24,10 @@ const RECEIPTS: [string, string][] = [
   ["sandbox profile", SRC("bwrap.ts")],
   ["hook layer", SRC("hooks.ts")],
   ["config trust gate", SRC("config-trust.ts")],
+  [
+    "detached-engine receipts",
+    `${GITHUB_URL}/blob/main/benchmarks/detached-engine/RESULTS.md`,
+  ],
 ];
 
 /* ------------------------------------------------------------------ */
@@ -65,6 +69,11 @@ const GATES = [
     t: "Full version history",
     d: "Every write to every tier is versioned and attributable; engine tiers and skills roll back from the dashboard, project memory is plain versioned Markdown you diff yourself.",
     tag: "rollback-able",
+  },
+  {
+    t: "Unattended discipline",
+    d: "The engine keeps its own books when nobody is watching: hourly and daily call + token ceilings on its LLM spend, an exponential backoff breaker for a failing upstream, and a watchdog that frees the engine from any stuck job — every skip is logged with its reason.",
+    tag: "budget · breaker · watchdog",
   },
 ];
 

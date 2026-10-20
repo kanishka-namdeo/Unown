@@ -45,7 +45,7 @@ const PANES: {
     id: "integrity",
     glyph: "I",
     label: "Integrity",
-    caption: "seven gates, every log line",
+    caption: "eight gates, every log line",
     Component: IntegrityPane,
   },
   {
