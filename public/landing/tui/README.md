@@ -7,12 +7,16 @@ frame sampling; nothing here was edited by hand — a bad frame means re-running
 the scenario that produced it.
 
 Captured 2026-10-20 against the live stack (bridge + engine, kimi-k2.5 via
-the Dashscope bridge), a full re-capture of all ten scenarios with the TUI
-beauty trilogy (beauty-1/2/3) in effect — the fresh set replaced the
-2026-10-19/20 landing assets wholesale (the wiki lane had crashed after one
-still; the hero lane's first audit ran through a broken vision lane and was
-re-audited). Acceptance receipts — per-still audits, the numeric polish and
-motion critiques, and the wall-of-green pixel measurements — live in
+the Dashscope bridge) with the TUI beauty releases in effect: the full
+ten-scenario re-capture ran against the beauty trilogy (beauty-1/2/3), and
+hero-bugfix + fleet — the two scenarios whose surfaces beauty-4 changed
+(the footer diff-stat chip, the subagent lane rails) — were re-captured
+once more against beauty-4 (`+1 -1` chip verified in the pane receipts).
+The fresh set replaced the 2026-10-19/20 landing assets wholesale (the
+wiki lane had crashed after one still; the hero lane's first audit ran
+through a broken vision lane and was re-audited). Acceptance receipts —
+per-still audits, the numeric polish and motion critiques, and the
+wall-of-green pixel measurements — live in
 [benchmarks/tui-beauty/RESULTS.md](../../../benchmarks/tui-beauty/RESULTS.md).
 
 | scenario | story | assets |

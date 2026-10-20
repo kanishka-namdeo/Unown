@@ -27,9 +27,20 @@ Runner: the `scripts/tui-capture/` harness (`driver.js` + `audit_stills.py` + `a
 
 Stills-gate total: **39/39 PASS** across the nine ttyd-lane scenarios.
 
+## beauty-4 follow-up re-run (hero-bugfix + fleet, same day)
+
+The plan's loop is implement → re-capture → re-critique, so once beauty-4 (the diff-stat chip, subagent lanes, working-line shimmer) merged, its two affected showcase scenarios were re-captured against it and re-measured:
+
+| Scenario | Stills audit | Video sampling | Polish mean | Motion score (trilogy → beauty-4) |
+|---|---|---|---|---|
+| hero-bugfix | **6/6 PASS** | 5/5 clean | 5.33 (unchanged) | 7.0 → **8.0** |
+| fleet | **5/5 PASS** | 5/5 clean | 4.20 (unchanged) | 6.0 → **7.0** |
+
+The flagship feature is pane-verified live: the hero run's capture log shows the footer reading `ctx ▕█░░░░░░░░░▏ 7.1%/131k (auto) +1 -1 ↑3.4k` after the one-line pagination fix — the `+N -M` chip rendered next to the context meter in the same tokens the edit block used, exactly as specified. Fleet's child rows carry the lane rails (`_audit/stills-audit-fleet.json`, VLM-gated). Operational note: hero + fleet re-captures must run **sequentially** — their `prep_demo.sh` fixtures share the demo repo, and a parallel prep clobbers the red state the hero scenario anchors on (measured: the first parallel attempt died on a "red suite" wait timeout with the pane showing 5 pass / 0 fail).
+
 ## Notes and honest caveats
 
-- **The polish target was optimistic; the miss is reported as measured.** The trilogy's own receipts told both stories: beauty-2's showcase critique scored its surfaces 6.7–8, while the *verbatim* baseline prompt over the full landing set reads 4.7 — the baseline prompt grades a whole working terminal (information density, cursor-liveness, transcript walls), not just the beautified chrome, and the biggest residual deductions across the receipts are layout-density critiques the plan's follow-up tier (the beauty-4 release: session diff-stat chip, subagent color lanes, working-line shimmer) targets next. The receipts to re-run after beauty-4: `python3 scripts/tui-capture/beauty_critique.py stills` and `... motion hero-bugfix`.
+- **The polish target was optimistic; the miss is reported as measured.** The trilogy's own receipts told both stories: beauty-2's showcase critique scored its surfaces 6.7–8, while the *verbatim* baseline prompt over the full landing set reads 4.7 — the baseline prompt grades a whole working terminal (information density, cursor-liveness, transcript walls), not just the beautified chrome. The beauty-4 follow-up re-run (section above) moved motion but not polish: hero 7.0→8.0, fleet 6.0→7.0, polish flat at 5.33/4.20 — the residual polish deductions are layout-density critiques of dense working terminals, a different defect class than the plan's chrome tier. Re-measure after any further beauty release: `python3 scripts/tui-capture/beauty_critique.py stills` and `... motion hero-bugfix`.
 - **Motion is dragged by inherently static scenes**: plan-mode's 43 s video (long bounded waits) and cli-doctor (a plain shell-output showcase with no TUI motion) read 3.0 and 2.0; the four agent-turn scenarios with real tool choreography (hero 7.0, checkpoints 7.0, subagent-explore 6.0, fleet 6.0) mean **6.5/10** — above the plan target as a class.
 - **Wall-of-green method** (`green_share.py`, run on the fresh stills): a pixel counts as green-family when HSV hue ∈ [100°, 170°] with S ≥ 0.25, V ≥ 0.35; the exact-tone lane is |px − #10b981| ≤ 48 per channel. The archived post-beauty-1 hero set reads the same 0.45% — the 62% baseline is the pre-beauty-1 frame documented in the plan and in beauty-1's changelog entry (no pre-beauty-1 still survives on disk; the landing set was already post-beauty-1 when archived).
 - **Provenance of this set**: a full re-capture of all ten scenarios (the prior landing set dated to `19439ba`/`bccaba4`, pre-beauty-2/3). Two lanes needed redo during the run and got it: the wiki scenario crashed after one still (driver died mid-turn; re-ran clean, 3/3), and hero-bugfix's first aggregate audit was produced through a broken vision lane (all-false with `cli_error`); it was re-audited on the working bridge lane — 6/6 PASS, the stale JSON overwritten.
