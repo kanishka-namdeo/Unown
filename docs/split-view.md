@@ -52,7 +52,7 @@ Needs the fullscreen interface layout — the default for new installs (see [Ful
 
 ## The files dock
 
-A right column, 34–48 columns wide (25% of the terminal width, clamped), hidden below 90 terminal columns — if you toggle it on while narrower, the command says so (`Files panel on — hidden below 90 cols`).
+A right column that graduates with the terminal (round 5, `docs/tui-responsive-plan.md` R5): hidden below 80 columns; **compact** at 80–119 (a fixed 28 columns — status glyphs plus truncated names, so the 89-vs-90 cliff is gone); **full** at 120 and above (25% of the terminal width, clamped to 34–48). If you toggle it on while narrower, the command says so (`Files panel on — hidden below 80 cols`); in the compact range it tells you which dock you got (`compact, 28 cols — full at 120`).
 
 The list is newest-first, one row per file with its op letters and a `×N` counter when a file was touched repeatedly. The legend at the bottom of the list:
 
@@ -149,9 +149,9 @@ The feature is pure TypeScript over `node:fs` / `node:os` / `node:path` — no p
 
 | Symptom | Cause → fix |
 |---|---|
-| The band or dock never appears | Panels start off — run `/split` (band) and `/files` (dock). The dock also hides below 90 terminal columns; widen the terminal |
+| The band or dock never appears | Panels start off — run `/split` (band) and `/files` (dock). The dock also hides below 80 terminal columns; widen the terminal |
 | `/split` says `requires fullscreen mode` | The session runs the regular (scrollback) layout — switch with `/settings` (TUI mode) or set `"tuiMode": "fullscreen"` in `~/.unown/agent/settings.json`. See [Fullscreen vs regular mode](#fullscreen-vs-regular-mode) |
-| `/files` says `hidden below 90 cols` | The dock is composed but the terminal is narrower than 90 columns — widen the window |
+| `/files` says `hidden below 80 cols` | The dock is composed but the terminal is narrower than 80 columns — widen the window |
 | The thinking panel reads `Thinking idle` | The model is not streaming reasoning — see [Model notes](#model-notes-the-thinking-panel) |
 | A saved layout did not come back | Toggles are session-local and `ui-panels.json` is read only at startup — run `/split-save` to persist, and remember hand edits apply to new windows only |
 | `--no-split` does nothing | Check `unown --help` — the flag must appear there; older builds did not route it through the CLI parser |

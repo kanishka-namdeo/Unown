@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 194;
+export const CHANGELOG_TOTAL_ENTRIES = 197;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 101,
+  "Added": 104,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 1,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 72,
+    "total": 75,
     "counts": {
-      "Added": 47,
+      "Added": 50,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 1,
@@ -60,6 +60,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "the files dock graduates by tier (R5)",
+            "behavior": false
+          },
+          {
+            "title": "the tool-block glyph rides the title line (the density fix)",
+            "behavior": false
+          },
+          {
+            "title": "the density PTY lane",
+            "behavior": false
+          },
           {
             "title": "ctrl+k — the command palette",
             "behavior": false

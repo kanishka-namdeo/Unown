@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createSplitViewExtension } from "../src/splitview.ts";
+import { createSplitViewExtension, dockColsFor } from "../src/splitview.ts";
 import {
         loadUiPanelsConfig,
         normalizeConfig,
@@ -581,5 +581,28 @@ describe("splitview extension", () => {
         test("session_shutdown retires overlays and the widget", async () => {
                 await fire(c, "session_shutdown", { type: "session_shutdown", reason: "quit" }, ctx);
                 expect(c.widgetUnset).toBeGreaterThan(0);
+        });
+});
+
+describe("dockColsFor — the graduated files dock (round 5, R5)", () => {
+        test("compact fixed width across the regular tier (80-119)", () => {
+                expect(dockColsFor(80)).toBe(28);
+                expect(dockColsFor(96)).toBe(28);
+                expect(dockColsFor(110)).toBe(28);
+                expect(dockColsFor(119)).toBe(28);
+        });
+
+        test("full dock above 120: 25% clamped to [34, 48]", () => {
+                expect(dockColsFor(120)).toBe(34); // 30% -> clamp floor
+                expect(dockColsFor(144)).toBe(36); // 25% of 144
+                expect(dockColsFor(192)).toBe(48); // 25% of 192 = 48
+                expect(dockColsFor(300)).toBe(48); // clamp ceiling
+        });
+
+        test("no cliff: 119 -> 120 grows smoothly (28 -> 34, not 0 -> 34)", () => {
+                // The pre-R5 cliff was the dock VANISHING below 90; now the
+                // graduation is only about width, never existence (above 80).
+                expect(dockColsFor(119) > 0).toBe(true);
+                expect(dockColsFor(120) - dockColsFor(119)).toBe(6);
         });
 });
