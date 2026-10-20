@@ -137,7 +137,7 @@ describe("FleetManager.spawnFleetChild", () => {
                 manager.dispose();
         });
 
-        test("close 0 + final text ⇒ done, result delivered, registry updated", () => {
+        test("close 0 + final text ⇒ done, result delivered (batched), registry updated", async () => {
                 const harness = new SpawnHarness();
                 const dir = freshDir();
                 const { manager, delivered } = makeManager(harness, dir);
@@ -149,6 +149,8 @@ describe("FleetManager.spawnFleetChild", () => {
                 const state = [...manager.children.values()][0];
                 expect(state.status).toBe("done");
                 expect(state.lastText).toContain("3 modules");
+                // Successes ride the 150ms completion batch.
+                await new Promise((r) => setTimeout(r, 250));
                 expect(delivered.length).toBe(1);
                 expect(delivered[0].kind).toBe("result");
                 expect(delivered[0].content).toContain("mapper (scout) finished");
@@ -157,6 +159,42 @@ describe("FleetManager.spawnFleetChild", () => {
                 const registry = JSON.parse(readFileSync(join(dir, "registry.json"), "utf8"));
                 expect(registry.names.mapper.status).toBe("done");
                 expect(registry.names.mapper.sessionFile).toContain("mapper");
+                manager.dispose();
+        });
+
+        test("two near-simultaneous successes batch into ONE delivered message", async () => {
+                const harness = new SpawnHarness();
+                const dir = freshDir();
+                const { manager, delivered } = makeManager(harness, dir);
+                manager.spawnFleetChild({ ...REQUEST, name: "a" });
+                manager.spawnFleetChild({ ...REQUEST, name: "b" });
+                harness.procs[0].emitLine({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "result A" }] } });
+                harness.procs[1].emitLine({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "result B" }] } });
+                harness.procs[0].emit("close", 0);
+                harness.procs[1].emit("close", 0);
+                await new Promise((r) => setTimeout(r, 250));
+                expect(delivered.length).toBe(1);
+                expect(delivered[0].content).toContain("2 subagents finished:");
+                expect(delivered[0].content).toContain("result A");
+                expect(delivered[0].content).toContain("result B");
+                manager.dispose();
+        });
+
+        test("a failure flushes the pending batch and races alone", () => {
+                const harness = new SpawnHarness();
+                const dir = freshDir();
+                const { manager, delivered } = makeManager(harness, dir);
+                manager.spawnFleetChild({ ...REQUEST, name: "ok" });
+                manager.spawnFleetChild({ ...REQUEST, name: "bad" });
+                harness.procs[0].emitLine({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "fine" }] } });
+                harness.procs[0].emit("close", 0); // buffered success
+                // The failure arrives within the batch window: it must flush the
+                // buffered success first, then deliver itself immediately.
+                harness.procs[1].emitLine({ type: "message_end", message: { role: "assistant", stopReason: "error", errorMessage: "429", content: [] } });
+                harness.procs[1].emit("close", 1);
+                expect(delivered.length).toBe(2);
+                expect(delivered[0].content).toContain("Subagent ok");
+                expect(delivered[1].content).toContain("FAILED");
                 manager.dispose();
         });
 
@@ -326,6 +364,7 @@ describe("registerFleetSurface", () => {
                 await fake.emit("session_start", {}, { ui: { setWidget: () => {}, setStatus: () => {} } });
                 manager.spawnFleetChild({ ...REQUEST, name: "scout" });
                 harness.procs[0].emit("close", 0);
+                await new Promise((r) => setTimeout(r, 250)); // success rides the batch
                 expect(fake.sent.length).toBe(1);
                 expect(fake.sent[0].msg.customType).toBe("unown-subagent-result");
                 expect(fake.sent[0].opts).toEqual({ triggerTurn: true, deliverAs: "steer" });

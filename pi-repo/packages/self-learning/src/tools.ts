@@ -104,6 +104,8 @@ import {
 } from "./subagent-catalog.ts";
 import { ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
 import { FleetManager, registerFleetSurface, type FleetSpawnRequest } from "./fleet-runtime.ts";
+import { composeTaskWithBrief, summarizeParentContext } from "./context-brief.ts";
+import { chatText } from "./llm.ts";
 import {
         isProviderStyleFailure,
         loadModelHealth,
@@ -1303,7 +1305,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 description:
                                         "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default), 'explore' / 'scout' (read-only; scout returns a compressed handoff), 'worker' (implementation, completion-guarded), 'reviewer' (P0/P1/P2 + verdict), 'planner' (writes plan.md, never executes), 'background-explore' (cheap sweep) plus any defined in .unown/agents/*.md (also listed in the advertised-subagents block of your system prompt). Pass {tasks: [...]} to run up to 4 in parallel. Set async: true to spawn in the BACKGROUND fire-and-forget (immediate ack; the result arrives as a new message — steer/stop/inspect via the task_control tool; the child can ask you questions). Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back; sync lane only). Prefer this whenever a focused investigation would pollute this session's context.",
                                 parameters: TaskParams,
-                                async execute(_toolCallId, params, signal) {
+                                async execute(_toolCallId, params, signal, _onUpdate, executeCtx) {
                                         const agents = discoverSubagents(opts.cwd);
                                         // Job = normalized spawn request (single form + batch form).
                                         const jobs = params.tasks
@@ -1330,6 +1332,28 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         ],
                                                 };
                                         }
+                                        // ------------------------------------------------------------------
+                                        // Context briefs (pi-cciotti port, summary mode): a
+                                        // `context: "summary"` agent spawns with a distilled
+                                        // brief of THIS session prepended to its task — one
+                                        // cheap LLM call, ≤4k chars, newest-first projection.
+                                        // Failures fall back to the fresh context with a
+                                        // visible warning, never abort the delegation.
+                                        // ------------------------------------------------------------------
+                                        const maybeBrief = async (agent: SubagentConfig, task: string): Promise<string> => {
+                                                if (agent.context !== "summary") return task;
+                                                const entries =
+                                                        typeof (executeCtx as any)?.sessionManager?.getEntries === "function"
+                                                                ? (executeCtx as any).sessionManager.getEntries()
+                                                                : [];
+                                                const brief = await summarizeParentContext(chatText, entries, {
+                                                        roleInstruction: agent.contextBrief,
+                                                });
+                                                if (brief === null) {
+                                                        return `${task}\n\n[context brief unavailable — the parent session could not be summarized; proceeding fresh]`;
+                                                }
+                                                return composeTaskWithBrief(brief, task);
+                                        };
                                         // ------------------------------------------------------------------
                                         // FLEET LANE (pi-interactive-subagents port): async
                                         // fire-and-forget. The tool returns an immediate ack;
@@ -1383,7 +1407,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         }
                                                         const request: FleetSpawnRequest = {
                                                                 agent: agent.name,
-                                                                task: job.task,
+                                                                task: await maybeBrief(agent, job.task),
                                                                 name: typeof params.name === "string" && params.name.trim() ? params.name.trim() : undefined,
                                                                 routing: {
                                                                         model: agent.model,
@@ -1488,7 +1512,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         const guardActive = agent.completionGuard === true;
                                                         const guardBefore = guardActive ? snapshotWorkingTree(runCwd) : null;
                                                         log(`spawning subagent ${agent.name}`);
-                                                        const result = await runSubagent(agent, job.task, runCwd, signal, {
+                                                        const result = await runSubagent(agent, await maybeBrief(agent, job.task), runCwd, signal, {
                                                                 outputSchema: job.outputSchema,
                                                                 schemaMode: job.schemaMode,
                                                         });

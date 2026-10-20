@@ -541,3 +541,33 @@ export function atomicWriteFileSync(target: string, content: string): void {
 export function isFleetBlocked(text: string): { blocked: boolean; reason?: string } {
         return isBlockedReply(text);
 }
+
+// ---------------------------------------------------------------------------
+// Completion batching (pi-cciotti port): successes coalesce, failures race
+// ---------------------------------------------------------------------------
+
+/** Debounce window for batching successful completions (cciotti: 150ms). */
+export const FLEET_BATCH_DEBOUNCE_MS = 150;
+
+/** Max wait before a batched flush fires even while results keep arriving. */
+export const FLEET_BATCH_MAX_WAIT_MS = 1_000;
+
+/**
+ * Merge N result contents into ONE batched message (the message the parent
+ * model reads). A single result passes through unchanged; several arrive
+ * under a header line so the turn that consumes them sees the batch shape:
+ *
+ *   2 subagents finished:
+ *   ── name ──
+ *   <content>
+ *   ── name ──
+ *   <content>
+ *
+ * Pure. Failures/questions bypass the batch upstream (they flush alone).
+ */
+export function mergeFleetResultContents(results: Array<{ name: string; content: string }>): string {
+        if (results.length === 1) return results[0].content;
+        const header = `${results.length} subagents finished:`;
+        const body = results.map((r) => `── ${r.name} ──\n${r.content}`).join("\n\n");
+        return `${header}\n\n${body}`;
+}

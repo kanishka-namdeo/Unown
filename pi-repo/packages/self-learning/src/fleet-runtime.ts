@@ -37,6 +37,8 @@ import {
         buildFleetResultContent,
         classifyFleetStatus,
         FLEET_ASK_ENV,
+        FLEET_BATCH_DEBOUNCE_MS,
+        FLEET_BATCH_MAX_WAIT_MS,
         FLEET_CONTROL_ENV,
         FLEET_ID_ENV,
         FLEET_SESSION_ENV,
@@ -48,6 +50,7 @@ import {
         formatFleetWidgetLines,
         isFleetBlocked,
         isTerminalFleetStatus,
+        mergeFleetResultContents,
         nextFleetStatus,
         readFleetRegistry,
         writeFleetRegistry,
@@ -121,6 +124,10 @@ export class FleetManager {
         private readonly invocation: (args: string[]) => { command: string; args: string[] };
         /** Worktrees adopted from the task tool's isolation lane, disposed on finalize. */
         private readonly worktrees = new Map<string, WorktreeHandle>();
+        /** Completion batching (cciotti port): buffered successes + flush timers. */
+        private pendingResults: Array<{ name: string; content: string }> = [];
+        private batchTimer: ReturnType<typeof setTimeout> | null = null;
+        private batchDeadline: ReturnType<typeof setTimeout> | null = null;
 
         constructor(private readonly opts: FleetManagerOptions) {
                 this.fleetDir = opts.fleetDir ?? join(opts.cwd, ".unown", "fleet");
@@ -608,16 +615,51 @@ export class FleetManager {
                 } catch {
                         /* best effort */
                 }
-                // Deliver the result as a steer message that triggers a new turn.
+                // Deliver the result — with completion batching (cciotti port):
+                // successes coalesce (150ms debounce, 1s max wait) so a fan-out of
+                // N children wakes the parent ONCE, not N times; failures and
+                // blocked replies bypass the batch (bad news races).
                 if (this.deliver) {
                         const content = buildFleetResultContent(child);
-                        try {
-                                this.deliver(content, { fleet: { ...child, pendingQuestion: undefined } }, "result");
-                        } catch (err) {
-                                this.log(`fleet deliver failed for ${child.name}: ${err}`);
+                        const urgent = child.status !== "done";
+                        if (urgent) {
+                                this.flushPendingResults();
+                                try {
+                                        this.deliver(content, { fleet: { ...child, pendingQuestion: undefined } }, "result");
+                                } catch (err) {
+                                        this.log(`fleet deliver failed for ${child.name}: ${err}`);
+                                }
+                        } else {
+                                this.pendingResults.push({ name: child.name, content });
+                                if (!this.batchDeadline) {
+                                        this.batchDeadline = setTimeout(() => this.flushPendingResults(), FLEET_BATCH_MAX_WAIT_MS);
+                                }
+                                if (this.batchTimer) clearTimeout(this.batchTimer);
+                                this.batchTimer = setTimeout(() => this.flushPendingResults(), FLEET_BATCH_DEBOUNCE_MS);
                         }
                 }
                 this.refreshUi();
+        }
+
+        /** Flush the buffered success batch as ONE delivered message. */
+        private flushPendingResults(): void {
+                if (this.batchTimer) {
+                        clearTimeout(this.batchTimer);
+                        this.batchTimer = null;
+                }
+                if (this.batchDeadline) {
+                        clearTimeout(this.batchDeadline);
+                        this.batchDeadline = null;
+                }
+                if (this.pendingResults.length === 0 || !this.deliver) return;
+                const batch = this.pendingResults;
+                this.pendingResults = [];
+                const content = mergeFleetResultContents(batch);
+                try {
+                        this.deliver(content, { fleetBatch: batch.map((b) => b.name) }, "result");
+                } catch (err) {
+                        this.log(`fleet batch deliver failed: ${err}`);
+                }
         }
 
         private deliverQuestion(child: FleetChildState, question: string): void {
@@ -668,6 +710,9 @@ export class FleetManager {
                         clearInterval(this.watcher);
                         this.watcher = null;
                 }
+                // Deliver anything still buffered (successes wait in the batch
+                // window; a shutdown must not swallow them).
+                this.flushPendingResults();
                 for (const proc of this.procs.values()) {
                         clearTimeout(proc.watchdog);
                         this.killTree(proc.proc);

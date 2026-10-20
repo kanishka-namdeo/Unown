@@ -10,6 +10,8 @@ Fresh-context unown agents the model can spawn mid-session with the `task` tool 
 - [Authoring custom agents](#authoring-custom-agents)
 - [Per-agent routing](#per-agent-routing)
 - [Fallback models](#fallback-models)
+- [Context briefs](#context-briefs)
+- [The async fleet](#the-async-fleet)
 - [The BLOCKED protocol](#the-blocked-protocol)
 - [The completion guard](#the-completion-guard)
 - [How the model invokes them](#how-the-model-invokes-them)
@@ -105,8 +107,8 @@ Load order is built-in → global → project; a definition with the same `name`
 | `advertise` | no | `false` keeps the agent out of the advertised catalog (it still spawns fine when named explicitly — the `planner` shape). Default `true` |
 | `completionGuard` | no | `true` turns on the [completion guard](#the-completion-guard) for this agent (the `worker` builtin has it on). Default `false` |
 | `fallbackModels` | no | Ordered fallback models for provider-style failures (see [Fallback models](#fallback-models)) |
-| `context` | no | `fresh` (default) or `summary` — reserved for the context-brief lane |
-| `contextBrief` | no | Role-directed instruction shaping the summary brief — reserved for the context-brief lane |
+| `context` | no | `fresh` (default) or `summary` — `summary` prepends a distilled brief of the parent session to the task (see [Context briefs](#context-briefs)) |
+| `contextBrief` | no | Role-directed instruction shaping the summary brief (what it keeps) — only used with `context: summary` |
 
 The Markdown **body (everything after the closing `---`) becomes the subagent's system prompt**. Files without valid `name` and `description` frontmatter are skipped silently. Invalid values for the routing fields are dropped, never thrown. Other frontmatter fields are ignored. Run `/agents` in a session to list everything discovered, with source and toolset.
 
@@ -181,6 +183,40 @@ fallbackModels: qwen3.7-plus, qwen3.6-plus
 The chain is the agent's `model` (when set) followed by the fallbacks, deduplicated. A candidate advances **only** on a provider-style failure — auth (401/403), quota, rate limits (429), 5xx, timeouts, connection resets, or a silent non-zero exit — **and only when the child had done no work yet** (zero tool calls: rotating mid-task would discard real work). A context overflow or a crash after work started never rotates; the failure surfaces to the parent as before.
 
 Hard-failed models get a **30-minute health mark** in `~/.unown/agent/model-health.json` — a tiny shared store every unown process reads, so the outage is paid once per window across a whole fleet of subagents instead of once per spawn. Marks auto-expire; the store is atomic-written and fails closed (an unreadable store means "try the model", never "skip everything"). The run's report lists the models actually attempted (`worker · models kimi-k2.5 → qwen3.7-plus`) and usage is billed across the whole chain, not just the survivor.
+
+## Context briefs
+
+A `context: "summary"` agent does not spawn blind. Before the spawn, one cheap LLM call distills **the parent session's recent conversation** into a compact brief (≤ 4,096 characters) that is prepended to the child's task:
+
+```
+Context brief from the parent session:
+<the distilled brief>
+
+Task:
+<the task>
+```
+
+The distillation source is a newest-first projection of the parent session — user text, assistant text, and tool-call *names* only (bodies are the bulk, and the child rarely needs them) — capped at ~24k characters before the prompt is built. The per-agent `contextBrief` frontmatter shapes what the brief keeps (e.g. `quote each decision verbatim` for a decision-consistency reviewer).
+
+The discipline (ported from pi-cciotti's summary context mode):
+
+- **Graceful degradation** — a distillation failure (engine down, empty reply) falls back to the fresh context with a visible warning; it never aborts the delegation.
+- **Short sessions skip the paid call** — less than ~80 characters of source means there is nothing worth summarizing.
+- Briefs work in **both lanes** — the synchronous `task` tool and the async fleet.
+
+Cheaper than a full fork (the whole conversation copied), more targeted than raw transcript surgery — and the child starts already knowing what the orchestrator has already tried. (Ported from pi-cciotti's `context-brief.ts` + the `defaultContext: summary` agents.)
+
+## The async fleet
+
+The `task` tool's `async: true` mode spawns a **background subagent** and returns an immediate ack; the result arrives later as its own message that triggers your next turn. The fleet is the pi-interactive-subagents model rebuilt on Unown's cross-platform substrate — plain subprocesses + atomic control files, no terminal multiplexer, identical on Windows / macOS / Linux:
+
+- **`task_control`** steers a running child mid-task (the message is absorbed into its current turn or picked up at the next turn boundary), stops it, shows live status, or lists everything. Steering a **finished** child by name **resumes** it — same session file, same sandbox (replayed from the loadout sidecar; a missing loadout is refused, never relaunched unrestricted).
+- **`ask_question`** — a child can ask the orchestrator ONE clarifying question mid-task and parks until the answer arrives (steered back via `task_control`); ten-minute timeout degrades to best-judgment guidance so an unattended parent never wedges the child.
+- **The live widget** above the editor shows every running child — elapsed, current tool, waiting-for-answer, stalled — with a footer status line; `/tasks` is the human view.
+- **Completion batching** — successes coalesce (150 ms debounce, 1 s max wait) so a fan-out of N children wakes the parent once; failures and blocked replies bypass the batch (bad news races).
+- **The resume registry** (`.unown/fleet/registry.json`, bounded to 32 entries) persists name → session across sessions, so a child spawned yesterday resumes today.
+- **Headless runs drain** — a `-p` print-mode run waits (bounded by the fleet timeout) for its async children before exiting, so results still land while the process is alive.
+- Worktree isolation composes: an async writer can run in its own tree.
 
 ## The BLOCKED protocol
 
