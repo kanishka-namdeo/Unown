@@ -139,7 +139,8 @@ Usage:
   unown dashboard [screen] the TUI mission control for the learning memory
                            system (alias: dash) — screens: overview, memory,
                            dreams, notes, skills, lab, hooks, router,
-                           providers, gateway, automations, webcache;
+                           gateway, automations, webcache (providers live
+                           in "unown providers" + /providers);
                            live SSE feed, rollbacks, dream runs (see
                            docs/tui-dashboard-plan.md)
   unown doctor             run configuration diagnostics (--json: machine-readable)

@@ -38,8 +38,6 @@ import type {
 	NotesSyncResponse,
 	OverviewResponse,
 	ProjectMemoryResponse,
-	ProviderMutationResponse,
-	ProvidersResponse,
 	RunDetailResponse,
 	RunsResponse,
 	SandboxesResponse,
@@ -137,7 +135,6 @@ export type ResourceId =
 	| "jobs"
 	| "sandboxes"
 	| "bridge"
-	| "providers"
 	| "automations"
 	| "webcache";
 
@@ -159,7 +156,6 @@ const LOADERS: Record<ResourceId, (c: EngineClient) => Promise<unknown>> = {
 	jobs: (c) => c.get<JobsResponse>("/api/jobs"),
 	sandboxes: (c) => c.get<SandboxesResponse>("/api/sandboxes"),
 	bridge: (c) => c.get<BridgeResponse>("/api/bridge"),
-	providers: (c) => c.get<ProvidersResponse>("/api/providers"),
 	automations: (c) => c.get<AutomationsResponse>("/api/automations"),
 	webcache: (c) => c.get<import("./dashboard-types.ts").WebCacheStats>("/api/webcache"),
 };
@@ -199,7 +195,6 @@ const INVALIDATIONS: Record<string, ResourceId[]> = {
 	"job:error": ["jobs", "overview"],
 	"router:error": ["overview"],
 	"webcache:cleared": ["webcache"],
-	"provider:changed": ["providers", "overview"],
 	"lane:dream": [],
 };
 
@@ -329,17 +324,6 @@ export function describeEvent(ev: AgentEvent): { text: string; tone: ActivityIte
 			return { text: `router started · ${str("jobs")} jobs scheduled`, tone: "zinc" };
 		case "router:error":
 			return { text: `router error · ${str("error", "unknown").slice(0, 80)}`, tone: "rose" };
-		case "provider:changed": {
-			const action = str("action");
-			const who = str("provider");
-			if (action === "add") return { text: `provider added · ${who}`, tone: "emerald" };
-			if (action === "remove") return { text: `provider removed · ${who}`, tone: "zinc" };
-			if (action === "key") return { text: `provider key rotated · ${who}`, tone: "zinc" };
-			if (action === "default") return { text: `default provider → ${who}`, tone: "emerald" };
-			if (action === "refresh")
-				return { text: `provider models refreshed · ${who} · ${str("added", "0")} new`, tone: "zinc" };
-			return { text: `provider ${action} · ${who}`, tone: "zinc" };
-		}
 		default:
 			return { text: ev.event, tone: "zinc" };
 	}
@@ -602,26 +586,8 @@ export class DashboardStore {
 		return r;
 	}
 
-	async addProvider(body: Record<string, unknown>): Promise<ProviderMutationResponse> {
-		const r = await this.client.post<ProviderMutationResponse>("/api/providers", body);
-		void this.refresh("providers");
-		return r;
-	}
 
-	async providerAction(path: string, body?: unknown): Promise<ProviderMutationResponse> {
-		const r = await this.client.post<ProviderMutationResponse>(path, body);
-		void this.refresh("providers");
-		return r;
-	}
 
-	/** Live endpoint probe — the engine's test route is GET-only. */
-	async testProvider(id: string): Promise<ProviderMutationResponse> {
-		const r = await this.client.get<ProviderMutationResponse>(
-			`/api/providers/${encodeURIComponent(id)}/test`,
-		);
-		void this.refresh("providers");
-		return r;
-	}
 
 	/** Drop cached drill-in fetches (all, or only keys starting with the
 	 * prefix, e.g. "memhist:project"). Mutations call this so a rollback is
@@ -636,11 +602,6 @@ export class DashboardStore {
 		}
 	}
 
-	async removeProvider(id: string): Promise<ProviderMutationResponse> {
-		const r = await this.client.del<ProviderMutationResponse>(`/api/providers/${encodeURIComponent(id)}`);
-		void this.refresh("providers");
-		return r;
-	}
 
 	async createAutomation(body: Record<string, unknown>): Promise<import("./dashboard-types.ts").Automation> {
 		const r = await this.client.post<{ automation: import("./dashboard-types.ts").Automation }>(

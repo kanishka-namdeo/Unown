@@ -42,7 +42,6 @@ SCREENS: dict[str, list[str]] = {
     "lab": ["learning lab", "cycles", "improvements", "runs"],
     "hooks": ["HOOKS", "events", "filter"],
     "router": ["router jobs", "auto-dream", "sandboxes"],
-    "providers": ["engine model", "key"],
     "gateway": ["requests", "latency"],
     "automations": ["AUTOMATIONS", "cron"],
     "webcache": ["entries", "saved"],
@@ -50,7 +49,7 @@ SCREENS: dict[str, list[str]] = {
 
 ACCEL = {
     "overview": "1", "memory": "2", "dreams": "3", "notes": "4", "skills": "5",
-    "lab": "6", "hooks": "7", "router": "8", "providers": "9", "gateway": "0",
+    "lab": "6", "hooks": "7", "router": "8", "gateway": "9", "automations": "0",
 }
 
 
@@ -81,7 +80,7 @@ def main(only: list[str] | None) -> int:
                 for _ in range(12):
                     pty.send("]")
                     time.sleep(0.35)
-                    if name.replace("webcache", "Web Cache").lower() in pty.pane_text().lower():
+                    if "web cache" in pty.pane_text().lower():
                         break
             time.sleep(SCREEN_WAIT)
             pty.pump(0.6)

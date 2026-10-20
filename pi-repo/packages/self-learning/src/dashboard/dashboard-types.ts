@@ -524,63 +524,8 @@ export interface ActivityItem {
 	tone: "emerald" | "amber" | "rose" | "zinc";
 }
 
-// ---- Providers (the multi-provider registry, M5) ----
-
-export interface ProviderHealthInfo {
-	ok: boolean;
-	status?: number;
-	problem?: string | null;
-	checkedAt: number;
-}
-
-export interface ProviderInfo {
-	id: string;
-	name?: string;
-	baseUrl?: string;
-	api?: string;
-	modelIds: string[];
-	keyStatus: "auth-json" | "models-json" | "env-ref" | "none";
-	keyEnv?: string;
-	keyLabel: string;
-	isDefault: boolean;
-	health: ProviderHealthInfo;
-}
-
-export interface ProviderPresetInfo {
-	id: string;
-	label: string;
-	baseUrl: string;
-	api: string;
-	defaultModel: string;
-	input: string[];
-	keyEnvHint: string;
-	note?: string;
-}
-
-export interface ProvidersResponse {
-	ok: boolean;
-	providers: ProviderInfo[];
-	defaultProvider: string | null;
-	defaultModel: string | null;
-	engine: { provider: string; model: string };
-	presets: ProviderPresetInfo[];
-}
-
-export interface ProviderProbeInfo {
-	ok?: boolean;
-	status?: number;
-	problem?: string;
-	models?: string[];
-}
-
-export interface ProviderMutationResponse {
-	ok: boolean;
-	provider: string;
-	probe?: ProviderProbeInfo | null;
-	model?: string;
-	added?: string[];
-	missing?: string[];
-	problem?: string | null;
-	defaultFellBack?: boolean;
-	remaining?: number;
-}
+// ---- Provider registry ----
+/* The multi-provider registry is terminal-only (owner's call, 473a7d5): the
+ * engine serves no /api/providers HTTP surface. Registry types live with the
+ * CLI (providers.ts / providers-cli.ts); the dashboard's header reads the
+ * engine's active provider from OverviewResponse. */

@@ -142,17 +142,13 @@ Actions: `enter`/`space` trigger now; `t` toggle enable/disable with confirm;
 live job events arrive over SSE.
 Workflows: "when does the next dream fire?", "pause the harness while I debug".
 
-### 3.9 Providers — the model registry (web-tab parity, M5's successor)
+### 3.9 Providers — terminal-only by the owner's call (amended during D4)
 
-Data: `/api/providers`, `/api/providers/:id/test`.
-View: provider cards (health dot with TTL, key status, default badge, model
-chips); engine's own model banner.
-Actions: `a` add provider (form overlay: preset list, key, model, import-all,
-make-default); `T` test; `d` set default; `r` refresh model list; `k` rotate
-key; `x` remove with confirm. Same code path as `unown providers` — the API is
-the single source.
-Workflows: "switch to the cheap model for the night run", "is my key still
-valid?".
+The registry is NOT a dashboard screen: the M4/M5 web+HTTP surface was
+unwound upstream (473a7d5) — provider management lives in the `unown
+providers` CLI and the in-session `/providers` command, reading the registry
+files directly. The dashboard's header keeps the informational line (engine
+provider + model from `/api/overview`).
 
 ### 3.10 Gateway — LLM bridge traffic
 

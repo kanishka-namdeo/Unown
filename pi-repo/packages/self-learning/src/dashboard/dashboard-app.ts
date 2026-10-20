@@ -32,7 +32,6 @@ import { createSkillsScreen } from "./screens/skills-screen.ts";
 import { createLabScreen } from "./screens/lab-screen.ts";
 import { createHooksScreen } from "./screens/hooks-screen.ts";
 import { createRouterScreen } from "./screens/router-screen.ts";
-import { createProvidersScreen } from "./screens/providers-screen.ts";
 import { createGatewayScreen } from "./screens/gateway-screen.ts";
 import { createAutomationsScreen } from "./screens/automations-screen.ts";
 import { createWebCacheScreen } from "./screens/webcache-screen.ts";
@@ -58,11 +57,16 @@ export const SCREEN_SPECS: ScreenSpec[] = [
 	{ id: "lab", title: "Learning Lab", group: "learning", resources: ["cycles", "improvements", "runs", "tasks"] },
 	{ id: "hooks", title: "Hooks", group: "learning", resources: ["hooks"] },
 	{ id: "router", title: "Router", group: "learning", resources: ["jobs", "sandboxes"] },
-	{ id: "providers", title: "Providers", group: "operations", resources: ["providers"] },
 	{ id: "gateway", title: "Gateway", group: "operations", resources: ["bridge"] },
 	{ id: "automations", title: "Automations", group: "operations", resources: ["automations"] },
 	{ id: "webcache", title: "Web Cache", group: "operations", resources: ["webcache"] },
-];
+]
+
+/* Provider management is terminal-only by the owner's call (the M4/M5 web
+ * surface was unwound in 473a7d5): the registry lives in the `unown
+ * providers` CLI and the in-session /providers command — not a dashboard
+ * screen. The header still shows the engine's active provider from
+ * /api/overview. */
 
 /** Key accelerators for the first ten screens (1..9, 0). */
 const ACCELERATORS: Record<string, number> = {
@@ -268,8 +272,6 @@ export class DashboardApp {
 				return createHooksScreen;
 			case "router":
 				return createRouterScreen;
-			case "providers":
-				return createProvidersScreen;
 			case "gateway":
 				return createGatewayScreen;
 			case "automations":
