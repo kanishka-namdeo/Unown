@@ -31,6 +31,11 @@ function collectBrowserErrors(page: Page) {
 }
 
 test("all eleven tabs render engine data", async ({ page }) => {
+  // The tab strip grew to eleven tabs; clicking through each (pane fade +
+  // engine-data proof, up to 10s apiece on a slow pane) outgrew the default
+  // 30s TEST budget — the timeout surfaced as a phantom "tab not found" on
+  // whichever tab the clock died on. A verified-good run measures ~25-35s.
+  test.setTimeout(90_000);
   const errors = collectBrowserErrors(page);
   await page.goto("/dashboard");
 
@@ -39,12 +44,27 @@ test("all eleven tabs render engine data", async ({ page }) => {
   await expect(page.getByText("132 runs").first()).toBeVisible();
 
   for (const tab of TABS) {
-    await page.getByRole("tab", { name: tab.name }).click();
+    const tabLocator = page.getByRole("tab", { name: tab.name });
+    // The tab strip overflows once the 11th tab joined — scroll the target
+    // into view before clicking or the click waits out the timeout on a
+    // tab that is rendered but off-strip.
+    await tabLocator.scrollIntoViewIfNeeded();
+    await tabLocator.click();
     await expect(page.getByRole("tabpanel")).toBeVisible();
-    // The dream journal gates its output + consumed notes behind an expand
-    // toggle — expand before asserting the proof string.
+    // The dream journal / run-history panes gate their output behind a
+    // disclosure toggle — expand before asserting the proof string. Match the
+    // TOGGLE by its disclosure label ("expand"/"collapse"/"run history"):
+    // a generic `button[aria-expanded="false"]` .first() grabbed the pane's
+    // "New automation" dialog trigger instead, and the dialog's focus trap
+    // set aria-hidden on <main> — hiding the whole tab strip from the
+    // accessibility tree and failing the NEXT tab lookup as a phantom
+    // "tab not found".
     if ("expand" in tab) {
-      await page.locator('button[aria-expanded="false"]').first().click();
+      await page
+        .getByRole("tabpanel")
+        .getByRole("button", { name: /expand|collapse|run history/i })
+        .first()
+        .click();
     }
     await expect(page.getByText(tab.proof).first()).toBeVisible({ timeout: 10_000 });
   }

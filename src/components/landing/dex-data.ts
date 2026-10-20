@@ -122,13 +122,18 @@ export const DEX: readonly DexEntry[] = [
     category: "the splitting form",
     type: "session",
     entry:
-      "It splits off a fresh mind and hands it the job. What walks back is typed, and it cleaned up its worktree on the way.",
+      "It splits off a fresh mind and hands it the job — and now it can split one loose in the background, steer it mid-run, take its questions and wake it again by name.",
     weakness: "one context juggling ten jobs",
     practice: [
-      "Subagents with a fresh context — typed replies via output_schema and per-child git worktree isolation via worktree_isolation.",
+      "Subagents with a fresh context — typed replies via output_schema, per-child git worktree isolation, a completion guard that fails the silent no-op, and a BLOCKED lane for honest refusals.",
+      "The async fleet: background spawns whose results steer back as new turns, mid-run steering and ask_question through task_control, resume-by-name from a persisted registry, and a live fleet widget — no terminal multiplexer, native on every OS.",
     ],
     habitat: "joins every session",
-    receipts: [["tools.ts", SRC("tools.ts")]],
+    receipts: [
+      ["tools.ts", SRC("tools.ts")],
+      ["fleet.ts", SRC("fleet.ts")],
+      ["fleet-runtime.ts", SRC("fleet-runtime.ts")],
+    ],
   },
   {
     id: "lsp",
