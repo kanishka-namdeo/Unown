@@ -942,7 +942,9 @@ function cmdWebcache(args: string[]): number {
         console.log("unown webcache — the web results store");
         console.log();
         console.log(`${s.enabled ? "✓ enabled" : "· disabled (UNOWN_WEB_CACHE=0)"} — ${s.root}`);
-        console.log(`  entries     ${s.entries} (${formatBytes(s.bytes)} of ${formatBytes(s.maxBytes)} cap)`);
+        console.log(
+                `  entries     ${s.entries}${s.index.approximate ? " (approx — in-memory index)" : ""} (${formatBytes(s.bytes)} of ${formatBytes(s.maxBytes)} cap)`,
+        );
         console.log(
                 `  ttl         search ${formatMs(s.ttl.searchMs)} · fetch ${formatMs(s.ttl.fetchMs)} (origin Cache-Control honored, capped 24h)` +
                         ` · stale-if-error ${formatMs(s.ttl.searchStaleMs)} search / ${formatMs(s.ttl.fetchStaleMs)} fetch`,

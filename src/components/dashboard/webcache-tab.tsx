@@ -363,6 +363,14 @@ export function WebCacheTab() {
               value={stats?.entries ?? 0}
               sub={
                 <span className="inline-flex flex-wrap items-center gap-1.5">
+                  {stats?.index?.approximate ? (
+                    <>
+                      <span className="text-zinc-500" title={`in-memory index, ${Math.round((stats.index.ageMs ?? 0) / 1000)}s old — counts are per-process approximations`}>
+                        ≈ indexed
+                      </span>
+                      <span className="text-zinc-400">·</span>
+                    </>
+                  ) : null}
                   <span className="text-amber-400">{t?.stale ?? 0} stale</span>
                   <span className="text-zinc-400">·</span>
                   <span>{t?.bypass ?? 0} bypass</span>

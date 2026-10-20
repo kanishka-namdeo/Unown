@@ -47,6 +47,7 @@ import { Type } from "typebox";
 import {
         coalesce,
         computeFetchTtlMs,
+        eligibleForSwr,
         fetchCacheKey,
         isFresh,
         lookupFresh,
@@ -96,8 +97,11 @@ export interface WebSearchOptions {
 /** Provenance of a served answer — how the web results store answered. */
 export interface WebCacheProvenance {
         /** hit: served from the store while fresh; revalidated: origin answered
-         * 304 (unchanged); stale: last good answer after upstream failure. */
-        provenance: "hit" | "revalidated" | "stale";
+         * 304 (unchanged); refreshing: stale answer served immediately while a
+         * background refresh restores freshness (stale-while-revalidate,
+         * RFC 5861 — nginx `proxy_cache_use_stale updating` / Varnish grace);
+         * stale: last good answer after upstream failure. */
+        provenance: "hit" | "revalidated" | "refreshing" | "stale";
         ageMs: number;
 }
 
@@ -1409,6 +1413,37 @@ export function resolveSearchChain(explicit?: string): string[] {
         return chain;
 }
 
+/** Background refresh for a stale-while-revalidate serve (search). The
+ *  caller already got the marked stale answer; this restores freshness for
+ *  the NEXT caller. Detached (never throws into the serve path) and
+ *  collapsed through its own single-flight key — a burst of identical
+ *  stale-served calls costs exactly one upstream round. Distinct from the
+ *  foreground `search:` key on purpose: joining that one would return the
+ *  stale serve itself and refresh nothing. */
+function kickSwrSearchRefresh(ckey: SearchCacheKey, query: string, opts: WebSearchOptions): void {
+        void coalesce(`swr:${ckey.key}`, async () => {
+                try {
+                        const outcome = await runWebSearchUncached(query, opts);
+                        webCachePut({
+                                schema: 1,
+                                kind: "search",
+                                key: ckey.key,
+                                keyMaterial: ckey.keyMaterial,
+                                payload: outcome,
+                                provider: outcome.provider,
+                                storedAt: Date.now(),
+                                ttlMs: ckey.ttlMs,
+                                staleIfErrorMs: ckey.staleIfErrorMs,
+                        });
+                        webCacheLogEvent({ ts: Date.now(), kind: "miss", tool: "web_search", provider: outcome.provider, detail: `${query.slice(0, 80)} (swr refresh)` });
+                } catch (err) {
+                        webCacheLogEvent({ ts: Date.now(), kind: "error", tool: "web_search", detail: `swr refresh failed: ${(err as Error)?.message ?? String(err)}`.slice(0, 120) });
+                }
+        }).catch(() => {
+                /* detached by contract */
+        });
+}
+
 /**
  * Run a web search across the resolved provider chain. Providers are tried
  * in order; the first one returning results wins, and failures cascade with
@@ -1436,6 +1471,18 @@ export async function runWebSearch(query: string, opts: WebSearchOptions = {}): 
                                 ageMs: hit.ageMs,
                         });
                         return { ...hit.value, query, cache: { provenance: hit.provenance, ageMs: hit.ageMs } };
+                }
+                // Stale-while-revalidate (RFC 5861): a stale answer inside the
+                // window serves immediately — marked "refreshing" — while a
+                // background refresh restores freshness for the next caller.
+                // nginx's `proxy_cache_use_stale updating` / Varnish grace are
+                // the production precedent; UNOWN_WEB_CACHE_SWR=0 disables.
+                const swrCandidate = webCacheGet<WebSearchOutcome>(ckey.key);
+                if (swrCandidate && eligibleForSwr(swrCandidate)) {
+                        const ageMs = Date.now() - swrCandidate.storedAt;
+                        kickSwrSearchRefresh(ckey, query, opts);
+                        webCacheLogEvent({ ts: Date.now(), kind: "stale", tool: "web_search", provider: swrCandidate.payload.provider, detail: `${query.slice(0, 80)} (swr)`, ageMs });
+                        return { ...swrCandidate.payload, query, cache: { provenance: "refreshing", ageMs } };
                 }
                 try {
                         const outcome = await runWebSearchUncached(query, opts);
@@ -1554,6 +1601,7 @@ function renderCacheNote(cache?: WebCacheProvenance): string {
         const age = formatAge(cache.ageMs);
         if (cache.provenance === "hit") return `· cached (${age} old)`;
         if (cache.provenance === "revalidated") return `· revalidated (unchanged, ${age} old)`;
+        if (cache.provenance === "refreshing") return `· stale — refreshing in background (${age} old)`;
         return `· STALE — served after provider error (${age} old)`;
 }
 
@@ -1857,6 +1905,19 @@ export async function fetchPageContent(
                         }
                 }
 
+                // 2b. Stale-while-revalidate (RFC 5861) for entries WITHOUT
+                //     validators — the fallback-chain pages where a refresh
+                //     re-burns provider quota. Entries WITH validators keep
+                //     their precise blocking 304 path above and its
+                //     fall-through semantics (a failed revalidation still
+                //     reaches the full chain and stale-if-error, unchanged).
+                if (staleEntry && !staleEntry.validators && eligibleForSwr(staleEntry)) {
+                        const ageMs = Date.now() - staleEntry.storedAt;
+                        kickSwrFetchRefresh(ckey, url, opts, tool);
+                        webCacheLogEvent({ ts: Date.now(), kind: "stale", tool, provider: staleEntry.payload.method, detail: `${url.host} (swr)`, ageMs });
+                        return renderFetchOutcome(staleEntry.payload, maxChars, { provenance: "refreshing", ageMs });
+                }
+
                 // 3. Full pipeline (fetched at the ceiling so one entry serves
                 //    every max_chars; rendered at the caller's cap).
                 try {
@@ -1882,6 +1943,28 @@ export async function fetchPageContent(
                         }
                         throw err;
                 }
+        });
+}
+
+/** Background refresh for a stale-while-revalidate serve (fetch). Same
+ *  contract as the search kicker: detached, single-flighted under its own
+ *  key, never throws into the serve path. */
+function kickSwrFetchRefresh(
+        ckey: FetchCacheKey,
+        url: URL,
+        opts: { signal?: AbortSignal },
+        tool: "webfetch" | "fetch_url",
+): void {
+        void coalesce(`swr-fetch:${ckey.key}`, async () => {
+                try {
+                        const outcome = await fetchOutcomeUncached(url, opts, FETCH_STORE_CEILING_CHARS);
+                        storeFetchOutcome(ckey, outcome, tool, url);
+                        webCacheLogEvent({ ts: Date.now(), kind: "miss", tool, provider: outcome.method, detail: `${url.host} (swr refresh)` });
+                } catch (err) {
+                        webCacheLogEvent({ ts: Date.now(), kind: "error", tool, detail: `swr refresh failed: ${(err as Error)?.message ?? String(err)}`.slice(0, 120) });
+                }
+        }).catch(() => {
+                /* detached by contract */
         });
 }
 

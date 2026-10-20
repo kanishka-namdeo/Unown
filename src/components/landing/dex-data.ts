@@ -92,12 +92,14 @@ export const DEX: readonly DexEntry[] = [
     weakness: "a confident answer with no source",
     practice: [
       "Native web access through web_search and webfetch — keyless providers work out of the box, 19 total, an auto-selecting chain that keeps trying until one answers.",
-      "A persistent web results store answers repeats from disk while fresh, revalidates by ETag (a 304 means the page never changed), and serves the last good answer — flagged stale — when every provider fails.",
+      "A persistent web results store answers repeats from disk while fresh, revalidates by ETag (a 304 means the page never changed), serves stale answers instantly — marked — while a background refresh restores them, and keeps the last good answer — flagged stale — when every provider fails.",
+      "Benchmarked with committed receipts: the dashboard's 8-second store poll dropped from a 49.9 ms disk scan to 0.003 ms answered from memory, and repeat hits answer ~200× faster through a bounded hot-entry memo.",
     ],
     habitat: "joins every session",
     receipts: [
       ["websearch.ts", SRC("websearch.ts")],
       ["webcache.ts", SRC("webcache.ts")],
+      ["bench receipts", "https://github.com/kanishka-namdeo/Unown/blob/main/benchmarks/webcache/RESULTS.md"],
     ],
   },
   {

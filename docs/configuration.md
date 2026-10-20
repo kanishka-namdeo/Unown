@@ -137,7 +137,13 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_WEBFETCH_CACHE_TTL_MS` | `1800000` | Heuristic freshness for fetched pages when the origin sends no Cache-Control (30 min; an origin `max-age`/`Expires` wins, capped at 24 h). |
 | `UNOWN_WEB_SEARCH_STALE_MS` | `86400000` | Stale-if-error window for search results — after TTL and within this window, the last good answer serves (flagged as stale) when every provider attempt fails. |
 | `UNOWN_WEBFETCH_STALE_MS` | `604800000` | Stale-if-error window for fetched pages (7 d, always flagged). |
-| `UNOWN_WEB_CACHE_MAX_BYTES` | `268435456` | Byte cap of the web results store (256 MiB). LRU-pruned at the cap — oldest-touched entries evict first; `unown webcache sweep` runs the pass on demand. |
+| `UNOWN_WEB_CACHE_MAX_BYTES` | `268435456` | Byte cap of the web results store (256 MiB). LRU-pruned at the cap — least-recently-used entries evict first (recency is tracked in RAM; `unown webcache sweep` runs the pass on demand). |
+| `UNOWN_WEB_CACHE_INDEX_MS` | `60000` | Max age of the store's in-memory index before stats/eviction rescan the disk. `0` = exact mode (rescan per call — what the dashboard's counts were before the perf layer); counts between rebuilds are per-process approximations, labeled as such in `unown webcache stats` and the dashboard. |
+| `UNOWN_WEB_CACHE_MEMO` | `1` | `0` disables the hot-entry memo layer (repeat hits then always re-read + re-verify the disk entry). |
+| `UNOWN_WEB_CACHE_MEMO_ENTRIES` / `UNOWN_WEB_CACHE_MEMO_BYTES` / `UNOWN_WEB_CACHE_MEMO_MS` | `500` / `52428800` / `180000` | Hot-entry memo budget: entry count, bytes (50 MiB) and freshness clock (3 min) — cacache's own memoization shape. |
+| `UNOWN_WEB_CACHE_DURABLE` | unset | `1` restores double-fsync (file + directory) cache writes. Default is the cacache model — tmp+rename without fsync: a lost cache entry is a refetch, and a power-loss-torn entry is caught by the payload checksum. |
+| `UNOWN_WEB_CACHE_SWR` | `1` | `0` disables stale-while-revalidate serving (a stale answer then blocks on the provider again; stale-if-error still applies on failure). |
+| `UNOWN_WEB_CACHE_SWR_MS` | entry's stale window | Bounds how far past TTL a stale answer may serve instantly (`· stale — refreshing in background`) while a background refresh restores freshness. |
 | `UNOWN_SEARXNG_URL` | unset | SearXNG instance URL for the `searxng` provider (self-hosted with `formats: [html, json]` — see `scripts/searxng-test/settings.yml`). |
 | `UNOWN_STACKEXCHANGE_KEY` | unset | Optional free stackapps.com key; lifts the keyless 300 req/day per-IP limit to 10000/day. |
 | `UNOWN_DASHSCOPE_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible base for the `dashscope` (Qwen enable_search) provider; intl users set `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`. |

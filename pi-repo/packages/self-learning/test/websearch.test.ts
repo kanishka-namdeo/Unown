@@ -769,6 +769,12 @@ describe("web results store — persistent cache integration", () => {
                                 } else if (url.startsWith("/plain")) {
                                         res.writeHead(200, { "cache-control": "max-age=3600", "content-type": "text/plain" });
                                         res.end("plain stable content");
+                                } else if (url.startsWith("/fleeting")) {
+                                        // No validators + max-age=1: storable, fresh for a
+                                        // second, then stale-without-validators — the
+                                        // stale-while-revalidate shape.
+                                        res.writeHead(200, { "cache-control": "max-age=1", "content-type": "text/plain" });
+                                        res.end(`fleeting content ${hits.filter((h) => h.url.startsWith("/fleeting")).length}`);
                                 } else if (url.startsWith("/long")) {
                                         res.writeHead(200, { "cache-control": "max-age=3600", "content-type": "text/plain" });
                                         res.end("L".repeat(2000));
@@ -833,13 +839,15 @@ describe("web results store — persistent cache integration", () => {
 
         test("search: stale-if-error serves the last good answer, flagged; beyond the window it throws", async () => {
                 const base = `http://127.0.0.1:${port}`;
-                // Store an immediately-stale entry (TTL 0 — never fresh, stale-eligible).
-                await withEnv({ UNOWN_SEARXNG_URL: base, UNOWN_WEB_SEARCH_CACHE_TTL_MS: "0" }, async () => {
+                // SWR=0: this test pins the pure stale-IF-ERROR semantics (serve
+                // stale only when upstream FAILS). With SWR on, the same stale
+                // entry would answer "refreshing" before the chain ever runs.
+                await withEnv({ UNOWN_SEARXNG_URL: base, UNOWN_WEB_SEARCH_CACHE_TTL_MS: "0", UNOWN_WEB_CACHE_SWR: "0" }, async () => {
                         const stored = await runWebSearch("stale probe", { provider: "searxng", maxResults: 5 });
                         expect(stored.cache).toBeUndefined();
                 });
                 // Provider dies: the store answers stale, clearly flagged.
-                await withEnv({ UNOWN_SEARXNG_URL: "http://127.0.0.1:9" }, async () => {
+                await withEnv({ UNOWN_SEARXNG_URL: "http://127.0.0.1:9", UNOWN_WEB_CACHE_SWR: "0" }, async () => {
                         const stale = await runWebSearch("stale probe", { provider: "searxng", maxResults: 5 });
                         expect(stale.cache?.provenance).toBe("stale");
                         expect(formatSearchResults(stale)).toContain("STALE — served after provider error");
@@ -848,12 +856,12 @@ describe("web results store — persistent cache integration", () => {
                 // A zero stale window is baked into the entry at store time —
                 // such an entry has nothing to fall back on when upstream fails.
                 await withEnv(
-                        { UNOWN_SEARXNG_URL: base, UNOWN_WEB_SEARCH_CACHE_TTL_MS: "0", UNOWN_WEB_SEARCH_STALE_MS: "0" },
+                        { UNOWN_SEARXNG_URL: base, UNOWN_WEB_SEARCH_CACHE_TTL_MS: "0", UNOWN_WEB_SEARCH_STALE_MS: "0", UNOWN_WEB_CACHE_SWR: "0" },
                         async () => {
                                 await runWebSearch("stale probe nowindow", { provider: "searxng", maxResults: 5 });
                         },
                 );
-                await withEnv({ UNOWN_SEARXNG_URL: "http://127.0.0.1:9" }, async () => {
+                await withEnv({ UNOWN_SEARXNG_URL: "http://127.0.0.1:9", UNOWN_WEB_CACHE_SWR: "0" }, async () => {
                         await expect(runWebSearch("stale probe nowindow", { provider: "searxng", maxResults: 5 })).rejects.toThrow(
                                 /all web-search providers failed/,
                         );
@@ -967,6 +975,73 @@ describe("web results store — persistent cache integration", () => {
                 expect(hits.filter((h) => h.url.startsWith("/rawdoc"))).toHaveLength(1);
                 expect(second.content[0].text).toContain("raw payload v1");
                 expect(second.content[0].text).toContain("· cached (");
+        });
+
+        test("search: stale-while-revalidate serves the stale answer instantly, a background refresh restores freshness", async () => {
+                const base = `http://127.0.0.1:${port}`;
+                const searchHits = () => hits.filter((h) => h.url.startsWith("/search?"));
+                // 1. Store an immediately-stale entry (TTL 0 — never fresh).
+                await withEnv({ UNOWN_SEARXNG_URL: base, UNOWN_WEB_SEARCH_CACHE_TTL_MS: "0" }, async () => {
+                        await runWebSearch("swr probe", { provider: "searxng", maxResults: 5 });
+                });
+                expect(searchHits()).toHaveLength(1);
+                // 2. Provider alive, entry stale: SWR answers IMMEDIATELY from the
+                //    store (marked "refreshing"), never blocking on the provider —
+                //    and kicks exactly one background refresh. The refresh stores
+                //    with the TTL read at serve time (60 s), so it lands fresh.
+                await withEnv({ UNOWN_SEARXNG_URL: base, UNOWN_WEB_SEARCH_CACHE_TTL_MS: "60000" }, async () => {
+                        const t0 = performance.now();
+                        const served = await runWebSearch("swr probe", { provider: "searxng", maxResults: 5 });
+                        const serveMs = performance.now() - t0;
+                        expect(served.cache?.provenance).toBe("refreshing");
+                        expect(formatSearchResults(served)).toContain("stale — refreshing in background");
+                        expect(served.results[0]?.url).toContain("docs.example");
+                        expect(serveMs).toBeLessThan(80); // the mock adds no delay for this query — the serve must be instant
+                        // Let the detached refresh land (it re-stores the entry fresh).
+                        await new Promise((r) => setTimeout(r, 150));
+                        expect(searchHits()).toHaveLength(2); // exactly one background refresh
+                });
+                // 3. The next identical call is a fresh hit — zero upstream.
+                await withEnv({ UNOWN_SEARXNG_URL: base, UNOWN_WEB_SEARCH_CACHE_TTL_MS: "60000" }, async () => {
+                        const fresh = await runWebSearch("swr probe", { provider: "searxng", maxResults: 5 });
+                        expect(fresh.cache?.provenance).toBe("hit");
+                        expect(searchHits()).toHaveLength(2);
+                });
+        });
+
+        test("search: SWR=0 keeps the blocking behavior (stale entry re-pays the provider)", async () => {
+                const base = `http://127.0.0.1:${port}`;
+                const searchHits = () => hits.filter((h) => h.url.startsWith("/search?"));
+                await withEnv({ UNOWN_SEARXNG_URL: base, UNOWN_WEB_SEARCH_CACHE_TTL_MS: "0", UNOWN_WEB_CACHE_SWR: "0" }, async () => {
+                        await runWebSearch("swr off probe", { provider: "searxng", maxResults: 5 });
+                });
+                await withEnv({ UNOWN_SEARXNG_URL: base, UNOWN_WEB_CACHE_SWR: "0" }, async () => {
+                        const served = await runWebSearch("swr off probe", { provider: "searxng", maxResults: 5 });
+                        expect(served.cache).toBeUndefined(); // no store serve — the chain ran
+                        expect(searchHits()).toHaveLength(2);
+                });
+        });
+
+        test("fetch: stale-while-revalidate for a validator-less page (no ETag origin)", async () => {
+                const base = `http://127.0.0.1:${port}`;
+                const fleetingHits = () => hits.filter((h) => h.url.startsWith("/fleeting"));
+                const first = await fetchPageContent(`${base}/fleeting`);
+                expect(first).toContain("fleeting content 1"); // the mock numbers bodies by request count (this request included)
+                expect(fleetingHits()).toHaveLength(1);
+                // max-age=1 lapses → stale, no validators → SWR serves the stored
+                // body instantly (marked) and refreshes in the background.
+                await new Promise((r) => setTimeout(r, 1100));
+                const served = await fetchPageContent(`${base}/fleeting`);
+                expect(served).toContain("fleeting content 1"); // the STORED body, not the refetched one
+                expect(served).toContain("stale — refreshing in background");
+                await new Promise((r) => setTimeout(r, 150)); // detached refresh lands + re-stores
+                expect(fleetingHits()).toHaveLength(2);
+                // The next fetch is a fresh hit — zero upstream calls, and the
+                // refreshed body (request #2's) is what is served.
+                const fresh = await fetchPageContent(`${base}/fleeting`);
+                expect(fleetingHits()).toHaveLength(2);
+                expect(fresh).toContain("· cached (");
+                expect(fresh).toContain("fleeting content 2");
         });
 
         test("stats reflect the integration traffic", async () => {

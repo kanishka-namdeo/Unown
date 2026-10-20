@@ -13,13 +13,14 @@
 //     Expires fallback, 24 h cap, heuristic default
 //   - coalesce: concurrent identical calls run the producer once
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
         coalesce,
         computeFetchTtlMs,
+        eligibleForSwr,
         fetchCacheKey,
         isFresh,
         lookupFresh,
@@ -27,6 +28,7 @@ import {
         normalizeFetchUrl,
         normalizeSearchQuery,
         resetCoalesce,
+        resetWebCacheInternals,
         searchCacheKey,
         webCacheClear,
         webCacheEnabled,
@@ -71,6 +73,13 @@ afterAll(() => {
                 else process.env[k] = saved;
         }
         rmSync(tmpRoot, { recursive: true, force: true });
+});
+
+// The index + memo are per-process state; tests share one process, so every
+// test starts from a clean slate (a test that pinned an old dir would
+// otherwise answer from the memo of the previous test's root).
+beforeEach(() => {
+        resetWebCacheInternals();
 });
 
 /** Fresh entry fixture with a controllable clock. */
@@ -321,6 +330,10 @@ describe("eviction — byte-capped LRU sweep", () => {
                 const fresh = mkdtempSync(join(tmpdir(), "unown-webcache-evict-"));
                 process.env.UNOWN_WEB_CACHE_DIR = fresh;
                 process.env.UNOWN_WEB_CACHE_MAX_BYTES = "4096"; // tiny cap
+                // Exact mode: the sweep honors mtimes crafted below, not a RAM
+                // index seeded at put time (the memory index is the default; the
+                // deterministic test opts into the documented always-scan mode).
+                process.env.UNOWN_WEB_CACHE_INDEX_MS = "0";
                 try {
                         // Three ~2 KB entries (~6 KB total > 4096 cap). Distinct,
                         // spaced mtimes decide LRU order deterministically even on
@@ -349,6 +362,7 @@ describe("eviction — byte-capped LRU sweep", () => {
                         expect(stats.totals.evict).toBeGreaterThanOrEqual(1);
                 } finally {
                         delete process.env.UNOWN_WEB_CACHE_MAX_BYTES;
+                        delete process.env.UNOWN_WEB_CACHE_INDEX_MS;
                         process.env.UNOWN_WEB_CACHE_DIR = tmpRoot;
                         rmSync(fresh, { recursive: true, force: true });
                 }
@@ -533,5 +547,271 @@ describe("webCacheRoot", () => {
                 process.env.UNOWN_HOME = savedHome;
                 if (savedDir === undefined) delete process.env.UNOWN_WEB_CACHE_DIR;
                 else process.env.UNOWN_WEB_CACHE_DIR = savedDir;
+        });
+});
+
+// ---------------------------------------------------------------------------
+// In-memory index — stats/eviction answer from RAM (the perf layer)
+// ---------------------------------------------------------------------------
+
+describe("in-memory index", () => {
+        test("stats answers from the index and tracks puts without rescanning", () => {
+                const fresh = mkdtempSync(join(tmpdir(), "unown-webcache-idx-"));
+                process.env.UNOWN_WEB_CACHE_DIR = fresh;
+                try {
+                        putSearchEntry(searchCacheKey("index probe a").key, Date.now());
+                        putSearchEntry(searchCacheKey("index probe b").key, Date.now());
+                        const first = webCacheStats(); // builds the index
+                        expect(first.entries).toBe(2);
+                        expect(first.bytes).toBeGreaterThan(0);
+                        expect(first.index.mode).toBe("memory");
+                        expect(first.index.approximate).toBe(true);
+                        // A put AFTER the index exists is tracked in RAM — the next
+                        // stats call sees 3 without a rescan (ageMs stays tiny).
+                        putSearchEntry(searchCacheKey("index probe c").key, Date.now());
+                        const second = webCacheStats();
+                        expect(second.entries).toBe(3);
+                        expect(second.index.ageMs).toBeLessThan(60_000);
+                } finally {
+                        process.env.UNOWN_WEB_CACHE_DIR = tmpRoot;
+                        rmSync(fresh, { recursive: true, force: true });
+                }
+        });
+
+        test("exact mode (UNOWN_WEB_CACHE_INDEX_MS=0) rescans per call", () => {
+                const fresh = mkdtempSync(join(tmpdir(), "unown-webcache-idxexact-"));
+                const saved = process.env.UNOWN_WEB_CACHE_INDEX_MS;
+                process.env.UNOWN_WEB_CACHE_DIR = fresh;
+                process.env.UNOWN_WEB_CACHE_INDEX_MS = "0";
+                try {
+                        putSearchEntry(searchCacheKey("exact mode probe").key, Date.now());
+                        const stats = webCacheStats();
+                        expect(stats.entries).toBe(1);
+                        expect(stats.index.mode).toBe("scan");
+                        expect(stats.index.approximate).toBe(false);
+                } finally {
+                        if (saved === undefined) delete process.env.UNOWN_WEB_CACHE_INDEX_MS;
+                        else process.env.UNOWN_WEB_CACHE_INDEX_MS = saved;
+                        process.env.UNOWN_WEB_CACHE_DIR = tmpRoot;
+                        rmSync(fresh, { recursive: true, force: true });
+                }
+        });
+
+        test("clear drops the index: the next stats rebuilds from the emptied disk", () => {
+                const fresh = mkdtempSync(join(tmpdir(), "unown-webcache-idxclear-"));
+                process.env.UNOWN_WEB_CACHE_DIR = fresh;
+                try {
+                        putSearchEntry(searchCacheKey("clear index probe").key, Date.now());
+                        expect(webCacheStats().entries).toBe(1);
+                        webCacheClear();
+                        expect(webCacheStats().entries).toBe(0);
+                } finally {
+                        process.env.UNOWN_WEB_CACHE_DIR = tmpRoot;
+                        rmSync(fresh, { recursive: true, force: true });
+                }
+        });
+
+        test("sweep evicts via the RAM index and forgets evicted keys", () => {
+                const fresh = mkdtempSync(join(tmpdir(), "unown-webcache-idxsweep-"));
+                process.env.UNOWN_WEB_CACHE_DIR = fresh;
+                try {
+                        // Two ~2 KB entries under a 3 KB cap → the sweep must evict.
+                        putSearchEntry(searchCacheKey("idx sweep a").key, Date.now(), { big: "x".repeat(2048) });
+                        putSearchEntry(searchCacheKey("idx sweep b").key, Date.now(), { big: "y".repeat(2048) });
+                        const built = webCacheStats(); // index now exists and tracks this root
+                        expect(built.entries).toBe(2);
+                        process.env.UNOWN_WEB_CACHE_MAX_BYTES = "3072";
+                        const result = webCacheSweep();
+                        delete process.env.UNOWN_WEB_CACHE_MAX_BYTES;
+                        expect(result.evicted).toBeGreaterThanOrEqual(1);
+                        expect(webCacheStats().entries).toBe(2 - result.evicted);
+                } finally {
+                        delete process.env.UNOWN_WEB_CACHE_MAX_BYTES;
+                        process.env.UNOWN_WEB_CACHE_DIR = tmpRoot;
+                        rmSync(fresh, { recursive: true, force: true });
+                }
+        });
+
+        test("memo is root-scoped: switching cache dirs never serves the other root", () => {
+                const { key } = searchCacheKey("root swap probe");
+                putSearchEntry(key, Date.now());
+                expect(lookupFresh(key)).not.toBeNull(); // memoized under tmpRoot
+                const other = mkdtempSync(join(tmpdir(), "unown-webcache-rootswap-"));
+                process.env.UNOWN_WEB_CACHE_DIR = other;
+                try {
+                        expect(lookupFresh(key)).toBeNull(); // different root: no memo, no disk entry
+                } finally {
+                        process.env.UNOWN_WEB_CACHE_DIR = tmpRoot;
+                        rmSync(other, { recursive: true, force: true });
+                }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Hot-entry memo — hot keys skip disk + parse + sha256 (cacache's memo layer)
+// ---------------------------------------------------------------------------
+
+describe("hot-entry memo", () => {
+        test("a hot key answers from the memo even when the disk file is corrupted after memoization", () => {
+                const { key } = searchCacheKey("memo probe");
+                putSearchEntry(key, Date.now(), { results: [{ url: "https://memo.example", title: "t", content: "c" }], provider: "duckduckgo", attempted: [], query: "memo probe" });
+                expect(lookupFresh(key)?.value.results[0]?.url).toBe("https://memo.example"); // disk hit → memoized
+                // Corrupt the on-disk file: the memoized entry must still serve
+                // (this is the memo's entire value proposition — zero fs work).
+                const file = join(tmpRoot, "entries", key.slice(0, 2), `${key}.json`);
+                writeFileSync(file, "{corrupt", "utf8");
+                const memoHit = lookupFresh(key);
+                expect(memoHit?.provenance).toBe("hit");
+                expect(memoHit?.value.results[0]?.url).toBe("https://memo.example");
+                // UNOWN_WEB_CACHE_MEMO=0: the disk corruption is now visible —
+                // the raw get self-heals to a miss.
+                const saved = process.env.UNOWN_WEB_CACHE_MEMO;
+                process.env.UNOWN_WEB_CACHE_MEMO = "0";
+                try {
+                        expect(lookupFresh(key)).toBeNull();
+                        expect(webCacheGet(key)).toBeNull();
+                        expect(existsSync(file)).toBe(false); // self-healed (deleted)
+                } finally {
+                        if (saved === undefined) delete process.env.UNOWN_WEB_CACHE_MEMO;
+                        else process.env.UNOWN_WEB_CACHE_MEMO = saved;
+                }
+        });
+
+        test("the memo honors the entry's own TTL (never fresher than the disk contract)", () => {
+                const { key } = searchCacheKey("memo ttl probe");
+                const t0 = Date.now();
+                putSearchEntry(key, t0); // TTL 1000 (pinned), stale window 5000
+                expect(lookupFresh(key, t0 + 500)).not.toBeNull(); // memoized + fresh
+                expect(lookupFresh(key, t0 + 1500)).toBeNull(); // memo honors TTL → disk not fresh either
+        });
+
+        test("memo clock expiry falls back to the disk (UNOWN_WEB_CACHE_MEMO_MS)", () => {
+                const { key } = searchCacheKey("memo clock probe");
+                putSearchEntry(key, Date.now());
+                expect(lookupFresh(key)).not.toBeNull(); // memoized
+                const saved = process.env.UNOWN_WEB_CACHE_MEMO_MS;
+                process.env.UNOWN_WEB_CACHE_MEMO_MS = "1"; // 1 ms memo clock
+                try {
+                        const before = Date.now();
+                        while (Date.now() - before < 5) {} // let the clock lapse
+                        // Memo expired → disk path re-verifies and re-memoizes.
+                        expect(lookupFresh(key)?.provenance).toBe("hit");
+                } finally {
+                        if (saved === undefined) delete process.env.UNOWN_WEB_CACHE_MEMO_MS;
+                        else process.env.UNOWN_WEB_CACHE_MEMO_MS = saved;
+                }
+        });
+
+        test("entry cap: the oldest memoized key falls out first", () => {
+                const saved = process.env.UNOWN_WEB_CACHE_MEMO_ENTRIES;
+                process.env.UNOWN_WEB_CACHE_MEMO_ENTRIES = "2";
+                try {
+                        const k1 = searchCacheKey("memo cap 1").key;
+                        const k2 = searchCacheKey("memo cap 2").key;
+                        const k3 = searchCacheKey("memo cap 3").key;
+                        putSearchEntry(k1, Date.now());
+                        putSearchEntry(k2, Date.now());
+                        putSearchEntry(k3, Date.now()); // evicts k1 from the memo
+                        expect(lookupFresh(k1)?.provenance).toBe("hit"); // disk hit, re-memoized (evicts k2)
+                        // Corrupt k2's file: it must NOT be memoized anymore.
+                        writeFileSync(join(tmpRoot, "entries", k2.slice(0, 2), `${k2}.json`), "{corrupt", "utf8");
+                        expect(lookupFresh(k2)).toBeNull();
+                } finally {
+                        if (saved === undefined) delete process.env.UNOWN_WEB_CACHE_MEMO_ENTRIES;
+                        else process.env.UNOWN_WEB_CACHE_MEMO_ENTRIES = saved;
+                }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Stale-while-revalidate policy (RFC 5861 eligibility)
+// ---------------------------------------------------------------------------
+
+describe("eligibleForSwr", () => {
+        const entry = (ageMs: number, ttlMs = 1000, staleIfErrorMs = 5000): WebCacheEntry =>
+                ({ schema: 1, kind: "search", key: "k", keyMaterial: "{}", payload: {}, provider: "t", storedAt: Date.now() - ageMs, ttlMs, staleIfErrorMs, payloadSha256: "x", bytes: 1 }) as WebCacheEntry;
+
+        test("fresh entries are not SWR-eligible (they are plain hits)", () => {
+                expect(eligibleForSwr(entry(500))).toBe(false);
+        });
+
+        test("stale-but-within-window entries are eligible", () => {
+                expect(eligibleForSwr(entry(2000))).toBe(true);
+        });
+
+        test("beyond the stale window there is nothing to serve", () => {
+                expect(eligibleForSwr(entry(10_000))).toBe(false);
+        });
+
+        test("UNOWN_WEB_CACHE_SWR=0 disables eligibility", () => {
+                const saved = process.env.UNOWN_WEB_CACHE_SWR;
+                process.env.UNOWN_WEB_CACHE_SWR = "0";
+                try {
+                        expect(eligibleForSwr(entry(2000))).toBe(false);
+                } finally {
+                        if (saved === undefined) delete process.env.UNOWN_WEB_CACHE_SWR;
+                        else process.env.UNOWN_WEB_CACHE_SWR = saved;
+                }
+        });
+
+        test("UNOWN_WEB_CACHE_SWR_MS bounds the window below the stale window", () => {
+                const saved = process.env.UNOWN_WEB_CACHE_SWR_MS;
+                process.env.UNOWN_WEB_CACHE_SWR_MS = "2500"; // TTL 1000 + SWR 2500 → eligible until 3500ms old
+                try {
+                        expect(eligibleForSwr(entry(2000))).toBe(true); // 2000 < 3500
+                        expect(eligibleForSwr(entry(4000))).toBe(false); // beyond the SWR bound, though still in the 6000 stale window
+                } finally {
+                        if (saved === undefined) delete process.env.UNOWN_WEB_CACHE_SWR_MS;
+                        else process.env.UNOWN_WEB_CACHE_SWR_MS = saved;
+                }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Cache-write durability (the cacache tmp+rename default, fsync opt-in)
+// ---------------------------------------------------------------------------
+
+describe("write durability", () => {
+        test("default writes leave no .tmp orphans and round-trip", () => {
+                const { key } = searchCacheKey("durability default probe");
+                putSearchEntry(key, Date.now());
+                expect(webCacheGet(key)).not.toBeNull();
+                const shard = join(tmpRoot, "entries", key.slice(0, 2));
+                const files = readdirSync(shard).filter((f) => f.includes(".tmp-"));
+                expect(files).toHaveLength(0); // rename consumed the temp file
+        });
+
+        test("UNOWN_WEB_CACHE_DURABLE=1 (atomicWriteFileSync path) round-trips too", () => {
+                const saved = process.env.UNOWN_WEB_CACHE_DURABLE;
+                process.env.UNOWN_WEB_CACHE_DURABLE = "1";
+                try {
+                        const { key } = searchCacheKey("durability on probe");
+                        putSearchEntry(key, Date.now());
+                        expect(webCacheGet(key)).not.toBeNull();
+                        const shard = join(tmpRoot, "entries", key.slice(0, 2));
+                        expect(readdirSync(shard).filter((f) => f.includes(".tmp-"))).toHaveLength(0);
+                } finally {
+                        if (saved === undefined) delete process.env.UNOWN_WEB_CACHE_DURABLE;
+                        else process.env.UNOWN_WEB_CACHE_DURABLE = saved;
+                }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Events tail read — stats reads the newest slice, not the whole feed
+// ---------------------------------------------------------------------------
+
+describe("events tail read", () => {
+        test("recentEvents carries the newest events past the 128 KiB tail bound", () => {
+                // ~600 B per event × 400 events ≈ 240 KiB > the 128 KiB tail.
+                const bigDetail = "x".repeat(600);
+                for (let i = 0; i < 400; i++) {
+                        webCacheLogEvent({ ts: Date.now(), kind: "hit", tool: "web_search", provider: "searxng", detail: `tail probe ${i} ${bigDetail}` });
+                }
+                webCacheLogEvent({ ts: Date.now(), kind: "miss", tool: "web_search", provider: "searxng", detail: "THE NEWEST EVENT" });
+                const stats = webCacheStats();
+                expect(stats.recentEvents.length).toBeGreaterThan(0);
+                expect(stats.recentEvents[0]?.detail).toBe("THE NEWEST EVENT"); // newest first
+                expect(stats.recentEvents.length).toBeLessThanOrEqual(50); // capped by the engine
         });
 });

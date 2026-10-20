@@ -30,36 +30,40 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 140;
+export const CHANGELOG_TOTAL_ENTRIES = 143;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 61,
+  "Added": 63,
   "Changed": 24,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 27,
   "Security": 3,
-  "Behavior": 25
+  "Behavior": 26
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 18,
+    "total": 21,
     "counts": {
-      "Added": 7,
+      "Added": 9,
       "Changed": 5,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 1,
       "Security": 0,
-      "Behavior": 5
+      "Behavior": 6
     },
     "groups": [
       {
         "bucket": "Behavior",
         "items": [
+          {
+            "title": "webcache: stale-while-revalidate — past-TTL answers serve instantly (marked) while a background refresh…",
+            "behavior": true
+          },
           {
             "title": "fleet: the public surface — UNOWN_FLEET_TIMEOUT_MS wired for real, the --help contract…",
             "behavior": true
@@ -83,17 +87,16 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         ]
       },
       {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "fleet: restricted agents regain ask_question",
-            "behavior": false
-          }
-        ]
-      },
-      {
         "bucket": "Added",
         "items": [
+          {
+            "title": "webcache: the performance layer — an in-memory index, a hot-entry memo, RAM recency, and cacache-style writes…",
+            "behavior": false
+          },
+          {
+            "title": "bench: the webcache benchmark track — scripts/webcache-bench.mjs + receipts",
+            "behavior": false
+          },
           {
             "title": "bridge: upstream failover — BRIDGE_FALLBACK_* routes requests to a second OpenAI-compatible endpoint (Agnes AI)…",
             "behavior": false
@@ -120,6 +123,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "tui: the split-view display mode — a built-in port of pi-split-view 1.1.0",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "fleet: restricted agents regain ask_question",
             "behavior": false
           }
         ]

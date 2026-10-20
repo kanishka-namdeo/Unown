@@ -465,6 +465,10 @@ export interface WebCacheStats {
   entries: number;
   bytes: number;
   maxBytes: number;
+  /** How entries/bytes were answered: "memory" = the engine's in-process
+   *  index (approximate across processes, ageMs old); "scan" = exact mode
+   *  (UNOWN_WEB_CACHE_INDEX_MS=0). The tab shows the approximation. */
+  index: { mode: "memory" | "scan"; ageMs: number; approximate: boolean };
   ttl: { searchMs: number; fetchMs: number; searchStaleMs: number; fetchStaleMs: number };
   totals: {
     hit: number;

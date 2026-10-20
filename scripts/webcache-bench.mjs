@@ -84,6 +84,7 @@ const {
         webCacheLogEvent,
         searchCacheKey,
         lookupFresh,
+        resetWebCacheInternals,
 } = webcache;
 
 // ---------------------------------------------------------------------------
@@ -298,6 +299,21 @@ async function scenarioPrimitives() {
                 dropCacheDir(d);
         }
 
+        // --- memo on/off anatomy on an M payload: the default path is memo-first
+        //     (hot key: no disk, no parse, no sha256); the memo-off cell is the
+        //     baseline-comparable disk path (read + parse + re-verify).
+        {
+                const d = newCacheDir("primitives-memo");
+                const keys = populate(M, 200, "fetch-text");
+                const probe = keys[100];
+                lookupFresh(probe); // warm the memo
+                out.cells["hit_M_memo(default)"] = bench(N_PRIM, () => lookupFresh(probe));
+                process.env.UNOWN_WEB_CACHE_MEMO = "0";
+                out.cells["hit_M_memo_off"] = bench(N_PRIM, () => lookupFresh(probe));
+                delete process.env.UNOWN_WEB_CACHE_MEMO;
+                dropCacheDir(d);
+        }
+
         // --- disabled store: the off-switch must be a single env read
         {
                 const d = newCacheDir("primitives-disabled");
@@ -344,7 +360,24 @@ async function scenarioScan() {
                 const statsCell = bench(QUICK ? 6 : 21, () => webCacheStats());
                 const { raw: _s, ...statsSummary } = statsCell;
 
-                // sweep under a cap far above usage — pure scan+sort, no eviction work
+                // index-rebuild cost (what a root switch, a 60s reconcile, or
+                // UNOWN_WEB_CACHE_INDEX_MS=0 pays): 3 cold builds, timed one-shot
+                const rebuilds = [];
+                for (let i = 0; i < 3; i++) {
+                        resetWebCacheInternals();
+                        const t0 = performance.now();
+                        webCacheStats();
+                        rebuilds.push(performance.now() - t0);
+                }
+                const rebuildSummary = {
+                        n: 3,
+                        p50: +rebuilds.slice().sort((a, b) => a - b)[1].toFixed(3),
+                        max: +Math.max(...rebuilds).toFixed(3),
+                        unit: "ms",
+                        raw: rebuilds.map((v) => +v.toFixed(3)),
+                };
+
+                // sweep with a cap above usage — now index-driven between rebuilds
                 const sweepIdle = bench(QUICK ? 4 : 11, () => webCacheSweep());
                 const { raw: _w, ...sweepIdleSummary } = sweepIdle;
 
@@ -357,7 +390,7 @@ async function scenarioScan() {
                         process.env.UNOWN_WEB_CACHE_MAX_BYTES = "";
                 }
 
-                out.points.push({ entries: n, statsMs: statsSummary, sweepIdleMs: sweepIdleSummary, evictingSweepOnce: evicted });
+                out.points.push({ entries: n, statsMs: statsSummary, statsRebuildMs: rebuildSummary, sweepIdleMs: sweepIdleSummary, evictingSweepOnce: evicted });
                 dropCacheDir(d);
         }
 
@@ -436,6 +469,14 @@ function startMockServer() {
                                                         res.end(PAGE);
                                                 }, fetchDelayMs);
                                         }
+                                } else if (url.startsWith("/swrpage")) {
+                                        pageRequests++;
+                                        // No Cache-Control, no ETag: TTL comes from the env knob (the
+                                        // validator-less stale-while-revalidate shape).
+                                        setTimeout(() => {
+                                                res.writeHead(200, { "content-type": "text/plain" });
+                                                res.end(`swr page body ${pageRequests}`);
+                                        }, fetchDelayMs);
                                 } else {
                                         res.writeHead(404);
                                         res.end("not found");
@@ -660,6 +701,90 @@ async function scenarioZipf() {
 }
 
 // ---------------------------------------------------------------------------
+// Scenario: swr — stale-while-revalidate end to end (RFC 5861 semantics)
+// ---------------------------------------------------------------------------
+async function scenarioSwr() {
+        const d = newCacheDir("swr");
+        const mock = await startMockServer();
+        process.env.UNOWN_SEARXNG_URL = mock.base;
+        process.env.UNOWN_WEBFETCH_ALLOW_PRIVATE = "1";
+        mock.setSearchDelay(100);
+        mock.setFetchDelay(100);
+        const out = { providerDelayMs: 100 };
+
+        // search: store COLD at TTL 1ms, then serve stale with TTL=60s in
+        // effect (the kick stores fresh at the TTL read at serve time) → the
+        // next identical call is a fresh hit.
+        {
+                process.env.UNOWN_WEB_SEARCH_CACHE_TTL_MS = "1";
+                const cold0 = performance.now();
+                const cold = await websearch.runWebSearch("swr bench search", { provider: "searxng", maxResults: 5 });
+                const coldMs = performance.now() - cold0;
+                await new Promise((r) => setTimeout(r, 25)); // TTL lapses → stale
+                process.env.UNOWN_WEB_SEARCH_CACHE_TTL_MS = "60000";
+                const t1 = performance.now();
+                const served = await websearch.runWebSearch("swr bench search", { provider: "searxng", maxResults: 5 });
+                const serveMs = performance.now() - t1;
+                await new Promise((r) => setTimeout(r, 250)); // detached refresh lands (stored fresh, 60s TTL)
+                const after = await websearch.runWebSearch("swr bench search", { provider: "searxng", maxResults: 5 });
+                delete process.env.UNOWN_WEB_SEARCH_CACHE_TTL_MS;
+                out.search = {
+                        coldMs: +coldMs.toFixed(1),
+                        swrServeMs: +serveMs.toFixed(3),
+                        coldProvenance: cold.cache?.provenance ?? "miss",
+                        swrProvenance: served.cache?.provenance,
+                        afterProvenance: after.cache?.provenance,
+                        providerCalls: mock.counts().searchHits,
+                };
+                assert("swr_search_served_instantly", "< 30ms (provider is 100ms)", out.search.swrServeMs, serveMs < 30);
+                assert("swr_search_provenance_refreshing", "refreshing", out.search.swrProvenance, out.search.swrProvenance === "refreshing");
+                assert("swr_search_exactly_2_provider_calls", "cold + 1 background refresh", out.search.providerCalls, out.search.providerCalls === 2);
+                assert("swr_search_next_call_fresh", "hit", out.search.afterProvenance, out.search.afterProvenance === "hit");
+        }
+
+        // fetch (no validators): same shape through fetchPageContent — store
+        // cold at TTL 1ms, serve stale at TTL 60s, next call is a fresh hit
+        {
+                process.env.UNOWN_WEBFETCH_CACHE_TTL_MS = "1";
+                const base = mock.base;
+                const cold0 = performance.now();
+                await websearch.fetchPageContent(`${base}/swrpage`, { noCache: false });
+                const coldMs = performance.now() - cold0;
+                await new Promise((r) => setTimeout(r, 25));
+                process.env.UNOWN_WEBFETCH_CACHE_TTL_MS = "60000";
+                const t1 = performance.now();
+                const served = await websearch.fetchPageContent(`${base}/swrpage`, { noCache: false });
+                const serveMs = performance.now() - t1;
+                await new Promise((r) => setTimeout(r, 250));
+                const after = await websearch.fetchPageContent(`${base}/swrpage`, { noCache: false });
+                delete process.env.UNOWN_WEBFETCH_CACHE_TTL_MS;
+                const pageCalls = mock.counts().pageRequests;
+                out.fetch = {
+                        coldMs: +coldMs.toFixed(1),
+                        swrServeMs: +serveMs.toFixed(3),
+                        servedHeader: served.split("\n")[0].slice(0, 160),
+                        afterHeader: after.split("\n")[0].slice(0, 160),
+                        pageCalls,
+                };
+                assert("swr_fetch_served_instantly", "< 30ms (provider is 100ms)", out.fetch.swrServeMs, serveMs < 30);
+                assert("swr_fetch_marker_visible", "stale — refreshing in background", out.fetch.servedHeader, out.fetch.servedHeader.includes("stale — refreshing in background"));
+                assert("swr_fetch_next_call_fresh", "· cached (", out.fetch.afterHeader, out.fetch.afterHeader.includes("· cached ("));
+        }
+
+        // settle before teardown: detached SWR kicks must never outlive the
+        // scenario's cache dir (a late kick after dropCacheDir would log its
+        // event into the DEFAULT store — call-time env is by design, so the
+        // harness owns the discipline).
+        await new Promise((r) => setTimeout(r, 150));
+
+        mock.close();
+        delete process.env.UNOWN_SEARXNG_URL;
+        delete process.env.UNOWN_WEBFETCH_ALLOW_PRIVATE;
+        dropCacheDir(d);
+        receipt.scenarios.swr = out;
+}
+
+// ---------------------------------------------------------------------------
 // Scenario: xproc — cross-process persistence (the reason the store exists)
 // ---------------------------------------------------------------------------
 async function scenarioXproc() {
@@ -730,6 +855,7 @@ const SCENARIOS = {
         scan: scenarioScan,
         e2e: scenarioE2E,
         coalesce: scenarioCoalesce,
+        swr: scenarioSwr,
         zipf: scenarioZipf,
         xproc: scenarioXproc,
         memory: scenarioMemory,
@@ -780,6 +906,10 @@ if (receipt.scenarios.e2e) {
 }
 if (receipt.scenarios.coalesce) {
         console.log(`  coalesce: 64 identical = ${receipt.scenarios.coalesce.identical.providerHits} origin call(s) wall=${receipt.scenarios.coalesce.identical.wallMs}ms · distinct=${receipt.scenarios.coalesce.distinct.providerHits} wall=${receipt.scenarios.coalesce.distinct.wallMs}ms · noCache=${receipt.scenarios.coalesce.nocacheIdentical.providerHits}`);
+}
+if (receipt.scenarios.swr) {
+        console.log(`  swr search: cold=${receipt.scenarios.swr.search.coldMs}ms → stale-serve=${receipt.scenarios.swr.search.swrServeMs}ms (${receipt.scenarios.swr.search.swrProvenance}), provider calls=${receipt.scenarios.swr.search.providerCalls}, next=${receipt.scenarios.swr.search.afterProvenance}`);
+        console.log(`  swr fetch:  cold=${receipt.scenarios.swr.fetch.coldMs}ms → stale-serve=${receipt.scenarios.swr.fetch.swrServeMs}ms`);
 }
 if (receipt.scenarios.zipf) {
         const z = receipt.scenarios.zipf;

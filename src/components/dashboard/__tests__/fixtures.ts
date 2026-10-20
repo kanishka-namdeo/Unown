@@ -477,6 +477,7 @@ export function webCacheStatsResponse(over: Partial<WebCacheStats> = {}): WebCac
     entries: 3,
     bytes: 1_234_567,
     maxBytes: 268_435_456,
+    index: { mode: "memory", ageMs: 4_000, approximate: true },
     ttl: {
       searchMs: 3_600_000,
       fetchMs: 1_800_000,
