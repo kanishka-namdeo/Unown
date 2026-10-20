@@ -6,6 +6,15 @@ import type { CustomMessage } from "../../../core/messages.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 
 /**
+ * Unified section-label treatment: `── label ──` — dim rules around the label
+ * color. One style for every block-level system label (Themes, Skills, …) so
+ * labels stop competing with content for attention.
+ */
+export function formatSectionLabel(label: string): string {
+	return `${theme.fg("borderMuted", "── ")}${theme.fg("customMessageLabel", label)}${theme.fg("borderMuted", " ──")}`;
+}
+
+/**
  * Component that renders a custom message entry from extensions.
  * Uses distinct styling to differentiate from user messages.
  */
@@ -32,8 +41,9 @@ export class CustomMessageComponent extends Container {
 
 		this.addChild(new Spacer(1));
 
-		// Create box with purple background (used for default rendering)
-		this.box = new Box(1, 1, (t) => theme.bg("customMessageBg", t));
+		// Structure box: padding only — background stays transparent, the label
+		// rules carry the visual grouping (see formatSectionLabel).
+		this.box = new Box(1, 1);
 
 		this.rebuild();
 	}
@@ -88,9 +98,8 @@ export class CustomMessageComponent extends Container {
 		this.addChild(this.box);
 		this.box.clear();
 
-		// Default rendering: label + content
-		const label = theme.fg("customMessageLabel", `\x1b[1m[${this.message.customType}]\x1b[22m`);
-		this.box.addChild(new Text(label, 0, 0));
+		// Default rendering: section label + content
+		this.box.addChild(new Text(formatSectionLabel(this.message.customType), 0, 0));
 		this.box.addChild(new Spacer(1));
 
 		// Extract text content

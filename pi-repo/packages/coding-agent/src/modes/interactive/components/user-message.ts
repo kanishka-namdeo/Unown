@@ -1,4 +1,4 @@
-import { Box, Container, Markdown, type MarkdownTheme } from "@earendil-works/pi-tui";
+import { Container, Markdown, type MarkdownTheme } from "@earendil-works/pi-tui";
 import type { MarkdownTransformer } from "../../../core/extensions/types.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { createMarkdownTransform } from "./markdown-transform.ts";
@@ -8,7 +8,12 @@ const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
 
 /**
- * Component that renders a user message
+ * Component that renders a user message.
+ *
+ * Beauty contract: the user's words are marked by an accent-colored rail glyph
+ * (») on the first line and a two-space gutter for the rest — never a
+ * background slab (the old full-width fill read as a gray block clashing with
+ * the terminal canvas).
  */
 export class UserMessageComponent extends Container {
 	private text: string;
@@ -37,8 +42,7 @@ export class UserMessageComponent extends Container {
 
 	private rebuild(): void {
 		this.clear();
-		const contentBox = new Box(this.outputPad, 1, (content: string) => theme.bg("userMessageBg", content));
-		contentBox.addChild(
+		this.addChild(
 			new Markdown(
 				this.text,
 				0,
@@ -54,17 +58,28 @@ export class UserMessageComponent extends Container {
 				},
 			),
 		);
-		this.addChild(contentBox);
 	}
 
 	override render(width: number): string[] {
-		const lines = super.render(width);
+		const lines = super.render(Math.max(1, width - 2));
 		if (lines.length === 0) {
 			return lines;
 		}
 
-		lines[0] = OSC133_ZONE_START + lines[0];
-		lines[lines.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[lines.length - 1];
+		const rail = theme.fg("accent", "» ");
+		for (let i = 0; i < lines.length; i++) {
+			lines[i] = (i === 0 ? rail : "  ") + lines[i];
+		}
+
+		// OSC 133 zone markers stay at line start (deliberate: a prior fix moved
+		// the closing markers off line end to keep rendered height stable). On a
+		// single-line message both markers open the same line, in order.
+		if (lines.length === 1) {
+			lines[0] = OSC133_ZONE_START + OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[0];
+		} else {
+			lines[0] = OSC133_ZONE_START + lines[0];
+			lines[lines.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[lines.length - 1];
+		}
 		return lines;
 	}
 }

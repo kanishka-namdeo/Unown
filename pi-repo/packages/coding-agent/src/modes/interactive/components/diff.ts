@@ -19,9 +19,13 @@ function replaceTabs(text: string): string {
 }
 
 /**
- * Compute word-level diff and render with inverse on changed parts.
+ * Compute word-level diff and render changed parts with emphasis.
  * Uses diffWords which groups whitespace with adjacent words for cleaner highlighting.
- * Strips leading whitespace from inverse to avoid highlighting indentation.
+ * Strips leading whitespace from the emphasized span to avoid highlighting indentation.
+ *
+ * Beauty contract: removed tokens keep inverse video (the strongest "this went
+ * away" signal); added tokens use bold only — the line is already green, and
+ * inverse on both sides doubled the perceived saturation (a wall of color).
  */
 function renderIntraLineDiff(oldContent: string, newContent: string): { removedLine: string; addedLine: string } {
 	const wordDiff = Diff.diffWords(oldContent, newContent);
@@ -54,7 +58,7 @@ function renderIntraLineDiff(oldContent: string, newContent: string): { removedL
 				isFirstAdded = false;
 			}
 			if (value) {
-				addedLine += theme.inverse(value);
+				addedLine += theme.bold(value);
 			}
 		} else {
 			removedLine += part.value;

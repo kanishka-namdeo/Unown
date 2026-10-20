@@ -1,4 +1,14 @@
-import { Box, type Component, Container, getCapabilities, Image, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
+import {
+	Box,
+	type Component,
+	Container,
+	getCapabilities,
+	Image,
+	Spacer,
+	Text,
+	type TUI,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import type { ToolDefinition, ToolRenderContext } from "../../../core/extensions/types.ts";
 import { createAllToolDefinitions, type ToolName } from "../../../core/tools/index.ts";
 import { getTextOutput as getRenderedTextOutput } from "../../../core/tools/render-utils.ts";
@@ -68,8 +78,9 @@ export class ToolExecutionComponent extends Container {
 		// Always create all shell variants. contentBox is used for default renderer-based composition.
 		// selfRenderContainer is used when the tool renders its own framing.
 		// contentText is reserved for generic fallback rendering when no tool definition exists.
-		this.contentBox = new Box(1, 1, (text: string) => theme.bg("toolPendingBg", text));
-		this.contentText = new Text("", 1, 1, (text: string) => theme.bg("toolPendingBg", text));
+		// Backgrounds stay transparent — block state is carried by the glyph column, not fills.
+		this.contentBox = new Box(1, 1);
+		this.contentText = new Text("", 1, 1);
 		this.selfRenderContainer = new Container();
 
 		if (this.hasRendererDefinition()) {
@@ -229,13 +240,45 @@ export class ToolExecutionComponent extends Container {
 		this.updateDisplay();
 	}
 
+	/**
+	 * The state glyph for the left column: • running, ✓ success, ✗ error.
+	 * Colored by state; drawn once on the block's first visible line so
+	 * state is legible without color (NO_COLOR / plain mode) too.
+	 */
+	private stateGlyph(): string {
+		if (this.isPartial) return theme.fg("accent", "•");
+		if (this.result?.isError) return theme.fg("error", "✗");
+		return theme.fg("success", "✓");
+	}
+
+	/**
+	 * Prefix a rendered block with the glyph column: glyph + space on the first
+	 * visible line, two-space gutter on every other line, so content aligns
+	 * under the tool title and blocks read as one visual unit without fills.
+	 */
+	private decorateBlock(lines: string[]): string[] {
+		const glyph = this.stateGlyph();
+		const out: string[] = [];
+		let placed = false;
+		for (const line of lines) {
+			if (!placed && visibleWidth(line) > 0) {
+				out.push(`${glyph} ${line}`);
+				placed = true;
+			} else {
+				out.push(`  ${line}`);
+			}
+		}
+		return out;
+	}
+
 	override render(width: number): string[] {
 		if (this.hideComponent) {
 			return [];
 		}
 
 		if (this.hasRendererDefinition() && this.getRenderShell() === "self") {
-			const contentLines = this.selfRenderContainer.render(width);
+			const inner = Math.max(1, width - 2);
+			const contentLines = this.selfRenderContainer.render(inner);
 			if (contentLines.length === 0 && this.imageComponents.length === 0) {
 				return [];
 			}
@@ -243,38 +286,31 @@ export class ToolExecutionComponent extends Container {
 			const lines: string[] = [];
 			if (contentLines.length > 0) {
 				lines.push("");
-				lines.push(...contentLines);
+				lines.push(...this.decorateBlock(contentLines));
 			}
 			for (let i = 0; i < this.imageComponents.length; i++) {
 				const spacer = this.imageSpacers[i];
 				if (spacer) {
-					lines.push(...spacer.render(width));
+					lines.push(...spacer.render(inner));
 				}
 				const imageComponent = this.imageComponents[i];
 				if (imageComponent) {
-					lines.push(...imageComponent.render(width));
+					lines.push(...imageComponent.render(inner));
 				}
 			}
 			return lines;
 		}
 
-		return super.render(width);
+		return this.decorateBlock(super.render(Math.max(1, width - 2)));
 	}
 
 	private updateDisplay(): void {
-		const bgFn = this.isPartial
-			? (text: string) => theme.bg("toolPendingBg", text)
-			: this.result?.isError
-				? (text: string) => theme.bg("toolErrorBg", text)
-				: (text: string) => theme.bg("toolSuccessBg", text);
-
+		// Glyph column: state lives in a colored glyph on the title line
+		// (• running / ✓ success / ✗ error) — never in a background fill.
 		let hasContent = false;
 		this.hideComponent = false;
 		if (this.hasRendererDefinition()) {
 			const renderContainer = this.getRenderShell() === "self" ? this.selfRenderContainer : this.contentBox;
-			if (renderContainer instanceof Box) {
-				renderContainer.setBgFn(bgFn);
-			}
 			renderContainer.clear();
 
 			const callRenderer = this.getCallRenderer();
@@ -324,7 +360,6 @@ export class ToolExecutionComponent extends Container {
 				}
 			}
 		} else {
-			this.contentText.setCustomBgFn(bgFn);
 			this.contentText.setText(this.formatToolExecution());
 			hasContent = true;
 		}

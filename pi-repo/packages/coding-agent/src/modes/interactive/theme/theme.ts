@@ -172,7 +172,7 @@ export type ThemeBg =
 type OptionalThemeColor = "thinkingMax" | "searchMatchText";
 type OptionalThemeBg = "scrollbarThumb" | "searchMatchBg";
 
-type ColorMode = "truecolor" | "256color";
+type ColorMode = "truecolor" | "256color" | "plain";
 
 // ============================================================================
 // Color Utilities
@@ -271,6 +271,7 @@ function hexTo256(hex: string): number {
 }
 
 function fgAnsi(color: string | number, mode: ColorMode): string {
+	if (mode === "plain") return "";
 	if (color === "") return "\x1b[39m";
 	if (typeof color === "number") return `\x1b[38;5;${color}m`;
 	if (color.startsWith("#")) {
@@ -286,6 +287,7 @@ function fgAnsi(color: string | number, mode: ColorMode): string {
 }
 
 function bgAnsi(color: string | number, mode: ColorMode): string {
+	if (mode === "plain") return "";
 	if (color === "") return "\x1b[49m";
 	if (typeof color === "number") return `\x1b[48;5;${color}m`;
 	if (color.startsWith("#")) {
@@ -390,14 +392,16 @@ export class Theme {
 
 	fg(color: ThemeColor, text: string): string {
 		const ansi = this.fgColors.get(color);
-		if (!ansi) throw new Error(`Unknown theme color: ${color}`);
-		return `${ansi}${text}\x1b[39m`; // Reset only foreground color
+		if (ansi === undefined) throw new Error(`Unknown theme color: ${color}`);
+		// In plain mode the prefix and reset are empty strings — text passes through.
+		return `${ansi}${text}${ansi === "" ? "" : "\x1b[39m"}`; // Reset only foreground color
 	}
 
 	bg(color: ThemeBg, text: string): string {
 		const ansi = this.bgColors.get(color);
-		if (!ansi) throw new Error(`Unknown theme background color: ${color}`);
-		return `${ansi}${text}\x1b[49m`; // Reset only background color
+		if (ansi === undefined) throw new Error(`Unknown theme background color: ${color}`);
+		// In plain mode the prefix and reset are empty strings — text passes through.
+		return `${ansi}${text}${ansi === "" ? "" : "\x1b[49m"}`; // Reset only background color
 	}
 
 	bold(text: string): string {
@@ -422,13 +426,13 @@ export class Theme {
 
 	getFgAnsi(color: ThemeColor): string {
 		const ansi = this.fgColors.get(color);
-		if (!ansi) throw new Error(`Unknown theme color: ${color}`);
+		if (ansi === undefined) throw new Error(`Unknown theme color: ${color}`);
 		return ansi;
 	}
 
 	getBgAnsi(color: ThemeBg): string {
 		const ansi = this.bgColors.get(color);
-		if (!ansi) throw new Error(`Unknown theme background color: ${color}`);
+		if (ansi === undefined) throw new Error(`Unknown theme background color: ${color}`);
 		return ansi;
 	}
 
@@ -627,7 +631,10 @@ function loadThemeJson(name: string): ThemeJson {
 }
 
 function createTheme(themeJson: ThemeJson, mode?: ColorMode, sourcePath?: string): Theme {
-	const colorMode = mode ?? (getCapabilities().trueColor ? "truecolor" : "256color");
+	// NO_COLOR (https://no-color.org): when set, strip every color while keeping
+	// text content, structure, and emphasis (bold) intact.
+	const colorMode =
+		mode ?? (process.env.NO_COLOR !== undefined ? "plain" : getCapabilities().trueColor ? "truecolor" : "256color");
 	const resolvedColors = resolveThemeColors(withThemeColorFallbacks(themeJson.colors), themeJson.vars);
 	const fgColors: Record<ThemeColor, string | number> = {} as Record<ThemeColor, string | number>;
 	const bgColors: Record<ThemeBg, string | number> = {} as Record<ThemeBg, string | number>;
