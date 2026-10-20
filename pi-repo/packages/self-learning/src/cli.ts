@@ -105,6 +105,7 @@ import {
         resolveRepoRoot,
         UPDATE_HELP,
 } from "./update.ts";
+import { runDashboardCommand } from "./dashboard/dashboard-boot.ts";
 
 /** Unown's version — the value the release-artifact build injected, else the
  *  ROOT package.json (the source of truth CI asserts against). "unknown" when
@@ -135,6 +136,12 @@ Usage:
                            (--overwrite, --print, --json; reverse-engineered
                            from opencode /init + Claude Code /init)
   unown memory             print the effective memory stack
+  unown dashboard [screen] the TUI mission control for the learning memory
+                           system (alias: dash) — screens: overview, memory,
+                           dreams, notes, skills, lab, hooks, router,
+                           providers, gateway, automations, webcache;
+                           live SSE feed, rollbacks, dream runs (see
+                           docs/tui-dashboard-plan.md)
   unown doctor             run configuration diagnostics (--json: machine-readable)
   unown doctor-instructions  run ONLY the instruction-set audit
                            (AGENTS.md freshness, skills, MCP, hooks, adversary,
@@ -2031,6 +2038,12 @@ export async function runCli(argv: string[]) {
                 // subcommand tokens as prompt text.
                 const code = await runEngineCommand(argv.slice(1));
                 process.exit(code);
+        }
+        if (first === "dashboard" || first === "dash") {
+                // The TUI mission control (docs/tui-dashboard-plan.md): a
+                // standalone fullscreen dashboard over the engine REST+SSE
+                // surface — the Next.js dashboard's terminal-native successor.
+                process.exit(await runDashboardCommand(argv.slice(1)));
         }
         if (first === "automations") {
                 // zcode port: scheduled recurring agent runs — see automations-cli.ts.

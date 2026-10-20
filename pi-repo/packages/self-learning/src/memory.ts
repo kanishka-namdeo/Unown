@@ -324,6 +324,32 @@ export function history(tier: Tier, limit = 30): MemoryVersion[] {
         );
 }
 
+/** A terminal project's memory tier, as the dashboard lists them (D-plan §5.6).
+ * Project tiers version under `project:<slug>` (dream.ts); this surfaces them
+ * as first-class objects beside the four engine tiers. */
+export function projectTiers(): {
+	slug: string;
+	tier: string;
+	version: number;
+	chars: number;
+	updatedAt: number | null;
+}[] {
+	const rows = store.query<{ tier: string; version: number; created_at: number | null }>(
+		`SELECT tier, MAX(version) AS version, MAX(created_at) AS created_at
+		 FROM memory_versions WHERE tier LIKE 'project:%' GROUP BY tier ORDER BY tier`,
+	);
+	return rows.map((r) => {
+		const content = readTier(r.tier as Tier);
+		return {
+			slug: r.tier.slice("project:".length),
+			tier: r.tier,
+			version: r.version,
+			chars: content.length,
+			updatedAt: r.created_at ?? null,
+		};
+	});
+}
+
 export function snapshot(): {
         tier: string;
         version: number;

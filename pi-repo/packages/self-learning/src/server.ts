@@ -18,7 +18,7 @@ import { describeCron } from "./cron.ts";
 import { dreamNotes, listDreams, runDream } from "./dream.ts";
 import { getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
-import { history, resolveMemory, rollback, seedMemoryIfEmpty, snapshot, type Tier } from "./memory.ts";
+import { history, projectTiers, resolveMemory, rollback, seedMemoryIfEmpty, snapshot, type Tier } from "./memory.ts";
 import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
@@ -381,6 +381,10 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 // ------------------------------------------------------------------
                 // Memory
                 // ------------------------------------------------------------------
+if (method === "GET" && path === "/api/memory/projects") {
+	// Terminal project memories as first-class objects (TUI dashboard plan §5.6).
+	return json({ projects: projectTiers() });
+}
                 if (method === "GET" && path === "/api/memory") {
                         return json({
                                 tiers: snapshot(),

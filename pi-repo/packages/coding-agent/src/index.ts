@@ -411,6 +411,7 @@ export {
 	highlightCode,
 	initTheme,
 	Theme,
+	theme,
 	type ThemeColor,
 } from "./modes/interactive/theme/theme.ts";
 // Clipboard utilities

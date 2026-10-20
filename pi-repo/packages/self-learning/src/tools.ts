@@ -38,7 +38,7 @@ import { type Dirent, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
-import { type ExtensionAPI, parseFrontmatter } from "@earendil-works/pi-coding-agent";
+import { type ExtensionAPI, type ExtensionUIContext, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Key, stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { trustBypassed } from "./config-trust.ts";
@@ -107,6 +107,8 @@ import { ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
 import { FleetManager, registerFleetSurface, type FleetSpawnRequest } from "./fleet-runtime.ts";
 import { composeTaskWithBrief, summarizeParentContext } from "./context-brief.ts";
 import { chatText } from "./llm.ts";
+import { DashboardApp } from "./dashboard/dashboard-app.ts";
+import { DashboardStore } from "./dashboard/dashboard-data.ts";
 import {
         isProviderStyleFailure,
         loadModelHealth,
@@ -2150,6 +2152,53 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         },
                 });
 
+                // The embedded dashboard mount (docs/tui-dashboard-plan.md §5.4):
+                // the same DashboardApp the standalone `unown dashboard` boots,
+                // mounted as an editor-replacing screen (the questionnaire
+                // pattern). Esc-Esc or q returns to the chat.
+                async function openDashboardScreen(ctx: { ui: ExtensionUIContext }, initialScreen: string): Promise<void> {
+                        await ctx.ui.custom<void>(
+                                (tui, theme, _keybindings, done) => {
+                                        const store = new DashboardStore();
+                                        const app = new DashboardApp(tui, {
+                                                theme,
+                                                store,
+                                                embedded: true,
+                                                onExit: () => {
+                                                        store.stop();
+                                                        done();
+                                                },
+                                                initialScreen: initialScreen || undefined,
+                                        });
+                                        store.start();
+                                        app.start();
+                                        return app;
+                                },
+                                { overlay: false },
+                        );
+                }
+
+                pi.registerCommand("dashboard", {
+                        description: "The TUI mission control for the learning memory system (alias: /dash; args: screen id)",
+                        handler: async (args, ctx) => {
+                                await openDashboardScreen(ctx, (args ?? "").trim().split(/\s+/)[0] ?? "");
+                        },
+                });
+
+                pi.registerCommand("dash", {
+                        description: "Alias of /dashboard",
+                        handler: async (_args, ctx) => {
+                                await openDashboardScreen(ctx, "");
+                        },
+                });
+
+                pi.registerCommand("memory", {
+                        description: "Open the dashboard's Memory screen (tiers, versions, projects, rollback)",
+                        handler: async (_args, ctx) => {
+                                await openDashboardScreen(ctx, "memory");
+                        },
+                });
+
                 pi.registerCommand("learning", {
                         description: "Show the effective 4-tier memory stack (fresh read from disk, with per-tier staleness)",
                         handler: async (_args, ctx) => {
@@ -2183,7 +2232,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         const age = ageOf(f.fsPath);
                                         return `── ${f.tier.toUpperCase()} · ${f.path}${age ? ` (${age})` : ""} ──\n${shown}`;
                                 });
-                                ctx.ui.notify(`${header}\n\n${parts.join("\n\n")}`, "info");
+                                ctx.ui.notify(`${header}\n\n${parts.join("\n\n")}\n\ndeep-dive: /dashboard — tiers, version history, rollbacks, dreams, notes, skills`, "info");
                         },
                 });
 
