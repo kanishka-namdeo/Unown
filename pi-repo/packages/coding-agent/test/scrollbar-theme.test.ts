@@ -78,4 +78,26 @@ describe("optional fullscreen theme colors", () => {
 		expect(loadedTheme.getBgAnsi("searchMatchBg")).toBe("\x1b[48;2;17;34;51m");
 		expect(loadedTheme.getFgAnsi("searchMatchText")).toBe("\x1b[38;2;34;51;68m");
 	});
+
+	it("falls back to transparent chrome and overlay surfaces when omitted", () => {
+		const themeJson = loadDarkTheme();
+		themeJson.name = "legacy-chrome-theme";
+		delete themeJson.colors.chromeBg;
+		delete themeJson.colors.overlayBg;
+
+		const loadedTheme = loadThemeFromPath(writeTheme(themeJson), "truecolor");
+		expect(loadedTheme.getBgAnsi("chromeBg")).toBe("\x1b[49m");
+		expect(loadedTheme.getBgAnsi("overlayBg")).toBe("\x1b[49m");
+	});
+
+	it("uses explicitly configured chrome and overlay surface colors", () => {
+		const themeJson = loadDarkTheme();
+		themeJson.name = "custom-chrome-theme";
+		themeJson.colors.chromeBg = "#16161c";
+		themeJson.colors.overlayBg = "#1c1c24";
+
+		const loadedTheme = loadThemeFromPath(writeTheme(themeJson), "truecolor");
+		expect(loadedTheme.getBgAnsi("chromeBg")).toBe("\x1b[48;2;22;22;28m");
+		expect(loadedTheme.getBgAnsi("overlayBg")).toBe("\x1b[48;2;28;28;36m");
+	});
 });

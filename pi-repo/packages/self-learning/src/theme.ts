@@ -12,7 +12,9 @@
  * token is "" (transparent) so blocks never become walls of color; the only
  * background is the selection gray, which must survive 256-color quantization
  * (flat #303030 lands on the xterm gray ramp, tinted values snap to neon
- * cube corners). Code-block text is neutral zinc, not green. Headings use the
+ * cube corners). chromeBg/overlayBg are the ONLY allowed background surfaces
+ * beyond the selection gray — the transcript canvas stays transparent.
+ * Code-block text is neutral zinc, not green. Headings use the
  * deeper amber (#eab308) — full-bright #fbbf24 read as a shout at body scale.
  *
  * The colors object must satisfy pi's theme schema (51 required tokens —
@@ -36,6 +38,8 @@ export const UNOWN_THEME = {
 		zinc700: "#3f3f46",
 		zinc800: "#27272a",
 		selectedBg: "#303030",
+		chromeSurface: "#18181b",
+		overlaySurface: "#1c1c20",
 	},
 	colors: {
 		accent: "emerald",
@@ -51,6 +55,8 @@ export const UNOWN_THEME = {
 		thinkingText: "zinc500",
 
 		selectedBg: "selectedBg",
+		chromeBg: "chromeSurface",
+		overlayBg: "overlaySurface",
 		// Scrollbar glyphs (pi-tui 1.3.0-style track/thumb painting): the track
 		// reads like a frame line (borderMuted tone), the thumb like muted text.
 		scrollbarTrack: "zinc800",

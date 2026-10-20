@@ -221,9 +221,9 @@ export class FooterComponent implements Component {
 		const remainder = statsLine.slice(statsLeft.length);
 		const dimRemainder = theme.fg("dim", remainder);
 
-		// Hairline divider: chrome starts here â the transcript ends at this rule.
-		const divider = theme.fg("borderMuted", "─".repeat(width));
-		const lines = [divider, locationLine, dimStatsLeft + dimRemainder];
+		// The editor's bottom border is the top edge of the chrome band —
+		// a second hairline here would read as a doubled border.
+		const lines = [locationLine, dimStatsLeft + dimRemainder];
 
 		// Add extension statuses on a single line, sorted by key alphabetically
 		const extensionStatuses = this.footerData.getExtensionStatuses();
@@ -236,6 +236,12 @@ export class FooterComponent implements Component {
 			lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
 		}
 
-		return lines;
+		// Chrome band (move 2): the footer is a raised surface — pad to full width
+		// so the background is continuous, then paint chromeBg behind each line.
+		const padded = lines.map((line) => {
+			const gap = " ".repeat(Math.max(0, width - visibleWidth(line)));
+			return theme.bg("chromeBg", line + gap);
+		});
+		return padded;
 	}
 }

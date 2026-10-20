@@ -1,9 +1,12 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { AgentSession } from "../src/core/agent-session.ts";
 import type { ReadonlyFooterDataProvider } from "../src/core/footer-data-provider.ts";
 import { FooterComponent, formatCwdForFooter } from "../src/modes/interactive/components/footer.ts";
-import { initTheme } from "../src/modes/interactive/theme/theme.ts";
+import { initTheme, loadThemeFromPath, setThemeInstance } from "../src/modes/interactive/theme/theme.ts";
 import { stripAnsi } from "../src/utils/ansi.ts";
 
 type AssistantUsage = {
@@ -186,7 +189,7 @@ describe("FooterComponent width handling", () => {
 		});
 		const footer = new FooterComponent(session, createFooterData(1));
 
-		const statsLine = stripAnsi(footer.render(120)[2]);
+		const statsLine = stripAnsi(footer.render(120)[1]);
 		expect(statsLine).toContain("$1.250");
 	});
 
@@ -203,7 +206,7 @@ describe("FooterComponent width handling", () => {
 		});
 		const footer = new FooterComponent(session, createFooterData(1));
 
-		const statsLine = stripAnsi(footer.render(120)[2]);
+		const statsLine = stripAnsi(footer.render(120)[1]);
 		expect(statsLine).toContain("CH25.0%");
 	});
 
@@ -221,14 +224,14 @@ describe("FooterComponent width handling", () => {
 		});
 		const footer = new FooterComponent(session, createFooterData(1));
 
-		expect(stripAnsi(footer.render(120)[2])).toContain("$1.234 (sub)");
+		expect(stripAnsi(footer.render(120)[1])).toContain("$1.234 (sub)");
 	});
 
 	it("marks explicitly identified subscription auth", () => {
 		const session = createSession({ sessionName: "", provider: "anthropic", usingSubscription: true });
 		const footer = new FooterComponent(session, createFooterData(1));
 
-		expect(stripAnsi(footer.render(120)[2])).toContain("$0.000 (sub)");
+		expect(stripAnsi(footer.render(120)[1])).toContain("$0.000 (sub)");
 	});
 
 	it("does not mark generic OAuth sign-in as a subscription", () => {
@@ -244,9 +247,79 @@ describe("FooterComponent width handling", () => {
 			},
 		});
 		const footer = new FooterComponent(session, createFooterData(1));
-		const stats = stripAnsi(footer.render(120)[2]);
+		const stats = stripAnsi(footer.render(120)[1]);
 
 		expect(stats).toContain("$1.234");
 		expect(stats).not.toContain("(sub)");
+	});
+});
+
+describe("FooterComponent chrome band (move 2)", () => {
+	const width = 60;
+	const darkThemePath = new URL("../src/modes/interactive/theme/dark.json", import.meta.url).pathname;
+	const tempDirs: string[] = [];
+
+	function renderFooter(sessionName: string): string[] {
+		const session = createSession({ sessionName });
+		const footer = new FooterComponent(session, createFooterData(1));
+		return footer.render(width);
+	}
+
+	function writeLegacyTheme(): string {
+		const themeJson = JSON.parse(
+			readFileSync(new URL("../src/modes/interactive/theme/dark.json", import.meta.url), "utf-8"),
+		) as { name: string; colors: Record<string, string | number> };
+		themeJson.name = "legacy-chrome-footer-theme";
+		delete themeJson.colors.chromeBg;
+		const testDir = mkdtempSync(join(tmpdir(), "pi-footer-chrome-"));
+		tempDirs.push(testDir);
+		const themePath = join(testDir, `${themeJson.name}.json`);
+		writeFileSync(themePath, JSON.stringify(themeJson));
+		return themePath;
+	}
+
+	afterEach(() => {
+		for (const dir of tempDirs.splice(0)) {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("pads every footer line to the full terminal width", () => {
+		initTheme(undefined, false);
+		const lines = renderFooter("chrome");
+		expect(lines.length).toBeGreaterThanOrEqual(2);
+		for (const line of lines) {
+			expect(visibleWidth(line)).toBe(width);
+		}
+	});
+
+	it("paints each line with the chromeBg background in truecolor mode", () => {
+		setThemeInstance(loadThemeFromPath(darkThemePath, "truecolor"));
+		// dark.json chrome #16161c -> truecolor background escape
+		const chromePrefix = "\x1b[48;2;22;22;28m";
+		for (const line of renderFooter("chrome")) {
+			expect(line.startsWith(chromePrefix)).toBe(true);
+			expect(line.endsWith("\x1b[49m")).toBe(true);
+		}
+	});
+
+	it("keeps full-width padding for legacy themes without chromeBg", () => {
+		// chromeBg omitted -> "" -> theme.bg passes the line through (default-bg
+		// bookends only), but the padding to full width still applies.
+		setThemeInstance(loadThemeFromPath(writeLegacyTheme(), "truecolor"));
+		const lines = renderFooter("legacy");
+		expect(lines.length).toBeGreaterThanOrEqual(2);
+		for (const line of lines) {
+			expect(visibleWidth(line)).toBe(width);
+			expect(line.startsWith("\x1b[49m")).toBe(true);
+		}
+	});
+
+	it("keeps the chrome band unstyled in plain mode while still padding", () => {
+		setThemeInstance(loadThemeFromPath(darkThemePath, "plain"));
+		for (const line of renderFooter("plain")) {
+			expect(line.includes("\x1b")).toBe(false);
+			expect(visibleWidth(line)).toBe(width);
+		}
 	});
 });

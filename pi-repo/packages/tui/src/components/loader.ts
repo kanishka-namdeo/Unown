@@ -24,6 +24,8 @@ export class Loader extends Text {
 	private spinnerColorFn: (str: string) => string;
 	private messageColorFn: (str: string) => string;
 	private message: string = "Loading...";
+	/** Optional suffix appended after the message (e.g. an elapsed-time chip). */
+	private suffixProvider: (() => string) | undefined;
 
 	constructor(
 		ui: TUI,
@@ -69,6 +71,20 @@ export class Loader extends Text {
 		this.start();
 	}
 
+	/**
+	 * Set (or clear) a suffix provider whose output is appended after the
+	 * message on every display update. Pass undefined to remove the suffix.
+	 */
+	setSuffixProvider(fn?: () => string): void {
+		this.suffixProvider = fn;
+		this.updateDisplay();
+	}
+
+	/** Re-render the display; lets callers refresh dynamic suffixes on a timer. */
+	refresh(): void {
+		this.updateDisplay();
+	}
+
 	private restartAnimation(): void {
 		this.stop();
 		if (this.frames.length <= 1) {
@@ -84,7 +100,7 @@ export class Loader extends Text {
 		const frame = this.frames[this.currentFrame] ?? "";
 		const renderedFrame = this.renderIndicatorVerbatim ? frame : this.spinnerColorFn(frame);
 		const indicator = frame.length > 0 ? `${renderedFrame} ` : "";
-		this.setText(`${indicator}${this.messageColorFn(this.message)}`);
+		this.setText(`${indicator}${this.messageColorFn(this.message)}${this.suffixProvider?.() ?? ""}`);
 		if (this.ui) {
 			this.ui.requestRender();
 		}

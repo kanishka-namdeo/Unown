@@ -160,13 +160,13 @@ vim ~/.pi/agent/themes/my-theme.json
 
 - `name` is required, must be unique, and must not contain `/`.
 - `vars` is optional. Define reusable colors here, then reference them in `colors`.
-- `colors` must define all 51 required tokens. `thinkingMax`, `scrollbarThumb`, and the two search highlight tokens are optional and use the fallbacks listed below.
+- `colors` must define all 51 required tokens. `thinkingMax`, `scrollbarTrack`, `scrollbarThumb`, the two search highlight tokens, and the two chrome surface tokens (`chromeBg`, `overlayBg`) are optional and use the fallbacks listed below.
 
 The `$schema` field enables editor auto-completion and validation.
 
 ## Color Tokens
 
-Every theme must define all 51 required color tokens. The optional tokens preserve compatibility with existing themes: `thinkingMax` falls back to `thinkingXhigh`, `scrollbarThumb` and `searchMatchBg` fall back to `selectedBg`, and `searchMatchText` falls back to `text`. Other search matches use `searchMatchText` on `searchMatchBg` with an underline; the current match reverses that foreground/background pair and uses bold text.
+Every theme must define all 51 required color tokens. The optional tokens preserve compatibility with existing themes: `thinkingMax` falls back to `thinkingXhigh`, `scrollbarTrack` falls back to `borderMuted` and `scrollbarThumb` to `muted` (the pi-tui 1.3.0 scrollbar engine paints them as foreground glyphs), `searchMatchBg` falls back to `selectedBg`, `searchMatchText` falls back to `text`, and `chromeBg`/`overlayBg` fall back to `""` (transparent — chrome renders on the terminal background). Other search matches use `searchMatchText` on `searchMatchBg` with an underline; the current match reverses that foreground/background pair and uses bold text.
 
 ### Core UI (11 colors)
 
@@ -184,12 +184,14 @@ Every theme must define all 51 required color tokens. The optional tokens preser
 | `text` | Default text (usually `""`) |
 | `thinkingText` | Thinking block text |
 
-### Backgrounds & Content (11 required, 3 optional)
+### Backgrounds & Content (11 required, 5 optional)
 
 | Token | Purpose |
 |-------|---------|
 | `selectedBg` | Selected line background |
-| `scrollbarThumb` | Fullscreen scrollbar thumb background; optional, falls back to `selectedBg` |
+| `scrollbarThumb` | Fullscreen scrollbar thumb (foreground glyph); optional, falls back to `muted` |
+| `chromeBg` | Chrome surface behind the input editor and footer status bar; optional, falls back to transparent |
+| `overlayBg` | Surface behind overlay components (dialogs, selectors); optional, falls back to transparent |
 | `searchMatchBg` | Transcript search match background and current-match text; optional, falls back to `selectedBg` |
 | `searchMatchText` | Transcript search match text and current-match background; optional, falls back to `text` |
 | `userMessageBg` | User message background |

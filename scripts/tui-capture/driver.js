@@ -54,7 +54,14 @@ class TmuxSession {
     this.rows = rows;
   }
   env(extra = {}) {
-    return { ...process.env, LD_LIBRARY_PATH: LD_LIB, ...extra };
+    // Captures must be truthful to a colored terminal: strip the host's
+    // color-suppression env (NO_COLOR / CLICOLOR=0 leak from CI sandboxes and
+    // silently flip the TUI to plain mode - every still renders monochrome).
+    const env = { ...process.env, LD_LIBRARY_PATH: LD_LIB, ...extra };
+    delete env.NO_COLOR;
+    delete env.CLICOLOR;
+    delete env.CLICOLOR_FORCE;
+    return env;
   }
   async kill() {
     try { await sh(TMUX_BIN, ["kill-session", "-t", this.name], { env: this.env() }); } catch {}
@@ -345,7 +352,7 @@ class CaptureSession {
 
   /** Wait until the TUI is ready (branded header + footer model + no spinner). */
   async waitReady(timeout = 90_000) {
-    const ready = this.ready || { include: ["unown v", "kimi-k2.5"], desc: "TUI ready" };
+    const ready = this.ready || { include: ["unown v"], desc: "TUI ready" };
     await this.wait({ ...ready, timeout, desc: ready.desc || "ready" });
     await this.linger(700);
   }

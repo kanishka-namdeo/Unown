@@ -227,6 +227,20 @@ interface LayoutLine {
 
 export interface EditorTheme {
 	borderColor: (str: string) => string;
+	/** Border dash style used while focused; falls back to borderColor. */
+	focusBorderColor?: (str: string) => string;
+	/**
+	 * Custom caret renderer. When present it replaces the default
+	 * inverse-video caret (e.g. with an accent-colored underline caret).
+	 */
+	cursorStyle?: (char: string) => string;
+	/**
+	 * Line background applied to every rendered line (borders, content,
+	 * autocomplete) as the last render step; when absent lines are unchanged.
+	 */
+	background?: (line: string) => string;
+	/** Chevron glyph rendered as the first top-border cell while focused (default "»"). */
+	focusChevron?: string;
 	selectList: SelectListTheme;
 }
 
@@ -256,6 +270,77 @@ function buildDebouncePattern(triggerCharacters: string[]): RegExp {
 	return new RegExp(`(?:^|[ \\t])(?:@(?:"[^"]*|[^\\s]*)|[${escapedWithoutAt.join("")}][^\\s]*)$`);
 }
 
+/** Default focus chevron rendered as the first cell of the focused top border. */
+const DEFAULT_FOCUS_CHEVRON = "»";
+
+/** Options for composing the editor's top border line. */
+export interface TopBorderOptions {
+	/** Whether the editor currently has focus. */
+	focused: boolean;
+	/** Style for the border dashes while unfocused. */
+	borderColor: (str: string) => string;
+	/** Style for the chevron and dashes while focused; falls back to borderColor. */
+	focusBorderColor?: (str: string) => string;
+	/** Optional short mode label (e.g. "bash" or "thinking: high") embedded in the border. */
+	badge?: string;
+	/** Style for the badge label; falls back to borderColor. */
+	badgeColor?: (str: string) => string;
+	/** Chevron glyph shown as the first cell while focused (default "»"). */
+	chevron?: string;
+}
+
+/**
+ * Compose the editor's top border line as exactly `width` visible cells.
+ *
+ * Unfocused the line is plain dashes; focused, the first cell becomes the
+ * focus chevron. A badge (when set) is embedded after the first two visible
+ * cells as `── badge ───`, flanked by single spaces, so its position does
+ * not shift when focus changes. The badge is dropped when it cannot fit
+ * alongside the lead cells, its flanking spaces and at least one dash.
+ *
+ * Pure function so the border composition can be unit-tested in isolation.
+ */
+export function buildTopBorderLine(width: number, options: TopBorderOptions): string {
+	const targetWidth = Math.max(0, Math.floor(width));
+	if (targetWidth === 0) return "";
+
+	const { focused, borderColor } = options;
+	const dashStyle = focused ? (options.focusBorderColor ?? borderColor) : borderColor;
+	const badgeStyle = options.badgeColor ?? borderColor;
+	const chevron = options.chevron ?? DEFAULT_FOCUS_CHEVRON;
+
+	// Lead cells: the chevron plus one dash when focused, two dashes otherwise.
+	// With a single-cell chevron both are exactly two cells wide, keeping the
+	// badge position identical across focus changes.
+	const lead = focused ? `${chevron}─` : "──";
+	const leadWidth = visibleWidth(lead);
+	if (leadWidth > targetWidth) {
+		// Degenerate width: show as much of the lead as fits. A wide lead
+		// grapheme (e.g. a 2-cell chevron at width 1) may not fit at all;
+		// fall back to plain dashes so the line still spans the width.
+		const slice = sliceByColumn(lead, 0, targetWidth, true);
+		if (visibleWidth(slice) === targetWidth) {
+			return dashStyle(slice);
+		}
+		return dashStyle("─".repeat(targetWidth));
+	}
+
+	// Badges without visible content (e.g. empty strings) are treated as unset.
+	const badge = options.badge !== undefined && visibleWidth(options.badge) > 0 ? options.badge : undefined;
+
+	if (badge !== undefined) {
+		const badgeWidth = visibleWidth(badge);
+		// The badge needs its lead cells, both flanking spaces and at least
+		// one trailing dash to read as embedded in the border.
+		if (leadWidth + badgeWidth + 3 <= targetWidth) {
+			const trailingDashes = targetWidth - leadWidth - badgeWidth - 2;
+			return `${dashStyle(lead)} ${badgeStyle(badge)} ${dashStyle("─".repeat(trailingDashes))}`;
+		}
+	}
+
+	return dashStyle(lead) + dashStyle("─".repeat(targetWidth - leadWidth));
+}
+
 function createScrollBorder(direction: "↑" | "↓", hiddenLineCount: number, width: number): string {
 	const availableWidth = Math.max(0, width);
 	const indicator = `─── ${direction} ${hiddenLineCount} more `;
@@ -274,8 +359,20 @@ export class Editor implements Component, Focusable {
 		cursorCol: 0,
 	};
 
+	private _focused: boolean = false;
+
 	/** Focusable interface - set by TUI when focus changes */
-	focused: boolean = false;
+	get focused(): boolean {
+		return this._focused;
+	}
+
+	set focused(value: boolean) {
+		if (this._focused === value) return;
+		this._focused = value;
+		// Focus changes are visible in the rendered output (border style, caret
+		// marker), so request a render whenever the value changes.
+		this.tui.requestRender();
+	}
 
 	protected tui: TUI;
 	private theme: EditorTheme;
@@ -290,6 +387,11 @@ export class Editor implements Component, Focusable {
 	// Border color (can be changed dynamically)
 	public borderColor: (str: string) => string;
 
+	/** Short mode label (e.g. "bash", "thinking: high") embedded in the top border. */
+	public borderBadge?: string;
+
+	/** Style for the border badge label; falls back to the border dash style. */
+	public borderBadgeColor?: (str: string) => string;
 	// Autocomplete support
 	private autocompleteProvider?: AutocompleteProvider;
 	private autocompleteTriggerCharacters = [...DEFAULT_AUTOCOMPLETE_TRIGGER_CHARACTERS];
@@ -491,7 +593,9 @@ export class Editor implements Component, Focusable {
 		// Store for cursor navigation (must match wrapping width)
 		this.lastWidth = layoutWidth;
 
-		const horizontal = this.borderColor("─");
+		// Dash style follows focus: focused borders may brighten via theme.focusBorderColor.
+		const dashStyle = this.focused ? (this.theme.focusBorderColor ?? this.borderColor) : this.borderColor;
+		const horizontal = dashStyle("─");
 
 		// Layout the text
 		const layoutLines = this.layoutText(layoutWidth);
@@ -527,7 +631,16 @@ export class Editor implements Component, Focusable {
 			const border = createScrollBorder("↑", this.scrollOffset, width);
 			result.push(this.borderColor(border));
 		} else {
-			result.push(horizontal.repeat(width));
+			result.push(
+				buildTopBorderLine(width, {
+					focused: this.focused,
+					borderColor: this.borderColor,
+					focusBorderColor: this.theme.focusBorderColor,
+					badge: this.borderBadge,
+					badgeColor: this.borderBadgeColor,
+					chevron: this.theme.focusChevron,
+				}),
+			);
 		}
 
 		// Render each visible layout line
@@ -549,18 +662,21 @@ export class Editor implements Component, Focusable {
 				// Hardware cursor marker (zero-width, emitted before fake cursor for IME positioning)
 				const marker = emitCursorMarker ? CURSOR_MARKER : "";
 
+				// Optional theme hook replacing the default inverse-video caret.
+				const cursorStyle = this.theme.cursorStyle;
+
 				if (after.length > 0) {
 					// Cursor is on a character (grapheme) - replace it with highlighted version
 					// Get the first grapheme from 'after'
 					const afterGraphemes = [...this.segment(after, "grapheme")];
 					const firstGrapheme = afterGraphemes[0]?.segment || "";
 					const restAfter = after.slice(firstGrapheme.length);
-					const cursor = `\x1b[7m${firstGrapheme}\x1b[0m`;
+					const cursor = cursorStyle ? cursorStyle(firstGrapheme) : `\x1b[7m${firstGrapheme}\x1b[0m`;
 					displayText = before + marker + cursor + restAfter;
 					// lineVisibleWidth stays the same - we're replacing, not adding
 				} else {
 					// Cursor is at the end - add highlighted space
-					const cursor = "\x1b[7m \x1b[0m";
+					const cursor = cursorStyle ? cursorStyle(" ") : "\x1b[7m \x1b[0m";
 					displayText = before + marker + cursor;
 					lineVisibleWidth = lineVisibleWidth + 1;
 					// If cursor overflows content width into the padding, flag it
@@ -594,6 +710,15 @@ export class Editor implements Component, Focusable {
 				const lineWidth = visibleWidth(line);
 				const linePadding = " ".repeat(Math.max(0, contentWidth - lineWidth));
 				result.push(`${leftPadding}${line}${linePadding}${rightPadding}`);
+			}
+		}
+
+		// Apply the optional editor background to every output line (borders,
+		// content, autocomplete) as the last step so the whole box shares one surface.
+		const background = this.theme.background;
+		if (background) {
+			for (let index = 0; index < result.length; index++) {
+				result[index] = background(result[index]);
 			}
 		}
 

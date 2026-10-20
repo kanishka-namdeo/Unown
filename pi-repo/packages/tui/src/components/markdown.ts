@@ -2,7 +2,7 @@ import { Marked, type Token, Tokenizer, type TokenizerExtension, type Tokens } f
 import { renderLatex } from "../latex.ts";
 import { getCapabilities, hyperlink, isImageLine } from "../terminal-image.ts";
 import type { Component } from "../tui.ts";
-import { applyBackgroundToLine, visibleWidth, wrapTextWithAnsi } from "../utils.ts";
+import { applyBackgroundToLine, stripTerminalSequences, visibleWidth, wrapTextWithAnsi } from "../utils.ts";
 
 const STRICT_STRIKETHROUGH_REGEX = /^(~~)(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))\1(?=[^~]|$)/;
 
@@ -199,6 +199,8 @@ export interface DefaultTextStyle {
  */
 export interface MarkdownTheme {
 	heading: (text: string) => string;
+	/** Accent color for H3+ headings; falls back to heading when absent. */
+	accent?: (text: string) => string;
 	link: (text: string) => string;
 	linkUrl: (text: string) => string;
 	code: (text: string) => string;
@@ -462,17 +464,17 @@ export class Markdown implements Component {
 		switch (token.type) {
 			case "heading": {
 				const headingLevel = token.depth;
-				const headingPrefix = `${"#".repeat(headingLevel)} `;
 
-				// Build a heading-specific style context so inline tokens (codespan, bold, etc.)
-				// restore heading styling after their own ANSI resets instead of falling back to
-				// the default text style.
-				let headingStyleFn: (text: string) => string;
-				if (headingLevel === 1) {
-					headingStyleFn = (text: string) => this.theme.heading(this.theme.bold(this.theme.underline(text)));
-				} else {
-					headingStyleFn = (text: string) => this.theme.heading(this.theme.bold(text));
-				}
+				// Typographic hierarchy: H1/H2 are bold headings underlined by a `─`
+				// rule line (structure from geometry, not color); H3+ are accent-colored
+				// bold text with no rule and no `#` prefix. Inline tokens keep a
+				// heading-specific style context so their ANSI resets restore the
+				// heading style.
+				const accentFn = this.theme.accent ?? this.theme.heading;
+				const headingStyleFn: (text: string) => string =
+					headingLevel <= 2
+						? (text: string) => this.theme.heading(this.theme.bold(text))
+						: (text: string) => accentFn(this.theme.bold(text));
 
 				const headingStyleContext: InlineStyleContext = {
 					applyText: headingStyleFn,
@@ -480,8 +482,17 @@ export class Markdown implements Component {
 				};
 
 				const headingText = this.renderInlineTokens(token.tokens || [], headingStyleContext);
-				const styledHeading = headingLevel >= 3 ? headingStyleFn(headingPrefix) + headingText : headingText;
-				lines.push(styledHeading);
+				lines.push(headingText);
+				if (headingLevel <= 2) {
+					// The rule tracks the heading's visible width (capped to the
+					// container, minimum 3). Empty headings get no rule — there is
+					// nothing to underline.
+					const headingWidth = visibleWidth(stripTerminalSequences(headingText));
+					if (headingWidth > 0) {
+						const ruleLength = Math.min(width, Math.max(3, headingWidth));
+						lines.push(this.theme.hr("─".repeat(ruleLength)));
+					}
+				}
 				if (nextTokenType && nextTokenType !== "space") {
 					lines.push(""); // Add spacing after headings (unless space token follows)
 				}

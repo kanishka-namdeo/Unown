@@ -119,7 +119,7 @@ import { BranchSummaryMessageComponent } from "./components/branch-summary-messa
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
 import { CustomEditor } from "./components/custom-editor.ts";
 import { CustomEntryComponent } from "./components/custom-entry.ts";
-import { CustomMessageComponent } from "./components/custom-message.ts";
+import { CustomMessageComponent, formatSectionLabel } from "./components/custom-message.ts";
 import { DaxnutsComponent } from "./components/daxnuts.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
 import { EarendilAnnouncementComponent } from "./components/earendil-announcement.ts";
@@ -143,6 +143,7 @@ import { SkillInvocationMessageComponent } from "./components/skill-invocation-m
 import {
 	BranchSummaryStatusIndicator,
 	CompactionStatusIndicator,
+	describeToolActivity,
 	IdleStatus,
 	RetryStatusIndicator,
 	type StatusIndicator,
@@ -455,6 +456,8 @@ export class InteractiveMode {
 	private onInputCallback?: (text: string) => void;
 	private pendingUserInputs: string[] = [];
 	private activeStatusIndicator: StatusIndicator | undefined = undefined;
+	/** Generation guard: any later show/clear cancels a pending completion beat's cleanup. */
+	private statusBeatGeneration = 0;
 	private readonly idleStatus = new IdleStatus();
 	private workingMessage: string | undefined = undefined;
 	private workingVisible = true;
@@ -1715,7 +1718,9 @@ export class InteractiveMode {
 			return;
 		}
 
-		const sectionHeader = (name: string, color: ThemeColor = "mdHeading") => theme.fg(color, `[${name}]`);
+		// Move 4: one label style everywhere - the unified `-- name --` section
+		// rule treatment from custom-message.ts replaces the [Bracket] zoo.
+		const sectionHeader = (name: string) => formatSectionLabel(name);
 		const formatCompactList = (items: string[], options?: { sort?: boolean }): string => {
 			const labels = items.map((item) => item.trim()).filter((item) => item.length > 0);
 			if (options?.sort !== false) {
@@ -1727,11 +1732,10 @@ export class InteractiveMode {
 			name: string,
 			collapsedBody: string,
 			expandedBody = collapsedBody,
-			color: ThemeColor = "mdHeading",
 		): void => {
 			const section = new ExpandableText(
-				() => `${sectionHeader(name, color)}\n${collapsedBody}`,
-				() => `${sectionHeader(name, color)}\n${expandedBody}`,
+				() => `${sectionHeader(name)}\n${collapsedBody}`,
+				() => `${sectionHeader(name)}\n${expandedBody}`,
 				this.getStartupExpansionState(),
 				0,
 				0,
@@ -1834,7 +1838,7 @@ export class InteractiveMode {
 						this.formatExtensionDisplayPath(this.getShortPath(item.path, item.sourceInfo)),
 				});
 				const extensionCompactList = formatCompactList(this.getCompactExtensionLabels(extensions));
-				addLoadedSection("Extensions", extensionCompactList, extList, "mdHeading");
+				addLoadedSection("Extensions", extensionCompactList, extList);
 			}
 
 			// Show loaded themes (excluding built-in)
@@ -2151,17 +2155,36 @@ export class InteractiveMode {
 	}
 
 	private showStatusIndicator(indicator: StatusIndicator): void {
+		this.statusBeatGeneration++;
 		this.activeStatusIndicator?.dispose();
 		this.activeStatusIndicator = indicator;
 		this.statusContainer.clear();
 		this.statusContainer.addChild(indicator);
 	}
 
-	private clearStatusIndicator(kind?: StatusIndicator["kind"]): void {
+	private clearStatusIndicator(kind?: StatusIndicator["kind"], opts?: { completionBeat?: boolean }): void {
 		if (kind && this.activeStatusIndicator?.kind !== kind) {
 			return;
 		}
 		const hadActiveStatusIndicator = this.activeStatusIndicator !== undefined;
+		this.statusBeatGeneration++;
+		// Move 7 completion beat: the working line resolves with a checkmark for
+		// ~600 ms before clearing; any later show/clear cancels the cleanup.
+		if (opts?.completionBeat && this.activeStatusIndicator) {
+			const indicator = this.activeStatusIndicator;
+			this.activeStatusIndicator = undefined;
+			const generation = this.statusBeatGeneration;
+			indicator.completeBeat(() => {
+				indicator.dispose();
+				if (generation !== this.statusBeatGeneration) return;
+				this.statusContainer.clear();
+				if (this.options.tuiMode === "regular" && this.ui.getClearOnShrink()) {
+					this.statusContainer.addChild(this.idleStatus);
+				}
+				this.ui.requestRender();
+			});
+			return;
+		}
 		this.activeStatusIndicator?.dispose();
 		this.activeStatusIndicator = undefined;
 		this.statusContainer.clear();
@@ -2195,6 +2218,19 @@ export class InteractiveMode {
 			this.activeStatusIndicator.setIndicator(options);
 		}
 		this.ui.requestRender();
+	}
+
+	/**
+	 * Move 7 (verb-first labels): while a tool runs, the working line names the
+	 * activity ("Editing src/math.ts...") instead of a generic "Working...". An
+	 * extension-set working message wins; the label persists until the
+	 * completion beat resolves it.
+	 */
+	private updateWorkingLabelForTool(toolName: string, args: unknown): void {
+		if (this.workingMessage !== undefined) return;
+		if (this.activeStatusIndicator?.kind !== "working") return;
+		const label = describeToolActivity(toolName, args);
+		if (label) this.activeStatusIndicator.setMessage(label);
 	}
 
 	private setHiddenThinkingLabel(label?: string): void {
@@ -3362,6 +3398,7 @@ export class InteractiveMode {
 					this.pendingTools.set(event.toolCallId, component);
 				}
 				component.markExecutionStarted();
+				this.updateWorkingLabelForTool(event.toolName, event.args);
 				this.ui.requestRender();
 				break;
 			}
@@ -3385,11 +3422,18 @@ export class InteractiveMode {
 				break;
 			}
 
-			case "agent_end":
+			case "agent_end": {
 				if (this.settingsManager.getShowTerminalProgress()) {
 					this.ui.terminal.setProgress(false);
 				}
-				this.clearStatusIndicator("working");
+				// Move 7: resolve the working line with a beat only when the turn
+				// genuinely finished - never on retry, abort or error stops.
+				const lastStopReason = [...event.messages]
+					.reverse()
+					.map((m) => ("stopReason" in m ? (m as { stopReason?: unknown }).stopReason : undefined))
+					.find((r) => typeof r === "string");
+				const completed = !event.willRetry && lastStopReason !== "aborted" && lastStopReason !== "error";
+				this.clearStatusIndicator("working", { completionBeat: completed });
 				if (this.streamingComponent) {
 					this.chatContainer.removeChild(this.streamingComponent);
 					this.streamingComponent = undefined;
@@ -3399,6 +3443,7 @@ export class InteractiveMode {
 
 				this.ui.requestRender();
 				break;
+			}
 
 			case "agent_settled":
 				await this.checkShutdownRequested();
@@ -4158,11 +4203,16 @@ export class InteractiveMode {
 	}
 
 	private updateEditorBorderColor(): void {
+		// Move 6: modes ride an inline badge on the top border
+		// ("── thinking high ──"); the border color itself stays calm (muted at
+		// rest, accent while focused) instead of repainting per thinking level.
+		this.editor.borderBadgeColor ??= (text: string) => theme.fg("dim", text);
 		if (this.isBashMode) {
-			this.editor.borderColor = theme.getBashModeBorderColor();
+			this.editor.borderBadge = "bash";
 		} else {
 			const level = this.session.thinkingLevel || "off";
-			this.editor.borderColor = theme.getThinkingBorderColor(level);
+			const supportsThinking = this.session.state.model?.reasoning ?? false;
+			this.editor.borderBadge = supportsThinking && level !== "off" ? `thinking ${level}` : undefined;
 		}
 		this.ui.requestRender();
 	}

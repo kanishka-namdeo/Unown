@@ -66,6 +66,12 @@ export interface EditorComponent extends Component {
 	/** Border color function */
 	borderColor?: (str: string) => string;
 
+	/** Mode badge rendered inline on the top border (e.g. "bash", "thinking high") */
+	borderBadge?: string;
+
+	/** Styling for the mode badge */
+	borderBadgeColor?: (str: string) => string;
+
 	/** Set horizontal padding */
 	setPaddingX?(padding: number): void;
 

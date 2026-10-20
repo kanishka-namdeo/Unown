@@ -9,6 +9,8 @@
 		"slate": "#d7dae0",
 		"slateDim": "#e4e7eb",
 		"selection": "#dcdcdc",
+		"chrome": "#eceef2",
+		"overlay": "#e4e7ec",
 		"teal": "#0184bc",
 		"blue": "#4078f2",
 		"green": "#50a14f",
@@ -31,6 +33,8 @@
 		"thinkingText": "muted",
 
 		"selectedBg": "selection",
+		"chromeBg": "chrome",
+		"overlayBg": "overlay",
 		"scrollbarTrack": "slateDim",
 		"scrollbarThumb": "muted",
 		"searchMatchBg": "selection",

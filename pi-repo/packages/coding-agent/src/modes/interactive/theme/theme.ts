@@ -46,10 +46,14 @@ const ThemeJsonSchema = Type.Object({
 		dim: ColorValueSchema,
 		text: ColorValueSchema,
 		thinkingText: ColorValueSchema,
-		// Backgrounds & Content Text (10 required, 4 optional)
+		// Backgrounds & Content Text (10 required, 6 optional)
 		selectedBg: ColorValueSchema,
 		scrollbarTrack: Type.Optional(ColorValueSchema),
 		scrollbarThumb: Type.Optional(ColorValueSchema),
+		// Chrome/overlay surfaces: omitted means "" (transparent), so themes
+		// that predate the tokens keep the terminal background as chrome.
+		chromeBg: Type.Optional(ColorValueSchema),
+		overlayBg: Type.Optional(ColorValueSchema),
 		searchMatchBg: Type.Optional(ColorValueSchema),
 		searchMatchText: Type.Optional(ColorValueSchema),
 		userMessageBg: ColorValueSchema,
@@ -165,6 +169,8 @@ export type ThemeColor =
 export type ThemeBg =
 	| "selectedBg"
 	| "searchMatchBg"
+	| "chromeBg"
+	| "overlayBg"
 	| "userMessageBg"
 	| "customMessageBg"
 	| "toolPendingBg"
@@ -172,7 +178,7 @@ export type ThemeBg =
 	| "toolErrorBg";
 
 type OptionalThemeColor = "thinkingMax" | "scrollbarTrack" | "scrollbarThumb" | "searchMatchText";
-type OptionalThemeBg = "searchMatchBg";
+type OptionalThemeBg = "searchMatchBg" | "chromeBg" | "overlayBg";
 
 type ColorMode = "truecolor" | "256color" | "plain";
 
@@ -339,6 +345,8 @@ function withThemeColorFallbacks(colors: ThemeJson["colors"]): ThemeJson["colors
 	scrollbarThumb: ColorValue;
 	searchMatchBg: ColorValue;
 	searchMatchText: ColorValue;
+	chromeBg: ColorValue;
+	overlayBg: ColorValue;
 } {
 	return {
 		...colors,
@@ -350,6 +358,10 @@ function withThemeColorFallbacks(colors: ThemeJson["colors"]): ThemeJson["colors
 		scrollbarThumb: colors.scrollbarThumb ?? colors.muted,
 		searchMatchBg: colors.searchMatchBg ?? colors.selectedBg,
 		searchMatchText: colors.searchMatchText ?? colors.text,
+		// Chrome/overlay surfaces default to "" (transparent): the terminal
+		// background stays visible for themes that predate the tokens.
+		chromeBg: colors.chromeBg ?? "",
+		overlayBg: colors.overlayBg ?? "",
 	};
 }
 
@@ -392,6 +404,8 @@ export class Theme {
 		const backgrounds = {
 			...bgColors,
 			searchMatchBg: bgColors.searchMatchBg ?? bgColors.selectedBg,
+			chromeBg: bgColors.chromeBg ?? "",
+			overlayBg: bgColors.overlayBg ?? "",
 		};
 		for (const [key, value] of Object.entries(backgrounds) as [ThemeBg, string | number][]) {
 			this.bgColors.set(key, bgAnsi(value, mode));
@@ -649,6 +663,8 @@ function createTheme(themeJson: ThemeJson, mode?: ColorMode, sourcePath?: string
 	const bgColorKeys: Set<string> = new Set([
 		"selectedBg",
 		"searchMatchBg",
+		"chromeBg",
+		"overlayBg",
 		"userMessageBg",
 		"customMessageBg",
 		"toolPendingBg",
@@ -1286,6 +1302,8 @@ export function getLanguageFromPath(filePath: string): string | undefined {
 export function getMarkdownTheme(): MarkdownTheme {
 	return {
 		heading: (text: string) => theme.fg("mdHeading", text),
+		// H3+ heading accent (move 4): MarkdownTheme.accent recolors sub-headings.
+		accent: (text: string) => theme.fg("accent", text),
 		link: (text: string) => theme.fg("mdLink", text),
 		linkUrl: (text: string) => theme.fg("mdLinkUrl", text),
 		code: (text: string) => theme.fg("mdCode", text),
@@ -1334,7 +1352,16 @@ export function getSelectListTheme(): SelectListTheme {
 
 export function getEditorTheme(): EditorTheme {
 	return {
-		borderColor: (text: string) => theme.fg("borderMuted", text),
+		// Rest border sits one step brighter than borderMuted: at muted it
+		// vanished against dark canvases (VLM: "borders too faint").
+		borderColor: (text: string) => theme.fg("border", text),
+		// Beauty moves 6+2: brighten the border to borderAccent with a » chevron
+		// on focus, swap the inverse-video caret for an accent underline, and
+		// paint the input box on the chromeBg raised surface.
+		focusBorderColor: (text: string) => theme.fg("borderAccent", text),
+		focusChevron: "»",
+		cursorStyle: (char: string) => theme.underline(theme.fg("accent", char)),
+		background: (line: string) => theme.bg("chromeBg", line),
 		selectList: getSelectListTheme(),
 	};
 }
