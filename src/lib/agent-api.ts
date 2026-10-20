@@ -50,6 +50,8 @@ import type {
   NotesResponse,
   NotesSyncResponse,
   OverviewResponse,
+  ProviderMutationResponse,
+  ProvidersResponse,
   RunDetailResponse,
   RunsResponse,
   SandboxesResponse,
@@ -111,6 +113,7 @@ export const qk = {
   automations: ["automations"] as const,
   automationRuns: (id: string) => ["automation-runs", id] as const,
   webcache: ["webcache"] as const,
+  providers: ["providers"] as const,
 };
 
 export const api = {
@@ -135,6 +138,7 @@ export const api = {
     getJson<SkillsResponse>("/api/skills", project ? { project } : undefined),
   skill: (id: string) => getJson<SkillDetailResponse>(`/api/skills/${id}`),
   bridge: () => getJson<BridgeResponse>("/api/bridge"),
+  providers: () => getJson<ProvidersResponse>("/api/providers"),
   automations: () => getJson<AutomationsResponse>("/api/automations"),
   automationRuns: (id: string, limit = 20) =>
     getJson<AutomationRunsResponse>(`/api/automations/${id}/runs`, { limit }),
@@ -183,4 +187,23 @@ export const mutations = {
   automationRunNow: (id: string) => postJson<{ ok: boolean }>(`/api/automations/${id}/run`),
   webCacheClear: () => postJson<WebCacheClearResponse>("/api/webcache/clear"),
   webCacheSweep: () => postJson<WebCacheSweepResponse>("/api/webcache/sweep"),
+  providerAdd: (body: {
+    preset: string;
+    id?: string;
+    name?: string;
+    baseUrl?: string;
+    model?: string;
+    apiKey?: string;
+    keyEnv?: string;
+    setDefault?: boolean;
+    allModels?: boolean;
+  }) => postJson<ProviderMutationResponse>("/api/providers", body),
+  providerKey: (id: string, apiKey: string) =>
+    postJson<ProviderMutationResponse>(`/api/providers/${id}/key`, { apiKey }),
+  providerDefault: (id: string, model?: string) =>
+    postJson<ProviderMutationResponse>(`/api/providers/${id}/default`, model ? { model } : {}),
+  providerTest: (id: string) => getJson<ProviderMutationResponse>(`/api/providers/${id}/test`),
+  providerRefresh: (id: string) => postJson<ProviderMutationResponse>(`/api/providers/${id}/refresh`),
+  providerRemove: (id: string) =>
+    postJson<ProviderMutationResponse>(`/api/providers/${id}`, undefined, "DELETE"),
 };

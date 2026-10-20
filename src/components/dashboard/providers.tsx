@@ -155,6 +155,16 @@ function describe(ev: AgentEvent): ActivityDesc | null {
       return { text: `router started · ${str(p, "jobs")} jobs scheduled`, tone: "zinc" };
     case "router:error":
       return { text: `router error · ${str(p, "error", "unknown").slice(0, 80)}`, tone: "rose" };
+    case "provider:changed": {
+      const action = str(p, "action");
+      const who = str(p, "provider");
+      if (action === "add") return { text: `provider added · ${who}`, tone: "emerald" };
+      if (action === "remove") return { text: `provider removed · ${who}`, tone: "zinc" };
+      if (action === "key") return { text: `provider key rotated · ${who}`, tone: "zinc" };
+      if (action === "default") return { text: `default provider → ${who}`, tone: "emerald" };
+      if (action === "refresh") return { text: `provider models refreshed · ${who} · ${str(p, "added", "0")} new`, tone: "zinc" };
+      return { text: `provider ${action} · ${who}`, tone: "zinc" };
+    }
     default:
       return { text: ev.event, tone: "zinc" };
   }
@@ -217,6 +227,9 @@ function invalidations(event: string): readonly (readonly unknown[])[] {
       return [qk.overview];
     case "webcache:cleared":
       return [qk.webcache];
+    case "provider:changed":
+      // The registry card list + the overview's default-provider line.
+      return [qk.providers, qk.overview];
     default:
       return [];
   }

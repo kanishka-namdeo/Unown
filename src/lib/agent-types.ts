@@ -522,3 +522,69 @@ export interface ActivityItem {
 export type RunStreamEntry =
   | { kind: "tool"; ts: number; tool: string; phase: "start" | "end"; isError?: boolean }
   | { kind: "text"; ts: number; preview: string };
+
+// ---- Providers (the multi-provider registry, M5) ----
+
+/** Per-provider endpoint health (probed by the engine, 30s TTL cache). */
+export interface ProviderHealthInfo {
+  ok: boolean;
+  status?: number;
+  problem?: string | null;
+  checkedAt: number;
+}
+
+/** One configured provider as the engine's GET /api/providers returns it. */
+export interface ProviderInfo {
+  id: string;
+  name?: string;
+  baseUrl?: string;
+  api?: string;
+  modelIds: string[];
+  keyStatus: "auth-json" | "models-json" | "env-ref" | "none";
+  keyEnv?: string;
+  /** Human label for the key source ("key: auth.json" / "key: $VAR" / …). */
+  keyLabel: string;
+  isDefault: boolean;
+  health: ProviderHealthInfo;
+}
+
+/** A preset the Add Provider form offers (mirrors the CLI wizard's table). */
+export interface ProviderPresetInfo {
+  id: string;
+  label: string;
+  baseUrl: string;
+  api: string;
+  defaultModel: string;
+  input: string[];
+  keyEnvHint: string;
+  note?: string;
+}
+
+export interface ProvidersResponse {
+  ok: boolean;
+  providers: ProviderInfo[];
+  defaultProvider: string | null;
+  defaultModel: string | null;
+  /** The engine's OWN model (env-driven; registry writes do not change it). */
+  engine: { provider: string; model: string };
+  presets: ProviderPresetInfo[];
+}
+
+export interface ProviderProbeInfo {
+  ok?: boolean;
+  status?: number;
+  problem?: string;
+  models?: string[];
+}
+
+export interface ProviderMutationResponse {
+  ok: boolean;
+  provider: string;
+  probe?: ProviderProbeInfo | null;
+  model?: string;
+  added?: string[];
+  missing?: string[];
+  problem?: string | null;
+  defaultFellBack?: boolean;
+  remaining?: number;
+}

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Dashboard E2E smoke (gate 16, part 1): the eleven tabs render live engine
+ * Dashboard E2E smoke (gate 16, part 1): the twelve tabs render live engine
  * data against the mock engine, the SSE stream feeds the activity strip, the
  * console prompt round-trips, and the browser console stays clean.
  */
@@ -15,6 +15,7 @@ const TABS = [
   { name: "Console", proof: "Send your first prompt." },
   { name: "Sandboxes", proof: "task-e2e-4/baseline" },
   { name: "Gateway", proof: "qwen3.7-plus" },
+  { name: "Providers", proof: "key: $AGNES_API_KEY" },
   { name: "Router", proof: "Pick a task, run it in a fresh sandbox, mine failures." },
   { name: "Automations", proof: "nightly repo health check", expand: true },
   { name: "Web Cache", proof: "bun sqlite tutorial" },
@@ -30,8 +31,8 @@ function collectBrowserErrors(page: Page) {
   return errors;
 }
 
-test("all eleven tabs render engine data", async ({ page }) => {
-  // The tab strip grew to eleven tabs; clicking through each (pane fade +
+test("all twelve tabs render engine data", async ({ page }) => {
+  // The tab strip grew to twelve tabs; clicking through each (pane fade +
   // engine-data proof, up to 10s apiece on a slow pane) outgrew the default
   // 30s TEST budget — the timeout surfaced as a phantom "tab not found" on
   // whichever tab the clock died on. A verified-good run measures ~25-35s.

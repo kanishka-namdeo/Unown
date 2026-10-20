@@ -12,6 +12,7 @@ import {
   Moon,
   Network,
   Router as RouterIcon,
+  Server as ServerIcon,
   ShieldCheck,
   SquareTerminal,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import { HooksTab } from "@/components/dashboard/hooks-tab";
 import { ConsoleTab } from "@/components/dashboard/console-tab";
 import { SandboxesTab } from "@/components/dashboard/sandboxes-tab";
 import { GatewayTab } from "@/components/dashboard/gateway-tab";
+import { ProvidersTab } from "@/components/dashboard/providers-tab";
 import { RouterTab } from "@/components/dashboard/router-tab";
 import { AutomationsTab } from "@/components/dashboard/automations-tab";
 import { WebCacheTab } from "@/components/dashboard/webcache-tab";
@@ -41,6 +43,7 @@ const tabs = [
   { value: "console", label: "Console", icon: SquareTerminal, content: <ConsoleTab /> },
   { value: "sandboxes", label: "Sandboxes", icon: Box, content: <SandboxesTab /> },
   { value: "gateway", label: "Gateway", icon: Network, content: <GatewayTab /> },
+  { value: "providers", label: "Providers", icon: ServerIcon, content: <ProvidersTab /> },
   { value: "router", label: "Router", icon: RouterIcon, content: <RouterTab /> },
   { value: "automations", label: "Automations", icon: CalendarClock, content: <AutomationsTab /> },
   { value: "webcache", label: "Web Cache", icon: Database, content: <WebCacheTab /> },
