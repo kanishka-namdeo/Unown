@@ -115,7 +115,13 @@ class FrameRecorder {
         const t0 = Date.now();
         try {
           const text = await this.textFn();
-          const working = typeof text === "string" && /Working\.\.\./.test(text);
+          // beauty-2/3 replaced the generic "Working..." loader with verb-first
+          // labels ("Editing x...", "Running bun..." + an m:ss chip), so the
+          // literal "Working..." no longer marks a busy turn. The stable busy
+          // signal is the loader's braille spinner — the ONLY component in the
+          // TUI that renders those glyphs (grep-proven), so its presence in the
+          // pane == a status indicator is animating == the agent is busy.
+          const working = typeof text === "string" && SPINNER_RE.test(text);
           const sig = this._sig(text);
           const now = Date.now();
           const changed = sig !== this.lastSig;
@@ -149,7 +155,13 @@ class FrameRecorder {
   }
   _sig(text) {
     const lines = text.split("\n");
-    const body = lines.slice(0, Math.max(0, lines.length - 3)).filter((l) => !SPINNER_RE.test(l));
+    // Spinner glyphs AND the status line's m:ss elapsed chip (beauty-2/3:
+    // "Editing x… 0:12") are masked — they are turn-liveness churn, not
+    // content; leaving the chip unmasked kept every tick looking like a
+    // content change and starved assemble.py's spinner-idle compression.
+    const body = lines
+      .slice(0, Math.max(0, lines.length - 3))
+      .map((l) => l.replace(SPINNER_RE, "x").replace(/\b\d+:\d\d\b/g, "t"));
     return crypto.createHash("sha1").update(body.join("\n")).digest("hex");
   }
   /** Duplicate the current view for `ms` so the final video dwells on it. */
@@ -406,7 +418,13 @@ class CaptureSession {
     // instant — mid-stream stills otherwise drift by rows and the audit
     // correctly flags rows "missing". Bounded at ~4s.
     try {
-      const norm = (t) => t.split("\n").map((l) => l.replace(SPINNER_RE, "x")).join("\n");
+      const norm = (t) =>
+        t
+          .split("\n")
+          // spinner + elapsed-chip masking: mid-turn stills otherwise never
+          // "settle" (the chip ticks every second) and overshoot the beat
+          .map((l) => l.replace(SPINNER_RE, "x").replace(/\b\d+:\d\d\b/g, "t"))
+          .join("\n");
       let prev = norm(await this.tmux.text());
       for (let i = 0; i < 20; i++) {
         await sleep(200);
@@ -432,28 +450,50 @@ class CaptureSession {
     // reload reconnects and tmux redraws the full grid — clean resync plus a
     // fresh renderer state. One reload max, then accept.
     try {
-      const norm = (t) => t.split("\n").map((l) => l.replace(SPINNER_RE, "x").replace(/\s+/g, " ").trim());
-      const paneLines = norm(await this.tmux.text());
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const bufLines = await this.page.evaluate(() => {
+      const norm = (t) =>
+        t
+          .split("\n")
+          .map((l) => l.replace(SPINNER_RE, "x").replace(/\b\d+:\d\d\b/g, "t").replace(/\s+/g, " ").trim())
+          .join("\n");
+      const readBuffer = () =>
+        this.page.evaluate(() => {
           const t = window.term || globalThis.term;
           const b = t.buffer.active;
           const out = [];
-          for (let i = 0; i < t.rows; i++) out.push((b.getLine(i)?.translateToString(true) || ""));
-          return out;
+          // read the VISIBLE rows, not buffer rows 0..rows-1: the TUI is a
+          // scrolling app (no alt-screen), so xterm accumulates scrollback and
+          // getLine(0) is the TOP OF SCROLLBACK — comparing that against the
+          // pane mismatched on every still and triggered a pointless reload.
+          const base = typeof b.baseY === "number" ? b.baseY : b.length - t.rows;
+          for (let i = 0; i < t.rows; i++) out.push((b.getLine(base + i)?.translateToString(true) || ""));
+          return out.join("\n");
         });
-        const mismatch = paneLines.some((l, i) => l !== norm(bufLines[i] || "")[0]);
-        if (!mismatch) break;
+      // beauty-2/3 keeps the pane in motion (spinner 80ms, m:ss chip 1s,
+      // streaming text), so a single buffer-vs-pane compare races and fires
+      // the reload on nearly every mid-turn still (and one reload mid-stream
+      // once stalled the recorder ~30s). Compare twice with fresh reads: only
+      // a PERSISTENT mismatch is a real desync worth a reload.
+      let mismatch = true;
+      for (let round = 0; round < 2 && mismatch; round++) {
+        const [buf, pane] = await Promise.all([readBuffer(), this.tmux.text()]);
+        mismatch = norm(pane).split("\n").some((l, i) => l !== norm(buf).split("\n")[i] || "");
+        if (mismatch) await sleep(250);
+      }
+      for (let attempt = 0; attempt < 2 && mismatch; attempt++) {
         if (attempt === 0) {
           this.log("xterm buffer desynced from pane — reloading to resync");
           await this.page.reload({ waitUntil: "load" });
           await sleep(2000);
         }
+        const [buf, pane] = await Promise.all([readBuffer(), this.tmux.text()]);
+        mismatch = norm(pane).split("\n").some((l, i) => l !== norm(buf).split("\n")[i] || "");
       }
     } catch {}
     // paint flush: the dom renderer paints asynchronously — wait until the
     // rendered DOM actually contains the newest pane content (tail of the
     // last non-empty line), else the screenshot can show a stale repaint.
+    // The canvas renderer keeps no glyph DOM (textContent is empty) — the
+    // loop is dead weight there, so skip it instead of always burning 3s.
     try {
       const paneText = await this.tmux.text();
       const lines = paneText.split("\n").map((l) => l.replace(SPINNER_RE, "x").trim()).filter(Boolean);
@@ -461,7 +501,7 @@ class CaptureSession {
       if (sig) {
         for (let i = 0; i < 15; i++) {
           const domText = await this.page.evaluate(() => (document.querySelector(".xterm")?.textContent || "").replace(/\s+/g, " "));
-          if (domText.includes(sig)) break;
+          if (!domText || domText.includes(sig)) break;
           await sleep(200);
         }
       }

@@ -12,6 +12,33 @@
  */
 const { DEMO_DIR, REPO_ROOT, unownBin } = require("./_paths");
 
+/** Wait until the agent's turn is over. beauty-2/3 replaced the generic
+ *  "Working..." loader with verb-first labels ("Editing x…", "Running bun…")
+ *  plus an m:ss elapsed chip, so the old `exclude: ["Working..."]` wait now
+ *  passes mid-turn while a tool label is up. The stable idle signal is the
+ *  loader's braille spinner disappearing from the pane: those glyphs are the
+ *  ONLY spinner frames in the TUI (loader.ts DEFAULT_FRAMES), the status line
+ *  keeps one on screen for the whole turn, and at turn end the completion
+ *  beat shows "✓ <label>" for ~600ms before the line clears. */
+const SPIN_FRAMES = /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/;
+async function waitTurnIdle(s, timeout, desc = "turn complete") {
+  const deadline = Date.now() + timeout;
+  let last = "";
+  while (Date.now() < deadline) {
+    last = await s.tmux.text();
+    if (!SPIN_FRAMES.test(last)) {
+      // settle past the 600ms completion beat and re-check — the beat line
+      // ("✓ <last verb>") also has no spinner
+      await s.sleep(900);
+      const again = await s.tmux.text();
+      if (!SPIN_FRAMES.test(again)) return;
+    }
+    await s.sleep(300);
+  }
+  const tail = last.split("\n").slice(-14).join("\n");
+  throw new Error(`waitTurnIdle timeout (${desc}) after ${timeout}ms — spinner still in pane. Pane tail:\n${tail}`);
+}
+
 const s1 = {
   name: "hero-bugfix", cwd: DEMO_DIR, port: 7610, env: {},
   steps: [
@@ -26,21 +53,19 @@ const s1 = {
     { t: "linger", ms: 800 },
     // The ask
     { t: "prompt", s: "The pagination test is failing. Find the bug, fix it, and get the whole test suite green.", cps: 30 },
-    // agent starts investigating: any tool header appears after the echoed prompt
+    // agent starts investigating: first tool header appears after the echoed prompt
     { t: "fn", desc: "wait for first tool block", fn: async (s) => {
       await s.wait({ include: ["The pagination test is failing"], timeout: 30_000, desc: "prompt echoed" });
       await s.wait({ include: ["read ", "grep ", "find ", "ls ", "$ ", "edit ", "write "], mode: "any", timeout: 300_000, desc: "first tool block" });
-      await s.linger(1600);
+      await s.linger(1000);
       await s.still("03-agent-investigating");
     }},
-    // the fix lands — tool-agnostic: poll the working tree externally
-    { t: "fn", desc: "wait for the file change", fn: async (s) => {
-      await s.waitForExternal({
-        desc: "pagination.ts edited",
-        timeout: 420_000,
-        check: async () => (await s.exec(`git -C ${DEMO_DIR} diff --name-only`)).includes("pagination.ts"),
-      });
-      await s.linger(1600);
+    // the fix lands — anchor on the edit tool block itself (it renders the
+    // instant the tool starts, with the diff streaming under it), so the
+    // "editing" beat lands mid-edit instead of after the whole fast turn
+    { t: "fn", desc: "wait for the edit block", fn: async (s) => {
+      await s.wait({ include: ["edit ", "write "], mode: "any", timeout: 420_000, desc: "edit block visible" });
+      await s.linger(600);
       await s.still("04-agent-editing");
     }},
     // agent re-runs the suite → green
@@ -49,8 +74,8 @@ const s1 = {
       await s.linger(1500);
       await s.still("05-tests-passing");
     }},
-    // turn completes (spinner gone)
-    { t: "wait", exclude: ["Working..."], timeout: 420_000, desc: "turn complete" },
+    // turn completes (working line gone)
+    { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 420_000, "hero turn complete") },
     { t: "linger", ms: 2200 },
     { t: "still", name: "06-final-answer" },
   ],
@@ -88,8 +113,16 @@ const s2 = {
       await s.still("04-plan-executing");
     }},
     { t: "fn", desc: "wait for completion (bounded, soft)", fn: async (s) => {
-      await s.wait({ include: ["Plan complete"], timeout: 240_000, desc: "plan complete" }).catch(() => {});
-      await s.wait({ exclude: ["Working..."], timeout: 90_000, desc: "turn complete" }).catch(() => {});
+      // "Plan complete" (the notify is "Plan complete — all steps done.") only
+      // fires when EVERY extracted step carries a [DONE:n] tag; the model
+      // often folds sub-details into the parent step ([DONE:1..3] of a 6-item
+      // plan), the badge freezes at "plan N/M" and the toast never appears —
+      // measured: a 240s dead wait on a turn that had already ended. The
+      // stable end signal is the execution TURN going idle after the first
+      // [DONE: tag; the toast stays a short bonus wait, not the gate.
+      await s.wait({ include: ["[DONE:"], timeout: 300_000, desc: "first plan step done" }).catch(() => {});
+      await waitTurnIdle(s, 300_000, "plan execution turn complete").catch(() => {});
+      await s.wait({ include: ["Plan complete"], timeout: 20_000, desc: "completion toast (bonus)" }).catch(() => {});
     }},
     { t: "linger", ms: 2200 },
     { t: "still", name: "05-plan-complete" },
@@ -112,7 +145,7 @@ const s3 = {
           return out.split("\n").filter(Boolean).every((l) => /:(1|2|3)$/.test(l.trim()));
         },
       });
-      await s.wait({ exclude: ["Working..."], timeout: 420_000, desc: "turn complete" });
+      await waitTurnIdle(s, 420_000, "rename turn complete");
       // checkpoint seals flush a couple of seconds after the turn ends — settle first
       await s.sleep(4500);
     }},
@@ -201,7 +234,7 @@ const s6 = {
       await s.linger(1600);
       await s.still("03-subagent-result");
     }},
-    { t: "wait", exclude: ["Working..."], timeout: 420_000, desc: "turn complete" },
+    { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 420_000, "module-map turn complete") },
     { t: "linger", ms: 2000 },
     { t: "still", name: "04-final-module-map" },
   ],
@@ -297,7 +330,7 @@ const s9 = {
     }},
     // The child finishes; the result arrives as a new turn (steer delivery).
     { t: "wait", include: ["finished in"], timeout: 420_000, desc: "child result delivered" },
-    { t: "wait", exclude: ["Working..."], timeout: 420_000, desc: "parent turn complete" },
+    { t: "fn", desc: "parent turn complete", fn: (s) => waitTurnIdle(s, 420_000, "fleet parent turn complete") },
     { t: "linger", ms: 1800 },
     { t: "still", name: "04-child-result" },
     // /tasks: the human view — the resumable registry.
