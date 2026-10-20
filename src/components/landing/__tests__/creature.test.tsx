@@ -70,7 +70,8 @@ describe("landing Creature", () => {
     expect(img?.getAttribute("alt")).toBe("");
     expect(img?.getAttribute("aria-hidden")).toBe("true");
     expect(img?.getAttribute("loading")).toBe("lazy");
-    expect(img?.getAttribute("width")).toBe("228");
+    // The atlas ships every sprite on the full 64px logical canvas at 4×.
+    expect(img?.getAttribute("width")).toBe("256");
     expect(img?.getAttribute("height")).toBe("256");
     // The pixel grid must never resample — a smoothed creature reads as
     // modern flat art, which is the look the page does not want.

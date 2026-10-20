@@ -1808,3 +1808,181 @@ dependency instead of a pokedex package.
 returned ten reasons the page must build its own dex and exactly one
 dependency worth installing, and knowing which is which was the whole point of
 looking before building.
+
+## Part 16 — The atlas redraw: authored pixels, or why the generator lost the brush
+
+The v1 creatures of Part 14 shipped in the morning and were rejected the same
+day (2026-10-20): reviewed, they "don't look great — rethink and redraw." The
+round that followed is the workflow's first course correction, and the
+correction was not a better prompt — it was the finding that a generator
+cannot own pixel placement at 64px at all. The sprites are now authored in
+code, pixel by pixel, and the model's only remaining job in the pipeline is
+reviewing.
+
+**The autopsy.** The Agnes critique of the v1 contact sheet (saved with the
+round's evidence) named the symptoms: soft outlines on harness/sdlc/hooks,
+props blurring into indistinguishable blobs at 64px (wrenches, gears, a
+clock), consistency outliers between sprites that had passed the same gates,
+and two IP near-misses (websearch read as Cyndaquilt-like, task as
+Growlithe-like). Three root causes, in order of shame:
+
+1. **An AI illustration is smooth art, and box-averaging smooth art onto a
+   64px grid makes mush.** Averaging is the right filter for photographs and
+   the wrong one for a medium whose entire grammar is pixel placement — the
+   average of a soft edge is a softer edge, so v1's outlines could not have
+   come out crisp.
+2. **The page's text palette has one step per hue.** An aqua body snapped to
+   #62acee and stopped there — the palette's only darker blues are
+   desaturated navies — so the snap produced flat or muddy shading. A token
+   palette is a set of points, not ramps; cel shading needs ramps.
+3. **Consistency across ten independent generations is luck, not
+   construction.** The snap, the prune and the grid are imposed after the
+   fact; proportions, faces and feet are decided inside each generation, and
+   v1's outliers were the luck running out.
+
+**Research first, again — craft this time, not tooling.** Every load-bearing
+rule of the redraw comes from pixel-art practitioners, and the citations are
+the defense of each:
+
+- **Hue-shifted ramps**: shadows shift toward blue/violet, lights toward
+  yellow/white — Slynyrd's [Pixelblog 1 — Color
+  Palettes](https://www.slynyrd.com/blog/2018/1/10/pixelblog-1-color-palettes)
+  (HSB discipline) and the pret/pokeemerald palettes do exactly this.
+- **One light source, no pillow shading**: lit top-left, shadowed
+  bottom-right, cel bands rather than gradients — [Pixelblog 6 — Light and
+  Shadow](https://www.slynyrd.com/blog/2018/6/15/pixelblog-6-light-and-shadow)
+  and the [LesForges course ch. 4](https://opengameart.org/content/chapter-4-shadow-and-light).
+- **Clusters and orphans**: big-to-small workflow, cluster discipline, the
+  orphan-pixel definition — Pedro Medeiros (Saint11), [pixel art article
+  2](https://saint11.art/pixel_art_articles/article2); sharp terminators and
+  2–3 tones per material in [article
+  4](https://saint11.art/pixel_art_articles/article4).
+- **Outlines**: 1px, cleaned lines, identical diagonal steps — Lospec's
+  [Pixel Art Outlines part
+  1](https://lospec.com/articles/pixel-art-outlines/); coloured/hue-shifted
+  outlines beat pure black in [part
+  2](https://lospec.com/articles/pixel-art-outlines-part-2-using-color/),
+  with Tsugumo's chapter-12 selective-outlining lesson via Lospec.
+- **Chibi proportions**: head ≈ half the sprite, low-set eyes, stubby feet —
+  the st0ven super-deformed tutorial via Lospec.
+- **The hardware facts** (GBATEK): OBJ sprites max 64×64, 16 palettes × 16
+  colors, color 0 transparent — so ≤ 15 visible colors per sprite is a
+  budget with a reason, not a taste.
+- **The measured canon** `[V]`: 16 Emerald front sprites parsed from
+  [pret/pokeemerald](https://github.com/pret/pokeemerald) — content 23–61px
+  wide × 22–53px tall (avg ~41×39), margins averaging ~12px on all sides,
+  7–15 visible colors each (avg 12.2), and a shared outline colour of
+  16,16,16 — near-black, never #000.
+
+**The atlas.** Three files now, and the division of labor is the point:
+`scripts/creature_kit.mjs` is the drawing kit — the atlas palette, region
+predicates (ellipse/roundRect/triangle, composed with union/minus), `rim()`
+directional cel bands, `shade()` (base + light band + shadow band under the
+one top-left light), the `outlinePass` (every opaque pixel touching
+transparency becomes the outline key — a 1px outline by construction, one
+that follows every silhouette and island), the shared face template
+(low-set 3×4 eyes with white top-left glints, cheeks, mouth variants
+including the closed sleeping arcs), stubby feet on a shared baseline, side
+and raised arms, the `chibi()` standing-creature composer, and the
+hand-drawn stamps (star, z's, magnifier, stopwatch).
+`scripts/creature_atlas.mjs` holds the ten compositions — ids unchanged from v1 —
+each with exactly ONE prop: websearch's magnifier and dish ears, mcp's dock
+with three gold ports, task's single psychic orb overhead, lsp's monocle
+and chain, memory's filing drawer with a card slipping out, harness's gold
+stopwatch, router's clock belly and courier cap, dream's cloud-star-z's,
+hooks' shield with a gold boss, sdlc's badger blaze, vest and badge.
+`scripts/creature_sprites.mjs` is only the pipeline now: draw → outline
+pass → deOrphan cleanup → hard gates → render (uniform 256×256 at 4×
+nearest) → labeled contact sheet → optional `--review`. The AI-generation
+lane is gone; git history preserves it.
+
+**The palette, rebuilt.** The 21-token snap had to die because a text
+palette is one step per hue — the exact reason cause 2 above had no fix
+inside v1. The atlas palette is per-family hue-shifted ramps (aqua, magma,
+gold, amber, cream, leaf, psychic, plus the navy panel ramp for props and
+the plate cream-blues for face and belly), every value on the GBA 5-bit
+channel grid (`floor(255·v/31)`), hues taken from the page's own families —
+so the page-world link survives as inheritance by hue family, with the
+ramps a text palette cannot offer. The shared outline/pupil colour is
+#102039, the page's canvas navy — near-black rather than #000, the same
+call the measured 16,16,16 canon made. And the page's "every sprite colour
+is a legal GBA colour" claim is now true pixel-for-pixel *and gated*:
+`gatePalette` fails the run on any palette value off the 5-bit grid, and
+during development it caught 23 hand-computed values that were off-grid
+`[V]` — `floor(255·v/31)` is not mental arithmetic, and the gate failing is
+the gate working.
+
+**The construction system** (measured against the Emerald set above):
+64×64 canvas; standing sprites share baseline row 52 (bottom margin ~11px
+against the pret average ~12 — the page's platform renders below the
+sprite, as in-game ground would); head ≈ half the sprite; eyes low-set near
+the midline, 3–4px; stubby feet; ≤ 15 visible colors (ours use 9–12); one
+prop per creature — a 64px sprite stops reading past one idea, and v1 died
+of two to four.
+
+**The gates.** All hard, all in the pipeline: the 5-bit grid (on the
+palette itself); ≤ 15 colors per sprite; **edge-outline integrity** — every
+opaque pixel 4-adjacent to transparency must be the outline key, the
+crispness invariant that no downscale can ever guarantee and the outline
+pass makes true by construction; the orphan rule (a pixel with no
+same-colour neighbor in the full 8-neighborhood — diagonal staircase lines
+are legitimate pixel art, isolated pixels are noise) enforced by a
+deterministic deOrphan merge pass, the machine version of an artist's
+cleanup pass, with deliberate white glints exempt; dark-ratio ≤ 30% (the
+light-scheme smudge rule, which drove real design decisions: memory's
+drawer got a cream face, hooks' shield field went cream under a gold
+border, sdlc's vest went gold with navy trim, router's clock belly got a
+thin ring, mcp's dock face went cream); content margins (nothing within 3px
+of the frame); the standing baseline 52±2; and X-mask symmetry where the
+composition claims it.
+
+**Six review rounds, two arbitrations worth keeping.** Agnes again, the
+same reviewer's-aid-not-gate protocol. Round 1 PASS with craft findings;
+rounds 2–5 FIX with the usual oscillating flags; round 6 PASS clean —
+GBA-style with no outliers, IP-safe ("original, abstracted dev-tool
+mascots"), all props readable, one cohesive family. Taken under the
+repeat-rule plus mechanism triage: task got face room and a belly patch;
+dream got a chunky roundRect cloud, bigger z's and bigger closed-eye arcs;
+sdlc's mask band — flagged in four of five rounds — was dropped outright
+for a white badger blaze between standard eyes, the cleaner badger
+signifier; mcp's three floating sockets (read as a dot row, or a second
+pair of eyes) became one dock plate with three gold ports; harness's
+stopwatch got bigger and closer; websearch's magnifier lens went cream
+with an aqua glint; lsp's monocle ring went 2px. Overruled with reasons:
+round 3's "lsp is a Jigglypuff copy" fell to a signifier audit — Jigglypuff
+is a pink balloon with huge blue-green eyes, a forehead curl and a
+microphone, and lsp carries zero of the four (amber body, small navy eyes,
+a monocle; two prior rounds had cleared it); round 4's "dream has
+anti-aliased edges" is mechanically impossible — the edge-outline gate
+proves every boundary pixel is the outline key and the review sheet is
+nearest-neighbor resized, so this is the documented case for arbitrating
+against the binding gates rather than the reviewer; round 4's
+"websearch+router cool tones inconsistent" mistook design intent for drift
+(the page palette is deliberately navy+aqua+gold); "hooks too bean-shaped"
+is silhouette variety by design. The in-context dex crops also drew
+wrong-subject reviews (the № glyph, typography) — the
+full-page-versus-64px-asset failure mode Part 14 documented — so the
+sprite-rubric contact-sheet reviews are the ones that count.
+
+**Verification, and what didn't move.** Typecheck, eslint, 325 unit tests
+(`creature.test.tsx` now pins the uniform 256×256 dims), the GBA palette
+gate (21 dark + 21 light tokens, AA in both schemes), the claims gate (51
+literals), the docs gate, and the scroll budget UNCHANGED — 12.0vh / 2,492
+words / 9 bands — because the layout did not move; only the PNG bytes and
+the dims table did. Production-build screenshots in both schemes plus
+reduced motion, and dex-band element crops in both schemes, all green. The
+ship itself is uniform 256×256: every sprite on the full 64px logical
+canvas, so uniform margins and the shared baseline carry the
+specimen-sheet consistency — v1 shipped ragged trimmed sizes (228×256,
+184×256) that no two sprites agreed on.
+
+**The honest cost, and the lesson in one line:** authored art is slower to
+produce than a generator call — a drawing kit, ten compositions and six
+review rounds cost more wall-clock than ten prompts. The trade bought
+determinism (regeneration is `node scripts/creature_sprites.mjs` — no
+credentials, no network, same canvas every run), consistency by
+construction (one kit, one face, one baseline), IP safety by construction
+(nothing is generated, so the generator's attractors cannot recur), and a
+palette claim that is now checked pixel-for-pixel by a gate that
+demonstrably fires. Pixel art is not a resolution — it is decisions, and
+decisions belong in code.

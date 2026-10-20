@@ -3,19 +3,24 @@
 This document captures the process that shipped the landing page's feature
 creatures (2026-10-20), written so a future agent or contributor can drive
 the next visual-asset exercise — a new sprite set, a new illustration family,
-an icon batch — without rediscovering any of it. The one-sentence version:
+an icon batch — without rediscovering any of it. The one-sentence version,
+as v2 states it:
 
-**Research the style, lock it in a deterministic pipeline, make the model
-draw composition while the pipeline owns every pixel, gate hard rules in
-code and soft opinions behind arbitration, review with element-level crops,
-and push per milestone.**
+**Research the style, author the pixels in code from one shared kit, gate
+the hard rules in the pipeline, keep the model as a reviewer behind
+arbitration, review with element-level crops, and push per milestone.**
 
 The concrete artifacts of the first run: `scripts/creature_sprites.mjs`
 (generation + GBA-ification + gates + VLM pass), `scripts/creature_crops.mjs`
 (element-level review crops), `src/components/landing/creature.tsx` (the
 rendering contract), the creature section of the landing `AGENTS.md` (the
 durable contract), and `docs/landing-research.md` Part 14 (the round's
-evidence).
+evidence). The same day's atlas round rewrote the pipeline into three files
+and removed the AI-generation lane: `scripts/creature_kit.mjs` (the drawing
+kit + the atlas palette), `scripts/creature_atlas.mjs` (the ten
+compositions) and `scripts/creature_sprites.mjs` (gates + render + review
+only) — the v2 story is `docs/landing-research.md` Part 16, and Phase 2
+below states the corrected position.
 
 ---
 
@@ -57,25 +62,49 @@ is generic ("creature companion", "chibi monster") and the banned vocabulary
 is any species name, capture iconography, or named-artist phrasing. Keep the
 citation list — it is the defense if the result is ever questioned.
 
-## Phase 2 — Lock the style into two stages: model draws, pipeline owns pixels
+## Phase 2 — Lock the style: the code draws, the pipeline gates
 
-Practitioner consensus (Pixel Art XL et al.): prompts set the *style
-direction*, post-processing enforces *palette and grid*. Ten assets match
-each other only if the shared properties are imposed by one deterministic
-stage — prompt-only consistency drifts per generation.
+For pixel art, the authoring stage is code. Ten assets match each other
+only if the shared properties — proportions, face, palette, outline,
+baseline — are imposed by one place, and a drawing kit in a committed
+script is that place. The model's role flips from generator to REVIEWER
+(Phase 3); regeneration needs no API, no credentials and no network.
 
-- **Stage 1 (AI)**: one locked style template; the only free variable is a
-  per-asset CONCEPT line. One idea per asset — a 64px sprite stops reading
-  past one prop. Concepts that fail get edited in the script (the script is
-  the source of truth, not a chat log), with the failure reason as a comment
-  so it does not recur.
-- **Stage 2 (deterministic)**: the transform that makes the output yours.
-  For creatures: box-average downscale (box, not nearest — it flattens
-  shading and never rings outlines), 1-bit alpha threshold, OKLab snap onto
-  the site's own palette tokens (a mirror list in the script — a token move
-  updates it in the same change), palette prune to N colors with the
-  outline force-kept, nearest ×4 ship, 1:1 logical display with
-  `image-rendering: pixelated`.
+**v1 (superseded 2026-10-20, kept as history).** The original split —
+practitioner consensus (Pixel Art XL et al.): prompts set the *style
+direction*, post-processing enforces *palette and grid*. Stage 1 (AI):
+one locked style template, the only free variable a per-asset CONCEPT
+line, one idea per asset. Stage 2 (deterministic): box-average downscale
+(box, not nearest — it flattens shading and never rings outlines), 1-bit
+alpha threshold, OKLab snap onto the site's own palette tokens (a mirror
+list in the script — a token move updates it in the same change), palette
+prune to N colors with the outline force-kept, nearest ×4 ship, 1:1
+logical display. The autopsy of the shipped set killed the split: an AI
+illustration is smooth art, and box-averaging smooth art onto a 64px grid
+makes mush — soft outlines, dissolved props — because averaging places
+pixels near where the art was, never on purpose. Pixel art is placement
+on purpose; the two-stage split could approach it but never construct it.
+
+**v2 — authored compositions from one shared kit.**
+
+- **The drawing kit** (`creature_kit.mjs`): the atlas palette (per-family
+  hue-shifted ramps, every value on the GBA 5-bit channel grid), region
+  predicates (ellipse/roundRect/triangle, composed with union/minus),
+  `rim()` directional cel bands under one top-left light, `shade()`
+  (base + light band + shadow band), the `outlinePass` — every opaque
+  pixel touching transparency becomes the outline key, a 1px outline by
+  construction that follows every silhouette and island — the shared face
+  template (low-set 3×4 eyes with top-left glints, cheeks, mouth variants
+  including closed sleeping arcs), stubby feet on a shared baseline, side
+  and raised arms, the `chibi()` standing-creature composer.
+- **The compositions** (`creature_atlas.mjs`): one per asset, one prop
+  each (a 64px sprite stops reading past one idea), built only from kit
+  parts plus hand-drawn stamps. Consistency across the set is by
+  construction — one kit, one face, one baseline — not prompt discipline.
+- **The pipeline** (`creature_sprites.mjs`) never draws: it runs the
+  outline pass, the deOrphan cleanup, the hard gates, the render
+  (uniform 4× nearest) and the contact sheet. What the drawing claims,
+  the gates prove (Phase 3).
 
 ## Phase 3 — Gates: hard rules in code, opinions behind arbitration
 
@@ -83,16 +112,27 @@ Distinguish two gate classes and never let them trade places:
 
 **Hard gates (fail the run, non-negotiable):**
 
-- *Background cut sanity* — the cut ratio must be plausible, or the
-  background wasn't what the cutout expected.
-- *Edge-clip on the raw* — a limb cut by the generator's frame edge reads
-  broken at every display size. Run it on the RAW: a trimmed sprite always
-  touches its own bounding box, so checking the shipped PNG false-positives
-  on every file (that cost one confused round).
-- *Dark-ratio* — for a dual-scheme site: a body that snaps mostly to the
-  dark half of the palette is a smudge on the light scheme (measured, not
-  theorized — coral/gold/aqua/cream bodies pass both schemes; dark navy
-  bodies do not).
+- *Background cut sanity* (v1, generator lane — retired with it) — the cut
+  ratio must be plausible, or the background wasn't what the cutout
+  expected.
+- *Edge-clip on the raw* (v1, generator lane — retired with it) — a limb
+  cut by the generator's frame edge reads broken at every display size.
+  Run it on the RAW: a trimmed sprite always touches its own bounding box,
+  so checking the shipped PNG false-positives on every file (that cost one
+  confused round).
+- *Dark-ratio* (v1 and v2) — for a dual-scheme site: a body that snaps
+  mostly to the dark half of the palette is a smudge on the light scheme
+  (measured, not theorized — coral/gold/aqua/cream bodies pass both
+  schemes; dark navy bodies do not). In v2 it drove design decisions, not
+  just concept steers.
+- *The atlas gates* (v2, authored pixel art) — the 5-bit GBA grid gated on
+  the palette itself, ≤ 15 visible colors per sprite (GBA OBJ: 16 slots,
+  slot 0 transparent), **edge-outline integrity** (every opaque pixel
+  4-adjacent to transparency must be the outline key — the crispness
+  invariant no downscale can ever satisfy), the 8-neighbor orphan rule
+  with the deterministic deOrphan merge pass (white glints exempt),
+  dark-ratio ≤ 30%, content margins, the shared standing baseline, and
+  X-mask symmetry where the composition claims it.
 - *Budget / a11y / palette gates the page already enforces* — scroll
   budget, contrast audit, the no-hex-literal scan. New assets enter the
   existing verification set, they don't get an exemption.
@@ -197,6 +237,34 @@ and where it stretched is worth recording:
   tests pin the move — otherwise the next editor re-adds the old placement
   and every gate stays green.
 
+## The atlas round (2026-10-20) — the workflow's third application, and its first course correction
+
+The dex round stretched the workflow to an interactive component; the
+atlas round stress-tested its core premise and corrected it. The user
+reviewed the v1 creature set and rejected it ("don't look great — rethink
+and redraw"), and the workflow's own machinery is what surfaced the real
+problem: the Phase 3 VLM review, read through the repeat-rule arbitration,
+kept flagging soft outlines and dissolved props that no prompt edit could
+fix — because v1's acceptance criterion (hard pixels, crisp outlines, page
+palette, ten matching sprites) was achievable by construction only if the
+pixels were authored. A generator owns pixel placement, so no post-process
+could ever guarantee edge-outline integrity, and ten independent
+generations could never guarantee consistency.
+
+The correction generalized the workflow rather than replacing it: Stage 1
+authoring can be code — the kit and the compositions — and the model's
+role moves to review. The spine is unchanged: Phase 0 still pins the
+criterion before anything is drawn; Phase 1 still supplies the craft
+(Slynyrd's ramps and light, Saint11's clusters and orphans, Lospec's
+outlines, GBATEK, and the measured pret/pokeemerald canon); Phase 3's
+gates grew teeth the generator lane never had (edge-outline integrity,
+the orphan rule with a deterministic deOrphan pass, the 5-bit palette
+gate that caught 23 off-grid values); and the arbitration protocol earned
+two more receipts — a signifier audit that cleared a zero-signifier
+sprite of a Jigglypuff flag, and an overrule-by-mechanism of a
+"anti-aliased edges" claim the edge gate makes impossible. The evidence
+and the full reasoning are `docs/landing-research.md` Part 16.
+
 ## The failure catalogue (what actually happened, so it isn't re-learned)
 
 | Symptom | Cause | Fix |
@@ -217,13 +285,21 @@ and where it stretched is worth recording:
 | Appended `.env` values ignored by the bridge | bun's .env loading is first-key-wins; an empty earlier definition shadows the append | Set values at the FIRST definition; verify with `bun -e "process.env.VAR"` before starting the service |
 | "local lane ENABLED" missing after restart | `bun --hot` in a subdir does not inherit the root .env the way `bun run` does | Pass the lane's vars explicitly on the command line, or verify loading from the service's own cwd |
 | `EADDRINUSE` restarting the bridge | `bun --hot` survives a pattern-matched pkill | Kill by PID from `ss -tlnp` output, then restart |
+| AI illustration downscaled to 64px reads as mush (soft outlines, dissolved props) | the generator owns pixel placement; averaging smooth art is not pixel art | author pixels in code; gate edge-outline integrity (v2 — the atlas round) |
+| Snapping art to the page's UI tokens gives flat or muddy shading | a text palette carries one step per hue — no ramps | per-family hue-shifted ramps on the 5-bit grid, hues from the page's families |
+| Ten generated sprites don't match each other | prompt-only consistency drifts per generation | one shared kit + face/baseline/proportions — consistency by construction |
+| Rim-band ends pinch into orphan pixels | shift-based bands taper at the ends | deterministic deOrphan merge pass (8-neighbour orphan rule) |
+| Hand-computed "on-grid" palette values are off the grid | mental arithmetic on floor(255·v/31) slips | gate the palette itself and fix what it names (23 values caught) |
+| VLM reports "anti-aliased edges" on gated pixel art | reviewer variance; the claim is mechanically impossible under the edge gate | arbitrate against the binding gates; overrule in writing |
+| VLM names a specific IP character on a zero-signifier sprite | chibi over-trigger (documented since v1) | signifier audit: list the character's defining features, count how many the asset carries, require several |
 
 ## Reuse checklist
 
 1. Write the acceptance criterion as checkable rules (Phase 0).
 2. Launch style + tooling research subagents (Phase 1); keep citations.
-3. Lock the style template + per-asset concepts in a committed script; the
-   script is the source of truth (Phase 2).
+3. Author the art in code in a committed script — one drawing kit plus one
+   composition per asset; the script is the source of truth, and for pixel
+   art it IS the art, not the prompts (Phase 2).
 4. Implement the deterministic transform + hard gates; wire soft gates as
    aids with an arbitration protocol (Phase 3).
 5. Integrate behind a rendering component that owns the display contract;

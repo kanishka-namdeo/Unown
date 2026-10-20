@@ -34,7 +34,7 @@ export const CHANGELOG_TOTAL_ENTRIES = 127;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 58,
-  "Changed": 19,
+  "Changed": 20,
   "Deprecated": 0,
   "Removed": 0,
   "Fixed": 26,
@@ -49,7 +49,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
     "total": 5,
     "counts": {
       "Added": 4,
-      "Changed": 0,
+      "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 0,
@@ -83,6 +83,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "release: per-OS standalone unown binaries, cross-compiled by one runner and smoke-tested on their own OS",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "landing: the creature atlas — the sprites redrawn as authored pixel art",
             "behavior": false
           }
         ]
