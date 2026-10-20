@@ -436,6 +436,67 @@ export interface BridgeResponse {
   url: string;
 }
 
+// ---- Web results store (persistent web_search/webfetch cache) ----
+
+export type WebCacheEventKind =
+  | "hit"
+  | "revalidated"
+  | "miss"
+  | "stale"
+  | "bypass"
+  | "evict"
+  | "clear"
+  | "error";
+
+export interface WebCacheEvent {
+  ts: number;
+  kind: WebCacheEventKind;
+  tool: "web_search" | "webfetch" | "fetch_url" | "engine";
+  /** Provider id / fetch method — the by-provider aggregation key. */
+  provider?: string;
+  /** Free-form context (query or host for the feed; sweep notes). */
+  detail?: string;
+  ageMs?: number;
+}
+
+export interface WebCacheStats {
+  enabled: boolean;
+  root: string;
+  entries: number;
+  bytes: number;
+  maxBytes: number;
+  ttl: { searchMs: number; fetchMs: number; searchStaleMs: number; fetchStaleMs: number };
+  totals: {
+    hit: number;
+    revalidated: number;
+    miss: number;
+    stale: number;
+    bypass: number;
+    evict: number;
+    clear: number;
+    error: number;
+  };
+  /** Hits + revalidations that skipped a full upstream call. */
+  savedRequests: number;
+  byTool: Record<string, number>;
+  byProvider: Record<string, number>;
+  /** Newest first, capped by the engine. */
+  recentEvents: WebCacheEvent[];
+}
+
+export interface WebCacheClearResponse {
+  ok: boolean;
+  removed: number;
+  bytes: number;
+}
+
+export interface WebCacheSweepResponse {
+  ok: boolean;
+  evicted: number;
+  freedBytes: number;
+  totalBytes: number;
+}
+
 // ---- SSE events ----
 
 export interface AgentEvent {

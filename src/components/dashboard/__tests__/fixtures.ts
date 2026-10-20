@@ -32,6 +32,7 @@ import type {
   Task,
   TaskOrigin,
   TaskStatus,
+  WebCacheStats,
 } from "@/lib/agent-types";
 
 const now = () => Date.now();
@@ -465,5 +466,34 @@ export function bridgeResponse(): BridgeResponse {
     requests: 42,
     errors: 1,
     url: "http://localhost:3031",
+  };
+}
+
+/** `GET /api/webcache` — hit rate (12+4)/(12+4+9) = 64%, 16 saved requests. */
+export function webCacheStatsResponse(over: Partial<WebCacheStats> = {}): WebCacheStats {
+  return {
+    enabled: true,
+    root: "/home/dev/.unown/cache/web",
+    entries: 3,
+    bytes: 1_234_567,
+    maxBytes: 268_435_456,
+    ttl: {
+      searchMs: 3_600_000,
+      fetchMs: 1_800_000,
+      searchStaleMs: 86_400_000,
+      fetchStaleMs: 604_800_000,
+    },
+    totals: { hit: 12, revalidated: 4, miss: 9, stale: 1, bypass: 2, evict: 1, clear: 0, error: 0 },
+    savedRequests: 16,
+    byTool: { web_search: 14, webfetch: 9, fetch_url: 5 },
+    byProvider: { duckduckgo: 10, direct: 8, tavily: 4, searxng: 3 },
+    recentEvents: [
+      { ts: minutesAgo(2), kind: "hit", tool: "web_search", provider: "duckduckgo", detail: "bun sqlite", ageMs: 12 * 60_000 },
+      { ts: minutesAgo(6), kind: "revalidated", tool: "webfetch", provider: "direct", detail: "bun.sh/docs", ageMs: 2 * 3_600_000 },
+      { ts: minutesAgo(11), kind: "miss", tool: "web_search", provider: "tavily", detail: "react 19 release notes" },
+      { ts: minutesAgo(23), kind: "stale", tool: "webfetch", provider: "direct", detail: "example.com", ageMs: 25 * 3_600_000 },
+      { ts: minutesAgo(41), kind: "evict", tool: "engine", detail: "2 entries (0.4 MiB) — LRU sweep" },
+    ],
+    ...over,
   };
 }

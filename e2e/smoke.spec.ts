@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Dashboard E2E smoke (gate 16, part 1): the ten tabs render live engine
+ * Dashboard E2E smoke (gate 16, part 1): the eleven tabs render live engine
  * data against the mock engine, the SSE stream feeds the activity strip, the
  * console prompt round-trips, and the browser console stays clean.
  */
@@ -17,6 +17,7 @@ const TABS = [
   { name: "Gateway", proof: "qwen3.7-plus" },
   { name: "Router", proof: "Pick a task, run it in a fresh sandbox, mine failures." },
   { name: "Automations", proof: "nightly repo health check", expand: true },
+  { name: "Web Cache", proof: "bun sqlite tutorial" },
 ] as const;
 
 /** Collect browser-reported errors (console.error + uncaught page errors). */
@@ -29,7 +30,7 @@ function collectBrowserErrors(page: Page) {
   return errors;
 }
 
-test("all ten tabs render engine data", async ({ page }) => {
+test("all eleven tabs render engine data", async ({ page }) => {
   const errors = collectBrowserErrors(page);
   await page.goto("/dashboard");
 
@@ -79,4 +80,16 @@ test("console prompt round-trips through the mock engine", async ({ page }) => {
   await expect(page.getByText(/run-e2e-prompt-/).first()).toBeVisible({ timeout: 10_000 });
   // ~1.5s later the mock finishes the run and the transcript lands.
   await expect(page.getByText("Finished the requested edit.").first()).toBeVisible({ timeout: 10_000 });
+});
+
+test("the web cache tab deep-links via ?tab=webcache and renders its heading", async ({ page }) => {
+  // The URL (?tab=) is the durable, shareable source of truth (tab-store.ts).
+  await page.goto("/dashboard?tab=webcache");
+
+  await expect(page.getByRole("tab", { name: "Web Cache" })).toHaveAttribute("data-state", "active");
+  await expect(page.getByRole("tabpanel")).toBeVisible();
+  await expect(page.getByText("Web results store", { exact: true })).toBeVisible();
+  // KPIs from the mock engine's /api/webcache are on screen (69% hit rate).
+  await expect(page.getByText("69%", { exact: true })).toBeVisible();
+  await expect(page.getByText("bun sqlite tutorial").first()).toBeVisible();
 });

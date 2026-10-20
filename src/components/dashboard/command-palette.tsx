@@ -11,6 +11,7 @@ import {
   BookOpen,
   CalendarClock,
   Code2,
+  Database,
   FlaskConical,
   Layers,
   LayoutDashboard,
@@ -49,6 +50,7 @@ const TAB_TARGETS = [
   { value: "gateway", label: "Gateway", icon: Network, hint: "LLM bridge request log" },
   { value: "router", label: "Router", icon: RouterIcon, hint: "background jobs" },
   { value: "automations", label: "Automations", icon: CalendarClock, hint: "scheduled agent runs" },
+  { value: "webcache", label: "Web Cache", icon: Database, hint: "web results store" },
 ];
 
 export function CommandPalette() {

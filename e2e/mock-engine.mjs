@@ -189,6 +189,27 @@ const bridge = {
   url: "http://127.0.0.1:3031/v1",
 };
 
+// Web results store: hit rate (118+34)/(118+34+67) = 69%, 152 saved requests.
+const webcache = {
+  enabled: true,
+  root: "/home/dev/.unown/cache/web",
+  entries: 214,
+  bytes: 41_234_567,
+  maxBytes: 268_435_456,
+  ttl: { searchMs: 3_600_000, fetchMs: 1_800_000, searchStaleMs: 86_400_000, fetchStaleMs: 604_800_000 },
+  totals: { hit: 118, revalidated: 34, miss: 67, stale: 5, bypass: 2, evict: 8, clear: 1, error: 0 },
+  savedRequests: 152,
+  byTool: { web_search: 96, webfetch: 71, fetch_url: 19 },
+  byProvider: { duckduckgo: 74, direct: 62, tavily: 29, searxng: 21 },
+  recentEvents: [
+    { ts: T0 - 2 * MIN, kind: "hit", tool: "web_search", provider: "duckduckgo", detail: "bun sqlite tutorial", ageMs: 12 * MIN },
+    { ts: T0 - 6 * MIN, kind: "revalidated", tool: "webfetch", provider: "direct", detail: "bun.sh/docs", ageMs: 2 * 60 * MIN },
+    { ts: T0 - 11 * MIN, kind: "miss", tool: "web_search", provider: "tavily", detail: "react 19 release notes" },
+    { ts: T0 - 23 * MIN, kind: "stale", tool: "webfetch", provider: "direct", detail: "example.com", ageMs: 25 * 60 * MIN },
+    { ts: T0 - 41 * MIN, kind: "evict", tool: "engine", detail: "2 entries (0.4 MiB) — LRU sweep" },
+  ],
+};
+
 const overview = () => ({
   ok: true,
   agent: { name: "unown (mock)", layer: "mock", provider: "mock", bridge: { ok: true, port: 3031, requests: bridge.requests, errors: bridge.errors } },
@@ -319,6 +340,7 @@ const server = createServer((req, res) => {
     if (p === "/api/sandboxes") return json(res, { sandboxes });
     if (p === "/api/skills") return json(res, { skills });
     if (p === "/api/bridge") return json(res, bridge);
+    if (p === "/api/webcache") return json(res, webcache);
     if (p === "/api/automations") return json(res, { automations });
     const autoRunsMatch = p.match(/^\/api\/automations\/([^/]+)\/runs$/);
     if (autoRunsMatch)
@@ -393,6 +415,17 @@ const server = createServer((req, res) => {
         emit("job:started", { name: jobAction[1] });
         setTimeout(() => emit("job:finished", { name: jobAction[1] }), 400);
         return json(res, { ok: true, result: "mock" });
+      }
+      if (p === "/api/webcache/clear") {
+        const removed = webcache.entries;
+        const bytes = webcache.bytes;
+        // Mirror the real engine: the mutation announces itself on the bus so
+        // every connected dashboard refetches (providers.tsx invalidation).
+        emit("webcache:cleared", { removed, bytes });
+        return json(res, { ok: true, removed, bytes });
+      }
+      if (p === "/api/webcache/sweep") {
+        return json(res, { ok: true, evicted: 2, freedBytes: 812_345, totalBytes: webcache.bytes });
       }
       return json(res, { error: "not found" }, 404);
     });

@@ -57,6 +57,9 @@ import type {
   SkillsResponse,
   TaskDetailResponse,
   TasksResponse,
+  WebCacheClearResponse,
+  WebCacheStats,
+  WebCacheSweepResponse,
 } from "./agent-types";
 
 export class ApiError extends Error {
@@ -107,6 +110,7 @@ export const qk = {
   bridge: ["bridge"] as const,
   automations: ["automations"] as const,
   automationRuns: (id: string) => ["automation-runs", id] as const,
+  webcache: ["webcache"] as const,
 };
 
 export const api = {
@@ -134,6 +138,7 @@ export const api = {
   automations: () => getJson<AutomationsResponse>("/api/automations"),
   automationRuns: (id: string, limit = 20) =>
     getJson<AutomationRunsResponse>(`/api/automations/${id}/runs`, { limit }),
+  webCacheStats: () => getJson<WebCacheStats>("/api/webcache"),
 };
 
 // ---- Mutations ----
@@ -176,4 +181,6 @@ export const mutations = {
   ) => postJson<{ automation: Automation }>(`/api/automations/${id}`, patch, "PATCH"),
   automationDelete: (id: string) => postJson<{ ok: boolean }>(`/api/automations/${id}`, undefined, "DELETE"),
   automationRunNow: (id: string) => postJson<{ ok: boolean }>(`/api/automations/${id}/run`),
+  webCacheClear: () => postJson<WebCacheClearResponse>("/api/webcache/clear"),
+  webCacheSweep: () => postJson<WebCacheSweepResponse>("/api/webcache/sweep"),
 };

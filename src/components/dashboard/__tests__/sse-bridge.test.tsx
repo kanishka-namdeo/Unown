@@ -364,6 +364,41 @@ describe("SseBridge — full describe() coverage of the remaining event families
   });
 });
 
+describe("SseBridge — webcache event family", () => {
+  beforeEach(() => {
+    useRunStreamStore.setState({ streams: {} });
+  });
+
+  /** Probe mounting the webcache stats query the event invalidates. */
+  function WebCacheProbe() {
+    const webcache = useQuery({ queryKey: qk.webcache, queryFn: () => api.webCacheStats() });
+    return <p>probe-webcache: {webcache.data?.entries ?? "-"} entries</p>;
+  }
+
+  test("webcache:cleared invalidates qk.webcache and renders friendly text", async () => {
+    engine.route("/api/webcache", fx.webCacheStatsResponse());
+    render(
+      <DashboardProviders>
+        <WebCacheProbe />
+      </DashboardProviders>
+    );
+    expect(await screen.findByText("probe-webcache: 3 entries")).toBeTruthy();
+    const sse = esStub.latest();
+    sse.simulateOpen();
+
+    expect(engine.callsFor("/api/webcache")).toHaveLength(1);
+    sse.deliver(frame("webcache:cleared", { removed: 3, bytes: 1_234_567 }));
+
+    await waitFor(() => expect(engine.callsFor("/api/webcache").length).toBe(2));
+    // describe() surfaces the mutation in the feed with the operator-action
+    // tone (zinc, like automation:updated); the tab's clear pill is violet.
+    const item = useActivityStore.getState().items[0];
+    expect(item?.event).toBe("webcache:cleared");
+    expect(item?.text).toBe("web cache cleared · 3 entries dropped");
+    expect(item?.tone).toBe("zinc");
+  });
+});
+
 describe("SseBridge — automations event families", () => {
   beforeEach(() => {
     useRunStreamStore.setState({ streams: {} });

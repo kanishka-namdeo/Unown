@@ -16,6 +16,7 @@ import { describe, expect, test } from "bun:test"
 
 import {
   formatAbsolute,
+  formatBytes,
   formatClock,
   formatDuration,
   formatTokens,
@@ -127,6 +128,35 @@ describe("formatTokens", () => {
     [1_000_000_000, "1000M"],
   ])("%d -> %s", (n, expected) => {
     expect(formatTokens(n)).toBe(expected)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// formatBytes
+// ---------------------------------------------------------------------------
+
+describe("formatBytes", () => {
+  test("null/undefined/negative -> em-dash placeholder", () => {
+    expect(formatBytes(null)).toBe("—")
+    expect(formatBytes(undefined)).toBe("—")
+    // Negative sizes are a caller bug, not "0 B".
+    expect(formatBytes(-1)).toBe("—")
+  })
+
+  test.each([
+    [0, "0 B"], // 0 is a real (empty) store, not a missing value
+    [512, "512 B"],
+    [1023, "1023 B"],
+    [1024, "1 KiB"], // 1.0 -> ".0" stripped
+    [1536, "1.5 KiB"],
+    [10 * 1024, "10 KiB"],
+    [100 * 1024 ** 2 - 5120, "100 MiB"], // (99.995).toFixed(1) -> "100.0" -> "100"
+    [100 * 1024 ** 2, "100 MiB"], // >= 100 switches to Math.round
+    [1024 ** 2, "1 MiB"],
+    [2.5 * 1024 ** 3, "2.5 GiB"],
+    [3 * 1024 ** 4, "3 GiB"], // the ladder tops out at GiB
+  ])("%d bytes -> %s", (bytes, expected) => {
+    expect(formatBytes(bytes)).toBe(expected)
   })
 })
 

@@ -26,6 +26,7 @@ import { listSandboxes } from "./sandbox.ts";
 import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from "./skills.ts";
 import { store } from "./store.ts";
 import { getTask, listTasks, seedTasks } from "./tasks.ts";
+import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
 
 const PORT = Number(process.env.PI_AGENT_PORT || 3030); // `||`: Number("") is 0, not the default
 
@@ -393,6 +394,28 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 if (method === "GET" && path === "/api/bridge") {
                         const stats = await bridgeLog();
                         return json({ ...stats, url: "port 3031" });
+                }
+
+                // ------------------------------------------------------------------
+                // Web results store (webcache) — stats/clear/sweep for the
+                // dashboard. The store root honors UNOWN_WEB_CACHE_DIR /
+                // UNOWN_HOME exactly like every other process, so these
+                // endpoints report THIS machine's store (where the engine runs).
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/webcache") {
+                        return json(webCacheStats());
+                }
+                if (method === "POST" && path === "/api/webcache/clear") {
+                        const { removed, bytes } = webCacheClear();
+                        // Mutations announce themselves on the bus (the job-trigger
+                        // pattern) so every open dashboard refetches, not just the
+                        // caller — providers.tsx maps this to the webcache query.
+                        emit("webcache:cleared", { removed, bytes });
+                        return json({ ok: true, removed, bytes });
+                }
+                if (method === "POST" && path === "/api/webcache/sweep") {
+                        const { evicted, freedBytes, totalBytes } = webCacheSweep();
+                        return json({ ok: true, evicted, freedBytes, totalBytes });
                 }
 
                 return json({ error: `not found: ${method} ${path}` }, 404);

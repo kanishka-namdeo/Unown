@@ -18,6 +18,7 @@ export const DASHBOARD_TABS = [
   "gateway",
   "router",
   "automations",
+  "webcache",
 ] as const;
 
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];

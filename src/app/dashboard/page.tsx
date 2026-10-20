@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   Box,
   CalendarClock,
+  Database,
   FlaskConical,
   Layers,
   LayoutDashboard,
@@ -29,6 +30,7 @@ import { SandboxesTab } from "@/components/dashboard/sandboxes-tab";
 import { GatewayTab } from "@/components/dashboard/gateway-tab";
 import { RouterTab } from "@/components/dashboard/router-tab";
 import { AutomationsTab } from "@/components/dashboard/automations-tab";
+import { WebCacheTab } from "@/components/dashboard/webcache-tab";
 
 const tabs = [
   { value: "overview", label: "Overview", icon: LayoutDashboard, content: <OverviewTab /> },
@@ -41,6 +43,7 @@ const tabs = [
   { value: "gateway", label: "Gateway", icon: Network, content: <GatewayTab /> },
   { value: "router", label: "Router", icon: RouterIcon, content: <RouterTab /> },
   { value: "automations", label: "Automations", icon: CalendarClock, content: <AutomationsTab /> },
+  { value: "webcache", label: "Web Cache", icon: Database, content: <WebCacheTab /> },
 ];
 
 function TabFade({ children }: { children: React.ReactNode }) {

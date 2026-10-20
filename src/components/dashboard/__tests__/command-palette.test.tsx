@@ -95,20 +95,21 @@ describe("tab store", () => {
     unsub();
   });
 
-  test("the tab registry covers the dashboard's ten tabs", () => {
-    expect(DASHBOARD_TABS).toHaveLength(10);
+  test("the tab registry covers the dashboard's eleven tabs", () => {
+    expect(DASHBOARD_TABS).toHaveLength(11);
     expect([...DASHBOARD_TABS]).toContain("sandboxes");
     expect([...DASHBOARD_TABS]).toContain("gateway");
     expect([...DASHBOARD_TABS]).toContain("automations");
+    expect([...DASHBOARD_TABS]).toContain("webcache");
   });
 });
 
 describe("CommandPalette", () => {
-  test("lists all ten tabs as navigate actions and opens from the shared store", async () => {
+  test("lists all eleven tabs as navigate actions and opens from the shared store", async () => {
     renderWithProviders(<CommandPalette />);
     openPalette();
 
-    for (const name of ["Overview", "Learning Lab", "Memory", "Dreams", "Hooks", "Console", "Sandboxes", "Gateway", "Router", "Automations"]) {
+    for (const name of ["Overview", "Learning Lab", "Memory", "Dreams", "Hooks", "Console", "Sandboxes", "Gateway", "Router", "Automations", "Web Cache"]) {
       expect(await screen.findByText(name)).toBeTruthy();
     }
     expect(screen.getByText("GitHub repository")).toBeTruthy();

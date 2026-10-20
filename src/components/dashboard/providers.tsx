@@ -135,6 +135,15 @@ function describe(ev: AgentEvent): ActivityDesc | null {
       return { text: `automation dispatch gave up after ${str(p, "attempts")} attempts`, tone: "rose" };
     case "automations:started":
       return { text: `automations scheduler online · poll ${str(p, "pollMs")}ms`, tone: "zinc" };
+    case "webcache:cleared": {
+      const removed = num(p, "removed") ?? 0;
+      // Feed tone follows the operator-action convention (automation:updated,
+      // skill:retired…): zinc. The tab's own clear-kind pill is violet.
+      return {
+        text: `web cache cleared · ${removed} ${removed === 1 ? "entry" : "entries"} dropped`,
+        tone: "zinc",
+      };
+    }
     case "job:started":
       return { text: `job started · ${str(p, "name")}`, tone: "amber" };
     case "job:finished":
@@ -206,6 +215,8 @@ function invalidations(event: string): readonly (readonly unknown[])[] {
       return [qk.jobs, qk.overview];
     case "router:error":
       return [qk.overview];
+    case "webcache:cleared":
+      return [qk.webcache];
     default:
       return [];
   }

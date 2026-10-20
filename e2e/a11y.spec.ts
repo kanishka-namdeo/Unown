@@ -19,6 +19,7 @@ const TABS = [
   { name: "Gateway", ready: "qwen3.7-plus" },
   { name: "Router", ready: "Pick a task, run it in a fresh sandbox, mine failures." },
   { name: "Automations", ready: "nightly repo health check" },
+  { name: "Web Cache", ready: "bun sqlite tutorial" },
 ] as const;
 
 /**

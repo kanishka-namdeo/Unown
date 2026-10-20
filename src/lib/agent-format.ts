@@ -27,6 +27,24 @@ export function formatTokens(n: number | null | undefined): string {
   return `${v >= 100 ? Math.round(v) : v.toFixed(1).replace(/\.0$/, "")}M`;
 }
 
+/** Byte sizes for the web results store KPIs/config (KiB/MiB/GiB ladder). */
+export function formatBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined || bytes < 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  const steps: [number, string][] = [
+    [1024 ** 2, "KiB"],
+    [1024 ** 3, "MiB"],
+    [1024 ** 4, "GiB"],
+  ];
+  for (const [limit, unit] of steps) {
+    if (bytes < limit) {
+      const v = bytes / (limit / 1024);
+      return `${v >= 100 ? Math.round(v) : v.toFixed(1).replace(/\.0$/, "")} ${unit}`;
+    }
+  }
+  return `${Math.round(bytes / 1024 ** 4)} GiB`;
+}
+
 export function formatDuration(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || ms < 0) return "—";
   const s = Math.floor(ms / 1000);
