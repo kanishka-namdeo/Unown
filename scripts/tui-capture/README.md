@@ -59,7 +59,8 @@ a pane dump at every still — the audit's ground truth), `<scenario>.mp4`,
 | s6-subagent-explore | task subagent maps the real unown repo | — (runs in the repo) |
 | s7-wiki | /wiki generate → search with scores | `default` (runs in the demo dir) |
 | s8-cli-doctor | shell: doctor, models, usage | `default` |
+| s9-fleet | async spawn → fleet widget → ask_question → task_control steer answer → result → /tasks registry | — (runs in the repo) |
 
-Scenarios share one port block (7610–7617); run one at a time against the same
+Scenarios share one port block (7610–7618); run one at a time against the same
 fixture. `driver.js` closes gracefully on SIGTERM (time-box long scenarios with
 `timeout 575` and re-run on failure — never edit a failed frame).

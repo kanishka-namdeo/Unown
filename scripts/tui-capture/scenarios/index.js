@@ -1,4 +1,4 @@
-/** Scenario catalog — eight landing-page stories, each a real end-to-end
+/** Scenario catalog — nine landing-page stories, each a real end-to-end
  *  session against the live stack (bridge + engine), captured in one take.
  *
  *  Demo-fixture states (prep with prep_demo.sh BEFORE running):
@@ -7,6 +7,8 @@
  *    s5-review        seed+fix  (one-char fix uncommitted, suite green)
  *    s2/s4/s8         any       (fixture content irrelevant)
  *    s6/s7 run in the real repo checkout (no prep).
+ *    s9 runs in the real repo checkout too (the fleet spawns real children
+ *      against it; .unown/fleet/ is wiped first for a fresh registry).
  */
 const { DEMO_DIR, REPO_ROOT, unownBin } = require("./_paths");
 
@@ -254,6 +256,58 @@ const s8 = {
   ],
 };
 
+const s9 = {
+  // --no-split: the classic transcript look (the other eight scenarios' visual
+  // language) with maximum room for the fleet widget + the story's beats; the
+  // widget/footer are dock surfaces, unaffected by the split-view flag.
+  name: "fleet", cwd: REPO_ROOT, port: 7618, env: {},
+  bootCmd: `bun ${unownBin} --no-split`,
+  steps: [
+    { t: "waitReady" },
+    { t: "linger", ms: 1000 },
+    // Fresh fleet state — a stale resume registry would pollute the /tasks beat.
+    { t: "fn", desc: "wipe fleet runtime state", fn: async (s) => {
+      await s.exec(`rm -rf ${REPO_ROOT}/.unown/fleet`);
+    }},
+    { t: "still", name: "01-boot-fleet-ready" },
+    // The ask: an async spawn with a name, acknowledged immediately. The child
+    // orients (reads two files) BEFORE asking — that spaces the story's beats
+    // so the widget "running · read" frame lands before the question frame.
+    { t: "prompt", s: 'Spawn an async subagent to map this repo: use the task tool with async=true, name="mapper", agent="explore", and this task text: "First read README.md and package.json to get oriented. Then use ask_question to ask the orchestrator whether the map should include test files. Once answered, map this repository main source areas with one line each, under 15 lines total." Do not wait for it — just confirm the ack and tell me it is running.', cps: 30 },
+    { t: "wait", include: ["[async]"], timeout: 240_000, desc: "async spawn call rendered" },
+    { t: "wait", include: ["Subagents"], timeout: 60_000, desc: "fleet widget up" },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "02-async-ack-fleet-widget" },
+    // The child asks mid-task; the question arrives as its own turn.
+    { t: "wait", include: ["asks a question after"], timeout: 300_000, desc: "child asks a question" },
+    { t: "linger", ms: 1800 },
+    { t: "still", name: "03-ask-question" },
+    // The parent answers via task_control steer — autonomously (the question
+    // message spells the command out), with an explicit fallback prompt if the
+    // model stalls. A steer while parked IS the answer.
+    { t: "fn", desc: "answer arrives (autonomous or fallback)", fn: async (s) => {
+      const answered = await s
+        .wait({ include: ["Message delivered to mapper"], timeout: 180_000, desc: "parent answers autonomously" })
+        .then(() => true)
+        .catch(() => false);
+      if (!answered) {
+        await s.prompt('Answer mapper now: use task_control with action="steer", id="mapper", message="Skip tests - production code only. Keep the map under 15 lines."', { cps: 30 });
+        await s.wait({ include: ["Message delivered to mapper"], timeout: 240_000, desc: "fallback answer delivered" });
+      }
+    }},
+    // The child finishes; the result arrives as a new turn (steer delivery).
+    { t: "wait", include: ["finished in"], timeout: 420_000, desc: "child result delivered" },
+    { t: "wait", exclude: ["Working..."], timeout: 420_000, desc: "parent turn complete" },
+    { t: "linger", ms: 1800 },
+    { t: "still", name: "04-child-result" },
+    // /tasks: the human view — the resumable registry.
+    { t: "prompt", s: "/tasks", cps: 30 },
+    { t: "wait", include: ["Resumable"], timeout: 60_000, desc: "registry shown" },
+    { t: "linger", ms: 2000 },
+    { t: "still", name: "05-resume-registry" },
+  ],
+};
+
 module.exports = {
   "s1-hero-bugfix": s1,
   "s2-plan-mode": s2,
@@ -263,4 +317,5 @@ module.exports = {
   "s6-subagent-explore": s6,
   "s7-wiki": s7,
   "s8-cli-doctor": s8,
+  "s9-fleet": s9,
 };

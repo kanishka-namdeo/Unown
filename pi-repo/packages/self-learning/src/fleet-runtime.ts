@@ -201,6 +201,20 @@ export class FleetManager {
                         injectAgentsMd: request.routing.injectAgentsMd,
                         tools: request.tools,
                 }).filter((flag) => flag !== "--no-session");
+                // The ask channel is fleet infrastructure, not agent surface: pi's
+                // --tools allowlist filters extension tools too, so a restricted
+                // agent (explore: read,grep,find,ls) would lose ask_question and
+                // could only reply BLOCKED (measured live in the s9-fleet capture).
+                // Ride the allowlist explicitly — the tool still no-ops gracefully
+                // when no ask channel exists.
+                const toolsFlag = args.indexOf("--tools");
+                if (
+                        toolsFlag !== -1 &&
+                        typeof args[toolsFlag + 1] === "string" &&
+                        !args[toolsFlag + 1].split(",").map((s) => s.trim()).includes("ask_question")
+                ) {
+                        args[toolsFlag + 1] = `${args[toolsFlag + 1]},ask_question`;
+                }
                 args.push("--session", sessionFile);
 
                 const systemPrompt = request.systemPrompt.trim()

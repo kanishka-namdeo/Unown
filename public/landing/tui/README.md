@@ -6,8 +6,10 @@ Every still passed the pane-truth + pixel + VLM audit; every video passed
 frame sampling; nothing here was edited by hand — a bad frame means re-running
 the scenario that produced it.
 
-Captured 2026-10-19 against the live stack (bridge + engine, kimi-k2.5 via
-the Dashscope bridge), unown v2.2.0 @ 19439ba.
+Captured 2026-10-19 and 2026-10-20 against the live stack (bridge + engine,
+kimi-k2.5 via the Dashscope bridge), unown v2.2.0 @ 19439ba (2026-10-19
+scenarios) and the fleet scenario after the ask-question allowlist fix
+(2026-10-20).
 
 | scenario | story | assets |
 |---|---|---|
@@ -17,6 +19,7 @@ the Dashscope bridge), unown v2.2.0 @ 19439ba.
 | overlays | /model picker → model switch → /permissions → /hooks | 5 stills + mp4/webm/gif |
 | review | /review on the uncommitted fix → reviewers → SHIP verdict → artifact | 4 stills + mp4/webm/gif |
 | subagent-explore | task subagent maps the real unown repo | 4 stills + mp4/webm/gif |
+| fleet | async spawn → fleet widget (waiting-for-answer) → ask_question → task_control steer answer → result steered back → /tasks resume registry | 5 stills + mp4/webm/gif |
 | wiki | /wiki generate → search with scores | 3 stills + mp4/webm/gif |
 | cli-doctor | shell showcase: doctor, models, usage | 3 stills + mp4/webm/gif |
 | split-view | the split-view display mode: the thinking + tools band, the files dock with its edit-diff subpanel, the geometry commands, live reasoning, an agent turn, response-only mode | 6 stills (see the note below) |

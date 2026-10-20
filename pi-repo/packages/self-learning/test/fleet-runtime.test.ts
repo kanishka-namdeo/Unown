@@ -109,6 +109,28 @@ describe("FleetManager.spawnFleetChild", () => {
                 manager.dispose();
         });
 
+        test("a restricted --tools list still carries ask_question (the ask channel is fleet infrastructure)", () => {
+                // Regression (measured live in the s9-fleet capture): pi's --tools
+                // allowlist filters extension tools too, so an explore/scout child
+                // (read,grep,find,ls) lost ask_question and could only reply BLOCKED.
+                const harness = new SpawnHarness();
+                const dir = freshDir();
+                const { manager } = makeManager(harness, dir);
+                const ack = manager.spawnFleetChild({ ...REQUEST, name: "scout" });
+                expect(ack.ok).toBe(true);
+                const call = harness.calls[0];
+                const toolsIdx = call.args.indexOf("--tools");
+                expect(toolsIdx).toBeGreaterThan(-1);
+                const tools = String(call.args[toolsIdx + 1]).split(",").map((s) => s.trim());
+                expect(tools).toContain("ask_question");
+                expect(tools).toContain("read"); // the agent's own surface survives
+                // No restriction → no injected flag (the tool registers anyway).
+                const ack2 = manager.spawnFleetChild({ ...REQUEST, name: "free", tools: undefined });
+                expect(ack2.ok).toBe(true);
+                expect(harness.calls[1].args).not.toContain("--tools");
+                manager.dispose();
+        });
+
         test("names dedupe against running children + the registry", () => {
                 const harness = new SpawnHarness();
                 const { manager } = makeManager(harness, freshDir());

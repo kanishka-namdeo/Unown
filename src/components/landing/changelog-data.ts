@@ -37,7 +37,7 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Changed": 22,
   "Deprecated": 0,
   "Removed": 0,
-  "Fixed": 26,
+  "Fixed": 27,
   "Security": 3,
   "Behavior": 25
 };
@@ -52,7 +52,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Changed": 3,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 0,
+      "Fixed": 1,
       "Security": 0,
       "Behavior": 5
     },
@@ -79,6 +79,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "addons: the TUI addon framework — ask_user_question, the addon-era todo, and the advisor…",
             "behavior": true
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "fleet: restricted agents regain ask_question",
+            "behavior": false
           }
         ]
       },
