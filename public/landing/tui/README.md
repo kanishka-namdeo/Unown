@@ -6,10 +6,14 @@ Every still passed the pane-truth + pixel + VLM audit; every video passed
 frame sampling; nothing here was edited by hand — a bad frame means re-running
 the scenario that produced it.
 
-Captured 2026-10-19 and 2026-10-20 against the live stack (bridge + engine,
-kimi-k2.5 via the Dashscope bridge), unown v2.2.0 @ 19439ba (2026-10-19
-scenarios) and the fleet scenario after the ask-question allowlist fix
-(2026-10-20).
+Captured 2026-10-20 against the live stack (bridge + engine, kimi-k2.5 via
+the Dashscope bridge), a full re-capture of all ten scenarios with the TUI
+beauty trilogy (beauty-1/2/3) in effect — the fresh set replaced the
+2026-10-19/20 landing assets wholesale (the wiki lane had crashed after one
+still; the hero lane's first audit ran through a broken vision lane and was
+re-audited). Acceptance receipts — per-still audits, the numeric polish and
+motion critiques, and the wall-of-green pixel measurements — live in
+[benchmarks/tui-beauty/RESULTS.md](../../../benchmarks/tui-beauty/RESULTS.md).
 
 | scenario | story | assets |
 |---|---|---|
@@ -22,7 +26,7 @@ scenarios) and the fleet scenario after the ask-question allowlist fix
 | fleet | async spawn → fleet widget (waiting-for-answer) → ask_question → task_control steer answer → result steered back → /tasks resume registry | 5 stills + mp4/webm/gif |
 | wiki | /wiki generate → search with scores | 3 stills + mp4/webm/gif |
 | cli-doctor | shell showcase: doctor, models, usage | 3 stills + mp4/webm/gif |
-| split-view | the split-view display mode: the thinking + tools band, the files dock with its edit-diff subpanel, the geometry commands, live reasoning, an agent turn, response-only mode | 6 stills (see the note below) |
+| split-view | the split-view display mode: the thinking + tools band, the files dock with its edit-diff subpanel, the geometry commands, live reasoning, an agent turn | 5 stills (see the note below) |
 
 Stills are full-frame (128x36 grid, ~2214px wide, everything the user sees:
 header/transcript, input box, cwd + model status). Videos are paced (8fps,

@@ -109,3 +109,6 @@ benchmarks/nonllm/results/*/
 benchmarks/complementary/models/
 benchmarks/complementary/results/*/
 !benchmarks/complementary/results/REPORT.md
+
+# python bytecode from the capture/audit scripts
+__pycache__/
