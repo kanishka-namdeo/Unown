@@ -139,8 +139,18 @@ if (await probeHttpOk(`http://127.0.0.1:${BRIDGE_PORT}/health`)) {
   await waitForPortFree(`http://127.0.0.1:${BRIDGE_PORT}/health`, "bridge", 15_000);
   startService("bridge", path.join("mini-services", "llm-bridge"), ["index.ts"]);
 }
-await waitForPortFree(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, "engine", 20_000);
-startService("engine", path.join("mini-services", "agent-service"), ["index.ts"]);
+// The engine gets the same reuse rule as the bridge (M4): a HEALTHY engine on
+// the port is reused instead of spawning a second one into EADDRINUSE. This
+// also kills the stale-pidfile class of strays — an engine whose pidfile went
+// missing (manual kill, earlier spawn cycle) stays reused rather than racing
+// a duplicate. Only when the port is NOT answering does the drain-aware wait
+// + fresh spawn run.
+if (await probeHttpOk(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, 1500)) {
+  console.log(`${sym.dot} engine already healthy on :${ENGINE_PORT} — reusing it`);
+} else {
+  await waitForPortFree(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, "engine", 20_000);
+  startService("engine", path.join("mini-services", "agent-service"), ["index.ts"]);
+}
 startService("dashboard", ".", ["run", "dev"]);
 
 // ------------------------------------------------------- health wait (~60s)
