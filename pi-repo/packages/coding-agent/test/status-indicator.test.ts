@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TUI } from "@earendil-works/pi-tui";
 import {
 	describeToolActivity,
-	StatusIndicator,
 	WorkingStatusIndicator,
 } from "../src/modes/interactive/components/status-indicator.ts";
 import { loadThemeFromPath, setThemeInstance } from "../src/modes/interactive/theme/theme.ts";
+import { stripAnsi } from "../src/utils/ansi.ts";
 
 const darkThemePath = new URL("../src/modes/interactive/theme/dark.json", import.meta.url).pathname;
 
@@ -69,7 +69,8 @@ describe("StatusIndicator elapsed-time chip (move 7)", () => {
 		indicator.hideElapsedChip();
 		vi.advanceTimersByTime(5000);
 		const rendered = indicator.render(80).join("\n");
-		expect(rendered).toContain("Working...");
+		// The shimmer styles the verb label per character â compare visible text.
+		expect(stripAnsi(rendered)).toContain("Working...");
 		expect(rendered).not.toContain("0:05");
 		indicator.dispose();
 	});
@@ -124,6 +125,87 @@ describe("StatusIndicator completion beat (move 7)", () => {
 		const indicator = new WorkingStatusIndicator(ui, " ");
 		indicator.completeBeat(vi.fn());
 		expect(indicator.render(80).join("\n")).toContain("done");
+		indicator.dispose();
+	});
+});
+
+describe("working-line shimmer (beauty-4)", () => {
+	// A single-frame indicator keeps the spinner lane quiet, so every byte
+	// change below is the shimmer's, and the only timer is the 1s elapsed tick.
+	const STATIC_FRAME = { frames: ["⠋"] };
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		setThemeInstance(loadThemeFromPath(darkThemePath, "truecolor"));
+	});
+
+	it("sweeps the verb label on the elapsed chip's existing 1s tick — no new timers", () => {
+		const { ui } = makeUi();
+		const indicator = new WorkingStatusIndicator(ui, "Editing pagination.ts...", STATIC_FRAME);
+		// The label lane only — the mm:ss chip ticks beside it and would mask
+		// the sweep in a whole-line comparison.
+		const labelOf = () => {
+			const line = indicator.render(80).join("\n");
+			return line.slice(0, line.indexOf(" 0:0"));
+		};
+
+		const atRest = labelOf();
+		expect(stripAnsi(atRest)).toContain("Editing pagination.ts...");
+
+		// The shimmer steps with the mm:ss tick: same visible label, moving bytes.
+		vi.advanceTimersByTime(1000);
+		const afterOneTick = labelOf();
+		expect(stripAnsi(afterOneTick)).toContain("Editing pagination.ts...");
+		expect(afterOneTick).not.toBe(atRest);
+
+		vi.advanceTimersByTime(1000);
+		expect(labelOf()).not.toBe(afterOneTick);
+		// Still exactly one interval (the elapsed chip's) — the sweep rides the
+		// existing tick lane and adds no timer of its own.
+		expect(vi.getTimerCount()).toBe(1);
+		indicator.dispose();
+	});
+
+	it("renders the label solid in plain mode (no animation, no escapes)", () => {
+		setThemeInstance(loadThemeFromPath(darkThemePath, "plain"));
+		const { ui } = makeUi();
+		const indicator = new WorkingStatusIndicator(ui, "Editing pagination.ts...", STATIC_FRAME);
+		// The label lane only — the mm:ss chip keeps ticking beside it.
+		const labelOf = () => {
+			const line = indicator.render(80).join("\n");
+			return line.slice(0, line.indexOf(" 0:0"));
+		};
+
+		const atRest = labelOf();
+		expect(atRest).toContain("⠋ Editing pagination.ts...");
+		vi.advanceTimersByTime(3000);
+		expect(labelOf()).toBe(atRest); // the phase never changes plain output
+		indicator.dispose();
+	});
+
+	it("resolves to a solid (non-shimmered) ✓ label for the completion beat", () => {
+		const { ui } = makeUi();
+		const indicator = new WorkingStatusIndicator(ui, "Editing pagination.ts...", STATIC_FRAME);
+		indicator.completeBeat(vi.fn());
+		const beat = indicator.render(80).join("\n");
+		expect(stripAnsi(beat)).toContain("✓ Editing pagination.ts...");
+		// The beat line is the theme's solid muted label — a single quiet color.
+		const muted = loadThemeFromPath(darkThemePath, "truecolor").getFgAnsi("muted");
+		const fgColors = beat.match(/\x1b\[38;2;\d+;\d+;\d+m/g) ?? [];
+		expect(fgColors).toContain(muted);
+		expect(fgColors.length).toBeLessThanOrEqual(2); // success glyph + muted label
+		indicator.dispose();
+	});
+
+	it("hides the elapsed chip and stops sweeping together", () => {
+		const { ui } = makeUi();
+		const indicator = new WorkingStatusIndicator(ui, "Working...", STATIC_FRAME);
+		indicator.hideElapsedChip();
+		const before = indicator.render(80).join("\n");
+		vi.advanceTimersByTime(5000);
+		// No interval is alive: the sweep and the mm:ss chip share the tick lane.
+		expect(vi.getTimerCount()).toBe(0);
+		expect(indicator.render(80).join("\n")).toBe(before);
 		indicator.dispose();
 	});
 });

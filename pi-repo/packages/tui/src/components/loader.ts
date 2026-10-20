@@ -26,6 +26,11 @@ export class Loader extends Text {
 	private message: string = "Loading...";
 	/** Optional suffix appended after the message (e.g. an elapsed-time chip). */
 	private suffixProvider: (() => string) | undefined;
+	/** Optional per-phase message colorizer (e.g. a shimmer sweep). When set
+	 *  it supersedes messageColorFn; the caller advances the phase on its own
+	 *  tick lane — the loader adds no timer for it. */
+	private messageShimmer: ((phase: number, text: string) => string) | undefined;
+	private shimmerPhase = 0;
 
 	constructor(
 		ui: TUI,
@@ -80,6 +85,21 @@ export class Loader extends Text {
 		this.updateDisplay();
 	}
 
+	/**
+	 * Set (or clear) a per-phase message colorizer — e.g. a shimmer sweep
+	 * whose band position advances with advanceShimmerPhase(). While set it
+	 * supersedes messageColorFn; pass undefined to fall back to it.
+	 */
+	setMessageShimmer(fn?: (phase: number, text: string) => string): void {
+		this.messageShimmer = fn;
+		this.updateDisplay();
+	}
+
+	/** Advance the shimmer band one step; the caller then refresh()es. */
+	advanceShimmerPhase(): void {
+		this.shimmerPhase++;
+	}
+
 	/** Re-render the display; lets callers refresh dynamic suffixes on a timer. */
 	refresh(): void {
 		this.updateDisplay();
@@ -100,7 +120,10 @@ export class Loader extends Text {
 		const frame = this.frames[this.currentFrame] ?? "";
 		const renderedFrame = this.renderIndicatorVerbatim ? frame : this.spinnerColorFn(frame);
 		const indicator = frame.length > 0 ? `${renderedFrame} ` : "";
-		this.setText(`${indicator}${this.messageColorFn(this.message)}${this.suffixProvider?.() ?? ""}`);
+		const message = this.messageShimmer
+			? this.messageShimmer(this.shimmerPhase, this.message)
+			: this.messageColorFn(this.message);
+		this.setText(`${indicator}${message}${this.suffixProvider?.() ?? ""}`);
 		if (this.ui) {
 			this.ui.requestRender();
 		}

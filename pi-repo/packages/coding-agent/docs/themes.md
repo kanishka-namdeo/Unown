@@ -160,13 +160,13 @@ vim ~/.pi/agent/themes/my-theme.json
 
 - `name` is required, must be unique, and must not contain `/`.
 - `vars` is optional. Define reusable colors here, then reference them in `colors`.
-- `colors` must define all 51 required tokens. `thinkingMax`, `scrollbarTrack`, `scrollbarThumb`, the two search highlight tokens, and the two chrome surface tokens (`chromeBg`, `overlayBg`) are optional and use the fallbacks listed below.
+- `colors` must define all 51 required tokens. `thinkingMax`, `scrollbarTrack`, `scrollbarThumb`, the two search highlight tokens, the two chrome surface tokens (`chromeBg`, `overlayBg`), and the eight subagent lane tokens (`subagentLane0`–`subagentLane7`) are optional and use the fallbacks listed below.
 
 The `$schema` field enables editor auto-completion and validation.
 
 ## Color Tokens
 
-Every theme must define all 51 required color tokens. The optional tokens preserve compatibility with existing themes: `thinkingMax` falls back to `thinkingXhigh`, `scrollbarTrack` falls back to `borderMuted` and `scrollbarThumb` to `muted` (the pi-tui 1.3.0 scrollbar engine paints them as foreground glyphs), `searchMatchBg` falls back to `selectedBg`, `searchMatchText` falls back to `text`, and `chromeBg`/`overlayBg` fall back to `""` (transparent — chrome renders on the terminal background). Other search matches use `searchMatchText` on `searchMatchBg` with an underline; the current match reverses that foreground/background pair and uses bold text.
+Every theme must define all 51 required color tokens. The optional tokens preserve compatibility with existing themes: `thinkingMax` falls back to `thinkingXhigh`, `scrollbarTrack` falls back to `borderMuted` and `scrollbarThumb` to `muted` (the pi-tui 1.3.0 scrollbar engine paints them as foreground glyphs), `searchMatchBg` falls back to `selectedBg`, `searchMatchText` falls back to `text`, and `chromeBg`/`overlayBg` fall back to `""` (transparent — chrome renders on the terminal background). Other search matches use `searchMatchText` on `searchMatchBg` with an underline; the current match reverses that foreground/background pair and uses bold text. The subagent lanes fall back to `""` (terminal default fg) — themes without them render monochrome lanes.
 
 ### Core UI (11 colors)
 
@@ -256,11 +256,12 @@ Editor border colors indicating thinking level (visual hierarchy from subtle to 
 | `thinkingXhigh` | Extra high thinking |
 | `thinkingMax` | Maximum thinking; optional, falls back to `thinkingXhigh` |
 
-### Bash Mode (1 color)
+### Bash Mode (1 required, 8 optional)
 
 | Token | Purpose |
 |-------|---------|
 | `bashMode` | Editor border in bash mode (`!` prefix) |
+| `subagentLane0` … `subagentLane7` | Subagent color lanes: every spawned subagent (fleet children and sync `task` tool blocks) is assigned one of the eight lanes by a deterministic hash of its name, so a child keeps its color across renders and restarts; optional, each falls back to `""` (terminal default fg — monochrome lanes) |
 
 ### HTML Export (optional)
 

@@ -83,7 +83,15 @@
 		"thinkingXhigh": "#8d78b3",
 		"thinkingMax": "#b07fd0",
 
-		"bashMode": "green"
+		"bashMode": "green",
+		"subagentLane0": "#5f87d7",
+		"subagentLane1": "#5fafd7",
+		"subagentLane2": "#5fd7af",
+		"subagentLane3": "#afd75f",
+		"subagentLane4": "#d7af5f",
+		"subagentLane5": "#d7875f",
+		"subagentLane6": "#d75f87",
+		"subagentLane7": "#af5fd7"
 	},
 	"export": {
 		"pageBg": "#101218",

@@ -15,6 +15,8 @@ import { getTextOutput as getRenderedTextOutput } from "../../../core/tools/rend
 import { convertToPng } from "../../../utils/image-convert.ts";
 import { theme } from "../theme/theme.ts";
 import { keyText } from "./keybinding-hints.ts";
+import { type DiffLineCounts, diffLineCountsForToolExecution } from "./session-diff-stats.ts";
+import { hasSubagentLanePalette, subagentLaneColor, taskToolChildName } from "./subagent-lanes.ts";
 
 const FALLBACK_PREVIEW_LINES = 10;
 
@@ -232,6 +234,20 @@ export class ToolExecutionComponent extends Container {
 		this.updateDisplay();
 	}
 
+	/**
+	 * The execution's contribution to the footer's session diff-stat chip
+	 * (beauty-4): edit results count their diff's +/- lines, writes count
+	 * their content lines; undefined for tools that don't change tracked
+	 * file content and for failed runs.
+	 */
+	diffLineCounts(): DiffLineCounts | undefined {
+		return diffLineCountsForToolExecution(this.toolName, this.args, {
+			content: this.result?.content,
+			details: this.result?.details,
+			isError: this.result?.isError ?? false,
+		});
+	}
+
 	setShowImages(show: boolean): void {
 		this.showImages = show;
 		this.updateDisplay();
@@ -249,13 +265,23 @@ export class ToolExecutionComponent extends Container {
 
 	/**
 	 * The state glyph for the left column: • running, ✓ success, ✗ error.
-	 * Colored by state; drawn once on the block's first visible line so
-	 * state is legible without color (NO_COLOR / plain mode) too.
+	 * Drawn once on the block's first visible line so state is legible
+	 * without color (NO_COLOR / plain mode) too. Task-tool blocks carry
+	 * their child's lane color instead (beauty-4): the glyph shape still
+	 * names the state, and themes without a lane palette keep the state
+	 * colors — legacy rendering stays byte-identical.
 	 */
 	private stateGlyph(): string {
-		if (this.isPartial) return theme.fg("accent", "•");
-		if (this.result?.isError) return theme.fg("error", "✗");
-		return theme.fg("success", "✓");
+		const glyph = this.isPartial ? "•" : this.result?.isError ? "✗" : "✓";
+		if (this.toolName === "task") {
+			const child = taskToolChildName(this.args);
+			if (child && hasSubagentLanePalette()) {
+				return subagentLaneColor(child, glyph);
+			}
+		}
+		if (this.isPartial) return theme.fg("accent", glyph);
+		if (this.result?.isError) return theme.fg("error", glyph);
+		return theme.fg("success", glyph);
 	}
 
 	/**

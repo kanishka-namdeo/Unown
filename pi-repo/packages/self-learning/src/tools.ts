@@ -39,7 +39,7 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { type ExtensionAPI, parseFrontmatter } from "@earendil-works/pi-coding-agent";
-import { Key, Text } from "@earendil-works/pi-tui";
+import { Key, stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { trustBypassed } from "./config-trust.ts";
 import { IS_COMPILED_BINARY, isBunVirtualPath } from "./packaging.ts";
@@ -121,6 +121,24 @@ import { receiptsDir } from "./checkpoints.ts";
 import { loadRecipes, parseRecipe, runRecipe, userRecipesDir } from "./recipes.ts";
 import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
 import { foregroundTodosForGoalGate } from "./addons/todo.ts";
+
+// ---------------------------------------------------------------------------
+// Subagent color lanes (beauty-4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Paint a subagent's name in its stable lane color — pi-tui's stableLaneIndex
+ * hash of the name, one of the optional subagentLane0..7 theme tokens (the
+ * Claude Code eight-color precedent). Themes without the palette keep their
+ * legacy color (the caller's fallback); the token names mirror coding-agent's
+ * theme schema, where they are defined.
+ */
+function laneName(theme: any, name: string, fallback?: (s: string) => string): string {
+        if (theme && typeof theme.getFgRgb === "function" && theme.getFgRgb("subagentLane0") !== undefined) {
+                return theme.fg(`subagentLane${stableLaneIndex(name)}`, name);
+        }
+        return fallback ? fallback(name) : name;
+}
 
 // ---------------------------------------------------------------------------
 // Subagent registry: built-ins + .unown/agents/*.md + ~/.unown/agent/agents/*.md
@@ -1624,7 +1642,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         }
                                         return new Text(
                                                 theme.fg("toolTitle", theme.bold("task → ")) +
-                                                        theme.fg("accent", String(args.agent ?? "general")) +
+                                                        laneName(theme, String(args.name ?? args.agent ?? "general"), (s) => theme.fg("accent", s)) +
                                                         (args.async === true ? theme.fg("accent", " [async]") : "") +
                                                         (args.worktree_isolation === true ? theme.fg("accent", " [worktree]") : "") +
                                                         (args.output_schema !== undefined ? theme.fg("accent", " [schema]") : "") +
@@ -1650,7 +1668,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         const tree = r.worktree ? ` [${r.worktree.action}]` : "";
                                                         const guard = r.guard ? ` [guard ${r.guard.status}]` : "";
                                                         const models = r.modelsAttempted ? ` (${r.modelsAttempted.join("→")})` : "";
-                                                        return `${r.agent}${models}: ${mark} ${r.turns} turns, ${r.toolResults} tools${tree}${guard}`;
+                                                        return `${laneName(theme, r.agent)}${models}: ${mark} ${r.turns} turns, ${r.toolResults} tools${tree}${guard}`;
                                                 })
                                                 .join("\n");
                                         return new Text(theme.fg("muted", summary), 0, 0);

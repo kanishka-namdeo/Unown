@@ -5,6 +5,7 @@ import { areExperimentalFeaturesEnabled } from "../../../core/experimental.ts";
 import type { ReadonlyFooterDataProvider } from "../../../core/footer-data-provider.ts";
 import { addUsageToTotals, createUsageTotals } from "../../../core/usage-totals.ts";
 import { theme } from "../theme/theme.ts";
+import type { DiffLineCounts, ReadonlySessionDiffStats } from "./session-diff-stats.ts";
 
 /**
  * Sanitize text for display in a single-line status.
@@ -51,10 +52,12 @@ export class FooterComponent implements Component {
 	private autoCompactEnabled = true;
 	private session: AgentSession;
 	private footerData: ReadonlyFooterDataProvider;
+	private diffStats?: ReadonlySessionDiffStats;
 
-	constructor(session: AgentSession, footerData: ReadonlyFooterDataProvider) {
+	constructor(session: AgentSession, footerData: ReadonlyFooterDataProvider, diffStats?: ReadonlySessionDiffStats) {
 		this.session = session;
 		this.footerData = footerData;
+		this.diffStats = diffStats;
 	}
 
 	setSession(session: AgentSession): void {
@@ -63,6 +66,11 @@ export class FooterComponent implements Component {
 
 	setAutoCompactEnabled(enabled: boolean): void {
 		this.autoCompactEnabled = enabled;
+	}
+
+	/** Beauty-4: the per-session diff accumulator this footer's `+N -M` chip reads. */
+	setDiffStats(diffStats?: ReadonlySessionDiffStats): void {
+		this.diffStats = diffStats;
 	}
 
 	/**
@@ -106,6 +114,16 @@ export class FooterComponent implements Component {
 			colorFn = (s: string) => theme.fg("dim", s);
 		}
 		return colorFn(label);
+	}
+
+	/**
+	 * The diff-stat chip (beauty-4): `+N -M` next to the context meter, added
+	 * lines in the diff-added green and removed lines in the diff-removed red —
+	 * the same tokens the edit blocks use, so the chip and the transcript
+	 * agree. Hidden until the session's first successful edit/write.
+	 */
+	private renderDiffStatChip(counts: DiffLineCounts): string {
+		return `${theme.fg("toolDiffAdded", `+${counts.added}`)} ${theme.fg("toolDiffRemoved", `-${counts.removed}`)}`;
 	}
 
 	render(width: number): string[] {
@@ -171,6 +189,10 @@ export class FooterComponent implements Component {
 		}
 
 		const meter = this.renderContextMeter(contextUsage?.percent ?? null, contextWindow);
+		const diffCounts = this.diffStats?.get();
+		if (diffCounts && (diffCounts.added > 0 || diffCounts.removed > 0)) {
+			statsParts.unshift(this.renderDiffStatChip(diffCounts));
+		}
 		let statsLeft = `${meter} ${statsParts.join(" ")}`;
 		let statsLeftWidth = visibleWidth(statsLeft);
 		if (statsLeftWidth > width) {

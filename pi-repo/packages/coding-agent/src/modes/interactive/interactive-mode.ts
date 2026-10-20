@@ -127,6 +127,7 @@ import { ExtensionEditorComponent } from "./components/extension-editor.ts";
 import { ExtensionInputComponent } from "./components/extension-input.ts";
 import { ExtensionSelectorComponent } from "./components/extension-selector.ts";
 import { FooterComponent, formatTokens } from "./components/footer.ts";
+import { SessionDiffStats } from "./components/session-diff-stats.ts";
 import { formatKeyText, keyDisplayText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.ts";
 import { LoginDialogComponent } from "./components/login-dialog.ts";
 import { createMermaidMarkdownTransformer } from "./components/mermaid.ts";
@@ -562,6 +563,8 @@ export class InteractiveMode {
 	};
 	private autoTrustOnReloadCwd: string | undefined;
 	private themeController: InteractiveThemeController;
+	/** Beauty-4: per-session edit/write diff totals for the footer's `+N -M` chip. */
+	private readonly sessionDiffStats = new SessionDiffStats();
 
 	// Convenience accessors
 	private get session(): AgentSession {
@@ -626,7 +629,7 @@ export class InteractiveMode {
 		this.editorContainer = new Container();
 		this.editorContainer.addChild(this.editor as Component);
 		this.footerDataProvider = new FooterDataProvider(this.sessionManager.getCwd());
-		this.footer = new FooterComponent(this.session, this.footerDataProvider);
+		this.footer = new FooterComponent(this.session, this.footerDataProvider, this.sessionDiffStats);
 		this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
 		this.footerContainer = new Container();
 		this.footerContainer.addChild(this.footer);
@@ -2047,6 +2050,10 @@ export class InteractiveMode {
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
 		this.applyRuntimeSettings();
+		// A new session tells its own diff-stat story (beauty-4). Optional-chained like
+		// the unsubscribe lane above it — the regression harnesses drive this method
+		// off the prototype with a minimal context.
+		this.sessionDiffStats?.reset();
 
 		if (options.renderBeforeBind) {
 			this.renderCurrentSessionState();
@@ -3439,6 +3446,11 @@ export class InteractiveMode {
 				const component = this.pendingTools.get(event.toolCallId);
 				if (component) {
 					component.updateResult({ ...event.result, isError: event.isError });
+					// Beauty-4: fold this execution's diff into the footer's +N -M chip.
+					const counts = component.diffLineCounts();
+					if (counts) {
+						this.sessionDiffStats.add(counts);
+					}
 					this.pendingTools.delete(event.toolCallId);
 					this.ui.requestRender();
 				}

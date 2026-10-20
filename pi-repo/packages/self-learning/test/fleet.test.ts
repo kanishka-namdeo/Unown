@@ -108,6 +108,71 @@ const plainTheme = {
         title: (s: string) => s,
 };
 
+describe("formatFleetWidgetLines subagent lanes (beauty-4)", () => {
+        // Identity colors + a lane fn that marks its calls: (name, s) -> [name]s[/]
+        const laneTheme = {
+                ...plainTheme,
+                lane: (name: string, s: string) => `[${name}]${s}[/]`,
+        };
+
+        test("prepends the child's rail and colors its name when a lane fn is present", () => {
+                const lines = formatFleetWidgetLines([child({ name: "scout", status: "active" })], laneTheme, 80);
+                const row = lines.find((l) => l.includes("scout"))!;
+                expect(row.startsWith("[scout]▌[/] ")).toBe(true);
+                expect(row).toContain("[scout]scout[/]");
+                // The pre-lane shape is still there underneath: status glyph + elapsed + phrase.
+                expect(row).toContain("⟳");
+                expect(row).toContain("01:00");
+                expect(row).toContain("[/] — thinking");
+        });
+
+        test("keeps rows byte-identical without a lane fn (the pre-lane shape)", () => {
+                const noLane = formatFleetWidgetLines([child({ name: "scout", status: "active" })], plainTheme, 80);
+                const row = noLane.find((l) => l.includes("scout"))!;
+                expect(row.startsWith("⟳")).toBe(true);
+                expect(row).not.toContain("▌");
+        });
+
+        test("budgets the 2-cell rail inside the cap: rows never run past the box edge", () => {
+                // Identity lane so marker text cannot fake the width (colors are zero-width).
+                const identityLane = { ...plainTheme, lane: (_name: string, s: string) => s };
+                const long = child({ name: "n".repeat(90), status: "running-tool", currentTool: "bash" });
+                const lines = formatFleetWidgetLines([long], identityLane, 80);
+                const inner = 76; // min(80,120) - 4
+                for (const line of lines) {
+                        expect(line.length).toBeLessThanOrEqual(inner);
+                }
+                const row = lines.find((l) => l.includes("▌"))!;
+                expect(row.startsWith("▌ ")).toBe(true);
+                expect(row).toContain("…"); // the content truncated, never the row
+        });
+
+        test("keeps the rail colored when the name itself is truncated away", () => {
+                const long = child({ name: "n".repeat(90), status: "active" });
+                const lines = formatFleetWidgetLines([long], laneTheme, 80);
+                const row = lines.find((l) => l.includes("▌"))!;
+                expect(row.startsWith(`[${"n".repeat(90)}]▌[/] `)).toBe(true);
+                // The truncated name cannot be wrapped — but the rail still names the lane.
+                expect(row).not.toContain(`]${"n".repeat(90)}[/]`);
+        });
+
+        test("colors each child with its own lane (siblings stay distinguishable)", () => {
+                const lines = formatFleetWidgetLines(
+                        [child({ name: "scout", status: "active" }), child({ name: "worker", status: "active" })],
+                        laneTheme,
+                        80,
+                );
+                const scoutRow = lines.find((l) => l.startsWith("[scout]▌[/] "))!;
+                const workerRow = lines.find((l) => l.startsWith("[worker]▌[/] "))!;
+                expect(scoutRow).toBeDefined();
+                expect(workerRow).toBeDefined();
+                expect(scoutRow).toContain("[scout]scout[/]");
+                expect(workerRow).toContain("[worker]worker[/]");
+                expect(scoutRow).not.toContain("[worker]");
+                expect(workerRow).not.toContain("[scout]");
+        });
+});
+
 describe("formatFleetWidgetLines", () => {
         test("empty when nothing is running; terminal children are not shown", () => {
                 expect(formatFleetWidgetLines([], plainTheme)).toEqual([]);

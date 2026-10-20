@@ -101,6 +101,18 @@ const ThemeJsonSchema = Type.Object({
 		thinkingMax: Type.Optional(ColorValueSchema),
 		// Bash Mode (1 color)
 		bashMode: ColorValueSchema,
+		// Subagent color lanes (beauty-4): 8 optional tokens — one stable
+		// lane color per subagent (hash of its name), the Claude Code
+		// eight-color precedent. Omitted tokens fall back to "" (terminal
+		// default fg): legacy themes keep monochrome lanes.
+		subagentLane0: Type.Optional(ColorValueSchema),
+		subagentLane1: Type.Optional(ColorValueSchema),
+		subagentLane2: Type.Optional(ColorValueSchema),
+		subagentLane3: Type.Optional(ColorValueSchema),
+		subagentLane4: Type.Optional(ColorValueSchema),
+		subagentLane5: Type.Optional(ColorValueSchema),
+		subagentLane6: Type.Optional(ColorValueSchema),
+		subagentLane7: Type.Optional(ColorValueSchema),
 	}),
 	export: Type.Optional(
 		Type.Object({
@@ -164,6 +176,14 @@ export type ThemeColor =
 	| "thinkingHigh"
 	| "thinkingXhigh"
 	| "thinkingMax"
+	| "subagentLane0"
+	| "subagentLane1"
+	| "subagentLane2"
+	| "subagentLane3"
+	| "subagentLane4"
+	| "subagentLane5"
+	| "subagentLane6"
+	| "subagentLane7"
 	| "bashMode";
 
 export type ThemeBg =
@@ -177,7 +197,19 @@ export type ThemeBg =
 	| "toolSuccessBg"
 	| "toolErrorBg";
 
-type OptionalThemeColor = "thinkingMax" | "scrollbarTrack" | "scrollbarThumb" | "searchMatchText";
+type OptionalThemeColor =
+	| "thinkingMax"
+	| "scrollbarTrack"
+	| "scrollbarThumb"
+	| "searchMatchText"
+	| "subagentLane0"
+	| "subagentLane1"
+	| "subagentLane2"
+	| "subagentLane3"
+	| "subagentLane4"
+	| "subagentLane5"
+	| "subagentLane6"
+	| "subagentLane7";
 type OptionalThemeBg = "searchMatchBg" | "chromeBg" | "overlayBg";
 
 type ColorMode = "truecolor" | "256color" | "plain";
@@ -278,6 +310,15 @@ function hexTo256(hex: string): number {
 	return rgbTo256(r, g, b);
 }
 
+/**
+ * The hand-tuned ladder entry a color quantizes onto in 256-color mode —
+ * exported so ladder-safe consumers (the working line's 2-3 step shimmer ramp)
+ * pick the same index the theme itself would.
+ */
+export function nearestAnsi256Index(rgb: RgbColor): number {
+	return rgbTo256(rgb.r, rgb.g, rgb.b);
+}
+
 function fgAnsi(color: string | number, mode: ColorMode): string {
 	if (mode === "plain") return "";
 	if (color === "") return "\x1b[39m";
@@ -347,6 +388,14 @@ function withThemeColorFallbacks(colors: ThemeJson["colors"]): ThemeJson["colors
 	searchMatchText: ColorValue;
 	chromeBg: ColorValue;
 	overlayBg: ColorValue;
+	subagentLane0: ColorValue;
+	subagentLane1: ColorValue;
+	subagentLane2: ColorValue;
+	subagentLane3: ColorValue;
+	subagentLane4: ColorValue;
+	subagentLane5: ColorValue;
+	subagentLane6: ColorValue;
+	subagentLane7: ColorValue;
 } {
 	return {
 		...colors,
@@ -362,6 +411,16 @@ function withThemeColorFallbacks(colors: ThemeJson["colors"]): ThemeJson["colors
 		// background stays visible for themes that predate the tokens.
 		chromeBg: colors.chromeBg ?? "",
 		overlayBg: colors.overlayBg ?? "",
+		// Subagent lanes fall back the same way: "" is the terminal default
+		// fg, so legacy themes render monochrome lanes instead of breaking.
+		subagentLane0: colors.subagentLane0 ?? "",
+		subagentLane1: colors.subagentLane1 ?? "",
+		subagentLane2: colors.subagentLane2 ?? "",
+		subagentLane3: colors.subagentLane3 ?? "",
+		subagentLane4: colors.subagentLane4 ?? "",
+		subagentLane5: colors.subagentLane5 ?? "",
+		subagentLane6: colors.subagentLane6 ?? "",
+		subagentLane7: colors.subagentLane7 ?? "",
 	};
 }
 
@@ -375,6 +434,8 @@ export class Theme {
 	sourceInfo?: SourceInfo;
 	private fgColors: Map<ThemeColor, string>;
 	private bgColors: Map<ThemeBg, string>;
+	/** Raw (un-ANSI'd) fg values — kept for RGB consumers like the shimmer ramp. */
+	private rawFgColors: Map<ThemeColor, string | number>;
 	private mode: ColorMode;
 
 	constructor(
@@ -390,6 +451,7 @@ export class Theme {
 		this.sourceInfo = options.sourceInfo;
 		this.mode = mode;
 		this.fgColors = new Map();
+		this.rawFgColors = new Map();
 		const colors = {
 			...fgColors,
 			thinkingMax: fgColors.thinkingMax ?? fgColors.thinkingXhigh,
@@ -398,6 +460,7 @@ export class Theme {
 			searchMatchText: fgColors.searchMatchText ?? fgColors.text,
 		};
 		for (const [key, value] of Object.entries(colors) as [ThemeColor, string | number][]) {
+			this.rawFgColors.set(key, value);
 			this.fgColors.set(key, fgAnsi(value, mode));
 		}
 		this.bgColors = new Map();
@@ -450,6 +513,24 @@ export class Theme {
 		const ansi = this.fgColors.get(color);
 		if (ansi === undefined) throw new Error(`Unknown theme color: ${color}`);
 		return ansi;
+	}
+
+	/**
+	 * The RGB value of a theme color (hex resolved; 256-indexed values go
+	 * through their terminal hex). Undefined for transparent ("") colors —
+	 * consumers fall back to their own defaults.
+	 */
+	getFgRgb(color: ThemeColor): RgbColor | undefined {
+		const raw = this.rawFgColors.get(color);
+		if (raw === undefined) throw new Error(`Unknown theme color: ${color}`);
+		try {
+			if (typeof raw === "number") {
+				return hexToRgb(ansi256ToHex(raw));
+			}
+			return raw.startsWith("#") ? hexToRgb(raw) : undefined;
+		} catch {
+			return undefined;
+		}
 	}
 
 	getBgAnsi(color: ThemeBg): string {

@@ -3,6 +3,7 @@ import type { WorkingIndicatorOptions } from "../../../core/extensions/index.ts"
 import { theme } from "../theme/theme.ts";
 import { CountdownTimer } from "./countdown-timer.ts";
 import { keyText } from "./keybinding-hints.ts";
+import { workingLabelShimmer } from "./shimmer-label.ts";
 
 export type StatusIndicatorKind = "working" | "retry" | "compaction" | "branchSummary";
 
@@ -81,7 +82,12 @@ export class StatusIndicator extends Loader {
 			const ss = String(seconds % 60).padStart(2, "0");
 			return theme.fg("dim", ` ${mm}:${ss}`);
 		});
-		this.elapsedTimerId = setInterval(() => this.refresh(), 1000);
+		// The same 1s tick advances the shimmer's phase (beauty-4) — one timer,
+		// two lanes: the mm:ss chip and the label's gradient sweep.
+		this.elapsedTimerId = setInterval(() => {
+			this.advanceShimmerPhase();
+			this.refresh();
+		}, 1000);
 	}
 
 	hideElapsedChip(): void {
@@ -129,6 +135,10 @@ export class WorkingStatusIndicator extends StatusIndicator {
 			message,
 			indicator,
 		);
+		// Beauty-4: the verb label shimmers while the turn runs — the sweep steps
+		// on the elapsed chip's 1s tick and degrades per the color-mode ladder
+		// (2-3 step ramp in 256-color, solid in plain mode).
+		this.setMessageShimmer(workingLabelShimmer(theme));
 		this.showElapsedChip();
 	}
 }

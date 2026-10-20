@@ -221,6 +221,9 @@ export interface FleetWidgetTheme {
         accent: (s: string) => string;
         warn: (s: string) => string;
         title: (s: string) => string;
+        /** Per-child lane color (beauty-4): rail + child name. Optional — an
+         *  absent lane fn keeps the pre-lane row shape byte-identical. */
+        lane?: (childName: string, s: string) => string;
 }
 
 export function formatElapsed(ms: number): string {
@@ -271,7 +274,16 @@ export function formatFleetWidgetLines(
                                                         : "thinking";
                 const glyph = theme.glyph(child.status);
                 const body = `${elapsed} ${child.name} — ${status}`;
-                lines.push(theme.dim(cap(`${glyph} ${body}`, inner)));
+                // The lane rail costs 2 cells ("▌ ") — budget it INSIDE the cap so
+                // rows never run past the box edge (colors applied after capping,
+                // so truncation can never slice an escape sequence).
+                let row = cap(`${glyph} ${body}`, theme.lane ? inner - 2 : inner);
+                if (theme.lane) {
+                        // Beauty-4 (subagent lanes): a ▌ rail + the child's name in its
+                        // lane color. A truncated name keeps the row color via the rail.
+                        row = `${theme.lane(child.name, "▌")} ` + row.replace(child.name, (s) => theme.lane!(child.name, s));
+                }
+                lines.push(theme.dim(row));
         }
         if (running.length > 8) {
                 lines.push(theme.dim(cap(`+${running.length - 8} more running.`, inner)));

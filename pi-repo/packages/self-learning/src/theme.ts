@@ -104,6 +104,20 @@ export const UNOWN_THEME = {
 		thinkingHigh: "#34d399",
 		thinkingXhigh: "#6ee7b7",
 		bashMode: "emerald",
+
+		// Subagent color lanes (beauty-4): 8 optional tokens, one stable
+		// lane per named subagent (hash of its name — pi-tui's
+		// stableLaneIndex). Cube-exact hexes like the beauty-1 ladder:
+		// the 256-color quantizer maps each onto ITSELF (ANSI 68/74/79/
+		// 149/179/173/168/134), so no fill ever lands on a neon entry.
+		subagentLane0: "#5f87d7",
+		subagentLane1: "#5fafd7",
+		subagentLane2: "#5fd7af",
+		subagentLane3: "#afd75f",
+		subagentLane4: "#d7af5f",
+		subagentLane5: "#d7875f",
+		subagentLane6: "#d75f87",
+		subagentLane7: "#af5fd7",
 	},
 	export: {
 		pageBg: "#09090b",

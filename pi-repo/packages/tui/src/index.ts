@@ -9,6 +9,8 @@ export {
 	CombinedAutocompleteProvider,
 	type SlashCommand,
 } from "./autocomplete.ts";
+// Color lanes (stable per-name lane assignment for multi-actor surfaces)
+export { DEFAULT_LANE_COUNT, stableLaneIndex } from "./color-lanes.ts";
 // Components
 export { Box } from "./components/box.ts";
 export { CancellableLoader } from "./components/cancellable-loader.ts";
@@ -74,6 +76,8 @@ export {
 } from "./keys.ts";
 // LaTeX rendering
 export { type RenderLatexOptions, renderLatex } from "./latex.ts";
+// Shimmer sweep (moving per-character highlight band)
+export { type ShimmerOptions, shimmerWeights } from "./shimmer.ts";
 // Input buffering for batch splitting
 export { StdinBuffer, type StdinBufferEventMap, type StdinBufferOptions } from "./stdin-buffer.ts";
 // Terminal interface and implementations

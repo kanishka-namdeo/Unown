@@ -29,7 +29,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { Type } from "typebox";
-import { Text } from "@earendil-works/pi-tui";
+import { stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { cleanupWorktree, type WorktreeHandle } from "./worktree.ts";
 import {
         appendControlCommand,
@@ -696,6 +696,15 @@ export class FleetManager {
                         return;
                 }
                 const theme = this.ui.theme;
+                // Beauty-4 (subagent lanes): one stable lane color per child name.
+                // The tokens mirror coding-agent's theme schema (subagentLane0..7);
+                // a theme without the optional palette (getFgRgb undefined) keeps
+                // the pre-lane widget rows byte-identical.
+                const lanePalette = theme && typeof theme.getFgRgb === "function" ? theme.getFgRgb("subagentLane0") : undefined;
+                const lane =
+                        lanePalette !== undefined
+                                ? (childName: string, s: string) => theme?.fg?.(`subagentLane${stableLaneIndex(childName)}`, s) ?? s
+                                : undefined;
                 const widgetTheme = {
                         glyph: (status: FleetStatus) =>
                                 status === "stalled"
@@ -709,6 +718,7 @@ export class FleetManager {
                         accent: (s: string) => theme?.fg?.("accent", s) ?? s,
                         warn: (s: string) => theme?.fg?.("warning", s) ?? s,
                         title: (s: string) => theme?.fg?.("toolTitle", s) ?? s,
+                        lane,
                 };
                 try {
                         this.ui.setWidget("unown-fleet", formatFleetWidgetLines(children, widgetTheme));
@@ -899,10 +909,16 @@ export function registerFleetSurface(pi: any, manager: FleetManager, opts: { cwd
                         }
                 },
                 renderCall(args: any, theme: any) {
+                        // Beauty-4: the steered child's id rides in its lane color when the
+                        // theme carries one (falls back to muted, legacy byte-identical).
+                        const idColor = (s: string) =>
+                                theme && typeof theme.getFgRgb === "function" && theme.getFgRgb("subagentLane0") !== undefined
+                                        ? theme.fg(`subagentLane${stableLaneIndex(String(args.id))}`, s)
+                                        : theme.fg("muted", s);
                         return new Text(
                                 theme.fg("toolTitle", theme.bold("task_control ")) +
                                         theme.fg("accent", String(args.action ?? "")) +
-                                        (args.id ? theme.fg("muted", ` ${String(args.id)}`) : "") +
+                                        (args.id ? ` ${idColor(String(args.id))}` : "") +
                                         (args.message ? theme.fg("dim", ` "${String(args.message).slice(0, 40)}"`) : ""),
                                 0,
                                 0,
