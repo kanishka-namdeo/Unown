@@ -111,3 +111,29 @@ describe("parseArgs --output-format pairing", () => {
                 expect(args.prompt).toBe("do it");
         });
 });
+
+// ---------------------------------------------------------------------------
+// --session <path> (fleet lane — pi-interactive-subagents port): the resume
+// substrate. Consumed with a value; absent leaves sessionFile undefined.
+// ---------------------------------------------------------------------------
+describe("--session flag (fleet lane)", () => {
+    test("consumes the path value", () => {
+        const parsed = parseArgs(["--session", "/tmp/fleet/sessions/scout.jsonl", "-p", "hi"]);
+        expect((parsed as any).sessionFile).toBe("/tmp/fleet/sessions/scout.jsonl");
+        expect(parsed.prompt).toBe("hi");
+    });
+    test("absent flag leaves sessionFile undefined; --no-session still works", () => {
+        const parsed = parseArgs(["-p", "hi"]);
+        expect((parsed as any).sessionFile).toBeUndefined();
+        expect(parsed.noSession).toBe(false);
+        const noSession = parseArgs(["--no-session", "-p", "hi"]);
+        expect(noSession.noSession).toBe(true);
+        expect((noSession as any).sessionFile).toBeUndefined();
+    });
+    test("a missing value does not swallow the prompt", () => {
+        const parsed = parseArgs(["--session", "-p", "hi"]);
+        // The next token starts with "--" so the flag is consumed without a
+        // value; the prompt survives.
+        expect(parsed.prompt).toContain("hi");
+    });
+});

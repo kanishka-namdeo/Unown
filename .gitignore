@@ -90,6 +90,9 @@ benchmarks/edit-bench/results/rerun-2026-10-17/*/events/
 .unown/receipts/
 .unown/checkpoints/
 .unown/reviews/
+# (interactive-fleet runtime state: control inboxes, ask channels, session
+# transcripts + the resume registry — per-machine, per-session, never shared)
+.unown/fleet/
 
 # local-llm testbench: weights, binaries, and large raw outputs (keep fixtures + curated results)
 benchmarks/local-llm/bin/

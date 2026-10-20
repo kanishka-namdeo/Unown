@@ -75,6 +75,8 @@ import { ACP_HELP, runAcpServer } from "./acp.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
 import { createUnownAddonsExtension } from "./addons/index.ts";
+import { createFleetChildExtension } from "./fleet-child.ts";
+import { FLEET_DRAIN_SENTINEL } from "./fleet-runtime.ts";
 import { unownVersion } from "./packaging.ts";
 import {
         applyEffortToEnv,
@@ -263,6 +265,11 @@ interface CliArgs {
         plan: boolean;
         goal?: string;
         outputFormat?: "text" | "json";
+        /** Fleet lane (pi-interactive-subagents port): resume/continue a
+         *  specific session FILE instead of creating a fresh one. Set by the
+         *  new --session <path> flag; consumed by bootRuntime via
+         *  SessionManager.open. */
+        sessionFile?: string;
         // Milestone 2.1 + 2.2 — per-subagent routing fields. Set by the new
         // --model / --effort / --mcp-servers / --no-agents-md flags; consumed by
         // bootRuntime to set PI_MODEL_ID / BRIDGE_QWEN_THINKING /
@@ -289,6 +296,7 @@ export function parseArgs(argv: string[]): CliArgs {
         let verbose = false;
         let jsonMode = false;
         let noSession = false;
+        let sessionFile: string | undefined;
         let tools: string[] | undefined;
         let appendSystemPromptPath: string | undefined;
         let plan = false;
@@ -315,6 +323,16 @@ export function parseArgs(argv: string[]): CliArgs {
                 }
                 if (a === "--no-session") {
                         noSession = true;
+                        continue;
+                }
+                if (a === "--session") {
+                        // Fleet lane: an explicit session FILE to continue
+                        // (pi-interactive-subagents' resume substrate).
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                sessionFile = next;
+                                i++;
+                        }
                         continue;
                 }
                 if (a === "--output-format") {
@@ -385,6 +403,7 @@ export function parseArgs(argv: string[]): CliArgs {
                         verbose,
                         jsonMode,
                         noSession,
+                        sessionFile,
                         tools,
                         appendSystemPromptPath,
                         plan,
@@ -402,6 +421,7 @@ export function parseArgs(argv: string[]): CliArgs {
                 verbose,
                 jsonMode,
                 noSession,
+                sessionFile,
                 tools,
                 appendSystemPromptPath,
                 plan,
@@ -431,6 +451,9 @@ interface BootOptions {
         /** Pre-opened session manager (ACP session/load resumes a persisted
          * session instead of creating a fresh one). */
         sessionManager?: SessionManager;
+        /** Fleet lane (pi-interactive-subagents port): an explicit session
+         *  FILE to open — the resume substrate for async subagents. */
+        sessionFile?: string;
         // Milestone 2.1 + 2.2 — per-subagent routing fields. Set by parseArgs
         // (from the new --model / --effort / --mcp-servers / --no-agents-md
         // flags); consumed by bootRuntime to set PI_MODEL_ID /
@@ -569,6 +592,11 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                         mcpExtension as any,
                                         permissionsExtension as any,
                                         splitviewExtension as any,
+                                        // Fleet lane (pi-interactive-subagents port): the
+                                        // child-side extension — control-inbox steering +
+                                        // ask_question — injected ONLY when the parent set
+                                        // UNOWN_FLEET_CONTROL on this spawn.
+                                        ...(fleetChildExtension ? [fleetChildExtension as any] : []),
                                         ...((bootOpts.extraExtensions ?? []) as any[]),
                                 ],
                                 additionalSkillPaths,
@@ -624,11 +652,19 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                 return { ...created, services, diagnostics: services.diagnostics };
         };
 
+        // Fleet lane (pi-interactive-subagents port): children spawned by the
+        // fleet manager carry UNOWN_FLEET_CONTROL; their session gets the
+        // child-side extension (steer delivery + ask_question). Ordinary
+        // sessions and sync-lane subagents get nothing.
+        const fleetChildExtension = createFleetChildExtension();
+
         const sessionManager =
                 bootOpts.sessionManager ??
-                (bootOpts.noSession
-                        ? SessionManager.inMemory(cwd)
-                        : SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions")));
+                (bootOpts.sessionFile
+                        ? SessionManager.open(bootOpts.sessionFile, join(UNOWN_AGENT_DIR, "sessions"))
+                        : bootOpts.noSession
+                                ? SessionManager.inMemory(cwd)
+                                : SessionManager.create(cwd, join(UNOWN_AGENT_DIR, "sessions")));
         const runtime = await createAgentSessionRuntime(createRuntime, { cwd, agentDir, sessionManager });
         return { runtime };
 }
@@ -1410,6 +1446,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         const { runtime } = await bootRuntime(cwd, verbose, {
                 jsonMode: args.jsonMode,
                 noSession: args.noSession,
+                sessionFile: args.sessionFile,
                 tools: args.tools,
                 appendSystemPromptPath: args.appendSystemPromptPath,
                 plan: args.plan,
@@ -1425,11 +1462,17 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 mcpServers: args.mcpServers,
                 noAgentsMd: args.noAgentsMd,
         });
+        // The fleet drain sentinel rides as the final message in orchestrator
+        // runs: the fleet's input handler intercepts it (never model-visible)
+        // and waits for async subagents so their steer-back results land while
+        // the process is alive. Subagent runs carry no fleet — the sentinel
+        // would leak to the model — so it is omitted there.
+        const drainTail = process.env.UNOWN_SUBAGENT === "1" ? [] : [FLEET_DRAIN_SENTINEL];
         if (wantResultJson && capture) {
                 const wrap = captureStdout();
                 let code = 0;
                 try {
-                        code = await runPrintMode(runtime as any, { mode: "text", messages: [message] });
+                        code = await runPrintMode(runtime as any, { mode: "text", messages: [message, ...drainTail] });
                 } finally {
                         const text = wrap.unwrap().trim();
                         // --no-session: the id names an ephemeral in-memory
@@ -1446,7 +1489,10 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 }
                 process.exit(code);
         }
-        const code = await runPrintMode(runtime as any, { mode: args.jsonMode ? "json" : "text", messages: [message] });
+        const code = await runPrintMode(runtime as any, {
+                mode: args.jsonMode ? "json" : "text",
+                messages: [message, ...drainTail],
+        });
         process.exit(code);
 }
 
@@ -1801,6 +1847,9 @@ export async function runCli(argv: string[]) {
                                 plan: args.plan,
                                 noSplit: args.noSplit,
                                 goal: args.goal,
+                                // Fleet lane: --session <path> continues a specific
+                                // session file (the resume substrate).
+                                sessionFile: args.sessionFile,
                                 // Milestone 2.1 + 2.2 — surface the routing fields
                                 // (set by parseSubagentFlags inside parseArgs) into
                                 // the TUI boot path so applySubagentEnvOverrides

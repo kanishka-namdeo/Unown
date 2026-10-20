@@ -103,6 +103,7 @@ import {
         type CatalogFields,
 } from "./subagent-catalog.ts";
 import { ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
+import { FleetManager, registerFleetSurface, type FleetSpawnRequest } from "./fleet-runtime.ts";
 import {
         isProviderStyleFailure,
         loadModelHealth,
@@ -1081,6 +1082,17 @@ const TaskParams = Type.Object({
                                 "Self-contained task for the subagent. It does NOT see this conversation — include all needed detail.",
                 }),
         ),
+        async: Type.Optional(
+                Type.Boolean({
+                        description:
+                                "Fire-and-forget: spawn the subagent in the BACKGROUND and get an immediate ack; the result arrives later as a new message that triggers your next turn. Combine with task_control (steer/stop/status/list) to steer it mid-run, answer its questions, or resume it by name after it finishes. The fleet widget above the editor shows live status.",
+                }),
+        ),
+        name: Type.Optional(
+                Type.String({
+                        description: 'Label for this subagent in the fleet (async mode) — steer/resume it by this name later, e.g. "scout" or "refactor-ast". Auto-deduplicated (scout, scout-2, …).',
+                }),
+        ),
         tasks: Type.Optional(
                 Type.Array(
                         Type.Object({
@@ -1149,8 +1161,20 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
         const log = (msg: string) => {
                 if (verbose) console.error(`[unown-tools] ${msg}`);
         };
+        // Interactive fleet (pi-interactive-subagents port, cross-platform
+        // substrate): the async-lane manager. Created per extension instance so
+        // the task tool, task_control, /tasks and the widget all share ONE
+        // manager per session; the surface registration happens inside the
+        // factory where the pi API exists.
+        const fleetManager = new FleetManager({
+                cwd: opts.cwd,
+                invocation: (args) => getUnownInvocation(args),
+                log: (msg) => log(msg),
+        });
 
         const factory = (pi: ExtensionAPI) => {
+                // ---- fleet surface (async-lane tools, /tasks, renderers, widget)
+                if (!isSubagent) registerFleetSurface(pi, fleetManager, { cwd: opts.cwd });
                 // ---- plan-mode state
                 let planModeEnabled = false;
                 let executionMode = false;
@@ -1277,7 +1301,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 name: "task",
                                 label: "Task",
                                 description:
-                                        "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default), 'explore' / 'scout' (read-only; scout returns a compressed handoff), 'worker' (implementation, completion-guarded), 'reviewer' (P0/P1/P2 + verdict), 'planner' (writes plan.md, never executes), 'background-explore' (cheap sweep) plus any defined in .unown/agents/*.md (also listed in the advertised-subagents block of your system prompt). Pass {tasks: [...]} to run up to 4 in parallel. Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back). Prefer this whenever a focused investigation would pollute this session's context.",
+                                        "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default), 'explore' / 'scout' (read-only; scout returns a compressed handoff), 'worker' (implementation, completion-guarded), 'reviewer' (P0/P1/P2 + verdict), 'planner' (writes plan.md, never executes), 'background-explore' (cheap sweep) plus any defined in .unown/agents/*.md (also listed in the advertised-subagents block of your system prompt). Pass {tasks: [...]} to run up to 4 in parallel. Set async: true to spawn in the BACKGROUND fire-and-forget (immediate ack; the result arrives as a new message — steer/stop/inspect via the task_control tool; the child can ask you questions). Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back; sync lane only). Prefer this whenever a focused investigation would pollute this session's context.",
                                 parameters: TaskParams,
                                 async execute(_toolCallId, params, signal) {
                                         const agents = discoverSubagents(opts.cwd);
@@ -1304,6 +1328,99 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         content: [
                                                                 { type: "text", text: "Error: provide task (or tasks[]) — each needs a non-empty task string" },
                                                         ],
+                                                };
+                                        }
+                                        // ------------------------------------------------------------------
+                                        // FLEET LANE (pi-interactive-subagents port): async
+                                        // fire-and-forget. The tool returns an immediate ack;
+                                        // the result arrives later as a steer message that
+                                        // triggers a new turn. task_control steers/stops/lists.
+                                        // ------------------------------------------------------------------
+                                        if (params.async === true) {
+                                                const acks: string[] = [];
+                                                const details: TaskRunDetails = { runs: [] };
+                                                for (const job of jobs) {
+                                                        const agent = agents.find((a) => a.name === job.agent);
+                                                        if (!agent) {
+                                                                const available = agents.map((a) => `"${a.name}"`).join(", ");
+                                                                acks.push(`## ${job.agent}: FAILED\nUnknown agent "${job.agent}". Available: ${available}.`);
+                                                                details.runs.push({ agent: job.agent, task: job.task, exitCode: 1, turns: 0, toolResults: 0 });
+                                                                continue;
+                                                        }
+                                                        if (job.outputSchema !== undefined) {
+                                                                acks.push(
+                                                                        `## ${job.agent}: FAILED\nAsync mode does not support output_schema — structured outputs need the synchronous lane (drop async).`,
+                                                                );
+                                                                details.runs.push({ agent: agent.name, task: job.task, exitCode: 1, turns: 0, toolResults: 0 });
+                                                                continue;
+                                                        }
+                                                        // Worktree isolation composes with the fleet lane
+                                                        // (the tree becomes the run cwd; kept trees surface
+                                                        // in the result message).
+                                                        let runCwd = opts.cwd;
+                                                        let tree: WorktreeHandle | null = null;
+                                                        if (job.worktreeIsolation) {
+                                                                const childId = `${agent.name}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+                                                                const created = await createWorktree(opts.cwd, childId);
+                                                                if (created.ok) {
+                                                                        tree = created.handle;
+                                                                        runCwd = tree.path;
+                                                                        log(`fleet subagent ${agent.name} isolated in worktree ${tree.path}`);
+                                                                } else {
+                                                                        acks.push(
+                                                                                `## ${agent.name}: FAILED\nworktree isolation REJECTED (${created.reason}): ${created.detail} — retry without worktree_isolation or fix the cause.`,
+                                                                        );
+                                                                        details.runs.push({
+                                                                                agent: agent.name,
+                                                                                task: job.task,
+                                                                                exitCode: 1,
+                                                                                turns: 0,
+                                                                                toolResults: 0,
+                                                                                worktree: { action: "rejected", detail: created.detail },
+                                                                        });
+                                                                        continue;
+                                                                }
+                                                        }
+                                                        const request: FleetSpawnRequest = {
+                                                                agent: agent.name,
+                                                                task: job.task,
+                                                                name: typeof params.name === "string" && params.name.trim() ? params.name.trim() : undefined,
+                                                                routing: {
+                                                                        model: agent.model,
+                                                                        effort: agent.effort,
+                                                                        mcpServers: agent.mcpServers,
+                                                                        injectAgentsMd: agent.injectAgentsMd,
+                                                                },
+                                                                tools: agent.tools,
+                                                                systemPrompt: agent.systemPrompt,
+                                                                runCwd,
+                                                        };
+                                                        const spawned = fleetManager.spawnFleetChild(request);
+                                                        if (!spawned.ok) {
+                                                                acks.push(`## ${agent.name}: FAILED\n${spawned.error}`);
+                                                                details.runs.push({ agent: agent.name, task: job.task, exitCode: 1, turns: 0, toolResults: 0 });
+                                                                continue;
+                                                        }
+                                                        if (tree) {
+                                                                // The fleet watcher disposes trees when the child
+                                                                // finalizes — record the pairing.
+                                                                fleetManager.adoptWorktree(spawned.id, tree);
+                                                        }
+                                                        acks.push(
+                                                                `## ${spawned.name} (${agent.name} · async)\n` +
+                                                                        `Started in the background. The result will arrive as its own message; steer it with task_control {action:"steer", id:"${spawned.name}", message:"…"} or check task_control {action:"status", id:"${spawned.name}"}.`,
+                                                        );
+                                                        details.runs.push({
+                                                                agent: agent.name,
+                                                                task: job.task,
+                                                                exitCode: 0,
+                                                                turns: 0,
+                                                                toolResults: 0,
+                                                        });
+                                                }
+                                                return {
+                                                        content: [{ type: "text", text: acks.filter(Boolean).join("\n\n---\n\n") }],
+                                                        details,
                                                 };
                                         }
                                         // Malformed schemas fail HERE — before any paid spawn (omp: invalid
@@ -1484,6 +1601,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         return new Text(
                                                 theme.fg("toolTitle", theme.bold("task → ")) +
                                                         theme.fg("accent", String(args.agent ?? "general")) +
+                                                        (args.async === true ? theme.fg("accent", " [async]") : "") +
                                                         (args.worktree_isolation === true ? theme.fg("accent", " [worktree]") : "") +
                                                         (args.output_schema !== undefined ? theme.fg("accent", " [schema]") : "") +
                                                         theme.fg("dim", ` "${String(args.task ?? "").slice(0, 50)}"`),
