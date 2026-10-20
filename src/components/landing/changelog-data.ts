@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 152;
+export const CHANGELOG_TOTAL_ENTRIES = 155;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 66,
+  "Added": 69,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 0,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 30,
+    "total": 33,
     "counts": {
-      "Added": 12,
+      "Added": 15,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 0,
@@ -58,37 +58,20 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
     },
     "groups": [
       {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "the engine's runaway dream loop is closed",
-            "behavior": false
-          },
-          {
-            "title": "no router job may hold the engine hostage anymore (job watchdog)",
-            "behavior": false
-          },
-          {
-            "title": "doctor: the AGENTS.md staleness audit now warns only on confident staleness — 31 false positives → 0 on this…",
-            "behavior": false
-          },
-          {
-            "title": "scripts: test_bridge.py repointed at the bridge it actually tests",
-            "behavior": false
-          },
-          {
-            "title": "docs: the dashboard suite's warning noise is now a documented non-issue, not an unchased mystery",
-            "behavior": false
-          },
-          {
-            "title": "fleet: restricted agents regain ask_question",
-            "behavior": false
-          }
-        ]
-      },
-      {
         "bucket": "Added",
         "items": [
+          {
+            "title": "unown engine status | start | stop | serve — the engine supervises itself out of the terminal agent's way…",
+            "behavior": false
+          },
+          {
+            "title": "single-instance lock (F9)",
+            "behavior": false
+          },
+          {
+            "title": "engine maintenance + honest health",
+            "behavior": false
+          },
           {
             "title": "the engine keeps its own books (budget governor + upstream circuit breaker)",
             "behavior": false
@@ -135,6 +118,35 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "tui: the split-view display mode — a built-in port of pi-split-view 1.1.0",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "the engine's runaway dream loop is closed",
+            "behavior": false
+          },
+          {
+            "title": "no router job may hold the engine hostage anymore (job watchdog)",
+            "behavior": false
+          },
+          {
+            "title": "doctor: the AGENTS.md staleness audit now warns only on confident staleness — 31 false positives → 0 on this…",
+            "behavior": false
+          },
+          {
+            "title": "scripts: test_bridge.py repointed at the bridge it actually tests",
+            "behavior": false
+          },
+          {
+            "title": "docs: the dashboard suite's warning noise is now a documented non-issue, not an unchased mystery",
+            "behavior": false
+          },
+          {
+            "title": "fleet: restricted agents regain ask_question",
             "behavior": false
           }
         ]

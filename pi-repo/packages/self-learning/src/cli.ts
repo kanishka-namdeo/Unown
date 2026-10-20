@@ -61,6 +61,7 @@ import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDi
 import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
 import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
 import { runAutomationsCommand, AUTOMATIONS_USAGE } from "./automations-cli.ts";
+import { runEngineCommand } from "./engine-cli.ts";
 import { runUsageCommand, USAGE_HELP } from "./usage-cli.ts";
 import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
 import { runRecipesCommand, RECIPES_USAGE } from "./recipes-cli.ts";
@@ -137,6 +138,9 @@ Usage:
                            list | create | edit | pause | resume | run |
                            history | delete — needs the engine running;
                            cron is LOCAL timezone, default mode read-only
+  unown engine <sub>      the detached self-learning engine (M3):
+                           status | start | stop | serve — ping, spawn,
+                           graceful drain, or run in-process (supervisor entry)
   unown usage            token & cost report for the LLM bridge
                            (--days N, --model M, --json; estimates unless
                            UNOWN_PRICE_* pins exact prices)
@@ -1222,7 +1226,7 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                 check(
                         "self-learning engine",
                         false,
-                        `unreachable — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox`,
+                        `unreachable — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox (start it: unown engine start)`,
                         "warn",
                 );
         }
@@ -1818,6 +1822,14 @@ export async function runCli(argv: string[]) {
                 if (result.stdout) process.stdout.write(result.stdout);
                 if (result.stderr) process.stderr.write(result.stderr);
                 process.exit(result.exitCode);
+        }
+        if (first === "engine") {
+                // M3 — `unown engine status|start|stop|serve`: supervision for the
+                // detached self-learning engine (engine-cli.ts). Owns its own flag
+                // grammar; dispatch before the generic parser would eat the
+                // subcommand tokens as prompt text.
+                const code = await runEngineCommand(argv.slice(1));
+                process.exit(code);
         }
         if (first === "automations") {
                 // zcode port: scheduled recurring agent runs — see automations-cli.ts.

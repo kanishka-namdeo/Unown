@@ -155,6 +155,14 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `DO_NOT_TRACK` | unset | `1` — the standard nonessential-traffic opt-out; suppresses the background update check. |
 | `UNOWN_DISABLE_UPDATES` | unset | `1` blocks **all** update paths (`unown update`, `--check`, background check) — the org/CI kill switch. |
 | `PI_DREAM_GATE` | on | Dream canary gate: re-run the last-passing benchmark task under freshly dreamed project memory and roll the dream back if it fails. `0` disables. Read by the engine. |
+| `PI_JOB_TIMEOUT_MS` | `1200000` | Engine job watchdog: any router job exceeding this is aborted, its runs marked `error`, and the busy mutex released (floor 60s). Read by the engine. |
+| `PI_DREAM_CHECK_COOLDOWN_MS` | `600000` | At most one dream-check per window, however many `run:finished` events arrive; `0` opts out. Read by the engine. |
+| `PI_ENGINE_MAX_CALLS_HOUR` | `60` | Budget governor: learning jobs skip while the engine made more LLM calls than this in the last hour (`0` = unlimited). Read by the engine. |
+| `PI_ENGINE_MAX_TOKENS_HOUR` | `200000` | Budget governor: hourly token ceiling (ledger + run tokens; `0` = unlimited). Read by the engine. |
+| `PI_ENGINE_MAX_TOKENS_DAY` | `2000000` | Budget governor: daily token ceiling (`0` = unlimited). Read by the engine. |
+| `PI_LLM_BREAKER_THRESHOLD` | `3` | Upstream circuit breaker: consecutive engine LLM failures before the backoff window opens. Read by the engine. |
+| `PI_LLM_BACKOFF_BASE_MS` | `30000` | Upstream circuit breaker: base backoff (x4 growth, full jitter, 15-min cap). Read by the engine. |
+| `PI_PRINT_STALL_MS` | `300000` | Print-mode stall deadline: a session silent for this long force-exits (floor 10s; any session event re-arms it). Read by the terminal agent. |
 | `UNOWN_MAX_MINTED_TASKS` | `8` | Cap on ACTIVE minted tasks before the engine's task-mint job skips authoring new curriculum variants (minting resumes as tasks are archived/graduated). Read by the engine. |
 | `UNOWN_AUTO_COMPACT_THRESHOLD` | `85` | Engine-run auto-compact: percent of the context window at which compaction auto-triggers (0–100; a warn receipt starts at a fixed 70%). Read by the engine's runner (`auto-compact.ts`). |
 | `UNOWN_AUTO_COMPACT_HARD_LIMIT` | `95` | Engine-run auto-compact: percent at which the next model request is hard-blocked and the session aborted (0–100) — the session must be compacted or restarted. Read by the engine's runner. |

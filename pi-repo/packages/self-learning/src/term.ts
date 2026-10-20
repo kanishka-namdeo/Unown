@@ -23,6 +23,7 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { pruneToBudget } from "./budget.ts";
 import { seedAddonsConfig } from "./addons/config.ts";
+import { spawnEngineDetached } from "./engine-supervisor.ts";
 import { MEMORY_GUIDE, MEMORY_GUIDE_PATH } from "./memory-guide.ts";
 import { STARTER_SKILLS } from "./skill-seeds.ts";
 import { UNOWN_THEME, UNOWN_THEME_NAME } from "./theme.ts";
@@ -395,6 +396,22 @@ export function writeOutboxNote(note: OutboxNote): string {
 export async function deliverTerminalNote(
         note: OutboxNote,
 ): Promise<{ delivered: boolean; via: "engine" | "outbox"; detail?: string }> {
+        // M3 auto-start (docs/detached-engine-architecture.md rule 5): when the
+        // engine is unreachable, spawn it detached — fire-and-forget. The note
+        // itself STILL lands in the outbox (the durable path); the engine's boot
+        // syncNoteOutbox drains it once the spawn comes up. Never awaited here:
+        // session shutdown must not pay the boot latency.
+        let spawnedEngine = false;
+        try {
+                await fetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(1200) });
+        } catch {
+                try {
+                        void spawnEngineDetached();
+                        spawnedEngine = true;
+                } catch {
+                        /* spawn is best-effort — the outbox is the guarantee */
+                }
+        }
         try {
                 const res = await fetch(`${ENGINE_URL}/api/notes`, {
                         method: "POST",
@@ -409,7 +426,11 @@ export async function deliverTerminalNote(
         } catch (err: any) {
                 const detail = err?.message ?? String(err);
                 writeOutboxNote(note);
-                return { delivered: false, via: "outbox", detail };
+                return {
+                        delivered: false,
+                        via: "outbox",
+                        detail: spawnedEngine ? `${detail} (engine spawn kicked)` : detail,
+                };
         }
 }
 

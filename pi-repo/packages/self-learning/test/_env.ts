@@ -78,3 +78,13 @@ process.env.PI_ENGINE_MAX_TOKENS_DAY ??= "0";
 // learning jobs (run_count never moves, until() times out). governor.test.ts
 // pins the real threshold semantics with explicit per-case overrides.
 process.env.PI_LLM_BREAKER_THRESHOLD ??= "1000000";
+// M3: never spawn engine children from test processes — the supervisor's
+// spawn path launches `unown engine serve`, which from a bun test process
+// would re-execute the test file. The spawn path is validated live
+// (unown engine start against the real stack) instead.
+process.env.PI_DISABLE_ENGINE_SPAWN ??= "1";
+// M3: the supervisor's health probes must never find the DEVELOPER's live
+// engine (:3030) from inside the suite — same dead-port convention the CLI
+// helpers use. Tests that boot a real engine on an ephemeral port override
+// this per-case.
+process.env.UNOWN_ENGINE_URL ??= "http://127.0.0.1:9";

@@ -3,6 +3,8 @@
  */
 
 import { emit, subscribe } from "./bus.ts";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeSync } from "node:fs";
+import { join } from "node:path";
 import {
         AutomationsScheduler,
         createAutomation,
@@ -21,11 +23,11 @@ import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
 import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
-import { breakerStatus, budgetStatus } from "./governor.ts";
+import { breakerStatus, budgetStatus, pruneLedger } from "./governor.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
 import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from "./skills.ts";
-import { store } from "./store.ts";
+import { store, DATA_DIR } from "./store.ts";
 import { getTask, listTasks, seedTasks } from "./tasks.ts";
 import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
 
@@ -138,6 +140,11 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 // Overview
                 // ------------------------------------------------------------------
                 if (method === "GET" && path === "/api/overview") {
+                        // pid + uptime: the supervisor (engine-supervisor.ts) and
+                        // `unown engine status` report these; the pid doubles as
+                        // the graceful-stop handle for `unown engine stop`.
+                        const bootedAt = (globalThis as any).__unown_engine_booted_at ?? Date.now();
+                        (globalThis as any).__unown_engine_booted_at = bootedAt;
                         const runs = store.query<any>(
                                 `SELECT status, kind, tokens_in, tokens_out, tool_calls, started_at FROM runs ORDER BY started_at DESC LIMIT 500`,
                         );
@@ -169,6 +176,9 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         });
                         return json({
                                 ok: true,
+                                pid: process.pid,
+                                bootedAt,
+                                uptimeMs: Date.now() - bootedAt,
                                 agent: {
                                         name: "pi (badlogic/pi-mono)",
                                         layer: "self-learning v0.1",
@@ -474,6 +484,19 @@ export function recoverOrphans() {
 export const automationsScheduler = new AutomationsScheduler();
 
 export function startServer(port: number = PORT) {
+        // ---------------------------------------------------------- single instance
+        // The engine lock (M3, docs/detached-engine-architecture.md F9): the
+        // port bind is a mutex, but only for THIS port — a second engine with
+        // a different PI_AGENT_PORT would still open the same SQLite data.
+        // The lockfile is created exclusively (O_EXCL "wx"), carries the pid,
+        // and is stolen only when that pid is provably dead (or, on Linux,
+        // alive but not an engine — pid-reuse after a crash must not brick
+        // boot). The loser exits 0 with a clear line in the log.
+        const lock = acquireEngineLock();
+        if (!lock.ok) {
+                console.log(`[agent-service] ${lock.reason} — this instance exits`);
+                return null;
+        }
         ensureAgentDir();
         seedMemoryIfEmpty();
         seedTasks();
@@ -538,5 +561,157 @@ export function startServer(port: number = PORT) {
         });
 
         console.log(`[agent-service] REST+SSE API on http://127.0.0.1:${server.port}`);
+        installGracefulShutdown(server, lock.release);
+        startMaintenance();
         return server;
+}
+
+// ---------------------------------------------------------------------------
+// Supervision (M3): single-instance lock, graceful shutdown, maintenance
+// ---------------------------------------------------------------------------
+
+/** The engine's lockfile path — inside its own data dir, which tests redirect per-suite. */
+function engineLockPath(): string {
+        return join(DATA_DIR, "engine.lock");
+}
+
+/** Is `pid` alive AND (on Linux) actually an engine process? Defends lock-steal against pid reuse. */
+function lockHolderLooksLikeEngine(pid: number): boolean {
+        try {
+                process.kill(pid, 0);
+        } catch (err: any) {
+                // EPERM = the process exists but belongs to another user: ALIVE.
+                // ESRCH = no such process: dead. Anything else: assume dead.
+                return err?.code === "EPERM";
+        }
+        if (process.platform === "linux") {
+                try {
+                        const cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf8");
+                        return /agent-service|engine[\s\/]serve|self-learning/.test(cmdline);
+                } catch {
+                        return false; // can't read → can't prove → don't steal lightly
+                }
+        }
+        return true; // non-Linux: pid alive is the best portable signal
+}
+
+function acquireEngineLock(): { ok: true; release: () => void } | { ok: false; reason: string } {
+        mkdirSync(DATA_DIR, { recursive: true });
+        const lockPath = engineLockPath();
+        if (existsSync(lockPath)) {
+                try {
+                        const pid = Number(readFileSync(lockPath, "utf8").trim());
+                        // Same-pid re-entrancy: a test (or an in-process restart)
+                        // calling startServer again owns the lock already.
+                        if (pid === process.pid) {
+                                return {
+                                        ok: true,
+                                        release: () => {
+                                                try {
+                                                        rmSync(lockPath);
+                                                } catch {
+                                                        /* best effort */
+                                                }
+                                        },
+                                };
+                        }
+                        if (Number.isFinite(pid) && pid > 0 && lockHolderLooksLikeEngine(pid)) {
+                                return { ok: false, reason: `another engine is running (pid ${pid}, lock ${lockPath})` };
+                        }
+                } catch {
+                        /* unreadable lock — steal */
+                }
+                try {
+                        rmSync(lockPath);
+                } catch {
+                        /* best effort */
+                }
+        }
+        try {
+                const fd = openSync(lockPath, "wx");
+                writeSync(fd, String(process.pid));
+                closeSync(fd);
+        } catch (err: any) {
+                return { ok: false, reason: `cannot create engine lock ${lockPath}: ${err?.message ?? err}` };
+        }
+        return {
+                ok: true,
+                release: () => {
+                        try {
+                                rmSync(lockPath);
+                        } catch {
+                                /* best effort */
+                        }
+                },
+        };
+}
+
+let shutdownInstalled = false;
+
+/**
+ * Graceful drain on SIGTERM/SIGINT (M3): stop accepting, let in-flight
+ * requests finish (Bun's server.stop() waits for them), stop the router and
+ * the automations scheduler, checkpoint + close the WAL store, release the
+ * lock, exit 0. Without a handler, Bun dies mid-request on SIGTERM (verified
+ * against 1.3 — see docs/detached-engine-research.md §2).
+ */
+function installGracefulShutdown(server: any, releaseLock: () => void): void {
+        if (shutdownInstalled) return;
+        shutdownInstalled = true;
+        const shutdown = async (signal: string) => {
+                console.log(`[agent-service] ${signal} — draining…`);
+                try {
+                        await server.stop(); // drain in-flight requests
+                } catch {
+                        /* ignore */
+                }
+                try {
+                        router.stop();
+                        automationsScheduler.stop();
+                } catch {
+                        /* ignore */
+                }
+                try {
+                        store.run("PRAGMA wal_checkpoint(TRUNCATE)");
+                } catch {
+                        /* ignore */
+                }
+                try {
+                        store.close();
+                } catch {
+                        /* ignore */
+                }
+                releaseLock();
+                process.exit(0);
+        };
+        process.on("SIGTERM", () => void shutdown("SIGTERM"));
+        process.on("SIGINT", () => void shutdown("SIGINT"));
+}
+
+let maintenanceTimer: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Periodic maintenance (M3): TRUNCATE-checkpoint the WAL (bounded growth — a
+ * long-lived reader can otherwise grow it without bound) and prune the
+ * governor's spend ledger past its 24h window. Unref'd: never blocks exit.
+ */
+function startMaintenance(): void {
+        if (maintenanceTimer) return;
+        let ticks = 0;
+        maintenanceTimer = setInterval(() => {
+                ticks++;
+                try {
+                        store.run("PRAGMA wal_checkpoint(TRUNCATE)");
+                } catch {
+                        /* ignore — a busy reader can make TRUNCATE a no-op */
+                }
+                if (ticks % 10 === 0) {
+                        try {
+                                pruneLedger();
+                        } catch {
+                                /* ignore */
+                        }
+                }
+        }, 60_000);
+        maintenanceTimer.unref?.();
 }
