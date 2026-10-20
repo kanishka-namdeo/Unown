@@ -1,22 +1,23 @@
-// Component test for src/components/landing/creature.tsx and its two homes
-// (the hero's session party, the loop bento's tile badges).
+// Component test for src/components/landing/creature.tsx and its one home,
+// the capability dex (dex.tsx + dex-data.ts).
 //
 // The changed-line coverage gate (scripts/check_coverage.mjs) flags landing
 // edits that no test exercises — this file pins the creature contract:
 // every id ships a file, decorative renders are alt="" + aria-hidden (the
-// WAI decorative-image rule the axe scans enforce), and the party/bento
-// placements keep a text label beside every creature so none is the sole
-// carrier of meaning.
+// WAI decorative-image rule the axe scans enforce), and since 2026-10-20 the
+// dex is the one canonical home — the hero's party strip and the loop
+// bento's tile badges retired, so a creature sprite anywhere else on the
+// page is a regression, not a feature.
 //
 // Rendered under the global happy-dom preload (bunfig.toml [test] preload →
 // src/test-dom-setup.ts), same as the other landing component tests.
 
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { CREATURE_IDS, Creature } from "../creature";
-import { LoopSection } from "../loop";
+import { DEX } from "../dex-data";
 
 // The Hero's StarCount is an async server component; unauthenticated
 // api.github.com is rate-limited from a shared sandbox IP, and the fetch
@@ -28,6 +29,8 @@ mock.module("../star-count", () => ({
 }));
 
 const { Hero } = await import("../hero");
+const { LoopSection } = await import("../loop");
+const { DexSection } = await import("../dex");
 
 // The Hero renders SessionReplay, which autoplays a framer-motion typewriter
 // on mount; cancelling it mid-flight at cleanup makes happy-dom's Web-Animations
@@ -43,6 +46,11 @@ afterEach(async () => {
   await new Promise((r) => setTimeout(r, 320));
   cleanup();
 });
+
+const creatureImgs = (root: HTMLElement | Document = document) =>
+  Array.from(root.querySelectorAll("img"))
+    .map((el) => el as HTMLImageElement)
+    .filter((el) => (el.getAttribute("src") ?? "").includes("/landing/creatures/"));
 
 describe("landing Creature", () => {
   test("every creature id ships its sprite in public/landing/creatures", () => {
@@ -77,47 +85,48 @@ describe("landing Creature", () => {
     expect(img?.getAttribute("aria-hidden")).toBe(null);
   });
 
-  test("the hero's session party chips label every creature with its tool name", () => {
-    render(<Hero />);
-    // Not getByText on the tool names — "web_search" and "task" also appear
-    // in the cli expander's prose, so traverse from the strip's own kicker.
-    const kicker = screen.getByText("the session party");
-    const party = kicker.parentElement as HTMLElement;
-    const chips = Array.from(party.querySelectorAll("ul > li"));
-    expect(chips.length).toBe(4);
-    const tools = chips.map((c) => c.textContent ?? "");
-    for (const tool of ["web_search", "mcp", "task", "lsp"]) {
-      expect(tools.some((t) => t.includes(tool)), `chip for ${tool}`).toBe(true);
-    }
-    for (const chip of chips) {
-      const img = chip.querySelector("img");
-      // Labelled by the adjacent tool name, so the creature stays decorative.
-      expect(img, "chip carries a creature").not.toBeNull();
-      expect(img?.getAttribute("alt")).toBe("");
-      expect(img?.getAttribute("aria-hidden")).toBe("true");
+  test("the dex data covers every creature exactly once, numbered 001-010", () => {
+    expect(DEX.length).toBe(CREATURE_IDS.length);
+    expect(new Set(DEX.map((e) => e.id))).toEqual(new Set(CREATURE_IDS));
+    expect(DEX.map((e) => e.no)).toEqual([
+      "001", "002", "003", "004", "005", "006", "007", "008", "009", "010",
+    ]);
+    // Every entry links at least one receipt — the catalog keeps the page's
+    // every-number-checkable contract.
+    for (const e of DEX) {
+      expect(e.receipts.length, `${e.name} has no receipts`).toBeGreaterThan(0);
+      for (const [label, href] of e.receipts) {
+        expect(label.length).toBeGreaterThan(0);
+        expect(href.startsWith("https://github.com/kanishka-namdeo/Unown/"), `${e.name}:${label}`).toBe(true);
+      }
     }
   });
 
-  test("the loop bento badges every mechanism tile, one creature each", () => {
-    render(<LoopSection />);
-    const imgs = Array.from(document.querySelectorAll("img"))
-      .map((el) => el as HTMLImageElement)
-      .filter((el) => (el.getAttribute("src") ?? "").includes("/landing/creatures/"));
-    // 6 tiles, 6 sprites: memory, harness, router, dream, hooks, sdlc
-    // (one per tile — a dream+skills pair was tried and read as clutter,
-    // so tile 04 carries dream and argues skills in prose).
-    expect(imgs.length).toBe(6);
-    const srcs = imgs.map((el) => el.getAttribute("src") ?? "");
-    expect(srcs).toContain("/landing/creatures/memory.png");
-    expect(srcs).toContain("/landing/creatures/harness.png");
-    expect(srcs).toContain("/landing/creatures/router.png");
-    expect(srcs).toContain("/landing/creatures/dream.png");
-    expect(srcs).toContain("/landing/creatures/hooks.png");
-    expect(srcs).toContain("/landing/creatures/sdlc.png");
-    // Every bento creature is decorative — the tile's title is the label.
+  test("the dex is the one home: all ten detail panes mount a creature, decorative beside the name", () => {
+    const { container } = render(<DexSection />);
+    const imgs = creatureImgs(container);
+    // Ten entries, ten sprites — the hidden panes still mount theirs (the
+    // proof band's pane contract: crawlers and gates read every entry).
+    expect(imgs.length).toBe(10);
     for (const el of imgs) {
       expect(el.getAttribute("alt")).toBe("");
       expect(el.getAttribute("aria-hidden")).toBe("true");
+      // h-48 = 3x the 64px logical grid: an integer multiple, never a resample
+      expect(el.className).toContain("creature");
+      expect(el.className).toContain("h-48");
     }
+    // The visible pane is the first entry; its article is labeled by name.
+    const articles = container.querySelectorAll("article[aria-label]");
+    expect(articles.length).toBe(10);
+    expect(articles[0].getAttribute("aria-label")).toContain("Websearch");
+    expect(articles[0].hasAttribute("hidden")).toBe(false);
+  });
+
+  test("no creature renders outside the dex — the hero party strip and the bento badges retired", () => {
+    const hero = render(<Hero />);
+    expect(creatureImgs(hero.container), "hero party moved to the dex 2026-10-20").toEqual([]);
+    cleanup();
+    const loop = render(<LoopSection />);
+    expect(creatureImgs(loop.container), "bento badges moved to the dex 2026-10-20").toEqual([]);
   });
 });

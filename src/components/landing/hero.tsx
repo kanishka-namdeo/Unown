@@ -1,8 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { Glyph } from "./glyph";
 import type { GlyphId } from "./glyphs";
-import { Creature } from "./creature";
-import type { CreatureId } from "./creature";
 import { InstallPanel } from "./install-panel";
 import { SessionReplay } from "./session-replay";
 import { CopyButton, GhostLink, PrimaryLink, GITHUB_URL, DOCS_URL } from "./shell";
@@ -152,21 +150,6 @@ const TRUST = [
 /* ------------------------------------------------------------------ */
 /* hero                                                                */
 /* ------------------------------------------------------------------ */
-
-/**
- * The session party: the tools every session ships, each denoted by its
- * creature (original renders — the non-affiliation wall holds; the pipeline
- * and its IP gates are `scripts/creature_sprites.mjs`). The chip text is the
- * tool's real name, so the creature stays decorative (alt="" + aria-hidden)
- * while the mapping reads at a glance. The prose paragraph inside the cli
- * expander remains the canonical description of each tool.
- */
-const PARTY: { id: CreatureId; tool: string }[] = [
-  { id: "websearch", tool: "web_search" },
-  { id: "mcp", tool: "mcp" },
-  { id: "task", tool: "task" },
-  { id: "lsp", tool: "lsp" },
-];
 
 export function Hero() {
   return (
@@ -331,23 +314,19 @@ export function Hero() {
                   ))}
                 </ul>
                 <p className="mt-3 border-t border-line pt-2.5 text-[12.5px] leading-relaxed text-faint">
-                  Every session also ships session tools:{" "}
+                  Every session also ships session tools —{" "}
                   <code className="font-mono text-dim">todo</code>,{" "}
                   <code className="font-mono text-dim">note</code>,{" "}
-                  <code className="font-mono text-dim">task</code> (subagents with a fresh
-                  context — typed replies via{" "}
-                  <code className="font-mono text-dim">output_schema</code> and per-child git
-                  worktree isolation via{" "}
-                  <code className="font-mono text-dim">worktree_isolation</code>),{" "}
+                  <code className="font-mono text-dim">task</code>,{" "}
                   <code className="font-mono text-dim">web_search</code> +{" "}
-                  <code className="font-mono text-dim">webfetch</code> (native web access —
-                  keyless providers work out of the box, 19 total),{" "}
+                  <code className="font-mono text-dim">webfetch</code>,{" "}
                   <code className="font-mono text-dim">fetch_url</code> and{" "}
-                  <code className="font-mono text-dim">lsp</code> (language-server
-                  intelligence — diagnostics ride every edit). MCP servers configured in{" "}
-                  <code className="font-mono text-dim">.unown/mcp.json</code> join as{" "}
-                  <code className="font-mono text-dim">mcp__server__tool</code>. Slash
-                  commands: <code className="font-mono text-dim">/plan</code>,{" "}
+                  <code className="font-mono text-dim">lsp</code> — and any MCP server you
+                  configure joins it. Each one is catalogued, with its receipts, in{" "}
+                  <a href="#dex" className="text-gold underline underline-offset-2">
+                    the capability dex
+                  </a>{" "}
+                  below. Slash commands: <code className="font-mono text-dim">/plan</code>,{" "}
                   <code className="font-mono text-dim">/review</code>,{" "}
                   <code className="font-mono text-dim">/goal</code>,{" "}
                   <code className="font-mono text-dim">/undo</code>,{" "}
@@ -387,23 +366,8 @@ export function Hero() {
           <Seal />
         </div>
 
-        {/* the session party — the tools every session ships, one creature
-            each, right above the replay of a real session so the party and
-            the session it joins are one thought */}
-        <div className="rise mt-14 flex flex-wrap items-center gap-x-4 gap-y-3 sm:mt-16">
-          <p className="gb-label text-[10px] text-faint">the session party</p>
-          <ul className="flex flex-wrap gap-2">
-            {PARTY.map((p) => (
-              <li
-                key={p.id}
-                className="flex items-center gap-2.5 border border-line bg-panel-2/40 px-3 py-1.5"
-              >
-                <Creature id={p.id} className="h-16 w-auto" />
-                <span className="font-mono text-[10.5px] text-dim">{p.tool}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* the session party moved to the capability dex (#dex) with the rest
+            of the creatures, 2026-10-20 */}
 
         {/* the product itself */}
         <div className="rise mt-10 sm:mt-14">

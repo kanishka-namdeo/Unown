@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Glyph, Mark } from "./glyph";
 import { GLYPH_IDS, MARKS, type GlyphId, type MarkId } from "./glyphs";
-import { LEXICON_BY_ID, DEX_QUOTES } from "./lexicon";
+import { LEXICON_BY_ID } from "./lexicon";
 import { useLetterRain } from "./effects";
 import { FadeUp, SectionHead, TerminalWindow, PixelCursor, toneAttr, type Tone } from "./shell";
 
@@ -11,10 +11,13 @@ import { FadeUp, SectionHead, TerminalWindow, PixelCursor, toneAttr, type Tone }
  * The alphabet band — the page's identity section, and since 2026-10-20 also
  * the home of the field notes. The glyph wall + decode panel stay (they are
  * the signature interaction: 28 hand-drawn SVG forms, each decoding twice);
- * the Pokédex card moved in from field-notes.tsx beside the panel; the
- * borrowed-essays column became a sources footnote. One highlight quote
+ * the borrowed-essays column became a sources footnote. One highlight quote
  * survives instead of three — the decode panel already carries all 28
- * entries, and the wall itself is the argument.
+ * entries, and the wall itself is the argument. The static Unown trading
+ * card (the old DexCard) retired the same day the capability dex arrived:
+ * its facts mostly restated the hero seal's (№ 0201, アンノーン, Symbol ·
+ * Psychic), and the one fact unique to it — ! and ? arrived in 2004 — moved
+ * into the intro sentence below.
  */
 
 /* ------------------------------------------------------------------ */
@@ -121,64 +124,6 @@ function FormTile({
 }
 
 /* ------------------------------------------------------------------ */
-/* the dex card (from field-notes.tsx)                                 */
-/* ------------------------------------------------------------------ */
-
-/**
- * The Pokédex card. Every line is either a short attributed quotation of game
- * text (commentary/quotation, with the source named) or a verifiable fact from
- * Bulbapedia / PokémonDB. No artwork, no sprites, no trademarks beyond naming
- * the thing this project is named after.
- */
-const FACTS: [string, string][] = [
-  ["Entry", "№ 0201 · Symbol · Psychic"],
-  ["Japanese", "アンノーン — literally the word “Unknown”"],
-  ["Forms", "26 letters since 1999; ! and ? arrived in 2004"],
-  ["Where", "Ruins of Alph, Tanoby Ruins, Solaceon Ruins"],
-];
-
-function DexCard() {
-  return (
-    <div className="gb-panel overflow-hidden">
-      <div className="flex items-start gap-4 border-b border-line p-4">
-        <div className="grid size-14 shrink-0 place-items-center bg-canvas">
-          <Glyph id="?" weight="heavy" tone="lit" className="size-10 text-gold" />
-        </div>
-        <div className="min-w-0 pt-0.5">
-          <p className="gb-label text-[10px] text-gold">Symbol</p>
-          <p className="mt-1 text-lg font-medium leading-none text-ink">Unown</p>
-          <p className="mt-1.5 font-mono text-[10px] text-faint">アンノーン</p>
-        </div>
-      </div>
-
-      <div className="space-y-1.5 border-b border-line px-4 py-3">
-        {FACTS.map(([k, v]) => (
-          <div key={k} className="flex gap-3 text-[11px]">
-            <span className="gb-label w-16 shrink-0 text-[8px] text-faint">{k}</span>
-            <span className="min-w-0 text-dim">{v}</span>
-          </div>
-        ))}
-      </div>
-
-      <figure className="p-4">
-        {/* quotes sit on the dark gb-box — the dex speaks from the screen,
-            and text-canvas only clears AA against the box fill, never the
-            panel (1.18:1 in the light scheme — contrast_audit.mjs catches
-            exactly this) */}
-        <div className="gb-box p-4">
-          <blockquote className="quote text-[18px] leading-relaxed text-canvas">
-            “{DEX_QUOTES.origin}”
-          </blockquote>
-        </div>
-        <figcaption className="mt-2 gb-label text-[9px] text-faint">
-          {DEX_QUOTES.originSrc}
-        </figcaption>
-      </figure>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* section                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -212,9 +157,10 @@ export function AlphabetSection() {
             <p className="text-pretty leading-relaxed text-dim">
               <span className="text-ink">un</span>own — the <em>Symbol Pokémon</em>: a
               flat black letter with one eye, alive since 1999, found stuck to walls in
-              ruins. The 28 forms below are ours, drawn from scratch as inline SVG — no
-              font file, no image sprite — and each one decodes twice: the lore it
-              borrows, and the real mechanism it stands for here.
+              ruins. Twenty-six letter forms to start, with ! and ? arriving in 2004;
+              the 28 below are ours, drawn from scratch as inline SVG — no font file,
+              no image sprite — and each one decodes twice: the lore it borrows, and
+              the real mechanism it stands for here.
             </p>
           </FadeUp>
           <FadeUp delay={0.12}>
@@ -256,48 +202,45 @@ export function AlphabetSection() {
             </p>
           </FadeUp>
 
-          {/* the decoding, then the dex card */}
+          {/* the decoding panel — the dex card retired 2026-10-20 (see the
+              band comment above) */}
           <FadeUp delay={0.08} className="lg:order-2">
-            <div className="grid gap-5">
-              <TerminalWindow title={`form ${ordinal} / 28 · ${entry.id}`}>
-                <div aria-live="polite" className="p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="grid size-16 shrink-0 place-items-center border-[3px] border-canvas bg-gold/10">
-                      <Glyph id={entry.id} weight="heavy" tone="lit" className="size-11 text-gold" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="gb-term text-[24px] leading-none text-ink">{entry.id}</p>
-                      <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-                        form {ordinal} / 28
-                      </p>
-                    </div>
+            <TerminalWindow title={`form ${ordinal} / 28 · ${entry.id}`}>
+              <div aria-live="polite" className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="grid size-16 shrink-0 place-items-center border-[3px] border-canvas bg-gold/10">
+                    <Glyph id={entry.id} weight="heavy" tone="lit" className="size-11 text-gold" />
                   </div>
-
-                  <figure className="mt-5 border-t border-line pt-4">
-                    <blockquote className="quote font-term text-[15px] italic leading-relaxed text-dim">
-                      {entry.lore}
-                    </blockquote>
-                    <figcaption className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-dim">
-                      {entry.loreSrc ?? "Unown"}
-                    </figcaption>
-                  </figure>
-
-                  <div className="mt-5 border-t border-line pt-4">
-                    <p className="gb-label text-[9px] text-gold">
-                      in unown
+                  <div className="min-w-0">
+                    <p className="gb-term text-[24px] leading-none text-ink">{entry.id}</p>
+                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
+                      form {ordinal} / 28
                     </p>
-                    <p className="mt-2 text-[13px] leading-relaxed text-ink">{entry.means}</p>
-                    {entry.proof ? (
-                      <p className="mt-3 inline-block border border-line bg-canvas/60 px-2 py-0.5 font-mono text-[10px] text-faint">
-                        {entry.proof}
-                      </p>
-                    ) : null}
                   </div>
                 </div>
-              </TerminalWindow>
 
-              <DexCard />
-            </div>
+                <figure className="mt-5 border-t border-line pt-4">
+                  <blockquote className="quote font-term text-[15px] italic leading-relaxed text-dim">
+                    {entry.lore}
+                  </blockquote>
+                  <figcaption className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-dim">
+                    {entry.loreSrc ?? "Unown"}
+                  </figcaption>
+                </figure>
+
+                <div className="mt-5 border-t border-line pt-4">
+                  <p className="gb-label text-[9px] text-gold">
+                    in unown
+                  </p>
+                  <p className="mt-2 text-[13px] leading-relaxed text-ink">{entry.means}</p>
+                  {entry.proof ? (
+                    <p className="mt-3 inline-block border border-line bg-canvas/60 px-2 py-0.5 font-mono text-[10px] text-faint">
+                      {entry.proof}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </TerminalWindow>
           </FadeUp>
         </div>
 

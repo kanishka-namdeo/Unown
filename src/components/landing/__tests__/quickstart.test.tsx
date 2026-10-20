@@ -100,14 +100,20 @@ describe("landing quickstart (hero expanders)", () => {
     expect(text).toContain("its tools join every session");
   });
 
-  test("states the SDLC-parity session surface (lsp, MCP, checkpoints, review, goal)", () => {
+  test("states the session surface and points the descriptions at the dex", () => {
     setUA("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36");
     const { container } = render(<Hero />);
     const text = container.textContent ?? "";
+    // The tool names stay (the cli expander names the surface); the
+    // capability DESCRIPTIONS moved to the capability dex with the
+    // creatures (2026-10-20) — pinned there by dex.test.tsx, so this test
+    // pins the pointer instead of the copy.
     expect(text).toContain("lsp");
-    expect(text).toContain("language-server intelligence");
-    expect(text).toContain(".unown/mcp.json");
-    expect(text).toContain("mcp__server__tool");
+    expect(text).toContain("web_search");
+    expect(text).toContain("fetch_url");
+    const dexLink = container.querySelector('a[href="#dex"]');
+    expect(dexLink).toBeTruthy();
+    expect(dexLink?.textContent).toContain("the capability dex");
     for (const command of ["/plan", "/review", "/goal", "/undo", "/receipts", "/mcp", "/lsp"]) {
       expect(text).toContain(command);
     }

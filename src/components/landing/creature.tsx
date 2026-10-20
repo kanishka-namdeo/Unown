@@ -3,16 +3,21 @@ import * as React from "react";
 /**
  * The feature creatures.
  *
- * One original 2D "monster companion" render per agent feature — the session
- * tools in the hero's party strip, the learning mechanisms in the loop bento.
- * They are AI-generated original artwork, never Pokémon assets and never a
- * named species (the non-affiliation wall, landing AGENTS.md). The pipeline
+ * One original 2D "monster companion" render per agent feature. Since
+ * 2026-10-20 their one canonical home is the capability dex (`dex.tsx`,
+ * fed by `dex-data.ts`): the hero's old session-party strip and the loop
+ * bento's tile badges retired when the dex arrived, so every sprite and
+ * every capability line lives in one catalog. They are AI-generated
+ * original artwork, never Pokémon assets and never a named species (the
+ * non-affiliation wall, landing AGENTS.md). The pipeline
  * (`scripts/creature_sprites.mjs`) GBA-ifies every render: 64px logical
  * grid, 1-bit alpha, and every pixel snapped to the page's own palette
  * tokens — so a creature can no more leave the page's world than a glyph
- * can. Sprites ship at 4× (256px) and display 1:1 logical via the
- * `.creature` class (image-rendering: pixelated), which keeps every logical
- * pixel a hard square.
+ * can. Sprites ship at 4× (256px) and display at integer multiples of the
+ * logical size via the `.creature` class (image-rendering: pixelated) —
+ * h-16 is 1:1, the dex detail's h-32 is 2× — which keeps every logical
+ * pixel a hard square. A non-integer height resamples the grid and is a
+ * defect.
  *
  * A creature is decoration with a text label beside it (WAI tutorial: images
  * whose meaning is given by surrounding text are decorative) — the default

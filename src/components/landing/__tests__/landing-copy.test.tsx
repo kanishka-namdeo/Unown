@@ -174,55 +174,7 @@ describe("landing hero", () => {
   });
 });
 
-describe("landing loop (mechanisms bento)", () => {
-  test("the SDLC-parity tile lists the M1-M4 capabilities and links their sources", () => {
-    // The 2026-10-19 sweep ported fifteen features; the loop band's bento
-    // surfaces them as its sixth tile so the page can't silently drop one.
-    // Each ported capability links to a real source file under
-    // pi-repo/packages/self-learning/src/.
-    const { container } = render(<LoopSection />);
-    const text = container.textContent ?? "";
-    expect(text).toContain("SDLC parity");
-    expect(text).toContain("Three pains, five answers.");
-    // Every M1-M4 capability is named — the same set the parity doc Round 5
-    // table describes, in the same vocabulary so the page cannot drift from
-    // the doc.
-    const capabilities = [
-      "Multi-type hooks",
-      "Adversary Mode + injection scanner",
-      "Per-subagent routing",
-      "Recipes",
-      "Repo Wiki",
-      "/init + /doctor",
-      "/blame + /sessions",
-      "Auto-compact",
-    ];
-    for (const cap of capabilities) {
-      expect(text).toContain(cap);
-    }
-    // The receipts link points at the parity doc on GitHub, not a dead route.
-    const docLink = screen.getByRole("link", { name: /sdlc-feature-parity\.md/i });
-    expect(docLink.getAttribute("href")).toContain("/blob/main/docs/sdlc-feature-parity.md");
-    // Every SDLC-parity port links to a real src file (the receipt chip row).
-    const SRC_PREFIX =
-      "https://github.com/kanishka-namdeo/Unown/blob/main/pi-repo/packages/self-learning/src/";
-    const src = (file: string) => `${SRC_PREFIX}${file}`;
-    const srcLinks = container.querySelectorAll<HTMLAnchorElement>(
-      'a[href*="/blob/main/pi-repo/packages/self-learning/src/"]',
-    );
-    const srcNames = new Set(
-      Array.from(srcLinks).map((a) => a.getAttribute("href") ?? ""),
-    );
-    expect(srcNames.has(src("hooks-config.ts"))).toBe(true);
-    expect(srcNames.has(src("adversary.ts"))).toBe(true);
-    expect(srcNames.has(src("subagent-routing.ts"))).toBe(true);
-    expect(srcNames.has(src("recipes.ts"))).toBe(true);
-    expect(srcNames.has(src("repo-wiki.ts"))).toBe(true);
-    expect(srcNames.has(src("init-agents.ts"))).toBe(true);
-    expect(srcNames.has(src("blame.ts"))).toBe(true);
-    expect(srcNames.has(src("auto-compact.ts"))).toBe(true);
-  });
-
+describe("landing loop (the process band)", () => {
   test("the merged band keeps the pair strip and the job schedule from the generator", () => {
     const { container } = render(<LoopSection />);
     const text = container.textContent ?? "";
@@ -233,6 +185,20 @@ describe("landing loop (mechanisms bento)", () => {
     // the engine's generated job schedule renders (engine-data.ts ← router.ts)
     expect(text).toContain("harness-cycle");
     expect(text).toContain("auto-dream");
+  });
+
+  test("the capability copy moved out — the mechanisms live in the dex, not here", () => {
+    // The five-mechanism bento and its SDLC tile moved to the capability dex
+    // (dex.tsx) when the creatures got their one canonical home (2026-10-20).
+    // This pins the move: a copy re-added here is a second home, which is the
+    // exact facts-stated-exactly-once violation the folder contract forbids.
+    const { container } = render(<LoopSection />);
+    const text = container.textContent ?? "";
+    expect(text).not.toContain("Three pains, five answers");
+    expect(text).not.toContain("Four tiers — policy, project, user, local");
+    expect(text).not.toContain("Guardrails at six layers");
+    expect(text).not.toContain("SDLC parity");
+    expect(container.querySelectorAll("img").length).toBe(0);
   });
 
   test("the FAQ 'What can it actually do?' answer names the M1-M4 capabilities", () => {

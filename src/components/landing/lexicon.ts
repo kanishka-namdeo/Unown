@@ -237,18 +237,9 @@ export const LEXICON: LexiconEntry[] = [
 
 export const LEXICON_BY_ID = new Map(LEXICON.map((e) => [e.id, e]));
 
-/** A few pull-quotes for the page, all verbatim from the dex. */
-export const DEX_QUOTES = {
-  /**
-   * Canonical home. `origin.tsx` used to print this beside
-   * `emergent` as a second pull-quote, which put the same 33 words on the page
-   * twice; the dex card in `field-notes.tsx` is where a Pokédex entry belongs,
-   * so it reads it from here instead of re-typing it.
-   */
-  origin:
-    "This Pokémon is shaped like ancient writing. It is a mystery as to which came first, the ancient writings or the various UNOWN. Research into this topic is ongoing but nothing is known.",
-  originSrc: "Pokédex · Ruby / Sapphire",
-  emergent:
-    "When alone, nothing happens. However, if there are two or more, an odd power is said to emerge.",
-  emergentSrc: "Pokédex · Platinum / Black / White",
-} as const;
+/** The pull-quotes retired 2026-10-20, when the static Unown trading card
+ *  (the last DEX_QUOTES consumer) left the alphabet band for the capability
+ *  dex round: the Z highlight above the wall already carries the page's one
+ *  game-voice quotation, and the same 33 words twice was the exact thing
+ *  the facts-once rule exists to prevent. The texts live on in the field
+ *  notes this file cites if a future round ever needs one back. */

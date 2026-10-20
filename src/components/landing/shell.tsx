@@ -420,13 +420,14 @@ export function GhostLink({
 /* ------------------------------------------------------------------ */
 
 /**
- * Mirrors the top-level anchors of the eight-band page (see `page.tsx`).
+ * Mirrors the top-level anchors of the nine-band page (see `page.tsx`).
  * "Dashboard" deliberately points at the in-page screenshots (#showcase),
  * not the live route: a visitor without the engine running would hit a dead
  * app behind a login-free but data-less shell.
  */
 const NAV_LINKS = [
   { href: "#loop", label: "How it learns" },
+  { href: "#dex", label: "The dex" },
   { href: "#showcase", label: "Dashboard" },
   { href: "#proof", label: "Proof" },
   { href: "#alphabet", label: "Alphabet" },
