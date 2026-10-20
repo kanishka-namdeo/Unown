@@ -162,8 +162,10 @@ export class DashboardApp {
 		if (matchesKey(data, "escape")) {
 			// Embedded: double-Esc exits; single Esc falls through to the screen
 			// (drill-out). Overlays close themselves via their own focus path.
+			// 600ms window: deliberate double-tap, forgiving over SSH — but a
+			// drill-out followed by a thoughtful pause must NOT exit.
 			const now = Date.now();
-			if (this.opts.embedded && now - this.lastEscapeAt < 400) {
+			if (this.opts.embedded && now - this.lastEscapeAt < 600) {
 				this.exit();
 				return;
 			}

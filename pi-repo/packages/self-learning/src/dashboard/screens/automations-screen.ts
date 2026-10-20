@@ -482,6 +482,10 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
 			viewport = height;
 		},
 
+		wantsTextInput(): boolean {
+			return form !== null;
+		},
+
 		footerHints(): [string, string][] {
 			if (form) {
 				switch (form.step) {

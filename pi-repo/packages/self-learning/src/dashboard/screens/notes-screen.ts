@@ -176,6 +176,10 @@ export function createNotesScreen(deps: ScreenDeps): Screen {
 			viewport = height;
 		},
 
+		wantsTextInput(): boolean {
+			return mode === "compose";
+		},
+
 		footerHints(): [string, string][] {
 			if (mode === "compose") {
 				return [
@@ -189,7 +193,7 @@ export function createNotesScreen(deps: ScreenDeps): Screen {
 			return [
 				["enter", "read"],
 				["c", "compose"],
-				["k", `filter: ${filter}`],
+				["f", `filter: ${filter}`],
 				["s", "sync"],
 				["j/k", "select"],
 			];
