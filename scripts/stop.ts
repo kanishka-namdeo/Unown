@@ -64,10 +64,51 @@ function stopService(name: string): void {
   fs.rmSync(pidFile, { force: true });
 }
 
+/** Windows netstat fallback (audit 2-d): a MISSING pidfile used to mean "no
+ *  portable way to find the stray" — but the service port is knowable, and
+ *  `netstat -ano` maps a LISTENING port to its owning pid, which taskkill
+ *  /T can tree-kill. Runs only when the pidfile is absent/stale, only on
+ *  win32, and only for ports this stack owns. */
+function stopServiceByPort(name: string, port: string): void {
+  if (!IS_WIN) return;
+  const pidFile = path.join(RUN_DIR, `${name}.pid`);
+  if (fs.existsSync(pidFile)) {
+    const pid = Number(fs.readFileSync(pidFile, "utf8").trim());
+    if (alive(pid)) return; // the pidfile path handles it
+  }
+  try {
+    const r = spawnSync("netstat", ["-ano", "-p", "tcp"], { encoding: "utf8", windowsHide: true });
+    if (r.status !== 0 || !r.stdout) return;
+    for (const line of r.stdout.split(/\r?\n/)) {
+      const m = line.trim().match(/^TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+(\d+)$/);
+      if (m && m[1] === port) {
+        const pid = Number(m[2]);
+        if (!Number.isInteger(pid) || pid <= 0) continue;
+        const kill = spawnSync("taskkill", ["/F", "/T", "/PID", String(pid)], {
+          stdio: "ignore",
+          windowsHide: true,
+        });
+        if (kill.status === 0) {
+          console.log(`${sym.step} ${name} stopped (pid ${pid} via port ${port}, tree)`);
+          stoppedAny = true;
+        }
+        return;
+      }
+    }
+  } catch {
+    /* best effort */
+  }
+}
+
 stopService("dashboard");
 stopService("engine");
 stopService("bridge");
 stopService("zai-upstream");
+// Windows netstat fallback for missing/stale pidfiles (see stopServiceByPort).
+stopServiceByPort("dashboard", process.env.PI_DASHBOARD_PORT ?? "3000");
+stopServiceByPort("engine", process.env.PI_AGENT_PORT ?? "3030");
+stopServiceByPort("bridge", process.env.BRIDGE_PORT ?? "3031");
+stopServiceByPort("zai-upstream", process.env.ZAI_UPSTREAM_PORT ?? "3032");
 
 if (!IS_WIN) {
   // Fallback: catch strays spawned by `next dev` (pipelines, tee'd logs) or

@@ -23,8 +23,10 @@
  *     and appends that dir to the *user* PATH via PowerShell (never setx — it
  *     truncates at 1024 chars). A "restart your terminal" hint is printed when
  *     the registry PATH changed.
- *   - console output stays ASCII on win32 (lib.ts `sym`), avoiding codepage
- *     surprises; macOS/Linux keep the original glyphs.
+ *   - console output is ASCII on EVERY platform (lib.ts `sym` glyphs + the
+ *     printed strings themselves: em-dashes/ellipses in console output were
+ *     mojibake on legacy win32 codepages — audit 2-d #5); comments keep
+ *     their typography.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -60,23 +62,23 @@ if (!BUN_VERSION || !bunAtLeast120(BUN_VERSION)) {
       `    upgrade it with:  bun upgrade   (or reinstall: ${bunInstallHint()})`,
   );
 }
-console.log(`${sym.ok} bun ${BUN_VERSION} — ${BUN}`);
+console.log(`${sym.ok} bun ${BUN_VERSION} - ${BUN}`);
 
 const PI_REPO = path.join(REPO_ROOT, "pi-repo");
 
 // ------------------------------------------------------- step 1: root install
 // (step failures exit with the child's exit code, like install.sh's `set -e`)
-console.log(`${sym.step} [1/6] Installing dashboard dependencies (bun install)…`);
+console.log(`${sym.step} [1/6] Installing dashboard dependencies (bun install)...`);
 {
   const code = run(BUN, ["install"], { cwd: REPO_ROOT });
-  if (code !== 0) die(`${sym.fail} root bun install failed (exit ${code}) — see output above`, code);
+  if (code !== 0) die(`${sym.fail} root bun install failed (exit ${code}) - see output above`, code);
 }
 
 // ----------------------------------------------------- step 2: pi-repo install
-console.log(`${sym.step} [2/6] Installing pi-mono engine dependencies (pi-repo/bun install)…`);
+console.log(`${sym.step} [2/6] Installing pi-mono engine dependencies (pi-repo/bun install)...`);
 {
   const code = run(BUN, ["install"], { cwd: PI_REPO });
-  if (code !== 0) die(`${sym.fail} pi-repo bun install failed (exit ${code}) — see output above`, code);
+  if (code !== 0) die(`${sym.fail} pi-repo bun install failed (exit ${code}) - see output above`, code);
 }
 
 // ------------------------------------------------ step 3: hydrate model data
@@ -119,17 +121,17 @@ if (modelDataCount() === 0) {
     process.exit(1);
   }
 } else {
-  console.log(`${sym.dot} [3/6] pi model data present (${modelDataCount()} files) — skipping hydration`);
+  console.log(`${sym.dot} [3/6] pi model data present (${modelDataCount()} files) - skipping hydration`);
 }
 
 // ------------------------------------------------------- step 4: build offline
 // build:offline = same as build, but skips the ai package's network-dependent
 // model-data hydration step; the self-learning runner only needs the compiled
 // packages (coding-agent, ai, agent, …).
-console.log(`${sym.step} [4/6] Building the pi coding agent (pi-repo/bun run build:offline)…`);
+console.log(`${sym.step} [4/6] Building the pi coding agent (pi-repo/bun run build:offline)...`);
 {
   const code = run(BUN, ["run", "build:offline"], { cwd: PI_REPO });
-  if (code !== 0) die(`${sym.fail} pi-repo build:offline failed (exit ${code}) — see output above`, code);
+  if (code !== 0) die(`${sym.fail} pi-repo build:offline failed (exit ${code}) - see output above`, code);
 }
 
 // --------------------------------------------------------- step 5: .env bootstrap
@@ -176,11 +178,11 @@ for (const name of ["llm-bridge", "agent-service"]) {
 // ------------------------------------------------------------- step 6: link
 // Put `unown` on PATH (shim → this checkout). Opt out with UNOWN_NO_LINK=1.
 if (process.env.UNOWN_NO_LINK === "1") {
-  console.log(`${sym.dot} UNOWN_NO_LINK=1 — skipping the PATH link (run scripts/link.ts anytime)`);
+  console.log(`${sym.dot} UNOWN_NO_LINK=1 - skipping the PATH link (run scripts/link.ts anytime)`);
 } else {
   const code = run(BUN, [path.join(REPO_ROOT, "scripts", "link.ts")]);
   if (code !== 0) {
-    console.log(`${sym.dot} PATH link failed (not fatal) — run scripts/link.ts manually`);
+    console.log(`${sym.dot} PATH link failed (not fatal) - run scripts/link.ts manually`);
   }
 }
 
@@ -191,7 +193,7 @@ const upstreamKeySet = Boolean(envFile["BRIDGE_UPSTREAM_KEY"]);
 // banner says "update" instead of "install"; everything else is identical.
 const isUpdateRun = process.env.UNOWN_INSTALL_CONTEXT === "update";
 
-console.log(`\n${sym.ok} ${isUpdateRun ? "Update applied — install steps re-run." : "Install complete."}\n`);
+console.log(`\n${sym.ok} ${isUpdateRun ? "Update applied - install steps re-run." : "Install complete."}\n`);
 if (!isUpdateRun) {
 console.log("Next steps:");
 } else {

@@ -191,6 +191,48 @@ jobs:
               exit 1
             fi
           done
+      - name: Smoke — full stack boots, survives the launcher, and stops (Windows bun#31603 + netstat-pid gate)
+        # scripts/start.ts used to spawn every service with detached:true — the
+        # exact pattern bun#31603 documents as broken on Windows (children die
+        # with the parent), and nothing caught it: this Windows leg never
+        # booted the stack. The launcher now uses the cmd /c start /b escape +
+        # netstat pid resolution; this gate proves the whole contract:
+        #   1. agent:start brings bridge + engine up (dashboard is not asserted
+        #      — next dev's cold start varies too much on a shared runner)
+        #   2. the services SURVIVE the launcher's exit 20s later (the
+        #      regression this gate exists for)
+        #   3. agent:stop tears them down via the resolved pidfiles (netstat
+        #      fallback) and the ports go quiet
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          bun run agent:start
+          # The launcher exits right after its health wait; the services must
+          # outlive it (bun#31603 would kill them with the parent).
+          sleep 20
+          probe() {
+            node -e "
+              const url = process.argv[1];
+              fetch(url).then(r => { process.exit(r.ok ? 0 : 1); }).catch(() => process.exit(1));
+            " "$1"
+          }
+          if ! probe http://127.0.0.1:3030/api/overview; then
+            echo "::error::engine did not survive the launcher exit (bun#31603 regression)"
+            exit 1
+          fi
+          if ! probe http://127.0.0.1:3031/health; then
+            echo "::error::bridge did not survive the launcher exit (bun#31603 regression)"
+            exit 1
+          fi
+          echo "stack alive 20s after launcher exit:"
+          ls .run/*.pid 2>/dev/null || true
+          bun run agent:stop
+          sleep 5
+          if probe http://127.0.0.1:3030/api/overview || probe http://127.0.0.1:3031/health; then
+            echo "::error::agent:stop left a service answering on 3030/3031"
+            exit 1
+          fi
+          echo "stack stopped cleanly (pid resolution + tree kill verified)"
 
   sandbox-smoke:
     name: Sandbox smoke (bwrap profile)

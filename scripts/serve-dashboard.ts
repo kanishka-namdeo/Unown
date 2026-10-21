@@ -25,7 +25,7 @@ if (!fs.existsSync(serverJs)) {
 
 const BUN = resolveBun();
 if (!BUN) {
-  console.error(`${sym.fail} bun is required to serve the dashboard — install it from https://bun.sh`);
+  console.error(`${sym.fail} bun is required to serve the dashboard - install it from https://bun.sh`);
   process.exit(1);
 }
 

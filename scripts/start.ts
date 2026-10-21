@@ -27,7 +27,7 @@
  *   - Windows: detached:true alone (CREATE_NEW_PROCESS_GROUP) +
  *     windowsHide:true; there is no setsid/nohup concept to emulate.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
@@ -74,6 +74,18 @@ if (!BUN) {
 /**
  * Start one service unless its pidfile is alive. The child is detached
  * (survives this launcher's exit) with stdio appended to .run/<name>.log.
+ *
+ * Windows (bun#31603, audit 2-d gap #1): `spawn(..., { detached: true })`
+ * children of a bun process die with the parent on win32 — the exact pattern
+ * this launcher used on every platform, which would take the whole stack down
+ * ~60 s after "Unown is up" (nothing on CI catches it: the Windows leg never
+ * boots the stack). The escape is the one `unown engine start` already uses:
+ * `cmd /c start /b "" <cmd>` launches into its own session that survives. The
+ * empty "" is the window-title slot — without it `start` eats a quoted
+ * executable path with spaces as the title. cmd.exe's own pid is NOT the
+ * service's pid (it exits right after `start` returns), so no pidfile is
+ * written on this branch; after the health wait, resolvePortPid() finds the
+ * real listener pid via netstat and writes THAT (stop.ts tree-kills it).
  */
 function startService(name: string, cwdRel: string, args: string[]): void {
   const pidFile = path.join(RUN_DIR, `${name}.pid`);
@@ -85,6 +97,20 @@ function startService(name: string, cwdRel: string, args: string[]): void {
     }
   }
   const logFd = fs.openSync(path.join(RUN_DIR, `${name}.log`), "a");
+  if (IS_WIN) {
+    const systemRoot = process.env.SystemRoot ?? "C:\\Windows";
+    const cmdExe = path.join(systemRoot, "System32", "cmd.exe");
+    const child = spawn(cmdExe, ["/c", "start", "/b", "", BUN, ...args], {
+      cwd: path.join(REPO_ROOT, cwdRel),
+      env: process.env,
+      windowsHide: true,
+      stdio: ["ignore", logFd, logFd],
+    });
+    child.unref();
+    fs.closeSync(logFd);
+    console.log(`${sym.step} ${name} started (win32 start /b - pid resolved after the health check)`);
+    return;
+  }
   const child = spawn(BUN, args, {
     cwd: path.join(REPO_ROOT, cwdRel),
     env: process.env,
@@ -98,6 +124,33 @@ function startService(name: string, cwdRel: string, args: string[]): void {
 }
 
 /**
+ * Windows pid recovery: after the health wait, find the pid OWNING each
+ * service port via `netstat -ano` and write it into the pidfile so stop.ts
+ * can tree-kill the real service (the `start /b` branch cannot know the pid
+ * at spawn time). Best effort: no netstat match → no pidfile → stop.ts's
+ * netstat fallback / guidance path.
+ */
+function resolvePortPid(name: string, port: string): void {
+  if (!IS_WIN) return;
+  try {
+    const r = spawnSync("netstat", ["-ano", "-p", "tcp"], { encoding: "utf8", windowsHide: true });
+    if (r.status !== 0 || !r.stdout) return;
+    for (const line of r.stdout.split(/\r?\n/)) {
+      // TCP    127.0.0.1:3031    0.0.0.0:0    LISTENING    4242
+      const m = line.trim().match(/^TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+(\d+)$/);
+      if (m && m[1] === port) {
+        fs.writeFileSync(path.join(RUN_DIR, `${name}.pid`), m[2]);
+        console.log(`${sym.dot} ${name} pid resolved via port ${port}: ${m[2]}`);
+        return;
+      }
+    }
+    console.log(`${sym.dot} ${name}: no LISTENING pid found on port ${port} (netstat) - stop will fall back to port-based teardown`);
+  } catch {
+    /* best effort */
+  }
+}
+
+/**
  * Drain-aware restart (M0): the engine's graceful shutdown DRAINS in-flight
  * HTTP before exiting (engine-supervisor), and stop.ts removes the pidfile
  * the moment SIGTERM is sent — so a fast `agent:stop && agent:start` spawns
@@ -108,7 +161,7 @@ function startService(name: string, cwdRel: string, args: string[]): void {
  */
 async function waitForPortFree(url: string, label: string, timeoutMs = 20_000): Promise<boolean> {
   if (!(await probeHttpOk(url, 750))) return true; // fast path: already free
-  console.log(`${sym.dot} waiting for the previous ${label} to drain and release its port…`);
+  console.log(`${sym.dot} waiting for the previous ${label} to drain and release its port...`);
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (!(await probeHttpOk(url, 750))) return true;
@@ -123,7 +176,7 @@ async function waitForPortFree(url: string, label: string, timeoutMs = 20_000): 
 // (Dashscope, OpenAI, ...) needs no shim.
 if ((process.env.BRIDGE_UPSTREAM_URL ?? "").includes("127.0.0.1:3032")) {
   if (await probeHttpOk(`http://127.0.0.1:${ZAI_PORT}/v1/models`)) {
-    console.log(`${sym.dot} zai-upstream already healthy on :${ZAI_PORT} — reusing it`);
+    console.log(`${sym.dot} zai-upstream already healthy on :${ZAI_PORT} - reusing it`);
   } else {
     startService("zai-upstream", path.join("mini-services", "zai-upstream"), ["index.ts"]);
   }
@@ -132,7 +185,7 @@ if ((process.env.BRIDGE_UPSTREAM_URL ?? "").includes("127.0.0.1:3032")) {
 // The bridge may already be healthy (started by another supervisor / earlier
 // run) — reuse it instead of dying with EADDRINUSE.
 if (await probeHttpOk(`http://127.0.0.1:${BRIDGE_PORT}/health`)) {
-  console.log(`${sym.dot} bridge already healthy on :${BRIDGE_PORT} — reusing it`);
+  console.log(`${sym.dot} bridge already healthy on :${BRIDGE_PORT} - reusing it`);
 } else {
   // A just-stopped bridge can still be mid-drain on its port — wait it out
   // instead of spawning into EADDRINUSE (same race the engine has).
@@ -146,7 +199,7 @@ if (await probeHttpOk(`http://127.0.0.1:${BRIDGE_PORT}/health`)) {
 // a duplicate. Only when the port is NOT answering does the drain-aware wait
 // + fresh spawn run.
 if (await probeHttpOk(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, 1500)) {
-  console.log(`${sym.dot} engine already healthy on :${ENGINE_PORT} — reusing it`);
+  console.log(`${sym.dot} engine already healthy on :${ENGINE_PORT} - reusing it`);
 } else {
   await waitForPortFree(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, "engine", 20_000);
   startService("engine", path.join("mini-services", "agent-service"), ["index.ts"]);
@@ -169,7 +222,7 @@ if (await probeHttpOk(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, 1500)) {
 startService("dashboard", ".", ["run", "dev"]);
 
 // ------------------------------------------------------- health wait (~60s)
-console.log(`${sym.dot} waiting for services to come up…`);
+console.log(`${sym.dot} waiting for services to come up...`);
 const deadline = Date.now() + 65_000;
 let bridgeOk = false;
 let engineOk = false;
@@ -180,6 +233,14 @@ while (Date.now() < deadline) {
   dashOk = await probeHttpOk("http://127.0.0.1:3000/", 1500);
   if (bridgeOk && engineOk && dashOk) break;
   await sleep(1000);
+}
+
+// Windows: the `start /b` branch could not write pidfiles at spawn time —
+// now that the services answer their ports, resolve the real listener pids.
+if (IS_WIN) {
+  if (bridgeOk) resolvePortPid("bridge", BRIDGE_PORT);
+  if (engineOk) resolvePortPid("engine", ENGINE_PORT);
+  if (dashOk) resolvePortPid("dashboard", "3000");
 }
 
 if (!(bridgeOk && engineOk && dashOk)) {
@@ -212,7 +273,7 @@ const health = (await fetchJson(`http://127.0.0.1:${BRIDGE_PORT}/health`)) as
     }
   | null;
 if (health && health.upstreamKeyIsSet === false) {
-  console.log(`  ${sym.warn} BRIDGE_UPSTREAM_KEY is not set in .env — every chat will fail with 401.`);
+  console.log(`  ${sym.warn} BRIDGE_UPSTREAM_KEY is not set in .env - every chat will fail with 401.`);
   console.log(
     "    fix: edit .env, set BRIDGE_UPSTREAM_KEY=<your upstream key>, then: bun run agent:stop && bun run agent:start",
   );
@@ -225,7 +286,7 @@ if (health && health.upstreamKeyIsSet === false) {
     );
     console.log("    Chats continue on the fallback; check BRIDGE_UPSTREAM_URL / BRIDGE_UPSTREAM_KEY when you want the primary back.");
   } else {
-    console.log(`  ${sym.warn} The bridge reached the upstream but the upstream is unhealthy —`);
+    console.log(`  ${sym.warn} The bridge reached the upstream but the upstream is unhealthy -`);
     console.log("    check BRIDGE_UPSTREAM_URL / BRIDGE_UPSTREAM_KEY in .env.");
   }
 } else if (health && typeof health.failovers === "number" && health.failovers > 0) {

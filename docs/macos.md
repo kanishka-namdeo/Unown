@@ -43,6 +43,12 @@ Two things that are *not* options on macOS:
 
 No configuration needed: the TUI ships **bundled darwin prebuilds** (`darwin-modifiers.node` for x64 and arm64) that capture native modifier-key events (Cmd/Cmd-Q etc. in the editor), and macOS's terminal already speaks VT. If you live in tmux, the vendored pi docs have you covered: [`pi-repo/packages/coding-agent/docs/tmux.md`](../pi-repo/packages/coding-agent/docs/tmux.md).
 
+Platform notes worth knowing:
+
+- **The `powershell` tool is Windows-only** — it throws "only available on Windows" on macOS even when PowerShell 7 (`pwsh`) is installed (the tool wraps Windows PowerShell semantics; it is opt-in on win32 sessions). Script with `bash` instead.
+- **User hooks (`command` handlers) run under `/bin/sh`** (dash on macOS) — same as Linux; a `powershell -File …` handler only works where PowerShell exists.
+- **The OS sandbox is seatbelt**, not bubblewrap — see [the OS sandbox section](#the-os-sandbox-on-macos) above; the engine detects darwin and builds the SBPL profile at run time.
+
 ## When something breaks
 
 `unown doctor` first, then [troubleshooting](troubleshooting.md). The logs are in `.run/` inside the repo, same as every OS.

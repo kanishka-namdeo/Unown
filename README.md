@@ -161,7 +161,14 @@ bun run agent:install
 Or the one-line installer (checks git, installs bun when missing, clones, installs — [docs/install.md](docs/install.md)):
 
 ```bash
+# macOS / Linux / WSL
+# (POSIX sh — on Windows use the PowerShell one-liner below)
 curl -fsSL https://unown-nine.vercel.app/install.sh | sh
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://unown-nine.vercel.app/install.ps1 | iex
 ```
 
 This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.

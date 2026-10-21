@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 206;
+export const CHANGELOG_TOTAL_ENTRIES = 211;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 104,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 1,
-  "Fixed": 46,
+  "Fixed": 51,
   "Security": 3,
   "Behavior": 27
 };
@@ -46,17 +46,122 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 84,
+    "total": 89,
     "counts": {
       "Added": 50,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 20,
+      "Fixed": 25,
       "Security": 0,
       "Behavior": 7
     },
     "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "bun run agent:start services survive the launcher on Windows (bun#31603)",
+            "behavior": false
+          },
+          {
+            "title": "a Windows one-liner installer",
+            "behavior": false
+          },
+          {
+            "title": "the win32 console-output ASCII claim is true again",
+            "behavior": false
+          },
+          {
+            "title": "which shell runs your hooks, documented",
+            "behavior": false
+          },
+          {
+            "title": "macos.md platform notes",
+            "behavior": false
+          },
+          {
+            "title": "the stock dashboard no longer 404s its own engine (P0)",
+            "behavior": false
+          },
+          {
+            "title": "unown <typo> no longer silently burns an LLM session (P0)",
+            "behavior": false
+          },
+          {
+            "title": "unown blame is a real command (the CLI twin of /blame)",
+            "behavior": false
+          },
+          {
+            "title": "print-mode stdin handling: idle-open stdin is never consumed (A1 root cause, audited live)",
+            "behavior": false
+          },
+          {
+            "title": "split-view band subcommands tell the truth in regular mode",
+            "behavior": false
+          },
+          {
+            "title": "shell completions match the real command surface",
+            "behavior": false
+          },
+          {
+            "title": "unown engine status shows the auto-start circuit when UP too",
+            "behavior": false
+          },
+          {
+            "title": "auth.json is 0600 from the first byte",
+            "behavior": false
+          },
+          {
+            "title": "unown automations list output ends with a newline",
+            "behavior": false
+          },
+          {
+            "title": "the last runtime detachment leak is closed (governor is engine-only)",
+            "behavior": false
+          },
+          {
+            "title": "unown engine stop drains over HTTP first — graceful stop now works on Windows too",
+            "behavior": false
+          },
+          {
+            "title": "the Windows engine spawn is actually correct now",
+            "behavior": false
+          },
+          {
+            "title": "docs",
+            "behavior": false
+          },
+          {
+            "title": "unown -p never exits — root cause measured and fixed (F10 final act)",
+            "behavior": false
+          },
+          {
+            "title": "the engine's runaway dream loop is closed",
+            "behavior": false
+          },
+          {
+            "title": "no router job may hold the engine hostage anymore (job watchdog)",
+            "behavior": false
+          },
+          {
+            "title": "doctor: the AGENTS.md staleness audit now warns only on confident staleness — 31 false positives → 0 on this…",
+            "behavior": false
+          },
+          {
+            "title": "scripts: test_bridge.py repointed at the bridge it actually tests",
+            "behavior": false
+          },
+          {
+            "title": "docs: the dashboard suite's warning noise is now a documented non-issue, not an unchased mystery",
+            "behavior": false
+          },
+          {
+            "title": "fleet: restricted agents regain ask_question",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Added",
         "items": [
@@ -267,91 +372,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "provider management lives in the terminal now — the dashboard \"Providers\" tab is gone",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "the stock dashboard no longer 404s its own engine (P0)",
-            "behavior": false
-          },
-          {
-            "title": "unown <typo> no longer silently burns an LLM session (P0)",
-            "behavior": false
-          },
-          {
-            "title": "unown blame is a real command (the CLI twin of /blame)",
-            "behavior": false
-          },
-          {
-            "title": "print-mode stdin handling: idle-open stdin is never consumed (A1 root cause, audited live)",
-            "behavior": false
-          },
-          {
-            "title": "split-view band subcommands tell the truth in regular mode",
-            "behavior": false
-          },
-          {
-            "title": "shell completions match the real command surface",
-            "behavior": false
-          },
-          {
-            "title": "unown engine status shows the auto-start circuit when UP too",
-            "behavior": false
-          },
-          {
-            "title": "auth.json is 0600 from the first byte",
-            "behavior": false
-          },
-          {
-            "title": "unown automations list output ends with a newline",
-            "behavior": false
-          },
-          {
-            "title": "the last runtime detachment leak is closed (governor is engine-only)",
-            "behavior": false
-          },
-          {
-            "title": "unown engine stop drains over HTTP first — graceful stop now works on Windows too",
-            "behavior": false
-          },
-          {
-            "title": "the Windows engine spawn is actually correct now",
-            "behavior": false
-          },
-          {
-            "title": "docs",
-            "behavior": false
-          },
-          {
-            "title": "unown -p never exits — root cause measured and fixed (F10 final act)",
-            "behavior": false
-          },
-          {
-            "title": "the engine's runaway dream loop is closed",
-            "behavior": false
-          },
-          {
-            "title": "no router job may hold the engine hostage anymore (job watchdog)",
-            "behavior": false
-          },
-          {
-            "title": "doctor: the AGENTS.md staleness audit now warns only on confident staleness — 31 false positives → 0 on this…",
-            "behavior": false
-          },
-          {
-            "title": "scripts: test_bridge.py repointed at the bridge it actually tests",
-            "behavior": false
-          },
-          {
-            "title": "docs: the dashboard suite's warning noise is now a documented non-issue, not an unchased mystery",
-            "behavior": false
-          },
-          {
-            "title": "fleet: restricted agents regain ask_question",
             "behavior": false
           }
         ]
