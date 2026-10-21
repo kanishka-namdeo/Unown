@@ -36,6 +36,7 @@ import {
         updateAutomation,
 } from "../src/automations.ts";
 import { runAutomationsCommand } from "../src/automations-cli.ts";
+import { schedulerInFlight } from "../src/automations.ts";
 import { store } from "../src/store.ts";
 import { apiRequestBody } from "../src/server.ts";
 import { createUnownToolsExtension } from "../src/tools.ts";
@@ -319,6 +320,148 @@ describe("AutomationsScheduler", () => {
                 const after = getAutomation(row.id)!;
                 expect(after.lifecycle).toBe("completed");
                 expect(after.next_run_at).toBeNull();
+        });
+
+        // ------------------------------------------------------------------
+        // M9: launchd-style catch-up-once (UNOWN_AUTOMATION_MISFIRE_CATCHUP=1)
+        // + env-tunable grace (PI_AUTOMATION_MISFIRE_GRACE_MS)
+        // ------------------------------------------------------------------
+        const MISFIRE_ENV = ["UNOWN_AUTOMATION_MISFIRE_CATCHUP", "PI_AUTOMATION_MISFIRE_GRACE_MS"];
+        function withMisfireEnv(overrides: Record<string, string>, fn: () => Promise<void> | void): Promise<void> | void {
+                const saved: Record<string, string | undefined> = {};
+                for (const k of MISFIRE_ENV) saved[k] = process.env[k];
+                try {
+                        for (const k of MISFIRE_ENV) delete process.env[k];
+                        for (const [k, v] of Object.entries(overrides)) process.env[k] = v;
+                        return fn();
+                } finally {
+                        for (const k of MISFIRE_ENV) {
+                                if (saved[k] === undefined) delete process.env[k];
+                                else process.env[k] = saved[k];
+                        }
+                }
+        }
+
+        test("catch-up ON: a slot missed by hours runs ONCE (coalesced), rescheduled from now", async () => {
+                await withMisfireEnv({ UNOWN_AUTOMATION_MISFIRE_CATCHUP: "1" }, async () => {
+                        let dispatched = 0;
+                        const s = new AutomationsScheduler(async () => {
+                                dispatched++;
+                                return { exitCode: 0, output: "ok", turns: 1, tokensIn: 1, tokensOut: 1 };
+                        }, 60_000);
+                        const row = dueAutomation({ cron: "*/5 * * * *" });
+                        try {
+                                // 3 hours asleep — past the grace, well inside the 24h horizon
+                                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 3 * 60 * 60_000, row.id]);
+                                const before = Date.now();
+                                await s.tick();
+                                // executeClaimed is fire-and-forget (void …): wait for the
+                                // in-flight run to finish before asserting on its bookkeeping
+                                const deadline = Date.now() + 5_000;
+                                while (schedulerInFlight(s).length > 0 && Date.now() < deadline) {
+                                        await new Promise((r) => setTimeout(r, 25));
+                                }
+                                s.stop();
+                                expect(dispatched).toBe(1); // ONCE — never N replays
+                                const after = getAutomation(row.id)!;
+                                // rescheduled FROM the tick (assert against a pre-tick
+                                // timestamp — Date.now() at assert time has moved on)
+                                expect(after.next_run_at!).toBeGreaterThan(before);
+                                const runs = listRuns(row.id);
+                                expect(runs.some((r) => r.status === "skipped")).toBe(false);
+                        } finally {
+                                store.run(`DELETE FROM automations WHERE id = ?`, [row.id]); // hot-path cleanup (20-row cap)
+                        }
+                });
+        });
+
+        test("catch-up OFF (default): the same missed slot is skipped with the asleep reason — unchanged behavior", async () => {
+                await withMisfireEnv({}, async () => {
+                        const s = new AutomationsScheduler(async () => {
+                                throw new Error("must not dispatch a misfired slot");
+                        }, 60_000);
+                        const row = dueAutomation({ cron: "*/5 * * * *" });
+                        try {
+                                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 3 * 60 * 60_000, row.id]);
+                                await s.tick();
+                                s.stop();
+                                const runs = listRuns(row.id);
+                                expect(runs).toHaveLength(1);
+                                expect(runs[0].status).toBe("skipped");
+                                expect(runs[0].error).toContain("asleep");
+                        } finally {
+                                store.run(`DELETE FROM automations WHERE id = ?`, [row.id]); // hot-path cleanup (20-row cap)
+                        }
+                });
+        });
+
+        test("catch-up ON but lag beyond 24h: cron slots still skip (launchd coalesces a night, not a month)", async () => {
+                await withMisfireEnv({ UNOWN_AUTOMATION_MISFIRE_CATCHUP: "1" }, async () => {
+                        const s = new AutomationsScheduler(async () => {
+                                throw new Error("must not dispatch a month-old slot");
+                        }, 60_000);
+                        const row = dueAutomation({ cron: "*/5 * * * *" });
+                        try {
+                                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 3 * 24 * 60 * 60_000, row.id]);
+                                await s.tick();
+                                s.stop();
+                                const runs = listRuns(row.id);
+                                expect(runs[0].status).toBe("skipped");
+                        } finally {
+                                store.run(`DELETE FROM automations WHERE id = ?`, [row.id]);
+                        }
+                });
+        });
+
+        test("catch-up ON: a missed ONE-SHOT within 24h still completes without replay", async () => {
+                await withMisfireEnv({ UNOWN_AUTOMATION_MISFIRE_CATCHUP: "1" }, async () => {
+                        let dispatched = 0;
+                        const s = new AutomationsScheduler(async () => {
+                                dispatched++;
+                                return { exitCode: 0, output: "ok", turns: 1, tokensIn: 1, tokensOut: 1 };
+                        }, 60_000);
+                        const row = dueAutomation({ delayMinutes: 10 });
+                        try {
+                                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 3 * 60 * 60_000, row.id]);
+                                await s.tick();
+                                // one-shot completion bookkeeping happens after the
+                                // dispatcher resolves (executeClaimed's post-run
+                                // reschedule is async) — poll for it, bounded
+                                const deadline = Date.now() + 5_000;
+                                let after = getAutomation(row.id)!;
+                                while (after.lifecycle === "active" && Date.now() < deadline) {
+                                        await new Promise((r) => setTimeout(r, 25));
+                                        after = getAutomation(row.id)!;
+                                }
+                                s.stop();
+                                expect(dispatched).toBeLessThanOrEqual(1);
+                                expect(after.lifecycle).toBe("completed"); // one-shots complete either way
+                                expect(after.next_run_at).toBeNull();
+                        } finally {
+                                store.run(`DELETE FROM automations WHERE id = ?`, [row.id]);
+                        }
+                });
+        });
+
+        test("PI_AUTOMATION_MISFIRE_GRACE_MS widens the window: a 10-min-old slot is NOT a misfire at 15min grace", async () => {
+                await withMisfireEnv({ PI_AUTOMATION_MISFIRE_GRACE_MS: String(15 * 60_000) }, async () => {
+                        let dispatched = 0;
+                        const s = new AutomationsScheduler(async () => {
+                                dispatched++;
+                                return { exitCode: 0, output: "ok", turns: 1, tokensIn: 1, tokensOut: 1 };
+                        }, 60_000);
+                        const row = dueAutomation({ cron: "*/5 * * * *" });
+                        try {
+                                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 10 * 60_000, row.id]);
+                                await s.tick();
+                                s.stop();
+                                expect(dispatched).toBe(1); // inside the widened grace → normal dispatch
+                                const runs = listRuns(row.id);
+                                expect(runs.some((r) => r.status === "skipped")).toBe(false);
+                        } finally {
+                                store.run(`DELETE FROM automations WHERE id = ?`, [row.id]);
+                        }
+                });
         });
 
         test("dispatch failure → retry with backoff, frozen run id, exhausted after 5 attempts", async () => {

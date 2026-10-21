@@ -16,9 +16,10 @@ import { JOB_DEFS, listJobs, Router, router } from "../src/router.ts";
 import { store } from "../src/store.ts";
 
 describe("JOB_DEFS", () => {
-        test("defines the seven engine jobs", () => {
+        test("defines the eight engine jobs", () => {
                 expect(JOB_DEFS.map((d) => d.id).sort()).toEqual([
                         "auto-dream",
+                        "db-retention",
                         "dream-check",
                         "harness-cycle",
                         "note-sync",

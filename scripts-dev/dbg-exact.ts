@@ -1,0 +1,10 @@
+import { startMockBridge, runUnown } from "../pi-repo/packages/self-learning/test/cli/helpers.ts";
+const bridge = startMockBridge({ label: "dbg3" });
+const root = "/tmp/dbg3-root";
+const opts = { bridge, root };
+const ghost = await runUnown(["providers", "refresh", "ghost"], opts);
+console.log("GHOST rc:", ghost.exitCode, "stderr:", ghost.stderr.trim().slice(0, 80));
+const add = await runUnown(["providers", "add", "--provider", "openai", "--base-url", `${bridge.url}/v1`, "--api-key", "sk-1", "--model", "kimi-k2.5", "--all-models"], opts);
+console.log("ADD:", add.stdout.replace(/\n/g, " | ").slice(0, 200));
+bridge?.close();
+process.exit(0);

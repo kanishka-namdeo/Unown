@@ -229,6 +229,14 @@ export class Store {
                         console.warn(`[store] memory_versions unique index: ${err?.message ?? err}`);
                 }
 
+                // M9: the governor's budgetStatus() sums run tokens by ended_at
+                // and the retention pass (retention.ts) prunes old runs by
+                // ended_at — the column had no index, so both were full table
+                // scans that get slower as history grows. (The automation_runs
+                // started_at index lives in AUTOMATIONS_SCHEMA instead: a fresh
+                // install constructs this Store before that schema installs the
+                // table — server.ts's quickCheck precedes ensureAutomationsSchema.)
+                this.db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_ended_at ON runs(ended_at)`);
         }
         query<T = any>(sql: string, params: any[] = []): T[] {
                 const stmt = this.db.prepare(sql);

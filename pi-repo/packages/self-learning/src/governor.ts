@@ -231,8 +231,9 @@ export interface GuardDecision {
  * Consulted by the router before every learning job (harness-cycle,
  * auto-dream, dream-check, task-mint, regression-on-ship). Returns
  * { allowed: true } or the skip reason. Non-learning jobs (note-sync,
- * sandbox-gc) never consult the guard: they are local, cheap and must always
- * run — sync and GC are how the engine catches up after a throttle window.
+ * sandbox-gc, db-retention) never consult the guard: they are local, cheap
+ * and must always run — sync and GC are how the engine catches up after a
+ * throttle window, and retention is pure SQL housekeeping.
  */
 export function guardLearningJob(jobId: string): GuardDecision {
         const breaker = breakerStatus();

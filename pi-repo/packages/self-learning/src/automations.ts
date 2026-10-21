@@ -24,7 +24,11 @@
  *   - single-flight per automation: an atomic running 0->1 claim (a run in
  *     progress rejects further dispatch; "run now" during a run errors)
  *   - misfire grace: a first attempt older than 5 minutes is SKIPPED (never
- *     replayed); recurring tasks reschedule, one-shots complete
+ *     replayed); recurring tasks reschedule, one-shots complete. The grace
+ *     window is env-tunable (PI_AUTOMATION_MISFIRE_GRACE_MS), and
+ *     UNOWN_AUTOMATION_MISFIRE_CATCHUP=1 opts into launchd-style catch-up:
+ *     a slot missed while the computer slept / the engine was down runs ONCE
+ *     on wake (coalesced, rescheduled from now) when the lag is under 24h
  *   - dispatch retry: 30s * 2^(n-1), capped at 15 min, max 5 attempts, same
  *     run id (scheduledAt frozen)
  *   - zombie claims (engine died mid-run) are reclaimed after 10 minutes and
@@ -58,6 +62,12 @@ import { store } from "./store.ts";
 
 export const AUTOMATION_POLL_MS = 20_000;
 export const MISFIRE_GRACE_MS = 5 * 60_000;
+/** M9 catch-up horizon: with UNOWN_AUTOMATION_MISFIRE_CATCHUP=1, a missed
+ * slot newer than this (and past the grace window) runs ONCE on wake —
+ * launchd coalesces missed StartCalendarInterval fires the same way. Older
+ * than this the slot is stale even for catch-up (cron skips, one-shots
+ * complete — the default policy). */
+export const MISFIRE_CATCHUP_MAX_LAG_MS = 24 * 60 * 60_000;
 export const CLAIM_STALE_MS = 10 * 60_000;
 export const DISPATCH_RETRY_BASE_MS = 30_000;
 export const DISPATCH_RETRY_CAP_MS = 15 * 60_000;
@@ -71,6 +81,27 @@ export const AUTOMATION_RUN_TIMEOUT_MS = 30 * 60_000;
  * them) — without them an unattended "check upstream for new releases"
  * automation could not do its job. */
 export const READ_ONLY_TOOLS = "read,grep,find,ls,todo,note,fetch_url,web_search,webfetch,lsp";
+
+// ---------------------------------------------------------------------------
+// Env knobs (read at call time — the governor.ts convention; `||`: an EMPTY
+// .env value means unset)
+// ---------------------------------------------------------------------------
+
+/** The misfire grace window, env-tunable via PI_AUTOMATION_MISFIRE_GRACE_MS
+ *  (default MISFIRE_GRACE_MS above, the zcode constant). */
+export function misfireGraceMs(): number {
+        const raw = process.env.PI_AUTOMATION_MISFIRE_GRACE_MS || "";
+        if (raw === "") return MISFIRE_GRACE_MS;
+        const n = Number(raw);
+        return Number.isFinite(n) && n >= 0 ? n : MISFIRE_GRACE_MS;
+}
+
+/** Opt-in launchd-style catch-up-once (UNOWN_AUTOMATION_MISFIRE_CATCHUP=1;
+ *  default off = the cron-classic zcode policy: skip + record
+ *  computer_asleep_or_engine_not_running). */
+export function misfireCatchupEnabled(): boolean {
+        return (process.env.UNOWN_AUTOMATION_MISFIRE_CATCHUP || "") === "1";
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -163,6 +194,12 @@ CREATE TABLE IF NOT EXISTS automation_runs (
   tokens_out INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_automation_runs ON automation_runs (automation_id, started_at);
+-- M9: the retention pass (retention.ts) scans automation_runs by started_at.
+-- This index lives HERE, not in store.ts migrate(): a fresh install constructs
+-- the Store (server.ts quickCheck) BEFORE this schema installs the table, so
+-- migrate() cannot index it portably. ensureAutomationsSchema runs at every
+-- boot/tick, which makes this the guaranteed-ordered, idempotent home.
+CREATE INDEX IF NOT EXISTS idx_automation_runs_started ON automation_runs (started_at);
 `;
 
 /** Install the automations schema (idempotent). Called at engine boot.
@@ -542,11 +579,20 @@ export class AutomationsScheduler {
                                 [ts],
                         );
                         if (!due) break;
-                        // Misfire: the first attempt is too old to be useful — skip it.
-                        const misfired = ts - due.next_run_at > MISFIRE_GRACE_MS;
+                        // Misfire policy: a due slot older than the grace window is
+                        // stale. Default (cron-classic, zcode): SKIP + record +
+                        // reschedule — never replay. Opt-in
+                        // (UNOWN_AUTOMATION_MISFIRE_CATCHUP=1, launchd-style): a lag
+                        // within 24h runs ONCE (coalesced — never N replays) and
+                        // reschedules from now (executeClaimed's post-run reschedule
+                        // uses the run's end time). Older than 24h even catch-up
+                        // gives up: cron slots skip, one-shots complete.
+                        const lag = ts - due.next_run_at;
+                        const misfired = lag > misfireGraceMs();
+                        const catchUp = misfired && misfireCatchupEnabled() && lag <= MISFIRE_CATCHUP_MAX_LAG_MS;
                         const claimed = claim(due.id, ts);
                         if (!claimed) continue; // raced with another claim — next tick
-                        if (misfired) {
+                        if (misfired && !catchUp) {
                                 recordSkip(due, ts, "computer_asleep_or_engine_not_running");
                                 reschedule(due, now, { skip: true });
                                 continue;

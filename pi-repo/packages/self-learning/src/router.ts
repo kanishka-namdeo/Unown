@@ -16,6 +16,7 @@ import { pickNextTask, runCycle, runRegression } from "./harness.ts";
 import { runMintJob } from "./mint.ts";
 import { undreamedNotes } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
+import { RETENTION_BACKLOG_RESCHEDULE_MS, runRetentionPass } from "./retention.ts";
 import { gcSandboxes } from "./sandbox.ts";
 import { store } from "./store.ts";
 import { guardLearningJob } from "./governor.ts";
@@ -81,14 +82,38 @@ export const JOB_DEFS: JobDef[] = [
                 scheduleMs: 15 * 60_000,
                 description: "Prunes old sandbox directories (keeps newest 40).",
         },
+        {
+                id: "db-retention",
+                name: "DB retention",
+                kind: "interval",
+                scheduleMs: 24 * 60 * 60_000,
+                description:
+                        "Prunes operational telemetry past its retention window (hook_log, runs, dreams, cycles, automation_runs, dreamed notes); precious tables (memory, skills, tasks, improvements, automations) are never touched.",
+        },
 ];
 
 /**
  * Jobs that CONSULT the governor before starting (they spend LLM tokens or
- * spawn agent runs). note-sync and sandbox-gc never do — they are the
- * engine's catch-up mechanics and must always run.
+ * spawn agent runs). note-sync, sandbox-gc and db-retention never do — they
+ * are the engine's catch-up and housekeeping mechanics (pure SQL/files) and
+ * must always run, even while the governor throttles LLM spend.
  */
 const LEARNING_JOBS = new Set(["harness-cycle", "auto-dream", "dream-check", "task-mint", "regression-on-ship"]);
+
+/**
+ * The M9 self-reschedule seam, as a pure function: a job result may carry
+ * `{ rescheduleMs }` to ask for a SHORTER next interval than its schedule —
+ * db-retention re-runs at 5 minutes while a prune backlog remains (a pass is
+ * capped at 50k rows/table). Anything else keeps the job's own scheduleMs.
+ * Exported for the table tests (test/retention.test.ts).
+ */
+export function nextRunInterval(result: unknown, scheduleMs: number | undefined): number | undefined {
+        if (result && typeof result === "object" && typeof (result as any).rescheduleMs === "number") {
+                const ms = (result as any).rescheduleMs as number;
+                if (ms > 0) return ms;
+        }
+        return scheduleMs;
+}
 
 /**
  * Jobs whose internal runs must NOT re-trigger dream-check — the self-trigger
@@ -325,7 +350,13 @@ export class Router {
                         } finally {
                                 clearTimeout(watchdogTimer);
                                 const def = JOB_DEFS.find((d) => d.id === jobId);
-                                const next = def?.scheduleMs ? Date.now() + def.scheduleMs : null;
+                                // M9 self-reschedule seam: a job may return { rescheduleMs }
+                                // to ask for a SHORTER next interval than its schedule —
+                                // db-retention re-runs at 5 minutes while a prune backlog
+                                // remains (a pass is capped at 50k rows/table). Anything
+                                // else keeps the job's own scheduleMs.
+                                const intervalMs = nextRunInterval(result, def?.scheduleMs);
+                                const next = intervalMs ? Date.now() + intervalMs : null;
                                 store.run(`UPDATE jobs SET status = 'idle', next_run = ? WHERE id = ?`, [next, jobId]);
                                 emit("job:finished", { id: jobId, name: job.name, result });
                         }
@@ -418,6 +449,16 @@ export class Router {
                         case "sandbox-gc": {
                                 const removed = gcSandboxes(40);
                                 return { removed };
+                        }
+                        case "db-retention": {
+                                // Pure SQL (retention.ts) — no LLM calls, so it stays off
+                                // LEARNING_JOBS and runs even while the governor throttles.
+                                const retention = runRetentionPass();
+                                return {
+                                        pruned: retention.pruned,
+                                        moreRemaining: retention.moreRemaining,
+                                        ...(retention.moreRemaining ? { rescheduleMs: RETENTION_BACKLOG_RESCHEDULE_MS } : {}),
+                                };
                         }
                         default:
                                 throw new Error(`no runner for job ${jobId}`);
