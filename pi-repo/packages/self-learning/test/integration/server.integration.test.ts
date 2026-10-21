@@ -41,6 +41,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import {
+        authFetch,
         type EngineHandle,
         INTEGRATION_ACTIVE,
         SseClient,
@@ -72,7 +73,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                         try {
                                 await waitFor(
                                         async () => {
-                                                const overview = (await (await fetch(`${engine!.baseUrl}/api/overview`)).json()) as Record<
+                                                const overview = (await (await authFetch(`${engine!.baseUrl}/api/overview`)).json()) as Record<
                                                         string,
                                                         unknown
                                                 >;
@@ -92,7 +93,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         // 1. Health + overview schema
         // -------------------------------------------------------------------------
         test("GET /api/overview returns the documented shape on a freshly seeded engine", async () => {
-                const res = await fetch(api("/api/overview"));
+                const res = await authFetch(api("/api/overview"));
                 expect(res.status).toBe(200);
                 expect(res.headers.get("content-type")).toContain("application/json");
                 const body = (await res.json()) as Record<string, unknown>;
@@ -129,10 +130,10 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         });
 
         test("GET / (non-API root) serves the service banner and unknown API routes 404", async () => {
-                const root = await fetch(api("/"));
+                const root = await authFetch(api("/"));
                 expect(root.status).toBe(200);
                 expect(await root.text()).toContain("pi self-learning agent service");
-                const missing = await fetch(api("/api/nope"));
+                const missing = await authFetch(api("/api/nope"));
                 expect(missing.status).toBe(404);
                 const missingBody = (await missing.json()) as Record<string, unknown>;
                 expect(String(missingBody.error)).toContain("not found");
@@ -142,7 +143,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         // 2. Tasks: seeded suite present
         // -------------------------------------------------------------------------
         test("GET /api/tasks lists the five seeded tasks; /api/tasks/:id returns one", async () => {
-                const res = await fetch(api("/api/tasks"));
+                const res = await authFetch(api("/api/tasks"));
                 expect(res.status).toBe(200);
                 const { tasks } = (await res.json()) as { tasks: Array<Record<string, unknown>> };
                 expect(tasks).toHaveLength(5);
@@ -155,7 +156,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                         expect(t.active).toBeUndefined(); // list view carries counts, not full rows
                 }
 
-                const one = await fetch(api("/api/tasks/fix-fizzbuzz"));
+                const one = await authFetch(api("/api/tasks/fix-fizzbuzz"));
                 expect(one.status).toBe(200);
                 const { task } = (await one.json()) as { task: Record<string, unknown> };
                 expect(task.id).toBe("fix-fizzbuzz");
@@ -166,7 +167,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(typeof task.verify).toBe("string");
                 expect(task.verify).toContain("VERIFY_RESULT");
 
-                expect((await fetch(api("/api/tasks/missing-task"))).status).toBe(404);
+                expect((await authFetch(api("/api/tasks/missing-task"))).status).toBe(404);
         });
 
         // -------------------------------------------------------------------------
@@ -174,7 +175,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         //    cycle: sandboxed pi agent → mock bridge → verify script → mining).
         // -------------------------------------------------------------------------
         test("POST /api/tasks/:id/run completes a full cycle and records run + transcript + verify output", async () => {
-                const started = await fetch(api("/api/tasks/fix-fizzbuzz/run"), { method: "POST" });
+                const started = await authFetch(api("/api/tasks/fix-fizzbuzz/run"), { method: "POST" });
                 expect(started.status).toBe(200);
                 expect(await started.json()).toEqual({ started: true, taskId: "fix-fizzbuzz" });
 
@@ -182,7 +183,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 // each a real sandboxed agent session — hence the generous timeout).
                 const cycle = await waitFor(
                         async () => {
-                                const { cycles } = (await (await fetch(api("/api/cycles"))).json()) as {
+                                const { cycles } = (await (await authFetch(api("/api/cycles"))).json()) as {
                                         cycles: Array<Record<string, unknown>>;
                                 };
                                 const c = cycles.find((x) => x.task_id === "fix-fizzbuzz");
@@ -196,14 +197,14 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(typeof cycle.summary).toBe("string");
 
                 // Engine is idle again and the overview reflects the traffic.
-                const overview = (await (await fetch(api("/api/overview"))).json()) as Record<string, unknown>;
+                const overview = (await (await authFetch(api("/api/overview"))).json()) as Record<string, unknown>;
                 expect(overview.routerBusy).toBe(false);
                 const kpis = overview.kpis as Record<string, unknown>;
                 expect(kpis.totalRuns).toBeGreaterThan(0);
                 expect(kpis.passRate).toBe(0); // every run failed — the mock never fixes code
 
                 // Runs endpoint: baseline + candidate runs for the task.
-                const { runs } = (await (await fetch(api("/api/runs?task=fix-fizzbuzz&limit=50"))).json()) as {
+                const { runs } = (await (await authFetch(api("/api/runs?task=fix-fizzbuzz&limit=50"))).json()) as {
                         runs: Array<Record<string, unknown>>;
                 };
                 expect(runs.length).toBeGreaterThanOrEqual(2);
@@ -214,7 +215,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(baseline!.sandbox_id).toBeTruthy();
 
                 // Run detail: transcript + verification ground truth.
-                const detail = (await (await fetch(api(`/api/runs/${baseline!.id}`))).json()) as {
+                const detail = (await (await authFetch(api(`/api/runs/${baseline!.id}`))).json()) as {
                         run: Record<string, unknown>;
                 };
                 const run = detail.run;
@@ -245,7 +246,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
 
                 // Mining really ran: the mock's canned MiningResult became (rejected)
                 // improvements with candidate runs attached.
-                const { improvements } = (await (await fetch(api("/api/improvements"))).json()) as {
+                const { improvements } = (await (await authFetch(api("/api/improvements"))).json()) as {
                         improvements: Array<Record<string, unknown>>;
                 };
                 expect(
@@ -257,14 +258,14 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(improvements.some((i) => i.candidate_run_id)).toBe(true);
 
                 // Each finished run left a session note (AutoDream fuel).
-                const { notes } = (await (await fetch(api("/api/notes"))).json()) as {
+                const { notes } = (await (await authFetch(api("/api/notes"))).json()) as {
                         notes: Array<Record<string, unknown>>;
                 };
                 expect(notes.length).toBeGreaterThanOrEqual(2);
                 expect(notes.some((n) => n.run_id === baseline!.id)).toBe(true);
 
                 // GET /api/bridge proxies the mock's request log.
-                const bridgeStats = (await (await fetch(api("/api/bridge"))).json()) as Record<string, unknown>;
+                const bridgeStats = (await (await authFetch(api("/api/bridge"))).json()) as Record<string, unknown>;
                 expect(Array.isArray(bridgeStats.log)).toBe(true);
                 expect(bridgeStats.requests).toBeGreaterThan(0);
                 expect(bridgeStats.errors).toBe(0);
@@ -287,7 +288,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 // for 2s to guarantee the mutex spans the second trigger.
                 engine!.bridge.delayMs = 2_000;
                 try {
-                        const first = await fetch(api("/api/agent/prompt"), {
+                        const first = await authFetch(api("/api/agent/prompt"), {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ prompt: "integration busy-mutex probe" }),
@@ -297,7 +298,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
 
                         // withBusy is claimed synchronously before the first response is
                         // sent, so these immediate triggers must observe the mutex.
-                        const second = await fetch(api("/api/agent/prompt"), {
+                        const second = await authFetch(api("/api/agent/prompt"), {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ prompt: "should be rejected" }),
@@ -305,12 +306,12 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                         expect(second.status).toBe(409);
                         expect(((await second.json()) as Record<string, unknown>).error).toContain("busy");
 
-                        const taskRun = await fetch(api("/api/tasks/fix-fizzbuzz/run"), { method: "POST" });
+                        const taskRun = await authFetch(api("/api/tasks/fix-fizzbuzz/run"), { method: "POST" });
                         expect(taskRun.status).toBe(409);
                         expect(((await taskRun.json()) as Record<string, unknown>).error).toContain("busy");
 
                         // The rejected trigger must not have started any work either.
-                        const { runs } = (await (await fetch(api("/api/runs?kind=interactive&limit=5"))).json()) as {
+                        const { runs } = (await (await authFetch(api("/api/runs?kind=interactive&limit=5"))).json()) as {
                                 runs: Array<Record<string, unknown>>;
                         };
                         expect(runs).toHaveLength(1);
@@ -319,7 +320,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                         // the mock reply alone ends the run as passed).
                         const done = await waitFor(
                                 async () => {
-                                        const { runs: rs } = (await (await fetch(api("/api/runs?kind=interactive&limit=5"))).json()) as {
+                                        const { runs: rs } = (await (await authFetch(api("/api/runs?kind=interactive&limit=5"))).json()) as {
                                                 runs: Array<Record<string, unknown>>;
                                         };
                                         return rs.length === 1 && rs[0].status !== "running" ? rs[0] : null;
@@ -330,15 +331,15 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 } finally {
                         engine!.bridge.delayMs = 0;
                 }
-                const overview = (await (await fetch(api("/api/overview"))).json()) as Record<string, unknown>;
+                const overview = (await (await authFetch(api("/api/overview"))).json()) as Record<string, unknown>;
                 expect(overview.routerBusy).toBe(false);
         }, 120_000);
 
         /** No in-flight work: mutex released and no run rows in 'running'. */
         async function engineIdle(): Promise<boolean> {
-                const overview = (await (await fetch(api("/api/overview"))).json()) as Record<string, unknown>;
+                const overview = (await (await authFetch(api("/api/overview"))).json()) as Record<string, unknown>;
                 if (overview.routerBusy) return false;
-                const { runs } = (await (await fetch(api("/api/runs?limit=200"))).json()) as {
+                const { runs } = (await (await authFetch(api("/api/runs?limit=200"))).json()) as {
                         runs: Array<Record<string, unknown>>;
                 };
                 return runs.every((r) => r.status !== "running");
@@ -356,7 +357,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                         label: "engine idle",
                 });
 
-                const res = await fetch(api("/api/events"));
+                const res = await authFetch(api("/api/events"));
                 expect(res.status).toBe(200);
                 expect(res.headers.get("content-type")).toContain("text/event-stream");
                 const client = new SseClient(res);
@@ -367,7 +368,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
 
                 // Fire a note ingestion (note:created) and a router job (job:started →
                 // job:finished) — both must appear on the stream, in emission order.
-                const noteRes = await fetch(api("/api/notes"), {
+                const noteRes = await authFetch(api("/api/notes"), {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ content: "integration sse note", project_path: "/tmp/selflearning-it-sse-probe" }),
@@ -376,7 +377,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 const noteBody = (await noteRes.json()) as Record<string, unknown>;
                 expect(noteBody.ok).toBe(true);
 
-                const jobRes = await fetch(api("/api/jobs/sandbox-gc/trigger"), { method: "POST" });
+                const jobRes = await authFetch(api("/api/jobs/sandbox-gc/trigger"), { method: "POST" });
                 expect(jobRes.status).toBe(200);
                 const jobBody = (await jobRes.json()) as Record<string, unknown>;
                 expect(jobBody.ok).toBe(true);
@@ -405,7 +406,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 // Client disconnect: cancel the stream, then prove the server is fine.
                 client.abort();
                 await Bun.sleep(200);
-                const after = await fetch(api("/api/overview"));
+                const after = await authFetch(api("/api/overview"));
                 expect(after.status).toBe(200);
         });
 
@@ -415,7 +416,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         //    HTTP route by design; everything else is asserted through the API.)
         // -------------------------------------------------------------------------
         test("memory write → version increment → HTTP history → rollback restores content", async () => {
-                const before = (await (await fetch(api("/api/memory"))).json()) as {
+                const before = (await (await authFetch(api("/api/memory"))).json()) as {
                         tiers: Array<Record<string, unknown>>;
                         resolvedChars: number;
                 };
@@ -433,7 +434,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 );
                 expect(v2).toBe(2);
 
-                const afterWrite = (await (await fetch(api("/api/memory"))).json()) as {
+                const afterWrite = (await (await authFetch(api("/api/memory"))).json()) as {
                         tiers: Array<Record<string, unknown>>;
                 };
                 const userAfter = afterWrite.tiers.find((t) => t.tier === "user")!;
@@ -441,13 +442,13 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(userAfter.content as string).toContain("integration test rule");
 
                 // Version history is attributable.
-                const { history } = (await (await fetch(api("/api/memory/user/history"))).json()) as {
+                const { history } = (await (await authFetch(api("/api/memory/user/history"))).json()) as {
                         history: Array<Record<string, unknown>>;
                 };
                 expect(history.map((h) => h.changed_by)).toEqual(["manual", "seed"]);
 
                 // Rollback via HTTP → new version carrying the old content.
-                const rollback = await fetch(api("/api/memory/user/rollback"), {
+                const rollback = await authFetch(api("/api/memory/user/rollback"), {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ version: 1 }),
@@ -455,20 +456,20 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(rollback.status).toBe(200);
                 expect(await rollback.json()).toEqual({ ok: true });
 
-                const afterRollback = (await (await fetch(api("/api/memory"))).json()) as {
+                const afterRollback = (await (await authFetch(api("/api/memory"))).json()) as {
                         tiers: Array<Record<string, unknown>>;
                 };
                 const userRolled = afterRollback.tiers.find((t) => t.tier === "user")!;
                 expect(userRolled.version).toBe(3);
                 expect(userRolled.content).toBe(seedContent);
 
-                const { history: h2 } = (await (await fetch(api("/api/memory/user/history"))).json()) as {
+                const { history: h2 } = (await (await authFetch(api("/api/memory/user/history"))).json()) as {
                         history: Array<Record<string, unknown>>;
                 };
                 expect(h2.map((h) => h.changed_by)).toEqual(["rollback", "manual", "seed"]);
 
                 // Bad requests are rejected.
-                const bad = await fetch(api("/api/memory/user/rollback"), {
+                const bad = await authFetch(api("/api/memory/user/rollback"), {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({}),
@@ -480,7 +481,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         // 7. Router jobs: list + toggle (+ trigger already covered by SSE test)
         // -------------------------------------------------------------------------
         test("GET /api/jobs lists the seven seeded jobs; toggle flips and restores", async () => {
-                const { jobs } = (await (await fetch(api("/api/jobs"))).json()) as {
+                const { jobs } = (await (await authFetch(api("/api/jobs"))).json()) as {
                         jobs: Array<Record<string, unknown>>;
                 };
                 expect(jobs.map((j) => j.id).sort()).toEqual(
@@ -501,17 +502,17 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                         expect(j.enabled).toBe(1);
                 }
 
-                const off = await fetch(api("/api/jobs/note-sync/toggle"), { method: "POST" });
+                const off = await authFetch(api("/api/jobs/note-sync/toggle"), { method: "POST" });
                 expect(off.status).toBe(200);
                 const offBody = (await off.json()) as { job: Record<string, unknown> };
                 expect(offBody.job.enabled).toBe(0);
 
-                const on = await fetch(api("/api/jobs/note-sync/toggle"), { method: "POST" });
+                const on = await authFetch(api("/api/jobs/note-sync/toggle"), { method: "POST" });
                 expect(on.status).toBe(200);
                 const onBody = (await on.json()) as { job: Record<string, unknown> };
                 expect(onBody.job.enabled).toBe(1);
 
-                const missing = await fetch(api("/api/jobs/no-such-job/toggle"), { method: "POST" });
+                const missing = await authFetch(api("/api/jobs/no-such-job/toggle"), { method: "POST" });
                 expect(missing.status).toBe(404);
         });
 
@@ -560,21 +561,21 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 mkdirSync(`${projectPath}/.unown/skills/run-tests`, { recursive: true });
                 writeFileSync(`${projectPath}/.unown/skills/run-tests/SKILL.md`, v2Body, "utf8");
 
-                const listed = (await (await fetch(api("/api/skills?project=it-skills-proj"))).json()) as {
+                const listed = (await (await authFetch(api("/api/skills?project=it-skills-proj"))).json()) as {
                         skills: Array<Record<string, unknown>>;
                 };
                 expect(listed.skills.map((s) => s.id)).toContain(skillId);
                 // List-all route (no project filter) sees it too.
-                const listedAll = (await (await fetch(api("/api/skills"))).json()) as {
+                const listedAll = (await (await authFetch(api("/api/skills"))).json()) as {
                         skills: Array<Record<string, unknown>>;
                 };
                 expect(listedAll.skills.map((s) => s.id)).toContain(skillId);
 
                 // Unknown real ids 404 (the fixed routes match any id shape, then the
                 // store lookup misses).
-                expect((await fetch(api("/api/skills/real-skill-id"))).status).toBe(404);
+                expect((await authFetch(api("/api/skills/real-skill-id"))).status).toBe(404);
 
-                const detail = (await (await fetch(api(`/api/skills/${skillId}`))).json()) as {
+                const detail = (await (await authFetch(api(`/api/skills/${skillId}`))).json()) as {
                         skill: Record<string, unknown>;
                         versions: Array<Record<string, unknown>>;
                 };
@@ -582,14 +583,14 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(detail.versions.map((v) => v.version)).toEqual([2, 1]);
 
                 // Invalid targets are rejected with 400 + error text.
-                const badVersion = await fetch(api(`/api/skills/${skillId}/rollback`), {
+                const badVersion = await authFetch(api(`/api/skills/${skillId}/rollback`), {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ version: 5 }),
                 });
                 expect(badVersion.status).toBe(400);
                 expect(((await badVersion.json()) as Record<string, unknown>).error).toContain("no version 5");
-                const notInt = await fetch(api(`/api/skills/${skillId}/rollback`), {
+                const notInt = await authFetch(api(`/api/skills/${skillId}/rollback`), {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ version: "one" }),
@@ -597,7 +598,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(notInt.status).toBe(400);
 
                 // Rollback to v1: file + row both restore.
-                const rollback = await fetch(api(`/api/skills/${skillId}/rollback`), {
+                const rollback = await authFetch(api(`/api/skills/${skillId}/rollback`), {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ version: 1 }),
@@ -605,24 +606,24 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(rollback.status).toBe(200);
                 expect(await rollback.json()).toEqual({ ok: true });
                 expect(readFileSync(`${projectPath}/.unown/skills/run-tests/SKILL.md`, "utf8")).toBe(v1Body);
-                const after = (await (await fetch(api(`/api/skills/${skillId}`))).json()) as {
+                const after = (await (await authFetch(api(`/api/skills/${skillId}`))).json()) as {
                         skill: Record<string, unknown>;
                 };
                 expect(after.skill.version).toBe(1);
                 expect(after.skill.body).toBe(v1Body);
 
                 // Retire: file removed, row marked.
-                const retire = await fetch(api(`/api/skills/${skillId}/retire`), { method: "POST" });
+                const retire = await authFetch(api(`/api/skills/${skillId}/retire`), { method: "POST" });
                 expect(retire.status).toBe(200);
                 expect(await retire.json()).toEqual({ ok: true });
                 expect(existsSync(`${projectPath}/.unown/skills/run-tests`)).toBe(false);
-                const retired = (await (await fetch(api(`/api/skills/${skillId}`))).json()) as {
+                const retired = (await (await authFetch(api(`/api/skills/${skillId}`))).json()) as {
                         skill: Record<string, unknown>;
                 };
                 expect(retired.skill.status).toBe("retired");
 
                 // Retired skills refuse rollback.
-                const retiredRollback = await fetch(api(`/api/skills/${skillId}/rollback`), {
+                const retiredRollback = await authFetch(api(`/api/skills/${skillId}/rollback`), {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ version: 1 }),
@@ -630,14 +631,14 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(retiredRollback.status).toBe(400);
 
                 // Unknown skill id.
-                expect((await fetch(api("/api/skills/unknown-skill"))).status).toBe(404);
+                expect((await authFetch(api("/api/skills/unknown-skill"))).status).toBe(404);
         });
 
         // -------------------------------------------------------------------------
         // 9. Notes outbox sync route (terminal-note plumbing, no LLM involved)
         // -------------------------------------------------------------------------
         test("POST /api/notes/sync reports zero for the empty temp outbox", async () => {
-                const res = await fetch(api("/api/notes/sync"), { method: "POST" });
+                const res = await authFetch(api("/api/notes/sync"), { method: "POST" });
                 expect(res.status).toBe(200);
                 const body = (await res.json()) as Record<string, unknown>;
                 expect(body.ok).toBe(true);
@@ -657,7 +658,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         test("automations CRUD over HTTP: create -> PATCH pause/edit/resume -> runs -> delete", async () => {
                 // Create a far-future one-shot (scheduler never fires it during the
                 // test; the poll loop runs but nothing is due for hours).
-                const create = await fetch(api("/api/automations"), {
+                const create = await authFetch(api("/api/automations"), {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -675,7 +676,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
 
                 // THE regression: PATCH with a JSON body must reach the handler
                 // (pre-fix this answered 400 "nothing to update").
-                const pause = await fetch(api(`/api/automations/${automation.id}`), {
+                const pause = await authFetch(api(`/api/automations/${automation.id}`), {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ lifecycle: "paused" }),
@@ -686,7 +687,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
 
                 // PATCH again: rename + raise maxRuns through the same gate
                 // (camelCase maxRuns maps to the row's max_runs).
-                const edit = await fetch(api(`/api/automations/${automation.id}`), {
+                const edit = await authFetch(api(`/api/automations/${automation.id}`), {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ title: "it-patch-smoke-2", maxRuns: 5 }),
@@ -697,7 +698,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(edited.max_runs).toBe(5);
 
                 // Resume re-arms next_run_at (one-shot: the slot stays scheduled).
-                const resume = await fetch(api(`/api/automations/${automation.id}`), {
+                const resume = await authFetch(api(`/api/automations/${automation.id}`), {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ lifecycle: "active" }),
@@ -708,12 +709,12 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(active.next_run_at).not.toBeNull();
 
                 // Runs list over HTTP (empty is fine — nothing has fired).
-                const runs = await fetch(api(`/api/automations/${automation.id}/runs`));
+                const runs = await authFetch(api(`/api/automations/${automation.id}/runs`));
                 expect(runs.status).toBe(200);
                 expect(Array.isArray(((await runs.json()) as { runs: unknown[] }).runs)).toBe(true);
 
                 // Delete is idempotent-shaped: first 200, then 404.
-                expect((await fetch(api(`/api/automations/${automation.id}`), { method: "DELETE" })).status).toBe(200);
-                expect((await fetch(api(`/api/automations/${automation.id}`), { method: "DELETE" })).status).toBe(404);
+                expect((await authFetch(api(`/api/automations/${automation.id}`), { method: "DELETE" })).status).toBe(200);
+                expect((await authFetch(api(`/api/automations/${automation.id}`), { method: "DELETE" })).status).toBe(404);
         });
 });

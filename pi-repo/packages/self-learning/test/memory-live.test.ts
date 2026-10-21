@@ -43,6 +43,24 @@ const SCRATCH = join(tmpdir(), "scratch-mem", "live");
 const ENGINE_PORT = Number(process.env.UNOWN_MEMORY_LIVE_PORT ?? 3035);
 const PROXY_PORT = ENGINE_PORT + 1;
 const ENGINE = `http://127.0.0.1:${ENGINE_PORT}`;
+
+// M7: the engine requires its per-boot bearer token — read it fresh from the
+// scratch data dir (the engine writes it there BEFORE binding its port).
+function engineToken(): string {
+        try {
+                return readFileSync(join(SCRATCH, "data", "engine.token"), "utf8").trim();
+        } catch {
+                return "";
+        }
+}
+function engineAuth(): Record<string, string> {
+        const tok = engineToken();
+        return tok ? { Authorization: `Bearer ${tok}` } : {};
+}
+function engineTokenQuery(): string {
+        const tok = engineToken();
+        return tok ? `?token=${encodeURIComponent(tok)}` : "";
+}
 const REAL_BRIDGE = (process.env.UNOWN_MEMORY_LIVE_BRIDGE ?? "http://127.0.0.1:3031").replace(/\/+$/, "");
 const MODEL = process.env.UNOWN_MEMORY_LIVE_MODEL ?? "kimi-k2.5";
 const RECEIPTS_DIR =
@@ -101,7 +119,7 @@ function recordTest(name: string, evidence: Record<string, unknown>, ok: boolean
 /** Buffered SSE reader over the engine's /api/events stream. */
 async function startSSE(): Promise<() => void> {
         const ctrl = new AbortController();
-        const res = await fetch(`${ENGINE}/api/events`, { signal: ctrl.signal });
+        const res = await fetch(`${ENGINE}/api/events${engineTokenQuery()}`, { signal: ctrl.signal });
         if (!res.ok || !res.body) throw new Error(`SSE connect failed: ${res.status}`);
         const reader = res.body.getReader();
         const dec = new TextDecoder();
@@ -137,7 +155,10 @@ async function startSSE(): Promise<() => void> {
 async function api(method: string, path: string, body?: unknown) {
         const res = await fetch(`${ENGINE}${path}`, {
                 method,
-                headers: body !== undefined ? { "content-type": "application/json" } : undefined,
+                headers: {
+                        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+                        ...engineAuth(),
+                },
                 body: body !== undefined ? JSON.stringify(body) : undefined,
         });
         const json: any = await res.json().catch(() => ({}));
@@ -190,7 +211,7 @@ describe.skipIf(!GATE)("memory live loop (scratch engine + real bridge)", () => 
                 engine = serverMod.startServer(ENGINE_PORT);
                 await pollUntil("engine boot", 15_000, async () => {
                         try {
-                                const r = await fetch(`${ENGINE}/api/memory`);
+                                const r = await fetch(`${ENGINE}/api/memory`, { headers: engineAuth() });
                                 return r.ok;
                         } catch {
                                 return false;

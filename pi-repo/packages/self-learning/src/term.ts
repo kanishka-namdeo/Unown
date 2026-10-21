@@ -23,6 +23,7 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { pruneToBudget } from "./budget.ts";
 import { seedAddonsConfig } from "./addons/config.ts";
+import { engineFetch } from "./engine-auth.ts";
 import { spawnEngineDetached } from "./engine-supervisor.ts";
 import { MEMORY_GUIDE, MEMORY_GUIDE_PATH } from "./memory-guide.ts";
 import { STARTER_SKILLS } from "./skill-seeds.ts";
@@ -527,7 +528,7 @@ export async function deliverTerminalNote(
                 // session shutdown must not pay the boot latency.
                 let spawnedEngine = false;
                 try {
-                        await fetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(1200) });
+                        await engineFetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(1200) });
                 } catch {
                         try {
                                 void spawnEngineDetached();
@@ -537,7 +538,7 @@ export async function deliverTerminalNote(
                         }
                 }
                 try {
-                        const res = await fetch(`${ENGINE_URL}/api/notes`, {
+                        const res = await engineFetch(`${ENGINE_URL}/api/notes`, {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ content: note.content, project_path: note.projectPath }),

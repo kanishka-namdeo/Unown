@@ -24,7 +24,7 @@
  *   node benchmarks/detached-engine/runner.mjs --phase after
  */
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,6 +39,23 @@ const soakMinutes = Number(args.includes("--soak-minutes") ? args[args.indexOf("
 const phase = args.includes("--phase") ? args[args.indexOf("--phase") + 1] : "";
 
 const ENGINE_URL = process.env.UNOWN_ENGINE_URL || "http://127.0.0.1:3030";
+// M7: the engine requires its per-boot bearer token (data/self-learning/
+// engine.token, regenerated each boot) — same-user tooling reads it the same
+// way engineFetch does. UNOWN_ENGINE_TOKEN (env pin) wins, matching src.
+const TOKEN_PATH = (() => {
+        if (process.env.PI_SELFLEARNING_DATA) return `${process.env.PI_SELFLEARNING_DATA}/engine.token`;
+        return "data/self-learning/engine.token";
+})();
+function engineAuthHeaders() {
+        const pinned = (process.env.UNOWN_ENGINE_TOKEN ?? "").trim();
+        if (pinned) return { Authorization: `Bearer ${pinned}` };
+        try {
+                const tok = readFileSync(TOKEN_PATH, "utf8").trim();
+                return tok ? { Authorization: `Bearer ${tok}` } : {};
+        } catch {
+                return {}; // engine down / token not yet written
+        }
+}
 // The runner may execute under node OR bun; `bin/unown` needs bun itself.
 const BUN = process.execPath.includes("bun")
         ? process.execPath
@@ -50,7 +67,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function jfetch(url, ms = 4000) {
         try {
-                const res = await fetch(url, { signal: AbortSignal.timeout(ms) });
+                const res = await fetch(url, { signal: AbortSignal.timeout(ms), headers: engineAuthHeaders() });
                 return await res.json();
         } catch {
                 return null;
@@ -180,7 +197,7 @@ async function scenarioCrash() {
         });
 
         log("· crash: SIGKILL mid-cycle → restart → orphan rows healed…");
-        await fetch(`${ENGINE_URL}/api/jobs/harness-cycle/trigger`, { method: "POST" }).catch(() => null);
+        await fetch(`${ENGINE_URL}/api/jobs/harness-cycle/trigger`, { method: "POST", headers: engineAuthHeaders() }).catch(() => null);
         await sleep(2500);
         const mid = await engineUp();
         if (mid?.pid) {
@@ -237,7 +254,7 @@ async function scenarioSoak() {
         const jobs = (await jfetch(`${ENGINE_URL}/api/jobs`))?.jobs ?? [];
         for (const j of jobs) {
                 if (!j.enabled && ["dream-check", "auto-dream", "harness-cycle", "task-mint"].includes(j.id)) {
-                        await fetch(`${ENGINE_URL}/api/jobs/${j.id}/toggle`, { method: "POST" });
+                        await fetch(`${ENGINE_URL}/api/jobs/${j.id}/toggle`, { method: "POST", headers: engineAuthHeaders() });
                         r.events.push(`enabled ${j.id}`);
                 }
         }

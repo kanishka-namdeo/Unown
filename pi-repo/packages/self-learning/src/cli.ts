@@ -72,6 +72,7 @@ import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
 import { runRecipesCommand, RECIPES_USAGE } from "./recipes-cli.ts";
 import { runWikiCommand, WIKI_USAGE } from "./wiki-cli.ts";
 import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
+import { engineFetch } from "./engine-auth.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
 import { installChildReaper } from "./child-reaper.ts";
 import { createSplitViewExtension } from "./splitview.ts";
@@ -1345,7 +1346,7 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
         // 5. engine health (notes + dreams + dashboard) — chat works without it;
         // session notes just queue in the outbox until it returns.
         try {
-                const res = await fetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
+                const res = await engineFetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
                 const body: any = await res.json();
                 check(
                         "self-learning engine",

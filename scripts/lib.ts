@@ -192,11 +192,15 @@ export function alive(pid: number): boolean {
   }
 }
 
-/** HTTP probe: resolves true only for a 2xx within the timeout. */
+/** HTTP probe: true for 2xx, or 401/403 (the M7-tokened engine answering). */
 export async function probeHttpOk(url: string, timeoutMs = 2500): Promise<boolean> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-    return res.ok;
+    // 401/403 = the engine answered and demanded its M7 bearer token — the
+    // server is PRESENT (start.ts's "already running" fast path) and the port
+    // is NOT free (stop.ts's drain wait). Only transport errors / non-auth
+    // statuses mean "not the service we're waiting on".
+    return res.ok || res.status === 401 || res.status === 403;
   } catch {
     return false;
   }

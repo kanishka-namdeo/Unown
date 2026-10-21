@@ -38,6 +38,20 @@ const SCRATCH = join(tmpdir(), "scratch-mem", "poison");
 const ENGINE_PORT = Number(process.env.UNOWN_MEMORY_POISON_PORT ?? 3037);
 const PROXY_PORT = ENGINE_PORT + 1;
 const ENGINE = `http://127.0.0.1:${ENGINE_PORT}`;
+
+// M7: the engine requires its per-boot bearer token — read it fresh from the
+// scratch data dir (the engine writes it there BEFORE binding its port).
+function engineToken(): string {
+        try {
+                return readFileSync(join(SCRATCH, "data", "engine.token"), "utf8").trim();
+        } catch {
+                return "";
+        }
+}
+function engineAuth(): Record<string, string> {
+        const tok = engineToken();
+        return tok ? { Authorization: `Bearer ${tok}` } : {};
+}
 const REAL_BRIDGE = (process.env.UNOWN_MEMORY_POISON_BRIDGE ?? "http://127.0.0.1:3031").replace(/\/+$/, "");
 const MODEL = process.env.UNOWN_MEMORY_POISON_MODEL ?? "kimi-k2.5";
 const RECEIPTS_DIR =
@@ -94,7 +108,10 @@ function recordProbe(name: string, evidence: Record<string, unknown>) {
 async function api(method: string, path: string, body?: unknown) {
         const res = await fetch(`${ENGINE}${path}`, {
                 method,
-                headers: body !== undefined ? { "content-type": "application/json" } : undefined,
+                headers: {
+                        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+                        ...engineAuth(),
+                },
                 body: body !== undefined ? JSON.stringify(body) : undefined,
         });
         const json: any = await res.json().catch(() => ({}));
@@ -148,7 +165,7 @@ describe.skipIf(!GATE)("memory poisoning probes (live dreams, real bridge)", () 
                 engine = serverMod.startServer(ENGINE_PORT);
                 await pollUntil("engine boot", 15_000, async () => {
                         try {
-                                return (await fetch(`${ENGINE}/api/memory`)).ok;
+                                return (await fetch(`${ENGINE}/api/memory`, { headers: engineAuth() })).ok;
                         } catch {
                                 return false;
                         }

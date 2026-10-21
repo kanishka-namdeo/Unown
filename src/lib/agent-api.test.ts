@@ -68,6 +68,12 @@ const calls: FetchCall[] = []
 let makeResult: () => Response | Error = () => new Response("{}", { status: 200 })
 
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  // M7: the client first asks the Next server route for the engine's bearer
+  // token (per-boot). Serve it WITHOUT recording — it is infrastructure, not
+  // the API surface under test.
+  if (String(input) === "/api/engine-token") {
+    return new Response(JSON.stringify({ token: "test-engine-token" }), { status: 200 })
+  }
   calls.push({ url: String(input), init })
   const result = makeResult()
   if (result instanceof Error) throw result
@@ -159,7 +165,10 @@ describe("getJson (via api facade)", () => {
     expect(data as unknown).toEqual({ hello: "world" })
     expect(calls).toHaveLength(1)
     expect(calls[0]?.url).toBe("/api/overview?XTransformPort=3030")
-    expect(calls[0]?.init).toEqual({ cache: "no-store" })
+    expect(calls[0]?.init).toEqual({
+      cache: "no-store",
+      headers: { Authorization: "Bearer test-engine-token" },
+    })
   })
 
   test("non-2xx -> ApiError with status and a generic path message", async () => {
@@ -209,7 +218,10 @@ describe("postJson (via mutations facade)", () => {
     expect(calls).toHaveLength(1)
     expect(calls[0]?.url).toBe("/api/agent/prompt?XTransformPort=3030")
     expect(calls[0]?.init?.method).toBe("POST")
-    expect(calls[0]?.init?.headers).toEqual({ "Content-Type": "application/json" })
+    expect(calls[0]?.init?.headers).toEqual({
+      "Content-Type": "application/json",
+      Authorization: "Bearer test-engine-token",
+    })
     expect(calls[0]?.init?.body).toBe(JSON.stringify({ prompt: "hello world" }))
   })
 
@@ -353,7 +365,10 @@ describe("automations client surface", () => {
     makeResult = () => new Response(JSON.stringify({ automations: [] }), { status: 200 })
     await gateway.api.automations()
     expect(calls[0]?.url).toBe("/api/automations?XTransformPort=3030")
-    expect(calls[0]?.init).toEqual({ cache: "no-store" })
+    expect(calls[0]?.init).toEqual({
+      cache: "no-store",
+      headers: { Authorization: "Bearer test-engine-token" },
+    })
   })
 
   test("api.automationRuns GETs the per-automation run history with limit", async () => {

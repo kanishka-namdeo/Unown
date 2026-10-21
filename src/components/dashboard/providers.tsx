@@ -4,7 +4,7 @@ import * as React from "react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { EVENTS_URL, qk } from "@/lib/agent-api";
+import { eventsUrl, qk } from "@/lib/agent-api";
 import { useActivityStore, useRunStreamStore } from "@/lib/agent-store";
 import type { AgentEvent, RunStreamEntry } from "@/lib/agent-types";
 
@@ -291,17 +291,22 @@ function SseBridge() {
     };
 
     const connect = () => {
-      es = new EventSource(EVENTS_URL);
-      es.onopen = () => setConnected(true);
-      es.onmessage = (e: MessageEvent<string>) => handleMessage(e.data);
-      es.onerror = () => {
-        setConnected(false);
-        // EventSource auto-reconnects; if it gave up (readyState CLOSED), retry manually.
-        if (es && es.readyState === EventSource.CLOSED && !closed) {
-          es.close();
-          setTimeout(connect, 3000);
-        }
-      };
+      // M7: the SSE URL carries the engine's per-boot token as a query param
+      // (EventSource cannot set headers). eventsUrl() re-reads it each
+      // (re)connect — after an engine restart the token has rotated.
+      void eventsUrl().then((url) => {
+        es = new EventSource(url);
+        es.onopen = () => setConnected(true);
+        es.onmessage = (e: MessageEvent<string>) => handleMessage(e.data);
+        es.onerror = () => {
+          setConnected(false);
+          // EventSource auto-reconnects; if it gave up (readyState CLOSED), retry manually.
+          if (es && es.readyState === EventSource.CLOSED && !closed) {
+            es.close();
+            setTimeout(connect, 3000);
+          }
+        };
+      });
     };
 
     connect();

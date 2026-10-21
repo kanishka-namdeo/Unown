@@ -22,6 +22,7 @@ import { existsSync, renameSync, statSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { ENGINE_URL, outboxStats } from "./term.ts";
 import { DB_PATH } from "./store.ts";
+import { engineFetch } from "./engine-auth.ts";
 import {
         engineHealth,
         enginePidFile,
@@ -76,7 +77,7 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
         }
         // Full report (the cheap probe passed; now the detailed one, still bounded).
         try {
-                const res = await fetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
+                const res = await engineFetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
                 const body: any = await res.json();
                 const r = body?.router ?? {};
                 const g = body?.governor ?? {};
@@ -137,7 +138,7 @@ async function cmdStop(out: (s: string) => void): Promise<number> {
         // reach JS handlers (TerminateProcess skips them). Signals remain the
         // fallback for an engine that answers neither way.
         try {
-                const res = await fetch(`${ENGINE_URL}/api/shutdown`, { method: "POST", signal: AbortSignal.timeout(3000) });
+                const res = await engineFetch(`${ENGINE_URL}/api/shutdown`, { method: "POST", signal: AbortSignal.timeout(3000) });
                 if (res.ok) {
                         out("engine: drain requested (in-flight requests finish, WAL checkpointed, lock released)…");
                         for (let i = 0; i < 20; i++) {

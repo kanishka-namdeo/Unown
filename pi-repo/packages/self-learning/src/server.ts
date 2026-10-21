@@ -15,6 +15,18 @@ import {
         updateAutomation,
 } from "./automations.ts";
 import { describeCron } from "./cron.ts";
+import {
+        engineTokenPath,
+        generateEngineToken,
+        hostHeaderAllowed,
+        originAllowed,
+        removeEngineTokenFile,
+        requestToken,
+        resolveAuthPolicy,
+        tokenExempt,
+        tokenMatches,
+        writeEngineTokenFile,
+} from "./engine-auth.ts";
 import { dreamNotes, listDreams, runDream } from "./dream.ts";
 import { getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
@@ -140,6 +152,18 @@ export function withCors(res: Response, origin: string | null): Response {
         const h = new Headers(res.headers);
         for (const [k, v] of Object.entries(headers)) h.set(k, v);
         return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+}
+
+/** The posture the RUNNING server was booted with (null until startServer;
+ *  direct-handleApi unit calls fall back to resolving from the env).
+ *  Mirrored into /api/overview so clients can always tell what the API
+ *  required of them (M7). */
+let activeAuthPosture: { mode: "token" | "off"; bind: "loopback" | "network" } | null = null;
+
+function currentAuthPosture(): { mode: "token" | "off"; bind: "loopback" | "network" } {
+        if (activeAuthPosture) return activeAuthPosture;
+        const p = resolveAuthPolicy(process.env);
+        return { mode: p.mode, bind: p.widenedBind ? "network" : "loopback" };
 }
 
 export async function handleApi(req: ApiRequest): Promise<Response> {
@@ -275,6 +299,12 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 memoryVersions: Object.fromEntries(mem.map((m) => [m.tier, m.version])),
                                 trend,
                                 routerBusy: router.isBusy(),
+                                // Auth posture (M7): what the API requires — "none" (token
+                                // off) or "token" (bearer, validated by the fetch wrapper) —
+                                // plus the bind scope. The footer, doctor and
+                                // `unown engine status` surface this so a user can always
+                                // tell which posture their engine is in.
+                                auth: currentAuthPosture(),
                                 // Detachment observability (docs/detached-engine-architecture.md F4/F5/F7):
                                 // how long the mutex has been held, by which job, and the
                                 // governor's budget/breaker state — `unown doctor` warns when
@@ -576,6 +606,25 @@ export function startServer(port: number = PORT) {
         // unattended LLM spend; the shared llm.ts client is inert in CLI processes
         // without this flag (governor.ts, the M2 detachment contract).
         markEngineProcess();
+        // ---------------------------------------------------------- authentication (M7)
+        // Resolve BEFORE binding: a non-loopback bind with auth disabled must
+        // refuse to boot (an Ollama-style accidental 0.0.0.0-with-no-auth must
+        // never exist), and the token file must be on disk before the port
+        // answers its first request (no torn reads for auto-discovering
+        // clients). See engine-auth.ts for the full design + threat model.
+        const authPolicy = resolveAuthPolicy(process.env);
+        if (authPolicy.refuse) {
+                console.error(`[agent-service] refusing to start: ${authPolicy.refuseReason}`);
+                return null;
+        }
+        const engineToken = authPolicy.mode === "token" ? (authPolicy.token ?? generateEngineToken()) : null;
+        // NOTE: the token file is written ONLY AFTER this process wins the
+        // single-instance lock below. Writing it earlier let a racing loser
+        // engine (auto-start during a kill/recovery window) clobber the
+        // WINNER's token and exit — every same-user client then presented
+        // the dead loser's token and 401'd until a manual restart. The lock
+        // is the mutex that guarantees exactly one token writer; the write
+        // still happens before Bun.serve binds (no torn reads).
         // ---------------------------------------------------------- single instance
         // The engine lock (M3, docs/detached-engine-architecture.md F9): the
         // port bind is a mutex, but only for THIS port — a second engine with
@@ -589,6 +638,9 @@ export function startServer(port: number = PORT) {
                 console.log(`[agent-service] ${lock.reason} — this instance exits`);
                 return null;
         }
+        // Token + posture are now committed: this process IS the engine.
+        if (engineToken) writeEngineTokenFile(engineTokenPath(), engineToken);
+        activeAuthPosture = { mode: authPolicy.mode, bind: authPolicy.widenedBind ? "network" : "loopback" };
         // M6 boot-time integrity gate: PRAGMA quick_check is the fast O(N)
         // pass (docs/resilience.md). A damaged DB must fail HERE, with the
         // repair hint — not mid-dream, corrupting writes. The outbox + the
@@ -622,10 +674,54 @@ export function startServer(port: number = PORT) {
                         const url = new URL(req.url);
                         const corsOrigin = allowedCorsOrigin(req);
 
+                        // -------------------------------------------------- auth gate (M7)
+                        // Three checks, all ABOVE handleApi (the unit suite calls
+                        // handleApi directly; HTTP-level concerns live here):
+                        //   1. Host validation — same-port DNS rebinding kills CORS
+                        //      entirely (page origin == target origin), so a DNS name
+                        //      in the Host header must be explicitly allow-listed
+                        //      (UNOWN_ENGINE_HOSTS). Vite allowedHosts / CVE-2025-24010.
+                        //   2. Origin enforcement — CORS only gates what a browser
+                        //      can READ; a text/plain POST is preflight-free and
+                        //      apiRequestBody() parses any content-type, so any
+                        //      website could drive POST /api/* blind. A request that
+                        //      CARRIES an Origin must be on the allow-list.
+                        //   3. Bearer token — per-boot random token in
+                        //      DATA_DIR/engine.token (Jupyter-style); same-user
+                        //      clients auto-discover it via engineFetch. Exempt:
+                        //      preflights (carry no credentials) and GET / liveness.
+                        // See engine-auth.ts + docs/detached-engine-architecture.md.
+                        if (!hostHeaderAllowed(req, authPolicy)) {
+                                return new Response(JSON.stringify({ error: "host header not allowed" }), {
+                                        status: 403,
+                                        headers: { "Content-Type": "application/json" },
+                                });
+                        }
+                        if (!originAllowed(req, corsOrigin)) {
+                                return new Response(JSON.stringify({ error: "origin not allowed" }), {
+                                        status: 403,
+                                        headers: { "Content-Type": "application/json" },
+                                });
+                        }
+
                         // CORS preflight — answered before any routing (the engine API is
                         // consumed cross-origin by the local dashboard once CORS is on).
                         if (req.method === "OPTIONS") {
                                 return new Response(null, { status: 204, headers: corsHeadersFor(corsOrigin) });
+                        }
+                        if (engineToken && !tokenExempt(req.method, url.pathname)) {
+                                if (!tokenMatches(requestToken(req, url), engineToken)) {
+                                        return new Response(
+                                                JSON.stringify({ error: "missing or invalid engine token" }),
+                                                {
+                                                        status: 401,
+                                                        headers: {
+                                                                "Content-Type": "application/json",
+                                                                "WWW-Authenticate": "Bearer",
+                                                        },
+                                                },
+                                        );
+                                }
                         }
 
                         // SSE live event stream
@@ -679,8 +775,11 @@ export function startServer(port: number = PORT) {
                 },
         });
 
-        console.log(`[agent-service] REST+SSE API on http://127.0.0.1:${server.port}`);
-        installGracefulShutdown(server, lock.release);
+        console.log(
+                `[agent-service] REST+SSE API on http://${process.env.UNOWN_ENGINE_HOST || "127.0.0.1"}:${server.port}` +
+                        (engineToken ? ` — auth: bearer token (${engineTokenPath()})` : " — auth: disabled"),
+        );
+        installGracefulShutdown(server, lock.release, engineToken ? () => removeEngineTokenFile(engineTokenPath()) : undefined);
         startMaintenance();
         return server;
 }
@@ -776,7 +875,7 @@ let activeShutdown: (() => void) | null = null;
  * POST /api/shutdown endpoint (signals cannot drain on Windows — TerminateProcess
  * skips JS handlers — so the HTTP path is the portable drain).
  */
-function installGracefulShutdown(server: any, releaseLock: () => void): void {
+function installGracefulShutdown(server: any, releaseLock: () => void, removeToken?: () => void): void {
         if (shutdownInstalled) return;
         shutdownInstalled = true;
         const shutdown = async (signal: string) => {
@@ -791,6 +890,16 @@ function installGracefulShutdown(server: any, releaseLock: () => void): void {
                         automationsScheduler.stop();
                 } catch {
                         /* ignore */
+                }
+                // M7: remove the per-boot token file when the engine leaves
+                // deliberately (drain/stop) — mirrors Jupyter's runtime-file
+                // lifecycle. Crash paths leave it; the next boot rewrites it.
+                if (removeToken) {
+                        try {
+                                removeToken();
+                        } catch {
+                                /* ignore */
+                        }
                 }
                 try {
                         store.run("PRAGMA wal_checkpoint(TRUNCATE)");

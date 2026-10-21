@@ -49,6 +49,26 @@ OUT = os.environ.get("OUT", "/home/z/my-project/download/unown-engine-captures/s
 P.OUT_DIR = OUT
 DB = os.path.join(UNOWN_ROOT, "db", "selflearning.db")
 ENGINE_URL = "http://127.0.0.1:3030"
+# M7: the engine requires its per-boot bearer token — same-user tooling reads
+# data/self-learning/engine.token (PI_SELFLEARNING_DATA redirect honored);
+# UNOWN_ENGINE_TOKEN (env pin) wins, matching src/engine-auth.ts.
+TOKEN_FILE = os.path.join(
+    os.environ.get("PI_SELFLEARNING_DATA", ""), "engine.token"
+) if os.environ.get("PI_SELFLEARNING_DATA") else os.path.join(
+    UNOWN_ROOT, "data", "self-learning", "engine.token"
+)
+
+
+def engine_auth_headers() -> list[str]:
+    pinned = os.environ.get("UNOWN_ENGINE_TOKEN", "").strip()
+    tok = pinned
+    if not tok:
+        try:
+            with open(TOKEN_FILE, "r", encoding="utf-8") as f:
+                tok = f.read().strip()
+        except Exception:
+            tok = ""
+    return (["-H", f"Authorization: Bearer {tok}"] if tok else [])
 
 LOG_LINES: list[str] = []
 
@@ -70,7 +90,7 @@ def sh(cmd: list[str], timeout: float = 30.0) -> subprocess.CompletedProcess:
 
 
 def engine_pid() -> int | None:
-    r = sh(["curl", "-s", "-m", "2", f"{ENGINE_URL}/api/overview"])
+    r = sh(["curl", "-s", "-m", "2", *engine_auth_headers(), f"{ENGINE_URL}/api/overview"])
     if r.returncode != 0 or '"ok":true' not in r.stdout:
         return None
     try:

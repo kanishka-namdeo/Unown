@@ -15,6 +15,31 @@ const RAW_BASE = (process.env.NEXT_PUBLIC_AGENT_API_BASE ?? "").trim().replace(/
 const GATEWAY = RAW_BASE.length === 0 || RAW_BASE.toLowerCase() === "gateway";
 const DIRECT = !GATEWAY;
 
+// ---- M7 engine auth (keep-alive shim; dies with the web dashboard in D7) ----
+// The engine requires `Authorization: Bearer <per-boot token>` (see
+// pi-repo/.../src/engine-auth.ts). The browser can't read the token file, so
+// the Next server exposes it at /api/engine-token (same-origin, Host-checked).
+// Cached in-module; re-fetched once on a 401 (the token rotates per boot).
+let cachedEngineToken: string | null = null;
+async function engineToken(): Promise<string | null> {
+  if (cachedEngineToken) return cachedEngineToken;
+  try {
+    const res = await fetch("/api/engine-token", { cache: "no-store" });
+    if (res.ok) {
+      const body = (await res.json()) as { token?: string };
+      cachedEngineToken = body.token ?? null;
+    }
+  } catch {
+    /* engine down / route unavailable — requests will 401 and degrade */
+  }
+  return cachedEngineToken;
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const tok = await engineToken();
+  return tok ? { Authorization: `Bearer ${tok}` } : {};
+}
+
 export function apiUrl(
   path: string,
   params?: Record<string, string | number | undefined>
@@ -32,8 +57,18 @@ export function apiUrl(
 const EVENTS_URL = DIRECT
   ? `${RAW_BASE}/api/events`
   : `/api/events?XTransformPort=${PORT}`;
-
 export { EVENTS_URL };
+
+// M7: EventSource cannot set headers — the engine accepts the token as a
+// query param on /api/events ONLY (the Jupyter precedent, narrowed to one
+// endpoint). Fresh token per call: the engine rotates it per boot, and the
+// SSE client reconnects exactly when that has happened.
+export async function eventsUrl(): Promise<string> {
+  cachedEngineToken = null;
+  const tok = await engineToken();
+  if (!tok) return EVENTS_URL;
+  return `${EVENTS_URL}${EVENTS_URL.includes("?") ? "&" : "?"}token=${encodeURIComponent(tok)}`;
+}
 
 import type {
   Automation,
@@ -76,17 +111,27 @@ export class ApiError extends Error {
 }
 
 async function getJson<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
-  const res = await fetch(apiUrl(path, params), { cache: "no-store" });
+  let res = await fetch(apiUrl(path, params), { cache: "no-store", headers: await authHeaders() });
+  if (res.status === 401) {
+    cachedEngineToken = null; // per-boot rotation — re-read once, retry once
+    res = await fetch(apiUrl(path, params), { cache: "no-store", headers: await authHeaders() });
+  }
   if (!res.ok) throw new ApiError(res.status, `GET ${path} failed (${res.status})`);
   return (await res.json()) as T;
 }
 
 async function postJson<T>(path: string, body?: unknown, method: "POST" | "PATCH" | "DELETE" = "POST"): Promise<T> {
-  const res = await fetch(apiUrl(path), {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined && method !== "DELETE" ? undefined : JSON.stringify(body ?? {}),
-  });
+  const doFetch = async () =>
+    fetch(apiUrl(path), {
+      method,
+      headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+      body: body === undefined && method !== "DELETE" ? undefined : JSON.stringify(body ?? {}),
+    });
+  let res = await doFetch();
+  if (res.status === 401) {
+    cachedEngineToken = null;
+    res = await doFetch();
+  }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (!res.ok) throw new ApiError(res.status, data?.error ?? `${method} ${path} failed (${res.status})`);
   return data as T;

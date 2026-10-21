@@ -56,6 +56,7 @@ import {
     trustProjectLspConfig,
 } from "./lsp.ts";
 import { deliverTerminalNote, ENGINE_URL, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
+import { engineFetch } from "./engine-auth.ts";
 import { getEngineStatusInfo } from "./engine-status.ts";
 import {
     checkGoalCompletion,
@@ -1694,7 +1695,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         body?: unknown,
                 ): Promise<{ ok: boolean; status: number; data: any }> => {
                         try {
-                                const res = await fetch(`${ENGINE_URL}${path}`, {
+                                const res = await engineFetch(`${ENGINE_URL}${path}`, {
                                         method,
                                         headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
                                         body: body !== undefined ? JSON.stringify(body) : undefined,

@@ -23,6 +23,7 @@
 import { spawn } from "node:child_process";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { engineFetch } from "./engine-auth.ts";
 import { stateRoot } from "./packaging.ts";
 
 /** Engine base URL (same resolution as term.ts ENGINE_URL). */
@@ -194,7 +195,7 @@ export function autoStartDisabled(env: NodeJS.ProcessEnv = process.env): boolean
 /** Cheap liveness probe: is the engine answering HTTP right now? */
 export async function engineHealth(timeoutMs = 1500): Promise<{ up: boolean; pid?: number; busyMs?: number; activeJob?: string }> {
         try {
-                const res = await fetch(`${engineUrl()}/api/overview`, { signal: AbortSignal.timeout(timeoutMs) });
+                const res = await engineFetch(`${engineUrl()}/api/overview`, { signal: AbortSignal.timeout(timeoutMs) });
                 if (!res.ok) return { up: false };
                 const body: any = await res.json();
                 return { up: true, pid: body?.pid, busyMs: body?.router?.busyMs, activeJob: body?.router?.activeJob };

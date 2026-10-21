@@ -41,7 +41,7 @@
 //       with content + finish_reason "stop" + usage, then `data: [DONE]`.
 //   All requests are recorded for assertions.
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -278,6 +278,8 @@ export async function startEngine(bridge: MockBridge): Promise<EngineHandle> {
                 server.stop(true);
                 throw new Error(`engine bound a live-service port (${server.port}) — aborting`);
         }
+        // M7: every authFetch() from now on presents this boot's token.
+        currentEngineTokenFile = join(dataDir, "engine.token");
 
         const handle: EngineHandle = {
                 server,
@@ -392,9 +394,28 @@ export class SseClient {
 
 /** JSON POST helper. */
 export async function postJson(url: string, body: unknown): Promise<Response> {
-        return fetch(url, {
+        return authFetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
         });
+}
+
+// M7: the engine requires its per-boot bearer token. startEngine() records
+// the scratch data dir's token file; authFetch reads it FRESH per call (the
+// token rotates per boot, and this suite reboots engines across cases).
+let currentEngineTokenFile: string | null = null;
+
+/** fetch() + the engine's bearer token (no-op header when no token file). */
+export async function authFetch(url: string, init?: RequestInit): Promise<Response> {
+        let auth: Record<string, string> = {};
+        if (currentEngineTokenFile) {
+                try {
+                        const tok = readFileSync(currentEngineTokenFile, "utf8").trim();
+                        if (tok) auth = { Authorization: `Bearer ${tok}` };
+                } catch {
+                        /* engine down between cases — the fetch will fail its own way */
+                }
+        }
+        return fetch(url, { ...init, headers: { ...(init?.headers as Record<string, string> | undefined), ...auth } });
 }
