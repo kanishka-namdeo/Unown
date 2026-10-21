@@ -23,7 +23,9 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -43,6 +45,25 @@ function bunBin() {
 function buildCli(args) {
     const r = spawnSync(bunBin(), [SCRIPT, ...args], { cwd: REPO_ROOT, encoding: "utf8", shell: false });
     return { code: r.status, out: (r.stdout || "").replace(/\r/g, ""), err: (r.stderr || "").replace(/\r/g, "") };
+}
+
+/** Run a tiny module body under bun (the builder is TypeScript; node cannot
+ *  import it). Used for the pure metadata functions, never for a build. */
+function runBunModule(body) {
+    const r = spawnSync(bunBin(), ["-e", body], { cwd: REPO_ROOT, encoding: "utf8", shell: false });
+    assert.equal(r.status, 0, r.stderr);
+    return (r.stdout || "").replace(/\r/g, "");
+}
+
+function installNotesFor(platform, version = "9.9.9") {
+    return runBunModule(
+        `import { installNotes } from "./scripts/build-artifacts.ts";` +
+            `process.stdout.write(installNotes(${JSON.stringify(platform)}, ${JSON.stringify(version)}));`,
+    );
+}
+
+function sha256(text) {
+    return createHash("sha256").update(text).digest("hex");
 }
 
 const PLATFORMS = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "windows-arm64", "windows-x64"];
@@ -130,5 +151,70 @@ describe("build-artifacts rejects a bad plan", () => {
         assert.equal(r.code, 0, r.err);
         assert.equal(r.out.trim().split(/\r?\n/).length, 2);
         assert.match(r.out, /^linux-arm64\tbun-linux-arm64\tunown\tunown-linux-arm64\.tar\.gz$/m);
+    });
+});
+
+describe("archive contents and versioned INSTALL.txt", () => {
+    for (const platform of PLATFORMS) {
+        test(`${platform}: notes carry the version, platform and self-describing contents`, () => {
+            const text = installNotesFor(platform);
+            assert.equal(text.split(/\r?\n/)[0], `unown 9.9.9 (${platform})`);
+            assert.match(text, /Contents: unown(\.exe)?, VERSION \(9\.9\.9\), LICENSE, INSTALL\.txt\./);
+            // Both install modes are named: update/uninstall work in each.
+            assert.match(text, /Update and uninstall \(both install modes\)/);
+            assert.match(text, /unown update\s+# checkout: git fast-forward; binary install: verified release download/);
+            assert.match(text, /unown uninstall \[--dry-run\] \[--purge-data\]/);
+        });
+    }
+
+    test("macOS verification uses shasum and the Gatekeeper unblock", () => {
+        const text = installNotesFor("darwin-arm64");
+        assert.match(text, /shasum -a 256 -c/);
+        assert.match(text, /com\.apple\.quarantine/);
+    });
+
+    test("Linux verification uses sha256sum --ignore-missing", () => {
+        const text = installNotesFor("linux-x64");
+        assert.match(text, /sha256sum -c --ignore-missing sha256sums\.txt/);
+        assert.match(text, /manifest also covers version\.txt/);
+    });
+
+    test("Windows verification uses Get-FileHash and the SmartScreen unblock", () => {
+        const text = installNotesFor("windows-x64");
+        assert.match(text, /Get-FileHash \.\\unown-windows-x64\.zip -Algorithm SHA256/);
+        assert.match(text, /Unblock-File unown\.exe/);
+    });
+});
+
+describe("version.txt is part of the payload", () => {
+    test("the dry-run plan announces version.txt and still lists exactly six targets", () => {
+        const r = buildCli(["--dry-run"]);
+        assert.equal(r.code, 0, r.err);
+        assert.match(r.out, /version\.txt/);
+        assert.equal(r.out.trim().split(/\r?\n/).length, 7);
+    });
+
+    test("writePayloadManifest writes version.txt and checksums it with the archives", () => {
+        const out = mkdtempSync(join(tmpdir(), "unown-artifacts-"));
+        try {
+            const archives = ["unown-linux-x64.tar.gz", "unown-windows-x64.zip"].map((name) => {
+                const file = join(out, name);
+                writeFileSync(file, `payload:${name}`);
+                return file;
+            });
+            runBunModule(
+                `import { writePayloadManifest } from "./scripts/build-artifacts.ts";` +
+                    `writePayloadManifest(${JSON.stringify(out)}, "9.9.9", ${JSON.stringify(archives)});`,
+            );
+            assert.equal(readFileSync(join(out, "version.txt"), "utf8"), "9.9.9\n");
+            const lines = readFileSync(join(out, "sha256sums.txt"), "utf8").trim().split(/\r?\n/);
+            assert.equal(lines.length, 3);
+            const names = lines.map((line) => line.split("  ")[1]);
+            assert.deepEqual(names, ["unown-linux-x64.tar.gz", "unown-windows-x64.zip", "version.txt"]);
+            assert.equal(lines[0], `${sha256("payload:unown-linux-x64.tar.gz")}  unown-linux-x64.tar.gz`);
+            assert.equal(lines[2], `${sha256("9.9.9\n")}  version.txt`);
+        } finally {
+            rmSync(out, { recursive: true, force: true });
+        }
     });
 });

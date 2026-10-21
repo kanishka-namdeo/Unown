@@ -4,9 +4,16 @@
  *
  * One run produces, for every supported OS/arch:
  *
- *   <out>/unown-<platform>.tar.gz   (darwin, linux)  — unown-<platform>/unown
- *   <out>/unown-<platform>.zip      (windows)        — unown-<platform>/unown.exe
- *   <out>/SHA256SUMS
+ *   <out>/unown-<platform>.tar.gz   (darwin, linux)  — unown-<platform>/{unown,VERSION,LICENSE,INSTALL.txt}
+ *   <out>/unown-<platform>.zip      (windows)        — unown-<platform>/{unown.exe,VERSION,LICENSE,INSTALL.txt}
+ *   <out>/version.txt                                — the plain release version (no leading v)
+ *   <out>/sha256sums.txt                             — the six archives + version.txt
+ *
+ * Every archive is self-describing: VERSION is the plain release version the
+ * binary was stamped with, LICENSE is the repo-root license, and INSTALL.txt is
+ * versioned per archive. version.txt exists so a compiled binary's update check
+ * can read the newest release version from the release's own download URL
+ * without the GitHub API.
  *
  * Why each piece is the way it is (all of it measured on the platform that
  * produces it — see the release workflow's `smoke-artifacts` leg, which runs
@@ -65,6 +72,7 @@ export type Platform = (typeof PLATFORMS)[number];
 
 const ENTRY = join(REPO_ROOT, "pi-repo", "packages", "self-learning", "src", "boot.ts");
 const WORKER = join(REPO_ROOT, "pi-repo", "packages", "coding-agent", "dist", "utils", "image-resize-worker.js");
+const LICENSE = join(REPO_ROOT, "LICENSE");
 
 /** A real bun-compiled CLI is ~86-98 MiB here. Anything far smaller means the
  *  bundle lost its graph (the extensionless-entry failure mode produced a
@@ -139,13 +147,17 @@ function parseArgs(argv: string[]): Options {
 
 /** The INSTALL.txt inside each archive. Per-OS because the friction differs:
  *  macOS quarantines downloaded executables, Windows warns via SmartScreen,
- *  Linux just needs the exec bit. */
-export function installNotes(p: Platform): string {
+ *  Linux just needs the exec bit. The first line carries the version so an
+ *  extracted archive can identify itself without running the binary. */
+export function installNotes(p: Platform, version: string): string {
     const os = p.split("-")[0];
     const dir = `unown-${p}`;
     const archive = archiveName(p);
+    const binary = binaryName(p);
     const lines = [
-        `unown ${p}`,
+        `unown ${version} (${p})`,
+        "",
+        `Contents: ${binary}, VERSION (${version}), LICENSE, INSTALL.txt.`,
         "",
         "This archive is the standalone build of the unown terminal agent: no bun,",
         "no clone, no repo. Extract it and run the binary.",
@@ -155,18 +167,41 @@ export function installNotes(p: Platform): string {
             : `  tar -xzf ${archive} -C ~/.local/share                            # creates ${dir}/`,
         os === "windows"
             ? `  $env:Path += ";$env:LOCALAPPDATA\\${dir}"`
-            : `  export PATH="$HOME/.local/share/${dir}:$PATH"                    # or put ${binaryName(p)} on PATH`,
+            : `  export PATH="$HOME/.local/share/${dir}:$PATH"                    # or put ${binary} on PATH`,
         "  unown --version",
         "",
         "Verify what you downloaded against the release's sha256sums.txt:",
-        "  sha256sum -c sha256sums.txt",
-        "",
     ];
+    if (os === "darwin") {
+        lines.push(
+            `  grep "  ${archive}$" sha256sums.txt | shasum -a 256 -c -`,
+            "  (shasum has no --ignore-missing; the grep limits the check to this archive.)",
+        );
+    } else if (os === "windows") {
+        lines.push(
+            `  Get-FileHash .\\${archive} -Algorithm SHA256`,
+            `  # compare the hash with the ${archive} line in sha256sums.txt`,
+        );
+    } else {
+        lines.push(
+            "  sha256sum -c --ignore-missing sha256sums.txt",
+            "  (the manifest also covers version.txt and the installers; --ignore-missing",
+            "   skips the ones you did not download)",
+        );
+    }
+    lines.push(
+        "",
+        "Update and uninstall (both install modes):",
+        "  unown update                     # checkout: git fast-forward; binary install: verified release download",
+        "  unown uninstall [--dry-run] [--purge-data]",
+        `  (a hand-extracted archive has no install metadata: replace ${binary} manually and delete ${dir}/.)`,
+        "",
+    );
     if (os === "darwin") {
         lines.push(
             "macOS note: these builds are NOT signed or notarized, so Gatekeeper",
             "quarantines the first run. Either of:",
-            `  xattr -d com.apple.quarantine ${binaryName(p)}     # once, after extracting`,
+            `  xattr -d com.apple.quarantine ${binary}     # once, after extracting`,
             "  or in Finder: right-click > Open",
             "",
         );
@@ -175,7 +210,7 @@ export function installNotes(p: Platform): string {
         lines.push(
             "Windows note: this build is NOT code-signed, so SmartScreen may show",
             `"Windows protected your PC" — choose "More info" > "Run anyway", or`,
-            `  Unblock-File ${binaryName(p)}                      # in PowerShell`,
+            `  Unblock-File ${binary}                      # in PowerShell`,
             "",
         );
     }
@@ -184,10 +219,25 @@ export function installNotes(p: Platform): string {
         "session in the current directory. `unown doctor` checks the whole path.",
         "",
         "This channel ships the CLI only. The learning engine, llm-bridge and the",
-        "dashboard run from the repository: see README.md + docs/install.md.",
+        "dashboard's data source run from the repository: see README.md + docs/install.md.",
         "",
     );
     return lines.join("\n");
+}
+
+/** Write version.txt and sha256sums.txt into the payload. The manifest covers
+ *  the archives AND version.txt, sorted by file name, two-space separated so
+ *  `sha256sum -c` (and `shasum -c`) read it. Exported so the unit suite can
+ *  prove version.txt is written and covered without compiling a binary. */
+export function writePayloadManifest(outDir: string, version: string, archives: string[]): void {
+    const versionFile = join(outDir, "version.txt");
+    writeFileSync(versionFile, `${version}\n`);
+    const entries = [...archives, versionFile].map((file) => ({
+        name: file.split(/[\\/]/).pop()!,
+        hash: sha256(file),
+    }));
+    entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    writeFileSync(join(outDir, "sha256sums.txt"), `${entries.map((e) => `${e.hash}  ${e.name}`).join("\n")}\n`);
 }
 
 function compile(bun: string, p: Platform, version: string, stageDir: string): string {
@@ -226,25 +276,26 @@ function makeArchive(stageParent: string, p: Platform, outDir: string): string {
     const archive = resolve(join(outDir, archiveName(p)));
     // Wrapper dir inside the archive, both formats, so extracting never dumps a
     // bare binary into the cwd.
+    if (IS_WIN) {
+        // Windows' tar is bsdtar and picks the format from the extension; it
+        // writes both zip and tar.gz. The absolute System32 path is required:
+        // under Git Bash, bare `tar` is GNU tar, which has no zip writer and
+        // treats `C:\...` as a remote host (`Cannot connect to C:`), silently
+        // failing every non-Windows archive too. The magic-byte check below
+        // turns that class of silent corruption into a build failure.
+        const bsdtar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+        if (!existsSync(bsdtar)) {
+            die(`${sym.fail} ${p}: need ${bsdtar} (bsdtar) to write an archive; build on the ubuntu runner instead`);
+        }
+        const code = run(bsdtar, ["-a", "-cf", archive, "-C", stageParent, `unown-${p}`]);
+        if (code !== 0) die(`${sym.fail} bsdtar failed for ${p} (exit ${code})`, code);
+        assertArchiveMagic(archive, archive.endsWith(".zip") ? "PK" : "1f8b", p);
+        return archive;
+    }
     if (archive.endsWith(".tar.gz")) {
         const code = run("tar", ["-czf", archive, "-C", stageParent, `unown-${p}`]);
         if (code !== 0) die(`${sym.fail} tar failed for ${p} (exit ${code})`, code);
         assertArchiveMagic(archive, "1f8b", p);
-        return archive;
-    }
-    if (IS_WIN) {
-        // Windows' tar is bsdtar and picks the format from the extension. The
-        // absolute System32 path is required: under Git Bash, bare `tar` is GNU
-        // tar, which has no zip writer and happily produced a 93 MiB UNCOMPRESSED
-        // tarball named .zip (measured — the magic-byte check below is what turns
-        // that class of silent corruption into a build failure).
-        const bsdtar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
-        if (!existsSync(bsdtar)) {
-            die(`${sym.fail} ${p}: need ${bsdtar} (bsdtar) to write a ZIP; build Windows artifacts on the ubuntu runner instead`);
-        }
-        const code = run(bsdtar, ["-a", "-cf", archive, "-C", stageParent, `unown-${p}`]);
-        if (code !== 0) die(`${sym.fail} bsdtar failed for ${p} (exit ${code})`, code);
-        assertArchiveMagic(archive, "PK", p);
         return archive;
     }
     const z = run("zip", ["-qr", archive, `unown-${p}`], { cwd: stageParent });
@@ -274,6 +325,7 @@ function main(): void {
     const version = readVersion();
 
     if (!existsSync(ENTRY)) die(`${sym.fail} entry module missing: ${ENTRY}`);
+    if (!existsSync(LICENSE)) die(`${sym.fail} license file missing: ${LICENSE}`);
     if (!existsSync(WORKER)) {
         die(
             `${sym.fail} pi worker module missing: ${WORKER}\n` +
@@ -282,7 +334,9 @@ function main(): void {
     }
 
     if (opts.dryRun) {
-        console.log(`version ${version} — plan only, nothing built`);
+        console.log(
+            `version ${version} — plan only, nothing built (archives carry VERSION/LICENSE/INSTALL.txt; output adds version.txt)`,
+        );
         for (const p of opts.platforms) {
             console.log(`${p}\t${bunTarget(p)}\t${binaryName(p)}\t${archiveName(p)}`);
         }
@@ -292,6 +346,7 @@ function main(): void {
     const stageParent = join(opts.out, "stage");
     rmSync(stageParent, { recursive: true, force: true });
     mkdirSync(stageParent, { recursive: true });
+    const license = readFileSync(LICENSE);
     const archives: string[] = [];
     for (const p of opts.platforms) {
         const stageDir = join(stageParent, `unown-${p}`);
@@ -312,19 +367,17 @@ function main(): void {
                     `Run "chmod +x ${binaryName(p)}" after extracting, or build on Linux/macOS.`,
             );
         }
-        writeFileSync(join(stageDir, "INSTALL.txt"), installNotes(p));
+        writeFileSync(join(stageDir, "VERSION"), `${version}\n`);
+        writeFileSync(join(stageDir, "LICENSE"), license);
+        writeFileSync(join(stageDir, "INSTALL.txt"), installNotes(p, version));
         archives.push(makeArchive(stageParent, p, opts.out));
     }
 
-    // sha256sums.txt, sorted by file name, two-space separated: `sha256sum -c`
-    // reads it. The release workflow overwrites this with a manifest that also
-    // covers the SBOM and checklist; the builder's copy is archives-only so a
-    // local run is verifiable too.
-    const sums = archives
-        .map((a) => `${sha256(a)}  ${a.split(/[\\/]/).pop()}`)
-        .sort((a, b) => (a.split("  ")[1]! < b.split("  ")[1]! ? -1 : 1))
-        .join("\n");
-    writeFileSync(join(opts.out, "sha256sums.txt"), `${sums}\n`);
+    // version.txt + sha256sums.txt (archives + version.txt). The release
+    // workflow rewrites the manifest to also cover the SBOM, checklist and
+    // installers; this local copy is complete for the payload the builder
+    // produced, so a local build is verifiable too.
+    writePayloadManifest(opts.out, version, archives);
     rmSync(stageParent, { recursive: true, force: true });
 
     console.log(`\n${sym.ok} ${archives.length} artifacts for unown ${version} in ${opts.out}`);

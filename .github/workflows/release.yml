@@ -12,20 +12,34 @@
 #   3. the engine suite + integration suite + bridge suite + version
 #      consistency + CLI smokes (the release assertion: strategy §12
 #      criterion 2),
-#   4. an SBOM (SPDX) of the installed tree + a build-provenance
-#      attestation for the checkout,
+#   4. an SBOM (SPDX) of the installed tree + build-provenance attestations
+#      for the six archives and both installer scripts,
 #   5. SIX per-OS CLI binaries (darwin/linux/windows × arm64/x64) built by ONE
 #      ubuntu runner — `bun build --compile --target=` cross-compiles by
 #      downloading the target's runtime, so no Mac or Windows machine is
-#      needed to PRODUCE them,
+#      needed to PRODUCE them. Every archive is self-describing: the binary,
+#      VERSION (plain semver), LICENSE, and a versioned INSTALL.txt. The
+#      payload also carries version.txt (the update check's API-free source)
+#      and the shipped installer scripts,
 #   6. smoke tests that download and RUN each platform's own archive on that
 #      platform. A runner can only execute its own OS's output, so this is the
 #      only leg that proves a shipped binary boots — a build job alone compiles
 #      binaries it has never run. windows-arm64 has no GitHub-hosted runner at
 #      all, so it is the one asset shipped without a runtime smoke (the
 #      checklist says so instead of claiming otherwise),
-#   7. a GitHub Release, created only after the smoke passes, with the
-#      archives + checksums + SBOM + checklist attached and generated notes.
+#   7. a DRAFT GitHub Release carrying all 12 assets, promoted only after the
+#      draft's own asset list is asserted, then a post-publish smoke-install
+#      matrix that installs the released binary through the release's own
+#      installer on ubuntu/macos/windows and checks --version, update --check
+#      and uninstall --dry-run. Draft-first is required if the repository
+#      enables GitHub's immutable releases (now GA; a published immutable
+#      release cannot accept late assets); immutability is a repository
+#      setting, not something this workflow tries to enable.
+#
+# Prerelease tags (any hyphen, e.g. v0.0.2-rc.1) are not supported by the
+# installers: their version pins accept stable X.Y.Z only, and Latest ignores
+# prereleases. The verify job rejects such a tag before any artifact is built.
+# Plain vX.Y.Z tags claim the "Latest" slot at promotion.
 #
 # The binaries are UNSIGNED: no Apple Developer account and no code-signing
 # secret lives in this repo (decision 2026-10-19). Gatekeeper and SmartScreen
@@ -79,6 +93,16 @@ jobs:
             echo "::error::tag $actual does not match package.json $expected — bump before tagging"
             exit 1
           fi
+      - name: Stable release tags only
+        # The installer's --version/-Version pins accept stable X.Y.Z only, and
+        # GitHub's "latest" excludes prereleases. Publishing a hyphenated tag
+        # would ship an asset the pinned installer cannot install, so fail here
+        # instead of after the 3-OS verification and six-binary build.
+        shell: bash
+        run: |
+          case "$GITHUB_REF_NAME" in
+            *-*) echo "::error::prerelease tags are not supported by the installers yet - cut a stable vX.Y.Z tag"; exit 1 ;;
+          esac
       - name: Install via the real installer
         env:
           UNOWN_NO_LINK: "1"
@@ -169,6 +193,12 @@ jobs:
           kill $server_pid
       - name: Build the six per-OS CLI artifacts
         run: bun scripts/build-artifacts.ts --out release-assets
+      - name: Stage the shipped installer scripts
+        # The release serves the same installers the site does; the binary lane
+        # (--binary) is what the post-publish smoke-install matrix exercises.
+        run: |
+          cp public/install.sh public/install.ps1 release-assets/
+          ls -l release-assets/install.sh release-assets/install.ps1
       - name: Every planned artifact exists, and no extra
         # Closest gate to the producer: the builder exits 0 after compiling
         # whatever it was given, so the plan (verify job) and the payload are
@@ -187,11 +217,17 @@ jobs:
               echo "::error::the builder planned $p but produced no release-assets/$want"; exit 1; fi
           done
           rm -f planned.txt
-          # find, not `ls glob | wc -l`: an unmatched glob makes ls exit non-zero,
-          # and inside $(( $(…) )) that is how a count becomes a silent green step.
-          n=$(find release-assets -maxdepth 1 \( -name 'unown-*.tar.gz' -o -name 'unown-*.zip' \) | wc -l)
+          # find (not `ls glob`), and its output goes through a file: an
+          # unmatched glob makes ls exit non-zero, and a producer inside
+          # `x=$(cmd | wc -l)` can abort the step green under `-eo pipefail`.
+          find release-assets -maxdepth 1 \( -name 'unown-*.tar.gz' -o -name 'unown-*.zip' \) > archives.txt
+          n=$(wc -l < archives.txt)
+          rm -f archives.txt
           if [ "$n" != "6" ]; then echo "::error::found $n archives, expected exactly 6"; exit 1; fi
-          if [ ! -f release-assets/sha256sums.txt ]; then echo "::error::no sha256sums.txt in the payload"; exit 1; fi
+          for f in version.txt install.sh install.ps1 sha256sums.txt; do
+            if [ ! -f "release-assets/$f" ]; then
+              echo "::error::the payload is missing $f"; exit 1; fi
+          done
       - name: SBOM (SPDX) of the dependency tree
         # syft scans the installed node_modules + vendored pi-repo tree (the
         # runtime dependency surface a clone-to-install user actually gets).
@@ -203,29 +239,40 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
           syft dir:. -o spdx-json=release-assets/sbom-spdx.json
           ls -la release-assets/sbom-spdx.json
-      - name: Build provenance attestation (subject digest)
-        # The attestation action requires a SHA-256 subject digest —
-        # github.sha is git's SHA-1, which it rejects (found red in run
-        # 39107793393). The digest is the SHA-256 of the raw commit OBJECT:
-        # verifiable by anyone via `git cat-file commit <sha> | sha256sum`.
-        id: digest
-        run: echo "sha=sha256:$(git cat-file commit ${{ github.sha }} | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-      - name: Build provenance attestation
-        # SLSA Build L3 provenance for the source checkout the release was
-        # verified against (the repo's release artifact IS the tag).
+      - name: Build provenance attestation (six archives)
+        # subject-path, not subject-digest: the old step attested the raw
+        # commit OBJECT (a 64-hex sha256 of `git cat-file commit`), which proves
+        # the source but covers none of the files a user downloads. A wildcard
+        # attests all six archives at once, still bound to this workflow/commit
+        # by the action's OIDC identity. Verify with:
+        #   gh attestation verify <asset> --repo <owner>/<repo>
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-name: "kanishka-namdeo/Unown@${{ github.ref_name }}"
-          subject-digest: ${{ steps.digest.outputs.sha }}
+          subject-path: release-assets/unown-*
+      - name: Build provenance attestation (installer scripts)
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: release-assets/install.*
+      - name: Verify an artifact attestation
+        # Prove the attestation is queryable and names this repository before
+        # the payload leaves the build job. A subject-path glob that matched
+        # nothing would otherwise fail only at a user's `gh attestation verify`.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation verify release-assets/unown-linux-x64.tar.gz --repo "$GITHUB_REPOSITORY"
       - name: Release checklist (what was verified)
         run: |
+          version="${GITHUB_REF_NAME#v}"
           {
             echo "## Release verification receipt"
             echo
             echo "- 3-OS real-installer matrix (ubuntu/macos/windows): install.ts → engine unit suite → integration suite (real server + mock bridge) → bridge suite → version consistency → CLI smokes — all green"
             echo "- Production landing build + standalone server smoke (/ answered 200)"
-            echo "- Six per-OS \`unown\` CLI binaries built by one ubuntu runner from $(node -p "require('./package.json').version"); five of the six were then downloaded, extracted and EXECUTED on their own OS (linux arm64+x64, darwin arm64+x64, windows x64). windows-arm64 ships untested: GitHub has no arm64 Windows runner."
-            echo "- SBOM (SPDX) and sha256sums.txt attached; build-provenance attestation recorded for the tag"
+            echo "- Six per-OS \`unown\` CLI binaries built by one ubuntu runner from $version; five of the six were then downloaded, extracted and EXECUTED on their own OS (linux arm64+x64, darwin arm64+x64, windows x64). windows-arm64 ships untested: GitHub has no arm64 Windows runner."
+            echo "- Every archive is self-describing: VERSION (plain $version), LICENSE, and a versioned INSTALL.txt carrying per-OS checksum verification plus update/uninstall commands"
+            echo "- version.txt, install.sh and install.ps1 are attached; sha256sums.txt covers all 11 non-manifest assets (6 archives + version.txt + install.sh + install.ps1 + release-checklist.md + sbom-spdx.json)"
+            echo "- SBOM (SPDX); build-provenance attestations cover the six archives and both installer scripts — \`gh attestation verify <asset> --repo $GITHUB_REPOSITORY\`"
+            echo "- After publication, a smoke-install matrix (ubuntu/macos/windows) downloads these installers, installs the binary pinned to $version, and checks \`unown --version\`, \`unown update --check\` (exit 0 or 2) and \`unown uninstall --dry-run\`"
             echo "- \`unown --version\` === package.json.version === tag, in the checkout AND in every smoke-tested binary"
             echo
             echo "Binaries are UNSIGNED (no code-signing secret in this repo). macOS"
@@ -235,18 +282,30 @@ jobs:
           } > release-assets/release-checklist.md
           cat release-assets/release-checklist.md
       - name: sha256sums.txt (integrity of every release asset)
-        # One manifest for the whole release, over the archives AND the
-        # metadata — verifiable by anyone:
+        # One manifest for the whole release: the six archives, version.txt,
+        # both installer scripts, the SBOM and this checklist — 11 entries.
+        # Verifiable by anyone:
         #   curl -sLO <release>/sha256sums.txt && sha256sum -c sha256sums.txt
-        # This overwrites the builder's archives-only file of the same name, so
+        # This overwrites the builder's archives+version.txt manifest, so
         # exactly one checksum asset exists on the release page.
         working-directory: release-assets
         shell: bash
         run: |
-          sha256sum release-checklist.md sbom-spdx.json unown-*.tar.gz unown-*.zip | sort -k2 > sha256sums.txt
+          set -euo pipefail
+          assets=(
+            unown-darwin-arm64.tar.gz unown-darwin-x64.tar.gz
+            unown-linux-arm64.tar.gz unown-linux-x64.tar.gz
+            unown-windows-arm64.zip unown-windows-x64.zip
+            version.txt install.sh install.ps1
+            release-checklist.md sbom-spdx.json
+          )
+          sha256sum "${assets[@]}" | sort -k2 > sha256sums.txt
           cat sha256sums.txt
-          # self-check: the manifest must cover exactly the 6 archives + 2 files
-          [ "$(wc -l < sha256sums.txt)" = "8" ] || { echo "::error::sha256sums.txt has the wrong number of entries"; exit 1; }
+          # self-check: the manifest must cover exactly those 11 files (all
+          # release assets except the manifest itself).
+          n=$(wc -l < sha256sums.txt)
+          if [ "$n" != "11" ]; then
+            echo "::error::sha256sums.txt has $n entries, expected 11"; exit 1; fi
       - name: Upload release payload
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -287,6 +346,18 @@ jobs:
         # sha256sum ships in the Git Bash toolchain on all three runner OSes.
         shell: bash
         run: cd payload && sha256sum -c sha256sums.txt
+      - name: version.txt matches the tag
+        # The binary update check reads this file instead of the GitHub API; a
+        # wrong or missing version.txt would make every installed binary think
+        # it is out of date (or current when it is not).
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -Fqx "${GITHUB_REF_NAME#v}" payload/version.txt; then
+            echo "::error::payload/version.txt does not equal ${GITHUB_REF_NAME#v}"
+            cat payload/version.txt
+            exit 1
+          fi
       - name: Extract this platform's archive
         shell: bash
         run: |
@@ -342,21 +413,37 @@ jobs:
           out="$("$bin" doctor 2>&1)" || code=$?
           [ "$code" -le 1 ] || { echo "::error::doctor crashed in the binary (exit $code)"; exit 1; }
           printf '%s\n' "$out" | grep -q "agent dir" || { echo "::error::doctor table missing in the binary"; exit 1; }
-          # The binary must KNOW it has no checkout: that is what makes
-          # `unown update` refuse instead of running git in a void.
-          printf '%s\n' "$out" | grep -q "not a git checkout" || {
-            echo "::error::the binary does not detect the detached layout — the update path will misbehave"
+          # The binary must recognize itself as a BINARY install (not a
+          # checkout): that is what routes update/uninstall through the release
+          # feed instead of running git in a void. The doctor line reads
+          # "<version> · binary install · <root>".
+          printf '%s\n' "$out" | grep -q "binary install" || {
+            echo "::error::the binary does not report binary-install mode — update/uninstall will misbehave"
             exit 1; }
-      - name: INSTALL.txt documents the signing friction
+      - name: Archive metadata documents the build and the signing friction
+        # The archive is self-describing: VERSION equals the tag, LICENSE is
+        # present, and INSTALL.txt is versioned and names the platform's
+        # checksum/signing steps.
         shell: bash
         run: |
           set -euo pipefail
-          note="extracted/unown-${{ matrix.platform }}/INSTALL.txt"
+          dir="extracted/unown-${{ matrix.platform }}"
+          note="$dir/INSTALL.txt"
+          test -s "$dir/VERSION" || { echo "::error::no VERSION file in the archive"; exit 1; }
+          test -s "$dir/LICENSE" || { echo "::error::no LICENSE file in the archive"; exit 1; }
+          if ! grep -Fqx "${GITHUB_REF_NAME#v}" "$dir/VERSION"; then
+            echo "::error::VERSION inside the archive does not equal ${GITHUB_REF_NAME#v}"
+            cat "$dir/VERSION"
+            exit 1
+          fi
+          grep -Fq "unown ${GITHUB_REF_NAME#v} (${{ matrix.platform }})" "$note"
           grep -q "sha256sums.txt" "$note"
+          grep -q "unown update" "$note"
+          grep -q "unown uninstall" "$note"
           case "${{ matrix.platform }}" in
-            darwin-*) grep -q "com.apple.quarantine" "$note" ;;
-            windows-*) grep -q "Unblock-File" "$note" ;;
-            *) grep -q "unown setup" "$note" ;;
+            darwin-*) grep -q "shasum -a 256 -c" "$note"; grep -q "com.apple.quarantine" "$note" ;;
+            windows-*) grep -q "Get-FileHash" "$note"; grep -q "Unblock-File" "$note" ;;
+            *) grep -q "sha256sum -c --ignore-missing" "$note"; grep -q "unown setup" "$note" ;;
           esac
 
   publish-release:
@@ -374,10 +461,11 @@ jobs:
           path: release-assets
       - name: Assert the full asset set is present
         # softprops silently skips a file that is not there, so a release that
-        # quietly lost three of six binaries would still publish green. The nine
-        # names are spelled out here: they must equal the `files:` list below,
-        # and they are the same six targets the builder's suite and the verify
-        # job's plan gate pin.
+        # quietly lost three of six binaries would still publish green. The
+        # twelve names are spelled out here: they must equal the `files:` list
+        # below, the draft assertion after creation, and the checksum manifest's
+        # eleven subjects. The six platform ids are also pinned by the builder's
+        # suite and the verify job's plan gate.
         shell: bash
         run: |
           set -euo pipefail
@@ -386,6 +474,7 @@ jobs:
             unown-darwin-arm64.tar.gz unown-darwin-x64.tar.gz
             unown-linux-arm64.tar.gz unown-linux-x64.tar.gz
             unown-windows-arm64.zip unown-windows-x64.zip
+            version.txt install.sh install.ps1
             sha256sums.txt sbom-spdx.json release-checklist.md
           )
           for f in "${expected[@]}"; do
@@ -395,11 +484,25 @@ jobs:
             echo "::error::the payload holds a file the release does not expect, or is missing one"
             exit 1; }
           sha256sum -c sha256sums.txt
-      - name: Create GitHub Release
+      - name: Create draft GitHub Release
+        # DRAFT-FIRST is deliberate. The release is created with every asset
+        # while it is still mutable, the next step asserts the uploaded set,
+        # and only then is it promoted with `gh release edit --draft=false`.
+        # That is the required shape if this repository enables GitHub's
+        # immutable releases (a published immutable release cannot accept late
+        # assets). Immutability itself is a repository setting; this workflow
+        # does not try to enable it.
+        #
+        # make_latest is declared here for the intended end state, but GitHub
+        # ignores it while the release is a draft ("Drafts and prereleases
+        # cannot be set as latest"), so the promotion step re-applies Latest
+        # for a stable tag. End state: prerelease -> not Latest, stable -> Latest.
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           generate_release_notes: true
-          draft: false
+          draft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ !contains(github.ref_name, '-') }}
           files: |
             release-assets/unown-darwin-arm64.tar.gz
             release-assets/unown-darwin-x64.tar.gz
@@ -407,7 +510,175 @@ jobs:
             release-assets/unown-linux-x64.tar.gz
             release-assets/unown-windows-arm64.zip
             release-assets/unown-windows-x64.zip
+            release-assets/version.txt
+            release-assets/install.sh
+            release-assets/install.ps1
             release-assets/sha256sums.txt
             release-assets/sbom-spdx.json
             release-assets/release-checklist.md
           body_path: release-assets/release-checklist.md
+      - name: Assert the draft, then publish it
+        # The draft's own asset list is read back from the API before the
+        # release becomes public. A tag containing a hyphen is a prerelease
+        # (not Latest); a plain vX.Y.Z tag claims Latest at promotion.
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          expected=(
+            unown-darwin-arm64.tar.gz unown-darwin-x64.tar.gz
+            unown-linux-arm64.tar.gz unown-linux-x64.tar.gz
+            unown-windows-arm64.zip unown-windows-x64.zip
+            version.txt install.sh install.ps1
+            sha256sums.txt sbom-spdx.json release-checklist.md
+          )
+
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft' > is-draft.txt
+          grep -qx true is-draft.txt || {
+            echo "::error::the release is not a draft — refusing to promote blind"; exit 1; }
+
+          expected_prerelease=false
+          case "$GITHUB_REF_NAME" in
+            *-*) expected_prerelease=true ;;
+          esac
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq '.isPrerelease' > is-prerelease.txt
+          grep -qx "$expected_prerelease" is-prerelease.txt || {
+            echo "::error::the draft's prerelease flag does not match the tag"; exit 1; }
+
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' > draft-assets.txt
+          printf '%s\n' "${expected[@]}" | sort > expected-assets.txt
+          sort -o draft-assets.txt draft-assets.txt
+          diff -u expected-assets.txt draft-assets.txt || {
+            echo "::error::the published draft's asset set differs from the expected twelve"; exit 1; }
+
+          if [ "$expected_prerelease" = "true" ]; then
+            gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
+          else
+            gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          fi
+
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft' > published-draft.txt
+          grep -qx false published-draft.txt || {
+            echo "::error::the release is still a draft after promotion"; exit 1; }
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq '.isPrerelease' > published-prerelease.txt
+          grep -qx "$expected_prerelease" published-prerelease.txt || {
+            echo "::error::the published release's prerelease flag changed during promotion"; exit 1; }
+          echo "published $GITHUB_REF_NAME (prerelease: $expected_prerelease)"
+
+  smoke-install:
+    name: Install the published binary (${{ matrix.os }})
+    needs: publish-release
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        # The three OSes a user installs from. No windows-arm64: GitHub hosts
+        # no arm64 Windows runner, and the archive is already labelled untested.
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Download the release's own installer scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+          curl -fsSL "$base/install.sh" -o install.sh
+          curl -fsSL "$base/install.ps1" -o install.ps1
+          test -s install.sh
+          test -s install.ps1
+          wc -c install.sh install.ps1
+      - name: Install the published binary (POSIX)
+        # --binary downloads this release's archive; --version pins the tag so a
+        # rerun can never smoke "latest" instead of the release under test.
+        # HOME/UNOWN_HOME/UNOWN_BIN_DIR all point into runner.temp, so the
+        # installer and `unown uninstall --dry-run` never touch the runner's
+        # real profile or PATH.
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+          UNOWN_RELEASES_BASE_URL: https://github.com/${{ github.repository }}/releases
+          HOME: ${{ runner.temp }}/unown-smoke/home
+          UNOWN_HOME: ${{ runner.temp }}/unown-smoke/home/.unown
+          UNOWN_INSTALL_ROOT: ${{ runner.temp }}/unown-smoke/install
+          UNOWN_BIN_DIR: ${{ runner.temp }}/unown-smoke/bin
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME" "$UNOWN_HOME" "$UNOWN_INSTALL_ROOT" "$UNOWN_BIN_DIR"
+          sh install.sh --binary --version "$TAG"
+          tag_version="${TAG#v}"
+          bin=""
+          for candidate in \
+            "$UNOWN_BIN_DIR/unown" \
+            "$UNOWN_INSTALL_ROOT/versions/$tag_version/unown" \
+            "$UNOWN_INSTALL_ROOT/unown" \
+            "$UNOWN_INSTALL_ROOT/bin/unown" \
+            "$HOME/.local/bin/unown" \
+            "$UNOWN_INSTALL_ROOT"/unown-*/unown; do
+            if [ -f "$candidate" ]; then bin="$candidate"; break; fi
+          done
+          if [ ! -f "$bin" ]; then
+            echo "::error::the installer exited 0 but left no unown binary under $UNOWN_INSTALL_ROOT or $UNOWN_BIN_DIR"
+            exit 1
+          fi
+          chmod +x "$bin" 2>/dev/null || true
+          # `if !` matters: a failed version probe must be named, not become a
+          # green step that aborted at an assignment under `sh -e`.
+          if ! version="$("$bin" --version 2>&1)"; then
+            echo "::error::the installed binary could not report a version: $version"; exit 1
+          fi
+          if [ "$version" != "$tag_version" ]; then
+            echo "::error::installed binary reports $version, the tag is $tag_version"; exit 1
+          fi
+          code=0
+          out="$("$bin" update --check 2>&1)" || code=$?
+          printf '%s\n' "$out"
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
+            echo "::error::update --check exited $code (expected 0 up-to-date or 2 available)"; exit 1
+          fi
+          "$bin" uninstall --dry-run
+      - name: Install the published binary (Windows)
+        # Same contract through install.ps1: -Binary is the standalone lane,
+        # -Version pins the tag, -NoModifyPath keeps the runner's user PATH out
+        # of it. USERPROFILE/HOME/UNOWN_* all point into runner.temp.
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+          UNOWN_RELEASES_BASE_URL: https://github.com/${{ github.repository }}/releases
+          USERPROFILE: ${{ runner.temp }}\unown-smoke\home
+          HOME: ${{ runner.temp }}\unown-smoke\home
+          UNOWN_HOME: ${{ runner.temp }}\unown-smoke\home\.unown
+          UNOWN_INSTALL_ROOT: ${{ runner.temp }}\unown-smoke\install
+          UNOWN_BIN_DIR: ${{ runner.temp }}\unown-smoke\bin
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path $env:USERPROFILE, $env:UNOWN_HOME, $env:UNOWN_INSTALL_ROOT, $env:UNOWN_BIN_DIR | Out-Null
+          powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Binary -Version $env:TAG -NoModifyPath
+          if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed (exit $LASTEXITCODE)" }
+          $expected = $env:TAG -replace '^v', ''
+          $bin = @(
+            (Join-Path $env:UNOWN_BIN_DIR 'unown.exe'),
+            (Join-Path $env:UNOWN_INSTALL_ROOT "versions\$expected\unown.exe"),
+            (Join-Path $env:UNOWN_BIN_DIR 'unown'),
+            (Join-Path $env:UNOWN_INSTALL_ROOT 'unown.exe')
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $bin) {
+            $bin = Get-ChildItem -Path $env:UNOWN_INSTALL_ROOT -Filter 'unown.exe' -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $bin) {
+            throw "install.ps1 exited 0 but left no unown.exe under $env:UNOWN_INSTALL_ROOT or $env:UNOWN_BIN_DIR"
+          }
+          $version = (& $bin --version 2>&1 | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw "the installed binary could not report a version: $version" }
+          if ($version -ne $expected) { throw "installed binary reports $version, the tag is $expected" }
+          $out = & $bin update --check 2>&1
+          $code = $LASTEXITCODE
+          $out | Write-Host
+          if ($code -ne 0 -and $code -ne 2) {
+            throw "update --check exited $code (expected 0 up-to-date or 2 available)"
+          }
+          & $bin uninstall --dry-run
+          if ($LASTEXITCODE -ne 0) { throw "uninstall --dry-run exited $LASTEXITCODE" }
