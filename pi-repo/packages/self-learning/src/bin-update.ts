@@ -37,22 +37,33 @@ import {
         binaryName,
         binaryPath,
         checksumsUrl,
+        detectMusl,
+        detectPlatform,
+        type InstallMetadata,
         installMetadataPath,
         normalizeVersion,
         parseChecksumFor,
+        platformGate,
+        type ReleasePlatform,
         readInstallMetadata,
         redactUrl,
+        releaseManifestUrl,
+        releaseSignatureUrl,
         releasesBase,
         sha256File,
+        shimPaths,
         versionDir,
         versionsDir,
-        shimPaths,
         versionTxtUrl,
         writeBinaryShims,
         writeInstallMetadata,
-        type InstallMetadata,
-        type ReleasePlatform,
 } from "./install-layout.ts";
+import {
+        type ReleaseAsset,
+        type ReleaseManifest,
+        selectReleaseAsset,
+        verifyReleaseManifest,
+} from "./release-manifest.ts";
 import { compareSemver, parseSemver } from "./semver.ts";
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
@@ -60,7 +71,12 @@ export type ExtractArchive = (archivePath: string, destDir: string, platform: Re
 export type VerifyBinary = (binaryPath: string, version: string) => boolean;
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-const ARCHIVE_TIMEOUT_MS = 120_000;
+/** Archive downloads and extraction can legitimately take minutes on a slow
+ *  link; metadata fetches keep the short timeout. */
+export const ARCHIVE_TIMEOUT_MS = 10 * 60_000;
+const MAX_METADATA_BYTES = 256 * 1024;
+const FETCH_ATTEMPTS = 3;
+const FETCH_RETRY_MS = 500;
 
 // ---------------------------------------------------------------------------
 // Download helpers
@@ -74,27 +90,106 @@ function describeFetchError(err: unknown, url: string, timeoutMs: number): strin
         return `could not reach ${url} (${message})`;
 }
 
-async function fetchOk(url: string, fetchImpl: FetchLike, timeoutMs: number): Promise<Response> {
-        let res: Response;
-        try {
-                res = await fetchImpl(url, { redirect: "follow", signal: AbortSignal.timeout(timeoutMs) });
-        } catch (err) {
-                throw new Error(describeFetchError(err, redactUrl(url), timeoutMs));
+interface FetchOptions {
+        timeoutMs?: number;
+        attempts?: number;
+        userAgent?: string;
+        method?: string;
+        headers?: Record<string, string>;
+}
+
+async function sleep(ms: number): Promise<void> {
+        await new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+/** One response for every non-5xx status (404 is a decision, not an error);
+ *  transient network errors and 5xx retry twice with backoff. */
+async function fetchResponse(url: string, fetchImpl: FetchLike, opts: FetchOptions = {}): Promise<Response> {
+        const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        const attempts = opts.attempts ?? FETCH_ATTEMPTS;
+        let lastError: unknown;
+        for (let attempt = 0; attempt < attempts; attempt++) {
+                try {
+                        const headers = new Headers(opts.headers);
+                        headers.set("user-agent", opts.userAgent ?? "unown");
+                        const res = await fetchImpl(url, {
+                                redirect: "follow",
+                                method: opts.method,
+                                headers,
+                                signal: AbortSignal.timeout(timeoutMs),
+                        });
+                        if (res.status >= 500 && attempt < attempts - 1) {
+                                try {
+                                        await res.body?.cancel();
+                                } catch {
+                                        /* retry regardless */
+                                }
+                                lastError = new Error(
+                                        `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ""} from ${redactUrl(url)}`,
+                                );
+                                await sleep(FETCH_RETRY_MS * 2 ** attempt);
+                                continue;
+                        }
+                        return res;
+                } catch (err) {
+                        lastError = err;
+                        if (attempt < attempts - 1) {
+                                await sleep(FETCH_RETRY_MS * 2 ** attempt);
+                        }
+                }
         }
+        throw new Error(describeFetchError(lastError, redactUrl(url), timeoutMs));
+}
+
+async function fetchOk(url: string, fetchImpl: FetchLike, timeoutMs: number, userAgent?: string): Promise<Response> {
+        const res = await fetchResponse(url, fetchImpl, { timeoutMs, userAgent });
         if (!res.ok) {
                 throw new Error(`HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ""} from ${redactUrl(url)}`);
         }
         return res;
 }
 
-async function fetchText(url: string, fetchImpl: FetchLike, timeoutMs: number): Promise<string> {
-        const res = await fetchOk(url, fetchImpl, timeoutMs);
-        return res.text();
+/** Small bodies only (manifest/signature/version.txt/sums). A hostile or
+ *  broken mirror cannot make the updater buffer an unbounded response. */
+async function readBodyCapped(res: Response, maxBytes = MAX_METADATA_BYTES): Promise<string> {
+        if (!res.body) return "";
+        const reader = res.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let total = 0;
+        for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (value?.byteLength) {
+                        total += value.byteLength;
+                        if (total > maxBytes) {
+                                try {
+                                        await reader.cancel();
+                                } catch {
+                                        /* the error below is what matters */
+                                }
+                                throw new Error(`response exceeded ${maxBytes} bytes`);
+                        }
+                        chunks.push(value);
+                }
+        }
+        return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))).toString("utf8");
 }
 
-async function downloadFile(url: string, destPath: string, fetchImpl: FetchLike, timeoutMs: number): Promise<number> {
-        const res = await fetchOk(url, fetchImpl, timeoutMs);
-        if (!res.body) throw new Error(`download returned no body: ${url}`);
+async function fetchText(url: string, fetchImpl: FetchLike, timeoutMs: number, userAgent?: string): Promise<string> {
+        const res = await fetchOk(url, fetchImpl, timeoutMs, userAgent);
+        return readBodyCapped(res);
+}
+
+async function downloadFile(
+        url: string,
+        destPath: string,
+        fetchImpl: FetchLike,
+        timeoutMs: number,
+        userAgent?: string,
+        maxBytes?: number,
+): Promise<number> {
+        const res = await fetchOk(url, fetchImpl, timeoutMs, userAgent);
+        if (!res.body) throw new Error(`download returned no body: ${redactUrl(url)}`);
         // Stream to disk: a release archive is ~30-90 MiB, and buffering it whole
         // is avoidable memory pressure on the machines that install binaries.
         const fd = openSync(destPath, "w");
@@ -104,7 +199,10 @@ async function downloadFile(url: string, destPath: string, fetchImpl: FetchLike,
                 for (;;) {
                         const { done, value } = await reader.read();
                         if (done) break;
-                        if (value && value.byteLength) {
+                        if (value?.byteLength) {
+                                if (maxBytes !== undefined && bytes + value.byteLength > maxBytes) {
+                                        throw new Error(`download exceeded the expected ${maxBytes} bytes`);
+                                }
                                 writeSync(fd, value);
                                 bytes += value.byteLength;
                         }
@@ -112,12 +210,12 @@ async function downloadFile(url: string, destPath: string, fetchImpl: FetchLike,
         } finally {
                 closeSync(fd);
         }
-        if (bytes === 0) throw new Error(`download was empty: ${url}`);
+        if (bytes === 0) throw new Error(`download was empty: ${redactUrl(url)}`);
         return bytes;
 }
 
 // ---------------------------------------------------------------------------
-// Non-mutating check (`version.txt` — works without git)
+// Non-mutating check (`release.json` first, legacy `version.txt` fallback)
 // ---------------------------------------------------------------------------
 export interface LatestVersionResult {
         ok: boolean;
@@ -126,25 +224,91 @@ export interface LatestVersionResult {
         error?: string;
 }
 
-export async function checkLatestVersion(opts: {
-        env?: NodeJS.ProcessEnv;
-        baseUrl?: string;
-        fetch?: FetchLike;
-        timeoutMs?: number;
-} = {}): Promise<LatestVersionResult> {
+export async function checkLatestVersion(
+        opts: { env?: NodeJS.ProcessEnv; baseUrl?: string; fetch?: FetchLike; timeoutMs?: number; userAgent?: string } = {},
+): Promise<LatestVersionResult> {
         const baseUrl = (opts.baseUrl ?? releasesBase(opts.env ?? process.env)).replace(/\/+$/, "");
         const publicBaseUrl = redactUrl(baseUrl);
         const fetchImpl = opts.fetch ?? fetch;
         const url = versionTxtUrl(baseUrl);
         try {
-                const text = await fetchText(url, fetchImpl, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+                const text = await fetchText(url, fetchImpl, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS, opts.userAgent);
                 const latest = normalizeVersion(text.trim());
                 if (!parseSemver(latest)) {
-                        return { ok: false, latest: null, baseUrl: publicBaseUrl, error: `version.txt did not contain a version (got "${text.trim().slice(0, 40)}")` };
+                        return {
+                                ok: false,
+                                latest: null,
+                                baseUrl: publicBaseUrl,
+                                error: `version.txt did not contain a version (got "${text.trim().slice(0, 40)}")`,
+                        };
                 }
                 return { ok: true, latest, baseUrl: publicBaseUrl };
         } catch (err) {
-                return { ok: false, latest: null, baseUrl: publicBaseUrl, error: err instanceof Error ? err.message : String(err) };
+                return {
+                        ok: false,
+                        latest: null,
+                        baseUrl: publicBaseUrl,
+                        error: err instanceof Error ? err.message : String(err),
+                };
+        }
+}
+
+export interface ReleaseFeedOptions {
+        env?: NodeJS.ProcessEnv;
+        baseUrl?: string;
+        version?: string;
+        fetch?: FetchLike;
+        timeoutMs?: number;
+        userAgent?: string;
+        keys?: Readonly<Record<string, string>>;
+}
+
+export type ReleaseFeedResult =
+        | { kind: "manifest"; manifest: ReleaseManifest; raw: string }
+        | { kind: "legacy"; reason: string }
+        | { kind: "error"; error: string };
+
+/** Fetch the signed manifest for `version` (or latest). A 404/410 is the only
+ *  legacy fallback; a present-but-unauthorized manifest is an error. */
+export async function fetchReleaseFeed(opts: ReleaseFeedOptions = {}): Promise<ReleaseFeedResult> {
+        const env = opts.env ?? process.env;
+        const baseUrl = (opts.baseUrl ?? releasesBase(env)).replace(/\/+$/, "");
+        const fetchImpl = opts.fetch ?? fetch;
+        const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        try {
+                const manifestRes = await fetchResponse(releaseManifestUrl(baseUrl, opts.version), fetchImpl, {
+                        timeoutMs,
+                        userAgent: opts.userAgent,
+                });
+                if (manifestRes.status === 404 || manifestRes.status === 410) {
+                        return { kind: "legacy", reason: "release manifest is not published" };
+                }
+                if (!manifestRes.ok) {
+                        return {
+                                kind: "error",
+                                error: `HTTP ${manifestRes.status}${manifestRes.statusText ? ` ${manifestRes.statusText}` : ""} from ${redactUrl(releaseManifestUrl(baseUrl, opts.version))}`,
+                        };
+                }
+                const raw = await readBodyCapped(manifestRes);
+                const sigRes = await fetchResponse(releaseSignatureUrl(baseUrl, opts.version), fetchImpl, {
+                        timeoutMs,
+                        userAgent: opts.userAgent,
+                });
+                if (sigRes.status === 404 || sigRes.status === 410) {
+                        return { kind: "error", error: "release manifest is unsigned (signature file is missing)" };
+                }
+                if (!sigRes.ok) {
+                        return {
+                                kind: "error",
+                                error: `HTTP ${sigRes.status}${sigRes.statusText ? ` ${sigRes.statusText}` : ""} from ${redactUrl(releaseSignatureUrl(baseUrl, opts.version))}`,
+                        };
+                }
+                const signature = (await readBodyCapped(sigRes)).trim();
+                const checked = verifyReleaseManifest(raw, signature, opts.keys);
+                if (!checked.ok) return { kind: "error", error: checked.error };
+                return { kind: "manifest", manifest: checked.manifest, raw };
+        } catch (err) {
+                return { kind: "error", error: err instanceof Error ? err.message : String(err) };
         }
 }
 
@@ -152,37 +316,171 @@ export interface BinaryCheckResult {
         ok: boolean;
         current: string;
         latest: string | null;
+        /** Newer AND installable on this OS/arch. */
         available: boolean;
+        /** Newer release exists and this platform has an asset (platform gate). */
+        applicable: boolean;
+        reason?: string;
+        platform: ReleasePlatform | null;
+        asset?: ReleaseAsset;
+        source: "manifest" | "legacy" | "none";
+        signature: "verified" | "legacy" | null;
+        keyId?: string;
+        severity?: "normal" | "security";
+        releasedAt?: string;
+        requiredMinimumVersion?: string | null;
+        notesUrl?: string | null;
         remoteUrl: string | null;
         error?: string;
 }
 
-/** Compare the running version against the release feed. Exit-code mapping
- *  stays in update.ts (0 current, 2 available, 1 error). */
+/** Compare the running version against the signed release feed. Exit-code
+ *  mapping stays in update.ts (0 current/no applicable asset, 2 available,
+ *  1 error). A platform miss is `applicable:false`, not an error. */
 export async function checkBinaryUpdate(opts: {
         current: string;
         env?: NodeJS.ProcessEnv;
         fetch?: FetchLike;
         baseUrl?: string;
         timeoutMs?: number;
+        platform?: ReleasePlatform;
+        metadataPlatform?: string;
+        musl?: boolean;
+        keys?: Readonly<Record<string, string>>;
+        cachedLatest?: string;
 }): Promise<BinaryCheckResult> {
-        const res = await checkLatestVersion({
-                env: opts.env,
+        const env = opts.env ?? process.env;
+        const baseUrl = (opts.baseUrl ?? releasesBase(env)).replace(/\/+$/, "");
+        const remoteUrl = redactUrl(baseUrl);
+        const detected = opts.platform ?? detectPlatform();
+        const gate = detected
+                ? platformGate({
+                                platform: detected,
+                                env,
+                                metadataPlatform: opts.metadataPlatform,
+                                musl: opts.musl ?? detectMusl({ platform: process.platform }),
+                        })
+                : "this OS/arch is not a published release target";
+        const userAgent = `unown/${opts.current}`;
+        const feed = await fetchReleaseFeed({
+                env,
+                baseUrl,
                 fetch: opts.fetch,
-                baseUrl: opts.baseUrl,
                 timeoutMs: opts.timeoutMs,
+                userAgent,
+                keys: opts.keys,
         });
-        if (!res.ok || !res.latest) {
-                return { ok: false, current: opts.current, latest: null, available: false, remoteUrl: res.baseUrl, error: res.error };
+        if (feed.kind === "error") {
+                return {
+                        ok: false,
+                        current: opts.current,
+                        latest: null,
+                        available: false,
+                        applicable: false,
+                        reason: "feed-error",
+                        platform: detected,
+                        source: "none",
+                        signature: null,
+                        remoteUrl,
+                        error: feed.error,
+                };
         }
+        if (feed.kind === "legacy") {
+                const latestRes = await checkLatestVersion({
+                        env,
+                        fetch: opts.fetch,
+                        baseUrl,
+                        timeoutMs: opts.timeoutMs,
+                        userAgent,
+                });
+                if (!latestRes.ok || !latestRes.latest) {
+                        return {
+                                ok: false,
+                                current: opts.current,
+                                latest: null,
+                                available: false,
+                                applicable: false,
+                                reason: "feed-error",
+                                platform: detected,
+                                source: "none",
+                                signature: null,
+                                remoteUrl,
+                                error: latestRes.error ?? "no version published",
+                        };
+                }
+                let asset: ReleaseAsset | undefined;
+                if (detected && !gate) {
+                        try {
+                                const sums = await fetchText(
+                                        checksumsUrl(baseUrl),
+                                        opts.fetch ?? fetch,
+                                        opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+                                        userAgent,
+                                );
+                                const name = archiveName(detected);
+                                const hash = parseChecksumFor(sums, name);
+                                if (hash) asset = { platform: detected, name, sha256: hash, size: 0 };
+                        } catch (err) {
+                                return {
+                                        ok: false,
+                                        current: opts.current,
+                                        latest: latestRes.latest,
+                                        available: false,
+                                        applicable: false,
+                                        reason: "feed-error",
+                                        platform: detected,
+                                        source: "legacy",
+                                        signature: "legacy",
+                                        remoteUrl,
+                                        error: err instanceof Error ? err.message : String(err),
+                                };
+                        }
+                }
+                const newer = !parseSemver(opts.current) || compareSemver(latestRes.latest, opts.current) > 0;
+                const applicable = Boolean(detected && !gate && asset);
+                return {
+                        ok: true,
+                        current: opts.current,
+                        latest: latestRes.latest,
+                        available: applicable && newer,
+                        applicable,
+                        reason: !detected ? "no-platform" : gate ? gate : !asset ? "no-asset (legacy checksum manifest)" : "ok",
+                        platform: detected,
+                        ...(asset ? { asset } : {}),
+                        source: "legacy",
+                        signature: "legacy",
+                        remoteUrl,
+                };
+        }
+
+        const manifest = feed.manifest;
+        const latest = manifest.version;
+        const asset = detected ? selectReleaseAsset(manifest, detected) : null;
+        const newer = !parseSemver(opts.current) || compareSemver(latest, opts.current) > 0;
+        const replayed = Boolean(
+                opts.cachedLatest &&
+                        parseSemver(opts.current) &&
+                        compareSemver(latest, opts.cachedLatest) < 0 &&
+                        compareSemver(latest, opts.current) <= 0,
+        );
+        const applicable = Boolean(detected && !gate && asset);
         return {
                 ok: true,
                 current: opts.current,
-                latest: res.latest,
-                // "unknown" is a binary adopted from a raw archive before any
-                // install metadata existed; any published version is newer than it.
-                available: !parseSemver(opts.current) || compareSemver(res.latest, opts.current) > 0,
-                remoteUrl: res.baseUrl,
+                latest,
+                available: applicable && newer && !replayed,
+                applicable,
+                reason: !detected ? "no-platform" : gate ? gate : !asset ? "no-asset" : replayed ? "replayed" : "ok",
+                platform: detected,
+                ...(asset ? { asset } : {}),
+                source: "manifest",
+                signature: "verified",
+                keyId: manifest.keyId,
+                severity: manifest.severity,
+                releasedAt: manifest.releasedAt,
+                requiredMinimumVersion: manifest.requiredMinimumVersion,
+                notesUrl: manifest.notesUrl,
+                remoteUrl,
         };
 }
 
@@ -203,20 +501,18 @@ export function extractArchive(archivePath: string, destDir: string, platform: R
         // On Windows, a bare `tar` under Git Bash resolves to GNU tar, which
         // treats `C:\...` as a remote host ("Cannot connect to C:"). Use the
         // System32 bsdtar (which also reads zip) by absolute path.
-        const tarBin = isWindows
-                ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe")
-                : "tar";
+        const tarBin = isWindows ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "tar";
         const attempts: string[][] = isWindows
                 ? [["-xf", archivePath, "-C", destDir]]
                 : isTarGz
                         ? [
-                                  ["-xzf", archivePath, "-C", destDir],
-                                  ["-xf", archivePath, "-C", destDir],
-                          ]
+                                        ["-xzf", archivePath, "-C", destDir],
+                                        ["-xf", archivePath, "-C", destDir],
+                                ]
                         : [
-                                  ["-xf", archivePath, "-C", destDir],
-                                  ["-xzf", archivePath, "-C", destDir],
-                          ];
+                                        ["-xf", archivePath, "-C", destDir],
+                                        ["-xzf", archivePath, "-C", destDir],
+                                ];
         const failures: string[] = [];
         for (const args of attempts) {
                 const r = spawnSync(tarBin, args, { encoding: "utf8", timeout: ARCHIVE_TIMEOUT_MS });
@@ -249,12 +545,33 @@ export interface DownloadStageOptions {
         extract?: ExtractArchive;
         verifyBinary?: VerifyBinary;
         timeoutMs?: number;
+        archiveTimeoutMs?: number;
+        userAgent?: string;
+        /** The signed manifest entry; when present, size and sha256 are the
+         *  expected values and sha256sums.txt must agree with it. */
+        manifestAsset?: ReleaseAsset;
+        quarantine?: (binary: string, platform: ReleasePlatform) => void;
         log?: (line: string) => void;
 }
 
 export type DownloadStageResult =
         | { ok: true; stagedDir: string; binary: string; tempDir: string }
         | { ok: false; error: string };
+
+const MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024;
+
+/** macOS marks Node-downloaded files? Not observed; the archive is extracted
+ *  by tar, but the installer clears quarantine defensively and the updater
+ *  should behave the same way. Windows MOTW is not set by Node fetch (no
+ *  Unblock-File call until that is measured). */
+export function clearQuarantine(binary: string, platform: ReleasePlatform): void {
+        if (!platform.startsWith("darwin")) return;
+        try {
+                spawnSync("xattr", ["-d", "com.apple.quarantine", binary], { encoding: "utf8", timeout: 10_000 });
+        } catch {
+                /* best effort — the binary still runs if the attribute was absent */
+        }
+}
 
 export async function downloadAndStage(opts: DownloadStageOptions): Promise<DownloadStageResult> {
         const env = opts.env ?? process.env;
@@ -263,7 +580,16 @@ export async function downloadAndStage(opts: DownloadStageOptions): Promise<Down
         const fetchImpl = opts.fetch ?? fetch;
         const extract = opts.extract ?? extractArchive;
         const verify = opts.verifyBinary ?? verifyBinaryVersion;
+        const quarantine = opts.quarantine ?? clearQuarantine;
+        const mediaTimeout = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        const archiveTimeout = opts.archiveTimeoutMs ?? ARCHIVE_TIMEOUT_MS;
         const log = opts.log ?? (() => {});
+        const name = archiveName(opts.platform);
+        if (opts.manifestAsset && opts.manifestAsset.name !== name) {
+                return { ok: false, error: `manifest asset ${opts.manifestAsset.name} does not match ${name}` };
+        }
+        // A legacy checksum-manifest asset carries only a hash (size 0).
+        const expectedSize = opts.manifestAsset && opts.manifestAsset.size > 0 ? opts.manifestAsset.size : undefined;
 
         mkdirSync(opts.root, { recursive: true });
         let tempDir: string;
@@ -275,22 +601,30 @@ export async function downloadAndStage(opts: DownloadStageOptions): Promise<Down
                         error: `could not create a staging directory under ${opts.root} (${err instanceof Error ? err.message : String(err)})`,
                 };
         }
-        const archivePath = join(tempDir, archiveName(opts.platform));
+        const archivePath = join(tempDir, name);
         try {
                 const url = assetUrl(baseUrl, opts.platform, version);
-                log(`· downloading ${archiveName(opts.platform)} (v${version})…`);
-                const size = await downloadFile(url, archivePath, fetchImpl, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+                log(`· downloading ${name} (v${version})…`);
+                const maxBytes = expectedSize ? expectedSize + 1 : MAX_ARCHIVE_BYTES;
+                const size = await downloadFile(url, archivePath, fetchImpl, archiveTimeout, opts.userAgent, maxBytes);
                 log(`· downloaded ${(size / (1024 * 1024)).toFixed(1)} MiB`);
+                if (expectedSize && size !== expectedSize) {
+                        throw new Error(`${name} is ${size} bytes, the signed manifest says ${expectedSize}`);
+                }
 
                 const sumsUrl = checksumsUrl(baseUrl, version);
-                const sums = await fetchText(sumsUrl, fetchImpl, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-                const expected = parseChecksumFor(sums, archiveName(opts.platform));
-                if (!expected) {
-                        throw new Error(`sha256sums.txt has no entry for ${archiveName(opts.platform)}`);
+                const sums = await fetchText(sumsUrl, fetchImpl, mediaTimeout, opts.userAgent);
+                const published = parseChecksumFor(sums, name);
+                if (!published) {
+                        throw new Error(`sha256sums.txt has no entry for ${name}`);
+                }
+                const expected = opts.manifestAsset?.sha256 ?? published;
+                if (opts.manifestAsset && published !== opts.manifestAsset.sha256) {
+                        throw new Error(`sha256sums.txt disagrees with the signed release manifest for ${name}`);
                 }
                 const actual = sha256File(archivePath);
                 if (actual !== expected) {
-                        throw new Error(`checksum mismatch for ${archiveName(opts.platform)}: expected ${expected}, got ${actual}`);
+                        throw new Error(`checksum mismatch for ${name}: expected ${expected}, got ${actual}`);
                 }
                 log("· checksum verified");
 
@@ -310,6 +644,7 @@ export async function downloadAndStage(opts: DownloadStageOptions): Promise<Down
                 } catch {
                         // Windows / filesystems without POSIX modes
                 }
+                quarantine(binary, opts.platform);
                 if (!verify(binary, version)) {
                         throw new Error(`downloaded binary did not report version ${version}`);
                 }

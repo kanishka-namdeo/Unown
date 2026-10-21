@@ -164,6 +164,8 @@ describe("archive contents and versioned INSTALL.txt", () => {
             assert.match(text, /Update and uninstall \(both install modes\)/);
             assert.match(text, /unown update\s+# checkout: git fast-forward; binary install: verified release download/);
             assert.match(text, /unown uninstall \[--dry-run\] \[--purge-data\]/);
+            assert.match(text, /signed release manifest \(release\.json \+/);
+            assert.match(text, /release\.json\.sig\)/);
         });
     }
 

@@ -3,23 +3,10 @@
 // rollback. Hermetic: injected fetch/extract/verify, temp roots, no network.
 import "./_env.ts";
 import { afterAll, describe, expect, test } from "bun:test";
-import { createHash } from "node:crypto";
+import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import {
-        archiveName,
-        assetUrl,
-        binaryName,
-        binaryPath,
-        checksumsUrl,
-        readInstallMetadata,
-        versionDir,
-        versionTxtUrl,
-        writeBinaryShims,
-        writeInstallMetadata,
-        type ReleasePlatform,
-} from "../src/install-layout.ts";
 import {
         checkBinaryUpdate,
         checkLatestVersion,
@@ -29,6 +16,22 @@ import {
         type VerifyBinary,
         verifyChecksum,
 } from "../src/bin-update.ts";
+import {
+        archiveName,
+        assetUrl,
+        binaryName,
+        binaryPath,
+        checksumsUrl,
+        type ReleasePlatform,
+        readInstallMetadata,
+        releaseManifestUrl,
+        releaseSignatureUrl,
+        versionDir,
+        versionTxtUrl,
+        writeBinaryShims,
+        writeInstallMetadata,
+} from "../src/install-layout.ts";
+import type { ReleaseAsset } from "../src/release-manifest.ts";
 import { cmdUpdate, resolveInstallInfo, updateCheckPath, updateStatePath } from "../src/update.ts";
 
 const BASE = "https://example.test/releases";
@@ -80,6 +83,7 @@ interface Feed {
         fetch: FetchLike;
         extract: ExtractArchive;
         verify: VerifyBinary;
+        keys?: Record<string, string>;
 }
 
 /** A release feed for `version`; `checksum` overrides the published hash. */
@@ -91,6 +95,9 @@ function feed(version: string, platform: ReleasePlatform, checksum?: string): Fe
                 [versionTxtUrl(BASE), `${version}\n`],
                 [assetUrl(BASE, platform, version), new Uint8Array(archive)],
                 [checksumsUrl(BASE, version), `${digest}  ${name}\n`],
+                // The check reads the latest checksums to prove the platform
+                // archive exists before advertising an update.
+                [checksumsUrl(BASE), `${digest}  ${name}\n`],
         ]);
         // A Response body can only be consumed once; each request gets a fresh one.
         const fetchImpl: FetchLike = async (url) => {
@@ -112,6 +119,66 @@ function feed(version: string, platform: ReleasePlatform, checksum?: string): Fe
         return { fetch: fetchImpl, extract, verify };
 }
 
+interface ManifestFeedOptions {
+        assets?: ReleaseAsset[];
+        sign?: boolean;
+        tamper?: boolean;
+        keyId?: string;
+}
+
+/** A signed release feed for one platform. The test keypair is generated per
+ *  fixture; the map is passed through `checkBinaryUpdate`/`cmdUpdate`. */
+function manifestFeed(version: string, platform: ReleasePlatform, opts: ManifestFeedOptions = {}): Feed {
+        const archive = Buffer.from(`fake archive ${version}`);
+        const name = archiveName(platform);
+        const digest = createHash("sha256").update(archive).digest("hex");
+        const manifest = {
+                schema: 1,
+                keyId: opts.keyId ?? "test-key",
+                version,
+                releasedAt: "2026-10-21T14:41:06.000Z",
+                channel: "stable",
+                severity: "normal",
+                minimumVersion: null,
+                requiredMinimumVersion: null,
+                notesUrl: `https://example.test/releases/tag/v${version}`,
+                assets: opts.assets ?? [{ platform, name, sha256: digest, size: archive.length }],
+        };
+        const original = `${JSON.stringify(manifest, null, 2)}\n`;
+        const raw = opts.tamper ? `${original} ` : original;
+        const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+        const publicKeyBase64 = publicKey.export({ format: "der", type: "spki" }).subarray(-32).toString("base64");
+        const signature = sign(null, Buffer.from(original, "utf8"), privateKey).toString("base64");
+        const bodies = new Map<string, string | Uint8Array>([
+                [releaseManifestUrl(BASE), raw],
+                [releaseManifestUrl(BASE, version), raw],
+                [assetUrl(BASE, platform, version), new Uint8Array(archive)],
+                [checksumsUrl(BASE, version), `${digest}  ${name}\n`],
+                [checksumsUrl(BASE), `${digest}  ${name}\n`],
+        ]);
+        if (opts.sign !== false) {
+                bodies.set(releaseSignatureUrl(BASE), `${signature}\n`);
+                bodies.set(releaseSignatureUrl(BASE, version), `${signature}\n`);
+        }
+        const fetchImpl: FetchLike = async (url) => {
+                const body = bodies.get(url);
+                return body === undefined ? new Response("not found", { status: 404 }) : new Response(body);
+        };
+        const extract: ExtractArchive = (_archive, dest, p) => {
+                const dir = join(dest, `unown-${p}`);
+                mkdirSync(dir, { recursive: true });
+                writeFileSync(join(dir, binaryName(p)), version);
+        };
+        const verify: VerifyBinary = (file, want) => {
+                try {
+                        return readFileSync(file, "utf8") === want;
+                } catch {
+                        return false;
+                }
+        };
+        return { fetch: fetchImpl, extract, verify, keys: { [manifest.keyId]: publicKeyBase64 } };
+}
+
 async function runBinary(
         fx: Fixture,
         flags: Parameters<typeof cmdUpdate>[0],
@@ -131,6 +198,7 @@ async function runBinary(
                         platform: fx.platform,
                         baseUrl: BASE,
                         musl: false,
+                        ...(release.keys ? { keys: release.keys } : {}),
                 },
                 log: (l) => lines.push(l),
                 git: () => {
@@ -152,7 +220,8 @@ describe("checkLatestVersion / checkBinaryUpdate", () => {
         test("reads version.txt and validates it", async () => {
                 const good = await checkLatestVersion({
                         baseUrl: BASE,
-                        fetch: async (url) => (url === versionTxtUrl(BASE) ? new Response("0.0.2\n") : new Response("no", { status: 404 })),
+                        fetch: async (url) =>
+                                url === versionTxtUrl(BASE) ? new Response("0.0.2\n") : new Response("no", { status: 404 }),
                 });
                 expect(good).toMatchObject({ ok: true, latest: "0.0.2", baseUrl: BASE });
 
@@ -160,7 +229,10 @@ describe("checkLatestVersion / checkBinaryUpdate", () => {
                 expect(garbage.ok).toBe(false);
                 expect(garbage.error).toContain("did not contain a version");
 
-                const missing = await checkLatestVersion({ baseUrl: BASE, fetch: async () => new Response("nope", { status: 404 }) });
+                const missing = await checkLatestVersion({
+                        baseUrl: BASE,
+                        fetch: async () => new Response("nope", { status: 404 }),
+                });
                 expect(missing.ok).toBe(false);
                 expect(missing.error).toContain("HTTP 404");
         });
@@ -177,17 +249,159 @@ describe("checkLatestVersion / checkBinaryUpdate", () => {
 
         test("exit-code inputs: 2 available, 0 current, 1 error", async () => {
                 const release = feed("0.0.2", "linux-x64");
-                expect(await checkBinaryUpdate({ current: "0.0.1", fetch: release.fetch, baseUrl: BASE })).toMatchObject({
+                expect(
+                        await checkBinaryUpdate({
+                                current: "0.0.1",
+                                fetch: release.fetch,
+                                baseUrl: BASE,
+                                platform: "linux-x64",
+                                musl: false,
+                        }),
+                ).toMatchObject({
                         ok: true,
                         latest: "0.0.2",
                         available: true,
+                        applicable: true,
+                        signature: "legacy",
                 });
-                expect(await checkBinaryUpdate({ current: "0.0.2", fetch: release.fetch, baseUrl: BASE })).toMatchObject({
+                expect(
+                        await checkBinaryUpdate({
+                                current: "0.0.2",
+                                fetch: release.fetch,
+                                baseUrl: BASE,
+                                platform: "linux-x64",
+                                musl: false,
+                        }),
+                ).toMatchObject({
                         available: false,
                 });
                 expect(
-                        await checkBinaryUpdate({ current: "0.0.1", fetch: async () => new Response("down", { status: 500 }), baseUrl: BASE }),
+                        await checkBinaryUpdate({
+                                current: "0.0.1",
+                                fetch: async () => new Response("down", { status: 500 }),
+                                baseUrl: BASE,
+                                platform: "linux-x64",
+                                musl: false,
+                        }),
                 ).toMatchObject({ ok: false, available: false });
+        });
+});
+
+describe("signed manifest feed", () => {
+        test("a newer platform asset is applicable and exposes its size", async () => {
+                const release = manifestFeed("0.0.2", "linux-x64");
+                const res = await checkBinaryUpdate({
+                        current: "0.0.1",
+                        fetch: release.fetch,
+                        baseUrl: BASE,
+                        platform: "linux-x64",
+                        musl: false,
+                        keys: release.keys,
+                });
+                expect(res).toMatchObject({
+                        ok: true,
+                        latest: "0.0.2",
+                        available: true,
+                        applicable: true,
+                        source: "manifest",
+                        signature: "verified",
+                });
+                expect(res.asset?.size).toBeGreaterThan(0);
+        });
+
+        test("a platform with no asset is not applicable, not an error", async () => {
+                const release = manifestFeed("0.0.2", "linux-x64", {
+                        assets: [{ platform: "darwin-arm64", name: archiveName("darwin-arm64"), sha256: "a".repeat(64), size: 1 }],
+                });
+                const res = await checkBinaryUpdate({
+                        current: "0.0.1",
+                        fetch: release.fetch,
+                        baseUrl: BASE,
+                        platform: "linux-x64",
+                        musl: false,
+                        keys: release.keys,
+                });
+                expect(res).toMatchObject({ ok: true, available: false, applicable: false, reason: "no-asset" });
+        });
+
+        test("a tampered manifest fails closed (no legacy fallback)", async () => {
+                const release = manifestFeed("0.0.2", "linux-x64", { tamper: true });
+                const res = await checkBinaryUpdate({
+                        current: "0.0.1",
+                        fetch: release.fetch,
+                        baseUrl: BASE,
+                        platform: "linux-x64",
+                        musl: false,
+                        keys: release.keys,
+                });
+                expect(res.ok).toBe(false);
+                expect(res.source).toBe("none");
+                expect(res.error).toContain("signature verification failed");
+        });
+
+        test("a manifest without a signature fails closed", async () => {
+                const release = manifestFeed("0.0.2", "linux-x64", { sign: false });
+                const res = await checkBinaryUpdate({
+                        current: "0.0.1",
+                        fetch: release.fetch,
+                        baseUrl: BASE,
+                        platform: "linux-x64",
+                        musl: false,
+                        keys: release.keys,
+                });
+                expect(res.ok).toBe(false);
+                expect(res.error).toContain("unsigned");
+        });
+
+        test("an unknown signing key fails closed", async () => {
+                const release = manifestFeed("0.0.2", "linux-x64", { keyId: "other-key" });
+                const res = await checkBinaryUpdate({
+                        current: "0.0.1",
+                        fetch: release.fetch,
+                        baseUrl: BASE,
+                        platform: "linux-x64",
+                        musl: false,
+                        keys: { "test-key": release.keys?.["other-key"] ?? "" },
+                });
+                expect(res.ok).toBe(false);
+                expect(res.error).toContain("unknown release signing key");
+        });
+
+        test("applies the signed asset and verifies size/checksum", async () => {
+                const fx = makeInstall("0.0.1");
+                const release = manifestFeed("0.0.2", fx.platform);
+                const r = await runBinary(fx, {}, release);
+                expect(r.code).toBe(0);
+                expect(r.lines.join("\n")).toContain("unown updated: 0.0.1 → 0.0.2");
+                expect(readInstallMetadata(fx.home)?.version).toBe("0.0.2");
+        });
+
+        test("--check --json reports the manifest fields", async () => {
+                const fx = makeInstall("0.0.1");
+                const release = manifestFeed("0.0.2", fx.platform);
+                const r = await runBinary(fx, { check: true, json: true }, release);
+                expect(r.code).toBe(2);
+                const body = JSON.parse(r.lines.join("\n")) as Record<string, unknown>;
+                expect(body).toMatchObject({
+                        schema: 2,
+                        mode: "binary",
+                        signature: "verified",
+                        applicable: true,
+                        available: true,
+                        platform: fx.platform,
+                });
+                expect((body.asset as { name: string }).name).toBe(archiveName(fx.platform));
+        });
+
+        test("a size mismatch is rejected before extraction", async () => {
+                const fx = makeInstall("0.0.1");
+                const digest = createHash("sha256").update("fake archive 0.0.2").digest("hex");
+                const release = manifestFeed("0.0.2", fx.platform, {
+                        assets: [{ platform: fx.platform, name: archiveName(fx.platform), sha256: digest, size: 999999 }],
+                });
+                const r = await runBinary(fx, {}, release);
+                expect(r.code).toBe(1);
+                expect(r.lines.join("\n")).toContain("the signed manifest says 999999");
         });
 });
 
@@ -276,7 +490,11 @@ describe("binary update", () => {
                 expect(current.code).toBe(0);
                 expect(current.lines.join("\n")).toContain("up to date");
 
-                const offline = await runBinary(fx, { check: true }, { ...release, fetch: async () => new Response("x", { status: 503 }) });
+                const offline = await runBinary(
+                        fx,
+                        { check: true },
+                        { ...release, fetch: async () => new Response("x", { status: 503 }) },
+                );
                 expect(offline.code).toBe(1);
                 expect(offline.lines.join("\n")).toContain("update check failed");
         });

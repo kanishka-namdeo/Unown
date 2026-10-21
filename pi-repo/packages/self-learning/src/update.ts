@@ -51,43 +51,83 @@
  * `unown update` refuses at the guard.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import { runMigrations } from "./migrations.ts";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { atomicWriteFileSync } from "./atomic.ts";
+import {
+        type BinaryCheckResult,
+        checkBinaryUpdate,
+        downloadAndStage,
+        type ExtractArchive,
+        type FetchLike,
+        fetchReleaseFeed,
+        installStaged,
+        rollbackBinaryInstall,
+        type VerifyBinary,
+} from "./bin-update.ts";
 // M8: the post-update engine hint needs a liveness probe. engine-supervisor
 // is side-effect-free at module scope (the detachment contract) — importing
 // it here does NOT open the engine DB from a `unown update` run.
 import { engineHealth } from "./engine-supervisor.ts";
-import { IS_COMPILED_BINARY } from "./packaging.ts";
 import {
+        archiveName,
         binaryPath,
         defaultInstallRoot,
         detectMusl,
         detectPlatform,
-        inferBinaryLayout,
-        platformGate,
-        readInstallMetadata,
-        redactUrl,
-        RELEASE_PLATFORMS,
-        releasesBase,
         type InstallMetadata,
         type InstallMode,
+        inferBinaryLayout,
+        platformGate,
+        RELEASE_PLATFORMS,
         type ReleasePlatform,
+        readInstallMetadata,
+        redactUrl,
+        releasesBase,
 } from "./install-layout.ts";
-import {
-        checkBinaryUpdate,
-        checkLatestVersion,
-        downloadAndStage,
-        installStaged,
-        rollbackBinaryInstall,
-        type ExtractArchive,
-        type FetchLike,
-        type VerifyBinary,
-} from "./bin-update.ts";
+import { runMigrations } from "./migrations.ts";
+import { IS_COMPILED_BINARY } from "./packaging.ts";
+import { type ReleaseAsset, selectReleaseAsset } from "./release-manifest.ts";
 import { compareSemver, parseSemver } from "./semver.ts";
+import {
+        acquireUpdateLock,
+        deriveUpdateStatus,
+        describeAge,
+        formatUpdateSize,
+        isUpdateLocked,
+        noticeSuppressed,
+        parseSnoozeDuration,
+        readUpdateCheckCache,
+        readUpdatePrefs,
+        recordNotice,
+        shouldRefresh,
+        UPDATE_CHECK_TTL_MS,
+        type UpdateCheckCache,
+        type UpdatePrefs,
+        unownHome,
+        updateCheckPath,
+        updateNoticeLines,
+        updatePrefsPath,
+        updatesHardDisabled,
+        writeUpdateCheckCache,
+        writeUpdatePrefs,
+} from "./update-status.ts";
 
 export { compareSemver, parseSemver };
+export {
+        UPDATE_CHECK_TTL_MS,
+        describeAge,
+        formatUpdateSize,
+        noticeSuppressed,
+        readUpdateCheckCache,
+        readUpdatePrefs,
+        unownHome,
+        updateCheckPath,
+        updateNoticeLines,
+        updatePrefsPath,
+        updatesHardDisabled,
+};
+export type { UpdateCheckCache, UpdatePrefs };
 
 // ---------------------------------------------------------------------------
 // Repo/home resolution (mirrors cli.ts VERSION — the ROOT package.json is the
@@ -103,13 +143,6 @@ export function readRootVersion(root: string): string {
         } catch {
                 return "unknown";
         }
-}
-
-/** UNOWN_HOME — mirrors term.ts exactly (kept local so tests can point it).
- *  `||` not `??`: an empty value (bun auto-loads .env; .env.example ships it
- *  empty) means "unset", not a cwd-relative state dir. */
-export function unownHome(env: NodeJS.ProcessEnv = process.env): string {
-        return env.UNOWN_HOME || join(homedir(), ".unown");
 }
 
 // ---------------------------------------------------------------------------
@@ -270,12 +303,6 @@ export function pickLatestTag(versions: string[]): string | null {
 // ---------------------------------------------------------------------------
 // State files (UNOWN_HOME — outside the repo, never dirties the user tree)
 // ---------------------------------------------------------------------------
-export interface UpdateCheckCache {
-        checkedAt: string;
-        latest: string;
-        remoteUrl?: string;
-        error?: string;
-}
 export interface UpdateState {
         from: string;
         to: string;
@@ -284,11 +311,15 @@ export interface UpdateState {
         ok?: boolean;
         rolledBack?: boolean;
         completedAt?: string;
+        /** A binary update/rollback records its shape and keeps the original
+         *  update record instead of overwriting it with the rollback. */
+        mode?: InstallMode;
+        platform?: ReleasePlatform;
+        rollbackFrom?: string;
+        rollbackTo?: string;
+        rollbackAt?: string;
 }
 
-export function updateCheckPath(home: string): string {
-        return join(home, "update-check.json");
-}
 export function updateStatePath(home: string): string {
         return join(home, "update-state.json");
 }
@@ -300,24 +331,7 @@ function readJsonFile<T>(p: string): T | null {
         }
 }
 function writeJsonFile(p: string, data: unknown): void {
-        mkdirSync(dirname(p), { recursive: true });
-        writeFileSync(p, `${JSON.stringify(data, null, 2)}\n`, "utf8");
-}
-
-// ---------------------------------------------------------------------------
-// Kill switches
-// ---------------------------------------------------------------------------
-export function updatesHardDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
-        return /^(1|true|yes)$/i.test(env.UNOWN_DISABLE_UPDATES ?? "");
-}
-/** Banner + background check opt-outs (manual `unown update` still works). */
-export function noticeSuppressed(env: NodeJS.ProcessEnv = process.env): boolean {
-        return (
-                updatesHardDisabled(env) ||
-                /^(1|true|yes)$/i.test(env.UNOWN_DISABLE_AUTOUPDATE ?? "") ||
-                env.NO_UPDATE_NOTIFIER !== undefined ||
-                /^(1|true|yes)$/i.test(env.DO_NOT_TRACK ?? "")
-        );
+        atomicWriteFileSync(p, `${JSON.stringify(data, null, 2)}\n`);
 }
 
 /** Credential redaction lives in install-layout.ts so the checkout and binary
@@ -363,6 +377,24 @@ export function checkForUpdate(root: string, git: GitRunner): UpdateCheckResult 
         return { ok: true, current, latest, available: compareSemver(latest, current) > 0, remoteUrl };
 }
 
+/** Local checkout state recorded by the background check, so the startup
+ *  notice never has to run git itself. */
+export interface CheckoutState {
+        headBranch: string | null;
+        headTag: string | null;
+        dirty: boolean;
+        ahead: number | null;
+}
+
+export function checkoutState(root: string, git: GitRunner): CheckoutState {
+        return {
+                headBranch: branchOf(root, git),
+                headTag: tagAtHead(root, git),
+                dirty: isDirty(root, git),
+                ahead: localCommitsAhead(root, git),
+        };
+}
+
 // ---------------------------------------------------------------------------
 // Foreground update
 // ---------------------------------------------------------------------------
@@ -374,6 +406,11 @@ export interface UpdateFlags {
         rollback?: boolean;
         help?: boolean;
         version?: string; // explicit target (v-prefix optional)
+        skip?: boolean;
+        skipVersion?: string;
+        unskip?: boolean;
+        snooze?: string;
+        dryRun?: boolean;
 }
 export interface UpdateCtx {
         root?: string; // resolved via git when absent
@@ -393,7 +430,11 @@ export interface UpdateCtx {
                 baseUrl?: string;
                 platform?: ReleasePlatform;
                 musl?: boolean;
+                metadataPlatform?: string;
                 timeoutMs?: number;
+                archiveTimeoutMs?: number;
+                keys?: Readonly<Record<string, string>>;
+                quarantine?: (binary: string, platform: ReleasePlatform) => void;
         };
         /** Post-update pipeline. Real one spawns `bun scripts/install.ts`. Returns exit code. */
         runInstall?: (root: string) => number;
@@ -487,6 +528,40 @@ export async function cmdUpdate(flags: UpdateFlags, ctx: UpdateCtx = {}): Promis
                 return 0;
         }
 
+        // Preference-only operations run before mode resolution and never touch
+        // the network: they are how a user dismisses the notice/chip.
+        if (flags.skip || flags.unskip || flags.snooze) {
+                const prefs = readUpdatePrefs(home);
+                if (flags.unskip) {
+                        delete prefs.skippedVersion;
+                        delete prefs.snoozeUntil;
+                        writeUpdatePrefs(home, prefs);
+                        log("unown: update skips and snoozes cleared");
+                }
+                if (flags.snooze) {
+                        const parsed = parseSnoozeDuration(flags.snooze);
+                        if (!parsed.ok) {
+                                log(`unown: ${parsed.error}`);
+                                return 1;
+                        }
+                        prefs.snoozeUntil = parsed.until;
+                        writeUpdatePrefs(home, prefs);
+                        log(`unown: update notices snoozed until ${parsed.until}`);
+                }
+                if (flags.skip) {
+                        const cached = readUpdateCheckCache(home)?.latest;
+                        const selected = (flags.skipVersion ?? cached ?? "").replace(/^v/, "");
+                        if (!parseSemver(selected)) {
+                                log("unown: no cached update to skip — run `unown update --check` first, or pass a version");
+                                return 1;
+                        }
+                        prefs.skippedVersion = selected;
+                        writeUpdatePrefs(home, prefs);
+                        log(`unown: skipping v${selected} (undo: unown update --unskip)`);
+                }
+                return 0;
+        }
+
         const install =
                 ctx.install ??
                 resolveInstallInfo({
@@ -513,183 +588,236 @@ export async function cmdUpdate(flags: UpdateFlags, ctx: UpdateCtx = {}): Promis
         // BEFORE --check: the detached child is spawned as `update --check
         // --background`, and its contract is "write the cache, say nothing".
         if (flags.background) {
-                // Detached refresh child: write the cache, say nothing, exit 0.
-                const res = checkForUpdate(root, git);
-                const cache: UpdateCheckCache = {
-                        checkedAt: new Date().toISOString(),
-                        latest: res.latest ?? "",
-                        remoteUrl: res.remoteUrl ?? undefined,
-                        ...(res.ok ? {} : { error: res.error ?? "check failed" }),
-                };
-                writeJsonFile(updateCheckPath(home), cache);
+                // Detached refresh child: one writer only, cache only, exit 0.
+                const lock = acquireUpdateLock(home, "check");
+                if (!lock.ok) return 0;
+                try {
+                        const res = checkForUpdate(root, git);
+                        const state = checkoutState(root, git);
+                        const cache: UpdateCheckCache = {
+                                schema: 2,
+                                checkedAt: new Date().toISOString(),
+                                current: res.current,
+                                mode: "checkout",
+                                latest: res.latest ?? "",
+                                applicable: res.ok && res.available,
+                                reason: res.ok ? (res.available ? "ok" : "up-to-date") : "check-error",
+                                ...(res.remoteUrl ? { remoteUrl: res.remoteUrl } : {}),
+                                ...(res.ok ? {} : { error: res.error ?? "check failed" }),
+                                ...state,
+                        };
+                        writeUpdateCheckCache(home, cache);
+                } finally {
+                        lock.release();
+                }
                 return 0;
         }
 
         // ---------------------------------------------------------------- check
-        if (flags.check) return cmdCheck(root, git, log, flags);
+        if (flags.check) return cmdCheck(root, home, git, log, flags);
 
         // -------------------------------------------------------------- rollback
-        if (flags.rollback) return cmdRollback(root, home, git, ctx, log);
+        if (flags.rollback) {
+                const lock = acquireUpdateLock(home, "apply");
+                if (!lock.ok) {
+                        log(`unown: ${lock.error}`);
+                        return 1;
+                }
+                try {
+                        return cmdRollback(root, home, git, ctx, log);
+                } finally {
+                        lock.release();
+                }
+        }
 
         // ----------------------------------------------------------------- apply
         const current = readRootVersion(root);
 
-        if (isDirty(root, git) && !flags.allowDirty) {
-                log(`unown: the checkout has uncommitted changes — refusing to update over them.`);
-                log(`  commit or stash them, or pass --allow-dirty (git merge --autostash)`);
-                return 1;
-        }
-
-        const branch = branchOf(root, git);
-        const headTag = tagAtHead(root, git);
-        const targetVersion = flags.version?.replace(/^v/, "");
-        // A detached HEAD that IS a ready release tag is a normal tag install:
-        // `git checkout vX.Y.Z` is documented, and it may auto-advance to the
-        // newest ready tag. Only a detached HEAD on a non-release commit is a
-        // deliberate pin that needs an explicit version.
-        const detachedAtRelease = !branch && headTag !== null && tagReady(root, git, headTag);
-
-        if (!branch && !targetVersion && !detachedAtRelease) {
-                log(`unown: HEAD is detached${headTag ? ` at ${headTag}` : ""} — a pinned install.`);
-                log(`  update explicitly with:  unown update <version>`);
-                return 1;
-        }
-
-        // Fetch release tags (foreground only — the background check never fetches).
-        const fetch = git(["fetch", "origin", "--tags", "--prune", "--quiet"], root);
-        if (fetch.code !== 0) {
-                log(`unown: could not fetch from origin — ${fetch.err || "network error"}`);
-                log(`  (offline? try again later; nothing was changed)`);
-                return 1;
-        }
-
-        // Resolve the target tag.
-        let targetTag: string | null = null;
-        if (targetVersion) {
-                const want = `v${targetVersion}`;
-                const exists = git(["rev-parse", "--verify", "--quiet", `refs/tags/${want}`], root);
-                if (exists.code !== 0) {
-                        const avail = localTagsDesc(root, git)
-                                .filter((t) => tagReady(root, git, `v${t}`))
-                                .slice(0, 8);
-                        log(`unown: version ${targetVersion} not found${avail.length ? ` — available: ${avail.join(", ")}` : ""}`);
+        if (flags.dryRun) {
+                const check = checkForUpdate(root, git);
+                if (!check.ok) {
+                        log(`unown: update check failed — ${check.error ?? "unknown error"}`);
                         return 1;
                 }
-                if (!tagReady(root, git, want)) {
+                const target = flags.version?.replace(/^v/, "") ?? check.latest;
+                if (!target) {
+                        log("unown: no release tag to update to");
+                        return 1;
+                }
+                log(`unown: would update checkout ${current} → ${target}`);
+                log(
+                        `  dirty tree: ${isDirty(root, git) ? "yes (use --allow-dirty)" : "no"} · mode: ${branchOf(root, git) ?? "detached"}`,
+                );
+                log("  dry run: nothing was changed");
+                return 0;
+        }
+
+        const applyLock = acquireUpdateLock(home, "apply");
+        if (!applyLock.ok) {
+                log(`unown: ${applyLock.error}`);
+                return 1;
+        }
+        try {
+                if (isDirty(root, git) && !flags.allowDirty) {
+                        log(`unown: the checkout has uncommitted changes — refusing to update over them.`);
+                        log(`  commit or stash them, or pass --allow-dirty (git merge --autostash)`);
+                        return 1;
+                }
+
+                const branch = branchOf(root, git);
+                const headTag = tagAtHead(root, git);
+                const targetVersion = flags.version?.replace(/^v/, "");
+                // A detached HEAD that IS a ready release tag is a normal tag install:
+                // `git checkout vX.Y.Z` is documented, and it may auto-advance to the
+                // newest ready tag. Only a detached HEAD on a non-release commit is a
+                // deliberate pin that needs an explicit version.
+                const detachedAtRelease = !branch && headTag !== null && tagReady(root, git, headTag);
+
+                if (!branch && !targetVersion && !detachedAtRelease) {
+                        log(`unown: HEAD is detached${headTag ? ` at ${headTag}` : ""} — a pinned install.`);
+                        log(`  update explicitly with:  unown update <version>`);
+                        return 1;
+                }
+
+                // Fetch release tags (foreground only — the background check never fetches).
+                const fetch = git(["fetch", "origin", "--tags", "--prune", "--quiet"], root);
+                if (fetch.code !== 0) {
+                        log(`unown: could not fetch from origin — ${fetch.err || "network error"}`);
+                        log(`  (offline? try again later; nothing was changed)`);
+                        return 1;
+                }
+
+                // Resolve the target tag.
+                let targetTag: string | null = null;
+                if (targetVersion) {
+                        const want = `v${targetVersion}`;
+                        const exists = git(["rev-parse", "--verify", "--quiet", `refs/tags/${want}`], root);
+                        if (exists.code !== 0) {
+                                const avail = localTagsDesc(root, git)
+                                        .filter((t) => tagReady(root, git, `v${t}`))
+                                        .slice(0, 8);
+                                log(`unown: version ${targetVersion} not found${avail.length ? ` — available: ${avail.join(", ")}` : ""}`);
+                                return 1;
+                        }
+                        if (!tagReady(root, git, want)) {
+                                log(
+                                        `unown: tag ${want} exists but its package.json does not declare ${targetVersion} — refusing a broken release`,
+                                );
+                                return 1;
+                        }
+                        targetTag = want;
+                        if (compareSemver(targetVersion, current) <= 0) {
+                                log(`unown: downgrading ${current} → ${targetVersion} (explicit request)`);
+                        }
+                } else {
+                        for (const v of localTagsDesc(root, git)) {
+                                if (compareSemver(v, current) <= 0) break;
+                                if (tagReady(root, git, `v${v}`)) {
+                                        targetTag = `v${v}`;
+                                        break;
+                                }
+                        }
+                        if (!targetTag) {
+                                log(`unown is up to date (${current})`);
+                                return 0;
+                        }
+                }
+
+                // Local-commits guard (never rebase for the user).
+                const ahead = localCommitsAhead(root, git);
+                if (ahead && ahead > 0) {
+                        log(`unown: this checkout has ${ahead} local commit(s) not on the remote —`);
+                        log(`  push or rebase them onto origin first, then re-run unown update`);
+                        return 1;
+                }
+
+                // Fast-forward sanity: for an AUTOMATIC move the target must contain
+                // HEAD. An explicit version is allowed to pin/roll back (including to
+                // an ancestor or a sibling release), so it uses a detached checkout.
+                const headSha = git(["rev-parse", "HEAD"], root).out;
+                const descendant = git(["merge-base", "--is-ancestor", "HEAD", targetTag], root);
+                const explicit = Boolean(targetVersion);
+                if (descendant.code !== 0 && !explicit) {
+                        log(`unown: cannot fast-forward HEAD to ${targetTag} — the checkout diverged from release history.`);
+                        log(`  resolve manually (rebase/merge), or roll back with: unown update <older-version>`);
+                        return 1;
+                }
+                const applyByCheckout = !branch || (explicit && descendant.code !== 0);
+
+                // Record the rollback point BEFORE anything moves.
+                const state: UpdateState = {
+                        from: current,
+                        to: targetTag.replace(/^v/, ""),
+                        fromSha: headSha,
+                        startedAt: new Date().toISOString(),
+                        mode: "checkout",
+                };
+                writeJsonFile(updateStatePath(home), state);
+
+                // Apply.
+                const apply = applyByCheckout
+                        ? git(["checkout", "--detach", targetTag], root)
+                        : git(["merge", "--ff-only", ...(flags.allowDirty ? ["--autostash"] : []), targetTag], root);
+                if (apply.code !== 0) {
+                        log(`unown: git refused the update — ${apply.err || apply.out}`);
+                        log(`  nothing else was changed; see \`git help merge\` for fast-forward requirements`);
+                        return 1;
+                }
+
+                // Post-update pipeline (deps + build + .env + shim) — auto-rollback on failure.
+                const runInstall = ctx.runInstall ?? ((r: string) => spawnInstall(r, env));
+                log(`· rebuilding (${targetTag}) — dependencies, engine, PATH shim…`);
+                const installCode = runInstall(root);
+                const got = readRootVersion(root);
+                if (installCode !== 0 || got !== targetTag.replace(/^v/, "")) {
                         log(
-                                `unown: tag ${want} exists but its package.json does not declare ${targetVersion} — refusing a broken release`,
+                                `unown: ${installCode !== 0 ? "install/build failed" : `version verify failed (expected ${targetTag}, found ${got})`} — rolling back to ${state.from}`,
+                        );
+                        rollbackTo(root, git, state.fromSha);
+                        const back = runInstall(root);
+                        writeJsonFile(updateStatePath(home), {
+                                ...state,
+                                ok: false,
+                                rolledBack: true,
+                                completedAt: new Date().toISOString(),
+                        });
+                        log(
+                                back === 0
+                                        ? `· restored ${current} (${headSha.slice(0, 12)})`
+                                        : `✗ rollback restored the git tree, but the rebuild failed — re-run: bun run agent:install`,
                         );
                         return 1;
                 }
-                targetTag = want;
-                if (compareSemver(targetVersion, current) <= 0) {
-                        log(`unown: downgrading ${current} → ${targetVersion} (explicit request)`);
+
+                writeJsonFile(updateStatePath(home), { ...state, ok: true, completedAt: new Date().toISOString() });
+
+                // User-state migrations (forward-only, non-fatal — a failed cosmetic
+                // migration must never brick the CLI; doctor reports the residue).
+                const mig = await runMigrations(home);
+                if (mig.applied.length) log(`· user state migrated: ${mig.applied.join(", ")} (schema v${mig.version})`);
+                for (const f of mig.failed) log(`⚠ migration "${f.name}" failed: ${f.error} — non-fatal; see unown doctor`);
+
+                // Report.
+                log(`✓ unown updated: ${current} → ${targetTag.replace(/^v/, "")}`);
+                const slice = changelogSlice(root, current, targetTag.replace(/^v/, ""));
+                if (slice.length) {
+                        log("");
+                        log(slice.join("\n"));
                 }
-        } else {
-                for (const v of localTagsDesc(root, git)) {
-                        if (compareSemver(v, current) <= 0) break;
-                        if (tagReady(root, git, `v${v}`)) {
-                                targetTag = `v${v}`;
-                                break;
-                        }
-                }
-                if (!targetTag) {
-                        log(`unown is up to date (${current})`);
-                        return 0;
-                }
-        }
-
-        // Local-commits guard (never rebase for the user).
-        const ahead = localCommitsAhead(root, git);
-        if (ahead && ahead > 0) {
-                log(`unown: this checkout has ${ahead} local commit(s) not on the remote —`);
-                log(`  push or rebase them onto origin first, then re-run unown update`);
-                return 1;
-        }
-
-        // Fast-forward sanity: for an AUTOMATIC move the target must contain
-        // HEAD. An explicit version is allowed to pin/roll back (including to
-        // an ancestor or a sibling release), so it uses a detached checkout.
-        const headSha = git(["rev-parse", "HEAD"], root).out;
-        const descendant = git(["merge-base", "--is-ancestor", "HEAD", targetTag], root);
-        const explicit = Boolean(targetVersion);
-        if (descendant.code !== 0 && !explicit) {
-                log(`unown: cannot fast-forward HEAD to ${targetTag} — the checkout diverged from release history.`);
-                log(`  resolve manually (rebase/merge), or roll back with: unown update <older-version>`);
-                return 1;
-        }
-        const applyByCheckout = !branch || (explicit && descendant.code !== 0);
-
-        // Record the rollback point BEFORE anything moves.
-        const state: UpdateState = {
-                from: current,
-                to: targetTag.replace(/^v/, ""),
-                fromSha: headSha,
-                startedAt: new Date().toISOString(),
-        };
-        writeJsonFile(updateStatePath(home), state);
-
-        // Apply.
-        const apply = applyByCheckout
-                ? git(["checkout", "--detach", targetTag], root)
-                : git(["merge", "--ff-only", ...(flags.allowDirty ? ["--autostash"] : []), targetTag], root);
-        if (apply.code !== 0) {
-                log(`unown: git refused the update — ${apply.err || apply.out}`);
-                log(`  nothing else was changed; see \`git help merge\` for fast-forward requirements`);
-                return 1;
-        }
-
-        // Post-update pipeline (deps + build + .env + shim) — auto-rollback on failure.
-        const runInstall = ctx.runInstall ?? ((r: string) => spawnInstall(r, env));
-        log(`· rebuilding (${targetTag}) — dependencies, engine, PATH shim…`);
-        const installCode = runInstall(root);
-        const got = readRootVersion(root);
-        if (installCode !== 0 || got !== targetTag.replace(/^v/, "")) {
-                log(
-                        `unown: ${installCode !== 0 ? "install/build failed" : `version verify failed (expected ${targetTag}, found ${got})`} — rolling back to ${state.from}`,
-                );
-                rollbackTo(root, git, state.fromSha);
-                const back = runInstall(root);
-                writeJsonFile(updateStatePath(home), {
-                        ...state,
-                        ok: false,
-                        rolledBack: true,
-                        completedAt: new Date().toISOString(),
-                });
-                log(
-                        back === 0
-                                ? `· restored ${current} (${headSha.slice(0, 12)})`
-                                : `✗ rollback restored the git tree, but the rebuild failed — re-run: bun run agent:install`,
-                );
-                return 1;
-        }
-
-        writeJsonFile(updateStatePath(home), { ...state, ok: true, completedAt: new Date().toISOString() });
-
-        // User-state migrations (forward-only, non-fatal — a failed cosmetic
-        // migration must never brick the CLI; doctor reports the residue).
-        const mig = await runMigrations(home);
-        if (mig.applied.length) log(`· user state migrated: ${mig.applied.join(", ")} (schema v${mig.version})`);
-        for (const f of mig.failed) log(`⚠ migration "${f.name}" failed: ${f.error} — non-fatal; see unown doctor`);
-
-        // Report.
-        log(`✓ unown updated: ${current} → ${targetTag.replace(/^v/, "")}`);
-        const slice = changelogSlice(root, current, targetTag.replace(/^v/, ""));
-        if (slice.length) {
                 log("");
-                log(slice.join("\n"));
+                log(`  release notes: https://github.com/kanishka-namdeo/Unown/releases/tag/${targetTag}`);
+                log(`  restart any running unown sessions to pick up the new build`);
+                // M8: the engine is a LONG-LIVED process — updating the checkout does
+                // not (and must not) restart it under the user. If one is running, it
+                // is now the OLD build by construction; say so with the one-command
+                // fix instead of letting the skew surface later as a mystery.
+                const engineUp = (await engineHealth(1500)).up;
+                if (engineUp) log(`  engine: still running the OLD build until restarted — unown engine restart`);
+                log(`  rollback anytime: unown update --rollback   (or: unown update ${current})`);
+                return 0;
+        } finally {
+                applyLock.release();
         }
-        log("");
-        log(`  release notes: https://github.com/kanishka-namdeo/Unown/releases/tag/${targetTag}`);
-        log(`  restart any running unown sessions to pick up the new build`);
-        // M8: the engine is a LONG-LIVED process — updating the checkout does
-        // not (and must not) restart it under the user. If one is running, it
-        // is now the OLD build by construction; say so with the one-command
-        // fix instead of letting the skew surface later as a mystery.
-        const engineUp = (await engineHealth(1500)).up;
-        if (engineUp) log(`  engine: still running the OLD build until restarted — unown engine restart`);
-        log(`  rollback anytime: unown update --rollback   (or: unown update ${current})`);
-        return 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -704,159 +832,292 @@ async function cmdUpdateBinary(
         log: (line: string) => void,
 ): Promise<number> {
         const deps = ctx.binary ?? {};
+        const host = ctx.platform ?? process.platform;
+        const platform = deps.platform ?? install.platform ?? detectPlatform({ platform: host });
+        const meta = readInstallMetadata(home);
+        const metadataPlatform = deps.metadataPlatform ?? (meta?.mode === "binary" ? meta.platform : undefined);
+        const musl = deps.musl ?? detectMusl({ platform: host });
+        const gate = platform ? platformGate({ platform, env, metadataPlatform, musl }) : null;
+        const cached = readUpdateCheckCache(home);
 
         if (flags.background) {
                 // Same silent contract as the checkout path: cache only, exit 0.
                 // Checked before --check because the detached child passes both.
-                const res = await checkBinaryUpdate({
-                        current: install.version,
-                        env,
-                        fetch: deps.fetch,
-                        baseUrl: deps.baseUrl,
-                        timeoutMs: deps.timeoutMs,
-                });
-                const cache: UpdateCheckCache = {
-                        checkedAt: new Date().toISOString(),
-                        latest: res.latest ?? "",
-                        remoteUrl: res.remoteUrl ?? undefined,
-                        ...(res.ok ? {} : { error: res.error ?? "check failed" }),
-                };
-                writeJsonFile(updateCheckPath(home), cache);
+                const lock = acquireUpdateLock(home, "check");
+                if (!lock.ok) return 0;
+                try {
+                        const res = await checkBinaryUpdate({
+                                current: install.version,
+                                env,
+                                fetch: deps.fetch,
+                                baseUrl: deps.baseUrl,
+                                timeoutMs: deps.timeoutMs,
+                                platform: platform ?? undefined,
+                                metadataPlatform,
+                                musl,
+                                keys: deps.keys,
+                                ...(cached?.latest ? { cachedLatest: cached.latest } : {}),
+                        });
+                        writeUpdateCheckCache(home, binaryCache(res));
+                } finally {
+                        lock.release();
+                }
                 return 0;
         }
 
-        if (flags.check) return cmdCheckBinary(install, deps, env, log, flags);
+        if (flags.check) return cmdCheckBinary(install, ctx, env, home, log, flags);
 
-        if (flags.rollback) return cmdRollbackBinary(ctx, env, home, log);
+        if (flags.rollback) {
+                const lock = acquireUpdateLock(home, "apply");
+                if (!lock.ok) {
+                        log(`unown: ${lock.error}`);
+                        return 1;
+                }
+                try {
+                        return cmdRollbackBinary(ctx, env, home, log);
+                } finally {
+                        lock.release();
+                }
+        }
 
         const current = install.version;
-        const host = ctx.platform ?? process.platform;
-        const platform = deps.platform ?? install.platform ?? detectPlatform({ platform: host });
         if (!platform) {
                 log(`unown: no release archive for this OS/arch (${host}-${process.arch}).`);
                 return 1;
         }
-        const meta = readInstallMetadata(home);
-        const gate = platformGate({
-                platform,
-                env,
-                metadataPlatform: meta?.mode === "binary" ? meta.platform : undefined,
-                musl: deps.musl ?? detectMusl({ platform: host }),
-        });
         if (gate) {
                 log(`unown: ${gate}`);
                 return 1;
         }
 
-        let target = flags.version ? flags.version.replace(/^v/, "") : null;
-        if (target && !parseSemver(target)) {
-                log(`unown: "${flags.version}" is not a version (expected X.Y.Z)`);
-                return 1;
-        }
-        if (!target) {
-                const latest = await checkLatestVersion({
+        let target: string | null = null;
+        let manifestAsset: ReleaseAsset | undefined;
+        let notesUrl: string | undefined;
+        if (flags.version) {
+                target = flags.version.replace(/^v/, "");
+                if (!parseSemver(target)) {
+                        log(`unown: "${flags.version}" is not a version (expected X.Y.Z)`);
+                        return 1;
+                }
+                const feed = await fetchReleaseFeed({
                         env,
                         baseUrl: deps.baseUrl,
                         fetch: deps.fetch,
+                        version: target,
                         timeoutMs: deps.timeoutMs,
+                        userAgent: `unown/${current}`,
+                        keys: deps.keys,
                 });
-                if (!latest.ok || !latest.latest) {
-                        log(`unown: update check failed — ${latest.error ?? "no version published"}`);
+                if (feed.kind === "error") {
+                        log(`unown: update feed failed — ${feed.error}`);
                         log(`  (offline or unreachable release feed; nothing was changed)`);
                         return 1;
                 }
-                target = latest.latest;
-                if (current !== "unknown" && compareSemver(target, current) <= 0) {
+                if (feed.kind === "manifest") {
+                        manifestAsset = selectReleaseAsset(feed.manifest, platform) ?? undefined;
+                        if (!manifestAsset) {
+                                log(`unown: v${target} has no release archive for ${platform}`);
+                                return 1;
+                        }
+                        notesUrl = feed.manifest.notesUrl ?? undefined;
+                }
+        } else {
+                const res = await checkBinaryUpdate({
+                        current,
+                        env,
+                        fetch: deps.fetch,
+                        baseUrl: deps.baseUrl,
+                        timeoutMs: deps.timeoutMs,
+                        platform,
+                        metadataPlatform,
+                        musl,
+                        keys: deps.keys,
+                        ...(cached?.latest ? { cachedLatest: cached.latest } : {}),
+                });
+                if (!res.ok || !res.latest) {
+                        log(`unown: update check failed — ${res.error ?? "no version published"}`);
+                        log(`  (offline or unreachable release feed; nothing was changed)`);
+                        return 1;
+                }
+                if (!res.applicable) {
+                        log(`unown: v${res.latest} is not installable on ${platform}${res.reason ? ` — ${res.reason}` : ""}`);
+                        return 1;
+                }
+                if (!res.available) {
                         log(`unown is up to date (${current})`);
                         return 0;
                 }
-        } else if (current !== "unknown" && compareSemver(target, current) < 0) {
+                target = res.latest;
+                manifestAsset = res.asset;
+                notesUrl = res.notesUrl ?? undefined;
+        }
+        if (current !== "unknown" && compareSemver(target, current) < 0) {
                 log(`unown: downgrading ${current} → ${target} (explicit request)`);
         }
 
-        const startedAt = new Date().toISOString();
-        log(`· installing unown v${target} (binary, ${platform})…`);
-        const staged = await downloadAndStage({
-                root: install.root,
-                platform,
-                version: target,
-                env,
-                baseUrl: deps.baseUrl,
-                fetch: deps.fetch,
-                extract: deps.extract,
-                verifyBinary: deps.verifyBinary,
-                timeoutMs: deps.timeoutMs,
-                log,
-        });
-        if (!staged.ok) {
-                log(`unown: binary update failed — ${staged.error}`);
-                log(`  the existing install was not changed`);
-                return 1;
-        }
-        const applied = installStaged({
-                stagedDir: staged.stagedDir,
-                tempDir: staged.tempDir,
-                root: install.root,
-                version: target,
-                platform,
-                home,
-                env,
-                previousVersion: current !== "unknown" ? current : undefined,
-                verifyBinary: deps.verifyBinary,
-                log,
-        });
-        if (!applied.ok) {
-                log(`unown: could not activate v${target} — ${applied.error}`);
-                log(`  the existing shim and metadata were left in place`);
-                return 1;
+        if (flags.dryRun) {
+                log(`unown: would install v${target} (binary, ${platform})`);
+                log(
+                        manifestAsset
+                                ? `  archive: ${manifestAsset.name} · ${formatUpdateSize(manifestAsset.size)} · sha256 ${manifestAsset.sha256}`
+                                : `  archive: ${archiveName(platform)} (legacy checksum feed)`,
+                );
+                log("  dry run: nothing was downloaded or changed");
+                return 0;
         }
 
-        writeJsonFile(updateStatePath(home), {
-                from: current,
-                to: target,
-                fromSha: "",
-                startedAt,
-                ok: true,
-                completedAt: new Date().toISOString(),
-        } satisfies UpdateState);
+        const lock = acquireUpdateLock(home, "apply");
+        if (!lock.ok) {
+                log(`unown: ${lock.error}`);
+                return 1;
+        }
+        try {
+                const startedAt = new Date().toISOString();
+                log(`· installing unown v${target} (binary, ${platform})…`);
+                const staged = await downloadAndStage({
+                        root: install.root,
+                        platform,
+                        version: target,
+                        env,
+                        baseUrl: deps.baseUrl,
+                        fetch: deps.fetch,
+                        extract: deps.extract,
+                        verifyBinary: deps.verifyBinary,
+                        timeoutMs: deps.timeoutMs,
+                        archiveTimeoutMs: deps.archiveTimeoutMs,
+                        userAgent: `unown/${current}`,
+                        ...(manifestAsset ? { manifestAsset } : {}),
+                        ...(deps.quarantine ? { quarantine: deps.quarantine } : {}),
+                        log,
+                });
+                if (!staged.ok) {
+                        log(`unown: binary update failed — ${staged.error}`);
+                        log(`  the existing install was not changed`);
+                        return 1;
+                }
+                const applied = installStaged({
+                        stagedDir: staged.stagedDir,
+                        tempDir: staged.tempDir,
+                        root: install.root,
+                        version: target,
+                        platform,
+                        home,
+                        env,
+                        previousVersion: current !== "unknown" ? current : undefined,
+                        verifyBinary: deps.verifyBinary,
+                        log,
+                });
+                if (!applied.ok) {
+                        log(`unown: could not activate v${target} — ${applied.error}`);
+                        log(`  the existing shim and metadata were left in place`);
+                        return 1;
+                }
 
-        const mig = await runMigrations(home);
-        if (mig.applied.length) log(`· user state migrated: ${mig.applied.join(", ")} (schema v${mig.version})`);
-        for (const f of mig.failed) log(`⚠ migration "${f.name}" failed: ${f.error} — non-fatal; see unown doctor`);
+                writeJsonFile(updateStatePath(home), {
+                        from: current,
+                        to: target,
+                        fromSha: "",
+                        startedAt,
+                        ok: true,
+                        completedAt: new Date().toISOString(),
+                        mode: "binary",
+                        platform,
+                } satisfies UpdateState);
 
-        log(`✓ unown updated: ${current} → ${target}`);
-        log("");
-        log(`  release notes: ${redactUrl(releasesBase(env))}/tag/v${target}`);
-        log(`  restart any running unown sessions to pick up the new binary`);
-        log(`  rollback anytime: unown update --rollback`);
-        return 0;
+                const mig = await runMigrations(home);
+                if (mig.applied.length) log(`· user state migrated: ${mig.applied.join(", ")} (schema v${mig.version})`);
+                for (const f of mig.failed) log(`⚠ migration "${f.name}" failed: ${f.error} — non-fatal; see unown doctor`);
+
+                log(`✓ unown updated: ${current} → ${target}`);
+                log("");
+                log(`  release notes: ${notesUrl ?? `${redactUrl(releasesBase(env))}/tag/v${target}`}`);
+                log(`  restart any running unown sessions to pick up the new binary`);
+                log(`  rollback anytime: unown update --rollback`);
+                return 0;
+        } finally {
+                lock.release();
+        }
+}
+
+function binaryCache(res: BinaryCheckResult, checkedAt = new Date().toISOString()): UpdateCheckCache {
+        return {
+                schema: 2,
+                checkedAt,
+                current: res.current,
+                mode: "binary",
+                ...(res.platform ? { platform: res.platform } : {}),
+                latest: res.latest ?? "",
+                applicable: res.applicable,
+                ...(res.reason ? { reason: res.reason } : {}),
+                ...(res.severity ? { severity: res.severity } : {}),
+                ...(res.releasedAt ? { releasedAt: res.releasedAt } : {}),
+                ...(res.requiredMinimumVersion !== undefined ? { requiredMinimumVersion: res.requiredMinimumVersion } : {}),
+                ...(res.notesUrl ? { notesUrl: res.notesUrl } : {}),
+                ...(res.asset && res.asset.size > 0 ? { asset: res.asset } : {}),
+                ...(res.signature ? { signature: res.signature } : {}),
+                ...(res.keyId ? { keyId: res.keyId } : {}),
+                ...(res.latest ? { manifestVersion: res.latest } : {}),
+                ...(res.remoteUrl ? { remoteUrl: res.remoteUrl } : {}),
+                ...(res.error ? { error: res.error } : {}),
+        };
 }
 
 async function cmdCheckBinary(
         install: InstallInfo,
-        deps: NonNullable<UpdateCtx["binary"]>,
+        ctx: UpdateCtx,
         env: NodeJS.ProcessEnv,
+        home: string,
         log: (line: string) => void,
         flags: UpdateFlags,
 ): Promise<number> {
+        const deps = ctx.binary ?? {};
+        const host = ctx.platform ?? process.platform;
+        const platform = deps.platform ?? install.platform ?? detectPlatform({ platform: host });
+        const meta = readInstallMetadata(home);
+        const metadataPlatform = deps.metadataPlatform ?? (meta?.mode === "binary" ? meta.platform : undefined);
+        const musl = deps.musl ?? detectMusl({ platform: host });
+        const cached = readUpdateCheckCache(home);
         const res = await checkBinaryUpdate({
                 current: install.version,
                 env,
                 fetch: deps.fetch,
                 baseUrl: deps.baseUrl,
                 timeoutMs: deps.timeoutMs,
+                platform: platform ?? undefined,
+                metadataPlatform,
+                musl,
+                keys: deps.keys,
+                ...(cached?.latest ? { cachedLatest: cached.latest } : {}),
         });
+        const checkedAt = new Date().toISOString();
+        writeUpdateCheckCache(home, binaryCache(res, checkedAt));
+        const now = Date.now();
+        const prefs = readUpdatePrefs(home);
+        const snoozedUntil = prefs.snoozeUntil && Date.parse(prefs.snoozeUntil) > now ? prefs.snoozeUntil : null;
         if (flags.json) {
                 log(
                         JSON.stringify(
                                 {
+                                        schema: 2,
                                         current: res.current,
                                         latest: res.latest,
                                         available: res.available,
-                                        remoteUrl: res.remoteUrl,
-                                        checkedAt: new Date().toISOString(),
-                                        error: res.error ?? null,
+                                        applicable: res.applicable,
+                                        reason: res.reason ?? null,
                                         mode: "binary",
+                                        platform: res.platform,
+                                        asset: res.asset ?? null,
+                                        signature: res.signature,
+                                        keyId: res.keyId ?? null,
+                                        severity: res.severity ?? null,
+                                        releasedAt: res.releasedAt ?? null,
+                                        requiredMinimumVersion: res.requiredMinimumVersion ?? null,
+                                        notesUrl: res.notesUrl ?? null,
+                                        remoteUrl: res.remoteUrl,
+                                        checkedAt,
+                                        error: res.error ?? null,
+                                        skipped: prefs.skippedVersion === res.latest,
+                                        snoozedUntil,
                                 },
                                 null,
                                 2,
@@ -869,8 +1130,18 @@ async function cmdCheckBinary(
                 log(`  (offline or unreachable release feed; nothing was changed)`);
                 return 1;
         }
+        if (!res.applicable) {
+                log(
+                        `unown ${res.current} — v${res.latest} is not installable on ${res.platform ?? platform ?? "this platform"}` +
+                                `${res.reason ? ` (${res.reason})` : ""}`,
+                );
+                return 0;
+        }
         if (res.available) {
-                log(`unown ${res.current} — update available: ${res.latest}`);
+                log(
+                        `unown ${res.current} — update available: ${res.latest} (${res.platform ?? platform}` +
+                                `${res.asset ? `, ${formatUpdateSize(res.asset.size)}` : ""})`,
+                );
                 log(`  run: unown update`);
                 return 2;
         }
@@ -888,14 +1159,22 @@ function cmdRollbackBinary(ctx: UpdateCtx, env: NodeJS.ProcessEnv, home: string,
                 log,
         });
         if (res.code === 0) {
+                const previous = readJsonFile<UpdateState>(updateStatePath(home));
+                const now = new Date().toISOString();
                 writeJsonFile(updateStatePath(home), {
-                        from: res.from ?? "",
-                        to: res.to ?? "",
-                        fromSha: "",
-                        startedAt: new Date().toISOString(),
+                        ...(previous ?? {
+                                from: res.from ?? "",
+                                to: res.to ?? "",
+                                fromSha: "",
+                                startedAt: now,
+                        }),
                         ok: true,
                         rolledBack: true,
-                        completedAt: new Date().toISOString(),
+                        completedAt: now,
+                        mode: "binary",
+                        rollbackFrom: res.from,
+                        rollbackTo: res.to,
+                        rollbackAt: now,
                 } satisfies UpdateState);
         }
         return res.code;
@@ -915,18 +1194,48 @@ function spawnInstall(root: string, env: NodeJS.ProcessEnv): number {
 }
 
 /** `unown update --check` (+ --json). Exit 0 up-to-date, 2 available, 1 error. */
-function cmdCheck(root: string, git: GitRunner, log: (l: string) => void, flags: UpdateFlags): number {
+function cmdCheck(root: string, home: string, git: GitRunner, log: (l: string) => void, flags: UpdateFlags): number {
         const res = checkForUpdate(root, git);
+        const state = checkoutState(root, git);
+        const checkedAt = new Date().toISOString();
+        const cache: UpdateCheckCache = {
+                schema: 2,
+                checkedAt,
+                current: res.current,
+                mode: "checkout",
+                latest: res.latest ?? "",
+                applicable: res.ok && res.available,
+                reason: res.ok ? (res.available ? "ok" : "up-to-date") : "check-error",
+                ...(res.remoteUrl ? { remoteUrl: res.remoteUrl } : {}),
+                ...(res.ok ? {} : { error: res.error ?? "check failed" }),
+                ...state,
+        };
+        writeUpdateCheckCache(home, cache);
         if (flags.json) {
                 log(
                         JSON.stringify(
                                 {
+                                        schema: 2,
                                         current: res.current,
                                         latest: res.latest,
-                                        available: res.available,
+                                        available: res.ok && res.available,
+                                        applicable: res.ok && res.available,
+                                        reason: cache.reason ?? null,
+                                        mode: "checkout",
+                                        platform: null,
+                                        asset: null,
+                                        signature: null,
+                                        keyId: null,
+                                        severity: null,
+                                        releasedAt: null,
+                                        requiredMinimumVersion: null,
                                         remoteUrl: res.remoteUrl,
-                                        checkedAt: new Date().toISOString(),
+                                        checkedAt,
                                         error: res.error ?? null,
+                                        headBranch: state.headBranch,
+                                        headTag: state.headTag,
+                                        dirty: state.dirty,
+                                        ahead: state.ahead,
                                 },
                                 null,
                                 2,
@@ -994,34 +1303,13 @@ function rollbackTo(root: string, git: GitRunner, sha: string): void {
 // ---------------------------------------------------------------------------
 // Startup notification (TTY-gated, cached, background-refreshed)
 // ---------------------------------------------------------------------------
-export const UPDATE_CHECK_TTL_MS = 24 * 60 * 60 * 1000;
-
-export interface NoticeInput {
-        cache: UpdateCheckCache | null;
-        current: string;
+export interface NoticeOptions {
+        mode?: "tui" | "print";
         env?: NodeJS.ProcessEnv;
-        stdoutIsTty: boolean;
-}
-/** Pure decision — returns the notice lines to print, or null. */
-export function updateNoticeLines(input: NoticeInput): string[] | null {
-        const env = input.env ?? process.env;
-        if (noticeSuppressed(env) || env.CI !== undefined || !input.stdoutIsTty) return null;
-        if (!input.cache?.latest || !parseSemver(input.cache.latest)) return null;
-        if (input.cache.error) return null;
-        if (compareSemver(input.cache.latest, input.current) <= 0) return null;
-        const remote = input.cache.remoteUrl ?? "https://github.com/kanishka-namdeo/Unown";
-        const tag = `v${input.cache.latest}`;
-        // Accepts both `…/repo.git` (checkout remote) and `…/repo/releases`
-        // (the binary release feed) without printing a credential or a mirror
-        // path as if it were github.com.
-        const notes = /github\.com[/:]([^/]+)\/([^/.]+?)(?:\.git)?(?:\/releases)?\/?$/.exec(remote);
-        const url = notes
-                ? `https://github.com/${notes[1]}/${notes[2]}/releases/tag/${tag}`
-                : `https://github.com/kanishka-namdeo/Unown/releases/tag/${tag}`;
-        return [
-                `⚠ update available: unown ${input.current} → ${input.cache.latest}`,
-                `  run \`unown update\` · notes: ${url} · silence: export NO_UPDATE_NOTIFIER=1`,
-        ];
+        home?: string;
+        now?: number;
+        install?: InstallInfo | null;
+        outputIsTty?: boolean;
 }
 
 /** The install the notifier is looking at, without spawning git: the binary
@@ -1031,10 +1319,16 @@ function noticeInstall(env: NodeJS.ProcessEnv): InstallInfo | null {
         const meta = readInstallMetadata(home);
         const inferred = inferBinaryLayout(process.execPath);
         if (inferred || IS_COMPILED_BINARY || env.UNOWN_INSTALL_ROOT || meta?.mode === "binary") {
+                const platform =
+                        meta?.mode === "binary" && meta.platform && (RELEASE_PLATFORMS as readonly string[]).includes(meta.platform)
+                                ? (meta.platform as ReleasePlatform)
+                                : (detectPlatform() ?? undefined);
                 return {
                         mode: "binary",
-                        root: inferred?.root ?? env.UNOWN_INSTALL_ROOT ?? (meta?.mode === "binary" ? meta.root : defaultInstallRoot(env)),
+                        root:
+                                inferred?.root ?? env.UNOWN_INSTALL_ROOT ?? (meta?.mode === "binary" ? meta.root : defaultInstallRoot(env)),
                         version: inferred?.version ?? (meta?.mode === "binary" ? meta.version : "unknown"),
+                        ...(platform ? { platform } : {}),
                 };
         }
         const current = readRootVersion(REPO_GUESS);
@@ -1044,40 +1338,54 @@ function noticeInstall(env: NodeJS.ProcessEnv): InstallInfo | null {
 }
 
 /** Boot hook: print the cached notice + refresh it in the background (detached).
- *  The FULL suppression gate (env opt-outs, CI, TTY) applies to BOTH the
- *  notice and the background spawn — a piped/CI/test run must never spawn
- *  the network child (it also holds the cwd, which broke Windows rmSync in
- *  the golden suite: EBUSY on the temp project dir). */
-export function maybeShowUpdateNotice(): void {
+ *  The suppression gate applies to BOTH the notice and the spawn — a piped/CI/
+ *  test run must never spawn the network child (it also holds the cwd, which
+ *  broke Windows rmSync in the golden suite: EBUSY on the temp project dir).
+ *  Print mode never prints, but an interactive `-p` run may still warm the
+ *  cache for the next TUI. */
+export function maybeShowUpdateNotice(opts: NoticeOptions = {}): void {
         try {
-                if (noticeSuppressed() || process.env.CI !== undefined || !process.stdout.isTTY) return;
-                const home = unownHome();
-                const cache = readJsonFile<UpdateCheckCache>(updateCheckPath(home));
-                const install = noticeInstall(process.env);
+                const env = opts.env ?? process.env;
+                const home = opts.home ?? unownHome(env);
+                const now = opts.now ?? Date.now();
+                const outputIsTty = opts.outputIsTty ?? Boolean(process.stderr.isTTY);
+                if (noticeSuppressed(env) || env.CI !== undefined || env.UNOWN_SUBAGENT === "1" || !outputIsTty) return;
+                const install = opts.install === undefined ? noticeInstall(env) : opts.install;
                 if (!install || install.version === "unknown") return; // no version to compare
-                const lines = updateNoticeLines({ cache, current: install.version, stdoutIsTty: true });
-                if (lines) for (const l of lines) console.error(l);
-                const age = cache?.checkedAt ? Date.now() - Date.parse(cache.checkedAt) : Number.POSITIVE_INFINITY;
-                if (age > UPDATE_CHECK_TTL_MS) spawnBackgroundCheck(home, install.mode);
+                const cache = readUpdateCheckCache(home);
+                const prefs = readUpdatePrefs(home);
+                const status = deriveUpdateStatus({ cache, prefs, install, now });
+                if (opts.mode !== "print") {
+                        const lines = updateNoticeLines({ status, env, outputIsTty, mode: "tui", now });
+                        if (lines) {
+                                for (const line of lines) console.error(line);
+                                writeUpdatePrefs(home, recordNotice(prefs, status, now));
+                        }
+                }
+                if (shouldRefresh(cache, install, now) && !isUpdateLocked(home, "check", now)) {
+                        spawnBackgroundCheck(home, install.mode);
+                }
         } catch {
                 // never let the notifier break a session boot
         }
 }
 
 /** Detached, unref'd child running `unown update --check --background`
- *  (the checkout script, or the running binary itself). */
+ *  (the checkout script, or the running binary itself). The child also takes
+ *  the check lock, so concurrent terminals collapse to one network check. */
 function spawnBackgroundCheck(home: string, mode: InstallMode): void {
         try {
+                if (isUpdateLocked(home, "check")) return;
                 if (mode === "checkout" && !existsSync(join(REPO_GUESS, "bin", "unown"))) return;
                 const env = { ...process.env, UNOWN_HOME: home };
                 const args = [join(REPO_GUESS, "bin", "unown"), "update", "--check", "--background"];
                 const child =
                         mode === "binary"
                                 ? spawn(process.execPath, ["update", "--check", "--background"], {
-                                          stdio: "ignore",
-                                          detached: true,
-                                          env,
-                                  })
+                                                stdio: "ignore",
+                                                detached: true,
+                                                env,
+                                        })
                                 : spawn(process.execPath, args, { stdio: "ignore", detached: true, env });
                 child.unref();
         } catch {
@@ -1122,7 +1430,8 @@ export const UPDATE_HELP = `unown update — check for a newer release and self-
 
 Usage:
   unown update                update to the newest release
-  unown update --check        report only — exit 0 up-to-date, 2 available, 1 error
+  unown update --check        report only — exit 0 up-to-date or not applicable,
+                              2 available, 1 error
   unown update --check --json machine-readable result on stdout
   unown update <version>      install a specific version, e.g. unown update 2.1.0
                               (also the manual rollback path / pinned-install moves)
@@ -1130,6 +1439,10 @@ Usage:
                               (checkout installs only)
   unown update --rollback     undo the last update (checkout: recorded commit;
                               binary: the previous version kept on disk)
+  unown update --dry-run      resolve and print the target, change nothing
+  unown update --skip [v]     stop showing this version (default: cached latest)
+  unown update --unskip       clear the skip and snooze state
+  unown update --snooze <d>   silence notices for a while (30m, 12h, 7d)
 
 How the update works depends on how this unown was installed:
 
@@ -1142,19 +1455,21 @@ How the update works depends on how this unown was installed:
     may advance; any other detached HEAD is pinned until you pass a version.
 
   binary (standalone release download)
-    download unown-<platform>.tar.gz|.zip and sha256sums.txt from the release
-    feed, verify the exact checksum, extract, verify \`unown --version\`, then
-    atomically activate <root>/versions/<version> and rewrite the shim.
+    verify the signed release.json manifest (release.json.sig, Ed25519), select
+    the unown-<platform> asset, verify its size and SHA-256 and \`unown --version\`,
+    then atomically activate <root>/versions/<version> and rewrite the shim.
     No git and no build step; the previous version stays on disk for rollback.
+    Releases without a manifest fall back to version.txt + sha256sums.txt.
 
 Refuses when: the checkout tree is dirty (unless --allow-dirty), a non-release
 detached HEAD has no explicit version, local commits exist that the remote
-lacks, or a binary checksum/version verify fails. Never rebases, merges, or
+lacks, the signed manifest is missing/invalid, the platform has no release
+asset, or a binary checksum/version verify fails. Never rebases, merges, or
 discards your work; a failed binary update leaves the old shim and metadata.
 
 Kill switches:
   UNOWN_DISABLE_UPDATES=1     disable all update paths (org/CI)
-  UNOWN_DISABLE_AUTOUPDATE=1  silence the startup notice only
+  UNOWN_DISABLE_AUTOUPDATE=1  silence the startup notice + background check
   NO_UPDATE_NOTIFIER=1        same, ecosystem-standard name
   DO_NOT_TRACK=1              also suppresses the background update check
 
@@ -1163,47 +1478,69 @@ Binary installs:
                               https://github.com/kanishka-namdeo/Unown/releases)
   UNOWN_ALLOW_EXPERIMENTAL=1  allow the un-smoked windows-arm64 archive
 
-The startup notice is TTY-only, CI-suppressed, cached for 24h in ~/.unown
-(outside the repo), and refreshed by a detached background process. It only
-talks to your git remote (checkout) or the release feed (binary); no telemetry
-of any kind.`;
+The startup notice is stderr-TTY-only, CI/subagent-suppressed, cached for 24h
+in ~/.unown (outside the repo), and refreshed by a detached background process.
+The binary check verifies the signed manifest before trusting any version,
+size or hash. It only talks to your git remote (checkout) or the release feed
+(binary); no telemetry of any kind.`;
 
-/** Parse `unown update` flags; the first bare token is an explicit version. */
+/** Parse `unown update` flags; the first bare token is an explicit version.
+ *  `--skip <version>` consumes that token as the skipped version, not a target. */
 export function parseUpdateFlags(argv: string[]): { flags: UpdateFlags; error?: string } {
         const flags: UpdateFlags = {};
         let version: string | undefined;
-        for (const a of argv) {
+        let skipPending = false;
+        for (let i = 0; i < argv.length; i++) {
+                const a = argv[i];
                 if (a === "--check") flags.check = true;
                 else if (a === "--json") flags.json = true;
                 else if (a === "--background") flags.background = true;
                 else if (a === "--allow-dirty") flags.allowDirty = true;
                 else if (a === "--rollback") flags.rollback = true;
-                else if (a === "--help" || a === "-h") flags.help = true;
-                else if (!a.startsWith("-") && version === undefined && /^[0-9]/.test(a.replace(/^v/, ""))) version = a;
-                else return { flags, error: `unknown argument: ${a}` };
+                else if (a === "--dry-run") flags.dryRun = true;
+                else if (a === "--skip") {
+                        flags.skip = true;
+                        skipPending = true;
+                } else if (a === "--unskip") flags.unskip = true;
+                else if (a === "--snooze") {
+                        const value = argv[++i];
+                        if (!value || value.startsWith("-")) return { flags, error: "--snooze needs a duration like 30m, 12h or 7d" };
+                        flags.snooze = value;
+                } else if (a.startsWith("--snooze=")) {
+                        const value = a.slice("--snooze=".length);
+                        if (!value) return { flags, error: "--snooze needs a duration like 30m, 12h or 7d" };
+                        flags.snooze = value;
+                } else if (a === "--help" || a === "-h") flags.help = true;
+                else if (!a.startsWith("-")) {
+                        const normalized = a.replace(/^v/, "");
+                        if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(normalized)) {
+                                return { flags, error: `unknown argument: ${a}` };
+                        }
+                        if (skipPending) {
+                                flags.skipVersion = normalized;
+                                skipPending = false;
+                        } else if (version === undefined) {
+                                version = a;
+                        } else {
+                                return { flags, error: `unknown argument: ${a}` };
+                        }
+                } else return { flags, error: `unknown argument: ${a}` };
         }
         flags.version = version;
+        const prefActions = Number(Boolean(flags.skip)) + Number(Boolean(flags.unskip)) + Number(flags.snooze !== undefined);
+        if (prefActions > 1) return { flags, error: "choose one of --skip, --unskip or --snooze" };
+        if (prefActions > 0 && (flags.check || flags.background || flags.rollback || flags.version || flags.dryRun)) {
+                return {
+                        flags,
+                        error: "--skip/--unskip/--snooze cannot be combined with --check, --background, --rollback, --dry-run or a target version",
+                };
+        }
         return { flags };
 }
 
 // ---------------------------------------------------------------------------
 // Doctor helpers (no network — the notifier cache only)
 // ---------------------------------------------------------------------------
-export function readUpdateCheckCache(home: string): UpdateCheckCache | null {
-        return readJsonFile<UpdateCheckCache>(updateCheckPath(home));
-}
-
-/** "just now" / "5m ago" / "3h ago" / "2d ago" for an ISO timestamp. */
-export function describeAge(iso: string): string {
-        const t = Date.parse(iso);
-        if (Number.isNaN(t)) return "unknown";
-        const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
-        if (s < 60) return "just now";
-        if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-        if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-        return `${Math.floor(s / 86400)}d ago`;
-}
-
 /** Short HEAD sha for doctor display; null when git is unavailable. */
 export function gitShortSha(root: string, git: GitRunner): string | null {
         const r = git(["rev-parse", "--short", "HEAD"], root);

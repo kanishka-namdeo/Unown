@@ -29,6 +29,7 @@ import {
         parseUpdateFlags,
         pickLatestTag,
         readUpdateCheckCache,
+        readUpdatePrefs,
         redactUrl,
         type UpdateCheckCache,
         type UpdateFlags,
@@ -38,6 +39,7 @@ import {
         updateStatePath,
         updatesHardDisabled,
 } from "../src/update.ts";
+import { deriveUpdateStatus, writeUpdateCheckCache } from "../src/update-status.ts";
 
 // ---------------------------------------------------------------------------
 // Local git plumbing for fixtures (separate from the module under test)
@@ -96,12 +98,12 @@ function capturedLog(): { lines: string[]; log: (l: string) => void } {
 
 async function run(
         flags: UpdateFlags,
-        extra: { runInstall?: (root: string) => number } = {},
+        extra: { runInstall?: (root: string) => number; home?: string } = {},
 ): Promise<{ code: number; lines: string[] }> {
         const { lines, log } = capturedLog();
         const code = await cmdUpdate(flags, {
                 root: WORK,
-                home: TMP,
+                home: extra.home ?? TMP,
                 env: {},
                 git: loggingGit,
                 runInstall: extra.runInstall ?? (() => 0),
@@ -194,6 +196,18 @@ describe("parseUpdateFlags", () => {
                 expect(parseUpdateFlags(["--wat"]).error).toBeDefined();
                 expect(parseUpdateFlags(["--check", "2.1.0", "3.0.0"]).error).toBeDefined(); // second bare token
         });
+        test("preference and dry-run flags", () => {
+                expect(parseUpdateFlags(["--skip"]).flags).toEqual({ skip: true });
+                expect(parseUpdateFlags(["--skip", "0.0.2"]).flags).toEqual({ skip: true, skipVersion: "0.0.2" });
+                expect(parseUpdateFlags(["--snooze", "7d"]).flags).toEqual({ snooze: "7d" });
+                expect(parseUpdateFlags(["--snooze=12h"]).flags).toEqual({ snooze: "12h" });
+                expect(parseUpdateFlags(["--unskip"]).flags).toEqual({ unskip: true });
+                expect(parseUpdateFlags(["--dry-run"]).flags).toEqual({ dryRun: true });
+                expect(parseUpdateFlags(["--snooze"]).error).toBeDefined();
+                expect(parseUpdateFlags(["--skip", "--check"]).error).toBeDefined();
+                expect(parseUpdateFlags(["--skip", "--unskip"]).error).toBeDefined();
+                expect(parseUpdateFlags(["--unskip", "--dry-run"]).error).toBeDefined();
+        });
 });
 
 describe("kill switches", () => {
@@ -217,12 +231,28 @@ describe("kill switches", () => {
 // ---------------------------------------------------------------------------
 describe("updateNoticeLines", () => {
         const cache: UpdateCheckCache = {
+                schema: 2,
                 checkedAt: new Date().toISOString(),
+                current: "2.0.0",
+                mode: "binary",
+                platform: "linux-x64",
                 latest: "2.1.0",
+                applicable: true,
                 remoteUrl: "https://github.com/kanishka-namdeo/Unown.git",
         };
+        const noticeFor = (
+                input: { cache?: UpdateCheckCache | null; current?: string; env?: NodeJS.ProcessEnv; outputIsTty?: boolean } = {},
+        ) => {
+                const current = input.current ?? "2.0.0";
+                const status = deriveUpdateStatus({
+                        cache: input.cache === undefined ? cache : input.cache,
+                        prefs: { schema: 1 },
+                        install: { mode: "binary", version: current, platform: "linux-x64" },
+                });
+                return updateNoticeLines({ status, env: input.env ?? {}, outputIsTty: input.outputIsTty ?? true });
+        };
         test("shows when a newer version is cached", () => {
-                const lines = updateNoticeLines({ cache, current: "2.0.0", env: {}, stdoutIsTty: true });
+                const lines = noticeFor();
                 expect(lines).not.toBeNull();
                 expect(lines?.[0]).toContain("2.0.0");
                 expect(lines?.[0]).toContain("2.1.0");
@@ -230,16 +260,124 @@ describe("updateNoticeLines", () => {
                 expect(lines?.[1]).toContain("releases/tag/v2.1.0");
         });
         test("silent when current, non-tty, CI, opted out, or errored", () => {
-                expect(updateNoticeLines({ cache, current: "2.1.0", env: {}, stdoutIsTty: true })).toBeNull();
-                expect(updateNoticeLines({ cache, current: "2.0.0", env: {}, stdoutIsTty: false })).toBeNull();
-                expect(updateNoticeLines({ cache, current: "2.0.0", env: { CI: "true" }, stdoutIsTty: true })).toBeNull();
-                expect(
-                        updateNoticeLines({ cache, current: "2.0.0", env: { NO_UPDATE_NOTIFIER: "1" }, stdoutIsTty: true }),
-                ).toBeNull();
-                expect(
-                        updateNoticeLines({ cache: { ...cache, error: "offline" }, current: "2.0.0", env: {}, stdoutIsTty: true }),
-                ).toBeNull();
-                expect(updateNoticeLines({ cache: null, current: "2.0.0", env: {}, stdoutIsTty: true })).toBeNull();
+                expect(noticeFor({ cache: { ...cache, current: "2.1.0" }, current: "2.1.0" })).toBeNull();
+                expect(noticeFor({ outputIsTty: false })).toBeNull();
+                expect(noticeFor({ env: { CI: "true" } })).toBeNull();
+                expect(noticeFor({ env: { NO_UPDATE_NOTIFIER: "1" } })).toBeNull();
+                expect(noticeFor({ cache: { ...cache, error: "offline" } })).toBeNull();
+                expect(noticeFor({ cache: null })).toBeNull();
+        });
+});
+
+// ---------------------------------------------------------------------------
+// preference flags + startup hook
+// ---------------------------------------------------------------------------
+describe("update preferences", () => {
+        const cacheFor = (home: string) => {
+                writeUpdateCheckCache(home, {
+                        schema: 2,
+                        checkedAt: new Date().toISOString(),
+                        current: "0.1.0",
+                        mode: "checkout",
+                        latest: "0.2.0",
+                        applicable: true,
+                        headBranch: "main",
+                        headTag: null,
+                        dirty: false,
+                        ahead: 0,
+                });
+        };
+
+        test("--skip uses the cached latest, --snooze records a window, --unskip clears both", async () => {
+                const home = mkdtempSync(join(TMP, "prefs-"));
+                cacheFor(home);
+                expect((await run({ skip: true }, { home })).code).toBe(0);
+                expect(readUpdatePrefs(home).skippedVersion).toBe("0.2.0");
+
+                expect((await run({ snooze: "7d" }, { home })).code).toBe(0);
+                const snoozed = readUpdatePrefs(home).snoozeUntil;
+                expect(snoozed).toBeDefined();
+                expect(Date.parse(snoozed!)).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000);
+
+                expect((await run({ unskip: true }, { home })).code).toBe(0);
+                expect(readUpdatePrefs(home).skippedVersion).toBeUndefined();
+                expect(readUpdatePrefs(home).snoozeUntil).toBeUndefined();
+        });
+
+        test("--skip without a cache and without a version refuses", async () => {
+                const home = mkdtempSync(join(TMP, "prefs-empty-"));
+                const r = await run({ skip: true }, { home });
+                expect(r.code).toBe(1);
+                expect(r.lines.join("\n")).toContain("no cached update to skip");
+        });
+});
+
+describe("maybeShowUpdateNotice", () => {
+        const install = { mode: "binary" as const, root: "/tmp/fake", version: "0.1.0", platform: "linux-x64" as const };
+        const capture = () => {
+                const lines: string[] = [];
+                const original = console.error;
+                console.error = (line: string) => lines.push(String(line));
+                return {
+                        lines,
+                        restore: () => {
+                                console.error = original;
+                        },
+                };
+        };
+        const seed = (home: string) => {
+                writeUpdateCheckCache(home, {
+                        schema: 2,
+                        checkedAt: new Date().toISOString(),
+                        current: "0.1.0",
+                        mode: "binary",
+                        platform: "linux-x64",
+                        latest: "0.2.0",
+                        applicable: true,
+                        asset: { name: "unown-linux-x64.tar.gz", sha256: "a".repeat(64), size: 1024 },
+                });
+        };
+
+        test("prints once, records the notice, and respects print/non-TTY", () => {
+                const home = mkdtempSync(join(TMP, "notice-"));
+                seed(home);
+                const first = capture();
+                try {
+                        maybeShowUpdateNotice({ env: {}, home, install, outputIsTty: true });
+                } finally {
+                        first.restore();
+                }
+                expect(first.lines.join("\n")).toContain("update available");
+                expect(first.lines.join("\n")).toContain("unown update");
+                expect(readUpdatePrefs(home).lastNoticeVersion).toBe("0.2.0");
+
+                const second = capture();
+                try {
+                        maybeShowUpdateNotice({ env: {}, home, install, outputIsTty: true });
+                } finally {
+                        second.restore();
+                }
+                expect(second.lines).toHaveLength(0);
+
+                const printHome = mkdtempSync(join(TMP, "notice-print-"));
+                seed(printHome);
+                const print = capture();
+                try {
+                        maybeShowUpdateNotice({ env: {}, home: printHome, install, outputIsTty: true, mode: "print" });
+                } finally {
+                        print.restore();
+                }
+                expect(print.lines).toHaveLength(0);
+
+                const ttyHome = mkdtempSync(join(TMP, "notice-tty-"));
+                seed(ttyHome);
+                const noTty = capture();
+                try {
+                        maybeShowUpdateNotice({ env: {}, home: ttyHome, install, outputIsTty: false });
+                } finally {
+                        noTty.restore();
+                }
+                expect(noTty.lines).toHaveLength(0);
         });
 });
 
@@ -305,7 +443,33 @@ describe("cmdUpdate against a local git remote", () => {
                 expect(parsed.current).toBe("0.1.0");
                 expect(parsed.latest).toBe("0.4.0");
                 expect(parsed.available).toBe(true);
+                expect(parsed.mode).toBe("checkout");
                 expect(r.code).toBe(2);
+        }, 60_000);
+
+        test("--check writes a schema-2 cache with checkout state", async () => {
+                makeWorkRepo();
+                releaseOnOrigin("0.4.5");
+                const r = await run({ check: true });
+                expect(r.code).toBe(2);
+                expect(readUpdateCheckCache(TMP)).toMatchObject({
+                        schema: 2,
+                        mode: "checkout",
+                        latest: "0.4.5",
+                        applicable: true,
+                        headBranch: "main",
+                        dirty: false,
+                        ahead: 0,
+                });
+        }, 60_000);
+
+        test("--dry-run resolves the target without fetching or moving HEAD", async () => {
+                makeWorkRepo();
+                releaseOnOrigin("0.8.0");
+                const r = await run({ dryRun: true });
+                expect(r.code).toBe(0);
+                expect(r.lines.join("\n")).toContain("would update checkout 0.1.0 → 0.8.0");
+                expect(readRootVersionFile(WORK)).toBe("0.1.0");
         }, 60_000);
 
         test("refuses a dirty tree without --allow-dirty", async () => {

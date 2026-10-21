@@ -23,8 +23,19 @@
  *   metadata       <UNOWN_HOME>/install.json (schema 1)
  */
 import { spawnSync } from "node:child_process";
-import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
+import {
+        chmodSync,
+        closeSync,
+        existsSync,
+        mkdirSync,
+        openSync,
+        readFileSync,
+        readSync,
+        renameSync,
+        rmSync,
+        writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, win32 } from "node:path";
 import { parseSemver } from "./semver.ts";
@@ -102,7 +113,8 @@ export function detectMusl(probe: PlatformProbe = {}): boolean {
         if (os !== "linux") return false;
         const exists = probe.fileExists ?? existsSync;
         const arch = probe.arch ?? process.arch;
-        const loaders = arch === "arm64" ? ["/lib/ld-musl-aarch64.so.1"] : ["/lib/ld-musl-x86_64.so.1", "/lib/ld-musl-x86.so.1"];
+        const loaders =
+                arch === "arm64" ? ["/lib/ld-musl-aarch64.so.1"] : ["/lib/ld-musl-x86_64.so.1", "/lib/ld-musl-x86.so.1"];
         return loaders.some((p) => exists(p)) || exists("/etc/alpine-release");
 }
 
@@ -119,7 +131,11 @@ export function platformGate(input: {
         if (!platform) {
                 return `this OS/arch is not a published release target (${process.platform}-${process.arch})`;
         }
-        if (platform === "windows-arm64" && metadataPlatform !== "windows-arm64" && !/^(1|true|yes)$/i.test(env.UNOWN_ALLOW_EXPERIMENTAL ?? "")) {
+        if (
+                platform === "windows-arm64" &&
+                metadataPlatform !== "windows-arm64" &&
+                !/^(1|true|yes)$/i.test(env.UNOWN_ALLOW_EXPERIMENTAL ?? "")
+        ) {
                 return (
                         "windows-arm64 releases are experimental and un-smoked - " +
                         "set UNOWN_ALLOW_EXPERIMENTAL=1 to install one anyway"
@@ -139,7 +155,10 @@ function homeDir(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string {
         return env.HOME || homedir();
 }
 
-export function defaultInstallRoot(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+export function defaultInstallRoot(
+        env: NodeJS.ProcessEnv = process.env,
+        platform: NodeJS.Platform = process.platform,
+): string {
         if (env.UNOWN_INSTALL_ROOT) return env.UNOWN_INSTALL_ROOT;
         const j = joinFor(platform);
         const home = homeDir(env, platform);
@@ -170,7 +189,10 @@ export function binaryPath(root: string, version: string, platform: string): str
 /** `<root>/versions/<semver>/unown[.exe]` -> {root, version}; null otherwise.
  *  This is the strongest "we are the installed binary" signal: it comes from
  *  process.execPath, which is real in both runtime shapes. */
-export function inferBinaryLayout(execPath: string, platform: NodeJS.Platform = process.platform): { root: string; version: string } | null {
+export function inferBinaryLayout(
+        execPath: string,
+        platform: NodeJS.Platform = process.platform,
+): { root: string; version: string } | null {
         const name = basename(execPath);
         if (!/^unown(\.exe)?$/i.test(name)) return null;
         const vdir = dirname(execPath);
@@ -198,7 +220,8 @@ export function validateInstallMetadata(raw: unknown): InstallMetadata | null {
         const o = raw as Record<string, unknown>;
         if (o.schema !== 1) return null;
         if (o.mode !== "checkout" && o.mode !== "binary") return null;
-        if (!isString(o.version) || !parseSemver(o.version) || !isString(o.root) || !isString(o.bin) || !isString(o.shim)) return null;
+        if (!isString(o.version) || !parseSemver(o.version) || !isString(o.root) || !isString(o.bin) || !isString(o.shim))
+                return null;
         if (!isString(o.installedAt)) return null;
         if (o.platform !== undefined && o.platform !== null && !isString(o.platform)) return null;
         if (o.previousVersion !== undefined && o.previousVersion !== null && !isString(o.previousVersion)) return null;
@@ -255,7 +278,10 @@ export interface ShimPaths {
         all: string[];
 }
 
-export function shimPaths(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): ShimPaths {
+export function shimPaths(
+        env: NodeJS.ProcessEnv = process.env,
+        platform: NodeJS.Platform = process.platform,
+): ShimPaths {
         const j = joinFor(platform);
         const dir = env.UNOWN_BIN_DIR || j(homeDir(env, platform), ".local", "bin");
         if (platform === "win32") {
@@ -441,6 +467,18 @@ export function assetUrl(base: string, platform: ReleasePlatform, version?: stri
 export function checksumsUrl(base: string, version?: string): string {
         if (version) return `${base}/download/v${normalizeVersion(version)}/sha256sums.txt`;
         return `${base}/latest/download/sha256sums.txt`;
+}
+
+/** The signed release manifest and its detached Ed25519 signature. The
+ *  filename literals also live in release-manifest.ts; a test pins them. */
+export function releaseManifestUrl(base: string, version?: string): string {
+        if (version) return `${base}/download/v${normalizeVersion(version)}/release.json`;
+        return `${base}/latest/download/release.json`;
+}
+
+export function releaseSignatureUrl(base: string, version?: string): string {
+        if (version) return `${base}/download/v${normalizeVersion(version)}/release.json.sig`;
+        return `${base}/latest/download/release.json.sig`;
 }
 
 // ---------------------------------------------------------------------------

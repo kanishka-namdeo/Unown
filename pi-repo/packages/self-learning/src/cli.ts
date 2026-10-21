@@ -35,16 +35,51 @@ import {
         SessionManager,
         SettingsManager,
 } from "@earendil-works/pi-coding-agent";
+import { ACP_HELP, runAcpServer } from "./acp.ts";
+import { createUnownAddonsExtension } from "./addons/index.ts";
+import { AUTOMATIONS_USAGE, runAutomationsCommand } from "./automations-cli.ts";
+import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
 import { netBlocked, osSandboxAvailable, resolveBwrapPath, resolveSandboxExecPath } from "./bwrap.ts";
-import { cmdCompletions, COMPLETIONS_HELP } from "./completions.ts";
+import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDir } from "./checkpoints.ts";
+import { installChildReaper } from "./child-reaper.ts";
+import { COMPLETIONS_HELP, cmdCompletions } from "./completions.ts";
+import { DASHBOARD_HELP, runDashboardCommand } from "./dashboard/dashboard-boot.ts";
+import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
+import { engineFetch } from "./engine-auth.ts";
+import { runEngineCommand } from "./engine-cli.ts";
+import { readSpawnState } from "./engine-supervisor.ts";
+import { agentGitSha, codeMtimeMs, compareEngineBuild } from "./engine-version.ts";
+import { createFleetChildExtension } from "./fleet-child.ts";
+import { FLEET_DRAIN_SENTINEL } from "./fleet-runtime.ts";
 import { cmdInfo } from "./info.ts";
 import { generateAgentsMd, shouldOverwriteAgentsMd } from "./init-agents.ts";
-import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
+import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
+import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
+import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
 import { MIGRATIONS, readMigrationState } from "./migrations.ts";
+import {
+        assembleResultJson,
+        captureStdout,
+        createOutputCapture,
+        createOutputCaptureExtension,
+} from "./output-format.ts";
+import { unownVersion } from "./packaging.ts";
+import { createPermissionGate, createPermissionsExtension, permissionsDoctorSummary } from "./permissions.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
-import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
-import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
 import { keyStatusLabel, listProviders, resolveProviderKey } from "./providers.ts";
+import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
+import { RECIPES_USAGE, runRecipesCommand } from "./recipes-cli.ts";
+import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
+import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
+import { createSplitViewExtension } from "./splitview.ts";
+import {
+        applyEffortToEnv,
+        parseSubagentFlags,
+        SUBAGENT_MCP_SERVERS_ENV,
+        SUBAGENT_MODEL_ENV,
+        SUBAGENT_NO_AGENTS_MD_ENV,
+        type SubagentEffort,
+} from "./subagent-routing.ts";
 import {
         deliverTerminalNote,
         ENGINE_URL,
@@ -60,56 +95,28 @@ import {
         UNOWN_HOME,
         unownAgentDirInit,
 } from "./term.ts";
-import { readSpawnState } from "./engine-supervisor.ts";
-import { agentGitSha, codeMtimeMs, compareEngineBuild } from "./engine-version.ts";
-import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDir } from "./checkpoints.ts";
-import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
-import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
-import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
-import { runAutomationsCommand, AUTOMATIONS_USAGE } from "./automations-cli.ts";
-import { runEngineCommand } from "./engine-cli.ts";
-import { runUsageCommand, USAGE_HELP } from "./usage-cli.ts";
-import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
-import { runRecipesCommand, RECIPES_USAGE } from "./recipes-cli.ts";
-import { runWikiCommand, WIKI_USAGE } from "./wiki-cli.ts";
-import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
-import { engineFetch } from "./engine-auth.ts";
-import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
-import { installChildReaper } from "./child-reaper.ts";
-import { createSplitViewExtension } from "./splitview.ts";
-import { createPermissionsExtension, createPermissionGate, permissionsDoctorSummary } from "./permissions.ts";
-import { assembleResultJson, captureStdout, createOutputCapture, createOutputCaptureExtension } from "./output-format.ts";
-import { ACP_HELP, runAcpServer } from "./acp.ts";
 import { createTerminalExtension } from "./termhooks.ts";
 import { createUnownToolsExtension } from "./tools.ts";
-import { createUnownAddonsExtension } from "./addons/index.ts";
-import { createFleetChildExtension } from "./fleet-child.ts";
-import { FLEET_DRAIN_SENTINEL } from "./fleet-runtime.ts";
-import { unownVersion } from "./packaging.ts";
-import {
-        applyEffortToEnv,
-        parseSubagentFlags,
-        SUBAGENT_MCP_SERVERS_ENV,
-        SUBAGENT_MODEL_ENV,
-        SUBAGENT_NO_AGENTS_MD_ENV,
-        type SubagentEffort,
-} from "./subagent-routing.ts";
 import { cmdUninstall, findShims, parseUninstallFlags, UNINSTALL_HELP } from "./uninstall.ts";
 import {
         cmdChangelog,
         cmdUpdate,
         compareSemver,
         describeAge,
+        formatUpdateSize,
         gitShortSha,
         maybeShowUpdateNotice,
         parseUpdateFlags,
         readUpdateCheckCache,
+        readUpdatePrefs,
         realGit,
         resolveInstallInfo,
         resolveRepoRoot,
         UPDATE_HELP,
 } from "./update.ts";
-import { runDashboardCommand, DASHBOARD_HELP } from "./dashboard/dashboard-boot.ts";
+import { runUsageCommand, USAGE_HELP } from "./usage-cli.ts";
+import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
+import { runWikiCommand, WIKI_USAGE } from "./wiki-cli.ts";
 
 /** Unown's version — the value the release-artifact build injected, else the
  *  ROOT package.json (the source of truth CI asserts against). "unknown" when
@@ -190,7 +197,8 @@ Usage:
   unown note "text"        deliver a session note to the engine
   unown update            check for a newer release and self-update
                            --check (report only; exit 2 when available),
-                           --json, --allow-dirty, --rollback, or a version:
+                           --json, --allow-dirty, --rollback, --dry-run,
+                           --skip/--unskip/--snooze, or a version:
                            unown update 2.1.0 (also pins/rolls back)
   unown changelog [n]     print the latest CHANGELOG.md sections (default 1)
   unown completions <sh>  bash | zsh | fish | powershell completion script
@@ -373,7 +381,8 @@ export function parseArgs(argv: string[]): CliArgs {
         let provider: string | undefined;
         for (let i = 0; i < argvRest.length; i++) {
                 const a = argvRest[i];
-                if (a === "--help" || a === "-h") return { command: "help", verbose, jsonMode, noSession, plan, noSplit, goal, outputFormat };
+                if (a === "--help" || a === "-h")
+                        return { command: "help", verbose, jsonMode, noSession, plan, noSplit, goal, outputFormat };
                 if (a === "--print" || a === "-p") {
                         print = true;
                         continue;
@@ -673,10 +682,10 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                         extensionFlagValues:
                                 bootOpts.plan || bootOpts.goal || bootOpts.noSplit
                                         ? new Map<string, boolean | string>([
-                                                  ...(bootOpts.plan ? ([["plan", true]] as Array<[string, boolean | string]>) : []),
-                                                  ...(bootOpts.goal ? ([["goal", bootOpts.goal]] as Array<[string, boolean | string]>) : []),
-                                                  ...(bootOpts.noSplit ? ([["no-split", true]] as Array<[string, boolean | string]>) : []),
-                                          ])
+                                                        ...(bootOpts.plan ? ([["plan", true]] as Array<[string, boolean | string]>) : []),
+                                                        ...(bootOpts.goal ? ([["goal", bootOpts.goal]] as Array<[string, boolean | string]>) : []),
+                                                        ...(bootOpts.noSplit ? ([["no-split", true]] as Array<[string, boolean | string]>) : []),
+                                                ])
                                         : undefined,
                         resourceLoaderOptions: {
                                 extensionFactories: [
@@ -761,7 +770,9 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                         modelRuntime: services.modelRuntime,
                                 });
                                 if (resolved.error) {
-                                        console.error(`unown: ${[bootOpts.provider && `--provider ${bootOpts.provider}`, bootOpts.model && `--model ${bootOpts.model}`].filter(Boolean).join(" ")}: ${resolved.error}`);
+                                        console.error(
+                                                `unown: ${[bootOpts.provider && `--provider ${bootOpts.provider}`, bootOpts.model && `--model ${bootOpts.model}`].filter(Boolean).join(" ")}: ${resolved.error}`,
+                                        );
                                         return undefined;
                                 }
                                 if (resolved.warning) console.error(`unown: ${resolved.warning}`);
@@ -1135,11 +1146,48 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                 : `${shown}${short ? ` · ${short}` : ""} · ${root ?? "(not a git checkout)"}`,
                 );
                 const cache = readUpdateCheckCache(UNOWN_HOME);
-                if (cache?.latest && compareSemver(cache.latest, shown) > 0) {
+                const prefs = readUpdatePrefs(UNOWN_HOME);
+                const snoozedUntil = prefs.snoozeUntil && Date.parse(prefs.snoozeUntil) > Date.now() ? prefs.snoozeUntil : null;
+                const skipped = Boolean(cache?.latest && prefs.skippedVersion === cache.latest);
+                const staleCache = Boolean(
+                        cache &&
+                                (cache.legacy === true ||
+                                        cache.current !== shown ||
+                                        (install && cache.mode !== install.mode) ||
+                                        (cache.platform !== undefined &&
+                                                install?.platform !== undefined &&
+                                                cache.platform !== install.platform)),
+                );
+                if (cache?.error) {
                         check(
                                 "update available",
                                 false,
-                                `v${cache.latest} — run \`unown update\` (checked ${cache.checkedAt ? describeAge(cache.checkedAt) : "?"})`,
+                                `check failed — ${cache.error} (checked ${cache.checkedAt ? describeAge(cache.checkedAt) : "?"})`,
+                                "warn",
+                        );
+                } else if (staleCache) {
+                        check(
+                                "update available",
+                                true,
+                                `${cache?.legacy ? "legacy" : "stale"} cache (checked ${cache?.checkedAt ? describeAge(cache.checkedAt) : "?"}) — run \`unown update --check\``,
+                        );
+                } else if (skipped) {
+                        check("update available", true, `v${cache?.latest} skipped (\`unown update --unskip\`)`);
+                } else if (snoozedUntil) {
+                        check("update available", true, `notices snoozed until ${snoozedUntil}`);
+                } else if (cache?.latest && cache.applicable === false) {
+                        check(
+                                "update available",
+                                true,
+                                `latest v${cache.latest} is not installable here${cache.reason ? ` (${cache.reason})` : ""}`,
+                        );
+                } else if (cache?.latest && compareSemver(cache.latest, shown) > 0) {
+                        const scope = cache.mode === "checkout" ? " · source checkout" : cache.platform ? ` · ${cache.platform}` : "";
+                        const size = cache.asset ? ` · ${formatUpdateSize(cache.asset.size)}` : "";
+                        check(
+                                "update available",
+                                false,
+                                `v${cache.latest}${scope}${size} — run \`unown update\` (checked ${cache.checkedAt ? describeAge(cache.checkedAt) : "?"})`,
                                 "warn",
                         );
                 } else {
@@ -1251,8 +1299,8 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                                 body.upstream?.ok === false
                                                         ? fbServing
                                                                 ? `upstream unhealthy (${body.upstream.status ?? "no answer"}) — FAILOVER ACTIVE: ${
-                                                                          body.fallback?.model ?? "the fallback model"
-                                                                  } via ${body.fallback?.url ?? "the fallback"} is serving`
+                                                                                body.fallback?.model ?? "the fallback model"
+                                                                        } via ${body.fallback?.url ?? "the fallback"} is serving`
                                                                 : `upstream unhealthy (${body.upstream.status ?? "no answer"}) — check BRIDGE_UPSTREAM_URL`
                                                         : `${body.requests ?? 0} requests, ${body.errors ?? 0} errors${fbNote}`,
                                         );
@@ -1296,8 +1344,8 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                         // kimi-k2.5 as its default.
                                         const staleKnown = Array.isArray(body.staleKnownModels)
                                                 ? (body.staleKnownModels as unknown[]).filter(
-                                                            (m): m is string => typeof m === "string" && m.length > 0,
-                                                    )
+                                                                (m): m is string => typeof m === "string" && m.length > 0,
+                                                        )
                                                 : [];
                                         if (staleKnown.length > 0) {
                                                 check(
@@ -1423,9 +1471,17 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                 Date.now(),
                         );
                         if (cmp.verdict === "fresh") {
-                                check("engine version", true, `v${engineVer?.version ?? "?"}${engineVer?.gitSha ? ` (${engineVer.gitSha})` : ""}`);
+                                check(
+                                        "engine version",
+                                        true,
+                                        `v${engineVer?.version ?? "?"}${engineVer?.gitSha ? ` (${engineVer.gitSha})` : ""}`,
+                                );
                         } else if (cmp.verdict === "unknown") {
-                                check("engine version", true, "engine predates version reporting — restart to update: unown engine restart");
+                                check(
+                                        "engine version",
+                                        true,
+                                        "engine predates version reporting — restart to update: unown engine restart",
+                                );
                         } else if (cmp.verdict === "ahead") {
                                 check(
                                         "engine version",
@@ -1518,7 +1574,11 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                 "warn",
                         );
                 } else {
-                        check("MCP config", true, mcpNames.length > 0 ? serverDetail : "no servers configured (optional — unown mcp add)");
+                        check(
+                                "MCP config",
+                                true,
+                                mcpNames.length > 0 ? serverDetail : "no servers configured (optional — unown mcp add)",
+                        );
                 }
 
                 // 6c. unown state — checkpoint blob store size + receipts +
@@ -1569,8 +1629,7 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                 {
                         const wc = webCacheStats();
                         const lookups = wc.totals.hit + wc.totals.revalidated + wc.totals.miss;
-                        const hitRate =
-                                lookups > 0 ? Math.round(((wc.totals.hit + wc.totals.revalidated) / lookups) * 100) : null;
+                        const hitRate = lookups > 0 ? Math.round(((wc.totals.hit + wc.totals.revalidated) / lookups) * 100) : null;
                         webCacheSummary = {
                                 enabled: wc.enabled,
                                 root: wc.root,
@@ -1759,7 +1818,7 @@ it in-session). This is the CLI twin of the /blame slash command.`,
                 const filesLines =
                         files.length > 0
                                 ? files.map((f) => `- ${f}`).join("\n") +
-                                  (summary.filesTouched.length > 40 ? `\n- …and ${summary.filesTouched.length - 40} more` : "")
+                                        (summary.filesTouched.length > 40 ? `\n- …and ${summary.filesTouched.length - 40} more` : "")
                                 : "(no files written yet)";
                 console.log(
                         `Blame summary — ${summary.totalEntries} tool call(s) across receipts.\n\nBy tool:\n${toolLines || "(none)"}\n\nFiles written/edited:\n${filesLines}`,
@@ -1839,14 +1898,15 @@ function installPrintStallWatchdog(runtime: any): void {
                                 } catch {
                                         /* best effort */
                                 }
-                                off = typeof s.subscribe === "function"
-                                        ? s.subscribe((event: any) => {
-                                                        arm();
-                                                        // Final completion: an agent_end that will not retry.
-                                                        // The answer is written; only teardown remains.
-                                                        if (event?.type === "agent_end" && !event?.willRetry) armHardExit();
-                                                })
-                                        : null;
+                                off =
+                                        typeof s.subscribe === "function"
+                                                ? s.subscribe((event: any) => {
+                                                                arm();
+                                                                // Final completion: an agent_end that will not retry.
+                                                                // The answer is written; only teardown remains.
+                                                                if (event?.type === "agent_end" && !event?.willRetry) armHardExit();
+                                                        })
+                                                : null;
                         }
                 }, 1_000);
                 poll.unref?.();
@@ -1861,7 +1921,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         // unreachable or rejects credentials (stderr — stdout may carry the
         // JSON event stream in --mode json).
         await ensureUnownAgentDirInfoAsync();
-        maybeShowUpdateNotice();
+        maybeShowUpdateNotice({ mode: "print" });
         // The pin for pre-flight: --provider wins; else the --model string's
         // provider prefix; else the registry default (inside runPreflight).
         const pre = await runPreflight(args.provider ?? args.model);
@@ -2012,7 +2072,12 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
         // the seeded bridge + the first-run banner.
         const init = unownAgentDirInit();
         if (init?.created && process.stdin.isTTY && process.stdout.isTTY && !bootOpts.provider && !bootOpts.model) {
-                if (promptYesNo("\nFirst run — connect a model provider now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  n = use the bundled bridge for now", true)) {
+                if (
+                        promptYesNo(
+                                "\nFirst run — connect a model provider now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  n = use the bundled bridge for now",
+                                true,
+                        )
+                ) {
                         const code = await runSetupCommand([]);
                         if (code === 0) console.log("\nStarting the session with your provider…\n");
                         else console.log("\nContinuing with the bundled bridge (re-run `unown setup` anytime)…\n");
@@ -2342,7 +2407,10 @@ export async function runCli(argv: string[]) {
                 const { flags, error } = parseUpdateFlags(argv.slice(1));
                 if (error) {
                         console.error(`unown update: ${error}`);
-                        console.error("usage: unown update [--check] [--json] [--allow-dirty] [--rollback] [version]");
+                        console.error(
+                                "usage: unown update [--check] [--json] [--allow-dirty] [--rollback] [--dry-run] " +
+                                        "[--skip [version]] [--unskip] [--snooze <duration>] [version]",
+                        );
                         process.exit(1);
                 }
                 if (flags.help) {
@@ -2368,14 +2436,43 @@ export async function runCli(argv: string[]) {
         // non-command-like words still start a session, exactly as before.
         {
                 const KNOWN_COMMANDS = new Set([
-                        "help", "setup", "providers", "models", "doctor", "info", "init-agents",
-                        "doctor-instructions", "mcp", "engine", "automations", "usage", "webcache",
-                        "blame", "sessions", "recipes", "wiki", "completions", "acp", "uninstall",
-                        "update", "changelog", "init", "memory", "note",
+                        "help",
+                        "setup",
+                        "providers",
+                        "models",
+                        "doctor",
+                        "info",
+                        "init-agents",
+                        "doctor-instructions",
+                        "mcp",
+                        "engine",
+                        "automations",
+                        "usage",
+                        "webcache",
+                        "blame",
+                        "sessions",
+                        "recipes",
+                        "wiki",
+                        "completions",
+                        "acp",
+                        "uninstall",
+                        "update",
+                        "changelog",
+                        "init",
+                        "memory",
+                        "note",
                 ]);
                 const VALUE_FLAGS = new Set([
-                        "--mode", "--session", "--output-format", "--goal", "--tools",
-                        "--append-system-prompt", "--model", "--effort", "--mcp-servers", "--provider",
+                        "--mode",
+                        "--session",
+                        "--output-format",
+                        "--goal",
+                        "--tools",
+                        "--append-system-prompt",
+                        "--model",
+                        "--effort",
+                        "--mcp-servers",
+                        "--provider",
                 ]);
                 const positionals: string[] = [];
                 let sawFlag = false;

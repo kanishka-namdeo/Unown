@@ -34,42 +34,71 @@
  * too.
  */
 import { spawn } from "node:child_process";
-import { type Dirent, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+        type Dirent,
+        existsSync,
+        mkdtempSync,
+        readdirSync,
+        readFileSync,
+        rmSync,
+        statSync,
+        writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { type ExtensionAPI, type ExtensionUIContext, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Key, stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { foregroundTodosForGoalGate } from "./addons/todo.ts";
+import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
+import { receiptsDir } from "./checkpoints.ts";
 import { trustBypassed } from "./config-trust.ts";
-import { IS_COMPILED_BINARY, isBunVirtualPath } from "./packaging.ts";
-import { emitTerminalHookEvent } from "./termhooks.ts";
-import {
-    characterForLine,
-    countErrors,
-    languageFromPath,
-    LspManager,
-    readLineText,
-    renderDiagnostics,
-    renderLocations,
-    resolveLspConfig,
-    trustProjectLspConfig,
-} from "./lsp.ts";
-import { deliverTerminalNote, ENGINE_URL, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
+import { composeTaskWithBrief, summarizeParentContext } from "./context-brief.ts";
+import { registerContextTools } from "./context-tools.ts";
+import { DashboardApp } from "./dashboard/dashboard-app.ts";
+import { DashboardStore } from "./dashboard/dashboard-data.ts";
+import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
 import { engineFetch } from "./engine-auth.ts";
 import { getEngineStatusInfo } from "./engine-status.ts";
-import {
-    checkGoalCompletion,
-    goalContextMessage,
-    hasGoalTag,
-    type GoalState,
-    parseGoalCommand,
-    parseGoalEntry,
-    renderGoalStatus,
-} from "./goal.ts";
-import { checkSchemaShape, SchemaError, type SchemaIssue, validateJsonSchema } from "./jsonschema.ts";
-import { assistantTextOf } from "./messages.ts";
+import { FleetManager, type FleetSpawnRequest, registerFleetSurface } from "./fleet-runtime.ts";
 import { registerGitTools } from "./gittools.ts";
+import {
+        checkGoalCompletion,
+        type GoalState,
+        goalContextMessage,
+        hasGoalTag,
+        parseGoalCommand,
+        parseGoalEntry,
+        renderGoalStatus,
+} from "./goal.ts";
+import { generateAgentsMd } from "./init-agents.ts";
+import { checkSchemaShape, SchemaError, type SchemaIssue, validateJsonSchema } from "./jsonschema.ts";
+import { chatText } from "./llm.ts";
+import {
+        characterForLine,
+        countErrors,
+        LspManager,
+        languageFromPath,
+        readLineText,
+        renderDiagnostics,
+        renderLocations,
+        resolveLspConfig,
+        trustProjectLspConfig,
+} from "./lsp.ts";
+import { assistantTextOf } from "./messages.ts";
+import {
+        isProviderStyleFailure,
+        loadModelHealth,
+        markModelUnhealthy,
+        saveModelHealth,
+        trimUnhealthyLeading,
+} from "./model-health.ts";
+import { IS_COMPILED_BINARY, isBunVirtualPath } from "./packaging.ts";
+import { postPrComment } from "./pr-review.ts";
+import { providersArgumentCompletions, runProvidersCommand } from "./providers-command.ts";
+import { loadRecipes, parseRecipe, runRecipe, userRecipesDir } from "./recipes.ts";
+import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
 import {
         buildReviewerTask,
         captureReviewTarget,
@@ -80,17 +109,10 @@ import {
         reviewerAgent,
         saveReviewArtifact,
 } from "./review.ts";
-import { fetchPageContent, registerWebTools } from "./websearch.ts";
-import { registerContextTools } from "./context-tools.ts";
-import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
+import { ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
 import {
-        BACKGROUND_EXPLORE_AGENT,
-        buildSubagentArgs,
-        parseAgentFrontmatterExtras,
-        type SubagentEffort,
-        type SubagentRoutingFields,
-} from "./subagent-routing.ts";
-import {
+        type CatalogAgent,
+        type CatalogFields,
         CHILD_BOUNDARY_INSTRUCTIONS,
         COMPLETION_GUARD_FAILURE,
         DELEGATION_LEVEL_ENV,
@@ -101,31 +123,27 @@ import {
         renderAdvertisedCatalog,
         snapshotWorkingTree,
         treeMutated,
-        type CatalogAgent,
-        type CatalogFields,
 } from "./subagent-catalog.ts";
-import { ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
-import { FleetManager, registerFleetSurface, type FleetSpawnRequest } from "./fleet-runtime.ts";
-import { composeTaskWithBrief, summarizeParentContext } from "./context-brief.ts";
-import { chatText } from "./llm.ts";
-import { DashboardApp } from "./dashboard/dashboard-app.ts";
-import { DashboardStore } from "./dashboard/dashboard-data.ts";
 import {
-        isProviderStyleFailure,
-        loadModelHealth,
-        markModelUnhealthy,
-        saveModelHealth,
-        trimUnhealthyLeading,
-} from "./model-health.ts";
-import { generateAgentsMd } from "./init-agents.ts";
-import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
-import { postPrComment } from "./pr-review.ts";
-import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
-import { receiptsDir } from "./checkpoints.ts";
-import { loadRecipes, parseRecipe, runRecipe, userRecipesDir } from "./recipes.ts";
-import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
-import { foregroundTodosForGoalGate } from "./addons/todo.ts";
-import { providersArgumentCompletions, runProvidersCommand } from "./providers-command.ts";
+        BACKGROUND_EXPLORE_AGENT,
+        buildSubagentArgs,
+        parseAgentFrontmatterExtras,
+        type SubagentEffort,
+        type SubagentRoutingFields,
+} from "./subagent-routing.ts";
+import { deliverTerminalNote, ENGINE_URL, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
+import { emitTerminalHookEvent } from "./termhooks.ts";
+import {
+        cheapInstallStatus,
+        deriveUpdateStatus,
+        noticeSuppressed,
+        readUpdateCheckCache,
+        readUpdatePrefs,
+        unownHome,
+        updateChipLine,
+} from "./update-status.ts";
+import { fetchPageContent, registerWebTools } from "./websearch.ts";
+import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
 
 // ---------------------------------------------------------------------------
 // Subagent color lanes (beauty-4)
@@ -1115,7 +1133,8 @@ const TaskParams = Type.Object({
         ),
         name: Type.Optional(
                 Type.String({
-                        description: 'Label for this subagent in the fleet (async mode) — steer/resume it by this name later, e.g. "scout" or "refactor-ast". Auto-deduplicated (scout, scout-2, …).',
+                        description:
+                                'Label for this subagent in the fleet (async mode) — steer/resume it by this name later, e.g. "scout" or "refactor-ast". Auto-deduplicated (scout, scout-2, …).',
                 }),
         ),
         tasks: Type.Optional(
@@ -1205,6 +1224,64 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 let executionMode = false;
                 let planItems: PlanStep[] = [];
                 let toolsBeforePlanMode: string[] | undefined;
+
+                // ---- update chip (startup line + footer status, cached only)
+                let updateChipTimer: ReturnType<typeof setInterval> | null = null;
+                let lastUpdateChip: string | undefined;
+                const refreshUpdateChip = (ctx: any): void => {
+                        try {
+                                if (!ctx?.hasUI || ctx.mode !== "tui") return;
+                                if (noticeSuppressed()) {
+                                        if (lastUpdateChip !== undefined) {
+                                                setStatusLine(ctx, "update", undefined);
+                                                lastUpdateChip = undefined;
+                                        }
+                                        return;
+                                }
+                                const install = cheapInstallStatus();
+                                if (install.mode !== "binary") {
+                                        if (lastUpdateChip !== undefined) {
+                                                setStatusLine(ctx, "update", undefined);
+                                                lastUpdateChip = undefined;
+                                        }
+                                        return;
+                                }
+                                const status = deriveUpdateStatus({
+                                        cache: readUpdateCheckCache(unownHome()),
+                                        prefs: readUpdatePrefs(unownHome()),
+                                        install,
+                                });
+                                const line = updateChipLine(status);
+                                if (line !== lastUpdateChip) {
+                                        setStatusLine(ctx, "update", line);
+                                        lastUpdateChip = line;
+                                }
+                        } catch {
+                                /* the footer is cosmetic */
+                        }
+                };
+                const armUpdateChip = (ctx: any): void => {
+                        if (updateChipTimer) {
+                                clearInterval(updateChipTimer);
+                                updateChipTimer = null;
+                        }
+                        lastUpdateChip = undefined;
+                        if (isSubagent || !ctx?.hasUI || ctx.mode !== "tui") {
+                                setStatusLine(ctx, "update", undefined);
+                                return;
+                        }
+                        // The footer is cleared on session invalidation, but an
+                        // explicit clear keeps a re-armed session honest even if
+                        // the runtime kept the old row.
+                        setStatusLine(ctx, "update", undefined);
+                        refreshUpdateChip(ctx);
+                        // The detached check writes the cache; polling is how the
+                        // chip sees it without an IPC channel. setStatusLine is
+                        // transition-guarded, so an unchanged value never repaints.
+                        const timer = setInterval(() => refreshUpdateChip(ctx), 5000);
+                        (timer as { unref?: () => void }).unref?.();
+                        updateChipTimer = timer;
+                };
 
                 // ---- goal state (zcode Goal Mode / muse goals port — see goal.ts)
                 let goal: GoalState | null = null;
@@ -1707,14 +1784,19 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 return {
                                         ok: false,
                                         status: 0,
-                                        data: { error: `the self-learning engine is not reachable at ${ENGINE_URL} — automations need the engine (unown engine start)` },
+                                        data: {
+                                                error: `the self-learning engine is not reachable at ${ENGINE_URL} — automations need the engine (unown engine start)`,
+                                        },
                                 };
                         }
                 };
                 const ENGINE_DOWN_HINT =
                         "the self-learning engine is not reachable — automations need the engine (unown engine start); this session's chat is unaffected";
 
-                const AutomationListParams = Type.Object({}, { description: "List the project's scheduled automations (needs the engine running)." });
+                const AutomationListParams = Type.Object(
+                        {},
+                        { description: "List the project's scheduled automations (needs the engine running)." },
+                );
                 const AutomationCreateParams = Type.Object({
                         title: Type.String({
                                 description: "Short title preserving the user's scheduling phrase verbatim (e.g. 'weekday 9am dev brief')",
@@ -1725,11 +1807,15 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         }),
                         cron: Type.Optional(
                                 Type.String({
-                                        description: 'Standard 5-field cron expression in the user\'s LOCAL timezone (minute hour day-of-month month day-of-week), e.g. "0 9 * * 1-5". Do not convert to UTC.',
+                                        description:
+                                                'Standard 5-field cron expression in the user\'s LOCAL timezone (minute hour day-of-month month day-of-week), e.g. "0 9 * * 1-5". Do not convert to UTC.',
                                 }),
                         ),
                         delay_minutes: Type.Optional(
-                                Type.Number({ description: "One-shot alternative to cron: run once after N minutes (1..525600). Pass either cron or delay_minutes, not both." }),
+                                Type.Number({
+                                        description:
+                                                "One-shot alternative to cron: run once after N minutes (1..525600). Pass either cron or delay_minutes, not both.",
+                                }),
                         ),
                         mode: Type.Optional(
                                 StringEnum(["read-only", "standard"] as const, {
@@ -1737,7 +1823,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 'Permission for the unattended run: "read-only" (default — the run gets read/grep/find/ls/lsp/fetch_url tools only, no shell or writes) or "standard" (the full session toolset; choose deliberately).',
                                 }),
                         ),
-                        max_runs: Type.Optional(Type.Number({ description: "Stop after N scheduled runs (optional; manual runs never consume the budget)" })),
+                        max_runs: Type.Optional(
+                                Type.Number({
+                                        description: "Stop after N scheduled runs (optional; manual runs never consume the budget)",
+                                }),
+                        ),
                 });
                 const AutomationUpdateParams = Type.Object({
                         id: Type.String({ description: "Automation id from automation_list" }),
@@ -1745,9 +1835,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         prompt: Type.Optional(Type.String()),
                         cron: Type.Optional(Type.String({ description: "New 5-field cron (local timezone)" })),
                         mode: Type.Optional(StringEnum(["read-only", "standard"] as const)),
-                        lifecycle: Type.Optional(StringEnum(["active", "paused"] as const, { description: "Pause/resume the schedule" })),
+                        lifecycle: Type.Optional(
+                                StringEnum(["active", "paused"] as const, { description: "Pause/resume the schedule" }),
+                        ),
                 });
-                const AutomationDeleteParams = Type.Object({ id: Type.String({ description: "Automation id from automation_list" }) });
+                const AutomationDeleteParams = Type.Object({
+                        id: Type.String({ description: "Automation id from automation_list" }),
+                });
 
                 pi.registerTool({
                         name: "automation_list",
@@ -1762,7 +1856,14 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         (a: any) => a?.workspace === opts.cwd || a?.workspace === resolve(opts.cwd),
                                 );
                                 if (mine.length === 0) {
-                                        return { content: [{ type: "text", text: "No automations in this project. Create one with automation_create (or `unown automations create`)." }] };
+                                        return {
+                                                content: [
+                                                        {
+                                                                type: "text",
+                                                                text: "No automations in this project. Create one with automation_create (or `unown automations create`).",
+                                                        },
+                                                ],
+                                        };
                                 }
                                 const lines = mine.map(
                                         (a: any) =>
@@ -1796,7 +1897,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 mode: params.mode ?? "read-only",
                                                 maxRuns: params.max_runs ?? null,
                                         });
-                                        if (!res.ok) return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
+                                        if (!res.ok)
+                                                return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
                                         const a = res.data.automation;
                                         const when = a.next_run_at ? `next run ${new Date(a.next_run_at).toLocaleString()}` : "scheduled";
                                         return {
@@ -1809,7 +1911,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         };
                                 },
                                 renderCall(args: any, theme: any) {
-                                        return new Text(theme.fg("toolTitle", theme.bold("automation+ ")) + theme.fg("accent", String(args?.cron ?? "once")), 0, 0);
+                                        return new Text(
+                                                theme.fg("toolTitle", theme.bold("automation+ ")) + theme.fg("accent", String(args?.cron ?? "once")),
+                                                0,
+                                                0,
+                                        );
                                 },
                         });
                         pi.registerTool({
@@ -1825,26 +1931,44 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         }
                                         if (params.lifecycle !== undefined) patch.lifecycle = params.lifecycle;
                                         const res = await engineApi("PATCH", `/api/automations/${encodeURIComponent(params.id)}`, patch);
-                                        if (!res.ok) return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
+                                        if (!res.ok)
+                                                return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
                                         const a = res.data.automation;
-                                        return { content: [{ type: "text", text: `Updated ${a.id}: ${a.lifecycle}${a.next_run_at ? `, next run ${new Date(a.next_run_at).toLocaleString()}` : ""}.` }] };
+                                        return {
+                                                content: [
+                                                        {
+                                                                type: "text",
+                                                                text: `Updated ${a.id}: ${a.lifecycle}${a.next_run_at ? `, next run ${new Date(a.next_run_at).toLocaleString()}` : ""}.`,
+                                                        },
+                                                ],
+                                        };
                                 },
                                 renderCall(args: any, theme: any) {
-                                        return new Text(theme.fg("toolTitle", theme.bold("automation~ ")) + theme.fg("muted", String(args?.id ?? "")), 0, 0);
+                                        return new Text(
+                                                theme.fg("toolTitle", theme.bold("automation~ ")) + theme.fg("muted", String(args?.id ?? "")),
+                                                0,
+                                                0,
+                                        );
                                 },
                         });
                         pi.registerTool({
                                 name: "automation_delete",
                                 label: "Automation-",
-                                description: "Delete an automation and its non-running run history. This cannot be undone — confirm with the user first when the request is ambiguous.",
+                                description:
+                                        "Delete an automation and its non-running run history. This cannot be undone — confirm with the user first when the request is ambiguous.",
                                 parameters: AutomationDeleteParams,
                                 async execute(_toolCallId, params) {
                                         const res = await engineApi("DELETE", `/api/automations/${encodeURIComponent(params.id)}`);
-                                        if (!res.ok) return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
+                                        if (!res.ok)
+                                                return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
                                         return { content: [{ type: "text", text: `Deleted automation ${params.id}.` }] };
                                 },
                                 renderCall(args: any, theme: any) {
-                                        return new Text(theme.fg("toolTitle", theme.bold("automation- ")) + theme.fg("muted", String(args?.id ?? "")), 0, 0);
+                                        return new Text(
+                                                theme.fg("toolTitle", theme.bold("automation- ")) + theme.fg("muted", String(args?.id ?? "")),
+                                                0,
+                                                0,
+                                        );
                                 },
                         });
                 }
@@ -2225,8 +2349,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         engine.state === "up"
                                                 ? "memory engine: up — files below are engine-maintained (project tier) + user tiers"
                                                 : engine.state === "paused"
-                                                  ? "memory engine: paused (won't start) — files below are the last engine writes; new notes queue locally"
-                                                  : "memory engine: down — files below are the last engine writes; new notes queue locally and sync when it returns";
+                                                        ? "memory engine: paused (won't start) — files below are the last engine writes; new notes queue locally"
+                                                        : "memory engine: down — files below are the last engine writes; new notes queue locally and sync when it returns";
                                 const parts = files.map((f) => {
                                         const lines = f.content.trimEnd().split("\n");
                                         const shown =
@@ -2234,7 +2358,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         const age = ageOf(f.fsPath);
                                         return `── ${f.tier.toUpperCase()} · ${f.path}${age ? ` (${age})` : ""} ──\n${shown}`;
                                 });
-                                ctx.ui.notify(`${header}\n\n${parts.join("\n\n")}\n\ndeep-dive: /dashboard — tiers, version history, rollbacks, dreams, notes, skills`, "info");
+                                ctx.ui.notify(
+                                        `${header}\n\n${parts.join("\n\n")}\n\ndeep-dive: /dashboard — tiers, version history, rollbacks, dreams, notes, skills`,
+                                        "info",
+                                );
                         },
                 });
 
@@ -2465,10 +2592,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         await postPrComment(prRef, text);
                                                         ctx.ui.notify(`Posted verdict as a comment on ${prRef}.`, "info");
                                                 } catch (err: any) {
-                                                        ctx.ui.notify(
-                                                                `Could not post PR comment: ${err?.message ?? err}`,
-                                                                "warning",
-                                                        );
+                                                        ctx.ui.notify(`Could not post PR comment: ${err?.message ?? err}`, "warning");
                                                 }
                                         }
                                 } finally {
@@ -2501,7 +2625,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 // (Truncation marker so they know to run `unown init-agents
                                 // --print | less` for the full text.)
                                 const cap = 6 * 1024;
-                                const body = md.length <= cap ? md : md.slice(0, cap) + "\n\n…[truncated — run `unown init-agents --print` for the full text]";
+                                const body =
+                                        md.length <= cap
+                                                ? md
+                                                : md.slice(0, cap) + "\n\n…[truncated — run `unown init-agents --print` for the full text]";
                                 ctx.ui.notify(body, "info");
                         },
                 });
@@ -2535,7 +2662,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         description:
                                 "Show which receipts touched a file: /blame <file> | /blame [--session <id>] [--since <ts>] [--json]",
                         handler: async (args, ctx) => {
-                                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                                const tokens = (args ?? "")
+                                        .trim()
+                                        .split(/\s+/)
+                                        .filter((t) => t.length > 0);
                                 const json = tokens.includes("--json");
                                 let sessionId: string | undefined;
                                 let since: number | undefined;
@@ -2573,10 +2703,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 .join("\n");
                                         const filesLines =
                                                 summary.filesTouched.length > 0
-                                                        ? summary.filesTouched.slice(0, 40).map((f) => `- ${f}`).join("\n") +
-                                                          (summary.filesTouched.length > 40
-                                                                  ? `\n- …and ${summary.filesTouched.length - 40} more`
-                                                                  : "")
+                                                        ? summary.filesTouched
+                                                                        .slice(0, 40)
+                                                                        .map((f) => `- ${f}`)
+                                                                        .join("\n") +
+                                                                (summary.filesTouched.length > 40 ? `\n- …and ${summary.filesTouched.length - 40} more` : "")
                                                         : "(no files written yet)";
                                         const body = `Blame summary — ${summary.totalEntries} tool call(s) across receipts.\n\nBy tool:\n${toolLines || "(none)"}\n\nFiles written/edited:\n${filesLines}`;
                                         ctx.ui.notify(json ? JSON.stringify(summary, null, 2) : body, "info");
@@ -2600,7 +2731,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 pi.registerCommand("sessions", {
                         description: "Session export / import / list (Milestone 3.5): /sessions export|import|list",
                         handler: async (args, ctx) => {
-                                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                                const tokens = (args ?? "")
+                                        .trim()
+                                        .split(/\s+/)
+                                        .filter((t) => t.length > 0);
                                 const sub = tokens[0] ?? "list";
                                 if (sub === "list") {
                                         const { listSessions } = await import("./sessions.ts");
@@ -2637,10 +2771,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         sessionManager: ctx.sessionManager as any,
                                                         outPath: out,
                                                 });
-                                                ctx.ui.notify(
-                                                        `✓ Exported session ${sessionId} → ${result.path} (${result.bytes} bytes)`,
-                                                        "info",
-                                                );
+                                                ctx.ui.notify(`✓ Exported session ${sessionId} → ${result.path} (${result.bytes} bytes)`, "info");
                                         } catch (err: any) {
                                                 ctx.ui.notify(`Export failed: ${err?.message ?? err}`, "warning");
                                         }
@@ -2664,10 +2795,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         }
                                         return;
                                 }
-                                ctx.ui.notify(
-                                        `Usage: /sessions export|import|list (got "${sub}")`,
-                                        "info",
-                                );
+                                ctx.ui.notify(`Usage: /sessions export|import|list (got "${sub}")`, "info");
                         },
                 });
 
@@ -2683,9 +2811,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 //   /recipe <name> [--param value]...              run a recipe with args
                 //   /recipe show <name>                            print a recipe's frontmatter + body
                 pi.registerCommand("recipe", {
-                        description: "Run a declarative agent instruction bundle: /recipe list | <name> [--key value]... | show <name>",
+                        description:
+                                "Run a declarative agent instruction bundle: /recipe list | <name> [--key value]... | show <name>",
                         handler: async (args, ctx) => {
-                                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                                const tokens = (args ?? "")
+                                        .trim()
+                                        .split(/\s+/)
+                                        .filter((t) => t.length > 0);
                                 const sub = tokens[0] ?? "list";
                                 if (sub === "list") {
                                         const { recipes, sources } = loadRecipes(opts.cwd);
@@ -2824,7 +2956,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         description:
                                 "Auto-generated repo documentation with file:line cross-links: /wiki generate | search <q> | list | show <page>",
                         handler: async (args, ctx) => {
-                                const tokens = (args ?? "").trim().split(/\s+/).filter((t) => t.length > 0);
+                                const tokens = (args ?? "")
+                                        .trim()
+                                        .split(/\s+/)
+                                        .filter((t) => t.length > 0);
                                 const sub = tokens[0] ?? "help";
                                 const wikiPath = join(opts.cwd, ".unown", "wiki");
 
@@ -2876,7 +3011,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 }
 
                                 if (sub === "search") {
-                                        const query = tokens.slice(1).filter((t) => !t.startsWith("--")).join(" ").trim();
+                                        const query = tokens
+                                                .slice(1)
+                                                .filter((t) => !t.startsWith("--"))
+                                                .join(" ")
+                                                .trim();
                                         if (!query) {
                                                 ctx.ui.notify("Usage: /wiki search <query>", "info");
                                                 return;
@@ -2890,9 +3029,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 ctx.ui.notify(`No matches for "${query}".`, "info");
                                                 return;
                                         }
-                                        const lines = results.slice(0, 20).map(
-                                                (r) => `[${r.score}] ${r.page} — ${r.title}\n    ${r.snippet}`,
-                                        );
+                                        const lines = results.slice(0, 20).map((r) => `[${r.score}] ${r.page} — ${r.title}\n    ${r.snippet}`);
                                         ctx.ui.notify(
                                                 `Search "${query}" (${results.length} match${results.length === 1 ? "" : "es"}):\n\n${lines.join("\n\n")}`,
                                                 "info",
@@ -2960,7 +3097,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 return;
                                         }
                                         const cap = 8 * 1024;
-                                        const body = content.length <= cap ? content : content.slice(0, cap) + "\n\n…[truncated — run `unown wiki show " + page + "` for the full text]";
+                                        const body =
+                                                content.length <= cap
+                                                        ? content
+                                                        : content.slice(0, cap) +
+                                                                "\n\n…[truncated — run `unown wiki show " +
+                                                                page +
+                                                                "` for the full text]";
                                         ctx.ui.notify(body, "info");
                                         return;
                                 }
@@ -3003,9 +3146,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 if (entry?.type !== "message") continue;
                                                 if (entry.message?.role !== "user") continue;
                                                 n++;
-                                                const text = typeof entry.message.content === "string"
-                                                        ? entry.message.content.replace(/\s+/g, " ").slice(0, 80)
-                                                        : "(non-text user message)";
+                                                const text =
+                                                        typeof entry.message.content === "string"
+                                                                ? entry.message.content.replace(/\s+/g, " ").slice(0, 80)
+                                                                : "(non-text user message)";
                                                 lines.push(`  #${n}  ${text}`);
                                         }
                                         ctx.ui.notify(
@@ -3037,12 +3181,24 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 sessionManager: ctx.sessionManager as any,
                                                 checkpointStore: store as any,
                                         });
-                                        const revertedLines = result.revertedFiles.length > 0
-                                                ? `\nReverted files:\n${result.revertedFiles.slice(0, 10).map((p) => `  - ${p}`).join("\n")}${result.revertedFiles.length > 10 ? `\n  …and ${result.revertedFiles.length - 10} more` : ""}`
-                                                : "";
-                                        const tombstonedLines = result.tombstonedFiles.length > 0
-                                                ? `\nDeleted (created during the reverted turn):\n${result.tombstonedFiles.slice(0, 10).map((p) => `  - ${p}`).join("\n")}${result.tombstonedFiles.length > 10 ? `\n  …and ${result.tombstonedFiles.length - 10} more` : ""}`
-                                                : "";
+                                        const revertedLines =
+                                                result.revertedFiles.length > 0
+                                                        ? `\nReverted files:\n${result.revertedFiles
+                                                                        .slice(0, 10)
+                                                                        .map((p) => `  - ${p}`)
+                                                                        .join(
+                                                                                "\n",
+                                                                        )}${result.revertedFiles.length > 10 ? `\n  …and ${result.revertedFiles.length - 10} more` : ""}`
+                                                        : "";
+                                        const tombstonedLines =
+                                                result.tombstonedFiles.length > 0
+                                                        ? `\nDeleted (created during the reverted turn):\n${result.tombstonedFiles
+                                                                        .slice(0, 10)
+                                                                        .map((p) => `  - ${p}`)
+                                                                        .join(
+                                                                                "\n",
+                                                                        )}${result.tombstonedFiles.length > 10 ? `\n  …and ${result.tombstonedFiles.length - 10} more` : ""}`
+                                                        : "";
                                         ctx.ui.notify(
                                                 `✓ Edit-resend: ${result.revertedFiles.length} file(s) reverted, ${result.tombstonedFiles.length} tombstoned. ` +
                                                         `Edited message appended (session ${result.newSessionId}).${revertedLines}${tombstonedLines}`,
@@ -3123,11 +3279,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 if (catalog) catalogPrompt = `${event.systemPrompt}\n\n${catalog}`;
                         }
                         const base = await (async () => {
-                        if (planModeEnabled) {
-                                return {
-                                        message: {
-                                                customType: "unown-plan-context",
-                                                content: `[PLAN MODE ACTIVE]
+                                if (planModeEnabled) {
+                                        return {
+                                                message: {
+                                                        customType: "unown-plan-context",
+                                                        content: `[PLAN MODE ACTIVE]
 You are in plan mode — a read-only exploration mode for safe code analysis.
 
 Restrictions:
@@ -3145,36 +3301,36 @@ Plan:
 ...
 
 Do NOT attempt to make changes — just describe what you would do and why.`,
-                                                display: false,
-                                        },
-                                };
-                        }
-                        if (executionMode && planItems.length > 0) {
-                                const remaining = planItems.filter((t) => !t.completed);
-                                const todoList = remaining.map((t) => `${t.step}. ${t.text}`).join("\n");
-                                return {
-                                        message: {
-                                                customType: "unown-plan-context",
-                                                content: `[EXECUTING PLAN — full tool access enabled]
+                                                        display: false,
+                                                },
+                                        };
+                                }
+                                if (executionMode && planItems.length > 0) {
+                                        const remaining = planItems.filter((t) => !t.completed);
+                                        const todoList = remaining.map((t) => `${t.step}. ${t.text}`).join("\n");
+                                        return {
+                                                message: {
+                                                        customType: "unown-plan-context",
+                                                        content: `[EXECUTING PLAN — full tool access enabled]
 
 Remaining steps:
 ${todoList}
 
 Execute the steps in order. After completing a step, include a [DONE:n] tag in your response. Track progress with the todo tool.`,
-                                                display: false,
-                                        },
-                                };
-                        }
-                        if (goal && goal.status === "active") {
-                                return {
-                                        message: {
-                                                customType: "unown-goal-context",
-                                                content: goalContextMessage(goal),
-                                                display: false,
-                                        },
-                                };
-                        }
-                        return undefined;
+                                                        display: false,
+                                                },
+                                        };
+                                }
+                                if (goal && goal.status === "active") {
+                                        return {
+                                                message: {
+                                                        customType: "unown-goal-context",
+                                                        content: goalContextMessage(goal),
+                                                        display: false,
+                                                },
+                                        };
+                                }
+                                return undefined;
                         })();
                         // Merge the base result (plan/goal context message) with the
                         // catalog system-prompt append (both are legal return shapes of
@@ -3402,6 +3558,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                         if (planModeEnabled) enablePlanTools();
                         updateStatus(ctx);
                         setStatusLine(ctx, "goal", goalFooterLine(goal));
+                        armUpdateChip(ctx);
                 });
 
                 pi.on("session_tree", async (_event: any, _ctx: any) => {
@@ -3410,6 +3567,11 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                 });
 
                 pi.on("session_shutdown", () => {
+                        if (updateChipTimer) {
+                                clearInterval(updateChipTimer);
+                                updateChipTimer = null;
+                        }
+                        lastUpdateChip = undefined;
                         try {
                                 lspManager?.disposeAll();
                         } catch {

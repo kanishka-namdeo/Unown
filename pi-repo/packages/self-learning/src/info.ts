@@ -19,8 +19,16 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { arch, homedir, platform, release } from "node:os";
 import { join } from "node:path";
-import { summarizeInstructionAudit, auditInstructionSet } from "./doctor-instructions.ts";
-import { describeAge, readRootVersion, readUpdateCheckCache, redactUrl, resolveInstallInfo, unownHome } from "./update.ts";
+import { auditInstructionSet, summarizeInstructionAudit } from "./doctor-instructions.ts";
+import {
+        describeAge,
+        readRootVersion,
+        readUpdateCheckCache,
+        readUpdatePrefs,
+        redactUrl,
+        resolveInstallInfo,
+        unownHome,
+} from "./update.ts";
 
 export interface InfoCtx {
         repoRoot?: string;
@@ -32,12 +40,33 @@ export interface InfoCtx {
 export interface UnownInfo {
         unownVersion: string;
         /** How this unown was installed (checkout vs standalone binary). */
-        install: { mode: "checkout" | "binary" | "unknown"; root: string | null; bin: string | null; shim: string | null; platform: string | null };
+        install: {
+                mode: "checkout" | "binary" | "unknown";
+                root: string | null;
+                bin: string | null;
+                shim: string | null;
+                platform: string | null;
+        };
         git: { sha: string | null; branch: string | null; dirty: boolean | null; repoRoot: string | null };
         platform: { os: string; arch: string; release: string; bun: string | null };
         providers: { id: string; baseUrl: string | null; models: number }[];
         engineUrl: string;
-        updateCheck: { latest: string; checkedAt: string; age: string } | null;
+        updateCheck: {
+                latest: string;
+                checkedAt: string;
+                age: string;
+                applicable: boolean | null;
+                reason: string | null;
+                signature: string | null;
+                platform: string | null;
+                error: string | null;
+        } | null;
+        updatePrefs: {
+                skippedVersion: string | null;
+                snoozeUntil: string | null;
+                lastNoticeAt: string | null;
+                lastNoticeVersion: string | null;
+        } | null;
         state: { home: string; agentDirExists: boolean; authFile: { exists: boolean; mode: number | null } };
         optOuts: string[];
         /**
@@ -72,11 +101,12 @@ export function collectInfo(ctx: InfoCtx = {}): UnownInfo {
                 install?.mode === "binary"
                         ? null
                         : (ctx.repoRoot ??
-                          (() => {
-                                  const guess = join(import.meta.dir, "..", "..", "..", "..");
-                                  return existsSync(guess) ? guess : null;
-                          })());
-        const version = install && install.version !== "unknown" ? install.version : repoRoot ? readRootVersion(repoRoot) : "unknown";
+                                (() => {
+                                        const guess = join(import.meta.dir, "..", "..", "..", "..");
+                                        return existsSync(guess) ? guess : null;
+                                })());
+        const version =
+                install && install.version !== "unknown" ? install.version : repoRoot ? readRootVersion(repoRoot) : "unknown";
         const git: UnownInfo["git"] = repoRoot
                 ? { ...gitLines(repoRoot), repoRoot }
                 : { sha: null, branch: null, dirty: null, repoRoot: null };
@@ -119,6 +149,7 @@ export function collectInfo(ctx: InfoCtx = {}): UnownInfo {
         if (/^(1|true|yes)$/i.test(env.UNOWN_PERMISSIONS_LEARN ?? "")) optOuts.push("UNOWN_PERMISSIONS_LEARN");
 
         const cache = readUpdateCheckCache(home);
+        const prefs = readUpdatePrefs(home);
 
         const authPath = join(home, "agent", "auth.json");
         let authMode: number | null = null;
@@ -134,20 +165,38 @@ export function collectInfo(ctx: InfoCtx = {}): UnownInfo {
                 unownVersion: version,
                 install: install
                         ? {
-                                  mode: install.mode,
-                                  root: install.root,
-                                  bin: install.binary ?? (install.mode === "checkout" ? join(install.root, "bin", "unown") : null),
-                                  shim: install.shim ?? null,
-                                  platform: install.platform ?? null,
-                          }
+                                        mode: install.mode,
+                                        root: install.root,
+                                        bin: install.binary ?? (install.mode === "checkout" ? join(install.root, "bin", "unown") : null),
+                                        shim: install.shim ?? null,
+                                        platform: install.platform ?? null,
+                                }
                         : { mode: "unknown", root: null, bin: null, shim: null, platform: null },
                 git,
                 platform: { os: platform(), arch: arch(), release: release(), bun: bunVersion },
                 providers,
                 engineUrl: env.UNOWN_ENGINE_URL ?? "http://127.0.0.1:3030",
                 updateCheck: cache?.checkedAt
-                        ? { latest: cache.latest, checkedAt: cache.checkedAt, age: describeAge(cache.checkedAt) }
+                        ? {
+                                        latest: cache.latest,
+                                        checkedAt: cache.checkedAt,
+                                        age: describeAge(cache.checkedAt),
+                                        applicable: cache.applicable,
+                                        reason: cache.reason ?? null,
+                                        signature: cache.signature ?? null,
+                                        platform: cache.platform ?? null,
+                                        error: cache.error ?? null,
+                                }
                         : null,
+                updatePrefs:
+                        prefs.skippedVersion || prefs.snoozeUntil || prefs.lastNoticeAt || prefs.lastNoticeVersion
+                                ? {
+                                                skippedVersion: prefs.skippedVersion ?? null,
+                                                snoozeUntil: prefs.snoozeUntil ?? null,
+                                                lastNoticeAt: prefs.lastNoticeAt ?? null,
+                                                lastNoticeVersion: prefs.lastNoticeVersion ?? null,
+                                        }
+                                : null,
                 state: {
                         home,
                         agentDirExists: existsSync(join(home, "agent")),
@@ -195,9 +244,20 @@ export function renderInfo(i: UnownInfo): string {
                 lines.push(`  providers:  none configured (run: unown setup)`);
         }
         lines.push(`  engine url: ${i.engineUrl}`);
-        lines.push(
-                `  update:     ${i.updateCheck ? `last check ${i.updateCheck.age} — latest seen: ${i.updateCheck.latest || "?"}` : "never checked"}`,
-        );
+        {
+                let update = i.updateCheck
+                        ? `last check ${i.updateCheck.age} — latest seen: ${i.updateCheck.latest || "?"}`
+                        : "never checked";
+                if (i.updateCheck?.error) update += ` · error: ${i.updateCheck.error}`;
+                if (i.updateCheck?.reason === "legacy-cache") {
+                        update += " · legacy cache — refresh with `unown update --check`";
+                } else if (i.updateCheck?.applicable === false) {
+                        update += ` · not applicable${i.updateCheck.reason ? ` (${i.updateCheck.reason})` : ""}`;
+                }
+                if (i.updatePrefs?.skippedVersion) update += ` · skipped ${i.updatePrefs.skippedVersion}`;
+                if (i.updatePrefs?.snoozeUntil) update += ` · snoozed until ${i.updatePrefs.snoozeUntil}`;
+                lines.push(`  update:     ${update}`);
+        }
         lines.push(`  opt-outs:   ${i.optOuts.length ? i.optOuts.join(", ") : "none"}`);
         // Milestone 3.2 — one line for the instruction audit (paste-safe counts).
         lines.push(

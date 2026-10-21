@@ -50,7 +50,17 @@ const WEBCACHE_SUBCOMMANDS = ["stats", "clear", "sweep"];
 const PROVIDERS_SUBCOMMANDS = ["list", "add", "remove", "key", "default", "test", "refresh"];
 const ENGINE_SUBCOMMANDS = ["status", "start", "stop", "restart", "repair", "serve"];
 
-const UPDATE_FLAGS = ["--check", "--json", "--allow-dirty", "--rollback", "--help"];
+const UPDATE_FLAGS = [
+        "--check",
+        "--json",
+        "--allow-dirty",
+        "--rollback",
+        "--dry-run",
+        "--skip",
+        "--unskip",
+        "--snooze",
+        "--help",
+];
 const SESSION_FLAGS = [
         "-p",
         "--print",
@@ -238,7 +248,7 @@ export function zshCompletion(): string {
                 "  esac",
                 "  case $words[1] in",
                 "    update)",
-                '      _arguments "--check[report only]" "--json[machine-readable]" "--allow-dirty[autostash]" "--rollback[undo last update]" "*:version:"',
+                '      _arguments "--check[report only]" "--json[machine-readable]" "--allow-dirty[autostash]" "--rollback[undo last update]" "--dry-run[resolve and print only]" "--skip[stop showing a version]" "--unskip[clear skip and snooze]" "--snooze[silence notices for a duration]:duration:" "*:version:"',
                 "      ;;",
                 "    mcp)",
                 `      _arguments "1:subcommand:(${MCP_SUBCOMMANDS.join(" ")})"`,
@@ -286,11 +296,7 @@ export function fishCompletion(): string {
                 // `-p` used to be emitted as `-l p`, an uncompletable long flag).
                 const short = /^-[a-zA-Z0-9]$/.test(flag);
                 const name = flag.replace(/^-+/, "");
-                lines.push(
-                        short
-                                ? `complete -c unown -s ${name} -d "${flag}"`
-                                : `complete -c unown -l ${name} -d "${flag}"`,
-                );
+                lines.push(short ? `complete -c unown -s ${name} -d "${flag}"` : `complete -c unown -l ${name} -d "${flag}"`);
         }
         for (const flag of UPDATE_FLAGS) {
                 lines.push(
@@ -301,7 +307,9 @@ export function fishCompletion(): string {
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from mcp" -a "${MCP_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from providers" -a "${PROVIDERS_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from engine" -a "${ENGINE_SUBCOMMANDS.join(" ")}"`);
-        lines.push(`complete -c unown -n "__fish_seen_subcommand_from automations" -a "${AUTOMATIONS_SUBCOMMANDS.join(" ")}"`);
+        lines.push(
+                `complete -c unown -n "__fish_seen_subcommand_from automations" -a "${AUTOMATIONS_SUBCOMMANDS.join(" ")}"`,
+        );
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from sessions" -a "${SESSIONS_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from recipes" -a "${RECIPES_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from wiki" -a "${WIKI_SUBCOMMANDS.join(" ")}"`);
@@ -318,7 +326,7 @@ export function powershellCompletion(): string {
                 "    param($wordToComplete)",
                 `    $commands = @('${cmds}')`,
                 "    $flags = @('-p','--print','--plan','--verbose','--mode','--output-format','--session','--model','--effort','--mcp-servers','--no-agents-md','--provider','--no-split','--help','--version')",
-                "    $updateFlags = @('--check','--json','--allow-dirty','--rollback')",
+                "    $updateFlags = @('--check','--json','--allow-dirty','--rollback','--dry-run','--skip','--unskip','--snooze')",
                 "    $completions = @()",
                 "    if ($wordToComplete -like '--*') {",
                 "        $completions = $updateFlags + $flags",

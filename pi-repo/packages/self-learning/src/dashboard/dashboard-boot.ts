@@ -14,11 +14,12 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ProcessTerminal, TuiAltScreen } from "@earendil-works/pi-tui";
 import { initTheme, theme } from "@earendil-works/pi-coding-agent";
-import { DashboardStore } from "./dashboard-data.ts";
-import { DashboardApp } from "./dashboard-app.ts";
+import { ProcessTerminal, TuiAltScreen } from "@earendil-works/pi-tui";
 import { ensureUnownAgentDirInfo, UNOWN_AGENT_DIR } from "../term.ts";
+import { maybeShowUpdateNotice } from "../update.ts";
+import { DashboardApp } from "./dashboard-app.ts";
+import { DashboardStore } from "./dashboard-data.ts";
 
 /** `unown dashboard --help` / `unown help dashboard` — the usage page.
  * Mirrors the dashboard row in cli.ts's HELP (screens, alias, keybindings). */
@@ -39,7 +40,6 @@ http://localhost:3000/dashboard when the stack is running (bun run agent:start).
 
 See docs/tui-dashboard-plan.md for the full surface tour.`;
 
-
 /** Boot the standalone dashboard. Returns a promise that resolves with the
  * process exit code when the user quits. */
 export async function runDashboardCommand(args: string[]): Promise<number> {
@@ -59,6 +59,7 @@ export async function runDashboardCommand(args: string[]): Promise<number> {
                 );
                 return 1;
         }
+        maybeShowUpdateNotice();
         const initialScreen = args.find((a) => !a.startsWith("-"));
 
         // Agent dir + theme: the same seeding the chat TUI does on first run
