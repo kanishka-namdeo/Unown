@@ -105,6 +105,34 @@ test("a rerun only qualifies when it holds a receipt for EVERY model", () => {
   }
 });
 
+test("a shared receipt only qualifies when it names EVERY model", () => {
+  const f = fixture({
+    // The real regression: an agnes-only rerun has a summary.json, but it does
+    // not cover the kimi/qwen rows this track's page shows. An older complete
+    // rerun must remain canonical; the newer one is skipped whole.
+    "rerun-2026-10-21/summary.json": { results: { "kimi-k2.5": { passRate: 0.9 } } },
+    "rerun-2026-10-17/summary.json": {
+      results: { "kimi-k2.5": { passRate: 0.8 }, "qwen3.6-plus": { passRate: 0.6 } },
+    },
+  });
+  try {
+    const t = buildTrack(
+      track({
+        runReceipt: "summary.json",
+        baseReceipt: "base.json",
+        models: ["kimi-k2.5", "qwen3.6-plus"],
+        rows: [{ pct: { kind: "percent01", path: ["results", "<model>", "passRate"], dp: 1, doc: "pass rate" } }],
+      }),
+      f.root,
+    );
+    assert.equal(t.run, "benchmarks/x/results/rerun-2026-10-17");
+    assert.deepEqual(t.rows.map((r) => r.pct), [80, 60]);
+    assert.equal(t.skipped, 1, "the newer incomplete rerun is skipped whole");
+  } finally {
+    f.cleanup();
+  }
+});
+
 test("no rerun directory falls back to the base receipt", () => {
   const f = fixture({ "kimi-k2.5.summary.json": { passRate: 0.42 } });
   try {
@@ -120,8 +148,8 @@ test("no rerun directory falls back to the base receipt", () => {
 
 test("chooseRun is pure: dirs sorted newest-first, base last, no fs reads", () => {
   const spec = { dirs: ["rerun-2026-05-05", "rerun-2026-01-01"], runReceipt: "summary.json", baseReceipt: "base.json", models: ["m"] };
-  assert.deepEqual(chooseRun({ ...spec, fileExists: () => true }), { run: "rerun-2026-05-05", receipt: "summary.json", reruns: 2, beaten: 1 });
-  assert.deepEqual(chooseRun({ ...spec, fileExists: (r) => r === "base.json" }), { run: null, receipt: "base.json", reruns: 2, beaten: 0 });
+  assert.deepEqual(chooseRun({ ...spec, fileExists: () => true }), { run: "rerun-2026-05-05", receipt: "summary.json", reruns: 2, beaten: 1, skipped: 0 });
+  assert.deepEqual(chooseRun({ ...spec, fileExists: (r) => r === "base.json" }), { run: null, receipt: "base.json", reruns: 2, beaten: 0, skipped: 2 });
   assert.deepEqual(chooseRun({ ...spec, fileExists: (r) => r === "rerun-2026-01-01/summary.json" }).run, "rerun-2026-01-01");
 });
 
@@ -323,6 +351,8 @@ test("the canonical-run rule is the one the page's numbers actually came from", 
   assert.equal(byName.HUMANEVAL_PLUS, "benchmarks/evalplus/results/rerun-2026-10-17");
   assert.equal(byName.POLYGLOT, "benchmarks/polyglot/results/rerun-2026-10-17");
   assert.equal(byName.LIVECODEBENCH, "benchmarks/livecodebench/results", "no rerun dir exists, so the base is the record");
+  const he = build().tracks.find((t) => t.constName === "HUMANEVAL_PLUS");
+  assert.equal(he.skipped, 1, "the agnes-only 2026-10-21 rerun must be skipped, not null the kimi/qwen rows");
 });
 
 test("the emitted file is the shape the component swaps in", () => {

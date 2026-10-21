@@ -35,6 +35,8 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 - **a credentialed release-mirror URL is redacted before it is printed or cached** — `UNOWN_RELEASES_BASE_URL` can be an authenticated mirror; binary `update --check`/`--check --json`, the notifier cache, download errors and the post-update release-notes line now pass it through the shared `redactUrl`, so an embedded token never reaches console output or `~/.unown/update-check.json`.
 
+- **the benchmark rail skips an incomplete rerun and formats a missing figure honestly** — `chooseRun` checked that a shared `summary.json` existed, not that it named every model in the track, so the agnes-only `evalplus/rerun-2026-10-21` receipt outranked the complete `rerun-2026-10-17` and the extractor nulled the kimi/qwen HumanEval+ rows. The rule now inspects the shared receipt's model keys and skips an incomplete rerun whole (the generated run docs say how many were skipped); the HumanEval+ card formats a genuinely missing figure as `not measured` instead of calling `.toFixed()` on null, and its run stamp comes from the generated canonical run. Pinned by the shared-receipt regression test and the canonical-run test.
+
 ## [0.0.1] - 2026-10-21
 
 ### Changed (the version reset — 0.0.1, 2026-10-21)

@@ -1251,7 +1251,8 @@ keeps hitting:
 ### Receipts
 
 Figures now resolve as: `benchmarks-data.ts` ← 6 tracks ← their receipt JSON,
-with the newest `rerun-*` winning; `engine-data.ts` ← `JOB_DEFS` in
+with the newest **complete** `rerun-*` winning (a rerun whose shared receipt
+does not name every model in the track is skipped whole); `engine-data.ts` ← `JOB_DEFS` in
 `router.ts`; the rail ← `CHANGELOG.md`. Gates: `check:changelog`,
 `check:benchmarks`, `check:claims`, plus the three `node --test` suites
 (8 + 15 + 19), all steps in CI's landing job. The claims gate currently resolves

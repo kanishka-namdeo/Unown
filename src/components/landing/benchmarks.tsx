@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Brain, Compass, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Swords, Target } from "lucide-react";
 import { FadeUp, BENCH_URL } from "./shell";
 import {
+  BENCH_SOURCES,
   EDIT_BENCH,
   HUMANEVAL_PLUS,
   LIVECODEBENCH,
@@ -12,6 +13,7 @@ import {
   POLYGLOT,
   SELFIMPROVE,
 } from "./benchmarks-data";
+import { formatPct, runStamp } from "./benchmark-figures";
 
 /**
  * The Benchmarks pane of the proof band (`proof.tsx`).
@@ -408,15 +410,20 @@ export function BenchmarksPane() {
               <h3 className="text-[15px] font-medium text-ink">HumanEval+</h3>
             </div>
             <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">
-              official evalplus CLI · 164 problems · greedy pass@1 · 2026-10-17 rerun
+              official evalplus CLI · 164 problems · greedy pass@1 · {runStamp(BENCH_SOURCES.HUMANEVAL_PLUS.run)}
             </p>
             <div className="mt-4 space-y-2">
-              {HUMANEVAL_PLUS.map((r) => (
-                <div key={r.model} className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
-                  <span className="truncate text-dim">{r.model}</span>
-                  <span className="tabular-nums text-gold">{r.pct.toFixed(1)}</span>
-                </div>
-              ))}
+              {HUMANEVAL_PLUS.map((r) => {
+                const figure = formatPct(r.pct);
+                return (
+                  <div key={r.model} className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
+                    <span className="truncate text-dim">{r.model}</span>
+                    <span className={`tabular-nums ${figure.missing ? "text-faint" : "text-gold"}`}>
+                      {figure.text}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
             <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
               predates these models, so it cannot separate ability from memorization —

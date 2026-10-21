@@ -141,10 +141,13 @@ half a viewport shorter than the eight-band page it replaced.
   receipt JSON under `benchmarks/` — the most-churned directory in the
   repository — and `bun scripts/landing_benchmarks.mjs --check` is a CI step in
   the landing job. The tie-break is the script's rule, not an editorial choice:
-  where a track has a `rerun-*` verification directory, the newest rerun wins
-  over the base receipt. Track descriptions and field mappings live in the
-  generated file, beside the receipts they describe, so this section file holds
-  layout and argument only.
+  where a track has a `rerun-*` verification directory, the newest **complete**
+  rerun wins over the base receipt; a rerun whose shared `summary.json` does not
+  name every model in the track is skipped whole, and `benchmark-figures.ts`
+  renders a genuinely missing figure as `not measured` (never `.toFixed()` on
+  null). Track descriptions and field mappings live in the generated file,
+  beside the receipts they describe, so this section file holds layout and
+  argument only.
   - **no count that moves with every commit may be printed here.** The section
     carried a test-count card whose headline figure was the sum of three stale
     numbers, and an assertion total that exists nowhere in the repository. It

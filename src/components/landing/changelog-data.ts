@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 134;
+export const CHANGELOG_TOTAL_ENTRIES = 135;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 57,
   "Changed": 10,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 58,
+  "Fixed": 59,
   "Security": 0,
   "Behavior": 7
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 11,
+    "total": 12,
     "counts": {
       "Added": 3,
       "Changed": 3,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 5,
+      "Fixed": 6,
       "Security": 0,
       "Behavior": 0
     },
@@ -112,6 +112,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "a credentialed release-mirror URL is redacted before it is printed or cached",
+            "behavior": false
+          },
+          {
+            "title": "the benchmark rail skips an incomplete rerun and formats a missing figure honestly",
             "behavior": false
           }
         ]

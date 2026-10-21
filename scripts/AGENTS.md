@@ -73,8 +73,12 @@ The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`
   landing job) fails when the page and the receipts disagree. The rules that must
   survive edits:
   - **canonical-run tie-break**: where a track has one or more `rerun-<date>`
-    directories, the newest wins over `results/summary.json`; selection sorts by
-    name, never by filesystem order. This matters because the receipts
+    directories, the newest **complete** one wins over `results/summary.json`
+    and over older reruns; selection sorts by name, never by filesystem order.
+    Complete means the receipt covers every model in the track's page rows — a
+    shared `summary.json` is checked by its model keys (`results` or `models`),
+    and a newer incomplete rerun is skipped whole rather than allowed to null a
+    model that a complete older rerun backs. This matters because the receipts
     genuinely disagree (evalplus kimi 93.29 vs 93.9, edit-bench qwen 99.1 vs
     96.2, polyglot pass@2 100 vs 96) and `benchmarks/RESULTS.md`'s own headline
     table still carries the older numbers — gate against the JSON, not the

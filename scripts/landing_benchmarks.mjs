@@ -202,14 +202,34 @@ function rerunDirs(resultsAbs) {
  * base receipt. `fileExists` takes a path relative to the results directory, so
  * the rule can be pinned by a fixture without touching this repo's receipts.
  */
-function chooseRun({ dirs, runReceipt, models, baseReceipt, fileExists }) {
+function chooseRun({ dirs, runReceipt, models, baseReceipt, fileExists, receiptModels }) {
   for (const [i, dir] of dirs.entries()) {
-    if (models.every((m) => fileExists(rel(dir, fill(runReceipt, m)))))
-      // `beaten` counts the OLDER rerun dirs this one overtook; the base receipt
-      // is always overtaken too, and the emitted doc says so.
-      return { run: dir, receipt: runReceipt, reruns: dirs.length, beaten: dirs.length - 1 - i };
+    if (!models.every((m) => fileExists(rel(dir, fill(runReceipt, m))))) continue;
+    // A shared receipt (summary.json, no <model> segment) can exist while
+    // covering only some models. Such a rerun is incomplete for this track and
+    // must be skipped whole — otherwise its missing rows become nulls on the
+    // page even though an older, complete rerun has the numbers.
+    if (receiptModels) {
+      const covered = new Set(receiptModels(dir));
+      if (!models.every((m) => covered.has(m))) continue;
+    }
+    // `beaten` counts the OLDER rerun dirs this one overtook; `skipped` counts
+    // the newer incomplete ones it had to pass. The base receipt is always
+    // overtaken too, and the emitted doc says so.
+    return { run: dir, receipt: runReceipt, reruns: dirs.length, beaten: dirs.length - 1 - i, skipped: i };
   }
-  return { run: null, receipt: baseReceipt, reruns: dirs.length, beaten: 0 };
+  return { run: null, receipt: baseReceipt, reruns: dirs.length, beaten: 0, skipped: dirs.length };
+}
+
+/** Model keys a shared receipt actually contains. The two receipt shapes in
+ *  this repo key their rows under `results` or `models`; an unknown shape is
+ *  empty, so the rerun is skipped rather than trusted. */
+function receiptModelKeys(doc) {
+  for (const key of ["results", "models"]) {
+    const value = doc?.[key];
+    if (value && typeof value === "object" && !Array.isArray(value)) return Object.keys(value);
+  }
+  return [];
 }
 
 /** Walk a receipt's JSON path; `<model>` segments resolve to the row's model. */
@@ -282,6 +302,15 @@ function buildTrack(track, root = ROOT) {
     baseReceipt: track.baseReceipt,
     models: track.models,
     fileExists: (r) => existsSync(join(resultsAbs, ...r.split("/"))),
+    // A per-model receipt is already model-specific; only a shared receipt
+    // needs its own key list inspected.
+    receiptModels: track.runReceipt.includes("<model>")
+      ? undefined
+      : (dir) => {
+          const relPath = rel(dir, track.runReceipt);
+          const abs = join(resultsAbs, ...relPath.split("/"));
+          return receiptModelKeys(readJson(abs, rel(shownResults, relPath)));
+        },
   });
 
   // Receipt path relative to the results dir, run directory included: the base
@@ -345,6 +374,7 @@ function buildTrack(track, root = ROOT) {
     baseSource: rel(shownResults, fill(track.baseReceipt, "<model>")),
     reruns: chosen.reruns,
     beaten: chosen.beaten,
+    skipped: chosen.skipped,
     missing,
   };
 }
@@ -383,10 +413,13 @@ ${fields.map(([name, doc]) => `  /** ${doc} */\n  ${name}: ${numType(t)};`).join
 }
 
 function emitTrackDoc(t) {
+  const notes = [];
+  if (t.skipped) notes.push(`${t.skipped} newer incomplete rerun(s) skipped — they do not cover every model`);
+  if (t.beaten) notes.push(`chosen over ${t.beaten} older complete one(s)`);
   const run = t.reruns
-    ? ` * Canonical run: \`${t.run}\` — the newest of ${t.reruns} \`rerun-*\` dir(s)${
-        t.beaten ? `, chosen over ${t.beaten} older one(s),` : ""
-      } and so over the base receipt \`${t.baseSource}\`.`
+    ? ` * Canonical run: \`${t.run}\` — the newest complete \`rerun-*\` of ${t.reruns}${
+        notes.length ? ` (${notes.join("; ")})` : ""
+      }, and so over the base receipt \`${t.baseSource}\`.`
     : ` * Canonical run: \`${t.run}\` — no \`rerun-*\` directory exists for this track, so the base receipt is the record.`;
   return `/**
  * ${t.note}

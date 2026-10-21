@@ -59,7 +59,7 @@ export const BENCH_SOURCES: Record<BenchTrackName, BenchTrackSource> = {
 /**
  * oh-my-pi typescript-edit-benchmark: 106 fixtures, byte-exact scoring, full Unown agent in the loop.
  * Receipt: `benchmarks/edit-bench/results/rerun-2026-10-17/<model>/summary.json`
- * Canonical run: `benchmarks/edit-bench/results/rerun-2026-10-17` — the newest of 1 `rerun-*` dir(s) and so over the base receipt `benchmarks/edit-bench/results/<model>.summary.json`.
+ * Canonical run: `benchmarks/edit-bench/results/rerun-2026-10-17` — the newest complete `rerun-*` of 2 (1 newer incomplete rerun(s) skipped — they do not cover every model), and so over the base receipt `benchmarks/edit-bench/results/<model>.summary.json`.
  * Fields: pct = `passRate` (0-1) x 100, 1dp
  */
 export interface EditBenchRow {
@@ -87,7 +87,7 @@ export const EDIT_BENCH: EditBenchRow[] = [
 /**
  * HumanEval+ on the official evalplus CLI: sanitize -> evaluate, pass@1, greedy, 164 problems.
  * Receipt: `benchmarks/evalplus/results/rerun-2026-10-17/summary.json`
- * Canonical run: `benchmarks/evalplus/results/rerun-2026-10-17` — the newest of 1 `rerun-*` dir(s) and so over the base receipt `benchmarks/evalplus/results/summary.json`.
+ * Canonical run: `benchmarks/evalplus/results/rerun-2026-10-17` — the newest complete `rerun-*` of 2 (1 newer incomplete rerun(s) skipped — they do not cover every model), and so over the base receipt `benchmarks/evalplus/results/summary.json`.
  * Fields: pct = `results.<model>.pass1` (0-1) x 100, 1dp
  */
 export interface HumanevalPlusRow {
@@ -196,7 +196,7 @@ export const LONGHORIZON: LonghorizonRow[] = [
 /**
  * Aider polyglot 50-exercise stratified subset, 6 languages, Aider's 2-attempt protocol. `pct` is the pass@2 figure the bar shows (the card says "pass@2 shown"); `pass1` is pass@1.
  * Receipt: `benchmarks/polyglot/results/rerun-2026-10-17/summary.json`
- * Canonical run: `benchmarks/polyglot/results/rerun-2026-10-17` — the newest of 1 `rerun-*` dir(s) and so over the base receipt `benchmarks/polyglot/results/summary.json`.
+ * Canonical run: `benchmarks/polyglot/results/rerun-2026-10-17` — the newest complete `rerun-*` of 1, and so over the base receipt `benchmarks/polyglot/results/summary.json`.
  * Fields: pct = `models.<model>.pass2Pct`; pass1 = `models.<model>.pass1Pct` (both already 0-100)
  */
 export interface PolyglotRow {
