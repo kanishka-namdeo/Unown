@@ -197,9 +197,18 @@ describe("runRetentionPass (throwaway stores)", () => {
                 const s = new Store(path);
                 const now = Date.now();
                 const old = now - 400 * DAY;
+                // One transaction, not 12k autocommit round-trips: bun's
+                // per-statement fsync makes an un-wrapped insert loop exceed
+                // any test budget on a loaded CI runner (measured red on
+                // windows, 2026-10-21 run 39590930647: 193s in this test,
+                // then EBUSY tearing down the temp dir) — the sibling backlog
+                // case below documented the same fix. BEGIN/COMMIT is the
+                // shape the engine's own bulk writers use.
+                s.run(`BEGIN`);
                 for (let i = 0; i < 12_000; i++) {
                         s.run(`INSERT INTO hook_log (ts, hook, tool, decision) VALUES (?, 'PreToolUse', 'bash', 'allow')`, [old]);
                 }
+                s.run(`COMMIT`);
                 withEnv({}, () => {
                         // cap the per-table budget far below the backlog via a tiny
                         // window? No — the budget is a constant (50k). Instead prove

@@ -494,7 +494,7 @@ process.exit(0);
                 }
         }, 120_000);
 
-        test("a BIND-FAILED engine (lock free, port held) must not clobber the running winner's token file", () => {
+        test("a BIND-FAILED engine (lock free, port held) must not clobber the running winner's token file", async () => {
                 // The second race the live PTY lane caught (the M7 loser fix was
                 // necessary but not sufficient): a racing engine acquires the
                 // (stale/stealable) lock, fails the PORT bind, and exits — if it
@@ -545,9 +545,23 @@ process.exit(0);
                         expect(existsSync(upFile)).toBe(true);
                         const tokenBefore = readFileSync(tokenFile, "utf8").trim();
                         // 2. Kill the winner (flock released at exit) and immediately
-                        //    rebind its port from a detached dummy holder.
+                        //    rebind its port from a detached dummy holder. The kill is
+                        //    AWAITED, not slept past: a SIGKILL'd-but-unreaped winner
+                        //    still answers the pid-probe signal 0, so the victim would
+                        //    see a LIVE lock holder and exit at the lock instead of ever
+                        //    reaching the bind (measured red twice on macOS runners:
+                        //    runs 39590930647 and 39603040411 — the fixed 500/700ms
+                        //    sleeps were not enough under load). Awaiting the exit
+                        //    event guarantees the reaping: the zombie is gone from the
+                        //    process table before the victim reads the lock.
                         winner.kill("SIGKILL");
-                        sleepSync(500);
+                        await new Promise<void>((resolve) => {
+                                const deadline = setTimeout(resolve, 15_000); // never happen; belt and suspenders
+                                winner.once("exit", () => {
+                                        clearTimeout(deadline);
+                                        resolve();
+                                });
+                        });
                         holder = spawn(process.execPath, ["-e", `Bun.serve({ port: ${port}, fetch: () => new Response("x") }); setInterval(()=>{},1e6);`], { stdio: "ignore" });
                         sleepSync(700);
                         // 3. The victim: lock stealable (winner dead), port held → the
