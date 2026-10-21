@@ -1,35 +1,21 @@
 /**
- * release-manifest.ts — the signed release feed manifest (`release.json` +
- * `release.json.sig`) that the binary updater trusts.
+ * release-manifest.ts — the release feed manifest (`release.json`) that the
+ * binary updater checks for per-OS availability, size and SHA-256.
  *
- * The signature covers the exact manifest bytes, so `verifyReleaseManifest`
- * checks the signature BEFORE any field is used. The only value read before
- * verification is `keyId`, which selects the pinned public key; an unknown
- * keyId is a hard failure, never an unsigned fallback.
- *
- * Trust model: the public keys are compiled into the client
- * (`RELEASE_SIGNING_KEYS`). The matching private seed lives only in the
- * `UNOWN_RELEASE_SIGNING_KEY` GitHub Actions secret. A mirror can replay an
- * older signed manifest (the signature is not a freshness proof), which is why
- * the updater also compares the manifest version against the running version
- * and the cached latest. A mirror cannot forge a new one.
- *
- * Source of truth for the keys: `scripts/release-keys/release-key.json`. The
- * package test asserts this map and that file agree, so rotation cannot drift.
+ * Trust model: the manifest is served over TLS from the release host (or a
+ * configured mirror). It is NOT signed. The client validates its shape and
+ * asset names, then verifies the downloaded archive against the manifest's
+ * exact size and SHA-256 (and the same-release `sha256sums.txt`). A compromised
+ * release host or mirror can serve a different manifest plus a matching
+ * archive, so an update is only as trustworthy as that host. GitHub build
+ * provenance attestations remain available for manual verification, but the
+ * client does not check them.
  */
-import { createPublicKey, verify as verifySignature } from "node:crypto";
 import { archiveName, RELEASE_PLATFORMS, type ReleasePlatform } from "./install-layout.ts";
 import { parseSemver } from "./semver.ts";
 
 export const RELEASE_MANIFEST_SCHEMA = 1;
 export const RELEASE_MANIFEST_FILE = "release.json";
-export const RELEASE_SIGNATURE_FILE = "release.json.sig";
-
-/** keyId -> base64 raw 32-byte Ed25519 public key. Holds the current key and
- *  the next one during a rotation (the manifest's keyId selects). */
-export const RELEASE_SIGNING_KEYS: Readonly<Record<string, string>> = {
-	"unown-release-2026": "DtqHKJ3/Fdb8eYqiYYhj9JshAi2d3sBVD5o3Jhf4bZE=",
-};
 
 export type ReleaseSeverity = "normal" | "security";
 
@@ -42,7 +28,6 @@ export interface ReleaseAsset {
 
 export interface ReleaseManifest {
 	schema: typeof RELEASE_MANIFEST_SCHEMA;
-	keyId: string;
 	version: string;
 	releasedAt: string;
 	channel: "stable";
@@ -86,78 +71,9 @@ function optionalHttpsUrl(value: unknown): OptionalText {
 	return { ok: true, value };
 }
 
-/** Read only the keyId needed to select a key. This parse is deliberately
- *  separate: the rest of the object is untrusted until the signature passes. */
-export function releaseManifestKeyId(raw: string | Uint8Array): string | null {
-	try {
-		const value = JSON.parse(typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8")) as unknown;
-		if (!isRecord(value) || typeof value.keyId !== "string" || value.keyId.length === 0 || value.keyId.length > 128) {
-			return null;
-		}
-		return value.keyId;
-	} catch {
-		return null;
-	}
-}
-
-/** Decode a raw 32-byte Ed25519 public key from base64. Strict: a lenient
- *  `Buffer.from` accepts junk, which would make a key silently wrong. */
-export function decodeEd25519PublicKey(base64: string): Buffer | null {
-	const compact = base64.trim().replace(/=+$/, "");
-	if (!/^[A-Za-z0-9+/]+$/.test(compact)) return null;
-	const bytes = Buffer.from(compact, "base64");
-	if (bytes.length !== 32) return null;
-	if (bytes.toString("base64").replace(/=+$/, "") !== compact) return null;
-	return bytes;
-}
-
-function decodeEd25519Signature(base64: string): Buffer | null {
-	const compact = base64.trim().replace(/=+$/, "");
-	if (!/^[A-Za-z0-9+/]+$/.test(compact)) return null;
-	const bytes = Buffer.from(compact, "base64");
-	if (bytes.length !== 64) return null;
-	if (bytes.toString("base64").replace(/=+$/, "") !== compact) return null;
-	return bytes;
-}
-
-/** Ed25519 SPKI prefix for a raw 32-byte key (RFC 8410). */
-const ED25519_SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
-
-export function verifyReleaseSignature(
-	raw: string | Uint8Array,
-	signatureBase64: string,
-	keyId: string,
-	keys: Readonly<Record<string, string>> = RELEASE_SIGNING_KEYS,
-): { ok: true } | { ok: false; error: string } {
-	const publicKeyBase64 = keys[keyId];
-	if (!publicKeyBase64) return { ok: false, error: `unknown release signing key "${keyId}"` };
-	const publicKey = decodeEd25519PublicKey(publicKeyBase64);
-	if (!publicKey) return { ok: false, error: `release signing key "${keyId}" is not a valid Ed25519 public key` };
-	const signature = decodeEd25519Signature(signatureBase64);
-	if (!signature) return { ok: false, error: "release signature is not valid base64 for a 64-byte Ed25519 signature" };
-	const data = typeof raw === "string" ? Buffer.from(raw, "utf8") : Buffer.from(raw);
-	if (data.length === 0 || data.length > MAX_MANIFEST_BYTES) {
-		return { ok: false, error: "release manifest is empty or too large" };
-	}
-	try {
-		const key = createPublicKey({
-			key: Buffer.concat([ED25519_SPKI_PREFIX, publicKey]),
-			format: "der",
-			type: "spki",
-		});
-		if (!verifySignature(null, data, key, signature)) {
-			return { ok: false, error: "release manifest signature verification failed" };
-		}
-		return { ok: true };
-	} catch (err) {
-		return {
-			ok: false,
-			error: `release manifest signature could not be checked: ${err instanceof Error ? err.message : String(err)}`,
-		};
-	}
-}
-
-/** Parse and validate a manifest. Call this after the signature check. */
+/** Parse and validate a manifest. Unknown top-level fields are ignored, so a
+ *  hand-written or future manifest remains readable; every field the updater
+ *  uses is checked below. */
 export function parseReleaseManifest(raw: string | Uint8Array): ManifestResult {
 	const text = typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8");
 	if (Buffer.byteLength(text, "utf8") > MAX_MANIFEST_BYTES)
@@ -174,10 +90,6 @@ export function parseReleaseManifest(raw: string | Uint8Array): ManifestResult {
 	if (!isRecord(value)) return { ok: false, error: "release manifest must be a JSON object" };
 	if (value.schema !== RELEASE_MANIFEST_SCHEMA)
 		return { ok: false, error: `unsupported release manifest schema "${String(value.schema)}"` };
-	const keyId = value.keyId;
-	if (typeof keyId !== "string" || keyId.length === 0 || keyId.length > 128) {
-		return { ok: false, error: "release manifest keyId is missing or invalid" };
-	}
 	const version = value.version;
 	if (!isStableVersion(version))
 		return { ok: false, error: "release manifest version must be a stable X.Y.Z version" };
@@ -240,7 +152,6 @@ export function parseReleaseManifest(raw: string | Uint8Array): ManifestResult {
 		ok: true,
 		manifest: {
 			schema: RELEASE_MANIFEST_SCHEMA,
-			keyId,
 			version,
 			releasedAt,
 			channel: "stable",
@@ -251,20 +162,6 @@ export function parseReleaseManifest(raw: string | Uint8Array): ManifestResult {
 			assets,
 		},
 	};
-}
-
-/** Verify the detached signature, then parse. Fail closed: a manifest whose
- *  signature is missing or invalid never falls back to the legacy feed. */
-export function verifyReleaseManifest(
-	raw: string | Uint8Array,
-	signatureBase64: string,
-	keys: Readonly<Record<string, string>> = RELEASE_SIGNING_KEYS,
-): ManifestResult {
-	const keyId = releaseManifestKeyId(raw);
-	if (!keyId) return { ok: false, error: "release manifest has no keyId" };
-	const verified = verifyReleaseSignature(raw, signatureBase64, keyId, keys);
-	if (!verified.ok) return verified;
-	return parseReleaseManifest(raw);
 }
 
 export function selectReleaseAsset(manifest: ReleaseManifest, platform: ReleasePlatform): ReleaseAsset | null {

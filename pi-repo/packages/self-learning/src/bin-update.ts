@@ -48,7 +48,6 @@ import {
         readInstallMetadata,
         redactUrl,
         releaseManifestUrl,
-        releaseSignatureUrl,
         releasesBase,
         sha256File,
         shimPaths,
@@ -58,12 +57,7 @@ import {
         writeBinaryShims,
         writeInstallMetadata,
 } from "./install-layout.ts";
-import {
-        type ReleaseAsset,
-        type ReleaseManifest,
-        selectReleaseAsset,
-        verifyReleaseManifest,
-} from "./release-manifest.ts";
+import { parseReleaseManifest, type ReleaseAsset, type ReleaseManifest, selectReleaseAsset } from "./release-manifest.ts";
 import { compareSemver, parseSemver } from "./semver.ts";
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
@@ -149,8 +143,8 @@ async function fetchOk(url: string, fetchImpl: FetchLike, timeoutMs: number, use
         return res;
 }
 
-/** Small bodies only (manifest/signature/version.txt/sums). A hostile or
- *  broken mirror cannot make the updater buffer an unbounded response. */
+/** Small bodies only (manifest/version.txt/sums). A hostile or broken mirror
+ *  cannot make the updater buffer an unbounded response. */
 async function readBodyCapped(res: Response, maxBytes = MAX_METADATA_BYTES): Promise<string> {
         if (!res.body) return "";
         const reader = res.body.getReader();
@@ -260,7 +254,6 @@ export interface ReleaseFeedOptions {
         fetch?: FetchLike;
         timeoutMs?: number;
         userAgent?: string;
-        keys?: Readonly<Record<string, string>>;
 }
 
 export type ReleaseFeedResult =
@@ -268,8 +261,8 @@ export type ReleaseFeedResult =
         | { kind: "legacy"; reason: string }
         | { kind: "error"; error: string };
 
-/** Fetch the signed manifest for `version` (or latest). A 404/410 is the only
- *  legacy fallback; a present-but-unauthorized manifest is an error. */
+/** Fetch and validate the manifest for `version` (or latest). A 404/410 is the
+ *  only legacy fallback; a malformed or unreadable manifest is an error. */
 export async function fetchReleaseFeed(opts: ReleaseFeedOptions = {}): Promise<ReleaseFeedResult> {
         const env = opts.env ?? process.env;
         const baseUrl = (opts.baseUrl ?? releasesBase(env)).replace(/\/+$/, "");
@@ -290,21 +283,7 @@ export async function fetchReleaseFeed(opts: ReleaseFeedOptions = {}): Promise<R
                         };
                 }
                 const raw = await readBodyCapped(manifestRes);
-                const sigRes = await fetchResponse(releaseSignatureUrl(baseUrl, opts.version), fetchImpl, {
-                        timeoutMs,
-                        userAgent: opts.userAgent,
-                });
-                if (sigRes.status === 404 || sigRes.status === 410) {
-                        return { kind: "error", error: "release manifest is unsigned (signature file is missing)" };
-                }
-                if (!sigRes.ok) {
-                        return {
-                                kind: "error",
-                                error: `HTTP ${sigRes.status}${sigRes.statusText ? ` ${sigRes.statusText}` : ""} from ${redactUrl(releaseSignatureUrl(baseUrl, opts.version))}`,
-                        };
-                }
-                const signature = (await readBodyCapped(sigRes)).trim();
-                const checked = verifyReleaseManifest(raw, signature, opts.keys);
+                const checked = parseReleaseManifest(raw);
                 if (!checked.ok) return { kind: "error", error: checked.error };
                 return { kind: "manifest", manifest: checked.manifest, raw };
         } catch (err) {
@@ -324,8 +303,7 @@ export interface BinaryCheckResult {
         platform: ReleasePlatform | null;
         asset?: ReleaseAsset;
         source: "manifest" | "legacy" | "none";
-        signature: "verified" | "legacy" | null;
-        keyId?: string;
+        signature: "unsigned" | "legacy" | null;
         severity?: "normal" | "security";
         releasedAt?: string;
         requiredMinimumVersion?: string | null;
@@ -334,9 +312,9 @@ export interface BinaryCheckResult {
         error?: string;
 }
 
-/** Compare the running version against the signed release feed. Exit-code
- *  mapping stays in update.ts (0 current/no applicable asset, 2 available,
- *  1 error). A platform miss is `applicable:false`, not an error. */
+/** Compare the running version against the release feed. Exit-code mapping
+ *  stays in update.ts (0 current/no applicable asset, 2 available, 1 error).
+ *  A platform miss is `applicable:false`, not an error. */
 export async function checkBinaryUpdate(opts: {
         current: string;
         env?: NodeJS.ProcessEnv;
@@ -346,7 +324,6 @@ export async function checkBinaryUpdate(opts: {
         platform?: ReleasePlatform;
         metadataPlatform?: string;
         musl?: boolean;
-        keys?: Readonly<Record<string, string>>;
         cachedLatest?: string;
 }): Promise<BinaryCheckResult> {
         const env = opts.env ?? process.env;
@@ -368,7 +345,6 @@ export async function checkBinaryUpdate(opts: {
                 fetch: opts.fetch,
                 timeoutMs: opts.timeoutMs,
                 userAgent,
-                keys: opts.keys,
         });
         if (feed.kind === "error") {
                 return {
@@ -474,8 +450,7 @@ export async function checkBinaryUpdate(opts: {
                 platform: detected,
                 ...(asset ? { asset } : {}),
                 source: "manifest",
-                signature: "verified",
-                keyId: manifest.keyId,
+                signature: "unsigned",
                 severity: manifest.severity,
                 releasedAt: manifest.releasedAt,
                 requiredMinimumVersion: manifest.requiredMinimumVersion,
@@ -547,8 +522,8 @@ export interface DownloadStageOptions {
         timeoutMs?: number;
         archiveTimeoutMs?: number;
         userAgent?: string;
-        /** The signed manifest entry; when present, size and sha256 are the
-         *  expected values and sha256sums.txt must agree with it. */
+        /** The manifest entry; when present, size and sha256 are the expected
+         *  values and sha256sums.txt must agree with it. */
         manifestAsset?: ReleaseAsset;
         quarantine?: (binary: string, platform: ReleasePlatform) => void;
         log?: (line: string) => void;
@@ -609,7 +584,7 @@ export async function downloadAndStage(opts: DownloadStageOptions): Promise<Down
                 const size = await downloadFile(url, archivePath, fetchImpl, archiveTimeout, opts.userAgent, maxBytes);
                 log(`· downloaded ${(size / (1024 * 1024)).toFixed(1)} MiB`);
                 if (expectedSize && size !== expectedSize) {
-                        throw new Error(`${name} is ${size} bytes, the signed manifest says ${expectedSize}`);
+                        throw new Error(`${name} is ${size} bytes, the manifest says ${expectedSize}`);
                 }
 
                 const sumsUrl = checksumsUrl(baseUrl, version);
@@ -620,7 +595,7 @@ export async function downloadAndStage(opts: DownloadStageOptions): Promise<Down
                 }
                 const expected = opts.manifestAsset?.sha256 ?? published;
                 if (opts.manifestAsset && published !== opts.manifestAsset.sha256) {
-                        throw new Error(`sha256sums.txt disagrees with the signed release manifest for ${name}`);
+                        throw new Error(`sha256sums.txt disagrees with the release manifest for ${name}`);
                 }
                 const actual = sha256File(archivePath);
                 if (actual !== expected) {

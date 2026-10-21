@@ -433,7 +433,6 @@ export interface UpdateCtx {
                 metadataPlatform?: string;
                 timeoutMs?: number;
                 archiveTimeoutMs?: number;
-                keys?: Readonly<Record<string, string>>;
                 quarantine?: (binary: string, platform: ReleasePlatform) => void;
         };
         /** Post-update pipeline. Real one spawns `bun scripts/install.ts`. Returns exit code. */
@@ -855,7 +854,6 @@ async function cmdUpdateBinary(
                                 platform: platform ?? undefined,
                                 metadataPlatform,
                                 musl,
-                                keys: deps.keys,
                                 ...(cached?.latest ? { cachedLatest: cached.latest } : {}),
                         });
                         writeUpdateCheckCache(home, binaryCache(res));
@@ -906,7 +904,6 @@ async function cmdUpdateBinary(
                         version: target,
                         timeoutMs: deps.timeoutMs,
                         userAgent: `unown/${current}`,
-                        keys: deps.keys,
                 });
                 if (feed.kind === "error") {
                         log(`unown: update feed failed — ${feed.error}`);
@@ -931,7 +928,6 @@ async function cmdUpdateBinary(
                         platform,
                         metadataPlatform,
                         musl,
-                        keys: deps.keys,
                         ...(cached?.latest ? { cachedLatest: cached.latest } : {}),
                 });
                 if (!res.ok || !res.latest) {
@@ -1055,7 +1051,6 @@ function binaryCache(res: BinaryCheckResult, checkedAt = new Date().toISOString(
                 ...(res.notesUrl ? { notesUrl: res.notesUrl } : {}),
                 ...(res.asset && res.asset.size > 0 ? { asset: res.asset } : {}),
                 ...(res.signature ? { signature: res.signature } : {}),
-                ...(res.keyId ? { keyId: res.keyId } : {}),
                 ...(res.latest ? { manifestVersion: res.latest } : {}),
                 ...(res.remoteUrl ? { remoteUrl: res.remoteUrl } : {}),
                 ...(res.error ? { error: res.error } : {}),
@@ -1086,7 +1081,6 @@ async function cmdCheckBinary(
                 platform: platform ?? undefined,
                 metadataPlatform,
                 musl,
-                keys: deps.keys,
                 ...(cached?.latest ? { cachedLatest: cached.latest } : {}),
         });
         const checkedAt = new Date().toISOString();
@@ -1108,7 +1102,6 @@ async function cmdCheckBinary(
                                         platform: res.platform,
                                         asset: res.asset ?? null,
                                         signature: res.signature,
-                                        keyId: res.keyId ?? null,
                                         severity: res.severity ?? null,
                                         releasedAt: res.releasedAt ?? null,
                                         requiredMinimumVersion: res.requiredMinimumVersion ?? null,
@@ -1225,7 +1218,6 @@ function cmdCheck(root: string, home: string, git: GitRunner, log: (l: string) =
                                         platform: null,
                                         asset: null,
                                         signature: null,
-                                        keyId: null,
                                         severity: null,
                                         releasedAt: null,
                                         requiredMinimumVersion: null,
@@ -1455,16 +1447,16 @@ How the update works depends on how this unown was installed:
     may advance; any other detached HEAD is pinned until you pass a version.
 
   binary (standalone release download)
-    verify the signed release.json manifest (release.json.sig, Ed25519), select
-    the unown-<platform> asset, verify its size and SHA-256 and \`unown --version\`,
-    then atomically activate <root>/versions/<version> and rewrite the shim.
+    verify the release.json manifest, select the unown-<platform> asset, verify
+    its size and SHA-256 and \`unown --version\`, then atomically activate
+    <root>/versions/<version> and rewrite the shim.
     No git and no build step; the previous version stays on disk for rollback.
     Releases without a manifest fall back to version.txt + sha256sums.txt.
 
 Refuses when: the checkout tree is dirty (unless --allow-dirty), a non-release
 detached HEAD has no explicit version, local commits exist that the remote
-lacks, the signed manifest is missing/invalid, the platform has no release
-asset, or a binary checksum/version verify fails. Never rebases, merges, or
+lacks, the manifest is malformed, the platform has no release asset, or a
+binary checksum/version verify fails. Never rebases, merges, or
 discards your work; a failed binary update leaves the old shim and metadata.
 
 Kill switches:
@@ -1480,9 +1472,9 @@ Binary installs:
 
 The startup notice is stderr-TTY-only, CI/subagent-suppressed, cached for 24h
 in ~/.unown (outside the repo), and refreshed by a detached background process.
-The binary check verifies the signed manifest before trusting any version,
-size or hash. It only talks to your git remote (checkout) or the release feed
-(binary); no telemetry of any kind.`;
+The binary check verifies the manifest and the archive's size and SHA-256
+before trusting a download. It only talks to your git remote (checkout) or the
+release feed (binary); no telemetry of any kind.`;
 
 /** Parse `unown update` flags; the first bare token is an explicit version.
  *  `--skip <version>` consumes that token as the skipped version, not a target. */

@@ -44,7 +44,7 @@ function cache(overrides: Partial<UpdateCheckCache> = {}): UpdateCheckCache {
 		severity: "normal",
 		notesUrl: "https://github.com/kanishka-namdeo/Unown/releases/tag/v0.0.2",
 		asset: { name: "unown-linux-x64.tar.gz", sha256: "a".repeat(64), size: 2 * 1024 * 1024 },
-		signature: "verified",
+		signature: "unsigned",
 		...overrides,
 	};
 }

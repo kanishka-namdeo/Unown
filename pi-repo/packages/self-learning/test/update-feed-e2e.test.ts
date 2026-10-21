@@ -1,10 +1,9 @@
 // update-feed-e2e.test.ts — the real command over a real local HTTP feed.
 // Unlike bin-update.test.ts (injected fetch), this drives `cmdUpdate --check`
-// with the global fetch against a Bun.serve feed and a real Ed25519 signature,
-// proving the CLI -> checkBinaryUpdate -> verifyReleaseManifest wiring.
+// with the global fetch against a Bun.serve feed, proving the
+// CLI -> checkBinaryUpdate -> parseReleaseManifest wiring.
 import "./_env.ts";
 import { afterAll, describe, expect, test } from "bun:test";
-import { generateKeyPairSync, sign } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,12 +15,9 @@ const TMP = mkdtempSync(join(tmpdir(), "unown-update-feed-e2e-"));
 afterAll(() => rmSync(TMP, { recursive: true, force: true }));
 
 function fixture() {
-	const { publicKey, privateKey } = generateKeyPairSync("ed25519");
-	const publicKeyBase64 = publicKey.export({ format: "der", type: "spki" }).subarray(-32).toString("base64");
 	const raw = `${JSON.stringify(
 		{
 			schema: 1,
-			keyId: "test-key",
 			version: "0.0.2",
 			releasedAt: "2026-10-21T14:41:06.000Z",
 			channel: "stable",
@@ -34,7 +30,6 @@ function fixture() {
 		null,
 		2,
 	)}\n`;
-	const signature = sign(null, Buffer.from(raw, "utf8"), privateKey).toString("base64");
 	const base = mkdtempSync(join(TMP, "case-"));
 	const home = join(base, "home");
 	const root = join(base, "install");
@@ -49,11 +44,11 @@ function fixture() {
 		shim: join(base, "bin", "unown"),
 		installedAt: "2026-10-21T12:00:00.000Z",
 	});
-	return { raw, signature, publicKeyBase64, home, root };
+	return { raw, home, root };
 }
 
 describe("update check over a real HTTP feed", () => {
-	test("verifies the signature, selects the platform asset, writes the cache, and fails closed on tamper", async () => {
+	test("parses the manifest, selects the platform asset, writes the cache, and fails closed on a malformed feed", async () => {
 		const fx = fixture();
 		let served = fx.raw;
 		const server = Bun.serve({
@@ -62,7 +57,6 @@ describe("update check over a real HTTP feed", () => {
 			fetch(req) {
 				const path = new URL(req.url).pathname;
 				if (path.endsWith("/release.json")) return new Response(served);
-				if (path.endsWith("/release.json.sig")) return new Response(`${fx.signature}\n`);
 				return new Response("not found", { status: 404 });
 			},
 		});
@@ -80,7 +74,6 @@ describe("update check over a real HTTP feed", () => {
 						baseUrl,
 						platform: "linux-x64",
 						musl: false,
-						keys: { "test-key": fx.publicKeyBase64 },
 					},
 					log: (line) => lines.push(line),
 				},
@@ -94,16 +87,16 @@ describe("update check over a real HTTP feed", () => {
 				platform: "linux-x64",
 				applicable: true,
 				available: true,
-				signature: "verified",
+				signature: "unsigned",
 			});
 			expect((body.asset as { name: string }).name).toBe("unown-linux-x64.tar.gz");
 			expect(readUpdateCheckCache(fx.home)).toMatchObject({ schema: 2, latest: "0.0.2", applicable: true });
 
-			served = `${fx.raw} `;
+			served = "{not json";
 			lines.length = 0;
 			expect(await run()).toBe(1);
 			const failed = JSON.parse(lines.join("\n")) as Record<string, unknown>;
-			expect(String(failed.error)).toContain("signature verification failed");
+			expect(String(failed.error)).toContain("not valid JSON");
 		} finally {
 			server.stop(true);
 		}

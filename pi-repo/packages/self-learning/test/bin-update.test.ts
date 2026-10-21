@@ -3,7 +3,7 @@
 // rollback. Hermetic: injected fetch/extract/verify, temp roots, no network.
 import "./_env.ts";
 import { afterAll, describe, expect, test } from "bun:test";
-import { createHash, generateKeyPairSync, sign } from "node:crypto";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -25,7 +25,6 @@ import {
         type ReleasePlatform,
         readInstallMetadata,
         releaseManifestUrl,
-        releaseSignatureUrl,
         versionDir,
         versionTxtUrl,
         writeBinaryShims,
@@ -83,7 +82,6 @@ interface Feed {
         fetch: FetchLike;
         extract: ExtractArchive;
         verify: VerifyBinary;
-        keys?: Record<string, string>;
 }
 
 /** A release feed for `version`; `checksum` overrides the published hash. */
@@ -121,20 +119,16 @@ function feed(version: string, platform: ReleasePlatform, checksum?: string): Fe
 
 interface ManifestFeedOptions {
         assets?: ReleaseAsset[];
-        sign?: boolean;
-        tamper?: boolean;
-        keyId?: string;
+        malformed?: boolean;
 }
 
-/** A signed release feed for one platform. The test keypair is generated per
- *  fixture; the map is passed through `checkBinaryUpdate`/`cmdUpdate`. */
+/** An unsigned release feed for one platform. */
 function manifestFeed(version: string, platform: ReleasePlatform, opts: ManifestFeedOptions = {}): Feed {
         const archive = Buffer.from(`fake archive ${version}`);
         const name = archiveName(platform);
         const digest = createHash("sha256").update(archive).digest("hex");
         const manifest = {
                 schema: 1,
-                keyId: opts.keyId ?? "test-key",
                 version,
                 releasedAt: "2026-10-21T14:41:06.000Z",
                 channel: "stable",
@@ -144,11 +138,7 @@ function manifestFeed(version: string, platform: ReleasePlatform, opts: Manifest
                 notesUrl: `https://example.test/releases/tag/v${version}`,
                 assets: opts.assets ?? [{ platform, name, sha256: digest, size: archive.length }],
         };
-        const original = `${JSON.stringify(manifest, null, 2)}\n`;
-        const raw = opts.tamper ? `${original} ` : original;
-        const { publicKey, privateKey } = generateKeyPairSync("ed25519");
-        const publicKeyBase64 = publicKey.export({ format: "der", type: "spki" }).subarray(-32).toString("base64");
-        const signature = sign(null, Buffer.from(original, "utf8"), privateKey).toString("base64");
+        const raw = opts.malformed ? "{not json" : `${JSON.stringify(manifest, null, 2)}\n`;
         const bodies = new Map<string, string | Uint8Array>([
                 [releaseManifestUrl(BASE), raw],
                 [releaseManifestUrl(BASE, version), raw],
@@ -156,10 +146,6 @@ function manifestFeed(version: string, platform: ReleasePlatform, opts: Manifest
                 [checksumsUrl(BASE, version), `${digest}  ${name}\n`],
                 [checksumsUrl(BASE), `${digest}  ${name}\n`],
         ]);
-        if (opts.sign !== false) {
-                bodies.set(releaseSignatureUrl(BASE), `${signature}\n`);
-                bodies.set(releaseSignatureUrl(BASE, version), `${signature}\n`);
-        }
         const fetchImpl: FetchLike = async (url) => {
                 const body = bodies.get(url);
                 return body === undefined ? new Response("not found", { status: 404 }) : new Response(body);
@@ -176,7 +162,7 @@ function manifestFeed(version: string, platform: ReleasePlatform, opts: Manifest
                         return false;
                 }
         };
-        return { fetch: fetchImpl, extract, verify, keys: { [manifest.keyId]: publicKeyBase64 } };
+        return { fetch: fetchImpl, extract, verify };
 }
 
 async function runBinary(
@@ -198,7 +184,6 @@ async function runBinary(
                         platform: fx.platform,
                         baseUrl: BASE,
                         musl: false,
-                        ...(release.keys ? { keys: release.keys } : {}),
                 },
                 log: (l) => lines.push(l),
                 git: () => {
@@ -287,7 +272,7 @@ describe("checkLatestVersion / checkBinaryUpdate", () => {
         });
 });
 
-describe("signed manifest feed", () => {
+describe("unsigned manifest feed", () => {
         test("a newer platform asset is applicable and exposes its size", async () => {
                 const release = manifestFeed("0.0.2", "linux-x64");
                 const res = await checkBinaryUpdate({
@@ -296,7 +281,6 @@ describe("signed manifest feed", () => {
                         baseUrl: BASE,
                         platform: "linux-x64",
                         musl: false,
-                        keys: release.keys,
                 });
                 expect(res).toMatchObject({
                         ok: true,
@@ -304,7 +288,7 @@ describe("signed manifest feed", () => {
                         available: true,
                         applicable: true,
                         source: "manifest",
-                        signature: "verified",
+                        signature: "unsigned",
                 });
                 expect(res.asset?.size).toBeGreaterThan(0);
         });
@@ -319,55 +303,25 @@ describe("signed manifest feed", () => {
                         baseUrl: BASE,
                         platform: "linux-x64",
                         musl: false,
-                        keys: release.keys,
                 });
                 expect(res).toMatchObject({ ok: true, available: false, applicable: false, reason: "no-asset" });
         });
 
-        test("a tampered manifest fails closed (no legacy fallback)", async () => {
-                const release = manifestFeed("0.0.2", "linux-x64", { tamper: true });
+        test("a malformed manifest fails closed (no legacy fallback)", async () => {
+                const release = manifestFeed("0.0.2", "linux-x64", { malformed: true });
                 const res = await checkBinaryUpdate({
                         current: "0.0.1",
                         fetch: release.fetch,
                         baseUrl: BASE,
                         platform: "linux-x64",
                         musl: false,
-                        keys: release.keys,
                 });
                 expect(res.ok).toBe(false);
                 expect(res.source).toBe("none");
-                expect(res.error).toContain("signature verification failed");
+                expect(res.error).toContain("not valid JSON");
         });
 
-        test("a manifest without a signature fails closed", async () => {
-                const release = manifestFeed("0.0.2", "linux-x64", { sign: false });
-                const res = await checkBinaryUpdate({
-                        current: "0.0.1",
-                        fetch: release.fetch,
-                        baseUrl: BASE,
-                        platform: "linux-x64",
-                        musl: false,
-                        keys: release.keys,
-                });
-                expect(res.ok).toBe(false);
-                expect(res.error).toContain("unsigned");
-        });
-
-        test("an unknown signing key fails closed", async () => {
-                const release = manifestFeed("0.0.2", "linux-x64", { keyId: "other-key" });
-                const res = await checkBinaryUpdate({
-                        current: "0.0.1",
-                        fetch: release.fetch,
-                        baseUrl: BASE,
-                        platform: "linux-x64",
-                        musl: false,
-                        keys: { "test-key": release.keys?.["other-key"] ?? "" },
-                });
-                expect(res.ok).toBe(false);
-                expect(res.error).toContain("unknown release signing key");
-        });
-
-        test("applies the signed asset and verifies size/checksum", async () => {
+        test("applies the manifest asset and verifies size/checksum", async () => {
                 const fx = makeInstall("0.0.1");
                 const release = manifestFeed("0.0.2", fx.platform);
                 const r = await runBinary(fx, {}, release);
@@ -385,7 +339,7 @@ describe("signed manifest feed", () => {
                 expect(body).toMatchObject({
                         schema: 2,
                         mode: "binary",
-                        signature: "verified",
+                        signature: "unsigned",
                         applicable: true,
                         available: true,
                         platform: fx.platform,
@@ -401,7 +355,7 @@ describe("signed manifest feed", () => {
                 });
                 const r = await runBinary(fx, {}, release);
                 expect(r.code).toBe(1);
-                expect(r.lines.join("\n")).toContain("the signed manifest says 999999");
+                expect(r.lines.join("\n")).toContain("the manifest says 999999");
         });
 });
 

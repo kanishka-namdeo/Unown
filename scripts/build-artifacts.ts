@@ -191,9 +191,9 @@ export function installNotes(p: Platform, version: string): string {
     }
     lines.push(
         "",
-        "Binary updates verify the signed release manifest (release.json +",
-        "release.json.sig) before downloading an archive; sha256sums.txt remains",
-        "the manual checksum and installer path.",
+        "Binary updates verify the release manifest (release.json), including the",
+        "archive's exact size and SHA-256, before activating it; sha256sums.txt",
+        "remains the manual checksum and installer path.",
         "",
         "Update and uninstall (both install modes):",
         "  unown update                     # checkout: git fast-forward; binary install: verified release download",

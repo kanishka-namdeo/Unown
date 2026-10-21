@@ -84,8 +84,7 @@ export interface UpdateCheckCache {
 	requiredMinimumVersion?: string | null;
 	notesUrl?: string;
 	asset?: UpdateAsset;
-	signature?: "verified" | "legacy";
-	keyId?: string;
+	signature?: "unsigned" | "legacy";
 	manifestVersion?: string;
 	remoteUrl?: string;
 	error?: string;
@@ -210,9 +209,7 @@ function parseCache(raw: unknown): UpdateCheckCache | null {
 	if (notesUrl && /^https:\/\//i.test(notesUrl)) cache.notesUrl = notesUrl;
 	const asset = optionalAsset(raw);
 	if (asset) cache.asset = asset;
-	if (raw.signature === "verified" || raw.signature === "legacy") cache.signature = raw.signature;
-	const keyId = optionalString(raw, "keyId");
-	if (keyId) cache.keyId = keyId;
+	if (raw.signature === "unsigned" || raw.signature === "legacy") cache.signature = raw.signature;
 	const manifestVersion = optionalVersion(raw, "manifestVersion");
 	if (manifestVersion) cache.manifestVersion = manifestVersion;
 	const remoteUrl = optionalString(raw, "remoteUrl");

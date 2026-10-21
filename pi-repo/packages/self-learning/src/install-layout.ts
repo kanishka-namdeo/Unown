@@ -469,17 +469,13 @@ export function checksumsUrl(base: string, version?: string): string {
         return `${base}/latest/download/sha256sums.txt`;
 }
 
-/** The signed release manifest and its detached Ed25519 signature. The
- *  filename literals also live in release-manifest.ts; a test pins them. */
+/** The release manifest URL. The filename literal also lives in
+ *  release-manifest.ts; a test pins them. */
 export function releaseManifestUrl(base: string, version?: string): string {
         if (version) return `${base}/download/v${normalizeVersion(version)}/release.json`;
         return `${base}/latest/download/release.json`;
 }
 
-export function releaseSignatureUrl(base: string, version?: string): string {
-        if (version) return `${base}/download/v${normalizeVersion(version)}/release.json.sig`;
-        return `${base}/latest/download/release.json.sig`;
-}
 
 // ---------------------------------------------------------------------------
 // Hashing
