@@ -1478,7 +1478,7 @@ thing that actually differs: macOS and Linux carry `curl -fsSL
 https://unown-nine.vercel.app/install.sh | sh` — the documented one-line
 installer (docs/install.md), which refuses root, checks git and bootstraps bun
 itself, and is a shorter line than the clone path into the bargain — while
-Windows carries the clone path plus the bun prerequisite, because a fresh
+Windows carried the clone path plus the bun prerequisite, because a fresh
 Windows box has no sh (docs/windows.md). Each tab's note line quotes one of
 the three sandbox facts the page already claims in quickstart's prerequisite
 table (bubblewrap / Seatbelt / in-process jail), verified against
@@ -1491,6 +1491,41 @@ three. The chip stays one `<pre>` — the hero did not grow a command wall, it
 grew a chooser. One implementation constraint worth remembering: the panel is
 a client island (`install-panel.tsx`) precisely so `StarCount` can stay an
 async RSC in the server-rendered hero.
+
+**Correction, 2026-10-21.** Windows no longer carries the clone path:
+`public/install.ps1` shipped as the `irm | iex` twin of the POSIX script, so
+the Windows tab is now one command like the other two — refuses elevation,
+checks git, bootstraps bun via bun's own PowerShell installer, clones, runs
+`agent:install`. The manual clone sequence remains one expander below the
+chip. `__tests__/landing-copy.test.tsx` pins the PowerShell one-liner and the
+absence of the POSIX command on that tab.
+
+**Correction, 2026-10-21 — the installer default and the CLI-only binary lane.**
+The one-liners now install the newest **stable release tag**, not `main`:
+`public/install.sh` resolves it with `git ls-remote --tags --refs
+--sort=-v:refname`; `public/install.ps1` does the same. `--main` / `-Main` is
+the explicit edge install, and `--version` / `-Version` pins a stable tag. The
+chip's label names the policy ("install · latest stable release") instead of a
+version literal that would go stale; the commands did not move — still one per
+OS tab, exactly one `<pre>` in the hero.
+
+The scripts gained a CLI-only lane: `sh install.sh --binary` and
+`.\install.ps1 -Binary` download the release archive, verify its SHA-256
+against that release's `sha256sums.txt`, and install atomically under
+`UNOWN_INSTALL_ROOT/versions/<version>/` with a PATH shim and
+`~/.unown/install.json`; `unown update`, `--check`, `--rollback` and
+`uninstall` work against that layout
+(`pi-repo/packages/self-learning/src/install-layout.ts`, `bin-update.ts`).
+It is the terminal agent only — no engine, llm-bridge or learning stack — so
+the page's manual expander states that limit and never presents the lane as
+the source chain. Verified by the release workflow's `smoke-install` matrix
+(`.github/workflows/release.yml`, ubuntu/macOS/Windows), which installs the
+published archive with `--binary --version <tag>`, asserts `--version` matches
+the tag, `update --check` exits 0 or 2, and `uninstall --dry-run` runs. The
+source default has no equivalent automated run yet, recorded here rather than
+implied. `__tests__/landing-copy.test.tsx` and
+`__tests__/quickstart.test.tsx` pin the label, both binary invocations and
+the CLI-only scope.
 
 **The six-at-zero run.** The install-first rework recorded, rather than
 fixed, the run of six technical sections between the lore carriers (positions

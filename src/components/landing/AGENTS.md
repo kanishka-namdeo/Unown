@@ -635,27 +635,37 @@ parallel ones.
   reveals re-trigger when a pane is shown. Do not switch to unmounting
   panes without a plan for the generated numbers.
 - **Install first (2026-10-19 rework; OS tabs the same day; quickstart folded
-  in 2026-10-20): the hero carries one command per OS tab, and the manual
-  sequence lives collapsed right under it.** For a clone-and-run tool the
-  command is the conversion, so the hero's chip is a three-tab install
-  panel (`install-panel.tsx`, a client island inside the server-rendered
-  hero — it must stay one, or StarCount stops being an RSC): macOS and
-  Linux show the one-line installer (`curl … install.sh | sh`, which
-  refuses root, checks git and bootstraps bun itself), Windows shows the
-  clone path (`git clone … && bun run agent:install` — a fresh Windows box
-  has no sh) with the bun prerequisite and the sandbox reality in the tab's
-  note line. The tab auto-defaults from the user agent (`detectOS()`,
-  pinned branch by branch) and never gates: every tab is one click away,
-  the `unown setup → bun run agent:start → unown` chain is printed under
-  all of them, and a `<details>` delegation prompt serves visitors who
-  would rather have their existing coding agent run the install (the
-  pattern ollama.com/download ships). The tab notes may only quote the
-  sandbox trio the page already claims — bubblewrap / Seatbelt /
-  in-process jail, with `resolveOsSandboxBackend()` in
-  `pi-repo/packages/self-learning/src/bwrap.ts` as the source of truth —
-  the chip must never grow back into a command wall (exactly one `<pre>`
-  in the hero, pinned), and the delegation prompt is an instruction (every
-  command in it is real), not a claim. Research receipts:
+  in 2026-10-20; installer default + binary lane 2026-10-21): the hero carries
+  one command per OS tab, and the manual sequence lives collapsed right under
+  it.** For a clone-and-run tool the command is the conversion, so the hero's
+  chip is a three-tab install panel (`install-panel.tsx`, a client island
+  inside the server-rendered hero — it must stay one, or StarCount stops being
+  an RSC): macOS and Linux show the one-line installer (`curl … install.sh |
+  sh`, which refuses root, checks git and bootstraps bun itself); Windows
+  shows its own PowerShell one-liner (`irm … install.ps1 | iex` — the same
+  contract: refuses elevation, checks git, bootstraps bun via bun's own
+  installer), with the sandbox reality in the tab's note line. Both default to
+  the newest **stable release tag**, not `main` (`--main` / `-Main` is the
+  explicit edge install; `--version` / `-Version` pins a tag). The chip's label
+  states that policy ("install · latest stable release") and carries no
+  version literal, which would go stale. The tab auto-defaults from the user
+  agent (`detectOS()`, pinned branch by branch) and never gates: every tab is
+  one click away, the `unown setup → bun run agent:start → unown` chain is
+  printed under all of them — it is the source-stack chain — and a `<details>`
+  delegation prompt serves visitors who would rather have their existing
+  coding agent run the install (the pattern ollama.com/download ships). The
+  manual `<details>` also carries the CLI-only binary lane as one instruction
+  beside the source sequence (`sh install.sh --binary` or
+  `.\install.ps1 -Binary`: verified download, no git, no bun) and says
+  explicitly that it installs the terminal agent alone — the engine and
+  learning stack need the full install. It is never the chip's command and
+  never the chain. The tab notes may only quote the sandbox trio the page
+  already claims — bubblewrap / Seatbelt / in-process jail, with
+  `resolveOsSandboxBackend()` in
+  `pi-repo/packages/self-learning/src/bwrap.ts` as the source of truth — the
+  chip must never grow back into a command wall (exactly one `<pre>` in the
+  hero, pinned), and the delegation prompt is an instruction (every command in
+  it is real), not a claim. Research receipts:
   `docs/landing-research.md`, "2026-10-19 — install and try first",
   "2026-10-19 — the OS tabs, after all" and "2026-10-20 — the eight-band
   compression".

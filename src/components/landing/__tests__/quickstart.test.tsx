@@ -2,11 +2,11 @@
 //
 // The changed-line coverage gate (scripts/check_coverage.mjs) flags landing
 // edits that no test exercises — this file pins the user-visible claims of
-// the quickstart surface (install commands, per-OS prerequisites incl. the
-// sandbox ladder, command surface) so landing edits stay covered. The
-// quickstart used to be its own section; the 2026-10-20 merge folded it
-// into the hero as collapsed <details> expanders, which is why these
-// assertions now render <Hero />.
+// the quickstart surface (install commands, the CLI-only binary lane, per-OS
+// prerequisites incl. the sandbox ladder, command surface) so landing edits
+// stay covered. The quickstart used to be its own section; the 2026-10-20
+// merge folded it into the hero as collapsed <details> expanders, which is
+// why these assertions now render <Hero />.
 //
 // Rendered under the global happy-dom preload (bunfig.toml [test] preload →
 // src/test-dom-setup.ts), same as the dashboard component tests. FadeUp's
@@ -62,6 +62,25 @@ describe("landing quickstart (hero expanders)", () => {
       const escaped = line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       expect(screen.getAllByText(new RegExp(escaped)).length).toBeGreaterThan(0);
     }
+  });
+
+  test("names the CLI-only binary lane as a separate install, not the chain", () => {
+    setUA("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36");
+    const { container } = render(<Hero />);
+    const text = container.textContent ?? "";
+    // The manual expander carries the binary lane as an instruction with the
+    // two real invocations from public/install.sh and public/install.ps1.
+    expect(text).toContain("cli only");
+    expect(text).toContain("no git, no bun");
+    expect(text).toContain("install.sh | sh -s -- --binary");
+    expect(text).toContain("-OutFile install.ps1");
+    expect(text).toContain(".\\install.ps1 -Binary");
+    // and states the scope: the terminal agent alone. The engine/learning
+    // stack stays on the source chain above (unown setup → agent:start → unown).
+    expect(text).toContain("installs the terminal agent alone");
+    expect(text).toContain("the engine and learning stack need the full install above");
+    // the lane is prose plus inline <code>, not a second terminal block
+    expect(container.querySelectorAll("pre")).toHaveLength(1);
   });
 
   test("states the three-OS prerequisite and the sandbox ladder", () => {

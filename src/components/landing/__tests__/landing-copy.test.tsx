@@ -89,6 +89,21 @@ describe("landing hero", () => {
     expect(container.querySelectorAll("pre")).toHaveLength(1);
   });
 
+  test("the chip names its default-version policy without a version literal", () => {
+    setUA(MAC_UA);
+    render(<Hero />);
+    // Both one-liners install the newest STABLE release tag (install.sh
+    // resolves `git ls-remote --tags --refs --sort=-v:refname`; install.ps1
+    // does the same). The label says so; a version number would go stale.
+    const label = screen.getByText("install · latest stable release");
+    expect(label).toBeTruthy();
+    const chip = label.closest(".gb-panel");
+    expect(chip?.textContent ?? "").not.toMatch(/\bv?\d+\.\d+\.\d+\b/);
+    // the CLI-only binary lane is a different install and stays out of the
+    // one-command-per-OS chip; the manual expander carries it (quickstart test)
+    expect(chip?.textContent ?? "").not.toContain("--binary");
+  });
+
   test("the tabs follow the WAI-ARIA pattern and exactly one is selected", () => {
     setUA(MAC_UA);
     const { container } = render(<Hero />);

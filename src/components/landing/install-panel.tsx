@@ -12,9 +12,9 @@ export type OsKey = "macos" | "linux" | "windows";
 /**
  * The one-line installer (`public/install.sh`, served by the site deployment,
  * documented in docs/install.md): refuses root, checks git, adds bun when it
- * is missing, clones, and runs the repo's own installer. macOS and Linux both
- * speak sh, so both tabs carry the same command — their sandbox backends are
- * what differ.
+ * is missing, clones the newest STABLE release tag, and runs the repo's own
+ * installer. macOS and Linux both speak sh, so both tabs carry the same
+ * command — their sandbox backends are what differ.
  */
 const INSTALLER_ONE_LINER =
   "curl -fsSL https://unown-nine.vercel.app/install.sh | sh";
@@ -22,22 +22,15 @@ const INSTALLER_ONE_LINER =
 /**
  * The Windows one-liner installer (public/install.ps1 — same contract as the
  * POSIX script: refuses elevation, checks git, adds bun via bun's own
- * PowerShell installer when missing, clones, runs agent:install).
+ * PowerShell installer when missing, clones the newest stable release tag,
+ * runs agent:install).
  */
 const INSTALLER_ONE_LINER_PS =
   "irm https://unown-nine.vercel.app/install.ps1 | iex";
 
 /**
- * The manual path, byte-identical to the README quickstart and
- * docs/install.md's manual section — every OS tab carries it as the
- * alternative (docs/install.md#manual-install-git-clone).
- */
-const MANUAL_ONE_LINER =
-  "git clone https://github.com/kanishka-namdeo/Unown.git && cd Unown && bun run agent:install";
-
-/**
- * Sandbox backends quoted from the page's own prerequisite table
- * (`quickstart.tsx`), which the engine implements per platform:
+ * Sandbox backends quoted from the page's own prerequisite line (`hero.tsx`
+ * `PREREQS`), which the engine implements per platform:
  * `resolveOsSandboxBackend()` in `pi-repo/packages/self-learning/src/bwrap.ts`
  * returns bwrap on Linux, seatbelt on darwin, and null on win32 (where the
  * in-process path jail runs). Same three facts the page has always claimed —
@@ -117,7 +110,11 @@ export function detectOS(platform: string | undefined, ua: string): OsKey {
 /* ------------------------------------------------------------------ */
 
 /**
- * The hero's install chip, one command per OS tab.
+ * The hero's install chip, one command per OS tab. The label names the
+ * installer's default-version policy — the newest stable release tag — and
+ * deliberately carries no version literal, which would go stale between
+ * releases. The CLI-only binary lane (`--binary` / `-Binary`) is a different
+ * install and lives in the hero's manual expander, never on this chip.
  *
  * Server-rendered default is macOS, so the static HTML and the first client
  * render agree (no hydration mismatch); after mount the tab auto-switches to
@@ -171,7 +168,7 @@ export function InstallPanel() {
     <div className="gb-panel mt-8 max-w-xl overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-b border-line px-3 py-1.5">
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-          install · one command
+          install · latest stable release
         </span>
         <div className="flex items-center gap-2">
           <div

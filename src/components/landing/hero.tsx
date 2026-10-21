@@ -25,8 +25,8 @@ const WORD: GlyphId[] = ["U", "N", "O", "W", "N"];
 /* ------------------------------------------------------------------ */
 
 /**
- * The command-by-command install sequence. Byte-identical to the README
- * quickstart and docs/install.md — the hero's one-liner chip is the fast
+ * The command-by-command install sequence. Mirrors the README quickstart and
+ * docs/install.md's manual section — the hero's one-liner chip is the fast
  * path, this is the manual one, and it lives collapsed behind the chip so
  * the fast path stays the default.
  */
@@ -35,7 +35,7 @@ const INSTALL = [
   "cd Unown",
   "bun run agent:install     # deps + pi build + .env",
   "unown setup               # connect any model",
-  "bun run agent:start       # engine :3030 + bridge :3031 + dashboard :3000",
+  "bun run agent:start       # engine :3030 + bridge :3031",
   "unown                     # first session — notes queue for the engine",
 ];
 
@@ -210,9 +210,10 @@ export function Hero() {
             {/* Install. For a clone-and-run tool the command is the conversion,
                 so it sits above the fold rather than at the bottom of the page:
                 one copyable chip per OS tab (macOS/Linux get the one-line
-                installer, which bootstraps bun itself; Windows gets the clone
-                path, since a fresh Windows box has no sh), and the chain that
-                follows either command. The tabbed panel is a client island so
+                installer; Windows gets its PowerShell one-liner,
+                public/install.ps1 — both install the newest stable release tag,
+                check git and bootstrap bun), and the chain that follows either
+                command. The tabbed panel is a client island so
                 the chip stays server-rendered around it. The full
                 command-by-command sequence is the expander below. */}
             <div id="quickstart" className="scroll-mt-24">
@@ -279,6 +280,23 @@ export function Hero() {
                     );
                   })}
                 </div>
+                {/* the CLI-only lane: an instruction beside the source
+                    sequence, never the chip's command and never the chain —
+                    the binary ships no engine or learning stack. */}
+                <p className="mt-3 border-t border-line pt-2.5 font-mono text-[11px] leading-relaxed text-dim">
+                  <span className="gb-label text-[9px] text-gold">cli only</span>{" "}
+                  no git, no bun:{" "}
+                  <code className="break-words font-mono text-ink">
+                    curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --binary
+                  </code>{" "}
+                  (macOS/Linux) or{" "}
+                  <code className="break-words font-mono text-ink">
+                    irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1;
+                    .\install.ps1 -Binary
+                  </code>{" "}
+                  (Windows). It installs the terminal agent alone; the engine and learning
+                  stack need the full install above.
+                </p>
                 <p className="mt-3 border-t border-line pt-2.5 text-[12px] leading-relaxed text-faint">
                   {PREREQS}
                 </p>
