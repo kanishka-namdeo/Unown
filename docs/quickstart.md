@@ -13,28 +13,40 @@ Related pages: [usage](usage.md) · [providers](providers.md) · [memory](memory
 
 ## 1. Prerequisites
 
-- [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` (or `brew install bun`) · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal)
+- [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` (or `brew install bun`) · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal). The `--binary` lane below needs neither bun nor git.
 - [git](https://git-scm.com) (any build; on Windows the standard Git-for-Windows install is fine)
 - An API key for any OpenAI-compatible provider — Dashscope, OpenAI, OpenRouter, Anthropic, DeepSeek, or a local server (vLLM, Ollama, llama.cpp)
 - **Windows, macOS, or Linux** — the same commands and the full stack on all three. OS-level engine sandbox: Linux (bubblewrap) + macOS (seatbelt); native Windows uses the in-process path jail (WSL2 for kernel-grade isolation). Per-OS details: [Windows guide](windows.md) · [macOS guide](macos.md)
 
 ## 2. Install
 
-Identical on every OS — and if you prefer a one-liner, the installer script does the prerequisites and the clone for you ([details](install.md)):
+The default one-liner installs the **newest stable release tag** and the full stack (terminal agent + engine + bridge):
 
 ```bash
+# macOS / Linux / WSL (POSIX sh)
 curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 ```
 
-Or the three commands by hand:
+```powershell
+# Windows (PowerShell) — the irm|iex twin of the same installer
+irm https://unown-nine.vercel.app/install.ps1 | iex
+```
+
+`--main` / `-Main` installs the edge branch instead; `--version vX.Y.Z` / `-Version vX.Y.Z` pins a stable tag (the current tag is on [Releases](https://github.com/kanishka-namdeo/Unown/releases)). PowerShell's `irm | iex` cannot pass flags — download `install.ps1` first to use them. The installer resolves the newest stable tag itself; prereleases are never picked.
+
+Or the three commands by hand, pinned to that same tag:
 
 ```bash
-git clone https://github.com/kanishka-namdeo/Unown.git
+git clone --branch vX.Y.Z https://github.com/kanishka-namdeo/Unown.git
 cd Unown
 bun run agent:install
 ```
 
-This installs the landing page's dependencies, installs and builds the vendored pi monorepo (`pi-repo/`) — hydrating its provider model data on first run (that directory is gitignored upstream, so fresh clones fetch it once, ~1–2 min) — creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout; on Windows: `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1`). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
+(Plain `git clone` gives you `main` — the edge lane.)
+
+Only want the CLI on this machine, with no git and no bun? Add `--binary` on POSIX or use `install.ps1 -Binary` on Windows: a verified release download installed under a versioned root with a PATH shim. The binary has no engine, bridge or dashboard data source — for those, use the source install ([details](install.md)).
+
+The source install runs `bun install --frozen-lockfile` at the repo root and in the vendored pi monorepo (`pi-repo/`), builds it — hydrating its provider model data on first run (that directory is gitignored upstream, so fresh clones fetch it once, ~1–2 min) — creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout; on Windows: `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1`). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
 
 > **Windows notes**
 > - If the installer just added `%USERPROFILE%\.local\bin` to your PATH, **restart your terminal** before `unown` resolves.
@@ -46,6 +58,8 @@ Verify:
 unown --help        # the command surface
 unown doctor        # diagnostics — expect one ✗ (no upstream key yet)
 ```
+
+Stay current with `unown update`; `unown update --check` reports without changing anything (exit `0` up to date, `2` available, `1` error). The command is mode-aware — a source checkout moves tag to tag, a binary install downloads and verifies the next release ([updating](updating.md)).
 
 ## 3. Connect a model
 

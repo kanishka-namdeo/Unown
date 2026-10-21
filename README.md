@@ -105,8 +105,8 @@ Full usage docs live in [`docs/`](docs/):
 | Page | What it covers |
 |---|---|
 | [quickstart](docs/quickstart.md) | clone → install → connect a model → first session (5 minutes) |
-| [install](docs/install.md) | the one-line installer, requirements, offline/air-gapped installs, uninstalling |
-| [updating](docs/updating.md) | `unown update`, update notifications, pinned installs, rollback, the privacy model of the update check |
+| [install](docs/install.md) | the one-line installer, the source vs binary modes, manual and archive installs, requirements, offline/air-gapped installs, uninstalling |
+| [updating](docs/updating.md) | mode-aware `unown update` (checkout and binary), update notifications, pinned installs, rollback, the privacy model of the update check |
 | [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers |
 | [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
 | [split view](docs/split-view.md) | the split-view display mode — thinking/tool band, files dock, response-only transcript, every `/split*` command, `ui-panels.json` defaults |
@@ -152,19 +152,10 @@ Full usage docs live in [`docs/`](docs/):
 
 ### 1. Install
 
-Identical on every OS:
+The default one-liner installs the **newest stable release tag** and the full stack (terminal agent + engine + bridge):
 
 ```bash
-git clone https://github.com/kanishka-namdeo/Unown.git
-cd Unown
-bun run agent:install
-```
-
-Or the one-line installer (checks git, installs bun when missing, clones, installs — [docs/install.md](docs/install.md)):
-
-```bash
-# macOS / Linux / WSL
-# (POSIX sh — on Windows use the PowerShell one-liner below)
+# macOS / Linux / WSL (POSIX sh)
 curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 ```
 
@@ -173,9 +164,21 @@ curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 irm https://unown-nine.vercel.app/install.ps1 | iex
 ```
 
-This installs the landing-page dependencies, installs and builds the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.
+`--main` / `-Main` installs the edge branch; `--version vX.Y.Z` / `-Version vX.Y.Z` pins a stable tag (see [Releases](https://github.com/kanishka-namdeo/Unown/releases)). PowerShell's `irm | iex` cannot pass flags — download `install.ps1` first to use them.
 
-**Keeping it current:** `unown update` moves the install to the newest release (fast-forward only, never over uncommitted work; `unown update --check` reports without changing anything) — [docs/updating.md](docs/updating.md).
+The manual route pins the same tag:
+
+```bash
+git clone --branch vX.Y.Z https://github.com/kanishka-namdeo/Unown.git
+cd Unown
+bun run agent:install
+```
+
+(Plain `git clone` gives you `main` — the edge lane.) Only want the CLI on this machine, with no git and no bun? Add `--binary` on POSIX or use `install.ps1 -Binary`: a verified release download with a PATH shim. **The binary is the CLI only** — it has no engine, bridge or dashboard data source; use the source install for the learning stack ([docs/install.md](docs/install.md)).
+
+The source install runs `bun install --frozen-lockfile` at the root and in the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), builds it, creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.
+
+**Keeping it current:** `unown update` is mode-aware — a source checkout moves tag to tag (fast-forward only, never over uncommitted work), a binary install downloads and verifies the next release; `unown update --check` reports without changing anything — [docs/updating.md](docs/updating.md).
 
 ### 2. Connect a model
 
@@ -209,13 +212,14 @@ unown setup                        # or the interactive wizard
 bun run agent:start
 ```
 
-Boots three services:
+Boots both services:
 
 | Service | Default port | Health check |
 |---------|--------------|--------------|
 | llm-bridge | 3031 | `GET /health` |
 | self-learning engine | 3030 | `GET /api/overview` |
-| landing | 3000 | `http://localhost:3000/` (marketing page only; mission control is `unown dashboard`) |
+
+The marketing landing page is not part of the stack: `bun run dev` serves it at :3000.
 
 Logs land in `.run/*.log`; stop with `bun run agent:stop`. The launcher reads the bridge's `/health` (upstream key set? upstream answering?) and warns loudly instead of letting chats fail with a bare 401 later.
 
@@ -278,7 +282,7 @@ What the terminal session does for you:
 - **Guardrails** — catastrophic commands (`rm -rf /`, fork bombs, disk formats) and out-of-project writes are blocked before execution; broken JS/TS you (or the agent) write gets the transpiler error fed back instead of compounding. Normal work — network, `git push`, package installs — is allowed. Set `UNOWN_STRICT_HOOKS=1` for sandbox-grade strictness.
 - **Learning** — when you exit, a session note is delivered to the engine; AutoDream consolidates your notes into an updated `.unown/memory/project.md`, so the next session starts where the last one ended. Notes queue in `~/.unown/notes/outbox/` when the engine is down and sync automatically later.
 
-Install the command globally (optional):
+Re-link the command from a source checkout (optional):
 
 ```bash
 bun run agent:link         # writes a `unown` shim into ~/.local/bin → this checkout

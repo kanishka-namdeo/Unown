@@ -165,6 +165,11 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_DISABLE_AUTOUPDATE` | unset | `1` — same as `NO_UPDATE_NOTIFIER`, the Unown-native spelling. |
 | `DO_NOT_TRACK` | unset | `1` — the standard nonessential-traffic opt-out; suppresses the background update check. |
 | `UNOWN_DISABLE_UPDATES` | unset | `1` blocks **all** update paths (`unown update`, `--check`, background check) — the org/CI kill switch. |
+| `UNOWN_RELEASES_BASE_URL` | `https://github.com/kanishka-namdeo/Unown/releases` | Release feed base for the binary installer/updater and the binary update check; point it at a mirror for air-gapped installs. `https://` is expected; the installer accepts `http://` only for an explicit mirror/test setup and warns. |
+| `UNOWN_INSTALL_ROOT` | POSIX: `$XDG_DATA_HOME/unown`, else `~/.local/share/unown`; Windows: `%LOCALAPPDATA%\unown` | Root of a binary install (`versions/<version>/unown[.exe]`). The binary shim sets it; `unown update`/`uninstall` use it to recognize the install. |
+| `UNOWN_BIN_DIR` | POSIX: `~/.local/bin`; Windows: `%USERPROFILE%\.local\bin` | Directory the installers and `scripts/link.ts` write the `unown` shim(s) into. |
+| `UNOWN_ALLOW_EXPERIMENTAL` | unset | `1` allows the un-smoked windows-arm64 binary archive (the installer's `-Experimental` / `--experimental` sets the same intent for its run). |
+| `UNOWN_INSTALL_ALLOW_ROOT` | unset | `1` lets the one-line installer run as root/Administrator (it refuses by default). |
 | `PI_DREAM_GATE` | on | Dream canary gate: re-run the last-passing benchmark task under freshly dreamed project memory and roll the dream back if it fails. `0` disables. Read by the engine. |
 | `PI_JOB_TIMEOUT_MS` | `1200000` | Engine job watchdog: any router job exceeding this is aborted, its runs marked `error`, and the busy mutex released (floor 60s). Read by the engine. |
 | `PI_DREAM_CHECK_COOLDOWN_MS` | `600000` | At most one dream-check per window, however many `run:finished` events arrive; `0` opts out. Read by the engine. |
@@ -241,6 +246,9 @@ Where everything lives — all of it deletable, none of it required to pre-exist
     user.md                      tier 2 — global preferences
   update-check.json              update-notifier cache — 24h TTL, remote URL stored credential-free
   update-state.json              last `unown update` record (from/to/fromSha/ok) — what --rollback restores
+  install.json                   the ACTIVE install: schema 1, mode (checkout|binary), version, platform,
+                                 root/bin/shim, previousVersion — written by link.ts, the binary installer
+                                 and unown update; drives mode-aware update/uninstall
   migrations.json                user-state schema version + migration history (forward-only; see [updating](updating.md))
   notes/
     outbox/                      notes queued while the engine was down

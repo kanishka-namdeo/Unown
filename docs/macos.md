@@ -15,17 +15,44 @@ Related pages: [quickstart](quickstart.md) · [windows guide](windows.md) · [tr
 - git (ships with the Xcode Command Line Tools — `xcode-select --install` — or brew).
 - An API key for any OpenAI-compatible provider — same as everywhere ([quickstart §3](quickstart.md#3-connect-a-model)).
 
-Then the standard install — the one-line installer (checks git, installs bun when missing, clones, installs; [install](install.md)):
+## Install
+
+The default one-line installer clones the newest **stable release tag** and builds the full stack (checks git, installs bun when missing, runs `bun run agent:install`; [install](install.md)):
 
 ```bash
 curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 ```
 
-…or the manual route: `git clone … && cd Unown && bun run agent:install`. The PATH shim goes to `~/.local/bin/unown`; if that dir wasn't on your PATH, the installer prints the exact profile line to add.
+`--main` installs the edge branch instead; `--version vX.Y.Z` pins a stable tag (take the current one from [Releases](https://github.com/kanishka-namdeo/Unown/releases)). Or the manual route, pinned to that tag:
+
+```bash
+git clone --branch vX.Y.Z https://github.com/kanishka-namdeo/Unown.git
+cd Unown
+bun run agent:install
+```
+
+(Plain `git clone` gives you `main` — the edge lane.) The PATH shim goes to `~/.local/bin/unown`; if that dir wasn't on your PATH, the installer prints the exact profile line to add.
+
+### The binary lane (`--binary`)
+
+```bash
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --binary
+# pin a release: curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --binary --version vX.Y.Z
+```
+
+This downloads `unown-darwin-arm64.tar.gz` (an x64 shell under Rosetta gets the arm64 build), verifies its exact SHA-256 against the release's `sha256sums.txt`, checks `VERSION` and `unown --version`, and installs under `~/.local/share/unown/versions/<version>/unown` with a `~/.local/bin/unown` shim and `~/.unown/install.json` metadata (`UNOWN_INSTALL_ROOT`, `UNOWN_BIN_DIR` and `UNOWN_HOME` override those paths). No git and no bun are required. It is the **CLI only** — the engine and bridge need the source install.
+
+If you downloaded an archive by hand, verify it with the macOS-specific form (the manifest also covers files you may not have):
+
+```bash
+grep "  unown-darwin-arm64.tar.gz$" sha256sums.txt | shasum -a 256 -c -
+```
+
+The builds are unsigned and not notarized. The installer clears the quarantine bit on the staged binary as a best effort; if Gatekeeper blocks it anyway, run `xattr -d com.apple.quarantine unown` once. Update with `unown update` (verified download, `--rollback` keeps the previous version) and remove with `unown uninstall`.
 
 ## The OS sandbox on macOS
 
-Shipped in 0.0.1: the OS-level sandbox backend on macOS is **seatbelt (`sandbox-exec`)** with a **bwrap-equivalent profile** — the same defense-in-depth under the in-process path jail that the Linux leg gets from bubblewrap. Every engine run (verify scripts *and* the agent's own bash commands) re-execs under `sandbox-exec -f <profile> -- <command>`, with a profile generated deterministically per workspace (`${TMPDIR:-/tmp}/unown-seatbelt-<hash>.sb`, rewritten when the workspace or the net flag changes):
+The OS-level sandbox backend on macOS is **seatbelt (`sandbox-exec`)** with a **bwrap-equivalent profile** — the same defense-in-depth under the in-process path jail that the Linux leg gets from bubblewrap. Every engine run (verify scripts *and* the agent's own bash commands) re-execs under `sandbox-exec -f <profile> -- <command>`, with a profile generated deterministically per workspace (`${TMPDIR:-/tmp}/unown-seatbelt-<hash>.sb`, rewritten when the workspace or the net flag changes):
 
 - filesystem **reads stay allowed** — one documented asymmetry: bwrap's `/home` tmpfs *hides* your home directory from the sandbox, seatbelt cannot hide it, only deny writes, so the host `$HOME` remains readable (never writable),
 - **writes confined** to the workspace (at its real path, no path translation), `/private/tmp`, `/var/folders` and `/dev/null`, with `/System` belt-and-braces denied,

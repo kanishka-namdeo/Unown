@@ -30,19 +30,94 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 123;
+export const CHANGELOG_TOTAL_ENTRIES = 134;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 54,
-  "Changed": 7,
+  "Added": 57,
+  "Changed": 10,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 53,
+  "Fixed": 58,
   "Security": 0,
   "Behavior": 7
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 11,
+    "counts": {
+      "Added": 3,
+      "Changed": 3,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 5,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "a verified standalone binary install lane — --binary on POSIX, -Binary on Windows",
+            "behavior": false
+          },
+          {
+            "title": "unown update and unown uninstall are mode-aware",
+            "behavior": false
+          },
+          {
+            "title": "releases now carry self-describing archives and a verifiable 12-asset payload",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "the default source install is the newest stable release tag, not main",
+            "behavior": false
+          },
+          {
+            "title": "source installs are reproducible by lockfile",
+            "behavior": false
+          },
+          {
+            "title": "downloaded binaries are verified before they are used",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "the install docs name two services, not three — and the pinned installer examples name the live tag",
+            "behavior": false
+          },
+          {
+            "title": "Windows artifact and update extraction no longer rely on a bare tar",
+            "behavior": false
+          },
+          {
+            "title": "the checksum instructions work on every OS and with a partial download",
+            "behavior": false
+          },
+          {
+            "title": "installers refuse to overwrite a foreign shim",
+            "behavior": false
+          },
+          {
+            "title": "a credentialed release-mirror URL is redacted before it is printed or cached",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.1",
     "date": "2026-10-21",

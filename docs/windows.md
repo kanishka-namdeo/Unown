@@ -29,21 +29,64 @@ No WSL, no Docker, no Developer Mode required for the standard install.
 
 ## Install
 
-Identical to every other OS:
+One command in PowerShell installs the full stack from the newest **stable release tag** — it checks `git`, installs `bun` via bun's own PowerShell installer when missing, refuses an elevated shell, clones, and runs `bun run agent:install`:
 
 ```powershell
-git clone https://github.com/kanishka-namdeo/Unown.git
+irm https://unown-nine.vercel.app/install.ps1 | iex
+```
+
+`irm | iex` runs with default parameters. To pass a flag, download the script first, review it, then run it:
+
+```powershell
+irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1
+Get-Content .\install.ps1
+.\install.ps1
+```
+
+| Flag | Effect |
+|---|---|
+| `-Version vX.Y.Z` | pin a stable release tag (bare `X.Y.Z` accepted) |
+| `-Main` | install the `main` branch — the edge lane |
+| `-Binary` | install the standalone CLI instead of the source stack |
+| `-Dest DIR` | source clone directory (default `.\Unown`); invalid with `-Binary` |
+| `-Force` | install over an install recorded in the other mode (the old files are left for its own uninstall); also allows overwriting a foreign binary shim |
+| `-Experimental` | allow the un-smoked windows-arm64 binary |
+| `-NoModifyPath` | do not add the binary shim directory to the user PATH |
+| `-Help` | usage |
+
+Or the same source install by hand, pinned to the newest tag on [Releases](https://github.com/kanishka-namdeo/Unown/releases):
+
+```powershell
+git clone --branch vX.Y.Z https://github.com/kanishka-namdeo/Unown.git
 cd Unown
 bun run agent:install
 ```
 
-What the installer does on Windows (same as elsewhere, plus two Windows specifics):
+Plain `git clone` without `--branch` gives you `main` — the edge lane, not the stable default.
 
-1. `bun install` at the repo root and inside `pi-repo/`, hydration of the provider model data, `build:offline` — all through bun; no bash-isms anywhere.
+### The binary lane (`-Binary`)
+
+```powershell
+.\install.ps1 -Binary                  # windows-x64
+.\install.ps1 -Binary -Experimental    # windows-arm64 (experimental; no CI runtime smoke)
+```
+
+No git and no bun are required. The installer downloads `unown-windows-x64.zip` (or the arm64 archive) plus the same release's `sha256sums.txt`, verifies the exact SHA-256 before extracting, checks the archive's `VERSION` file and `unown.exe --version`, and installs atomically to:
+
+- `%LOCALAPPDATA%\unown\versions\<version>\unown.exe` (root override: `UNOWN_INSTALL_ROOT`)
+- `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` (override: `UNOWN_BIN_DIR`), and appends that directory to your **user PATH** unless `-NoModifyPath`
+
+The shims set `UNOWN_INSTALL_ROOT`; `~/.unown/install.json` records the active version. To check an archive you downloaded by hand, compare `Get-FileHash .\unown-windows-x64.zip -Algorithm SHA256` with its line in `sha256sums.txt`. The builds are unsigned, so SmartScreen may warn on first run (`Unblock-File unown.exe` clears it). Update with `unown update` (verified download, keeps the previous version for `unown update --rollback`) and remove with `unown uninstall`.
+
+The binary is the **CLI only** — the engine and bridge need the source install above. Windows arm64 is opt-in with `-Experimental` because no GitHub arm64 Windows runner exists to execute that archive in CI.
+
+What the source installer does on Windows (same as elsewhere, plus three Windows specifics):
+
+1. `bun install --frozen-lockfile` at the repo root and inside `pi-repo/`, hydration of the provider model data, `build:offline` — all through bun; no bash-isms anywhere.
 2. Creates `.env` from `.env.example` if you don't have one.
-3. Writes **`unown.cmd` + `unown.ps1`** shims into `%USERPROFILE%\.local\bin` and appends that directory to your **user PATH via the registry** (`[Environment]::SetEnvironmentVariable('Path', …, 'User')` — never `setx`, which silently truncates at 1024 characters).
+3. Writes **`unown.cmd` + `unown.ps1`** shims into `%USERPROFILE%\.local\bin`, records the checkout in `~/.unown/install.json`, and appends that directory to your **user PATH via the registry** (`[Environment]::SetEnvironmentVariable('Path', …, 'User')` — never `setx`, which silently truncates at 1024 characters).
 
-> **Restart your terminal after the install.** The PATH change is written to the *User* environment; already-open cmd/PowerShell windows never see it. New terminals will.
+> **Restart your terminal after the install.** The PATH change is written to the *User* environment; already-open cmd/PowerShell windows never see it. New terminals will. `unown update` is mode-aware — it moves a source checkout tag to tag and a binary install to the next verified release ([updating](updating.md)).
 
 ## Using `unown` — cmd vs PowerShell
 
@@ -52,7 +95,7 @@ What the installer does on Windows (same as elsewhere, plus two Windows specific
 | cmd.exe | `%USERPROFILE%\.local\bin\unown.cmd` | Works out of the box, no policy questions. |
 | PowerShell | `%USERPROFILE%\.local\bin\unown.ps1` | If script execution is disabled on a locked-down machine you'll see *“running scripts is disabled on this system”* — fix once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, or just call `unown.cmd` (in PowerShell, typing `unown` may resolve to the `.cmd` anyway depending on PATHEXT order). |
 
-Both shims exec `bun <repo>\bin\unown` and propagate the exit code — `unown doctor; if ($LASTEXITCODE) { … }` works.
+For a source install, both shims exec `bun <repo>\bin\unown` and propagate the exit code — `unown doctor; if ($LASTEXITCODE) { … }` works. A `-Binary` install's shims instead set `UNOWN_INSTALL_ROOT` and exec the active `versions\<version>\unown.exe`.
 
 The interactive TUI is fully native on Windows: the vendored pi TUI ships a `win32-console-mode.node` prebuild (x64 + arm64) that switches the console into VT/UTF-8 mode, so colors, boxes and the editor work in Windows Terminal (recommended) and in the classic conhost.
 
@@ -94,10 +137,8 @@ Honest summary: **native Windows has no OS-level sandbox** — nobody ships one 
 **Want bwrap-grade isolation?** Use WSL2:
 
 ```bash
-# inside WSL2 (Ubuntu), keep the clone in the Linux filesystem (~/…), not /mnt/c
-curl -fsSL https://bun.sh/install | bash
-git clone https://github.com/kanishka-namdeo/Unown.git && cd Unown
-bun run agent:install
+# inside WSL2 (Ubuntu), keep the checkout in the Linux filesystem (~/…), not /mnt/c
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 ```
 
 Inside WSL2 you're on Linux: the engine picks up the vendored bwrap and every run gets the full mount/network-namespace isolation. The Windows Terminal-integrated WSL2 experience is first-class — same tabs, same fonts.

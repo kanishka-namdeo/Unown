@@ -9,6 +9,32 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+### Added
+
+- **a verified standalone binary install lane — `--binary` on POSIX, `-Binary` on Windows** — downloads `unown-<platform>.tar.gz|.zip` from the release marked latest (or a `--version`/`-Version` pin), verifies the exact SHA-256 against that release's `sha256sums.txt`, checks the archive's `VERSION` file and `unown --version`, and installs atomically into `<root>/versions/<version>/` with a PATH shim and `~/.unown/install.json` (schema 1: mode/version/platform/root/bin/shim/previousVersion/installedAt). No git and no bun are required. The binary is the CLI only — the engine, llm-bridge and dashboard data source still need the source install. Linux archives are glibc-only (musl/Alpine refused), macOS picks arm64 under Rosetta, and windows-arm64 is `-Experimental` because it has no CI runtime smoke.
+- **`unown update` and `unown uninstall` are mode-aware** — a binary install checks `<base>/latest/download/version.txt` (no git, no GitHub API; exit 0/2/1), downloads that version's archive + `sha256sums.txt`, verifies the checksum and `unown --version`, installs the new version directory and rewrites the shim/metadata while keeping the previous version for `--rollback` (which toggles). Uninstall removes only shims pointing into the install root, the versioned root (including rollback copies) and `install.json`; `~/.unown` is kept unless `--purge-data`. Checkout behavior is unchanged, except that a detached HEAD on a ready release tag may now auto-advance (only an arbitrary detached commit is pinned).
+- **releases now carry self-describing archives and a verifiable 12-asset payload** — every archive holds `unown`/`unown.exe`, `VERSION`, `LICENSE` and a versioned per-OS `INSTALL.txt` (checksum command, update/uninstall commands, CLI-only note, Gatekeeper/SmartScreen unblock). The release adds `version.txt`, `install.sh` and `install.ps1`; `sha256sums.txt` covers the other 11 assets; build-provenance attestations cover the six archives and both installer scripts. The Release is created as a draft, its asset list and prerelease flag are asserted, then promoted; a post-publish `smoke-install` matrix installs the released binary through the release's own installer on ubuntu/macos/windows and checks `--version`, `update --check` and `uninstall --dry-run`.
+
+### Changed
+
+- **the default source install is the newest stable release tag, not `main`** — both one-liners resolve the newest stable `vX.Y.Z` tag, clone it and refuse a tag whose `package.json` disagrees with the tag name. `--main`/`-Main` is now the explicit edge install, and `--version`/`-Version` pins a stable tag. The manual docs pin the same tag; a plain clone of `main` is documented as edge.
+- **source installs are reproducible by lockfile** — `scripts/install.ts` runs `bun install --frozen-lockfile` at the repo root and in `pi-repo/`, so a source install no longer silently resolves newer dependency versions.
+- **downloaded binaries are verified before they are used** — the binary installer and updater both require an exact SHA-256 entry from the same release (a missing entry is an error, not a skip), and the docs now give the platform-correct checksum command plus the `gh attestation verify` form instead of a single Linux-only command.
+
+### Fixed
+
+- **the install docs name two services, not three — and the pinned installer examples name the live tag** — the README's Start table and the landing hero's manual sequence still said `bun run agent:start` boots a dashboard on :3000. The web dashboard retired in D7: the launcher starts llm-bridge (:3031) and the engine (:3030) only, and mission control is the `unown dashboard` TUI, so both now say exactly that. `public/install.sh` and `public/install.ps1` also still advertised `--version v2.1.0` in their header examples after the 2026-10-21 version reset; their header examples now carry no hardcoded tag, and the one-liners themselves default to the newest stable tag. The landing folder doc and the landing research record describe the shipped Windows PowerShell one-liner instead of the retired clone-path tab.
+
+- **Windows artifact and update extraction no longer rely on a bare `tar`** — under Git Bash that is GNU tar, which has no zip writer and treats `C:\…` as a remote host (the builder could emit a 93 MiB uncompressed tarball named `.zip`); the builder and `bin-update.ts` resolve System32 `bsdtar` by absolute path, and the builder checks every archive's magic bytes before shipping it. Local Windows builds still cannot put the POSIX exec bit in a Linux archive — the release builds on ubuntu.
+
+- **the checksum instructions work on every OS and with a partial download** — the old `sha256sum -c sha256sums.txt` failed on macOS and Windows, and failed for anyone who downloaded one archive rather than the whole 12-asset payload. `INSTALL.txt` and the install docs now use `grep … | shasum -a 256 -c -` on macOS (shasum has no `--ignore-missing`), `sha256sum -c --ignore-missing sha256sums.txt` on Linux, and `Get-FileHash` on Windows.
+
+- **installers refuse to overwrite a foreign shim** — a binary install aborts when the target shim belongs to another install (or a checkout), unless `--force`/`-Force` is passed; `unown uninstall` likewise removes only shims whose embedded path/`UNOWN_INSTALL_ROOT` points into its own root and reports the rest. This closes the case where installing the binary over an existing checkout silently stole the `unown` command.
+
+- **a credentialed release-mirror URL is redacted before it is printed or cached** — `UNOWN_RELEASES_BASE_URL` can be an authenticated mirror; binary `update --check`/`--check --json`, the notifier cache, download errors and the post-update release-notes line now pass it through the shared `redactUrl`, so an embedded token never reaches console output or `~/.unown/update-check.json`.
+
 ## [0.0.1] - 2026-10-21
 
 ### Changed (the version reset — 0.0.1, 2026-10-21)
