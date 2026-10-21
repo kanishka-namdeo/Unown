@@ -26,12 +26,12 @@ Windows (PowerShell) — the same contract as the POSIX script: checks `git`, in
 irm https://unown-nine.vercel.app/install.ps1 | iex
 ```
 
-(`irm | iex` runs with default parameters; to pin a version, download the script first: `irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1`, review it with `Get-Content .\install.ps1`, then `.\install.ps1 -Version v2.1.0` — the same review-before-running pattern as the POSIX side, plus [checksum.sh](https://checksum.sh) or the SLSA attestations on the release.)
+(`irm | iex` runs with default parameters; to pin a version, download the script first: `irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1`, review it with `Get-Content .\install.ps1`, then `.\install.ps1 -Version v0.0.1` — the same review-before-running pattern as the POSIX side, plus [checksum.sh](https://checksum.sh) or the SLSA attestations on the release.)
 
 Pinned to a specific release (POSIX):
 
 ```bash
-curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --version v2.1.0
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --version v0.0.1
 ```
 
 Flags: `--version vX.Y.Z` (clone a release tag instead of `main`), `--dest DIR` (clone directory, default `./Unown`), `--help` — PowerShell: `-Version`, `-Dest`, `-Help`.

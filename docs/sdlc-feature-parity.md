@@ -257,7 +257,7 @@ generation exists; the remaining work is the wiki surface itself).
 | Automations — scheduled recurring agent runs (5-field local-time cron or one-shot delay; `unown automations` CLI + REST + session tools; misfire skip; dispatch retry 30 s × 2ⁿ⁻¹ capped 15 min × 5 attempts, frozen run id; max 20 automations / 2 concurrent / 30-min run timeout; pause/resume; manual run-now that never consumes maxRuns) | zcode Automations | `pi-repo/packages/self-learning/src/automations.ts` + the dependency-free cron engine `src/cron.ts` (zcode uses croner; we own the parser — Vixie DOM/DOW OR rule pinned) + `src/automations-cli.ts` + engine REST `/api/automations*` + the `automationsScheduler` poll loop. **The trust story that gated it for two rounds, shipped as the design itself**: config lives in the engine DB, never in the repo (no cloned-repo-RCE vector); default mode `read-only` (a `--tools` allowlist with no bash/write/edit/task — the allowlist IS the read-only story, pinned by test); `standard` must be explicit; runs carry `UNOWN_AUTOMATION=1` which hides the mutation tools inside the run (subagents inherit the flag — no recursion); nothing auto-merges — every run recorded with output/exit/turns/tokens. Pinned by `test/cron.test.ts` (14) + `test/automations.test.ts` (29: scheduler single-flight/concurrency/misfire/retry-exhaustion/maxRuns/one-shot/runNow-409 + CRUD + the trust gate). Verified live: a one-shot created via the real CLI dispatched within one poll tick and its run answered through the Dashscope bridge (recorded `succeeded, exit 0, 1 turn`) |
 | Repo Wiki | zcode | Still deferred — see above (the scheduling substrate now exists; the wiki surface is its own project) |
 
-### Round 1 (2026-10-18 — the shipped v2.1.0 slice)
+### Round 1 (2026-10-18 — the shipped 0.0.1 slice)
 
 | Feature | Source | Unown form |
 |---|---|---|
@@ -273,7 +273,7 @@ Behavior** entries + tests pinning each feature + receipts where measured.
 
 ### Hardening follow-ups (2026-10)
 
-The table above is the shipped v2.1.0 slice; three hardening and
+The table above is the shipped 0.0.1 slice; three hardening and
 productization passes (H1/H2/P1) landed after it — details and test counts
 in the [CHANGELOG](../CHANGELOG.md) under Unreleased:
 

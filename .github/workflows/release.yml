@@ -32,8 +32,11 @@
 # therefore warn on first run, and each archive carries an INSTALL.txt with the
 # exact workaround, so the friction is documented where it is hit.
 #
-# Tagging: `git tag v2.0.1 && git push origin v2.0.1`. The tag MUST match
-# package.json version — asserted below before anything else runs.
+# Tagging: `git tag v0.0.2 && git push origin v0.0.2`. The tag MUST match
+# package.json version — asserted below before anything else runs. The
+# version line was reset on 2026-10-21: releases are 0.0.x and increment in
+# patch order (0.0.1, then 0.0.2, then 0.0.3, and so on) until otherwise
+# specified.
 name: Release
 
 on:

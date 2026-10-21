@@ -25,7 +25,7 @@ curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 
 ## The OS sandbox on macOS
 
-Shipped since v2.0.0: the OS-level sandbox backend on macOS is **seatbelt (`sandbox-exec`)** with a **bwrap-equivalent profile** — the same defense-in-depth under the in-process path jail that the Linux leg gets from bubblewrap. Every engine run (verify scripts *and* the agent's own bash commands) re-execs under `sandbox-exec -f <profile> -- <command>`, with a profile generated deterministically per workspace (`${TMPDIR:-/tmp}/unown-seatbelt-<hash>.sb`, rewritten when the workspace or the net flag changes):
+Shipped in 0.0.1: the OS-level sandbox backend on macOS is **seatbelt (`sandbox-exec`)** with a **bwrap-equivalent profile** — the same defense-in-depth under the in-process path jail that the Linux leg gets from bubblewrap. Every engine run (verify scripts *and* the agent's own bash commands) re-execs under `sandbox-exec -f <profile> -- <command>`, with a profile generated deterministically per workspace (`${TMPDIR:-/tmp}/unown-seatbelt-<hash>.sb`, rewritten when the workspace or the net flag changes):
 
 - filesystem **reads stay allowed** — one documented asymmetry: bwrap's `/home` tmpfs *hides* your home directory from the sandbox, seatbelt cannot hide it, only deny writes, so the host `$HOME` remains readable (never writable),
 - **writes confined** to the workspace (at its real path, no path translation), `/private/tmp`, `/var/folders` and `/dev/null`, with `/System` belt-and-braces denied,

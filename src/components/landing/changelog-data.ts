@@ -30,26 +30,26 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 241;
+export const CHANGELOG_TOTAL_ENTRIES = 120;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 108,
-  "Changed": 25,
+  "Added": 54,
+  "Changed": 7,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 76,
-  "Security": 3,
-  "Behavior": 27
+  "Fixed": 50,
+  "Security": 0,
+  "Behavior": 7
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 119,
+    "label": "0.0.1",
+    "date": "2026-10-21",
+    "total": 120,
     "counts": {
       "Added": 54,
-      "Changed": 6,
+      "Changed": 7,
       "Deprecated": 0,
       "Removed": 2,
       "Fixed": 50,
@@ -57,6 +57,39 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Behavior": 7
     },
     "groups": [
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "the version line resets to 0.0.1 — releases are sequential 0.0.x patch increments until otherwise specified",
+            "behavior": false
+          },
+          {
+            "title": "the terminal agent no longer opens the engine's database (measured)",
+            "behavior": false
+          },
+          {
+            "title": "landing: the scroll budget re-balanced — the addons strip pays for itself as a disclosure…",
+            "behavior": false
+          },
+          {
+            "title": "tui: fullscreen is the default interface layout for new installs",
+            "behavior": false
+          },
+          {
+            "title": "tui: the vendored pi-tui scrollbar engine ported to the 1.3.0 design",
+            "behavior": false
+          },
+          {
+            "title": "landing: the creature atlas, v3 — the variety round, one body plan per creature",
+            "behavior": false
+          },
+          {
+            "title": "landing: the creature atlas — the sprites redrawn as authored pixel art",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Added",
         "items": [
@@ -526,621 +559,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "addons: the TUI addon framework — ask_user_question, the addon-era todo, and the advisor…",
             "behavior": true
-          }
-        ]
-      },
-      {
-        "bucket": "Changed",
-        "items": [
-          {
-            "title": "the terminal agent no longer opens the engine's database (measured)",
-            "behavior": false
-          },
-          {
-            "title": "landing: the scroll budget re-balanced — the addons strip pays for itself as a disclosure…",
-            "behavior": false
-          },
-          {
-            "title": "tui: fullscreen is the default interface layout for new installs",
-            "behavior": false
-          },
-          {
-            "title": "tui: the vendored pi-tui scrollbar engine ported to the 1.3.0 design",
-            "behavior": false
-          },
-          {
-            "title": "landing: the creature atlas, v3 — the variety round, one body plan per creature",
-            "behavior": false
-          },
-          {
-            "title": "landing: the creature atlas — the sprites redrawn as authored pixel art",
-            "behavior": false
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "label": "2.2.0",
-    "date": "2026-10-19",
-    "total": 81,
-    "counts": {
-      "Added": 26,
-      "Changed": 17,
-      "Deprecated": 0,
-      "Removed": 0,
-      "Fixed": 18,
-      "Security": 0,
-      "Behavior": 20
-    },
-    "groups": [
-      {
-        "bucket": "Behavior",
-        "items": [
-          {
-            "title": "recipes: declarative YAML/JSON agent instruction bundles with parameters, sub-recipes, response-schema…",
-            "behavior": true
-          },
-          {
-            "title": "repo-wiki: automatic repo documentation with file:line cross-links + parallel-subagent generation +…",
-            "behavior": true
-          },
-          {
-            "title": "slash-commands: /init-agents AGENTS.md generator + /doctor-instructions instruction-set audit",
-            "behavior": true
-          },
-          {
-            "title": "slash-commands: /review PR URL/number support + /blame receipts reader",
-            "behavior": true
-          },
-          {
-            "title": "session-ux: unown sessions export|import|list + /edit-resend slash commands",
-            "behavior": true
-          },
-          {
-            "title": "auto-compact: proportional threshold curve + runner wiring",
-            "behavior": true
-          },
-          {
-            "title": "subagents: per-subagent model + effort routing + mcpServers allowlist + injectAgentsMd toggle +…",
-            "behavior": true
-          },
-          {
-            "title": "mcp-elicitation: structured mid-turn input + decideElicitation pure module + /mcp elicitation CLI subcommand",
-            "behavior": true
-          },
-          {
-            "title": "context-tools: get_context_remaining + view_image tools",
-            "behavior": true
-          },
-          {
-            "title": "hooks: multi-type user-configurable hook handlers + semantic output + 7 new event surfaces",
-            "behavior": true
-          },
-          {
-            "title": "adversary: file-gated PreToolUse LLM reviewer",
-            "behavior": true
-          },
-          {
-            "title": "injection-scanner: 106-pattern prompt-injection scanner with risk levels + categories + scan-mode awareness",
-            "behavior": true
-          },
-          {
-            "title": "web_search: coding-plan DashScope keys (sk-sp-…) are refused up front",
-            "behavior": true
-          },
-          {
-            "title": "automations (read-only mode): the unattended toolset gains web_search + webfetch",
-            "behavior": true
-          },
-          {
-            "title": "/undo is session-scoped by default (--all for the rest)",
-            "behavior": true
-          },
-          {
-            "title": "LSP crash recovery",
-            "behavior": true
-          },
-          {
-            "title": "MCP resilience",
-            "behavior": true
-          },
-          {
-            "title": "Project-config trust gate",
-            "behavior": true
-          },
-          {
-            "title": "/review reviewers are read-only",
-            "behavior": true
-          },
-          {
-            "title": "/goal completion requires both evidence kinds and a todo trail",
-            "behavior": true
-          }
-        ]
-      },
-      {
-        "bucket": "Added",
-        "items": [
-          {
-            "title": "acp: unown acp — the Agent Client Protocol editor server",
-            "behavior": false
-          },
-          {
-            "title": "commands: custom slash commands — .unown/commands/*.md + ~/.unown/agent/commands/*.md",
-            "behavior": false
-          },
-          {
-            "title": "cli: unown -p --output-format json — the headless result contract",
-            "behavior": false
-          },
-          {
-            "title": "permissions: granular user-configurable allow/deny/ask rules",
-            "behavior": false
-          },
-          {
-            "title": "usage: persistent token/latency/cost accounting for the bridge + unown usage",
-            "behavior": false
-          },
-          {
-            "title": "checkpoints: /redo — the missing half of /undo",
-            "behavior": false
-          },
-          {
-            "title": "git: /commit [message] + opt-in UNOWN_AUTO_COMMIT",
-            "behavior": false
-          },
-          {
-            "title": "security: the injection shield — deterministic prompt-injection detection over live tool results",
-            "behavior": false
-          },
-          {
-            "title": "complementary testbench — campaign 3 (H16–H22): non-traditional local mechanisms around the configured…",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: Automations tab — the scheduled actor gets a mission-control surface",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: engine-parity round — every documented surface now has a view",
-            "behavior": false
-          },
-          {
-            "title": "native web tools — web_search + webfetch (keyless-first, 19 providers)",
-            "behavior": true
-          },
-          {
-            "title": "local-ML dream lanes — the H15 integration (opt-in, shadow-capable)",
-            "behavior": true
-          },
-          {
-            "title": "Automations — scheduled recurring agent runs (zcode port)",
-            "behavior": true
-          },
-          {
-            "title": "task tool: structured outputs (oh-my-pi port)",
-            "behavior": true
-          },
-          {
-            "title": "task tool: worktree fan-out isolation (muse code port)",
-            "behavior": true
-          },
-          {
-            "title": "local model lane for background learning",
-            "behavior": true
-          },
-          {
-            "title": "opt-in mint cascade: local-draft + remote-repair task authoring (H10)",
-            "behavior": true
-          },
-          {
-            "title": "nonllm testbench — the zero-LLM tier, experiments + verdicts (not yet a behavior change)",
-            "behavior": false
-          },
-          {
-            "title": "landing: the shipping rail",
-            "behavior": false
-          },
-          {
-            "title": "landing: the page stops hand-copying the repository — two more generators and a claims gate",
-            "behavior": false
-          },
-          {
-            "title": "local-llm testbench (experiments, not yet a behavior change)",
-            "behavior": false
-          },
-          {
-            "title": "unown mcp — MCP config management without hand-editing JSON",
-            "behavior": false
-          },
-          {
-            "title": "unown doctor now covers the SDLC surfaces",
-            "behavior": false
-          },
-          {
-            "title": "In-session footer status lines",
-            "behavior": false
-          },
-          {
-            "title": "/lsp trust",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Changed",
-        "items": [
-          {
-            "title": "landing: the eight-band compression — half the scroll, every receipt kept",
-            "behavior": false
-          },
-          {
-            "title": "landing: the hero's install chip grows OS tabs…",
-            "behavior": false
-          },
-          {
-            "title": "landing: install-and-try-first — quickstart moves to position 2 and the hero's five-command panel becomes one…",
-            "behavior": false
-          },
-          {
-            "title": "deps: playwright 1.57 → 1.64.1, lockstep pair + root playwright-core pin",
-            "behavior": false
-          },
-          {
-            "title": "ci: action bumps, SHA-pinned as always",
-            "behavior": false
-          },
-          {
-            "title": "deps (deferred): pi-repo highlight.js 10.7.3 → 11.x declined as a routine bump (dependabot #3)",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (integrity): checkpoint store",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (transport): LSP client",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (transport): MCP client",
-            "behavior": false
-          },
-          {
-            "title": "Hardening (lifecycle): child reaper",
-            "behavior": false
-          },
-          {
-            "title": "Env knobs",
-            "behavior": false
-          },
-          {
-            "title": "Security: project-config trust gate (the audit's top gap — cloned-repo RCE)",
-            "behavior": false
-          },
-          {
-            "title": "Security: MCP URL/header/spawn hardening",
-            "behavior": false
-          },
-          {
-            "title": "Security: LSP protocol correctness",
-            "behavior": false
-          },
-          {
-            "title": "Privacy: receipts redaction + runtime-state gitignore",
-            "behavior": false
-          },
-          {
-            "title": "/review git plumbing + reviewer honesty",
-            "behavior": false
-          },
-          {
-            "title": "/goal gate hardening",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "tui: the end-user release audit — five gaps that broke shipped features from the terminal…",
-            "behavior": false
-          },
-          {
-            "title": "hooks: the Windows tree-kill the command-handler timeout never had…",
-            "behavior": false
-          },
-          {
-            "title": "git tools: the gittests suite is now identity-hermetic — the CI red from the parallel session's /commit round…",
-            "behavior": false
-          },
-          {
-            "title": "docs: staleness audit fixes — five drift spots found by walking the docs against the code and the live stack",
-            "behavior": false
-          },
-          {
-            "title": "web tools: the integration-audit round — every surface a fresh-clone user touches now says the agent can search…",
-            "behavior": false
-          },
-          {
-            "title": "web tools: the dashscope search provider is now key-class-honest",
-            "behavior": false
-          },
-          {
-            "title": "automations: two live-E2E breaks in the control surfaces — the engine's HTTP layer dropped PATCH bodies…",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: the engine-parity round went red on the axe gate — three WCAG violation classes across four new…",
-            "behavior": false
-          },
-          {
-            "title": "fresh-clone: supervisor-launched services missed the root .env — the bridge ran keyless",
-            "behavior": false
-          },
-          {
-            "title": "coverage gate: duplicate module-instance rows could shadow well-covered files (bun 1.3.x)",
-            "behavior": false
-          },
-          {
-            "title": "bun run lint was red on a fresh clone while CI's lint job stayed green",
-            "behavior": false
-          },
-          {
-            "title": "landing: three WCAG 1.4.1 violations that the a11y gate could not see, and the gate that could not see them",
-            "behavior": false
-          },
-          {
-            "title": "docs: research-registry staleness sweep + the landing-rail regen the last entry skipped",
-            "behavior": false
-          },
-          {
-            "title": "landing: seven claims the code contradicted…",
-            "behavior": false
-          },
-          {
-            "title": "fresh-clone: empty-string env values bypassed every ?? default (state dir, auth, ports, thresholds)",
-            "behavior": false
-          },
-          {
-            "title": "local-llm: the probe was red on all 3 OS at the receipt step (run 39123722085)",
-            "behavior": false
-          },
-          {
-            "title": "dashboard: Console-tab contrast (wcag2aa color-contrast, serious)",
-            "behavior": false
-          },
-          {
-            "title": "engine: hardening batch from the deep audit (6 defects)",
-            "behavior": false
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "label": "2.1.0",
-    "date": "2026-10-18",
-    "total": 21,
-    "counts": {
-      "Added": 20,
-      "Changed": 0,
-      "Deprecated": 0,
-      "Removed": 0,
-      "Fixed": 1,
-      "Security": 0,
-      "Behavior": 0
-    },
-    "groups": [
-      {
-        "bucket": "Added",
-        "items": [
-          {
-            "title": "Landing page: quickstart carries the SDLC-parity session surface",
-            "behavior": false
-          },
-          {
-            "title": "/review — parallel-subagent code review",
-            "behavior": true
-          },
-          {
-            "title": "/goal + --goal — durable, evidence-verified objectives",
-            "behavior": true
-          },
-          {
-            "title": "MCP client (mcp__<server>__<tool> tools + /mcp)",
-            "behavior": true
-          },
-          {
-            "title": "session checkpoints + receipts audit ledger (/checkpoint /undo /restore /checkpoints /receipts)",
-            "behavior": true
-          },
-          {
-            "title": "LSP code intelligence (lsp tool + /lsp + PostToolUse diagnostics loop)",
-            "behavior": true
-          },
-          {
-            "title": "docs: sdlc-feature-parity.md",
-            "behavior": false
-          },
-          {
-            "title": "Self-update: unown update",
-            "behavior": false
-          },
-          {
-            "title": "unown uninstall",
-            "behavior": false
-          },
-          {
-            "title": "unown doctor --json",
-            "behavior": false
-          },
-          {
-            "title": "unown info",
-            "behavior": false
-          },
-          {
-            "title": "unown completions bash|zsh|fish|powershell",
-            "behavior": false
-          },
-          {
-            "title": "User-state migrations",
-            "behavior": false
-          },
-          {
-            "title": "Supply-chain hardening (OpenSSF Scorecard quick wins)",
-            "behavior": false
-          },
-          {
-            "title": "One-line installer",
-            "behavior": false
-          },
-          {
-            "title": "Update notifications",
-            "behavior": false
-          },
-          {
-            "title": "unown changelog [n]",
-            "behavior": false
-          },
-          {
-            "title": "New user-facing doc: docs/updating.md",
-            "behavior": false
-          },
-          {
-            "title": "DOX (agent workflow)",
-            "behavior": false
-          },
-          {
-            "title": "README: bespoke four-tier memory-stack diagram",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "AGENTS.md: the v2.0.0 verification claim overstated the Release workflow",
-            "behavior": false
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "label": "2.0.0",
-    "date": "2026-10-18",
-    "total": 20,
-    "counts": {
-      "Added": 8,
-      "Changed": 2,
-      "Deprecated": 0,
-      "Removed": 0,
-      "Fixed": 7,
-      "Security": 3,
-      "Behavior": 0
-    },
-    "groups": [
-      {
-        "bucket": "Added",
-        "items": [
-          {
-            "title": "Community-health surface",
-            "behavior": false
-          },
-          {
-            "title": "CI: the mermaid byte-identity gate",
-            "behavior": false
-          },
-          {
-            "title": "Cross-platform stack",
-            "behavior": false
-          },
-          {
-            "title": "macOS seatbelt (sandbox-exec) OS-sandbox backend with a bwrap-equivalent profile",
-            "behavior": false
-          },
-          {
-            "title": "CI: 3-OS build-test matrix (ubuntu / macOS / Windows) driving the real scripts/install.ts path",
-            "behavior": false
-          },
-          {
-            "title": "Benchmarks (receipts in benchmarks/memory-eval/*/RESULTS.md)",
-            "behavior": false
-          },
-          {
-            "title": "Landing page (src/components/landing/) with the GBA palette contract and the scripts/gba_palette_check.mjs gate",
-            "behavior": false
-          },
-          {
-            "title": "Decision records",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "Dashboard accessibility",
-            "behavior": false
-          },
-          {
-            "title": "CI: the Windows build-test leg failed at the version-consistency step since 6f134c7",
-            "behavior": false
-          },
-          {
-            "title": "Engine test-suite 3-OS import-order residue closed at the source (test/_env.ts preload via the package…",
-            "behavior": false
-          },
-          {
-            "title": "chatJson / extractJson robustness (live dream-cycle minting failure on kimi-k2.5)",
-            "behavior": false
-          },
-          {
-            "title": "RAW_DEVICE_WIN deny-pattern never matched",
-            "behavior": false
-          },
-          {
-            "title": "Sandbox hardening rounds",
-            "behavior": false
-          },
-          {
-            "title": "CI Windows fixture-ordering flake (fixed at source)",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Changed",
-        "items": [
-          {
-            "title": "Memory injection is budget-capped",
-            "behavior": false
-          },
-          {
-            "title": "Dream canary gate upgraded to K stratified samples with tool-drift and claim-vs-ground-truth gating",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Security",
-        "items": [
-          {
-            "title": "security-bypass guard rule",
-            "behavior": true
-          },
-          {
-            "title": "Deterministic adversarial-content gate on both dream paths (memory-system review finding F4B)",
-            "behavior": false
-          },
-          {
-            "title": "CI security gates",
-            "behavior": false
           }
         ]
       }

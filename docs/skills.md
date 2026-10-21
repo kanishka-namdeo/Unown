@@ -124,8 +124,9 @@ built artifacts.
 
 ## 2. Version and changelog
 
-- Bump the version in package.json (semver: breaking = major, new endpoint =
-  minor, fix = patch).
+- Bump the version in package.json (0.0.x line, reset 2026-10-21: increment
+  the patch digit in order — 0.0.1, then 0.0.2, then 0.0.3, and so on —
+  until otherwise specified; the tag must equal package.json's version).
 - Add a CHANGELOG.md entry under the new version heading summarizing the
   merged PRs since the last tag: git log --oneline $(git describe --tags
   --abbrev=0)..HEAD

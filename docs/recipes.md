@@ -54,7 +54,7 @@ Two surfaces, one implementation:
 
 ```bash
 unown recipes list                      # every discovered recipe + its fields
-unown recipes run release-notes --from-ref v2.1.0 --to-ref HEAD
+unown recipes run release-notes --from-ref v0.0.1 --to-ref HEAD
 unown recipes create release-notes      # scaffold project scope (--user for the user dir, --path to choose)
 unown recipes validate .unown/recipes/release-notes.md
 ```
@@ -66,7 +66,7 @@ unown recipes validate .unown/recipes/release-notes.md
 ```
 /recipe list                            # discovered recipes + provenance (project/user)
 /recipe show release-notes              # frontmatter summary + the raw body
-/recipe release-notes --from-ref v2.1.0 --to-ref HEAD
+/recipe release-notes --from-ref v0.0.1 --to-ref HEAD
 ```
 
 The same `--key value` grammar, the same validation and retry loop; the result renders in the session.
@@ -147,7 +147,7 @@ markdown fences.
 Run it:
 
 ```bash
-$ unown recipes run release-notes --from-ref v2.1.0 --to-ref HEAD
+$ unown recipes run release-notes --from-ref v0.0.1 --to-ref HEAD
 {
   "headline": "Recipes, repo wiki and per-subagent routing land",
   "sections": [

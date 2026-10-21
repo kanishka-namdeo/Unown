@@ -23,8 +23,8 @@ unown update
 That is the whole update story for a normal install. Unown is installed as a git checkout (clone + `bun run agent:install`) with the `unown` shim pointing into that checkout, so updating is a git operation, not a package-manager one: `unown update` fetches the release tags from your `origin`, fast-forwards the checkout to the newest release tag, and re-runs the installer (dependencies, engine build, `.env` bootstrap — never overwriting an existing `.env` — and the PATH shim). A version move looks like:
 
 ```
-· rebuilding (v2.1.0) — dependencies, engine, PATH shim…
-✓ unown updated: 2.0.0 → 2.1.0
+· rebuilding (v0.0.2) — dependencies, engine, PATH shim…
+✓ unown updated: 0.0.1 → 0.0.2
 ```
 
 Restart any running unown sessions (and `bun run agent:start` if the stack is up) to pick up the new build; the running process is never hot-swapped — the same restart rule Claude Code, Aider and Gemini CLI apply.
@@ -43,8 +43,8 @@ Restart any running unown sessions (and `bun run agent:start` if the stack is up
 
 ```json
 {
-  "current": "2.0.0",
-  "latest": "2.1.0",
+  "current": "0.0.1",
+  "latest": "0.0.2",
   "available": true,
   "remoteUrl": "https://github.com/kanishka-namdeo/Unown.git",
   "checkedAt": "2026-10-18T09:07:16.109Z",
@@ -77,8 +77,8 @@ A successful update prints the changelog slice for the versions you crossed (`CH
 Interactive sessions (`unown` in a TTY) show a one-line notice when a newer release exists:
 
 ```
-⚠ update available: unown 2.0.0 → 2.1.0
-  run `unown update` · notes: https://github.com/kanishka-namdeo/Unown/releases/tag/v2.1.0 · silence: export NO_UPDATE_NOTIFIER=1
+⚠ update available: unown 0.0.1 → 0.0.2
+  run `unown update` · notes: https://github.com/kanishka-namdeo/Unown/releases/tag/v0.0.2 · silence: export NO_UPDATE_NOTIFIER=1
 ```
 
 The mechanics follow the ecosystem-standard update-notifier pattern (npm's `update-notifier`, Codex's `version.json`, Aider's versioncheck):
@@ -92,14 +92,14 @@ The mechanics follow the ecosystem-standard update-notifier pattern (npm's `upda
 
 ## Pinned installs and specific versions
 
-A checkout with a detached HEAD (e.g. `git checkout v2.0.0`) is a **pinned install** — `unown update` refuses to move it implicitly:
+A checkout with a detached HEAD (e.g. `git checkout v0.0.1`) is a **pinned install** — `unown update` refuses to move it implicitly:
 
 ```
-unown: HEAD is detached at v2.0.0 — a pinned install.
+unown: HEAD is detached at v0.0.1 — a pinned install.
   update explicitly with:  unown update <version>
 ```
 
-`unown update 2.1.0` moves any install — pinned or not — to exactly that version, in both directions (this is also the manual downgrade path). Moving to an older version is always an explicit request; the automatic path only ever moves forward.
+`unown update 0.0.2` moves any install — pinned or not — to exactly that version, in both directions (this is also the manual downgrade path). Moving to an older version is always an explicit request; the automatic path only ever moves forward.
 
 ## Rollback
 

@@ -123,7 +123,7 @@ cloned repo cannot make you paste text. This matches the Claude Code
 
 ## Ideas
 
-- `/release-notes 2.1.0` — diff-since-tag → changelog paragraph draft
+- `/release-notes 0.0.1` — diff-since-tag → changelog paragraph draft
 - `/pr-description` — read the branch's commits, write the PR body
 - `/oncall-handoff` — summarize open todos, failing checks, and current goal
 - `/digest-errors error.log` — cluster and explain a build log (piped stdin

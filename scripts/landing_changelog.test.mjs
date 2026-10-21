@@ -114,13 +114,18 @@ test("build refuses a rail that cannot be dated, or that has gone empty", () => 
 
 test("the real CHANGELOG.md parses into the rail the page renders", () => {
   const data = build(parseChangelog(readFileSync(join(ROOT, "CHANGELOG.md"), "utf8")));
-  assert.ok(data.stops.length >= 2, "at least one cut release plus the in-flight stop");
+  assert.ok(data.stops.length >= 1, "at least the cut release");
   // Release-aware: the first stop is `Unreleased` mid-flight (undated) or the
   // just-cut version stop (dated) — between releases there is no [Unreleased]
-  // section at all (an empty stop fails build() by contract).
+  // section at all (an empty stop fails build() by contract). Right after a
+  // version-line reset the changelog holds exactly ONE stop: the just-cut
+  // release with the retired line's history removed (the 0.0.1 reset,
+  // 2026-10-21, shipped that shape), so a second stop is asserted only where
+  // the shape demands it — mid-flight, behind the in-flight stop.
   const first = data.stops[0];
   if (first.label === "Unreleased") {
     assert.equal(first.date, null, "the in-flight stop must stay undated");
+    assert.ok(data.stops.length >= 2, "mid-flight there is a cut release behind the in-flight stop");
     assert.ok(iso(data.stops[1].date), "the previous release follows with an ISO date");
   } else {
     assert.ok(iso(first.date), "right after a cut, the first stop is the dated release");
@@ -133,8 +138,11 @@ test("the real CHANGELOG.md parses into the rail the page renders", () => {
   assert.ok(items.every((i) => !i.title.includes("**") && !i.title.includes("`")),
     "markdown emphasis and code spans must not reach the page");
   // The honesty case this extractor was caught on: an entry whose own text says
-  // it is not a behavior change must not arrive flagged as one.
-  const notBehavior = items.find((i) => i.title.startsWith("local-llm testbench"));
+  // it is not a behavior change must not arrive flagged as one. (The original
+  // pin — the `local-llm testbench` bullet — left with the retired 2.x history
+  // in the 0.0.1 version-line reset; the M3 files-dock bullet is the same
+  // shape: a plain `### Added` entry, no Agent Behavior marker anywhere.)
+  const notBehavior = items.find((i) => i.title.startsWith("the files dock graduates"));
   assert.equal(notBehavior?.behavior, false);
   assert.ok(data.stops.some((s) => s.counts.Added > 0));
 });

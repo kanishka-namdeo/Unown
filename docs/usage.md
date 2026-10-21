@@ -111,7 +111,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown engine <sub>` | The detached self-learning engine — `status` (pid, uptime, active job, budget/breaker, outbox, auto-start circuit) \| `start` (spawn detached if down, wait for health — resets the crash-loop circuit) \| `stop` (graceful drain: finish in-flight requests, checkpoint the WAL, release the lock) \| `restart` (pick up the current build: busy-aware stop + fresh spawn — refuses to cut an active job without `--force`) \| `repair` (quarantine a corrupt DB — backs it up aside and boots fresh; memory files and queued notes survive by design) \| `serve` (run in the foreground — the systemd/launchd/Windows-service entry). Session-note delivery auto-starts the engine when it is down, so the terminal agent never needs it running to be useful. See [the detached engine](detached-engine-architecture.md) and [engine resilience](resilience.md) |
 | `unown usage` | Token/latency/cost report over the bridge's persistent usage log — `--days N`, `--model M`, `--json`. See [Usage tracking](usage-tracking.md) |
 | `unown webcache <sub>` | Inspect the [web results store](#web-search--webfetch) — `stats` (entries, size vs the byte cap, TTLs, hit rate, saved upstream requests, top providers; `--json` for the raw object; the default) \| `clear` (remove every entry) \| `sweep` (run the byte-capped LRU eviction pass on demand) |
-| `unown update` | Check for a newer release and self-update — fast-forward the checkout to the newest ready tag, then re-run the installer. Flags: `--check` (report only; exit `2` when an update is available), `--check --json`, `--allow-dirty`, `--rollback`, or an explicit version (`unown update 2.1.0` — also pins/rolls back). See [updating](updating.md) |
+| `unown update` | Check for a newer release and self-update — fast-forward the checkout to the newest ready tag, then re-run the installer. Flags: `--check` (report only; exit `2` when an update is available), `--check --json`, `--allow-dirty`, `--rollback`, or an explicit version (`unown update 0.0.2` — also pins/rolls back). See [updating](updating.md) |
 | `unown changelog [n]` | Print the latest `CHANGELOG.md` sections (default 1) |
 | `unown completions <shell>` | Print a completion script — `bash` \| `zsh` \| `fish` \| `powershell` (stdout; installation one-liners in `unown completions --help` and below) |
 | `unown uninstall` | Remove the CLI — shims by default; `--dry-run`, `--purge-data` (~/.unown), `--purge-checkout` (the repo; refuses uncommitted work). See [install → uninstalling](install.md#uninstalling) |
@@ -390,7 +390,7 @@ The rest:
 
 Every discovered [skill](skills.md) also registers itself as `/skill:<name>`, which loads the full SKILL.md and runs it (on by default; toggle in `/settings`).
 
-Slash commands are not a fixed set: drop a markdown file into `.unown/commands/` (project) or `~/.unown/agent/commands/` (global) and it becomes a command — `/pr-description`, `/release-notes 2.1.0`, anything you write — with `$ARGUMENTS` / `$1..$N` substitution and frontmatter autocomplete. See the [custom slash commands](custom-commands.md) page.
+Slash commands are not a fixed set: drop a markdown file into `.unown/commands/` (project) or `~/.unown/agent/commands/` (global) and it becomes a command — `/pr-description`, `/release-notes 0.0.1`, anything you write — with `$ARGUMENTS` / `$1..$N` substitution and frontmatter autocomplete. See the [custom slash commands](custom-commands.md) page.
 
 ## Keybindings
 

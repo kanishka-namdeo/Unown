@@ -45,9 +45,7 @@ const KAC_BUCKETS = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Secu
 const BUCKETS = [...KAC_BUCKETS, "Behavior"];
 
 /** Curated titles, keyed by `stop|bucket|first three words of the bullet`. */
-const TITLES = {
-  "2.1.0|Added|New user-facing doc:": "New user-facing doc: docs/updating.md",
-};
+const TITLES = {};
 
 /** Thrown, not exited: the failure modes are the point of the unit test. */
 class ChangelogError extends Error {}
