@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The mission-control dashboard: a single-page Next.js 16 App Router client that visualizes and drives the self-learning engine — 10 tabs (Overview, Learning Lab, Memory, Dreams, Hooks, Console, Sandboxes, Gateway, Router, Automations) fed by live SSE from `:3030`.
+The mission-control dashboard: a single-page Next.js 16 App Router client that visualizes and drives the self-learning engine — 11 tabs (Overview, Learning Lab, Memory, Dreams, Hooks, Console, Sandboxes, Gateway, Router, Automations, Web Cache) fed by live SSE from `:3030`; provider management is terminal-only (`/providers` in the TUI).
 
 ## Ownership
 
@@ -12,7 +12,7 @@ The mission-control dashboard: a single-page Next.js 16 App Router client that v
 
 ## Local Contracts
 
-- Entry composition lives in `src/app/dashboard/page.tsx` (`DashboardProviders` + `Header` + the ten `*-tab.tsx` surfaces in a shadcn `Tabs`). Adding a tab = new component in `src/components/dashboard/`, registered in `src/app/dashboard/page.tsx`.
+- Entry composition lives in `src/app/dashboard/page.tsx` (`DashboardProviders` + `Header` + the eleven `*-tab.tsx` surfaces in a shadcn `Tabs`). Adding a tab = new component in `src/components/dashboard/`, registered in `src/app/dashboard/page.tsx`.
 - `src/app/page.tsx` is the marketing landing page, not the dashboard, and it is **composition only** — every section lives in `src/components/landing/`, which owns its own contract doc. It imports `src/app/landing.css` for its stylesheet and the retro Game Boy Advance / Generation III palette (declared in `globals.css`, see below), which ships in two schemes: a dark Hoenn screen (default) and a light Kanto-daylight screen (via `prefers-color-scheme`, overridable by the nav toggle).
 - The two pages deliberately look different: the dashboard keeps the cool zinc tokens because it is an application, and only the marketing page is retro (Game Boy Advance, Pokémon Generation III). Do not unify them.
 - All engine data flows through `src/lib/agent-api.ts` (REST + SSE) and `src/lib/agent-types.ts` (schema types mirroring the engine's API). Components never fetch engines directly.

@@ -51,7 +51,7 @@ flowchart TB
         PM("project memory<br>.unown/memory/project.md")
     end
     subgraph dash["dashboard · :3000"]
-        UI["Next.js mission control<br>10 tabs · live SSE feed"]
+        UI["Next.js mission control<br>11 tabs · live SSE feed"]
     end
     subgraph engine["self-learning engine :3030"]
         ENG["memory · harness · dream<br>router · sandbox"]
@@ -135,6 +135,8 @@ Full usage docs live in [`docs/`](docs/):
 | [macos guide](docs/macos.md) | macOS: seatbelt sandbox notes, darwin prebuilds, install one-liners |
 | [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |
 | [TUI capture workflow](docs/tui-capture-workflow.md) | how the landing page's terminal screenshots/video are captured from real sessions — the harness contract, geometry rules, audit gates |
+| [TUI dashboard](docs/tui-dashboard-plan.md) | the embedded terminal dashboard (`unown dashboard` / `/dashboard`) — the D-series design record: screens, both mounts, the live engine feed, what was built and what D7/D8 still plan |
+| [TUI responsiveness](docs/tui-responsive-plan.md) | the R-series responsive design record — viewport tiers, the min-size gate, footer degradation, overlay scaling, the graduated files dock |
 | [behavior](docs/BEHAVIOR.md) | the agent behavior card: default models, memory stack, session tools, sandbox, hooks, and the behavior-change policy |
 
 ---
@@ -195,7 +197,7 @@ unown setup --provider bridge     # point the terminal agent at it
 
 ```bash
 unown setup --provider openai --api-key sk-... --model gpt-4o
-# presets: openai · openrouter · anthropic · dashscope · deepseek · custom (any OpenAI-compatible endpoint)
+# presets: openai · openrouter · anthropic · dashscope · deepseek · agnes · custom (any OpenAI-compatible endpoint)
 unown setup                        # or the interactive wizard
 ```
 
@@ -242,10 +244,10 @@ Every session ships with **Claude Code-grade session tools** on top of pi:
 
 - **`todo`** — a live task-graph panel the agent maintains above the editor (and `/todos` to inspect it): a 4-state machine (`pending` → `in_progress` → `completed`, plus deleted tombstones), `blockedBy` dependencies with cycle rejection, `activeForm` progress labels, and completed rows that fade at the next turn boundary. State rides the session tree, so branching keeps the right list.
 - **Addons** — three fully user-configurable TUI addons with one config file (`~/.unown/agent/addons.json`) and an in-session `/addons` configurator: `ask_user_question` (structured mid-run questionnaires — up to 4 tabbed questions, 2–4 options each, side-by-side previews, free-text and notes; the tool **blocks until you answer**, so the turn continues with your decision), the `todo` addon above, and `advisor` (a second model watching the session as compact per-turn deltas, verifying claims with read-only tools, and sending advice mid-run — nits queue as asides, concerns/blockers steer immediately; **off by default**). Ports of @juicesharp/rpiv-ask-user-question + rpiv-todo and oh-my-pi's advisor (all MIT). Full reference: [docs/addons.md](docs/addons.md).
-- **`task`** — subagents with a **fresh context window** (`general` full-tool, `explore` read-only, `background-explore` — the same read-only shape on a cheaper model at low effort, no MCP, no memory injection — or your own `.unown/agents/*.md` definitions; run `/agents` to list). They are full unown agents: same memory, same guardrails — and their sessions write `[subagent]`-tagged notes, so **subagents learn too**. Up to 4 in parallel via `{tasks: [...]}`, with per-agent `model`/`effort`/`mcpServers`/`injectAgentsMd` routing, opt-in git `worktree_isolation` and `output_schema` typed replies (authoring guide: [docs/subagents.md](docs/subagents.md)).
+- **`task`** — subagents with a **fresh context window** — seven built-ins (`general` full-tool, `explore` read-only, `background-explore` — the same read-only shape on a cheaper model at low effort, no MCP, no memory injection — plus `scout`, `worker`, `reviewer` and `planner` for the review/plan workflows) or your own `.unown/agents/*.md` definitions; run `/agents` to list. They are full unown agents: same memory, same guardrails — and their sessions write `[subagent]`-tagged notes, so **subagents learn too**. Up to 4 in parallel via `{tasks: [...]}`, with per-agent `model`/`effort`/`mcpServers`/`injectAgentsMd` routing, opt-in git `worktree_isolation` and `output_schema` typed replies (authoring guide: [docs/subagents.md](docs/subagents.md)).
 - **`note`** — record a durable learning note **mid-session**; it reaches the engine immediately and AutoDream consolidates it into your project's memory (also `/note <text>`).
 - **`fetch_url`** — read-only HTTP GET with HTML stripping and size caps.
-- **`web_search` + `webfetch`** — **native web access** (the Claude Code / OpenCode surface, ported): ranked search results (title, URL, snippet) with provider auto-selection, then full page reads as text. Works **keyless out of the box** — DuckDuckGo → Tavily (keyless) → You.com → StackExchange → Wikipedia → HN, plus npm registry and GitHub repo search — and any of the 10 API-key providers (Tavily, Brave, Serper, Exa, Perplexity, Jina, Zhipu, DashScope, Kagi, SerpApi; Firecrawl on the fetch side) prepends itself to the chain the moment its key lands in `.env`. Both tools are SSRF-hardened (private-address DNS resolution refused), robots-aware and size-capped; `allowed_domains`/`blocked_domains` filter results. `UNOWN_WEB_SEARCH=0` / `UNOWN_WEBFETCH=0` disable either. A **persistent web results store** (`~/.unown/cache/web/`, shared across sessions, subagents and automations) answers repeated queries from disk while fresh (search 60 min; fetches honor origin Cache-Control with ETag/Last-Modified revalidation — a 304 means "no version change" and re-serves the stored body) and serves the last good answer stale — always flagged — when every upstream attempt fails; every answer carries its provenance (`· cached (12m old)`). `unown webcache stats | clear | sweep` inspects it. Full provider table and key list: [docs/usage.md](docs/usage.md) · [docs/configuration.md](docs/configuration.md).
+- **`web_search` + `webfetch`** — **native web access** (the Claude Code / OpenCode surface, ported): ranked search results (title, URL, snippet) with provider auto-selection, then full page reads as text. Works **keyless out of the box** — DuckDuckGo → Tavily (keyless) → You.com → StackExchange → Wikipedia → HN, plus npm registry and GitHub repo search — and any of the 11 API-key providers (Tavily, Brave, Serper, Exa, Perplexity, Jina, Zhipu, DashScope, Kagi, SerpApi — and Firecrawl, which also serves the fetch side) prepends itself to the chain the moment its key lands in `.env`. Both tools are SSRF-hardened (private-address DNS resolution refused), robots-aware and size-capped; `allowed_domains`/`blocked_domains` filter results. `UNOWN_WEB_SEARCH=0` / `UNOWN_WEBFETCH=0` disable either. A **persistent web results store** (`~/.unown/cache/web/`, shared across sessions, subagents and automations) answers repeated queries from disk while fresh (search 60 min; fetches honor origin Cache-Control with ETag/Last-Modified revalidation — a 304 means "no version change" and re-serves the stored body) and serves the last good answer stale — always flagged — when every upstream attempt fails; every answer carries its provenance (`· cached (12m old)`). `unown webcache stats | clear | sweep` inspects it. Full provider table and key list: [docs/usage.md](docs/usage.md) · [docs/configuration.md](docs/configuration.md).
 - **`lsp`** — language-server code intelligence (the oh-my-pi port): diagnostics, hover, go-to-definition, find-references and document symbols, with servers auto-detected on PATH (typescript-language-server, pyright, gopls, rust-analyzer, clangd, …) and configurable via `.unown/lsp.json`. After every write/edit the fresh diagnostics for that file ride the tool result — type errors get fed back to the agent instead of compounding (cold start never blocks; `UNOWN_LSP=0` disables). `/lsp` prints server status.
 - **`/plan`** (or `--plan`, or Ctrl+Alt+P) — plan mode: write tools disabled, bash allowlisted to read-only commands; the agent explores, produces a numbered plan, and you approve execution with live `[DONE:n]` progress.
 - **Checkpoints + receipts** (the codewhale port) — every session keeps an audit ledger at `.unown/receipts/` (every prompt, tool call and result — blocked calls land as error results; `/receipts` prints it with totals) and seals automatic turn checkpoints (`.unown/checkpoints/`): `/undo [n|--all]` reverts the last n turns' file changes, `/checkpoint [label]` + `/restore` rewind to named snapshots, and `/redo [n|--all]` re-applies undone changes (the opencode/Cursor undo→redo port — any new checkpoint clears the redo stack). Restore is jailed to your project dir; both trees are gitignored.
@@ -321,7 +323,7 @@ Every number and every quoted artifact on that page is checkable, nothing from a
 
 ## Mission control
 
-The dashboard is a live window onto the engine — every number below is real data from a running instance, streamed over SSE:
+The dashboard is a live window onto the engine — every number below is real data from a running instance, streamed over SSE. It comes in two mounts: the **web dashboard** at `http://localhost:3000/dashboard` (11 tabs) and the **terminal dashboard** — `unown dashboard` / `/dashboard` in the TUI ([docs/tui-dashboard-plan.md](docs/tui-dashboard-plan.md)) — the same engine feed without leaving the terminal.
 
 ![unown dashboard — Overview tab with live KPIs](.github/assets/dashboard-overview.png)
 
@@ -330,6 +332,8 @@ The dashboard is a live window onto the engine — every number below is real da
 | ![Learning Lab — harness cycles, runs and transcripts](.github/assets/dashboard-learning-lab.png) | ![Memory — the four tiers and version history](.github/assets/dashboard-memory.png) |
 | ![Dreams — AutoDream sessions and pending notes](.github/assets/dashboard-dreams.png) | ![Hooks — the guardrail decision log](.github/assets/dashboard-hooks.png) |
 | ![Console — drive the sandboxed agent live](.github/assets/dashboard-console.png) | ![Router — background jobs](.github/assets/dashboard-router.png) |
+
+The web tabs: **Overview** (KPIs, pass-rate chart, live activity feed) · **Learning Lab** (harness cycles, runs and transcripts) · **Memory** (the four tiers, version history, rollback) · **Dreams** (AutoDream sessions and pending notes) · **Hooks** (the guardrail decision log) · **Console** (drive the sandboxed agent live) · **Gateway** (bridge health and upstream) · **Router** (background jobs) · **Sandboxes** · **Automations** · **Web Cache** (the persistent web results store). Provider management lives in the terminal (`/providers` — [docs/providers.md](docs/providers.md)).
 
 It is fully responsive — the same live KPIs, chart and activity feed on a phone:
 

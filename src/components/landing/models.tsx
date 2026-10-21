@@ -27,6 +27,7 @@ const TILES: Tile[] = [
   { label: "DeepSeek", slug: "deepseek" },
   { label: "Mistral AI", slug: "mistralai" },
   { label: "DashScope", slug: "alibabacloud", note: "Alibaba Cloud" },
+  { label: "Agnes AI", note: "text-only · preset" },
   { label: "vLLM", slug: "vllm" },
   { label: "Ollama", slug: "ollama" },
   { label: "llama.cpp", note: "text-only" },

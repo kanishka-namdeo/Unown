@@ -156,8 +156,11 @@ results — the no-second-model half of 1.5):
   `unown usage` CLI with cost estimates + pricing overrides.
   `docs/usage-tracking.md`.
 
-Milestone 1.5's ML-classifier half and 1.4's adversary mode remain open; the
-shipped shield covers the deterministic base.
+Milestone 1.5's ML-classifier half remains open; the shipped shield covers the
+deterministic base. (1.4's adversary mode SHIPPED — the file-gated
+`~/.config/unown/adversary.md` PreToolUse reviewer, live since 2026-10; the
+advisor later shipped too, as an off-by-default TUI addon — see
+[addons](addons.md#advisor).)
 
 ## Out-of-scope this cycle (with reason)
 
@@ -166,8 +169,9 @@ shipped shield covers the deterministic base.
 - **ast-grep / ast_edit** — tree-sitter runtime dependency the sandbox cannot
   assume.
 - **TTSR stream rules** — fork-level change to pi-ai; violates invariant.
-- **Advisor/watchdog second model** — superseded by Adversary Mode (1.4),
-  which is per-action and opt-in.
+- **Advisor/watchdog second model** — originally superseded by Adversary Mode
+  (1.4, per-action and opt-in); the advisor later shipped on its own terms as
+  an off-by-default TUI addon watching per-turn deltas ([addons](addons.md#advisor)).
 - **Event-sourced session replay** — pi's session tree + receipts cover audit;
   full event sourcing is a substrate rewrite.
 - **Plugin bundles + marketplace** — ecosystem work, not a feature gap.

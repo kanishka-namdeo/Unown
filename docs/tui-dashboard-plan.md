@@ -7,7 +7,7 @@ being visualized), `docs/detached-engine-architecture.md` (the API being consume
 
 ## 1. Context and the decision
 
-The Next.js dashboard (`/dashboard`, 12 tabs, React Query + SSE) was the only
+The Next.js dashboard (`/dashboard`, 11 tabs after the providers screen moved terminal-only, React Query + SSE) was the only
 browser surface in a terminal product. It forced a Node/Next toolchain, a
 shadcn/ui vendor tree, a Prisma scaffold and a `serve-dashboard.ts` production
 path into a repo whose agent, engine and CLI are all bun + pi-tui. The decision:

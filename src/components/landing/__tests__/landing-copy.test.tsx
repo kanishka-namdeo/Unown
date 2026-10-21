@@ -117,12 +117,11 @@ describe("landing hero", () => {
     // CHIP shows, not the whole hero.
     const chip = () => container.querySelector('[role="tabpanel"]');
     let chipText = chip()?.textContent ?? "";
-    // Windows has no sh on a fresh box, so its tab carries the clone path and
-    // the bun prerequisite from docs/windows.md — the page's canonical one-liner.
-    expect(chipText).toContain(
-      "git clone https://github.com/kanishka-namdeo/Unown.git && cd Unown && bun run agent:install",
-    );
-    expect(chipText).toContain("irm bun.sh/install.ps1");
+    // Windows ships its own one-liner installer now (public/install.ps1 —
+    // the irm|iex twin of the POSIX script; the clone path stays in the
+    // manual expander). One command at a time on the chip.
+    expect(chipText).toContain("irm https://unown-nine.vercel.app/install.ps1 | iex");
+    expect(chipText).toContain("refuses elevation");
     expect(chipText).toContain("in-process jail");
     // one command at a time: the installer line left the chip with the tab
     expect(chipText).not.toContain("unown-nine.vercel.app/install.sh");

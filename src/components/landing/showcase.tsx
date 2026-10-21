@@ -35,6 +35,7 @@ const TABS: [string, string][] = [
   ["Gateway", "tokens, latency, per-model"],
   ["Router", "the seven background jobs"],
   ["Automations", "scheduled recurring runs"],
+  ["Web Cache", "the persistent web results store"],
 ];
 
 export function ShowcaseSection() {
@@ -73,7 +74,7 @@ export function ShowcaseSection() {
 
             <div>
               <p className="gb-label text-[9px] text-gold">
-                Ten tabs · each drives something real
+                Eleven tabs · each drives something real
               </p>
               <ul className="mt-4 grid grid-cols-2 gap-2">
                 {TABS.map(([tab, what]) => (

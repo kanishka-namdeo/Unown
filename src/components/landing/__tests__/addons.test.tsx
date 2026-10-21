@@ -174,10 +174,11 @@ describe("landing showcase addons strip", () => {
     }
   });
 
-  test("the band's dashboard story is intact — ten tabs, the CTA, no new band", () => {
+  test("the band's dashboard story is intact — eleven tabs, the CTA, no new band", () => {
     const { container } = render(<ShowcaseSection />);
     const text = container.textContent ?? "";
-    expect(text).toContain("Ten tabs");
+    expect(text).toContain("Eleven tabs");
+    expect(text).toContain("Web Cache");
     expect(text).toContain("What the running engine looks like.");
     const cta = screen.getByRole("link", { name: /Install it and open the dashboard/i });
     expect(cta.getAttribute("href")).toBe("#quickstart");

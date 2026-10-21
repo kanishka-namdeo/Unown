@@ -499,7 +499,7 @@ Notes on the two decisions that changed from the original proposal:
 | 13 | Sandbox suite in CI | SHIPPED (upstream, unconditional ubuntu `sandbox-smoke` job) | **GREEN** as of run 39072290887 (`a13cf9d`): trajectory red 10/11/1 -> profile green 21/0/1 + engine red 10/2 -> fully green. The red phase proved the value of the early-canary design (§7.5) |
 | 14 | `bun run build` before deploy | **SHIPPED** (this revision) | dedicated `build` job: frozen-lockfile install + prisma generate + `bun run build` + standalone-server smoke (/ and /dashboard 200 on a scratch port) |
 | 15 | Mermaid byte-identity (`scripts/mermaid_check.mjs`) | **SHIPPED** (this revision) | own `ci.yml` job: sources extracted from README.md itself (single source of truth), parsed under the vendored sha-pinned mermaid 11.16.1 (the version github.com runs as of 2026-08), rendered twice in two fresh browser contexts, PNG sha256s compared byte-for-byte. Found live while wiring it: mermaid 11.16.1's shape generators sample `Math.random` — UNPINNED, the loop diagram's stadium nodes wobble up to 30px of path control points between renders (10/31 paths; the architecture diagram, no stadium nodes, was accidentally stable); the gate pins `Math.random` (mulberry32) + `deterministicIds`, and the receipt records both pins |
-| 16 | Playwright E2E + axe-core | **SHIPPED** (this revision) | dedicated `e2e` job: `e2e/mock-engine.mjs` (zero-dep node:http stand-in implementing the full REST + SSE contract of `agent-api.ts`) + the production standalone build in DIRECT api mode + `bunx playwright test`. 12 tests: 10-tab render with zero browser console errors, SSE feed assertions (hello + scripted events), console prompt round-trip, axe-core WCAG 2.0/2.1 A+AA scans of the landing page in two passes (reduced motion — the whole document, because every section below the fold sits at `opacity: 0` until it reveals and axe skips invisible nodes — and no-preference after a full scroll sweep) plus all ten tabs. Found live on first run: 80+ real AA contrast defects (zinc-500/600 small text, StatChip `opacity-70` labels, zinc-700 mono text) + one aria violation (DifficultyStars `aria-label` on a role-less span) — all fixed in `src/` |
+| 16 | Playwright E2E + axe-core | **SHIPPED** (this revision) | dedicated `e2e` job: `e2e/mock-engine.mjs` (zero-dep node:http stand-in implementing the full REST + SSE contract of `agent-api.ts`) + the production standalone build in DIRECT api mode + `bunx playwright test`. e2e render test: every tab renders with zero browser console errors, SSE feed assertions (hello + scripted events), console prompt round-trip, axe-core WCAG 2.0/2.1 A+AA scans of the landing page in two passes (reduced motion — the whole document, because every section below the fold sits at `opacity: 0` until it reveals and axe skips invisible nodes — and no-preference after a full scroll sweep) plus all dashboard tabs. Found live on first run: 80+ real AA contrast defects (zinc-500/600 small text, StatChip `opacity-70` labels, zinc-700 mono text) + one aria violation (DifficultyStars `aria-label` on a role-less span) — all fixed in `src/` |
 | 17 | Docs link and anchor integrity on `docs/*.md` | SHIPPED (this revision; verified green against upstream's new `windows.md`/`macos.md`) | `scripts/check_docs.mjs` as the `docs` CI job; the CLI-surface and env-var cross-checks in `docs/AGENTS.md` remain prose (§7.10) |
 
 ## 7. Surface-by-surface backlog
@@ -512,7 +512,7 @@ preserved in the margin notes where they were cited from history.
 *(was §4.1; surface: `src/`)*
 
 - **SHIPPED** - `agent-format.ts`, `agent-store.ts`, `agent-api.ts`, `utils.ts`
-  unit tests; `use-toast` reducer; all ten tabs' happy/empty/error states and
+  unit tests; `use-toast` reducer; all tabs' happy/empty/error states and
   mutation flows; SSE bridge invalidation and `router:error` toasts (206 tests).
   This layer already found a real crash (`refetchInterval` on run-less data).
 - **KNOWN NOISE (measured benign — do not chase)** - `bun test src` prints
@@ -534,7 +534,7 @@ preserved in the margin notes where they were cited from history.
   and are the first target of the new coverage gate.
 - **SHIPPED** - End-to-end (§6 gate 16, the `e2e` CI job): Playwright against a
   zero-dependency mock engine (`e2e/mock-engine.mjs`, the exact REST + SSE
-  contract). Boot, all ten tabs render live data with zero browser console
+  contract). Boot, all tabs render live data with zero browser console
   errors, the SSE feed renders hello + scripted events, and the console tab's
   prompt flow (busy state -> interactive run -> transcript) round-trips. Still
   open from the original list: the clipboard-unavailable fallback (needs a
@@ -1130,7 +1130,7 @@ Stating that is the point.
 | 3 | Hook deny recall >= 99% on the adversarial corpus, every miss triaged | **PARTIAL** | Corpus and triage exist; recall is not published as a number per run, and the fuzzer is absent (§7.3) |
 | 4 | Memory lift shows a statistically significant improvement for a shipped memory version, with CI | **NOT MET** | Track 5 v3 is n=1 and 6/6 everywhere - saturated, therefore uninformative. Needs the full-context baseline and repetitions (§7.6, §10 item A) |
 | 5 | No P0 open: sandbox escape, secret leak, test tampering, hook bypass | **PARTIAL** | The named P0s are covered by shipped suites. Uncovered: the self-grading surface (§8). The `fetch_url` SSRF item (§7.3) is SHIPPED (guard + tests in `test/websearch.test.ts`) |
-| 6 | axe-core clean and Lighthouse accessibility >= 90 on all ten tabs | **PARTIAL** | axe-core half SHIPPED: the `e2e` CI job scans the landing page + all ten tabs (wcag2/21 A+AA) against real rendered data and fails on any violation — green after fixing the 80+ contrast defects + 1 aria violation its first run found (§6 gate 16). Lighthouse >= 90 half still OPEN (next: LHCI collect against the same mock-engine pair) |
+| 6 | axe-core clean and Lighthouse accessibility >= 90 on all dashboard tabs | **PARTIAL** | axe-core half SHIPPED: the `e2e` CI job scans the landing page + all dashboard tabs (wcag2/21 A+AA) against real rendered data and fails on any violation — green after fixing the 80+ contrast defects + 1 aria violation its first run found (§6 gate 16). Lighthouse >= 90 half still OPEN (next: LHCI collect against the same mock-engine pair) |
 | 7 | Cost/token budget tracked, no >20% regression without a decision | **PARTIAL** | Per-run tokens are recorded; no budget, no alert, no decision record (§7.9) |
 
 Criteria 2, 4 and 6 are the ones that would most change what this repository can

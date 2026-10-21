@@ -20,9 +20,17 @@ const INSTALLER_ONE_LINER =
   "curl -fsSL https://unown-nine.vercel.app/install.sh | sh";
 
 /**
+ * The Windows one-liner installer (public/install.ps1 — same contract as the
+ * POSIX script: refuses elevation, checks git, adds bun via bun's own
+ * PowerShell installer when missing, clones, runs agent:install).
+ */
+const INSTALLER_ONE_LINER_PS =
+  "irm https://unown-nine.vercel.app/install.ps1 | iex";
+
+/**
  * The manual path, byte-identical to the README quickstart and
- * docs/install.md's manual section. Windows has no sh in a fresh install, so
- * its tab carries the clone path plus the bun prerequisite (docs/windows.md).
+ * docs/install.md's manual section — every OS tab carries it as the
+ * alternative (docs/install.md#manual-install-git-clone).
  */
 const MANUAL_ONE_LINER =
   "git clone https://github.com/kanishka-namdeo/Unown.git && cd Unown && bun run agent:install";
@@ -61,14 +69,11 @@ const VARIANTS: { key: OsKey; label: string; cmd: string; note: React.ReactNode 
   {
     key: "windows",
     label: "Windows",
-    cmd: MANUAL_ONE_LINER,
+    cmd: INSTALLER_ONE_LINER_PS,
     note: (
       <>
-        {"bun \u2265 1.2 first: "}
-        <span className="text-ink">
-          powershell -c &quot;irm bun.sh/install.ps1 | iex&quot;
-        </span>{" "}
-        · sandbox: <span className="text-ink">in-process jail</span>
+        refuses elevation, checks git, adds bun when it is missing · sandbox:{" "}
+        <span className="text-ink">in-process jail</span>
       </>
     ),
   },
