@@ -470,7 +470,7 @@ export class DashboardApp {
 			});
 		}
 		items.push(
-			{ value: "action:refresh", label: "refresh active screen", description: "refetch now (r)" },
+			{ value: "action:refresh", label: "refresh active screen", description: "refetch now (R)" },
 			{ value: "action:dream", label: "run AutoDream now", description: "consolidate pending notes" },
 			{ value: "action:sync", label: "sync note outbox", description: "drain queued terminal notes" },
 		);
@@ -514,18 +514,26 @@ export class DashboardApp {
 			"",
 			`${t.fg("accent", "1…9 0")}     jump to screen       ${t.fg("accent", "[ ] / ← →")}   prev / next screen`,
 			`${t.fg("accent", "j k ↑ ↓")}     move selection       ${t.fg("accent", "g G")}        top / bottom`,
-			`${t.fg("accent", "PgUp PgDn")}   page up / down       ${t.fg("accent", "enter")}      open selection`,
+			`${t.fg("accent", "PgUp PgDn")}   page up / down       ${t.fg("accent", "enter")}      open selection¹`,
 			`${t.fg("accent", "esc")}       back / close         ${t.fg("accent", "R")}          refresh screen`,
 			`${t.fg("accent", ":")}        command palette      ${t.fg("accent", "?")}          this help`,
 			"",
 			t.fg("muted", "screen-local keys are announced in the footer"),
+			t.fg("dim", "¹ opens the selected row where the screen has a detail view"),
 			t.fg("dim", this.opts.embedded ? "esc-esc or q returns to the chat" : "q or ctrl+c quits"),
 		];
 		let handle: OverlayHandle | null = null;
 		const card = {
 			render: (w: number) => rows.map((r) => trunc(r, Math.max(10, w - 2))),
 			invalidate: () => {},
-			handleInput: () => {
+			// Esc or q closes (q is safe here: the overlay owns focus while
+			// open, so the shell's quit binding never sees the key; ctrl+c
+			// stays a closer like the palette's cancel) — every other key
+			// leaves the card up, mirroring the palette's Esc-only close.
+			handleInput: (data: string) => {
+				if (!matchesKey(data, "escape") && !matchesKey(data, "q") && !matchesKey(data, "ctrl+c")) {
+					return;
+				}
 				handle?.hide();
 				handle = null;
 				this.helpOverlay = null;

@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { initTheme, theme } from "@earendil-works/pi-coding-agent";
 import { DashboardApp, SCREEN_SPECS } from "../src/dashboard/dashboard-app.ts";
 import { DashboardStore, EngineClient } from "../src/dashboard/dashboard-data.ts";
-import type { OverviewResponse } from "../src/dashboard/dashboard-types.ts";
+import type { HooksResponse, OverviewResponse } from "../src/dashboard/dashboard-types.ts";
 import { type MockEngine, startMockEngine } from "./dashboard-mock-engine.ts";
 
 initTheme("dark");
@@ -101,7 +101,7 @@ describe("DashboardApp headless render", () => {
 			notes: ["filter"],
 			skills: ["skills", "recover-failed-cycle"],
 			lab: ["learning lab", "cycles", "improvements", "runs"],
-			hooks: ["events", "filter"],
+			hooks: ["events", "filter", "f filter"],
 			router: ["router jobs", "auto-dream", "sandboxes"],
 			gateway: ["requests", "latency"],
 			automations: ["automations", "cron"],
@@ -143,6 +143,24 @@ describe("DashboardApp headless render", () => {
 		expect(list).toContain("benchmark tasks");
 	});
 
+	test("hooks detail g/G jump to the ends (help-card truth)", async () => {
+		app.setScreen("hooks");
+		await waitFor(() => store.snapshot<HooksResponse>("hooks").data != null, 2000, "hooks data");
+		app.handleInput("\r"); // enter on the first event → the detail view
+		fake.terminal.rows = 8; // shrink the pane so the detail is taller than it
+		let pane = plain(app.render(120));
+		expect(pane).toContain("hook · PreToolUse");
+		app.handleInput("G"); // shift+g → jump to the bottom
+		pane = plain(app.render(120));
+		expect(pane, "G lands on the detail's tail").toContain("cmd: cat /etc/passwd > out");
+		expect(pane).not.toContain("hook · PreToolUse");
+		app.handleInput("g"); // g → jump back to the top
+		pane = plain(app.render(120));
+		expect(pane, "g returns to the detail's head").toContain("hook · PreToolUse");
+		app.handleInput("\x1b"); // back to the list, restore the pane height
+		fake.terminal.rows = 30;
+	});
+
 	test("confirm bar gates destructive actions", () => {
 		app.setScreen("overview");
 		app.handleInput("m"); // mint is destructive → y/N confirm gate
@@ -167,6 +185,27 @@ describe("DashboardApp headless render", () => {
 	test("palette overlay mounts", () => {
 		app.handleInput(":");
 		expect(fake.overlays.length).toBe(1);
+	});
+
+	test("? help card closes on esc/q only", () => {
+		// The help overlay owns focus while open, so keys go to the card's
+		// handleInput (driven directly here). Esc, q and ctrl+c close it;
+		// any other key must leave it up — openHelp() re-mounts only after
+		// a close, which is the observable difference.
+		const n = fake.overlays.length;
+		app.handleInput("?");
+		expect(fake.overlays.length, "? mounts the help card").toBe(n + 1);
+		const card = fake.overlays[n] as { handleInput: (data: string) => void };
+		card.handleInput("x"); // not a closer
+		app.handleInput("?");
+		expect(fake.overlays.length, "a stray key does not close the card").toBe(n + 1);
+		card.handleInput("\x1b"); // esc closes
+		app.handleInput("?");
+		expect(fake.overlays.length, "esc closed the card, so ? re-mounts").toBe(n + 2);
+		const card2 = fake.overlays[n + 1] as { handleInput: (data: string) => void };
+		card2.handleInput("q"); // q closes (the overlay owns focus, so q never quits)
+		app.handleInput("?");
+		expect(fake.overlays.length, "q closed the card too").toBe(n + 3);
 	});
 
 	test("text-input hatch forwards shell keys", () => {

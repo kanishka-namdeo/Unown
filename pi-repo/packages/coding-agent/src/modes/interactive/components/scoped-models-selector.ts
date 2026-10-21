@@ -112,6 +112,9 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 	private maxVisible = 8;
 	private isDirty = false;
 	private refreshStatusText?: Text;
+	// Pending destructive-action confirmation (ctrl+x / ctrl+a). While set,
+	// the next single keypress decides: "y" applies, anything else cancels.
+	private pendingConfirm: { kind: "enableAll" | "clearAll" } | null = null;
 
 	constructor(config: ModelsConfig, callbacks: ModelsCallbacks) {
 		super();
@@ -220,7 +223,42 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 			: items;
 		this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredItems.length - 1));
 		this.updateList();
-		this.footerText.setText(this.getFooterText());
+		this.updateFooterText();
+	}
+
+	private updateFooterText(): void {
+		this.footerText.setText(
+			this.pendingConfirm ? this.getConfirmText(this.pendingConfirm.kind) : this.getFooterText(),
+		);
+	}
+
+	private getConfirmText(kind: "enableAll" | "clearAll"): string {
+		const filteredCount = this.searchInput.getValue() ? this.filteredItems.length : undefined;
+		if (kind === "clearAll") {
+			const scope =
+				filteredCount ??
+				(this.enabledIds === null ? this.allIds.length : this.enabledIds.filter((id) => this.modelsById.has(id)).length);
+			return theme.fg(
+				"warning",
+				`  Clear ${filteredCount !== undefined ? `${scope} filtered` : `ALL ${scope}`} model assignments? y/N`,
+			);
+		}
+		const scope = filteredCount ?? this.allIds.length;
+		return theme.fg(
+				"warning",
+				`  Enable ${filteredCount !== undefined ? `${scope} filtered` : `ALL ${scope}`} models? y/N`,
+		);
+	}
+
+	private applyModelSetAction(kind: "enableAll" | "clearAll"): void {
+		const targetIds = this.searchInput.getValue() ? this.filteredItems.map((i) => i.fullId) : undefined;
+		this.enabledIds =
+			kind === "enableAll"
+				? enableAll(this.enabledIds, this.allIds, targetIds)
+				: clearAll(this.enabledIds, this.allIds, targetIds);
+		this.isDirty = true;
+		this.refresh();
+		this.notifyChange();
 	}
 
 	private notifyChange(): void {
@@ -282,6 +320,18 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 	handleInput(data: string): void {
 		const kb = getKeybindings();
 
+		// Destructive-action confirmation intercepts every key: "y" applies,
+		// any other single keypress (escape, n, a repeat of the trigger, ...) cancels.
+		if (this.pendingConfirm !== null) {
+			const kind = this.pendingConfirm.kind;
+			this.pendingConfirm = null;
+			this.updateFooterText();
+			if (data === "y" || data === "Y") {
+				this.applyModelSetAction(kind);
+			}
+			return;
+		}
+
 		// Navigation
 		if (kb.matches(data, "tui.select.up")) {
 			if (this.filteredItems.length === 0) return;
@@ -292,6 +342,20 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 		if (kb.matches(data, "tui.select.down")) {
 			if (this.filteredItems.length === 0) return;
 			this.selectedIndex = this.selectedIndex === this.filteredItems.length - 1 ? 0 : this.selectedIndex + 1;
+			this.updateList();
+			return;
+		}
+		// Page up - jump by the viewport height, clamping at the top
+		if (kb.matches(data, "tui.select.pageUp")) {
+			if (this.filteredItems.length === 0) return;
+			this.selectedIndex = Math.max(0, this.selectedIndex - this.maxVisible);
+			this.updateList();
+			return;
+		}
+		// Page down - jump by the viewport height, clamping at the bottom
+		if (kb.matches(data, "tui.select.pageDown")) {
+			if (this.filteredItems.length === 0) return;
+			this.selectedIndex = Math.min(this.filteredItems.length - 1, this.selectedIndex + this.maxVisible);
 			this.updateList();
 			return;
 		}
@@ -330,23 +394,21 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 			return;
 		}
 
-		// Enable all (filtered if search active, otherwise all)
+		// Enable all (filtered if search active, otherwise all) - destructive
+		// blast radius, so it asks for a y/N confirmation first
 		if (kb.matches(data, "app.models.enableAll")) {
-			const targetIds = this.searchInput.getValue() ? this.filteredItems.map((i) => i.fullId) : undefined;
-			this.enabledIds = enableAll(this.enabledIds, this.allIds, targetIds);
-			this.isDirty = true;
-			this.refresh();
-			this.notifyChange();
+			if (this.enabledIds === null) return; // already all enabled - no-op
+			this.pendingConfirm = { kind: "enableAll" };
+			this.updateFooterText();
 			return;
 		}
 
-		// Clear all (filtered if search active, otherwise all)
+		// Clear all (filtered if search active, otherwise all) - destructive
+		// blast radius, so it asks for a y/N confirmation first
 		if (kb.matches(data, "app.models.clearAll")) {
-			const targetIds = this.searchInput.getValue() ? this.filteredItems.map((i) => i.fullId) : undefined;
-			this.enabledIds = clearAll(this.enabledIds, this.allIds, targetIds);
-			this.isDirty = true;
-			this.refresh();
-			this.notifyChange();
+			if (this.enabledIds !== null && this.enabledIds.length === 0) return; // nothing enabled - no-op
+			this.pendingConfirm = { kind: "clearAll" };
+			this.updateFooterText();
 			return;
 		}
 

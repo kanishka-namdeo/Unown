@@ -54,7 +54,7 @@ The dedicated history actions always change history entries, regardless of the c
 | `tui.editor.deleteWordBackward` | `ctrl+w`, `alt+backspace` | Delete word backward |
 | `tui.editor.deleteWordForward` | `alt+d`, `alt+delete` | Delete word forward |
 | `tui.editor.deleteToLineStart` | `ctrl+u` | Delete to line start |
-| `tui.editor.deleteToLineEnd` | `ctrl+k` | Delete to line end |
+| `tui.editor.deleteToLineEnd` | `ctrl+k` | Delete to line end. Shadowed in the chat editor: `ctrl+k` opens the command palette (`app.palette`), which dispatches before editor bindings — rebind one of the two actions to use this one |
 
 ### TUI Input
 
@@ -124,6 +124,7 @@ This routing remains configurable through the ordinary action bindings. For exam
 | `app.clear` | `ctrl+c` | Clear editor (first) / exit (second) |
 | `app.exit` | `ctrl+d` | Exit (when editor empty) |
 | `app.suspend` | `ctrl+z` (none on Windows) | Suspend to background |
+| `app.palette` | `ctrl+k` | Open the command palette — fuzzy search over commands, actions and skills (takes precedence over the editor's `ctrl+k` delete-to-line-end) |
 | `app.editor.external` | `ctrl+g` | Open in external editor (`externalEditor`, `$VISUAL`, `$EDITOR`, Notepad on Windows, or `nano` elsewhere) |
 | `app.clipboard.pasteImage` | `ctrl+v` (`alt+v` on Windows and WSL) | Paste image or text from clipboard |
 

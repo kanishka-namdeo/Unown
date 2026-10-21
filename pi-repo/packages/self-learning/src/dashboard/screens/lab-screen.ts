@@ -410,8 +410,15 @@ export function createLabScreen(deps: ScreenDeps): Screen {
 				}
 				if (matchesKey(data, "j") || matchesKey(data, "down")) return scrollDetail(1);
 				if (matchesKey(data, "k") || matchesKey(data, "up")) return scrollDetail(-1);
-				if (matchesKey(data, "pageDown") || matchesKey(data, "pageDown")) return scrollDetail(halfPage());
-				if (matchesKey(data, "pageUp") || matchesKey(data, "pageUp")) return scrollDetail(-halfPage());
+				// g/G jump to the ends (scrollDetail clamps) — the same detail-mode
+				// binding every other screen's detail view carries, so the global
+				// help card's "g G top / bottom" claim holds here too.
+				if (matchesKey(data, "g")) return scrollDetail(-detailLines);
+				if (matchesKey(data, "shift+g")) return scrollDetail(detailLines);
+				// (deduped: the duplicated condition bound the same key twice —
+				// no second paging key was ever documented)
+				if (matchesKey(data, "pageDown")) return scrollDetail(halfPage());
+				if (matchesKey(data, "pageUp")) return scrollDetail(-halfPage());
 				return false;
 			}
 			// TAB cycles sections — digits are the shell's screen accelerators.
@@ -425,8 +432,8 @@ export function createLabScreen(deps: ScreenDeps): Screen {
 			if (matchesKey(data, "k") || matchesKey(data, "up")) return win.move(-1);
 			if (matchesKey(data, "g")) return win.home();
 			if (matchesKey(data, "shift+g")) return win.end();
-			if (matchesKey(data, "pageDown") || matchesKey(data, "pageDown")) return win.page(1);
-			if (matchesKey(data, "pageUp") || matchesKey(data, "pageUp")) return win.page(-1);
+			if (matchesKey(data, "pageDown")) return win.page(1);
+			if (matchesKey(data, "pageUp")) return win.page(-1);
 			if (matchesKey(data, "enter")) {
 				// Cycles have no detail view — the row already tells the story.
 				if (section === "cycles") return true;

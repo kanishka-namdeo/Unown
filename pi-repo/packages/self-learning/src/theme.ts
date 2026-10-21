@@ -17,6 +17,21 @@
  * Code-block text is neutral zinc, not green. Headings use the
  * deeper amber (#eab308) — full-bright #fbbf24 read as a shout at body scale.
  *
+ * Contrast contract (pinned by test/theme.test.ts, U1-B): every
+ * content-bearing fg token — dim/muted/text/accent/error plus the secondary
+ * content rung they anchor (thinkingText, toolOutput, mdQuote, mdLinkUrl,
+ * toolDiffContext) — holds WCAG AA 4.5:1 on pageBg/chromeBg/overlayBg, in
+ * truecolor AND after 256-color quantization. dim = zinc-400 (#a1a1aa,
+ * 6.9:1 on chromeBg; quantizes to gray 247) and muted = zinc-300 (#d4d4d8;
+ * quantizes to cube 188) — the previous zinc-600/zinc-500 rungs (2.3:1 /
+ * 3.7:1 on chromeBg) failed AA while carrying real content (footer cwd,
+ * context meter, dock legends, selector hints, age stamps). Deliberately
+ * below AA, by role: thinkingOff/thinkingMinimal (state-glyph ramp — the
+ * upstream dark theme ships 1.8:1 there), syntaxComment (borrowed VS Code
+ * Light+ comment tone, still brighter than upstream's own 2.98:1),
+ * scrollbarThumb (glyph, clears the 3:1 non-text bar) and the border rungs
+ * (decorative frame lines).
+ *
  * The colors object must satisfy pi's theme schema (51 required tokens —
  * scripts/check_theme.mjs validates the contract).
  */
@@ -33,6 +48,7 @@ export const UNOWN_THEME = {
 		amberDeep: "#eab308",
 		text: "#e4e4e7",
 		zinc300: "#d4d4d8",
+		zinc400: "#a1a1aa",
 		zinc500: "#71717a",
 		zinc600: "#52525b",
 		zinc700: "#3f3f46",
@@ -49,10 +65,10 @@ export const UNOWN_THEME = {
 		success: "emerald",
 		error: "red",
 		warning: "amber",
-		muted: "zinc500",
-		dim: "zinc600",
+		muted: "zinc300",
+		dim: "zinc400",
 		text: "text",
-		thinkingText: "zinc500",
+		thinkingText: "zinc400",
 
 		selectedBg: "selectedBg",
 		chromeBg: "chromeSurface",
@@ -70,22 +86,22 @@ export const UNOWN_THEME = {
 		toolSuccessBg: "",
 		toolErrorBg: "",
 		toolTitle: "text",
-		toolOutput: "zinc500",
+		toolOutput: "zinc400",
 
 		mdHeading: "amberDeep",
 		mdLink: "emerald",
-		mdLinkUrl: "zinc500",
+		mdLinkUrl: "zinc400",
 		mdCode: "emerald",
 		mdCodeBlock: "zinc300",
 		mdCodeBlockBorder: "zinc700",
-		mdQuote: "zinc500",
+		mdQuote: "zinc400",
 		mdQuoteBorder: "zinc700",
 		mdHr: "zinc700",
 		mdListBullet: "emerald",
 
 		toolDiffAdded: "#4ade80",
 		toolDiffRemoved: "red",
-		toolDiffContext: "zinc500",
+		toolDiffContext: "zinc400",
 
 		syntaxComment: "#71717a",
 		syntaxKeyword: "#5c9cd6",

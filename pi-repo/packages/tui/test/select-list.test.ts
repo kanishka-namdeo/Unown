@@ -113,4 +113,48 @@ describe("SelectList", () => {
 		assert.ok(rendered[0].includes("…"));
 		assert.equal(visibleIndexOf(rendered[0], "first"), visibleIndexOf(rendered[1], "second"));
 	});
+
+	it("pages down by the viewport height and clamps at the bottom", () => {
+		const items = Array.from({ length: 12 }, (_, i) => ({ value: `item-${i}`, label: `item-${i}` }));
+		const list = new SelectList(items, 5, testTheme);
+
+		list.handleInput("\x1b[6~");
+		assert.equal(list.getSelectedItem()?.value, "item-5");
+
+		list.handleInput("\x1b[6~");
+		assert.equal(list.getSelectedItem()?.value, "item-10");
+
+		// Clamped at the last item, not wrapped
+		list.handleInput("\x1b[6~");
+		assert.equal(list.getSelectedItem()?.value, "item-11");
+	});
+
+	it("pages up by the viewport height and clamps at the top", () => {
+		const items = Array.from({ length: 12 }, (_, i) => ({ value: `item-${i}`, label: `item-${i}` }));
+		const list = new SelectList(items, 5, testTheme);
+
+		list.setSelectedIndex(11);
+		list.handleInput("\x1b[5~");
+		assert.equal(list.getSelectedItem()?.value, "item-6");
+
+		list.handleInput("\x1b[5~");
+		assert.equal(list.getSelectedItem()?.value, "item-1");
+
+		// Clamped at the first item, not wrapped
+		list.handleInput("\x1b[5~");
+		assert.equal(list.getSelectedItem()?.value, "item-0");
+	});
+
+	it("notifies selection change on paging like on arrow navigation", () => {
+		const items = Array.from({ length: 12 }, (_, i) => ({ value: `item-${i}`, label: `item-${i}` }));
+		const list = new SelectList(items, 5, testTheme);
+		const selected: string[] = [];
+		list.onSelectionChange = (item) => selected.push(item.value);
+
+		list.handleInput("\x1b[A"); // up wraps to the last item
+		list.handleInput("\x1b[5~"); // page up from the bottom: item-6
+		list.handleInput("\x1b[6~"); // page down back to the bottom
+
+		assert.deepEqual(selected, ["item-11", "item-6", "item-11"]);
+	});
 });

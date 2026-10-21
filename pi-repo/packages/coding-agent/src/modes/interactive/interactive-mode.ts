@@ -1018,7 +1018,11 @@ export class InteractiveMode {
                         const headerVersion = this.options.appVersion ?? this.version;
                         const logo = theme.bold(theme.fg("accent", headerName)) + theme.fg("dim", ` v${headerVersion}`);
 
-                        // Build startup instructions using keybinding hint helpers
+                        // Build startup instructions using keybinding hint helpers.
+                        // U1 (keybinding truth): ctrl+k is the command palette; the
+                        // editor's delete-to-line-end shares that key by default and is
+                        // dispatched after app actions, so it has no reachable binding
+                        // in the chat editor and is not advertised here.
                         const hint = (keybinding: AppKeybinding, description: string) => keyHint(keybinding, description);
 
                         const expandedInstructions = [
@@ -1027,13 +1031,13 @@ export class InteractiveMode {
                                 rawKeyHint(`${keyText("app.clear")} twice`, "to exit"),
                                 hint("app.exit", "to exit (empty)"),
                                 hint("app.suspend", "to suspend"),
-                                keyHint("tui.editor.deleteToLineEnd", "to delete to end"),
                                 hint("app.thinking.cycle", "to cycle thinking level"),
                                 rawKeyHint(`${keyText("app.model.cycleForward")}/${keyText("app.model.cycleBackward")}`, "to cycle models"),
                                 hint("app.model.select", "to select model"),
                                 hint("app.tools.expand", "to expand tools"),
                                 hint("app.thinking.toggle", "to expand thinking"),
                                 hint("app.editor.external", "for external editor"),
+                                hint("app.palette", "for the command palette"),
                                 rawKeyHint("/", "for commands"),
                                 rawKeyHint("!", "to run bash"),
                                 rawKeyHint("!!", "to run bash (no context)"),
@@ -4316,7 +4320,10 @@ export class InteractiveMode {
                         const followUp = keyText("app.message.followUp");
                         return `${dim(dequeue)} ${dim("edit queue")}${sep}${dim(followUp)} ${dim("queue another")}`;
                 }
-                // Idle: the discoverability set — the two round-5 keys first.
+                // Idle: the discoverability set — the two round-5 keys first,
+                // then the U1 gestures: the double-esc picker (undiscoverable
+                // otherwise) and, outside fullscreen, the transcript-search
+                // key that only works there.
                 const parts = [
                         `${dim("?")} ${dim("help")}`,
                         `${dim(keyText("app.palette"))} ${dim("palette")}`,
@@ -4324,7 +4331,33 @@ export class InteractiveMode {
                         `${dim("!")} ${dim("bash")}`,
                         `${dim(keyText("app.tools.expand"))} ${dim("tools")}`,
                 ];
-                return parts.join(sep);
+                const escAction = this.settingsManager.getDoubleEscapeAction();
+                if (escAction !== "none") {
+                        parts.push(`${dim("esc-esc")} ${dim(escAction)}`);
+                }
+                if (this.ui.mode !== "fullscreen") {
+                        parts.push(`${dim(keyText("tui.altScreen.search"))} ${dim("search (fullscreen)")}`);
+                }
+                return this.fitHintLine(parts, sep);
+        }
+
+        /**
+         * Ordered-drop width discipline for the hint line (the footer's stats
+         * ladder, not a blind truncation): admit segments in priority order
+         * while they fit the live terminal width, so the tail hints drop
+         * whole when room runs out. Unknown width (tests, embedders) keeps
+         * every segment; the footer still truncates as the last resort.
+         */
+        private fitHintLine(parts: string[], sep: string): string {
+                const width = this.ui.terminal?.columns ?? 0;
+                if (width <= 0) return parts.join(sep);
+                let line = "";
+                for (const part of parts) {
+                        const candidate = line ? line + sep + part : part;
+                        if (line && visibleWidth(candidate) > width) break;
+                        line = candidate;
+                }
+                return line;
         }
 
         private cycleThinkingLevel(): void {
@@ -5350,7 +5383,14 @@ export class InteractiveMode {
         private openKeybindingHelp(): void {
                 this.showSelector((done) => {
                         const resolved = this.keybindings.getResolvedBindings();
-                        const entries: PaletteEntry[] = [];
+                        // U1 (keybinding truth): two actions can resolve to the
+                        // same key — the default set ships one (ctrl+k is both the
+                        // command palette and delete-to-line-end). The chat
+                        // editor's dispatch order decides who wins, so the losing
+                        // row is marked instead of presenting two equal owners of
+                        // one key (see getEditorActionWinnerKeys / keybindingShadow).
+                        const rows: Array<{ id: string; keys: string[]; description: string }> = [];
+                        const idsByKey = new Map<string, string[]>();
                         for (const [id, keys] of Object.entries(resolved)) {
                                 const keyList = (Array.isArray(keys) ? keys : [keys]).filter((k) => typeof k === "string" && k.length > 0);
                                 if (keyList.length === 0) continue;
@@ -5360,11 +5400,25 @@ export class InteractiveMode {
                                 } catch {
                                         description = id;
                                 }
-                                const category = keybindingCategory(id);
+                                rows.push({ id, keys: keyList, description });
+                                for (const key of keyList) {
+                                        const owners = idsByKey.get(key) ?? [];
+                                        owners.push(id);
+                                        idsByKey.set(key, owners);
+                                }
+                        }
+                        const winnerByKey = this.getEditorActionWinnerKeys();
+                        const entries: PaletteEntry[] = [];
+                        for (const row of rows) {
+                                const shadow = this.keybindingShadow(row, idsByKey, winnerByKey);
+                                const category = keybindingCategory(row.id);
                                 entries.push({
-                                        id: `key:${id}`,
-                                        label: keyList.map((k) => formatKeyText(String(k), { capitalize: true })).join(" / "),
-                                        description: description + (category ? ` · ${category}` : ""),
+                                        id: `key:${row.id}`,
+                                        label: row.keys.map((k) => formatKeyText(String(k), { capitalize: true })).join(" / "),
+                                        description:
+                                                row.description +
+                                                (shadow ? ` — ${shadow}` : "") +
+                                                (category ? ` · ${category}` : ""),
                                         run: () => done(),
                                 });
                         }
@@ -5389,6 +5443,64 @@ export class InteractiveMode {
                         });
                         return { component: help, focus: help };
                 });
+        }
+
+        /**
+         * U1 (keybinding truth): map every key an app action claims to the
+         * action that fires first in the chat editor — the winner an editor
+         * binding on the same key is shadowed by. Mirrors custom-editor.ts
+         * handleInput: the clipboard paste probe runs before the registered
+         * action handlers (first registered wins), and the two history
+         * bindings outrank both. `app.interrupt` and `app.exit` fall through
+         * to the editor (autocomplete open / buffer non-empty), so they
+         * shadow state-dependently and stay out of this map.
+         */
+        private getEditorActionWinnerKeys(): Map<string, string> {
+                const winnerByKey = new Map<string, string>();
+                const claim = (action: string, override = false): void => {
+                        for (const key of this.keybindings.getKeys(action as Keybinding)) {
+                                if (override || !winnerByKey.has(key)) winnerByKey.set(key, action);
+                        }
+                };
+                claim("app.clipboard.pasteImage");
+                for (const action of this.defaultEditor.actionHandlers.keys()) {
+                        claim(action);
+                }
+                claim("tui.editor.historyPrevious", true);
+                claim("tui.editor.historyNext", true);
+                return winnerByKey;
+        }
+
+        /**
+         * The shadow annotation for a `?`-reference row, or undefined when
+         * nothing takes its keys. Editor-owned bindings (tui.editor.* /
+         * tui.input.*) can be shadowed two ways: an app action claims the
+         * key in the chat editor (always), or a fullscreen transcript
+         * binding claims it (fullscreen only — the viewport consumes its
+         * keys before the editor sees them). Other collisions are
+         * context-dependent (selector-scoped actions) and stay unannotated.
+         */
+        private keybindingShadow(
+                row: { id: string; keys: string[] },
+                idsByKey: Map<string, string[]>,
+                winnerByKey: Map<string, string>,
+        ): string | undefined {
+                const isHistory = row.id === "tui.editor.historyPrevious" || row.id === "tui.editor.historyNext";
+                const isEditorOwned =
+                        (row.id.startsWith("tui.editor.") || row.id.startsWith("tui.input.")) && !isHistory;
+                if (!isEditorOwned) return undefined;
+                for (const key of row.keys) {
+                        const winner = winnerByKey.get(key);
+                        if (winner !== undefined && winner !== row.id) return `shadowed by ${winner}`;
+                }
+                for (const key of row.keys) {
+                        for (const other of idsByKey.get(key) ?? []) {
+                                if (other !== row.id && other.startsWith("tui.altScreen.")) {
+                                        return `shadowed in fullscreen by ${other}`;
+                                }
+                        }
+                }
+                return undefined;
         }
 
         private showModelsSelector(): void {
@@ -6674,6 +6786,17 @@ export class InteractiveMode {
                 const deleteWordForward = this.getEditorKeyDisplay("tui.editor.deleteWordForward");
                 const deleteToLineStart = this.getEditorKeyDisplay("tui.editor.deleteToLineStart");
                 const deleteToLineEnd = this.getEditorKeyDisplay("tui.editor.deleteToLineEnd");
+                // U1 (keybinding truth): `tui.editor.deleteToLineEnd` defaults to
+                // ctrl+k, which the command palette intercepts in the chat editor
+                // (app actions dispatch ahead of editor bindings) — the default
+                // table advertised a dead key. Show the row only when one of its
+                // bindings can actually reach the editor; ctrl+k stays the palette.
+                const winnerByKey = this.getEditorActionWinnerKeys();
+                const deleteToLineEndRow = this.keybindings
+                        .getKeys("tui.editor.deleteToLineEnd")
+                        .some((key) => !winnerByKey.has(key))
+                        ? `| \`${deleteToLineEnd}\` | Delete to end of line |\n`
+                        : "";
                 const yank = this.getEditorKeyDisplay("tui.editor.yank");
                 const yankPop = this.getEditorKeyDisplay("tui.editor.yankPop");
                 const undo = this.getEditorKeyDisplay("tui.editor.undo");
@@ -6717,8 +6840,7 @@ export class InteractiveMode {
 | \`${deleteWordBackward}\` | Delete word backwards |
 | \`${deleteWordForward}\` | Delete word forwards |
 | \`${deleteToLineStart}\` | Delete to start of line |
-| \`${deleteToLineEnd}\` | Delete to end of line |
-| \`${yank}\` | Paste the most-recently-deleted text |
+${deleteToLineEndRow}| \`${yank}\` | Paste the most-recently-deleted text |
 | \`${yankPop}\` | Cycle through the deleted text after pasting |
 | \`${undo}\` | Undo |
 

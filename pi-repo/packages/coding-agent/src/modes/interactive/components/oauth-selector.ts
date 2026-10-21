@@ -43,6 +43,7 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 	private allProviders: AuthSelectorProvider[];
 	private filteredProviders: AuthSelectorProvider[];
 	private selectedIndex: number = 0;
+	private readonly maxVisible = 8;
 	private mode: "login" | "logout";
 	private onSelectCallback: (providerId: string, authType: AuthSelectorProvider["authType"]) => void;
 	private onCancelCallback: () => void;
@@ -114,12 +115,11 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 	private updateList(): void {
 		this.listContainer.clear();
 
-		const maxVisible = 8;
 		const startIndex = Math.max(
 			0,
-			Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredProviders.length - maxVisible),
+			Math.min(this.selectedIndex - Math.floor(this.maxVisible / 2), this.filteredProviders.length - this.maxVisible),
 		);
-		const endIndex = Math.min(startIndex + maxVisible, this.filteredProviders.length);
+		const endIndex = Math.min(startIndex + this.maxVisible, this.filteredProviders.length);
 
 		for (let i = startIndex; i < endIndex; i++) {
 			const provider = this.filteredProviders[i];
@@ -192,6 +192,18 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 		else if (kb.matches(keyData, "tui.select.down")) {
 			if (this.filteredProviders.length === 0) return;
 			this.selectedIndex = Math.min(this.filteredProviders.length - 1, this.selectedIndex + 1);
+			this.updateList();
+		}
+		// Page up - jump by the viewport height, clamping at the top
+		else if (kb.matches(keyData, "tui.select.pageUp")) {
+			if (this.filteredProviders.length === 0) return;
+			this.selectedIndex = Math.max(0, this.selectedIndex - this.maxVisible);
+			this.updateList();
+		}
+		// Page down - jump by the viewport height, clamping at the bottom
+		else if (kb.matches(keyData, "tui.select.pageDown")) {
+			if (this.filteredProviders.length === 0) return;
+			this.selectedIndex = Math.min(this.filteredProviders.length - 1, this.selectedIndex + this.maxVisible);
 			this.updateList();
 		}
 		// Enter

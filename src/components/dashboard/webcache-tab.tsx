@@ -164,10 +164,10 @@ function SavedTrendChart({ data }: { data: { ts: number; saved: number }[] }) {
             tickFormatter={(ts: number) =>
               new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
             }
-            tick={{ fill: "#71717a", fontSize: 10 }}
+            tick={{ fill: "#a1a1aa", fontSize: 10 }}
             stroke="#3f3f46"
           />
-          <YAxis allowDecimals={false} tick={{ fill: "#71717a", fontSize: 10 }} stroke="#3f3f46" />
+          <YAxis allowDecimals={false} tick={{ fill: "#a1a1aa", fontSize: 10 }} stroke="#3f3f46" />
           <Tooltip
             contentStyle={{
               backgroundColor: "#18181b",

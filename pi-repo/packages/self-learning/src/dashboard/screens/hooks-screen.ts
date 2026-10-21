@@ -2,7 +2,7 @@
  * screens/hooks-screen.ts — the policy layer's decision log: every hook
  * event with its decision (deny/augment/log/warn), the MemoryBudget
  * injection-cap receipts, and the full reason + JSON payload behind each
- * row. k cycles the decision filter; enter drills into one event.
+ * row. f cycles the decision filter; enter drills into one event.
  */
 
 import { matchesKey } from "@earendil-works/pi-tui";
@@ -85,7 +85,7 @@ export function createHooksScreen(deps: ScreenDeps): Screen {
 			`${theme.fg("dim", `${all.length} events`)}${dot}` +
 			`${theme.fg(denies > 0 ? "warning" : "dim", `${denies} denies`)}${dot}` +
 			`${theme.fg("dim", `${augments} augments`)}`;
-		return [heading(theme, "hooks"), `${totals}   ${theme.fg("muted", "k filter: ")}${theme.fg("text", filter)}`];
+		return [heading(theme, "hooks"), `${totals}   ${theme.fg("muted", "f filter: ")}${theme.fg("text", filter)}`];
 	}
 
 	function renderRow(entry: HookEntry, selected: boolean, width: number): string {
@@ -101,7 +101,7 @@ export function createHooksScreen(deps: ScreenDeps): Screen {
 		if (filter === "deny") return emptyState(theme, "no denied tool calls", "the policy held");
 		if (filter === "MemoryBudget") return emptyState(theme, "no budget receipts", "memory fits the injection cap");
 		if (allHooks().length === 0) return emptyState(theme, "no hook events", "decisions stream in as the engine runs");
-		return emptyState(theme, "no events for this filter", "k cycles the filter");
+		return emptyState(theme, "no events for this filter", "f cycles the filter");
 	}
 
 	/** Pretty-print the details payload; null when the raw text is not JSON. */
@@ -205,7 +205,7 @@ export function createHooksScreen(deps: ScreenDeps): Screen {
 				];
 			return [
 				["enter", "details"],
-				["k", `filter: ${filter}`],
+				["f", `filter: ${filter}`],
 				["j/k", "select"],
 			];
 		},
@@ -218,8 +218,15 @@ export function createHooksScreen(deps: ScreenDeps): Screen {
 				}
 				if (matchesKey(data, "j") || matchesKey(data, "down")) return scrollDetail(1);
 				if (matchesKey(data, "k") || matchesKey(data, "up")) return scrollDetail(-1);
-				if (matchesKey(data, "pageDown") || matchesKey(data, "pageDown")) return scrollDetail(halfPage());
-				if (matchesKey(data, "pageUp") || matchesKey(data, "pageUp")) return scrollDetail(-halfPage());
+				// g/G jump to the ends (scrollDetail clamps) — the same detail-mode
+				// binding every other screen's detail view carries, so the global
+				// help card's "g G top / bottom" claim holds here too.
+				if (matchesKey(data, "g")) return scrollDetail(-detailLines);
+				if (matchesKey(data, "shift+g")) return scrollDetail(detailLines);
+				// (deduped: the duplicated condition bound the same key twice —
+				// no second paging key was ever documented)
+				if (matchesKey(data, "pageDown")) return scrollDetail(halfPage());
+				if (matchesKey(data, "pageUp")) return scrollDetail(-halfPage());
 				return false;
 			}
 			// f cycles the decision filter (the footer shows the current one);
@@ -232,8 +239,8 @@ export function createHooksScreen(deps: ScreenDeps): Screen {
 			if (matchesKey(data, "k") || matchesKey(data, "up")) return win.move(-1);
 			if (matchesKey(data, "g")) return win.home();
 			if (matchesKey(data, "shift+g")) return win.end();
-			if (matchesKey(data, "pageDown") || matchesKey(data, "pageDown")) return win.page(1);
-			if (matchesKey(data, "pageUp") || matchesKey(data, "pageUp")) return win.page(-1);
+			if (matchesKey(data, "pageDown")) return win.page(1);
+			if (matchesKey(data, "pageUp")) return win.page(-1);
 			if (matchesKey(data, "enter")) {
 				const entry = filteredHooks()[win.selected];
 				if (entry) {

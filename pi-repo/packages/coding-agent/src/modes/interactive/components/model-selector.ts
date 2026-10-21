@@ -57,6 +57,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
         private activeModels: ModelItem[] = [];
         private filteredModels: ModelItem[] = [];
         private selectedIndex: number = 0;
+        private readonly maxVisible = 10;
         private currentModel?: Model<any>;
         private modelRuntime: ModelRuntime;
         private onSelectCallback: (model: Model<any>) => void;
@@ -300,12 +301,11 @@ export class ModelSelectorComponent extends Container implements Focusable {
         private updateList(): void {
                 this.listContainer.clear();
 
-                const maxVisible = 10;
                 const startIndex = Math.max(
                         0,
-                        Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredModels.length - maxVisible),
+                        Math.min(this.selectedIndex - Math.floor(this.maxVisible / 2), this.filteredModels.length - this.maxVisible),
                 );
-                const endIndex = Math.min(startIndex + maxVisible, this.filteredModels.length);
+                const endIndex = Math.min(startIndex + this.maxVisible, this.filteredModels.length);
 
                 // Show visible slice of filtered models
                 for (let i = startIndex; i < endIndex; i++) {
@@ -384,6 +384,18 @@ export class ModelSelectorComponent extends Container implements Focusable {
                 else if (kb.matches(keyData, "tui.select.down")) {
                         if (this.filteredModels.length === 0) return;
                         this.selectedIndex = this.selectedIndex === this.filteredModels.length - 1 ? 0 : this.selectedIndex + 1;
+                        this.updateList();
+                }
+                // Page up - jump by the viewport height, clamping at the top
+                else if (kb.matches(keyData, "tui.select.pageUp")) {
+                        if (this.filteredModels.length === 0) return;
+                        this.selectedIndex = Math.max(0, this.selectedIndex - this.maxVisible);
+                        this.updateList();
+                }
+                // Page down - jump by the viewport height, clamping at the bottom
+                else if (kb.matches(keyData, "tui.select.pageDown")) {
+                        if (this.filteredModels.length === 0) return;
+                        this.selectedIndex = Math.min(this.filteredModels.length - 1, this.selectedIndex + this.maxVisible);
                         this.updateList();
                 }
                 // Enter

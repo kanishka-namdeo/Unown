@@ -75,10 +75,12 @@ if not os.path.exists(FONT_BOLD_PATH):
 FONT_SIZE = int(os.environ.get("PTY_FONT_SIZE", 23))
 
 # Default fg/bg mirror the unown brand theme (text #e4e4e7, pageBg #09090b).
+# Title band mirrors the theme chrome pattern: dim-rung fg (zinc-400) on
+# chromeSurface — zinc-500 measured 3.67:1 there (U1-B), under WCAG AA.
 DEFAULT_FG = "#e4e4e7"
 DEFAULT_BG = "#09090b"
 TITLE_BG = "#18181b"
-TITLE_FG = "#71717a"
+TITLE_FG = "#a1a1aa"
 TITLE_RULE = "#3f3f46"
 
 # pyte's 16 named colors -> xterm dark-palette RGB.

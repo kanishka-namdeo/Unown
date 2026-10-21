@@ -1896,7 +1896,10 @@ export default function splitViewExtension(pi: ExtensionAPI) {
                                 return;
                         }
                         if (!tuiRef || !isViewportTUI(tuiRef)) {
-                                ctx.ui.notify("/split requires fullscreen mode", "warning");
+                                // U1 (discoverability): name the way out — the mode is a
+                                // settings row, and without the pointer the warning is a
+                                // dead end for users who came looking for the panels.
+                                ctx.ui.notify("/split requires fullscreen mode (/settings → TUI mode)", "warning");
                                 return;
                         }
                         // Full toggle pair (revised SV-01): OFF clears every panel flag so

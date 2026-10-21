@@ -55,4 +55,39 @@ describe("SettingsList", () => {
 
 		assert.deepStrictEqual(changes, [{ id: "tui-mode", value: "fullscreen" }]);
 	});
+
+	it("pages the selection by the viewport height, clamping at both ends", () => {
+		const pagedItems = Array.from({ length: 12 }, (_, i) => ({
+			id: `setting-${i}`,
+			label: `Setting ${i}`,
+			currentValue: "a",
+		}));
+		const changes: Array<{ id: string; value: string }> = [];
+		const list = new SettingsList(
+			pagedItems,
+			5,
+			testTheme,
+			(id, value) => changes.push({ id, value }),
+			() => {},
+		);
+
+		list.handleInput("\x1b[6~");
+		assert.match(list.render(80).join("\n"), /\(6\/12\)/);
+
+		list.handleInput("\x1b[6~");
+		assert.match(list.render(80).join("\n"), /\(11\/12\)/);
+
+		// Clamped at the bottom, not wrapped
+		list.handleInput("\x1b[6~");
+		assert.match(list.render(80).join("\n"), /\(12\/12\)/);
+
+		list.handleInput("\x1b[5~");
+		assert.match(list.render(80).join("\n"), /\(7\/12\)/);
+
+		// Clamped at the top, not wrapped
+		for (let i = 0; i < 3; i++) list.handleInput("\x1b[5~");
+		assert.match(list.render(80).join("\n"), /\(1\/12\)/);
+
+		assert.deepStrictEqual(changes, []);
+	});
 });

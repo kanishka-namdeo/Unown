@@ -195,14 +195,14 @@ suite's path-semantics differ per OS and the differences are load-bearing
 
 | Surface | What exists | Measured | Gap |
 |---|---|---|---|
-| `src/` (dashboard + landing) | `bun test src` with happy-dom + RTL | 206 tests / 13 files, 0 fail `[V: 2026-10-18, Windows]` | No E2E, no a11y, no visual regression, no landing-page tests; line coverage 91.1% overall but `providers.tsx` 58% and `activity-feed.tsx` 54% `[V]` |
+| `src/` (dashboard + landing) | `bun test src` with happy-dom + RTL | 206 tests / 13 files, 0 fail `[V: 2026-10-18, Windows]`; since grown to 355 tests / 31 files, 0 fail `[V: 2026-10-21]` | E2E + a11y shipped (§6 gate 16); still open: visual regression + landing behavioural tests; line coverage re-measured 2026-10-21 `[V]`: 95.5% overall, `providers.tsx` 96.2% (now the `DashboardProviders` wrapper — the Providers tab is gone), `activity-feed.tsx` 100% |
 | `pi-repo/.../self-learning` (engine) | `bun test test/` unit + guard + canary + budget suites; `test/cli/golden.test.ts`; `test/termhooks.adversarial.test.ts`; `test/integration/`; new: `tools.test.ts`, seatbelt and Windows-hook tests (M2/M3) | pre-fix `888c8fa`: 603 pass / 35 skip / 64 fail of 702; post-fix `ae7b01b` (three-OS portability): **600 pass / 79 skip / 25 fail of 704** across 20 files `[V: 2026-10-18, Windows, bun 1.4.2 AND pinned 1.4.3 - not a bun-version delta]`; ubuntu leg green on both runs (733/37/0 at run 39071373372) | the 25 residuals (§7.2): canary suite 6, CLI golden 16, path tests 3; no fault injection, no load test, no coverage measurement, no property fuzzing; live suites are env-gated and therefore never run in CI |
-| `mini-services/llm-bridge` | `bun test pure.test.ts` (pure routing/thinking/retry/backoff/SSE math) + env-gated VLM smoke | 95 tests, 0 fail `[V: 2026-10-18, Windows]` | No load/chaos, no cancellation test, no contract test against a real OpenAI client, not in CI (§11) |
+| `mini-services/llm-bridge` | `bun test pure.test.ts` (pure routing/thinking/retry/backoff/SSE math) + env-gated VLM smoke | 95 tests, 0 fail `[V: 2026-10-18, Windows]` | No load/chaos, no cancellation test, no contract test against a real OpenAI client; in CI since round three (§6 gate 11, the dedicated `bridge` job) |
 | `bin/unown` (CLI + TUI) | `test/cli/golden.test.ts` (setup/doctor/memory/plan/headless/env-knobs/parallel) | covered in the engine suite above | The golden suite still fails 16 cases on this Windows tree after `ae7b01b` (subprocess-spawn families, §7.2); no TUI interaction test, no `unown setup` idempotency-under-failure test |
 | `pi-repo/*` (upstream vendored) | `npm run test` per workspace with pinned model-catalog snapshots | pre-merge Linux receipt: 4,809 pass / 0 fail / 13 skip `[V: benchmarks/snapshots/track1-rerun-2026-10-17/summary.json]` | Out of our scope by policy (§13); receipt needs re-measuring post-merge on the Linux box |
 | Benchmarks | Tracks 1-9 (`benchmarks/README.md`) | re-verified 2026-10-17 with receipts `[C: benchmarks/RESULTS.md]` | No time-horizon ladder, no judge calibration, no external memory benchmark |
 | Sandbox | `bwrap_smoke.sh` (25 checks), `verify_sandbox.mjs` (12 checks) | In CI as the `sandbox-smoke` job (ubuntu) `[V: ci.yml]`; trajectory across runs: red 10/11/1 at `afd962b` (launcher dies) `[V: 39069143075]` -> profile step green 21/0/1, engine step red 10/2 at `ae7b01b` `[V: 39071373372]` -> **fully green** (both steps) at `a13cf9d` `[V: 39072290887]` | the launcher-vs-engine split diagnosed itself across the three runs; the record keeps the per-step receipts (§7.5) |
-| CI (`.github/workflows/ci.yml`) | lint-shell, `build-test` (3-OS real-installer matrix + engine suite + CLI smokes), `sandbox-smoke` (ubuntu), lint, typecheck, `bun test src`, coverage gate, docs gate, theme, GBA palette, gitleaks, `bun audit --prod` | 12 jobs `[V: ci.yml]` | No bridge tests, no integration, no build, no E2E/axe; at run 39072290887 (`a13cf9d`): `sandbox-smoke` fully green, all dashboard gates green, engine legs red (ubuntu 735/37/1, windows 689/80/3, macos 729/41/3) |
+| CI (`.github/workflows/ci.yml`) | lint-shell, `build-test` (3-OS real-installer matrix + engine + integration suites + CLI smokes), `sandbox-smoke` (ubuntu), bridge (gate 11), build (gate 14), lint, typecheck, `bun test src`, coverage gate, docs gate, theme, GBA palette + landing claims, security (gitleaks + `bun audit --prod`), mermaid (gate 15), e2e (gate 16) | 15 jobs `[V: ci.yml, 2026-10-21]` | No Lighthouse, no load/soak; at run 39072290887 (`a13cf9d`): `sandbox-smoke` fully green, all dashboard gates green, engine legs red (ubuntu 735/37/1, windows 689/80/3, macos 729/41/3) |
 
 ### 3.1 Reconciling the test counts
 
@@ -231,21 +231,26 @@ global figure.
 
 ### 3.2 What CI actually gates today
 
-`[V: .github/workflows/ci.yml]` twelve jobs: `lint-shell` (bash -n over
+`[V: .github/workflows/ci.yml, 2026-10-21]` fifteen jobs: `lint-shell` (bash -n over
 `scripts/*.sh`), `build-test` (ubuntu/macos/windows matrix: the real installer
 `bun scripts/install.ts` with model-data hydration, then the engine suite
-`bun test test/`, then `unown --help` and a `doctor`-table smoke), `sandbox-smoke`
-(ubuntu: `bwrap_smoke.sh` + `verify_sandbox.mjs`), dashboard lint (`bunx eslint
+`bun test test/` plus the integration suite (`PI_TEST_SCOPE=integration`,
+gate 12), then `unown --help` and a `doctor`-table smoke), `sandbox-smoke`
+(ubuntu: `bwrap_smoke.sh` + `verify_sandbox.mjs`), the bridge suite (gate 11),
+the production build + standalone-server smoke (gate 14), dashboard lint (`bunx eslint
 src`), typecheck (`tsc --noEmit` after `db:generate`), dashboard unit tests
 (`bun test src`), the changed-line coverage gate (`scripts/check_coverage.mjs
 --run`), the docs link/anchor gate (`scripts/check_docs.mjs docs/*.md`), theme
-schema, landing GBA palette contract, gitleaks full-history secret scan, and
-`bun audit --prod` with three documented prisma-internal ignores. A concurrency
+schema, landing GBA palette + claims gates, the `security` job (gitleaks
+full-history secret scan + `bun audit --prod` with three documented
+prisma-internal ignores), mermaid byte-identity (gate 15), and Playwright
+E2E + axe-core (gate 16, the `e2e` job). A concurrency
 group cancels superseded runs.
 
-Still absent: the integration suite, `bun run build`,
-and E2E/axe. The bridge suite (95) was wired in this revision's round
-three. The merge also surfaced a second, subtler honesty problem -
+Still absent: only Lighthouse (§12 criterion 6's second half). The
+integration suite (gate 12), `bun run build` (gate 14) and E2E/axe (gate 16)
+shipped in this revision's later rounds, alongside the bridge suite (95)
+from round three. The merge also surfaced a second, subtler honesty problem -
 "the job exists" is not "the job pays off". At `afd962b` the newest upstream
 run had engine tests green on the ubuntu leg but red on the windows and macos
 legs, and `sandbox-smoke` red on ubuntu because the ubuntu-24.04 runner image
@@ -446,7 +451,7 @@ carry large noise `[C]`.
 | Coverage as a gate | routine | targets stated, no gate (gate added in this revision) | **Fixed here** |
 | Long-horizon measurement | time-horizon curves, 6-8 runs/task | n=1, all models pass | **Behind on method** |
 | Memory-quality axes (contradiction, forgetting, interference) | the field's acknowledged frontier | untested | **Behind, and it is our differentiator** |
-| Dashboard/component testing | component + E2E + a11y | 206 component tests, no E2E, no a11y | **Level**, with E2E/a11y missing |
+| Dashboard/component testing | component + E2E + a11y | component suite + Playwright E2E + axe-core a11y (§6 gate 16) | **Level** (keyboard-only nav + visual regression still open, §7.1) |
 | Failure taxonomy + memory-version bisection | rare outside vendor-internal work | present since the first revision | **Ahead** |
 
 ## 5. Test architecture as built
@@ -460,12 +465,12 @@ in the tree, and why it is the right call:
 | Component (React) | `bun test` + happy-dom + `@testing-library/react` + `user-event` | `src/components/dashboard/__tests__/` | <5 s, $0 | every PR |
 | Engine unit + guard suites | `bun test test/` | `pi-repo/packages/self-learning/test/` | <60 s, $0 | every PR (wired; ubuntu leg green, the fixture-level portability landed in `ae7b01b`, Windows residuals §7.2) |
 | Contract (engine <-> dashboard) | hand-maintained `src/lib/agent-types.ts` + integration fixture capture | `src/lib`, `test/integration/` | seconds | every PR (partial) |
-| Integration (HTTP, SSE, DB) | real `startServer` on an ephemeral port, mock bridge, temp state | `test/integration/` | ~30 s, $0 | every PR (once wired) |
+| Integration (HTTP, SSE, DB) | real `startServer` on an ephemeral port, mock bridge, temp state | `test/integration/` | ~30 s, $0 | every PR (wired — §6 gate 12, the `PI_TEST_SCOPE=integration` step in `build-test`) |
 | CLI golden | subprocess `bin/unown` against a temp `UNOWN_HOME` | `test/cli/golden.test.ts` | ~2 min, $0 | every PR (wired inside the ubuntu build-test leg; 16 Windows residuals post-`ae7b01b`, §7.2) |
 | Adversarial corpus | labelled cases + expected decision | `test/termhooks.adversarial.test.ts` | <10 s | every PR |
 | Live probes (memory, poison, VLM) | env-gated (`UNOWN_MEMORY_LIVE=1`, `UNOWN_MEMORY_POISON=1`, `UNOWN_VLM_SMOKE=1`) | engine + bridge | minutes, $$ | weekly + pre-release |
 | Agent evals / benchmarks | existing `runner*.mjs` per track | `benchmarks/*` | hours, $$ | weekly + release |
-| End-to-end (UI) | Playwright - **not yet adopted** | `e2e/` (absent) | 5-15 min | nightly (planned) |
+| End-to-end (UI) | Playwright + axe-core - **adopted** (§6 gate 16) | `e2e/` (smoke + a11y + landing-budget specs against `e2e/mock-engine.mjs`) | 5-15 min | every push/PR (the `e2e` CI job) |
 | Sandbox | `bwrap_smoke.sh`, `verify_sandbox.mjs` | `scripts/` | ~1 min | every PR (in CI as the ubuntu `sandbox-smoke` job; `ae7b01b` adds the userns canary + sysctl pre-step - §7.5) |
 | Coverage | `bun test --coverage` + `scripts/check_coverage.mjs` | CI job | +5 s | every PR (shipped in this revision) |
 
@@ -528,10 +533,16 @@ preserved in the margin notes where they were cited from history.
   turns + 30 ms window before `cleanup()`) both left the count unchanged —
   an afterEach-scope flush is the wrong tool for mid-test stragglers. Revisit
   only if a dashboard test ever actually fails with this signature.
-- **OPEN** - `providers.tsx` is at 58% line coverage and `activity-feed.tsx` at
-  54% `[V]`; the uncovered ranges are the SSE frame parser and the activity
-  normalisation. These are the two highest-risk pure functions in the dashboard
-  and are the first target of the new coverage gate.
+- **SHIPPED (re-scoped 2026-10-21)** - The old item quoted `providers.tsx` 58% /
+  `activity-feed.tsx` 54% `[V]` — numbers from the Providers-tab era: the tab
+  was removed in `473a7d5` and `providers.tsx` is now the `DashboardProviders`
+  context wrapper + `SseBridge` (its only production consumer is
+  `src/app/dashboard/page.tsx`).
+  Re-measured `[V: bun test src --coverage, 2026-10-21]`: `providers.tsx` 96.2%
+  lines (94.4% functions — the SSE frame parser is covered by
+  `sse-bridge.test.tsx`), `activity-feed.tsx` 100%. Residual uncovered ranges:
+  the `seenHello` once-per-load guard (lines 35-39) and the manual EventSource
+  reconnect after `CLOSED` (lines 297-302).
 - **SHIPPED** - End-to-end (§6 gate 16, the `e2e` CI job): Playwright against a
   zero-dependency mock engine (`e2e/mock-engine.mjs`, the exact REST + SSE
   contract). Boot, all tabs render live data with zero browser console
@@ -1085,7 +1096,9 @@ is what remains.
 
 **Next (one to two weeks).**
 
-7. `bun run build` into CI.
+7. ~~`bun run build` into CI.~~ **DONE** — dedicated `build` job: frozen-lockfile
+   install + prisma generate + `bun run build` + standalone-server smoke
+   (§6 gate 14).
 8. Docs-drift checks: README/landing numbers to receipts (§7.10).
 9. Property-based tests for `decideBash` / `jailPath` /
    `bashRedirectEscape` / budget arithmetic - property testing is also the
@@ -1096,7 +1109,9 @@ is what remains.
 
 **Then (weeks).**
 
-11. Playwright E2E + axe-core for the dashboard - the largest untouched surface.
+11. ~~Playwright E2E + axe-core for the dashboard.~~ **SHIPPED** — §6 gate 16
+    (the `e2e/` suite + `e2e` CI job against the mock engine; its first run
+    found 80+ real AA contrast defects + 1 aria violation, all fixed).
 12. Memory-quality axes: contradiction, staleness, forgetting, interference
     (§7.6, §10 item M). **SHIPPED** — `benchmarks/memory-eval/quality-axes/`
     (4/4 PASS, deterministic receipts); and the external-corpus poisoning
@@ -1113,7 +1128,7 @@ is what remains.
 19. Soak test (1000 runs, tmp filesystem).
 
 **Deferred with a reason.** Playwright E2E + axe-core is no longer deferred — it
-is the next gate (§6 gate 16). Load/chaos for the bridge (needs a stable mock
+shipped (§6 gate 16). Load/chaos for the bridge (needs a stable mock
 upstream first); 99th-percentile time horizons (METR notes these need ~300
 diverse tasks per bucket `[C]` - out of reach at this repo's size).
 
@@ -1125,7 +1140,8 @@ Stating that is the point.
 
 | # | Criterion | Status | Evidence |
 |---|---|---|---|
-| 1 | CI enforces lint + typecheck + unit + security scan | **PARTIAL** | All dashboard gates ship green (including coverage + docs; `sandbox-smoke` too at run 39072290887). The engine suite is wired in the 3-OS matrix but red on all three legs at that run (ubuntu one fixture-ordering bug `memory.test.ts:60`, windows 3, macos 3, §7.2) and the bridge suite (95) is still absent (§6 gates 10-13) |
+| 1 | CI enforces lint + typecheck + unit + security scan | **PARTIAL** | All dashboard gates ship green (including coverage + docs; `sandbox-smoke` too at run 39072290887). The engine suite is wired in the 3-OS matrix but red on all three legs at that run (ubuntu one fixture-ordering bug `memory.test.ts:60`, windows 3, macos 3, §7.2) and the bridge suite (95) was
+still absent then — it shipped in round three (§6 gate 11) |
 | 2 | The harness self-suite is green on a clean checkout with pinned snapshots | **NOT MET** | The seeded suite exists; no release assertion runs it (§7.2) |
 | 3 | Hook deny recall >= 99% on the adversarial corpus, every miss triaged | **PARTIAL** | Corpus and triage exist; recall is not published as a number per run, and the fuzzer is absent (§7.3) |
 | 4 | Memory lift shows a statistically significant improvement for a shipped memory version, with CI | **NOT MET** | Track 5 v3 is n=1 and 6/6 everywhere - saturated, therefore uninformative. Needs the full-context baseline and repetitions (§7.6, §10 item A) |
@@ -1164,8 +1180,8 @@ revision, which is precisely the drift this revision exists to stop.
 - **Per PR**: lint, typecheck, dashboard unit, coverage gate, docs gate,
   changed-path security scan; engine suite wired inside the 3-OS `build-test`
   matrix (ubuntu leg green, win/mac red - §7.2); bridge + integration suites
-  once wired.
-- **Nightly**: dashboard E2E + axe, perf and cost trend, soak.
+  (§6 gates 11-12) and dashboard E2E + axe (gate 16).
+- **Nightly**: perf and cost trend, soak.
 - **Weekly**: adversarial corpus rerun, live memory and poison probes, VLM
   review, memory-lift and skill-acquisition evals.
 - **Release**: full benchmark matrix, harness self-suite, sandbox escape corpus,

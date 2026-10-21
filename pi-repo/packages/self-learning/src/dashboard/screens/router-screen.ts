@@ -193,8 +193,10 @@ export function createRouterScreen(deps: ScreenDeps): Screen {
 			if (matchesKey(data, "k") || matchesKey(data, "up")) return win.move(-1);
 			if (matchesKey(data, "g")) return win.home();
 			if (matchesKey(data, "shift+g")) return win.end();
-			if (matchesKey(data, "pageDown") || matchesKey(data, "pageDown")) return win.page(1);
-			if (matchesKey(data, "pageUp") || matchesKey(data, "pageUp")) return win.page(-1);
+			// (deduped: the duplicated condition bound the same key twice —
+			// no second paging key was ever documented)
+			if (matchesKey(data, "pageDown")) return win.page(1);
+			if (matchesKey(data, "pageUp")) return win.page(-1);
 			// Job actions apply to the selected JOB row only (workspace rows
 			// carry no actions).
 			const job = selectedJob();

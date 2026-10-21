@@ -103,13 +103,13 @@ function LatencyChart({ data }: { data: { ts: number; durationMs: number }[] }) 
                 hour12: false,
               })
             }
-            tick={{ fill: "#71717a", fontSize: 10 }}
+            tick={{ fill: "#a1a1aa", fontSize: 10 }}
             stroke="#3f3f46"
           />
           <YAxis
             allowDecimals={false}
             tickFormatter={(v: number) => formatDuration(v)}
-            tick={{ fill: "#71717a", fontSize: 10 }}
+            tick={{ fill: "#a1a1aa", fontSize: 10 }}
             stroke="#3f3f46"
           />
           <Tooltip
