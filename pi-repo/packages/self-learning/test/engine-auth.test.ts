@@ -562,18 +562,27 @@ process.exit(0);
                                         resolve();
                                 });
                         });
-                        // The dummy holder signals POST-BIND readiness via an up-file
-                        // (the winner's own pattern — Bun.serve binds synchronously,
-                        // so holder.up existing PROVES the port is genuinely held).
-                        // A fixed 700ms sleep let the victim BOOT on macOS runners
-                        // when the holder process had not been scheduled yet
-                        // (VICTIM=BOOTED-UNEXPECTED, release run 39605199801).
+                        // The dummy holder is a plain node:net listener, NOT a second
+                        // Bun.serve: bun sets SO_REUSEPORT on its listen sockets on
+                        // macOS, so a second Bun.serve (the victim's engine boot)
+                        // binds the SAME "held" port and boots — measured in release
+                        // run 39607704033 (VICTIM=BOOTED-UNEXPECTED with holder.up
+                        // present, i.e. the port genuinely held). A net.Server never
+                        // sets SO_REUSEPORT, so the victim's bind fails with
+                        // EADDRINUSE on every platform — the premise this test
+                        // exists to exercise. Readiness is signalled via an up-file
+                        // written from the 'listening' callback (post-bind, the
+                        // winner's own pattern); a fixed sleep let the victim boot
+                        // on macOS runners when the holder had not been scheduled
+                        // yet (release run 39605199801).
                         const hPath = join(root, "holder.ts");
                         writeFileSync(hPath, `
 const { writeFileSync } = await import("node:fs");
-Bun.serve({ port: ${port}, fetch: () => new Response("x") });
-writeFileSync(${JSON.stringify(join(root, "holder.up"))}, "up");
-setInterval(() => {}, 1e6);
+const net = await import("node:net");
+const srv = net.createServer(() => {});
+srv.listen(${port}, "127.0.0.1", () => {
+        writeFileSync(${JSON.stringify(join(root, "holder.up"))}, "up");
+});
 `);
                         holder = spawn(process.execPath, [hPath], { stdio: "ignore" });
                         const d3 = Date.now() + 15_000;
