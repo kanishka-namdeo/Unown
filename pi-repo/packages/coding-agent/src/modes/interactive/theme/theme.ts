@@ -963,6 +963,16 @@ export const theme: Theme = new Proxy({} as Theme, {
 	},
 });
 
+/**
+ * Whether initTheme() has run and the global `theme` proxy is safe to touch.
+ * Callers that can run before boot (unit tests, renderer swaps during early
+ * setup) use this to take the plain-mode/no-op path instead of crashing on
+ * the proxy's not-initialized guard.
+ */
+export function isThemeInitialized(): boolean {
+	return (globalThis as Record<symbol, Theme | undefined>)[THEME_KEY] !== undefined;
+}
+
 function setGlobalTheme(t: Theme): void {
 	(globalThis as Record<symbol, Theme>)[THEME_KEY] = t;
 	(globalThis as Record<symbol, Theme>)[THEME_KEY_OLD] = t;

@@ -171,6 +171,7 @@ import {
         getEditorTheme,
         getMarkdownTheme,
         getThemeByName,
+        isThemeInitialized,
         onThemeChange,
         setRegisteredThemes,
         stopThemeWatcher,
@@ -2273,7 +2274,11 @@ export class InteractiveMode {
          * mode skips the scrim entirely (a transparent one would blank the rows).
          */
         private applyOverlayScrim(ui: TUI): void {
-                if (theme.getColorMode() === "plain") return;
+                // An uninitialized theme (unit tests, early boot paths) behaves like
+                // plain mode: the scrim is cosmetic overlay choreography, never
+                // load-bearing, so it must not crash a renderer swap that happens
+                // before initTheme().
+                if (!isThemeInitialized() || theme.getColorMode() === "plain") return;
                 ui.setOverlayScrimStyle((width) => theme.bg("overlayBg", " ".repeat(width)));
         }
 
