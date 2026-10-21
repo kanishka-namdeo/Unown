@@ -462,7 +462,19 @@ describe("ask delivery is once-per-question (live-regression: the re-ask loop)",
 describe("FleetManager — print-mode theme crash guard (2026-10-22)", () => {
         test("bind with the raw uninitialized theme proxy renders the widget without throwing", async () => {
                 const { isThemeInitialized, theme } = await import("@earendil-works/pi-coding-agent");
-                expect(isThemeInitialized()).toBe(false); // no TUI booted in this test process
+                // The suite shares ONE process: earlier files (any TUI / widget /
+                // dashboard test) may already have called initTheme(), so "no TUI
+                // booted" only holds in isolation — in the full run the guard
+                // assertion below read a LEAKED initialized theme and failed
+                // (caught by the v0.0.2 release verify legs, all three OS).
+                // Establish the raw-proxy state explicitly and restore whatever
+                // was there: the pin is about the UNINITIALIZED proxy, not about
+                // this file running first.
+                const THEME_KEY = Symbol.for("@earendil-works/pi-coding-agent:theme");
+                const savedTheme = (globalThis as Record<symbol, unknown>)[THEME_KEY];
+                (globalThis as Record<symbol, unknown>)[THEME_KEY] = undefined;
+                try {
+                expect(isThemeInitialized()).toBe(false); // forced raw for this pin
                 const harness = new SpawnHarness();
                 const dir = freshDir();
                 const { manager, widgets } = {
@@ -492,5 +504,8 @@ describe("FleetManager — print-mode theme crash guard (2026-10-22)", () => {
                 await new Promise((r) => setTimeout(r, 50));
                 // no throw, and a widget was rendered (plain lanes)
                 expect(widgets.length).toBeGreaterThan(0);
+                } finally {
+                        (globalThis as Record<symbol, unknown>)[THEME_KEY] = savedTheme;
+                }
         });
 });
