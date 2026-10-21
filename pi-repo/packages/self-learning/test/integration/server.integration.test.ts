@@ -101,7 +101,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                 expect(body.ok).toBe(true);
                 const agent = body.agent as Record<string, unknown>;
                 expect(agent.name).toBe("pi (badlogic/pi-mono)");
-                expect(agent.layer).toBe("self-learning v0.1");
+                expect(agent.layer).toBe(`self-learning v${(body.version as { version?: string })?.version ?? "2.2.0"}`); // M8: the layer is unownVersion()-sourced, not a literal
                 expect(agent.provider).toBe("mock-bridge/mock-kimi");
                 // bridge health is proxied from the mock with the real /health shape
                 const bridge = agent.bridge as Record<string, unknown>;
@@ -480,13 +480,14 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         // -------------------------------------------------------------------------
         // 7. Router jobs: list + toggle (+ trigger already covered by SSE test)
         // -------------------------------------------------------------------------
-        test("GET /api/jobs lists the seven seeded jobs; toggle flips and restores", async () => {
+        test("GET /api/jobs lists the eight seeded jobs; toggle flips and restores", async () => {
                 const { jobs } = (await (await authFetch(api("/api/jobs"))).json()) as {
                         jobs: Array<Record<string, unknown>>;
                 };
                 expect(jobs.map((j) => j.id).sort()).toEqual(
                         [
                                 "auto-dream",
+                                "db-retention",
                                 "dream-check",
                                 "harness-cycle",
                                 "note-sync",
