@@ -114,12 +114,12 @@ The shims set `UNOWN_INSTALL_ROOT` and execute the active versioned binary, whic
 | Windows x64 | `unown-windows-x64.zip` | the default Windows target |
 | Windows arm64 | `unown-windows-arm64.zip` | experimental: requires `-Experimental` / `--experimental`, and has no CI runtime smoke |
 
-Binaries are **unsigned** (no Apple Developer certificate, no code-signing secret in the repository). macOS Gatekeeper and Windows SmartScreen warn on first run; the installer clears the quarantine/Mark-of-the-Web mark on the staged binary as a best effort, and every archive's `INSTALL.txt` repeats the manual unblock step. Installs verify checksums and GitHub build-provenance attestations. The binary **updater** additionally verifies the Ed25519-signed release manifest (`release.json` + `release.json.sig`) before trusting a version, a size or a hash; `unown update --check --json` reports `signature: "verified"` when that check passes. The signature authenticates the update manifest, not the executable at rest.
+Binaries are **unsigned** (no Apple Developer certificate, no code-signing secret in the repository). macOS Gatekeeper and Windows SmartScreen warn on first run; the installer clears the quarantine/Mark-of-the-Web mark on the staged binary as a best effort, and every archive's `INSTALL.txt` repeats the manual unblock step. Installs verify checksums and GitHub build-provenance attestations. The binary **updater** reads the release manifest (`release.json`) and verifies the platform archive's exact size and SHA-256 before trusting it; `unown update --check --json` reports `signature: "unsigned"` for a manifest-feed answer (the label names the feed shape, not a cryptographic check). The manifest itself is not signed, so its integrity rests on HTTPS to the release host or to a mirror you configure.
 
 ### Verify, update, remove
 
 - The installer reads the release's `version.txt` when present and the archive's `VERSION` otherwise, and aborts on a missing `sha256sums.txt` entry, a checksum mismatch, a `VERSION`/`version.txt`/pin disagreement, or a binary that does not print the expected `--version`.
-- `unown update` in a binary install verifies the signed `release.json`, selects the platform asset, verifies its size and SHA-256, and swaps the versioned directory; `unown update --check` reads the signed manifest (falling back to `version.txt` only when a release has no manifest); `unown update --rollback` returns to the `previousVersion` recorded in `install.json`.
+- `unown update` in a binary install validates `release.json`, selects the platform asset, verifies its size and SHA-256, and swaps the versioned directory; `unown update --check` reads the manifest (falling back to `version.txt` only when a release has no manifest); `unown update --rollback` returns to the `previousVersion` recorded in `install.json`.
 - `unown uninstall` removes only the shims that point into this install root, the versioned root (including rollback copies) and `install.json`; `~/.unown` is kept unless `--purge-data`. A hand-extracted archive has no metadata or shim — delete the extracted directory yourself.
 
 Details and exit codes: [updating](updating.md).
@@ -138,16 +138,15 @@ bun run agent:install
 
 ## Standalone per-OS binaries
 
-Every GitHub Release carries six standalone builds of the `unown` CLI, produced from the tagged commit by one Linux runner (`bun build --compile --target=` bundles the target platform's runtime, so no Mac or Windows machine is involved in building them). The complete payload is 14 assets:
+Every GitHub Release carries six standalone builds of the `unown` CLI, produced from the tagged commit by one Linux runner (`bun build --compile --target=` bundles the target platform's runtime, so no Mac or Windows machine is involved in building them). The complete payload is 13 assets:
 
 | Asset | What it is |
 |---|---|
 | the six `unown-<platform>.tar.gz` / `.zip` archives | `unown`/`unown.exe`, `VERSION`, `LICENSE`, `INSTALL.txt` inside `unown-<platform>/` |
 | `version.txt` | the plain release version — the installers and legacy update source |
-| `release.json` | the signed update manifest: version, per-platform asset name/size/SHA-256, severity, minimum version |
-| `release.json.sig` | detached Ed25519 signature over the exact `release.json` bytes |
+| `release.json` | the update manifest: version, per-platform asset name/size/SHA-256, severity, minimum version |
 | `install.sh`, `install.ps1` | the release's own installers (the binary lane uses them) |
-| `sha256sums.txt` | SHA-256 for the other 13 assets (it does not cover itself) |
+| `sha256sums.txt` | SHA-256 for the other 12 assets (it does not cover itself) |
 | `sbom-spdx.json` | SPDX SBOM of the installed dependency tree |
 | `release-checklist.md` | what this release actually verified |
 
@@ -190,7 +189,7 @@ The six archives and both installer scripts also carry GitHub build-provenance a
 gh attestation verify unown-linux-x64.tar.gz --repo kanishka-namdeo/Unown
 ```
 
-Before publishing, CI downloads and **runs** each archive on its own platform (linux arm64/x64, darwin arm64/x64, windows x64); `windows-arm64` is the one asset without a runtime smoke because GitHub hosts no arm64 Windows runner, and the checklist says so. The release is created as a **draft**, its 14-asset list and prerelease flag are asserted, and only then is it promoted. A post-publish feed gate fetches the live `release.json` + `.sig`, verifies the signature, checks `version.txt`, and HEADs every platform archive; a smoke-install matrix on ubuntu/macos/windows then installs the released binary through the release's own installer and checks `--version`, `update --check` and `uninstall --dry-run`. Only stable `vX.Y.Z` tags are released — a hyphenated prerelease tag is rejected before anything is built.
+Before publishing, CI downloads and **runs** each archive on its own platform (linux arm64/x64, darwin arm64/x64, windows x64); `windows-arm64` is the one asset without a runtime smoke because GitHub hosts no arm64 Windows runner, and the checklist says so. The release is created as a **draft**, its 13-asset list and prerelease flag are asserted, and only then is it promoted. A post-publish feed gate fetches the live `release.json`, checks `version.txt`, and downloads every platform archive to verify its exact size and SHA-256; a smoke-install matrix on ubuntu/macos/windows then installs the released binary through the release's own installer and checks `--version`, `update --check` and `uninstall --dry-run`. Only stable `vX.Y.Z` tags are released — a hyphenated prerelease tag is rejected before anything is built.
 
 **The builds are not signed or notarized.** No Apple Developer certificate and no code-signing secret exist in this repository, so the first run of a freshly downloaded binary is blocked by macOS Gatekeeper and warned about by Windows SmartScreen. `INSTALL.txt` inside every archive gives the unblock step (`xattr -d com.apple.quarantine unown` on macOS, `Unblock-File unown.exe` on Windows). Check the checksum before you unblock anything.
 
@@ -229,7 +228,7 @@ The binary is the terminal agent only. The self-learning engine and `llm-bridge`
 
 - Releases are stable `vX.Y.Z` tags only. The release workflow rejects a hyphenated (prerelease) tag before it builds anything, and GitHub's "latest" marker ignores prereleases, so this repository never publishes a prerelease for a default lane to pick.
 - The source one-liner installs the newest stable tag; the manual route pins the tag you name. `--main`/`-Main` is the explicit edge lane, and `--version`/`-Version` pins a tag. The one-line installer refuses a tag whose `package.json` version differs from the tag.
-- The binary one-liner installs the release marked latest; `--version`/`-Version` pins one. Its update check reads that release's signed `release.json` (with a `version.txt` + `sha256sums.txt` fallback for releases that predate the manifest).
+- The binary one-liner installs the release marked latest; `--version`/`-Version` pins one. Its update check reads that release's `release.json` (with a `version.txt` + `sha256sums.txt` fallback for releases that predate the manifest).
 - `unown --version` prints the same version as the checkout's `package.json` (or the tag the binary was built from). That identity is asserted in CI.
 - Examples in this documentation use `vX.Y.Z` placeholders; the current version is always the newest stable entry on [Releases](https://github.com/kanishka-namdeo/Unown/releases).
 

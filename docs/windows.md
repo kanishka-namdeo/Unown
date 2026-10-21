@@ -76,7 +76,7 @@ No git and no bun are required. The installer downloads `unown-windows-x64.zip` 
 - `%LOCALAPPDATA%\unown\versions\<version>\unown.exe` (root override: `UNOWN_INSTALL_ROOT`)
 - `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` (override: `UNOWN_BIN_DIR`), and appends that directory to your **user PATH** unless `-NoModifyPath`
 
-The shims set `UNOWN_INSTALL_ROOT`; `~/.unown/install.json` records the active version. To check an archive you downloaded by hand, compare `Get-FileHash .\unown-windows-x64.zip -Algorithm SHA256` with its line in `sha256sums.txt`. The builds are unsigned, so SmartScreen may warn on first run (`Unblock-File unown.exe` clears it). Update with `unown update` — it verifies the signed `release.json` manifest, selects the Windows asset and keeps the previous version for `unown update --rollback` — and remove with `unown uninstall`.
+The shims set `UNOWN_INSTALL_ROOT`; `~/.unown/install.json` records the active version. To check an archive you downloaded by hand, compare `Get-FileHash .\unown-windows-x64.zip -Algorithm SHA256` with its line in `sha256sums.txt`. The builds are unsigned, so SmartScreen may warn on first run (`Unblock-File unown.exe` clears it). Update with `unown update` — it reads the `release.json` manifest, verifies the Windows asset's size and SHA-256 and keeps the previous version for `unown update --rollback` — and remove with `unown uninstall`.
 
 The binary is the **CLI only** — the engine and bridge need the source install above. Windows arm64 is opt-in with `-Experimental` because no GitHub arm64 Windows runner exists to execute that archive in CI.
 

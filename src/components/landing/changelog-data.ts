@@ -65,7 +65,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "the update path now checks a signed, per-OS release manifest and nudges without nagging",
+            "title": "the update path now checks a per-OS release manifest and nudges without nagging",
             "behavior": false
           },
           {
@@ -73,7 +73,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "releases now carry self-describing archives and a verifiable 14-asset payload",
+            "title": "releases now carry self-describing archives and a verifiable 13-asset payload",
             "behavior": false
           }
         ]

@@ -1,6 +1,6 @@
 # Updating Unown
 
-How `unown update` works in both install modes — source checkout and standalone binary — with the signed release feed, the guards, exit codes, state files, rollback, notifications, skip/snooze and privacy model.
+How `unown update` works in both install modes — source checkout and standalone binary — with the release feed, the guards, exit codes, state files, rollback, notifications, skip/snooze and privacy model.
 
 - [The one command](#the-one-command)
 - [Which install mode am I in](#which-install-mode-am-i-in)
@@ -26,7 +26,7 @@ unown update
 That is the whole update story in both modes. What it does depends on how this `unown` was installed:
 
 - **Source checkout** — a git operation: fetch release tags from `origin`, fast-forward the checkout to the newest ready release tag, then re-run `bun scripts/install.ts` (dependencies via `bun install --frozen-lockfile`, engine build, `.env` bootstrap — never overwriting an existing `.env` — and the PATH shim).
-- **Binary** — a verified download: verify the release's signed `release.json` manifest (`release.json.sig`, Ed25519), select the `unown-<platform>` asset for this OS/arch, verify its size and SHA-256 and `unown --version`, then atomically activate the new versioned directory and rewrite the shim and `install.json`. No git, no bun, no build step. Releases without a manifest fall back to `version.txt` + `sha256sums.txt`.
+- **Binary** — a verified download: read the release's `release.json` manifest, select the `unown-<platform>` asset for this OS/arch, verify its size and SHA-256 and `unown --version`, then atomically activate the new versioned directory and rewrite the shim and `install.json`. No git, no bun, no build step. Releases without a manifest fall back to `version.txt` + `sha256sums.txt`.
 
 A move looks like:
 
@@ -69,7 +69,7 @@ Internally the mode is resolved in this order:
 | Mode | How it checks |
 |---|---|
 | Source checkout | read-only `git ls-remote --tags --refs origin v*` against your remote; nothing local is touched, so it is safe while the agent itself is using git in the checkout |
-| Binary | `GET <release-base>/latest/download/release.json` + `release.json.sig` — the signature is verified before any field is trusted. Releases without a manifest fall back to `version.txt` + `sha256sums.txt`. No git, no GitHub API |
+| Binary | `GET <release-base>/latest/download/release.json` — the manifest is shape-checked and every asset entry is pinned to its platform's exact archive name, size and SHA-256. Releases without a manifest fall back to `version.txt` + `sha256sums.txt`. No git, no GitHub API |
 
 Both compare the newest release with the running version and share the exit codes:
 
@@ -77,7 +77,7 @@ Both compare the newest release with the running version and share the exit code
 |---|---|
 | Up to date, or the latest release has no asset for this OS/arch | `0` |
 | A newer applicable release is available | `2` |
-| Error (offline, no remote, unreachable feed, missing/invalid signature) | `1` |
+| Error (offline, no remote, unreachable feed, invalid manifest) | `1` |
 
 `unown update --check --json` prints one machine-readable object:
 
@@ -88,12 +88,12 @@ Both compare the newest release with the running version and share the exit code
 | `latest` | the newest release, or `null` on error |
 | `available` | whether `latest` is newer **and** installable for this OS/arch |
 | `applicable` | whether the platform gate and per-OS asset check passed |
-| `reason` | `ok`, `up-to-date`, `no-platform`, `no-asset`, the platform-gate message, `replayed`, or `feed-error` |
+| `reason` | `ok`, `up-to-date`, `no-platform`, `no-asset`, the platform-gate message, or `feed-error` |
 | `mode` | `binary` or `checkout` |
 | `platform` | the resolved release platform (`binary` only) |
-| `asset` | `{ name, sha256, size }` from the signed manifest (`null` for a legacy feed or checkout) |
-| `signature` | `verified`, `legacy`, or `null` |
-| `keyId`, `severity`, `releasedAt`, `requiredMinimumVersion`, `notesUrl` | signed manifest metadata, when present |
+| `asset` | `{ name, sha256, size }` from the release manifest (`null` for a legacy feed or checkout) |
+| `signature` | `unsigned`, `legacy`, or `null` (a label for which feed shape answered) |
+| `severity`, `releasedAt`, `requiredMinimumVersion`, `notesUrl` | manifest metadata, when present |
 | `remoteUrl` | the git remote (checkout; credential-free) or release base (binary) |
 | `checkedAt` | when this check ran |
 | `error` | `null`, or the failure message |
@@ -123,18 +123,18 @@ The safety rules, and why each exists:
 
 ## Binary updates
 
-A binary install has no checkout, so the update is the release artifact itself. `unown update` resolves the target (the signed manifest's latest version, or an explicit `unown update <version>`), then:
+A binary install has no checkout, so the update is the release artifact itself. `unown update` resolves the target (the manifest's latest version, or an explicit `unown update <version>`), then:
 
 1. checks the platform gate (published target OS/arch; glibc-only Linux; windows-arm64 only with `UNOWN_ALLOW_EXPERIMENTAL=1` or already installed there)
-2. fetches the signed `release.json` and its detached `release.json.sig`, verifies the Ed25519 signature against the pinned key, and refuses if the signature is missing or invalid (it does **not** fall back to the unsigned feed in that case)
+2. fetches `release.json` and validates it strictly (schema, stable version, channel, severity, asset names, hashes, sizes); a malformed manifest is an error, never a partial fallback
 3. selects the `unown-<platform>.tar.gz|.zip` asset for this OS/arch; a release without that asset is reported as not applicable, not downloaded
-4. downloads that version's pinned archive and `sha256sums.txt` from `/download/v<version>/`; the signed manifest's size and SHA-256 are the expected values, and `sha256sums.txt` must agree with them
+4. downloads that version's pinned archive and `sha256sums.txt` from `/download/v<version>/`; the manifest's size and SHA-256 are the expected values, and `sha256sums.txt` must agree with them
 5. extracts with the system `tar` (System32 `bsdtar` on Windows), clears the macOS quarantine attribute when present, and verifies `<binary> --version` equals the target
 6. renames the verified tree into `<root>/versions/<version>` (an already-verified directory is reused)
 7. snapshots the active shims and `install.json`, rewrites the shims for the **host** platform and writes `install.json` last; if activation fails, the snapshot is restored byte-for-byte and the old install stays live
 8. records the move in `~/.unown/update-state.json` and keeps the previous version on disk
 
-`--check` reads the signed manifest (or the legacy `version.txt` for older releases); the cache file (`~/.unown/update-check.json`) and the notification path are shared with checkout installs. A binary started straight from a hand-extracted archive has no metadata: it reports version `unknown`, so `update --check` offers any published version and `update` installs into the default root and writes shims.
+`--check` reads the release manifest (or the legacy `version.txt` for older releases); the cache file (`~/.unown/update-check.json`) and the notification path are shared with checkout installs. A binary started straight from a hand-extracted archive has no metadata: it reports version `unknown`, so `update --check` offers any published version and `update` installs into the default root and writes shims.
 
 ## Update notifications
 
@@ -151,7 +151,7 @@ The mechanics:
 
 - **Never blocks startup.** The check runs in a detached background process; the session reads a 24-hour cache (`~/.unown/update-check.json`) and the next run may show the notice. One lock (`update-check.lock`) means concurrent terminals spawn one network check.
 - **The cache lives in `~/.unown`**, never inside the repo — the notice can never dirty your working tree. `update-prefs.json` holds skip/snooze state and the notice history; deleting the cache never resurrects a skipped version.
-- **The background check is mode-specific**: `git ls-remote` for a checkout (read-only against the remote) or the signed release manifest for a binary. No GitHub API is called, so there is no rate limit, and private/self-hosted git remotes work with your existing credentials.
+- **The background check is mode-specific**: `git ls-remote` for a checkout (read-only against the remote) or the release manifest for a binary. No GitHub API is called, so there is no rate limit, and private/self-hosted git remotes work with your existing credentials.
 - **Frequency:** the binary startup line shows once for a new version, then at most once per 24 hours. A `security` release or a `requiredMinimumVersion` floor uses a 12-hour window and a distinct `security update` label; it never blocks startup.
 - **Suppressed when:** stderr is not a TTY, `CI` is set, `UNOWN_SUBAGENT=1`, print mode (`-p`), an unknown current version, a cache older than 7 days, a check error, or any opt-out below. Print mode never prints the notice; an interactive `-p` run may still refresh the cache for the next TUI.
 - **Stale caches are never shown.** A cache whose `current`/mode/platform no longer matches the running install is refreshed instead of being displayed.
@@ -180,7 +180,7 @@ unown: HEAD is detached at <commit> — a pinned install.
 
 `unown update X.Y.Z` moves any checkout — pinned or not — to exactly that version, in both directions (this is also the manual downgrade path). When the move is not a descendant of HEAD, it applies as a detached checkout. Moving to an older version is always an explicit request; the automatic path only ever moves forward.
 
-**Binary.** Git state does not apply. `unown update` targets the newest published version (and stays put if the running one is already at or ahead of it); `unown update X.Y.Z` installs exactly that version (including an older one) and records the version it replaced as `previousVersion`. An explicit binary version verifies that version's pinned manifest; if that release predates the signed manifest, it falls back to the pinned `sha256sums.txt`.
+**Binary.** Git state does not apply. `unown update` targets the newest published version (and stays put if the running one is already at or ahead of it); `unown update X.Y.Z` installs exactly that version (including an older one) and records the version it replaced as `previousVersion`. An explicit binary version verifies that version's pinned manifest; if that release predates the release manifest, it falls back to the pinned `sha256sums.txt`.
 
 ## Rollback
 
@@ -195,13 +195,13 @@ unown update --rollback
 
 - The check fails silently offline (exit 1 for `--check`, nothing shown at startup); nothing is mutated, so an offline machine simply never sees a notice.
 - **Source**: mirror the git repository, point `origin` at the mirror, and `unown update` works entirely against it.
-- **Binary**: mirror the release assets — including `release.json`, `release.json.sig`, `version.txt` and `sha256sums.txt` — and set `UNOWN_RELEASES_BASE_URL` to the mirror base (also honored by the installers). The signature still verifies against the pinned public key, so a mirror cannot forge a release; it can only serve an older signed one (a replay), which the updater refuses to offer as a downgrade.
+- **Binary**: mirror the release assets — including `release.json`, `version.txt` and `sha256sums.txt` — and set `UNOWN_RELEASES_BASE_URL` to the mirror base (also honored by the installers). The client verifies every archive against the manifest's size and SHA-256, so a truncated or inconsistent mirror fails closed; the manifest itself is trusted from the mirror, so only mirror a feed you control.
 - `UNOWN_DISABLE_UPDATES=1` hard-blocks **every** update path — `unown update`, `--check`, and the background check all refuse or no-op. This is the organization/CI kill switch (the equivalent of Claude Code's `DISABLE_UPDATES`).
 - In scripts, gate on the exit code without letting `0` trip `set -e`: `unown update --check; code=$?; [ "$code" -eq 0 ] || [ "$code" -eq 2 ] || exit "$code"`.
 
 ## Privacy
 
-The update check is the only thing Unown ever phones home for, and there is no telemetry of any kind. A checkout check is a plain `git ls-remote` against **your own remote** — the same operation a `git fetch` performs, carrying no identifiers, no counters, no user data. A binary check fetches the signed release manifest and its signature from the release host (or your `UNOWN_RELEASES_BASE_URL` mirror); the request carries a `User-Agent: unown/<version>` header and no unique identifier. A git remote URL's or mirror URL's embedded credentials are redacted before any output or state write. Opt out of the background check with any of:
+The update check is the only thing Unown ever phones home for, and there is no telemetry of any kind. A checkout check is a plain `git ls-remote` against **your own remote** — the same operation a `git fetch` performs, carrying no identifiers, no counters, no user data. A binary check fetches the release manifest from the release host (or your `UNOWN_RELEASES_BASE_URL` mirror); the request carries a `User-Agent: unown/<version>` header and no unique identifier. A git remote URL's or mirror URL's embedded credentials are redacted before any output or state write. Opt out of the background check with any of:
 
 | Variable | Effect |
 |---|---|
@@ -210,7 +210,7 @@ The update check is the only thing Unown ever phones home for, and there is no t
 | `DO_NOT_TRACK=1` | The standard nonessential-traffic opt-out; counts as a no for the background check. |
 | `UNOWN_DISABLE_UPDATES=1` | Blocks all update paths including manual ones. |
 
-The release manifest is signed with an Ed25519 key whose public half is committed at `scripts/release-keys/release-key.json`; the private seed exists only as a GitHub Actions secret. The binaries themselves remain **code-unsigned** — Gatekeeper and SmartScreen behavior is unchanged, and the signature authenticates the update manifest, not the executable at rest.
+The release manifest is **not signed**. Its integrity comes from the transport — HTTPS on the official release host, or a mirror you configure yourself — and every archive it names is checked against the manifest's exact size and SHA-256 before activation. That protects against corrupted downloads and against a mirror mixing a manifest with the wrong archive; it does not protect against a host or mirror that serves a different manifest and matching archive. The binaries themselves remain **code-unsigned** — Gatekeeper and SmartScreen behavior is unchanged. If you need release provenance beyond this, verify the published build-provenance attestations and `sha256sums.txt` against the release page.
 
 ## Troubleshooting
 
@@ -227,8 +227,8 @@ The release manifest is signed with an Ed25519 key whose public half is committe
 | `unown: vX is not installable on <platform> (...)` | The latest release has no asset for this OS/arch, or the platform gate refused it (musl, windows-arm64 opt-in). The source install still works. |
 | `unown: the Linux release binaries require glibc` | musl/Alpine cannot run the archive — build from source. |
 | `unown: windows-arm64 releases are experimental and un-smoked` | Re-run with `UNOWN_ALLOW_EXPERIMENTAL=1` (or the installer's `-Experimental`). |
-| `unown: release manifest is unsigned (signature file is missing)` | The feed is inconsistent or a mirror dropped the `.sig`; nothing was changed. Re-download from the official release or fix the mirror. |
-| `release manifest signature verification failed` | The manifest was altered, or the feed is serving a different release's signature. Fail-closed by design; do not retry with `NO_UPDATE_NOTIFIER` as a workaround. |
+| `unown: invalid release manifest ...` | The feed served malformed JSON or a field failed validation; nothing was changed. Re-download from the official release or fix the mirror. |
+| `unown: sha256sums.txt disagrees with the release manifest` | The feed is inconsistent — the manifest and the checksum file describe different bytes. Nothing was changed; fix the mirror. |
 | `unown: no previous version recorded` | Nothing to roll back to yet — update once first. |
 | `unown: binary update failed — checksum mismatch` | The download was corrupted or the feed is inconsistent; nothing changed. Retry, then verify the mirror's `sha256sums.txt`. |
 | `vX is skipped` / `notices snoozed` in doctor | The local prefs suppress the nudge — `unown update --unskip` clears both. |

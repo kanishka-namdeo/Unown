@@ -1,7 +1,8 @@
 # Update process and update-available nudges — research and decisions
 
-> Research record, 2026-10-21. **Verdict:** move the binary update check from a scalar `version.txt` to a signed, per-OS `release.json` manifest; keep `version.txt` for installers and older clients; nudge with a once-per-24h startup line plus a persistent TUI footer chip; add local skip/snooze; and do **not** auto-download or auto-apply. The next release must also repair the live feed, whose published `v0.0.1` predates the 12-asset release workflow and currently 404s its `version.txt` and `install.sh`.
+> Research record, 2026-10-21; decision amended 2026-10-22. **Verdict:** move the binary update check from a scalar `version.txt` to a per-OS `release.json` manifest; keep `version.txt` for installers and older clients; nudge with a once-per-24h startup line plus a persistent TUI footer chip; add local skip/snooze; and do **not** auto-download or auto-apply. The manifest is **unsigned**: it pins each platform asset's name, size and SHA-256, and the updater verifies those before activation, but there is no release signing key (see [the 2026-10-22 amendment](#decision-update-2026-10-22-unsigned-manifest)). The next release must also repair the live feed, whose published `v0.0.1` predates the 12-asset release workflow and currently 404s its `version.txt` and `install.sh`.
 
+- [Decision update 2026-10-22](#decision-update-2026-10-22-unsigned-manifest)
 - [Method](#method)
 - [What the field does](#what-the-field-does)
 - [Options considered](#options-considered)
@@ -11,6 +12,16 @@
 - [Open questions](#open-questions)
 - [Related pages](#related-pages)
 - [Sources](#sources)
+
+## Decision update 2026-10-22: unsigned manifest
+
+The 2026-10-21 design selected a detached Ed25519 signature over `release.json`, with the public key pinned in the client and the private seed held as a GitHub Actions secret. On 2026-10-22 the project owner chose to drop the signing key. This section supersedes the signed parts of that record; everything else — the manifest, per-OS applicability, the nudge surfaces, skip/snooze, and notify-not-auto-apply — stands.
+
+**What changes.** `release.json` is still the schema-1 manifest with `version`, `releasedAt`, `channel`, `severity`, optional minimum versions, `notesUrl` and `assets[{platform,name,sha256,size}]`. There is no `keyId`, no `release.json.sig`, no pinned key map, no `scripts/release-keys/`, and no signing secret. The release payload drops from 14 assets to 13 and checksum coverage from 13 to 12; the feed gate now downloads every platform archive and verifies its exact size and SHA-256 instead of verifying a signature.
+
+**Why.** A signing key is a custody problem: a seed that must be backed up, rotated without bricking old clients, and protected as the single most valuable secret in the release path. Its benefit is narrower than it first appears. The client trusts the release host or a mirror for the manifest either way; a signature only closes the case where that host or mirror is compromised *and* cannot also replace the archive bytes. Every archive is already fetched over TLS and checked against the manifest's exact size and SHA-256, so corruption and accidental manifest/archive mismatch fail closed. For this project's threat model and install base, the owner judged the key's operational risk and rotation burden higher than that residual gain.
+
+**What the unsigned design still checks.** Manifest schema and field validation, a per-OS asset that must be named exactly `archiveName(platform)`, positive sizes within a bound, 64-hex SHA-256 digests, no duplicate platforms or names, version monotonicity, the platform gate, exact downloaded byte size, SHA-256 against both the manifest and `sha256sums.txt`, and `unown --version` before activation. What it does **not** check is who produced the manifest: a compromised release account, host or configured mirror can serve a different manifest and matching archive. Build-provenance attestations and `sha256sums.txt` on the release page remain the independent verification path for a suspicious release. If the project later needs authenticity beyond TLS, the signed design in this record is the tested starting point — but that decision needs its own key-custody plan.
 
 ## Method
 
@@ -79,10 +90,10 @@ Unown already used a 24-hour cache, but only to throttle the refresh: the notice
 | Auto-update | Background download, apply on next launch | Native-updater convenience | 90 MiB without consent; more failure modes while the user works | Rejected |
 | Auto-update | Startup prompt | Consent before download | Blocks startup; modal fatigue | Rejected |
 | Feed | Scalar `version.txt` only | No release changes | Cannot answer "is there a build for my OS/arch?"; no size/severity/date | Rejected |
-| Feed | Unsigned `release.json` | Per-OS metadata, one request | Trust still TLS + same origin | Rejected |
-| Feed | Signed `release.json` + detached `.sig` | Per-OS metadata + authenticity beyond TLS; key rotation possible | Two new assets + key management | **Selected** |
-| Signing | No signature | Simplest | A compromised release account can forge an update | Rejected |
-| Signing | Pinned Ed25519 key | Simple, offline-verifiable, no client dependency | Key loss/rotation needs care | **Selected** |
+| Feed | Unsigned `release.json` | Per-OS metadata, one request, no key custody | Trust still TLS + host/mirror | **Selected 2026-10-22** |
+| Feed | Signed `release.json` + detached `.sig` | Per-OS metadata + authenticity beyond TLS; key rotation possible | Two new assets + key custody/rotation | Superseded 2026-10-22 |
+| Signing | No signature | Simplest; archive size/SHA-256 still verified | A compromised release account/host can forge an update | **Selected 2026-10-22** |
+| Signing | Pinned Ed25519 key | Simple, offline-verifiable, no client dependency | Key loss/rotation needs care; seed custody | Superseded 2026-10-22 |
 | Signing | Sigstore/Fulcio verification in the client | Strong identity binding | Needs a cosign-equivalent in a compiled binary; heavier | Rejected for v1 |
 | Checkout nudges | Full binary treatment | Consistent | Interrupts active development; a checkout rebuild is not a drop-in swap | Rejected |
 | Checkout nudges | Quiet once per version, clean `main` only | Surfaces releases without nagging | Feature branches see nothing (doctor still reports) | **Selected** |
@@ -92,8 +103,9 @@ Unown already used a 24-hour cache, but only to throttle the refresh: the notice
 
 ## Selected design
 
-- **Manifest:** `release.json` schema 1 with `version`, `releasedAt`, `channel: stable`, `severity`, optional minimum versions, `notesUrl`, and a per-platform asset array (`platform`, `name`, `sha256`, `size`). `release.json.sig` is a base64 Ed25519 signature over the exact manifest bytes. The public key is pinned in `release-manifest.ts` and mirrored in `scripts/release-keys/release-key.json`; the private seed is the `UNOWN_RELEASE_SIGNING_KEY` Actions secret.
-- **Check:** verify the signature before parsing anything except `keyId`; select the platform asset; report `applicable: false` for a platform gate or missing asset (exit 0), `available` only for a newer applicable release (exit 2), and fail closed on a manifest whose signature is missing or invalid. A manifest **404/410** is the only legacy fallback (`version.txt` + `sha256sums.txt`); a manifest present without a valid signature never falls back.
+- **Manifest:** `release.json` schema 1 with `version`, `releasedAt`, `channel: stable`, `severity`, optional minimum versions, `notesUrl`, and a per-platform asset array (`platform`, `name`, `sha256`, `size`). It is unsigned (2026-10-22): no `keyId`, no detached signature, no pinned key.
+- **Check:** parse and validate the manifest strictly; select the platform asset; report `applicable: false` for a platform gate or missing asset (exit 0), `available` only for a newer applicable release (exit 2), and fail closed on a malformed manifest. A manifest **404/410** is the only legacy fallback (`version.txt` + `sha256sums.txt`); a manifest that is present but invalid never falls back.
+- **Trust:** the manifest comes from the release host over HTTPS or from a user-configured mirror. The updater verifies each archive's exact size and SHA-256 against the manifest and requires `sha256sums.txt` to agree before activation; it cannot detect a host or mirror that serves a different manifest with a matching archive. Build-provenance attestations remain available for independent verification.
 - **Cache/prefs:** `update-check.json` schema 2 is disposable (24 h TTL, per-OS result, checkout branch/dirty/ahead state); `update-prefs.json` holds skip/snooze/notice history and survives cache deletion. Both use atomic writes; single-flight locks stop concurrent checks/applies.
 - **Nudges:** startup stderr line once per version then at most daily (12 h for security), plus a `update: vX.Y.Z` footer chip in binary TUI sessions; checkout gets a quiet clean-`main` line only. Print mode never prints. `NO_UPDATE_NOTIFIER`, `UNOWN_DISABLE_AUTOUPDATE`, `DO_NOT_TRACK` and `UNOWN_DISABLE_UPDATES` suppress the line, the chip and the background check (manual updates still work).
 - **Apply:** re-fetch the **pinned** manifest for the target and verify it again; require the manifest size/hash and the same-release `sha256sums.txt`; keep the previous version for `--rollback`; clear macOS quarantine; retain the checkout's ff-only/autostash/auto-rollback guards. No auto-download, no auto-apply.
@@ -135,7 +147,7 @@ curl -sSL -D - -o /dev/null \
   https://github.com/kanishka-namdeo/Unown/releases/latest/download/sha256sums.txt \
   | grep -iE '^(HTTP/|etag|last-modified|cache-control|content-length)'
 
-# 4. The new gates (hermetic; no production key, no network)
+# 4. The new gates (hermetic; no network)
 cd pi-repo/packages/self-learning
 bun test test/release-manifest.test.ts test/update-status.test.ts \
   test/bin-update.test.ts test/update.test.ts test/tools-update-chip.test.ts
@@ -147,15 +159,15 @@ bun scripts/release-manifest.ts --feed "$UNOWN_RELEASES_BASE_URL"
 
 ## Open questions
 
-- **Key rotation cadence.** The client holds a keyId map and can verify the next key in the same release; a documented rotation drill (add next key → ship → switch secret) still needs a real release to exercise it.
+- **Unsigned-feed threat model.** The manifest is trusted from the release host or configured mirror. If a stronger authenticity guarantee becomes a requirement, the signed design higher in this record is the tested path, but it needs a custody/rotation plan first (where the seed lives, how old clients learn a new key, how a lost key is handled).
 - **Windows MOTW.** Node's `fetch` does not obviously set Mark-of-the-Web on the archive; if the release matrix shows SmartScreen still blocking an updated binary, add a best-effort `Unblock-File` in `downloadAndStage`.
-- **`If-None-Match` across the GitHub asset redirect.** The CDN returns an ETag, but the signed redirect URL changes per request; conditional requests are a later optimization, not part of this design.
+- **`If-None-Match` across the GitHub asset redirect.** The CDN returns an ETag, but the redirected asset URL changes per request; conditional requests are a later optimization, not part of this design.
 - **Staged rollout.** A manifest `rollout` field is cheap to add but needs a stable bucket and an adoption signal; no telemetry exists to justify it yet.
 
 ## Related pages
 
 - [updating](updating.md) — the user contract implemented by this decision record
-- [install](install.md) — the 14-asset payload and the signed manifest
+- [install](install.md) — the 13-asset payload and the unsigned manifest
 - [configuration](configuration.md) — state files, env vars and opt-outs
 - [resilience](resilience.md) — engine failure modes (the update path shares the no-telemetry / fail-closed posture)
 - [testing-strategy](testing-strategy.md) — the suite and gate conventions used here

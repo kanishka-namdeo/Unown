@@ -165,7 +165,7 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_DISABLE_AUTOUPDATE` | unset | `1` — same as `NO_UPDATE_NOTIFIER`, the Unown-native spelling. |
 | `DO_NOT_TRACK` | unset | `1` — the standard nonessential-traffic opt-out; suppresses the background update check. |
 | `UNOWN_DISABLE_UPDATES` | unset | `1` blocks **all** update paths (`unown update`, `--check`, background check) — the org/CI kill switch. |
-| `UNOWN_RELEASES_BASE_URL` | `https://github.com/kanishka-namdeo/Unown/releases` | Release feed base for the binary installer/updater and the signed-manifest update check; point it at a mirror for air-gapped installs. The mirror must carry `release.json` + `release.json.sig` (and `version.txt`/`sha256sums.txt` for legacy releases); the signature still verifies against the pinned public key. `https://` is expected; the installer accepts `http://` only for an explicit mirror/test setup and warns. |
+| `UNOWN_RELEASES_BASE_URL` | `https://github.com/kanishka-namdeo/Unown/releases` | Release feed base for the binary installer/updater and the manifest update check; point it at a mirror for air-gapped installs. The mirror must carry `release.json` (and `version.txt`/`sha256sums.txt` for legacy releases). The manifest is not signed, so the mirror is trusted; every archive is still checked against the manifest's exact size and SHA-256 before activation. `https://` is expected; the installer accepts `http://` only for an explicit mirror/test setup and warns. |
 | `UNOWN_INSTALL_ROOT` | POSIX: `$XDG_DATA_HOME/unown`, else `~/.local/share/unown`; Windows: `%LOCALAPPDATA%\unown` | Root of a binary install (`versions/<version>/unown[.exe]`). The binary shim sets it; `unown update`/`uninstall` use it to recognize the install. |
 | `UNOWN_BIN_DIR` | POSIX: `~/.local/bin`; Windows: `%USERPROFILE%\.local\bin` | Directory the installers and `scripts/link.ts` write the `unown` shim(s) into. |
 | `UNOWN_ALLOW_EXPERIMENTAL` | unset | `1` allows the un-smoked windows-arm64 binary archive (the installer's `-Experimental` / `--experimental` sets the same intent for its run). |
@@ -244,7 +244,7 @@ Where everything lives — all of it deletable, none of it required to pre-exist
   memory/
     policy.md                    tier 0 — optional, you author it
     user.md                      tier 2 — global preferences
-  update-check.json              signed-feed cache (schema 2) — 24h TTL, remote URL stored credential-free;
+  update-check.json              release-feed cache (schema 2) — 24h TTL, remote URL stored credential-free;
                                  a legacy schema-1 cache is shown as stale and refreshed
   update-prefs.json              skip-this-version, snooze window and notice history — survives cache deletion
   update-check.lock / update-apply.lock   single-flight check/apply locks (reclaimed after 5/30 minutes)
