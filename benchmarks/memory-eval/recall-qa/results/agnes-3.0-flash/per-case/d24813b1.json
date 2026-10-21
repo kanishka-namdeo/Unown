@@ -5,7 +5,7 @@
   "gtAnswer": "The user would prefer baking suggestions that take into account their previous success with the lemon poppyseed cake, such as variations of that recipe or other desserts that share similar qualities. They might prefer suggestions that balance impressiveness with manageability, considering their previous experience. The user may not prefer overly complex or unfamiliar recipes, or suggestions that do not build upon their existing baking experience.",
   "questionDate": "2023/05/27 (Sat) 23:31",
   "model": "agnes-3.0-flash",
-  "durationMs": 16727,
+  "durationMs": 7656,
   "notes": [
     {
       "ts": "2023-05-22T19:34:00.000Z",
@@ -37,38 +37,20 @@
         "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User enjoys baking, specifically lemon poppyseed cakes which have been successful in the past [session 2023-05-22T19:34:00.000Z run=d24813b1].\n- User plans to serve a cake for a friend's birthday and prefers combining Lemon and Lavender flavors [session 2023-05-22T19:34:00.000Z run=d24813b1].\n- User is interested in making chocolate chip cookies as a side treat for parties [session 2023-05-22T19:34:00.000Z run=d24813b1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User bakes frequently; previously made a lemon poppyseed cake for a colleague's going-away party which was well-received [note 2023-05-22].\n- User plans to bake a lemon lavender pound cake for a friend's birthday and to bring chocolate chip cookies to the same event [note 2023-05-22].\n- User prefers durable storage tips and specific ingredient measurements when following recipes [note 2023-05-22].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
-      "unprovenancedNewLines": 3
+      "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User enjoys baking, specifically lemon poppyseed cakes which have been successful in the past [session 2023-05-22T19:34:00.000Z run=d24813b1].\n- User plans to serve a cake for a friend's birthday and prefers combining Lemon and Lavender flavors [session 2023-05-22T19:34:00.000Z run=d24813b1].\n- User is interested in making chocolate chip cookies as a side treat for parties [session 2023-05-22T19:34:00.000Z run=d24813b1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
-    "durationMs": 13093
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User bakes frequently; previously made a lemon poppyseed cake for a colleague's going-away party which was well-received [note 2023-05-22].\n- User plans to bake a lemon lavender pound cake for a friend's birthday and to bring chocolate chip cookies to the same event [note 2023-05-22].\n- User prefers durable storage tips and specific ingredient measurements when following recipes [note 2023-05-22].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 5186
   },
   "warm": {
-    "answer": "Since you’ve had success with lemon poppyseed cakes and enjoy chocolate chip cookies for parties, those would be great crowd-pleasers to share with colleagues.",
+    "answer": "Based on your past baking, you might consider the lemon lavender pound cake you were planning for a friend's birthday, as it seems like a versatile option. Alternatively, the chocolate chip cookies you planned to bring would also work well for a casual colleague gathering.",
     "error": null,
-    "durationMs": 1822,
-    "match": {
-      "pass": true,
-      "score": 0.103,
-      "hit": 4,
-      "total": 39,
-      "hitWords": [
-        "success",
-        "lemon",
-        "poppyseed",
-        "share"
-      ],
-      "phrase": "success lemon poppyseed cake"
-    }
-  },
-  "cold": {
-    "answer": "Project memory doesn't have specific baking tips, so here's a general suggestion: Consider baking a classic sheet cake or a batch of cookies—they're crowd-pleasers, easy to portion out, and don't require fancy equipment. For something slightly more impressive, a lemon bar or chocolate chip cookie tray with a simple glaze pairs well with coffee or tea.",
-    "error": null,
-    "durationMs": 1811,
+    "durationMs": 1238,
     "match": {
       "pass": false,
       "score": 0.103,
@@ -83,22 +65,40 @@
       "phrase": null
     }
   },
+  "cold": {
+    "answer": "I don't have any specific notes about your baking preferences in the project memory. However, for a small gathering, crowd-pleasers like a classic chocolate chip cookie batch, a simple lemon drizzle cake, or a fresh fruit galette are reliable choices that are easy to make ahead and share.",
+    "error": null,
+    "durationMs": 1232,
+    "match": {
+      "pass": false,
+      "score": 0.128,
+      "hit": 5,
+      "total": 39,
+      "hitWords": [
+        "baking",
+        "lemon",
+        "cake",
+        "share",
+        "baking"
+      ],
+      "phrase": null
+    }
+  },
   "evidenceRetentionInShipped": {
     "pass": false,
-    "score": 0.256,
-    "hit": 10,
+    "score": 0.231,
+    "hit": 9,
     "total": 39,
     "hitWords": [
       "user",
       "prefer",
-      "baking",
       "lemon",
       "poppyseed",
       "cake",
       "prefer",
       "user",
       "prefer",
-      "baking"
+      "recipes"
     ],
     "phrase": null
   }

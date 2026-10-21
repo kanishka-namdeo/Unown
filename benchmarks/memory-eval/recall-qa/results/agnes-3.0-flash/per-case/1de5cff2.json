@@ -5,7 +5,7 @@
   "gtAnswer": "Veja",
   "questionDate": "2023/05/28 (Sun) 15:39",
   "model": "agnes-3.0-flash",
-  "durationMs": 27692,
+  "durationMs": 7324,
   "notes": [
     {
       "ts": "2023-05-23T22:49:00.000Z",
@@ -37,20 +37,20 @@
         "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User values sustainability and quality in fashion purchases, prioritizing long-lasting items with unique designs over fast fashion [Note 1].\n- User is budget-conscious and plans to shop secondhand or during sales to balance sustainability with cost [Note 1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User values sustainability and quality in fashion; interested in high-end brands that prioritize eco-friendly materials and ethical practices [note 2023-05-23T22:49:00.000Z].\n- User is open to shopping secondhand and watching for sales to balance sustainability with budget [note 2023-05-23T22:49:00.000Z].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
       "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User values sustainability and quality in fashion purchases, prioritizing long-lasting items with unique designs over fast fashion [Note 1].\n- User is budget-conscious and plans to shop secondhand or during sales to balance sustainability with cost [Note 1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
-    "durationMs": 4638
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User values sustainability and quality in fashion; interested in high-end brands that prioritize eco-friendly materials and ethical practices [note 2023-05-23T22:49:00.000Z].\n- User is open to shopping secondhand and watching for sales to balance sustainability with budget [note 2023-05-23T22:49:00.000Z].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 4663
   },
   "warm": {
-    "answer": "The project memory does not contain information about a high-end fashion brand that uses wild rubber sourced from the Amazon rainforest. Therefore, I cannot provide that specific brand name from the memory.",
+    "answer": "I don't have a specific record of a brand name associated with wild rubber from the Amazon rainforest in our previous conversations, so I can't remind you of that exact detail from memory.",
     "error": null,
-    "durationMs": 19891,
+    "durationMs": 1496,
     "match": {
       "pass": false,
       "score": 0,
@@ -61,9 +61,9 @@
     }
   },
   "cold": {
-    "answer": "The project memory doesn't contain any information about a fashion brand that uses wild rubber sourced from the Amazon rainforest. I can't confirm that detail from our previous conversations based on what's available here.",
+    "answer": "The project memory does not contain any information about a fashion brand that uses wild rubber from the Amazon rainforest, so I cannot answer that question from the stored context.",
     "error": null,
-    "durationMs": 3162,
+    "durationMs": 1164,
     "match": {
       "pass": false,
       "score": 0,

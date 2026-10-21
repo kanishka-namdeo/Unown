@@ -196,3 +196,68 @@ D1 — both would need new `selftest.mjs` pins first (the 10-17 precedent).
 (receipts: `results/agnes-3.0-flash/` — summary + the four axis jsons; model field `agnes-3.0-flash`, date 2026-10-21T17:04:10Z). Run log:
 `/home/z/my-project/logs/memory-eval/quality-axes-agnes.log` (outside the
 repo). Reproduce: `PI_MODEL_ID=agnes-3.0-flash bun runner.mjs --fresh`.
+
+---
+
+# Live run 2026-10-22 — agnes-3.0-flash, post classifier-fix + dream-hardening: 4/4
+
+Two changes landed between the 10-21 run and this one, and this suite measured
+both honestly — including its own classifier.
+
+## The classifier fixes (the 10-21 findings, pinned first)
+
+Every fix was pinned in `selftest.mjs` with the live failing line BEFORE the
+re-run (the 10-17 precedent, applied twice over):
+
+- **D1 present-tense passive + adverb slot** — the 10-21 interference fail
+  ("winston is permanently retired due to data-loss issues") was invisible
+  to the was/were/got-only D1. Also extends the participle list
+  (deprecated/discontinued/phased out/banned/forbidden/not-allowed...).
+- **D2** gains `deprecat/discontinu` active verbs.
+- **D5 old-attribute** — "integration suite verified parity with **old axios
+  client**" is a migration-outcome comparison; SUPERSEDED_RE carried
+  older|earlier|before but not bare "old". Exempts old/previous/former/legacy
+  [≤18 chars] + token.
+- **D6 negation direction** — a NEW live phrasing the first re-run surfaced:
+  "Group imports by type (...), **not alphabetically**" (winner stated, loser
+  explicitly negated) had been read as BOTH current. not/never/rather-than/
+  instead-of mark the following token as losing; "not only" is excluded
+  ("X, and more" ≠ rejection).
+- **D7 comparative-observation exemption** — the second re-run surfaced
+  another shape: "Redact card-number paths in log transports; **pino and
+  winston require separate configuration**" — a stale config-difference fact
+  from the loser era, read by the strict both-named rule as both-current. A
+  compare/differ construction without an action-verb opener is not a
+  current-rule statement; an imperative ("Use pino and winston") still is.
+- selftest pins: 19 → 40 (every fix carries its live line + negative pins
+  guarding against false exemptions: "axios is the standing choice" stays a
+  violation; "Use pino and winston" stays both-current; "not only" is not
+  negation; "loser is current, NOT winner" keeps the loser counted).
+
+## The dream hardening this suite also measured
+
+`dream.ts` SYSTEM rule 2 was rewritten recency-first (2026-10-22): "the MOST
+RECENT evidence wins; the final memory must state the winning rule as current
+and must NOT state the loser as current anywhere"; rule 5's preservation clause
+was scoped so it can no longer protect superseded rules (the observed
+contradiction failure — the dream KEEPING the old alphabetical rule — traced
+to that 2-vs-5 tension). Verdict on this run: **the fixes hold.**
+
+## Result
+
+| Axis | 10-21 | 10-22 (this run) |
+|---|---|---|
+| contradiction | PASS then FAIL on re-run (kept old rule current — real dream failure) | **PASS** |
+| staleness | PASS | **PASS** |
+| forgetting | FAIL (classifier gap) | **PASS** |
+| interference | FAIL (classifier gap) | **PASS** |
+
+10 dream calls, 0 errors, 0 guard false positives, guard ship on all four
+final candidates, `shippedAssertionPass` = candidate verdict everywhere.
+Two live phrasings were discovered and pinned along the way (D6, D7) — the
+suite keeps doing its job: every verdict is a receipt, every receipt that
+fails honestly is a pinned fix.
+
+Receipts: `results/agnes-3.0-flash/` (regenerated 2026-10-22; the 10-21
+receipts remain in git history at the 3af43f2 commit). Reproduce:
+`PI_MODEL_ID=agnes-3.0-flash bun runner.mjs --fresh`.

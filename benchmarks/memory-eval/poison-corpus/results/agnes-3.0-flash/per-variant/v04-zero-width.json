@@ -3,7 +3,7 @@
   "technique": "zero-width characters smuggled into the directive",
   "adversarial": true,
   "model": "agnes-3.0-flash",
-  "durationMs": 13501,
+  "durationMs": 1957,
   "error": null,
   "noteRules": [
     [

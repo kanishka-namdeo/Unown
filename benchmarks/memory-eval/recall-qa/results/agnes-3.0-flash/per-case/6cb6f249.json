@@ -5,7 +5,7 @@
   "gtAnswer": "17 days",
   "questionDate": "2023/03/14 (Tue) 22:35",
   "model": "agnes-3.0-flash",
-  "durationMs": 9077,
+  "durationMs": 8768,
   "notes": [
     {
       "ts": "2023-03-14T14:30:00.000Z",
@@ -42,35 +42,29 @@
   "notesInput": "--- note (2023-03-14T19:03:00.000Z) run=6cb6f249 ---\nSession with the user on 2023/03/14 (Tue) 19:03 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to get back into journaling and reading more. Can you recommend some books on mindfulness and self-improvement? By the way, I've been making an effort to cut down on social media lately - I actually just got back from a 10-day break in mid-February.\n\nUser: That's a great list, thanks! I've actually already read \"The 7 Habits of Highly Effective People\" and it really opened my eyes to how much time I was wasting on social media. I'll definitely check out some of the other books on the list. Do you have any recommendations for journaling apps or tools that can help me stay consistent with my journaling practice?\n\nAssistant: Stephen Covey's work is incredibly influential.\n\nFor journaling apps and tools, I've got some recommendations that can help you stay consistent and make journaling a habit:\n\n**Digital Journaling Apps:**\n\n1. **Day One** (iOS, Android): A highly-rated, feature-rich app with a simple and clean design. It offers photo integration, location-based entries, and audio recordings.\n2. **Evernote** (iOS, And\n\nUser: I think I'll start with daily entries, aiming for 10-15 minutes a day. I want to focus on reflecting on my day, what I'm grateful for, and any insights or thoughts I have.\n\nAssistant: That's a great approach! Daily entries can help you establish a consistent habit and provide a space for reflection and introspection. Focusing on gratitude and insights can help you cultivate a more positive mindset and gain clarity on your thoughts and feelings.\n\nHere are some additional tips to help you make the most of your daily journaling practice:\n\n1. **Start small**: Begin with 10-15 minut\n\nUser: That's a great idea. A daily prompt or question can definitely help me stay focused and ensure that I'm reflecting on my day in a meaningful way. What kind of prompts or questions would you recommend?\n\nAssistant: Daily prompts or questions can help guide your reflection and make your journaling practice more intentional. Here are some examples of daily prompts and questions that you can use:\n\n**Daily Prompts:**\n\n1. **What did I learn today?**: Reflect on any new insights, skills, or knowledge you acquired.\n2. **What am I proud of?**: Celebrate your accomplishments, no matter how small they may seem.\n3. **W\n\nUser: I like those prompts and questions. I think I'll start with the daily ones and see how it goes. I might also try to incorporate some weekly reflections to see how I'm progressing over time. By the way, do you have any suggestions for habit-tracking apps or tools that can help me stay on top of my journaling practice and other habits I'm trying to build?\n\nAssistant: Excellent decision! Daily and weekly reflections can help you stay consistent and track your progress over time.\n\nFor habit-tracking apps and tools, I've got some recommendations that can help you stay on top of your journaling practice and other habits:\n\n**Habit-Tracking Apps:**\n\n1. **Habitica**: A gamified habit tracker that lets you track habits, daily tasks, and to-dos. It's available on both \n\nUser: I think I'll start with a digital app, maybe Habitica or HabitBull. I like the idea of being able to track my habits and journaling practice on my phone, and the reminders will definitely help me stay on track. I'll also consider using a physical planner or journal as a backup, just in case I need a break from screens or want to add some creativity to my tracking. Do you have any tips on how to se\n\nAssistant: Habitica and HabitBull are both excellent choices for digital habit tracking.\n\nSetting up your habit tracker effectively is crucial to making it a sustainable habit. Here are some tips to help you set up your habit tracker:\n\n**1. Start small**: Begin with a few habits you want to track, such as journaling, reading, or exercise. This will help you get into the habit of tracking and avoid feeling ov\n\n--- note (2023-03-14T14:30:00.000Z) run=6cb6f249 ---\nSession with the user on 2023/03/14 (Tue) 14:30 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to track my screen time and social media usage. Can you suggest some apps or tools that can help me monitor and manage my online activities? By the way, I've been making an effort to cut down on social media lately - I even took a week-long break from it in mid-January, and it was really refreshing.\n\nAssistant: Congratulations on taking a week-long break from social media! That's a great step towards digital detox and self-awareness. Here are some apps and tools that can help you track and manage your screen time and social media usage:\n\n**Screen Time Tracking Apps:**\n\n1. **Screen Time** (iOS): A built-in feature on iOS devices that provides detailed reports on app usage, screen time, and notifications.\n\n\nUser: I'm interested in trying out some of these apps, especially Moment and Freedom. Can you tell me more about how they work and what kind of features they offer?\n\nAssistant: Moment and Freedom are both popular apps that can help you track and manage your screen time and app usage. Here's a more in-depth look at each app:\n\n**Moment:**\n\nMoment is a screen time tracking app that helps you understand how you spend your time on your phone or tablet. Here are some of its key features:\n\n1. **Screen Time Tracking:** Moment tracks how much time you spend on your device, includ\n\nUser: I'm particularly interested in Moment's app tracking feature. Can you tell me more about how it tracks apps and how I can use that information to make changes to my phone habits?\n\nAssistant: Moment's app tracking feature is one of its most powerful tools for understanding your phone habits. Here's how it works and how you can use the information to make changes:\n\n**How Moment tracks apps:**\n\nMoment tracks which apps you use, how often, and for how long. It does this by monitoring your device's screen time and app usage in the background. When you open an app, Moment records the time y\n\nUser: I'm really interested in setting some app-specific goals and scheduling app usage. Can you tell me more about how to do that in Moment? For example, how do I set a daily time limit for social media?\n\nAssistant: Setting app-specific goals and scheduling app usage are powerful features in Moment that can help you develop healthier phone habits. Here's a step-by-step guide on how to set a daily time limit for social media in Moment:\n\n**Setting a daily time limit for social media in Moment:**\n\n1. **Open Moment:** Launch the Moment app on your device.\n2. **Tap on \"Apps\":** Tap on the \"Apps\" tab at the bottom \n\nUser: I'm thinking of setting a goal to limit my Instagram usage to 15 minutes a day, Monday to Friday. I've found that I often mindlessly scroll through Instagram during my breaks at work, and I'd like to reduce that. Do you think that's a good goal, and how can I set it up in Moment?\n\nAssistant: That's a great goal! Limiting your Instagram usage to 15 minutes a day, Monday to Friday, can help you develop a healthier habit and reduce mindless scrolling. Here's how you can set it up in Moment:\n\n**Setting up the goal in Moment:**\n\n1. **Open Moment:** Launch the Moment app on your device.\n2. **Tap on \"Apps\":** Tap on the \"Apps\" tab at the bottom of the screen.\n3. **Select Instagram:** Tap on \n\nUser: I think I've got it! I'll set up the goal in Moment to limit my Instagram usage to 15 minutes a day, Monday to Friday, and see how it goes. Thanks for the tips and guidance!\n\nAssistant: You're welcome! I'm glad I could help. Setting a goal to limit your Instagram usage is a great step towards developing healthier phone habits. Remember to be patient and kind to yourself as you work on changing your habits. It may take some time to adjust, but with Moment's tracking and coaching features, you'll be able to stay on track and make progress.\n\nDon't hesitate to reach out if you have a",
   "dream": {
     "stats": {
-      "merged": 1,
+      "merged": 2,
       "pruned": 0,
-      "added": 8,
+      "added": 5,
       "topics": [
         "Workflow",
-        "User Context",
-        "Known Pitfalls"
+        "User context",
+        "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate durable user facts, events, and preferences from session notes into precise bullets [seed].\n- Resolve contradictions by preferring the most recent evidence; drop stale data [note 2].\n- Do not record transient conversational advice (e.g., specific app settings) as durable project rules [note 2].\n\n## User Context\n- **Goal:** Re-establish a consistent journaling and reading habit [note 1].\n- **Habit Parameters:** Journaling is 10-15 mins daily; includes gratitude and insights; incorporates weekly reflections [note 1].\n- **Tools:** Digital habit tracking via Habitica or HabitBull; physical journal as backup [note 1].\n- **Digital Detox Strategy:** Actively reducing social media consumption [note 1].\n- **Social Media History:** \n  - 10-day break in mid-February 2023 [note 1].\n  - 1-week break in mid-January 2023 [note 2].\n- **Reading Status:** Has read \"The 7 Habits of Highly Effective People\" [note 1].\n- **Specific Goal:** Limit Instagram usage to 15 mins/day, Mon-Fri, using Moment app [note 2].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- Avoid relying on older session dates for current status; always verify against the most recent note [note 2].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal notes into concise, sourced bullets [seed].\n- Use memory as primary source; general knowledge only as fallback [note 1].\n- Record durable user facts/events/preferences precisely [note 3].\n\n## User context\n- 10-day social media break in mid-Feb 2023; week-long break in mid-Jan [note 2023-03-14T19:03:00.000Z].\n- Journaling: 10-15 min daily, 5-minute weekly review; digital app (Habitica/HabitBull) + physical planner [note 2023-03-14T19:03:00.000Z].\n- Read *The 7 Habits of Highly Effective People*; values Covey's work [note 2023-03-14T19:03:00.000Z].\n- Screen time: limit Instagram to 15 min/day Mon–Fri; uses Moment app [note 2023-03-14T14:30:00.000Z].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
     "guard": {
-      "action": "sanitize",
-      "flags": [
-        {
-          "line": 21,
-          "rule": "security-bypass",
-          "text": "- Avoid relying on older session dates for current status; always verify against the most recent note [note 2]."
-        }
-      ],
-      "reason": "guard quarantined 1 line(s): security-bypass",
-      "unprovenancedNewLines": 1
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate durable user facts, events, and preferences from session notes into precise bullets [seed].\n- Resolve contradictions by preferring the most recent evidence; drop stale data [note 2].\n- Do not record transient conversational advice (e.g., specific app settings) as durable project rules [note 2].\n\n## User Context\n- **Goal:** Re-establish a consistent journaling and reading habit [note 1].\n- **Habit Parameters:** Journaling is 10-15 mins daily; includes gratitude and insights; incorporates weekly reflections [note 1].\n- **Tools:** Digital habit tracking via Habitica or HabitBull; physical journal as backup [note 1].\n- **Digital Detox Strategy:** Actively reducing social media consumption [note 1].\n- **Social Media History:** \n  - 10-day break in mid-February 2023 [note 1].\n  - 1-week break in mid-January 2023 [note 2].\n- **Reading Status:** Has read \"The 7 Habits of Highly Effective People\" [note 1].\n- **Specific Goal:** Limit Instagram usage to 15 mins/day, Mon-Fri, using Moment app [note 2].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
-    "durationMs": 6242
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal notes into concise, sourced bullets [seed].\n- Use memory as primary source; general knowledge only as fallback [note 1].\n- Record durable user facts/events/preferences precisely [note 3].\n\n## User context\n- 10-day social media break in mid-Feb 2023; week-long break in mid-Jan [note 2023-03-14T19:03:00.000Z].\n- Journaling: 10-15 min daily, 5-minute weekly review; digital app (Habitica/HabitBull) + physical planner [note 2023-03-14T19:03:00.000Z].\n- Read *The 7 Habits of Highly Effective People*; values Covey's work [note 2023-03-14T19:03:00.000Z].\n- Screen time: limit Instagram to 15 min/day Mon–Fri; uses Moment app [note 2023-03-14T14:30:00.000Z].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 6236
   },
   "warm": {
-    "answer": "You took social media breaks for a total of 17 days (10 days in mid-February 2023 and 1 week in mid-January 2023).",
+    "answer": "Based on the project memory, you took a 10-day social media break in mid-Feb 2023 and a week-long (7-day) break in mid-Jan. In total, that is **17 days**.\n\n```\nTotal Social Media Break Days: 17 days\n```",
     "error": null,
-    "durationMs": 1551,
+    "durationMs": 1508,
     "match": {
       "pass": true,
       "score": 1,
@@ -84,15 +78,17 @@
     }
   },
   "cold": {
-    "answer": "The project memory does not contain any information about the number of social media breaks you have taken, so I cannot answer that question from the available data.",
+    "answer": "The project memory does not contain information about how many days you took social media breaks, so I cannot answer this from memory. Could you share the details or check your notes?",
     "error": null,
-    "durationMs": 1284,
+    "durationMs": 1022,
     "match": {
       "pass": false,
-      "score": 0,
-      "hit": 0,
+      "score": 0.5,
+      "hit": 1,
       "total": 2,
-      "hitWords": [],
+      "hitWords": [
+        "days"
+      ],
       "phrase": null
     }
   },

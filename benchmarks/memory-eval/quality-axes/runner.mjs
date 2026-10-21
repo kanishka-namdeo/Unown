@@ -106,28 +106,73 @@ const WINNER_KILLER_RE =
  * OTHER rule's token ("Logging uses pino; winston was removed" must not mark
  * pino as losing) nor, for D2, a by/with/for/over/in-favor connector
  * ("replaced WITH x" makes x the winner).
- *   D1 passive: "<token> ... was/were/got replaced/removed/..."
- *   D2 active:  "replaced/removed/... <token>"
+ *   D1 passive: "<token> ... was/were/got/is/are [adverb|no longer] replaced/removed/..."
+ *               — present-tense passive + an optional -ly adverb / "no longer" slot added
+ *               2026-10-22: the live agnes-3.0-flash run (results/agnes-3.0-flash/
+ *               interference.json, 2026-10-21) produced "winston is permanently retired
+ *               due to data-loss issues" — a semantically correct supersession in
+ *               present-tense passive, invisible to the old was/were/got-only D1. Pinned
+ *               in selftest.mjs (the 10-17 precedent, applied to the 10-21 finding).
+ *   D2 active:  "replaced/removed/... <token>" (deprecated/discontinued added 2026-10-22)
  *   D3 source:  "from <token> ... to <other>"
  *   D4 failure: "<token> dropped/lost/failed/crashed ..." — the token is the SUBJECT of an
  *               active-voice failure verb ("winston dropped lines under load" is a pitfall
  *               fact about winston, NOT a current-rule statement; SYSTEM rule 8 tells the
  *               dream to record such outcome knowledge). Without D4 that line misreads as
  *               "both rules current" — pinned in selftest.mjs from a live run.
+ *   D5 old-attribute: "old/previous/former/legacy/... [≤18 chars] <token>" — the token is
+ *               named as the OLD thing (a migration-outcome comparison), so it is not a
+ *               current-rule statement. Added 2026-10-22: the live agnes forgetting run
+ *               (results/agnes-3.0-flash/forgetting.json, 2026-10-21) produced
+ *               "integration suite verified parity with old axios client" — a historical
+ *               comparison, but SUPERSEDED_RE carries older|earlier|before, not bare
+ *               "old", and no directional pattern matched "verified parity with". Pinned
+ *               in selftest.mjs ("old axios client" exempt; "axios is the standing
+ *               choice" still counted as a violation).
+ *   D6 negation: "not/never/rather-than/instead-of [<=12 chars] <token>" - the token is
+ *               EXPLICITLY REJECTED, hence not current. Added 2026-10-22: the live
+ *               agnes contradiction run (same day) produced "Group imports by type
+ *               (...), not alphabetically" - winner stated, loser negated - which the
+ *               D1-D5 set reads as "both current". "not only" is excluded (it means
+ *               "X, and more", not rejection); the negated token stays the only thing
+ *               marked losing, so "loser is current, NOT winner" lines still count
+ *               the loser as a violation (pinned in selftest.mjs).
+ *   D7 comparative-observation exemption (both-token lines only): a line whose
+ *               tokens appear in a compare/differ construction ("pino and winston
+ *               require separate configuration...") states a CONFIG DIFFERENCE,
+ *               not a current-rule choice. Exempt ONLY when the line does not
+ *               open with an action verb (use/prefer/...): "Use pino and winston"
+ *               stays a both-current violation. Added 2026-10-22 after the live
+ *               interference run (results/agnes-3.0-flash/interference.json) —
+ *               the dream resolved correctly; the classifier misread the stale
+ *               redaction-comparison note. Pinned in selftest.mjs.
  */
 function losingPatterns(reSource, otherSource) {
         const src = `(?:${reSource})`;
         const other = `(?:${otherSource})`;
         return [
-                new RegExp(`${src}(?:(?!${other})[^\\n]){0,25}\\b(?:was|were|got|been)\\s+(?:replaced|removed|dropped|abandoned|retired|reverted|switched|moved|eliminated)\\b`, "i"),
                 new RegExp(
-                        `\\b(?:replac\\w*|remov\\w*|drop\\w*|abandon\\w*|retir\\w*|revert\\w*|switch\\w*|migrat\\w*|upgrad\\w*|eliminat\\w*|mov\\w*|away\\s+from|off\\s+of)\\b(?:(?!\\b(?:by|with|for|in\\s+favor|over)\\b|${other})[^\\n]){0,60}${src}`,
+                        `${src}(?:(?!${other})[^\\n]){0,25}\\b(?:was|were|got|been|is|are)\\s+(?:\\w+ly\\s+|no\\s+longer\\s+)?(?:replaced|removed|dropped|abandoned|retired|reverted|switched|moved|eliminated|deprecated|discontinued|phased\\s+out|banned|forbidden|disallowed|not\\s+(?:allowed|used|recommended|supported))\\b`,
+                        "i",
+                ),
+                new RegExp(
+                        `\\b(?:replac\\w*|remov\\w*|drop\\w*|abandon\\w*|retir\\w*|revert\\w*|switch\\w*|migrat\\w*|upgrad\\w*|eliminat\\w*|deprecat\\w*|discontinu\\w*|mov\\w*|away\\s+from|off\\s+of)\\b(?:(?!\\b(?:by|with|for|in\\s+favor|over)\\b|${other})[^\\n]){0,60}${src}`,
                         "i",
                 ),
                 new RegExp(`\\bfrom\\s+${src}(?:(?!${other})[^\\n]){0,60}\\bto\\b`, "i"),
                 new RegExp(`\\b(?:${src})(?:(?!${other})[^\\n]){0,20}\\b(?:dropped|dropping|lost|loses|losing|failed|fails|failing|crashes?|crashed|corrupt\\w*|leaks?|leaking|data\\s*-\\s*loss|defective|unusable)\\b`, "i"),
+                new RegExp(`\\b(?:old|older|previous|former|original|earlier|legacy|initial)\\s+(?:(?!${other})[^\\n]){0,18}${src}`, "i"),
+                new RegExp(`\\b(?:not\\s+(?!only\\b)|never\\s+|rather\\s+than\\s+|instead\\s+of\\s+)(?:(?!${other})[^\\n]){0,12}${src}`, "i"),
         ];
 }
+
+/**
+ * D7: a both-token line that is a comparison, not a rule statement. Exempt
+ * only when the line does NOT open with an action verb (an imperative naming
+ * both tokens IS a both-current rule).
+ */
+const ACTION_START_RE = /^\s*(?:[-*+]\s+|\d+\.\s+)?(?:use|prefer|standardize|standardise|adopt|configure|switch|run|log|keep|choose)\b/i;
+const COMPARE_ONLY_RE = /\b(?:and|versus|vs\.?|unlike|whereas)\b[^\n]{0,40}\b(?:require|requires|need|needs|differ|differs|varies|separate|separately|unique|each|conflict|support|supports)\b/i;
 
 /**
  * Classify every candidate line that mentions either rule of a conflicting pair.
@@ -155,16 +200,21 @@ function classifyPair(candidate, loserRe, winnerRe, killerLoser, killerWinner) {
                 let why;
                 if (lm && wm) {
                         // Both rules in one line: direction decides; no direction at all is
-                        // genuinely ambiguous -> both count as current (strict).
-                        loserCurrent = !loserDir;
-                        winnerCurrent = !winnerDir;
-                        why = loserDir
-                                ? winnerDir
-                                        ? "both rules named as replaced (ambiguous direction)"
-                                        : "transition line: loser named as replaced/superseded"
-                                : winnerDir
-                                        ? "transition line: winner named as replaced (direction reversed?)"
-                                        : "both rules named, no direction — treated as BOTH current";
+                        // genuinely ambiguous -> both count as current (strict) — UNLESS the
+                        // line is a comparative observation (D7): a config-difference fact,
+                        // not a current-rule statement.
+                        const compareOnly = !ACTION_START_RE.test(line) && COMPARE_ONLY_RE.test(line);
+                        loserCurrent = compareOnly ? false : !loserDir;
+                        winnerCurrent = compareOnly ? false : !winnerDir;
+                        why = compareOnly
+                                ? "comparative observation (config difference), not a current-rule statement (D7)"
+                                : loserDir
+                                        ? winnerDir
+                                                ? "both rules named as replaced (ambiguous direction)"
+                                                : "transition line: loser named as replaced/superseded"
+                                        : winnerDir
+                                                ? "transition line: winner named as replaced (direction reversed?)"
+                                                : "both rules named, no direction — treated as BOTH current";
                 } else if (lm) {
                         loserCurrent = !loserDir && !killerLoser.test(line);
                         why = loserCurrent ? "loser stated with no superseded marker" : loserDir ? "loser in replaced/from position" : "superseded marker present";
@@ -267,6 +317,9 @@ async function dreamStep(axisId, scenarioId, stepIdx, sessions, currentMemory, v
                 stats,
                 candidate,
                 notesText,
+                // Layer 2.5 fidelity (2026-10-22): flagged note texts, same as the
+                // production dream path passes to the gate.
+                quarantinedTexts: noteRows.filter((_, i) => noteScans[i].rules.length > 0).map((n) => n.text),
         };
 }
 
@@ -303,7 +356,10 @@ async function runAxis(axisId) {
                         const step = await dreamStep(axisId, sc.id, i, sessions, current, version);
                         // per-step guard (informational — the real dream gates every candidate)
                         if (!step.error) {
-                                const d = decideGuardAction(step.candidate, current, { firstMint: false });
+                                const d = decideGuardAction(step.candidate, current, {
+                                        firstMint: false,
+                                        quarantinedNoteTexts: step.quarantinedTexts,
+                                });
                                 step.guard = { action: d.action, flags: d.flags.map((f) => f.rule), reason: d.reason ?? null };
                         }
                         steps.push(step);
@@ -368,7 +424,11 @@ async function runAxis(axisId) {
                 let guard = null;
                 let shippedAssertionPass = null;
                 if (!scenarioError && finalCandidate) {
-                        const d = decideGuardAction(finalCandidate, lastCurrent, { firstMint: false });
+                        const quarantinedNoteTexts = (finalStep?.quarantinedTexts ?? []).flat();
+                        const d = decideGuardAction(finalCandidate, lastCurrent, {
+                                firstMint: false,
+                                quarantinedNoteTexts,
+                        });
                         guard = {
                                 action: d.action,
                                 flags: d.flags.map((f) => ({ line: f.line, rule: f.rule, text: f.text })),

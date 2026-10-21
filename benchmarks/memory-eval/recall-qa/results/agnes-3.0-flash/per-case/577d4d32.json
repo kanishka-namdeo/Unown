@@ -5,7 +5,7 @@
   "gtAnswer": "7 pm",
   "questionDate": "2023/05/30 (Tue) 12:46",
   "model": "agnes-3.0-flash",
-  "durationMs": 22224,
+  "durationMs": 11416,
   "notes": [
     {
       "ts": "2023-05-29T13:09:00.000Z",
@@ -30,25 +30,27 @@
     "stats": {
       "merged": 0,
       "pruned": 0,
-      "added": 3,
+      "added": 4,
       "topics": [
-        "User context"
+        "Workflow",
+        "User context",
+        "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User maintains a strict work-life boundary: stops work emails/messages by 7 PM [note 577d4d32].\n- User's evening routine includes reading, walking, playing guitar, light stretching, and meditation [note 577d4d32].\n- User enjoys literary fiction, specifically noting interest in \"The Seven Husbands of Evelyn Hugo\" [note 577d4d32].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User enforces a hard 7 PM cutoff for work emails/messages to separate work from personal time [note 577d4d32].\n- Evening routine includes reading, walking, guitar practice, light stretching, and body scan meditation [note 577d4d32].\n- Guitar practice improves user's hand-eye coordination, fine motor skills, patience, and focus [note 577d4d32].\n- User enjoys literary fiction, specifically *The Seven Husbands of Evelyn Hugo* [note 577d4d32].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
       "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User maintains a strict work-life boundary: stops work emails/messages by 7 PM [note 577d4d32].\n- User's evening routine includes reading, walking, playing guitar, light stretching, and meditation [note 577d4d32].\n- User enjoys literary fiction, specifically noting interest in \"The Seven Husbands of Evelyn Hugo\" [note 577d4d32].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
-    "durationMs": 17822
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User enforces a hard 7 PM cutoff for work emails/messages to separate work from personal time [note 577d4d32].\n- Evening routine includes reading, walking, guitar practice, light stretching, and body scan meditation [note 577d4d32].\n- Guitar practice improves user's hand-eye coordination, fine motor skills, patience, and focus [note 577d4d32].\n- User enjoys literary fiction, specifically *The Seven Husbands of Evelyn Hugo* [note 577d4d32].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 4227
   },
   "warm": {
-    "answer": "You stop checking work emails and messages by 7 PM.",
+    "answer": "You stop checking work emails and messages at 7 PM, as you enforce a hard cutoff to separate work from personal time.",
     "error": null,
-    "durationMs": 3212,
+    "durationMs": 5973,
     "match": {
       "pass": true,
       "score": 1,
@@ -61,9 +63,9 @@
     }
   },
   "cold": {
-    "answer": "I don't have that information in the project memory. If you'd like to set this preference, let me know and I'll record it for future sessions.",
+    "answer": "The project memory does not specify a time for when you stop checking work emails and messages, so I can’t provide that detail from the injected context.",
     "error": null,
-    "durationMs": 1190,
+    "durationMs": 1216,
     "match": {
       "pass": false,
       "score": 0,

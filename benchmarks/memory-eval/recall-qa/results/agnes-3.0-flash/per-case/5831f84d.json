@@ -5,7 +5,7 @@
   "gtAnswer": "15",
   "questionDate": "2023/10/05 (Thu) 21:04",
   "model": "agnes-3.0-flash",
-  "durationMs": 10219,
+  "durationMs": 7691,
   "notes": [
     {
       "ts": "2023-08-11T20:45:00.000Z",
@@ -43,29 +43,28 @@
   "dream": {
     "stats": {
       "merged": 2,
-      "pruned": 1,
-      "added": 7,
+      "pruned": 0,
+      "added": 5,
       "topics": [
         "Workflow",
         "User context",
-        "Known pitfalls",
-        "Task playbooks"
+        "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal session notes into durable facts, events, or preferences; keep bullets short and sourced [seed].\n- Answer user questions from this memory first; use general knowledge only as fallback [note 1].\n- Record precise, durable user facts, events, or preferences when stated [note 3].\n\n## User context\n- User actively engages with online communities (Kaggle, Reddit) to learn NLP and ML, get feedback, and network with practitioners [note 2].\n- User completed 15 Crash Course videos in recent weeks (as of 2023-09-30) [note 2].\n- User is exploring NLP resources, specifically Hugging Face Transformers for text classification [note 2].\n- User plans to pursue AWS certification and has started a Python ML course on edX [note 2].\n- User listens to entrepreneurship podcasts like \"How I Built This\" [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n\n## Task playbooks\n- For NLP deep dives, recommend PyTorch and Hugging Face Transformers; cite specific model architectures for classification [note 2].\n- For AWS certification prep, suggest structured study plans with weekly milestones [note 2].\n- For podcast recommendations, match user interests in entrepreneurship to similar shows like Tim Ferriss Show [note 2].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate session notes into durable rules via AutoDream [seed].\n- Prefer this memory for user facts; use general knowledge only as fallback [note 1].\n- Record durable user facts, events, and preferences precisely [note 3].\n\n## User context\n- User works on personal and work matters across sessions; standing facts live here [note 2].\n- **Learning Streak**: User is on an active learning streak, having watched 15 Crash Course videos in recent weeks (specifically 12 on Computer Science) [note 5831f84d-2023-09-30].\n- **Current Interests**: User is exploring Natural Language Processing (NLP), Deep Learning, and Machine Learning; specifically interested in Hugging Face Transformers for text classification and attention mechanisms [note 5831f84d-2023-09-30].\n- **Cloud Computing**: User is planning an AWS project and is studying for the AWS Certified Cloud Practitioner exam [note 5831f84d-2023-08-11].\n- **Engagement**: User actively engages with online communities like Kaggle and Reddit to get feedback and stay updated on NLP/ML [note 5831f84d-2023-09-30].\n- **Podcasts**: User enjoys entrepreneur-focused podcasts like \"How I Built This\" [note 5831f84d-2023-08-11].\n- **Background**: User has completed a Python programming course on edX [note 5831f84d-2023-08-11].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
       "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal session notes into durable facts, events, or preferences; keep bullets short and sourced [seed].\n- Answer user questions from this memory first; use general knowledge only as fallback [note 1].\n- Record precise, durable user facts, events, or preferences when stated [note 3].\n\n## User context\n- User actively engages with online communities (Kaggle, Reddit) to learn NLP and ML, get feedback, and network with practitioners [note 2].\n- User completed 15 Crash Course videos in recent weeks (as of 2023-09-30) [note 2].\n- User is exploring NLP resources, specifically Hugging Face Transformers for text classification [note 2].\n- User plans to pursue AWS certification and has started a Python ML course on edX [note 2].\n- User listens to entrepreneurship podcasts like \"How I Built This\" [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n\n## Task playbooks\n- For NLP deep dives, recommend PyTorch and Hugging Face Transformers; cite specific model architectures for classification [note 2].\n- For AWS certification prep, suggest structured study plans with weekly milestones [note 2].\n- For podcast recommendations, match user interests in entrepreneurship to similar shows like Tim Ferriss Show [note 2].\n",
-    "durationMs": 6828
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate session notes into durable rules via AutoDream [seed].\n- Prefer this memory for user facts; use general knowledge only as fallback [note 1].\n- Record durable user facts, events, and preferences precisely [note 3].\n\n## User context\n- User works on personal and work matters across sessions; standing facts live here [note 2].\n- **Learning Streak**: User is on an active learning streak, having watched 15 Crash Course videos in recent weeks (specifically 12 on Computer Science) [note 5831f84d-2023-09-30].\n- **Current Interests**: User is exploring Natural Language Processing (NLP), Deep Learning, and Machine Learning; specifically interested in Hugging Face Transformers for text classification and attention mechanisms [note 5831f84d-2023-09-30].\n- **Cloud Computing**: User is planning an AWS project and is studying for the AWS Certified Cloud Practitioner exam [note 5831f84d-2023-08-11].\n- **Engagement**: User actively engages with online communities like Kaggle and Reddit to get feedback and stay updated on NLP/ML [note 5831f84d-2023-09-30].\n- **Podcasts**: User enjoys entrepreneur-focused podcasts like \"How I Built This\" [note 5831f84d-2023-08-11].\n- **Background**: User has completed a Python programming course on edX [note 5831f84d-2023-08-11].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 5622
   },
   "warm": {
-    "answer": "You have completed 15 Crash Course videos in the recent weeks as of September 30, 2023.",
+    "answer": "You have watched 15 Crash Course videos in the past few weeks, with 12 of them focused on Computer Science.",
     "error": null,
-    "durationMs": 1860,
+    "durationMs": 985,
     "match": {
       "pass": true,
       "score": 1,
@@ -78,9 +77,9 @@
     }
   },
   "cold": {
-    "answer": "The project memory doesn't contain information about how many Crash Course videos you've watched.",
+    "answer": "The project memory does not contain information about how many Crash Course videos you've watched in the past few weeks.",
     "error": null,
-    "durationMs": 1529,
+    "durationMs": 1083,
     "match": {
       "pass": false,
       "score": 0,

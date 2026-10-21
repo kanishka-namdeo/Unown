@@ -77,6 +77,37 @@ check("good: axios historical", rev("- The axios experiment was reverted; fetch 
 check("bad: approval stated as current", rev("- The team approved axios for outbound HTTP calls [note 2].\n").revokedCurrentCount, 1);
 check("bad: stale axios usage", rev("- axios retries are logged through winston at warn level [note 5].\n").revokedCurrentCount, 1);
 check("good: 'fetch replaced axios' is exempt", rev("- BillingClient: fetch replaced axios after the security review [note 10].\n").revokedCurrentCount, 0);
+// 2026-10-22 pins — the live agnes-3.0-flash forgetting failure (results/agnes-3.0-flash/forgetting.json,
+// 2026-10-21): the dream's only counted violation was "parity with old axios client" — a
+// migration-outcome comparison (historical), not a current-rule statement. D5 (old-attribute)
+// must exempt it; the classifier gap, not the dream, was the failure.
+check(
+        "good (2026-10-21 live line): 'parity with old axios client' is a historical comparison (D5)",
+        rev(
+                "- BillingClient uses a hand-rolled retry wrapper on fetch; integration suite verified parity with old axios client [note 10].\n",
+        ).revokedCurrentCount,
+        0,
+);
+check(
+        "good: 'the old axios client' attribute framing is exempt (D5)",
+        rev("- Migration finished: the old axios client is gone from src/http. [note 11].\n").revokedCurrentCount,
+        0,
+);
+check(
+        "good (D1 present-tense): 'axios is no longer used' is exempt",
+        rev("- Outbound HTTP: axios is no longer used after the security review [note 10].\n").revokedCurrentCount,
+        0,
+);
+check(
+        "bad (negative pin): 'axios is the standing choice' still counts as current",
+        rev("- The axios client is the standing choice for outbound HTTP [note 4].\n").revokedCurrentCount,
+        1,
+);
+check(
+        "good (D6 negation): 'never axios' explicit rejection is exempt",
+        rev("- Outbound HTTP uses plain fetch; never axios for cardholder data [note 10].\n").revokedCurrentCount,
+        0,
+);
 
 // --- interference: pino vs winston (symmetric, narrow killer) ---
 const A_WINSTON = /winston/i;
@@ -116,6 +147,99 @@ check(
 check(
         "good: 'pino ... zero log loss' must NOT flip pino to failing (no bare 'loss' verb)",
         ipair("- Pino for logging: passed the soak test with zero log loss [note 15].\n"),
+        { loserCurrentCount: 0, winnerCurrentCount: 1 },
+);
+// 2026-10-22 pins — the live agnes-3.0-flash interference failure (results/agnes-3.0-flash/
+// interference.json, 2026-10-21): the dream resolved to pino and marked winston
+// "is permanently retired" — present-tense passive, invisible to the old was/were-only
+// D1, so both rules counted as current. D1's new present-tense + adverb slot must read it
+// as a transition line; the classifier gap, not the dream, was the failure.
+check(
+        "good (2026-10-21 live line): 'winston is permanently retired' is a transition (D1 present-tense passive)",
+        ipair(
+                "- Use pino for structured logging in all modules; winston is permanently retired due to data-loss issues under load [note 5, 10, 11, 12].\n",
+        ),
+        { loserCurrentCount: 0, winnerCurrentCount: 1 },
+);
+check(
+        "good (D2 deprecat): 'we deprecated winston' with both tokens in line",
+        ipair(
+                "- Structured logging runs on pino; we deprecated winston after the data-loss incidents [note 10].\n",
+        ),
+        { loserCurrentCount: 0, winnerCurrentCount: 1 },
+);
+check(
+        "good: 'winston is banned by the security policy' present-tense exemption",
+        ipair("- Logging stays on pino; winston is banned by the security policy [note 12].\n"),
+        { loserCurrentCount: 0, winnerCurrentCount: 1 },
+);
+check(
+        "bad (negative pin): 'pino is the default logger' stays winner-current, not banned",
+        ipair("- pino is the default logger for all new modules [note 11].\n"),
+        { loserCurrentCount: 0, winnerCurrentCount: 1 },
+);
+check(
+        "bad (negative pin): 'winston is under evaluation' stays loser-current (no false D1 match)",
+        ipair("- winston is under evaluation for the retry service [note 3].\n"),
+        { loserCurrentCount: 1, winnerCurrentCount: 0 },
+);
+
+// 2026-10-22 pins — D6 negation direction. The live agnes contradiction run (2026-10-22)
+// produced "Group imports by type (...), not alphabetically" — winner stated, loser
+// explicitly negated — which the D1-D5 set read as "both current". The negated token is
+// the LOSING side; and a reversed line ("loser is current, not winner") must keep the
+// loser counted as a violation.
+check(
+        "good (2026-10-22 live line): 'grouped by type, not alphabetically' reads loser-negated (D6)",
+        pair(
+                "- Group imports by type (node builtins → external packages → internal aliases → relative paths), not alphabetically [qa-s07].\n",
+        ),
+        { loserCurrentCount: 0, winnerCurrentCount: 1 },
+);
+check(
+        "good (D6 never): 'never zod 3' rejection with both tokens",
+        zpair("- Validate query params with zod 4, never zod 3 schemas [note 7].\n"),
+        { loserCurrentCount: 0, winnerCurrentCount: 1 },
+);
+check(
+        "good (D6 rather-than): 'grouping rather than alphabetical'",
+        pair("- Import order is grouping by type rather than alphabetically [note 7].\n"),
+        { loserCurrentCount: 0, winnerCurrentCount: 1 },
+);
+check(
+        "bad (negative pin): 'loser is current, NOT winner' keeps the loser counted",
+        ipair("- The winston-based logger is the current setup, not pino [note 9].\n"),
+        { loserCurrentCount: 1, winnerCurrentCount: 0 },
+);
+check(
+        "good (D6 not-only guard): 'alphabetical not only in src' is NOT read as negation",
+        pair("- Sorting stays alphabetical not only in src but in every package [note 3].\n"),
+        { loserCurrentCount: 1, winnerCurrentCount: 0 },
+);
+
+// 2026-10-22 pins — D7 comparative-observation exemption. The live agnes
+// interference run (2026-10-22, post rule-2 hardening) resolved correctly
+// ("winston is removed after repeated data-loss incidents") but kept a stale
+// redaction-config comparison mentioning both loggers; the strict classifier
+// read it as "both current". A config-difference line is not a current-rule
+// statement — but an IMPERATIVE naming both tokens still is.
+check(
+        "good (2026-10-22 live line): redaction config comparison is not a both-current statement (D7)",
+        ipair(
+                "- Redact card-number paths in log transports; pino and winston require separate configuration for redaction paths [note 13].\n",
+        ),
+        { loserCurrentCount: 0, winnerCurrentCount: 0 },
+);
+check(
+        "bad (negative pin): 'Use pino and winston' imperative stays both-current",
+        ipair("- Use pino and winston for structured logging in all modules [note 5].\n"),
+        { loserCurrentCount: 1, winnerCurrentCount: 1 },
+);
+check(
+        "good: comparative line plus a real winner line still resolves to the winner",
+        ipair(
+                "- Redact card-number paths in log transports; pino and winston require separate configuration for redaction paths [note 13].\n- Use pino for structured logging; winston is removed [note 14].\n",
+        ),
         { loserCurrentCount: 0, winnerCurrentCount: 1 },
 );
 

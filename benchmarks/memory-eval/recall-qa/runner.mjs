@@ -254,7 +254,12 @@ async function dreamCase(c, notes) {
         let guard = null;
         let shipped = CURRENT_MEMORY;
         if (!error) {
-                guard = decideGuardAction(candidate, CURRENT_MEMORY, { firstMint: false });
+                // Layer 2.5 fidelity (2026-10-22): flagged note texts, same as the
+                // production dream path passes to the gate.
+                guard = decideGuardAction(candidate, CURRENT_MEMORY, {
+                        firstMint: false,
+                        quarantinedNoteTexts: scans.map((s, i) => (s.rules.length ? ordered[i].text : null)).filter(Boolean),
+                });
                 shipped = guard.action === "gate" ? CURRENT_MEMORY : guard.sanitized;
         }
         return {

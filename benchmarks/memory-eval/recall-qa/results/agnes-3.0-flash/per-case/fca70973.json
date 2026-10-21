@@ -5,7 +5,7 @@
   "gtAnswer": "The user would prefer theme park suggestions that cater to their interest in both thrill rides and special events, utilizing their previous experiences at Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, and Universal Studios Hollywood as a reference point. They would also appreciate recommendations that highlight unique food experiences and nighttime shows. The user might not prefer suggestions that focus solely on one aspect of theme parks, such as only thrill rides or only family-friendly attractions, and may not be interested in parks that lack special events or unique dining options.",
   "questionDate": "2023/08/15 (Tue) 16:25",
   "model": "agnes-3.0-flash",
-  "durationMs": 7964,
+  "durationMs": 9300,
   "notes": [
     {
       "ts": "2023-08-15T15:58:00.000Z",
@@ -37,84 +37,79 @@
         "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User visited multiple theme parks including Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, and Universal Studios Hollywood [note fca70973].\n- User is specifically interested in Halloween-themed events, thrill rides, unique food experiences, and nighttime shows [note fca70973].\n- User is interested in the Universal Studios Hollywood VIP Experience's Gourmet Buffet and Behind-the-Scenes Tour package [note fca70973].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User enjoys theme park events, specifically thrill rides, unique food experiences, and nighttime shows; recently visited Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, and Universal Studios Hollywood [note 5].\n- User has a specific interest in Halloween-themed events and unique food experiences at theme parks [note 5].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- Theme park event details (prices, booking methods) are time-sensitive; verify current availability rather than relying on past data [note 5].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
       "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User visited multiple theme parks including Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, and Universal Studios Hollywood [note fca70973].\n- User is specifically interested in Halloween-themed events, thrill rides, unique food experiences, and nighttime shows [note fca70973].\n- User is interested in the Universal Studios Hollywood VIP Experience's Gourmet Buffet and Behind-the-Scenes Tour package [note fca70973].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
-    "durationMs": 4890
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User enjoys theme park events, specifically thrill rides, unique food experiences, and nighttime shows; recently visited Disneyland, Knott's Berry Farm, Six Flags Magic Mountain, and Universal Studios Hollywood [note 5].\n- User has a specific interest in Halloween-themed events and unique food experiences at theme parks [note 5].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- Theme park event details (prices, booking methods) are time-sensitive; verify current availability rather than relying on past data [note 5].\n",
+    "durationMs": 3659
   },
   "warm": {
-    "answer": "Given your interest in Halloween-themed events, thrill rides, and unique food experiences, I'd recommend checking out Universal Studios Hollywood for their upcoming Halloween Horror Nights (if timing allows) or Knott's Berry Farm's Scary Holiday events, both of which offer nighttime shows and specialty food. You might also enjoy the VIP Experience's Gourmet Buffet and Behind-the-Scenes Tour at Universal for an elevated dining experience.",
+    "answer": "Given your love for thrill rides and Halloween-themed events, you might consider checking out a park that offers a special \"Spooky Season\" experience this fall, though you'll need to verify current booking availability since event details change frequently. Since I don't have specific new recommendations in our memory beyond your recent visits to Disneyland, Knott's, Six Flags, and Universal, I suggest looking at nearby parks like Knott's Berry Farm, which is well-known for its Haunting Season, or checking if Six Flags is running any limited-time horror events during your weekend.",
     "error": null,
-    "durationMs": 1650,
+    "durationMs": 2397,
     "match": {
       "pass": false,
-      "score": 0.373,
-      "hit": 22,
+      "score": 0.322,
+      "hit": 19,
       "total": 59,
       "hitWords": [
-        "interest",
-        "both",
+        "park",
         "thrill",
         "rides",
+        "special",
         "events",
-        "experiences",
+        "disneyland",
         "knott",
         "berry",
         "farm",
+        "six",
+        "flags",
         "universal",
-        "studios",
-        "hollywood",
-        "unique",
-        "food",
-        "experiences",
-        "nighttime",
-        "shows",
+        "recommendations",
+        "parks",
         "thrill",
         "rides",
-        "events",
-        "unique",
-        "dining"
+        "parks",
+        "special",
+        "events"
       ],
       "phrase": null
     }
   },
   "cold": {
-    "answer": "I don't have specific details about theme park weekends in the project memory, so I don't have personal suggestions from past sessions. However, if you tell me your location or interests (e.g., rides, shows, budget), I can help you find great theme park options for the weekend!",
+    "answer": "I don’t have any specific theme park suggestions in the project memory, so I can’t recommend a particular park based on our past sessions. Would you like tips on choosing a theme park based on location, budget, or interests?",
     "error": null,
-    "durationMs": 1421,
+    "durationMs": 3243,
     "match": {
       "pass": false,
-      "score": 0.153,
-      "hit": 9,
+      "score": 0.085,
+      "hit": 5,
       "total": 59,
       "hitWords": [
         "theme",
         "park",
         "suggestions",
-        "rides",
-        "shows",
         "suggestions",
-        "theme",
-        "rides",
-        "options"
+        "theme"
       ],
       "phrase": null
     }
   },
   "evidenceRetentionInShipped": {
     "pass": true,
-    "score": 0.559,
-    "hit": 33,
+    "score": 0.576,
+    "hit": 34,
     "total": 59,
     "hitWords": [
       "user",
       "prefer",
       "theme",
+      "park",
+      "interest",
       "thrill",
       "rides",
       "events",
@@ -141,7 +136,6 @@
       "parks",
       "thrill",
       "rides",
-      "interested",
       "parks",
       "events",
       "unique"

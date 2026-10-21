@@ -5,7 +5,7 @@
   "gtAnswer": "Johnson",
   "questionDate": "2023/05/29 (Mon) 18:26",
   "model": "agnes-3.0-flash",
-  "durationMs": 10841,
+  "durationMs": 5493,
   "notes": [
     {
       "ts": "2023-05-27T18:13:00.000Z",
@@ -30,27 +30,27 @@
     "stats": {
       "merged": 0,
       "pruned": 0,
-      "added": 3,
+      "added": 1,
       "topics": [
         "Workflow",
-        "User Context",
-        "Known Pitfalls"
+        "User context",
+        "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User Context\n- Last name is Winters, previously Johnson; name change occurred in 2023 [note 2023-05-27T18:13:00.000Z].\n- Actively updating personal records (address, name) across health insurance, DMV, social media, credit bureaus, and credit cards as of May 2023 [note 2023-05-27T18:13:00.000Z].\n- Prefers phone calls over online portals for administrative updates with institutions [note 2023-05-27T18:13:00.000Z].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate durable facts from session notes into precise, sourced bullets [seed].\n- Answer user queries using this memory first; use general knowledge only as fallback [note 1].\n- Record durable user facts, events, and preferences immediately when stated [note 3].\n\n## User context\n- User works on personal and work matters across many sessions; track their standing facts here [note 2].\n- User changed last name from Johnson to Winters [note 5].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
       "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User Context\n- Last name is Winters, previously Johnson; name change occurred in 2023 [note 2023-05-27T18:13:00.000Z].\n- Actively updating personal records (address, name) across health insurance, DMV, social media, credit bureaus, and credit cards as of May 2023 [note 2023-05-27T18:13:00.000Z].\n- Prefers phone calls over online portals for administrative updates with institutions [note 2023-05-27T18:13:00.000Z].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
-    "durationMs": 5812
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate durable facts from session notes into precise, sourced bullets [seed].\n- Answer user queries using this memory first; use general knowledge only as fallback [note 1].\n- Record durable user facts, events, and preferences immediately when stated [note 3].\n\n## User context\n- User works on personal and work matters across many sessions; track their standing facts here [note 2].\n- User changed last name from Johnson to Winters [note 5].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 2981
   },
   "warm": {
     "answer": "Your last name before the change was Johnson.",
     "error": null,
-    "durationMs": 1205,
+    "durationMs": 1543,
     "match": {
       "pass": true,
       "score": 1,
@@ -63,9 +63,9 @@
     }
   },
   "cold": {
-    "answer": "The project memory does not contain any record of a name change or your previous last name, so I cannot answer this question from the stored context.",
+    "answer": "The project memory doesn't contain your previous last name.",
     "error": null,
-    "durationMs": 3824,
+    "durationMs": 969,
     "match": {
       "pass": false,
       "score": 0,

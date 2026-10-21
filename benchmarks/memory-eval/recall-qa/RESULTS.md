@@ -102,3 +102,34 @@ overall: 0.525 (kimi: n/a — the retention metric landed after its run);
 Read it as it is: n=1 per question, single run, point estimates; the two
 models also ran on different upstreams (Dashscope vs Agnes AI), which is a
 serving-stack variable the receipts cannot remove.
+
+---
+
+# Live run 2026-10-22 — agnes-3.0-flash on the hardened dream: lift holds (+0.475), no benign-consolidation regression
+
+The whole point of re-running this suite after the 2026-10-22 dream hardening
+(zero-extraction quarantine banner, SYSTEM quarantine contract, layer 2.5 echo
+backstop in the gate, recency-first rule 2) was a negative control: a hardening
+aimed at ATTACKED notes must not degrade BENIGN consolidation. It does not.
+
+| Metric | 10-21 (pre-hardening) | 10-22 (this run) |
+|---|---|---|
+| warm pass | 0.600 | 0.525 |
+| cold pass | 0.050 | 0.050 |
+| **lift** | **+0.55** | **+0.475** |
+| evidence retained (shipped) | 0.525 | 0.475 |
+| errors | 0 | 1 (one dream produced empty memory → engine keeps prior; warm==cold on that case) |
+| guard gate/sanitize | 0/0 | 0/0 (2 cases had flagged notes; echo scan + banner changed nothing benign) |
+
+By axis (warm/cold/lift): temporal 0.400/0.100/+0.30 · knowledge-update
+**0.800/0.000/+0.80** · multi-session 0.400/0.000/+0.40 (evidence retained
+0.100 — the known consolidation-loss limitation, unchanged) ·
+single-session-user 1.000/0.000/+1.00 · single-session-assistant 0.333/...
+
+The n=40 binomial noise band around a 0.5-0.6 warm rate is ±~0.15, so
++0.475 vs +0.55 is a same-behavior delta; the memory value proposition holds
+on the hardened pipeline. The knowledge-update axis — the one the rule-2
+recency-first rewrite targets — is the strongest axis at +0.80.
+
+Receipts: `results/agnes-3.0-flash/` (fresh 2026-10-22). Reproduce:
+`PI_MODEL_ID=agnes-3.0-flash bun runner.mjs --fresh`.

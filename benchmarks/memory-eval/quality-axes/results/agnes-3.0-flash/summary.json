@@ -1,16 +1,16 @@
 {
   "suite": "quality-axes",
-  "date": "2026-10-21T17:04:10.878Z",
+  "date": "2026-10-21T22:01:09.779Z",
   "model": "agnes-3.0-flash",
   "bridgeUpstreamStatus": 200,
   "axesTotal": 4,
-  "axesPassed": 2,
+  "axesPassed": 4,
   "axes": {
     "contradiction": {
       "pass": true,
       "error": null,
       "dreamCalls": 3,
-      "durationMs": 21015,
+      "durationMs": 27988,
       "guardActions": [
         "ship",
         "ship"
@@ -35,7 +35,7 @@
       "pass": true,
       "error": null,
       "dreamCalls": 2,
-      "durationMs": 18026,
+      "durationMs": 15455,
       "guardActions": [
         "ship"
       ],
@@ -51,40 +51,40 @@
       ]
     },
     "forgetting": {
-      "pass": false,
+      "pass": true,
       "error": null,
       "dreamCalls": 2,
-      "durationMs": 202964,
+      "durationMs": 12514,
       "guardActions": [
         "ship"
       ],
       "guardFalsePositive": false,
       "shippedAssertionPass": [
-        false
+        true
       ],
       "scenarios": [
         {
           "id": "accumulated",
-          "pass": false
+          "pass": true
         }
       ]
     },
     "interference": {
-      "pass": false,
+      "pass": true,
       "error": null,
       "dreamCalls": 3,
-      "durationMs": 29495,
+      "durationMs": 25049,
       "guardActions": [
         "ship"
       ],
       "guardFalsePositive": false,
       "shippedAssertionPass": [
-        false
+        true
       ],
       "scenarios": [
         {
           "id": "accumulated",
-          "pass": false
+          "pass": true
         }
       ]
     }

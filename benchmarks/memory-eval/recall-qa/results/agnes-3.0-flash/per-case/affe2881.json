@@ -5,7 +5,7 @@
   "gtAnswer": "32",
   "questionDate": "2023/06/28 (Wed) 14:23",
   "model": "agnes-3.0-flash",
-  "durationMs": 13423,
+  "durationMs": 18252,
   "notes": [
     {
       "ts": "2023-05-25T14:48:00.000Z",
@@ -42,44 +42,42 @@
   "notesInput": "--- note (2023-05-29T16:16:00.000Z) run=affe2881 ---\nSession with the user on 2023/05/29 (Mon) 16:16 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm planning a picnic in my local park this weekend and I'm wondering if you can suggest some bird-friendly food that I can bring to attract some of the birds I've been seeing lately.\n\nAssistant: What a lovely idea! Attracting birds to your picnic can add to the joy and magic of the experience. While it's essential to prioritize not littering and respecting the park's rules, you can bring some bird-friendly food to entice your feathered friends to visit. Here are some suggestions:\n\n1. **Suet**: A high-energy food made from animal fat, suet is a favorite among woodpeckers, nuthatches, and c\n\nUser: I'll definitely bring some sunflower seeds and suet to attract the woodpeckers. By the way, speaking of woodpeckers, I just saw a Northern Flicker in my local park last weekend, which brings my total species count to 32. Do you think the suet will attract any other woodpecker species as well?\n\nAssistant: Congratulations on spotting the Northern Flicker and reaching 32 species on your count!\n\nSuet is an excellent choice to attract woodpeckers, and it's likely to draw in other species beyond just Northern Flickers. Here are some woodpecker species that might visit your suet feeder:\n\n1. **Downy Woodpeckers**: These are one of the most common woodpeckers in North America, and they love suet. They're s\n\nUser: I'm also planning to bring some water and a birdbath to attract more birds. Do you think the birds will prefer running water or stagnant water?\n\nAssistant: What a great idea! Providing water is an excellent way to attract birds to your picnic spot. When it comes to water, birds generally prefer running water over stagnant water. Here's why:\n\n1. **Movement and sound**: Running water creates movement and sound, which can attract birds from a distance. The gentle gurgling or bubbling noise can signal to birds that water is available and inviting.\n2. **F\n\nUser: I'm also thinking of bringing some fresh fruits like apples and oranges to attract some birds. Do you think the birds will prefer them sliced or whole?\n\nAssistant: What a great idea! Fresh fruits like apples and oranges are a wonderful way to attract birds to your picnic spot. When it comes to offering fruits to birds, the answer to your question is: it depends on the bird species!\n\n**Whole fruits**: Some birds, like cardinals, blue jays, and woodpeckers, prefer whole fruits. They'll often pick them up and fly away to eat them or cache them for later. Whole \n\nUser: I'm thinking of bringing some peanut butter to attract birds like woodpeckers and nuthatches. Do you think I should bring creamy or crunchy peanut butter?\n\nAssistant: What a great idea! Peanut butter is a fantastic attractant for birds like woodpeckers and nuthatches. When it comes to peanut butter, the answer to your question is: it doesn't matter!\n\n**Creamy or crunchy, both are fine**: Birds don't have a preference for creamy or crunchy peanut butter. What they care about is the high protein and fat content, which provides them with a quick energy boost. Both\n\nUser: I'm also planning to bring my binoculars to get a closer look at the birds. Do you think I'll be able to spot any warblers or sparrows with them?\n\nAssistant: What a great idea! Binoculars are an excellent tool for getting a closer look at birds without disturbing them. Warblers and sparrows can be challenging to spot, but with a good pair of binoculars, you might be able to get a glimpse of them.\n\n**Warblers**: Warblers are small, active birds that often flit between branches, making them tricky to spot. However, with binoculars, you might be able to c\n\n--- note (2023-05-25T14:48:00.000Z) run=affe2881 ---\nSession with the user on 2023/05/25 (Thu) 14:48 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I've been trying to improve my bird photography skills, can you give me some tips on how to take better close-up shots of birds, especially ones that are skittish like the Northern Flicker?\n\nUser: I've been trying to improve my bird identification skills too, can you give me some tips on identifying warblers and sparrows, they seem really tricky to tell apart?\n\nAssistant: Warblers and sparrows can be challenging to identify, but with practice and a few tips, you can improve your skills! Here are some tips to help you identify warblers and sparrows:\n\n**Warblers:**\n\n1. **Focus on facial patterns**: Warblers often have distinctive facial markings, such as stripes, eyestripes, or eye rings. Study the patterns around the eyes, forehead, and throat to help identify the s\n\nUser: That's really helpful, thanks! By the way, speaking of bird identification, I've been keeping track of the species I've seen in my local park, and I've managed to spot 27 different species so far. It's amazing how diverse the bird life is in such a small area!\n\nAssistant: That's fantastic! 27 species in a small local park is a great achievement, and it just goes to show how rich and diverse bird life can be in even the most unexpected places. It's wonderful that you're taking the time to observe and appreciate the birds in your area.\n\nKeeping a life list or a park list, as you're doing, is a great way to track your progress, learn more about the birds, and develop \n\nUser: That's a great idea about sharing my findings with others! I've actually been using the eBird app to track my sightings and submit my data. It's been really helpful in keeping my records organized and seeing what other birders have spotted in the area.\n\nSpeaking of which, I've been wanting to explore more birding spots in my area. Do you have any recommendations for nearby nature reserves or parks\n\nAssistant: That's fantastic that you're already using eBird! It's an amazing resource for birders, and it's great that you're contributing to the global database of bird sightings.\n\nI'd be happy to help you explore more birding spots in your area! Since I'm a large language model, I don't have personal experiences, but I can suggest ways for you to find nearby nature reserves or parks that are known for thei\n\nUser: I'm planning a trip to a nearby lake next weekend and I'm hoping to spot some waterbirds. Do you think I should bring my spotting scope or would my binoculars be enough?\n\nAssistant: A trip to a lake sounds like a great way to spend the weekend! Both spotting scopes and binoculars can be useful for observing waterbirds, but they serve slightly different purposes.\n\n**Binoculars:**\n\n* Binoculars are ideal for observing birds at closer ranges (up to 100-150 yards).\n* They're great for getting a good look at birds' plumage, behavior, and identifying features.\n* Binoculars are ofte\n\nUser: I think I'll bring both my binoculars and spotting scope, just in case. I've heard that the lake is a great spot for spotting Ospreys and Bald Eagles, and I'd love to get a closer look at them. Do you have any tips on how to increase my chances of spotting these birds?\n\nAssistant: Excellent decision to bring both! Ospreys and Bald Eagles are magnificent birds, and spotting them can be a thrilling experience.\n\nTo increase your chances of spotting these birds, follow these tips:\n\n**Ospreys:**\n\n1. **Look for nesting platforms**: Ospreys often nest on platforms, poles, or trees near water. Scan the shoreline and look for these structures, as they can be a giveaway to Osprey pre",
   "dream": {
     "stats": {
-      "merged": 0,
-      "pruned": 1,
-      "added": 7,
+      "merged": 2,
+      "pruned": 0,
+      "added": 4,
       "topics": [
         "Workflow",
         "User context",
         "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user is a birdwatcher who keeps a species list for their local park [note 2].\n- As of 2023/05/25, the user's park species count was 27 [note 2].\n- As of 2023/05/29, the user's park species count is 32, including a Northern Flicker [note 2].\n- The user uses the eBird app to track sightings and contribute data [note 2].\n- The user is planning a picnic at their local park for the weekend of 2023/05/29 [note 2].\n- The user owns binoculars and a spotting scope, bringing both on waterbird trips [note 2].\n- The user is interested in bird photography, specifically close-ups of skittish species [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User maintains a personal bird species count and actively uses the eBird app to log sightings and contribute to global data [note 2023-05-25].\n- User is planning a picnic in a local park with bird-attraction items (suet, seeds, water/feature, fruit, peanut butter) to observe birds like Northern Flickers [note 2023-05-29].\n- User is improving bird photography and identification skills, specifically focusing on skittish species like Northern Flickers and distinguishing warblers from sparrows [note 2023-05-25].\n- User owns binoculars and a spotting scope for field observation [note 2023-05-25].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
       "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user is a birdwatcher who keeps a species list for their local park [note 2].\n- As of 2023/05/25, the user's park species count was 27 [note 2].\n- As of 2023/05/29, the user's park species count is 32, including a Northern Flicker [note 2].\n- The user uses the eBird app to track sightings and contribute data [note 2].\n- The user is planning a picnic at their local park for the weekend of 2023/05/29 [note 2].\n- The user owns binoculars and a spotting scope, bringing both on waterbird trips [note 2].\n- The user is interested in bird photography, specifically close-ups of skittish species [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
-    "durationMs": 6693
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User maintains a personal bird species count and actively uses the eBird app to log sightings and contribute to global data [note 2023-05-25].\n- User is planning a picnic in a local park with bird-attraction items (suet, seeds, water/feature, fruit, peanut butter) to observe birds like Northern Flickers [note 2023-05-29].\n- User is improving bird photography and identification skills, specifically focusing on skittish species like Northern Flickers and distinguishing warblers from sparrows [note 2023-05-25].\n- User owns binoculars and a spotting scope for field observation [note 2023-05-25].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 11942
   },
   "warm": {
-    "answer": "Based on your most recent update, your local park species count is 32.",
+    "answer": "I don't have a record of the total number of bird species you've seen in your local park—your memory only notes that you maintain a personal bird species count and have observed species like Northern Flickers there.",
     "error": null,
-    "durationMs": 3740,
+    "durationMs": 1113,
     "match": {
-      "pass": true,
-      "score": 1,
-      "hit": 1,
+      "pass": false,
+      "score": 0,
+      "hit": 0,
       "total": 1,
-      "hitWords": [
-        "32"
-      ],
+      "hitWords": [],
       "phrase": null
     }
   },
   "cold": {
-    "answer": "The project memory doesn't contain any information about bird species you've seen in your local park.\n\nCould you share that detail? I'll record it for future reference.",
+    "answer": "The project memory doesn't record how many bird species you've seen in your local park, so I can't answer that from it. Could you share the number (or a list) so I can note it here for future sessions?",
     "error": null,
-    "durationMs": 2989,
+    "durationMs": 5195,
     "match": {
       "pass": false,
       "score": 0,
@@ -90,13 +88,11 @@
     }
   },
   "evidenceRetentionInShipped": {
-    "pass": true,
-    "score": 1,
-    "hit": 1,
+    "pass": false,
+    "score": 0,
+    "hit": 0,
     "total": 1,
-    "hitWords": [
-      "32"
-    ],
+    "hitWords": [],
     "phrase": null
   }
 }

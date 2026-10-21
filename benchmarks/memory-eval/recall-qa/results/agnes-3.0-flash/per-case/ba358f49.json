@@ -5,7 +5,7 @@
   "gtAnswer": "33",
   "questionDate": "2022/09/01 (Thu) 21:32",
   "model": "agnes-3.0-flash",
-  "durationMs": 9425,
+  "durationMs": 8849,
   "notes": [
     {
       "ts": "2022-09-01T08:09:00.000Z",
@@ -44,43 +44,40 @@
     "stats": {
       "merged": 0,
       "pruned": 0,
-      "added": 7,
+      "added": 6,
       "topics": [
         "Workflow",
         "User context",
-        "Known pitfalls",
-        "Task playbooks"
+        "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n- Distinguish session-specific queries from durable user facts; store only the latter in User context [session notes].\n\n## User context\n- User is a 32-year-old marketing professional with 5 years of industry experience [note 2022-09-01T08:09:00].\n- User has normal skin type with concerns for dullness, fine lines, and wrinkles around eyes [note 2022-09-01T18:02:00].\n- User is pursuing an online part-time Master's in Marketing, prioritizing flexible scheduling and alumni networks [note 2022-09-01T08:09:00].\n- User has a friend, Rachel, who is getting married next year [note 2022-09-01T08:09:00].\n- User prefers budget-friendly skincare products and is open to trying new routines [note 2022-09-01T18:02:00].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n\n## Task playbooks\n- For upskilling recommendations, prioritize platforms like Coursera/Udemy for digital marketing and productivity [note 2022-09-01T18:02:00].\n- For skincare advice, suggest affordable (e.g., Olay) and preventative treatments suitable for early 30s [note 2022-09-01T18:02:00].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- User is 32 years old, has normal skin type, and focuses on anti-aging skincare (specifically fine lines/wrinkles around the eyes) [note 2].\n- User has 5 years of experience in the marketing industry and is currently pursuing a Master's degree in marketing [note 2].\n- User prefers part-time educational programs and flexible scheduling to continue working while studying [note 2].\n- User prioritizes cost-effective products and resources [note 2].\n- User dedicates approximately 3-4 hours per week to learning and self-development [note 2].\n- Personal fact: User's friend Rachel is getting married in the coming year [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
-      "unprovenancedNewLines": 1
+      "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n- Distinguish session-specific queries from durable user facts; store only the latter in User context [session notes].\n\n## User context\n- User is a 32-year-old marketing professional with 5 years of industry experience [note 2022-09-01T08:09:00].\n- User has normal skin type with concerns for dullness, fine lines, and wrinkles around eyes [note 2022-09-01T18:02:00].\n- User is pursuing an online part-time Master's in Marketing, prioritizing flexible scheduling and alumni networks [note 2022-09-01T08:09:00].\n- User has a friend, Rachel, who is getting married next year [note 2022-09-01T08:09:00].\n- User prefers budget-friendly skincare products and is open to trying new routines [note 2022-09-01T18:02:00].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n\n## Task playbooks\n- For upskilling recommendations, prioritize platforms like Coursera/Udemy for digital marketing and productivity [note 2022-09-01T18:02:00].\n- For skincare advice, suggest affordable (e.g., Olay) and preventative treatments suitable for early 30s [note 2022-09-01T18:02:00].\n",
-    "durationMs": 6841
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- User is 32 years old, has normal skin type, and focuses on anti-aging skincare (specifically fine lines/wrinkles around the eyes) [note 2].\n- User has 5 years of experience in the marketing industry and is currently pursuing a Master's degree in marketing [note 2].\n- User prefers part-time educational programs and flexible scheduling to continue working while studying [note 2].\n- User prioritizes cost-effective products and resources [note 2].\n- User dedicates approximately 3-4 hours per week to learning and self-development [note 2].\n- Personal fact: User's friend Rachel is getting married in the coming year [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 4980
   },
   "warm": {
-    "answer": "You are 32 years old, and Rachel's marriage is next year, so you will be 33 years old when she gets married.",
+    "answer": "The project memory states that your friend Rachel is getting married in the coming year, but it does not specify the exact year of her wedding relative to the current date of 2022. Therefore, I cannot determine your age at the time of her marriage based on the provided information.",
     "error": null,
-    "durationMs": 1192,
+    "durationMs": 1331,
     "match": {
-      "pass": true,
-      "score": 1,
-      "hit": 1,
+      "pass": false,
+      "score": 0,
+      "hit": 0,
       "total": 1,
-      "hitWords": [
-        "33"
-      ],
+      "hitWords": [],
       "phrase": null
     }
   },
   "cold": {
-    "answer": "I don't have enough information to answer that question. The project memory doesn't contain details about your friend Rachel's marriage date or your age. You'll need to provide more details, such as when Rachel is getting married and your current age.",
+    "answer": "The project memory does not contain information about your friend Rachel's wedding date or your age, so I cannot answer this question.",
     "error": null,
-    "durationMs": 1390,
+    "durationMs": 2537,
     "match": {
       "pass": false,
       "score": 0,

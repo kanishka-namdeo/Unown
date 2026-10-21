@@ -3,10 +3,10 @@
   "axis": "forgetting",
   "what": "Revoked decision: axios approved for all outbound HTTP (S02) then forbidden, fetch only (S10). After the revocation, the candidate must not state the axios approval (or axios usage) as current — lines that explicitly revoke/mark it historical are exempt.",
   "model": "agnes-3.0-flash",
-  "date": "2026-10-21T17:03:41.383Z",
-  "durationMs": 202964,
+  "date": "2026-10-21T21:59:14.946Z",
+  "durationMs": 12514,
   "error": null,
-  "pass": false,
+  "pass": true,
   "scenarios": [
     {
       "id": "accumulated",
@@ -45,17 +45,18 @@
             [],
             []
           ],
-          "durationMs": 8274,
+          "durationMs": 6418,
           "error": null,
           "stats": {
             "merged": 8,
-            "pruned": 2,
+            "pruned": 4,
             "added": 6,
             "topics": [
               "Workflow",
-              "Validation & Schemas",
-              "Logging & Observability",
-              "Code Quality & Pitfalls"
+              "Tech Stack",
+              "Validation & Error Handling",
+              "Known pitfalls",
+              "Task playbooks"
             ]
           },
           "guard": {
@@ -63,7 +64,7 @@
             "flags": [],
             "reason": null
           },
-          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [note 0, 13].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Standardize on axios for all outbound HTTP calls; use request/response interceptors for auth and retry logic [note 10, 11].\n\n## Validation & Schemas\n- Zod 4 (v4.0.5) is now in use; replaced `.strict()` with `z.strictObject()` for all schemas [note 9].\n- Rewrite error-mappers to read Zod 4's specific `issue` list format, as it differs from Zod 3's `.flatten()` output [note 8].\n- Credit-note payload schemas mirror invoice schemas to ensure consistent error handling [note 7].\n\n## Logging & Observability\n- Use Winston for structured logging; ops dashboard ingests Winston's format natively [note 6].\n- Configure redaction paths (e.g., card numbers) in logging setup to prevent sensitive data leaks [note 5].\n- Log external API retry attempts (e.g., BillingClient) at `warn` level [note 4].\n\n## Code Quality & Pitfalls\n- Enforce alphabetical import sorting via ESLint; catches merge conflicts early [note 1, 3].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Express error handler returns 400 for validation failures and 500 for other errors [note 1].\n"
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [note 1].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports are sorted alphabetically within each file and enforced by ESLint [note 1].\n\n## Tech Stack\n- Standardized on axios for outbound HTTP calls to support interceptors [note 2].\n- Structured logging uses winston JSON lines to stdout, with one logger per module [note 5].\n- Axios retries are logged at warn level via winston [note 5].\n\n## Validation & Error Handling\n- Zod v4.0.5 is the current validation library; schemas use `z.strictObject()` instead of `.strict()` [note 6].\n- Zod v4 error utilities and issue list shape differ from v3; the error-mapper reads the v4 issue list [note 6].\n- Express error handler returns 400 for validation failures and 500 otherwise [note 1].\n- Credit-note payload schemas mirror invoice schemas and flatten cleanly in the error handler [note 4].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Logging configuration must handle sensitive data redaction, but note that pino redaction paths are historical as the project migrated to winston [note 4].\n\n## Task playbooks\n- When upgrading Zod, update the error-mapper to handle the new issue list structure and replace `.strict()` with `z.strictObject()` [note 6].\n- Configure winston loggers per module to maintain structured JSON output for the ops dashboard [note 5].\n"
         },
         {
           "id": "forgetting/accumulated#2",
@@ -87,18 +88,18 @@
             [],
             []
           ],
-          "durationMs": 194688,
+          "durationMs": 6093,
           "error": null,
           "stats": {
-            "merged": 3,
+            "merged": 8,
             "pruned": 5,
-            "added": 4,
+            "added": 2,
             "topics": [
               "Workflow",
-              "Validation & Schemas",
-              "Logging & Observability",
-              "Outbound HTTP",
-              "Code Quality & Pitfalls"
+              "Tech Stack",
+              "Validation & Error Handling",
+              "Known pitfalls",
+              "Task playbooks"
             ]
           },
           "guard": {
@@ -106,26 +107,21 @@
             "flags": [],
             "reason": null
           },
-          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [note 0, 13].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n\n## Validation & Schemas\n- Zod 4 (v4.0.5) is the validation library; use `z.strictObject()` instead of `.strict()` [note 9].\n- Zod 4 validation covers query parameters in addition to body payloads [note 12].\n- Rewrite error-mappers to read Zod 4's specific `issue` list format, not Zod 3's `.flatten()` [note 8].\n- Credit-note payload schemas mirror invoice schemas for consistent error handling [note 7].\n\n## Logging & Observability\n- Pino is the logging standard; winston was reverted after two data-loss incidents under load [note 11, 14].\n- Configure redaction paths (e.g., card numbers) in pino setup to prevent sensitive data leaks [note 5, 9].\n- Log external API retry attempts (e.g., BillingClient) at `warn` level [note 4].\n\n## Outbound HTTP\n- Use plain `fetch` for all outbound HTTP; axios is forbidden by security policy [note 10].\n- BillingClient uses a hand-rolled retry wrapper on fetch; integration suite verified parity with old axios client [note 10].\n\n## Code Quality & Pitfalls\n- Imports are grouped by type: node builtins, external packages, internal aliases, relative paths [note 7, 15].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Express error handler returns 400 for validation failures and 500 for other errors [note 1].\n"
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [note 1].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports are grouped by type (node builtins, external packages, internal aliases, relative paths); alphabetical sorting is retired [note 14].\n\n## Tech Stack\n- Outbound HTTP uses plain fetch; axios is forbidden [note 12].\n- pino is the logging standard; winston was removed after data-loss incidents [note 13].\n- pino redaction paths for sensitive data (e.g., card numbers) are active [note 13].\n\n## Validation & Error Handling\n- Zod v4.0.5 is the current validation library; schemas use `z.strictObject()` instead of `.strict()` [note 6].\n- Zod v4 error utilities and issue list shape differ from v3; the error-mapper reads the v4 issue list [note 6].\n- Express error handler returns 400 for validation failures and 500 otherwise [note 1].\n- Credit-note payload schemas mirror invoice schemas and flatten cleanly in the error handler [note 4].\n- Zod v4 validation covers query parameters, not just body payloads [note 11].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- pino async transports can drop logs under load; verify with soak tests [note 14].\n\n## Task playbooks\n- When upgrading Zod, update the error-mapper to handle the new issue list structure and replace `.strict()` with `z.strictObject()` [note 6].\n- Configure pino loggers per module to maintain structured JSON output for the ops dashboard [note 13].\n"
         }
       ],
-      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [note 0, 13].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n\n## Validation & Schemas\n- Zod 4 (v4.0.5) is the validation library; use `z.strictObject()` instead of `.strict()` [note 9].\n- Zod 4 validation covers query parameters in addition to body payloads [note 12].\n- Rewrite error-mappers to read Zod 4's specific `issue` list format, not Zod 3's `.flatten()` [note 8].\n- Credit-note payload schemas mirror invoice schemas for consistent error handling [note 7].\n\n## Logging & Observability\n- Pino is the logging standard; winston was reverted after two data-loss incidents under load [note 11, 14].\n- Configure redaction paths (e.g., card numbers) in pino setup to prevent sensitive data leaks [note 5, 9].\n- Log external API retry attempts (e.g., BillingClient) at `warn` level [note 4].\n\n## Outbound HTTP\n- Use plain `fetch` for all outbound HTTP; axios is forbidden by security policy [note 10].\n- BillingClient uses a hand-rolled retry wrapper on fetch; integration suite verified parity with old axios client [note 10].\n\n## Code Quality & Pitfalls\n- Imports are grouped by type: node builtins, external packages, internal aliases, relative paths [note 7, 15].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Express error handler returns 400 for validation failures and 500 for other errors [note 1].\n",
+      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [note 1].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports are grouped by type (node builtins, external packages, internal aliases, relative paths); alphabetical sorting is retired [note 14].\n\n## Tech Stack\n- Outbound HTTP uses plain fetch; axios is forbidden [note 12].\n- pino is the logging standard; winston was removed after data-loss incidents [note 13].\n- pino redaction paths for sensitive data (e.g., card numbers) are active [note 13].\n\n## Validation & Error Handling\n- Zod v4.0.5 is the current validation library; schemas use `z.strictObject()` instead of `.strict()` [note 6].\n- Zod v4 error utilities and issue list shape differ from v3; the error-mapper reads the v4 issue list [note 6].\n- Express error handler returns 400 for validation failures and 500 otherwise [note 1].\n- Credit-note payload schemas mirror invoice schemas and flatten cleanly in the error handler [note 4].\n- Zod v4 validation covers query parameters, not just body payloads [note 11].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- pino async transports can drop logs under load; verify with soak tests [note 14].\n\n## Task playbooks\n- When upgrading Zod, update the error-mapper to handle the new issue list structure and replace `.strict()` with `z.strictObject()` [note 6].\n- Configure pino loggers per module to maintain structured JSON output for the ops dashboard [note 13].\n",
       "assertion": {
         "type": "revoked-rule-absent",
-        "pass": false,
-        "revokedCurrentCount": 1,
+        "pass": true,
+        "revokedCurrentCount": 0,
         "revokedRule": "axios-approved",
         "replacementMentionCount": 0,
         "rows": [
           {
-            "line": "- Use plain `fetch` for all outbound HTTP; axios is forbidden by security policy [note 10].",
+            "line": "- Outbound HTTP uses plain fetch; axios is forbidden [note 12].",
             "revokedCurrent": false,
-            "why": "superseded/forbidden marker present"
-          },
-          {
-            "line": "- BillingClient uses a hand-rolled retry wrapper on fetch; integration suite verified parity with old axios client [note 10].",
-            "revokedCurrent": true,
-            "why": "revoked rule stated with no exemption"
+            "why": "revoked rule in replaced/from position"
           }
         ]
       },
@@ -135,7 +131,7 @@
         "reason": null,
         "falsePositive": false
       },
-      "shippedAssertionPass": false,
+      "shippedAssertionPass": true,
       "trail": {
         "revokedRuleEstablishedInFirstMemory": true
       }

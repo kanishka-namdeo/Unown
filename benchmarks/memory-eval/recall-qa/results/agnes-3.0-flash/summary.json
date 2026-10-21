@@ -1,6 +1,6 @@
 {
   "suite": "recall-qa-longmemeval",
-  "date": "2026-10-21T18:08:24.154Z",
+  "date": "2026-10-21T21:50:10.008Z",
   "model": "agnes-3.0-flash",
   "bridgeUpstreamStatus": 200,
   "source": {
@@ -20,9 +20,9 @@
   },
   "seed": 20261019,
   "n": 40,
-  "warmPassRate": "0.600",
+  "warmPassRate": "0.525",
   "coldPassRate": "0.050",
-  "lift": 0.55,
+  "lift": 0.475,
   "headline": "lift = warm − cold: the dream-consolidated memory's added recall over the no-dream control",
   "arms": {
     "warm": "system message contains the SHIPPED post-dream memory (gate -> pre-dream memory ships; sanitize -> quarantined remainder)",
@@ -31,18 +31,18 @@
   "byType": {
     "temporal-reasoning": {
       "n": 10,
-      "warmPass": "0.600",
+      "warmPass": "0.400",
       "coldPass": "0.100",
-      "lift": 0.5,
-      "evidenceRetained": "0.600",
-      "dreamErrors": 0
+      "lift": 0.3,
+      "evidenceRetained": "0.500",
+      "dreamErrors": 1
     },
     "knowledge-update": {
       "n": 10,
-      "warmPass": "0.700",
-      "coldPass": "0.100",
-      "lift": 0.6,
-      "evidenceRetained": "0.700",
+      "warmPass": "0.800",
+      "coldPass": "0.000",
+      "lift": 0.8,
+      "evidenceRetained": "0.800",
       "dreamErrors": 0
     },
     "multi-session": {
@@ -63,36 +63,41 @@
     },
     "single-session-assistant": {
       "n": 3,
-      "warmPass": "0.667",
-      "coldPass": "0.000",
-      "lift": 0.667,
-      "evidenceRetained": "0.667",
+      "warmPass": "0.333",
+      "coldPass": "0.333",
+      "lift": 0,
+      "evidenceRetained": "0.000",
       "dreamErrors": 0
     },
     "single-session-preference": {
       "n": 3,
-      "warmPass": "0.333",
+      "warmPass": "0.000",
       "coldPass": "0.000",
-      "lift": 0.333,
+      "lift": 0,
       "evidenceRetained": "0.333",
       "dreamErrors": 0
     }
   },
   "consolidationFunnel": {
-    "evidenceRetainedInShippedRate": "0.525",
-    "meanEvidenceRetentionScore": 0.581,
+    "evidenceRetainedInShippedRate": "0.475",
+    "meanEvidenceRetentionScore": 0.56,
     "gatedCases": [],
-    "sanitizedCases": [
-      "6cb6f249"
-    ],
+    "sanitizedCases": [],
     "flaggedNoteCases": [
       "7024f17c",
       "e48988bc"
     ],
-    "meanCandidateChars": 1212
+    "meanCandidateChars": 1125
   },
-  "errors": [],
+  "errors": [
+    {
+      "id": "gpt4_59149c78",
+      "dream": "dream produced empty memory",
+      "warm": null,
+      "cold": null
+    }
+  ],
   "llmCalls": 120,
-  "totalDurationMs": 535016,
+  "totalDurationMs": 462579,
   "perCase": "(see results/per-case/<id>.json — notes, dream candidate, guard verdict, both answers, both match scores)"
 }

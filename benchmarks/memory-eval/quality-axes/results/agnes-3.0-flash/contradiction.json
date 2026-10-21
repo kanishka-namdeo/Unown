@@ -3,8 +3,8 @@
   "axis": "contradiction",
   "what": "Old rule (imports sorted alphabetically, S01-S06) vs new rule (imports grouped by type, S07+). The dream must resolve the contradiction: the candidate may not state both as current (old-rule lines must be absent or explicitly historical/superseded).",
   "model": "agnes-3.0-flash",
-  "date": "2026-10-21T17:00:00.393Z",
-  "durationMs": 21015,
+  "date": "2026-10-21T21:58:46.977Z",
+  "durationMs": 27988,
   "error": null,
   "pass": true,
   "scenarios": [
@@ -46,15 +46,19 @@
             [],
             []
           ],
-          "durationMs": 4093,
+          "durationMs": 14634,
           "error": null,
           "stats": {
-            "merged": 8,
-            "pruned": 4,
-            "added": 6,
+            "merged": 14,
+            "pruned": 7,
+            "added": 18,
             "topics": [
               "Workflow",
-              "Known pitfalls"
+              "Imports",
+              "Logging",
+              "HTTP Client",
+              "Validation",
+              "Error Handling"
             ]
           },
           "guard": {
@@ -62,25 +66,33 @@
             "flags": [],
             "reason": null
           },
-          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Use TypeScript + Express + Zod 4 for invoice services.\n- Use pino for logging (structured JSON logs, one logger per module).\n- Use axios for outbound HTTP calls (retry + auth via interceptors).\n- Follow ESLint import rules: group imports by type (node builtins, external packages, internal aliases, relative paths).\n- Keep route handlers thin; put domain logic in `src/domain/`.\n- Use invoice fixtures under `tests/fixtures/invoices/` as ground truth for payload shapes.\n\n## Known pitfalls\n- Use standard library functions over hand-rolled logic where possible.\n- Express error handler returns 400 for validation failures and 500 otherwise; adapt Zod 4 issue-list output.\n- Winston async transport dropped log lines under load; use pino instead (passed 10-minute soak test).\n- Zod 4 renamed error utilities and changed shape; update mappers from `.flatten()` to issue-list reading.\n"
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under `tests/fixtures/invoices/` are the ground truth for payload shapes.\n- One route per resource; handlers stay thin, domain logic lives in `src/domain/`.\n- Use standard library functions instead of hand-rolled logic where possible.\n\n## Imports\n- Group imports by type: node builtins, then external packages, then internal aliases, then relative paths.\n- Type-based import grouping supersedes the previous alphabetical sort convention.\n\n## Logging\n- Use pino for structured logging (JSON lines to stdout, one instance per module).\n- Pino replaced winston after winston failed a 10-minute soak test due to log loss under load.\n- Configure standard redact paths in pino to keep card numbers out of logs.\n\n## HTTP Client (Outbound)\n- Standardize on axios for all outbound HTTP calls (billing provider API).\n- Use axios interceptors: response interceptor for retry logic, request interceptor for auth header injection.\n\n## Validation (Zod 4)\n- Use zod 4.0.5 (upgraded from zod 3).\n- Use `z.strictObject()` instead of `.strict()`, as zod 4 renamed error utilities.\n- Validate both body payloads and query parameters using zod 4 schemas.\n- Credit-note and invoice schemas mirror each other, ensuring they flatten cleanly in the error handler.\n\n## Error Handling\n- Express error handler returns 400 for validation failures (using zod issue lists) and 500 for other errors.\n"
         }
       ],
-      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Use TypeScript + Express + Zod 4 for invoice services.\n- Use pino for logging (structured JSON logs, one logger per module).\n- Use axios for outbound HTTP calls (retry + auth via interceptors).\n- Follow ESLint import rules: group imports by type (node builtins, external packages, internal aliases, relative paths).\n- Keep route handlers thin; put domain logic in `src/domain/`.\n- Use invoice fixtures under `tests/fixtures/invoices/` as ground truth for payload shapes.\n\n## Known pitfalls\n- Use standard library functions over hand-rolled logic where possible.\n- Express error handler returns 400 for validation failures and 500 otherwise; adapt Zod 4 issue-list output.\n- Winston async transport dropped log lines under load; use pino instead (passed 10-minute soak test).\n- Zod 4 renamed error utilities and changed shape; update mappers from `.flatten()` to issue-list reading.\n",
+      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under `tests/fixtures/invoices/` are the ground truth for payload shapes.\n- One route per resource; handlers stay thin, domain logic lives in `src/domain/`.\n- Use standard library functions instead of hand-rolled logic where possible.\n\n## Imports\n- Group imports by type: node builtins, then external packages, then internal aliases, then relative paths.\n- Type-based import grouping supersedes the previous alphabetical sort convention.\n\n## Logging\n- Use pino for structured logging (JSON lines to stdout, one instance per module).\n- Pino replaced winston after winston failed a 10-minute soak test due to log loss under load.\n- Configure standard redact paths in pino to keep card numbers out of logs.\n\n## HTTP Client (Outbound)\n- Standardize on axios for all outbound HTTP calls (billing provider API).\n- Use axios interceptors: response interceptor for retry logic, request interceptor for auth header injection.\n\n## Validation (Zod 4)\n- Use zod 4.0.5 (upgraded from zod 3).\n- Use `z.strictObject()` instead of `.strict()`, as zod 4 renamed error utilities.\n- Validate both body payloads and query parameters using zod 4 schemas.\n- Credit-note and invoice schemas mirror each other, ensuring they flatten cleanly in the error handler.\n\n## Error Handling\n- Express error handler returns 400 for validation failures (using zod issue lists) and 500 for other errors.\n",
       "assertion": {
         "type": "winner-current-loser-absent",
         "pass": true,
         "winnerName": "type-grouped-imports",
         "loserName": "alphabetical-import-sort",
-        "winnerCurrentCount": 1,
+        "winnerCurrentCount": 2,
         "loserCurrentCount": 0,
         "rows": [
           {
-            "line": "- Follow ESLint import rules: group imports by type (node builtins, external packages, internal aliases, relative paths).",
+            "line": "- Group imports by type: node builtins, then external packages, then internal aliases, then relative paths.",
             "loserMatch": false,
             "winnerMatch": true,
             "loserCurrent": false,
             "winnerCurrent": true,
             "why": "winner stated as current"
+          },
+          {
+            "line": "- Type-based import grouping supersedes the previous alphabetical sort convention.",
+            "loserMatch": true,
+            "winnerMatch": true,
+            "loserCurrent": false,
+            "winnerCurrent": true,
+            "why": "transition line: loser named as replaced/superseded"
           }
         ]
       },
@@ -125,16 +137,15 @@
             [],
             []
           ],
-          "durationMs": 9683,
+          "durationMs": 3936,
           "error": null,
           "stats": {
-            "merged": 10,
-            "pruned": 4,
+            "merged": 2,
+            "pruned": 1,
             "added": 6,
             "topics": [
               "Workflow",
-              "Known pitfalls",
-              "Task playbooks"
+              "Known pitfalls"
             ]
           },
           "guard": {
@@ -142,7 +153,7 @@
             "flags": [],
             "reason": null
           },
-          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Use zod 3 schemas with .strict() for all payload validation; unknown keys must be rejected [note 5].\n- Use pino for structured logging: JSON lines to stdout, one logger instance per module [note 3].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Express error handler maps zod 3 .flatten() output to 400 responses for validation failures; 500 for all other errors [note 1].\n- Configure pino redaction options with standard paths to keep card numbers out of logs [note 2].\n- For outbound HTTP calls, use axios with interceptors: retry logic in response interceptor, auth header injection in request interceptor [note 7].\n- Enforce alphabetical import sorting via ESLint; this catches merge conflicts early [note 4].\n\n## Task playbooks\n- To add a new payload type (e.g., credit-note): mirror the existing invoice zod schema structure, ensuring .strict() and clean flattening in the error handler [note 1].\n- To integrate a new external provider: implement the client using axios interceptors for retry and auth; do not use plain fetch [note 7].\n"
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under `tests/fixtures/invoices/` are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in `src/domain/` [note 0].\n- Outbound HTTP calls standardize on axios; retry and auth logic live in interceptors [note 8].\n- Use structured logging with pino: JSON lines to stdout, one logger instance per module [note 10].\n- Configure pino redaction to keep card numbers out of logs [note 9].\n- Use zod 3 `.strict()` schemas for invoice payloads; unknown keys are rejected [note 7].\n- Credit-note schemas mirror invoice structure and flatten cleanly in the error handler [note 11].\n- Keep ESLint import-order rule: imports sorted alphabetically within each file [note 6].\n\n## Known pitfalls\n- The express error handler returns 400 for validation failures (including zod `.flatten()` output), 500 otherwise [note 1, 5].\n- Prefer standard library functions over hand-rolled logic [note 2].\n"
         },
         {
           "id": "contradiction/accumulated#2",
@@ -161,12 +172,12 @@
             [],
             []
           ],
-          "durationMs": 7232,
+          "durationMs": 9410,
           "error": null,
           "stats": {
-            "merged": 5,
+            "merged": 4,
             "pruned": 2,
-            "added": 6,
+            "added": 4,
             "topics": [
               "Workflow",
               "Known pitfalls",
@@ -178,10 +189,10 @@
             "flags": [],
             "reason": null
           },
-          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Use zod 4 schemas with z.strictObject() for payload and query validation; unknown keys must be rejected [note qa-s08].\n- Use pino for structured logging: JSON lines to stdout, one logger instance per module [note qa-s08].\n- Group imports by type: node builtins first, then external packages, internal aliases, relative paths [note qa-s07].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Express error handler maps zod 4 issue list to 400 responses for validation failures; 500 for all other errors [note qa-s06].\n- Configure pino redaction options with standard paths to keep card numbers out of logs [note 2].\n- For outbound HTTP calls, use axios with interceptors: retry logic in response interceptor, auth header injection in request interceptor [note 7].\n- pino is the verified logging library; winston's async transport dropped log lines under load [note qa-s08].\n\n## Task playbooks\n- To add a new payload type (e.g., credit-note): mirror the existing invoice zod 4 schema structure, ensuring z.strictObject() and clean error-mapper integration [note qa-s06].\n- To integrate a new external provider: implement the client using axios interceptors for retry and auth; do not use plain fetch [note 7].\n- To migrate logging to pino: revert from winston, verify zero log loss in 10-minute soak test [note qa-s08].\n"
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under `tests/fixtures/invoices/` are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in `src/domain/` [note 0].\n- Outbound HTTP calls standardize on axios; retry and auth logic live in interceptors [note 8].\n- Use structured logging with pino: JSON lines to stdout, one logger instance per module [note 10].\n- Configure pino redaction to keep card numbers out of logs [note 9].\n- Use zod 4 `z.strictObject()` schemas for invoice payloads; unknown keys are rejected [note 11, note 3].\n- Credit-note schemas mirror invoice structure and flatten cleanly in the error handler [note 11].\n- Import grouping by type: node builtins, external packages, internal aliases, relative paths [note 4, note 2].\n\n## Known pitfalls\n- The express error handler returns 400 for validation failures (zod 4 issue list), 500 otherwise [note 1, 5, note 3].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Under sustained load, winston async transport dropped log lines; pino passed the 10-minute soak test with zero loss [note 5].\n- zod 4 error format uses an issue list; error-mapper must read `zod.issues`, not `.flatten()` [note 3].\n\n## Task playbooks\n- When upgrading major dependency versions, rewrite all consumers of the old API shape in the same change [note 3].\n- Before switching logging libraries, run a load test to verify no async transport data loss [note 5].\n"
         }
       ],
-      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Use zod 4 schemas with z.strictObject() for payload and query validation; unknown keys must be rejected [note qa-s08].\n- Use pino for structured logging: JSON lines to stdout, one logger instance per module [note qa-s08].\n- Group imports by type: node builtins first, then external packages, internal aliases, relative paths [note qa-s07].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Express error handler maps zod 4 issue list to 400 responses for validation failures; 500 for all other errors [note qa-s06].\n- Configure pino redaction options with standard paths to keep card numbers out of logs [note 2].\n- For outbound HTTP calls, use axios with interceptors: retry logic in response interceptor, auth header injection in request interceptor [note 7].\n- pino is the verified logging library; winston's async transport dropped log lines under load [note qa-s08].\n\n## Task playbooks\n- To add a new payload type (e.g., credit-note): mirror the existing invoice zod 4 schema structure, ensuring z.strictObject() and clean error-mapper integration [note qa-s06].\n- To integrate a new external provider: implement the client using axios interceptors for retry and auth; do not use plain fetch [note 7].\n- To migrate logging to pino: revert from winston, verify zero log loss in 10-minute soak test [note qa-s08].\n",
+      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under `tests/fixtures/invoices/` are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in `src/domain/` [note 0].\n- Outbound HTTP calls standardize on axios; retry and auth logic live in interceptors [note 8].\n- Use structured logging with pino: JSON lines to stdout, one logger instance per module [note 10].\n- Configure pino redaction to keep card numbers out of logs [note 9].\n- Use zod 4 `z.strictObject()` schemas for invoice payloads; unknown keys are rejected [note 11, note 3].\n- Credit-note schemas mirror invoice structure and flatten cleanly in the error handler [note 11].\n- Import grouping by type: node builtins, external packages, internal aliases, relative paths [note 4, note 2].\n\n## Known pitfalls\n- The express error handler returns 400 for validation failures (zod 4 issue list), 500 otherwise [note 1, 5, note 3].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Under sustained load, winston async transport dropped log lines; pino passed the 10-minute soak test with zero loss [note 5].\n- zod 4 error format uses an issue list; error-mapper must read `zod.issues`, not `.flatten()` [note 3].\n\n## Task playbooks\n- When upgrading major dependency versions, rewrite all consumers of the old API shape in the same change [note 3].\n- Before switching logging libraries, run a load test to verify no async transport data loss [note 5].\n",
       "assertion": {
         "type": "winner-current-loser-absent",
         "pass": true,
@@ -191,7 +202,7 @@
         "loserCurrentCount": 0,
         "rows": [
           {
-            "line": "- Group imports by type: node builtins first, then external packages, internal aliases, relative paths [note qa-s07].",
+            "line": "- Import grouping by type: node builtins, external packages, internal aliases, relative paths [note 4, note 2].",
             "loserMatch": false,
             "winnerMatch": true,
             "loserCurrent": false,

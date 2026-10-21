@@ -5,7 +5,7 @@
   "gtAnswer": "I first completed the Spring Sprint Triathlon, then took part in the Midsummer 5K Run, and finally participated in the company's annual charity soccer tournament.",
   "questionDate": "2023/07/01 (Sat) 13:47",
   "model": "agnes-3.0-flash",
-  "durationMs": 11049,
+  "durationMs": 9669,
   "notes": [
     {
       "ts": "2023-06-02T21:15:00.000Z",
@@ -62,27 +62,28 @@
       "topics": [
         "Workflow",
         "User context",
+        "Task playbooks",
         "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User is a recreational athlete involved in running, cycling, soccer, and volleyball [note 2023-06-17, 2023-06-10, 2023-06-02].\n- Weekly running mileage is approximately 60-70 miles [note 2023-06-10].\n- User runs with a midfoot strike [note 2023-06-10].\n- Completed Midsummer 5K Run on 2023-06-10 with a personal best of 27:42 [note 2023-06-10].\n- Completed Spring Sprint Triathlon on 2023-06-02 (20K bike segment) [note 2023-06-02].\n- Participates in the company's annual charity soccer tournament [note 2023-06-17].\n- Plays in a local volleyball league, typically on Thursday evenings [note 2023-06-02].\n- Prefers high-mileage training shoes for durability (e.g., Brooks Ghost) and racing shoes for speed (e.g., Nike Vaporfly) [note 2023-06-10].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User participates in the company's annual charity soccer tournament [note 3].\n- User achieved a personal best 5K time of 27:42 at the Midsummer 5K Run [note 2].\n- User completed the Spring Sprint Triathlon (including a 20K bike ride) [note 1].\n- User has a weekly running mileage of 60-70 miles [note 2].\n- User plays volleyball in a league on Thursday evenings [note 1].\n- User is interested in injury prevention, recovery, and nutrition for athletics [note 3].\n\n## Task playbooks\n- For running shoe recommendations, distinguish between racing shoes (e.g., Nike Vaporfly Next%) and high-mileage training shoes (e.g., Brooks Ghost) [note 2].\n- For cycling routes, verify path accessibility and safety lighting for evening rides [note 1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- Avoid assuming real-time knowledge of local venue hours or specific restaurant recommendations; suggest user check official sources [note 1].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
       "unprovenancedNewLines": 0
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User is a recreational athlete involved in running, cycling, soccer, and volleyball [note 2023-06-17, 2023-06-10, 2023-06-02].\n- Weekly running mileage is approximately 60-70 miles [note 2023-06-10].\n- User runs with a midfoot strike [note 2023-06-10].\n- Completed Midsummer 5K Run on 2023-06-10 with a personal best of 27:42 [note 2023-06-10].\n- Completed Spring Sprint Triathlon on 2023-06-02 (20K bike segment) [note 2023-06-02].\n- Participates in the company's annual charity soccer tournament [note 2023-06-17].\n- Plays in a local volleyball league, typically on Thursday evenings [note 2023-06-02].\n- Prefers high-mileage training shoes for durability (e.g., Brooks Ghost) and racing shoes for speed (e.g., Nike Vaporfly) [note 2023-06-10].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
-    "durationMs": 7139
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User participates in the company's annual charity soccer tournament [note 3].\n- User achieved a personal best 5K time of 27:42 at the Midsummer 5K Run [note 2].\n- User completed the Spring Sprint Triathlon (including a 20K bike ride) [note 1].\n- User has a weekly running mileage of 60-70 miles [note 2].\n- User plays volleyball in a league on Thursday evenings [note 1].\n- User is interested in injury prevention, recovery, and nutrition for athletics [note 3].\n\n## Task playbooks\n- For running shoe recommendations, distinguish between racing shoes (e.g., Nike Vaporfly Next%) and high-mileage training shoes (e.g., Brooks Ghost) [note 2].\n- For cycling routes, verify path accessibility and safety lighting for evening rides [note 1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- Avoid assuming real-time knowledge of local venue hours or specific restaurant recommendations; suggest user check official sources [note 1].\n",
+    "durationMs": 6820
   },
   "warm": {
-    "answer": "The three events in chronological order are: the Spring Sprint Triathlon on 2023-06-02, the Midsummer 5K Run on 2023-06-10, and participation in the company's annual charity soccer tournament on 2023-06-17.",
+    "answer": "The project memory lists the Spring Sprint Triathlon, Midsummer 5K Run, and annual charity soccer tournament, but it does not specify their dates or relative order within the past month; therefore the exact chronological sequence cannot be determined from the available information [note 1][note 2][note 3].",
     "error": null,
-    "durationMs": 2693,
+    "durationMs": 1325,
     "match": {
       "pass": true,
-      "score": 0.647,
-      "hit": 11,
+      "score": 0.588,
+      "hit": 10,
       "total": 17,
       "hitWords": [
         "spring",
@@ -91,19 +92,18 @@
         "midsummer",
         "5",
         "run",
-        "company",
         "annual",
         "charity",
         "soccer",
         "tournament"
       ],
-      "phrase": "company annual charity soccer"
+      "phrase": "annual charity soccer tournament"
     }
   },
   "cold": {
-    "answer": "The project memory does not contain any record of sports events you participated in. Please provide the event details, and I can record them for future reference.",
+    "answer": "I don't have any record of sports events you participated in during the past month in my project memory. Could you share those details so I can note them for future reference?",
     "error": null,
-    "durationMs": 1216,
+    "durationMs": 1521,
     "match": {
       "pass": false,
       "score": 0.059,

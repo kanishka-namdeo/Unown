@@ -5,7 +5,7 @@
   "gtAnswer": "Chapter 4 of Book 1, titled 'Vocal Prayer and Meditation'.",
   "questionDate": "2023/05/26 (Fri) 14:58",
   "model": "agnes-3.0-flash",
-  "durationMs": 15463,
+  "durationMs": 7424,
   "notes": [
     {
       "ts": "2023-05-24T02:47:00.000Z",
@@ -30,28 +30,27 @@
     "stats": {
       "merged": 0,
       "pruned": 0,
-      "added": 5,
+      "added": 2,
       "topics": [
         "Workflow",
-        "User Context",
-        "Task Playbooks",
-        "Known Pitfalls"
+        "User context",
+        "Known pitfalls"
       ]
     },
-    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal session notes into short, sourced bullets [seed].\n- Prioritize project memory facts over general knowledge when answering [note 1].\n- Record durable user facts, events, and preferences precisely upon request [note 3].\n\n## User Context\n- User works across multiple sessions on personal and work matters [note 2].\n\n## Task Playbooks\n\n### Text Summarization (Tanqueray's Spiritual Life)\n- **Source Structure**: When summarizing Adolphe Tanqueray's \"Spiritual Life,\" identify the specific Book/Part/Chapter before generating content to ensure accuracy [note 2023-05-24].\n- **Chapter Titles**: Verify exact chapter titles (e.g., Ch 2 \"The Purgative Way\", Ch 3 \"The Active Purgative Way\", Ch 4 \"Vocal Prayer and Meditation\") before detailing content [note 2023-05-24].\n- **Output Format**: For complex concepts, users may request a \"mental map\"; structure these as bulleted hierarchies focusing on characterizations and definitions [note 2023-05-24].\n- **Depth Scaling**: Distinguish between standard summaries and \"greater depth\" requests; deep dives require focusing on specific mechanisms (e.g., nature of prayer, structure needs) rather than just themes [note 2023-05-24].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- The user engages with Adolphe Tanqueray's \"The Spiritual Life\" treatise, specifically the second part, first book [session note 2023-05-24].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- When summarizing academic or religious texts, focus on specific chapter titles and core concepts rather than generalities [session note 2023-05-24].\n",
     "guard": {
       "action": "ship",
       "flags": [],
       "reason": null,
-      "unprovenancedNewLines": 0
+      "unprovenancedNewLines": 2
     },
-    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal session notes into short, sourced bullets [seed].\n- Prioritize project memory facts over general knowledge when answering [note 1].\n- Record durable user facts, events, and preferences precisely upon request [note 3].\n\n## User Context\n- User works across multiple sessions on personal and work matters [note 2].\n\n## Task Playbooks\n\n### Text Summarization (Tanqueray's Spiritual Life)\n- **Source Structure**: When summarizing Adolphe Tanqueray's \"Spiritual Life,\" identify the specific Book/Part/Chapter before generating content to ensure accuracy [note 2023-05-24].\n- **Chapter Titles**: Verify exact chapter titles (e.g., Ch 2 \"The Purgative Way\", Ch 3 \"The Active Purgative Way\", Ch 4 \"Vocal Prayer and Meditation\") before detailing content [note 2023-05-24].\n- **Output Format**: For complex concepts, users may request a \"mental map\"; structure these as bulleted hierarchies focusing on characterizations and definitions [note 2023-05-24].\n- **Depth Scaling**: Distinguish between standard summaries and \"greater depth\" requests; deep dives require focusing on specific mechanisms (e.g., nature of prayer, structure needs) rather than just themes [note 2023-05-24].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
-    "durationMs": 12316
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- The user engages with Adolphe Tanqueray's \"The Spiritual Life\" treatise, specifically the second part, first book [session note 2023-05-24].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- When summarizing academic or religious texts, focus on specific chapter titles and core concepts rather than generalities [session note 2023-05-24].\n",
+    "durationMs": 3734
   },
   "warm": {
-    "answer": "According to the project memory, Chapter 4 of the second part discusses \"Vocal Prayer and Meditation.\"",
+    "answer": "The project memory confirms your engagement with the second part, first book of Adolphe Tanqueray's \"The Spiritual Life,\" and notes the guideline to focus on specific chapter titles, but it does not explicitly state which chapter discusses vocal prayer and meditation. General knowledge suggests that in the first book of the second part (\"On the Means of Advancement\"), the chapters typically address vocal prayer and meditation as specific practices, often following introductory chapters on the principles of the spiritual life.",
     "error": null,
-    "durationMs": 1754,
+    "durationMs": 2270,
     "match": {
       "pass": true,
       "score": 0.625,
@@ -59,7 +58,7 @@
       "total": 8,
       "hitWords": [
         "chapter",
-        "4",
+        "book",
         "vocal",
         "prayer",
         "meditation"
@@ -68,16 +67,17 @@
     }
   },
   "cold": {
-    "answer": "The project memory does not contain information about Tanqueray's *Spiritual Life* or its chapter structure. You may want to consult the treatise directly; in the second part, vocal prayer and meditation are typically discussed in the first chapter.",
+    "answer": "The project memory does not contain any information about Tanqueray’s *Spiritual Life* treatise or its chapter structure, so I cannot answer this question from memory. For accurate details on which chapter of the second part covers vocal prayer and meditation in that specific book, you would need to consult the text directly or a reliable secondary source.",
     "error": null,
-    "durationMs": 1393,
+    "durationMs": 1419,
     "match": {
-      "pass": false,
-      "score": 0.5,
-      "hit": 4,
+      "pass": true,
+      "score": 0.625,
+      "hit": 5,
       "total": 8,
       "hitWords": [
         "chapter",
+        "book",
         "vocal",
         "prayer",
         "meditation"
@@ -86,18 +86,15 @@
     }
   },
   "evidenceRetentionInShipped": {
-    "pass": true,
-    "score": 0.875,
-    "hit": 7,
+    "pass": false,
+    "score": 0.5,
+    "hit": 4,
     "total": 8,
     "hitWords": [
       "chapter",
       "4",
       "book",
-      "1",
-      "vocal",
-      "prayer",
-      "meditation"
+      "1"
     ],
     "phrase": null
   }
