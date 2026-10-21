@@ -30,29 +30,29 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 138;
+export const CHANGELOG_TOTAL_ENTRIES = 141;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 58,
+  "Added": 59,
   "Changed": 10,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 61,
+  "Fixed": 63,
   "Security": 0,
   "Behavior": 7
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 15,
+    "label": "0.0.2",
+    "date": "2026-10-21",
+    "total": 18,
     "counts": {
-      "Added": 4,
+      "Added": 5,
       "Changed": 3,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 8,
+      "Fixed": 10,
       "Security": 0,
       "Behavior": 0
     },
@@ -74,6 +74,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "releases now carry self-describing archives and a verifiable 13-asset payload",
+            "behavior": false
+          },
+          {
+            "title": "the 2026-10-21 agnes-3.0-flash benchmark campaign — every track re-run on a new upstream, all receipts committed",
             "behavior": false
           }
         ]
@@ -127,7 +131,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "the benchmark rail skips an incomplete rerun and formats a missing figure honestly",
+            "title": "the benchmark rail resolves the canonical receipt PER MODEL and formats a missing figure honestly",
+            "behavior": false
+          },
+          {
+            "title": "the overlay scrim no longer crashes renderer swaps that happen before initTheme()",
+            "behavior": false
+          },
+          {
+            "title": "five benchmark runners hardened — the gaps only a full re-run exposes",
             "behavior": false
           }
         ]
