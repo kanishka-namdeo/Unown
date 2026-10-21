@@ -24,6 +24,11 @@ RESULTS = os.environ.get("RESULTS_ROOT", os.path.join(HERE, "results"))
 MODELS = sorted(
     d for d in os.listdir(RESULTS)
     if os.path.isdir(os.path.join(RESULTS, d)) and not d.startswith(".")
+    # rerun-* dirs hold per-model receipt SUBDIRS (their own summarize runs
+    # point RESULTS_ROOT at them), not receipt FILES — scanning them from the
+    # default root produced pseudo-model rows with missing files and exit 1
+    # (caught live 2026-10-21 while adding the agnes-3.0-flash row).
+    and not d.startswith("rerun-")
 )
 
 

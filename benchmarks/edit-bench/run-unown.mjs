@@ -1097,7 +1097,13 @@ async function main() {
             if (fs.existsSync(jsonlPath)) {
                 for (const line of (await fsp.readFile(jsonlPath, "utf8")).split("\n")) {
                     if (!line.trim()) continue;
-                    try { const r = JSON.parse(line); done.add(r.run !== undefined ? `${r.task}#${r.run}` : r.task); } catch { /* tolerate */ }
+                    // Resume keys mirror the pending keys below: run 0 (and
+                    // run-less legacy records) key BARE, so an n=1 window that
+                    // was interrupted actually skips its finished tasks instead
+                    // of re-running them (caught live in the 2026-10-21 agnes
+                    // run: window 2 re-ran all 106 because `task#0` never
+                    // matched the bare `task` the pending list looks up).
+                    try { const r = JSON.parse(line); done.add(r.run === undefined || r.run === 0 ? r.task : `${r.task}#${r.run}`); } catch { /* tolerate */ }
                 }
             }
             // (task, runIndex) pairs; run 0 of a task is keyed bare for n=1 compatibility

@@ -1,0 +1,252 @@
+{
+  "benchmark": "oh-my-pi typescript-edit-benchmark (106 shipped fixtures)",
+  "agent": "Unown pi-repo createAgentSession (in-process) @ /home/z/my-project/Unown/pi-repo/packages/coding-agent",
+  "editSemantics": "pi-native replace (edits[]: {oldText,newText} batch; exact-first, fuzzy fallback)",
+  "harness": "run-unown.mjs — port of omp metaharness adapters/edit runner",
+  "model": "agnes-3.0-flash",
+  "provider": "zai-bridge",
+  "generatedAt": "2026-10-21T16:32:11.245Z",
+  "totalTasks": 106,
+  "passed": 103,
+  "passRate": 0.9716981132075472,
+  "editCallSuccessRate": 0.8699186991869918,
+  "editCalls": 123,
+  "editSuccesses": 107,
+  "tokens": {
+    "promptTotal": 123382,
+    "completionTotal": 42282,
+    "perTask": {
+      "prompt": {
+        "mean": 1163.9811320754718,
+        "median": 0,
+        "p1": 0,
+        "p99": 11036.300000000007
+      },
+      "completion": {
+        "mean": 398.8867924528302,
+        "median": 261.5,
+        "p1": 98.1,
+        "p99": 1961.5000000000014
+      },
+      "total": {
+        "mean": 1562.867924528302,
+        "median": 261.5,
+        "p1": 98.1,
+        "p99": 11565.650000000007
+      }
+    }
+  },
+  "duration": {
+    "totalMs": 1779783,
+    "meanMs": 16790.405660377357,
+    "medianMs": 12253.5,
+    "p1Ms": 4119.35,
+    "p99Ms": 104414.20000000016
+  },
+  "mutationIntentMatchRate": 0.9528301886792453,
+  "earlyStops": 103,
+  "indentScoreAvg": 0.018867924528301886,
+  "byTier": {
+    "easy": {
+      "total": 40,
+      "passed": 38
+    },
+    "nightmare": {
+      "total": 13,
+      "passed": 13
+    },
+    "hard": {
+      "total": 22,
+      "passed": 22
+    },
+    "medium": {
+      "total": 31,
+      "passed": 30
+    }
+  },
+  "byCategory": {
+    "duplicate": {
+      "total": 6,
+      "passed": 6
+    },
+    "access": {
+      "total": 1,
+      "passed": 1
+    },
+    "call": {
+      "total": 1,
+      "passed": 1
+    },
+    "identifier": {
+      "total": 10,
+      "passed": 10
+    },
+    "literal": {
+      "total": 2,
+      "passed": 2
+    },
+    "multi": {
+      "total": 16,
+      "passed": 16
+    },
+    "operator": {
+      "total": 7,
+      "passed": 7
+    },
+    "regex": {
+      "total": 1,
+      "passed": 1
+    },
+    "structural": {
+      "total": 61,
+      "passed": 58
+    },
+    "unicode": {
+      "total": 1,
+      "passed": 1
+    }
+  },
+  "byMutation": {
+    "duplicate-line-flip": {
+      "total": 6,
+      "passed": 6
+    },
+    "remove-optional-chain": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-call-args": {
+      "total": 1,
+      "passed": 1
+    },
+    "identifier-multi-edit": {
+      "total": 10,
+      "passed": 10
+    },
+    "off-by-one": {
+      "total": 1,
+      "passed": 1
+    },
+    "flip-boolean": {
+      "total": 1,
+      "passed": 1
+    },
+    "composite-multi-edit": {
+      "total": 16,
+      "passed": 16
+    },
+    "swap-comparison": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-arithmetic": {
+      "total": 1,
+      "passed": 1
+    },
+    "remove-negation": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-equality": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-logical": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-nullish": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-increment-decrement": {
+      "total": 1,
+      "passed": 1
+    },
+    "swap-regex-quantifier": {
+      "total": 1,
+      "passed": 1
+    },
+    "duplicate-block": {
+      "total": 6,
+      "passed": 6
+    },
+    "move-distant-block": {
+      "total": 9,
+      "passed": 9
+    },
+    "remove-case-label": {
+      "total": 8,
+      "passed": 8
+    },
+    "swap-adjacent-lines": {
+      "total": 6,
+      "passed": 6
+    },
+    "swap-if-else": {
+      "total": 8,
+      "passed": 6
+    },
+    "swap-sibling-blocks": {
+      "total": 12,
+      "passed": 11
+    },
+    "wrap-redundant-if": {
+      "total": 12,
+      "passed": 12
+    },
+    "unicode-hyphen": {
+      "total": 1,
+      "passed": 1
+    }
+  },
+  "editFailureCategories": {
+    "other": 4,
+    "not-unique": 1,
+    "not-found": 11
+  },
+  "failedTasks": [
+    {
+      "task": "structural-swap-if-else-001",
+      "tier": "easy",
+      "mutationType": "swap-if-else",
+      "error": "File mismatch for paths.ts",
+      "editCalls": 1,
+      "retries": {
+        "timeout": 0,
+        "zeroTool": 0,
+        "providerFailure": 0
+      }
+    },
+    {
+      "task": "structural-swap-sibling-blocks-001",
+      "tier": "easy",
+      "mutationType": "swap-sibling-blocks",
+      "error": "File mismatch for doom-keys.ts",
+      "editCalls": 1,
+      "retries": {
+        "timeout": 0,
+        "zeroTool": 0,
+        "providerFailure": 0
+      }
+    },
+    {
+      "task": "structural-swap-if-else-006",
+      "tier": "medium",
+      "mutationType": "swap-if-else",
+      "error": "File mismatch for messages.ts",
+      "editCalls": 12,
+      "retries": {
+        "timeout": 0,
+        "zeroTool": 0,
+        "providerFailure": 0
+      }
+    }
+  ],
+  "runsPerTask": 1,
+  "anyOfN": 103,
+  "allRunsPassed": 103,
+  "allRunsTotal": 106,
+  "allRunsTaskSuccessRate": 0.9716981132075472,
+  "flakyTasks": []
+}

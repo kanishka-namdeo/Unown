@@ -75,7 +75,14 @@ const PHASE = process.argv.includes("--phase") ? process.argv[process.argv.index
 // same number the timer enforces.
 const TIME_LIMIT_MIN = Math.max(1, Number(process.env.LONGHORIZON_TIME_LIMIT_MIN ?? 15));
 const TIME_LIMIT_MS = TIME_LIMIT_MIN * 60_000; // the hard cap, in ms
-const MODELS = ["qwen3.7-plus", "kimi-k2.5", "qwen3.6-plus"];
+const MODELS = [
+    "qwen3.7-plus", "kimi-k2.5", "qwen3.6-plus",
+    // LONGHORIZON_EXTRA_MODELS: comma-separated additional model ids (the
+    // 2026-10-21 campaign added agnes-3.0-flash on the Agnes upstream). They
+    // join the --model allow-list, the report scan, and the default
+    // all-models phase exactly like the built-ins; unset = the original trio.
+    ...(process.env.LONGHORIZON_EXTRA_MODELS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+];
 
 const TOOL_PATH = [
         join(HOME, ".bun", "bin"),

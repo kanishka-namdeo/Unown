@@ -1,0 +1,82 @@
+{
+	"ts": "2026-10-21T18:03:34.517Z",
+	"model": "agnes-3.0-flash",
+	"task": "clippad createdBy: string -> {id, name} sweep (benchmarks/longhorizon)",
+	"timeLimitMin": 7,
+	"outcome": {
+		"exitCode": 0,
+		"timedOut": false,
+		"saidDone": true
+	},
+	"durationS": 345,
+	"diff": {
+		"filesChanged": 14,
+		"filesChangedList": [
+			"README.md",
+			"docs/API.md",
+			"src/cli.ts",
+			"src/format-table.ts",
+			"src/format.ts",
+			"src/notebook.ts",
+			"src/search.ts",
+			"src/stats.ts",
+			"src/store.ts",
+			"src/types.ts",
+			"src/users.ts",
+			"tests/author.test.ts",
+			"tests/cli.test.ts",
+			"tests/helpers.ts"
+		],
+		"insertions": 159,
+		"deletions": 102
+	},
+	"tests": {
+		"asIs": {
+			"pass": 42,
+			"fail": 0,
+			"exitCode": 0,
+			"parseFailed": false
+		},
+		"pristineRestored": {
+			"pass": 27,
+			"fail": 12,
+			"exitCode": 1,
+			"parseFailed": false
+		},
+		"agentEditedTests": [
+			"author.test.ts",
+			"cli.test.ts",
+			"helpers.ts"
+		],
+		"agentAddedTests": []
+	},
+	"similarity": {
+		"fileSetJaccard": 0.867,
+		"finalStateCloseness": 0.147,
+		"churnToReference": 197,
+		"churnPristineToReference": 231,
+		"note": "heuristic: jaccard over changed-file sets; closeness = 1 - lineChurn(workspace,reference)/lineChurn(pristine,reference). Formatting differences count; exact match not required."
+	},
+	"session": {
+		"sessions": 1,
+		"format": "v3",
+		"input": 62031,
+		"output": 11209,
+		"cacheRead": 1068032,
+		"cacheWrite": 0,
+		"toolCalls": 52,
+		"toolCallsByTool": {
+			"bash": 31,
+			"write": 7,
+			"edit": 14
+		},
+		"toolResults": 52,
+		"compactionEntries": 0,
+		"compactionTokensBefore": [],
+		"compactionRuns": [],
+		"branchSummaries": 0,
+		"assistantMessages": 46
+	},
+	"agentStdoutTail": "- **format-table.ts**: CREATED-BY column renders `ada (u-001)`\n- **store.ts**: `parseNote` validates `createdBy` is `{id: string, name: string}`, throws `StoreError` otherwise; version stays 1; round-trip verified\n- **stats.ts**: rows are `{id, name, count, words}` keyed by author id\n- **cli.ts**: `add --author <name>` resolves via `users.ensure`; `stats` lines are `ada (u-001): 2 notes, 3 words`; `author <id>` matches by id\n- **tests**: helpers updated to structured author objects, author.test.ts pins the new shape (with the fixture import bug fixed), all 42 tests pass\n- **docs**: README.md and docs/API.md updated to the new field shape and outputs\n\nDONE",
+	"agentStderrTail": "unown: first run — using the bundled llm-bridge (zai-bridge/agnes-3.0-flash).\n  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup"
+}

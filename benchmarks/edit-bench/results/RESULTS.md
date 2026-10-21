@@ -235,3 +235,76 @@ retry within the same task; zero task failures).
 Receipts: `n3/unown/<model>.{jsonl,summary.json}`,
 `n3/omp/<model>_replace.n3{,fix}.json`; aggregator + wedge detector:
 `../omp-harness/`. Run 2026-10-16 19:55 – 2026-10-17 01:23 UTC (storm-interrupted; surgical re-runs described above).
+
+## 2026-10-21 — agnes-3.0-flash (Agnes AI upstream, n=1)
+
+New upstream lane: **Agnes AI** (`https://apihub.agnes-ai.com/v1`, model
+`agnes-3.0-flash`) reached through the same local llm-bridge (:3031, provider
+`zai-bridge`) — same 106 shipped fixtures, same harness (`run-unown.mjs`),
+same agent core (pi `createAgentSession`, read/edit/write, pi-native replace
+edits), same protocol as the 2026-10-16 runs (thinking off, timeout 300 s,
+connection timeout 60 s, max-turns 30, max-attempts 1, task concurrency 4,
+1 run per task).
+
+| Model | Pass | Rate | edit-call success | tok-in mean/task | tok-out mean/task | mean / median duration |
+|---|---|---|---|---|---|---|
+| agnes-3.0-flash | 103/106 | **97.2%** | 87.0% (107/123) | 1,164 | 399 | 16.8 s / 12.3 s |
+
+Tier split: easy 38/40, medium 30/31, hard 22/22, nightmare 13/13. Median
+total tokens/task 262 (p99 11,566); prompt p99 11,036; summed task duration
+29.7 min; 103/103 passes early-stopped on byte-exact match; mutation-intent
+match 101/106; zero timeout / zero-tool / provider retries — no provider
+failures and no runner crashes on the new endpoint.
+
+Failed tasks (all byte-exact verification misses in the `structural` swap
+category, all stable across every attempt — see caveats):
+
+- `structural-swap-if-else-001` (easy): 1/1 successful edit but wrong
+  content — target line mismatch at paths.ts:122 (intent not matched).
+- `structural-swap-sibling-blocks-001` (easy): 1/1 successful edit but
+  wrong content — target line mismatch at doom-keys.ts:95 (intent not
+  matched).
+- `structural-swap-if-else-006` (medium): 12 edit calls (2 succeeded, 10
+  `not-found` misses), 1 write, 144.7 s, 93 k prompt tokens — churned
+  without reaching the expected bytes; intent matched, full diff did not.
+
+Edit-failure categories across the suite (16 failed edit calls, 10 of them
+from the task above): not-found 11, other 4, not-unique 1. Against the
+2026-10-16/17 n=1 band (94.3–99.1% across kimi/qwen), agnes-3.0-flash's
+97.2% lands inside it with a visibly lower edit-call success rate (87.0% vs
+95.7–99.1%) — its failed edit calls are `oldText` misses the in-task retry
+ladder usually absorbs.
+
+### Caveats
+
+- n=1 single pass. The n=3 study above measured per-run reliability at
+  95–99% with 5–9 flaky tasks per model — single-task deltas vs the other
+  models are noise at this sample size.
+- Windowed execution + a resume-key quirk. The run was executed under a
+  540 s window cap: window 1 completed 89 tasks before the cap; window 2
+  then re-ran all 106 (the runner's resume logic records completed tasks
+  as `task#0` in the JSONL but looks them up by bare task id at n=1, so
+  nothing was skipped) and finished in 451.1 s. The published n=1 dataset
+  is that final uninterrupted window — one record per task. The raw
+  196-record file (smoke + both windows) is preserved at
+  `../unown-results/agnes-3.0-flash/agnes-3.0-flash.raw-smoke+2windows-196recs.jsonl`.
+  Cross-window consistency: the 3 published failures failed every attempt
+  in both windows, while `structural-duplicate-block-004`,
+  `structural-remove-case-label-002` and `structural-swap-if-else-007`
+  failed window 1 but passed window 2 — the familiar flake band, in range
+  of the n=3 flake counts.
+- Token accounting is the same diffTokenStats rule as all prior receipts
+  (input+cache deltas minus system-prompt overhead), but Agnes reports
+  cache usage differently from the dashscope models — cross-model token
+  comparisons are indicative, not exact.
+- The bridge/engine stack was shared with other benchmark tasks on the
+  same 2-CPU box during the run (durations carry some scheduling noise;
+  pass/fail and tokens are unaffected).
+
+Receipts: `rerun-2026-10-21/agnes-3.0-flash/{agnes-3.0-flash.jsonl,
+summary.json}` (mirrors the `rerun-2026-10-17/<model>/` layout); base-layout
+copies `agnes-3.0-flash.jsonl` + `agnes-3.0-flash.summary.json` alongside
+`kimi-k2.5.jsonl`/`kimi-k2.5.summary.json`. Scratch artifacts (events,
+conversation dumps, workdirs, raw multi-window JSONL) under
+`../unown-results/agnes-3.0-flash/`. Run 2026-10-21 ~16:23–16:31 UTC
+(published window); smoke + first window earlier the same hour.

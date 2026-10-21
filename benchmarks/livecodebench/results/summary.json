@@ -35,7 +35,8 @@
     "models": [
       "kimi-k2.5",
       "qwen3.7-plus",
-      "qwen3.6-plus"
+      "qwen3.6-plus",
+      "agnes-3.0-flash"
     ]
   },
   "results": {
@@ -168,7 +169,49 @@
       },
       "avgGenLatencyS": 48,
       "avgEvalDurationS": 0.3
+    },
+    "agnes-3.0-flash": {
+      "n": 50,
+      "subsetTotal": 50,
+      "passed": 14,
+      "passAt1Pct": 28,
+      "scoredProblems": 50,
+      "byOutcome": {
+        "pass": 14,
+        "no_code": 35,
+        "wa": 1
+      },
+      "byPlatform": {
+        "atcoder": {
+          "n": 32,
+          "pass": 8
+        },
+        "leetcode": {
+          "n": 18,
+          "pass": 6
+        }
+      },
+      "byDifficulty": {
+        "easy": {
+          "n": 13,
+          "pass": 12
+        },
+        "hard": {
+          "n": 23,
+          "pass": 0
+        },
+        "medium": {
+          "n": 14,
+          "pass": 2
+        }
+      },
+      "tokens": {
+        "in": 34083,
+        "out": 152974
+      },
+      "avgGenLatencyS": 50.7,
+      "avgEvalDurationS": 0.1
     }
   },
-  "generatedAt": "2026-10-17T16:16:06.239Z"
+  "generatedAt": "2026-10-21T18:11:32.629Z"
 }

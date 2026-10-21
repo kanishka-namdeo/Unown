@@ -78,7 +78,16 @@ const SLEEP_MS = Number(args["sleep-ms"] ?? 1000);
 const TIMEOUT_PER_TEST = 6; // LCB default
 const TEMPERATURE = 0; // greedy
 const TOP_P = 1;
-const MODELS = ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"];
+const MODELS = [
+    "kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus",
+    // LCB_EXTRA_MODELS: comma-separated additional model ids (the 2026-10-21
+    // campaign added agnes-3.0-flash on the Agnes upstream). They join the
+    // run allow-list AND the --report scan exactly like the built-ins, so a
+    // new-model row lands in summary.json natively instead of via a hand
+    // merge (the agnes row had to be merged by a script outside the repo
+    // before this existed). Unset = the original trio.
+    ...(process.env.LCB_EXTRA_MODELS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+];
 const BACKOFF_S = [5, 15, 45, 90, 180];
 const BENCH_ROOT = process.env.LCB_BENCH_ROOT || "/home/z/bench-runs/livecodebench";
 

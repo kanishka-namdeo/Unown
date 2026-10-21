@@ -80,3 +80,47 @@ node ../runner.mjs --model kimi-k2.5
 # 4. summarize
 node ../runner.mjs --report
 ```
+
+## Results (2026-10-21) — agnes-3.0-flash (Agnes AI upstream, single run, greedy)
+
+Same pinned protocol as above (50-problem `release_v6` subset, LCB OpenAIChat
+prompt, greedy t=0/top_p=1/n=1, max_tokens 4096, official `extract_code` +
+`scorer.py`), executed through the same bundled llm-bridge (`:3031/v1`) — but
+with the bridge's upstream pointed at **Agnes AI (`apihub.agnes-ai.com/v1`),
+model `agnes-3.0-flash`** instead of Dashscope coding-intl. Same prompt, same
+decoder, same scorer, different serving stack.
+
+| Model | pass@1 | pass | `no_code` | `wa` | `rte` | `tle` | tokens in/out |
+|---|---|---|---|---|---|---|---|
+| agnes-3.0-flash | 28.0% | 14/50 | 35 | 1 | 0 | 0 | 34,083 / 152,974 |
+
+By difficulty: **easy 12/13**, medium 2/14, **hard 0/23**. By platform:
+AtCoder 8/32, LeetCode 6/18. Average generation 50.7 s/problem (same 45–54 s
+band as the three Dashscope models), avg eval 0.1 s.
+
+- **`no_code` is even more dominant here (35/50)**: every single `no_code` row
+  has `finish_reason: "length"` — the model spent the entire 4096-token budget
+  (reasoning at length in content) without ever closing a fenced code block.
+  Agnes answers the easy AtCoder/LeetCode cells directly in 150–1,500 output
+  tokens (12/13 easy passed), but on medium/hard it burns the full budget
+  before writing code, so the pinned protocol scores it 0 on hard. Reported
+  as-is, not filtered — same class as the 2026-10-17 `no_code` note, stronger.
+- The one `wa` (leetcode 3744) closed its fence at 3,986 tokens and failed a
+  private test; zero runtime errors, zero TLEs, zero generation failures
+  (0 `api_error` rows, 0 retries needed across all 50 problems).
+- Windowed resumable run: 6 × `timeout 540` foreground windows (receipts are
+  resume-safe; 5 windows ended at the sandbox's 9-minute tool cap by design,
+  final window exited 0 with `generated=2 gen_failures=0 skipped(resume)=48`).
+  Wall time ≈ 47 min total across windows. Full logs:
+  `/home/z/my-project/logs/lcb/agnes-{1..6}.log`.
+- `--report` caveat: the runner's report mode regenerates `summary.json` from a
+  hardcoded 3-model list and **overwrites** the file, so the agnes row was
+  merged in by a small script outside the repo
+  (`/home/z/my-project/add-agnes-lcb-summary.mjs`, recomputing the row with the
+  runner's own report logic); the 3 existing model rows are byte-identical.
+- Single run, greedy, n=1 — a point estimate, not a significance-tested mean;
+  the 2026-10-17 models ran on a different upstream (Dashscope vs Agnes AI),
+  which is itself a serving-stack variable. Shared 2-CPU box.
+- Receipts: `agnes-3.0-flash.jsonl` (one line per problem: outcome, tokens,
+  latency, full extracted solution, stdout/stderr tails) + the
+  `results["agnes-3.0-flash"]` row in `summary.json`.

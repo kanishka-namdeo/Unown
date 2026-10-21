@@ -78,3 +78,25 @@ smaller context window to bite.
   a correct contract refactor requires.
 - The token count includes the whole session (system prompt, tool results,
   re-reads), which is exactly the cost a long-horizon task amplifies.
+
+## 2026-10-21 — agnes-3.0-flash (Agnes AI upstream, n=1)
+
+Same fixture, same 7-minute cap, same protocol; the model routed through
+the llm-bridge onto the Agnes AI endpoint (`apihub.agnes-ai.com/v1`,
+`agnes-3.0-flash`). Receipt: `results/agnes-3.0-flash/receipt.json`;
+the summary now carries four models.
+
+- **345 s** (inside the cap), 14 files changed (+159/−102), 52 tool calls,
+  no compaction.
+- **Cache-riding champion: 1.07 M cache-read tokens** — the most of any
+  model on this track — against **62 K fresh input** and 11 K output. The
+  context-management separation this eval exists to surface now has a
+  fourth data point, and it is the strongest caching profile measured.
+- **42/0 as-is tests** — the greenest as-is suite of the four (kimi 40,
+  qwen3.7 40, qwen3.6 39); the agent migrated the contract and extended an
+  edited test file. Pristine-restore 27/12, identical to every prior model
+  and the hand-written reference (the shared contract-migration profile).
+- Jaccard 0.867 (ties qwen3.7-plus); closeness 0.147 — formatting drift
+  dominates, as with the others.
+
+Read it as the others: n=1 point estimate, single run, same honest caveats.

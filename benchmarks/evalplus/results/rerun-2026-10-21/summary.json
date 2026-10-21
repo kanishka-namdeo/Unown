@@ -1,0 +1,27 @@
+{
+  "models": [
+    "agnes-3.0-flash"
+  ],
+  "generated_at": "2026-10-21 16:48 UTC",
+  "results": {
+    "agnes-3.0-flash": {
+      "evaluated_at": "2026-10-21 16:48 UTC",
+      "pass1": 0.8902,
+      "base_pass1": 0.9329,
+      "n_problems": 164,
+      "pass1_count": 146,
+      "base_pass1_count": 153,
+      "raw_pass1": 0.8902,
+      "raw_base_pass1": 0.9329,
+      "generation": {
+        "n_samples": 164,
+        "n_gen_failures": 0,
+        "n_truncated": 1,
+        "n_retried": 0,
+        "total_latency_s": 1498.0000000000007,
+        "n_attempts_total": 164,
+        "failed_task_ids": []
+      }
+    }
+  }
+}
