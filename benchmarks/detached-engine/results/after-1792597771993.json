@@ -1,0 +1,266 @@
+{
+  "phase": "after",
+  "ts": "2026-10-21T15:49:31.990Z",
+  "git": "43c89b7",
+  "scenarios": {
+    "soak": {
+      "minutes": 7,
+      "samples": [
+        {
+          "ts": 1792597347664,
+          "down": false,
+          "dreams": 9,
+          "runs": 22,
+          "busyMs": 56668,
+          "activeJob": "auto-dream",
+          "callsHour": 14,
+          "tokensHour": 167501,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 115432,
+            "cpuPct": 2.2
+          }
+        },
+        {
+          "ts": 1792597378232,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 111960,
+            "cpuPct": 1.6
+          }
+        },
+        {
+          "ts": 1792597408346,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 111392,
+            "cpuPct": 1.2
+          }
+        },
+        {
+          "ts": 1792597438702,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108800,
+            "cpuPct": 1
+          }
+        },
+        {
+          "ts": 1792597469200,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108768,
+            "cpuPct": 0.8
+          }
+        },
+        {
+          "ts": 1792597499258,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108456,
+            "cpuPct": 0.7
+          }
+        },
+        {
+          "ts": 1792597529768,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108392,
+            "cpuPct": 0.6
+          }
+        },
+        {
+          "ts": 1792597560160,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108568,
+            "cpuPct": 0.5
+          }
+        },
+        {
+          "ts": 1792597590499,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108792,
+            "cpuPct": 0.5
+          }
+        },
+        {
+          "ts": 1792597620567,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108476,
+            "cpuPct": 0.5
+          }
+        },
+        {
+          "ts": 1792597650620,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108688,
+            "cpuPct": 0.4
+          }
+        },
+        {
+          "ts": 1792597681028,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108636,
+            "cpuPct": 0.4
+          }
+        },
+        {
+          "ts": 1792597711579,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108600,
+            "cpuPct": 0.4
+          }
+        },
+        {
+          "ts": 1792597741983,
+          "down": false,
+          "dreams": 10,
+          "runs": 22,
+          "busyMs": 0,
+          "activeJob": "",
+          "callsHour": 15,
+          "tokensHour": 186065,
+          "overBudget": false,
+          "breakerOpen": false,
+          "enginePid": 16838,
+          "proc": {
+            "rssKb": 108584,
+            "cpuPct": 0.3
+          }
+        }
+      ],
+      "events": [],
+      "walBytes": 0,
+      "verdict": {
+        "engineUpThroughout": true,
+        "dreamsInWindow": 1,
+        "runsInWindow": 0,
+        "maxCallsHour": 15,
+        "budgetTripped": false,
+        "breakerTripped": false,
+        "rssGrowthKb": -6848,
+        "dreamBursts": 0,
+        "walBytes": 0
+      }
+    }
+  },
+  "summary": [
+    "soak(7m): up=true dreams=1 runs=0 calls/h peak=15 bursts=0 rssDelta=-6848KB wal=0B"
+  ]
+}

@@ -30,9 +30,10 @@
 //   UNOWN_VLM_SMOKE          "1" = run the live smoke (hard gate; anything
 //                            else, including unset, skips)
 //   UNOWN_VLM_SMOKE_URL      bridge base URL (default http://127.0.0.1:3031)
-//   UNOWN_VLM_SMOKE_MODEL    model id (default qwen3.7-plus — the only
-//                            vision-capable model in the bridge allow-list
-//                            per docs/testing-strategy.md §7 I)
+//   UNOWN_VLM_SMOKE_MODEL    model id (default qwen3.7-plus, the historical
+//                            Dashscope vision model; agnes-3.0-flash is the
+//                            vision-capable model on the Agnes upstream — pass
+//                            whichever your bridge serves)
 //   UNOWN_VLM_SMOKE_RECEIPT  optional path; when set, the raw response JSON,
 //                            usage, duration, date, model and request-shape
 //                            summary are written there (parent dirs are
@@ -338,7 +339,7 @@ describe.skipIf(!SMOKE_ENABLED)("vlm-smoke (live, env-gated: UNOWN_VLM_SMOKE=1)"
                         },
                         caveats: [
                                 "single-run smoke (n=1), no repetition, no scoring beyond the color-naming check",
-                                "only qwen3.7-plus (the only vision-capable model in the bridge allow-list)",
+                                `only ${MODEL} (single vision-capable model per run; the allow-list is upstream-dependent)`,
                                 "non-streaming path only; screenshot-to-code smoke (testing-strategy.md §7 I) still future work",
                         ],
                 };

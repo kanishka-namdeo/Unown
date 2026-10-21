@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-21T15:45:57Z",
+  "protocol": "per-workspace runs (benchmarks/README.md Track 1 robust path)",
+  "total_pass": 7812,
+  "total_fail": 1,
+  "total_skip": 921,
+  "workspaces": [
+    {
+      "workspace": "ai",
+      "pass": 957,
+      "fail": 0,
+      "skip": 832,
+      "rc": 0,
+      "note": "skips are key-gated live-API tests (skipIf no API key) — expected in the keyless run; identical pass count to 2026-10-17"
+    },
+    {
+      "workspace": "agent",
+      "pass": 418,
+      "fail": 0,
+      "skip": 1,
+      "rc": 0
+    },
+    {
+      "workspace": "tui",
+      "pass": 1041,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0,
+      "note": "node --test spec reporter: 1041 pass / 159 suites; dot run (npm test) rc=0, 1200 dot marks = 1041 tests + 159 suite events (the dot reporter counts suite events too — the 2026-10-17 figure of 1072 was a dot-mark count)"
+    },
+    {
+      "workspace": "telemetry",
+      "pass": 15,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "protocol",
+      "pass": 147,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "client",
+      "pass": 36,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "server",
+      "pass": 50,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "session-backends/sqlite-node",
+      "pass": 87,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    },
+    {
+      "workspace": "coding-agent",
+      "pass": 2126,
+      "fail": 1,
+      "skip": 50,
+      "rc": 1,
+      "note": "run with the color env sanitized (NO_COLOR/CLICOLOR/CLICOLOR_FORCE unset, TERM=xterm-256color) to match the canonical pi-repo test.sh env — the harness tool shell exports NO_COLOR=1 which induces 3 extra theme/syntax-highlight failures (env-only; they pass in the sanitized env). The remaining failure is genuine: test/interactive-tui.test.ts 'replaces the renderer and restores the previous screen for resume-hint exits' — switchTuiMode -> applyOverlayScrim (interactive-mode.ts:2276) touches the theme proxy before any initTheme() in that test; regression introduced by the 2026-10-20 overlay-choreography (beauty-3) commit. Captured in /home/z/my-project/logs/track1-failures.log"
+    },
+    {
+      "workspace": "self-learning",
+      "pass": 2907,
+      "fail": 0,
+      "skip": 38,
+      "rc": 0,
+      "note": "bun test test/: 2945 tests across 116 files; suite grew from 43 to 102 test files (533 -> 2907 passing) via the 2026-10-18..21 engine phases / audit waves after the 2026-10-17 rerun"
+    },
+    {
+      "workspace": "evals",
+      "pass": 23,
+      "fail": 0,
+      "skip": 0,
+      "rc": 0
+    }
+  ],
+  "environment": {
+    "bun": "1.4.3 (/home/z/.bun/bin/bun)",
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "vitest": "4.1.11",
+    "machine": "2 CPU, 4GB RAM, Linux (kernel 5.10.134)",
+    "workspaces_run_sequentially": true
+  },
+  "hydration": {
+    "models_dev_snapshot": "benchmarks/snapshots/modelsdev-api-2026-08-25.json",
+    "openrouter_models_snapshot": "benchmarks/snapshots/openrouter-models-2026-08-25.json",
+    "command": "cd pi-repo/packages/ai && MODELS_DEV_API_URL=../../../benchmarks/snapshots/modelsdev-api-2026-08-25.json OPENROUTER_MODELS_URL=../../../benchmarks/snapshots/openrouter-models-2026-08-25.json node scripts/generate-models.ts --strict --data-only",
+    "rc": 0,
+    "note": "data dir had been hydrated from live models.dev by agent:install (fingerprint 09d72232...); re-hydrated from the pinned snapshots before the run (fingerprint 2186abe3...) — the drift the README warns about was present and removed"
+  },
+  "wall_time_seconds": 436,
+  "note": "root-scripts: +5 node --test (spec reporter, 5 pass). tui counted from spec reporter (dot run rc=0). coding-agent: 2126 pass includes +124 new tests from the 2026-10-20/21 tui-beauty + U1 commits; 1 genuine failure (interactive-tui resume-hint, see workspace note). Skip counts are recorded from the actual vitest/bun summaries this time (the 2026-10-17 receipt recorded skip:0 for the vitest workspaces despite identical pass counts — recording-methodology difference, not a behavior change)."
+}

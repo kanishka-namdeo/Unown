@@ -1,0 +1,153 @@
+{
+  "receipt": "vlm-smoke",
+  "version": 1,
+  "date": "2026-10-21T16:04:36.987Z",
+  "model": "agnes-3.0-flash",
+  "bridgeUrl": "http://127.0.0.1:3031",
+  "request": {
+    "endpoint": "POST /v1/chat/completions",
+    "model": "agnes-3.0-flash",
+    "messages": 1,
+    "contentParts": [
+      {
+        "type": "text",
+        "chars": 45,
+        "text": "What color is this image? Answer in one word."
+      },
+      {
+        "type": "image_url",
+        "image": {
+          "mime": "image/png",
+          "width": 100,
+          "height": 100,
+          "color": "#ff0000",
+          "base64Chars": 476,
+          "sha256": "4304a53d7f2851c9cc682cd7d6b1ab4319c3b1c8526f315363768bf4821ac1e4",
+          "encoding": "data URL in image_url.url (OpenAI multimodal content-part shape, same as scripts/probe_vision.py)"
+        }
+      }
+    ],
+    "max_tokens": 2000,
+    "stream": false,
+    "auth": "none (bridge authRequired=false; upstream auth is injected bridge-side and never appears in this receipt)"
+  },
+  "bridgeHealth": {
+    "ok": true,
+    "port": 3031,
+    "requests": 182,
+    "errors": 0,
+    "upstream": {
+      "ok": true,
+      "status": 200
+    },
+    "local": null,
+    "fallback": null,
+    "failovers": 0,
+    "upstreamKeyIsSet": true,
+    "authRequired": false,
+    "upstreamUrl": "https://apihub.agnes-ai.com/v1",
+    "defaultModel": "agnes-3.0-flash",
+    "models": [
+      "agnes-3.0-flash",
+      "agnes-video-2.5-flash",
+      "agnes-image-2.1-flash",
+      "agnes-image-2.0-flash",
+      "agnes-2.5-flash",
+      "agnes-image-2.5-flash",
+      "agnes-2.5-pro-alpha",
+      "agnes-video-2.5",
+      "agnes-2.5-pro-beta"
+    ],
+    "upstreamModels": [
+      "agnes-2.5-pro-alpha",
+      "agnes-video-2.5-flash",
+      "agnes-3.0-flash",
+      "agnes-image-2.1-flash",
+      "agnes-video-2.5",
+      "agnes-image-2.0-flash",
+      "agnes-2.5-flash",
+      "agnes-2.5-pro-beta",
+      "agnes-image-2.5-flash"
+    ],
+    "staleKnownModels": [],
+    "usageLog": {
+      "file": "/home/z/my-project/Unown/.run/usage-log.jsonl",
+      "entries": 182
+    }
+  },
+  "bridgeLogEntry": {
+    "ts": 1792598677025,
+    "model": "agnes-3.0-flash",
+    "upstreamModel": "agnes-3.0-flash",
+    "stream": false,
+    "messages": 1,
+    "tools": 0,
+    "finishReason": "stop",
+    "contentChars": 4,
+    "toolCalls": 0,
+    "promptTokens": 151,
+    "completionTokens": 2,
+    "durationMs": 1410,
+    "cachedTokens": 0
+  },
+  "durationMs": 1411,
+  "httpStatus": 200,
+  "response": {
+    "id": "027126817706468898f66e6e5fc6ecb4",
+    "created": 1792598678,
+    "model": "agnes-3.0-flash",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": " Red",
+          "role": "assistant"
+        },
+        "provider_specific_fields": {
+          "matched_stop": 248046
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 2,
+      "prompt_tokens": 151,
+      "total_tokens": 153,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "image_tokens": 64
+      }
+    },
+    "metadata": {
+      "weight_version": "default",
+      "weight_versions": [
+        {
+          "version": "default",
+          "start": 0,
+          "end": 2
+        }
+      ]
+    }
+  },
+  "usage": {
+    "completion_tokens": 2,
+    "prompt_tokens": 151,
+    "total_tokens": 153,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "image_tokens": 64
+    }
+  },
+  "assertions": {
+    "nonEmptyTextContent": true,
+    "contentMentionsRed": true,
+    "usageTotalTokensPositive": true,
+    "contentPreview": " Red"
+  },
+  "caveats": [
+    "single-run smoke (n=1), no repetition, no scoring beyond the color-naming check",
+    "only agnes-3.0-flash (single vision-capable model per run; the allow-list is upstream-dependent)",
+    "non-streaming path only; screenshot-to-code smoke (testing-strategy.md §7 I) still future work"
+  ]
+}

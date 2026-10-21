@@ -4,7 +4,7 @@
 - This file is maintained by Unown: terminal session notes are consolidated here by AutoDream. Edit freely — your edits are preserved as a new version.
 - Unown sessions have access to: todo, note, task, fetch_url, web_search, webfetch, lsp, read, ls, grep.
 - Prune ephemeral health checks and probes (PONG, HANG*, SLOWCHECK, AUTOSTART, numeric latency IDs) during consolidation [note 2026-10-20T14:50:20.263Z, note 2026-10-20T15:49:00.012Z].
-- Prune ephemeral self-test and fix-check outcomes (CAUGHT, FIX1–FIX6, OK with 0 tool calls) during consolidation [notes 2026-10-20T15:53:47.452Z, 2026-10-20T15:56:35.009Z].
+- Prune ephemeral self-test and fix-check outcomes (CAUGHT, FIX1–FIX6, OK with 0 tool calls) during consolidation [notes 2026-10-20T15:53:47.452Z, 2026-10-20T15:56:35.009Z, 2026-10-21T15:32:19.390Z, 2026-10-21T15:32:24.940Z, 2026-10-21T15:37:32.665Z, 2026-10-21T15:37:42.048Z, 2026-10-21T15:37:46.877Z, 2026-10-21T15:38:04.874Z].
 
 ## Engine restart procedure
 - Find bun --hot PID with cwd mini-services/agent-service via /proc/<pid>/cwd.
@@ -61,3 +61,6 @@
 - benchmarks/local-llm/lib: Cross-platform llama-server lifecycle, OpenAI-compatible clients [note 1].
 - v3-fixture/tests: membench benchmark fixture tests for calc, stats, format, persist, search [note 1].
 - clippad: Note-taking domain module with Notebook, UserDirectory, search, formatting [note 1].
+
+## Session outcomes
+- Direct-route sessions may complete with 0 tool calls when the requested action is already available via the harness [note 2026-10-21T15:20:48.422Z].

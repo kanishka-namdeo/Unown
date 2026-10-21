@@ -1,0 +1,71 @@
+{
+  "phase": "after",
+  "ts": "2026-10-21T15:39:07.504Z",
+  "git": "43c89b7",
+  "scenarios": {
+    "arch": {
+      "cli_engine_db_fds": 0,
+      "cli_session_echoed": true,
+      "cli_start_ms": [
+        9381,
+        4830,
+        17997
+      ],
+      "engine_idle": {
+        "rssKb": 154636,
+        "cpuPct": 0.5
+      },
+      "engine_pid": 4588,
+      "engine_router": {
+        "busy": false,
+        "busyMs": 0,
+        "activeJob": "",
+        "jobTimeoutMs": 1200000
+      },
+      "governor": {
+        "budget": {
+          "callsHour": 13,
+          "callsDay": 13,
+          "tokensHour": 137895,
+          "tokensDay": 137895,
+          "limits": {
+            "callsHour": 60,
+            "tokensHour": 200000,
+            "tokensDay": 2000000
+          },
+          "overBudget": false,
+          "reason": null
+        },
+        "breaker": {
+          "open": false,
+          "consecutiveFailures": 0,
+          "threshold": 3,
+          "retryInMs": 0
+        }
+      }
+    },
+    "crash": {
+      "cases": [
+        {
+          "case": "idle-sigkill",
+          "detectedDown": true,
+          "restartExit": 0,
+          "recoveryMs": 3519,
+          "stuckRunningRowsAfter": -1,
+          "lockStolen": false
+        },
+        {
+          "case": "midcycle-sigkill",
+          "runningRowsBefore": 0,
+          "runningRowsAfterHeal": -1,
+          "healed": "no run was in flight",
+          "recoveryMs": 10272
+        }
+      ]
+    }
+  },
+  "summary": [
+    "arch: cli_db_fds=0 start=[9381,4830,17997]ms idle={\"rssKb\":154636,\"cpuPct\":0.5}",
+    "crash: idle-sigkill→FAIL midcycle-sigkill→OK"
+  ]
+}

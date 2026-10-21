@@ -69,3 +69,53 @@ UNOWN_VLM_SMOKE=1 \
 
 Without `UNOWN_VLM_SMOKE=1` the three live tests are skipped; only the two
 pure payload-shaping tests run (offline, free).
+
+---
+
+## 2026-10-21 — re-run against the Agnes upstream (agnes-3.0-flash)
+
+Same protocol and request shape, new stack: the bridge now fronts
+`https://apihub.agnes-ai.com/v1` (default model `agnes-3.0-flash`,
+vision-capable). Receipt: `receipt-2026-10-21.json` — same JSON shape as
+`receipt-2026-10-17.json`, byte-identical stimulus (PNG sha256
+`4304a53d…c1e4`), so the two runs are directly comparable.
+
+**5/5 tests pass** (2 pure payload-shaping + 3 live), exit 0, 3.8 s wall,
+one live request.
+
+| Check (asserted by the test) | Outcome |
+|---|---|
+| HTTP 200, no bridge `error` payload | ✅ |
+| Non-empty text content in `choices[0].message.content` | ✅ `"Red"` (3 chars) |
+| Answer grounded in the image (names its color) | ✅ `"Red"` |
+| Usage accounting present (`total_tokens > 0`) | ✅ 153 tokens |
+
+Evidence the image was actually *seen* as an image (not dropped or
+stringified):
+
+1. **`usage.prompt_tokens_details.image_tokens: 64`** of 151 prompt tokens —
+   the Agnes upstream billed the 100×100 red PNG as image tokens, so the
+   multimodal part survived the bridge and reached the model's vision encoder.
+2. The one-word answer `"Red"` matches the image's sole visual property.
+3. The bridge's own request log (captured in the receipt) shows the request
+   served under `upstreamModel: agnes-3.0-flash`, `finishReason: "stop"`,
+   `promptTokens: 151` — routing → request shaping → retry chain processed
+   it exactly like a normal chat call, no special-casing, no failovers
+   (`bridgeHealth.failovers: 0`, `errors: 0`).
+
+Cost of the run: 153 tokens, 2,114 ms, one request.
+
+Read it honestly (deltas vs the 2026-10-17 section):
+
+- Still **single-run smoke (n=1)**, non-streaming only, no scoring beyond the
+  color-naming probe; screenshot-to-code remains future work.
+- **Model is `agnes-3.0-flash`**, the only vision-capable model in the bridge's
+  current Agnes catalog routing. The receipt's `caveats` array is emitted
+  verbatim by the test source and still names qwen3.7-plus (the 2026-10-17
+  model); the receipt's own `request.model`, `response.model` and
+  `bridgeLogEntry.upstreamModel` fields are the authoritative model record —
+  all three say `agnes-3.0-flash`.
+- Prompt-token accounting differs between upstreams (Agnes: 151 prompt tokens
+  with `image_tokens: 64`; Dashscope/qwen3.7-plus: 89 with
+  `text_tokens: 23` + `image_tokens: 66`) — token counts are not comparable
+  across providers, the "image was billed as image tokens" signal is.

@@ -99,3 +99,40 @@ sweep-at-20k went from 47.9 ms to 0.002 ms.
    restores blocking semantics. Fetches WITH validators keep their exact
    blocking 304 path (and its stale-if-error fall-through) unchanged.
 6. Events feed: stats reads a 128 KiB tail instead of the whole feed.
+
+---
+
+## 2026-10-21 — fresh full-scale run on the current stack (receipt `webcache-bench-1792596608242.json`)
+
+Environment per receipt meta: bun 1.4.3, linux x64, 2 CPUs, full sample scale,
+git `43c89b7`, warm page cache — with the dev stack (llm-bridge :3031 +
+engine :3030, Agnes upstream) live on the same box during the run, i.e. the
+noisy-neighbour case rather than a quiet box.
+
+**17/17 in-receipt assertions passed, exit 0.** Every headline class from the
+after-receipt reproduces at full scale on this box:
+
+| Cell | 2026-10-21 run | committed after-receipt |
+|---|---|---|
+| `webCacheStats` 20k-entry store | 0.005 ms p50 (max 0.009 ms) | 0.003 ms p50 |
+| eviction sweep idle (1k/5k/20k) | 0.001 ms p50 | 0.002 ms p50 |
+| poll-loop, 30 stats calls over 5k | 15.4 ms total | 12.9 ms total |
+| hit S/M/L @200 (memo path) | 0.001 / 0.001 / ~0 ms p50 | 0.001 / 0.001 / ~0.0005 ms |
+| hit M with memo off (disk path) | 0.084 ms p50 | 0.188 ms p50 |
+| put M (clean) | 0.494 ms p50 | 0.736 ms p50 |
+| e2e warm search (through `runWebSearch`) | 131.79 ms cold → 0.010 ms p50 (**12,567×**) | 129.1 → 0.013 ms (10,225×) |
+| e2e fetch 304 revalidation | 64.2 ms cold → 0.014 ms p50 | 64.2 → 0.018 ms |
+| coalescing (64 identical searches) | exactly **1** origin call (asserted) | same |
+| SWR stale search serve | 0.721 ms, marked `refreshing`, 2 provider calls, next call fresh `hit` (all asserted) | 0.88 ms |
+| zipf s=1.0 (6,000 req / 1,000 keys) | **86.05%** hit rate, est. 27.9 s provider time saved | 86.6%, 28.0 s |
+| cross-process first hit (fresh process) | 0.554 ms, payload intact (asserted) | 0.70 ms |
+| memory (5,000 × 48 KB puts → 15,000-read sweep) | +31.4 MB RSS puts / +4 MB read sweep — no read-path leak (asserted) | +97.9 MB / −4.7 MB |
+
+The known environmental tail reproduces exactly as documented in the
+correction section above: `put_S_amortized@5k` p50 is 0.201 ms but p99
+38.2 ms / max 71.9 ms here — CPU contention on this 2-core container shared
+with the live dev stack, landing at roughly the amortized-sweep probability,
+while the direct sweep cells (idle sweeps at 1k/5k/20k) stay at 0.001 ms p50.
+
+Raw samples for every cell ship inside the receipt, per the README
+methodology (no hand-copied numbers).

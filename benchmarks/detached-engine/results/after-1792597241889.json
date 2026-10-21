@@ -1,0 +1,29 @@
+{
+  "phase": "after",
+  "ts": "2026-10-21T15:40:41.885Z",
+  "git": "43c89b7",
+  "scenarios": {
+    "crash": {
+      "cases": [
+        {
+          "case": "idle-sigkill",
+          "detectedDown": true,
+          "restartExit": 0,
+          "recoveryMs": 4799,
+          "stuckRunningRowsAfter": 0,
+          "lockStolen": true
+        },
+        {
+          "case": "midcycle-sigkill",
+          "runningRowsBefore": 0,
+          "runningRowsAfterHeal": 0,
+          "healed": "no run was in flight",
+          "recoveryMs": 5262
+        }
+      ]
+    }
+  },
+  "summary": [
+    "crash: idle-sigkill→OK midcycle-sigkill→OK"
+  ]
+}

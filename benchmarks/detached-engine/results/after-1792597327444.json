@@ -1,0 +1,19 @@
+{
+  "phase": "after",
+  "ts": "2026-10-21T15:42:07.441Z",
+  "git": "43c89b7",
+  "scenarios": {
+    "autostart": {
+      "stopExit": 0,
+      "engineDownConfirmed": true,
+      "sessionMs": 42020,
+      "sessionEchoed": true,
+      "autostartMs": 43611,
+      "engineUpAfter": true,
+      "enginePid": 16838
+    }
+  },
+  "summary": [
+    "autostart: session=42020ms engine_up=true in 43611ms"
+  ]
+}

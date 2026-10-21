@@ -1,0 +1,270 @@
+{
+  "ts": "2026-10-21T15:31:04.652Z",
+  "query": "bun javascript runtime",
+  "env": {
+    "UNOWN_SEARXNG_URL": "",
+    "keyedProvidersConfigured": [
+      "tavily"
+    ]
+  },
+  "summary": {
+    "freeLiveVerified": [
+      "youcom",
+      "wikipedia",
+      "hn",
+      "npm",
+      "github"
+    ],
+    "paidLiveVerified": [],
+    "paidLivenessVerified": [
+      "searxng",
+      "brave",
+      "serper",
+      "exa",
+      "perplexity",
+      "jina",
+      "zhipu",
+      "dashscope",
+      "kagi",
+      "serpapi",
+      "firecrawl"
+    ],
+    "failed": [
+      "duckduckgo",
+      "tavily",
+      "stackexchange"
+    ],
+    "floorMet": true
+  },
+  "providers": [
+    {
+      "id": "duckduckgo",
+      "ok": false,
+      "ms": 162,
+      "nResults": 0,
+      "note": "all web-search providers failed — duckduckgo: duckduckgo returned a bot challenge (202) — likely IP reputation; trying next provider",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "tavily",
+      "ok": false,
+      "ms": 601,
+      "nResults": 0,
+      "note": "all web-search providers failed — tavily: api.tavily.com HTTP 429 (rate limited — retry later or pick another provider): {\"error\":{\"code\":\"ip_rate_limit_exceeded\",\"message\":\"Too many keyless requests from this IP address. Retry after the time given in the Retry-After header, sign up at https://tavil",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "youcom",
+      "ok": true,
+      "ms": 1098,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "Bun — A fast all-in-one JavaScript runtime",
+          "url": "https://bun.com/"
+        },
+        {
+          "title": "Bun (software)",
+          "url": "https://en.wikipedia.org/wiki/Bun_(software)"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "wikipedia",
+      "ok": true,
+      "ms": 499,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "Bun (software)",
+          "url": "https://en.wikipedia.org/wiki/Bun_(software)"
+        },
+        {
+          "title": "V8 (JavaScript engine)",
+          "url": "https://en.wikipedia.org/wiki/V8_(JavaScript_engine)"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "hn",
+      "ok": true,
+      "ms": 467,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "Bun: Fast JavaScript runtime, transpiler, and NPM client written in Zig",
+          "url": "https://bun.sh/?launch"
+        },
+        {
+          "title": "Bun: Fast JavaScript runtime, bundler, transpiler and package manager",
+          "url": "https://github.com/Jarred-Sumner/bun"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "npm",
+      "ok": true,
+      "ms": 849,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "mcp-bun@1.3.0",
+          "url": "https://www.npmjs.com/package/mcp-bun"
+        },
+        {
+          "title": "bun-types@1.4.3",
+          "url": "https://www.npmjs.com/package/bun-types"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "github",
+      "ok": true,
+      "ms": 680,
+      "nResults": 5,
+      "sample": [
+        {
+          "title": "oven-sh/bun",
+          "url": "https://github.com/oven-sh/bun"
+        },
+        {
+          "title": "af/envalid",
+          "url": "https://github.com/af/envalid"
+        }
+      ],
+      "note": "live query verified",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "stackexchange",
+      "ok": false,
+      "ms": 258,
+      "nResults": 0,
+      "note": "all web-search providers failed — stackexchange: api.stackexchange.com HTTP 400: {\"error_id\":502,\"error_message\":\"too many requests from this IP, more requests available in 5017 seconds\",\"error_name\":\"throttle_violation\"}",
+      "tier": "free",
+      "configured": true
+    },
+    {
+      "id": "searxng",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — searxng: API key not set)",
+      "tier": "free",
+      "configured": false
+    },
+    {
+      "id": "brave",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — brave: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "serper",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — serper: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "exa",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — exa: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "perplexity",
+      "ok": true,
+      "ms": 1,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — perplexity: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "jina",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — jina: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "zhipu",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — zhipu: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "dashscope",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — dashscope: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "kagi",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — kagi: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "serpapi",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — serpapi: API key not set)",
+      "tier": "paid",
+      "configured": false
+    },
+    {
+      "id": "firecrawl",
+      "ok": true,
+      "ms": 0,
+      "livenessOnly": true,
+      "note": "endpoint live, auth-gated as documented (all web-search providers failed — firecrawl: API key not set)",
+      "tier": "paid",
+      "configured": false
+    }
+  ],
+  "fetch": [
+    {
+      "name": "direct-fetch",
+      "ok": true,
+      "ms": 162,
+      "chars": 3085
+    }
+  ]
+}

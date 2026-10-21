@@ -26,3 +26,50 @@ Runner: `node benchmarks/detached-engine/runner.mjs` (scenarios: `arch`, `crash`
 - The `arch` DB-fd probe samples `/proc/<pid>/fd` every 250 ms during a live session; the deterministic pin is the fresh-process detachment suite (import graph → zero opens, engine side still opens on first `logHook`).
 - Crash-matrix healing relies on `recoverOrphans` at boot (pre-existing) + the M3 single-instance lock (stale-holder steal, same-pid re-entrancy); the mid-cycle kill healed its in-flight `running` rows to `error` (verified `healed: true`).
 - Run the comparison yourself: `node benchmarks/detached-engine/runner.mjs --phase after` (needs the stack up; `--only` filters scenarios, `--soak-minutes N` bounds the soak).
+
+---
+
+## 2026-10-21 — re-run on the current stack (Agnes upstream, commit `43c89b7`)
+
+Full after-phase coverage, split across four receipts because this 2-CPU
+sandbox caps a single foreground run (~10 min) — the suite's own `--only`
+filter was used per the runner header, soak bounded to 7 min with
+`--soak-minutes`:
+
+| Scenario | Receipt | Headline |
+|---|---|---|
+| arch + crash | `after-1792597147507.json` | `cli_db_fds=0` start=[9381, 4830, 17997] ms; idle-sigkill probe race (below), midcycle→OK |
+| crash (immediate re-run) | `after-1792597241889.json` | **idle-sigkill→OK** (recovery 4.8 s, 0 stuck rows, lock stolen), midcycle→OK (recovery 5.3 s) |
+| autostart | `after-1792597327444.json` | engine-down confirmed → CLI session echoed → engine up (pid 16838), 43.6 s wall |
+| soak (7 min) | `after-1792597771993.json` | `up=true dreams=1 runs=0 calls/h peak=15 bursts=0 rssDelta=−6848 KB wal=0 B` |
+
+Soak detail (14 samples, 30 s apart): engine up throughout on one pid; 1 dream
+in window, 0 bursts (BEFORE was 9 back-to-back dreams / 75 LLM calls per
+50 min); governor budget never exceeded (peak 15 calls/h of 60, 186,065
+tokens/h of 200,000, `overBudget: false` on every sample, breaker never
+opened); RSS 115.4 → 108.6 MB (−6.8 MB, flat); WAL **0 B** at window end.
+
+Honest notes for this batch:
+
+- **arch reproduces the detachment claim**: `cli_engine_db_fds: 0` sampled
+  during a live session (BEFORE: 3). CLI start times (4.8–18.0 s) sit above
+  the committed 4.6–15.3 s band — a parallel test suite was sharing both CPUs
+  during the run, on top of the usual upstream-LLM latency; same class as the
+  existing variance note, not a regression signal (engine idle RSS 151 MB,
+  cpu 0.5%, within the documented band).
+- **First crash attempt recorded `idle-sigkill→FAIL` — a probe race, not a
+  recovery failure**: `restartExit: 0` and the engine was healthy seconds
+  later (0 stuck rows, new pid); the runner's immediate post-restart health
+  probe (2 s timeout) fired before the engine finished booting under load, so
+  `lockStolen` was recorded false. The immediate re-run of the same scenario
+  is clean and is the receipt to cite.
+- **midcycle-sigkill ran with no run in flight** (`runningRowsBefore: 0` —
+  the harness-cycle trigger had not opened a run row within its 2.5 s
+  window), so the in-flight-heal path was not exercised in this batch; it
+  stays pinned by the committed `after-1792511922774.json` (healed: true) and
+  the fresh-process detachment suite.
+- Engine identity note: the crash/autostart scenarios replace the engine
+  process by design (kill → restart, stop → auto-start). After this batch the
+  engine runs as `bin/unown engine serve` (auto-start path) rather than the
+  `scripts/start.ts` child; `.run/engine.pid` may lag the live pid (stop.ts's
+  /proc-cwd sweep still finds it).
