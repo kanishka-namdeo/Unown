@@ -694,6 +694,11 @@ jobs:
           UNOWN_HOME: ${{ runner.temp }}\unown-smoke\home\.unown
           UNOWN_INSTALL_ROOT: ${{ runner.temp }}\unown-smoke\install
           UNOWN_BIN_DIR: ${{ runner.temp }}\unown-smoke\bin
+          # GitHub windows runners execute elevated: install.ps1 refuses to run
+          # as Administrator for real users (builds + PATH shims belong to a user
+          # account), and a disposable CI VM is exactly the documented override
+          # case (caught by the first v0.0.2 run's windows smoke leg).
+          UNOWN_INSTALL_ALLOW_ROOT: "1"
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path $env:USERPROFILE, $env:UNOWN_HOME, $env:UNOWN_INSTALL_ROOT, $env:UNOWN_BIN_DIR | Out-Null
