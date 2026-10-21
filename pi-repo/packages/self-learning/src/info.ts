@@ -20,7 +20,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { arch, homedir, platform, release } from "node:os";
 import { join } from "node:path";
 import { summarizeInstructionAudit, auditInstructionSet } from "./doctor-instructions.ts";
-import { describeAge, readRootVersion, readUpdateCheckCache, redactUrl, unownHome } from "./update.ts";
+import { describeAge, readRootVersion, readUpdateCheckCache, redactUrl, resolveInstallInfo, unownHome } from "./update.ts";
 
 export interface InfoCtx {
         repoRoot?: string;
@@ -31,6 +31,8 @@ export interface InfoCtx {
 
 export interface UnownInfo {
         unownVersion: string;
+        /** How this unown was installed (checkout vs standalone binary). */
+        install: { mode: "checkout" | "binary" | "unknown"; root: string | null; bin: string | null; shim: string | null; platform: string | null };
         git: { sha: string | null; branch: string | null; dirty: boolean | null; repoRoot: string | null };
         platform: { os: string; arch: string; release: string; bun: string | null };
         providers: { id: string; baseUrl: string | null; models: number }[];
@@ -65,13 +67,16 @@ function gitLines(repoRoot: string): { sha: string | null; branch: string | null
 export function collectInfo(ctx: InfoCtx = {}): UnownInfo {
         const env = ctx.env ?? process.env;
         const home = ctx.home ?? unownHome(env);
+        const install = resolveInstallInfo({ env, home, root: ctx.repoRoot });
         const repoRoot =
-                ctx.repoRoot ??
-                (() => {
-                        const guess = join(import.meta.dir, "..", "..", "..", "..");
-                        return existsSync(guess) ? guess : null;
-                })();
-        const version = repoRoot ? readRootVersion(repoRoot) : "unknown";
+                install?.mode === "binary"
+                        ? null
+                        : (ctx.repoRoot ??
+                          (() => {
+                                  const guess = join(import.meta.dir, "..", "..", "..", "..");
+                                  return existsSync(guess) ? guess : null;
+                          })());
+        const version = install && install.version !== "unknown" ? install.version : repoRoot ? readRootVersion(repoRoot) : "unknown";
         const git: UnownInfo["git"] = repoRoot
                 ? { ...gitLines(repoRoot), repoRoot }
                 : { sha: null, branch: null, dirty: null, repoRoot: null };
@@ -127,6 +132,15 @@ export function collectInfo(ctx: InfoCtx = {}): UnownInfo {
 
         return {
                 unownVersion: version,
+                install: install
+                        ? {
+                                  mode: install.mode,
+                                  root: install.root,
+                                  bin: install.binary ?? (install.mode === "checkout" ? join(install.root, "bin", "unown") : null),
+                                  shim: install.shim ?? null,
+                                  platform: install.platform ?? null,
+                          }
+                        : { mode: "unknown", root: null, bin: null, shim: null, platform: null },
                 git,
                 platform: { os: platform(), arch: arch(), release: release(), bun: bunVersion },
                 providers,
@@ -162,9 +176,14 @@ export function renderInfo(i: UnownInfo): string {
         lines.push(`  platform:   ${i.platform.os} ${i.platform.arch} (${i.platform.release})`);
         lines.push(`  bun:        ${i.platform.bun ?? "unknown"}`);
         lines.push(
+                `  install:    ${i.install.mode}${i.install.root ? ` · ${i.install.root}` : ""}${i.install.platform ? ` · ${i.install.platform}` : ""}`,
+        );
+        lines.push(
                 `  git:        ${i.git.sha ?? "?"} ${i.git.branch ? `(${i.git.branch})` : "(detached)"}${i.git.dirty ? " · dirty" : ""}`,
         );
-        lines.push(`  checkout:   ${i.git.repoRoot ?? "(not found)"}`);
+        lines.push(
+                `  checkout:   ${i.git.repoRoot ?? (i.install.mode === "binary" ? "(binary install - no checkout)" : "(not found)")}`,
+        );
         lines.push(
                 `  state:      ${i.state.home} (agent dir ${i.state.agentDirExists ? "present" : "missing"}, auth.json ${i.state.authFile.exists ? `mode ${i.state.authFile.mode ?? "?"}` : "absent"})`,
         );

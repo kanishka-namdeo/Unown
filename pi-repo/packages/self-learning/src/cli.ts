@@ -105,6 +105,7 @@ import {
         parseUpdateFlags,
         readUpdateCheckCache,
         realGit,
+        resolveInstallInfo,
         resolveRepoRoot,
         UPDATE_HELP,
 } from "./update.ts";
@@ -193,7 +194,8 @@ Usage:
                            unown update 2.1.0 (also pins/rolls back)
   unown changelog [n]     print the latest CHANGELOG.md sections (default 1)
   unown completions <sh>  bash | zsh | fish | powershell completion script
-  unown uninstall         remove the PATH shims (--dry-run, --purge-data,
+  unown uninstall         remove the install: PATH shims, plus the versioned
+                           root for a binary install (--dry-run, --purge-data,
                            --purge-checkout)
   unown --help             this help
   unown --version          print the version (matches package.json)
@@ -1121,11 +1123,19 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
         // 0. version + update state (from the notifier cache — no network here;
         // refresh with `unown update --check`)
         {
-                const root = resolveRepoRoot(realGit);
+                const install = resolveInstallInfo({ home: UNOWN_HOME });
+                const root = install?.mode === "checkout" ? install.root : null;
+                const shown = VERSION !== "unknown" ? VERSION : (install?.version ?? "unknown");
                 const short = root ? gitShortSha(root, realGit) : null;
-                check("unown version", true, `${VERSION}${short ? ` · ${short}` : ""} · ${root ?? "(not a git checkout)"}`);
+                check(
+                        "unown version",
+                        true,
+                        install?.mode === "binary"
+                                ? `${shown} · binary install · ${install.root}`
+                                : `${shown}${short ? ` · ${short}` : ""} · ${root ?? "(not a git checkout)"}`,
+                );
                 const cache = readUpdateCheckCache(UNOWN_HOME);
-                if (cache?.latest && compareSemver(cache.latest, VERSION) > 0) {
+                if (cache?.latest && compareSemver(cache.latest, shown) > 0) {
                         check(
                                 "update available",
                                 false,

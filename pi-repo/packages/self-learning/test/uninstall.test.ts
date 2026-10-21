@@ -2,17 +2,26 @@
 // injected removers, no git/network unless a fixture repo is created).
 import "./_env.ts";
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
         cmdUninstall,
+        findInstallShims,
         findShims,
         parseUninstallFlags,
         shimCandidateDirs,
         shimTarget,
         type UninstallFlags,
 } from "../src/uninstall.ts";
+import {
+        binaryPath,
+        installMetadataPath,
+        readInstallMetadata,
+        writeBinaryShims,
+        writeInstallMetadata,
+        type ReleasePlatform,
+} from "../src/install-layout.ts";
 
 let TMP: string;
 function fresh(): string {
@@ -164,6 +173,126 @@ describe("cmdUninstall", () => {
                 );
                 expect(code).toBe(1);
                 expect(s.lines.join("\n")).toContain("uncommitted work");
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Binary install: shims pointing into THIS root, then the versioned root.
+// No git check runs.
+// ---------------------------------------------------------------------------
+describe("cmdUninstall (binary install)", () => {
+        interface BinaryFixture {
+                root: string;
+                home: string;
+                bin: string;
+                version: string;
+                platform: ReleasePlatform;
+                shim: string;
+                shims: string[];
+                removed: string[];
+                removedDirs: string[];
+                lines: string[];
+        }
+
+        function setupBinary(version = "0.0.1", platform: ReleasePlatform = "linux-x64"): BinaryFixture {
+                const base = fresh();
+                const root = join(base, "data", "unown");
+                const home = join(base, "unown-home");
+                const bin = join(base, "bin");
+                mkdirSync(join(home, "agent"), { recursive: true });
+                writeFileSync(join(home, "agent", "keep.txt"), "memories");
+                const file = binaryPath(root, version, platform);
+                mkdirSync(join(file, ".."), { recursive: true });
+                writeFileSync(file, version);
+                const shims = writeBinaryShims({ root, version, env: { UNOWN_BIN_DIR: bin } });
+                writeInstallMetadata(home, {
+                        schema: 1,
+                        mode: "binary",
+                        version,
+                        platform,
+                        root,
+                        bin: file,
+                        shim: shims.primary,
+                        installedAt: "2026-01-01T00:00:00.000Z",
+                });
+                return {
+                        root,
+                        home,
+                        bin,
+                        version,
+                        platform,
+                        shim: shims.primary,
+                        shims: shims.all,
+                        removed: [],
+                        removedDirs: [],
+                        lines: [],
+                };
+        }
+
+        function runBinary(flags: UninstallFlags, s: BinaryFixture, platform: NodeJS.Platform = process.platform): number {
+                return cmdUninstall(flags, {
+                        install: { mode: "binary", root: s.root, version: s.version, platform: s.platform },
+                        home: s.home,
+                        env: { UNOWN_BIN_DIR: s.bin },
+                        platform,
+                        log: (l) => s.lines.push(l),
+                        removeFile: (p) => {
+                                s.removed.push(p);
+                                rmSync(p, { force: true });
+                        },
+                        removeDir: (p) => {
+                                s.removedDirs.push(p);
+                                rmSync(p, { recursive: true, force: true });
+                        },
+                        hasUncommitted: () => {
+                                throw new Error("binary uninstall must not run git checks");
+                        },
+                });
+        }
+
+        test("removes this root's shims, the versioned root and install.json; keeps ~/.unown", () => {
+                const s = setupBinary();
+                const code = runBinary({}, s);
+                expect(code).toBe(0);
+                expect(s.removed).toEqual(expect.arrayContaining(s.shims));
+                expect(s.removedDirs).toContain(s.root);
+                expect(existsSync(s.root)).toBe(false);
+                expect(existsSync(installMetadataPath(s.home))).toBe(false);
+                expect(existsSync(join(s.home, "agent", "keep.txt"))).toBe(true);
+                expect(s.lines.join("\n")).toContain("binary install");
+                expect(s.lines.join("\n")).toContain("uninstalled");
+        });
+
+        test("--dry-run lists everything and changes nothing", () => {
+                const s = setupBinary();
+                const code = runBinary({ dryRun: true }, s);
+                expect(code).toBe(0);
+                expect(s.removed).toEqual([]);
+                expect(s.removedDirs).toEqual([]);
+                expect(existsSync(s.root)).toBe(true);
+                expect(existsSync(s.shim)).toBe(true);
+                expect(readInstallMetadata(s.home)?.version).toBe("0.0.1");
+                expect(s.lines.join("\n")).toContain("would remove");
+        });
+
+        test("a shim pointing into a different install root is skipped, never deleted", () => {
+                const s = setupBinary();
+                const otherRoot = join(s.root, "..", "other-unown");
+                writeBinaryShims({ root: otherRoot, version: "9.9.9", env: { UNOWN_BIN_DIR: s.bin } });
+                expect(findInstallShims(s.root, { UNOWN_BIN_DIR: s.bin })[0].ours).toBe(false);
+                const code = runBinary({}, s);
+                expect(code).toBe(0);
+                expect(s.removed.filter((p) => s.shims.includes(p))).toEqual([]); // foreign shim untouched
+                expect(existsSync(s.shim)).toBe(true);
+                expect(existsSync(s.root)).toBe(false); // the root itself still goes
+                expect(s.lines.join("\n")).toContain("different unown install");
+        });
+
+        test("--purge-data also removes ~/.unown", () => {
+                const s = setupBinary();
+                expect(runBinary({ purgeData: true }, s)).toBe(0);
+                expect(s.removedDirs).toContain(s.home);
+                expect(existsSync(s.home)).toBe(false);
         });
 });
 

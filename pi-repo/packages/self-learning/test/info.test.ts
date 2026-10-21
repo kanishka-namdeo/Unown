@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cmdInfo, collectInfo, renderInfo } from "../src/info.ts";
+import { writeInstallMetadata } from "../src/install-layout.ts";
 
 let TMP: string;
 function fresh(): string {
@@ -74,6 +75,27 @@ describe("unown info", () => {
 		const parsed = JSON.parse(lines.join("\n"));
 		expect(parsed.platform).toBeDefined();
 		expect(parsed.optOuts).toEqual([]);
+	});
+
+	test("a binary install reports its mode, root and version (and no checkout)", () => {
+		const home = fresh();
+		writeInstallMetadata(home, {
+			schema: 1,
+			mode: "binary",
+			version: "2.3.4",
+			platform: "linux-x64",
+			root: "/opt/unown",
+			bin: "/opt/unown/versions/2.3.4/unown",
+			shim: "/home/u/.local/bin/unown",
+			installedAt: new Date().toISOString(),
+		});
+		const info = collectInfo({ home, env: { UNOWN_INSTALL_ROOT: "/opt/unown" } });
+		expect(info.install).toMatchObject({ mode: "binary", root: "/opt/unown", platform: "linux-x64" });
+		expect(info.unownVersion).toBe("2.3.4");
+		expect(info.git.repoRoot).toBeNull();
+		const text = renderInfo(info);
+		expect(text).toContain("install:    binary");
+		expect(text).toContain("binary install - no checkout");
 	});
 });
 

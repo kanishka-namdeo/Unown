@@ -68,16 +68,16 @@ const PI_REPO = path.join(REPO_ROOT, "pi-repo");
 
 // ------------------------------------------------------- step 1: root install
 // (step failures exit with the child's exit code, like install.sh's `set -e`)
-console.log(`${sym.step} [1/6] Installing landing-page dependencies (bun install)...`);
+console.log(`${sym.step} [1/6] Installing landing-page dependencies (bun install --frozen-lockfile)...`);
 {
-  const code = run(BUN, ["install"], { cwd: REPO_ROOT });
+  const code = run(BUN, ["install", "--frozen-lockfile"], { cwd: REPO_ROOT });
   if (code !== 0) die(`${sym.fail} root bun install failed (exit ${code}) - see output above`, code);
 }
 
 // ----------------------------------------------------- step 2: pi-repo install
-console.log(`${sym.step} [2/6] Installing pi-mono engine dependencies (pi-repo/bun install)...`);
+console.log(`${sym.step} [2/6] Installing pi-mono engine dependencies (pi-repo/bun install --frozen-lockfile)...`);
 {
-  const code = run(BUN, ["install"], { cwd: PI_REPO });
+  const code = run(BUN, ["install", "--frozen-lockfile"], { cwd: PI_REPO });
   if (code !== 0) die(`${sym.fail} pi-repo bun install failed (exit ${code}) - see output above`, code);
 }
 

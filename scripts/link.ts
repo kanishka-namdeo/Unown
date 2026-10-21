@@ -34,6 +34,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { homedir } from "node:os";
 import { IS_WIN, REPO_ROOT, capture, resolveBun, sym } from "./lib";
+import {
+  detectPlatform,
+  readInstallMetadata,
+  writeInstallMetadata,
+  writeShimSet,
+} from "../pi-repo/packages/self-learning/src/install-layout.ts";
 
 function die(message: string): never {
   console.error(message);
@@ -102,31 +108,43 @@ if (!binDir) {
 fs.mkdirSync(binDir, { recursive: true });
 
 // ------------------------------------------------------------- write the shim
+const existing = readInstallMetadata(process.env.UNOWN_HOME || path.join(HOME, ".unown"));
+const written = writeShimSet({
+  dir: binDir,
+  platform: process.platform,
+  command: BUN,
+  args: [TARGET],
+  header: ["unown shim — created by scripts/link.ts; re-run it after moving the repo."],
+});
 if (IS_WIN) {
-  // unown.cmd — cmd.exe shim. ASCII only, LF endings (cmd handles LF fine).
-  // Single-line form so there are no labels (goto + LF is a cmd parser trap).
-  fs.writeFileSync(path.join(binDir, "unown.cmd"), `@"${BUN}" "${TARGET}" %*\n`, {
-    flag: "w",
-  });
-  // unown.ps1 — PowerShell shim (same target, $LASTEXITCODE propagated).
-  fs.writeFileSync(
-    path.join(binDir, "unown.ps1"),
-    `& "${BUN}" "${TARGET}" $args; exit $LASTEXITCODE\n`,
-    { flag: "w" },
-  );
   console.log(`${sym.ok} linked ${path.join(binDir, "unown.cmd")} + unown.ps1 -> ${TARGET}`);
 } else {
-  // POSIX: bash shim, executable.
-  const shim = path.join(binDir, "unown");
-  fs.writeFileSync(
-    shim,
-    `#!/usr/bin/env bash\n` +
-      `# unown shim — created by scripts/link.ts; re-run it after moving the repo.\n` +
-      `exec "${BUN}" "${TARGET}" "$@"\n`,
-    { flag: "w" },
-  );
-  fs.chmodSync(shim, 0o755);
-  console.log(`${sym.ok} linked ${shim} -> ${TARGET}`);
+  console.log(`${sym.ok} linked ${written.primary} -> ${TARGET}`);
+}
+
+// ---------------------------------------------------- install metadata record
+// ~/.unown/install.json records the ACTIVE install so `unown update` /
+// `unown uninstall` know which shape they are looking at. A checkout link
+// replaces a binary record (the shim just moved to this checkout) and says so.
+try {
+  const version = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf8")).version;
+  writeInstallMetadata(process.env.UNOWN_HOME || path.join(HOME, ".unown"), {
+    schema: 1,
+    mode: "checkout",
+    version: String(version ?? "unknown"),
+    platform: detectPlatform() ?? `${process.platform}-${process.arch}`,
+    root: REPO_ROOT,
+    bin: TARGET,
+    shim: written.primary,
+    installedAt: new Date().toISOString(),
+  });
+} catch (err) {
+  console.log(`${sym.warn} could not write install metadata (${String(err)}) - ` +
+    "unown update will treat this as a plain checkout");
+}
+if (existing?.mode === "binary") {
+  console.log(`${sym.warn} a binary install is still present at ${existing.root};`);
+  console.log("  this checkout now owns the PATH shim - run that install's uninstall to remove it");
 }
 
 // ------------------------------------------------------------------ PATH check

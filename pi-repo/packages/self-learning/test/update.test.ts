@@ -328,13 +328,39 @@ describe("cmdUpdate against a local git remote", () => {
                 expect(readFileSync(join(WORK, "local-notes.txt"), "utf8")).toBe("wip");
         }, 60_000);
 
-        test("refuses a pinned (detached) install without an explicit version", async () => {
+        test("a detached HEAD on a non-release commit is a pinned install", async () => {
+                makeWorkRepo();
+                releaseOnOrigin("0.7.0");
+                // a detached commit that is NOT a release tag is a deliberate pin
+                writeFileSync(join(WORK, "scratch.txt"), "local");
+                git([...IDENTITY, "add", "."], WORK);
+                git([...IDENTITY, "commit", "-m", "scratch"], WORK);
+                git(["checkout", "--detach", "HEAD"], WORK);
+                const r = await run({});
+                expect(r.code).toBe(1);
+                expect(r.lines.join("\n")).toContain("pinned");
+        }, 60_000);
+
+        test("a detached release tag is a normal tag install and auto-advances", async () => {
                 makeWorkRepo();
                 releaseOnOrigin("0.7.0");
                 git(["checkout", "--detach", "v0.1.0"], WORK);
                 const r = await run({});
-                expect(r.code).toBe(1);
-                expect(r.lines.join("\n")).toContain("pinned");
+                expect(r.code).toBe(0);
+                expect(readRootVersionFile(WORK)).toBe("0.7.0");
+                expect(git(["describe", "--tags", "--exact-match", "HEAD"], WORK).out).toBe("v0.7.0");
+        }, 60_000);
+
+        test("explicit version downgrades a tag install (detached checkout)", async () => {
+                makeWorkRepo();
+                releaseOnOrigin("0.2.0");
+                git(["fetch", "origin", "--tags"], WORK);
+                git(["checkout", "--detach", "v0.2.0"], WORK);
+                const r = await run({ version: "0.1.0" });
+                expect(r.code).toBe(0);
+                expect(readRootVersionFile(WORK)).toBe("0.1.0");
+                expect(git(["describe", "--tags", "--exact-match", "HEAD"], WORK).out).toBe("v0.1.0");
+                expect(r.lines.join("\n")).toContain("downgrading");
         }, 60_000);
 
         test("explicit version moves a pinned install (checkout path)", async () => {
@@ -455,6 +481,15 @@ describe("cmdUpdate against a local git remote", () => {
                 expect(cache?.latest).toBe("0.7.0");
                 expect(cache?.remoteUrl).toContain("origin");
                 expect(cache?.checkedAt).toBeDefined();
+        }, 60_000);
+
+        test("--check --background (the detached child's argv) still means background", async () => {
+                makeWorkRepo();
+                releaseOnOrigin("0.7.5");
+                const r = await run({ check: true, background: true });
+                expect(r.code).toBe(0);
+                expect(r.lines).toEqual([]);
+                expect(readUpdateCheckCache(TMP)?.latest).toBe("0.7.5");
         }, 60_000);
 
         test("UNOWN_DISABLE_UPDATES hard-blocks every path", async () => {
