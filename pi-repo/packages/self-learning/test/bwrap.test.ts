@@ -17,6 +17,7 @@ import {
         netBlocked,
         osSandboxAvailable,
         osSandboxConfigured,
+        resolveAgentIsolation,
         resolveBwrapPath,
         runtimeBindArgs,
         wrapCommand,
@@ -334,5 +335,30 @@ describe("writeSandboxShell", () => {
                 const fresh = join(ROOT, "agent-dir-disabled");
                 expect(writeSandboxShell(fresh)).toBeNull();
                 expect(existsSync(fresh)).toBe(false);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// resolveAgentIsolation — the run-record isolation level (M6-3, audit M4-c D2)
+describe("resolveAgentIsolation — the run-record isolation level", () => {
+        test("mirrors writeSandboxShell's decision on this host", () => {
+                const shell = writeSandboxShell(AGENT_DIR);
+                const iso = resolveAgentIsolation();
+                if (shell === null) {
+                        expect(iso).toBe("process");
+                } else {
+                        expect(iso).toBe(process.platform === "linux" ? "bwrap" : "seatbelt");
+                }
+        });
+
+        test("kill-switch (UNOWN_OS_SANDBOX=0) -> 'process' and no wrapper", () => {
+                process.env.UNOWN_OS_SANDBOX = "0";
+                expect(resolveAgentIsolation()).toBe("process");
+                expect(writeSandboxShell(AGENT_DIR)).toBeNull();
+        });
+
+        test("never returns null — 'process' is the auditable degraded state", () => {
+                const iso = resolveAgentIsolation();
+                expect(["bwrap", "seatbelt", "process"]).toContain(iso);
         });
 });

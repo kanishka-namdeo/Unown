@@ -22,11 +22,20 @@ async function main() {
         const task = getTask(row.task_id);
         if (!task) throw new Error(`task ${row.task_id} not found`);
 
+        // M6-4 (audit M4-c D3): the verify_output column is JSON — parse it
+        // instead of String()-ifying the object ("[object Object]" used to ride
+        // into the miner's VERIFICATION OUTPUT block), and refuse to mine a
+        // non-failed run up front (mineFailure now enforces the same contract).
+        if (row.status !== "failed") {
+                throw new Error(`run ${runId} has status=${row.status} — e6 needs a FAILED run (the engine mines failures only)`);
+        }
+        const verifyRaw = row.verify_output ? JSON.parse(row.verify_output) : null;
+
         const run = {
                 id: row.id,
-                status: row.status,
+                status: row.status as "failed",
                 transcript: JSON.parse(row.transcript || "[]"),
-                verify: row.verify_output ? { passed: false, summary: "", log: String(row.verify_output) } : undefined,
+                verify: verifyRaw ? { passed: Boolean(verifyRaw.passed), summary: String(verifyRaw.summary ?? ""), log: String(verifyRaw.log ?? "") } : undefined,
                 sandboxId: row.sandbox_id ?? "",
                 tokensIn: row.tokens_in ?? 0,
                 tokensOut: row.tokens_out ?? 0,

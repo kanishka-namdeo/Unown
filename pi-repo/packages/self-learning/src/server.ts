@@ -33,7 +33,7 @@ import {
         healEngineTokenFile,
 } from "./engine-auth.ts";
 import { dreamNotes, listDreams, runDream } from "./dream.ts";
-import { getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
+import { cycleTriggerGuard, getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
 import { history, projectTiers, resolveMemory, rollback, seedMemoryIfEmpty, snapshot, type Tier } from "./memory.ts";
 import { runMintJob, suiteStats } from "./mint.ts";
@@ -42,6 +42,7 @@ import { syncNoteOutbox } from "./outbox.ts";
 import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
 import { breakerStatus, budgetStatus, markEngineProcess, pruneLedger } from "./governor.ts";
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
+import { getLiveRun, listLiveRuns } from "./run-progress.ts";
 import { listSandboxes } from "./sandbox.ts";
 import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from "./skills.ts";
 import { store, DATA_DIR, DB_PATH } from "./store.ts";
@@ -404,6 +405,28 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 if (method === "POST" && /^\/api\/tasks\/[^/]+\/run$/.test(path)) {
                         const id = decodeURIComponent(path.split("/")[3]);
                         if (!getTask(id)) return json({ error: "not found" }, 404);
+                        // M6-1 dedup: block re-triggers of a task with a live cycle or a
+                        // just-succeeded one (accidental double-spend guard; M4-c D5).
+                        // force=true (body) or ?force=1 overrides the cooldown — never the
+                        // active-cycle rule.
+                        const force = body?.force === true || query.get("force") === "1";
+                        const guard = cycleTriggerGuard(id, { force });
+                        if (!guard.ok) {
+                                if (guard.reason === "cycle-active")
+                                        return json(
+                                                { error: `a cycle for this task is already running`, reason: guard.reason, activeCycleId: guard.activeCycleId },
+                                                409,
+                                        );
+                                return json(
+                                        {
+                                                error: `task just ${guard.lastStatus} — re-run blocked for ${Math.ceil((guard.retryInMs ?? 0) / 1000)}s to avoid accidental double-spend (force:true to override)`,
+                                                reason: guard.reason,
+                                                lastStatus: guard.lastStatus,
+                                                retryInMs: guard.retryInMs,
+                                        },
+                                        409,
+                                );
+                        }
                         if (router.isBusy()) return json({ error: "engine busy — try again in a moment" }, 409);
                         // fire and forget under the busy mutex — poll cycles/runs for progress
                         router.withBusy(() => runCycle(id)).catch((e) => emit("router:error", { error: e?.message }));
@@ -419,11 +442,20 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         const kind = query.get("kind") ?? undefined;
                         return json({ runs: listRuns(limit, taskId, kind) });
                 }
+                if (method === "GET" && path === "/api/runs/live") {
+                        // M6-2 (audit M4-c D4): pollable in-flight progress — the same
+                        // counters the SSE events carry and finalize persists, observed
+                        // mid-run. Empty array = engine idle; finished runs live in the
+                        // DB rows below, not here.
+                        return json({ runs: listLiveRuns() });
+                }
                 if (method === "GET" && /^\/api\/runs\/[^/]+$/.test(path)) {
                         const id = path.split("/")[3];
                         const run = getRun(id);
                         if (!run) return json({ error: "not found" }, 404);
-                        return json({ run });
+                        // In-flight runs also carry their live progress (null when
+                        // finished — the DB fields are authoritative then).
+                        return json({ run, live: getLiveRun(id) });
                 }
 
                 // ------------------------------------------------------------------

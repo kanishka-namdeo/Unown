@@ -465,6 +465,24 @@ exec '${bin}' -f "$PROFILE" -- /bin/bash "$@"
  * no backend (win32/other) get null and run un-wrapped; the UNOWN_OS_SANDBOX=0
  * kill-switch disables the wrapper everywhere.
  */
+/**
+ * The isolation level the agent bash tool will actually run under on this
+ * host — the EXACT decision writeSandboxShell makes (kill-switch, backend
+ * presence, binary resolution), expressed as the run-record value
+ * ("bwrap" | "seatbelt" | "process"). Persisted per run (M6-3, audit M4-c
+ * D2): before this, a host whose bwrap binary silently vanished degraded
+ * runs to the TS path jail with NO trace — an auditor could not tell after
+ * the fact whether model-issued commands were OS-jailed.
+ */
+export function resolveAgentIsolation(): "bwrap" | "seatbelt" | "process" {
+        if (!osSandboxConfigured()) return "process";
+        const backend = resolveOsSandboxBackend();
+        if (backend === null) return "process";
+        const bin = backend === "bwrap" ? resolveBwrapPath() : resolveSandboxExecPath();
+        if (!bin) return "process";
+        return backend;
+}
+
 export function writeSandboxShell(agentDir: string): string | null {
         if (!osSandboxConfigured()) return null;
         const backend = resolveOsSandboxBackend();

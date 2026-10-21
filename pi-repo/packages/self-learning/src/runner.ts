@@ -25,10 +25,11 @@ import {
         type AutoCompactDecision,
 } from "./auto-compact.ts";
 import { emit } from "./bus.ts";
-import { writeSandboxShell } from "./bwrap.ts";
+import { resolveAgentIsolation, writeSandboxShell } from "./bwrap.ts";
 import { createHooksExtension, logHook } from "./hooks.ts";
 import { currentVersion, type MemoryOverlay, resolveMemoryForAgentDetailed } from "./memory.ts";
 import { createNote, noteFromRun } from "./notes.ts";
+import { beginLiveRun, finishLiveRun, touchLiveRun } from "./run-progress.ts";
 import { createSandbox, seedFiles, snapshotFiles, verifyInSandbox } from "./sandbox.ts";
 import { BRIDGE_URL, DATA_DIR, store } from "./store.ts";
 import { createWebToolsExtension } from "./websearch.ts";
@@ -176,7 +177,7 @@ export interface RunOptions {
 export interface RunResult {
         id: string;
         status: "passed" | "failed" | "error";
-        verify?: { passed: boolean; summary: string; log: string };
+        verify?: { passed: boolean; summary: string; log: string; isolation?: "bwrap" | "seatbelt" | "process" };
         transcript: TranscriptEntry[];
         sandboxId: string;
         tokensIn: number;
@@ -305,9 +306,15 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
         }
         const memoryVersion = currentVersion("project");
 
+        // M6-3 (audit M4-c D2): record the isolation the agent bash tool will
+        // actually run under — the same decision writeSandboxShell makes below.
+        // Persisted on the run row + carried by run:started so a silently
+        // degraded host (missing bwrap binary, kill-switch) is auditable.
+        const agentIsolation = resolveAgentIsolation();
+
         store.run(
-                `INSERT INTO runs (id, task_id, kind, status, started_at, sandbox_id, cycle_id, improvement_id, prompt)
-                 VALUES (?, ?, ?, 'running', ?, ?, ?, ?, ?)`,
+                `INSERT INTO runs (id, task_id, kind, status, started_at, sandbox_id, cycle_id, improvement_id, prompt, sandbox_isolation)
+                 VALUES (?, ?, ?, 'running', ?, ?, ?, ?, ?, ?)`,
                 [
                         runId,
                         opts.taskId ?? null,
@@ -317,9 +324,21 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                         opts.cycleId ?? null,
                         opts.improvementId ?? null,
                         opts.prompt,
+                        agentIsolation,
                 ],
         );
-        emit("run:started", { id: runId, kind: opts.kind, taskId: opts.taskId, sandbox: sandbox.id });
+        emit("run:started", { id: runId, kind: opts.kind, taskId: opts.taskId, sandbox: sandbox.id, isolation: agentIsolation });
+        // M6-2: register for REST live progress (same counters finalize persists,
+        // observed mid-flight — GET /api/runs/live, GET /api/runs/:id .live).
+        beginLiveRun({
+                id: runId,
+                taskId: opts.taskId ?? null,
+                kind: opts.kind,
+                cycleId: opts.cycleId ?? null,
+                improvementId: opts.improvementId ?? null,
+                label: opts.label ?? null,
+                startedAt,
+        });
 
         if (opts.files) seedFiles(sandbox, opts.files);
 
@@ -341,6 +360,9 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                 verify: RunResult["verify"],
                 error?: string,
         ): Promise<RunResult> => {
+                // M6-2: the run is no longer live — drop the REST progress entry so
+                // the finalized DB row (written below) is the single source of truth.
+                finishLiveRun(runId);
                 const endedAt = Date.now();
                 // STICKY FINALIZE (docs/detached-engine-architecture.md F2): only a
                 // row still in 'running' may be finalized. When the router watchdog
@@ -479,6 +501,11 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                                 input: JSON.stringify(e.args ?? {}).slice(0, 1200),
                                         });
                                         emit("run:tool", { runId, tool: e.toolName, phase: "start" });
+                                        touchLiveRun(runId, (p) => {
+                                                p.toolCalls = toolsUsed.length;
+                                                p.toolsUsed = [...toolsUsed];
+                                                p.lastTool = { tool: e.toolName, phase: "start", at: Date.now() };
+                                        });
                                 } else if (e.type === "tool_execution_end") {
                                         const content = Array.isArray(e.result?.content)
                                                 ? e.result.content
@@ -494,6 +521,9 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                                 isError: Boolean(e.isError),
                                         });
                                         emit("run:tool", { runId, tool: e.toolName, phase: "end", isError: Boolean(e.isError) });
+                                        touchLiveRun(runId, (p) => {
+                                                p.lastTool = { tool: e.toolName, phase: "end", isError: Boolean(e.isError), at: Date.now() };
+                                        });
                                 } else if (e.type === "message_end" && e.message?.role === "assistant") {
                                         const usage = e.message.usage;
                                         if (usage) {
@@ -508,6 +538,11 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                                         currentContextTokens = usage.input;
                                                 }
                                         }
+                                        touchLiveRun(runId, (p) => {
+                                                p.tokensIn = tokensIn;
+                                                p.tokensOut = tokensOut;
+                                                p.contextTokens = currentContextTokens;
+                                        });
                                         const text = (e.message.content ?? [])
                                                 .filter((b: any) => b.type === "text")
                                                 .map((b: any) => b.text)
@@ -516,9 +551,15 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                                 lastAssistantText = text;
                                                 transcript.push({ type: "text", ts: Date.now(), text: text.slice(0, 4000) });
                                                 emit("run:text", { runId, preview: text.slice(0, 240) });
+                                                touchLiveRun(runId, (p) => {
+                                                        p.lastTextPreview = text.slice(0, 240);
+                                                });
                                         }
                                 } else if (e.type === "turn_end") {
                                         turns++;
+                                        touchLiveRun(runId, (p) => {
+                                                p.turns = turns;
+                                        });
                                         // §3.7 — auto-compact guard. After each turn ends
                                         // (and BEFORE the next one starts), check whether
                                         // the session is approaching the context window
@@ -556,6 +597,9 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                 passed: v.passed,
                                 summary: v.summary || (v.passed ? "all tests passed" : "tests failed"),
                                 log: v.log,
+                                // M6-3: which OS jail the verify exec ran under — persisted
+                                // inside verify_output, next to the agent-shell level on the row.
+                                isolation: v.isolation,
                         };
                 }
 
@@ -599,6 +643,10 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                         };
                 }
         } finally {
+                // Belt-and-braces for the live-progress registry: finalize already
+                // drops the entry on every path, but a future early-return must not
+                // leak a phantom "running" entry into /api/runs/live.
+                finishLiveRun(runId);
                 try {
                         session?.dispose();
                 } catch {
@@ -630,7 +678,7 @@ export function listRuns(limit = 50, taskId?: string, kind?: string) {
         }
         params.push(limit);
         return store.query<any>(
-                `SELECT id, task_id, kind, status, started_at, ended_at, sandbox_id, cycle_id, improvement_id, tokens_in, tokens_out, tool_calls, turns, error
+                `SELECT id, task_id, kind, status, started_at, ended_at, sandbox_id, cycle_id, improvement_id, tokens_in, tokens_out, tool_calls, turns, error, sandbox_isolation
                  FROM runs WHERE ${conds.join(" AND ")} ORDER BY started_at DESC LIMIT ?`,
                 params,
         );

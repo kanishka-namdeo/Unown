@@ -200,6 +200,10 @@ export class Store {
                         ["tasks", "origin", "ALTER TABLE tasks ADD COLUMN origin TEXT DEFAULT 'seed'"],
                         ["tasks", "status", "ALTER TABLE tasks ADD COLUMN status TEXT DEFAULT 'regression'"],
                         ["tasks", "source_run_id", "ALTER TABLE tasks ADD COLUMN source_run_id TEXT"],
+                        // runs: the OS isolation the agent bash tool actually ran under
+                        // (M6-3, audit M4-c D2) — 'bwrap' | 'seatbelt' | 'process'; NULL =
+                        // pre-M6 rows, when the level was not recorded.
+                        ["runs", "sandbox_isolation", "ALTER TABLE runs ADD COLUMN sandbox_isolation TEXT"],
                 ];
                 for (const [table, col, ddl] of columns) {
                         const existing = this.query<any>(`PRAGMA table_info(${table})`).some((c: any) => c.name === col);

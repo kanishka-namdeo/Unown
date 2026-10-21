@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Fixed fragmented terminal color/program-status replies leaking into keyboard input, and their BEL terminator opening the external editor as Ctrl+G — replies now wait for their terminator (cherry-picked from upstream pi-tui 1.2.0, commit `edb2eb9`; [#10256](https://github.com/earendil-works/pi/issues/10256), [#10657](https://github.com/earendil-works/pi/issues/10657)).
+- Fixed terminal modes (mouse tracking, focus reporting, Kitty keyboard protocol, bracketed paste, alternate screen) staying enabled after an exit path that skipped `stop()`, flooding the shell with escape sequences — a process `exit` handler now restores them synchronously (cherry-picked from upstream pi main, commit `9df819d`; [#11170](https://github.com/earendil-works/pi/issues/11170)).
 - Fixed main-screen rendering crashing when image-heavy output exceeded V8's string length limit ([#8028](https://github.com/earendil-works/pi/issues/8028)).
 - Fixed autocomplete ordering for nested results ([#8669](https://github.com/earendil-works/pi/pull/8669)).
 - Fixed fullscreen double-click word selection splitting paths and kebab-case tokens on `/` and `-` ([#7746](https://github.com/earendil-works/pi/issues/7746)).

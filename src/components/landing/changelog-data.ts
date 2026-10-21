@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 236;
+export const CHANGELOG_TOTAL_ENTRIES = 241;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 108,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 71,
+  "Fixed": 76,
   "Security": 3,
   "Behavior": 27
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 114,
+    "total": 119,
     "counts": {
       "Added": 54,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 2,
-      "Fixed": 45,
+      "Fixed": 50,
       "Security": 0,
       "Behavior": 7
     },
@@ -300,6 +300,26 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "the TUI dashboard authenticates with the engine — M7's missed client",
+            "behavior": false
+          },
+          {
+            "title": "a task-run trigger that collides with reality says so (the accidental double-spend guard)",
+            "behavior": false
+          },
+          {
+            "title": "REST consumers can finally see a run in flight (GET /api/runs/live)",
+            "behavior": false
+          },
+          {
+            "title": "every run records the OS jail it actually ran under (the silent-degrade audit trail)",
+            "behavior": false
+          },
+          {
+            "title": "the miner mines failures — and only failures",
+            "behavior": false
+          },
+          {
+            "title": "two upstream pi terminal fixes cherry-picked into the vendored tree (the M4-d deferred item, resolved)",
             "behavior": false
           },
           {
