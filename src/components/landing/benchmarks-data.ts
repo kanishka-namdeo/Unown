@@ -3,63 +3,105 @@
 // CI gate (the page must equal the receipts):  bun scripts/landing_benchmarks.mjs --check
 //
 // The landing page's benchmark section renders these consts. Every figure is
-// read from a committed receipt JSON, and where a track has both a base receipt
-// and a `rerun-<date>` verification run, the NEWEST rerun wins — that is the
-// whole tie-break, and `benchmarks/RESULTS.md` records why the page carries the
-// fresh numbers rather than the 2026-10-16 ones. A figure with no receipt field
-// is `null` and the generator says so out loud; the page never keeps a number
-// it cannot point at.
+// read from a committed receipt JSON, resolved PER MODEL: where a track has
+// both a base receipt and `rerun-<date>` verification runs, each model's row
+// points at its own freshest receipt (BENCH_SOURCES.perModel) — a model added
+// mid-campaign lands from its rerun dir without discarding the other models'
+// freshest receipts. A figure with no receipt field is `null` and the
+// generator says so out loud; the page never keeps a number it cannot point at.
 
-export type BenchModel = "kimi-k2.5" | "qwen3.6-plus" | "qwen3.7-plus";
+export type BenchModel = "agnes-3.0-flash" | "kimi-k2.5" | "qwen3.6-plus" | "qwen3.7-plus";
 
 export type BenchTrackName = "EDIT_BENCH" | "HUMANEVAL_PLUS" | "LIVECODEBENCH" | "LONGHORIZON" | "POLYGLOT" | "SELFIMPROVE";
 
 export interface BenchTrackSource {
   /** The track's directory name under `benchmarks/`. */
   track: string;
-  /** The run directory the figures were read from (repo-relative). */
+  /** The run directory the figures were read from (repo-relative); `… (mixed…)` when models resolved to different runs. */
   run: string;
-  /** The receipt file they came from; `<model>` is the row's model key. */
+  /** Per-model receipt path (repo-relative) — each model's freshest receipt; the authoritative provenance. */
+  perModel: Record<string, string>;
+  /** The `<model>` receipt template when the run is uniform, else `mixed`. */
   source: string;
 }
 
 export const BENCH_SOURCES: Record<BenchTrackName, BenchTrackSource> = {
   "EDIT_BENCH": {
     "track": "edit-bench",
-    "run": "benchmarks/edit-bench/results/rerun-2026-10-17",
-    "source": "benchmarks/edit-bench/results/rerun-2026-10-17/<model>/summary.json"
+    "run": "benchmarks/edit-bench/results/rerun-2026-10-21 (mixed — see perModel)",
+    "perModel": {
+      "kimi-k2.5": "benchmarks/edit-bench/results/rerun-2026-10-17/kimi-k2.5/summary.json",
+      "qwen3.7-plus": "benchmarks/edit-bench/results/rerun-2026-10-17/qwen3.7-plus/summary.json",
+      "qwen3.6-plus": "benchmarks/edit-bench/results/rerun-2026-10-17/qwen3.6-plus/summary.json",
+      "agnes-3.0-flash": "benchmarks/edit-bench/results/rerun-2026-10-21/agnes-3.0-flash/summary.json"
+    },
+    "source": "mixed — see perModel"
   },
   "HUMANEVAL_PLUS": {
     "track": "evalplus",
-    "run": "benchmarks/evalplus/results/rerun-2026-10-17",
-    "source": "benchmarks/evalplus/results/rerun-2026-10-17/summary.json"
+    "run": "benchmarks/evalplus/results/rerun-2026-10-21 (mixed — see perModel)",
+    "perModel": {
+      "kimi-k2.5": "benchmarks/evalplus/results/rerun-2026-10-17/summary.json",
+      "qwen3.6-plus": "benchmarks/evalplus/results/rerun-2026-10-17/summary.json",
+      "qwen3.7-plus": "benchmarks/evalplus/results/rerun-2026-10-17/summary.json",
+      "agnes-3.0-flash": "benchmarks/evalplus/results/rerun-2026-10-21/summary.json"
+    },
+    "source": "mixed — see perModel"
   },
   "LIVECODEBENCH": {
     "track": "livecodebench",
     "run": "benchmarks/livecodebench/results",
+    "perModel": {
+      "kimi-k2.5": "benchmarks/livecodebench/results/summary.json",
+      "qwen3.7-plus": "benchmarks/livecodebench/results/summary.json",
+      "qwen3.6-plus": "benchmarks/livecodebench/results/summary.json",
+      "agnes-3.0-flash": "benchmarks/livecodebench/results/summary.json"
+    },
     "source": "benchmarks/livecodebench/results/summary.json"
   },
   "LONGHORIZON": {
     "track": "longhorizon",
     "run": "benchmarks/longhorizon/results",
+    "perModel": {
+      "kimi-k2.5": "benchmarks/longhorizon/results/summary.json",
+      "qwen3.7-plus": "benchmarks/longhorizon/results/summary.json",
+      "qwen3.6-plus": "benchmarks/longhorizon/results/summary.json",
+      "agnes-3.0-flash": "benchmarks/longhorizon/results/summary.json"
+    },
     "source": "benchmarks/longhorizon/results/summary.json"
   },
   "POLYGLOT": {
     "track": "polyglot",
-    "run": "benchmarks/polyglot/results/rerun-2026-10-17",
-    "source": "benchmarks/polyglot/results/rerun-2026-10-17/summary.json"
+    "run": "benchmarks/polyglot/results/rerun-2026-10-17 (mixed — see perModel)",
+    "perModel": {
+      "qwen3.6-plus": "benchmarks/polyglot/results/rerun-2026-10-17/summary.json",
+      "qwen3.7-plus": "benchmarks/polyglot/results/rerun-2026-10-17/summary.json",
+      "kimi-k2.5": "benchmarks/polyglot/results/rerun-2026-10-17/summary.json",
+      "agnes-3.0-flash": "benchmarks/polyglot/results/summary.json"
+    },
+    "source": "mixed — see perModel"
   },
   "SELFIMPROVE": {
     "track": "selfimprove",
     "run": "benchmarks/selfimprove/results",
+    "perModel": {
+      "qwen3.6-plus": "benchmarks/selfimprove/results/v2-notes/summary.qwen3.6-plus.json",
+      "kimi-k2.5": "benchmarks/selfimprove/results/v2-notes/summary.kimi-k2.5.json",
+      "qwen3.7-plus": "benchmarks/selfimprove/results/v2-notes/summary.qwen3.7-plus.json",
+      "agnes-3.0-flash": "benchmarks/selfimprove/results/v2-notes/summary.agnes-3.0-flash.json"
+    },
     "source": "benchmarks/selfimprove/results/v2-notes/summary.<model>.json"
   }
 };
 
 /**
  * oh-my-pi typescript-edit-benchmark: 106 fixtures, byte-exact scoring, full Unown agent in the loop.
- * Receipt: `benchmarks/edit-bench/results/rerun-2026-10-17/<model>/summary.json`
- * Canonical run: `benchmarks/edit-bench/results/rerun-2026-10-17` — the newest complete `rerun-*` of 2 (1 newer incomplete rerun(s) skipped — they do not cover every model), and so over the base receipt `benchmarks/edit-bench/results/<model>.summary.json`.
+ * Receipt: per model — every model's row points at its own freshest receipt
+ * (BENCH_SOURCES.perModel):
+ *   - `benchmarks/edit-bench/results/rerun-2026-10-17/kimi-k2.5` → kimi-k2.5
+ *   - `benchmarks/edit-bench/results/rerun-2026-10-17/qwen3.7-plus` → qwen3.7-plus
+ *   - `benchmarks/edit-bench/results/rerun-2026-10-17/qwen3.6-plus` → qwen3.6-plus
+ *   - `benchmarks/edit-bench/results/rerun-2026-10-21/agnes-3.0-flash` → agnes-3.0-flash
  * Fields: pct = `passRate` (0-1) x 100, 1dp
  */
 export interface EditBenchRow {
@@ -81,13 +123,19 @@ export const EDIT_BENCH: EditBenchRow[] = [
   {
     "model": "qwen3.6-plus",
     "pct": 94.3
+  },
+  {
+    "model": "agnes-3.0-flash",
+    "pct": 97.2
   }
 ];
 
 /**
  * HumanEval+ on the official evalplus CLI: sanitize -> evaluate, pass@1, greedy, 164 problems.
- * Receipt: `benchmarks/evalplus/results/rerun-2026-10-17/summary.json`
- * Canonical run: `benchmarks/evalplus/results/rerun-2026-10-17` — the newest complete `rerun-*` of 2 (1 newer incomplete rerun(s) skipped — they do not cover every model), and so over the base receipt `benchmarks/evalplus/results/summary.json`.
+ * Receipt: per model — every model's row points at its own freshest receipt
+ * (BENCH_SOURCES.perModel):
+ *   - `benchmarks/evalplus/results/rerun-2026-10-17` → kimi-k2.5, qwen3.6-plus, qwen3.7-plus
+ *   - `benchmarks/evalplus/results/rerun-2026-10-21` → agnes-3.0-flash
  * Fields: pct = `results.<model>.pass1` (0-1) x 100, 1dp
  */
 export interface HumanevalPlusRow {
@@ -109,6 +157,10 @@ export const HUMANEVAL_PLUS: HumanevalPlusRow[] = [
   {
     "model": "qwen3.7-plus",
     "pct": 92.7
+  },
+  {
+    "model": "agnes-3.0-flash",
+    "pct": 89
   }
 ];
 
@@ -142,6 +194,11 @@ export const LIVECODEBENCH: LivecodebenchRow[] = [
     "model": "qwen3.6-plus",
     "pct": 36,
     "noCode": 27
+  },
+  {
+    "model": "agnes-3.0-flash",
+    "pct": 28,
+    "noCode": 35
   }
 ];
 
@@ -190,13 +247,23 @@ export const LONGHORIZON: LonghorizonRow[] = [
     "inTok": 1205337,
     "cacheRead": 0,
     "jaccard": 0.81
+  },
+  {
+    "model": "agnes-3.0-flash",
+    "durS": 345,
+    "files": 14,
+    "inTok": 62031,
+    "cacheRead": 1068032,
+    "jaccard": 0.87
   }
 ];
 
 /**
  * Aider polyglot 50-exercise stratified subset, 6 languages, Aider's 2-attempt protocol. `pct` is the pass@2 figure the bar shows (the card says "pass@2 shown"); `pass1` is pass@1.
- * Receipt: `benchmarks/polyglot/results/rerun-2026-10-17/summary.json`
- * Canonical run: `benchmarks/polyglot/results/rerun-2026-10-17` — the newest complete `rerun-*` of 1, and so over the base receipt `benchmarks/polyglot/results/summary.json`.
+ * Receipt: per model — every model's row points at its own freshest receipt
+ * (BENCH_SOURCES.perModel):
+ *   - `benchmarks/polyglot/results/rerun-2026-10-17` → qwen3.6-plus, qwen3.7-plus, kimi-k2.5
+ *   - `benchmarks/polyglot/results` → agnes-3.0-flash
  * Fields: pct = `models.<model>.pass2Pct`; pass1 = `models.<model>.pass1Pct` (both already 0-100)
  */
 export interface PolyglotRow {
@@ -223,6 +290,11 @@ export const POLYGLOT: PolyglotRow[] = [
     "model": "kimi-k2.5",
     "pct": 94,
     "pass1": 94
+  },
+  {
+    "model": "agnes-3.0-flash",
+    "pct": 96,
+    "pass1": 90
   }
 ];
 
@@ -230,7 +302,7 @@ export const POLYGLOT: PolyglotRow[] = [
  * Repeat-task efficiency, cold vs warm dreamed memory, v2 protocol (agent-authored notes; v1 is the negative control and is not published here), n=10 single run per phase. `input`/`time` are the published deltas, derived from the raw cold/warm counts beside them.
  * Receipt: `benchmarks/selfimprove/results/v2-notes/summary.<model>.json`
  * Canonical run: `benchmarks/selfimprove/results` — no `rerun-*` directory exists for this track, so the base receipt is the record.
- * Fields: input = (`warm.input` - `cold.input`) / `cold.input` x 100, 1dp; time = same over `avgDurationS`; coldIn/warmIn = `cold.input`/`warm.input`; coldS/warmS = `cold.avgDurationS`/`warm.avgDurationS`
+ * Fields: input = (`warm.input` - `cold.input`) / `cold.input` x 100, 1dp; time = same over `avgDurationS`; coldIn/warmIn = `cold.input`/`warm.input`; coldS/warmS = `cold.avgDurationS`/`warm.avgDurationS`; coldPass/warmPass/coldTasks/warmTasks = the pass and task counts
  */
 export interface SelfimproveRow {
   /** Model id as routed by llm-bridge; the row order matches the section's bars. */
@@ -247,6 +319,14 @@ export interface SelfimproveRow {
   coldS: number;
   /** Warm-pass average duration, s. */
   warmS: number;
+  /** Cold-pass tasks passed. */
+  coldPass: number;
+  /** Warm-pass tasks passed. */
+  warmPass: number;
+  /** Cold-pass task count. */
+  coldTasks: number;
+  /** Warm-pass task count. */
+  warmTasks: number;
 }
 
 export const SELFIMPROVE: SelfimproveRow[] = [
@@ -257,7 +337,11 @@ export const SELFIMPROVE: SelfimproveRow[] = [
     "coldIn": 401445,
     "warmIn": 306218,
     "coldS": 25,
-    "warmS": 23
+    "warmS": 23,
+    "coldPass": 10,
+    "warmPass": 10,
+    "coldTasks": 10,
+    "warmTasks": 10
   },
   {
     "model": "kimi-k2.5",
@@ -266,7 +350,11 @@ export const SELFIMPROVE: SelfimproveRow[] = [
     "coldIn": 34553,
     "warmIn": 42075,
     "coldS": 37,
-    "warmS": 24
+    "warmS": 24,
+    "coldPass": 10,
+    "warmPass": 10,
+    "coldTasks": 10,
+    "warmTasks": 10
   },
   {
     "model": "qwen3.7-plus",
@@ -275,6 +363,23 @@ export const SELFIMPROVE: SelfimproveRow[] = [
     "coldIn": 64853,
     "warmIn": 79886,
     "coldS": 24,
-    "warmS": 25
+    "warmS": 25,
+    "coldPass": 10,
+    "warmPass": 10,
+    "coldTasks": 10,
+    "warmTasks": 10
+  },
+  {
+    "model": "agnes-3.0-flash",
+    "input": 197.1,
+    "time": -25.5,
+    "coldIn": 107583,
+    "warmIn": 319659,
+    "coldS": 106,
+    "warmS": 79,
+    "coldPass": 9,
+    "warmPass": 9,
+    "coldTasks": 10,
+    "warmTasks": 10
   }
 ];

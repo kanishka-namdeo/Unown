@@ -86,31 +86,35 @@ test("the newest rerun-* directory wins, by NAME not by filesystem order", () =>
   }
 });
 
-test("a rerun only qualifies when it holds a receipt for EVERY model", () => {
+test("resolution is PER MODEL: each model's freshest receipt wins, mixed runs allowed", () => {
   const f = fixture({
     "kimi-k2.5.summary.json": { passRate: 0.5 },
     "qwen3.6-plus.summary.json": { passRate: 0.4 },
+    "rerun-2026-10-21/agnes-3.0-flash/summary.json": { passRate: 0.97 },
     "rerun-2026-10-17/kimi-k2.5/summary.json": { passRate: 0.9 },
-    "rerun-2026-09-02/kimi-k2.5/summary.json": { passRate: 0.8 },
-    "rerun-2026-09-02/qwen3.6-plus/summary.json": { passRate: 0.6 },
+    "rerun-2026-10-17/qwen3.6-plus/summary.json": { passRate: 0.6 },
   });
   try {
-    const t = buildTrack(track({ models: ["kimi-k2.5", "qwen3.6-plus"] }), f.root);
-    // Half a track from two runs is not a run: the incomplete newest rerun is
-    // skipped whole, and the older complete one is used for both models.
-    assert.equal(t.run, "benchmarks/x/results/rerun-2026-09-02");
-    assert.deepEqual(t.rows.map((r) => r.pct), [80, 60]);
+    const t = buildTrack(track({ models: ["kimi-k2.5", "qwen3.6-plus", "agnes-3.0-flash"] }), f.root);
+    // The agnes-only rerun is NOT discarded whole (the pre-2026-10-21 whole-track
+    // rule would have): agnes resolves to its own freshest receipt, the other
+    // models to theirs — every model's row points at its own newest receipt.
+    assert.equal(t.mixed, true, "models resolved to different runs — the track is mixed");
+    assert.deepEqual(t.rows.map((r) => r.pct), [90, 60, 97]);
+    assert.equal(t.perModel["agnes-3.0-flash"], "benchmarks/x/results/rerun-2026-10-21/agnes-3.0-flash/summary.json");
+    assert.equal(t.perModel["kimi-k2.5"], "benchmarks/x/results/rerun-2026-10-17/kimi-k2.5/summary.json");
+    assert.equal(t.perModel["qwen3.6-plus"], "benchmarks/x/results/rerun-2026-10-17/qwen3.6-plus/summary.json");
   } finally {
     f.cleanup();
   }
 });
 
-test("a shared receipt only qualifies when it names EVERY model", () => {
+test("a shared rerun serves only the models it names (per-model coverage)", () => {
   const f = fixture({
-    // The real regression: an agnes-only rerun has a summary.json, but it does
-    // not cover the kimi/qwen rows this track's page shows. An older complete
-    // rerun must remain canonical; the newer one is skipped whole.
-    "rerun-2026-10-21/summary.json": { results: { "kimi-k2.5": { passRate: 0.9 } } },
+    // The real 2026-10-21 shape: an agnes-only rerun has a summary.json, but it
+    // does not cover the kimi/qwen rows this track's page shows. Per model:
+    // agnes resolves to it; kimi/qwen fall through to the older complete rerun.
+    "rerun-2026-10-21/summary.json": { results: { "agnes-3.0-flash": { passRate: 0.97 } } },
     "rerun-2026-10-17/summary.json": {
       results: { "kimi-k2.5": { passRate: 0.8 }, "qwen3.6-plus": { passRate: 0.6 } },
     },
@@ -120,14 +124,15 @@ test("a shared receipt only qualifies when it names EVERY model", () => {
       track({
         runReceipt: "summary.json",
         baseReceipt: "base.json",
-        models: ["kimi-k2.5", "qwen3.6-plus"],
+        models: ["kimi-k2.5", "qwen3.6-plus", "agnes-3.0-flash"],
         rows: [{ pct: { kind: "percent01", path: ["results", "<model>", "passRate"], dp: 1, doc: "pass rate" } }],
       }),
       f.root,
     );
-    assert.equal(t.run, "benchmarks/x/results/rerun-2026-10-17");
-    assert.deepEqual(t.rows.map((r) => r.pct), [80, 60]);
-    assert.equal(t.skipped, 1, "the newer incomplete rerun is skipped whole");
+    assert.equal(t.mixed, true);
+    assert.deepEqual(t.rows.map((r) => r.pct), [80, 60, 97]);
+    assert.equal(t.perModel["kimi-k2.5"], "benchmarks/x/results/rerun-2026-10-17/summary.json");
+    assert.equal(t.perModel["agnes-3.0-flash"], "benchmarks/x/results/rerun-2026-10-21/summary.json");
   } finally {
     f.cleanup();
   }
@@ -238,11 +243,17 @@ test("pickAt resolves <model> segments and stops at a missing key", () => {
  */
 const READERS = {
   EDIT_BENCH: {
-    file: (m) => `benchmarks/edit-bench/results/rerun-2026-10-17/${m}/summary.json`,
+    file: (m) =>
+      m === "agnes-3.0-flash"
+        ? "benchmarks/edit-bench/results/rerun-2026-10-21/agnes-3.0-flash/summary.json"
+        : `benchmarks/edit-bench/results/rerun-2026-10-17/${m}/summary.json`,
     row: (d) => ({ pct: r1(d.passRate * 100) }),
   },
   HUMANEVAL_PLUS: {
-    file: () => "benchmarks/evalplus/results/rerun-2026-10-17/summary.json",
+    file: (m) =>
+      m === "agnes-3.0-flash"
+        ? "benchmarks/evalplus/results/rerun-2026-10-21/summary.json"
+        : "benchmarks/evalplus/results/rerun-2026-10-17/summary.json",
     row: (d, m) => ({ pct: r1(d.results[m].pass1 * 100) }),
   },
   LIVECODEBENCH: {
@@ -260,7 +271,10 @@ const READERS = {
     }),
   },
   POLYGLOT: {
-    file: () => "benchmarks/polyglot/results/rerun-2026-10-17/summary.json",
+    file: (m) =>
+      m === "agnes-3.0-flash"
+        ? "benchmarks/polyglot/results/summary.json"
+        : "benchmarks/polyglot/results/rerun-2026-10-17/summary.json",
     row: (d, m) => ({ pct: d.models[m].pass2Pct, pass1: d.models[m].pass1Pct }),
   },
   SELFIMPROVE: {
@@ -272,6 +286,10 @@ const READERS = {
       warmIn: d.warm.input,
       coldS: d.cold.avgDurationS,
       warmS: d.warm.avgDurationS,
+      coldPass: d.cold.passed,
+      warmPass: d.warm.passed,
+      coldTasks: d.cold.tasks,
+      warmTasks: d.warm.tasks,
     }),
   },
 };
@@ -283,19 +301,31 @@ const READERS = {
  * swapping the literals for imports changes nothing observable.
  */
 const PAGE = {
-  EDIT_BENCH: [98.1, 96.2, 94.3],
-  HUMANEVAL_PLUS: [93.9, 93.3, 92.7],
-  LIVECODEBENCH: [[52, 15], [38, 26], [36, 27]],
+  EDIT_BENCH: [98.1, 96.2, 94.3, 97.2],
+  HUMANEVAL_PLUS: [93.9, 93.3, 92.7, 89.0],
+  LIVECODEBENCH: [
+    [52, 15],
+    [38, 26],
+    [36, 27],
+    [28, 35],
+  ],
   LONGHORIZON: [
     [245, 13, 43520, 474112, 0.93],
     [299, 14, 62617, 840704, 0.87],
     [291, 15, 1205337, 0, 0.81],
+    [345, 14, 62031, 1068032, 0.87],
   ],
-  POLYGLOT: [[96, 96], [96, 96], [94, 94]],
+  POLYGLOT: [
+    [96, 96],
+    [96, 96],
+    [94, 94],
+    [96, 90],
+  ],
   SELFIMPROVE: [
-    [-23.7, -8, 401445, 306218, 25, 23],
-    [21.8, -35.1, 34553, 42075, 37, 24],
-    [23.2, 4.2, 64853, 79886, 24, 25],
+    [-23.7, -8, 401445, 306218, 25, 23, 10, 10, 10, 10],
+    [21.8, -35.1, 34553, 42075, 37, 24, 10, 10, 10, 10],
+    [23.2, 4.2, 64853, 79886, 24, 25, 10, 10, 10, 10],
+    [197.1, -25.5, 107583, 319659, 106, 79, 9, 9, 10, 10],
   ],
 };
 
@@ -306,7 +336,7 @@ test("every real figure resolves — no page number is unbacked today", () => {
   assert.deepEqual(data.missing, [], "a missing receipt field would print a no-receipt line");
   for (const t of data.tracks) {
     assert.equal(t.complete, true, `${t.constName}: every row's every figure has a receipt field`);
-    assert.equal(t.rows.length, 3, `${t.constName}: three models per track`);
+    assert.equal(t.rows.length, 4, `${t.constName}: four models per track (the 2026-10-21 campaign added agnes-3.0-flash)`);
   }
 });
 
@@ -318,7 +348,7 @@ test("the emitted figures equal what the receipts say, re-derived independently"
     for (let i = 0; i < t.rows.length; i++) {
       const model = t.rows[i].model;
       const abs = join(ROOT, ...reader.file(model).split("/"));
-      assert.equal(t.source.replaceAll("<model>", model), reader.file(model), `${t.constName}: named receipt is the one read`);
+      assert.equal(t.perModel[model], reader.file(model), `${t.constName}: named receipt is the one read`);
       const doc = JSON.parse(readFileSync(abs, "utf8"));
       assert.deepEqual(t.rows[i], { model, ...reader.row(doc, model) }, `${t.constName}/${model}`);
       const onPage = PAGE[t.constName][i];
@@ -347,12 +377,22 @@ test("the canonical-run rule is the one the page's numbers actually came from", 
   assert.equal(r1(ebRerun.passRate * 100), 96.2, "…the rerun is the page's number, so the rule must pick it");
 
   const byName = Object.fromEntries(build().tracks.map((t) => [t.constName, t.run]));
-  assert.equal(byName.EDIT_BENCH, "benchmarks/edit-bench/results/rerun-2026-10-17");
-  assert.equal(byName.HUMANEVAL_PLUS, "benchmarks/evalplus/results/rerun-2026-10-17");
-  assert.equal(byName.POLYGLOT, "benchmarks/polyglot/results/rerun-2026-10-17");
+  assert.match(byName.EDIT_BENCH, /rerun-2026-10-21 \(mixed/, "edit-bench resolves per model: agnes 10-21, the trio 10-17");
+  assert.match(byName.HUMANEVAL_PLUS, /rerun-2026-10-21 \(mixed/, "evalplus likewise");
+  assert.match(byName.POLYGLOT, /rerun-2026-10-17 \(mixed/, "polyglot: the trio from its 10-17 rerun, agnes from the base summary it was merged into");
   assert.equal(byName.LIVECODEBENCH, "benchmarks/livecodebench/results", "no rerun dir exists, so the base is the record");
   const he = build().tracks.find((t) => t.constName === "HUMANEVAL_PLUS");
-  assert.equal(he.skipped, 1, "the agnes-only 2026-10-21 rerun must be skipped, not null the kimi/qwen rows");
+  assert.equal(he.mixed, true);
+  assert.equal(
+    he.perModel["agnes-3.0-flash"],
+    "benchmarks/evalplus/results/rerun-2026-10-21/summary.json",
+    "the agnes-only 2026-10-21 rerun SERVES agnes (the whole-track rule would have discarded it)",
+  );
+  assert.equal(
+    he.perModel["kimi-k2.5"],
+    "benchmarks/evalplus/results/rerun-2026-10-17/summary.json",
+    "kimi keeps its own freshest receipt — no nulls, no discard",
+  );
 });
 
 test("the emitted file is the shape the component swaps in", () => {
@@ -379,9 +419,9 @@ test("the CLI generates out loud — a silent guard is a decorative gate", () =>
       cwd: ROOT,
     });
     assert.equal(r.status, 0, `generation failed: ${r.stderr}`);
-    assert.match(r.stdout, /^ {6}EDIT_BENCH\s+benchmarks\/edit-bench\/results\/rerun-2026-10-17\/<model>\/summary\.json/m,
-      "it must name the receipt file it chose, per track");
-    assert.match(r.stdout, /^wrote .*benchmarks-data\.ts: 6 tracks, 18 rows$/m);
+    assert.match(r.stdout, /^ {6}EDIT_BENCH\s+4 models via perModel/m,
+      "it must speak the mixed per-model resolution out loud");
+    assert.match(r.stdout, /^wrote .*benchmarks-data\.ts: 6 tracks, 24 rows$/m);
     assert.match(readFileSync(out, "utf8"), /export const POLYGLOT/);
 
     // `--check` must SPEAK whether or not the committed file is in sync — this

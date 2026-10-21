@@ -14,15 +14,19 @@
 // invent a number, and the CI step cannot pass while the two disagree.
 //
 // Rules it encodes, in one place so the component stays dumb:
-//   - **the canonical run.** Three tracks have both a base receipt and a
-//     `results/rerun-<date>/` verification run, and they DISAGREE (e.g.
-//     polyglot's base says qwen3.6 pass@2 100%, its rerun says 96%). The rule is
-//     one sentence: the newest `rerun-*` directory wins, falling back to the
-//     base receipt. Newest is decided by sorting the directory NAMES — the
-//     receipts are dated `rerun-YYYY-MM-DD`, so lexicographic order IS temporal
-//     order — never by filesystem order, which differs per platform. A rerun
-//     directory only qualifies when it holds a receipt for EVERY model in the
-//     track: half a track from one run and half from another is not a run.
+//   - **the canonical run, resolved PER MODEL.** Three tracks have both a
+//     base receipt and `results/rerun-<date>/` verification runs, and they
+//     DISAGREE (e.g. polyglot's base says qwen3.6 pass@2 100%, its rerun says
+//     96%). The rule is one sentence per model: the newest `rerun-*`
+//     directory THAT HOLDS A RECEIPT FOR THAT MODEL wins for that model,
+//     falling back to the base receipt. Newest is decided by sorting the
+//     directory NAMES — the receipts are dated `rerun-YYYY-MM-DD`, so
+//     lexicographic order IS temporal order — never by filesystem order,
+//     which differs per platform. (Until the 2026-10-21 agnes campaign the
+//     rule was whole-track — a rerun only counted with receipts for EVERY
+//     model — which silently discarded the agnes rerun dir because it holds
+//     only the new model's receipts; per-model resolution keeps every
+//     model's freshest receipt, which is what the page actually promises.)
 //   - **field provenance is declared, not guessed.** Each track spec names the
 //     receipt path and the JSON path per figure, so the mapping is readable in
 //     the file it is used in. The receipts' own shapes differ per track
@@ -80,7 +84,7 @@ const TRACKS = [
     resultsDir: "benchmarks/edit-bench/results",
     runReceipt: "<model>/summary.json",
     baseReceipt: "<model>.summary.json",
-    models: ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"],
+    models: ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus", "agnes-3.0-flash"],
     rows: [{ pct: { kind: "percent01", path: ["passRate"], dp: 1, doc: "Surgical edit accuracy: % of the 106 fixtures." } }],
     provenance: "pct = `passRate` (0-1) x 100, 1dp",
   },
@@ -91,7 +95,7 @@ const TRACKS = [
     resultsDir: "benchmarks/evalplus/results",
     runReceipt: "summary.json",
     baseReceipt: "summary.json",
-    models: ["kimi-k2.5", "qwen3.6-plus", "qwen3.7-plus"],
+    models: ["kimi-k2.5", "qwen3.6-plus", "qwen3.7-plus", "agnes-3.0-flash"],
     rows: [{ pct: { kind: "percent01", path: ["results", "<model>", "pass1"], dp: 1, doc: "HumanEval+ pass@1, %." } }],
     provenance: "pct = `results.<model>.pass1` (0-1) x 100, 1dp",
   },
@@ -102,7 +106,7 @@ const TRACKS = [
     resultsDir: "benchmarks/livecodebench/results",
     runReceipt: "summary.json",
     baseReceipt: "summary.json",
-    models: ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"],
+    models: ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus", "agnes-3.0-flash"],
     rows: [
       {
         pct: { kind: "percent", path: ["results", "<model>", "passAt1Pct"], dp: 0, doc: "pass@1 over the 50-problem subset, %." },
@@ -118,7 +122,7 @@ const TRACKS = [
     resultsDir: "benchmarks/longhorizon/results",
     runReceipt: "summary.json",
     baseReceipt: "summary.json",
-    models: ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"],
+    models: ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus", "agnes-3.0-flash"],
     rows: [
       {
         durS: { kind: "count", path: ["models", "<model>", "durationS"], doc: "Wall-clock seconds under the cap." },
@@ -137,7 +141,7 @@ const TRACKS = [
     resultsDir: "benchmarks/polyglot/results",
     runReceipt: "summary.json",
     baseReceipt: "summary.json",
-    models: ["qwen3.6-plus", "qwen3.7-plus", "kimi-k2.5"],
+    models: ["qwen3.6-plus", "qwen3.7-plus", "kimi-k2.5", "agnes-3.0-flash"],
     rows: [
       {
         pct: { kind: "percent", path: ["models", "<model>", "pass2Pct"], dp: 0, doc: "pass@2 over the 50-exercise subset, % — the figure the bar shows." },
@@ -153,7 +157,7 @@ const TRACKS = [
     resultsDir: "benchmarks/selfimprove/results",
     runReceipt: "v2-notes/summary.<model>.json",
     baseReceipt: "v2-notes/summary.<model>.json",
-    models: ["qwen3.6-plus", "kimi-k2.5", "qwen3.7-plus"],
+    models: ["qwen3.6-plus", "kimi-k2.5", "qwen3.7-plus", "agnes-3.0-flash"],
     rows: [
       {
         input: { kind: "deltaPercent", paths: [["warm", "input"], ["cold", "input"]], dp: 1, doc: "Warm vs cold input tokens, % — negative means memory saved prompt budget." },
@@ -162,9 +166,13 @@ const TRACKS = [
         warmIn: { kind: "count", path: ["warm", "input"], doc: "Warm-pass total input tokens." },
         coldS: { kind: "count", path: ["cold", "avgDurationS"], doc: "Cold-pass average duration, s." },
         warmS: { kind: "count", path: ["warm", "avgDurationS"], doc: "Warm-pass average duration, s." },
+        coldPass: { kind: "count", path: ["cold", "passed"], doc: "Cold-pass tasks passed." },
+        warmPass: { kind: "count", path: ["warm", "passed"], doc: "Warm-pass tasks passed." },
+        coldTasks: { kind: "count", path: ["cold", "tasks"], doc: "Cold-pass task count." },
+        warmTasks: { kind: "count", path: ["warm", "tasks"], doc: "Warm-pass task count." },
       },
     ],
-    provenance: "input = (`warm.input` - `cold.input`) / `cold.input` x 100, 1dp; time = same over `avgDurationS`; coldIn/warmIn = `cold.input`/`warm.input`; coldS/warmS = `cold.avgDurationS`/`warm.avgDurationS`",
+    provenance: "input = (`warm.input` - `cold.input`) / `cold.input` x 100, 1dp; time = same over `avgDurationS`; coldIn/warmIn = `cold.input`/`warm.input`; coldS/warmS = `cold.avgDurationS`/`warm.avgDurationS`; coldPass/warmPass/coldTasks/warmTasks = the pass and task counts",
   },
 ];
 
@@ -198,27 +206,60 @@ function rerunDirs(resultsAbs) {
 }
 
 /**
- * The canonical-run rule, in one place: newest complete `rerun-*` wins, else the
- * base receipt. `fileExists` takes a path relative to the results directory, so
- * the rule can be pinned by a fixture without touching this repo's receipts.
+ * The canonical-run rule, in one place, resolved PER MODEL: for each model,
+ * the newest `rerun-*` directory THAT HOLDS A RECEIPT FOR THAT MODEL wins for
+ * that model, else the model's base receipt. `fileExists` takes a path relative
+ * to the results directory, so the rule can be pinned by a fixture without
+ * touching this repo's receipts; `receiptModels` (shared receipts only) is the
+ * coverage check — a rerun's summary.json must actually CONTAIN the model's
+ * key, not merely exist. (The 2026-10-21 agnes campaign added a model whose
+ * receipts exist only in its own rerun dir — the pre-campaign whole-track rule
+ * silently discarded the entire dir because it lacks the other three models.)
+ */
+function chooseRuns({ dirs, runReceipt, models, baseReceipt, fileExists, receiptModels }) {
+  const perModel = {};
+  for (const model of models) {
+    let hit = null;
+    let skipped = 0;
+    for (const [i, dir] of dirs.entries()) {
+      if (!fileExists(rel(dir, fill(runReceipt, model)))) {
+        continue;
+      }
+      if (receiptModels) {
+        const covered = new Set(receiptModels(dir));
+        if (!covered.has(model)) {
+          skipped++;
+          continue;
+        }
+      }
+      hit = { run: dir, receipt: runReceipt, beaten: dirs.length - 1 - i, skipped };
+      break;
+    }
+    perModel[model] = hit ?? { run: null, receipt: baseReceipt, beaten: 0, skipped: dirs.length };
+  }
+  return perModel;
+}
+
+/**
+ * The whole-track view over the per-model resolution, kept for the uniform
+ * case and the back-compat pins: the run every model resolved to, else a
+ * `mixed` marker (the emitted doc + BENCH_SOURCES then point at `perModel`).
  */
 function chooseRun({ dirs, runReceipt, models, baseReceipt, fileExists, receiptModels }) {
-  for (const [i, dir] of dirs.entries()) {
-    if (!models.every((m) => fileExists(rel(dir, fill(runReceipt, m))))) continue;
-    // A shared receipt (summary.json, no <model> segment) can exist while
-    // covering only some models. Such a rerun is incomplete for this track and
-    // must be skipped whole — otherwise its missing rows become nulls on the
-    // page even though an older, complete rerun has the numbers.
-    if (receiptModels) {
-      const covered = new Set(receiptModels(dir));
-      if (!models.every((m) => covered.has(m))) continue;
-    }
-    // `beaten` counts the OLDER rerun dirs this one overtook; `skipped` counts
-    // the newer incomplete ones it had to pass. The base receipt is always
-    // overtaken too, and the emitted doc says so.
-    return { run: dir, receipt: runReceipt, reruns: dirs.length, beaten: dirs.length - 1 - i, skipped: i };
+  const perModel = chooseRuns({ dirs, runReceipt, models, baseReceipt, fileExists, receiptModels });
+  const runs = new Set(models.map((m) => perModel[m].run));
+  const reruns = dirs.length;
+  if (runs.size === 1) {
+    const first = perModel[models[0]];
+    return {
+      run: first.run,
+      receipt: first.run === null ? baseReceipt : runReceipt,
+      reruns,
+      beaten: Math.max(...models.map((m) => perModel[m].beaten)),
+      skipped: Math.min(...models.map((m) => perModel[m].skipped)),
+    };
   }
-  return { run: null, receipt: baseReceipt, reruns: dirs.length, beaten: 0, skipped: dirs.length };
+  return { run: null, receipt: "mixed", reruns, beaten: 0, skipped: 0, mixed: true };
 }
 
 /** Model keys a shared receipt actually contains. The two receipt shapes in
@@ -296,8 +337,9 @@ function buildTrack(track, root = ROOT) {
   const resultsAbs = join(root, ...track.resultsDir.split("/"));
   const shownResults = track.resultsDir;
   const missing = [];
-  const chosen = chooseRun({
-    dirs: rerunDirs(resultsAbs),
+  const dirs = rerunDirs(resultsAbs);
+  const resolver = {
+    dirs,
     runReceipt: track.runReceipt,
     baseReceipt: track.baseReceipt,
     models: track.models,
@@ -311,11 +353,13 @@ function buildTrack(track, root = ROOT) {
           const abs = join(resultsAbs, ...relPath.split("/"));
           return receiptModelKeys(readJson(abs, rel(shownResults, relPath)));
         },
-  });
+  };
+  const perModel = chooseRuns(resolver);
+  const chosen = chooseRun(resolver);
 
-  // Receipt path relative to the results dir, run directory included: the base
-  // case has `run === null`, and `rel` drops it.
-  const receiptRel = (model) => rel(chosen.run ?? "", fill(chosen.receipt, model));
+  // Per-model receipt path relative to the results dir, run directory
+  // included: each model's own freshest receipt.
+  const receiptRel = (model) => rel(perModel[model].run ?? "", fill(perModel[model].receipt, model));
 
   const docs = new Map();
   for (const model of track.models) {
@@ -369,12 +413,14 @@ function buildTrack(track, root = ROOT) {
     models: track.models,
     rows,
     complete,
-    run: rel(shownResults, chosen.run ?? ""),
-    source: rel(shownResults, receiptRel("<model>")),
+    run: chosen.mixed ? `${rel(shownResults, dirs[0] ?? "")} (mixed — see perModel)` : rel(shownResults, chosen.run ?? ""),
+    perModel: Object.fromEntries(track.models.map((m) => [m, rel(shownResults, receiptRel(m))])),
+    source: chosen.mixed ? "mixed — see perModel" : rel(shownResults, rel(chosen.run ?? "", fill(chosen.receipt, "<model>"))),
     baseSource: rel(shownResults, fill(track.baseReceipt, "<model>")),
     reruns: chosen.reruns,
     beaten: chosen.beaten,
     skipped: chosen.skipped,
+    mixed: Boolean(chosen.mixed),
     missing,
   };
 }
@@ -413,6 +459,21 @@ ${fields.map(([name, doc]) => `  /** ${doc} */\n  ${name}: ${numType(t)};`).join
 }
 
 function emitTrackDoc(t) {
+  if (t.mixed) {
+    const perRun = {};
+    for (const [model, receipt] of Object.entries(t.perModel)) {
+      const run = receipt.split("/").slice(0, -1).join("/") || "(base)";
+      perRun[run] = [...(perRun[run] ?? []), model];
+    }
+    const lines = Object.entries(perRun).map(([run, ms]) => ` *   - \`${run}\` → ${ms.join(", ")}`);
+    return `/**
+ * ${t.note}
+ * Receipt: per model — every model's row points at its own freshest receipt
+ * (BENCH_SOURCES.perModel):
+${lines.join("\n")}
+ * Fields: ${t.provenance}
+ */`;
+  }
   const notes = [];
   if (t.skipped) notes.push(`${t.skipped} newer incomplete rerun(s) skipped — they do not cover every model`);
   if (t.beaten) notes.push(`chosen over ${t.beaten} older complete one(s)`);
@@ -443,7 +504,16 @@ export const ${t.constName}: ${typeName(t.constName)}[] = ${JSON.stringify(t.row
 
   const trackNames = data.tracks.map((t) => `"${t.constName}"`).join(" | ");
   const sources = Object.fromEntries(
-    data.tracks.map((t) => [t.constName, { track: t.track, run: t.run, source: t.source }]),
+    data.tracks.map((t) => [
+      t.constName,
+      {
+        track: t.track,
+        run: t.run,
+        /** Every model's own receipt (repo-relative) — the authoritative provenance. */
+        perModel: t.perModel,
+        source: t.source,
+      },
+    ]),
   );
 
   return `// GENERATED by scripts/landing_benchmarks.mjs from the receipts under benchmarks/ — do not hand-edit.
@@ -451,12 +521,12 @@ export const ${t.constName}: ${typeName(t.constName)}[] = ${JSON.stringify(t.row
 // CI gate (the page must equal the receipts):  bun scripts/landing_benchmarks.mjs --check
 //
 // The landing page's benchmark section renders these consts. Every figure is
-// read from a committed receipt JSON, and where a track has both a base receipt
-// and a \`rerun-<date>\` verification run, the NEWEST rerun wins — that is the
-// whole tie-break, and \`benchmarks/RESULTS.md\` records why the page carries the
-// fresh numbers rather than the 2026-10-16 ones. A figure with no receipt field
-// is \`null\` and the generator says so out loud; the page never keeps a number
-// it cannot point at.
+// read from a committed receipt JSON, resolved PER MODEL: where a track has
+// both a base receipt and \`rerun-<date>\` verification runs, each model's row
+// points at its own freshest receipt (BENCH_SOURCES.perModel) — a model added
+// mid-campaign lands from its rerun dir without discarding the other models'
+// freshest receipts. A figure with no receipt field is \`null\` and the
+// generator says so out loud; the page never keeps a number it cannot point at.
 
 export type BenchModel = ${[...new Set(data.tracks.flatMap((t) => t.models))].map((m) => `"${m}"`).sort().join(" | ")};
 
@@ -465,9 +535,11 @@ export type BenchTrackName = ${trackNames};
 export interface BenchTrackSource {
   /** The track's directory name under \`benchmarks/\`. */
   track: string;
-  /** The run directory the figures were read from (repo-relative). */
+  /** The run directory the figures were read from (repo-relative); \`… (mixed…)\` when models resolved to different runs. */
   run: string;
-  /** The receipt file they came from; \`<model>\` is the row's model key. */
+  /** Per-model receipt path (repo-relative) — each model's freshest receipt; the authoritative provenance. */
+  perModel: Record<string, string>;
+  /** The \`<model>\` receipt template when the run is uniform, else \`mixed\`. */
   source: string;
 }
 
@@ -482,8 +554,9 @@ ${blocks.join("\n")}`;
 
 function report(data, outPath) {
   for (const t of data.tracks) {
+    const src = t.mixed ? `${t.models.length} models via perModel (mixed runs)` : t.source;
     console.log(
-      `      ${t.constName.padEnd(15)} ${t.source}` +
+      `      ${t.constName.padEnd(15)} ${src}` +
         (t.reruns ? `   [${t.run} wins over ${t.baseSource}]` : `   [${t.run}]`),
     );
   }
@@ -537,6 +610,7 @@ export {
   TARGET,
   BenchmarksError,
   chooseRun,
+  chooseRuns,
   rerunDirs,
   pickAt,
   roundTo,

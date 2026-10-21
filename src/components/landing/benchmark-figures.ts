@@ -10,6 +10,11 @@ export function formatPct(value: number | null): { text: string; missing: boolea
 }
 
 export function runStamp(run: string): string {
-  const match = /\/rerun-(\d{4}-\d{2}-\d{2})$/.exec(run);
-  return match ? `${match[1]} rerun` : "base receipt";
+  // A mixed run (models resolved to different rerun dirs) carries the marker
+  // after the date — match the date anywhere, and say "mixed" when it does:
+  // per-model receipts mean the stamp is a summary, not a single run.
+  const mixed = run.includes("(mixed");
+  const match = /\/rerun-(\d{4}-\d{2}-\d{2})/.exec(run);
+  if (!match) return "base receipt";
+  return mixed ? `${match[1]} rerun (per-model runs)` : `${match[1]} rerun`;
 }

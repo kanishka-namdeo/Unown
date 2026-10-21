@@ -234,7 +234,7 @@ export function BenchmarksPane() {
         <TrackCard
           icon={Swords}
           name="LiveCodeBench v6 — the contamination-aware headline"
-          source="50-problem stratified subset of LiveCodeBench's release_v6 increment · contests 2025-01-04 → 2025-04-06 · after every model's cutoff · official LCB prompt + grader · greedy pass@1 · receipts under benchmarks/livecodebench/results/"
+          source="50-problem stratified subset of LiveCodeBench's release_v6 increment · contests 2025-01-04 → 2025-04-06 · after every model's cutoff · official LCB prompt + grader · greedy pass@1 · four models: the Dashscope trio (2026-10-17) + agnes-3.0-flash on the Agnes AI upstream (2026-10-21) · receipts under benchmarks/livecodebench/results/"
         >
           {LIVECODEBENCH.map((r, i) => (
             <div key={r.model} className="flex items-center gap-3">
@@ -246,10 +246,11 @@ export function BenchmarksPane() {
           ))}
           <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
             Every problem was published after these models&apos; training cutoffs.
-            Easy sweeps everywhere (13/13, 12/13); hard is where it ends (4/23, 1/23,
-            1/23). <span className="text-gold">no_code is the honest failure mode</span>:
+            Easy sweeps for three of four (13/13, 12/13, 12/13); hard is where it
+            ends (4/23, 1/23, 1/23, 0/23).{" "}
+            <span className="text-gold">no_code is the honest failure mode</span>:
             reasoning past the pinned 4096-token budget gets cut off before the code
-            fence closes — 15/26/27 of 50, reported as measured, not filtered.
+            fence closes — 15/26/27/35 of 50, reported as measured, not filtered.
           </p>
           <a
             href={`${BENCH_URL}/livecodebench/results`}
@@ -265,7 +266,7 @@ export function BenchmarksPane() {
         <TrackCard
           icon={Target}
           name="Edit accuracy"
-          source="oh-my-pi typescript-edit-benchmark · 106 fixtures · byte-exact scoring · full Unown agent in the loop · 2026-10-17 fresh-checkout rerun"
+          source="oh-my-pi typescript-edit-benchmark · 106 fixtures · byte-exact scoring · full Unown agent in the loop · Dashscope trio: 2026-10-17 fresh-checkout rerun · agnes-3.0-flash: 2026-10-21 Agnes AI upstream rerun (97.2% at n=1, inside the trio's band)"
         >
           {EDIT_BENCH.map((r, i) => (
             <BarRow key={r.model} label={r.model} pct={r.pct} delay={i * 0.1} />
@@ -334,7 +335,7 @@ export function BenchmarksPane() {
                   <Delta v={r.input} unit="in" />
                   <TimeChip coldS={r.coldS} warmS={r.warmS} d={r.time} />
                   <span className="ml-auto font-mono text-[10px] tabular-nums text-faint">
-                    pass 10/10 → 10/10
+                    pass {r.coldPass}/{r.coldTasks} → {r.warmPass}/{r.warmTasks}
                   </span>
                 </div>
                 <div className="mt-2 space-y-1">
@@ -359,9 +360,11 @@ export function BenchmarksPane() {
           </div>
 
           <p className="mt-5 font-mono text-[10.5px] leading-relaxed text-dim">
-            <span className="text-gold">Pass-rate lift is 0pp</span> across the board:
-            two of three models spent <em>more</em> input tokens with memory in the
-            loop, and kimi-k2.5 still finished 35% faster; qwen3.6-plus took both wins.
+            <span className="text-gold">Pass-rate lift is 0pp</span> across all
+            four models: three of four spent <em>more</em> input tokens with memory
+            in the loop — agnes-3.0-flash most of all (+197%, the dreamed user-tier
+            memory injected into every warm session) while still finishing 26%
+            faster — and kimi-k2.5 finished 35% faster; qwen3.6-plus took both wins.
             On tasks the model can already solve, memory buys efficiency, not
             correctness.
           </p>
@@ -450,8 +453,9 @@ export function BenchmarksPane() {
               ))}
             </div>
             <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
-              first published polyglot numbers for these models · 2026-10-17 rerun
-              reproduces the committed run exactly
+              first published polyglot numbers for the Dashscope trio (2026-10-17
+              rerun reproduces the committed run exactly) · agnes-3.0-flash row
+              from the 2026-10-21 Agnes AI campaign: 90% @1 / 96% @2
             </p>
           </div>
 
@@ -475,9 +479,11 @@ export function BenchmarksPane() {
               ))}
             </div>
             <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
-              all three solved it; <span className="text-gold">the separation is
-              cost</span> — qwen3.6-plus spent 1.2M input tokens with zero cache reads
-              (28× kimi) on the same task.{" "}
+              all four solved it — agnes-3.0-flash left the greenest as-is suite
+              (42/0) — and <span className="text-gold">the separation is
+              cost</span>: qwen3.6-plus spent 1.2M input tokens with zero cache reads
+              (28× kimi), while agnes-3.0-flash rode 1.07M of cache reads, the
+              strongest prompt-reuse profile measured on this track.{" "}
               <a
                 href={`${BENCH_URL}/longhorizon/results`}
                 target="_blank"

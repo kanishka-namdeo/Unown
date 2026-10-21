@@ -2,10 +2,12 @@
 
 Every number below comes from a real run with receipts committed under
 `benchmarks/` (per-task JSONL with tokens, durations and outcomes). Models
-run through the bundled llm-bridge against Dashscope
-(`kimi-k2.5` / `qwen3.7-plus` / `qwen3.6-plus`), greedy decoding, 2026-10-16.
-Methodology and fairness rules: see `README.md`. Deep-dives per track: the
-`RESULTS.md` inside each track's `results/` directory.
+run through the bundled llm-bridge — the 2026-10-16 trio against Dashscope
+(`kimi-k2.5` / `qwen3.7-plus` / `qwen3.6-plus`), and **`agnes-3.0-flash` against the
+Agnes AI OpenAI-compatible endpoint** (`apihub.agnes-ai.com/v1`) in the
+2026-10-21 re-run campaign, greedy decoding throughout. Methodology and
+fairness rules: see `README.md`. Deep-dives per track: the `RESULTS.md`
+inside each track's `results/` directory.
 
 **Fresh-checkout verification (2026-10-17):** the whole stack was re-cloned,
 re-configured and re-run from scratch — the pi-repo suite at 5,032 tests / 0
@@ -19,14 +21,44 @@ Landing-page consts carry the fresh numbers.
 
 ## Headline
 
-| Track | What it measures | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus |
-|---|---|---|---|---|
-| [pi-repo test suite](#1-pi-repo-test-suite) | vendored monorepo health | 4,585 tests green (model-independent) | — | — |
-| [oh-my-pi edit benchmark](edit-bench/results/RESULTS.md) | surgical edit accuracy, 106 fixtures; fair A/B vs omp's own agent at n=3: identical best-of-3 scores, 2.4–5.4× fewer input tokens | **98.1%** | **99.1%** | **99.1%** |
-| [Aider polyglot subset](polyglot/results/RESULTS.md) | real coding accuracy, 50 hardest Exercism exercises, 6 languages, 2 attempts | 94% @1 / **98% @2** | 96% @1 / 98% @2 | 96% @1 / **100% @2** |
-| [pi vitest-evals](evals/results/summary.json) | agent-loop behavior, pi's own eval suite | 3/3 green | 3/3 green | 3/3 green |
-| [Self-improvement lift](selfimprove/results/RESULTS.md) | repeat-task efficiency, cold vs warm memory | +21.8% in / **−35.1% time** | +23.2% in / +4.2% time | **−23.7% in** / −8.0% time |
-| [HumanEval+ (evalplus)](evalplus/results/RESULTS.md) | model-tier codegen sanity (non-agentic) | 93.3% | 93.3% | **93.9%** |
+| Track | What it measures | kimi-k2.5 | qwen3.7-plus | qwen3.6-plus | agnes-3.0-flash (10-21) |
+|---|---|---|---|---|---|
+| [pi-repo test suite](#1-pi-repo-test-suite) | vendored monorepo health | 4,585 tests green (model-independent) | — | — | 7,812 green (10-21 rerun; suite grew, 0 fail) |
+| [oh-my-pi edit benchmark](edit-bench/results/RESULTS.md) | surgical edit accuracy, 106 fixtures; fair A/B vs omp's own agent at n=3: identical best-of-3 scores, 2.4–5.4× fewer input tokens | **98.1%** | **99.1%** | **99.1%** | 97.2% (n=1) |
+| [Aider polyglot subset](polyglot/results/RESULTS.md) | real coding accuracy, 50 hardest Exercism exercises, 6 languages, 2 attempts | 94% @1 / **98% @2** | 96% @1 / 98% @2 | 96% @1 / **100% @2** | 90% @1 / 96% @2 |
+| [pi vitest-evals](evals/results/summary.json) | agent-loop behavior, pi's own eval suite | 3/3 green | 3/3 green | 3/3 green | 3/3 green |
+| [Self-improvement lift](selfimprove/results/RESULTS.md) | repeat-task efficiency, cold vs warm memory | +21.8% in / **−35.1% time** | +23.2% in / +4.2% time | **−23.7% in** / −8.0% time | +197.1% in / **−25.5% time** |
+| [HumanEval+ (evalplus)](evalplus/results/RESULTS.md) | model-tier codegen sanity (non-agentic) | 93.3% | 93.3% | **93.9%** | 89.0% |
+| [LiveCodeBench v6](livecodebench/results/RESULTS.md) | contamination-aware model-tier headline, post-cutoff problems | 52% @1 | 38% @1 | 36% @1 | 28% @1 |
+| [Long-horizon refactor](longhorizon/results/RESULTS.md) | multi-file contract change under a cap; cost separation | 245s · 43.5k in · 474k cache | 299s · 62.6k in · 841k cache | 291s · 1.2M in · 0 cache | 345s · 62k in · **1.07M cache** |
+| Memory defenses ([poison](memory-eval/poison-corpus/results/RESULTS.md) · [mpbench](memory-eval/mpbench/results/RESULTS.md) · [axes](memory-eval/quality-axes/results/RESULTS.md) · [recall](memory-eval/recall-qa/results/RESULTS.md)) | adversarial memory + QA recall | 10/10 flagged · 0 planted · 4/4 axes · +0.625 lift | | | 10/10 flagged · 0 planted (post-backstop) · 4/4 axes · +0.55 lift |
+
+## The 2026-10-21 agnes-3.0-flash campaign
+
+A full-stack re-run of every track on a **new upstream** (Agnes AI,
+`agnes-3.0-flash` — a vision-capable model, which also re-validated the
+bridge multimodal lane end to end). What it bought, beyond the rows above:
+
+- **Track 1 grew to 7,812 passing / 0 failing** (fresh-checkout rerun on
+  bun 1.4.3; the suite gained ~2,700 self-learning tests since 10-17) —
+  and it caught a genuine vendored-tree regression (the overlay-scrim
+  theme-init crash, fixed in the same push).
+- **The memory defense chain has its first cross-model stress test**: the
+  agnes dream run planted the verbatim poison directive where kimi planted
+  nothing (layer-2 prompt resistance is model-dependent), and two
+  quality-axes failed — findings that shipped as the zero-extraction
+  quarantine contract + layer 2.5 echo backstop, after which the same
+  suites read 0/10 planted and 4/4 axes with receipts.
+- **Runner hardening that only a re-run exposes**: edit-bench's resume key,
+  evalplus's summarize scan, the memory-eval suites' single-model layout,
+  selfimprove's restart-from-zero phases, and the model allow-lists in the
+  longhorizon/LCB runners — all fixed with receipts in this campaign's
+  commits.
+- Honest placement: agnes-3.0-flash sits 4–6pp under the Dashscope trio on
+  the accuracy tracks (inside the GPT-5 / Sonnet-4.5 leaderboard band on
+  HumanEval+), posts the strongest prompt-cache profile measured on the
+  long-horizon track, and its memory-lift row is the most expensive warm
+  arm yet measured — published as measured.
 
 ## 1. pi-repo test suite
 
