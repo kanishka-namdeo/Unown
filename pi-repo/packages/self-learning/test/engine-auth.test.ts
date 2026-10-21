@@ -562,8 +562,23 @@ process.exit(0);
                                         resolve();
                                 });
                         });
-                        holder = spawn(process.execPath, ["-e", `Bun.serve({ port: ${port}, fetch: () => new Response("x") }); setInterval(()=>{},1e6);`], { stdio: "ignore" });
-                        sleepSync(700);
+                        // The dummy holder signals POST-BIND readiness via an up-file
+                        // (the winner's own pattern — Bun.serve binds synchronously,
+                        // so holder.up existing PROVES the port is genuinely held).
+                        // A fixed 700ms sleep let the victim BOOT on macOS runners
+                        // when the holder process had not been scheduled yet
+                        // (VICTIM=BOOTED-UNEXPECTED, release run 39605199801).
+                        const hPath = join(root, "holder.ts");
+                        writeFileSync(hPath, `
+const { writeFileSync } = await import("node:fs");
+Bun.serve({ port: ${port}, fetch: () => new Response("x") });
+writeFileSync(${JSON.stringify(join(root, "holder.up"))}, "up");
+setInterval(() => {}, 1e6);
+`);
+                        holder = spawn(process.execPath, [hPath], { stdio: "ignore" });
+                        const d3 = Date.now() + 15_000;
+                        while (Date.now() < d3 && !existsSync(join(root, "holder.up"))) sleepSync(100);
+                        expect(existsSync(join(root, "holder.up"))).toBe(true);
                         // 3. The victim: lock stealable (winner dead), port held → the
                         //    bind fails; the token file must survive untouched.
                         const vPath = join(root, "victim.ts");

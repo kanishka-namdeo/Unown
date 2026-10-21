@@ -31,8 +31,19 @@ import { Store } from "../src/store.ts";
 const PKG_ROOT = join(import.meta.dir, "..");
 const ROOT = mkdtempSync(join(tmpdir(), "unown-quickcheck-"));
 
-afterAll(() => {
-        rmSync(ROOT, { recursive: true, force: true });
+afterAll(async () => {
+        // Windows EBUSY at teardown: same fix as retention.test.ts — a
+        // just-closed SQLite handle can keep the temp dir busy for a moment;
+        // retry with a real await so the OS releases the handles (measured
+        // on windows runners, 2026-10-21: runs 39590930647, 39605170933).
+        for (let attempt = 0; attempt < 10; attempt++) {
+                try {
+                        rmSync(ROOT, { recursive: true, force: true });
+                        return;
+                } catch {
+                        await new Promise((r) => setTimeout(r, 250));
+                }
+        }
 });
 
 /** A healthy DB with the notes table spread across many pages. */
@@ -71,7 +82,7 @@ describe("Store.quickCheck (M6)", () => {
                 expect(again.quickCheck()).toBe("ok");
                 s.close();
                 again.close();
-        });
+        }, 30_000);
 
         test("a structurally damaged DB reports the failure (never a silent ok)", () => {
                 const path = join(ROOT, "damaged.db");
@@ -82,7 +93,12 @@ describe("Store.quickCheck (M6)", () => {
                 expect(qc).not.toBe("ok");
                 expect(/malformed|in database main/.test(qc)).toBe(true);
                 s.close();
-        });
+                // Explicit budget: quick_check is O(N) and the fixture build is
+                // 300 inserts — together they crossed bun's 5s default on the
+                // loaded release runner (measured 5123ms, run 39605199801) and
+                // failed a test that was passing everywhere else. The boot-gate
+                // probes below already carry 15s for the same reason.
+        }, 30_000);
 });
 
 // ---------------------------------------------------------------------------

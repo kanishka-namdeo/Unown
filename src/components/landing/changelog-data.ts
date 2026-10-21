@@ -94,7 +94,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "the bind-race and retention tests stopped failing the 3-OS matrix under load",
+            "title": "the bind-race, retention and quickCheck tests stopped failing the 3-OS matrix under load",
             "behavior": false
           },
           {

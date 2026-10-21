@@ -25,8 +25,22 @@ import { Store } from "../src/store.ts";
 
 const ROOT = mkdtempSync(join(tmpdir(), "unown-retention-"));
 
-afterAll(() => {
-        rmSync(ROOT, { recursive: true, force: true });
+afterAll(async () => {
+        // Windows: a just-closed SQLite handle (or Defender scanning the fresh
+        // WAL) can keep the temp dir EBUSY for a moment after the last store
+        // closes — a single rmSync then fails the whole suite at teardown
+        // (measured on windows runners, 2026-10-21: runs 39590930647 and
+        // 39605170933). Retry with a real await between attempts so the OS
+        // finishes releasing handles; give up quietly after the budget (the
+        // OS owns the tmpdir and cleans it anyway).
+        for (let attempt = 0; attempt < 10; attempt++) {
+                try {
+                        rmSync(ROOT, { recursive: true, force: true });
+                        return;
+                } catch {
+                        await new Promise((r) => setTimeout(r, 250));
+                }
+        }
 });
 
 const DAY = 24 * 60 * 60_000;
