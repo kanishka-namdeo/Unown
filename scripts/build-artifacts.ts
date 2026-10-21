@@ -48,7 +48,7 @@
  */
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { IS_WIN, REPO_ROOT, run, sym } from "./lib";
 
 /** The six platform ids Unown ships. Order is the release-page order. */
@@ -216,7 +216,14 @@ function compile(bun: string, p: Platform, version: string, stageDir: string): s
 }
 
 function makeArchive(stageParent: string, p: Platform, outDir: string): string {
-    const archive = join(outDir, archiveName(p));
+    // Absolute, always: the zip branch runs with cwd=stageParent, so a
+    // repo-root-relative archive path resolves INSIDE the stage dir — a
+    // directory that does not exist, and zip dies with "Could not create
+    // output file" (first exercised by the v0.0.1 release build, run
+    // 39609534703: every earlier release predates the six-binary pipeline,
+    // and the plan gate only ever ran --dry-run). Absolute is equally correct
+    // for tar (repo-root cwd) and the Windows bsdtar branch.
+    const archive = resolve(join(outDir, archiveName(p)));
     // Wrapper dir inside the archive, both formats, so extracting never dumps a
     // bare binary into the cwd.
     if (archive.endsWith(".tar.gz")) {

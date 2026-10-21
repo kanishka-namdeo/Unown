@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 121;
+export const CHANGELOG_TOTAL_ENTRIES = 122;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 54,
   "Changed": 7,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 51,
+  "Fixed": 52,
   "Security": 0,
   "Behavior": 7
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.1",
     "date": "2026-10-21",
-    "total": 121,
+    "total": 122,
     "counts": {
       "Added": 54,
       "Changed": 7,
       "Deprecated": 0,
       "Removed": 2,
-      "Fixed": 51,
+      "Fixed": 52,
       "Security": 0,
       "Behavior": 7
     },
@@ -93,6 +93,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "the artifact builder's zip path resolved inside the stage dir — the first release that ever shipped binaries…",
+            "behavior": false
+          },
           {
             "title": "the bind-race, retention and quickCheck tests stopped failing the 3-OS matrix under load",
             "behavior": false
