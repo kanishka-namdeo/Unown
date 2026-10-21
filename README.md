@@ -106,7 +106,8 @@ Full usage docs live in [`docs/`](docs/):
 |---|---|
 | [quickstart](docs/quickstart.md) | clone → install → connect a model → first session (5 minutes) |
 | [install](docs/install.md) | the one-line installer, the source vs binary modes, manual and archive installs, requirements, offline/air-gapped installs, uninstalling |
-| [updating](docs/updating.md) | mode-aware `unown update` (checkout and binary), update notifications, pinned installs, rollback, the privacy model of the update check |
+| [updating](docs/updating.md) | mode-aware `unown update` (checkout and binary), the signed release manifest, per-OS availability, update notifications and the skip/snooze prefs, pinned installs, rollback, the privacy model of the update check |
+| [update research](docs/update-research.md) | the 2026-10-21 survey and decision record behind the signed feed and the update nudges (options, evidence tiers, reproduction commands) |
 | [providers](docs/providers.md) | `unown setup`, models.json / auth.json / settings.json, the bridge vs direct endpoints, custom providers |
 | [usage](docs/usage.md) | every command, slash command, keybinding, session tool, plan mode |
 | [split view](docs/split-view.md) | the split-view display mode — thinking/tool band, files dock, response-only transcript, every `/split*` command, `ui-panels.json` defaults |

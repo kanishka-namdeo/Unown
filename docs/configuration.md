@@ -161,11 +161,11 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `AGNES_API_KEY` | unset | The Agnes AI provider key (`https://apihub.agnes-ai.com/v1`, `agnes-3.0-flash`) for direct (non-bridge) use — consumed by the `agnes` preset in `unown setup` / `unown providers add --provider agnes --key-env AGNES_API_KEY`, which stores a `$AGNES_API_KEY` reference in `auth.json` (0600). Also usable as the bridge's failover lane: `BRIDGE_FALLBACK_URL=https://apihub.agnes-ai.com/v1` + `BRIDGE_FALLBACK_MODEL=agnes-3.0-flash` (see [providers](providers.md)). |
 | `TAVILY_API_KEY` / `BRAVE_SEARCH_API_KEY` / `SERPER_API_KEY` / `EXA_API_KEY` / `PERPLEXITY_API_KEY` / `JINA_API_KEY` / `ZHIPU_API_KEY` / `DASHSCOPE_API_KEY` / `KAGI_API_KEY` / `SERPAPI_API_KEY` / `FIRECRAWL_API_KEY` | unset | Paid web-search provider keys — any that are set join the search chain ahead of the keyless fallbacks (see [usage: web tools](usage.md#web-search--webfetch)). `DASHSCOPE_API_KEY` accepts **standard keys only** (`sk-…`): coding-plan keys (`sk-sp-…`) are refused up front with an actionable note (the coding endpoints silently ignore `enable_search`, the standard endpoints reject them — verified live 2026-10-19); the chain then cascades to the next provider. |
 | `GITHUB_TOKEN` | unset | Optional token for the keyless `github` search provider (lifts the 10 req/min per-IP search cap; never required). |
-| `NO_UPDATE_NOTIFIER` | unset | Any value silences the startup update notice and its background check (ecosystem-standard name). Manual `unown update` still works — see [updating](updating.md). |
+| `NO_UPDATE_NOTIFIER` | unset | Any value silences the startup update notice, the TUI footer chip and the background check (ecosystem-standard name). Manual `unown update` still works — see [updating](updating.md). |
 | `UNOWN_DISABLE_AUTOUPDATE` | unset | `1` — same as `NO_UPDATE_NOTIFIER`, the Unown-native spelling. |
 | `DO_NOT_TRACK` | unset | `1` — the standard nonessential-traffic opt-out; suppresses the background update check. |
 | `UNOWN_DISABLE_UPDATES` | unset | `1` blocks **all** update paths (`unown update`, `--check`, background check) — the org/CI kill switch. |
-| `UNOWN_RELEASES_BASE_URL` | `https://github.com/kanishka-namdeo/Unown/releases` | Release feed base for the binary installer/updater and the binary update check; point it at a mirror for air-gapped installs. `https://` is expected; the installer accepts `http://` only for an explicit mirror/test setup and warns. |
+| `UNOWN_RELEASES_BASE_URL` | `https://github.com/kanishka-namdeo/Unown/releases` | Release feed base for the binary installer/updater and the signed-manifest update check; point it at a mirror for air-gapped installs. The mirror must carry `release.json` + `release.json.sig` (and `version.txt`/`sha256sums.txt` for legacy releases); the signature still verifies against the pinned public key. `https://` is expected; the installer accepts `http://` only for an explicit mirror/test setup and warns. |
 | `UNOWN_INSTALL_ROOT` | POSIX: `$XDG_DATA_HOME/unown`, else `~/.local/share/unown`; Windows: `%LOCALAPPDATA%\unown` | Root of a binary install (`versions/<version>/unown[.exe]`). The binary shim sets it; `unown update`/`uninstall` use it to recognize the install. |
 | `UNOWN_BIN_DIR` | POSIX: `~/.local/bin`; Windows: `%USERPROFILE%\.local\bin` | Directory the installers and `scripts/link.ts` write the `unown` shim(s) into. |
 | `UNOWN_ALLOW_EXPERIMENTAL` | unset | `1` allows the un-smoked windows-arm64 binary archive (the installer's `-Experimental` / `--experimental` sets the same intent for its run). |
@@ -244,8 +244,11 @@ Where everything lives — all of it deletable, none of it required to pre-exist
   memory/
     policy.md                    tier 0 — optional, you author it
     user.md                      tier 2 — global preferences
-  update-check.json              update-notifier cache — 24h TTL, remote URL stored credential-free
-  update-state.json              last `unown update` record (from/to/fromSha/ok) — what --rollback restores
+  update-check.json              signed-feed cache (schema 2) — 24h TTL, remote URL stored credential-free;
+                                 a legacy schema-1 cache is shown as stale and refreshed
+  update-prefs.json              skip-this-version, snooze window and notice history — survives cache deletion
+  update-check.lock / update-apply.lock   single-flight check/apply locks (reclaimed after 5/30 minutes)
+  update-state.json              last `unown update` record (from/to/fromSha/ok, mode/platform, rollback fields) — what --rollback restores
   install.json                   the ACTIVE install: schema 1, mode (checkout|binary), version, platform,
                                  root/bin/shim, previousVersion — written by link.ts, the binary installer
                                  and unown update; drives mode-aware update/uninstall

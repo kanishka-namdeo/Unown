@@ -59,7 +59,7 @@ unown --help        # the command surface
 unown doctor        # diagnostics — expect one ✗ (no upstream key yet)
 ```
 
-Stay current with `unown update`; `unown update --check` reports without changing anything (exit `0` up to date, `2` available, `1` error). The command is mode-aware — a source checkout moves tag to tag, a binary install downloads and verifies the next release ([updating](updating.md)).
+Stay current with `unown update`; `unown update --check` reports without changing anything (exit `0` up to date or not published for this platform, `2` available, `1` error). The command is mode-aware — a source checkout moves tag to tag, a binary install verifies the signed release manifest and the platform asset before downloading ([updating](updating.md)).
 
 ## 3. Connect a model
 

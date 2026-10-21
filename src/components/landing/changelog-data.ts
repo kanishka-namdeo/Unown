@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 135;
+export const CHANGELOG_TOTAL_ENTRIES = 138;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 57,
+  "Added": 58,
   "Changed": 10,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 59,
+  "Fixed": 61,
   "Security": 0,
   "Behavior": 7
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 12,
+    "total": 15,
     "counts": {
-      "Added": 3,
+      "Added": 4,
       "Changed": 3,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 6,
+      "Fixed": 8,
       "Security": 0,
       "Behavior": 0
     },
@@ -65,11 +65,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
+            "title": "the update path now checks a signed, per-OS release manifest and nudges without nagging",
+            "behavior": false
+          },
+          {
             "title": "unown update and unown uninstall are mode-aware",
             "behavior": false
           },
           {
-            "title": "releases now carry self-describing archives and a verifiable 12-asset payload",
+            "title": "releases now carry self-describing archives and a verifiable 14-asset payload",
             "behavior": false
           }
         ]
@@ -112,6 +116,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "a credentialed release-mirror URL is redacted before it is printed or cached",
+            "behavior": false
+          },
+          {
+            "title": "the update feed is repaired in the next release",
+            "behavior": false
+          },
+          {
+            "title": "print mode no longer prints the startup update line",
             "behavior": false
           },
           {

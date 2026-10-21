@@ -48,7 +48,7 @@ If you downloaded an archive by hand, verify it with the macOS-specific form (th
 grep "  unown-darwin-arm64.tar.gz$" sha256sums.txt | shasum -a 256 -c -
 ```
 
-The builds are unsigned and not notarized. The installer clears the quarantine bit on the staged binary as a best effort; if Gatekeeper blocks it anyway, run `xattr -d com.apple.quarantine unown` once. Update with `unown update` (verified download, `--rollback` keeps the previous version) and remove with `unown uninstall`.
+The builds are unsigned and not notarized. The installer clears the quarantine bit on the staged binary as a best effort; if Gatekeeper blocks it anyway, run `xattr -d com.apple.quarantine unown` once. Update with `unown update` — it verifies the signed `release.json` manifest and the macOS asset, and `--rollback` keeps the previous version on disk — then remove with `unown uninstall`.
 
 ## The OS sandbox on macOS
 
