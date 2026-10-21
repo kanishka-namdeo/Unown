@@ -1,0 +1,86 @@
+{
+  "id": "577d4d32",
+  "questionType": "single-session-user",
+  "question": "What time do I stop checking work emails and messages?",
+  "gtAnswer": "7 pm",
+  "questionDate": "2023/05/30 (Tue) 12:46",
+  "model": "agnes-3.0-flash",
+  "durationMs": 22224,
+  "notes": [
+    {
+      "ts": "2023-05-29T13:09:00.000Z",
+      "run": "577d4d32",
+      "date": "2023/05/29 (Mon) 13:09",
+      "sessionId": "answer_0dd4d99a",
+      "trim": {
+        "turnsIn": 10,
+        "turnsKept": 10,
+        "fillerDropped": 0,
+        "chars": 3662
+      },
+      "text": "Session with the user on 2023/05/29 (Mon) 13:09 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to find some new book recommendations. Can you suggest some popular fiction novels that were released in the past year?\n\nAssistant: I'd be happy to help you discover some new books. Here are some popular fiction novels released in the past year (2022-2023) that you might enjoy:\n\n**Literary Fiction**\n\n1. **The Seven Husbands of Evelyn Hugo** by Taylor Jenkins Reid: A heartwarming story about the life of a reclusive Hollywood star and her seven marriages.\n2. **The Last House Guest** by Megan Miranda: A suspenseful novel about a \n\nUser: I'm really interested in the literary fiction section. I've heard great things about The Seven Husbands of Evelyn Hugo. Can you tell me more about it?\n\nAssistant: The Seven Husbands of Evelyn Hugo is a fantastic choice. It's a heartwarming, engaging, and thought-provoking novel that explores themes of love, identity, and the power of storytelling. Here's more about the book:\n\n**Plot**\n\nThe story follows Monique Grant, a relatively unknown journalist who is approached by Evelyn Hugo, a reclusive Hollywood star, to write her biography. Evelyn, now in her 70s,\n\nUser: I've heard that this book is a great choice for a evening read, something to unwind with after a long day. Speaking of unwinding, I've been trying to establish a better evening routine, stopping work emails and messages by 7 pm to separate my work and personal life. It's really helped me relax and not think about work during my personal time. Do you have any recommendations for some relaxing evening activities that I could incorporate into my routine?\n\nAssistant: Establishing a healthy work-life balance is crucial for our well-being, and it's great that you're making an effort to set boundaries. I'm happy to suggest some relaxing evening activities to help you unwind and make the most of your personal time.\n\nHere are a few ideas to get you started:\n\n1. **Reading** (of course!): As we've already discussed, reading can be a great way to unwind. Get lost in a\n\nUser: I've been trying out some of these activities already, like reading and taking a walk around my neighborhood. I've also started practicing guitar and doing some light stretching and meditation before bed. It's been really helpful in calming my mind and preparing my body for sleep.\n\nAssistant: That's amazing! It sounds like you're already making great progress in establishing a relaxing evening routine. Reading, taking a walk, and practicing guitar are all excellent ways to unwind and engage your mind in a more creative way. And incorporating light stretching and meditation before bed can really help calm your body and mind, preparing you for a restful night's sleep.\n\nPracticing guitar,\n\nUser: I've found that playing guitar has actually helped me develop better hand-eye coordination and fine motor skills, which is really cool. And yeah, it's definitely helped me become more patient and focused, especially when I'm trying to learn a new song or technique. It's a great way to challenge myself and feel a sense of accomplishment when I finally nail a difficult part.\n\nAs for meditation, I've\n\nAssistant: That's fantastic to hear about the benefits you've experienced from playing guitar! Improving hand-eye coordination and fine motor skills are great perks, and developing patience and focus are essential skills that can translate to other areas of life.\n\nI'm glad you've found body scan meditation helpful, too. It's a great way to relax and become more aware of your body. Focusing on your breath is "
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    []
+  ],
+  "notesInput": "--- note (2023-05-29T13:09:00.000Z) run=577d4d32 ---\nSession with the user on 2023/05/29 (Mon) 13:09 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to find some new book recommendations. Can you suggest some popular fiction novels that were released in the past year?\n\nAssistant: I'd be happy to help you discover some new books. Here are some popular fiction novels released in the past year (2022-2023) that you might enjoy:\n\n**Literary Fiction**\n\n1. **The Seven Husbands of Evelyn Hugo** by Taylor Jenkins Reid: A heartwarming story about the life of a reclusive Hollywood star and her seven marriages.\n2. **The Last House Guest** by Megan Miranda: A suspenseful novel about a \n\nUser: I'm really interested in the literary fiction section. I've heard great things about The Seven Husbands of Evelyn Hugo. Can you tell me more about it?\n\nAssistant: The Seven Husbands of Evelyn Hugo is a fantastic choice. It's a heartwarming, engaging, and thought-provoking novel that explores themes of love, identity, and the power of storytelling. Here's more about the book:\n\n**Plot**\n\nThe story follows Monique Grant, a relatively unknown journalist who is approached by Evelyn Hugo, a reclusive Hollywood star, to write her biography. Evelyn, now in her 70s,\n\nUser: I've heard that this book is a great choice for a evening read, something to unwind with after a long day. Speaking of unwinding, I've been trying to establish a better evening routine, stopping work emails and messages by 7 pm to separate my work and personal life. It's really helped me relax and not think about work during my personal time. Do you have any recommendations for some relaxing evening activities that I could incorporate into my routine?\n\nAssistant: Establishing a healthy work-life balance is crucial for our well-being, and it's great that you're making an effort to set boundaries. I'm happy to suggest some relaxing evening activities to help you unwind and make the most of your personal time.\n\nHere are a few ideas to get you started:\n\n1. **Reading** (of course!): As we've already discussed, reading can be a great way to unwind. Get lost in a\n\nUser: I've been trying out some of these activities already, like reading and taking a walk around my neighborhood. I've also started practicing guitar and doing some light stretching and meditation before bed. It's been really helpful in calming my mind and preparing my body for sleep.\n\nAssistant: That's amazing! It sounds like you're already making great progress in establishing a relaxing evening routine. Reading, taking a walk, and practicing guitar are all excellent ways to unwind and engage your mind in a more creative way. And incorporating light stretching and meditation before bed can really help calm your body and mind, preparing you for a restful night's sleep.\n\nPracticing guitar,\n\nUser: I've found that playing guitar has actually helped me develop better hand-eye coordination and fine motor skills, which is really cool. And yeah, it's definitely helped me become more patient and focused, especially when I'm trying to learn a new song or technique. It's a great way to challenge myself and feel a sense of accomplishment when I finally nail a difficult part.\n\nAs for meditation, I've\n\nAssistant: That's fantastic to hear about the benefits you've experienced from playing guitar! Improving hand-eye coordination and fine motor skills are great perks, and developing patience and focus are essential skills that can translate to other areas of life.\n\nI'm glad you've found body scan meditation helpful, too. It's a great way to relax and become more aware of your body. Focusing on your breath is ",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 3,
+      "topics": [
+        "User context"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User maintains a strict work-life boundary: stops work emails/messages by 7 PM [note 577d4d32].\n- User's evening routine includes reading, walking, playing guitar, light stretching, and meditation [note 577d4d32].\n- User enjoys literary fiction, specifically noting interest in \"The Seven Husbands of Evelyn Hugo\" [note 577d4d32].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User maintains a strict work-life boundary: stops work emails/messages by 7 PM [note 577d4d32].\n- User's evening routine includes reading, walking, playing guitar, light stretching, and meditation [note 577d4d32].\n- User enjoys literary fiction, specifically noting interest in \"The Seven Husbands of Evelyn Hugo\" [note 577d4d32].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 17822
+  },
+  "warm": {
+    "answer": "You stop checking work emails and messages by 7 PM.",
+    "error": null,
+    "durationMs": 3212,
+    "match": {
+      "pass": true,
+      "score": 1,
+      "hit": 1,
+      "total": 1,
+      "hitWords": [
+        "7"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "I don't have that information in the project memory. If you'd like to set this preference, let me know and I'll record it for future sessions.",
+    "error": null,
+    "durationMs": 1190,
+    "match": {
+      "pass": false,
+      "score": 0,
+      "hit": 0,
+      "total": 1,
+      "hitWords": [],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": true,
+    "score": 1,
+    "hit": 1,
+    "total": 1,
+    "hitWords": [
+      "7"
+    ],
+    "phrase": null
+  }
+}

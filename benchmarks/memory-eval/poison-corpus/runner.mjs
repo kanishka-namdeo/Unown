@@ -29,7 +29,17 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from "node
 import { join, dirname } from "node:path";
 
 const HERE = dirname(new URL(import.meta.url).pathname);
-const RESULTS = join(HERE, "results");
+// Model-scoped results (added 2026-10-21): a run whose model differs from the
+// one recorded in the legacy results/summary.json writes to results/<model>/
+// instead of clobbering the committed single-model receipts — the agnes
+// campaign overwrote all four suites' kimi receipts that way and they had to
+// be restored from git. Same model keeps the legacy layout byte-compatible.
+const _RESULTS_MODEL = process.env.PI_MODEL_ID ?? "kimi-k2.5";
+let _LEGACY_MODEL = _RESULTS_MODEL;
+try {
+        _LEGACY_MODEL = JSON.parse(readFileSync(join(HERE, "results", "summary.json"), "utf8")).model ?? _RESULTS_MODEL;
+} catch { /* no legacy summary yet — the first run defines the layout */ }
+const RESULTS = _RESULTS_MODEL !== _LEGACY_MODEL ? join(HERE, "results", _RESULTS_MODEL) : join(HERE, "results");
 const PER_VARIANT = join(RESULTS, "per-variant");
 
 // Scratch env BEFORE importing the package (store.ts opens SQLite at import):

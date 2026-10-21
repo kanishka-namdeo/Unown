@@ -1,0 +1,89 @@
+{
+  "id": "5e1b23de",
+  "questionType": "temporal-reasoning",
+  "question": "How many months ago did I attend the photography workshop?",
+  "gtAnswer": "3",
+  "questionDate": "2024/02/01 (Thu) 22:41",
+  "model": "agnes-3.0-flash",
+  "durationMs": 9825,
+  "notes": [
+    {
+      "ts": "2023-11-01T13:35:00.000Z",
+      "run": "5e1b23de",
+      "date": "2023/11/01 (Wed) 13:35",
+      "sessionId": "answer_c18d480b_1",
+      "trim": {
+        "turnsIn": 10,
+        "turnsKept": 10,
+        "fillerDropped": 0,
+        "chars": 3627
+      },
+      "text": "Session with the user on 2023/11/01 (Wed) 13:35 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some photography inspiration and tips. Can you suggest some online resources or tutorials on night photography?\n\nAssistant: Night photography can be a fascinating and challenging genre, and I'd be happy to help you with some online resources and tutorials to get you started.\n\n**Websites and Blogs:**\n\n1. **Digital Photography School**: A comprehensive website with a dedicated section on night photography, covering topics like camera settings, composition, and post-processing.\n2. **500px**: A popular photography communit\n\nUser: I'm interested in astrophotography, can you recommend some apps or software for editing and processing astrophotography images? Additionally, do you know of any online communities or forums where I can share my astrophotography work and get feedback from others?\n\nAssistant: Astrophotography is a fascinating genre! Editing and processing astrophotography images require specific tools and techniques to bring out the best in your captures. Here are some recommended apps and software for editing and processing astrophotography images:\n\n**Software:**\n\n1. **Adobe Photoshop**: Industry-standard image editing software with advanced features like Content-Aware Fill, Perspecti\n\nUser: I'm interested in learning more about image stacking, can you explain the process and provide some tips on how to do it effectively? Also, I've been looking for a good camera remote shutter release, do you have any recommendations?\n\nAssistant: Image stacking is a powerful technique in astrophotography that can help you capture more detail and reduce noise in your images.\n\n**What is Image Stacking?**\n\nImage stacking is a process where you take multiple images of the same scene, and then combine them using software to create a single image with improved quality. This technique is particularly useful in astrophotography, where camera noise\n\nUser: That's really helpful, thank you!  I went to a 3-day photography workshop in a nearby city today where I learned about different techniques and styles of photography. I'm curious about dark frames and bias frames. Can you explain what they are and how they help in image stacking? Also, I've been thinking of getting a new camera lens, do you have any recommendations for a good wide-angle lens for astrophotography?\n\nAssistant: I'm glad you found the previous information helpful!\n\n**Dark Frames and Bias Frames:**\n\nIn astrophotography, dark frames and bias frames are auxiliary images that help reduce noise and thermal signal in your final stacked image.\n\n**Dark Frames:**\n\nA dark frame is an image taken with the same camera settings as your light frames (the actual images of the sky), but with the lens cap on or the camera\n\nUser: I'm interested in learning more about camera sensors and how they affect astrophotography images. Can you explain how camera sensors work and what factors affect their performance in low-light conditions? Additionally, I've been thinking of upgrading my camera, do you have any recommendations for cameras that are suitable for astrophotography?\n\nAssistant: Camera sensors play a crucial role in astrophotography, and understanding how they work can help you make informed decisions when choosing a camera.\n\n**How Camera Sensors Work:**\n\nA camera sensor is a light-sensitive device that converts photons into electrical signals, which are then processed into an image. In digital cameras, the sensor is typically a Charge-Coupled Device (CCD) or Complementar"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    []
+  ],
+  "notesInput": "--- note (2023-11-01T13:35:00.000Z) run=5e1b23de ---\nSession with the user on 2023/11/01 (Wed) 13:35 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some photography inspiration and tips. Can you suggest some online resources or tutorials on night photography?\n\nAssistant: Night photography can be a fascinating and challenging genre, and I'd be happy to help you with some online resources and tutorials to get you started.\n\n**Websites and Blogs:**\n\n1. **Digital Photography School**: A comprehensive website with a dedicated section on night photography, covering topics like camera settings, composition, and post-processing.\n2. **500px**: A popular photography communit\n\nUser: I'm interested in astrophotography, can you recommend some apps or software for editing and processing astrophotography images? Additionally, do you know of any online communities or forums where I can share my astrophotography work and get feedback from others?\n\nAssistant: Astrophotography is a fascinating genre! Editing and processing astrophotography images require specific tools and techniques to bring out the best in your captures. Here are some recommended apps and software for editing and processing astrophotography images:\n\n**Software:**\n\n1. **Adobe Photoshop**: Industry-standard image editing software with advanced features like Content-Aware Fill, Perspecti\n\nUser: I'm interested in learning more about image stacking, can you explain the process and provide some tips on how to do it effectively? Also, I've been looking for a good camera remote shutter release, do you have any recommendations?\n\nAssistant: Image stacking is a powerful technique in astrophotography that can help you capture more detail and reduce noise in your images.\n\n**What is Image Stacking?**\n\nImage stacking is a process where you take multiple images of the same scene, and then combine them using software to create a single image with improved quality. This technique is particularly useful in astrophotography, where camera noise\n\nUser: That's really helpful, thank you!  I went to a 3-day photography workshop in a nearby city today where I learned about different techniques and styles of photography. I'm curious about dark frames and bias frames. Can you explain what they are and how they help in image stacking? Also, I've been thinking of getting a new camera lens, do you have any recommendations for a good wide-angle lens for astrophotography?\n\nAssistant: I'm glad you found the previous information helpful!\n\n**Dark Frames and Bias Frames:**\n\nIn astrophotography, dark frames and bias frames are auxiliary images that help reduce noise and thermal signal in your final stacked image.\n\n**Dark Frames:**\n\nA dark frame is an image taken with the same camera settings as your light frames (the actual images of the sky), but with the lens cap on or the camera\n\nUser: I'm interested in learning more about camera sensors and how they affect astrophotography images. Can you explain how camera sensors work and what factors affect their performance in low-light conditions? Additionally, I've been thinking of upgrading my camera, do you have any recommendations for cameras that are suitable for astrophotography?\n\nAssistant: Camera sensors play a crucial role in astrophotography, and understanding how they work can help you make informed decisions when choosing a camera.\n\n**How Camera Sensors Work:**\n\nA camera sensor is a light-sensitive device that converts photons into electrical signals, which are then processed into an image. In digital cameras, the sensor is typically a Charge-Coupled Device (CCD) or Complementar",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 6,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls",
+        "Task playbooks"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- Attended a 3-day photography workshop in a nearby city on 2023/11/01; learned techniques and styles [note 5e1b23de].\n- Active interest in astrophotography, night photography, and image stacking techniques [note 5e1b23de].\n- Considering purchasing a wide-angle lens and potentially upgrading the camera body for astrophotography [note 5e1b23de].\n- Seeking online resources, tutorials, software, and communities for photography and astrophotography [note 5e1b23de].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n\n## Task playbooks\n- When asked for photography/astrophotography advice, recommend specific software (e.g., Adobe Photoshop), techniques (image stacking, dark/bias frames), and hardware (wide-angle lenses) based on current user interests [note 5e1b23de].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- Attended a 3-day photography workshop in a nearby city on 2023/11/01; learned techniques and styles [note 5e1b23de].\n- Active interest in astrophotography, night photography, and image stacking techniques [note 5e1b23de].\n- Considering purchasing a wide-angle lens and potentially upgrading the camera body for astrophotography [note 5e1b23de].\n- Seeking online resources, tutorials, software, and communities for photography and astrophotography [note 5e1b23de].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n\n## Task playbooks\n- When asked for photography/astrophotography advice, recommend specific software (e.g., Adobe Photoshop), techniques (image stacking, dark/bias frames), and hardware (wide-angle lenses) based on current user interests [note 5e1b23de].\n",
+    "durationMs": 7144
+  },
+  "warm": {
+    "answer": "The photography workshop was attended on 2023/11/01. The current date is 2024/02/01.\n\nFrom November 1, 2023, to February 1, 2024, is exactly 3 months.\n\nYou attended the photography workshop 3 months ago.",
+    "error": null,
+    "durationMs": 1563,
+    "match": {
+      "pass": true,
+      "score": 1,
+      "hit": 1,
+      "total": 1,
+      "hitWords": [
+        "3"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "I don't have a record of when you attended a photography workshop in the project memory, so I can't calculate how many months ago it was.",
+    "error": null,
+    "durationMs": 1118,
+    "match": {
+      "pass": false,
+      "score": 0,
+      "hit": 0,
+      "total": 1,
+      "hitWords": [],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": true,
+    "score": 1,
+    "hit": 1,
+    "total": 1,
+    "hitWords": [
+      "3"
+    ],
+    "phrase": null
+  }
+}

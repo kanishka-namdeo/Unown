@@ -1,0 +1,88 @@
+{
+  "id": "c5e8278d",
+  "questionType": "single-session-user",
+  "question": "What was my last name before I changed it?",
+  "gtAnswer": "Johnson",
+  "questionDate": "2023/05/29 (Mon) 18:26",
+  "model": "agnes-3.0-flash",
+  "durationMs": 10841,
+  "notes": [
+    {
+      "ts": "2023-05-27T18:13:00.000Z",
+      "run": "c5e8278d",
+      "date": "2023/05/27 (Sat) 18:13",
+      "sessionId": "answer_f6168136",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 12,
+        "fillerDropped": 0,
+        "chars": 3837
+      },
+      "text": "Session with the user on 2023/05/27 (Sat) 18:13 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I need to update my address with my health insurance provider. Can you walk me through the process or give me a phone number to call? By the way, I just recently changed my last name, and I'm still getting used to it - it's funny, my old name was Johnson, but now it's Winters.\n\nAssistant: Congratulations on your recent name change!\n\nI'd be happy to help you update your address with your health insurance provider. Since I'm a large language model, I don't have access to specific phone numbers or personal information, but I can guide you through the general process.\n\n**Option 1: Update Online**\n\n1. Log in to your health insurance provider's website or mobile app using your username a\n\nUser: I think I'll call them, it's easier to get it done quickly. Do you know how long it usually takes for them to process the update? And by the way, do you know if I need to notify the DMV about my name change as well?\n\nAssistant: Calling them is a great way to get it done quickly and efficiently.\n\n**Processing Time:**\n\nThe processing time for updating your address with your health insurance provider can vary depending on the company and their internal processes. However, in most cases, the update should be reflected in their system within:\n\n* 1-3 business days: For online updates or phone calls, the change is usually proce\n\nUser: What's the best way to update my social media profiles, especially Facebook, since I don't want to lose my friends and memories?\n\nAssistant:  Updating your social media profiles, especially Facebook, can be a bit tricky when you've got a large friend network and a treasure trove of memories. Here's a step-by-step guide to help you update your Facebook profile without losing your friends and memories:\n\n**Before You Start:**\n\n1. Make sure you have access to your current email address associated with your Facebook account.\n2. Have a clear\n\nUser: I'm also wondering, are there any specific tips for updating my social media profiles on other platforms like Instagram, Twitter, or LinkedIn?\n\nAssistant: Updating your social media profiles across multiple platforms can be a bit of a task, but it's essential to maintain consistency and accuracy online. Here are some platform-specific tips to help you update your profiles on Instagram, Twitter, and LinkedIn:\n\n**Instagram:**\n\n1. **Username:** You can change your Instagram username (handle) to match your new name. Go to your profile, tap \"Edit Profile\n\nUser: I'm also wondering, do I need to update my credit report with the three major credit bureaus (Experian, TransUnion, and Equifax) to reflect my name change? And how do I go about doing that?\n\nAssistant: Updating your credit report with the three major credit bureaus (Experian, TransUnion, and Equifax) is an important step in ensuring your credit history is accurate and up-to-date. Here's what you need to do:\n\n**Why Update Your Credit Report:**\n\n1. **Accurate Credit History:** A name change can lead to errors or discrepancies in your credit report, which can affect your credit score.\n2. **Identity\n\nUser: I need to update my credit card information with my new name as well. Do I need to call the credit card company or can I do it online? And is there anything I should be aware of when updating my credit card information?\n\nAssistant: Updating your credit card information with your new name is an important step to ensure that your credit card account is accurate and up-to-date. You can usually update your credit card information online or by calling the credit card company. Here's what you need to know:\n\n**Online Update:**\n\n1. **Log in to Your Account:** Go to your credit card company's website and log in to your online account"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    []
+  ],
+  "notesInput": "--- note (2023-05-27T18:13:00.000Z) run=c5e8278d ---\nSession with the user on 2023/05/27 (Sat) 18:13 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I need to update my address with my health insurance provider. Can you walk me through the process or give me a phone number to call? By the way, I just recently changed my last name, and I'm still getting used to it - it's funny, my old name was Johnson, but now it's Winters.\n\nAssistant: Congratulations on your recent name change!\n\nI'd be happy to help you update your address with your health insurance provider. Since I'm a large language model, I don't have access to specific phone numbers or personal information, but I can guide you through the general process.\n\n**Option 1: Update Online**\n\n1. Log in to your health insurance provider's website or mobile app using your username a\n\nUser: I think I'll call them, it's easier to get it done quickly. Do you know how long it usually takes for them to process the update? And by the way, do you know if I need to notify the DMV about my name change as well?\n\nAssistant: Calling them is a great way to get it done quickly and efficiently.\n\n**Processing Time:**\n\nThe processing time for updating your address with your health insurance provider can vary depending on the company and their internal processes. However, in most cases, the update should be reflected in their system within:\n\n* 1-3 business days: For online updates or phone calls, the change is usually proce\n\nUser: What's the best way to update my social media profiles, especially Facebook, since I don't want to lose my friends and memories?\n\nAssistant:  Updating your social media profiles, especially Facebook, can be a bit tricky when you've got a large friend network and a treasure trove of memories. Here's a step-by-step guide to help you update your Facebook profile without losing your friends and memories:\n\n**Before You Start:**\n\n1. Make sure you have access to your current email address associated with your Facebook account.\n2. Have a clear\n\nUser: I'm also wondering, are there any specific tips for updating my social media profiles on other platforms like Instagram, Twitter, or LinkedIn?\n\nAssistant: Updating your social media profiles across multiple platforms can be a bit of a task, but it's essential to maintain consistency and accuracy online. Here are some platform-specific tips to help you update your profiles on Instagram, Twitter, and LinkedIn:\n\n**Instagram:**\n\n1. **Username:** You can change your Instagram username (handle) to match your new name. Go to your profile, tap \"Edit Profile\n\nUser: I'm also wondering, do I need to update my credit report with the three major credit bureaus (Experian, TransUnion, and Equifax) to reflect my name change? And how do I go about doing that?\n\nAssistant: Updating your credit report with the three major credit bureaus (Experian, TransUnion, and Equifax) is an important step in ensuring your credit history is accurate and up-to-date. Here's what you need to do:\n\n**Why Update Your Credit Report:**\n\n1. **Accurate Credit History:** A name change can lead to errors or discrepancies in your credit report, which can affect your credit score.\n2. **Identity\n\nUser: I need to update my credit card information with my new name as well. Do I need to call the credit card company or can I do it online? And is there anything I should be aware of when updating my credit card information?\n\nAssistant: Updating your credit card information with your new name is an important step to ensure that your credit card account is accurate and up-to-date. You can usually update your credit card information online or by calling the credit card company. Here's what you need to know:\n\n**Online Update:**\n\n1. **Log in to Your Account:** Go to your credit card company's website and log in to your online account",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 3,
+      "topics": [
+        "Workflow",
+        "User Context",
+        "Known Pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User Context\n- Last name is Winters, previously Johnson; name change occurred in 2023 [note 2023-05-27T18:13:00.000Z].\n- Actively updating personal records (address, name) across health insurance, DMV, social media, credit bureaus, and credit cards as of May 2023 [note 2023-05-27T18:13:00.000Z].\n- Prefers phone calls over online portals for administrative updates with institutions [note 2023-05-27T18:13:00.000Z].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User Context\n- Last name is Winters, previously Johnson; name change occurred in 2023 [note 2023-05-27T18:13:00.000Z].\n- Actively updating personal records (address, name) across health insurance, DMV, social media, credit bureaus, and credit cards as of May 2023 [note 2023-05-27T18:13:00.000Z].\n- Prefers phone calls over online portals for administrative updates with institutions [note 2023-05-27T18:13:00.000Z].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 5812
+  },
+  "warm": {
+    "answer": "Your last name before the change was Johnson.",
+    "error": null,
+    "durationMs": 1205,
+    "match": {
+      "pass": true,
+      "score": 1,
+      "hit": 1,
+      "total": 1,
+      "hitWords": [
+        "johnson"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory does not contain any record of a name change or your previous last name, so I cannot answer this question from the stored context.",
+    "error": null,
+    "durationMs": 3824,
+    "match": {
+      "pass": false,
+      "score": 0,
+      "hit": 0,
+      "total": 1,
+      "hitWords": [],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": true,
+    "score": 1,
+    "hit": 1,
+    "total": 1,
+    "hitWords": [
+      "johnson"
+    ],
+    "phrase": null
+  }
+}

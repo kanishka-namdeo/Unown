@@ -1,0 +1,93 @@
+{
+  "id": "gpt4_af6db32f",
+  "questionType": "temporal-reasoning",
+  "question": "How many days ago did I watch the Super Bowl?",
+  "gtAnswer": "17 days ago. 18 days (including the last day) is also acceptable.",
+  "questionDate": "2023/03/01 (Wed) 00:28",
+  "model": "agnes-3.0-flash",
+  "durationMs": 20831,
+  "notes": [
+    {
+      "ts": "2023-02-12T05:07:00.000Z",
+      "run": "gpt4_af6",
+      "date": "2023/02/12 (Sun) 05:07",
+      "sessionId": "answer_184c8f56_1",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 11,
+        "fillerDropped": 1,
+        "chars": 3872
+      },
+      "text": "Session with the user on 2023/02/12 (Sun) 05:07 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to plan a fantasy football draft party and I was thinking of serving some food that's similar to what I had at my friend's house today when we watched the Super Bowl - you know, pizza and wings. Do you have any recommendations for good wing sauces or pizza toppings that would be a hit with my friends? By the way, Go Chiefs!\n\nUser: I'm actually thinking of having the party on a Sunday, so I can catch up on some NFL games before the draft. Do you have any recommendations for good sports bars in the area that show NFL games, in case some of my friends want to catch a game before the party?\n\nAssistant: Having your party on a Sunday is a great way to tie in with the NFL games. However, I'm a large language model, I don't have access to your location, so I can't recommend specific sports bars in your area.\n\nBut I can suggest a few ways to find great sports bars near you that show NFL games:\n\n1. **Google Search**: Type in \"sports bars near me\" or \"NFL bars near me\" and Google will show you the near\n\nUser: I was thinking, since we're having a fantasy football draft party, it would be cool to have some TVs set up to show some football highlights or analysis before the draft. Do you have any recommendations for some good sports shows or channels that would get us pumped up for the draft?\n\nAssistant: What a great idea! Having some football-related content playing in the background can definitely get everyone in the right mindset for the draft. Here are some sports shows and channels that are perfect for getting you and your friends pumped up for the fantasy football draft:\n\n**NFL Network**:\n\n* **Good Morning Football**: A morning show that covers the latest NFL news, analysis, and highlights.\n\n\nUser: I'm thinking of also having some sports-themed decorations to get everyone in the mood. Do you have any ideas for some simple yet effective decorations that would fit the theme?\n\nAssistant: Sports-themed decorations can really help set the tone for a fun and engaging fantasy football draft party. Here are some simple yet effective ideas to get you started:\n\n**Balloons and Streamers**:\n\n* Use balloons in team colors or with football-themed designs (e.g., footballs, helmets, or referee flags).\n* Hang streamers in team colors or with a football field pattern to add a pop of color to the\n\nUser: I was thinking, since I won $20 from my colleague after the Super Bowl, maybe I should use some of that money to get some prizes for the fantasy football draft party. Do you have any ideas for some fun and creative prizes that would be fitting for the occasion?\n\nAssistant: What a great idea! Using your Super Bowl winnings to get prizes for the fantasy football draft party is a fantastic way to share the excitement and create a fun atmosphere. Here are some fun and creative prize ideas that are fitting for the occasion:\n\n**Football-Themed Prizes**:\n\n* **Football-shaped trophies**: Award a trophy to the winner of the draft, the most creative team name, or the best tea\n\nUser: I think I'll get a few prizes that are a mix of football-themed items and humorous awards. Maybe I'll get a few NFL team-branded hats, some football-shaped snacks, and a \"Worst Draft Pick\" trophy. That way, everyone will have a good laugh and some fun prizes to look forward to. Thanks for the ideas!\n\nAssistant: That sounds like a great plan! You're covering all the bases with a mix of football-themed items, humorous awards, and some fun snacks to boot! The NFL team-branded hats will be a great prize for the serious football fans, while the football-shaped snacks will add a playful touch. And, of course, the \"Worst Draft Pick\" trophy will provide some good-natured teasing and humor to the party.\n\nRemember"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    []
+  ],
+  "notesInput": "--- note (2023-02-12T05:07:00.000Z) run=gpt4_af6 ---\nSession with the user on 2023/02/12 (Sun) 05:07 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to plan a fantasy football draft party and I was thinking of serving some food that's similar to what I had at my friend's house today when we watched the Super Bowl - you know, pizza and wings. Do you have any recommendations for good wing sauces or pizza toppings that would be a hit with my friends? By the way, Go Chiefs!\n\nUser: I'm actually thinking of having the party on a Sunday, so I can catch up on some NFL games before the draft. Do you have any recommendations for good sports bars in the area that show NFL games, in case some of my friends want to catch a game before the party?\n\nAssistant: Having your party on a Sunday is a great way to tie in with the NFL games. However, I'm a large language model, I don't have access to your location, so I can't recommend specific sports bars in your area.\n\nBut I can suggest a few ways to find great sports bars near you that show NFL games:\n\n1. **Google Search**: Type in \"sports bars near me\" or \"NFL bars near me\" and Google will show you the near\n\nUser: I was thinking, since we're having a fantasy football draft party, it would be cool to have some TVs set up to show some football highlights or analysis before the draft. Do you have any recommendations for some good sports shows or channels that would get us pumped up for the draft?\n\nAssistant: What a great idea! Having some football-related content playing in the background can definitely get everyone in the right mindset for the draft. Here are some sports shows and channels that are perfect for getting you and your friends pumped up for the fantasy football draft:\n\n**NFL Network**:\n\n* **Good Morning Football**: A morning show that covers the latest NFL news, analysis, and highlights.\n\n\nUser: I'm thinking of also having some sports-themed decorations to get everyone in the mood. Do you have any ideas for some simple yet effective decorations that would fit the theme?\n\nAssistant: Sports-themed decorations can really help set the tone for a fun and engaging fantasy football draft party. Here are some simple yet effective ideas to get you started:\n\n**Balloons and Streamers**:\n\n* Use balloons in team colors or with football-themed designs (e.g., footballs, helmets, or referee flags).\n* Hang streamers in team colors or with a football field pattern to add a pop of color to the\n\nUser: I was thinking, since I won $20 from my colleague after the Super Bowl, maybe I should use some of that money to get some prizes for the fantasy football draft party. Do you have any ideas for some fun and creative prizes that would be fitting for the occasion?\n\nAssistant: What a great idea! Using your Super Bowl winnings to get prizes for the fantasy football draft party is a fantastic way to share the excitement and create a fun atmosphere. Here are some fun and creative prize ideas that are fitting for the occasion:\n\n**Football-Themed Prizes**:\n\n* **Football-shaped trophies**: Award a trophy to the winner of the draft, the most creative team name, or the best tea\n\nUser: I think I'll get a few prizes that are a mix of football-themed items and humorous awards. Maybe I'll get a few NFL team-branded hats, some football-shaped snacks, and a \"Worst Draft Pick\" trophy. That way, everyone will have a good laugh and some fun prizes to look forward to. Thanks for the ideas!\n\nAssistant: That sounds like a great plan! You're covering all the bases with a mix of football-themed items, humorous awards, and some fun snacks to boot! The NFL team-branded hats will be a great prize for the serious football fans, while the football-shaped snacks will add a playful touch. And, of course, the \"Worst Draft Pick\" trophy will provide some good-natured teasing and humor to the party.\n\nRemember",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 4,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n- Extract durable user preferences from casual conversation to populate 'User context' [note 2023-02-12].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User supports the Kansas City Chiefs [note 2023-02-12].\n- User won $20 from a colleague after the Super Bowl [note 2023-02-12].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n- Extract durable user preferences from casual conversation to populate 'User context' [note 2023-02-12].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User supports the Kansas City Chiefs [note 2023-02-12].\n- User won $20 from a colleague after the Super Bowl [note 2023-02-12].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 4569
+  },
+  "warm": {
+    "answer": "The project memory states you won a bet after the Super Bowl on 2023-02-12, so that is 17 days ago.",
+    "error": null,
+    "durationMs": 5199,
+    "match": {
+      "pass": false,
+      "score": 0.444,
+      "hit": 4,
+      "total": 9,
+      "hitWords": [
+        "17",
+        "days",
+        "ago",
+        "days"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory does not contain any record of you watching the Super Bowl, so I cannot determine how many days ago that occurred.",
+    "error": null,
+    "durationMs": 11063,
+    "match": {
+      "pass": false,
+      "score": 0.333,
+      "hit": 3,
+      "total": 9,
+      "hitWords": [
+        "days",
+        "ago",
+        "days"
+      ],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": false,
+    "score": 0,
+    "hit": 0,
+    "total": 9,
+    "hitWords": [],
+    "phrase": null
+  }
+}

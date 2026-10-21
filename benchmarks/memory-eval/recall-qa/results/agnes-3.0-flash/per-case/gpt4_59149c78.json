@@ -1,0 +1,107 @@
+{
+  "id": "gpt4_59149c78",
+  "questionType": "temporal-reasoning",
+  "question": "I mentioned that I participated in an art-related event two weeks ago. Where was that event held at?",
+  "gtAnswer": "The Metropolitan Museum of Art.",
+  "questionDate": "2023/02/01 (Wed) 21:37",
+  "model": "agnes-3.0-flash",
+  "durationMs": 6854,
+  "notes": [
+    {
+      "ts": "2023-01-08T03:31:00.000Z",
+      "run": "gpt4_591",
+      "date": "2023/01/08 (Sun) 03:31",
+      "sessionId": "answer_d00ba6d1_1",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 12,
+        "fillerDropped": 0,
+        "chars": 3697
+      },
+      "text": "Session with the user on 2023/01/08 (Sun) 03:31 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some information on modern art movements. I just got back from a guided tour at the Museum of Modern Art focused on 20th-century modern art movements, and it really sparked my interest. Can you tell me more about the key artists associated with Cubism?\n\nAssistant: What a great experience! The Museum of Modern Art (MoMA) is an iconic institution, and exploring 20th-century modern art movements can be fascinating. Cubism is an excellent place to start, as it's a pivotal movement that revolutionized the art world.\n\nCubism was a pioneering movement that emerged in the early 20th century, primarily led by two artists: Pablo Picasso and Georges Braque. They sough\n\nUser: That's really helpful, thanks for the information. I'm curious about Frida Kahlo's works, which I learned about during my MoMA tour. Can you tell me more about her artistic style and what inspired her?\n\nAssistant: Frida Kahlo is an iconic artist, and her works are a fascinating blend of Mexican folk art, surrealism, and personal symbolism!\n\nFrida Kahlo's artistic style is characterized by:\n\n1. **Vibrant Colors**: Kahlo's palette is renowned for its bold, vibrant, and often clashing colors, which reflect her Mexican heritage and the country's rich cultural traditions.\n2. **Symbolism and Imagery**: Her painti\n\nUser: I'd like to know more about her relationship with Diego Rivera. How did they meet, and what was their marriage like?\n\nAssistant: The tumultuous and passionate relationship between Frida Kahlo and Diego Rivera is a fascinating aspect of her life!\n\n**Meeting and Early Years:**\n\nFrida Kahlo and Diego Rivera met in 1927, when Frida was 20 years old and Diego was 39. At the time, Diego was already an established artist, and Frida was a student at the Academy of San Carlos. Diego was immediately drawn to Frida's energy, creativit\n\nUser: I'd like to know more about Frida's views on feminism and her role as a female artist in a male-dominated field.\n\nAssistant: Frida Kahlo's views on feminism and her experiences as a female artist in a male-dominated field are fascinating and still resonate today!\n\n**Frida's Feminism:**\n\nFrida Kahlo's art and life embodied a strong sense of feminism, although she never explicitly identified as a feminist. Her experiences as a woman, her relationships, and her art all reflected her struggles with gender roles, identity, a\n\nUser: I'd like to explore Frida's cultural heritage and how it influenced her art. I'm particularly interested in her connection to Mexican folk art and how it shaped her unique style.\n\nAssistant: Frida Kahlo's cultural heritage is a fascinating topic, and her connection to Mexican folk art had a profound impact on her unique style!\n\n**Mexican Folk Art:**\n\nMexican folk art, also known as arte popular, is a rich and diverse tradition that encompasses various forms of artistic expression, including textiles, pottery, woodcarvings, and paintings. This art form is deeply rooted in Mexico's indi\n\nUser: I think I'll take a break from Frida Kahlo for now. I'd like to explore more about modern art movements. Can you tell me about Fauvism and its key artists?\n\nAssistant: Fauvism is a fascinating modern art movement that emerged in the early 20th century!\n\n**What is Fauvism?**\n\nFauvism was a short-lived but influential art movement that flourished in France from 1905 to 1908. The term \"Fauvism\" comes from the French word \"fauve,\" meaning \"wild beast,\" which was coined by art critic Louis Vauxcelles to describe the bold, vibrant, and energetic works of the Fauvist a"
+    },
+    {
+      "ts": "2023-01-15T16:29:00.000Z",
+      "run": "gpt4_591",
+      "date": "2023/01/15 (Sun) 16:29",
+      "sessionId": "answer_d00ba6d1_2",
+      "trim": {
+        "turnsIn": 10,
+        "turnsKept": 10,
+        "fillerDropped": 0,
+        "chars": 3735
+      },
+      "text": "Session with the user on 2023/01/15 (Sun) 16:29 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to learn more about ancient cultures. Can you tell me more about the significance of mummification in ancient Egyptian culture?\n\nAssistant: Mummification played a crucial role in ancient Egyptian culture, and it's fascinating to delve deeper into its significance. Here's a brief overview:\n\n**Why mummification?**\nIn ancient Egyptian belief, the afterlife was a continuation of life on earth. They believed that the soul (ka) would need a physical body to inhabit in the afterlife, and mummification was a way to preserve the body for etern\n\nUser: That's really interesting! I had no idea that the Egyptians believed the heart was the seat of the soul. I was particularly fascinated by the sarcophagi at the exhibit, can you tell me more about their significance and symbolism?\n\nAssistant: The sarcophagi! They're indeed a fascinating aspect of ancient Egyptian funerary practices. Sarcophagi played a crucial role in the burial process, and their symbolism is rich and complex.\n\n**What is a sarcophagus?**\nA sarcophagus is a stone or wooden coffin that housed the mummified body. The word \"sarcophagus\" comes from the Greek words \"sarx\" (flesh) and \"phagē\" (eater), as the ancient Greeks b\n\nUser: That's amazing! I didn't know that the sarcophagus symbolized the womb and represented Isis. I was also surprised to learn that the heart was considered the seat of the soul. Speaking of which, I was wondering, are there any other ancient civilizations that also believed in mummification or similar practices?\n\nAssistant: The concept of mummification and preserving the body for the afterlife is not unique to ancient Egypt. Several other ancient civilizations practiced similar forms of mummification or body preservation, often with their own unique twists and beliefs. Here are a few examples:\n\n1. **Chinchorro culture (Chile and Peru, 5000-1500 BCE)**: The Chinchorro people developed a sophisticated mummification pro\n\nUser: That's fascinating! I had no idea that mummification was practiced in so many ancient cultures. I've always been interested in ancient civilizations, which is why I attended the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art today. Speaking of which, I was wondering, are there any other exhibits or museums in New York City that you would recommend for someone interested in ancient cultures?\n\nAssistant: You're in the right city! New York City is a treasure trove for ancient culture enthusiasts. Besides the Metropolitan Museum of Art, there are several other museums and exhibits that are must-visits. Here are some recommendations:\n\n1. **American Museum of Natural History (AMNH)**: While not exclusively focused on ancient cultures, the AMNH has an impressive collection of artifacts and exhibits on \n\nUser: That's great, thank you for the recommendations! I'll definitely check them out. I'm particularly interested in the American Museum of Natural History, as I've heard their dinosaur exhibits are amazing. I've also been meaning to visit the Brooklyn Museum, as I've heard great things about their collection of ancient artifacts. Do you know if any of these museums offer guided tours or special progra\n\nAssistant: Both the American Museum of Natural History (AMNH) and the Brooklyn Museum offer guided tours and special programs for adults. Here are some options to consider:\n\n**American Museum of Natural History (AMNH)**\n\n* **Guided Tours**: The AMNH offers guided tours for adults, which can be booked in advance. These tours are led by knowledgeable museum guides and cover various topics, including dinosaurs,"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    [],
+    []
+  ],
+  "notesInput": "--- note (2023-01-15T16:29:00.000Z) run=gpt4_591 ---\nSession with the user on 2023/01/15 (Sun) 16:29 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to learn more about ancient cultures. Can you tell me more about the significance of mummification in ancient Egyptian culture?\n\nAssistant: Mummification played a crucial role in ancient Egyptian culture, and it's fascinating to delve deeper into its significance. Here's a brief overview:\n\n**Why mummification?**\nIn ancient Egyptian belief, the afterlife was a continuation of life on earth. They believed that the soul (ka) would need a physical body to inhabit in the afterlife, and mummification was a way to preserve the body for etern\n\nUser: That's really interesting! I had no idea that the Egyptians believed the heart was the seat of the soul. I was particularly fascinated by the sarcophagi at the exhibit, can you tell me more about their significance and symbolism?\n\nAssistant: The sarcophagi! They're indeed a fascinating aspect of ancient Egyptian funerary practices. Sarcophagi played a crucial role in the burial process, and their symbolism is rich and complex.\n\n**What is a sarcophagus?**\nA sarcophagus is a stone or wooden coffin that housed the mummified body. The word \"sarcophagus\" comes from the Greek words \"sarx\" (flesh) and \"phagē\" (eater), as the ancient Greeks b\n\nUser: That's amazing! I didn't know that the sarcophagus symbolized the womb and represented Isis. I was also surprised to learn that the heart was considered the seat of the soul. Speaking of which, I was wondering, are there any other ancient civilizations that also believed in mummification or similar practices?\n\nAssistant: The concept of mummification and preserving the body for the afterlife is not unique to ancient Egypt. Several other ancient civilizations practiced similar forms of mummification or body preservation, often with their own unique twists and beliefs. Here are a few examples:\n\n1. **Chinchorro culture (Chile and Peru, 5000-1500 BCE)**: The Chinchorro people developed a sophisticated mummification pro\n\nUser: That's fascinating! I had no idea that mummification was practiced in so many ancient cultures. I've always been interested in ancient civilizations, which is why I attended the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art today. Speaking of which, I was wondering, are there any other exhibits or museums in New York City that you would recommend for someone interested in ancient cultures?\n\nAssistant: You're in the right city! New York City is a treasure trove for ancient culture enthusiasts. Besides the Metropolitan Museum of Art, there are several other museums and exhibits that are must-visits. Here are some recommendations:\n\n1. **American Museum of Natural History (AMNH)**: While not exclusively focused on ancient cultures, the AMNH has an impressive collection of artifacts and exhibits on \n\nUser: That's great, thank you for the recommendations! I'll definitely check them out. I'm particularly interested in the American Museum of Natural History, as I've heard their dinosaur exhibits are amazing. I've also been meaning to visit the Brooklyn Museum, as I've heard great things about their collection of ancient artifacts. Do you know if any of these museums offer guided tours or special progra\n\nAssistant: Both the American Museum of Natural History (AMNH) and the Brooklyn Museum offer guided tours and special programs for adults. Here are some options to consider:\n\n**American Museum of Natural History (AMNH)**\n\n* **Guided Tours**: The AMNH offers guided tours for adults, which can be booked in advance. These tours are led by knowledgeable museum guides and cover various topics, including dinosaurs,\n\n--- note (2023-01-08T03:31:00.000Z) run=gpt4_591 ---\nSession with the user on 2023/01/08 (Sun) 03:31 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for some information on modern art movements. I just got back from a guided tour at the Museum of Modern Art focused on 20th-century modern art movements, and it really sparked my interest. Can you tell me more about the key artists associated with Cubism?\n\nAssistant: What a great experience! The Museum of Modern Art (MoMA) is an iconic institution, and exploring 20th-century modern art movements can be fascinating. Cubism is an excellent place to start, as it's a pivotal movement that revolutionized the art world.\n\nCubism was a pioneering movement that emerged in the early 20th century, primarily led by two artists: Pablo Picasso and Georges Braque. They sough\n\nUser: That's really helpful, thanks for the information. I'm curious about Frida Kahlo's works, which I learned about during my MoMA tour. Can you tell me more about her artistic style and what inspired her?\n\nAssistant: Frida Kahlo is an iconic artist, and her works are a fascinating blend of Mexican folk art, surrealism, and personal symbolism!\n\nFrida Kahlo's artistic style is characterized by:\n\n1. **Vibrant Colors**: Kahlo's palette is renowned for its bold, vibrant, and often clashing colors, which reflect her Mexican heritage and the country's rich cultural traditions.\n2. **Symbolism and Imagery**: Her painti\n\nUser: I'd like to know more about her relationship with Diego Rivera. How did they meet, and what was their marriage like?\n\nAssistant: The tumultuous and passionate relationship between Frida Kahlo and Diego Rivera is a fascinating aspect of her life!\n\n**Meeting and Early Years:**\n\nFrida Kahlo and Diego Rivera met in 1927, when Frida was 20 years old and Diego was 39. At the time, Diego was already an established artist, and Frida was a student at the Academy of San Carlos. Diego was immediately drawn to Frida's energy, creativit\n\nUser: I'd like to know more about Frida's views on feminism and her role as a female artist in a male-dominated field.\n\nAssistant: Frida Kahlo's views on feminism and her experiences as a female artist in a male-dominated field are fascinating and still resonate today!\n\n**Frida's Feminism:**\n\nFrida Kahlo's art and life embodied a strong sense of feminism, although she never explicitly identified as a feminist. Her experiences as a woman, her relationships, and her art all reflected her struggles with gender roles, identity, a\n\nUser: I'd like to explore Frida's cultural heritage and how it influenced her art. I'm particularly interested in her connection to Mexican folk art and how it shaped her unique style.\n\nAssistant: Frida Kahlo's cultural heritage is a fascinating topic, and her connection to Mexican folk art had a profound impact on her unique style!\n\n**Mexican Folk Art:**\n\nMexican folk art, also known as arte popular, is a rich and diverse tradition that encompasses various forms of artistic expression, including textiles, pottery, woodcarvings, and paintings. This art form is deeply rooted in Mexico's indi\n\nUser: I think I'll take a break from Frida Kahlo for now. I'd like to explore more about modern art movements. Can you tell me about Fauvism and its key artists?\n\nAssistant: Fauvism is a fascinating modern art movement that emerged in the early 20th century!\n\n**What is Fauvism?**\n\nFauvism was a short-lived but influential art movement that flourished in France from 1905 to 1908. The term \"Fauvism\" comes from the French word \"fauve,\" meaning \"wild beast,\" which was coined by art critic Louis Vauxcelles to describe the bold, vibrant, and energetic works of the Fauvist a",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 6,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls"
+      ]
+    },
+    "candidate": "## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User is interested in ancient civilizations, specifically mummification practices across cultures (Egypt, Chinchorro, etc.) [note 5].\n- User visited the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art in New York City [note 5].\n- User is interested in visiting the American Museum of Natural History and the Brooklyn Museum for their ancient artifact collections [note 5].\n- User is interested in modern art movements, including Cubism, Frida Kahlo, and Fauvism [note 6].\n- User attended a guided tour at the Museum of Modern Art (MoMA) focused on 20th-century modern art movements [note 6].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User is interested in ancient civilizations, specifically mummification practices across cultures (Egypt, Chinchorro, etc.) [note 5].\n- User visited the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art in New York City [note 5].\n- User is interested in visiting the American Museum of Natural History and the Brooklyn Museum for their ancient artifact collections [note 5].\n- User is interested in modern art movements, including Cubism, Frida Kahlo, and Fauvism [note 6].\n- User attended a guided tour at the Museum of Modern Art (MoMA) focused on 20th-century modern art movements [note 6].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 4451
+  },
+  "warm": {
+    "answer": "Based on the project memory, you attended a guided tour at the **Museum of Modern Art (MoMA)**, which is located in New York City.",
+    "error": null,
+    "durationMs": 998,
+    "match": {
+      "pass": true,
+      "score": 0.667,
+      "hit": 2,
+      "total": 3,
+      "hitWords": [
+        "museum",
+        "art"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory doesn't contain any record of an art-related event you participated in, so I don't have that information to answer where it was held.",
+    "error": null,
+    "durationMs": 1404,
+    "match": {
+      "pass": false,
+      "score": 0.333,
+      "hit": 1,
+      "total": 3,
+      "hitWords": [
+        "art"
+      ],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": true,
+    "score": 1,
+    "hit": 3,
+    "total": 3,
+    "hitWords": [
+      "metropolitan",
+      "museum",
+      "art"
+    ],
+    "phrase": null
+  }
+}

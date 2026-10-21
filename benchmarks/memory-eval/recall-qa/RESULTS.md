@@ -73,3 +73,32 @@ staleness result: the dream prefers the newest statement of a fact.
 sampler (`sample_corpus.mjs`) re-derives the same 40 questions from the
 upstream split given the same seed; upstream sha256 is pinned in the
 corpus header.
+
+# Live run 2026-10-21 — agnes-3.0-flash (Agnes AI upstream via llm-bridge :3031)
+
+Same 40-question LongMemEval `oracle` corpus, same seed (20261019), same
+warm-vs-cold protocol as the 2026-10-18 kimi-k2.5 run; only the dream/QA
+model changed (`PI_MODEL_ID=agnes-3.0-flash`, upstream
+https://apihub.agnes-ai.com/v1). 40 cases, 0 errors, ~9 min wall; receipts:
+`results/agnes-3.0-flash/` (summary + per-case; the committed kimi receipts
+stay in the legacy `results/` layout — the runner now auto-scopes by model).
+
+## Headline
+
+| Arm | agnes-3.0-flash (this run) | kimi-k2.5 (2026-10-18) |
+|---|---|---|
+| Warm (dreamed memory) | **0.600** | 0.650 |
+| Cold (no dream) | 0.050 | 0.025 |
+| **Lift** | **+0.55** | +0.625 |
+
+The memory loop's core value proposition holds on a second model and a
+second upstream: consolidation + retrieval turns a ~0.05 cold floor into
+0.60. Weakest axis is `multi-session` (warm 0.400, evidence retained 0.100 —
+consolidation loss, not retrieval loss); strongest is
+`single-session-user` (1.000 warm, 1.000 retained). Evidence retained
+overall: 0.525 (kimi: n/a — the retention metric landed after its run);
+2 flagged-note cases, 1 sanitized candidate, 0 gated, 0 dream errors.
+
+Read it as it is: n=1 per question, single run, point estimates; the two
+models also ran on different upstreams (Dashscope vs Agnes AI), which is a
+serving-stack variable the receipts cannot remove.

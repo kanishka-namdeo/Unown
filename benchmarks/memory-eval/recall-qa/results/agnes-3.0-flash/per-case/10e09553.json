@@ -1,0 +1,106 @@
+{
+  "id": "10e09553",
+  "questionType": "knowledge-update",
+  "question": "How many largemouth bass did I catch with Alex on the earlier fishing trip to Lake Michigan before the 7/22 trip?",
+  "gtAnswer": "7",
+  "questionDate": "2023/12/12 (Tue) 20:12",
+  "model": "agnes-3.0-flash",
+  "durationMs": 11396,
+  "notes": [
+    {
+      "ts": "2023-08-11T09:49:00.000Z",
+      "run": "10e09553",
+      "date": "2023/08/11 (Fri) 09:49",
+      "sessionId": "answer_67be2c38_1",
+      "trim": {
+        "turnsIn": 10,
+        "turnsKept": 10,
+        "fillerDropped": 0,
+        "chars": 3284
+      },
+      "text": "Session with the user on 2023/08/11 (Fri) 09:49 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I've been getting back into fishing and hunting, and I'm trying to keep track of my gear and experiences. Can you recommend some good apps or tools to help me organize my fishing and hunting trips, like logging my catches and noting what worked well?\n\nAssistant: Getting back into the great outdoors, eh? There are some fantastic apps and tools that can help you organize your fishing and hunting trips, log your catches, and track your progress. Here are some recommendations:\n\n**Fishing Apps:**\n\n1. **Fishidy** (iOS, Android): A popular app for anglers, Fishidy allows you to log catches, track fishing spots, and mark favorite locations. It also provides fishi\n\nUser: I was thinking of getting a tree stand for deer hunting this season. Can you tell me what to consider when buying one, and do you have any recommendations for a good beginner stand? Oh, and by the way, I caught 7 largemouth bass on my trip to Lake Michigan with Alex on 7/10 - that was a great day!\n\nAssistant: Congratulations on your successful fishing trip to Lake Michigan! 7 largemouth bass is an impressive haul!\n\nNow, let's talk about tree stands for deer hunting. Choosing the right tree stand can be a crucial part of a safe and successful hunting experience. Here are some key factors to consider when buying a tree stand:\n\n**1. Type of Stand:**\nThere are three main types of tree stands:\n\t* Climbing s\n\nUser: What are some good resources for learning about deer hunting strategies and tactics, like using tree stands, setting up trail cameras, and calling deer?\n\nAssistant: There are many excellent resources available to learn about deer hunting strategies and tactics. Here are some popular ones:\n\n**Online Resources:**\n\n1. **Deer & Deer Hunting** (deeranddeerhunting.com): A comprehensive website with articles, videos, and podcasts on deer hunting strategies, tactics, and gear.\n2. **Field & Stream** (fieldandstream.com): A well-respected outdoor publication with a ded\n\nUser: That's really helpful, thanks! I've been trying to learn more about tree stand setup and placement. Do you have any tips on how to choose the right tree and set up a tree stand safely?\n\nAssistant: Tree stand setup and placement are crucial aspects of deer hunting! Choosing the right tree and setting up a tree stand safely can make all the difference in a successful hunt. Here are some tips to help you get started:\n\n**Choosing the Right Tree:**\n\n1. **Look for deer traffic:** Identify areas with high deer activity, such as game trails, food sources, or bedding areas.\n2. **Consider tree size a\n\nUser: I've been thinking about trying out some new lures for bass fishing. Do you have any recommendations for lures that are good for catching largemouth bass?\n\nAssistant: Bass fishing is an exciting adventure! Largemouth bass can be a challenge to catch, but with the right lures, you can increase your chances of landing a big one! Here are some popular and effective lures for catching largemouth bass:\n\n**Soft Plastics:**\n\n1. **Curly Tail Grub:** A classic soft plastic lure that imitates a baitfish or worm. Try using a curly tail grub in white, chartreuse, or brown."
+    },
+    {
+      "ts": "2023-11-30T18:58:00.000Z",
+      "run": "10e09553",
+      "date": "2023/11/30 (Thu) 18:58",
+      "sessionId": "answer_67be2c38_2",
+      "trim": {
+        "turnsIn": 10,
+        "turnsKept": 10,
+        "fillerDropped": 0,
+        "chars": 3187
+      },
+      "text": "Session with the user on 2023/11/30 (Thu) 18:58 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm thinking of planning another fishing trip to Lake Michigan, what's the current water temperature and fishing forecast for the area?\n\nAssistant: Lake Michigan fishing! I'd be happy to help you with that.\n\nTo provide you with the most up-to-date information, I'll need to know a bit more about the specific location you're planning to fish on Lake Michigan. There are several ports and locations around the lake, each with its own unique conditions. Please let me know:\n\n1. Which state are you planning to fish from (Illinois, Indiana, Michigan, \n\nUser: I'm planning to fish from Illinois, probably around the Waukegan harbor area. By the way, I'm thinking of using spinnerbaits and plastic worms as lures again, since they worked so well when I was there with Alex on 7/22 - we caught 9 largemouth bass that day.\n\nAssistant: Waukegan harbor is a great spot! I've got some info for you on the current conditions and fishing forecast.\n\n**Water Temperature:**\nAs of my knowledge cutoff, the water temperature in Lake Michigan near Waukegan, Illinois is around 68°F (20°C) to 72°F (22°C). This temperature range is ideal for many species, including largemouth bass.\n\n**Fishing Forecast:**\nAccording to recent reports, the bass fi\n\nUser: What's the best way to set up a tree stand for deer hunting?\n\nAssistant: Setting up a tree stand for deer hunting requires careful planning, attention to detail, and a focus on safety. Here's a step-by-step guide to help you set up a tree stand effectively:\n\n**Pre-Setup Preparation:**\n\n1. **Choose the right tree**: Look for a sturdy tree with a diameter of at least 8-10 inches, and a relatively straight trunk. Consider trees with a branch structure that allows for easy\n\nUser: I'm planning to help Alex set up some more tree stands on his property soon. Do you have any recommendations for the best types of deer calls to use during hunting season?\n\nAssistant: Tree stand setup and deer calls - you're getting ready for a great hunting season! When it comes to deer calls, there are several types that can be effective, depending on the situation and the time of year. Here are some popular and versatile options:\n\n**1. Bleat Call:**\nA bleat call mimics the sound of a fawn bleating for its mother. This call is effective during the early season, when does are \n\nUser: I'm planning to try out some of those deer calls during our next hunting trip. By the way, speaking of hunting, I've been watching some YouTube videos on deer hunting strategies and tactics, just like I did before our last fishing trip to Lake Michigan. Remember that trip when we caught 9 largemouth bass with Alex?\n\nAssistant: I think there's been a mix-up! I'm happy to help with deer hunting strategies and tactics, but I think we need to clarify a few things.\n\nAs a conversational AI, I don't have personal experiences or memories, so I wasn't with you on a fishing trip to Lake Michigan, and we didn't catch 9 largemouth bass together. I'm a new conversation each time you interact with me, so I don't retain any informatio"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    [],
+    []
+  ],
+  "notesInput": "--- note (2023-11-30T18:58:00.000Z) run=10e09553 ---\nSession with the user on 2023/11/30 (Thu) 18:58 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm thinking of planning another fishing trip to Lake Michigan, what's the current water temperature and fishing forecast for the area?\n\nAssistant: Lake Michigan fishing! I'd be happy to help you with that.\n\nTo provide you with the most up-to-date information, I'll need to know a bit more about the specific location you're planning to fish on Lake Michigan. There are several ports and locations around the lake, each with its own unique conditions. Please let me know:\n\n1. Which state are you planning to fish from (Illinois, Indiana, Michigan, \n\nUser: I'm planning to fish from Illinois, probably around the Waukegan harbor area. By the way, I'm thinking of using spinnerbaits and plastic worms as lures again, since they worked so well when I was there with Alex on 7/22 - we caught 9 largemouth bass that day.\n\nAssistant: Waukegan harbor is a great spot! I've got some info for you on the current conditions and fishing forecast.\n\n**Water Temperature:**\nAs of my knowledge cutoff, the water temperature in Lake Michigan near Waukegan, Illinois is around 68°F (20°C) to 72°F (22°C). This temperature range is ideal for many species, including largemouth bass.\n\n**Fishing Forecast:**\nAccording to recent reports, the bass fi\n\nUser: What's the best way to set up a tree stand for deer hunting?\n\nAssistant: Setting up a tree stand for deer hunting requires careful planning, attention to detail, and a focus on safety. Here's a step-by-step guide to help you set up a tree stand effectively:\n\n**Pre-Setup Preparation:**\n\n1. **Choose the right tree**: Look for a sturdy tree with a diameter of at least 8-10 inches, and a relatively straight trunk. Consider trees with a branch structure that allows for easy\n\nUser: I'm planning to help Alex set up some more tree stands on his property soon. Do you have any recommendations for the best types of deer calls to use during hunting season?\n\nAssistant: Tree stand setup and deer calls - you're getting ready for a great hunting season! When it comes to deer calls, there are several types that can be effective, depending on the situation and the time of year. Here are some popular and versatile options:\n\n**1. Bleat Call:**\nA bleat call mimics the sound of a fawn bleating for its mother. This call is effective during the early season, when does are \n\nUser: I'm planning to try out some of those deer calls during our next hunting trip. By the way, speaking of hunting, I've been watching some YouTube videos on deer hunting strategies and tactics, just like I did before our last fishing trip to Lake Michigan. Remember that trip when we caught 9 largemouth bass with Alex?\n\nAssistant: I think there's been a mix-up! I'm happy to help with deer hunting strategies and tactics, but I think we need to clarify a few things.\n\nAs a conversational AI, I don't have personal experiences or memories, so I wasn't with you on a fishing trip to Lake Michigan, and we didn't catch 9 largemouth bass together. I'm a new conversation each time you interact with me, so I don't retain any informatio\n\n--- note (2023-08-11T09:49:00.000Z) run=10e09553 ---\nSession with the user on 2023/08/11 (Fri) 09:49 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I've been getting back into fishing and hunting, and I'm trying to keep track of my gear and experiences. Can you recommend some good apps or tools to help me organize my fishing and hunting trips, like logging my catches and noting what worked well?\n\nAssistant: Getting back into the great outdoors, eh? There are some fantastic apps and tools that can help you organize your fishing and hunting trips, log your catches, and track your progress. Here are some recommendations:\n\n**Fishing Apps:**\n\n1. **Fishidy** (iOS, Android): A popular app for anglers, Fishidy allows you to log catches, track fishing spots, and mark favorite locations. It also provides fishi\n\nUser: I was thinking of getting a tree stand for deer hunting this season. Can you tell me what to consider when buying one, and do you have any recommendations for a good beginner stand? Oh, and by the way, I caught 7 largemouth bass on my trip to Lake Michigan with Alex on 7/10 - that was a great day!\n\nAssistant: Congratulations on your successful fishing trip to Lake Michigan! 7 largemouth bass is an impressive haul!\n\nNow, let's talk about tree stands for deer hunting. Choosing the right tree stand can be a crucial part of a safe and successful hunting experience. Here are some key factors to consider when buying a tree stand:\n\n**1. Type of Stand:**\nThere are three main types of tree stands:\n\t* Climbing s\n\nUser: What are some good resources for learning about deer hunting strategies and tactics, like using tree stands, setting up trail cameras, and calling deer?\n\nAssistant: There are many excellent resources available to learn about deer hunting strategies and tactics. Here are some popular ones:\n\n**Online Resources:**\n\n1. **Deer & Deer Hunting** (deeranddeerhunting.com): A comprehensive website with articles, videos, and podcasts on deer hunting strategies, tactics, and gear.\n2. **Field & Stream** (fieldandstream.com): A well-respected outdoor publication with a ded\n\nUser: That's really helpful, thanks! I've been trying to learn more about tree stand setup and placement. Do you have any tips on how to choose the right tree and set up a tree stand safely?\n\nAssistant: Tree stand setup and placement are crucial aspects of deer hunting! Choosing the right tree and setting up a tree stand safely can make all the difference in a successful hunt. Here are some tips to help you get started:\n\n**Choosing the Right Tree:**\n\n1. **Look for deer traffic:** Identify areas with high deer activity, such as game trails, food sources, or bedding areas.\n2. **Consider tree size a\n\nUser: I've been thinking about trying out some new lures for bass fishing. Do you have any recommendations for lures that are good for catching largemouth bass?\n\nAssistant: Bass fishing is an exciting adventure! Largemouth bass can be a challenge to catch, but with the right lures, you can increase your chances of landing a big one! Here are some popular and effective lures for catching largemouth bass:\n\n**Soft Plastics:**\n\n1. **Curly Tail Grub:** A classic soft plastic lure that imitates a baitfish or worm. Try using a curly tail grub in white, chartreuse, or brown.",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 6,
+      "topics": [
+        "Workflow",
+        "User context",
+        "User preferences",
+        "Durable facts & events",
+        "Known pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User fishes at Lake Michigan (Waukegan, IL) and hunts deer on Alex's property [note 10e09553].\n- Alex is a recurring companion for the user's outdoor activities [note 10e09553].\n\n## User preferences\n- Preferred lures for largemouth bass: spinnerbaits and plastic worms [note 10e09553].\n- Uses digital tools to log outdoor trips and gear performance [note 10e09553].\n- Interests include tree stand setup, deer calling, and learning resources for hunting tactics [note 10e09553].\n\n## Durable facts & events\n- 2023-07-10: Caught 7 largemouth bass with Alex at Lake Michigan [note 10e09553].\n- 2023-07-22: Caught 9 largemouth bass with Alex at Lake Michigan [note 10e09553].\n- Planning a Lake Michigan fishing trip (Waukegan area) and helping Alex set up tree stands [note 10e09553].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- The assistant does not retain memory across conversations; clarify this to the user if they reference shared experiences [note 10e09553].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User fishes at Lake Michigan (Waukegan, IL) and hunts deer on Alex's property [note 10e09553].\n- Alex is a recurring companion for the user's outdoor activities [note 10e09553].\n\n## User preferences\n- Preferred lures for largemouth bass: spinnerbaits and plastic worms [note 10e09553].\n- Uses digital tools to log outdoor trips and gear performance [note 10e09553].\n- Interests include tree stand setup, deer calling, and learning resources for hunting tactics [note 10e09553].\n\n## Durable facts & events\n- 2023-07-10: Caught 7 largemouth bass with Alex at Lake Michigan [note 10e09553].\n- 2023-07-22: Caught 9 largemouth bass with Alex at Lake Michigan [note 10e09553].\n- Planning a Lake Michigan fishing trip (Waukegan area) and helping Alex set up tree stands [note 10e09553].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- The assistant does not retain memory across conversations; clarify this to the user if they reference shared experiences [note 10e09553].\n",
+    "durationMs": 8391
+  },
+  "warm": {
+    "answer": "You caught 7 largemouth bass with Alex on the July 10, 2023 trip to Lake Michigan.",
+    "error": null,
+    "durationMs": 1722,
+    "match": {
+      "pass": true,
+      "score": 1,
+      "hit": 1,
+      "total": 1,
+      "hitWords": [
+        "7"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory does not contain information about a fishing trip to Lake Michigan with Alex or the number of largemouth bass caught before the 7/22 trip.",
+    "error": null,
+    "durationMs": 1282,
+    "match": {
+      "pass": true,
+      "score": 1,
+      "hit": 1,
+      "total": 1,
+      "hitWords": [
+        "7"
+      ],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": true,
+    "score": 1,
+    "hit": 1,
+    "total": 1,
+    "hitWords": [
+      "7"
+    ],
+    "phrase": null
+  }
+}

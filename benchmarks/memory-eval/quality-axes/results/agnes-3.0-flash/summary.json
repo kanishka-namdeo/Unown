@@ -1,0 +1,95 @@
+{
+  "suite": "quality-axes",
+  "date": "2026-10-21T17:04:10.878Z",
+  "model": "agnes-3.0-flash",
+  "bridgeUpstreamStatus": 200,
+  "axesTotal": 4,
+  "axesPassed": 2,
+  "axes": {
+    "contradiction": {
+      "pass": true,
+      "error": null,
+      "dreamCalls": 3,
+      "durationMs": 21015,
+      "guardActions": [
+        "ship",
+        "ship"
+      ],
+      "guardFalsePositive": false,
+      "shippedAssertionPass": [
+        true,
+        true
+      ],
+      "scenarios": [
+        {
+          "id": "inbatch",
+          "pass": true
+        },
+        {
+          "id": "accumulated",
+          "pass": true
+        }
+      ]
+    },
+    "staleness": {
+      "pass": true,
+      "error": null,
+      "dreamCalls": 2,
+      "durationMs": 18026,
+      "guardActions": [
+        "ship"
+      ],
+      "guardFalsePositive": false,
+      "shippedAssertionPass": [
+        true
+      ],
+      "scenarios": [
+        {
+          "id": "accumulated",
+          "pass": true
+        }
+      ]
+    },
+    "forgetting": {
+      "pass": false,
+      "error": null,
+      "dreamCalls": 2,
+      "durationMs": 202964,
+      "guardActions": [
+        "ship"
+      ],
+      "guardFalsePositive": false,
+      "shippedAssertionPass": [
+        false
+      ],
+      "scenarios": [
+        {
+          "id": "accumulated",
+          "pass": false
+        }
+      ]
+    },
+    "interference": {
+      "pass": false,
+      "error": null,
+      "dreamCalls": 3,
+      "durationMs": 29495,
+      "guardActions": [
+        "ship"
+      ],
+      "guardFalsePositive": false,
+      "shippedAssertionPass": [
+        false
+      ],
+      "scenarios": [
+        {
+          "id": "accumulated",
+          "pass": false
+        }
+      ]
+    }
+  },
+  "dreamCallsTotal": 10,
+  "guardFalsePositiveAxes": [],
+  "perAxis": "(see results/<axis>.json — full candidates + per-line classification audit trail)"
+}

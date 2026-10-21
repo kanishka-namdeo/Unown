@@ -1,0 +1,141 @@
+{
+  "suite": "quality-axes",
+  "axis": "staleness",
+  "what": "Dependency version bump zod 3 (S01-S05) -> zod 4 (S06+). After the bump, the candidate must reference zod 4 and must not present zod 3 as the current validation library (historical/migration framing is fine).",
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-21T17:00:18.419Z",
+  "durationMs": 18026,
+  "error": null,
+  "pass": true,
+  "scenarios": [
+    {
+      "id": "accumulated",
+      "slices": [
+        [
+          "S01",
+          "S05"
+        ],
+        [
+          "S06",
+          "S12"
+        ]
+      ],
+      "error": null,
+      "steps": [
+        {
+          "id": "staleness/accumulated#1",
+          "sessions": "S01,S02,S03,S04,S05",
+          "notesIn": 13,
+          "versionIn": 2,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 5225,
+          "error": null,
+          "stats": {
+            "merged": 4,
+            "pruned": 3,
+            "added": 6,
+            "topics": [
+              "Workflow",
+              "Known pitfalls"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes; all 96 validation cases pass [seed, note qa-s01, note qa-s03].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Standardize on axios for all outbound HTTP calls; retry logic in response interceptors, auth in request interceptors [note qa-s02].\n- Log via winston at warn level for retries; one logger instance per module [note qa-s05].\n- Use ESLint import-order rule (alphabetical within files) to catch merge conflicts early [note qa-s01, note qa-s03].\n- Use zod 3 with .strict() for invoice payloads; mirror schema structure for credit notes; flatten errors for response mapping [note qa-s03, note qa-s04].\n\n## Known pitfalls\n- Express error handler returns 400 for validation failures (mapped from zod .flatten()), 500 otherwise [note 1, note qa-s03].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Ensure card numbers are redacted from logs using standard redaction paths [note qa-s04].\n"
+        },
+        {
+          "id": "staleness/accumulated#2",
+          "sessions": "S06,S07,S08,S09,S10,S11,S12",
+          "notesIn": 18,
+          "versionIn": 3,
+          "noteRules": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "durationMs": 12800,
+          "error": null,
+          "stats": {
+            "merged": 4,
+            "pruned": 6,
+            "added": 2,
+            "topics": [
+              "Workflow",
+              "Known pitfalls",
+              "Task playbooks"
+            ]
+          },
+          "guard": {
+            "action": "ship",
+            "flags": [],
+            "reason": null
+          },
+          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes; all 96 validation cases pass [seed, note qa-s01, note qa-s03].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Use native fetch for all outbound HTTP; retry logic via small hand-rolled wrapper [note qa-s10, note qa-s12].\n- Log via pino; one logger instance per module [note qa-s11, note qa-s12].\n- Use ESLint import-order rule (type-grouped: node builtins, external, internal aliases, relative) to catch merge conflicts early [note qa-s07, note qa-s11].\n- Use zod 4 with z.strictObject() for invoice payloads; mirror schema structure for credit notes; map issues using zod 4 error format [note qa-s06, note qa-s12].\n- Ensure card numbers are redacted from pino logs using standard redaction paths [note qa-s04, note qa-s11].\n\n## Known pitfalls\n- Express error handler returns 400 for validation failures (mapped from zod issue list), 500 otherwise [note qa-s03, note qa-s06].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Avoid async logging transports (e.g., winston) under load due to data-loss risk; use synchronous pino transports [note qa-s08, note qa-s11].\n\n## Task playbooks\n- When migrating HTTP client, verify against existing integration suite before removing old dependencies [note qa-s10].\n- When upgrading zod major versions, update error mappers to match the new issue list structure [note qa-s06].\n"
+        }
+      ],
+      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes; all 96 validation cases pass [seed, note qa-s01, note qa-s03].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Use native fetch for all outbound HTTP; retry logic via small hand-rolled wrapper [note qa-s10, note qa-s12].\n- Log via pino; one logger instance per module [note qa-s11, note qa-s12].\n- Use ESLint import-order rule (type-grouped: node builtins, external, internal aliases, relative) to catch merge conflicts early [note qa-s07, note qa-s11].\n- Use zod 4 with z.strictObject() for invoice payloads; mirror schema structure for credit notes; map issues using zod 4 error format [note qa-s06, note qa-s12].\n- Ensure card numbers are redacted from pino logs using standard redaction paths [note qa-s04, note qa-s11].\n\n## Known pitfalls\n- Express error handler returns 400 for validation failures (mapped from zod issue list), 500 otherwise [note qa-s03, note qa-s06].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- Avoid async logging transports (e.g., winston) under load due to data-loss risk; use synchronous pino transports [note qa-s08, note qa-s11].\n\n## Task playbooks\n- When migrating HTTP client, verify against existing integration suite before removing old dependencies [note qa-s10].\n- When upgrading zod major versions, update error mappers to match the new issue list structure [note qa-s06].\n",
+      "assertion": {
+        "type": "winner-current-loser-absent",
+        "pass": true,
+        "winnerName": "zod-4",
+        "loserName": "zod-3",
+        "winnerCurrentCount": 1,
+        "loserCurrentCount": 0,
+        "rows": [
+          {
+            "line": "- Use zod 4 with z.strictObject() for invoice payloads; mirror schema structure for credit notes; map issues using zod 4 error format [note qa-s06, note qa-s12].",
+            "loserMatch": false,
+            "winnerMatch": true,
+            "loserCurrent": false,
+            "winnerCurrent": true,
+            "why": "winner stated as current"
+          }
+        ]
+      },
+      "guard": {
+        "action": "ship",
+        "flags": [],
+        "reason": null,
+        "falsePositive": false
+      },
+      "shippedAssertionPass": true,
+      "trail": {
+        "loserEstablishedInFirstMemory": true
+      }
+    }
+  ],
+  "dreamCalls": 2,
+  "notes": "assertions are deterministic regex/line classification — see rows[] in each scenario's assertion for the audit trail; full dream input (notesText) omitted from the receipt, candidates kept verbatim"
+}

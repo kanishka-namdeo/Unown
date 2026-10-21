@@ -1,0 +1,109 @@
+{
+  "id": "0edc2aef",
+  "questionType": "single-session-preference",
+  "question": "Can you suggest a hotel for my upcoming trip to Miami?",
+  "gtAnswer": "The user would prefer suggestions of hotels in Miami that offer great views, possibly of the ocean or the city skyline, and have unique features such as a rooftop pool or a hot tub on the balcony. They may not prefer suggestions of basic or budget hotels without these features.",
+  "questionDate": "2023/05/29 (Mon) 16:40",
+  "model": "agnes-3.0-flash",
+  "durationMs": 14143,
+  "notes": [
+    {
+      "ts": "2023-05-27T18:36:00.000Z",
+      "run": "0edc2aef",
+      "date": "2023/05/27 (Sat) 18:36",
+      "sessionId": "answer_d586e9cd",
+      "trim": {
+        "turnsIn": 20,
+        "turnsKept": 15,
+        "fillerDropped": 5,
+        "chars": 3819
+      },
+      "text": "Session with the user on 2023/05/27 (Sat) 18:36 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm planning a trip to Seattle and need help finding a hotel with a great view of the city. Do you have any recommendations?\n\nUser: Besides great views, I also like hotels with unique features, such as a rooftop pool or a hot tub on the balcony. Do you know if any of these hotels have those features?\n\nUser: Do any of these hotels have a hot tub on the balcony with a view of the city skyline?\n\nUser: Can I get a room with a hot tub on the balcony at The Edgewater Hotel that faces the Space Needle?\n\nUser: I'm thinking of staying at The Edgewater Hotel, but I want to know more about the room service breakfast. Can I get a room service breakfast delivered to my room, and are there any options available that cater to my dietary restrictions?\n\nUser: I'd like to know if they have any special packages or promotions that include a room with a hot tub on the balcony and a complimentary room service breakfast.\n\nAssistant: The Edgewater Hotel often offers special packages and promotions that can enhance your stay. I've got some great news for you: they do have packages that include a room with a hot tub on the balcony and a complimentary room service breakfast!\n\nHere are a few packages and promotions that might interest you:\n\n**Romance Package:** This package includes:\n\n* A luxurious room with a hot tub on the balco\n\nUser: Do they have any packages or promotions that include a room with a hot tub on the balcony that faces the Space Needle?\n\nAssistant: The ultimate Seattle experience! I've got some fantastic news for you: The Edgewater Hotel does offer packages and promotions that include a room with a hot tub on the balcony that faces the Space Needle!\n\nHere are a few packages and promotions that might interest you:\n\n**Space Needle Romance Package:** This package includes:\n\n* A luxurious room with a hot tub on the balcony, featuring stunning vi\n\nUser: Can I get a room with a hot tub on the balcony that faces the Space Needle and also includes a complimentary room service breakfast and a $100 credit towards a couples' massage at the hotel's spa?\n\nAssistant: The ultimate Seattle experience! I've got some fantastic news for you: The Edgewater Hotel can definitely accommodate your request!\n\nThey offer a **Space Needle Romance Package** that includes:\n\n* A luxurious room with a hot tub on the balcony, featuring stunning views of the Space Needle\n* A complimentary room service breakfast for two, complete with champagne and strawberries\n* A $100 credit tow\n\nUser: Can I also get a room with a fireplace?\n\nAssistant: A room with a fireplace would be the perfect addition to your romantic getaway! I'm happy to report that The Edgewater Hotel does offer rooms with fireplaces, and they can be combined with the Space Needle Romance Package!\n\nTheir **Fireplace Rooms** feature a cozy gas fireplace, perfect for snuggling up on a chilly evening. Imagine sipping a glass of wine and enjoying the warm glow of the fireplac\n\nUser: I think I'll stick with the Space Needle Romance Package at The Edgewater Hotel. The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks. Thank you for your help in booking this package!\n\nAssistant: The Space Needle Romance Package at The Edgewater Hotel is a fantastic choice for a romantic getaway. The hot tub on the balcony with a view of the Space Needle is truly a unique and unforgettable experience. And the complimentary room service breakfast and $100 credit towards a couples' massage are wonderful perks to enhance your stay.\n\nI'm thrilled to have been able to assist you in booking this"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    []
+  ],
+  "notesInput": "--- note (2023-05-27T18:36:00.000Z) run=0edc2aef ---\nSession with the user on 2023/05/27 (Sat) 18:36 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm planning a trip to Seattle and need help finding a hotel with a great view of the city. Do you have any recommendations?\n\nUser: Besides great views, I also like hotels with unique features, such as a rooftop pool or a hot tub on the balcony. Do you know if any of these hotels have those features?\n\nUser: Do any of these hotels have a hot tub on the balcony with a view of the city skyline?\n\nUser: Can I get a room with a hot tub on the balcony at The Edgewater Hotel that faces the Space Needle?\n\nUser: I'm thinking of staying at The Edgewater Hotel, but I want to know more about the room service breakfast. Can I get a room service breakfast delivered to my room, and are there any options available that cater to my dietary restrictions?\n\nUser: I'd like to know if they have any special packages or promotions that include a room with a hot tub on the balcony and a complimentary room service breakfast.\n\nAssistant: The Edgewater Hotel often offers special packages and promotions that can enhance your stay. I've got some great news for you: they do have packages that include a room with a hot tub on the balcony and a complimentary room service breakfast!\n\nHere are a few packages and promotions that might interest you:\n\n**Romance Package:** This package includes:\n\n* A luxurious room with a hot tub on the balco\n\nUser: Do they have any packages or promotions that include a room with a hot tub on the balcony that faces the Space Needle?\n\nAssistant: The ultimate Seattle experience! I've got some fantastic news for you: The Edgewater Hotel does offer packages and promotions that include a room with a hot tub on the balcony that faces the Space Needle!\n\nHere are a few packages and promotions that might interest you:\n\n**Space Needle Romance Package:** This package includes:\n\n* A luxurious room with a hot tub on the balcony, featuring stunning vi\n\nUser: Can I get a room with a hot tub on the balcony that faces the Space Needle and also includes a complimentary room service breakfast and a $100 credit towards a couples' massage at the hotel's spa?\n\nAssistant: The ultimate Seattle experience! I've got some fantastic news for you: The Edgewater Hotel can definitely accommodate your request!\n\nThey offer a **Space Needle Romance Package** that includes:\n\n* A luxurious room with a hot tub on the balcony, featuring stunning views of the Space Needle\n* A complimentary room service breakfast for two, complete with champagne and strawberries\n* A $100 credit tow\n\nUser: Can I also get a room with a fireplace?\n\nAssistant: A room with a fireplace would be the perfect addition to your romantic getaway! I'm happy to report that The Edgewater Hotel does offer rooms with fireplaces, and they can be combined with the Space Needle Romance Package!\n\nTheir **Fireplace Rooms** feature a cozy gas fireplace, perfect for snuggling up on a chilly evening. Imagine sipping a glass of wine and enjoying the warm glow of the fireplac\n\nUser: I think I'll stick with the Space Needle Romance Package at The Edgewater Hotel. The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks. Thank you for your help in booking this package!\n\nAssistant: The Space Needle Romance Package at The Edgewater Hotel is a fantastic choice for a romantic getaway. The hot tub on the balcony with a view of the Space Needle is truly a unique and unforgettable experience. And the complimentary room service breakfast and $100 credit towards a couples' massage are wonderful perks to enhance your stay.\n\nI'm thrilled to have been able to assist you in booking this",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 4,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Answer user questions from this memory first; general knowledge only as fallback [note 1].\n- When user states a durable fact, event, or preference, record it precisely here [note 3].\n- For hotel recommendations, clarify exact view orientation and specific room features (e.g., hot tub vs. balcony pool) to avoid generic advice [note 2].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters [note 2].\n- User is planning a trip to Seattle and prioritizes hotels with unique features like rooftop pools or balcony hot tubs [note 2].\n- User confirmed interest in The Edgewater Hotel's Space Needle Romance Package, which includes a balcony hot tub facing the Space Needle and complimentary room service breakfast [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- Do not assert specific hotel package names or inclusions (e.g., 'Space Needle Romance Package', '$100 spa credit') unless verified from live sources; treat past-session recommendations as anecdotal, not factual guarantees [note 2].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Answer user questions from this memory first; general knowledge only as fallback [note 1].\n- When user states a durable fact, event, or preference, record it precisely here [note 3].\n- For hotel recommendations, clarify exact view orientation and specific room features (e.g., hot tub vs. balcony pool) to avoid generic advice [note 2].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters [note 2].\n- User is planning a trip to Seattle and prioritizes hotels with unique features like rooftop pools or balcony hot tubs [note 2].\n- User confirmed interest in The Edgewater Hotel's Space Needle Romance Package, which includes a balcony hot tub facing the Space Needle and complimentary room service breakfast [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n- Do not assert specific hotel package names or inclusions (e.g., 'Space Needle Romance Package', '$100 spa credit') unless verified from live sources; treat past-session recommendations as anecdotal, not factual guarantees [note 2].\n",
+    "durationMs": 6002
+  },
+  "warm": {
+    "answer": "The project memory contains specific hotel recommendations for Seattle (e.g., The Edgewater Hotel), but it does not include any hotel suggestions for Miami. Therefore, I cannot provide a verified Miami recommendation based on the stored memory. To proceed, I would need to clarify your view orientation and specific room feature preferences (such as a balcony or hot tub) for Miami.",
+    "error": null,
+    "durationMs": 6534,
+    "match": {
+      "pass": false,
+      "score": 0.25,
+      "hit": 7,
+      "total": 28,
+      "hitWords": [
+        "suggestions",
+        "miami",
+        "such",
+        "hot",
+        "tub",
+        "balcony",
+        "suggestions"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory doesn't contain any hotel recommendations or details about your trip to Miami, so I can't suggest a specific hotel from that source. I'd recommend checking current availability and reviews on major travel sites for options that fit your budget and preferences.",
+    "error": null,
+    "durationMs": 1606,
+    "match": {
+      "pass": false,
+      "score": 0.071,
+      "hit": 2,
+      "total": 28,
+      "hitWords": [
+        "miami",
+        "budget"
+      ],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": false,
+    "score": 0.464,
+    "hit": 13,
+    "total": 28,
+    "hitWords": [
+      "user",
+      "prefer",
+      "hotels",
+      "unique",
+      "features",
+      "rooftop",
+      "pool",
+      "hot",
+      "tub",
+      "balcony",
+      "prefer",
+      "hotels",
+      "features"
+    ],
+    "phrase": null
+  }
+}

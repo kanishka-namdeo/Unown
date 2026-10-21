@@ -1,0 +1,105 @@
+{
+  "id": "d24813b1",
+  "questionType": "single-session-preference",
+  "question": "I'm thinking of inviting my colleagues over for a small gathering. Any tips on what to bake?",
+  "gtAnswer": "The user would prefer baking suggestions that take into account their previous success with the lemon poppyseed cake, such as variations of that recipe or other desserts that share similar qualities. They might prefer suggestions that balance impressiveness with manageability, considering their previous experience. The user may not prefer overly complex or unfamiliar recipes, or suggestions that do not build upon their existing baking experience.",
+  "questionDate": "2023/05/27 (Sat) 23:31",
+  "model": "agnes-3.0-flash",
+  "durationMs": 16727,
+  "notes": [
+    {
+      "ts": "2023-05-22T19:34:00.000Z",
+      "run": "d24813b1",
+      "date": "2023/05/22 (Mon) 19:34",
+      "sessionId": "answer_7c0ade93",
+      "trim": {
+        "turnsIn": 14,
+        "turnsKept": 13,
+        "fillerDropped": 1,
+        "chars": 3859
+      },
+      "text": "Session with the user on 2023/05/22 (Mon) 19:34 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for a recipe for a chocolate cake with a caramel ganache frosting. Do you have any good ones?\n\nUser: I'm thinking of making a cake for my friend's birthday. Do you have any suggestions for a lemon flavored cake, like my lemon poppyseed cake that I made for a colleague's going-away party?\n\nAssistant: Lemon poppyseed cake is a great choice! I'd be happy to help you with some suggestions for a delicious lemon-flavored cake for your friend's birthday.\n\nSince you mentioned your lemon poppyseed cake was a hit, I'll provide some ideas to build upon that success:\n\n1. **Lemon Lavender Pound Cake**: Infuse your lemon cake with the subtle, floral flavor of lavender. Add dried lavender buds or lavender e\n\nUser: I think the lemon lavender pound cake sounds interesting, can you give me more details about how to incorporate the lavender?\n\nAssistant: Lemon and lavender are a match made in heaven! Incorporating lavender into your lemon pound cake will add a subtle, floral, and sophisticated twist. Here's how to do it:\n\n**Lavender Options:**\n\n1. **Dried Lavender Buds:** Use high-quality, organic dried lavender buds. You can find them at most health food stores or online. Use 1-2 teaspoons of dried lavender buds per recipe, depending on your desi\n\nUser: I'm not sure about using lavender syrup or infused milk, but I think I'll try adding dried lavender buds to the batter. How much sugar should I use in the recipe, and should I adjust the amount of lemon zest and juice?\n\nAssistant: Adding dried lavender buds to the batter is a great way to incorporate the flavor and aroma of lavender into your lemon pound cake.\n\n**Sugar Amount:**\nFor a lemon pound cake, you can use a combination of granulated sugar and brown sugar. The brown sugar will add a richer, deeper flavor to the cake. Here's a suggestion:\n\n* 1 cup (200g) granulated sugar\n* 1/2 cup (100g) brown sugar\n\nYou can adjust t\n\nUser: I've made a lemon poppyseed cake before, and it was a hit. I'm curious to see how the lavender will complement the lemon flavor. Can you give me some tips on how to store this cake? Should I store it at room temperature or in the fridge? And how long can I expect it to stay fresh?\n\nAssistant: The combination of lemon and lavender will be a fascinating twist on your traditional lemon poppyseed cake.\n\n**Storage Tips:**\n\n1. **Room Temperature:** Store the cake at room temperature (around 68°F to 72°F or 20°C to 22°C) for up to 3 days. This is a good option if you plan to consume the cake within a short period.\n2. **Refrigeration:** Wrap the cake tightly in plastic wrap or aluminum foil an\n\nUser: I'm planning to serve the cake at a birthday party, so I'll make sure to store it properly beforehand. Thanks for the tips!\n\nAssistant: You're welcome! I'm glad I could help. It's great that you're planning to serve the cake at a birthday party. I'm sure it will be a hit with your guests. The combination of lemon and lavender is unique and refreshing, and the pound cake texture will provide a nice contrast to the bright, citrusy flavors.\n\nRemember to have fun and enjoy the celebration with your friends and family. Birthdays are a \n\nUser: I'm thinking of making a batch of chocolate chip cookies to bring to the party too. Do you have any tips on how to make the perfect chewy cookie?\n\nAssistant: Chocolate chip cookies are a classic favorite! I'd be happy to help you with tips on making the perfect chewy cookie.\n\nHere are some secrets to achieving chewy cookies:\n\n1. **Use a combination of white and brown sugar:** White sugar provides sweetness, while brown sugar adds moisture and chewiness.\n2. **Use room temperature butter:** Softened butter will help create a tender, chewy texture.\n3. **D"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    []
+  ],
+  "notesInput": "--- note (2023-05-22T19:34:00.000Z) run=d24813b1 ---\nSession with the user on 2023/05/22 (Mon) 19:34 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm looking for a recipe for a chocolate cake with a caramel ganache frosting. Do you have any good ones?\n\nUser: I'm thinking of making a cake for my friend's birthday. Do you have any suggestions for a lemon flavored cake, like my lemon poppyseed cake that I made for a colleague's going-away party?\n\nAssistant: Lemon poppyseed cake is a great choice! I'd be happy to help you with some suggestions for a delicious lemon-flavored cake for your friend's birthday.\n\nSince you mentioned your lemon poppyseed cake was a hit, I'll provide some ideas to build upon that success:\n\n1. **Lemon Lavender Pound Cake**: Infuse your lemon cake with the subtle, floral flavor of lavender. Add dried lavender buds or lavender e\n\nUser: I think the lemon lavender pound cake sounds interesting, can you give me more details about how to incorporate the lavender?\n\nAssistant: Lemon and lavender are a match made in heaven! Incorporating lavender into your lemon pound cake will add a subtle, floral, and sophisticated twist. Here's how to do it:\n\n**Lavender Options:**\n\n1. **Dried Lavender Buds:** Use high-quality, organic dried lavender buds. You can find them at most health food stores or online. Use 1-2 teaspoons of dried lavender buds per recipe, depending on your desi\n\nUser: I'm not sure about using lavender syrup or infused milk, but I think I'll try adding dried lavender buds to the batter. How much sugar should I use in the recipe, and should I adjust the amount of lemon zest and juice?\n\nAssistant: Adding dried lavender buds to the batter is a great way to incorporate the flavor and aroma of lavender into your lemon pound cake.\n\n**Sugar Amount:**\nFor a lemon pound cake, you can use a combination of granulated sugar and brown sugar. The brown sugar will add a richer, deeper flavor to the cake. Here's a suggestion:\n\n* 1 cup (200g) granulated sugar\n* 1/2 cup (100g) brown sugar\n\nYou can adjust t\n\nUser: I've made a lemon poppyseed cake before, and it was a hit. I'm curious to see how the lavender will complement the lemon flavor. Can you give me some tips on how to store this cake? Should I store it at room temperature or in the fridge? And how long can I expect it to stay fresh?\n\nAssistant: The combination of lemon and lavender will be a fascinating twist on your traditional lemon poppyseed cake.\n\n**Storage Tips:**\n\n1. **Room Temperature:** Store the cake at room temperature (around 68°F to 72°F or 20°C to 22°C) for up to 3 days. This is a good option if you plan to consume the cake within a short period.\n2. **Refrigeration:** Wrap the cake tightly in plastic wrap or aluminum foil an\n\nUser: I'm planning to serve the cake at a birthday party, so I'll make sure to store it properly beforehand. Thanks for the tips!\n\nAssistant: You're welcome! I'm glad I could help. It's great that you're planning to serve the cake at a birthday party. I'm sure it will be a hit with your guests. The combination of lemon and lavender is unique and refreshing, and the pound cake texture will provide a nice contrast to the bright, citrusy flavors.\n\nRemember to have fun and enjoy the celebration with your friends and family. Birthdays are a \n\nUser: I'm thinking of making a batch of chocolate chip cookies to bring to the party too. Do you have any tips on how to make the perfect chewy cookie?\n\nAssistant: Chocolate chip cookies are a classic favorite! I'd be happy to help you with tips on making the perfect chewy cookie.\n\nHere are some secrets to achieving chewy cookies:\n\n1. **Use a combination of white and brown sugar:** White sugar provides sweetness, while brown sugar adds moisture and chewiness.\n2. **Use room temperature butter:** Softened butter will help create a tender, chewy texture.\n3. **D",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 3,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User enjoys baking, specifically lemon poppyseed cakes which have been successful in the past [session 2023-05-22T19:34:00.000Z run=d24813b1].\n- User plans to serve a cake for a friend's birthday and prefers combining Lemon and Lavender flavors [session 2023-05-22T19:34:00.000Z run=d24813b1].\n- User is interested in making chocolate chip cookies as a side treat for parties [session 2023-05-22T19:34:00.000Z run=d24813b1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 3
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Terminal session notes are consolidated here by AutoDream; keep bullets short and sourced [seed].\n- Answer the user's questions from this memory first; general knowledge only as fallback [note 1].\n- When the user states a durable fact, event, or preference, record it precisely here [note 3].\n\n## User context\n- The user works with this assistant across many sessions on personal and work matters; their standing facts, events, and preferences live in this section [note 2].\n- User enjoys baking, specifically lemon poppyseed cakes which have been successful in the past [session 2023-05-22T19:34:00.000Z run=d24813b1].\n- User plans to serve a cake for a friend's birthday and prefers combining Lemon and Lavender flavors [session 2023-05-22T19:34:00.000Z run=d24813b1].\n- User is interested in making chocolate chip cookies as a side treat for parties [session 2023-05-22T19:34:00.000Z run=d24813b1].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 13093
+  },
+  "warm": {
+    "answer": "Since you’ve had success with lemon poppyseed cakes and enjoy chocolate chip cookies for parties, those would be great crowd-pleasers to share with colleagues.",
+    "error": null,
+    "durationMs": 1822,
+    "match": {
+      "pass": true,
+      "score": 0.103,
+      "hit": 4,
+      "total": 39,
+      "hitWords": [
+        "success",
+        "lemon",
+        "poppyseed",
+        "share"
+      ],
+      "phrase": "success lemon poppyseed cake"
+    }
+  },
+  "cold": {
+    "answer": "Project memory doesn't have specific baking tips, so here's a general suggestion: Consider baking a classic sheet cake or a batch of cookies—they're crowd-pleasers, easy to portion out, and don't require fancy equipment. For something slightly more impressive, a lemon bar or chocolate chip cookie tray with a simple glaze pairs well with coffee or tea.",
+    "error": null,
+    "durationMs": 1811,
+    "match": {
+      "pass": false,
+      "score": 0.103,
+      "hit": 4,
+      "total": 39,
+      "hitWords": [
+        "baking",
+        "lemon",
+        "cake",
+        "baking"
+      ],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": false,
+    "score": 0.256,
+    "hit": 10,
+    "total": 39,
+    "hitWords": [
+      "user",
+      "prefer",
+      "baking",
+      "lemon",
+      "poppyseed",
+      "cake",
+      "prefer",
+      "user",
+      "prefer",
+      "baking"
+    ],
+    "phrase": null
+  }
+}

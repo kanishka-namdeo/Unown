@@ -1,0 +1,103 @@
+{
+  "id": "5831f84d",
+  "questionType": "knowledge-update",
+  "question": "How many Crash Course videos have I watched in the past few weeks?",
+  "gtAnswer": "15",
+  "questionDate": "2023/10/05 (Thu) 21:04",
+  "model": "agnes-3.0-flash",
+  "durationMs": 10219,
+  "notes": [
+    {
+      "ts": "2023-08-11T20:45:00.000Z",
+      "run": "5831f84d",
+      "date": "2023/08/11 (Fri) 20:45",
+      "sessionId": "answer_8d63a897_1",
+      "trim": {
+        "turnsIn": 12,
+        "turnsKept": 11,
+        "fillerDropped": 1,
+        "chars": 3642
+      },
+      "text": "Session with the user on 2023/08/11 (Fri) 20:45 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to learn more about cloud computing and was wondering if you could recommend some online courses or tutorials on AWS. By the way, I've been keeping track of my educational activities and noticed I've watched a lot of Crash Course videos lately - I've already finished 10 videos in the past few weeks!\n\nUser: I've been listening to the \"How I Built This\" podcast and I'm really inspired by the stories of entrepreneurs. Do you have any recommendations for other similar podcasts that I might enjoy?\n\nAssistant: \"How I Built This\" is an amazing podcast! If you enjoy hearing the stories of entrepreneurs and the journeys of building successful companies, here are some other podcasts you might enjoy:\n\n1. **The Tim Ferriss Show**: Tim Ferriss is known for digging deep into the habits, routines, and strategies of successful people, including entrepreneurs, athletes, and artists.\n2. **Masters of Scale**: Hosted\n\nUser: I'm actually planning to start a project on AWS soon, so I was thinking of getting an AWS certification to improve my skills. Can you recommend a good study plan or resources to prepare for the AWS Certified Cloud Practitioner exam?\n\nAssistant: Congratulations on planning to start your AWS project and considering getting certified! The AWS Certified Cloud Practitioner exam is a great starting point, and with a solid study plan, you can increase your chances of passing.\n\nHere's a recommended study plan and resources to help you prepare for the AWS Certified Cloud Practitioner exam:\n\n**Study Plan:**\n\n1. **Week 1-2: Understand the exam form\n\nUser: I've already taken a Python programming course on edX, but I'm interested in learning more about machine learning. Can you recommend some online courses or tutorials on machine learning, specifically using Python?\n\nAssistant: You've already taken a Python course, so you're off to a great start!\n\nMachine learning is an exciting field, and Python is an excellent language for it. Here are some top-notch online courses and tutorials on machine learning using Python:\n\n**Beginner-Friendly Courses:**\n\n1. **Python Machine Learning** by University of Michigan on Coursera: A 5-course specialization that covers the basics of mach\n\nUser: I've been following your recommendations and I'm making good progress on my AWS and machine learning journey. I've also been continuing to watch Crash Course videos - I just finished my 12th video on computer science!\n\nAssistant: That's amazing to hear! I'm thrilled to hear that you're making progress on your AWS and machine learning journey! It's great that you're taking the initiative to learn and upskill yourself.\n\nAnd wow, 12 Crash Course videos on computer science? That's impressive! Crash Course videos are an excellent way to learn new concepts in an engaging and entertaining way. You must be building a strong founda\n\nUser: I've been thinking about exploring more advanced topics in machine learning, like reinforcement learning and generative models. Do you have any recommendations for online courses or tutorials that cover these topics in Python?\n\nAssistant: You're ready to dive deeper into the world of machine learning!\n\nReinforcement learning and generative models are fascinating topics, and Python is an excellent language for implementing them. Here are some online courses and tutorials that can help you get started:\n\n**Reinforcement Learning:**\n\n1. **Deep Reinforcement Learning** by Sutton & Barto on Coursera: A comprehensive course on reinforceme"
+    },
+    {
+      "ts": "2023-09-30T19:53:00.000Z",
+      "run": "5831f84d",
+      "date": "2023/09/30 (Sat) 19:53",
+      "sessionId": "answer_8d63a897_2",
+      "trim": {
+        "turnsIn": 10,
+        "turnsKept": 10,
+        "fillerDropped": 0,
+        "chars": 3562
+      },
+      "text": "Session with the user on 2023/09/30 (Sat) 19:53 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to learn more about natural language processing, can you recommend some online resources or courses that cover this topic? By the way, I've been on a learning streak lately, having watched 15 Crash Course videos in the past few weeks.\n\nAssistant: Wow, 15 Crash Course videos in a few weeks is impressive! You're definitely on a roll!\n\nNatural Language Processing (NLP) is a fascinating field, and there are many excellent online resources and courses to help you dive in. Here are some recommendations:\n\n**Online Courses:**\n\n1. **Stanford Natural Language Processing with Deep Learning Specialization** (Coursera): This 5-course specialization, ta\n\nUser: I'd like to explore more about deep learning and its applications in NLP. Can you recommend some popular deep learning frameworks for NLP tasks, and also some resources to learn about attention mechanisms in deep learning models?\n\nAssistant: Deep learning has revolutionized the field of NLP, and attention mechanisms have been a game-changer in many NLP applications.\n\n**Popular Deep Learning Frameworks for NLP:**\n\n1. **PyTorch**: PyTorch is a popular, Python-based framework known for its simplicity, flexibility, and rapid prototyping capabilities. It has excellent support for NLP tasks, including text classification, language modeling,\n\nUser: I'm particularly interested in the transformers library by Hugging Face, can you tell me more about how I can use it for text classification tasks, and are there any specific models I should consider using?\n\nAssistant: The Hugging Face Transformers library is an excellent choice for text classification tasks! It provides a unified interface for many popular transformer-based models, making it easy to use and experiment with different architectures.\n\n**Using Transformers for Text Classification:**\n\n1. **Install the library**: `pip install transformers`\n2. **Import the library**: `import transformers`\n3. **Load a \n\nUser: I'll stop here. I want to ask about a different topic. Can you tell me more about the online communities like Kaggle and Reddit that you mentioned earlier? How do you usually engage with them and what kind of value do you get from them?\n\nAssistant: I'm glad you're interested in learning more about online communities!\n\nI'm an AI, I don't personally engage with online communities, but I can tell you about their value and how humans like you can benefit from them.\n\n**Kaggle:**\n\nKaggle is a platform for data science competitions, hosting datasets, and learning from others. It's an excellent resource for:\n\n1. **Competitions**: Participate in comp\n\nUser: I've been engaging with online communities like Kaggle and Reddit to learn from others, get feedback on my projects, and stay up-to-date with the latest developments in NLP and machine learning. I've found that these communities are great resources for learning from experts and practitioners, and for getting feedback on my ideas and projects. Additionally, I've been able to connect with like-minde\n\nAssistant: That's fantastic to hear! It's great that you're actively engaging with online communities like Kaggle and Reddit to further your learning and growth in NLP and machine learning. These communities can be incredibly valuable resources for learning from experts and practitioners, getting feedback on your ideas and projects, and staying up-to-date with the latest developments in the field.\n\nBy partic"
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    [],
+    []
+  ],
+  "notesInput": "--- note (2023-09-30T19:53:00.000Z) run=5831f84d ---\nSession with the user on 2023/09/30 (Sat) 19:53 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to learn more about natural language processing, can you recommend some online resources or courses that cover this topic? By the way, I've been on a learning streak lately, having watched 15 Crash Course videos in the past few weeks.\n\nAssistant: Wow, 15 Crash Course videos in a few weeks is impressive! You're definitely on a roll!\n\nNatural Language Processing (NLP) is a fascinating field, and there are many excellent online resources and courses to help you dive in. Here are some recommendations:\n\n**Online Courses:**\n\n1. **Stanford Natural Language Processing with Deep Learning Specialization** (Coursera): This 5-course specialization, ta\n\nUser: I'd like to explore more about deep learning and its applications in NLP. Can you recommend some popular deep learning frameworks for NLP tasks, and also some resources to learn about attention mechanisms in deep learning models?\n\nAssistant: Deep learning has revolutionized the field of NLP, and attention mechanisms have been a game-changer in many NLP applications.\n\n**Popular Deep Learning Frameworks for NLP:**\n\n1. **PyTorch**: PyTorch is a popular, Python-based framework known for its simplicity, flexibility, and rapid prototyping capabilities. It has excellent support for NLP tasks, including text classification, language modeling,\n\nUser: I'm particularly interested in the transformers library by Hugging Face, can you tell me more about how I can use it for text classification tasks, and are there any specific models I should consider using?\n\nAssistant: The Hugging Face Transformers library is an excellent choice for text classification tasks! It provides a unified interface for many popular transformer-based models, making it easy to use and experiment with different architectures.\n\n**Using Transformers for Text Classification:**\n\n1. **Install the library**: `pip install transformers`\n2. **Import the library**: `import transformers`\n3. **Load a \n\nUser: I'll stop here. I want to ask about a different topic. Can you tell me more about the online communities like Kaggle and Reddit that you mentioned earlier? How do you usually engage with them and what kind of value do you get from them?\n\nAssistant: I'm glad you're interested in learning more about online communities!\n\nI'm an AI, I don't personally engage with online communities, but I can tell you about their value and how humans like you can benefit from them.\n\n**Kaggle:**\n\nKaggle is a platform for data science competitions, hosting datasets, and learning from others. It's an excellent resource for:\n\n1. **Competitions**: Participate in comp\n\nUser: I've been engaging with online communities like Kaggle and Reddit to learn from others, get feedback on my projects, and stay up-to-date with the latest developments in NLP and machine learning. I've found that these communities are great resources for learning from experts and practitioners, and for getting feedback on my ideas and projects. Additionally, I've been able to connect with like-minde\n\nAssistant: That's fantastic to hear! It's great that you're actively engaging with online communities like Kaggle and Reddit to further your learning and growth in NLP and machine learning. These communities can be incredibly valuable resources for learning from experts and practitioners, getting feedback on your ideas and projects, and staying up-to-date with the latest developments in the field.\n\nBy partic\n\n--- note (2023-08-11T20:45:00.000Z) run=5831f84d ---\nSession with the user on 2023/08/11 (Fri) 20:45 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nUser: I'm trying to learn more about cloud computing and was wondering if you could recommend some online courses or tutorials on AWS. By the way, I've been keeping track of my educational activities and noticed I've watched a lot of Crash Course videos lately - I've already finished 10 videos in the past few weeks!\n\nUser: I've been listening to the \"How I Built This\" podcast and I'm really inspired by the stories of entrepreneurs. Do you have any recommendations for other similar podcasts that I might enjoy?\n\nAssistant: \"How I Built This\" is an amazing podcast! If you enjoy hearing the stories of entrepreneurs and the journeys of building successful companies, here are some other podcasts you might enjoy:\n\n1. **The Tim Ferriss Show**: Tim Ferriss is known for digging deep into the habits, routines, and strategies of successful people, including entrepreneurs, athletes, and artists.\n2. **Masters of Scale**: Hosted\n\nUser: I'm actually planning to start a project on AWS soon, so I was thinking of getting an AWS certification to improve my skills. Can you recommend a good study plan or resources to prepare for the AWS Certified Cloud Practitioner exam?\n\nAssistant: Congratulations on planning to start your AWS project and considering getting certified! The AWS Certified Cloud Practitioner exam is a great starting point, and with a solid study plan, you can increase your chances of passing.\n\nHere's a recommended study plan and resources to help you prepare for the AWS Certified Cloud Practitioner exam:\n\n**Study Plan:**\n\n1. **Week 1-2: Understand the exam form\n\nUser: I've already taken a Python programming course on edX, but I'm interested in learning more about machine learning. Can you recommend some online courses or tutorials on machine learning, specifically using Python?\n\nAssistant: You've already taken a Python course, so you're off to a great start!\n\nMachine learning is an exciting field, and Python is an excellent language for it. Here are some top-notch online courses and tutorials on machine learning using Python:\n\n**Beginner-Friendly Courses:**\n\n1. **Python Machine Learning** by University of Michigan on Coursera: A 5-course specialization that covers the basics of mach\n\nUser: I've been following your recommendations and I'm making good progress on my AWS and machine learning journey. I've also been continuing to watch Crash Course videos - I just finished my 12th video on computer science!\n\nAssistant: That's amazing to hear! I'm thrilled to hear that you're making progress on your AWS and machine learning journey! It's great that you're taking the initiative to learn and upskill yourself.\n\nAnd wow, 12 Crash Course videos on computer science? That's impressive! Crash Course videos are an excellent way to learn new concepts in an engaging and entertaining way. You must be building a strong founda\n\nUser: I've been thinking about exploring more advanced topics in machine learning, like reinforcement learning and generative models. Do you have any recommendations for online courses or tutorials that cover these topics in Python?\n\nAssistant: You're ready to dive deeper into the world of machine learning!\n\nReinforcement learning and generative models are fascinating topics, and Python is an excellent language for implementing them. Here are some online courses and tutorials that can help you get started:\n\n**Reinforcement Learning:**\n\n1. **Deep Reinforcement Learning** by Sutton & Barto on Coursera: A comprehensive course on reinforceme",
+  "dream": {
+    "stats": {
+      "merged": 2,
+      "pruned": 1,
+      "added": 7,
+      "topics": [
+        "Workflow",
+        "User context",
+        "Known pitfalls",
+        "Task playbooks"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal session notes into durable facts, events, or preferences; keep bullets short and sourced [seed].\n- Answer user questions from this memory first; use general knowledge only as fallback [note 1].\n- Record precise, durable user facts, events, or preferences when stated [note 3].\n\n## User context\n- User actively engages with online communities (Kaggle, Reddit) to learn NLP and ML, get feedback, and network with practitioners [note 2].\n- User completed 15 Crash Course videos in recent weeks (as of 2023-09-30) [note 2].\n- User is exploring NLP resources, specifically Hugging Face Transformers for text classification [note 2].\n- User plans to pursue AWS certification and has started a Python ML course on edX [note 2].\n- User listens to entrepreneurship podcasts like \"How I Built This\" [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n\n## Task playbooks\n- For NLP deep dives, recommend PyTorch and Hugging Face Transformers; cite specific model architectures for classification [note 2].\n- For AWS certification prep, suggest structured study plans with weekly milestones [note 2].\n- For podcast recommendations, match user interests in entrepreneurship to similar shows like Tim Ferriss Show [note 2].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal session notes into durable facts, events, or preferences; keep bullets short and sourced [seed].\n- Answer user questions from this memory first; use general knowledge only as fallback [note 1].\n- Record precise, durable user facts, events, or preferences when stated [note 3].\n\n## User context\n- User actively engages with online communities (Kaggle, Reddit) to learn NLP and ML, get feedback, and network with practitioners [note 2].\n- User completed 15 Crash Course videos in recent weeks (as of 2023-09-30) [note 2].\n- User is exploring NLP resources, specifically Hugging Face Transformers for text classification [note 2].\n- User plans to pursue AWS certification and has started a Python ML course on edX [note 2].\n- User listens to entrepreneurship podcasts like \"How I Built This\" [note 2].\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n\n## Task playbooks\n- For NLP deep dives, recommend PyTorch and Hugging Face Transformers; cite specific model architectures for classification [note 2].\n- For AWS certification prep, suggest structured study plans with weekly milestones [note 2].\n- For podcast recommendations, match user interests in entrepreneurship to similar shows like Tim Ferriss Show [note 2].\n",
+    "durationMs": 6828
+  },
+  "warm": {
+    "answer": "You have completed 15 Crash Course videos in the recent weeks as of September 30, 2023.",
+    "error": null,
+    "durationMs": 1860,
+    "match": {
+      "pass": true,
+      "score": 1,
+      "hit": 1,
+      "total": 1,
+      "hitWords": [
+        "15"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory doesn't contain information about how many Crash Course videos you've watched.",
+    "error": null,
+    "durationMs": 1529,
+    "match": {
+      "pass": false,
+      "score": 0,
+      "hit": 0,
+      "total": 1,
+      "hitWords": [],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": true,
+    "score": 1,
+    "hit": 1,
+    "total": 1,
+    "hitWords": [
+      "15"
+    ],
+    "phrase": null
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "id": "2bf43736",
+  "questionType": "single-session-assistant",
+  "question": "I was going through our previous chat and I wanted to clarify something about the prayer of beginners in Tanqueray's Spiritual Life treatise. Can you remind me which chapter of the second part discusses vocal prayer and meditation?",
+  "gtAnswer": "Chapter 4 of Book 1, titled 'Vocal Prayer and Meditation'.",
+  "questionDate": "2023/05/26 (Fri) 14:58",
+  "model": "agnes-3.0-flash",
+  "durationMs": 15463,
+  "notes": [
+    {
+      "ts": "2023-05-24T02:47:00.000Z",
+      "run": "2bf43736",
+      "date": "2023/05/24 (Wed) 02:47",
+      "sessionId": "answer_sharegpt_2kpncbX_13",
+      "trim": {
+        "turnsIn": 11,
+        "turnsKept": 11,
+        "fillerDropped": 0,
+        "chars": 3273
+      },
+      "text": "Session with the user on 2023/05/24 (Wed) 02:47 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nAssistant: The second chapter of the first book of the second part of Adolphe Tanqueray's Spiritual Life treatise is titled \"The Purgative Way\" and it explores the first stage of the spiritual life, which Tanqueray calls the \"purgative way\".\n\nTanqueray begins by explaining that the purgative way is a necessary stage in the spiritual life, during which the soul must be purified of its attachment to sin and wo\n\nUser: now summarize the third chapter\n\nAssistant: The third chapter of the first book of the second part of Adolphe Tanqueray's Spiritual Life treatise is titled \"The Active Purgative Way\" and it delves deeper into the first stage of the spiritual life, the purgative way.\n\nTanqueray begins by explaining that the active purgative way is the first step in the purgative way, during which the soul actively works to detach itself from sin and worldly \n\nUser: Explain the concept of a spiritual beginner in the first book of the second part. If possible, create a mental map of what he says about it\n\nAssistant: In the first book of the second part of Adolphe Tanqueray's Spiritual Life treatise, the concept of a \"spiritual beginner\" is discussed in the context of the purgative way. Tanqueray explains that a spiritual beginner is someone who has recently begun their spiritual journey and is in the early stages of the purgative way.\n\nAccording to Tanqueray, the spiritual beginner is characterized by a desir\n\nUser: Now make a mental map of the related concept of the prayer of the spiritual beginner\n\nAssistant: Sure! Here's a mental map of the related concept of the prayer of the spiritual beginner in the first book of the second part of Adolphe Tanqueray's Spiritual Life treatise:\n\nConcept of Prayer of the Spiritual Beginner:\n\n* Refers to the prayer of someone who is in the early stages of the purgative way and is still learning to pray\n* Characterized by a need for structure and guidance, as well as a \n\nUser: Which is the chapter of the second part in which he talks about the prayer of beginners?\n\nAssistant: The chapter in the second part of Adolphe Tanqueray's Spiritual Life treatise where he talks about the prayer of beginners is Chapter 4 of Book 1, titled \"Vocal Prayer and Meditation.\" In this chapter, Tanqueray discusses the importance of vocal prayer and meditation in the spiritual life, and provides guidance for beginners on how to approach these forms of prayer. He also discusses the role of spiritual reading and other devotional practices in deepening one's relationship with God. Overall, this chapter is a helpful resource for those who are just beginning their spiritual journey and are seeking guidance on how to pray.\n\nUser: summarize this chapter with greater depth\n\nAssistant: In Chapter 4 of Book 1 of Adolphe Tanqueray's Spiritual Life treatise, he discusses the prayer of beginners, focusing specifically on vocal prayer and meditation. He emphasizes the importance of these forms of prayer in the spiritual life, noting that they provide structure and guidance for those who are just beginning their journey of faith.\n\nTanqueray begins the chapter by discussing the nature "
+    }
+  ],
+  "noteFlagged": false,
+  "noteRules": [
+    []
+  ],
+  "notesInput": "--- note (2023-05-24T02:47:00.000Z) run=2bf43736 ---\nSession with the user on 2023/05/24 (Wed) 02:47 — conversation transcript; durable user facts, events, and preferences are worth remembering:\n\nAssistant: The second chapter of the first book of the second part of Adolphe Tanqueray's Spiritual Life treatise is titled \"The Purgative Way\" and it explores the first stage of the spiritual life, which Tanqueray calls the \"purgative way\".\n\nTanqueray begins by explaining that the purgative way is a necessary stage in the spiritual life, during which the soul must be purified of its attachment to sin and wo\n\nUser: now summarize the third chapter\n\nAssistant: The third chapter of the first book of the second part of Adolphe Tanqueray's Spiritual Life treatise is titled \"The Active Purgative Way\" and it delves deeper into the first stage of the spiritual life, the purgative way.\n\nTanqueray begins by explaining that the active purgative way is the first step in the purgative way, during which the soul actively works to detach itself from sin and worldly \n\nUser: Explain the concept of a spiritual beginner in the first book of the second part. If possible, create a mental map of what he says about it\n\nAssistant: In the first book of the second part of Adolphe Tanqueray's Spiritual Life treatise, the concept of a \"spiritual beginner\" is discussed in the context of the purgative way. Tanqueray explains that a spiritual beginner is someone who has recently begun their spiritual journey and is in the early stages of the purgative way.\n\nAccording to Tanqueray, the spiritual beginner is characterized by a desir\n\nUser: Now make a mental map of the related concept of the prayer of the spiritual beginner\n\nAssistant: Sure! Here's a mental map of the related concept of the prayer of the spiritual beginner in the first book of the second part of Adolphe Tanqueray's Spiritual Life treatise:\n\nConcept of Prayer of the Spiritual Beginner:\n\n* Refers to the prayer of someone who is in the early stages of the purgative way and is still learning to pray\n* Characterized by a need for structure and guidance, as well as a \n\nUser: Which is the chapter of the second part in which he talks about the prayer of beginners?\n\nAssistant: The chapter in the second part of Adolphe Tanqueray's Spiritual Life treatise where he talks about the prayer of beginners is Chapter 4 of Book 1, titled \"Vocal Prayer and Meditation.\" In this chapter, Tanqueray discusses the importance of vocal prayer and meditation in the spiritual life, and provides guidance for beginners on how to approach these forms of prayer. He also discusses the role of spiritual reading and other devotional practices in deepening one's relationship with God. Overall, this chapter is a helpful resource for those who are just beginning their spiritual journey and are seeking guidance on how to pray.\n\nUser: summarize this chapter with greater depth\n\nAssistant: In Chapter 4 of Book 1 of Adolphe Tanqueray's Spiritual Life treatise, he discusses the prayer of beginners, focusing specifically on vocal prayer and meditation. He emphasizes the importance of these forms of prayer in the spiritual life, noting that they provide structure and guidance for those who are just beginning their journey of faith.\n\nTanqueray begins the chapter by discussing the nature ",
+  "dream": {
+    "stats": {
+      "merged": 0,
+      "pruned": 0,
+      "added": 5,
+      "topics": [
+        "Workflow",
+        "User Context",
+        "Task Playbooks",
+        "Known Pitfalls"
+      ]
+    },
+    "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal session notes into short, sourced bullets [seed].\n- Prioritize project memory facts over general knowledge when answering [note 1].\n- Record durable user facts, events, and preferences precisely upon request [note 3].\n\n## User Context\n- User works across multiple sessions on personal and work matters [note 2].\n\n## Task Playbooks\n\n### Text Summarization (Tanqueray's Spiritual Life)\n- **Source Structure**: When summarizing Adolphe Tanqueray's \"Spiritual Life,\" identify the specific Book/Part/Chapter before generating content to ensure accuracy [note 2023-05-24].\n- **Chapter Titles**: Verify exact chapter titles (e.g., Ch 2 \"The Purgative Way\", Ch 3 \"The Active Purgative Way\", Ch 4 \"Vocal Prayer and Meditation\") before detailing content [note 2023-05-24].\n- **Output Format**: For complex concepts, users may request a \"mental map\"; structure these as bulleted hierarchies focusing on characterizations and definitions [note 2023-05-24].\n- **Depth Scaling**: Distinguish between standard summaries and \"greater depth\" requests; deep dives require focusing on specific mechanisms (e.g., nature of prayer, structure needs) rather than just themes [note 2023-05-24].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "guard": {
+      "action": "ship",
+      "flags": [],
+      "reason": null,
+      "unprovenancedNewLines": 0
+    },
+    "shipped": "# Tier 1 — Project Memory\n\n## Workflow\n- Consolidate terminal session notes into short, sourced bullets [seed].\n- Prioritize project memory facts over general knowledge when answering [note 1].\n- Record durable user facts, events, and preferences precisely upon request [note 3].\n\n## User Context\n- User works across multiple sessions on personal and work matters [note 2].\n\n## Task Playbooks\n\n### Text Summarization (Tanqueray's Spiritual Life)\n- **Source Structure**: When summarizing Adolphe Tanqueray's \"Spiritual Life,\" identify the specific Book/Part/Chapter before generating content to ensure accuracy [note 2023-05-24].\n- **Chapter Titles**: Verify exact chapter titles (e.g., Ch 2 \"The Purgative Way\", Ch 3 \"The Active Purgative Way\", Ch 4 \"Vocal Prayer and Meditation\") before detailing content [note 2023-05-24].\n- **Output Format**: For complex concepts, users may request a \"mental map\"; structure these as bulleted hierarchies focusing on characterizations and definitions [note 2023-05-24].\n- **Depth Scaling**: Distinguish between standard summaries and \"greater depth\" requests; deep dives require focusing on specific mechanisms (e.g., nature of prayer, structure needs) rather than just themes [note 2023-05-24].\n\n## Known Pitfalls\n- Prefer standard library functions over hand-rolled logic [note 4].\n",
+    "durationMs": 12316
+  },
+  "warm": {
+    "answer": "According to the project memory, Chapter 4 of the second part discusses \"Vocal Prayer and Meditation.\"",
+    "error": null,
+    "durationMs": 1754,
+    "match": {
+      "pass": true,
+      "score": 0.625,
+      "hit": 5,
+      "total": 8,
+      "hitWords": [
+        "chapter",
+        "4",
+        "vocal",
+        "prayer",
+        "meditation"
+      ],
+      "phrase": null
+    }
+  },
+  "cold": {
+    "answer": "The project memory does not contain information about Tanqueray's *Spiritual Life* or its chapter structure. You may want to consult the treatise directly; in the second part, vocal prayer and meditation are typically discussed in the first chapter.",
+    "error": null,
+    "durationMs": 1393,
+    "match": {
+      "pass": false,
+      "score": 0.5,
+      "hit": 4,
+      "total": 8,
+      "hitWords": [
+        "chapter",
+        "vocal",
+        "prayer",
+        "meditation"
+      ],
+      "phrase": null
+    }
+  },
+  "evidenceRetentionInShipped": {
+    "pass": true,
+    "score": 0.875,
+    "hit": 7,
+    "total": 8,
+    "hitWords": [
+      "chapter",
+      "4",
+      "book",
+      "1",
+      "vocal",
+      "prayer",
+      "meditation"
+    ],
+    "phrase": null
+  }
+}

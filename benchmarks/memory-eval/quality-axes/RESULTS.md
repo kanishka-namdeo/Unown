@@ -118,3 +118,81 @@ bun runner.mjs --fresh    # ~10 dream calls, needs the bridge on :3031
 
 Resume-safe without `--fresh`: error-free axis receipts are skipped
 (`results/*.json`); `--axis <id>` re-runs a single axis.
+
+---
+
+# Live run 2026-10-21 — agnes-3.0-flash (Agnes AI upstream via llm-bridge :3031)
+
+Same corpus, same classifier, same protocol as the 2026-10-17 kimi-k2.5 run;
+only the dream model changed (`PI_MODEL_ID=agnes-3.0-flash`, bridge upstream
+https://apihub.agnes-ai.com/v1, `bridgeUpstreamStatus: 200` in
+`results/summary.json`). `bun selftest.mjs` re-pinned first (exit 0, all
+classifier expectations hold — keyless). 10 dream calls, 0 errors, 0/135
+notes flagged by the layer-1 scanner, **0 guard false positives** (`ship` on
+all 10 candidates + all 4 final-candidate gate checks).
+
+## Outcome table
+
+| Axis | Result | Guard | Dream calls | Wall |
+|---|---|---|---|---|
+| contradiction | **PASS** (2/2 scenarios: in-batch + accumulated) | `ship` ×3 | 3 | 21 s |
+| staleness | **PASS** (zod 3 → zod 4; zero zod-3-as-current lines) | `ship` ×2 | 2 | 18 s |
+| forgetting | **FAIL** (deterministic assertion; see audit below) | `ship` ×2 | 2 | 203 s (one 194.7 s upstream call) |
+| interference | **FAIL** (deterministic assertion; see audit below) | `ship` ×3 | 3 | 29 s |
+
+**2/4 axes passed** vs kimi-k2.5's 4/4 (2026-10-17, same corpus/classifier).
+
+## Audit of the two FAILs (per this suite's own rule: audit `rows[]` before trusting a FAIL)
+
+Both FAILs are **classifier phrasing gaps on semantically-correct memories**,
+not dream defects — the same class the 10-17 run's finding #1 documented (and
+fixed) for "winston dropped lines under load". Recorded as findings, not
+patched (this run's scope is results-only; the classifier is pinned source):
+
+1. **forgetting** — the final candidate is correct: `- Use plain \`fetch\`
+   for all outbound HTTP; axios is forbidden by security policy [note 10]`.
+   The single counted failure row is `- BillingClient uses a hand-rolled
+   retry wrapper on fetch; integration suite verified parity with old axios
+   client [note 10]` — a migration-OUTCOME fact (SYSTEM rule 8 material):
+   "old axios client" is a historical comparison, but `SUPERSEDED_RE` carries
+   `older|earlier|before`, not bare `old`, and no directional pattern matches
+   "verified parity with". The memory never states the axios approval as
+   current; `revokedRuleEstablishedInFirstMemory: true` (step 1 carried the
+   approval), so the axis is non-vacuous and the dream did revoke it.
+2. **interference** — the final candidate resolves correctly to pino in one
+   line: `- Use pino for structured logging in all modules; winston is
+   permanently retired due to data-loss issues under load [note 5, 10, 11,
+   12]`. The both-rules line counts BOTH as current because the directional
+   patterns require `was/were/got/been replaced/…` (D1) — **"is permanently
+   retired" is present-tense passive**, a phrasing kimi never produced (kimi
+   wrote "winston was reverted" / pruned the loser outright). Oscillation
+   trail: step 1 winston era (winston ×2), step 2 → pino only, step 3 → the
+   "is retired" line. Semantic final state: exactly one current logger
+   (pino), matching the most recent evidence.
+
+A future classifier revision could add (a) `old <token>` to the loser
+exemption set and (b) present-tense passive (`is/are retired|replaced|…`) to
+D1 — both would need new `selftest.mjs` pins first (the 10-17 precedent).
+
+## Other observations
+
+- **Agnes tail latency is real**: forgetting step 2 took 194,688 ms for ONE
+  upstream request (bridge ring log: single request, no retry/error; day
+  totals 0 errors). The other 9 dream calls: 4.1–13.4 s each. The quality-axes
+  wall-clock budget (1–8 min) still held (~272 s total), but downstream
+  suites should expect 1-in-~10 calls in the 1–3 min band on this upstream.
+- Consolidation style differs from kimi: agnes keeps denser, more
+  section-structured candidates (Task playbooks / Validation & Schemas
+  headers) and consistently folds the revocation + replacement into one line
+  ("fetch; axios is forbidden") rather than pruning the loser — which is
+  exactly what surfaced the two classifier gaps above.
+- Guard: unchanged verdict — the runner-switch family stays narrowly scoped;
+  0 false positives on 4 benign rule-change families, `shippedAssertionPass`
+  follows the candidate verdict on every axis (no sanitize/gate anywhere).
+
+## Receipts (this run)
+
+`results/summary.json` + `results/{contradiction,staleness,forgetting,interference}.json`
+(receipts: `results/agnes-3.0-flash/` — summary + the four axis jsons; model field `agnes-3.0-flash`, date 2026-10-21T17:04:10Z). Run log:
+`/home/z/my-project/logs/memory-eval/quality-axes-agnes.log` (outside the
+repo). Reproduce: `PI_MODEL_ID=agnes-3.0-flash bun runner.mjs --fresh`.
