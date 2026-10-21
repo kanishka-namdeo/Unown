@@ -151,6 +151,21 @@ if (await probeHttpOk(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, 1500)) {
   await waitForPortFree(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, "engine", 20_000);
   startService("engine", path.join("mini-services", "agent-service"), ["index.ts"]);
 }
+// Dashboard API base (P0 fix): agent:start always pairs the dashboard with a
+// local engine, so an unset/empty NEXT_PUBLIC_AGENT_API_BASE defaults to the
+// engine's loopback URL — the stock install must not silently fall into
+// gateway mode (relative + XTransformPort), which 404s on any machine without
+// the z.ai sandbox preview gateway. Explicit values win; "gateway" (case-
+// insensitive) keeps the sandbox preview working.
+{
+  const raw = (process.env.NEXT_PUBLIC_AGENT_API_BASE ?? "").trim();
+  if (raw.length === 0) {
+    process.env.NEXT_PUBLIC_AGENT_API_BASE = `http://127.0.0.1:${ENGINE_PORT}`;
+    console.log(
+      `${sym.dot} dashboard API base defaulted to ${process.env.NEXT_PUBLIC_AGENT_API_BASE} (set NEXT_PUBLIC_AGENT_API_BASE=gateway for the sandbox preview)`,
+    );
+  }
+}
 startService("dashboard", ".", ["run", "dev"]);
 
 // ------------------------------------------------------- health wait (~60s)

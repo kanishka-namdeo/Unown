@@ -3,12 +3,17 @@
 // Two deployment modes:
 //  1. DIRECT  — set NEXT_PUBLIC_AGENT_API_BASE (e.g. "http://localhost:3030"
 //     or an API-gateway prefix) and requests go straight to the engine.
-//  2. GATEWAY — default: relative URLs carry ?XTransformPort=3030 so the
-//     sandbox gateway routes them to the engine port.
+//     This is the DEFAULT: next.config.ts bakes http://127.0.0.1:3030 when
+//     the env is unset/empty (the launcher always pairs the dashboard with a
+//     local engine — P0 fix for the stock-gateway-404 regression).
+//  2. GATEWAY — set NEXT_PUBLIC_AGENT_API_BASE=gateway for origins behind
+//     the z.ai sandbox preview gateway: relative URLs carry
+//     ?XTransformPort=3030 so the gateway routes them to the engine port.
 
 const PORT = 3030;
 const RAW_BASE = (process.env.NEXT_PUBLIC_AGENT_API_BASE ?? "").trim().replace(/\/+$/, "");
-const DIRECT = RAW_BASE.length > 0;
+const GATEWAY = RAW_BASE.length === 0 || RAW_BASE.toLowerCase() === "gateway";
+const DIRECT = !GATEWAY;
 
 export function apiUrl(
   path: string,

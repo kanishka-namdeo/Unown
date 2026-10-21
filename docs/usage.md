@@ -37,7 +37,9 @@ unown -p "explain the build error" | less
 cat error.log | unown -p "fix this"     # piped stdin joins the prompt
 ```
 
-Print mode runs one prompt headlessly and exits. Piped stdin is appended to the prompt (separated by a blank line), so you can feed logs, diffs, or source files without quoting wars. If either stdin or stdout is not a TTY, print mode is forced automatically — the piping above works with or without `-p`. Add `--mode json` to stream JSON events instead of text (this is how the [subagent](subagents.md) machinery consumes runs).
+Print mode runs one prompt headlessly and exits. Piped stdin is appended to the prompt (separated by a blank line), so you can feed logs, diffs, or source files without quoting wars. **The stdin reader is idle-safe**: it only reads while data is actively flowing — an open but idle stdin (an agent harness, an editor, a supervisor driving `unown -p` with its own protocol) is never consumed, late bytes are left for the caller, and an endless pipe is capped at 1 MiB (`PI_PRINT_STDIN_IDLE_MS` / `PI_PRINT_STDIN_MAX_BYTES` tune both; see [configuration](configuration.md)). If either stdin or stdout is not a TTY, print mode is forced automatically — the piping above works with or without `-p`. Add `--mode json` to stream JSON events instead of text (this is how the [subagent](subagents.md) machinery consumes runs).
+
+A lone unknown word (`unown badcommand`) is rejected with exit 2 and nearest-command suggestions instead of being sent to the model — a one-word prompt needs `-p` or more words. In the TUI, an unknown `/command` gets the same treatment inline (a "did you mean" error, no model turn).
 
 For CI pipelines and editor integrations there is a third output contract: `--output-format json` (Claude Code port) prints **one final JSON object** — the result *and* the accounting — with exit codes unchanged:
 
@@ -99,6 +101,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown info` | Print the support bundle — version, platform, git state, provider names, opt-outs — redaction-safe for bug reports; `--json` for the same fields |
 | `unown note "text"` | Deliver a session note to the engine by hand |
 | `unown sessions <sub>` | Session export / import / list — `export <id> [--out <file>]` writes one portable JSON (`{version, manifest, messages, todos, notes, skills, files}`), `import <file>` rehydrates under a fresh id, `list` shows sessions with id / createdAt / messageCount / touchedFiles. In-session alias: `/sessions` |
+| `unown blame [file]` | Receipts-backed blame — which sessions and tool calls touched `<file>` (write/edit/bash, grouped by session); no argument prints a whole-ledger summary (counts by tool, files written). Flags: `--session <id>`, `--since <ts>` (epoch-ms, ISO 8601 or relative seconds like `300s`), `--json`. The CLI twin of the `/blame` session command |
 | `unown recipes <sub>` | Declarative agent instruction bundles (the goose Recipes port) — `list` \| `run <name> [--key value]` \| `create <name>` \| `validate <file>`; discovered from `.unown/recipes/*.md` + `$UNOWN_HOME/recipes/*.md`. In-session alias: `/recipe`. See [recipes](recipes.md) |
 | `unown wiki <sub>` | Auto-generated repo documentation with `file:line` cross-links (the zcode Repo Wiki port) — `generate [--force]` \| `search <q>` \| `list` \| `show <page>`; written to `.unown/wiki/*.md`. In-session alias: `/wiki`. See [repo wiki](repo-wiki.md) |
 | `unown acp` | Run the ACP editor server on stdio (JSON-RPC 2.0, newline-delimited) — point Zed or any ACP client at it: agent program `unown`, args `acp`. See [acp](acp.md) |

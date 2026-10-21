@@ -37,6 +37,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve as resolvePath } from "node:path";
+import { BUILTIN_SLASH_COMMANDS } from "@earendil-works/pi-coding-agent";
 import { decideBash, jailPath, syntaxCheck } from "./bash-policy.ts";
 import { assistantTextOf } from "./messages.ts";
 import { createPermissionGate, type PermissionGate, type ToolCallDecision } from "./permissions.ts";
@@ -583,9 +584,55 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                         await fireUser("SessionStart", { name: "SessionStart" });
                 });
 
-                pi.on("input", async (event: any) => {
+                pi.on("input", async (event: any, ctx: any) => {
                         const text = typeof event?.text === "string" ? event.text : "";
                         if (text.trim()) prompts++;
+                        // Unknown-slash-command guard (audit 2-a-1 F1): a /word
+                        // that matches no built-in, extension command, prompt
+                        // template or skill used to fall through to the LLM —
+                        // burning a full turn (and tokens) on a typo. Intercept
+                        // it here with an actionable error instead. Path-shaped
+                        // inputs (/src/foo.ts) and non-command-like words pass
+                        // through untouched: the guard must never eat a prompt
+                        // that merely starts with a slash.
+                        if (text.startsWith("/") && typeof pi?.getCommands === "function") {
+                                const name = text.slice(1).split(/\s+/)[0] ?? "";
+                                const commandLike = /^[a-z][a-z0-9_-]*$/i.test(name);
+                                const pathLike = name.includes("/") || name.includes(".") || name.includes("\\");
+                                if (name && commandLike && !pathLike) {
+                                        const known = new Set<string>(BUILTIN_SLASH_COMMANDS.map((c) => c.name));
+                                        try {
+                                                for (const c of pi.getCommands()) {
+                                                        known.add(c.name.replace(/^skill:/, ""));
+                                                }
+                                        } catch {
+                                                /* enumeration is best-effort — fail open */
+                                        }
+                                        if (!known.has(name.toLowerCase()) && !known.has(name)) {
+                                                const lower = name.toLowerCase();
+                                                const near = [...known]
+                                                        .filter((c) => c.startsWith(lower.slice(0, 2)))
+                                                        .sort((a, b) => a.localeCompare(b))
+                                                        .slice(0, 4);
+                                                const suggestion = near.length
+                                                        ? ` — did you mean: ${near.map((c) => `/${c}`).join(", ")}?`
+                                                        : "";
+                                                const msg =
+                                                        `Unknown command /${name}${suggestion}\n` +
+                                                        `  Type / to browse the available commands.\n` +
+                                                        `  To send this text to the model anyway, drop the leading slash.`;
+                                                log(`input guard: blocked unknown /${name}`);
+                                                if (typeof ctx?.ui?.notify === "function") {
+                                                        ctx.ui.notify(msg, "error");
+                                                } else {
+                                                        // Print mode has no UI — stderr still
+                                                        // reaches the caller.
+                                                        console.error(`unown: ${msg.replace(/\n/g, " ")}`);
+                                                }
+                                                return { action: "handled" };
+                                        }
+                                }
+                        }
                         // UserPromptSubmit — full text (capped at 4 KB so a
                         // template can't interpolate a whole file into a
                         // command; the engine logs cap at 300 chars but

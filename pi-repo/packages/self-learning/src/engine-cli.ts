@@ -89,6 +89,13 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
                 out(`  breaker: ${br.open ? `OPEN (retry in ${Math.ceil((br.retryInMs ?? 0) / 1000)}s)` : "closed"}`);
                 out(`  kpis: ${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams, ${body?.kpis?.improvementsShipped ?? "?"} improvements shipped`);
                 out(`  outbox: ${stats.queued} note(s) pending sync${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}`);
+                // Audit 2-b D2: the auto-start circuit line used to print only in
+                // the DOWN branch — docs (usage.md) describe it as always present.
+                {
+                        const circuit = readSpawnState();
+                        out(`  auto-start: ${describeSpawnCircuit(circuit)}`);
+                        if (circuit.gaveUp) out(`  if it keeps failing: inspect .run/engine.log, then try unown engine repair (corrupt DB?)`);
+                }
                 return 0;
         } catch {
                 out(`engine: UP (health probe passed, detailed report timed out — ${ENGINE_URL})`);

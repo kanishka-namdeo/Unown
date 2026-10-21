@@ -14,6 +14,7 @@
 
 const COMMANDS = [
         "setup",
+        "providers",
         "models",
         "init",
         "init-agents",
@@ -22,9 +23,11 @@ const COMMANDS = [
         "doctor-instructions",
         "mcp",
         "automations",
+        "engine",
         "usage",
         "webcache",
         "sessions",
+        "blame",
         "recipes",
         "wiki",
         "acp",
@@ -37,12 +40,14 @@ const COMMANDS = [
         "help",
 ] as const;
 
-const MCP_SUBCOMMANDS = ["add", "add-http", "add-json", "list", "get", "remove", "test"];
+const MCP_SUBCOMMANDS = ["add", "add-http", "add-json", "list", "get", "remove", "test", "elicitation"];
 const AUTOMATIONS_SUBCOMMANDS = ["list", "create", "edit", "pause", "resume", "run", "history", "delete"];
 const SESSIONS_SUBCOMMANDS = ["list", "export", "import"];
 const RECIPES_SUBCOMMANDS = ["list", "run", "create", "validate"];
 const WIKI_SUBCOMMANDS = ["generate", "search", "list", "show"];
 const WEBCACHE_SUBCOMMANDS = ["stats", "clear", "sweep"];
+const PROVIDERS_SUBCOMMANDS = ["list", "add", "remove", "key", "default", "test", "refresh"];
+const ENGINE_SUBCOMMANDS = ["status", "start", "stop", "repair", "serve"];
 
 const UPDATE_FLAGS = ["--check", "--json", "--allow-dirty", "--rollback", "--help"];
 const SESSION_FLAGS = [
@@ -56,10 +61,13 @@ const SESSION_FLAGS = [
         "--tools",
         "--append-system-prompt",
         "--no-session",
+        "--session",
         "--model",
         "--effort",
         "--mcp-servers",
         "--no-agents-md",
+        "--provider",
+        "--no-split",
 ];
 
 export const COMPLETIONS_HELP = `unown completions <shell> — print a completion script
@@ -90,6 +98,12 @@ export function cmdCompletions(argv: string[], ctx: { log?: (l: string) => void 
                         return 0;
                 case "powershell":
                         log(powershellCompletion());
+                        return 0;
+                case "-h":
+                case "--help":
+                        // clig.dev: --help never RUNS the command (audit 2-b F3 —
+                        // `completions --help` used to error "unknown shell").
+                        log(COMPLETIONS_HELP);
                         return 0;
                 case undefined:
                         log("usage: unown completions bash|zsh|fish|powershell");
@@ -124,6 +138,14 @@ export function bashCompletion(): string {
                 "      ;;",
                 "    mcp)",
                 `      COMPREPLY=( $(compgen -W "${MCP_SUBCOMMANDS.join(" ")}" -- "$cur") )`,
+                "      return 0",
+                "      ;;",
+                "    providers)",
+                `      COMPREPLY=( $(compgen -W "${PROVIDERS_SUBCOMMANDS.join(" ")}" -- "$cur") )`,
+                "      return 0",
+                "      ;;",
+                "    engine)",
+                `      COMPREPLY=( $(compgen -W "${ENGINE_SUBCOMMANDS.join(" ")}" -- "$cur") )`,
                 "      return 0",
                 "      ;;",
                 "    automations)",
@@ -166,17 +188,20 @@ export function zshCompletion(): string {
                 "  local -a commands",
                 "  commands=(",
                 '    "setup:connect a model provider (wizard or flags)"',
+                '    "providers:manage the multi-provider registry (list/add/remove/key/default/test/refresh)"',
                 '    "models:list configured models"',
                 '    "init:scaffold .unown project memory"',
                 '    "init-agents:generate/update AGENTS.md from repo forensics"',
                 '    "memory:print the effective memory stack"',
                 '    "doctor:run configuration diagnostics"',
                 '    "doctor-instructions:audit the instruction set (skills, MCP, hooks)"',
-                '    "mcp:manage MCP server configs (add/list/get/remove/test)"',
+                '    "mcp:manage MCP server configs (add/list/get/remove/test/elicitation)"',
                 '    "automations:scheduled recurring agent runs (list/create/edit/pause/resume/run/history/delete)"',
+                '    "engine:detached engine supervision (status/start/stop/repair/serve)"',
                 '    "usage:token & cost report for the LLM bridge (--days/--model/--json)"',
                 '    "webcache:inspect the web results store (stats/clear/sweep)"',
                 '    "sessions:session transfer (list/export/import)"',
+                '    "blame:receipts-backed blame (which sessions touched a file)"',
                 '    "recipes:declarative instruction bundles (list/run/create/validate)"',
                 '    "wiki:auto-generated repo wiki (generate/search/list/show)"',
                 '    "acp:run the ACP editor server on stdio (Zed et al.)"',
@@ -195,10 +220,13 @@ export function zshCompletion(): string {
                 '    "--verbose[verbose decisions on stderr]" \\',
                 '    "--mode[output mode]:mode:(json text)" \\',
                 '    "--output-format[print-mode result format]:format:(json text)" \\',
+                '    "--session[resume a specific session file]:session file:" \\',
                 '    "--model[route the session to a model id]" \\',
                 '    "--effort[thinking effort]:effort:(low medium high)" \\',
                 '    "--mcp-servers[MCP server whitelist (csv, empty = none)]" \\',
                 '    "--no-agents-md[skip AGENTS.md/memory injection]" \\',
+                '    "--provider[pin the session provider]:provider:" \\',
+                '    "--no-split[start bare, ignoring saved split-view defaults]" \\',
                 '    "--version[print the version]" \\',
                 '    "--help[help text]"',
                 "  case $state in",
@@ -212,6 +240,12 @@ export function zshCompletion(): string {
                 "      ;;",
                 "    mcp)",
                 `      _arguments "1:subcommand:(${MCP_SUBCOMMANDS.join(" ")})"`,
+                "      ;;",
+                "    providers)",
+                `      _arguments "1:subcommand:(${PROVIDERS_SUBCOMMANDS.join(" ")})"`,
+                "      ;;",
+                "    engine)",
+                `      _arguments "1:subcommand:(${ENGINE_SUBCOMMANDS.join(" ")})"`,
                 "      ;;",
                 "    automations)",
                 `      _arguments "1:subcommand:(${AUTOMATIONS_SUBCOMMANDS.join(" ")})"`,
@@ -246,7 +280,15 @@ export function fishCompletion(): string {
                 lines.push(`complete -c unown -n "__fish_use_subcommand" -a "${cmd}"`);
         }
         for (const flag of [...SESSION_FLAGS, "--help", "--version"]) {
-                lines.push(`complete -c unown -l ${flag.replace(/^-+/, "")} -d "${flag}"`);
+                // fish: single-char flags use -s, long flags use -l (audit 2-b D1 —
+                // `-p` used to be emitted as `-l p`, an uncompletable long flag).
+                const short = /^-[a-zA-Z0-9]$/.test(flag);
+                const name = flag.replace(/^-+/, "");
+                lines.push(
+                        short
+                                ? `complete -c unown -s ${name} -d "${flag}"`
+                                : `complete -c unown -l ${name} -d "${flag}"`,
+                );
         }
         for (const flag of UPDATE_FLAGS) {
                 lines.push(
@@ -255,6 +297,8 @@ export function fishCompletion(): string {
         }
         lines.push('complete -c unown -n "__fish_seen_subcommand_from completions" -a "bash zsh fish powershell"');
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from mcp" -a "${MCP_SUBCOMMANDS.join(" ")}"`);
+        lines.push(`complete -c unown -n "__fish_seen_subcommand_from providers" -a "${PROVIDERS_SUBCOMMANDS.join(" ")}"`);
+        lines.push(`complete -c unown -n "__fish_seen_subcommand_from engine" -a "${ENGINE_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from automations" -a "${AUTOMATIONS_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from sessions" -a "${SESSIONS_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from recipes" -a "${RECIPES_SUBCOMMANDS.join(" ")}"`);
@@ -271,7 +315,7 @@ export function powershellCompletion(): string {
                 "Register-ArgumentCompleter -Native -CommandName unown -ScriptBlock {",
                 "    param($wordToComplete)",
                 `    $commands = @('${cmds}')`,
-                "    $flags = @('-p','--print','--plan','--verbose','--mode','--output-format','--model','--effort','--mcp-servers','--no-agents-md','--help','--version')",
+                "    $flags = @('-p','--print','--plan','--verbose','--mode','--output-format','--session','--model','--effort','--mcp-servers','--no-agents-md','--provider','--no-split','--help','--version')",
                 "    $updateFlags = @('--check','--json','--allow-dirty','--rollback')",
                 "    $completions = @()",
                 "    if ($wordToComplete -like '--*') {",

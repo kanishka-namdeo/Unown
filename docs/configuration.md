@@ -38,7 +38,7 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `NEXT_PUBLIC_AGENT_API_BASE` | unset | Where the dashboard finds the engine API. Unset keeps the sandbox gateway mode (requests route through the gateway with `?XTransformPort=3030`); set it to `http://localhost:3030` for a direct/local deployment, or to an API-gateway prefix such as `https://example.com/agent-api`. |
+| `NEXT_PUBLIC_AGENT_API_BASE` | `http://127.0.0.1:3030` (baked by `next.config.ts` when unset/empty) | Where the dashboard finds the engine API. Unset/empty defaults to DIRECT mode at the local engine — the launcher always pairs the dashboard with one, so a stock install works out of the box. Set `gateway` for the z.ai sandbox preview (relative URLs + `?XTransformPort=3030`), or any URL for a direct/custom deployment (an API-gateway prefix such as `https://example.com/agent-api` works too). Explicit values always win. |
 | `DATABASE_URL` | `file:./db/custom.db` | Prisma datasource for the dashboard scaffold only. The engine keeps its own SQLite store at `db/selflearning.db` and ignores this. |
 
 ### Self-learning engine (agent-service)
@@ -170,6 +170,8 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `PI_LLM_BACKOFF_BASE_MS` | `30000` | Upstream circuit breaker: base backoff (x4 growth, full jitter, 15-min cap). Read by the engine. |
 | `PI_PRINT_STALL_MS` | `180000` | Print-mode stall deadline: a session silent for this long force-exits (floor 10s; any session event re-arms it). Read by the terminal agent. |
 | `PI_PRINT_EXIT_GRACE_MS` | `15000` | Print-mode hard-exit grace after the agent's final turn: once the answer is written the process leaves after this grace, even if idle keep-alive sockets hold the loop (floor 2s; nothing re-arms it). Read by the terminal agent. |
+| `PI_PRINT_STDIN_IDLE_MS` | `500` | Print-mode piped-stdin idle window: stdin is read only while data actively flows; this much silence (after the last chunk) ends the read, detaches every listener and pauses the stream — an open idle stdin (harness/editor driving `unown -p`) is never consumed and cannot hold the event loop. `0` still reads whatever has already arrived. Read by the terminal agent. |
+| `PI_PRINT_STDIN_MAX_BYTES` | `1048576` | Print-mode piped-stdin byte cap: an endless pipe (`yes \| unown -p …`) stops draining at this many bytes instead of reading forever. Read by the terminal agent. |
 | `UNOWN_MAX_MINTED_TASKS` | `8` | Cap on ACTIVE minted tasks before the engine's task-mint job skips authoring new curriculum variants (minting resumes as tasks are archived/graduated). Read by the engine. |
 | `UNOWN_AUTO_COMPACT_THRESHOLD` | `85` | Engine-run auto-compact: percent of the context window at which compaction auto-triggers (0–100; a warn receipt starts at a fixed 70%). Read by the engine's runner (`auto-compact.ts`). |
 | `UNOWN_AUTO_COMPACT_HARD_LIMIT` | `95` | Engine-run auto-compact: percent at which the next model request is hard-blocked and the session aborted (0–100) — the session must be compacted or restarted. Read by the engine's runner. |

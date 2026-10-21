@@ -94,9 +94,10 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                 if (rows.length === 0) {
                         const anyAtAll = (res.data.automations ?? []).length > 0;
                         return {
-                                stdout: anyAtAll
-                                        ? `No automations in this project (${(res.data.automations ?? []).length} filtered; --all lists every workspace).`
-                                        : "No automations yet. Create one:\n  unown automations create --title 'morning brief' --cron '0 9 * * 1-5' \\\n      --prompt \"Summarize yesterday's commits and open TODOs; report risks.\"",
+                                stdout:
+                                        (anyAtAll
+                                                ? `No automations in this project (${(res.data.automations ?? []).length} filtered; --all lists every workspace).`
+                                                : "No automations yet. Create one:\n  unown automations create --title 'morning brief' --cron '0 9 * * 1-5' \\\n      --prompt \"Summarize yesterday's commits and open TODOs; report risks.\"") + "\n",
                                 exitCode: 0,
                         };
                 }
@@ -105,7 +106,7 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                         const last = a.lastRun ? `${a.lastRun.status} ${new Date(a.lastRun.started_at).toLocaleString()}` : "never";
                         return `${a.id}  ${a.title}\n    ${a.schedule ?? a.cron_expr ?? "one-shot"} · mode ${a.mode} · ${a.lifecycle} · runs ${a.run_count}\n    next: ${next} · last: ${last}`;
                 });
-                return { stdout: lines.join("\n\n"), exitCode: 0 };
+                return { stdout: lines.join("\n\n") + "\n", exitCode: 0 };
         }
 
         if (sub === "create") {

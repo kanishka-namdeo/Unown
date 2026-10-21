@@ -62,6 +62,7 @@ import {
 } from "./term.ts";
 import { readSpawnState } from "./engine-supervisor.ts";
 import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDir } from "./checkpoints.ts";
+import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
 import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
 import { MCP_HELP, runMcpCommand } from "./mcp-cli.ts";
 import { runAutomationsCommand, AUTOMATIONS_USAGE } from "./automations-cli.ts";
@@ -128,8 +129,8 @@ Usage:
   unown setup --provider openai --api-key sk-... --model gpt-4o
                            non-interactive (--force resets, --list shows presets)
   unown providers <sub>   manage the multi-provider registry (M1):
-                           list | add | remove | key | default | test —
-                           adding a provider KEEPS the existing ones
+                           list | add | remove | key | default | test |
+                           refresh — adding a provider KEEPS the existing ones
   unown models             list configured models (+ what a local bridge serves)
   unown init               scaffold .unown/ project memory
   unown init-agents        generate or update AGENTS.md (Milestone 3.1)
@@ -148,7 +149,8 @@ Usage:
                            (AGENTS.md freshness, skills, MCP, hooks, adversary,
                            injection scanner — Milestone 3.2; --json)
   unown mcp <sub>         manage MCP servers: add | add-http | add-json |
-                           list | get | remove | test (see 'unown help mcp')
+                           list | get | remove | test | elicitation
+                           (see 'unown help mcp')
   unown automations <sub> scheduled agent runs (zcode Automations port):
                            list | create | edit | pause | resume | run |
                            history | delete — needs the engine running;
@@ -164,6 +166,10 @@ Usage:
                            clear | sweep) shared by web_search + webfetch
   unown sessions <sub>  session export / import / list (Milestone 3.5):
                            export <id> [--out <file>] | import <file> | list
+  unown blame [file]     receipts-backed blame: which sessions and tool calls
+                           touched <file>; no arg = whole-ledger summary
+                           (flags: --session <id> --since <ts> --json —
+                           the CLI twin of the /blame session command)
   unown recipes <sub>    declarative agent instruction bundles (Milestone 4.1,
                            the goose Recipes port): list | run <name> [--k v] |
                            create <name> | validate <file>; discovered from
@@ -210,6 +216,8 @@ Session tools (registered in every session):
                                          scheduled runs managed by the engine
   /plan /todos /note /agents /learning /engine /lsp /checkpoint /undo /redo
   /restore /checkpoints /receipts /mcp /goal /review   session commands
+  /commit /hooks          git-native commit (message optional, never pushes)
+                          + the user-hook layer's status/trust surface
   /tasks                  the async subagent fleet: running children + the
                           resume registry (task_control steer <name> resumes)
   /addons                configure the TUI addons (ask_user_question, todo,
@@ -1616,6 +1624,80 @@ async function cmdNote(text: string) {
         process.exit(0);
 }
 
+/** `unown blame [file]` — the CLI twin of the /blame session command (audit
+ * 2-b F2: `unown blame` used to be swallowed as a one-word LLM prompt). Same
+ * ledger (.unown/receipts/), same flags: --session <id> --since <ts> --json. */
+function cmdBlame(argv: string[]): number {
+        const tokens = argv.filter((t) => t.length > 0);
+        if (tokens.includes("-h") || tokens.includes("--help")) {
+                console.log(
+                        `unown blame — receipts-backed blame: which sessions and tool calls touched a file
+
+usage: unown blame [file] [--session <id>] [--since <ts>] [--json]
+  file        a project-relative path; without it, a whole-ledger summary
+              (counts by tool, files written) is printed
+  --session   only entries from that session id
+  --since     epoch-ms, ISO 8601, or relative seconds (e.g. 300s)
+  --json      machine-readable output
+
+The ledger lives at .unown/receipts/ (one JSONL per session; /receipts prints
+it in-session). This is the CLI twin of the /blame slash command.`,
+                );
+                return 0;
+        }
+        const json = tokens.includes("--json");
+        let sessionId: string | undefined;
+        let since: number | undefined;
+        let filePath: string | undefined;
+        for (let i = 0; i < tokens.length; i++) {
+                const t = tokens[i];
+                if (t === "--json") continue;
+                if (t === "--session") {
+                        sessionId = tokens[i + 1];
+                        i++;
+                        continue;
+                }
+                if (t === "--since") {
+                        const raw = tokens[i + 1];
+                        const asNum = Number(raw);
+                        if (!Number.isNaN(asNum)) {
+                                since = raw.length >= 10 && /^\d+$/.test(raw) ? asNum : Date.now() - asNum * 1000;
+                        } else {
+                                const parsed = Date.parse(raw);
+                                if (!Number.isNaN(parsed)) since = parsed;
+                        }
+                        i++;
+                        continue;
+                }
+                if (!t.startsWith("--")) filePath = t;
+        }
+        const dir = receiptsDir(process.cwd());
+        if (!filePath) {
+                const summary = blameSummary(dir, { sessionId, since });
+                if (json) {
+                        console.log(JSON.stringify(summary, null, 2));
+                        return 0;
+                }
+                const toolLines = Object.entries(summary.byTool)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([tool, n]) => `- ${tool}: ${n}`)
+                        .join("\n");
+                const files = summary.filesTouched.slice(0, 40);
+                const filesLines =
+                        files.length > 0
+                                ? files.map((f) => `- ${f}`).join("\n") +
+                                  (summary.filesTouched.length > 40 ? `\n- …and ${summary.filesTouched.length - 40} more` : "")
+                                : "(no files written yet)";
+                console.log(
+                        `Blame summary — ${summary.totalEntries} tool call(s) across receipts.\n\nBy tool:\n${toolLines || "(none)"}\n\nFiles written/edited:\n${filesLines}`,
+                );
+                return 0;
+        }
+        const entries = blameFile(dir, filePath, { sessionId, since }, process.cwd());
+        console.log(json ? formatBlameJson(entries) : formatBlameReport(entries, filePath));
+        return 0;
+}
+
 /** F10 silence budget for print mode (ms). Floor 10s; default 3 min — above the worst measured upstream round (Agnes direct 2–12 s + bridge queueing), below any acceptable hang. */
 function printStallMs(): number {
         const raw = Number(process.env.PI_PRINT_STALL_MS);
@@ -1718,16 +1800,60 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 process.exit(1);
         }
         // Piped stdin (e.g. `cat error.log | unown -p "fix this"`) joins the prompt.
+        //
+        // Three hazards the naive "attach a data listener + 500 ms timeout"
+        // reader carried (audited live), all fixed here:
+        //   1. Late-byte consumption — after the timeout resolved, the listener
+        //      STAYED attached, so an open idle stdin (an agent harness, an
+        //      editor, a supervisor) kept being drained: bytes belonging to the
+        //      CALLER's protocol were silently eaten.
+        //   2. Loop-hold — that lingering listener on an open pipe holds the
+        //      event loop (measured: bare bun + open pipe + data listener never
+        //      exits), so any path that does not hard-exit would hang.
+        //   3. Unbounded read — an infinite/stdout-heavy pipe (`yes | unown -p`)
+        //      was read forever because only a total-time cap existed.
+        // Reader contract now: read while data actively flows (idle window
+        // re-armed per chunk), settle on EOF, cap total bytes; once settled,
+        // every listener is detached and the stream paused so nothing further
+        // is ever consumed.
         let piped = "";
         if (!process.stdin.isTTY) {
+                const rawIdle = Number(process.env.PI_PRINT_STDIN_IDLE_MS);
+                const idleMs = Number.isFinite(rawIdle) && rawIdle >= 0 ? rawIdle : 500;
+                const rawMax = Number(process.env.PI_PRINT_STDIN_MAX_BYTES);
+                const maxBytes = Number.isFinite(rawMax) && rawMax >= 0 ? rawMax : 1_048_576;
                 piped = await new Promise<string>((resolveStdin) => {
                         let data = "";
+                        let settled = false;
+                        let idleTimer: ReturnType<typeof setTimeout> | null = null;
+                        const settle = () => {
+                                if (settled) return;
+                                settled = true;
+                                if (idleTimer) clearTimeout(idleTimer);
+                                try {
+                                        process.stdin.removeAllListeners("data");
+                                        process.stdin.removeAllListeners("end");
+                                        process.stdin.pause();
+                                } catch {
+                                        /* already destroyed — nothing to do */
+                                }
+                                resolveStdin(data);
+                        };
                         process.stdin.setEncoding("utf8");
-                        process.stdin.on("data", (c) => {
+                        process.stdin.on("data", (c: string) => {
                                 data += c;
+                                if (data.length >= maxBytes) {
+                                        settle(); // byte cap: stop draining an endless pipe
+                                        return;
+                                }
+                                if (idleTimer) clearTimeout(idleTimer);
+                                // Re-arm: keep reading while the pipe delivers.
+                                idleTimer = setTimeout(settle, idleMs);
+                                idleTimer.unref?.();
                         });
-                        process.stdin.on("end", () => resolveStdin(data));
-                        setTimeout(() => resolveStdin(data), 500); // short pipe timeout
+                        process.stdin.on("end", settle);
+                        idleTimer = setTimeout(settle, idleMs);
+                        idleTimer.unref?.();
                 });
         }
         const message = [prompt, piped.trim()].filter(Boolean).join("\n\n");
@@ -2071,6 +2197,11 @@ export async function runCli(argv: string[]) {
                 // subcommand tokens as prompt text.
                 process.exit(cmdWebcache(argv.slice(1)));
         }
+        if (first === "blame") {
+                // Audit 2-b F2 — `unown blame` used to be swallowed as a one-word
+                // LLM prompt; it is a real command now (the CLI twin of /blame).
+                process.exit(cmdBlame(argv.slice(1)));
+        }
         if (first === "sessions") {
                 // Milestone 3.5 — `unown sessions export|import|list` (the
                 // opencode session/transfer.ts port). Dispatch before the
@@ -2152,6 +2283,59 @@ export async function runCli(argv: string[]) {
         if (argv.includes("--version") || argv.includes("-V")) {
                 console.log(VERSION);
                 process.exit(0);
+        }
+        // Unknown-command guard (audit 2-b F1 / 2-a-1 F1): a LONE command-like
+        // first word that matches no subcommand is almost certainly a typo —
+        // and the failure mode it used to hit was the worst kind: the word was
+        // silently folded into a full LLM session (a 19k-token system prompt
+        // and a model turn burned on "badcommand"). Error out instead, with
+        // the nearest commands as suggestions. Multi-word prompts and
+        // non-command-like words still start a session, exactly as before.
+        {
+                const KNOWN_COMMANDS = new Set([
+                        "help", "setup", "providers", "models", "doctor", "info", "init-agents",
+                        "doctor-instructions", "mcp", "engine", "automations", "usage", "webcache",
+                        "blame", "sessions", "recipes", "wiki", "completions", "acp", "uninstall",
+                        "update", "changelog", "init", "memory", "note",
+                ]);
+                const VALUE_FLAGS = new Set([
+                        "--mode", "--session", "--output-format", "--goal", "--tools",
+                        "--append-system-prompt", "--model", "--effort", "--mcp-servers", "--provider",
+                ]);
+                const positionals: string[] = [];
+                let sawFlag = false;
+                for (let i = 0; i < argv.length; i++) {
+                        const a = argv[i];
+                        if (a === "--") break; // everything after -- is prompt text
+                        if (a.startsWith("-")) {
+                                sawFlag = true; // explicit intent (-p, --plan, --model …): never a typo guard
+                                if (VALUE_FLAGS.has(a)) i++; // skip the flag's value
+                                continue;
+                        }
+                        positionals.push(a);
+                }
+                const firstWord = positionals[0];
+                if (
+                        !sawFlag &&
+                        positionals.length === 1 &&
+                        firstWord &&
+                        /^[a-z][a-z0-9_-]*$/i.test(firstWord) &&
+                        !KNOWN_COMMANDS.has(firstWord.toLowerCase())
+                ) {
+                        const lower = firstWord.toLowerCase();
+                        const near = [...KNOWN_COMMANDS]
+                                .filter((c) => c.startsWith(lower.slice(0, 2)) || lower.startsWith(c.slice(0, 2)))
+                                .sort()
+                                .slice(0, 4);
+                        console.error(`unown: unknown command "${firstWord}"`);
+                        if (near.length) console.error(`  did you mean: ${near.map((c) => `unown ${c}`).join(", ")}?`);
+                        console.error(`  run \`unown --help\` for the command list.`);
+                        console.error(
+                                `  to run a one-word prompt instead, use -p: unown -p "${firstWord}"\n` +
+                                        `  (or add more words: unown ${firstWord} the failing tests)`,
+                        );
+                        process.exit(2);
+                }
         }
         const args = parseArgs(argv);
         switch (args.command) {

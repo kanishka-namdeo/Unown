@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 197;
+export const CHANGELOG_TOTAL_ENTRIES = 206;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 104,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 1,
-  "Fixed": 37,
+  "Fixed": 46,
   "Security": 3,
   "Behavior": 27
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 75,
+    "total": 84,
     "counts": {
       "Added": 50,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 11,
+      "Fixed": 20,
       "Security": 0,
       "Behavior": 7
     },
@@ -272,41 +272,44 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         ]
       },
       {
-        "bucket": "Behavior",
-        "items": [
-          {
-            "title": "the session now carries an engine-status footer, a /engine slash command (the 28th)…",
-            "behavior": true
-          },
-          {
-            "title": "webcache: stale-while-revalidate — past-TTL answers serve instantly (marked) while a background refresh…",
-            "behavior": true
-          },
-          {
-            "title": "fleet: the public surface — UNOWN_FLEET_TIMEOUT_MS wired for real, the --help contract…",
-            "behavior": true
-          },
-          {
-            "title": "fleet: the interactive subagent fleet — async spawn, mid-run steering, ask_question…",
-            "behavior": true
-          },
-          {
-            "title": "subagents: context briefs — summary mode (pi-cciotti port)",
-            "behavior": true
-          },
-          {
-            "title": "subagents: the advertised catalog, delegation levels, role builtins, the BLOCKED protocol…",
-            "behavior": true
-          },
-          {
-            "title": "addons: the TUI addon framework — ask_user_question, the addon-era todo, and the advisor…",
-            "behavior": true
-          }
-        ]
-      },
-      {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "the stock dashboard no longer 404s its own engine (P0)",
+            "behavior": false
+          },
+          {
+            "title": "unown <typo> no longer silently burns an LLM session (P0)",
+            "behavior": false
+          },
+          {
+            "title": "unown blame is a real command (the CLI twin of /blame)",
+            "behavior": false
+          },
+          {
+            "title": "print-mode stdin handling: idle-open stdin is never consumed (A1 root cause, audited live)",
+            "behavior": false
+          },
+          {
+            "title": "split-view band subcommands tell the truth in regular mode",
+            "behavior": false
+          },
+          {
+            "title": "shell completions match the real command surface",
+            "behavior": false
+          },
+          {
+            "title": "unown engine status shows the auto-start circuit when UP too",
+            "behavior": false
+          },
+          {
+            "title": "auth.json is 0600 from the first byte",
+            "behavior": false
+          },
+          {
+            "title": "unown automations list output ends with a newline",
+            "behavior": false
+          },
           {
             "title": "the last runtime detachment leak is closed (governor is engine-only)",
             "behavior": false
@@ -350,6 +353,39 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "fleet: restricted agents regain ask_question",
             "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "the session now carries an engine-status footer, a /engine slash command (the 28th)…",
+            "behavior": true
+          },
+          {
+            "title": "webcache: stale-while-revalidate — past-TTL answers serve instantly (marked) while a background refresh…",
+            "behavior": true
+          },
+          {
+            "title": "fleet: the public surface — UNOWN_FLEET_TIMEOUT_MS wired for real, the --help contract…",
+            "behavior": true
+          },
+          {
+            "title": "fleet: the interactive subagent fleet — async spawn, mid-run steering, ask_question…",
+            "behavior": true
+          },
+          {
+            "title": "subagents: context briefs — summary mode (pi-cciotti port)",
+            "behavior": true
+          },
+          {
+            "title": "subagents: the advertised catalog, delegation levels, role builtins, the BLOCKED protocol…",
+            "behavior": true
+          },
+          {
+            "title": "addons: the TUI addon framework — ask_user_question, the addon-era todo, and the advisor…",
+            "behavior": true
           }
         ]
       },

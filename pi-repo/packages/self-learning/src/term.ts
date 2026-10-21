@@ -18,7 +18,7 @@
  *     .gitignore             ignores local.md
  */
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { pruneToBudget } from "./budget.ts";
@@ -150,7 +150,21 @@ export function seedUnownTheme(agentDir: string): string {
 export function ensureUnownAgentDirInfo(): AgentDirInit {
         const models = writeModelsJson(UNOWN_AGENT_DIR);
         const authPath = join(UNOWN_AGENT_DIR, "auth.json");
-        if (!existsSync(authPath)) writeFileSync(authPath, "{}", "utf8");
+        if (!existsSync(authPath)) {
+                // 0600 at CREATION (audit 2-b D4): the docs claim "auth.json mode
+                // 0600", but the empty placeholder used to land as 0664&~umask and
+                // was only hardened later, on the first real key write.
+                writeFileSync(authPath, "{}", { encoding: "utf8", mode: 0o600 });
+        } else {
+                // Heal a loose pre-existing placeholder too (idempotent; POSIX only —
+                // Windows ACL hardening happens on real key writes via secureFilePermissions).
+                try {
+                        const st = statSync(authPath);
+                        if (st.mode & 0o077) chmodSync(authPath, 0o600);
+                } catch {
+                        /* best effort — never block boot on perms */
+                }
+        }
         seedUnownTheme(UNOWN_AGENT_DIR);
         const settingsPath = join(UNOWN_AGENT_DIR, "settings.json");
         const settingsExisted = existsSync(settingsPath);

@@ -30,9 +30,17 @@ if (!BUN) {
 }
 
 const logFd = fs.openSync(path.join(REPO_ROOT, "server.log"), "a");
+// Dashboard API base (P0 fix — see next.config.ts): an unset/empty value
+// defaults to the local engine so the standalone server works out of the box;
+// explicit values (including the "gateway" sentinel) always win.
+const rawApiBase = (process.env.NEXT_PUBLIC_AGENT_API_BASE ?? "").trim();
+const childEnv: Record<string, string | undefined> = { ...process.env, NODE_ENV: "production" };
+if (rawApiBase.length === 0) {
+  childEnv.NEXT_PUBLIC_AGENT_API_BASE = `http://127.0.0.1:${process.env.PI_AGENT_PORT ?? "3030"}`;
+}
 const child = spawn(BUN, [serverJs], {
   cwd: REPO_ROOT,
-  env: { ...process.env, NODE_ENV: "production" },
+  env: childEnv,
   stdio: ["ignore", "pipe", "pipe"],
   windowsHide: IS_WIN,
 });
