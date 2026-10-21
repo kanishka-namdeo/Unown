@@ -91,3 +91,48 @@ QUALITY, audited from the per-session snapshots, was genuinely good
 trajectory per arm, one model, single run: directional, not statistical.
 Protocol receipts: `runner-v3.mjs`, `kimi-k2.5.jsonl`, `logs/` (full
 session stdout/stderr), `unrel-memory-source.md`.
+
+## 2026-10-21 — agnes-3.0-flash (Agnes AI upstream, v2 protocol)
+
+Same 10-task Python Exercism set, same cold→dream→warm protocol, same
+runner; the model routed through the llm-bridge onto
+`apihub.agnes-ai.com/v1`. Receipts: `results/v2-notes/agnes-3.0-flash.jsonl`
++ `summary.agnes-3.0-flash.json` + per-phase memory snapshots (`.agnes-3.0-flash.md`).
+
+| Metric | cold | warm | delta |
+|---|---|---|---|
+| pass rate | 9/10 | 9/10 | 0pp |
+| input tokens | 107,583 | 319,659 | **+197.1%** |
+| avg duration | 106 s | 79 s | **−25.5%** |
+| cacheRead | 1.16 M | 3.52 M | — |
+
+book-store flipped fail→pass warm; transpose flipped pass→fail — net zero,
+and honestly reported as the wash it is. The warm arm's +197% input is the
+engine's dreamed user-tier memory (accumulated from the cold sessions'
+notes) injected into every warm session: memory bought speed, not
+correctness, and cost prompt budget — the same shape as kimi's (+21.8% in,
+−35.1% time) and qwen3.7's (+23.2% in) committed rows, magnified.
+
+### Protocol findings from this run (measurement-integrity notes)
+
+- **The v2 warm arm's per-task memory carry is inert by construction.**
+  `solveTask` removes each scratch dir (and its `.unown`) at cold-task end,
+  while `phaseWarm`'s `carryMemory` reads `PROJECT_A/<cold-tag>/.unown` —
+  always gone by warm time. This affects every committed v2 row equally
+  (the kimi receipts' per-task snapshots captured the transient scratch
+  memories; the qwen snapshots are empty scaffolds). The warm arm therefore
+  measures global/user-tier dreamed memory + repeat-task variance, which is
+  how every committed row was measured — comparability preserved, labeling
+  corrected here.
+- **wait-dream times out by the same mechanism**: terminal notes carry the
+  scratch dir as their project path, so project dreams write into scratch
+  memories, never `PROJECT_A/.unown/memory/project.md` (unchanged, 292 B,
+  all phases). Recorded as a timeout, same as the qwen rows.
+- Engine env during this run (documented deviations):
+  `PI_ENGINE_MAX_TOKENS_HOUR=2000000` + `PI_ENGINE_MAX_TOKENS_DAY=20000000`
+  (the default 200k/h governor throttled auto-dream after a full day of
+  benchmark traffic), `PI_DREAM_GATE=0` (the canary gate rolled back the
+  first dream on an engine-harness tool-drift artifact unrelated to this
+  project). The runner also gained phase resume (interrupted windows
+  continue instead of restarting) — no protocol change, receipts unchanged
+  in meaning.

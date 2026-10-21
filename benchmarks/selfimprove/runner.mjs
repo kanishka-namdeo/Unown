@@ -237,12 +237,35 @@ async function solveTask(task, project, tag, carryMemory = false) {
 
 async function passTasks(project, phasePrefix, carryMemory = false) {
         mkdirSync(join(ROOT, "logs"), { recursive: true });
+        // Resume support (added 2026-10-21): a phase interrupted mid-run (tool
+        // window caps, reboots) can be re-invoked — tasks whose (phase, task)
+        // pair already has a record in the model's jsonl are skipped, so the
+        // phase continues instead of restarting from zero. A record is only
+        // appended after a task completes (pass or fail), so "has a record"
+        // is exactly "has a final outcome" — the same rule the polyglot
+        // runner uses. Duplicate records (from pre-resume partial windows)
+        // are tolerated by the report's last-record-wins dedupe.
+        const resultsPath = join(RESULTS, `${MODEL}.jsonl`);
+        const done = new Set();
+        if (existsSync(resultsPath)) {
+                for (const line of readFileSync(resultsPath, "utf8").split("\n")) {
+                        if (!line.trim()) continue;
+                        try {
+                                const r = JSON.parse(line);
+                                if (r.phase === (phasePrefix.startsWith("warm") ? "warm" : "cold")) done.add(r.task);
+                        } catch { /* tolerate */ }
+                }
+        }
         const out = [];
         for (let i = 0; i < TASKS.length; i++) {
                 const task = TASKS[i];
+                if (done.has(task)) {
+                        console.log(`… ${phasePrefix}/${task} (resume: already recorded)`);
+                        continue;
+                }
                 const tag = `${phasePrefix}-${String(i + 1).padStart(2, "0")}-${task}`;
                 const record = await solveTask(task, project, tag, carryMemory);
-                appendFileSync(join(RESULTS, `${MODEL}.jsonl`), JSON.stringify(record) + "\n");
+                appendFileSync(resultsPath, JSON.stringify(record) + "\n");
                 console.log(`${record.passed ? "✓" : "✗"} ${phasePrefix}/${task} (${record.durationS}s, in=${record.tokens.input} out=${record.tokens.output})`);
                 out.push(record);
         }
@@ -281,11 +304,28 @@ async function ensureHome() {
 async function phaseCold() {
         mkdirSync(RESULTS, { recursive: true });
         await ensureHome();
-        rmSync(PROJECT_A, { recursive: true, force: true });
-        mkdirSync(PROJECT_A, { recursive: true });
-        const init = await run(UNOWN_BIN, ["init"], { cwd: PROJECT_A, env: { ...process.env, PATH: TOOL_PATH, UNOWN_HOME }, timeoutMs: 60_000 });
-        console.log(`[init] exit ${init.code}: ${(init.out + init.err).trim().split("\n").slice(-2).join(" / ")}`);
-        snapshotMemory("cold-before");
+        // Fresh start ONLY when no cold records exist: an interrupted cold
+        // phase keeps PROJECT_A (its .unown carries the dreamed memory the
+        // phase is accumulating) and resumes the un-recorded tasks. The
+        // pre-resume behavior wiped PROJECT_A on every invocation, so any
+        // interruption restarted the whole phase from zero (caught live in
+        // the 2026-10-21 agnes windowed run).
+        const resultsPath = join(RESULTS, `${MODEL}.jsonl`);
+        const hasColdRecords = existsSync(resultsPath)
+                ? readFileSync(resultsPath, "utf8").split("\n").some((l) => {
+                          if (!l.trim()) return false;
+                          try { return JSON.parse(l).phase === "cold"; } catch { return false; }
+                  })
+                : false;
+        if (!hasColdRecords) {
+                rmSync(PROJECT_A, { recursive: true, force: true });
+                mkdirSync(PROJECT_A, { recursive: true });
+                const init = await run(UNOWN_BIN, ["init"], { cwd: PROJECT_A, env: { ...process.env, PATH: TOOL_PATH, UNOWN_HOME }, timeoutMs: 60_000 });
+                console.log(`[init] exit ${init.code}: ${(init.out + init.err).trim().split("\n").slice(-2).join(" / ")}`);
+                snapshotMemory("cold-before");
+        } else {
+                console.log("[cold] resuming — PROJECT_A and its dreamed memory preserved");
+        }
         await passTasks(PROJECT_A, "cold");
         snapshotMemory("cold-after");
         const notes = await run("curl", ["-s", "-m", "5", `${ENGINE}/api/notes`], { timeoutMs: 10_000 });
@@ -316,8 +356,20 @@ async function phaseWaitDream() {
 
 async function phaseWarm() {
         await ensureHome();
-        rmSync(PROJECT_B, { recursive: true, force: true });
-        mkdirSync(PROJECT_B, { recursive: true });
+        // Same resume rule as phaseCold (PROJECT_B + warm records).
+        const resultsPath = join(RESULTS, `${MODEL}.jsonl`);
+        const hasWarmRecords = existsSync(resultsPath)
+                ? readFileSync(resultsPath, "utf8").split("\n").some((l) => {
+                          if (!l.trim()) return false;
+                          try { return JSON.parse(l).phase === "warm"; } catch { return false; }
+                  })
+                : false;
+        if (!hasWarmRecords) {
+                rmSync(PROJECT_B, { recursive: true, force: true });
+                mkdirSync(PROJECT_B, { recursive: true });
+        } else {
+                console.log("[warm] resuming — PROJECT_B preserved");
+        }
         // Each task re-runs in a FRESH workspace that carries only the dreamed
         // per-task memory from the cold pass (see solveTask) — the clean isolation
         // of "what does Unown memory actually buy you on a repeat task".
@@ -330,8 +382,14 @@ function phaseReport() {
                 .split("\n")
                 .filter(Boolean)
                 .map((l) => JSON.parse(l));
-        const cold = records.filter((r) => r.phase === "cold");
-        const warm = records.filter((r) => r.phase === "warm");
+        // Last-record-wins dedupe by (phase, task): partial pre-resume windows
+        // could append a second record for an already-scored task; the final
+        // invocation's outcome is the one the phase finished with.
+        const deduped = new Map();
+        for (const r of records) deduped.set(`${r.phase}::${r.task}`, r);
+        const final = [...deduped.values()];
+        const cold = final.filter((r) => r.phase === "cold");
+        const warm = final.filter((r) => r.phase === "warm");
         const agg = (list) => ({
                 tasks: list.length,
                 passed: list.filter((r) => r.passed).length,

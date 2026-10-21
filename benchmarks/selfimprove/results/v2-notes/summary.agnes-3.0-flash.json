@@ -1,0 +1,24 @@
+{
+	"model": "agnes-3.0-flash",
+	"label": "repeat-task efficiency (memory doing its job) — n=10, single run, honest numbers",
+	"cold": {
+		"tasks": 10,
+		"passed": 9,
+		"input": 107583,
+		"output": 17717,
+		"cacheRead": 1160960,
+		"avgDurationS": 106
+	},
+	"warm": {
+		"tasks": 10,
+		"passed": 9,
+		"input": 319659,
+		"output": 38032,
+		"cacheRead": 3524352,
+		"avgDurationS": 79
+	},
+	"generatedAt": "2026-10-21T22:18:17.652Z",
+	"passRateLiftPp": 0,
+	"inputTokenDelta": 212076,
+	"outputTokenDelta": 20315
+}
