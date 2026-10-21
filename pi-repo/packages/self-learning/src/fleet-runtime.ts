@@ -30,6 +30,13 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { Type } from "typebox";
 import { stableLaneIndex, Text } from "@earendil-works/pi-tui";
+// isThemeInitialized: the print-mode fleet crash guard (2026-10-22). A -p
+// session never runs initTheme(), but bind() handed refreshUi the global
+// theme PROXY, whose not-initialized guard threw on the first subagent-lane
+// tick — killing real headless sessions mid-task (found live by the
+// transfer-bench induce run). The theme module's own doc: callers that can
+// run before boot use this check and take the plain-mode path.
+import { isThemeInitialized } from "@earendil-works/pi-coding-agent";
 import { cleanupWorktree, type WorktreeHandle } from "./worktree.ts";
 import {
         appendControlCommand,
@@ -695,7 +702,12 @@ export class FleetManager {
                         this.ui.setStatus("fleet", undefined);
                         return;
                 }
-                const theme = this.ui.theme;
+                // Defense in depth (2026-10-22): the bind site already passes
+                // undefined when the theme is not initialized (print mode), but
+                // ANY caller handing us the raw global proxy before initTheme
+                // must not crash the session either — the proxy throws on
+                // first property read when uninitialized.
+                const theme = isThemeInitialized() ? this.ui.theme : undefined;
                 // Beauty-4 (subagent lanes): one stable lane color per child name.
                 // The tokens mirror coding-agent's theme schema (subagentLane0..7);
                 // a theme without the optional palette (getFgRgb undefined) keeps
@@ -986,7 +998,9 @@ export function registerFleetSurface(pi: any, manager: FleetManager, opts: { cwd
                         {
                                 setWidget: (key, lines) => ctx?.ui?.setWidget?.(key, lines),
                                 setStatus: (key, text) => ctx?.ui?.setStatus?.(key, text),
-                                theme: ctx?.ui?.theme,
+                                // undefined in print mode (no initTheme) — refreshUi's
+                                // lane coloring then takes its documented no-theme path.
+                                theme: isThemeInitialized() ? ctx?.ui?.theme : undefined,
                                 notify: (text, level) => ctx?.ui?.notify?.(text, level),
                         },
                         (content, _details, kind) => {

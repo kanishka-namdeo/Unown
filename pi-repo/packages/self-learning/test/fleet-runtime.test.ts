@@ -449,3 +449,48 @@ describe("ask delivery is once-per-question (live-regression: the re-ask loop)",
                 manager.dispose();
         });
 });
+
+// ---------------------------------------------------------------------------
+// 2026-10-22 regression: the print-mode fleet crash (found live by the
+// transfer-bench induce run). In a `unown -p` session initTheme() never
+// runs, but the fleet surface bound ctx.ui.theme — the global theme PROXY,
+// which throws on its first property read while uninitialized. The first
+// subagent-lane tick then killed real headless sessions mid-task. Pin: a ui
+// whose theme IS the raw proxy, with no initTheme, must render the widget
+// plain and never throw.
+// ---------------------------------------------------------------------------
+describe("FleetManager — print-mode theme crash guard (2026-10-22)", () => {
+        test("bind with the raw uninitialized theme proxy renders the widget without throwing", async () => {
+                const { isThemeInitialized, theme } = await import("@earendil-works/pi-coding-agent");
+                expect(isThemeInitialized()).toBe(false); // no TUI booted in this test process
+                const harness = new SpawnHarness();
+                const dir = freshDir();
+                const { manager, widgets } = {
+                        manager: new FleetManager({
+                                cwd: TMP,
+                                fleetDir: dir,
+                                invocation: (args) => ({ command: "fake-unown", args }),
+                                spawnProc: harness.spawn as any,
+                        }),
+                        widgets: [] as string[][] | undefined[],
+                };
+                manager.bind(
+                        {
+                                setWidget: (_key: string, lines: string[] | undefined) => widgets.push(lines as string[][]),
+                                setStatus: () => {},
+                                // the EXACT pre-fix crash shape: the global proxy, uninitialized
+                                theme: theme as unknown,
+                                notify: () => {},
+                        },
+                        () => {},
+                );
+                // drive one child to running so refreshUi renders the lane widget
+                const ack = manager.spawnFleetChild({ ...REQUEST, name: "scout" });
+                expect(ack.ok).toBe(true);
+                const fake = harness.procs[harness.procs.length - 1];
+                fake.emitLine({ type: "fleet-status", status: "running", name: "scout" });
+                await new Promise((r) => setTimeout(r, 50));
+                // no throw, and a widget was rendered (plain lanes)
+                expect(widgets.length).toBeGreaterThan(0);
+        });
+});

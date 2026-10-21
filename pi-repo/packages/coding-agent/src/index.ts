@@ -414,6 +414,9 @@ export {
 	getSettingsListTheme,
 	highlightCode,
 	initTheme,
+	// pre-boot safety gate for the global theme proxy (used by consumers that
+	// can run before initTheme — e.g. the fleet runtime's print-mode sessions):
+	isThemeInitialized,
 	Theme,
 	theme,
 	type ThemeColor,
