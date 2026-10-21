@@ -6,3 +6,4 @@
 #   src/path/to/file.tsx   reason the rule cannot apply here
 #
 # Current exemptions: none — every changed line is exercisable.
+src/app/layout.tsx   next/font/google exports are compiler-generated — importing the module under bun test is a SyntaxError (pinned by src/app/__tests__/layout.test.tsx as a text drift-gate + asset-existence check instead)

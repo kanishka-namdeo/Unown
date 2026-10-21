@@ -5392,7 +5392,15 @@ export class InteractiveMode {
                         const rows: Array<{ id: string; keys: string[]; description: string }> = [];
                         const idsByKey = new Map<string, string[]>();
                         for (const [id, keys] of Object.entries(resolved)) {
-                                const keyList = (Array.isArray(keys) ? keys : [keys]).filter((k) => typeof k === "string" && k.length > 0);
+                                // Type predicate required: without it the filter narrows
+                                // nothing — keyList stays (KeyId | undefined)[] and the
+                                // rows.push / idsByKey uses below fail tsc (U1 shipped
+                                // with those three errors red on the 3-OS matrix). KeyId
+                                // (a string-literal union) satisfies both rows' string[]
+                                // and idsByKey's Map<string, ...> keys.
+                                const keyList = (Array.isArray(keys) ? keys : [keys]).filter(
+                                        (k): k is KeyId => typeof k === "string" && k.length > 0,
+                                );
                                 if (keyList.length === 0) continue;
                                 let description: string;
                                 try {
