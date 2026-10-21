@@ -236,6 +236,14 @@ describe.skipIf(!GATE)("memory live loop (scratch engine + real bridge)", () => 
                 try {
                         routerMod?.router.stop();
                 } catch {}
+                // Same leak class as engine-supervisor.test.ts's afterAll:
+                // startServer() also boots the automations scheduler's 20s poll
+                // interval, and Bun's server.stop() only closes the HTTP
+                // listener. Left running, it keeps ticking against the shared
+                // store for every LATER file in this one bun-test process.
+                try {
+                        serverMod?.automationsScheduler.stop();
+                } catch {}
                 engine?.stop(true);
                 proxy?.stop(true);
         }, 20_000);

@@ -19,10 +19,28 @@ import {
 } from "../src/engine-supervisor.ts";
 import { DATA_DIR } from "../src/store.ts";
 import { startServer, store } from "../src/index.ts";
+import { router } from "../src/router.ts";
+import { automationsScheduler } from "../src/server.ts";
 
 const LOCK = join(DATA_DIR, "engine.lock");
 
 afterAll(() => {
+        // The lock tests above boot the REAL startServer() in-process, which
+        // starts the module-singleton router + automations scheduler
+        // (server.ts) — and Bun's server.stop() only closes the HTTP listener;
+        // the router/scheduler teardown lives on the signal-drain path this
+        // process never takes. bun test runs every file in ONE process with a
+        // shared bus, and bun's file-loading order varies by platform and
+        // runner (see bunfig.toml): leaving the singleton subscribed made every
+        // LATER file's improvement:shipped / run:finished emit double-execute
+        // event jobs — the router.test.ts HIGH-1 queue flake on the CI matrix.
+        // Detach both before this file hands the process to the next suite.
+        try {
+                router.stop();
+                automationsScheduler.stop();
+        } catch {
+                /* best effort */
+        }
         try {
                 if (existsSync(LOCK)) rmSync(LOCK);
         } catch {

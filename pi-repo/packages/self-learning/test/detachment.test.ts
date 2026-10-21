@@ -11,6 +11,15 @@
  * and opens the store, so in-process imports prove nothing. Each case spawns
  * `bun` with a unique PI_SELFLEARNING_DB and checks both the storeOpened()
  * probe and that no database file materialized.
+ *
+ * Every probe test carries an explicit 120s timeout (the cli.ts one already
+ * did): each spawns a fresh `bun` boot against a possibly-cold transpile
+ * cache, which on CI's 2-vCPU runners can take seconds — a truly hung probe
+ * should surface via the spawnSync 60s kill + the exit-code assert below,
+ * not as a bare runner timeout. (The RUNTIME contract test's original CI
+ * timeout had a second, sharper cause on top of boot cost — see that test's
+ * comment: chat()'s transient-retry backoff ladder against a dead port,
+ * which only trips on bun versions whose fetch error says "fetch failed".)
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
@@ -60,28 +69,28 @@ describe("terminal-agent detachment (M2)", () => {
                 expect(r.code).toBe(0);
                 expect(r.opened).toBe(false);
                 expect(r.dbExists).toBe(false);
-        });
+        }, 120_000);
 
         test("term.ts (memory + note delivery) imports without opening the engine DB", () => {
                 const r = probeTerminalChain(["term.ts"]);
                 expect(r.code).toBe(0);
                 expect(r.opened).toBe(false);
                 expect(r.dbExists).toBe(false);
-        });
+        }, 120_000);
 
         test("llm.ts (bridge client) imports without opening the engine DB", () => {
                 const r = probeTerminalChain(["llm.ts"]);
                 expect(r.code).toBe(0);
                 expect(r.opened).toBe(false);
                 expect(r.dbExists).toBe(false);
-        });
+        }, 120_000);
 
         test("bash-policy.ts is the pure policy seam (no store, no bus, no DB)", () => {
                 const r = probeTerminalChain(["bash-policy.ts"]);
                 expect(r.code).toBe(0);
                 expect(r.opened).toBe(false);
                 expect(r.dbExists).toBe(false);
-        });
+        }, 120_000);
 
         test("providers-command.ts (the /providers slash command) imports without opening the engine DB", () => {
                 // R2's purity contract: the in-chat provider manager is a
@@ -90,7 +99,7 @@ describe("terminal-agent detachment (M2)", () => {
                 expect(r.code).toBe(0);
                 expect(r.opened).toBe(false);
                 expect(r.dbExists).toBe(false);
-        });
+        }, 120_000);
 
         test("hooks.ts (ENGINE side) still opens the store on first logHook — the engine keeps its DB", () => {
                 // The engine-side module must keep working: logHook writes hook_log.
@@ -123,7 +132,7 @@ console.log("STORE_OPENED=" + storeOpened());
                 expect(/STORE_OPENED=true/.test(res.stdout ?? "")).toBe(true);
                 expect(existsSync(dbPath)).toBe(true);
                 rmSync(root, { recursive: true, force: true });
-        });
+        }, 120_000);
 
         test("the full CLI entry chain (cli.ts) imports without opening the engine DB", () => {
                 // cli.ts is the heaviest terminal import (pi runtime, tools, addons).
@@ -138,18 +147,34 @@ console.log("STORE_OPENED=" + storeOpened());
                 // The summary-context subagent brief (tools.ts → llm.chat) was the one
                 // RUNTIME path that could drag the store into the terminal process via
                 // the governor's ledger hooks (found by the cross-platform review).
-                // A real chat() attempt — failing against the dead bridge — must leave
-                // the DB untouched: the governor is inert outside the engine process.
+                // A real chat() attempt must leave the DB untouched: the governor is
+                // inert outside the engine process.
+                //
+                // The bridge is a local 503 responder, NOT the historical dead port:
+                // bun's connection-refused error MESSAGE differs by version ("Unable
+                // to connect…" on 1.3.x, Node-style "fetch failed" on 1.4.x — the CI
+                // packageManager), and only the "fetch failed" wording matches
+                // chat()'s transient-retry regex, whose 2s+4s backoff ladder (~6s
+                // total) blew the old 5s default timeout on every leg of the CI
+                // matrix (RUNTIME was the sole detachment failure — the pure-import
+                // probes never call chat()). A 503 fails chat() in ONE attempt on
+                // every bun version: the contract under test is WHAT the attempt
+                // touches, not how the bridge fails — the ledger/breaker hooks fire
+                // on the same governed catch path either way.
                 const root = join(tmpdir(), `unown-runtime-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
                 mkdirSync(root, { recursive: true });
                 const dbPath = join(root, "engine.db");
                 const script = `
 import { chat } from ${JSON.stringify(join(PKG_ROOT, "src/llm.ts"))};
 import { storeOpened } from ${JSON.stringify(join(PKG_ROOT, "src/store.ts"))};
+const sick = Bun.serve({ port: 0, fetch: () => new Response("down", { status: 503 }) });
+process.env.PI_BRIDGE_URL = \`http://127.0.0.1:\${sick.port}\`; // bridgeUrl() reads env at call time
 try {
         await chat([{ role: "user", content: "hi" }], { timeoutMs: 1000 });
 } catch {
-        /* expected — dead bridge; the point is what the attempt touched */
+        /* expected — the bridge is down; the point is what the attempt touched */
+} finally {
+        sick.stop(true);
 }
 console.log("STORE_OPENED=" + storeOpened());
 `;
@@ -171,5 +196,5 @@ console.log("STORE_OPENED=" + storeOpened());
                 expect(/STORE_OPENED=false/.test(res.stdout ?? "")).toBe(true);
                 expect(existsSync(dbPath)).toBe(false);
                 rmSync(root, { recursive: true, force: true });
-        });
+        }, 120_000);
 });

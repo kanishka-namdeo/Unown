@@ -135,6 +135,16 @@ export class Router {
         }
 
         async start() {
+                // Idempotent, mirroring AutomationsScheduler.start(): the engine
+                // lock's same-pid path supports an in-process restart calling
+                // startServer() twice (server.ts re-enters with our own pid), and
+                // without this guard every re-entry re-registered the event
+                // handlers — each bus event then dispatched N times (the extras
+                // throw "router is busy" and land in pendingEvents, so a restart
+                // doubled/tripled every queued sweep) — and overwrote this.timer,
+                // leaking the previous interval: stop() could only ever clear
+                // the most recent one.
+                if (this.timer) return;
                 for (const def of JOB_DEFS) {
                         const existing = store.get(`SELECT id FROM jobs WHERE id = ?`, [def.id]);
                         if (!existing) {
@@ -186,8 +196,14 @@ export class Router {
         }
 
         stop() {
-                if (this.timer) clearInterval(this.timer);
+                // Null the timer so start() is re-entrant after a stop (the guard
+                // above keys on it) — stop() used to leave the stale handle set.
+                if (this.timer) {
+                        clearInterval(this.timer);
+                        this.timer = null;
+                }
                 for (const off of this.handlers) off();
+                this.handlers = [];
                 this.pendingEvents = []; // no zombie queued jobs after stop
         }
 
