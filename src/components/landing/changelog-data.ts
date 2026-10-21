@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 122;
+export const CHANGELOG_TOTAL_ENTRIES = 123;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 54,
   "Changed": 7,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 52,
+  "Fixed": 53,
   "Security": 0,
   "Behavior": 7
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.1",
     "date": "2026-10-21",
-    "total": 122,
+    "total": 123,
     "counts": {
       "Added": 54,
       "Changed": 7,
       "Deprecated": 0,
       "Removed": 2,
-      "Fixed": 52,
+      "Fixed": 53,
       "Security": 0,
       "Behavior": 7
     },
@@ -93,6 +93,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "the darwin-x64 smoke leg moves to macos-15-intel — macos-13 was retired 2025-12-04 and its jobs queue forever",
+            "behavior": false
+          },
           {
             "title": "the artifact builder's zip path resolved inside the stage dir — the first release that ever shipped binaries…",
             "behavior": false
