@@ -211,6 +211,17 @@ jobs:
         # post-stop probe treats ANY HTTP answer as still-alive.
         shell: bash
         run: |
+          # Pre-clean: a stray engine on 3030 from an earlier step (a leaked
+          # test child — the acp e2e once lost one to the M6 auto-start latch)
+          # makes the launcher REUSE it ("already healthy", 401 counts as
+          # present) and this gate then fails to authenticate against a token
+          # this step never wrote. Start from a provably clean slate.
+          bun run agent:stop >/dev/null 2>&1 || true
+          sleep 2
+          if node -e "fetch('http://127.0.0.1:3030/').then(()=>process.exit(0)).catch(()=>process.exit(1))"; then
+            echo "::error::a process is still answering on :3030 before the smoke starts - leaked engine from an earlier step"
+            exit 1
+          fi
           bun run agent:start
           # The launcher exits right after its health wait; the services must
           # outlive it (bun#31603 would kill them with the parent).

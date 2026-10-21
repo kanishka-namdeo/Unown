@@ -350,6 +350,16 @@ function startAcp(bridge: MockBridge, root: string): Wire {
         env.PI_BRIDGE_URL = bridge.url;
         env.PI_SELFLEARNING_DB = join(root, "db", "selflearning.db");
         env.PI_SELFLEARNING_DATA = join(root, "data");
+        // The sanitization above strips PI_DISABLE_ENGINE_SPAWN (set by
+        // test/_env.ts for THIS process) — without re-arming it, the spawned
+        // CLI's M6 auto-start latch fires `unown engine serve` DETACHED when
+        // the ACP session touches the engine lane, and that child survives
+        // the test process holding :3030 with this temp dir's token. The CI
+        // full-stack smoke later reuses the ghost as "already healthy"
+        // (probeHttpOk counts 401 as present) and then fails to authenticate
+        // against it — "engine did not survive the launcher exit" (all 3 OSes,
+        // b754c7a). No subprocess of a test may ever auto-start an engine.
+        env.PI_DISABLE_ENGINE_SPAWN = "1";
         // Windows: bin/unown is a bun shebang script (spawn of a POSIX script
         // dies with ENOENT), and Node's CVE-2024-27980 fix rejects args with
         // cmd.exe metacharacters for .bat/.cmd shims — route through bun,

@@ -9,7 +9,7 @@
  *
  * Steps:
  *   1. verify bun ≥ 1.2 (per-OS install hint if missing/too old)
- *   2. bun install          (dashboard dependencies, repo root)
+ *   2. bun install          (landing-page dependencies, repo root)
  *   3. bun install          (pi-repo/, vendored pi coding agent)
  *   4. bun run build:offline (pi-repo/, compiled packages)
  *   5. bootstrap .env from .env.example when absent
@@ -68,7 +68,7 @@ const PI_REPO = path.join(REPO_ROOT, "pi-repo");
 
 // ------------------------------------------------------- step 1: root install
 // (step failures exit with the child's exit code, like install.sh's `set -e`)
-console.log(`${sym.step} [1/6] Installing dashboard dependencies (bun install)...`);
+console.log(`${sym.step} [1/6] Installing landing-page dependencies (bun install)...`);
 {
   const code = run(BUN, ["install"], { cwd: REPO_ROOT });
   if (code !== 0) die(`${sym.fail} root bun install failed (exit ${code}) - see output above`, code);
@@ -213,7 +213,7 @@ if (upstreamKeySet) {
 }
 console.log("");
 console.log("  2. Start the stack:");
-console.log("       bun run agent:start        # llm-bridge :3031 + engine :3030 + dashboard :3000");
+console.log("       bun run agent:start        # llm-bridge :3031 + engine :3030 (mission control: unown dashboard)");
 console.log("");
 console.log("  3. Verify & use the agent:");
 console.log("       unown doctor              # end-to-end diagnostics (should be green)");

@@ -299,6 +299,14 @@ export async function runUnown(args: string[], opts: UnownRunOptions): Promise<U
         env.PI_BRIDGE_URL = opts.bridgeUrl ?? opts.bridge.url;
         env.PI_SELFLEARNING_DB = join(root, "db", "selflearning.db");
         env.PI_SELFLEARNING_DATA = join(root, "data");
+        // Re-arm the M6 auto-start latch the sanitization just stripped (set
+        // for THIS process by test/_env.ts): a test's CLI subprocess must
+        // never spawn a detached `unown engine serve` — the child outlives
+        // the test, holds :3030 with a temp-dir token, and poisons the CI
+        // full-stack smoke (the acp e2e leaked exactly this way; see
+        // acp.test.ts). Callers that WANT a live engine pass one explicitly
+        // via opts.engineUrl.
+        env.PI_DISABLE_ENGINE_SPAWN = "1";
         for (const [k, v] of Object.entries(opts.env ?? {})) env[k] = v;
 
         // Windows: spawn(UNOWN_BIN) resolves to bin/unown.cmd via PATHEXT, and
