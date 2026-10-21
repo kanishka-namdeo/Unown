@@ -10,7 +10,8 @@ import { GLYPH_IDS } from "./glyphs";
 
 /**
  * Landing-page-only CSS, injected once and hoisted by React 19. Kept here
- * instead of `globals.css` because nothing on `/dashboard` should pay for it.
+ * instead of `globals.css` because nothing outside the landing page should pay
+ * for it.
  *
  * The reduced-motion block is the important part: every decorative animation
  * this page ships is opt-out in one place, so honouring the OS setting never

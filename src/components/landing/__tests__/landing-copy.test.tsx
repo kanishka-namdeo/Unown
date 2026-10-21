@@ -263,7 +263,7 @@ describe("landing faq", () => {
 describe("landing showcase", () => {
   test("the call-to-action installs the engine rather than opening a dead app", () => {
     render(<ShowcaseSection />);
-    const cta = screen.getByRole("link", { name: /Install it and open the dashboard/i });
+    const cta = screen.getByRole("link", { name: /Install it and run unown dashboard/i });
     expect(cta.getAttribute("href")).toBe("#quickstart");
   });
 });

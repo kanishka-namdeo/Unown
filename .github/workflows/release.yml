@@ -8,7 +8,7 @@
 #   1. the full install path on all three OSes (the same real-installer
 #      matrix CI runs — a release that does not install cleanly does not
 #      exist),
-#   2. the production dashboard build + standalone-server smoke,
+#   2. the production landing build + standalone-server smoke,
 #   3. the engine suite + integration suite + bridge suite + version
 #      consistency + CLI smokes (the release assertion: strategy §12
 #      criterion 2),
@@ -143,7 +143,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.3"
-      - name: Install (dashboard deps + built pi workspace)
+      - name: Install (landing deps + built pi workspace)
         # The compiled artifacts import pi's BUILT output: the image-resize
         # worker is a second compile entrypoint and lives under
         # pi-repo/packages/coding-agent/dist. So this job runs the same
@@ -152,10 +152,8 @@ jobs:
         env:
           UNOWN_NO_LINK: "1"
         run: bun scripts/install.ts
-      - name: Prisma client + production build
-        run: |
-          bun run db:generate
-          bun run build
+      - name: Production build
+        run: bun run build
       - name: Standalone server smoke
         run: |
           PORT=3210 node .next/standalone/server.js &
@@ -164,8 +162,7 @@ jobs:
             curl -sf -m 2 http://127.0.0.1:3210/ >/dev/null 2>&1 && break
             sleep 1
           done
-          curl -sf -m 5 http://127.0.0.1:3210/ >/dev/null && \
-          curl -sf -m 5 http://127.0.0.1:3210/dashboard >/dev/null
+          curl -sf -m 5 http://127.0.0.1:3210/ >/dev/null
           kill $server_pid
       - name: Build the six per-OS CLI artifacts
         run: bun scripts/build-artifacts.ts --out release-assets
@@ -223,7 +220,7 @@ jobs:
             echo "## Release verification receipt"
             echo
             echo "- 3-OS real-installer matrix (ubuntu/macos/windows): install.ts → engine unit suite → integration suite (real server + mock bridge) → bridge suite → version consistency → CLI smokes — all green"
-            echo "- Production dashboard build + standalone server smoke (/ and /dashboard answered 200)"
+            echo "- Production landing build + standalone server smoke (/ answered 200)"
             echo "- Six per-OS \`unown\` CLI binaries built by one ubuntu runner from $(node -p "require('./package.json').version"); five of the six were then downloaded, extracted and EXECUTED on their own OS (linux arm64+x64, darwin arm64+x64, windows x64). windows-arm64 ships untested: GitHub has no arm64 Windows runner."
             echo "- SBOM (SPDX) and sha256sums.txt attached; build-provenance attestation recorded for the tag"
             echo "- \`unown --version\` === package.json.version === tag, in the checkout AND in every smoke-tested binary"

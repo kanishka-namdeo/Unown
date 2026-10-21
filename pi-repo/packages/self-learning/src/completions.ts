@@ -206,6 +206,7 @@ export function zshCompletion(): string {
                 '    "recipes:declarative instruction bundles (list/run/create/validate)"',
                 '    "wiki:auto-generated repo wiki (generate/search/list/show)"',
                 '    "acp:run the ACP editor server on stdio (Zed et al.)"',
+                '    "dashboard:the TUI mission control (fullscreen; alias dash)"',
                 '    "note:deliver a session note to the engine"',
                 '    "update:self-update to the newest release"',
                 '    "changelog:print recent CHANGELOG sections"',

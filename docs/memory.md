@@ -66,7 +66,7 @@ Notes are the raw material AutoDream consolidates. They enter four ways:
 
 Delivery is a `POST /api/notes` to the engine (`UNOWN_ENGINE_URL`, default `http://127.0.0.1:3030`) carrying the note text and the project path (the engine caps a note at 20,000 characters — far beyond anything a session note should be). When the engine is unreachable — down, or you are working offline — the note is written to `~/.unown/notes/outbox/` as `<timestamp>-<project-slug>.md` with the project path and time in a small front-matter block, and nothing is lost. The engine ingests the outbox on boot and on its `note-sync` job (every 5 minutes), then archives each file to `~/.unown/notes/done/`.
 
-You can watch the pipeline move: notes appear on the dashboard's Dreams tab as pending, get consumed by the next dream, and the dream's output shows exactly what was merged, pruned and added.
+You can watch the pipeline move: notes appear on the TUI dashboard's Dreams screen (`unown dashboard`) as pending, get consumed by the next dream, and the dream's output shows exactly what was merged, pruned and added.
 
 From there AutoDream takes over: benchmark notes feed the engine's own project memory, terminal notes feed **your** project's memory. A note is only consumed once — `markDreamed` ties it to the dream that ingested it.
 
@@ -76,10 +76,10 @@ The `auto-dream` job (every 10 minutes, plus a `dream-check` event that wakes it
 
 Two consolidation paths:
 
-- **Benchmark notes → the engine's own project memory**, gated by a canary: the freshly dreamed memory must re-pass the most recently passing task. A dream that breaks it is rolled back automatically and shows up with status `gated` on the dashboard. `PI_DREAM_GATE=0` disables the gate ([configuration](configuration.md)).
+- **Benchmark notes → the engine's own project memory**, gated by a canary: the freshly dreamed memory must re-pass the most recently passing task. A dream that breaks it is rolled back automatically and shows up with status `gated` in the TUI dashboard's Dreams screen. `PI_DREAM_GATE=0` disables the gate ([configuration](configuration.md)).
 - **Terminal notes → your project's `.unown/memory/project.md`.** Pending notes are grouped by project and each group is consolidated into that project's own memory file — the one the next session there reads. The engine-side dream needs at least 3 undreamed benchmark notes before it fires; project dreams run whenever terminal notes are pending.
 
-Every consolidation is versioned in the engine DB — engine tiers under their own names (attributable: `seed` / `harness` / `autodream` / `rollback`), your project's memory under a synthetic `project:<slug>` tier. For the engine's four tiers the dashboard Memory tab shows the full history with one-click rollback; for your project's file the versions are recorded (and the project dreams appear on the Dreams tab with their version numbers), but restoring means pasting a previous version back into the file — which is trivial, because the file is plain Markdown on your disk.
+Every consolidation is versioned in the engine DB — engine tiers under their own names (attributable: `seed` / `harness` / `autodream` / `rollback`), your project's memory under a synthetic `project:<slug>` tier. For the engine's four tiers the TUI dashboard's Memory screen shows the full history with one-key rollback; for your project's file the versions are recorded (and the project dreams appear on the Dreams screen with their version numbers), but restoring means pasting a previous version back into the file — which is trivial, because the file is plain Markdown on your disk.
 
 ### Two different "project memories"
 
@@ -92,7 +92,7 @@ Do not confuse the two files that share a tier name:
 | Written by | harness improvements + benchmark dreams | project dreams (+ you, by hand) |
 | Gated by | canary re-run of the last-passing task | nothing — your notes, your file |
 
-The engine's own memory is what the five-mechanism loop improves; your project's memory is what your sessions accumulate. The dashboard Memory tab shows the engine's four tiers and the skills minted into your projects; your project's dreams show up on the Dreams tab.
+The engine's own memory is what the five-mechanism loop improves; your project's memory is what your sessions accumulate. The TUI dashboard's Memory screen shows the engine's four tiers and the skills minted into your projects; your project's dreams show up on the Dreams screen.
 
 ## Skills minting
 
@@ -103,7 +103,7 @@ Guardrails on minting:
 - max **2 skills per dream** (quality bar) and a **24-skill ceiling per project** (context budget for the skill index)
 - every proposal is validated against the Agent Skills contract and deduplicated against everything already on disk
 - every version is recorded in the engine DB; rollback restores a previous version's file
-- **retiring** a skill (removing its directory from your project) is a deliberate dashboard action — the engine never deletes your files on its own
+- **retiring** a skill (removing its directory from your project) is a deliberate TUI-dashboard action — the engine never deletes your files on its own
 
 See [skills](skills.md) for the full skills story, including the seeded starters.
 
@@ -144,7 +144,7 @@ What a teammate gets when they clone the repo: the shared project memory and the
 - `unown memory` — prints the effective four-tier stack for the current directory, exactly as a session receives it.
 - `/learning` — the same stack, in-session, re-read from disk.
 - `unown doctor` — verifies the project and user memory files exist ([troubleshooting](troubleshooting.md)).
-- Dashboard → **Memory** tab — the engine's four tiers with contents, full version history and one-click rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files).
+- `unown dashboard` → **Memory** screen — the engine's four tiers with contents, full version history and one-key rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files).
 
 ## Learning integrity (how the system polices itself)
 
@@ -154,8 +154,8 @@ Self-modification without gates degenerates fast, so every memory write is contr
 - **Mint gate** — a minted task only becomes an active capability eval if the agent genuinely FAILS it in a fresh sandbox; tasks the agent already solves are discarded (honest outcome), and minted tasks graduate into the regression suite only by passing a later harness cycle.
 - **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`).
 - **Retention check** — if a task later fails after its improvement shipped, the improvement is marked `regressed` and the memory is rolled back to the pre-ship version (auto-unship).
-- **Skill mint gate** — skills are minted only from recurring multi-step procedures in consolidated notes, max 2 per dream, validated against the Agent Skills contract, deduplicated against everything already on disk; every version is recorded and rollback-able, retirement is a deliberate dashboard action (the engine never deletes your files on its own).
-- **Full version history** — every write to every engine tier is versioned and attributable; engine tiers and minted skills roll back from the dashboard. Project memory (`.unown/memory/project.md`) is a plain versioned Markdown file — the engine records every version it writes, and restoring means pasting a prior version back (skills additionally have one-click rollback/retire with file writeback).
+- **Skill mint gate** — skills are minted only from recurring multi-step procedures in consolidated notes, max 2 per dream, validated against the Agent Skills contract, deduplicated against everything already on disk; every version is recorded and rollback-able, retirement is a deliberate TUI-dashboard action (the engine never deletes your files on its own).
+- **Full version history** — every write to every engine tier is versioned and attributable; engine tiers and minted skills roll back from the TUI dashboard. Project memory (`.unown/memory/project.md`) is a plain versioned Markdown file — the engine records every version it writes, and restoring means pasting a prior version back (skills additionally have one-key rollback/retire with file writeback).
 
 ## What a learning session looks like
 

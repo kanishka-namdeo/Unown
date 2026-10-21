@@ -122,7 +122,7 @@ Handler types (the `type` field):
 
 Common handler fields: `timeoutMs` (default 10 000, max 60 000), `async` (fire-and-forget — don't block the turn), `failClosed` (runner error → `deny` instead of `allow`).
 
-Semantic output entries (the `outputs[].kind` field) surface to the model and the dashboard:
+Semantic output entries (the `outputs[].kind` field) surface to the model and the TUI dashboard:
 
 - `feedback` — informational, model sees it
 - `warning` — model sees it; non-blocking
@@ -236,7 +236,7 @@ A pure-regex pattern scanner with risk levels and categories, reverse-engineered
 
 ### New standalone emitters (Milestone 1.3 — 2026-10-19)
 
-`SubagentStart` and `TaskCompleted` events are emitted by the `task` tool (in `tools.ts`) — they don't come from pi's event stream. In terminal sessions both dispatch to user handlers via `emitTerminalHookEvent`; engine runs log them as audit receipts through `hooks.ts`'s emitters. `PermissionRequest` is emitted when a tool_call would be denied — in terminal sessions from the single deny funnel every deny path funnels through, in engine runs via `emitPermissionRequest`. All three are visible in the receipts ledger and the dashboard's hook feed.
+`SubagentStart` and `TaskCompleted` events are emitted by the `task` tool (in `tools.ts`) — they don't come from pi's event stream. In terminal sessions both dispatch to user handlers via `emitTerminalHookEvent`; engine runs log them as audit receipts through `hooks.ts`'s emitters. `PermissionRequest` is emitted when a tool_call would be denied — in terminal sessions from the single deny funnel every deny path funnels through, in engine runs via `emitPermissionRequest`. All three are visible in the receipts ledger and the TUI dashboard's Hooks screen.
 
 ## Injection shield
 

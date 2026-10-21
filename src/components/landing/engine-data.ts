@@ -60,11 +60,17 @@ export const ENGINE_JOBS: EngineJob[] = [
     "kind": "interval",
     "interval": "15m",
     "event": null
+  },
+  {
+    "id": "db-retention",
+    "kind": "interval",
+    "interval": "1440m",
+    "event": null
   }
 ];
 
 export const ENGINE_JOB_COUNTS: { total: number; interval: number; event: number } = {
-  "total": 7,
-  "interval": 5,
+  "total": 8,
+  "interval": 6,
   "event": 2
 };

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * scripts/lib.ts — shared cross-platform helpers for the Unown lifecycle
- * scripts (install.ts, link.ts, start.ts, stop.ts, serve-dashboard.ts).
+ * scripts (install.ts, link.ts, start.ts, stop.ts).
  *
  * The scripts run under bun (≥ 1.2) on Windows, macOS and Linux. Everything
  * here uses only Node-compatible APIs (node:fs / node:path / node:child_process)

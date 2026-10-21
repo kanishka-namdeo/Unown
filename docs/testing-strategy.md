@@ -195,14 +195,14 @@ suite's path-semantics differ per OS and the differences are load-bearing
 
 | Surface | What exists | Measured | Gap |
 |---|---|---|---|
-| `src/` (dashboard + landing) | `bun test src` with happy-dom + RTL | 206 tests / 13 files, 0 fail `[V: 2026-10-18, Windows]`; since grown to 355 tests / 31 files, 0 fail `[V: 2026-10-21]` | E2E + a11y shipped (§6 gate 16); still open: visual regression + landing behavioural tests; line coverage re-measured 2026-10-21 `[V]`: 95.5% overall, `providers.tsx` 96.2% (now the `DashboardProviders` wrapper — the Providers tab is gone), `activity-feed.tsx` 100% |
+| `src/` (the landing page only, since D7) | `bun test src` with happy-dom + RTL | 66 tests / 10 files, 0 fail `[V: 2026-10-21]`. History: this tree was the web dashboard + landing until D7 retired the web dashboard — it peaked at 355 tests / 31 files `[V: 2026-10-21]`; the dashboard half left with the web dashboard, and its replacement suites (TUI render/store/auth, 23 tests) live in the engine's own tree (`pi-repo/packages/self-learning/test/dashboard-*.test.ts`) and run in the 3-OS `build-test` matrix | E2E + a11y shipped and landing-scoped (§6 gate 16); still open: visual regression + landing behavioural tests; the changed-line coverage gate applies with an EMPTY exemption list (`scripts/coverage-exempt.txt` — the `agent-types.ts` entry left with the file) |
 | `pi-repo/.../self-learning` (engine) | `bun test test/` unit + guard + canary + budget suites; `test/cli/golden.test.ts`; `test/termhooks.adversarial.test.ts`; `test/integration/`; new: `tools.test.ts`, seatbelt and Windows-hook tests (M2/M3) | pre-fix `888c8fa`: 603 pass / 35 skip / 64 fail of 702; post-fix `ae7b01b` (three-OS portability): **600 pass / 79 skip / 25 fail of 704** across 20 files `[V: 2026-10-18, Windows, bun 1.4.2 AND pinned 1.4.3 - not a bun-version delta]`; ubuntu leg green on both runs (733/37/0 at run 39071373372) | the 25 residuals (§7.2): canary suite 6, CLI golden 16, path tests 3; no fault injection, no load test, no coverage measurement, no property fuzzing; live suites are env-gated and therefore never run in CI |
 | `mini-services/llm-bridge` | `bun test pure.test.ts` (pure routing/thinking/retry/backoff/SSE math) + env-gated VLM smoke | 95 tests, 0 fail `[V: 2026-10-18, Windows]` | No load/chaos, no cancellation test, no contract test against a real OpenAI client; in CI since round three (§6 gate 11, the dedicated `bridge` job) |
 | `bin/unown` (CLI + TUI) | `test/cli/golden.test.ts` (setup/doctor/memory/plan/headless/env-knobs/parallel) | covered in the engine suite above | The golden suite still fails 16 cases on this Windows tree after `ae7b01b` (subprocess-spawn families, §7.2); no TUI interaction test, no `unown setup` idempotency-under-failure test |
 | `pi-repo/*` (upstream vendored) | `npm run test` per workspace with pinned model-catalog snapshots | pre-merge Linux receipt: 4,809 pass / 0 fail / 13 skip `[V: benchmarks/snapshots/track1-rerun-2026-10-17/summary.json]` | Out of our scope by policy (§13); receipt needs re-measuring post-merge on the Linux box |
 | Benchmarks | Tracks 1-9 (`benchmarks/README.md`) | re-verified 2026-10-17 with receipts `[C: benchmarks/RESULTS.md]` | No time-horizon ladder, no judge calibration, no external memory benchmark |
 | Sandbox | `bwrap_smoke.sh` (25 checks), `verify_sandbox.mjs` (12 checks) | In CI as the `sandbox-smoke` job (ubuntu) `[V: ci.yml]`; trajectory across runs: red 10/11/1 at `afd962b` (launcher dies) `[V: 39069143075]` -> profile step green 21/0/1, engine step red 10/2 at `ae7b01b` `[V: 39071373372]` -> **fully green** (both steps) at `a13cf9d` `[V: 39072290887]` | the launcher-vs-engine split diagnosed itself across the three runs; the record keeps the per-step receipts (§7.5) |
-| CI (`.github/workflows/ci.yml`) | lint-shell, `build-test` (3-OS real-installer matrix + engine + integration suites + CLI smokes), `sandbox-smoke` (ubuntu), bridge (gate 11), build (gate 14), lint, typecheck, `bun test src`, coverage gate, docs gate, theme, GBA palette + landing claims, security (gitleaks + `bun audit --prod`), mermaid (gate 15), e2e (gate 16) | 15 jobs `[V: ci.yml, 2026-10-21]` | No Lighthouse, no load/soak; at run 39072290887 (`a13cf9d`): `sandbox-smoke` fully green, all dashboard gates green, engine legs red (ubuntu 735/37/1, windows 689/80/3, macos 729/41/3) |
+| CI (`.github/workflows/ci.yml`) | lint-shell, `build-test` (3-OS real-installer matrix + engine + integration suites + CLI smokes — the TUI dashboard's suites ride here), `sandbox-smoke` (ubuntu), bridge (gate 11), build (gate 14, `Production build (landing)`), lint (`Lint (landing)`), typecheck (`Typecheck (landing)`), `bun test src` (`Unit tests (landing)`), coverage gate, docs gate, theme, GBA palette + landing claims, security (gitleaks + `bun audit --prod`), mermaid (gate 15), e2e (gate 16, `E2E + a11y (landing)` — 3 tests) | 15 jobs `[V: ci.yml, 2026-10-21]` — the src-scoped jobs were RENAMED landing-scoped at D7, not rebuilt: same commands, no prisma generate, no dashboard smokes | No Lighthouse, no load/soak; at run 39072290887 (`a13cf9d`, pre-D7): `sandbox-smoke` fully green, all dashboard gates green, engine legs red (ubuntu 735/37/1, windows 689/80/3, macos 729/41/3) |
 
 ### 3.1 Reconciling the test counts
 
@@ -237,15 +237,18 @@ global figure.
 `bun test test/` plus the integration suite (`PI_TEST_SCOPE=integration`,
 gate 12), then `unown --help` and a `doctor`-table smoke), `sandbox-smoke`
 (ubuntu: `bwrap_smoke.sh` + `verify_sandbox.mjs`), the bridge suite (gate 11),
-the production build + standalone-server smoke (gate 14), dashboard lint (`bunx eslint
-src`), typecheck (`tsc --noEmit` after `db:generate`), dashboard unit tests
-(`bun test src`), the changed-line coverage gate (`scripts/check_coverage.mjs
---run`), the docs link/anchor gate (`scripts/check_docs.mjs docs/*.md`), theme
-schema, landing GBA palette + claims gates, the `security` job (gitleaks
-full-history secret scan + `bun audit --prod` with three documented
-prisma-internal ignores), mermaid byte-identity (gate 15), and Playwright
-E2E + axe-core (gate 16, the `e2e` job). A concurrency
-group cancels superseded runs.
+the production build + standalone-server smoke (gate 14, `Production build
+(landing)` — `/` 200 on a scratch port), landing lint (`Lint (landing)`,
+`bunx eslint src`), typecheck (`Typecheck (landing)`, `tsc --noEmit` — no
+`db:generate` since prisma left with the web dashboard), landing unit tests
+(`Unit tests (landing)`, `bun test src`), the changed-line coverage gate
+(`scripts/check_coverage.mjs --run`), the docs link/anchor gate
+(`scripts/check_docs.mjs docs/*.md`), theme schema, landing GBA palette +
+claims gates, the `security` job (gitleaks full-history secret scan +
+`bun audit --prod`; the three GHSA `--ignore` flags are prisma-era pins left
+vestigial by D7 — prisma is no longer a dependency), mermaid byte-identity
+(gate 15), and Playwright E2E + axe-core (gate 16, the `E2E + a11y (landing)`
+job — 3 tests). A concurrency group cancels superseded runs.
 
 Still absent: only Lighthouse (§12 criterion 6's second half). The
 integration suite (gate 12), `bun run build` (gate 14) and E2E/axe (gate 16)
@@ -451,7 +454,7 @@ carry large noise `[C]`.
 | Coverage as a gate | routine | targets stated, no gate (gate added in this revision) | **Fixed here** |
 | Long-horizon measurement | time-horizon curves, 6-8 runs/task | n=1, all models pass | **Behind on method** |
 | Memory-quality axes (contradiction, forgetting, interference) | the field's acknowledged frontier | untested | **Behind, and it is our differentiator** |
-| Dashboard/component testing | component + E2E + a11y | component suite + Playwright E2E + axe-core a11y (§6 gate 16) | **Level** (keyboard-only nav + visual regression still open, §7.1) |
+| Dashboard/component testing | component + E2E + a11y | TUI dashboard suites in the engine's own tree (`dashboard-render`/`-store`/`-auth` + the D6 mock engine) + the landing component suite + Playwright E2E + axe-core a11y for the landing page (§6 gate 16) | **Level** (keyboard-only nav + visual regression still open, §7.1) |
 | Failure taxonomy + memory-version bisection | rare outside vendor-internal work | present since the first revision | **Ahead** |
 
 ## 5. Test architecture as built
@@ -462,49 +465,52 @@ in the tree, and why it is the right call:
 | Layer | Tooling | Location | Speed/cost | When |
 |---|---|---|---|---|
 | Unit (pure functions, reducers, formats) | `bun test` (built in, no config) | `src/**/*.test.ts` | <5 s, $0 | every PR |
-| Component (React) | `bun test` + happy-dom + `@testing-library/react` + `user-event` | `src/components/dashboard/__tests__/` | <5 s, $0 | every PR |
+| Component (React, landing) | `bun test` + happy-dom + `@testing-library/react` + `user-event` | `src/components/landing/__tests__/` | <5 s, $0 | every PR (the TUI dashboard's component-level suites are the pi-repo rows below) |
 | Engine unit + guard suites | `bun test test/` | `pi-repo/packages/self-learning/test/` | <60 s, $0 | every PR (wired; ubuntu leg green, the fixture-level portability landed in `ae7b01b`, Windows residuals §7.2) |
-| Contract (engine <-> dashboard) | hand-maintained `src/lib/agent-types.ts` + integration fixture capture | `src/lib`, `test/integration/` | seconds | every PR (partial) |
+| Contract (engine <-> dashboard) | `pi-repo/.../self-learning/src/dashboard/dashboard-types.ts` + the D6 mock engine (`test/dashboard-mock-engine.ts`, typed REST+SSE stand-in) + integration fixture capture | `pi-repo/packages/self-learning/test/`, `test/integration/` | seconds | every PR (partial; the hand-maintained `src/lib/agent-types.ts` mirror left with the web dashboard — the TUI types live beside the engine they mirror) |
 | Integration (HTTP, SSE, DB) | real `startServer` on an ephemeral port, mock bridge, temp state | `test/integration/` | ~30 s, $0 | every PR (wired — §6 gate 12, the `PI_TEST_SCOPE=integration` step in `build-test`) |
 | CLI golden | subprocess `bin/unown` against a temp `UNOWN_HOME` | `test/cli/golden.test.ts` | ~2 min, $0 | every PR (wired inside the ubuntu build-test leg; 16 Windows residuals post-`ae7b01b`, §7.2) |
 | Adversarial corpus | labelled cases + expected decision | `test/termhooks.adversarial.test.ts` | <10 s | every PR |
 | Live probes (memory, poison, VLM) | env-gated (`UNOWN_MEMORY_LIVE=1`, `UNOWN_MEMORY_POISON=1`, `UNOWN_VLM_SMOKE=1`) | engine + bridge | minutes, $$ | weekly + pre-release |
 | Agent evals / benchmarks | existing `runner*.mjs` per track | `benchmarks/*` | hours, $$ | weekly + release |
-| End-to-end (UI) | Playwright + axe-core - **adopted** (§6 gate 16) | `e2e/` (smoke + a11y + landing-budget specs against `e2e/mock-engine.mjs`) | 5-15 min | every push/PR (the `e2e` CI job) |
+| End-to-end (UI) | Playwright + axe-core - **adopted** (§6 gate 16) | `e2e/` (a11y + landing-budget specs, 3 tests against the production landing build — no mock engine since D7) | 5-15 min | every push/PR (the `E2E + a11y (landing)` CI job) |
 | Sandbox | `bwrap_smoke.sh`, `verify_sandbox.mjs` | `scripts/` | ~1 min | every PR (in CI as the ubuntu `sandbox-smoke` job; `ae7b01b` adds the userns canary + sysctl pre-step - §7.5) |
 | Coverage | `bun test --coverage` + `scripts/check_coverage.mjs` | CI job | +5 s | every PR (shipped in this revision) |
 
 Notes on the two decisions that changed from the original proposal:
 
-- **`bun test` over Vitest.** The dashboard already runs on Bun, CI installs Bun,
-  and `bun test` needs no config or extra dependency. Vitest would add a second
-  runner to a repository whose engine is Bun-native. Cost: no built-in browser
-  environment (happy-dom is the substitute) and no first-class watch mode.
-- **No MSW.** The dashboard's network surface is one typed client
-  (`src/lib/agent-api.ts`), so component tests stub `fetch` at that boundary
-  instead of running a service-worker mock. Revisit only if a second HTTP client
-  appears; MSW buys little when the whole surface is one module.
+- **`bun test` over Vitest.** The landing page and the engine both run on Bun,
+  CI installs Bun, and `bun test` needs no config or extra dependency. Vitest
+  would add a second runner to a repository whose engine is Bun-native. Cost:
+  no built-in browser environment (happy-dom is the substitute) and no
+  first-class watch mode.
+- **No MSW.** `src/` no longer has an engine client at all since D7 — the
+  landing page's only test-time network surface is the wrapped star-count
+  fetch, and the TUI dashboard's client is tested in pi-repo against the D6
+  mock engine (`test/dashboard-mock-engine.ts`). Revisit only if a second
+  HTTP client appears in `src/`; MSW buys little when the whole surface is one
+  module.
 
 ## 6. CI gate ledger
 
 | # | Gate | Status | Note |
 |---|---|---|---|
 | 1 | `bunx eslint src` | SHIPPED | |
-| 2 | `bun run typecheck` (`tsc --noEmit`, after `db:generate`) | SHIPPED | |
-| 3 | `bun test src` | SHIPPED | 206 tests |
+| 2 | `bun run typecheck` (`tsc --noEmit`) | SHIPPED | no `db:generate` prefix since prisma left with the web dashboard (D7) |
+| 3 | `bun test src` | SHIPPED | 66 tests (landing only since D7; the CI job is named `Unit tests (landing)`) |
 | 4 | `bash -n scripts/*.sh` | SHIPPED | per-file, fails with `::error` annotations |
 | 5 | `bun scripts/check_theme.mjs` | SHIPPED | reads a `.ts` file from pi-repo, so it needs bun |
 | 6 | `bun scripts/gba_palette_check.mjs` | SHIPPED | browser-free, so it is a real gate not a caption |
 | 7 | gitleaks full-history secret scan | SHIPPED | |
-| 8 | `bun audit --prod` | SHIPPED | 3 documented prisma-internal ignores |
+| 8 | `bun audit --prod` | SHIPPED | the three GHSA `--ignore` flags still carried in `ci.yml` are prisma-era pins left vestigial by D7 — prisma is gone from the dependency tree, so they can no longer fire |
 | 9 | Changed-line coverage >= 80% in `src/` | SHIPPED (this revision) | `bun test --coverage` + `scripts/check_coverage.mjs`; measured baseline 91.1% lines |
 | 10 | Engine suite `bun test test/` in `self-learning` | SHIPPED (upstream, `build-test` matrix) | ubuntu green; post-`ae7b01b` (run 39071373372): windows 687/79/3, macos 726/40/4; locally on Windows 600/79/25 - 22 of the local 25 pass on the runner (privilege environment), 3 are real (§7.2). Hermetic means green on **every** runner |
 | 11 | Bridge suite `bun test pure.test.ts` | **SHIPPED** (this revision, round three) | 95 tests, sub-second, no deps/network — dedicated `bridge` CI job | 
 | 12 | Engine integration suite (`test:integration`) | **SHIPPED** (this revision, round three) | 10 tests, real server + mock bridge — `PI_TEST_SCOPE=integration` step in the 3-OS `build-test` matrix |
 | 13 | Sandbox suite in CI | SHIPPED (upstream, unconditional ubuntu `sandbox-smoke` job) | **GREEN** as of run 39072290887 (`a13cf9d`): trajectory red 10/11/1 -> profile green 21/0/1 + engine red 10/2 -> fully green. The red phase proved the value of the early-canary design (§7.5) |
-| 14 | `bun run build` before deploy | **SHIPPED** (this revision) | dedicated `build` job: frozen-lockfile install + prisma generate + `bun run build` + standalone-server smoke (/ and /dashboard 200 on a scratch port) |
+| 14 | `bun run build` before deploy | **SHIPPED** (this revision) | dedicated `build` job (`Production build (landing)` since D7): frozen-lockfile install + `bun run build` + standalone-server smoke (`/` 200 on a scratch port; the `/dashboard` smoke left with the route, and `prisma generate` left with the dependency) |
 | 15 | Mermaid byte-identity (`scripts/mermaid_check.mjs`) | **SHIPPED** (this revision) | own `ci.yml` job: sources extracted from README.md itself (single source of truth), parsed under the vendored sha-pinned mermaid 11.16.1 (the version github.com runs as of 2026-08), rendered twice in two fresh browser contexts, PNG sha256s compared byte-for-byte. Found live while wiring it: mermaid 11.16.1's shape generators sample `Math.random` — UNPINNED, the loop diagram's stadium nodes wobble up to 30px of path control points between renders (10/31 paths; the architecture diagram, no stadium nodes, was accidentally stable); the gate pins `Math.random` (mulberry32) + `deterministicIds`, and the receipt records both pins |
-| 16 | Playwright E2E + axe-core | **SHIPPED** (this revision) | dedicated `e2e` job: `e2e/mock-engine.mjs` (zero-dep node:http stand-in implementing the full REST + SSE contract of `agent-api.ts`) + the production standalone build in DIRECT api mode + `bunx playwright test`. e2e render test: every tab renders with zero browser console errors, SSE feed assertions (hello + scripted events), console prompt round-trip, axe-core WCAG 2.0/2.1 A+AA scans of the landing page in two passes (reduced motion — the whole document, because every section below the fold sits at `opacity: 0` until it reveals and axe skips invisible nodes — and no-preference after a full scroll sweep) plus all dashboard tabs. Found live on first run: 80+ real AA contrast defects (zinc-500/600 small text, StatChip `opacity-70` labels, zinc-700 mono text) + one aria violation (DifficultyStars `aria-label` on a role-less span) — all fixed in `src/` |
+| 16 | Playwright E2E + axe-core | **SHIPPED** (this revision; landing-scoped since D7) | the `E2E + a11y (landing)` job: 3 tests — axe-core WCAG 2.0/2.1 A+AA scans of the landing page in two passes (reduced motion — the whole document, because every section below the fold sits at `opacity: 0` until it reveals and axe skips invisible nodes — and no-preference after a full scroll sweep) plus the landing scroll-budget spec, against the production standalone build. History: the job originally booted `e2e/mock-engine.mjs` (zero-dep node:http stand-in implementing the full REST + SSE contract of the retired `agent-api.ts`) and scanned every web-dashboard tab; those specs and the mock engine left with the web dashboard in D7, and the mock's extended port lives on at `pi-repo/packages/self-learning/test/dashboard-mock-engine.ts` inside the 3-OS `build-test` matrix. The axe half already paid for itself: its first run found 80+ real AA contrast defects (zinc-500/600 small text, StatChip `opacity-70` labels, zinc-700 mono text) + one aria violation (DifficultyStars `aria-label` on a role-less span) — all fixed in `src/` |
 | 17 | Docs link and anchor integrity on `docs/*.md` | SHIPPED (this revision; verified green against upstream's new `windows.md`/`macos.md`) | `scripts/check_docs.mjs` as the `docs` CI job; the CLI-surface and env-var cross-checks in `docs/AGENTS.md` remain prose (§7.10) |
 
 ## 7. Surface-by-surface backlog
@@ -514,54 +520,70 @@ preserved in the margin notes where they were cited from history.
 
 ### 7.1 Dashboard
 
-*(was §4.1; surface: `src/`)*
+*(was §4.1; surface: the TUI dashboard — `pi-repo/packages/self-learning/src/dashboard/` + its suites in `test/` — plus the landing page in `src/`. The web dashboard that this section originally tracked was retired in D7: `src/app/dashboard/`, `src/components/dashboard/`, `src/lib/agent-*.ts` and their suites are gone, and the src-scoped CI jobs were renamed landing-scoped.)*
 
-- **SHIPPED** - `agent-format.ts`, `agent-store.ts`, `agent-api.ts`, `utils.ts`
-  unit tests; `use-toast` reducer; all tabs' happy/empty/error states and
-  mutation flows; SSE bridge invalidation and `router:error` toasts (206 tests).
-  This layer already found a real crash (`refetchInterval` on run-less data).
-- **KNOWN NOISE (measured benign — do not chase)** - `bun test src` prints
-  ~17 identical `not wrapped in act(...)` warnings per run plus ~26 recharts
-  `width(0) and height(0)` warnings. Root cause: radix `Presence`/`ForwardRef`
-  animation ticks and recharts `ResponsiveContainer` measurement updates fire
-  on chained rAF channels in happy-dom AFTER the test's last awaited
-  assertion (mid-test, not post-teardown). Verified benign `[V: 2026-10-20]`:
-  27/27 consecutive green runs on a 2-core box (bridge ×6 incl. failover
-  stress, self-learning ×3, integration ×3, dashboard ×2), byte-identical
-  warning counts run-over-run. Investigation record: a global act-flush
-  `afterEach` in the `bunfig` preload AND a generous in-file flush (2 timer
-  turns + 30 ms window before `cleanup()`) both left the count unchanged —
-  an afterEach-scope flush is the wrong tool for mid-test stragglers. Revisit
-  only if a dashboard test ever actually fails with this signature.
-- **SHIPPED (re-scoped 2026-10-21)** - The old item quoted `providers.tsx` 58% /
-  `activity-feed.tsx` 54% `[V]` — numbers from the Providers-tab era: the tab
-  was removed in `473a7d5` and `providers.tsx` is now the `DashboardProviders`
-  context wrapper + `SseBridge` (its only production consumer is
-  `src/app/dashboard/page.tsx`).
-  Re-measured `[V: bun test src --coverage, 2026-10-21]`: `providers.tsx` 96.2%
-  lines (94.4% functions — the SSE frame parser is covered by
-  `sse-bridge.test.tsx`), `activity-feed.tsx` 100%. Residual uncovered ranges:
-  the `seenHello` once-per-load guard (lines 35-39) and the manual EventSource
-  reconnect after `CLOSED` (lines 297-302).
-- **SHIPPED** - End-to-end (§6 gate 16, the `e2e` CI job): Playwright against a
+- **SHIPPED (2026-10-18), retired with the web dashboard (D7)** - the React
+  component layer: `agent-format.ts`, `agent-store.ts`, `agent-api.ts`,
+  `utils.ts` unit tests; `use-toast` reducer; all tabs' happy/empty/error
+  states and mutation flows; SSE bridge invalidation and `router:error`
+  toasts (206 tests, later 355 across the folder). It paid for itself once
+  (found a real crash: `refetchInterval` on run-less data) before the whole
+  surface was deleted. Its replacement is the TUI suite below.
+- **SHIPPED (D1-D6, in the engine's own tree)** - the TUI dashboard suites:
+  `test/dashboard-render.test.ts` (12 tests — every screen renders from the
+  shared store), `test/dashboard-store.test.ts` (6 — the DashboardStore's
+  REST polling + SSE frame handling against the mock engine), and
+  `test/dashboard-auth.test.ts` (5 — the M7 gap pinned: the TUI's own
+  EngineClient must present the bearer token on REST + SSE and heal across a
+  rotation; shipped after the web client's token shim made the same class of
+  bug invisible). They run in the 3-OS `build-test` matrix with the rest of
+  `bun test test/`.
+- **KNOWN NOISE (resolved by D7)** - `bun test src` used to print ~17
+  identical `not wrapped in act(...)` warnings per run plus ~26 recharts
+  `width(0) and height(0)` warnings (radix `Presence`/`ForwardRef` animation
+  ticks and recharts `ResponsiveContainer` measurements on chained rAF
+  channels in happy-dom, after the last awaited assertion). Both sources left
+  with the web dashboard: `[V: 2026-10-21]` the landing-only suite (66 tests)
+  prints zero warnings of either signature. The investigation record survives
+  above all because its method (a global act-flush `afterEach` in the `bunfig`
+  preload AND a generous in-file flush both left the count unchanged — an
+  afterEach-scope flush is the wrong tool for mid-test stragglers) is the
+  answer to re-read if a future animated component reintroduces the class.
+- **SHIPPED (re-scoped 2026-10-21, then superseded by D7)** - the coverage
+  item that tracked `providers.tsx` 58% -> 96.2% / `activity-feed.tsx` 54% ->
+  100% over the Providers-tab era. Both files are deleted; provider
+  management is now covered where it lives — the TUI `/providers` suite in
+  the engine's tree: `test/providers-command.test.ts` (44 tests: the
+  slash-command flows over the REAL registry core, network stubbed) and
+  `test/providers.test.ts` (33: the registry itself), both inside the 3-OS
+  `build-test` matrix.
+- **SHIPPED** - End-to-end (§6 gate 16): originally Playwright against a
   zero-dependency mock engine (`e2e/mock-engine.mjs`, the exact REST + SSE
-  contract). Boot, all tabs render live data with zero browser console
-  errors, the SSE feed renders hello + scripted events, and the console tab's
-  prompt flow (busy state -> interactive run -> transcript) round-trips. Still
-  open from the original list: the clipboard-unavailable fallback (needs a
-  permissions-denied context) and SSE-driven KPI invalidation asserts (the
-  invalidation fires; only the feed text is asserted today).
-- **SHIPPED (axe half)** - Accessibility: axe-core per tab + the landing page
-  (WCAG 2.0/2.1 A+AA, zero-violation gate in the `e2e` CI job — its first run
-  found 80+ real contrast defects + 1 aria violation, all fixed). Still open:
-  keyboard-only navigation across tabs and dialogs, focus trapping in
-  `AlertDialog`, `sr-only` labels, and Lighthouse >= 90 (§12 criterion 6's
-  other half).
-- **OPEN** - Type/DTO drift: a contract test that the dashboard's
-  `agent-types.ts` still accepts a captured `GET /api/overview` fixture. The types
-  are hand-maintained and will drift on the next engine change.
-- **OPEN** - Visual regression for the `dashboard-*.png` assets, extending the
-  existing capture/review pipeline rather than adding a new one.
+  contract) driving every web-dashboard tab — boot, live-data render with
+  zero browser console errors, SSE hello + scripted events, the console
+  prompt round-trip. Those specs left with the web dashboard; the mock's
+  extended port (`test/dashboard-mock-engine.ts`, now also covering memory
+  projects, task/automation detail, mint, note sync, skill rollback/retire
+  and the webcache pair) drives the TUI store/render suites instead. The
+  surviving e2e lane is landing-scoped: a11y + scroll-budget, 3 tests.
+- **SHIPPED (axe half, landing-scoped since D7)** - Accessibility: axe-core
+  WCAG 2.0/2.1 A+AA on the landing page in two passes (reduced-motion whole
+  document + no-preference after a full sweep), zero-violation gate — its
+  first run found 80+ real contrast defects + 1 aria violation, all fixed.
+  Still open: keyboard-only navigation across the landing page's interactive
+  surfaces (the release band's region, the proof tabs' roving tabindex, the
+  accordion) and Lighthouse >= 90 (§12 criterion 6's other half).
+- **OPEN** - Type/DTO drift, re-scoped to the TUI: the dashboard's
+  `dashboard-types.ts` and the mock engine (`test/dashboard-mock-engine.ts`)
+  are hand-maintained mirrors of the live engine's responses — a contract
+  test that a captured `GET /api/overview` fixture from the real
+  `server.ts` still parses would catch the mock drifting from the engine it
+  stands in for.
+- **OPEN** - Visual regression for the shipped screen stills
+  (`public/landing/tui/dashboard/stills/` — 12 PTY captures with pane-truth
+  receipts, and the landing OG images), extending the existing
+  `scripts/tui-capture/` + `landing_og_shots.mjs` pipelines rather than
+  adding a new one.
 - **OPEN** - Landing page (`src/components/landing/`) has no behavioural tests.
   Its contracts are currently *static* checks (GBA palette, theme, contrast
   audit), which is a reasonable trade for a marketing surface - but the numbers
@@ -746,8 +768,8 @@ preserved in the margin notes where they were cited from history.
 - **OPEN** - Adopt the vendor's boundary framing as a written contract
   (§4.4 `[C]`): state which surface each isolation layer covers, state that the
   terminal agent is *outside* the OS sandbox by design, and state the rule that
-  unattended runs (engine, router jobs, `--plan`-less dashboard triggers) run
-  inside bwrap while interactive terminal sessions do not. Fail closed on
+  unattended runs (engine, router jobs, `--plan`-less TUI dashboard triggers)
+  run inside bwrap while interactive terminal sessions do not. Fail closed on
   unavailable bwrap for the unattended path, as the vendor configuration does,
   rather than degrading silently.
 - **OPEN** - Configuration-based escape corpus (env overrides, bind-map
@@ -824,9 +846,12 @@ preserved in the margin notes where they were cited from history.
   §5 item 7 of the previous revision and is now closed).
 - **OPEN** - Migration idempotency across versions, including an upgrade path from
   a pre-`notes.kind`, pre-`improvements.memory_version` database.
-- **OPEN** - A boundary test that the legacy `src/lib/db.ts` Prisma scaffold can
-  never become the engine's store (it is dead by design; a test makes that
-  durable rather than aspirational).
+- **CLOSED BY D7** - A boundary test that the legacy `src/lib/db.ts` Prisma
+  scaffold can never become the engine's store was proposed here ("a test
+  makes that durable rather than aspirational"). D7 chose the stronger form:
+  the scaffold, the prisma schema, the `db:*` scripts and the prisma
+  dependency were deleted outright — there is nothing left to guard against.
+  If a second store ever reappears in `src/`, reopen this with the test form.
 - **OPEN** - Session artifact schema snapshots (`runs/*.meta.json`, `files.json`).
 - **OPEN** - `fd` presence: its absence breaks the `find` tool at runtime and ten
   upstream tests, and `unown doctor` does not report it (previous §5 item 9, still
@@ -845,12 +870,16 @@ preserved in the margin notes where they were cited from history.
   cycles/hour, busy-mutex 409 rate and SSE-invalidations-per-event are all
   trendable. The previous revision asked for this and it is still the cheapest
   missing capability.
-- **OPEN** - Dashboard invalidation thrash measurement (renders per SSE event,
-  query dedup, `staleTime` behaviour).
+- **OPEN** - Dashboard invalidation thrash measurement, re-scoped to the TUI:
+  the `DashboardStore`'s SSE-driven refetch/render cadence (how many screen
+  re-renders one `memory:changed` frame causes across 11 mounted screens).
+  The react-query `staleTime`/dedup half of the question left with the web
+  dashboard.
 - **OPEN** - A 1000-run soak on a tmp filesystem: SQLite growth, sandbox GC
   (cap 40), handle leaks.
-- **OPEN** - Cold start: engine boot plus orphan recovery under 5 s; dashboard
-  first paint.
+- **OPEN** - Cold start: engine boot plus orphan recovery under 5 s; TUI
+  dashboard first paint (`unown dashboard` against a freshly-started engine);
+  landing page first paint is the Lighthouse half of §12 criterion 6.
 
 ### 7.10 Usability, docs and published claims
 
@@ -1096,9 +1125,9 @@ is what remains.
 
 **Next (one to two weeks).**
 
-7. ~~`bun run build` into CI.~~ **DONE** — dedicated `build` job: frozen-lockfile
-   install + prisma generate + `bun run build` + standalone-server smoke
-   (§6 gate 14).
+7. ~~`bun run build` into CI.~~ **DONE** — dedicated `build` job (named
+   `Production build (landing)` since D7): frozen-lockfile install +
+   `bun run build` + standalone-server smoke (§6 gate 14).
 8. Docs-drift checks: README/landing numbers to receipts (§7.10).
 9. Property-based tests for `decideBash` / `jailPath` /
    `bashRedirectEscape` / budget arithmetic - property testing is also the
@@ -1111,7 +1140,10 @@ is what remains.
 
 11. ~~Playwright E2E + axe-core for the dashboard.~~ **SHIPPED** — §6 gate 16
     (the `e2e/` suite + `e2e` CI job against the mock engine; its first run
-    found 80+ real AA contrast defects + 1 aria violation, all fixed).
+    found 80+ real AA contrast defects + 1 aria violation, all fixed). D7
+    then rescoped the job to the landing page (a11y + budget, 3 tests) — the
+    dashboard's end-to-end coverage is now the TUI render/store/auth suites
+    in the 3-OS matrix.
 12. Memory-quality axes: contradiction, staleness, forgetting, interference
     (§7.6, §10 item M). **SHIPPED** — `benchmarks/memory-eval/quality-axes/`
     (4/4 PASS, deterministic receipts); and the external-corpus poisoning
@@ -1140,13 +1172,13 @@ Stating that is the point.
 
 | # | Criterion | Status | Evidence |
 |---|---|---|---|
-| 1 | CI enforces lint + typecheck + unit + security scan | **PARTIAL** | All dashboard gates ship green (including coverage + docs; `sandbox-smoke` too at run 39072290887). The engine suite is wired in the 3-OS matrix but red on all three legs at that run (ubuntu one fixture-ordering bug `memory.test.ts:60`, windows 3, macos 3, §7.2) and the bridge suite (95) was
+| 1 | CI enforces lint + typecheck + unit + security scan | **PARTIAL** | All landing gates ship green (including coverage + docs; `sandbox-smoke` too at run 39072290887). The engine suite is wired in the 3-OS matrix but red on all three legs at that run (ubuntu one fixture-ordering bug `memory.test.ts:60`, windows 3, macos 3, §7.2) and the bridge suite (95) was
 still absent then — it shipped in round three (§6 gate 11) |
 | 2 | The harness self-suite is green on a clean checkout with pinned snapshots | **NOT MET** | The seeded suite exists; no release assertion runs it (§7.2) |
 | 3 | Hook deny recall >= 99% on the adversarial corpus, every miss triaged | **PARTIAL** | Corpus and triage exist; recall is not published as a number per run, and the fuzzer is absent (§7.3) |
 | 4 | Memory lift shows a statistically significant improvement for a shipped memory version, with CI | **NOT MET** | Track 5 v3 is n=1 and 6/6 everywhere - saturated, therefore uninformative. Needs the full-context baseline and repetitions (§7.6, §10 item A) |
 | 5 | No P0 open: sandbox escape, secret leak, test tampering, hook bypass | **PARTIAL** | The named P0s are covered by shipped suites. Uncovered: the self-grading surface (§8). The `fetch_url` SSRF item (§7.3) is SHIPPED (guard + tests in `test/websearch.test.ts`) |
-| 6 | axe-core clean and Lighthouse accessibility >= 90 on all dashboard tabs | **PARTIAL** | axe-core half SHIPPED: the `e2e` CI job scans the landing page + all dashboard tabs (wcag2/21 A+AA) against real rendered data and fails on any violation — green after fixing the 80+ contrast defects + 1 aria violation its first run found (§6 gate 16). Lighthouse >= 90 half still OPEN (next: LHCI collect against the same mock-engine pair) |
+| 6 | axe-core clean and Lighthouse accessibility >= 90 on the landing page (originally "all dashboard tabs" — the tabs left with the web dashboard in D7; the TUI is axe-irrelevant by construction) | **PARTIAL** | axe-core half SHIPPED: the `E2E + a11y (landing)` CI job scans the landing page (wcag2/21 A+AA) in both motion passes against real rendered output and fails on any violation — green after fixing the 80+ contrast defects + 1 aria violation its first run found (§6 gate 16). Lighthouse >= 90 half still OPEN (next: LHCI collect against the same standalone build the e2e job boots) |
 | 7 | Cost/token budget tracked, no >20% regression without a decision | **PARTIAL** | Per-run tokens are recorded; no budget, no alert, no decision record (§7.9) |
 
 Criteria 2, 4 and 6 are the ones that would most change what this repository can
@@ -1177,10 +1209,10 @@ revision, which is precisely the drift this revision exists to stop.
 
 - **Pre-commit / local**: pure unit + hook corpus + coverage on changed files
   (<2 min, $0).
-- **Per PR**: lint, typecheck, dashboard unit, coverage gate, docs gate,
+- **Per PR**: lint, typecheck, landing unit, coverage gate, docs gate,
   changed-path security scan; engine suite wired inside the 3-OS `build-test`
   matrix (ubuntu leg green, win/mac red - §7.2); bridge + integration suites
-  (§6 gates 11-12) and dashboard E2E + axe (gate 16).
+  (§6 gates 11-12) and landing E2E + axe (gate 16).
 - **Nightly**: perf and cost trend, soak.
 - **Weekly**: adversarial corpus rerun, live memory and poison probes, VLM
   review, memory-lift and skill-acquisition evals.

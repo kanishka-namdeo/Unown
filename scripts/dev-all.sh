@@ -2,9 +2,9 @@
 # dev-all.sh — boot the full Unown stack under a single supervisor process.
 #
 # The sandbox auto dev-server runs `bun run dev`; this script makes that one
-# command bring up llm-bridge (:3031), the self-learning engine (:3030) and
-# the Next.js dashboard (:3000) together, so the whole stack lives and dies
-# with the supervised dev process.
+# command bring up llm-bridge (:3031) and the self-learning engine (:3030)
+# together, so the whole stack lives and dies with the supervised dev process.
+# Mission control is the TUI: `unown dashboard` (no web server to supervise).
 #
 # NOTE: POSIX-only (bash) — dev-only convenience. The supported cross-platform
 # lifecycle is `bun run agent:start` / `bun run agent:stop`
@@ -29,7 +29,7 @@ ENGINE_PORT="${PI_AGENT_PORT:-3030}"
 # ---------------------------------------------------------------- dependencies
 # First boot under a fresh supervisor: install + build if missing.
 if [ ! -d node_modules ] || [ ! -f node_modules/.install-ok ]; then
-        echo "▶ [deps] installing dashboard dependencies…"
+        echo "▶ [deps] installing landing-page dependencies…"
         bun install && touch node_modules/.install-ok
 fi
 if [ ! -f pi-repo/node_modules/.install-ok ] || [ ! -d pi-repo/packages/coding-agent/dist ]; then
@@ -60,7 +60,8 @@ else
         ) > .run/engine.log 2>&1 &
 fi
 
-# ------------------------------------------------------------------ dashboard
-# Foreground: the dashboard stays attached to this supervised process.
-echo "▶ starting dashboard (next dev :3000)"
-exec bunx next dev -p 3000 2>&1 | tee dev.log
+# ---------------------------------------------------------------- supervisor hold
+# Keep the supervised process alive for the bridge + engine (the landing page's
+# `bun run dev` is the sandbox's own entry — nothing to exec here).
+echo "▶ stack up — bridge :3031, engine :3030 (TUI: unown dashboard)"
+wait

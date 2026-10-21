@@ -1,7 +1,8 @@
 /**
  * agent-service — mini-service wrapper (port 3030) that boots the
  * pi self-learning layer: memory seeding, task seeding, the router
- * (background learning), and the REST+SSE API for the dashboard.
+ * (background learning), and the REST+SSE API for the TUI dashboard
+ * and API clients (see docs/detached-engine-architecture.md).
  */
 import { startServer } from "../../pi-repo/packages/self-learning/src/index.ts";
 

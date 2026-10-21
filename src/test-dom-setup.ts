@@ -1,4 +1,4 @@
-// DOM test environment for bun test (dashboard component tests).
+// DOM test environment for bun test (landing component tests).
 //
 // Wired in via bunfig.toml [test] preload, so every test file — including the
 // pure unit tests in src/lib and src/hooks — runs with a happy-dom global DOM

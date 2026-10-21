@@ -34,18 +34,11 @@ Everything else on this page is optional; each table shows the default.
 
 Author `.env` in the repo root from [`.env.example`](../.env.example). This table mirrors that file — when in doubt, `.env.example` is the source of truth.
 
-### Dashboard (Next.js)
-
-| Variable | Default | Meaning |
-|----------|---------|---------|
-| `NEXT_PUBLIC_AGENT_API_BASE` | `http://127.0.0.1:3030` (baked by `next.config.ts` when unset/empty) | Where the dashboard finds the engine API. Unset/empty defaults to DIRECT mode at the local engine — the launcher always pairs the dashboard with one, so a stock install works out of the box. Set `gateway` for the z.ai sandbox preview (relative URLs + `?XTransformPort=3030`), or any URL for a direct/custom deployment (an API-gateway prefix such as `https://example.com/agent-api` works too). Explicit values always win. |
-| `DATABASE_URL` | `file:./db/custom.db` | Prisma datasource for the dashboard scaffold only. The engine keeps its own SQLite store at `db/selflearning.db` and ignores this. |
-
 ### Self-learning engine (agent-service)
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `PI_AGENT_PORT` | `3030` | Port for the REST+SSE API the dashboard (and the `unown` CLI's note delivery) talks to. |
+| `PI_AGENT_PORT` | `3030` | Port for the REST+SSE API the TUI dashboard and CLI clients (the `unown` CLI's note delivery) talk to. |
 | `PI_BRIDGE_URL` | `http://127.0.0.1:3031` | The OpenAI-compatible LLM endpoint the engine's agent talks to. Point it at the bundled bridge or any direct endpoint. |
 | `PI_MODEL_ID` | `kimi-k2.5` | Model id registered with pi's `models.json`. Any id works through the bridge — unknown ids are routed onto its default. |
 | `PI_PROVIDER` | `zai-bridge` | Provider name registered with pi. |
@@ -93,8 +86,8 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_ENGINE_AUTH` | `token` | Engine API authentication (M7). `token` (default): every `/api` request must present the per-boot bearer token from `data/self-learning/engine.token` (0600, regenerated each boot, removed on graceful stop) — same-user clients auto-discover it, so the default costs nothing; `GET /` (liveness) and CORS preflights are exempt. `off`: tokenless — the engine REFUSES to boot if `UNOWN_ENGINE_HOST` leaves loopback (an unauthenticated network bind can never exist). Host-header validation and Origin enforcement are always on, regardless of this setting. |
 | `UNOWN_ENGINE_TOKEN` | unset | Engine side: pin the token instead of generating per-boot. Client side: present this token (for a remote engine reached via `UNOWN_ENGINE_URL` whose token file you hold). |
 | `UNOWN_ENGINE_HOSTS` | empty | Extra DNS hostnames accepted in the engine's `Host` header (comma-separated, the Vite `allowedHosts` pattern). Default accepts `localhost`, `*.localhost` and IP literals only — same-port DNS rebinding (`evil.com` resolving to `127.0.0.1`) is refused. |
-| `UNOWN_ENGINE_HOST` | `127.0.0.1` | What network interface the engine server binds. Loopback is the default; set `0.0.0.0` deliberately (e.g. a dedicated LAN box running the dashboard from another machine) — the M7 bearer token then gates the API (mandatory: an `UNOWN_ENGINE_AUTH=off` + non-loopback bind refuses to boot), but loopback remains the safe default. |
-| `UNOWN_ENGINE_CORS` | loopback allow-list | Which browser origins may call the engine API (needed when the dashboard runs in DIRECT mode with `NEXT_PUBLIC_AGENT_API_BASE`). Default: loopback origins only (`http://localhost:*` / `http://127.0.0.1:*`, any port) — random websites are refused, so they cannot drive the tokened engine through your browser. Override with a comma-separated origin list (replaces the default), `*` (any origin — only sane next to `UNOWN_ENGINE_HOST` plus an authenticating reverse proxy), or `off` (no CORS headers at all). Non-browser clients (curl, the CLI, the bridge) are unaffected either way. |
+| `UNOWN_ENGINE_HOST` | `127.0.0.1` | What network interface the engine server binds. Loopback is the default; set `0.0.0.0` deliberately (e.g. a dedicated LAN box serving API clients — `unown dashboard` or the CLI — from other machines) — the M7 bearer token then gates the API (mandatory: an `UNOWN_ENGINE_AUTH=off` + non-loopback bind refuses to boot), but loopback remains the safe default. |
+| `UNOWN_ENGINE_CORS` | loopback allow-list | Which browser origins may call the engine API. Default: loopback origins only (`http://localhost:*` / `http://127.0.0.1:*`, any port) — random websites are refused, so they cannot drive the tokened engine through your browser. Override with a comma-separated origin list (replaces the default), `*` (any origin — only sane next to `UNOWN_ENGINE_HOST` plus an authenticating reverse proxy), or `off` (no CORS headers at all). In-tree clients (the TUI dashboard, the CLI, the bridge) are not browsers and never send `Origin`, so none of this affects them; the gate exists for a future browser client and for the Origin-enforcement side of M7. |
 | `UNOWN_ENGINE_AUTOSTART` | `1` | `0` (also `false`/`off`/`no`) is the engine-off kill switch: no agent-side touchpoint ever spawns the engine (the footer still shows its state; no session-start toast). `unown engine start` still works — a manual action always wins. See [resilience](resilience.md#r9--deliberate-engine-off). |
 | `UNOWN_OUTBOX_MAX` | `200` | Max queued note files in `$UNOWN_HOME/notes/outbox` before the oldest are dropped (every drop counted and surfaced in `/engine` and `unown engine status`); `0` = unlimited. See [resilience](resilience.md#r6--outbox-overflow). |
 | `UNOWN_NOTE_BUDGET_MS` | `2500` | Overall deadline for one session-note delivery attempt (floor 500 ms); on expiry the note lands in the outbox instead. A recent down probe skips the network entirely. Read by the terminal agent. |
@@ -155,7 +148,7 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_WEB_SEARCH_STALE_MS` | `86400000` | Stale-if-error window for search results — after TTL and within this window, the last good answer serves (flagged as stale) when every provider attempt fails. |
 | `UNOWN_WEBFETCH_STALE_MS` | `604800000` | Stale-if-error window for fetched pages (7 d, always flagged). |
 | `UNOWN_WEB_CACHE_MAX_BYTES` | `268435456` | Byte cap of the web results store (256 MiB). LRU-pruned at the cap — least-recently-used entries evict first (recency is tracked in RAM; `unown webcache sweep` runs the pass on demand). |
-| `UNOWN_WEB_CACHE_INDEX_MS` | `60000` | Max age of the store's in-memory index before stats/eviction rescan the disk. `0` = exact mode (rescan per call — what the dashboard's counts were before the perf layer); counts between rebuilds are per-process approximations, labeled as such in `unown webcache stats` and the dashboard. |
+| `UNOWN_WEB_CACHE_INDEX_MS` | `60000` | Max age of the store's in-memory index before stats/eviction rescan the disk. `0` = exact mode (rescan per call — what the TUI dashboard's counts were before the perf layer); counts between rebuilds are per-process approximations, labeled as such in `unown webcache stats` and the dashboard's Web Cache screen. |
 | `UNOWN_WEB_CACHE_MEMO` | `1` | `0` disables the hot-entry memo layer (repeat hits then always re-read + re-verify the disk entry). |
 | `UNOWN_WEB_CACHE_MEMO_ENTRIES` / `UNOWN_WEB_CACHE_MEMO_BYTES` / `UNOWN_WEB_CACHE_MEMO_MS` | `500` / `52428800` / `180000` | Hot-entry memo budget: entry count, bytes (50 MiB) and freshness clock (3 min) — cacache's own memoization shape. |
 | `UNOWN_WEB_CACHE_DURABLE` | unset | `1` restores double-fsync (file + directory) cache writes. Default is the cacache model — tmp+rename without fsync: a lost cache entry is a refetch, and a power-loss-torn entry is caught by the payload checksum. |
@@ -208,19 +201,18 @@ All env knobs shown above are also documented (commented) in `.env.example` — 
 
 ## How `.env` gets loaded
 
-Three services run, each on its own port, each reading its own slice of the environment:
+Two services run, each on its own port, each reading its own slice of the environment (mission control is not a service: `unown dashboard` is a TUI client of the engine, started when you want it):
 
 | Service | Default port | Health check | Reads |
 |---------|--------------|--------------|-------|
 | llm-bridge | `3031` (`BRIDGE_PORT`) | `GET /health` | all `BRIDGE_*` |
 | self-learning engine | `3030` (`PI_AGENT_PORT`) | `GET /api/overview` | `PI_*`, `UNOWN_OS_SANDBOX` / `UNOWN_SANDBOX_NET` / `UNOWN_BWRAP`, `PI_DREAM_GATE` |
-| dashboard | `3000` | `http://localhost:3000/dashboard` | `NEXT_PUBLIC_AGENT_API_BASE`, `DATABASE_URL` |
 
-The `unown` CLI (a fourth process, running wherever you are) reads `UNOWN_HOME`, `UNOWN_ENGINE_URL`, `UNOWN_STRICT_HOOKS` and `UNOWN_NO_PREFLIGHT` — and its durable model config from `~/.unown/agent/`.
+The `unown` CLI (a third process, running wherever you are) reads `UNOWN_HOME`, `UNOWN_ENGINE_URL`, `UNOWN_STRICT_HOOKS` and `UNOWN_NO_PREFLIGHT` — and its durable model config from `~/.unown/agent/`.
 
 The variables reach those processes through three different mechanisms, and one common trap:
 
-1. **`scripts/start.ts` parses `.env`** (same `set -a; . ./.env; set +a` semantics) before spawning the bridge, engine and dashboard — so all three services inherit every variable (bun does not read the repo-root `.env` from a mini-services cwd, so the launcher exports it into each child).
+1. **`scripts/start.ts` parses `.env`** (same `set -a; . ./.env; set +a` semantics) before spawning the bridge and engine — so both services inherit every variable (bun does not read the repo-root `.env` from a mini-services cwd, so the launcher exports it into each child).
 2. **bun auto-loads `.env` from the cwd of each service.** `mini-services/llm-bridge/.env` and `mini-services/agent-service/.env` are symlinks to the repo root `.env`, so running a service by hand from its own directory (`cd mini-services/llm-bridge && bun index.ts`) still picks the file up.
 3. **The `unown` CLI does *not* see the repo's `.env` when you run it from another project.** bun loads `.env` from the process cwd — your project, not the unown repo — and the CLI's durable config comes from `~/.unown/agent/` (see below). If you want `UNOWN_ENGINE_URL`, `UNOWN_STRICT_HOOKS` or `UNOWN_HOME` to apply to terminal sessions everywhere, export them in your shell profile. The one exception: run `unown setup` from the unown repo root and it *will* see `.env` (handy for the `BRIDGE_API_KEY` coupling below).
 
@@ -275,7 +267,7 @@ Where everything lives — all of it deletable, none of it required to pre-exist
 unown repo (runtime state, gitignored)
   data/self-learning/            engine data: sandboxes, sessions, memory (PI_SELFLEARNING_DATA)
   db/selflearning.db             engine SQLite: runs, cycles, dreams, versions, skills (PI_SELFLEARNING_DB)
-  .run/                          pidfiles + logs for the three services (bridge.log, engine.log, dashboard.log)
+  .run/                          pidfiles + logs for the two services (bridge.log, engine.log)
 ```
 
 **The web results store** (`~/.unown/cache/web/`, the [usage](usage.md#web-search--webfetch) section has the behavior): content-addressed cache entries at `entries/<xx>/<sha256>.json` plus an append-only `events.jsonl` observability feed (provider/tool tallies, hit-rate — never secrets). It is user-scoped and shared across projects by design (the public web is not project-specific), created `0700`, pruned by LRU at `UNOWN_WEB_CACHE_MAX_BYTES` (default 256 MiB), and safe to delete at any time — `unown webcache stats | clear | sweep` inspects or manages it.
@@ -336,7 +328,7 @@ Three shapes cover almost everyone:
 
 ```bash
 cp .env.example .env      # set BRIDGE_UPSTREAM_KEY
-bun run agent:start       # bridge :3031 + engine :3030 + dashboard :3000
+bun run agent:start       # bridge :3031 + engine :3030 (mission control: unown dashboard)
 unown                     # first run auto-configures the bridge provider
 ```
 
@@ -355,10 +347,10 @@ The stack stays optional for chat; start it whenever you want AutoDream to chew 
 export UNOWN_ENGINE_URL=http://engine-host:3030   # in your shell profile
 ```
 
-Notes flow there and show up in that engine's dashboard. One caveat: AutoDream writes a project's consolidated memory back to the recorded project path **on the engine's host** — so this works best when both sides share a filesystem (NFS home, or you simply run `unown` and the engine on the same box you SSH into). Put `BRIDGE_API_KEY` on the bridge and a TLS terminator in front of anything exposed beyond localhost (see [production notes](#production-notes)).
+Notes flow there and show up in that engine's TUI dashboard (`unown dashboard` against the remote `UNOWN_ENGINE_URL`). One caveat: AutoDream writes a project's consolidated memory back to the recorded project path **on the engine's host** — so this works best when both sides share a filesystem (NFS home, or you simply run `unown` and the engine on the same box you SSH into). Put `BRIDGE_API_KEY` on the bridge and a TLS terminator in front of anything exposed beyond localhost (see [production notes](#production-notes)).
 
 ## Production notes
 
 - **Run the engine without hot reload**: `cd mini-services/agent-service && bun index.ts`. The dev scripts use `bun --hot`, which is convenient but can detach in-flight cycles from the router mutex when engine sources change mid-run.
-- **Put `BRIDGE_API_KEY` on the bridge** whenever it is reachable beyond localhost, and front the engine/dashboard with the TLS terminator / reverse proxy of your choice.
+- **Put `BRIDGE_API_KEY` on the bridge** whenever it is reachable beyond localhost, and front the engine with the TLS terminator / reverse proxy of your choice.
 - **The engine is single-tenant by design** (a busy-mutex serializes background work so the sandbox is never double-driven). Scale by running more engine instances against separate data dirs — one pair of `PI_SELFLEARNING_DATA` / `PI_SELFLEARNING_DB` per instance.

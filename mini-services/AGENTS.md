@@ -2,14 +2,14 @@
 
 ## Purpose
 
-The two bun background services that make up the agent runtime: `llm-bridge` (OpenAI-compatible LLM gateway on :3031) and `agent-service` (boots the self-learning engine on :3030 for the dashboard). A third, sandbox-only upstream shim `zai-upstream/` serves as an OpenAI-compatible GLM endpoint on :3032 for environments with no external provider key; it has no `package.json`/`dev` script and is not launched by the stack supervisor.
+The two bun background services that make up the agent runtime: `llm-bridge` (OpenAI-compatible LLM gateway on :3031) and `agent-service` (boots the self-learning engine on :3030 for the TUI dashboard and API clients). A third, sandbox-only upstream shim `zai-upstream/` serves as an OpenAI-compatible GLM endpoint on :3032 for environments with no external provider key; it has no `package.json`/`dev` script and is not launched by the stack supervisor.
 
 ## Ownership
 
 - Owns: shared boot conventions for the two runtime services and this doc; `agent-service/index.ts` directly (a thin wrapper — ~15 lines calling `startServer()` from `pi-repo/packages/self-learning/src/index.ts`).
 - Child owns: `llm-bridge/` — see Child DOX Index.
 - Parked, not owned: `zai-upstream/` (sandbox-only shim, port 3032, no package.json or AGENTS.md; run manually when needed). It is intentionally outside the ownership index because its supervisor launch depends on a dev script it does not provide.
-- Does not own: engine internals (`pi-repo/packages/self-learning/`), dashboard (`src/`), launch orchestration (`scripts/start.ts`, root `package.json`).
+- Does not own: engine internals (`pi-repo/packages/self-learning/`), the landing page (`src/`), launch orchestration (`scripts/start.ts`, root `package.json`).
 
 ## Local Contracts
 

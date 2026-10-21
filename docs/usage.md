@@ -93,7 +93,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown setup --provider openai --api-key sk-... --model gpt-4o` | Non-interactive (scripts/CI). `--key-env VAR` stores a `$VAR` reference instead of the secret; `--force` resets; `--list` prints the presets |
 | `unown models` | List configured models, plus what a local bridge serves |
 | `unown providers <sub>` | Manage the multi-provider registry — `list` \| `add` (preset or custom; `--key-env VAR` stores a `$VAR` reference) \| `remove` \| `key` (rotation with live verification) \| `default` (validated) \| `test` (live probe, actionable 401/404 classification) \| `refresh` (re-probe every provider). Adding KEEPS existing providers. In-session twin: `/providers`. See [providers](providers.md) |
-| `unown dashboard` | The embedded [TUI dashboard](tui-dashboard-plan.md) — the engine's live feed (overview KPIs, learning lab, memory, dreams, hooks, console, router…) rendered in the terminal; needs an interactive terminal (non-TTY exits with guidance). In-session twin: `/dashboard` (`/dash`) |
+| `unown dashboard` | The fullscreen [TUI dashboard](tui-dashboard-plan.md) (`unown dash` works) — the engine's live feed across 11 screens (Overview, Memory, Dreams, Notes, Skills, Learning Lab, Hooks, Router incl. sandboxes, Gateway, Automations, Web Cache), rendered on the same pi-tui stack as the agent and authenticated to :3030 with the M7 bearer token; needs an interactive terminal (non-TTY exits with guidance). In-session twin: `/dashboard` (`/dash`) |
 | `unown init` | Scaffold `.unown/` project memory (`memory/project.md`, `memory/local.md`, `.gitignore`) |
 | `unown init-agents` | Generate or update the root `AGENTS.md` from repo forensics — language / framework / test-runner / lint / build detection. `--overwrite` writes, `--print` prints, `--json` is machine-readable; the in-session `/init-agents` previews without writing |
 | `unown memory` | Print the effective 4-tier memory stack |
@@ -336,7 +336,7 @@ unown adds thirty-one commands of its own — plus the split-view display mode's
 | `/wiki <sub>` | Auto-generated repo docs with `file:line` cross-links: `generate [--force]` (parallel subagents per module) \| `search <q>` \| `list` \| `show <page>`. See [repo wiki](repo-wiki.md) |
 | `/edit-resend <n> <msg>` | Edit the Nth user message: revert files to the pre-message checkpoint (all-or-nothing; aborts on out-of-band edits), then resend. `/edit-resend list` shows the numbered messages |
 | `/providers` | The in-chat provider manager — the [`unown providers`](providers.md) CLI's TUI twin over the same registry: bare opens the interactive list/add/key/test/refresh/defaults flow (arrow keys + Enter, Esc backs out; RPC mode degrades to sequential prompts); `/providers list` prints the text summary; `/providers test \| refresh <id>` are headless one-shots; argument completions cover the subcommands + provider ids. See [providers](providers.md#in-the-tui) |
-| `/dashboard [screen]` | The embedded [TUI dashboard](tui-dashboard-plan.md) (`/dash` is the short alias) — the same engine feed the web dashboard shows (overview KPIs, learning lab, memory, dreams, hooks, console, router …) rendered in the terminal, driven by keyboard; `unown dashboard` boots it straight from the shell (an interactive terminal is required). `/dashboard <screen>` jumps straight to a named screen; `/memory` is the dedicated shortcut for the Memory screen (tiers, versions, rollback). |
+| `/dashboard [screen]` | The embedded [TUI dashboard](tui-dashboard-plan.md) (`/dash` is the short alias) — the engine's live feed across 11 screens (Overview, Memory, Dreams, Notes, Skills, Learning Lab, Hooks, Router, Gateway, Automations, Web Cache) rendered in the terminal, driven by keyboard; Esc-Esc returns to the editor. `unown dashboard` boots the same screens straight from the shell (an interactive terminal is required). `/dashboard <screen>` jumps straight to a named screen; `/memory` is the dedicated shortcut for the Memory screen (tiers, versions, rollback), `/learning` the quick stack view. |
 | `/split` family | The split-view display mode (a built-in port of pi-split-view): `/split` toggles all panels (off = bare pi layout; on = saved startup defaults), `/split-thinking` + `/split-tools` the top band's panels, `/files` the files dock (`/split-diff` its edit-diff subpanel), `/split-tools-view` compact ↔ full tool detail, `/split-height` / `/split-tools-width` / `/split-divider` the geometry, `/split-trim-response` full-transcript ↔ response-only mode, and `/split-save` persists the current layout to `~/.unown/agent/ui-panels.json` as the startup default; `--no-split` starts bare |
 
 The split-view display mode registers eleven more, in every session (the thinking/tool band, files dock and response-only transcript — full story in [split view](split-view.md)):
@@ -509,7 +509,7 @@ Every session is injected with the resolved 4-tier stack — most specific tier 
 
 ## Environment variables
 
-CLI-only variables. The engine, bridge, and dashboard have their own — see [configuration](configuration.md).
+CLI-only variables. The engine and bridge have their own — see [configuration](configuration.md).
 
 | Variable | Default | Meaning |
 |---|---|---|

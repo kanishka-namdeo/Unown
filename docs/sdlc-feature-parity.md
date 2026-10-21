@@ -318,8 +318,8 @@ in the [CHANGELOG](../CHANGELOG.md) under Unreleased:
 | ~~Scheduled automations~~ (`/loop`-style cron) | zcode Automations · muse `/loop` · Claude routines | **Adopted in Round 3** (see above) — the trust story shipped as the design: engine-DB config, read-only default, no recursion, nothing auto-merges |
 | ~~Repo Wiki~~ | zcode | **Adopted in Round 5** (see above) — `repo-wiki.ts` + `wiki-cli.ts` + `/wiki` slash command; the Round 3 automations substrate is reused for scheduled generation |
 | Plugin bundles + marketplace | zcode/codewhale/Claude | Our extension surface is inline + file-based (`.unown/`); a marketplace is ecosystem work, not a feature gap |
-| Computer-use / browser automation | omp/zcode | Out of scope for a terminal-first agent this cycle; the dashboard already renders its own surfaces |
-| Collab relay / bot channels / remote control | omp/zcode | Hosted-infrastructure features; the dashboard is our observability plane |
+| Computer-use / browser automation | omp/zcode | Out of scope for a terminal-first agent this cycle; the TUI dashboard already renders its own surfaces |
+| Collab relay / bot channels / remote control | omp/zcode | Hosted-infrastructure features; the TUI dashboard is our observability plane |
 
 ## The standing invariant
 

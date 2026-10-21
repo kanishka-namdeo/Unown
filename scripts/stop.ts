@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * scripts/stop.ts — Unown stopper, cross-platform port of scripts/stop.sh
- * (which now delegates here). Halts the dashboard, engine and llm-bridge
+ * (which now delegates here). Halts the engine and llm-bridge
  * started by scripts/start.ts, falling back to pattern matching when
  * pidfiles are stale.
  *
@@ -40,7 +40,7 @@ function stopService(name: string): void {
   const pid = Number(fs.readFileSync(pidFile, "utf8").trim());
   if (alive(pid)) {
     if (IS_WIN) {
-      // Tree kill: the dashboard's `next dev` and bun workers die with it.
+      // Tree kill: bun hot-reload workers die with it.
       const r = spawnSync("taskkill", ["/F", "/T", "/PID", String(pid)], {
         stdio: "ignore",
         windowsHide: true,
@@ -135,17 +135,14 @@ function stopServiceByPortDarwin(name: string, port: string): void {
   }
 }
 
-stopService("dashboard");
 stopService("engine");
 stopService("bridge");
 stopService("zai-upstream");
 // Windows netstat fallback for missing/stale pidfiles (see stopServiceByPort).
-stopServiceByPort("dashboard", process.env.PI_DASHBOARD_PORT ?? "3000");
 stopServiceByPort("engine", process.env.PI_AGENT_PORT ?? "3030");
 stopServiceByPort("bridge", process.env.BRIDGE_PORT ?? "3031");
 stopServiceByPort("zai-upstream", process.env.ZAI_UPSTREAM_PORT ?? "3032");
 // macOS lsof fallback for missing/stale pidfiles (see stopServiceByPortDarwin).
-stopServiceByPortDarwin("dashboard", process.env.PI_DASHBOARD_PORT ?? "3000");
 stopServiceByPortDarwin("engine", process.env.PI_AGENT_PORT ?? "3030");
 stopServiceByPortDarwin("bridge", process.env.BRIDGE_PORT ?? "3031");
 stopServiceByPortDarwin("zai-upstream", process.env.ZAI_UPSTREAM_PORT ?? "3032");

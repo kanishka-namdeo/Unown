@@ -56,8 +56,8 @@ The minting pipeline is deliberately conservative:
 - proposals are validated against the frontmatter and body contracts and **deduplicated** against everything already on disk and in the engine DB,
 - only **new** names are minted — refinement happens by retiring and re-minting,
 - minting stops once a project has 24 skills (context-budget ceiling for the skill index),
-- every version is recorded in the engine DB with dream provenance — **rollback** restores a previous version's file from the dashboard (Memory tab),
-- **retirement** (removing the file) is a deliberate dashboard action; the engine never deletes your files autonomously.
+- every version is recorded in the engine DB with dream provenance — **rollback** restores a previous version's file from the TUI dashboard's Memory screen (`unown dashboard`),
+- **retirement** (removing the file) is a deliberate TUI-dashboard action; the engine never deletes your files autonomously.
 
 ## Authoring a skill
 

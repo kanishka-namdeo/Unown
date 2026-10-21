@@ -1,6 +1,6 @@
 # Windows guide
 
-Unown runs natively on Windows 10/11 — the same commands as macOS/Linux, the same stack (bridge + engine + dashboard), the same interactive TUI. This page collects everything Windows-specific: installation, terminals, the PowerShell tool, the sandbox story, and the known limitations.
+Unown runs natively on Windows 10/11 — the same commands as macOS/Linux, the same stack (bridge + engine; mission control is the `unown dashboard` TUI), the same interactive TUI. This page collects everything Windows-specific: installation, terminals, the PowerShell tool, the sandbox story, and the known limitations.
 
 Related pages: [quickstart](quickstart.md) · [troubleshooting](troubleshooting.md#windows) · [configuration](configuration.md) · [macOS guide](macos.md)
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
 /**
  * scripts/start.ts — Unown launcher, cross-platform port of scripts/start.sh
- * (which now delegates here). Starts the llm-bridge (:3031), the self-learning
- * engine (:3030) and the dashboard (:3000), each as a background process
- * managed through pidfiles in .run/.
+ * (which now delegates here). Starts the llm-bridge (:3031) and the self-
+ * learning engine (:3030), each as a background process managed through
+ * pidfiles in .run/. Mission control is the TUI dashboard — run
+ * `unown dashboard` against the started engine (no web server to launch).
  *
  * Behavior preserved from start.sh:
  *   - repo-root .env is parsed (KEY=VALUE lines, comments/blanks ignored) and
@@ -17,8 +18,6 @@
  *     the loopback gateway (contains 127.0.0.1:3032);
  *   - health polling up to ~60s (fetch + AbortSignal.timeout), then the
  *     honest key/upstream report from the bridge's /health payload;
- *   - the dashboard is started with the repo's `dev` package script
- *     (`next dev -p 3000`); its output lands in .run/dashboard.log.
  *
  * Detached children SURVIVE parent exit:
  *   - POSIX: node:child_process spawn with detached:true puts each child in
@@ -204,34 +203,15 @@ if (await probeHttpOk(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, 1500)) {
   await waitForPortFree(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, "engine", 20_000);
   startService("engine", path.join("mini-services", "agent-service"), ["index.ts"]);
 }
-// Dashboard API base (P0 fix): agent:start always pairs the dashboard with a
-// local engine, so an unset/empty NEXT_PUBLIC_AGENT_API_BASE defaults to the
-// engine's loopback URL — the stock install must not silently fall into
-// gateway mode (relative + XTransformPort), which 404s on any machine without
-// the z.ai sandbox preview gateway. Explicit values win; "gateway" (case-
-// insensitive) keeps the sandbox preview working.
-{
-  const raw = (process.env.NEXT_PUBLIC_AGENT_API_BASE ?? "").trim();
-  if (raw.length === 0) {
-    process.env.NEXT_PUBLIC_AGENT_API_BASE = `http://127.0.0.1:${ENGINE_PORT}`;
-    console.log(
-      `${sym.dot} dashboard API base defaulted to ${process.env.NEXT_PUBLIC_AGENT_API_BASE} (set NEXT_PUBLIC_AGENT_API_BASE=gateway for the sandbox preview)`,
-    );
-  }
-}
-startService("dashboard", ".", ["run", "dev"]);
-
 // ------------------------------------------------------- health wait (~60s)
 console.log(`${sym.dot} waiting for services to come up...`);
 const deadline = Date.now() + 65_000;
 let bridgeOk = false;
 let engineOk = false;
-let dashOk = false;
 while (Date.now() < deadline) {
   bridgeOk = await probeHttpOk(`http://127.0.0.1:${BRIDGE_PORT}/health`, 1500);
   engineOk = await probeHttpOk(`http://127.0.0.1:${ENGINE_PORT}/api/overview`, 1500);
-  dashOk = await probeHttpOk("http://127.0.0.1:3000/", 1500);
-  if (bridgeOk && engineOk && dashOk) break;
+  if (bridgeOk && engineOk) break;
   await sleep(1000);
 }
 
@@ -240,23 +220,22 @@ while (Date.now() < deadline) {
 if (IS_WIN) {
   if (bridgeOk) resolvePortPid("bridge", BRIDGE_PORT);
   if (engineOk) resolvePortPid("engine", ENGINE_PORT);
-  if (dashOk) resolvePortPid("dashboard", "3000");
 }
 
-if (!(bridgeOk && engineOk && dashOk)) {
+if (!(bridgeOk && engineOk)) {
   // Additive honesty (start.sh printed the block below unconditionally):
   // name exactly which checks are still down and where the logs are.
   const state = (ok: boolean) => (ok ? "ok" : "DOWN");
   console.log(
     `  ${sym.warn} after the health wait: bridge ${state(bridgeOk)}, ` +
-      `engine ${state(engineOk)}, dashboard ${state(dashOk)}`,
+      `engine ${state(engineOk)}`,
   );
-  console.log(`    check the logs: .run/bridge.log, .run/engine.log, .run/dashboard.log`);
+  console.log(`    check the logs: .run/bridge.log, .run/engine.log`);
 }
 
 console.log("");
 console.log(`${sym.ok} Unown is up.`);
-console.log("    Dashboard      http://localhost:3000/dashboard");
+console.log(`    TUI dashboard  unown dashboard   (or /dashboard inside a session)`);
 console.log(`    Engine API     http://127.0.0.1:${ENGINE_PORT}/api/overview`);
 console.log(`    LLM bridge     http://127.0.0.1:${BRIDGE_PORT}/health`);
 console.log("");
@@ -295,5 +274,5 @@ if (health && health.upstreamKeyIsSet === false) {
   );
 }
 
-console.log("  Logs: .run/bridge.log, .run/engine.log, .run/dashboard.log");
+console.log("  Logs: .run/bridge.log, .run/engine.log");
 console.log("  Stop: bun run agent:stop");

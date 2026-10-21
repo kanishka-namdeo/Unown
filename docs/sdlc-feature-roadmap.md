@@ -121,7 +121,7 @@ declaratively — the field's clear direction.
 | # | Feature | Source | Seam | Complexity |
 |---|---|---|---|---|
 | 4.1 | **Recipes** — declarative YAML/JSON agent instruction bundles with parameters, sub-recipes, response-schema, templates. CLI `unown recipes list|run|create`. Stored in `.unown/recipes/` + `~/.config/unown/recipes/`. | goose Recipes (the signature feature, per 2-b1) | new `recipes.ts` + `recipes-cli.ts` + `pi.registerCommand('/recipe')` | M |
-| 4.2 | **Repo Wiki** — automatic repo documentation with `file:line` cross-links. Parallel read-only `task` subagents generate JSON-of-Markdown pages; an index page links them. Scheduled via the existing automations substrate (Round 3) or on-demand. | zcode Repo Wiki (deferred per SDLC doc, unblocked by Round 3 automations) | new `repo-wiki.ts` + `wiki-cli.ts` + dashboard surface | M-L |
+| 4.2 | **Repo Wiki** — automatic repo documentation with `file:line` cross-links. Parallel read-only `task` subagents generate JSON-of-Markdown pages; an index page links them. Scheduled via the existing automations substrate (Round 3) or on-demand. | zcode Repo Wiki (deferred per SDLC doc, unblocked by Round 3 automations) | new `repo-wiki.ts` + `wiki-cli.ts` + TUI dashboard surface | M-L |
 
 **Tests**: `test/recipes.test.ts`, `test/repo-wiki.test.ts` (with a fixture
 repo), `test/cli/recipes-structured.test.ts`, `test/cli/repo-wiki-run.test.ts`.

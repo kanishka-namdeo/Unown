@@ -240,6 +240,8 @@ restriction).
 
 ## Part 7 — Assets
 
+*(Superseded 2026-10-21 — D7 retired the web dashboard: the `dash-overview.png` / `dash-learning-lab.png` / `dash-hooks.png` captures and the later `dash-*.png` set were removed. The showcase now frames real `unown dashboard` TUI stills from `public/landing/tui/dashboard/stills/` — twelve PTY captures with pane receipts, produced by the `scripts/tui-capture/` lane. The research below is kept as the record of the original asset decision.)*
+
 Live dashboard captures in `public/landing/`, seeded with real engine data:
 `dash-overview.png` (primary), `dash-learning-lab.png`, `dash-hooks.png`.
 

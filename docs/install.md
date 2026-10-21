@@ -92,8 +92,8 @@ SmartScreen. `INSTALL.txt` inside every archive gives the unblock step
 (`xattr -d com.apple.quarantine unown` on macOS, `Unblock-File unown.exe` on
 Windows). Check the checksum before you unblock anything.
 
-The binary is the terminal agent only. The self-learning engine, `llm-bridge`
-and the dashboard run from a checkout — see [manual install](#manual-install-git-clone)
+The binary is the terminal agent only. The self-learning engine and `llm-bridge`
+run from a checkout — see [manual install](#manual-install-git-clone)
 and [quickstart](quickstart.md). State lives under `~/.unown` (memory, agent
 config, crash records, and the engine's data/db directories when it runs), and
 `unown update` is not the update path here: with no git checkout behind it, the
@@ -105,7 +105,7 @@ from a newer release instead. [updating](updating.md) covers the checkout path.
 `bun run agent:install` is idempotent and safe to re-run (it is also what `unown update` re-runs after moving the checkout):
 
 1. verifies bun ≥ 1.2 (install hint per OS when missing)
-2. `bun install` at the repo root (dashboard dependencies)
+2. `bun install` at the repo root (landing page dependencies)
 3. `bun install` in `pi-repo/` (the vendored pi coding agent workspace)
 4. hydrates the pi provider model data on first run (network fetch, ~1–2 min — upstream gitignores that directory, a fresh clone cannot build without it)
 5. builds the pi engine (`bun run build:offline`)

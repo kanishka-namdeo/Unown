@@ -105,7 +105,7 @@ export const LEXICON: LexiconEntry[] = [
     lore: "Engraved on the floor of the Ruins of Alph: OUR WORDS SHALL REMAIN HERE FOR THE AGES.",
     loreSrc: "Ruins of Alph inscription",
     means: "Journals. Every dream, run and hook decision stays readable.",
-    proof: "/dashboard",
+    proof: "unown dashboard",
   },
   {
     id: "K",

@@ -90,16 +90,17 @@ Two of these deserve a sentence more:
 
 ### The learning path
 
-Chat works; memory / dreams / dashboard do not. All of these are ⚠-class problems:
+Chat works; memory / dreams / the TUI dashboard do not. All of these are ⚠-class problems:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | Doctor: `self-learning engine — unreachable` | Engine down. **Not fatal** — chat is unaffected; session notes queue in `~/.unown/notes/outbox` and sync when it returns | `unown engine start` when you want learning back (auto-start usually beats you to it); nothing else required |
 | Footer `memory: paused · /engine`, or doctor: `engine auto-start — gave up after N failed start(s)` | The engine crash-loops on boot — usually a corrupt DB or an occupied port; auto-start backed off and gave up after 5 failures, by design | `unown engine status` (pidfile + circuit + outbox diagnosis), inspect `.run/engine.log`; corrupt DB → `unown engine repair`; otherwise `unown engine start` (resets the circuit). Full catalog: [resilience](resilience.md) |
 | Doctor: `default model routable` shows ⚠ | Your model id is not in `BRIDGE_KNOWN_MODELS`, so the bridge routes it onto `BRIDGE_ROUTE_DEFAULT` | Requests still work. Add the id to `BRIDGE_KNOWN_MODELS` in `.env` (restart the stack), or `unown setup --model` an allow-listed one |
-| Dashboard loads but shows no data / cannot fetch | `NEXT_PUBLIC_AGENT_API_BASE` pointing at the wrong place, or an old build baked with the pre-fix gateway default | The default is DIRECT at the local engine (`http://127.0.0.1:3030`) — if you are on a checkout from before 2026-10-21 or deliberately use the sandbox gateway, set the value explicitly in `.env` (`gateway`, or a URL/prefix), then `bun run agent:stop && bun run agent:start` — and for a production build, rebuild (`bun run build`): Next inlines `NEXT_PUBLIC_*` at build time ([configuration](configuration.md)) |
-| Triggering a router job fails with `engine is busy with another job` | By design — the busy-mutex serializes background work so the sandbox is never double-driven | Wait for the running job to finish; the Router tab shows run counts and next-fire times |
-| Notes never become memory | Engine not running at dream time (notes pile up in the outbox), or dreams failing | Start the engine (`unown engine start`), check the Dreams tab for errors, and confirm the outbox is draining: `ls ~/.unown/notes/outbox` |
+| `unown dashboard` shows the engine-down banner / empty screens | Engine not running — the TUI dashboard is a *client* of the engine, not a service, so with the engine down there is nothing to render | `unown engine start` (or `bun run agent:start` for bridge + engine together); the dashboard retries on its own once the health endpoint answers. The old web-dashboard row here (`NEXT_PUBLIC_AGENT_API_BASE` mis-pointing) left with the web dashboard — there is no URL knob to get wrong anymore |
+| REST calls to the engine answer `401` (`missing or invalid bearer token`) | The M7 token posture: every `/api` request must present the per-boot bearer token from `data/self-learning/engine.token`. Same-user clients (the CLI, the TUI dashboard, the bridge) auto-discover the file; a client running as another user or on another machine cannot read it | Run the client as the same user on the same machine, or pin the token on both sides with `UNOWN_ENGINE_TOKEN` ([configuration](configuration.md)). `UNOWN_ENGINE_AUTH=off` disables tokening entirely but the engine then **refuses to boot** unless `UNOWN_ENGINE_HOST` stays on loopback |
+| Triggering a router job fails with `engine is busy with another job` | By design — the busy-mutex serializes background work so the sandbox is never double-driven | Wait for the running job to finish; the Router screen shows run counts and next-fire times |
+| Notes never become memory | Engine not running at dream time (notes pile up in the outbox), or dreams failing | Start the engine (`unown engine start`), check the Dreams screen for errors, and confirm the outbox is draining: `ls ~/.unown/notes/outbox` |
 
 #### Notes are not becoming memory
 
@@ -107,7 +108,7 @@ The learning path has three moving parts — capture, delivery, dreaming — and
 
 1. **Capture**: exit notes only fire on a real quit (`/quit`, Ctrl+C, Ctrl+D), and only when the session did something; `/new`-style reloads keep the session alive and do not count. Mid-session notes via the `note` tool or `/note` are the reliable path.
 2. **Delivery**: check `~/.unown/notes/outbox/` — a growing pile means the engine is down (or `UNOWN_ENGINE_URL` points at the wrong host). `unown note "test"` tells you which way it went.
-3. **Dreaming**: the engine runs `auto-dream` every 10 minutes and `note-sync` every 5. Terminal notes are dreamed per-project whenever any are pending; the engine's own dream needs at least 3 undreamed benchmark notes. Watch the [Dreams tab](http://localhost:3000/dashboard) — a dream row with status `error` carries the reason.
+3. **Dreaming**: the engine runs `auto-dream` every 10 minutes and `note-sync` every 5. Terminal notes are dreamed per-project whenever any are pending; the engine's own dream needs at least 3 undreamed benchmark notes. Watch the Dreams screen (`unown dashboard`, or `/dashboard` inside a session) — a dream row with status `error` carries the reason.
 
 ### The session surface
 
@@ -191,16 +192,15 @@ The Windows-specific failure modes (the general rows above still apply). Full gu
 | `'unown' is not recognized…` right after installing | The installer appended `%USERPROFILE%\.local\bin` to your **User PATH via the registry** (never `setx`), but the terminal you're typing in predates the change | Open a **new** terminal (cmd or PowerShell), then `unown doctor`. Still nothing? `bun run agent:link` from the repo and read its hint |
 | PowerShell: `…running scripts is disabled on this system` | The default execution policy blocks the `unown.ps1` shim | Once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` — or just call `unown.cmd` (cmd users never see this; from PowerShell `unown.cmd` works too) |
 | `'bun' is not recognized` / `bun: command not found` | bun not installed (or installed after the shim was written — the shims embed bun's path at link time) | `powershell -c "irm bun.sh/install.ps1 | iex"`, open a new terminal, then re-run `bun run agent:link` so the shim points at the new bun |
-| Dashboard: `Could not locate the bindings file` / `ERR_DLOPEN_FAILED` mentioning better-sqlite3 | better-sqlite3 13 ships **prebuilds for win32 x64/arm64 inside the package** — nothing compiles and there is no postinstall — so this means a broken install extract, not a missing toolchain | `rm -rf node_modules; bun install`. Note the engine never uses better-sqlite3 (it uses `bun:sqlite`): chat and learning are unaffected — this row is dashboard-only. If typecheck then misses `src/generated/prisma`, run `bun run db:generate` (that's what CI does) |
 | You want bwrap-grade sandbox isolation | Native Windows has no OS sandbox — engine runs use the in-process path jail there (the same degradation Claude Code ships on native Windows) | Use **WSL2**: install bun inside WSL2 (`curl -fsSL https://bun.sh/install | bash`), clone the repo there (keep it in the Linux filesystem, `~/…`, not `/mnt/c`) — on Linux the engine picks up the vendored bwrap automatically. Details: [windows guide § sandbox](windows.md#the-sandbox-story-on-windows) |
 
-The same logs apply as everywhere (`.run\bridge.log`, `.run\engine.log`, `.run\dashboard.log` inside the repo); `unown doctor` prints platform-aware rows (`OS sandbox (Windows)` ⚠ is *expected*, not a defect).
+The same logs apply as everywhere (`.run\bridge.log`, `.run\engine.log` inside the repo); `unown doctor` prints platform-aware rows (`OS sandbox (Windows)` ⚠ is *expected*, not a defect).
 
 ## Where the logs are
 
 | Location | What it holds |
 |----------|---------------|
-| `.run/bridge.log`, `.run/engine.log`, `.run/dashboard.log` | The three services as started by `scripts/start.ts` (pidfiles sit next to them in `.run/`; stop with `bun run agent:stop`) |
+| `.run/bridge.log`, `.run/engine.log` | The two services as started by `scripts/start.ts` (pidfiles sit next to them in `.run/`; stop with `bun run agent:stop`) |
 | `.zscripts/mini-service-<name>.log` | Services started via the dev supervisor (`.zscripts/dev.sh`) instead of `start.sh` |
 | `~/.unown/notes/outbox/` | Terminal notes queued because the engine was unreachable — the queue draining is itself a health signal |
 | `<project>/.unown/receipts/<session>.jsonl` | The session audit ledger — every prompt, tool call and result, in order; `/receipts` renders it with totals when you need to know what a session actually did |
@@ -217,7 +217,7 @@ One command per domain, fastest first:
 
 - **Chat path**: `unown -p "reply with ok"` — a one-shot session that exercises the full chain (pre-flight, models.json, bridge, upstream) and exits non-zero with a hint when anything is broken.
 - **Full doctor pass**: `unown doctor` — expect `✓ unown is ready in <dir>` or, with ⚠ items only, `✓ unown is ready to chat in <dir>`.
-- **Learning path**: `unown note "diagnostic test note"` (delivers or queues, and tells you which), then watch the [Dreams tab](http://localhost:3000/dashboard) — the note should appear as pending and disappear into the next dream. There is no note deletion — the diagnostic note is real and will be consolidated like any other, so keep it boring ("diagnostic test note") or skip this check if your project memory is precious.
+- **Learning path**: `unown note "diagnostic test note"` (delivers or queues, and tells you which), then watch the Dreams screen (`unown dashboard`) — the note should appear as pending and disappear into the next dream. There is no note deletion — the diagnostic note is real and will be consolidated like any other, so keep it boring ("diagnostic test note") or skip this check if your project memory is precious.
 - **Session surface**: `unown doctor` covers it in one run (the `lsp-servers`, `mcp-config`, `unown-state` rows); in a live session, `/lsp` (running servers, cached diagnostics) and `/mcp` (server status, then reconnect) are the live probes.
 
 ## Resetting cleanly
@@ -238,6 +238,6 @@ Before the first one, **check `~/.unown/notes/outbox`** — undelivered notes th
 - The other docs pages: [usage](usage.md), [providers](providers.md), [skills](skills.md), [Memory](memory.md), [configuration](configuration.md).
 - `unown --help` for the command surface; `unown doctor` for a live end-to-end check.
 - For the underlying pi TUI itself (keybindings, sessions, themes, `models.json` format), see the vendored docs under `pi-repo/packages/coding-agent/docs/`.
-- On the dashboard: Learning Lab holds full run transcripts, Hooks holds every guardrail decision, Router shows job health and next-fire times — all three are diagnostic surfaces, not just eye candy.
+- In the TUI dashboard (`unown dashboard`): Learning Lab holds full run transcripts, Hooks holds every guardrail decision, Router shows job health and next-fire times — all three are diagnostic surfaces, not just eye candy.
 
 When you ask for help, attach the output of `unown doctor`, the relevant slice of `.run/*.log`, and (for chat problems) the JSON from `curl -s localhost:3031/health` — that triple covers nearly every failure mode above. Never paste your real API keys.

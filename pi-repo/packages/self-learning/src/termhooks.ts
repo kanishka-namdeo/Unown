@@ -889,7 +889,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                                 lines.push("  memory files on disk keep serving the agent (last engine write is the fallback)");
                                                 lines.push("  actions: unown engine start · unown engine status · /learning (memory stack)");
                                         } else {
-                                                lines.push("  actions: /learning (memory stack) · unown engine stop · dashboard :3000");
+                                                lines.push("  actions: /learning (memory stack) · unown dashboard · unown engine stop");
                                         }
                                         ctx.ui?.notify?.(lines.join("\n"), "info");
                                 } catch (err: any) {

@@ -48,8 +48,6 @@ console.log(`verifying ${URL_ARG}\n`);
 section("routes");
 const routes = [
   ["/", 200],
-  ["/dashboard", 200],
-  ["/api", 200],
 ];
 const bodies = {};
 for (const [path, want] of routes) {

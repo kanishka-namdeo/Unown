@@ -530,7 +530,7 @@ section[data-hue] {
 }
 
 /*
- * The title-bar strip. Factored out of TerminalWindow/BrowserFrame so a
+ * The title-bar strip. Factored out of TerminalWindow so a
  * section's window header can carry the hue as a solid band — the Gen 3 name
  * strip, which sat on the corner of the window as a solid block of the accent
  * colour. `border-canvas` underneath is the same 3px gutter every frame on

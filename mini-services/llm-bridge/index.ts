@@ -16,7 +16,8 @@
  *     image_url content parts, so tool calling AND vision (VLM) work natively
  *   - true SSE streaming passthrough (the upstream supports native streaming)
  *   - request serialization + spacing + 429/5xx backoff retries
- *   - request log ring buffer + health endpoint for the dashboard
+ *   - request log ring buffer + health endpoint for the TUI dashboard /
+ *     API clients (unown dashboard's Gateway screen, unown usage, probes)
  *   - persistent usage & cost tracking: every proxied completion is
  *     appended to <state dir>/usage-log.jsonl (see ./usage.ts) and served
  *     back as aggregates on GET /v1/usage?days=N&model=M
@@ -150,7 +151,7 @@ function mergeUpstreamCatalog(catalog: string[]): void {
 }
 
 // ---------------------------------------------------------------------------
-// Request log ring buffer (for the dashboard)
+// Request log ring buffer (for the TUI dashboard / API clients)
 // ---------------------------------------------------------------------------
 const log: BridgeLogEntry[] = [];
 let totalRequests = 0;

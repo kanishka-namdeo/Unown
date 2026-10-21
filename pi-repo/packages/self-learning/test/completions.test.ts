@@ -13,6 +13,7 @@ import {
 // providers/engine/blame + their subcommands and several session flags).
 const ALL_COMMANDS = [
         "setup",
+        "dashboard",
         "providers",
         "models",
         "init",

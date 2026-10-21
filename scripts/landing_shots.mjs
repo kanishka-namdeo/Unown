@@ -20,8 +20,8 @@
  *   LANDING_SHOTS_URL=http://localhost:3000 bun scripts/landing_shots.mjs
  *   bun scripts/landing_shots.mjs --mobile        # + the 390px pass
  *
- * It reads the playwright scratch install in `download/.pwtools/` (same
- * install `shots_capture.mjs` uses) and falls back to a resolvable
+ * It reads the playwright scratch install in `download/.pwtools/` and
+ * falls back to a resolvable
  * `playwright` package. Requires a chromium build in the playwright cache.
  *
  * Output: download/landing/*.png + landing_report.json (gitignored). Light

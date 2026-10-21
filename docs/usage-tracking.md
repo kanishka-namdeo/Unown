@@ -1,9 +1,10 @@
 # Usage tracking — tokens, latency and (estimated) cost
 
 The bundled llm-bridge proxies every chat completion to your upstream. On
-each request it appends one line to a persistent usage log — the dashboard's
-Gateway tab shows the live window, `unown usage` reports over it from the
-terminal, and the numbers survive restarts.
+each request it appends one line to a persistent usage log — the TUI
+dashboard's Gateway screen (`unown dashboard`) shows the live window,
+`unown usage` reports over it from the terminal, and the numbers survive
+restarts.
 
 ## What is logged (and what is not)
 

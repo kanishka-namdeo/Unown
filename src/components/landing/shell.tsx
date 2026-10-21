@@ -282,22 +282,6 @@ export function TerminalWindow({
   );
 }
 
-/** Browser-style frame for the dashboard screenshots. */
-export function BrowserFrame({ url, src, alt }: { url: string; src: string; alt: string }) {
-  return (
-    <div className="gb-panel lift overflow-hidden">
-      <div className="gb-bar flex items-center gap-3 px-3 py-2">
-        <TrafficDots />
-        <div className="flex min-w-0 flex-1 justify-center">
-          <span className="gb-label truncate text-[9px] text-canvas">{url}</span>
-        </div>
-        <div className="min-w-[28px]" aria-hidden="true" />
-      </div>
-      <img src={src} alt={alt} className="w-full" loading="lazy" width={1400} height={900} />
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /* copy button                                                         */
 /* ------------------------------------------------------------------ */

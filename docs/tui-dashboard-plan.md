@@ -1,9 +1,25 @@
 # The TUI Dashboard — design plan (Next.js dashboard retirement)
 
-Status: implementing. Decision owner: repo maintainer session 2026-10-21.
+Status: **done** (D7 executed 2026-10-21 — the web dashboard tree, its Prisma scaffold, its CI lane and its asset pipeline are deleted; `unown dashboard` + the embedded `/dashboard` mount are the shipped mission control). Decision owner: repo maintainer session 2026-10-21.
 Related: `docs/tui-beautification-plan.md` (visual law), `docs/memory.md` (the system
-being visualized), `docs/detached-engine-architecture.md` (the API being consumed),
-`docs/tui-capture-workflow.md` (the verification lane).
+being visualized), `docs/detached-engine-architecture.md` (the API being consumed,
+now incl. "The engine API surface" section), `docs/tui-capture-workflow.md` (the verification lane).
+
+> **Addendum (retirement shipped).** D7 landed as planned in §8: `src/app/dashboard/`,
+> `src/components/dashboard/`, `src/lib/agent-*` + `db.ts`, the prisma scaffold and
+> `db:*` scripts, `serve-dashboard.ts`, the browser screenshot pipeline
+> (`shots_capture.mjs`, `dash_*.png`, `webcache-tab-verify.mjs`), the dashboard e2e
+> specs and `e2e/mock-engine.mjs` (its extended port lives on at
+> `pi-repo/packages/self-learning/test/dashboard-mock-engine.ts`), the `.github/assets`
+> dashboard captures/tour and the landing `dash-*.png` set are all gone. The launcher
+> starts bridge + engine only; the src-scoped CI jobs were renamed landing-scoped
+> (`Lint (landing)`, `Typecheck (landing)`, `Unit tests (landing)`,
+> `Production build (landing)`, `E2E + a11y (landing)` — 3 tests); the landing
+> showcase now frames twelve audited TUI stills
+> (`public/landing/tui/dashboard/stills/`) with the "Install it and run unown
+> dashboard" CTA. The engine REST+SSE API on :3030 is unchanged — it is documented
+> in `docs/detached-engine-architecture.md` — and the TUI dashboard is its
+> first-party client.
 
 ## 1. Context and the decision
 

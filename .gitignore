@@ -7,9 +7,6 @@ node_modules/
 .pnp
 .pnp.*
 
-# prisma 7 generated client (schema generator output)
-src/generated/
-
 # next.js
 .next/
 /out/
@@ -39,7 +36,6 @@ src/generated/
 /Caddyfile
 /worklog.md
 /dev.log
-/server.log
 
 # misc
 .DS_Store

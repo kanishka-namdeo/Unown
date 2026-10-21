@@ -20,7 +20,7 @@ Related pages: [quickstart](quickstart.md) · [configuration](configuration.md) 
 |---|---|---|
 | Terminal agent talks to | your provider's endpoint | `http://127.0.0.1:3031/v1` (localhost) |
 | Credentials | your key, stored in `~/.unown/agent/auth.json` (mode 0600) | `BRIDGE_UPSTREAM_KEY` in the repo's `.env` — nothing secret on your machine |
-| Extra services needed | none — the CLI works standalone | bridge (chat) + engine + dashboard (learning features) |
+| Extra services needed | none — the CLI works standalone | bridge (chat) + engine (learning features; mission control is the `unown dashboard` TUI riding the engine's API — no extra service) |
 | Model routing / thinking translation / SSE passthrough | whatever your provider does natively | handled by the bridge |
 | Configure with | `unown setup --provider openai --api-key … --model …` | put the upstream key in `.env`, then `unown setup --provider bridge` |
 

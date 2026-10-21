@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 232;
+export const CHANGELOG_TOTAL_ENTRIES = 235;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 107,
   "Changed": 25,
   "Deprecated": 0,
-  "Removed": 1,
-  "Fixed": 69,
+  "Removed": 2,
+  "Fixed": 71,
   "Security": 3,
   "Behavior": 27
 };
@@ -46,20 +46,41 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 110,
+    "total": 113,
     "counts": {
       "Added": 53,
       "Changed": 6,
       "Deprecated": 0,
-      "Removed": 1,
-      "Fixed": 43,
+      "Removed": 2,
+      "Fixed": 45,
       "Security": 0,
       "Behavior": 7
     },
     "groups": [
       {
+        "bucket": "Removed",
+        "items": [
+          {
+            "title": "the Next.js dashboard is gone; mission control is unown dashboard",
+            "behavior": false
+          },
+          {
+            "title": "provider management lives in the terminal now — the dashboard \"Providers\" tab is gone",
+            "behavior": false
+          }
+        ]
+      },
+      {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "the 3-OS matrix went green again",
+            "behavior": false
+          },
+          {
+            "title": "the TUI dashboard authenticates with the engine — M7's missed client",
+            "behavior": false
+          },
           {
             "title": "the ctrl+k story is true everywhere",
             "behavior": false
@@ -447,15 +468,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "tui: the split-view display mode — a built-in port of pi-split-view 1.1.0",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Removed",
-        "items": [
-          {
-            "title": "provider management lives in the terminal now — the dashboard \"Providers\" tab is gone",
             "behavior": false
           }
         ]

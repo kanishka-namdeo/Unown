@@ -34,7 +34,7 @@ cd Unown
 bun run agent:install
 ```
 
-This installs dashboard dependencies, installs and builds the vendored pi monorepo (`pi-repo/`) — hydrating its provider model data on first run (that directory is gitignored upstream, so fresh clones fetch it once, ~1–2 min) — creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout; on Windows: `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1`). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
+This installs the landing page's dependencies, installs and builds the vendored pi monorepo (`pi-repo/`) — hydrating its provider model data on first run (that directory is gitignored upstream, so fresh clones fetch it once, ~1–2 min) — creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout; on Windows: `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1`). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
 
 > **Windows notes**
 > - If the installer just added `%USERPROFILE%\.local\bin` to your PATH, **restart your terminal** before `unown` resolves.
@@ -79,7 +79,7 @@ Interactive wizard (pick a provider, paste a key, choose a model): just run `uno
 
 ## 4. Start the stack (optional but recommended)
 
-The bridge + self-learning engine + dashboard are what make unown *learn* (session notes → AutoDream → project memory + skills). Chat works without them — notes just queue locally until the engine returns.
+The bridge + self-learning engine are what make unown *learn* (session notes → AutoDream → project memory + skills). Chat works without them — notes just queue locally until the engine returns. Mission control is not a web service: `unown dashboard` (or `/dashboard` inside a session) is a fullscreen TUI client of the engine, so the launcher starts no third server.
 
 ```bash
 bun run agent:start
@@ -89,7 +89,8 @@ bun run agent:start
 |---|---|---|
 | llm-bridge | 3031 | `curl localhost:3031/health` |
 | self-learning engine | 3030 | `curl localhost:3030/api/overview` |
-| dashboard | 3000 | http://localhost:3000/dashboard |
+
+Then open mission control in your terminal: `unown dashboard` (11 screens — Overview, Memory, Dreams, Notes, Skills, Learning Lab, Hooks, Router, Gateway, Automations, Web Cache).
 
 If the upstream key is missing or the upstream is unhealthy, the launcher prints a loud warning instead of letting chats fail with a bare 401 later.
 

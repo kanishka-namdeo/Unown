@@ -18,6 +18,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { DexSection } from "../dex";
+import { ENGINE_JOB_COUNTS } from "../engine-data";
 import { DEX } from "../dex-data";
 
 afterEach(async () => {
@@ -177,8 +178,14 @@ describe("landing DexSection", () => {
     // hand-typed one.
     const { container } = render(<DexSection />);
     const text = container.textContent ?? "";
-    expect(text).toContain("Seven jobs keep the loop moving");
-    expect(text).toContain("five on a timer, two on events");
+    // The counts come from ENGINE_JOB_COUNTS (generated from router.ts's
+    // JOB_DEFS) — assert against the same generated numbers, not literals,
+    // so a new job (M9's db-retention: 7→8) updates this test with the data
+    // instead of failing on a stale pin.
+    const totalWord = ["zero","one","two","three","four","five","six","seven","eight","nine","ten"][ENGINE_JOB_COUNTS.total] ?? String(ENGINE_JOB_COUNTS.total);
+    const intervalWord = ["zero","one","two","three","four","five","six","seven","eight","nine","ten"][ENGINE_JOB_COUNTS.interval] ?? String(ENGINE_JOB_COUNTS.interval);
+    expect(text).toContain(`${totalWord.replace(/^./, (c) => c.toUpperCase())} jobs keep the loop moving`);
+    expect(text).toContain(`${intervalWord} on a timer, ${["zero","one","two","three","four","five","six","seven","eight","nine","ten"][ENGINE_JOB_COUNTS.event] ?? ENGINE_JOB_COUNTS.event} on events`);
     expect(text).toContain("A busy-mutex means the sandbox is never double-driven");
     // and the moved capability copy is here, not in the loop band
     for (const fragment of [

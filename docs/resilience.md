@@ -21,7 +21,7 @@ The engine is one of four processes ([architecture](detached-engine-architecture
 | Mid-session notes (`note` tool, `/note`) | queued in `$UNOWN_HOME/notes/outbox/`, drained when the engine returns |
 | The session-end note | same — and quitting never waits on the engine longer than the delivery budget (2.5 s default; see [R5](#r5--engine-unreachable-at-quit-time)) |
 | Dreams, memory versions, skill minting | paused until the engine is back |
-| Dashboard, automations | down with the engine — `unown automations` says so with the fix in the same line |
+| The TUI dashboard (`unown dashboard`), automations | down with the engine — the dashboard is a client, not a service; `unown automations` says so with the fix in the same line |
 
 Liveness is not your job either: the touchpoints that care — note delivery and the session's status loop — ping the engine's HTTP health, and on connection-refused spawn a detached engine child (the Ollama pattern, [architecture design rule 5](detached-engine-architecture.md)). What M6 added on top is the awareness layer — the terminal agent now *knows* the engine's state and shows it, the crash-loop circuit bounds a child that keeps dying, and the repair path makes a corrupt database a bounded loss instead of a bricked install.
 
@@ -64,7 +64,7 @@ memory engine — http://127.0.0.1:3030
   actions: unown engine start · unown engine status · /learning (memory stack)
 ```
 
-The other status lines, verbatim: `status: UP (pid 4242) · busy on 'auto-dream' 40s · observed 12m ago in this session`, `status: STARTING — a start was kicked, first probes pending (~seconds)`, and `status: PAUSED — chat works, memory reads use the last engine write, notes keep queuing locally`. When the engine is up, the actions line points at `/learning`, `unown engine stop` and the dashboard instead.
+The other status lines, verbatim: `status: UP (pid 4242) · busy on 'auto-dream' 40s · observed 12m ago in this session`, `status: STARTING — a start was kicked, first probes pending (~seconds)`, and `status: PAUSED — chat works, memory reads use the last engine write, notes keep queuing locally`. When the engine is up, the actions line points at `/learning`, `unown engine stop` and the TUI dashboard instead.
 
 ### `/learning` staleness headers
 

@@ -63,7 +63,7 @@ body:
     attributes:
       label: Logs
       description: >
-        Relevant lines from `.run/*.log` (engine, bridge, dashboard) and, for
+        Relevant lines from `.run/*.log` (engine, bridge) and, for
         terminal-side issues, the `unown -v` hook decisions. Remove secrets
         first.
       placeholder: Paste log lines here (secrets removed).

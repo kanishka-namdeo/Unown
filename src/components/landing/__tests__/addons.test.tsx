@@ -174,13 +174,13 @@ describe("landing showcase addons strip", () => {
     }
   });
 
-  test("the band's dashboard story is intact — eleven tabs, the CTA, no new band", () => {
+  test("the band's dashboard story is intact — twelve surfaces, the CTA, no new band", () => {
     const { container } = render(<ShowcaseSection />);
     const text = container.textContent ?? "";
-    expect(text).toContain("Eleven tabs");
+    expect(text).toContain("Twelve surfaces");
     expect(text).toContain("Web Cache");
     expect(text).toContain("What the running engine looks like.");
-    const cta = screen.getByRole("link", { name: /Install it and open the dashboard/i });
+    const cta = screen.getByRole("link", { name: /Install it and run unown dashboard/i });
     expect(cta.getAttribute("href")).toBe("#quickstart");
     // the strip lives inside the section, not beside it: the nine-band
     // composition (landing-page.test.tsx) must not have grown a tenth band,

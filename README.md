@@ -24,7 +24,7 @@ Use it two ways:
 
 **[Quickstart](#quickstart)** · **[Documentation](#documentation)** · **[Landing page](#landing-page)** · **[Dashboard tour](#mission-control)** · **[Architecture](#architecture)** · **[The learning loop](#the-learning-loop)** · **[Security](#security-model)** · **[What it learned](docs/memory.md#what-a-learning-session-looks-like)**
 
-![unown dashboard tour — Overview, Learning Lab and Memory tabs](.github/assets/tour.gif)
+![unown dashboard — the Overview screen with KPI band, benchmark task table and the live activity rail](public/landing/tui/dashboard/stills/01-overview.png)
 
 ## The five mechanisms
 
@@ -32,7 +32,7 @@ Use it two ways:
 |---|-----------|----------------|--------------|
 | 1 | **Tiered Memory** | [`memory.ts`](pi-repo/packages/self-learning/src/memory.ts) · [`term.ts`](pi-repo/packages/self-learning/src/term.ts) | Four tiers — policy → project → user → local — merged most-specific-wins and injected into every agent session (engine sandboxes *and* terminal sessions). Every write is versioned, attributable (`seed` / `harness` / `autodream` / `rollback`) and rollback-able. |
 | 2 | **Self-Improving Harness** | [`harness.ts`](pi-repo/packages/self-learning/src/harness.ts) · [`mint.ts`](pi-repo/packages/self-learning/src/mint.ts) | Runs a benchmark task → if it fails, mines the failure transcript → asks the LLM for memory rules that would have prevented it → re-runs a *candidate* with the patched memory → ships the patch only if it passes **twice** (candidate + confirmation — a noise gate) then sweeps for regressions. Shipped patches that later regress are automatically **un-shipped** (retention check). When the whole suite passes, **task minting** keeps the loop fed: it converts real failures — or LLM-authored harder curriculum variants — into new capability-eval tasks, which graduate into the regression suite once the agent masters them. |
-| 3 | **Routing** | [`router.ts`](pi-repo/packages/self-learning/src/router.ts) | Seven jobs keep the agent learning in the background: interval jobs `harness-cycle`, `task-mint`, `auto-dream`, `note-sync`, `sandbox-gc`, plus event jobs on `improvement:shipped` and `run:finished` — with a busy-mutex so the sandbox is never double-driven. |
+| 3 | **Routing** | [`router.ts`](pi-repo/packages/self-learning/src/router.ts) | Eight jobs keep the agent learning in the background: interval jobs `harness-cycle`, `task-mint`, `auto-dream`, `note-sync`, `sandbox-gc`, `db-retention`, plus event jobs on `improvement:shipped` and `run:finished` — with a busy-mutex so the sandbox is never double-driven. |
 | 4 | **AutoDreaming + Skill Acquisition** | [`dream.ts`](pi-repo/packages/self-learning/src/dream.ts) · [`skills.ts`](pi-repo/packages/self-learning/src/skills.ts) | Session notes are consolidated: benchmark notes into the engine's project memory (gated by a canary run — a dream that breaks the last-passing task is rolled back), terminal notes into **your project's own** `.unown/memory/project.md`. When the notes reveal recurring multi-step procedures, AutoDream also mints them as **Agent Skills** — concrete `SKILL.md` procedures written into `.unown/skills/`, versioned and rollback-able — that the next session picks up through progressive disclosure. |
 | 5 | **Hooks** | [`hooks.ts`](pi-repo/packages/self-learning/src/hooks.ts) · [`termhooks.ts`](pi-repo/packages/self-learning/src/termhooks.ts) | A pi inline extension enforcing guardrails at every layer. Always-on gates: `SessionStart`, `UserPromptSubmit`, `PreToolUse` (bash deny-list + path jail), `PostToolUse` (syntax gate that feeds errors back to the agent), `Stop`, `SubagentStop`. On top of them a user-configurable hook layer — `.unown/hooks.json` (project, trust-gated) + `~/.unown/agent/hooks.json` — honors **13 events** (adding `PreModelRequest`/`PostModelRequest`, `PreCompact`/`PostCompact`, `SubagentStart`, `TaskCompleted`, `PermissionRequest`) with five handler types (`command`, `http`, `mcp`, `prompt`, `agent`), in engine sandbox runs and terminal sessions alike. Every decision is logged. |
 
@@ -40,7 +40,7 @@ Use it two ways:
   <img src=".github/assets/diagram-memory.png" alt="the four-tier memory stack: policy, project, user and local tiers resolved most-specific-wins into a single injected stack; every write versioned, attributable and rollback-able" width="880">
 </p>
 
-Everything is observable from a **mission-control dashboard** (Next.js) with live SSE activity, run transcripts, memory version history, dream journals, hook decision logs, an interactive console, and the job router.
+Everything is observable from **mission control in your terminal** — `unown dashboard` (or `/dashboard` inside a live session) — with live SSE activity, run transcripts, memory version history, dream journals, hook decision logs, and the job router, on the same pi-tui stack as the agent itself.
 
 ## Architecture
 
@@ -50,8 +50,8 @@ flowchart TB
         TUI["unown terminal agent<br>(pi TUI + guardrail hooks)"]
         PM("project memory<br>.unown/memory/project.md")
     end
-    subgraph dash["dashboard · :3000"]
-        UI["Next.js mission control<br>11 tabs · live SSE feed"]
+    subgraph dash["mission control"]
+        UI["unown dashboard (TUI)<br>11 screens · live SSE feed"]
     end
     subgraph engine["self-learning engine :3030"]
         ENG["memory · harness · dream<br>router · sandbox"]
@@ -135,7 +135,7 @@ Full usage docs live in [`docs/`](docs/):
 | [macos guide](docs/macos.md) | macOS: seatbelt sandbox notes, darwin prebuilds, install one-liners |
 | [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |
 | [TUI capture workflow](docs/tui-capture-workflow.md) | how the landing page's terminal screenshots/video are captured from real sessions — the harness contract, geometry rules, audit gates |
-| [TUI dashboard](docs/tui-dashboard-plan.md) | the embedded terminal dashboard (`unown dashboard` / `/dashboard`) — the D-series design record: screens, both mounts, the live engine feed, what was built and what D7/D8 still plan |
+| [TUI dashboard](docs/tui-dashboard-plan.md) | the terminal dashboard (`unown dashboard` / `/dashboard`) — the D-series design record: screens, both mounts, the live engine feed, and the web dashboard's retirement |
 | [TUI responsiveness](docs/tui-responsive-plan.md) | the R-series responsive design record — viewport tiers, the min-size gate, footer degradation, overlay scaling, the graduated files dock |
 | [behavior](docs/BEHAVIOR.md) | the agent behavior card: default models, memory stack, session tools, sandbox, hooks, and the behavior-change policy |
 
@@ -173,7 +173,7 @@ curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 irm https://unown-nine.vercel.app/install.ps1 | iex
 ```
 
-This installs dashboard dependencies, installs and builds the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.
+This installs the landing-page dependencies, installs and builds the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.
 
 **Keeping it current:** `unown update` moves the install to the newest release (fast-forward only, never over uncommitted work; `unown update --check` reports without changing anything) — [docs/updating.md](docs/updating.md).
 
@@ -215,7 +215,7 @@ Boots three services:
 |---------|--------------|--------------|
 | llm-bridge | 3031 | `GET /health` |
 | self-learning engine | 3030 | `GET /api/overview` |
-| dashboard | 3000 | `http://localhost:3000/dashboard` |
+| landing | 3000 | `http://localhost:3000/` (marketing page only; mission control is `unown dashboard`) |
 
 Logs land in `.run/*.log`; stop with `bun run agent:stop`. The launcher reads the bridge's `/health` (upstream key set? upstream answering?) and warns loudly instead of letting chats fail with a bare 401 later.
 
@@ -290,20 +290,21 @@ A shim (not `bun install -g .`) is the supported global-install path: it keeps t
 
 ### 5. Watch it learn
 
-Open **http://localhost:3000/dashboard**:
+Run **`unown dashboard`** (fullscreen TUI) — or **`/dashboard`** inside a live session (Esc-Esc returns you to the editor):
 
-- **Overview** — pass rate, shipped improvements, dream count, memory version, hook decisions, token usage.
+- **Overview** — pass rate, shipped improvements, dream count, memory version, hook decisions, token usage, and the live activity rail.
+- **Memory** — the four tiers, their contents, full version history and one-key rollback — plus per-project tiers and the Agent Skills AutoDream minted into your projects (with rollback and retire).
 - **Learning Lab** — every harness cycle: baseline run → failure diagnosis → proposed memory patch → candidate run → ship/reject, with full transcripts.
-- **Memory** — the four tiers, their contents, full version history and one-click rollback — plus the Agent Skills AutoDream minted into your projects (with rollback and retire).
 - **Dreams** — AutoDream sessions: merged / pruned / added notes and the consolidated memory they produced.
+- **Notes** — the raw session-note inbox AutoDream consolidates from.
+- **Skills** — the skill library with versions, rollback and retire.
 - **Hooks** — the decision log of every guardrail (allow / deny / augment).
-- **Console** — drive the sandboxed agent interactively and watch the transcript stream.
-- **Router** — background jobs: enable/disable, trigger manually, see run counts and next-fire times.
-- **Sandboxes** — the workspace inventory the engine has materialized for sandboxed runs, with ages and file counts.
+- **Router** — background jobs: enable/disable, trigger manually, see run counts and next-fire times — plus the sandbox inventory.
 - **Gateway** — the llm-bridge request log: per-model traffic, tokens, latency, errors.
 - **Automations** — scheduled headless `unown` runs (cron or one-shot): create, run now, pause/resume, per-run history.
+- **Web Cache** — the persistent web results store: entries, hits, saved tokens.
 
-The tab strip is URL-addressable (`?tab=<name>`) and every tab is reachable from the ⌘K command palette.
+Number keys jump between screens, `?` opens the help card, and the same screens are reachable from a live session without leaving the editor.
 
 The engine seeds itself on first boot: default memory tiers, five benchmark tasks (`fizzbuzz`, `impl-debounce`, `map-limit`, `drop-right`, `fix-csv-parser`), and the router jobs. Leave it running and the `harness-cycle` job will keep mining failures and shipping memory improvements on its own.
 
@@ -311,7 +312,7 @@ The engine seeds itself on first boot: default memory tiers, five benchmark task
 
 ## Landing page
 
-`bun run agent:start` (or `bun run dev`) serves a **marketing landing page at `/`** and **mission control at `/dashboard`**.
+`bun run agent:start` brings up the stack (bridge + engine) and `bun run dev` serves the **marketing landing page at `/`** — mission control is `unown dashboard`, not a web page.
 
 The landing page is built around the name. Unown is the Symbol Pokémon — a flat black letter with one eye, alive since 1999, found on the walls of ruins reading what is written there — and `unown` is a pun you have to read twice. So the page carries a **28-form alphabet drawn from scratch for this project** (inline SVG, no font file, no sprite sheet): hover or focus any form in the wall to decode the lore it borrows and the real mechanism it stands for here.
 
@@ -323,27 +324,22 @@ Every number and every quoted artifact on that page is checkable, nothing from a
 
 ## Mission control
 
-The dashboard is a live window onto the engine — every number below is real data from a running instance, streamed over SSE. It comes in two mounts: the **web dashboard** at `http://localhost:3000/dashboard` (11 tabs) and the **terminal dashboard** — `unown dashboard` / `/dashboard` in the TUI ([docs/tui-dashboard-plan.md](docs/tui-dashboard-plan.md)) — the same engine feed without leaving the terminal.
+The dashboard is a live window onto the engine — every number below is real data from a running instance, streamed over SSE. It lives where the rest of the product lives: **in your terminal**. `unown dashboard` opens the fullscreen TUI; `/dashboard` embeds the same screens inside a live session; `unown dash` is the short form ([docs/tui-dashboard-plan.md](docs/tui-dashboard-plan.md) — the design record, including the web dashboard's retirement).
 
-![unown dashboard — Overview tab with live KPIs](.github/assets/dashboard-overview.png)
+![unown dashboard — the Overview screen with KPI band, benchmark task table and the live activity rail](public/landing/tui/dashboard/stills/01-overview.png)
 
 | | |
 |---|---|
-| ![Learning Lab — harness cycles, runs and transcripts](.github/assets/dashboard-learning-lab.png) | ![Memory — the four tiers and version history](.github/assets/dashboard-memory.png) |
-| ![Dreams — AutoDream sessions and pending notes](.github/assets/dashboard-dreams.png) | ![Hooks — the guardrail decision log](.github/assets/dashboard-hooks.png) |
-| ![Console — drive the sandboxed agent live](.github/assets/dashboard-console.png) | ![Router — background jobs](.github/assets/dashboard-router.png) |
+| ![Memory — the four tiers, per-project memories, injection budget and version history](public/landing/tui/dashboard/stills/02-memory.png) | ![The embedded /dashboard mount inside a live session](public/landing/tui/dashboard/stills/12-embedded-mount.png) |
+| ![Learning Lab — harness cycles, improvements and run transcripts](public/landing/tui/dashboard/stills/06-learning-lab.png) | ![Hooks — the guardrail decision log](public/landing/tui/dashboard/stills/07-hooks.png) |
 
-The web tabs: **Overview** (KPIs, pass-rate chart, live activity feed) · **Learning Lab** (harness cycles, runs and transcripts) · **Memory** (the four tiers, version history, rollback) · **Dreams** (AutoDream sessions and pending notes) · **Hooks** (the guardrail decision log) · **Console** (drive the sandboxed agent live) · **Gateway** (bridge health and upstream) · **Router** (background jobs) · **Sandboxes** · **Automations** · **Web Cache** (the persistent web results store). Provider management lives in the terminal (`/providers` — [docs/providers.md](docs/providers.md)).
+The eleven screens: **Overview** (KPI band, benchmark task table, live activity rail) · **Memory** (the four tiers + project tiers, budget meter, version history, rollback) · **Learning Lab** (harness cycles, improvements, runs and transcripts) · **Dreams** (AutoDream sessions and pending notes) · **Notes** (the session-note inbox) · **Skills** (the self-minted library) · **Hooks** (the guardrail decision log) · **Gateway** (bridge health and upstream) · **Router** (background jobs + sandboxes) · **Automations** (scheduled runs) · **Web Cache** (the persistent web results store). Provider management is one screen away too — `/providers` in a live session, `unown providers` on the CLI ([docs/providers.md](docs/providers.md)).
 
-It is fully responsive — the same live KPIs, chart and activity feed on a phone:
-
-<p align="center">
-  <img src=".github/assets/dashboard-mobile.png" alt="unown dashboard on mobile" width="360">
-</p>
+Stills are PTY captures of real `unown dashboard` sessions (pane-audited; the capture lane is [scripts/tui-capture/](scripts/tui-capture/)).
 
 ## Configuration
 
-All variables are optional with sane defaults; author `.env` from [`.env.example`](.env.example). The **full reference** — engine, bridge, dashboard, terminal and sandbox variables, `.env` loading semantics, state files and agent config files — lives in [docs/configuration.md](docs/configuration.md), alongside the [production notes](docs/configuration.md#production-notes) (run the engine without hot reload, put `BRIDGE_API_KEY` on the bridge, scale by running more single-tenant instances).
+All variables are optional with sane defaults; author `.env` from [`.env.example`](.env.example). The **full reference** — engine, bridge, landing, terminal and sandbox variables, `.env` loading semantics, state files and agent config files — lives in [docs/configuration.md](docs/configuration.md), alongside the [production notes](docs/configuration.md#production-notes) (run the engine without hot reload, put `BRIDGE_API_KEY` on the bridge, scale by running more single-tenant instances).
 
 ### Using a different model provider
 

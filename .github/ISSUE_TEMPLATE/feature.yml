@@ -13,7 +13,7 @@ body:
     id: solution
     attributes:
       label: The change you propose
-      description: What should change, and where it should live (agent CLI / engine / bridge / dashboard / landing / docs / benchmarks).
+      description: What should change, and where it should live (agent CLI / engine / TUI dashboard / bridge / landing / docs / benchmarks).
     validations:
       required: true
   - type: textarea

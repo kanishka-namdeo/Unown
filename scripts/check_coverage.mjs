@@ -87,8 +87,8 @@ for (const raw of report.split(/\r?\n/)) {
                 for (let n = from; n <= to; n++) lines.add(n);
         }
         // bun can emit one row per module instance when a test dynamically
-        // re-imports a module under a query-suffixed specifier (agent-api.test.ts
-        // does this to vary NEXT_PUBLIC_AGENT_API_BASE). A line is only truly
+        // re-imports a module under a query-suffixed specifier (the retired
+        // web dashboard's suite did this). A line is only truly
         // uncovered when NO instance executed it — so duplicate rows INTERSECT,
         // they do not overwrite (last-write-wins kept the sparse instance's row
         // and failed well-covered files under bun 1.3.x; 1.4+ merges natively).

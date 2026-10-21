@@ -45,14 +45,16 @@ half a viewport shorter than the eight-band page it replaced.
   order in `page.tsx` is the page's argument — the comment above the component
   explains each placement, and `NAV_LINKS` in `shell.tsx` mirrors the anchors.
   Adding a section means adding it in both places or the page grows an orphan.
-- **Dashboard affordances link in-page, never to `/dashboard`.** The marketing
-  route is the only thing Vercel hosts; the live `/dashboard` there has no
-  engine behind it and would show an empty app. So the nav "Dashboard" and the
-  footer "Dashboard" point at `#showcase` (the captured screenshots), and the
-  showcase call-to-action points at `#quickstart` ("Install it and open the
-  dashboard" — an anchor inside the hero since the quickstart merge).
-  `__tests__/landing-copy.test.tsx` asserts these targets — restoring a
-  `/dashboard` href is a regression, not a fix.
+- **Dashboard affordances link in-page, never out.** The marketing route is
+  the only thing Vercel hosts, and mission control is not a route at all
+  anymore: `unown dashboard` is a TUI, and the retired `/dashboard` web page
+  is gone from the tree (D7). So the nav "Dashboard" and the footer
+  "Dashboard" point at `#showcase` (the captured TUI stills), and the
+  showcase call-to-action points at `#quickstart` ("Install it and run
+  unown dashboard" — an anchor inside the hero since the quickstart merge).
+  `__tests__/landing-copy.test.tsx` asserts these targets — restoring any
+  `/dashboard` href is a regression, not a fix (there is nothing there to
+  render).
 - **The Unown script is the identity.** `glyphs.ts` holds 28 stroke paths on a
   100×100 grid plus `EYES[]` (per-form eye placement) and `MARKS` (decorative
   non-letters). It is drawn from scratch: no Pokémon sprite, card, logo or font
@@ -155,8 +157,9 @@ half a viewport shorter than the eight-band page it replaced.
 - **Quoted engine strings are gated, and the job list is generated.**
   `scripts/landing_claims.mjs` does two jobs this folder's honesty rule depends
   on. It writes `engine-data.ts` from `JOB_DEFS` in `router.ts`, so the pair
-  strip's job listing in `loop.tsx` and the routing tile's "seven jobs … five
-  on a timer, two on events" are read from the scheduler rather than retyped:
+  strip's job listing in `loop.tsx` and the routing tile's generated job
+  sentence ("eight jobs … six on a timer, two on events" at the current
+  JOB_DEFS) are read from the scheduler rather than retyped:
   `ENGINE_JOBS` and `ENGINE_JOB_COUNTS` are the only legal source for a job id,
   interval or tally on this page. And it gates every literal the page presents
   as engine output — `integrity.tsx`'s hook log, all three `loop.tsx` beats
@@ -200,6 +203,13 @@ half a viewport shorter than the eight-band page it replaced.
     run when the list drifts, so the figure cannot rot. The dex owns the ten
     creatures' capabilities, the strip owns the addon framework's, and
     neither restates the other);
+  - **what mission control shows** (`showcase.tsx`'s `SCREENS` — twelve
+    surfaces: the eleven `unown dashboard` screens plus the embedded
+    `/dashboard` mount. Each tile must name a screen that exists in the
+    registry at `pi-repo/packages/self-learning/src/dashboard/dashboard-app.ts`
+    (the `SCREENS` rename from the web-dashboard era's `TABS` was part of D7:
+    these are TUI screens, not browser tabs); the framed stills are the PTY
+    captures named above, never fabricated mockups);
   - **the caching negative control** (`benchmarks.tsx` only — the v1 + v3
     controls share one box);
   - **the terminal-agent command surface and its session tools** (`hero.tsx`'s
@@ -396,9 +406,13 @@ parallel ones.
     adding top-level sections to the walk. A band that joins or leaves the
     page re-walks this paragraph — the composition test pins the whole walk,
     so a drift fails the run before a review has to catch it.
-  - `SectionHead`, `TerminalWindow` and `BrowserFrame` take **no** hue prop —
+  - `SectionHead` and `TerminalWindow` take **no** hue prop —
     they inherit their section. A header that could disagree with its section is
-    how the page gets eleven hues fighting each other.
+    how the page gets eleven hues fighting each other. (`BrowserFrame` was
+    removed with the web dashboard — D7 retired the only thing it framed, and
+    `TerminalWindow` is now the page's only window primitive; the TUI stills
+    it frames are `public/landing/tui/dashboard/stills/*.png`, twelve PTY
+    captures with pane receipts, not screenshots of a browser app.)
   - Body copy (`text-dim`, `text-faint`) never takes a hue. The alphabet is the
     one deliberate intra-section variation: its 28 tiles cycle
     `TILE_TONES = [aqua, leaf, magma, gold]` as rims by index — the eyes stay
@@ -716,7 +730,8 @@ parallel ones.
   never carry body copy. `.quote` used to be Instrument Serif; the serif was
   the one modern note left on a Game Boy page, and a quoted dex entry is game
   text, so the face changed but the rule did not.
-- The dashboard's cool zinc palette is untouched. Only this page is retro.
+- The TUI's `unown` theme (cool zinc, emerald accents — `pi-repo/.../src/theme.ts`) is
+  untouched by this page. Only the landing page is retro.
 
 ## Verification
 
@@ -866,8 +881,14 @@ parallel ones.
   stale the moment the palette moves. Regenerate with
   `bun scripts/landing_og_shots.mjs` against the production build; it asserts
   `--color-canvas` resolved to the dark scheme's hex before each shot, so it
-  cannot silently re-bake an old palette. The `dash-*.png` files in that folder
-  are dashboard captures and are not this page's business.
+  cannot silently re-bake an old palette. `layout.tsx` also names
+  `/landing/tui/dashboard/stills/01-overview.png` in its OG image set — that
+  file belongs to the TUI still set, not to this page's own capture pipeline:
+  the twelve stills in `public/landing/tui/dashboard/stills/` are real
+  `unown dashboard` PTY captures produced by the `scripts/tui-capture/` lane
+  (`pty_capture_dashboard.py` + the fixture engine; pane receipts and audit
+  trail under `benchmarks/tui-beauty/dashboard-stills/`), and regenerating them
+  is that lane's job, never a landing screenshot script.
 
 ## Child DOX Index
 

@@ -34,7 +34,7 @@ concurrency:
 #     the OS sandbox is a Linux surface (bwrap is a Linux ELF; src/bwrap.ts
 #     gates the other platforms out by design).
 #
-# Dashboard honesty gates (this branch):
+# Landing + TUI honesty gates (this branch):
 #   - coverage runs the changed-line coverage gate of strategy §6 gate 9:
 #     `scripts/check_coverage.mjs --run` spawns `bun test src --coverage`
 #     itself, fails on a red suite, and treats an unparseable report as a hard
@@ -295,7 +295,7 @@ jobs:
         run: bun test
 
   build:
-    name: Production build (dashboard)
+    name: Production build (landing)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -305,23 +305,16 @@ jobs:
           bun-version: "1.4.3"
       - name: Install dependencies (frozen lockfile)
         run: bun install --frozen-lockfile
-      - name: Generate Prisma client
-        # src/generated/prisma is gitignored output; the standalone build
-        # needs it for src/lib/db.ts.
-        run: bun run db:generate
       - name: Build
         # testing-strategy.md §6 gate 14: `bun run build` = next build +
-        # standalone static/ public/ copy — the exact artifact
-        # scripts/serve-dashboard.ts serves in production. Vercel builds the
-        # landing page on every push; this gate catches non-landing breakage
-        # (dashboard routes, standalone server) before a release.
+        # standalone static/ public/ copy. Vercel builds the landing page on
+        # every push; this gate catches landing breakage (routes, standalone
+        # server) before a release. The TUI dashboard's suites run in the
+        # build-test matrix (pi-repo/packages/self-learning).
         run: bun run build
       - name: Standalone server smoke
         # The production entry must actually boot: NODE_ENV=production +
-        # .next/standalone/server.js on a scratch port, then 200 on / and
-        # /dashboard. No engine behind it — the dashboard renders its
-        # disconnected state (the SSE client retries silently), which is the
-        # correct degraded behavior to assert.
+        # .next/standalone/server.js on a scratch port, then 200 on /.
         run: |
           PORT=3210 node .next/standalone/server.js &
           server_pid=$!
@@ -330,12 +323,11 @@ jobs:
             sleep 1
           done
           curl -sf -m 5 http://127.0.0.1:3210/ >/dev/null || { echo "::error::landing route did not answer"; kill $server_pid; exit 1; }
-          curl -sf -m 5 http://127.0.0.1:3210/dashboard >/dev/null || { echo "::error::dashboard route did not answer"; kill $server_pid; exit 1; }
           kill $server_pid
-          echo "standalone server: / and /dashboard answered 200"
+          echo "standalone server: / answered 200"
 
   lint:
-    name: Lint dashboard
+    name: Lint (landing)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -348,7 +340,7 @@ jobs:
         run: bunx eslint src
 
   typecheck:
-    name: Typecheck dashboard
+    name: Typecheck (landing)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -357,14 +349,11 @@ jobs:
           bun-version: "1.4.3"
       - name: Install dependencies
         run: bun install
-      - name: Generate Prisma client
-        # src/generated/prisma is gitignored output; tsc needs it for src/lib/db.ts
-        run: bun run db:generate
       - name: Typecheck
         run: bun run typecheck
 
   unit:
-    name: Unit tests (dashboard)
+    name: Unit tests (landing)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -493,14 +482,11 @@ jobs:
         # deps. Fail-open is NOT acceptable for known-exploited vulns, so a
         # finding here blocks the PR — triage by bumping the dependency.
         #
-        # Documented triage (2026-10-17), all prisma-internal pins, revisit on
-        # the next prisma minor:
-        # - GHSA-ggr8-5vv4-36mx deepmerge-ts stack exhaustion via @prisma/config:
-        #   our prisma config is static, no adversarial merge input.
-        # - GHSA-rgwj-5xj2-c3m3 / GHSA-3f6p-5ww8-9rcr mysql2 (zlib bomb, auth
-        #   downgrade): the runtime uses SQLite (@prisma/adapter-better-sqlite3);
-        #   mysql2 is never connected to.
-        run: bun audit --prod --ignore GHSA-ggr8-5vv4-36mx --ignore GHSA-rgwj-5xj2-c3m3 --ignore GHSA-3f6p-5ww8-9rcr
+        # (The 2026-10-17 triage list was three prisma-internal GHSA ignores —
+        # deepmerge-ts via @prisma/config and two mysql2 advisories. D7 removed
+        # the prisma scaffold from the dependency tree, so the ignores left with
+        # it; the audit now runs clean of pinned exemptions.)
+        run: bun audit --prod
 
   mermaid:
     name: Mermaid byte-identity (gate 15)
@@ -538,7 +524,7 @@ jobs:
           if-no-files-found: ignore
 
   e2e:
-    name: E2E + a11y (dashboard vs mock engine)
+    name: E2E + a11y (landing)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -548,28 +534,21 @@ jobs:
           bun-version: "1.4.3"
       - name: Install dependencies (frozen lockfile)
         run: bun install --frozen-lockfile
-      - name: Generate Prisma client
-        run: bun run db:generate
-      - name: Build (DIRECT api mode — NEXT_PUBLIC_AGENT_API_BASE baked to the mock engine)
-        # A dedicated job (not piggybacked on the build job's artifact) because
-        # Next inlines NEXT_PUBLIC_* at BUILD time: the E2E build talks
-        # straight to the mock engine on :3030, while the shipped build uses
-        # the gateway's relative URLs. Parallel jobs — no wall-clock cost.
-        env:
-          NEXT_PUBLIC_AGENT_API_BASE: http://127.0.0.1:3030
+      - name: Build
+        # A dedicated job (not piggybacked on the build job's artifact) so the
+        # e2e lane owns its own build. The web dashboard is retired (D7): the
+        # remaining specs are the landing page's a11y + performance-budget
+        # suites — no mock engine, no engine-dependent build env.
         run: bun run build
       - name: Chromium for Playwright
         run: bunx playwright install chromium --with-deps
-      - name: "E2E smoke + axe-core a11y (11 tests, 3 flows + 8 scans)"
-        # testing-strategy.md §6 gate 16. The mock engine (e2e/mock-engine.mjs,
-        # zero deps, node:http) implements the exact REST + SSE contract the
-        # dashboard consumes. Covers: seven tabs render live data with a clean
-        # browser console, the SSE feed (hello + scripted canned events), the
-        # console prompt round-trip (submit -> interactive run -> transcript),
-        # and axe-core WCAG 2.0/2.1 A+AA scans of the landing page and all
-        # seven tabs under the dashboard's native dark scheme. The axe half of
-        # this gate already paid for itself: its first run found 80+ real AA
-        # contrast defects + an aria violation in the dashboard, fixed in src.
+      - name: "E2E axe-core a11y + landing budget (3 tests)"
+        # testing-strategy.md §6 gate 16. Covers: axe-core WCAG 2.0/2.1 A+AA
+        # scans of the landing page in both theme modes plus the scroll-
+        # performance budget spec. The axe half of this gate already paid for
+        # itself: its first run found 80+ real AA contrast defects, fixed in
+        # src. (The dashboard specs left with the web dashboard — the TUI
+        # dashboard's suites live in pi-repo/packages/self-learning/test/.)
         run: bunx playwright test
       - name: Upload report + traces
         if: ${{ !cancelled() }}

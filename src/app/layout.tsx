@@ -7,7 +7,6 @@ import {
   VT323,
 } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -86,7 +85,7 @@ export const metadata: Metadata = {
     title: "Unown — the terminal coding agent that remembers",
     description:
       "It reads what you write down. An open-source terminal coding agent with four-tier memory, AutoDreaming and a verify-gated self-improving harness.",
-    images: ["/landing/landing-hero.png", "/landing/dash-overview.png"],
+    images: ["/landing/landing-hero.png", "/landing/tui/dashboard/stills/01-overview.png"],
   },
   icons: {
     icon: "/logo.svg",
@@ -118,7 +117,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${pixelFont.variable} ${displayFont.variable} ${termFont.variable} antialiased bg-background text-foreground`}
       >
         {children}
-        <Toaster />
       </body>
     </html>
   );

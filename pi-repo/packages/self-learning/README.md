@@ -126,4 +126,4 @@ use today.
 
 ## API surface (port 3030)
 
-The canonical, kept-in-sync route list lives in `src/lib/AGENTS.md` (and ultimately `src/server.ts`); `GET /api/events` is the SSE stream. The package is UI-free and can be embedded in any host process.
+The canonical, kept-in-sync route list lives in `docs/detached-engine-architecture.md` ("The engine API surface"; ultimately `src/server.ts`); `GET /api/events` is the SSE stream. The package is UI-free and can be embedded in any host process. The TUI dashboard (`src/dashboard/`) is the first-party client, tested against the typed mock at `test/dashboard-mock-engine.ts`.
