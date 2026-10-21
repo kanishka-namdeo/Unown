@@ -1,0 +1,40 @@
+# Agnes (agnes-3.0-flash) landing-readiness critique — 20261021-091316
+# images (4), in order:
+#   IMAGE 1: ../../public/landing/tui/dashboard/stills/01-overview.png
+#   IMAGE 2: ../../public/landing/tui/dashboard/stills/04-notes.png
+#   IMAGE 3: ../../public/landing/tui/dashboard/stills/09-gateway.png
+#   IMAGE 4: ../../public/landing/tui/dashboard/stills/12-embedded-mount.png
+
+IMAGE 1: SCORE: 4
+DEFECTS: 
+1. Benchmark task name columns are obscured by solid-block placeholders ("00000"), looking like corruption.
+2. Amber and emerald text overlap on dark backgrounds creates low-contrast, unreadable clashing areas.
+3. "curriculum-variant-hard" row mixes "minted capability" with "0 impl", breaking internal logical consistency.
+4. Left-sidebar "LEARNING" header is faint and visually disconnected from the active row below it.
+VERDICT: FIX
+
+IMAGE 2: SCORE: 8
+DEFECTS: 
+1. All note descriptions are truncated mid-word with ".....", missing intentional ellipsis styling.
+2. "dash-demo" appearing in two consecutive notes looks like a lazy data reuse.
+3. Sidebar "LEARNING" and "OPERATIONS" headers are extremely faint and nearly invisible against the background.
+4. Bottom status bar command hints are slightly cut off at the left panel edge.
+VERDICT: SHIP
+
+IMAGE 3: SCORE: 7
+DEFECTS: 
+1. Latency bar chart is entirely amber, ignoring the requested emerald brand accent hierarchy.
+2. Latency chart has no Y-axis, unit labels, or baseline, making the data visually context-free.
+3. "avg 4534ms" header is not clearly visually distinguished from the raw log text below.
+4. Sidebar "LEARNING" header is faint and the panel boundary is ambiguous.
+VERDICT: SHIP
+
+IMAGE 4: SCORE: 3
+DEFECTS: 
+1. The "Skills" list is rendered as a dense, wrapped text block instead of structured TUI items.
+2. "Themes" section contains only one item ("unown"), making it look like a stub.
+3. Chat prompt "ctx [####]" uses a placeholder-looking solid block instead of a proper visual indicator.
+4. The dashboard is embedded awkwardly, cutting off the main sidebar hierarchy and breaking the frame.
+VERDICT: FIX
+
+OVERALL: The set shows high conceptual density, but severe placeholder-block artifacts and inconsistent truncation in half the frames prevent them from feeling like a real, polished product.

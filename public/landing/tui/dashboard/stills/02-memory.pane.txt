@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ engine tiers
+ LEARNING│▸ POLICY   [ v4 ] · 96 chars · updated 3m ago
+ 1 Overview│  PROJECT  [ v5 ] · 107 chars · updated 6m ago
+▌2 Memory│  USER     [ v6 ] · 118 chars · updated 9m ago
+ 3 Dreams│  LOCAL    [ v7 ] · 129 chars · updated 12m ago
+ 4 Notes│injection budget ░░░░░░░░░░░░░░ 1% 402/80k chars resolved into every prompt
+ 5 Skills│
+ 6 Learning Lab│▐ project memories
+ 7 Hooks│  unown  [ v3 ] · 412 chars · updated 36m ago
+ 8 Router│  dash-demo  [ v2 ] · 158 chars · updated 8m ago
+│  pi-mono  [ v5 ] · 637 chars · updated 2h ago
+ OPERATIONS│  docs-site  [ v2 ] · 214 chars · updated 5h ago
+ 9 Gateway│  data-pipeline  [ v7 ] · 891 chars · updated 26h ago
+ 0 Automations│  data fresh
+ · Web Cache│
+│
+ ── loop state│
+ notes 2 pending│
+ dreams 5│
+ shipped 2│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter open · j/k select · : palette ? help [ ] screens                                                                    q quit

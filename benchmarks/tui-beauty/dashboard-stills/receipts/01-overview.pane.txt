@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│pass rate ███████████░ 89% 118/132 · 89%   errors 3
+ LEARNING│suite 5/7 passing   shipped 2   dreams 5   notes 2 pending
+▌1 Overview│memory policy v4 project v5 user v6 local v7   hooks 27 denies   tokens ↑1.2M ↓340.0k
+ 2 Memory│
+ 3 Dreams│cumulative pass ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅██████████████████ 12 runs
+ 4 Notes│
+ 5 Skills│▐ activity
+ 6 Learning Lab│just now run started · task-e2e-4 · baseline
+ 7 Hooks│just now memory budget · 1 block pruned to fit the injection cap
+ 8 Router│just now improvement proposed · task-e2e-5 · iter 1
+│just now 3 terminal notes synced from the outbox
+ OPERATIONS│
+ 9 Gateway│▐ benchmark tasks
+ 0 Automations│▸ ★★☆☆☆ fix-failing-test         ✓12 ✗3  seed  2 impl
+ · Web Cache│  ★★★☆☆ parse-json-robustly      ✓9 ✗1  seed  1 impl
+│  ★★★★☆ sandbox-escape-guard     ✓4 ✗2  minted capability  1 impl
+ ── loop state│  ★★★★★ curriculum-variant-hard  ✓0 ✗1  minted capability  0 impl
+ notes 2 pending│  ★★★☆☆ stale-lock-recovery      ✓7 ✗2  seed  1 impl
+ dreams 5│  ★★★★☆ stream-parse-edge-cases  ✓5 ✗1  minted capability  1 impl
+ shipped 2│  ★★☆☆☆ wiki-drift-detector      ✓2 ✗1  seed  0 impl
+│  data fresh
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter task · t run cycle · m mint · j/k select · : palette ? help [ ] screens                                             q quit

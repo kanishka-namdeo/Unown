@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│filter all · 7 notes · 4 terminal · 3 benchmark · 2 pending
+ LEARNING│
+ 1 Overview│▐ notes
+ 2 Memory│▸ [ terminal ] dash-demo · PENDING · 9m ago · Sandbox session opened clean; no policy hits this run.
+ 3 Dreams│  [ benchmark ] dash-demo · PENDING · 12m ago · Upstream timeout on the harder variant; plan multi-st...…
+▌4 Notes│  [ terminal ] unown · dreamed · 20m ago · Candidate patch verified twice — the assertion-first rule ...…
+ 5 Skills│  [ terminal ] unown · dreamed · 24m ago · Redirect-escape guard fired correctly on the bash deny-lis...…
+ 6 Learning Lab│  [ benchmark ] unown · dreamed · 41m ago · The agent retried the same failing command; the fix was t...…
+ 7 Hooks│  [ benchmark ] unown · dreamed · 70m ago · Stream parser failed on fenced output; the closing-fence ...…
+ 8 Router│  [ terminal ] pi-mono · dreamed · 6h ago · Engine restart after the wedge: queue drained first, no j...…
+│  data fresh
+ OPERATIONS│
+ 9 Gateway│
+ 0 Automations│
+ · Web Cache│
+│
+ ── loop state│
+ notes 2 pending│
+ dreams 5│
+ shipped 2│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter read · c compose · f filter: all · s sync · j/k select · : palette ? help [ ] screens                               q quit

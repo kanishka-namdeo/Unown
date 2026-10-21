@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ hooks
+ LEARNING│8 events · 1 denies · 2 augments   k filter: all
+ 1 Overview│
+ 2 Memory│▸ 7m ago · Stop · — · log · candidate run closed clean
+ 3 Dreams│  16m ago · PreToolUse · edit · allow · workspace write inside sandbox
+ 4 Notes│  24m ago · PreToolUse · bash · DENY · bash redirect escape
+ 5 Skills│  25m ago · SessionStart · — · log · sandbox session opened
+ 6 Learning Lab│  35m ago · PostToolUse · edit · warn · large diff (11 files) in one turn
+▌7 Hooks│  39m ago · PostToolUse · bash · log-error · syntax gate: 1 failing test fed back
+ 8 Router│  42m ago · UserPromptSubmit · — · AUGMENT · tiered memory injected (4 tiers, 402 chars)
+│  59m ago · UserPromptSubmit · — · AUGMENT · tiered memory injected (4 tiers, 517 chars)
+ OPERATIONS│  data 5s old
+ 9 Gateway│
+ 0 Automations│
+ · Web Cache│
+│
+ ── loop state│
+ notes 2 pending│
+ dreams 5│
+ shipped 2│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter details · k filter: all · j/k select · : palette ? help [ ] screens                                                 q quit

@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│hit rate [ 67% ]   saved 152 requests
+ LEARNING│store 214 entries  ██░░░░░░░░░░░░ 15% 39.3 MB / 256.0 MB
+ 1 Overview│
+ 2 Memory│▐ config
+ 3 Dreams│ttl search 1h · fetch 30m · stale windows 24h / 168h
+ 4 Notes│index memory · fresh
+ 5 Skills│root /home/dev/.unown/cache/web
+ 6 Learning Lab│
+ 7 Hooks│providers duckduckgo 74 · direct 62 · tavily 29 · searxng 21
+ 8 Router│
+│▐ recent events (5)
+ OPERATIONS│▸ hit         · web_search · duckduckgo · bun sqlite tutorial · 3m ago
+ 9 Gateway│  revalidated · webfetch · direct · bun.sh/docs · 7m ago
+ 0 Automations│  miss        · web_search · tavily · react 19 release notes · 12m ago
+▌· Web Cache│  stale       · webfetch · direct · example.com · 24m ago
+│  evict       · engine · 2 entries (0.4 MiB) — LRU sweep · 42m ago
+ ── loop state│  data fresh
+ notes 2 pending│
+ dreams 5│
+ shipped 2│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+s sweep · x clear · j/k select · : palette ? help [ ] screens                                                             q quit

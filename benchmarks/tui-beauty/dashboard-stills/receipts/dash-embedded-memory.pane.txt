@@ -1,0 +1,36 @@
+── Themes ──
+  unown
+
+» In one sentence: what happens to my session notes while I work?
+
+ Your session notes are delivered to the self-learning engine (or queued in its outbox if it's down), where AutoDream later
+ consolidates them into this project's .unown/memory/project.md.
+
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:21
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ engine tiers
+ LEARNING│▸ POLICY   [ v4 ] · 96 chars · updated 7m ago
+ 1 Overview│  PROJECT  [ v5 ] · 107 chars · updated 10m ago
+▌2 Memory│  USER     [ v6 ] · 118 chars · updated 13m ago
+ 3 Dreams│  LOCAL    [ v7 ] · 129 chars · updated 16m ago
+ 4 Notes│injection budget ░░░░░░░░░░░░░░ 1% 402/80k chars resolved into every prompt
+ 5 Skills│
+ 6 Learning Lab│▐ project memories
+ 7 Hooks│  unown  [ v3 ] · 412 chars · updated 40m ago
+ 8 Router│  dash-demo  [ v2 ] · 158 chars · updated 12m ago
+│  pi-mono  [ v5 ] · 637 chars · updated 2h ago
+ OPERATIONS│  docs-site  [ v2 ] · 214 chars · updated 5h ago
+ 9 Gateway│  data-pipeline  [ v7 ] · 891 chars · updated 26h ago
+ 0 Automations│  data 5s old
+ · Web Cache│
+│
+ ── loop state│
+ notes 2 pending│
+ dreams 5│
+ shipped 2│
+│
+enter open · j/k select · : palette ? help [ ] screens                                                              esc-esc chat
+~/unown (main)
+ctx ▕██░░░░░░░░▏ 15.1%/131k (auto) ↓41 ↑20k                                                                      agnes-3.0-flash
+memory: up
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools

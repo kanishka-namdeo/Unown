@@ -8,19 +8,64 @@ verifies pane truth (sidebar, screen content, footer), drives a screen jump
 and a drill-in, then proves Esc-Esc returns to the chat editor.
 
 Usage: /usr/bin/python3 pty_capture_dash_embedded.py
-Env:   OUT (default download/dashboard-captures/embedded), UNOWN_ROOT, PTY_CWD
+Env:   OUT (default download/dashboard-captures/embedded), UNOWN_ROOT, PTY_CWD,
+       EMBED_CHAT=0 to skip the warm-up chat turn, EMBED_CHAT_PROMPT to
+       override it. The warm-up turn (a real model answer via the bridge)
+       replaces the fresh-boot info block with a real transcript above the
+       mounted dashboard — the lived-in-session look the landing still wants.
+       It runs against a scratch UNOWN_HOME (providers fixture registry +
+       brand theme, seeded per run) whose default model the bridge actually
+       serves; the real ~/.unown is untouched. Time-boxed: if the model
+       stalls, the dashboard mounts anyway.
 """
 
 from __future__ import annotations
 
 import os
+import shutil
 import sys
+import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pty_common as C  # noqa: E402
 
 OUT = os.environ.get("OUT", "/home/z/my-project/download/dashboard-captures/embedded")
+CHAT_TURN = os.environ.get("EMBED_CHAT", "1") != "0"
+CHAT_PROMPT = os.environ.get(
+    "EMBED_CHAT_PROMPT",
+    "In one sentence: what happens to my session notes while I work?",
+)
+
+
+def seed_chat_home(log) -> str:
+    """A private UNOWN_HOME whose default model the bridge actually serves.
+
+    The real ~/.unown pins kimi-k2.5, which the current upstream 404s on; the
+    chat turn needs a resolvable, working model. Mirrors the providers lane's
+    scratch-home pattern (pty_capture_providers.py): models.json + settings
+    from the capture fixtures, plus the unown brand theme so the palette is
+    unchanged. The real ~/.unown is never touched.
+    """
+    fixture = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "providers")
+    home = tempfile.mkdtemp(prefix="unown-dash-embed-")
+    agent = os.path.join(home, "agent")
+    os.makedirs(os.path.join(agent, "themes"), exist_ok=True)
+    shutil.copyfile(os.path.join(fixture, "models.json"), os.path.join(agent, "models.json"))
+    settings = {
+        "defaultProvider": "zai-bridge",
+        "defaultModel": "agnes-3.0-flash",
+        "theme": "unown",
+    }
+    with open(os.path.join(agent, "settings.json"), "w", encoding="utf-8") as f:
+        import json
+
+        json.dump(settings, f, indent=2)
+    real_theme = os.path.expanduser("~/.unown/agent/themes/unown.json")
+    if os.path.exists(real_theme):
+        shutil.copyfile(real_theme, os.path.join(agent, "themes", "unown.json"))
+    log(f"scratch UNOWN_HOME seeded: {home} (default model agnes-3.0-flash via bridge)")
+    return home
 
 
 def main() -> int:
@@ -29,10 +74,25 @@ def main() -> int:
     failures: list[str] = []
     cwd = os.environ.get("PTY_CWD", C.UNOWN_ROOT)
 
-    s = C.UnownPty(log, cwd=cwd, extra_args=[])
+    env_extra = None
+    if CHAT_TURN:
+        env_extra = {"UNOWN_HOME": seed_chat_home(log)}
+    s = C.UnownPty(log, cwd=cwd, extra_args=[], env_extra=env_extra)
     try:
         s.wait_ready(timeout=90)
         s.wait_idle()
+
+        if CHAT_TURN:
+            # One real model turn (bridge on :3031): a transcript above the
+            # mount reads as a live session; the fresh-boot Skills/Themes
+            # info block scrolls away. Soft-fails on timeout — the mount is
+            # the story, not the chat.
+            log(f"warm-up chat turn: {CHAT_PROMPT!r}")
+            s.type_prompt(CHAT_PROMPT, cps=80)
+            try:
+                s.wait_idle(timeout=120, stable_for=2.5)
+            except Exception as exc:  # noqa: BLE001 — soft wait
+                log(f"warm-up turn did not settle ({exc!r}); mounting anyway")
 
         # Open the dashboard via the slash command.
         s.type_prompt("/dashboard", cps=80)

@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│requests 1204 · errors 3 · tokens ↑38.8k ↓7.4k · avg 4534ms
+ LEARNING│
+ 1 Overview│latency (last 40)
+ 2 Memory│▅▅▅▃▃▃▃▃▃▃▃▃▃▃▃▃▃▁▁▁▁▁▁▁▁▃▃▃▃▃▃▅▅▅▅▅▅▅████████████▅▅▅▅▅▅▃▃▃▃▃▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+ 3 Dreams│
+ 4 Notes│▐ models (5)
+ 5 Skills│▸ deepseek-v3.2 · 1 reqs · ↑7.8k ↓1.4k · avg 6480ms
+ 6 Learning Lab│  glm-4.6 · 1 reqs · ↑9.4k ↓2.3k · avg 5210ms
+ 7 Hooks│  kimi-k2.5 · 1 reqs · ↑8.3k ↓900 · avg 3890ms
+ 8 Router│  qwen3-coder-plus · 1 reqs · ↑5.2k ↓900 · avg 2970ms
+│  qwen3.7-plus · 1 reqs · ↑8.1k ↓1.9k · avg 4120ms
+ OPERATIONS│
+▌9 Gateway│▐ request log
+ 0 Automations│  48m ago · qwen3-coder-plus · sync · stop · ↑5.2k ↓900 · 2970ms
+ · Web Cache│  38m ago · kimi-k2.5 · stream · stop · ↑8.3k ↓900 · 3890ms
+│  22m ago · deepseek-v3.2 · stream · tool_calls · ↑7.8k ↓1.4k · 6480ms
+ ── loop state│  10m ago · qwen3.7-plus · stream · stop · ↑8.1k ↓1.9k · 4120ms
+ notes 2 pending│  5m ago · glm-4.6 · stream · stop · ↑9.4k ↓2.3k · 5210ms
+ dreams 5│  data 5s old
+ shipped 2│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter model detail · j/k select · : palette ? help [ ] screens                                                            q quit

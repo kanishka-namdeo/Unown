@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ router jobs
+ LEARNING│7 jobs · next auto-dream in 23m
+ 1 Overview│
+ 2 Memory│▸ job-harness-cycle · interval 15m · ✓ 132 runs · next in 5m · enabled
+ 3 Dreams│  job-task-mint · interval 1h · ✓ 18 runs · next in 4m · enabled
+ 4 Notes│  job-auto-dream · interval 30m · ✓ 47 runs · next in 23m · enabled
+ 5 Skills│  job-note-sync · interval 1m · ✓ 921 runs · next in due · enabled ⟳ running
+ 6 Learning Lab│  job-sandbox-gc · interval 10m · ✓ 88 runs · next in 2m · enabled
+ 7 Hooks│  job-improvement-shipped · event improvement:shipped · ✓ 12 runs · paused · enabled
+▌8 Router│  job-run-finished · event run:finished · ✓ 304 runs · paused · enabled
+│
+ OPERATIONS│▐ sandboxes
+ 9 Gateway│5 workspaces · 152 files total · oldest 3h
+ 0 Automations│  interactive/session · 12 files · 3m ago
+ · Web Cache│  harness-cycle/task-e2e-4 · 38 files · 11m ago
+│  task-e2e-4/baseline · 41 files · 13m ago
+ ── loop state│  harness-cycle/task-e2e-6 · 44 files · 34m ago
+ notes 2 pending│  interactive/session · 17 files · 3h ago
+ dreams 5│
+ shipped 2│sandbox-gc prunes workspaces every 15m
+│  data fresh
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+space trigger · d toggle · j/k select · : palette ? help [ ] screens                                                      q quit

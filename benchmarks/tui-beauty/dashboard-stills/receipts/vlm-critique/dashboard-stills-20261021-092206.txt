@@ -1,0 +1,19 @@
+# Agnes (agnes-3.0-flash) landing-readiness critique — 20261021-092206
+# images (2), in order:
+#   IMAGE 1: ../../public/landing/tui/dashboard/stills/01-overview.png
+#   IMAGE 2: ../../public/landing/tui/dashboard/stills/12-embedded-mount.png
+
+IMAGE 1: SCORE: 9
+DEFECTS: 
+Left sidebar "OPERATIONS" header awkwardly wraps/overrides the gateway row, causing vertical alignment issues.
+Bottom of the terminal grid contains significant empty black space, diluting the "lived-in" UI density.
+The "pass rate" block is slightly misaligned with the text on the far right of the header line.
+VERDICT: SHIP
+
+IMAGE 2: SCORE: 10
+DEFECTS: 
+Top-left "Themes" menu appears abruptly detached and slightly overlapping the context window edge.
+The "ctx" progress bar in the chat footer has a slightly unnatural gap between the start and fill.
+VERDICT: SHIP
+
+OVERALL: Exceptional technical authenticity and brand consistency, with only minor layout quirks that add to the realistic "agent-session" charm.

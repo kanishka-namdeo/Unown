@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ skills
+ LEARNING│▸ recover-failed-cycle · unown · shipped [ v2 ] · Recover a failed harness cycle without restarting t...…
+ 1 Overview│  triage-flaky-tests · unown · shipped [ v3 ] · Quarantine a flaky test and file the follow-up in one...…
+ 2 Memory│  sqlite-migration-guard · dash-demo · shipped [ v1 ] · Check foreign keys before running a sqlite mi...…
+ 3 Dreams│  weekend-triage-checklist · unown · shipped [ v2 ] · Weekly review loop for quarantined tests and st...…
+ 4 Notes│  engine-restart-runbook · unown · shipped [ v1 ] · Restart a wedged engine without losing queued jobs.
+▌5 Skills│  pr-review-checklist · dash-demo · shipped [ v2 ] · Read the diff twice before requesting review; ci...…
+ 6 Learning Lab│  data fresh
+ 7 Hooks│
+ 8 Router│
+│
+ OPERATIONS│
+ 9 Gateway│
+ 0 Automations│
+ · Web Cache│
+│
+ ── loop state│
+ notes 2 pending│
+ dreams 5│
+ shipped 2│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter skill · j/k select · : palette ? help [ ] screens                                                                   q quit

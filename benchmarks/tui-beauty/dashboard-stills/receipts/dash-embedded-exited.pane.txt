@@ -1,0 +1,35 @@
+── Themes ──
+  unown
+
+» In one sentence: what happens to my session notes while I work?
+
+ Your session notes are delivered to the self-learning engine (or queued in its outbox if it's down), where AutoDream later
+ consolidates them into this project's .unown/memory/project.md.
+
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/unown (main)
+ctx ▕██░░░░░░░░▏ 15.1%/131k (auto) ↓41 ↑20k                                                                      agnes-3.0-flash
+memory: up
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -108,14 +108,66 @@ NAMED_PALETTE = {
 _FONTS: dict = {}
 
 
-def _font(bold: bool, size: int):
+def _font_at(path: str, size: int):
     from PIL import ImageFont
 
-    key = (bold, size)
+    key = (path, size)
     if key not in _FONTS:
-        path = FONT_BOLD_PATH if bold else FONT_PATH
         _FONTS[key] = ImageFont.truetype(path, size)
     return _FONTS[key]
+
+
+def _font(bold: bool, size: int):
+    return _font_at(FONT_BOLD_PATH if bold else FONT_PATH, size)
+
+
+# --- per-glyph font fallback -------------------------------------------------
+# The primary font (JetBrains Mono) lacks several status glyphs the TUI uses
+# (★☆ difficulty, ◐ starting, ⏸ paused, ⟳ running, ⎇ rollback — measured
+# 2026-10-21: PIL then draws the .notdef tofu box, which a VLM audit read as
+# "solid-block placeholders looking like corruption" in the dashboard stills).
+# A real terminal stack falls back per glyph (xterm.js font chaining); the
+# renderer now does the same: primary → DejaVu Sans Mono (same 0.602 advance,
+# covers ★☆◐⎇) → Sarasa Mono SC (covers ⏸⟳⎇). Coverage is probed once per
+# font via fontTools when available; without fontTools the lane keeps the
+# legacy single-font behavior.
+
+FONT_FALLBACK_PAIRS = [
+    (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+    ),
+    (
+        "/usr/share/fonts/truetype/chinese/SarasaMonoSC-Regular.ttf",
+        "/usr/share/fonts/truetype/chinese/SarasaMonoSC-Bold.ttf",
+    ),
+]
+_COVERAGE: dict = {}
+
+
+def _covered(path: str, cp: int) -> bool:
+    if path not in _COVERAGE:
+        try:
+            from fontTools.ttLib import TTFont
+
+            _COVERAGE[path] = set(TTFont(path, lazy=True).getBestCmap().keys())
+        except Exception:
+            _COVERAGE[path] = None  # unknown coverage — never selected
+    cov = _COVERAGE[path]
+    return cov is not None and cp in cov
+
+
+def _font_for_char(ch: str, bold: bool, size: int):
+    """First font (primary, then fallbacks) whose cmap covers the character."""
+    primary_path = FONT_BOLD_PATH if bold else FONT_PATH
+    cp = ord(ch)
+    if _covered(primary_path, cp):
+        return _font_at(primary_path, size)
+    for reg, boldp in FONT_FALLBACK_PAIRS:
+        path = boldp if bold else reg
+        if os.path.exists(path) and _covered(path, cp):
+            return _font_at(path, size)
+    return _font_at(primary_path, size)  # legacy .notdef behavior
 
 
 def _color(value: str, fallback: str) -> tuple[int, int, int]:
@@ -137,25 +189,36 @@ def _hex6(hexstr: str) -> tuple[int, int, int]:
 
 
 def render_png(screen: pyte.Screen, path: str, title: str) -> tuple[int, int]:
-    """Render one full frame from the pyte screen; returns (w, h)."""
+    """Render one full frame from the pyte screen; returns (w, h).
+
+    The 34px title bar is a harness label, not terminal content. For shipped
+    landing assets set PTY_TITLE=off to render the pure terminal frame (no
+    bar — same shape as the tmux-lane stills); PTY_TITLE=<text> renders a bar
+    with a custom label; unset keeps the legacy "pty+pyte lane" bar for
+    addon-verification stills.
+    """
     from PIL import Image, ImageDraw
 
+    title_mode = os.environ.get("PTY_TITLE")
+    title_h = 0 if title_mode == "off" else TITLE_H
+
     width = COLS * CELL_W
-    height = TITLE_H + ROWS * CELL_H
+    height = title_h + ROWS * CELL_H
     img = Image.new("RGB", (width, height), _hex6(DEFAULT_BG))
     draw = ImageDraw.Draw(img)
 
-    # Title bar: capture name + geometry + timestamp, thin rule underneath.
-    draw.rectangle([0, 0, width, TITLE_H - 5], fill=_hex6(TITLE_BG))
-    draw.rectangle([0, TITLE_H - 5, width, TITLE_H - 4], fill=_hex6(TITLE_RULE))
-    tfont = _font(bold=False, size=13)
-    label = f"unown TUI · {title} · {COLS}x{ROWS} · pty+pyte lane"
-    draw.text((10, 7), label, font=tfont, fill=_hex6(TITLE_FG))
+    if title_h:
+        # Title bar: capture name + geometry + timestamp, thin rule underneath.
+        draw.rectangle([0, 0, width, TITLE_H - 5], fill=_hex6(TITLE_BG))
+        draw.rectangle([0, TITLE_H - 5, width, TITLE_H - 4], fill=_hex6(TITLE_RULE))
+        tfont = _font(bold=False, size=13)
+        label = title_mode if title_mode else f"unown TUI · {title} · {COLS}x{ROWS} · pty+pyte lane"
+        draw.text((10, 7), label, font=tfont, fill=_hex6(TITLE_FG))
 
     font = _font(bold=False, size=FONT_SIZE)
     font_bold = _font(bold=True, size=FONT_SIZE)
     ascent, descent = font.getmetrics()
-    text_top = TITLE_H + (CELL_H - (ascent + descent)) // 2
+    text_top = title_h + (CELL_H - (ascent + descent)) // 2
 
     default_fg = _hex6(DEFAULT_FG)
     default_bg = _hex6(DEFAULT_BG)
@@ -172,16 +235,18 @@ def render_png(screen: pyte.Screen, path: str, title: str) -> tuple[int, int]:
             bg = _color(cell.bg, DEFAULT_BG)
             if cell.reverse:
                 fg, bg = bg, fg
-            px, py = x * CELL_W, TITLE_H + y * CELL_H
+            px, py = x * CELL_W, title_h + y * CELL_H
             if bg != default_bg or cell.reverse:
                 draw.rectangle([px, py, px + CELL_W - 1, py + CELL_H - 1], fill=bg)
             if ch != " ":
-                if cell.bold:
-                    draw.text((px, text_top + y * CELL_H), ch, font=font_bold, fill=fg)
-                else:
-                    draw.text((px, text_top + y * CELL_H), ch, font=font, fill=fg)
+                draw.text(
+                    (px, text_top + y * CELL_H),
+                    ch,
+                    font=_font_for_char(ch, cell.bold, FONT_SIZE),
+                    fill=fg,
+                )
             if cell.underscore:
-                uy = TITLE_H + y * CELL_H + CELL_H - 3
+                uy = title_h + y * CELL_H + CELL_H - 3
                 draw.rectangle([px, uy, px + CELL_W - 1, uy + 1], fill=fg)
 
     img.save(path, "PNG")

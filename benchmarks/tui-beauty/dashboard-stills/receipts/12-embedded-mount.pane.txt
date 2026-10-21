@@ -1,0 +1,36 @@
+── Themes ──
+  unown
+
+» In one sentence: what happens to my session notes while I work?
+
+ Your session notes are delivered to the self-learning engine (or queued in its outbox if it's down), where AutoDream later
+ consolidates them into this project's .unown/memory/project.md.
+
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:20
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│pass rate ███████████░ 89% 118/132 · 89%   errors 3
+ LEARNING│suite 5/7 passing   shipped 2   dreams 5   notes 2 pending
+▌1 Overview│memory policy v4 project v5 user v6 local v7   hooks 27 denies   tokens ↑1.2M ↓340.0k
+ 2 Memory│
+ 3 Dreams│cumulative pass ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅██████████████████ 12 runs
+ 4 Notes│
+ 5 Skills│▐ activity
+ 6 Learning Lab│just now memory budget · 1 block pruned to fit the injection cap
+ 7 Hooks│
+ 8 Router│▐ benchmark tasks
+│▸ ★★☆☆☆ fix-failing-test         ✓12 ✗3  seed  2 impl
+ OPERATIONS│  ★★★☆☆ parse-json-robustly      ✓9 ✗1  seed  1 impl
+ 9 Gateway│  ★★★★☆ sandbox-escape-guard     ✓4 ✗2  minted capability  1 impl
+ 0 Automations│  ★★★★★ curriculum-variant-hard  ✓0 ✗1  minted capability  0 impl
+ · Web Cache│  ★★★☆☆ stale-lock-recovery      ✓7 ✗2  seed  1 impl
+│  ★★★★☆ stream-parse-edge-cases  ✓5 ✗1  minted capability  1 impl
+ ── loop state│  ★★☆☆☆ wiki-drift-detector      ✓2 ✗1  seed  0 impl
+ notes 2 pending│  data fresh
+ dreams 5│
+ shipped 2│
+│
+enter task · t run cycle · m mint · j/k select · : palette ? help [ ] screens                                       esc-esc chat
+~/unown (main)
+ctx ▕██░░░░░░░░▏ 15.1%/131k (auto) ↓41 ↑20k                                                                      agnes-3.0-flash
+memory: up
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools

@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│pending notes 2   D run autodream now
+ LEARNING│
+ 1 Overview│▐ dreams
+ 2 Memory│▸ done · 3 notes → 2 merged · 1 pruned · 1 added · 36m ago
+▌3 Dreams│  done · 2 notes → 1 merged · 2 pruned · 1 added · 3h ago
+ 4 Notes│  done · 5 notes → 3 merged · 4 pruned · 2 added · 7h ago
+ 5 Skills│  no-notes · 0 notes → 0 merged · 0 pruned · 0 added · 10h ago
+ 6 Learning Lab│  gated (canary) · 1 notes → 0 merged · 0 pruned · 0 added · 45h ago
+ 7 Hooks│  data fresh
+ 8 Router│
+│
+ OPERATIONS│
+ 9 Gateway│
+ 0 Automations│
+ · Web Cache│
+│
+ ── loop state│
+ notes 2 pending│
+ dreams 5│
+ shipped 2│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+enter dream · D dream now · j/k select · : palette ? help [ ] screens                                                     q quit

@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ automations (5)
+ LEARNING│▸ ● nightly repo health check · active · read-only · cron at 03:00 · 4 runs · next in 5h
+ 1 Overview│  ● weekly changelog digest · active · read-only · cron at 06:00 on Monday · 2 runs · next in 3d
+ 2 Memory│  ⏸ nightly dependency sweep · paused · read-only · cron at 02:30 · 9 runs · —
+ 3 Dreams│  ● docs link checker · active · read-only · cron every 6h · 31 runs · next in 1h
+ 4 Notes│  ● release notes draft · completed · read-only · cron at 05:00 on Monday · 4/4 runs · —
+ 5 Skills│  data fresh
+ 6 Learning Lab│
+ 7 Hooks│
+ 8 Router│
+│
+ OPERATIONS│
+ 9 Gateway│
+▌0 Automations│
+ · Web Cache│
+│
+ ── loop state│
+ notes 2 pending│
+ dreams 5│
+ shipped 2│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+a new · enter open · space pause/resume · n run now · x delete · j/k select · : palette ? help [ ] screens                q quit

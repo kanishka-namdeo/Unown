@@ -38,7 +38,9 @@ SCREENS: dict[str, list[str]] = {
     "memory": ["engine tiers", "injection budget", "project memories"],
     "dreams": ["pending notes", "autodream"],
     "notes": ["NOTES", "filter"],
-    "skills": ["SKILLS", "minted"],
+    # "minted" only appears in the empty state ("no skills minted yet"); a
+    # populated skills screen proves itself with per-row status badges.
+    "skills": ["SKILLS", "shipped"],
     "lab": ["learning lab", "cycles", "improvements", "runs"],
     "hooks": ["HOOKS", "events", "filter"],
     "router": ["router jobs", "auto-dream", "sandboxes"],

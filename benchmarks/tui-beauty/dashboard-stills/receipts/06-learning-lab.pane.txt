@@ -1,0 +1,36 @@
+◆ unown dashboard · ● engine up · ● bridge                                                            zai-bridge/kimi-k2.5 09:17
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│▐ learning lab
+ LEARNING│cycles · improvements · runs
+ 1 Overview│
+ 2 Memory│▐ cycles
+ 3 Dreams│▸ curriculum-variant-hard · improved · iter 3 · shipped 1 · 11m ago
+ 4 Notes│  stale-lock-recovery · running · iter 1 · shipped 0 · 17m ago
+ 5 Skills│  fix-failing-test · improved · iter 2 · shipped 1 · 41m ago
+▌6 Learning Lab│  stale-lock-recovery · no-fix · iter 2 · shipped 0 · 3h ago
+ 7 Hooks│  parse-json-robustly · no-fix · iter 1 · shipped 0 · 5h ago
+ 8 Router│  sandbox-escape-guard · improved · iter 1 · shipped 1 · 6h ago
+│  fix-failing-test · already-passing · iter 0 · shipped 0 · 13h ago
+ OPERATIONS│  wiki-drift-detector · already-passing · iter 0 · shipped 0 · 26h ago
+ 9 Gateway│  data fresh
+ 0 Automations│
+ · Web Cache│
+│
+ ── loop state│
+ notes 2 pending│
+ dreams 5│
+ shipped 2│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+│
+tab sections · j/k select · : palette ? help [ ] screens                                                                  q quit
