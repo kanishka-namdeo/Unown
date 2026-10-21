@@ -30,6 +30,7 @@ import {
         tokenExempt,
         tokenMatches,
         writeEngineTokenFile,
+        healEngineTokenFile,
 } from "./engine-auth.ts";
 import { dreamNotes, listDreams, runDream } from "./dream.ts";
 import { getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
@@ -817,8 +818,8 @@ export function startServer(port: number = PORT) {
                 `[agent-service] REST+SSE API on http://${process.env.UNOWN_ENGINE_HOST || "127.0.0.1"}:${server.port}` +
                         (engineToken ? ` — auth: bearer token (${engineTokenPath()})` : " — auth: disabled"),
         );
-        installGracefulShutdown(server, lock.release, engineToken ? () => removeEngineTokenFile(engineTokenPath()) : undefined);
-        startMaintenance();
+        installGracefulShutdown(server, lock.release, engineToken ? () => removeEngineTokenFile(engineTokenPath(), engineToken) : undefined);
+        startMaintenance(engineToken ? { token: engineToken, path: engineTokenPath() } : undefined);
         return server;
 }
 
@@ -964,7 +965,7 @@ let maintenanceTimer: ReturnType<typeof setInterval> | null = null;
  * long-lived reader can otherwise grow it without bound) and prune the
  * governor's spend ledger past its 24h window. Unref'd: never blocks exit.
  */
-function startMaintenance(): void {
+function startMaintenance(auth?: { token: string; path: string }): void {
         if (maintenanceTimer) return;
         let ticks = 0;
         maintenanceTimer = setInterval(() => {
@@ -979,6 +980,21 @@ function startMaintenance(): void {
                                 pruneLedger();
                         } catch {
                                 /* ignore */
+                        }
+                }
+                // Token self-heal (audit M5): a drain/new-boot overlap (bun
+                // --hot reload, supervisor restart, a stale old-binary drain)
+                // can leave this live engine with no discoverable token file
+                // — every client then 401s. Rewriting the SAME token is
+                // idempotent; checked every tick (60 s worst case) because
+                // the failure mode is total API lockout.
+                if (auth) {
+                        try {
+                                if (healEngineTokenFile(auth.path, auth.token)) {
+                                        console.warn("[agent-service] engine token file was missing under a live engine — rewritten (drain/new-boot overlap?)");
+                                }
+                        } catch {
+                                /* ignore — the in-memory token still serves env-pinned clients */
                         }
                 }
         }, 60_000);

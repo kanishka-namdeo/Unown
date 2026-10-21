@@ -27,6 +27,7 @@ import {
         invalidateEngineToken,
         isLoopbackHost,
         originAllowed,
+        healEngineTokenFile,
         removeEngineTokenFile,
         requestToken,
         resolveAuthPolicy,
@@ -223,6 +224,42 @@ describe("token file lifecycle (M7)", () => {
                 removeEngineTokenFile(path);
                 expect(() => readFileSync(path)).toThrow();
                 removeEngineTokenFile(path); // idempotent
+        });
+
+        test("removeEngineTokenFile ownership check (audit M5): a drain never deletes a newer boot's token", () => {
+                const path = join(ROOT, "engine.token");
+                const oldToken = "o".repeat(64);
+                const newToken = "n".repeat(64);
+                // the newer boot already wrote its token...
+                writeEngineTokenFile(path, newToken);
+                // ...when the old instance's drain runs:
+                removeEngineTokenFile(path, oldToken); // content differs -> keep
+                expect(readFileSync(path, "utf8")).toBe(newToken);
+                // the owning instance's drain still removes it:
+                removeEngineTokenFile(path, newToken);
+                expect(() => readFileSync(path)).toThrow();
+                // no-expected stays the unconditional legacy behavior:
+                writeEngineTokenFile(path, newToken);
+                removeEngineTokenFile(path);
+                expect(() => readFileSync(path)).toThrow();
+        });
+
+        test("healEngineTokenFile (audit M5): rewrites only a MISSING file, never clobbers a newer boot", () => {
+                const path = join(ROOT, "engine.token");
+                const mine = "m".repeat(64);
+                const newer = "x".repeat(64);
+                // missing -> rewritten, returns true
+                rmSync(path, { force: true });
+                expect(healEngineTokenFile(path, mine)).toBe(true);
+                expect(readFileSync(path, "utf8")).toBe(mine);
+                // intact -> no-op, returns false
+                expect(healEngineTokenFile(path, mine)).toBe(false);
+                expect(readFileSync(path, "utf8")).toBe(mine);
+                // a newer boot's token -> NEVER clobbered, returns false
+                writeEngineTokenFile(path, newer);
+                expect(healEngineTokenFile(path, mine)).toBe(false);
+                expect(readFileSync(path, "utf8")).toBe(newer);
+                rmSync(path, { force: true });
         });
 });
 

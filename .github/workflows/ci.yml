@@ -191,44 +191,61 @@ jobs:
               exit 1
             fi
           done
-      - name: Smoke — full stack boots, survives the launcher, and stops (Windows bun#31603 + netstat-pid gate)
+      - name: Smoke — full stack boots, survives the launcher, and stops (all OSes; Windows bun#31603 + netstat-pid gate, POSIX lifecycle gate)
         # scripts/start.ts used to spawn every service with detached:true — the
         # exact pattern bun#31603 documents as broken on Windows (children die
         # with the parent), and nothing caught it: this Windows leg never
         # booted the stack. The launcher now uses the cmd /c start /b escape +
-        # netstat pid resolution; this gate proves the whole contract:
+        # netstat pid resolution; audit M5 widens the gate to ALL THREE OSes
+        # so the POSIX detach/setsid path (macOS + Linux) is proven by the
+        # same contract, not just the Windows escape:
         #   1. agent:start brings bridge + engine up (dashboard is not asserted
         #      — next dev's cold start varies too much on a shared runner)
         #   2. the services SURVIVE the launcher's exit 20s later (the
-        #      regression this gate exists for)
+        #      bun#31603 regression this gate exists for)
         #   3. agent:stop tears them down via the resolved pidfiles (netstat
-        #      fallback) and the ports go quiet
-        if: runner.os == 'Windows'
+        #      fallback on Windows, lsof on macOS, /proc sweep on Linux) and
+        #      the ports go quiet
+        # M7 note: the engine requires a bearer token now — the alive probe
+        # attaches it from data/self-learning/engine.token (401 ≠ dead); the
+        # post-stop probe treats ANY HTTP answer as still-alive.
         shell: bash
         run: |
           bun run agent:start
           # The launcher exits right after its health wait; the services must
           # outlive it (bun#31603 would kill them with the parent).
           sleep 20
-          probe() {
+          answering() {
             node -e "
-              const url = process.argv[1];
-              fetch(url).then(r => { process.exit(r.ok ? 0 : 1); }).catch(() => process.exit(1));
+              fetch(process.argv[1])
+                .then(() => process.exit(0))
+                .catch(() => process.exit(1));
             " "$1"
           }
-          if ! probe http://127.0.0.1:3030/api/overview; then
-            echo "::error::engine did not survive the launcher exit (bun#31603 regression)"
+          authed_ok() {
+            node -e "
+              const fs = require('fs');
+              const url = process.argv[1];
+              let tok = '';
+              try { tok = fs.readFileSync('data/self-learning/engine.token', 'utf8').trim(); } catch {}
+              fetch(url, { headers: { Authorization: 'Bearer ' + tok } })
+                .then(r => process.exit(r.ok ? 0 : 1))
+                .catch(() => process.exit(1));
+            " "$1"
+          }
+          if ! authed_ok http://127.0.0.1:3030/api/overview; then
+            echo "::error::engine did not survive the launcher exit (bun#31603 regression on Windows / detach regression on POSIX)"
             exit 1
           fi
-          if ! probe http://127.0.0.1:3031/health; then
-            echo "::error::bridge did not survive the launcher exit (bun#31603 regression)"
+          if ! answering http://127.0.0.1:3031/health; then
+            echo "::error::bridge did not survive the launcher exit (bun#31603 regression on Windows / detach regression on POSIX)"
             exit 1
           fi
           echo "stack alive 20s after launcher exit:"
           ls .run/*.pid 2>/dev/null || true
           bun run agent:stop
           sleep 5
-          if probe http://127.0.0.1:3030/api/overview || probe http://127.0.0.1:3031/health; then
+          if answering http://127.0.0.1:3030/api/overview || answering http://127.0.0.1:3031/health; then
             echo "::error::agent:stop left a service answering on 3030/3031"
             exit 1
           fi

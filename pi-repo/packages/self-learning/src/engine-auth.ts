@@ -150,9 +150,51 @@ export function writeEngineTokenFile(path: string, token: string): void {
         writeFileSync(path, token, { mode: 0o600 });
 }
 
-/** Remove the token file at drain time (mirrors Jupyter's runtime-file lifecycle). */
-export function removeEngineTokenFile(path: string): void {
+/** Remove the token file at drain time (mirrors Jupyter's runtime-file
+ *  lifecycle). Ownership-checked (audit M5): a drain may overlap a newer
+ *  boot in the same data dir — bun --hot reloads the entry on source change
+ *  (e.g. `unown update`'s git pull), and the supervisor restart path can
+ *  start the replacement before the old instance finishes draining. An
+ *  unconditional rm here could delete the NEW boot's token, leaving an
+ *  engine that answers 401 to everyone with no discoverable token. When
+ *  `expected` is given, the file is only removed when it still contains
+ *  THIS instance's token; a file with different content belongs to a newer
+ *  boot and is left alone. */
+export function removeEngineTokenFile(path: string, expected?: string): void {
+        if (expected !== undefined) {
+                try {
+                        const onDisk = readFileSync(path, "utf8").trim();
+                        if (onDisk !== expected) return; // a newer boot owns the file now
+                } catch {
+                        /* unreadable/missing — the force-rm below is a no-op then */
+                }
+        }
         rmSync(path, { force: true });
+}
+
+/** Re-write the token file when it went missing under a live engine
+ *  (audit M5 self-heal): the drain/new-boot overlap above is closed by the
+ *  ownership check, but a stale drain from an OLD binary (pre-ownership
+ *  check) or a user's stray `rm` can still leave a token-required engine
+ *  with no discoverable token. Only a MISSING/unreadable file is rewritten —
+ *  a file holding a DIFFERENT token belongs to a newer boot in the same data
+ *  dir and is never clobbered. The maintenance tick calls this; rewriting is
+ *  idempotent (same token, mode 0600 preserved). */
+export function healEngineTokenFile(path: string, token: string): boolean {
+        let present: string | null = null;
+        try {
+                present = readFileSync(path, "utf8").trim() || null;
+        } catch {
+                present = null; // missing/unreadable — the only case we rewrite
+        }
+        if (present === token) return false; // intact
+        if (present !== null) return false; // a newer boot owns this file
+        try {
+                writeEngineTokenFile(path, token);
+                return true;
+        } catch {
+                return false; // read-only fs etc. — the in-memory token still works for env-pinned clients
+        }
 }
 
 // ---------------------------------------------------------------------------

@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 221;
+export const CHANGELOG_TOTAL_ENTRIES = 224;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 107,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 1,
-  "Fixed": 58,
+  "Fixed": 61,
   "Security": 3,
   "Behavior": 27
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 99,
+    "total": 102,
     "counts": {
       "Added": 53,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 32,
+      "Fixed": 35,
       "Security": 0,
       "Behavior": 7
     },
@@ -277,6 +277,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "the engine token file survives drain/new-boot overlaps (the total-API-lockout race)",
+            "behavior": false
+          },
+          {
+            "title": "the CI full-stack boot gate covers all three OSes and is M7-auth-aware",
+            "behavior": false
+          },
+          {
+            "title": "horizontal scroll shows its affordance on mobile (ScrollX)",
+            "behavior": false
+          },
           {
             "title": "first-run default model is the bridge's own route default (P0, the fresh-install 404)",
             "behavior": false

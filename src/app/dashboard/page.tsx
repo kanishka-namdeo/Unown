@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardProviders } from "@/components/dashboard/providers";
 import { Header } from "@/components/dashboard/header";
 import { CommandPalette } from "@/components/dashboard/command-palette";
+import { ScrollX } from "@/components/dashboard/scroll-x";
 import { syncTabFromUrl, useTabStore } from "@/components/dashboard/tab-store";
 import { OverviewTab } from "@/components/dashboard/overview-tab";
 import { LearningLabTab } from "@/components/dashboard/learning-lab-tab";
@@ -74,7 +75,7 @@ function DashboardTabs() {
       onValueChange={(v) => setTab(v, { push: true })}
       className="gap-5"
     >
-      <div className="scroll-thin -mx-1 overflow-x-auto px-1 pb-1">
+      <ScrollX className="-mx-1 px-1 pb-1">
         <TabsList className="h-auto w-max gap-1 border border-zinc-800 bg-zinc-900/80 p-1">
           {tabs.map((t) => (
             <TabsTrigger
@@ -87,7 +88,7 @@ function DashboardTabs() {
             </TabsTrigger>
           ))}
         </TabsList>
-      </div>
+      </ScrollX>
 
       {tabs.map((t) => (
         <TabsContent key={t.value} value={t.value} className="mt-0">

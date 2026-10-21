@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
+
+import { ScrollX } from "./scroll-x";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -405,7 +407,7 @@ export function OverviewTab() {
             {tasks.length === 0 ? (
               <EmptyState className="m-4" icon={<Play />} title="No tasks loaded" />
             ) : (
-              <div className="scroll-thin overflow-x-auto">
+              <ScrollX>
                 <table className="w-full min-w-[720px] text-sm">
                   <thead>
                     <tr className="border-b border-zinc-800 text-left text-[11px] tracking-wider text-zinc-400 uppercase">
@@ -471,7 +473,7 @@ export function OverviewTab() {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </ScrollX>
             )}
           </CardContent>
         </Card>
