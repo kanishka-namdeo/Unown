@@ -677,8 +677,8 @@ export function startServer(port: number = PORT) {
                 console.log(`[agent-service] ${lock.reason} — this instance exits`);
                 return null;
         }
-        // Token + posture are now committed: this process IS the engine.
-        if (engineToken) writeEngineTokenFile(engineTokenPath(), engineToken);
+        // Posture is committed here (the running server reports it); the TOKEN
+        // FILE is deliberately NOT written yet — see the post-bind commit below.
         activeAuthPosture = { mode: authPolicy.mode, bind: authPolicy.widenedBind ? "network" : "loopback" };
         // M6 boot-time integrity gate: PRAGMA quick_check is the fast O(N)
         // pass (docs/resilience.md). A damaged DB must fail HERE, with the
@@ -814,6 +814,19 @@ export function startServer(port: number = PORT) {
                 },
         });
 
+        // TOKEN COMMIT (post-bind): the token file is written only once the
+        // port is actually answering. The invariant this buys — the token on
+        // disk always belongs to the process HOLDING THE PORT — closes the
+        // second race the live PTY lane caught (M7's loser fix was necessary
+        // but not sufficient): a racing engine that acquired the (stolen /
+        // stale) single-instance lock but FAILED the port bind used to exit
+        // having already clobbered the running winner's token, leaving every
+        // same-user client 401-locked-out until a manual restart. A bind
+        // failure now exits with the token file untouched (the microsecond
+        // bind→write window is covered client-side: engineFetch re-reads and
+        // retries once on 401; a probe that lands there degrades for one
+        // cycle, exactly like an engine-down blip).
+        if (engineToken) writeEngineTokenFile(engineTokenPath(), engineToken);
         console.log(
                 `[agent-service] REST+SSE API on http://${process.env.UNOWN_ENGINE_HOST || "127.0.0.1"}:${server.port}` +
                         (engineToken ? ` — auth: bearer token (${engineTokenPath()})` : " — auth: disabled"),

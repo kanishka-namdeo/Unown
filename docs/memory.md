@@ -36,7 +36,7 @@ Precedence is most-specific-wins, with `local.md` at the top: on a conflict, the
 | Virtual file (as the agent sees it) | Backed by |
 |-------------------------------------|-----------|
 | `memory/tier0-policy.md` (enterprise policy — highest authority) | `~/.unown/memory/policy.md` or the built-in default |
-| `.unown/memory/project.md` (maintained by AutoDream & you) | `<project>/.unown/memory/project.md` |
+| `.unown/memory/project.md` (AutoDream-maintained once dreamed; repo-supplied files are flagged untrusted until then) | `<project>/.unown/memory/project.md` |
 | `memory/tier2-user.md` (global preferences) | `~/.unown/memory/user.md` |
 | `.unown/memory/local.md` (local overrides — highest precedence) | `<project>/.unown/memory/local.md` |
 

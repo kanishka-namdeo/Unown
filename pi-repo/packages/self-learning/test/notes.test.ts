@@ -15,9 +15,10 @@
 // QUIRK/BUG comments pin current behavior; the modules are NOT modified.
 
 import "./_env.ts";
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { store } from "../src/store.ts";
 import { buildTerminalNote } from "../src/termhooks.ts";
+import { resetShieldTelemetry } from "../src/shield.ts";
 import {
         createNote,
         ingestTerminalNote,
@@ -323,6 +324,12 @@ describe("buildTerminalNote", () => {
                 lastAssistantText: "all green",
                 sessionStartTs: FIXED_NOW,
         };
+
+        // M10: buildTerminalNote reads the session's shield telemetry — a
+        // CORPUS-WARMED counter (earlier suites in this one-process run flag
+        // tool outputs) would add the injection-suspicion line. These shape
+        // tests pin the CLEAN session; the telemetry line has its own test.
+        beforeEach(() => resetShieldTelemetry());
 
         test("canonical shape: header line, final outcome, closing instruction", () => {
                 const note = withFixedNow(() => buildTerminalNote(info));

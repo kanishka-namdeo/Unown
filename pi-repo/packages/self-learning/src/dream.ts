@@ -12,7 +12,7 @@
  *   - terminal notes   -> each real project's .unown/memory/project.md
  *     (versioned in the engine DB as tier "project:<slug>")
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { atomicWriteFileSync } from "./atomic.ts";
@@ -25,7 +25,7 @@ import { currentVersion, maxTierChars, readTier, rollback, writeTier } from "./m
 import { markDreamed, pendingTerminalNotesByProject, undreamedNotes } from "./notes.ts";
 import { mintSkillsForProject } from "./skills.ts";
 import { store } from "./store.ts";
-import { initProjectMemory, isPristineSeedProjectMemory, projectMemoryPath, slugifyPath } from "./term.ts";
+import { initProjectMemory, isPristineSeedProjectMemory, projectMemoryPath, slugifyPath, writeProjectProvenance } from "./term.ts";
 
 export interface DreamResult {
         id: string;
@@ -542,6 +542,17 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
                         // user's repo (the terminal agent reads this next session).
                         const memPath = projectMemoryPath(group.projectPath);
                         atomicWriteFileSync(memPath, guard.sanitized);
+                        // M10 provenance sidecar: record WHAT was written (sha256) so the
+                        // DB-free terminal side can tell AutoDream-written project memory
+                        // from repo-supplied or hand-edited files at injection time —
+                        // the honesty fix for the cloned-repo "maintained by AutoDream"
+                        // false-authority gap (docs/detached-engine-architecture.md F16).
+                        writeProjectProvenance(group.projectPath, {
+                                version,
+                                changedBy: "autodream",
+                                at: Date.now(),
+                                sha256: createHash("sha256").update(guard.sanitized, "utf8").digest("hex"),
+                        });
 
                         // All terminal notes for this project are consumed by this dream.
                         const dreamId = `project-${randomUUID()}`;

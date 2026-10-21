@@ -494,6 +494,76 @@ process.exit(0);
                 }
         }, 120_000);
 
+        test("a BIND-FAILED engine (lock free, port held) must not clobber the running winner's token file", () => {
+                // The second race the live PTY lane caught (the M7 loser fix was
+                // necessary but not sufficient): a racing engine acquires the
+                // (stale/stealable) lock, fails the PORT bind, and exits — if it
+                // wrote its token at lock time it clobbered the RUNNING winner's
+                // token and every client 401-locked-out until a manual restart.
+                // The invariant: the token on disk always belongs to the process
+                // HOLDING THE PORT — written only after Bun.serve succeeds.
+                const root = mkdtempSync(join(tmpdir(), "unown-auth-bindrace-"));
+                const port = 3199; // fixed port: the winner binds it; a dummy holder rebinds after the kill
+                const winnerScript = `
+const { writeFileSync } = await import("node:fs");
+const { startServer } = await import(${JSON.stringify(join(PKG_ROOT, "src/server.ts"))});
+const a = startServer(${port});
+writeFileSync(${JSON.stringify(join(root, "winner.up"))}, "up");
+await new Promise(() => {});
+`;
+                const victimScript = `
+const { readFileSync } = await import("node:fs");
+const { startServer } = await import(${JSON.stringify(join(PKG_ROOT, "src/server.ts"))});
+const tokenFile = ${JSON.stringify(join(root, "data", "engine.token"))};
+const before = readFileSync(tokenFile, "utf8").trim();
+try {
+        const b = startServer(${port}); // port held by the dummy listener → Bun.serve throws
+        if (b) { console.log("VICTIM=BOOTED-UNEXPECTED"); b.stop(true); }
+} catch {
+        console.log("VICTIM=bind-failed");
+}
+const after = readFileSync(tokenFile, "utf8").trim();
+console.log("TOKEN_INTACT=" + (before === after));
+process.exit(0);
+`;
+                const env: NodeJS.ProcessEnv = {
+                        ...process.env,
+                        PI_SELFLEARNING_DATA: join(root, "data"),
+                        PI_SELFLEARNING_DB: join(root, "db", "selflearning.db"),
+                        UNOWN_HOME: join(root, "unown-home"),
+                };
+                const tokenFile = join(root, "data", "engine.token");
+                const upFile = join(root, "winner.up");
+                let holder: ReturnType<typeof spawn> | null = null;
+                try {
+                        // 1. The winner: fixed port, writes the token (post-bind commit).
+                        const wPath = join(root, "self-learning-winner.ts");
+                        writeFileSync(wPath, winnerScript);
+                        const winner = spawn(process.execPath, [wPath], { env: { ...env, PI_AGENT_PORT: String(port) } });
+                        const d1 = Date.now() + 30_000;
+                        while (Date.now() < d1 && !existsSync(upFile)) sleepSync(200);
+                        expect(existsSync(upFile)).toBe(true);
+                        const tokenBefore = readFileSync(tokenFile, "utf8").trim();
+                        // 2. Kill the winner (flock released at exit) and immediately
+                        //    rebind its port from a detached dummy holder.
+                        winner.kill("SIGKILL");
+                        sleepSync(500);
+                        holder = spawn(process.execPath, ["-e", `Bun.serve({ port: ${port}, fetch: () => new Response("x") }); setInterval(()=>{},1e6);`], { stdio: "ignore" });
+                        sleepSync(700);
+                        // 3. The victim: lock stealable (winner dead), port held → the
+                        //    bind fails; the token file must survive untouched.
+                        const vPath = join(root, "victim.ts");
+                        writeFileSync(vPath, victimScript);
+                        const victim = spawnSync(process.execPath, [vPath], { env: { ...env, PI_AGENT_PORT: String(port) }, encoding: "utf8", timeout: 60_000 });
+                        expect(victim.stdout).toContain("VICTIM=bind-failed");
+                        expect(victim.stdout).toContain("TOKEN_INTACT=true");
+                        expect(readFileSync(tokenFile, "utf8").trim()).toBe(tokenBefore);
+                } finally {
+                        holder?.kill("SIGKILL");
+                        rmSync(root, { recursive: true, force: true });
+                }
+        }, 120_000);
+
         test("UNOWN_ENGINE_AUTH=off + widened bind refuses to boot", () => {
                 const root = mkdtempSync(join(tmpdir(), "unown-auth-refuse-"));
                 const script = `

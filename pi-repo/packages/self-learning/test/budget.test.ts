@@ -175,13 +175,17 @@ describe("term.ts — the terminal injection carries the same budget", () => {
                 try {
                         // Achievable cap: the protected stack (guide ≈ 660 +
                         // policy ≈ 400 + local/user seeds ≈ 470) plus the project memory
-                        // MINUS the oldest block fits under 2000 — so one block drop
-                        // is exactly the degradation needed.
-                        process.env.PI_MEMORY_TOTAL_CHARS = "2000";
+                        // MINUS the oldest block fits under 2200 — so one block drop
+                        // is exactly the degradation needed. (M10 raised the floor:
+                        // the honest repo-supplied provenance comment is ~70 chars
+                        // longer than the old "maintained by AutoDream" one; the
+                        // payload lines carry spaces so the injection scan's
+                        // opaque-blob rule — correctly — does not fire on them.)
+                        process.env.PI_MEMORY_TOTAL_CHARS = "2200";
                         mkdirSync(join(project, ".unown", "memory"), { recursive: true });
                         writeFileSync(
                                 join(project, ".unown", "memory", "project.md"),
-                                `# base\n- keep\n\n<!-- agent @ 2024-01-01 10:00 — old -->\n${"o".repeat(400)}\n\n<!-- agent @ 2026-01-01 10:00 — new -->\n${"n".repeat(100)}\n`,
+                                `# base\n- keep\n\n<!-- agent @ 2024-01-01 10:00 — old -->\n- ${"old line ".repeat(44)}\n\n<!-- agent @ 2026-01-01 10:00 — new -->\n- ${"new line ".repeat(12)}\n`,
                                 "utf8",
                         );
                         mkdirSync(UNOWN_MEMORY_DIR, { recursive: true });
@@ -189,13 +193,13 @@ describe("term.ts — the terminal injection carries the same budget", () => {
 
                         const files = terminalMemoryForAgent(project);
                         const total = files.reduce((s, f) => s + f.path.length + f.content.length, 0);
-                        expect(total).toBeLessThanOrEqual(2000);
+                        expect(total).toBeLessThanOrEqual(2200);
                         const paths = files.map((f) => f.path).join("\n");
                         expect(paths).toContain("how-to-use"); // guide kept
                         expect(paths).toContain("tier0-policy"); // policy kept
                         const projectFile = files.find((f) => f.tier === "project")!;
                         expect(projectFile.content).toContain("# base");
-                        expect(projectFile.content).toContain("n".repeat(20)); // newest block kept
+                        expect(projectFile.content).toContain("new line new line"); // newest block kept
                         expect(projectFile.content).not.toContain("o".repeat(20)); // oldest block dropped
                 } finally {
                         if (saved === undefined) delete process.env.PI_MEMORY_TOTAL_CHARS;

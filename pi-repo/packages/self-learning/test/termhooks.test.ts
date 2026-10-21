@@ -23,7 +23,7 @@
 // /tmp subtree).
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
 import { TEST_TMP } from "./_env.ts";
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readlinkSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { homedir, platform, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -591,6 +591,14 @@ describe("buildTerminalNote", () => {
                 lastAssistantText: "",
                 sessionStartTs: FIXED_NOW - 5 * 60_000,
         };
+
+        // M10: buildTerminalNote reads the session's shield telemetry; earlier
+        // suites in this one-process run (the adversarial corpus) warm it and
+        // the injection-suspicion line would appear. Pin the CLEAN session.
+        beforeEach(() => {
+                const { resetShieldTelemetry } = require("../src/shield.ts") as typeof import("../src/shield.ts");
+                resetShieldTelemetry();
+        });
 
         test("header line summarizes cwd, duration, prompts and tool calls", async () => {
                 const note = withFixedNow(() => buildTerminalNote(base));

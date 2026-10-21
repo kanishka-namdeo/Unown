@@ -244,7 +244,7 @@ describe("CLI golden — unown memory", () => {
                 expect(out).toContain("【POLICY】");
                 expect(out).toContain("memory/tier0-policy.md (enterprise policy — highest authority)");
                 expect(out).toContain("【PROJECT】");
-                expect(out).toContain(".unown/memory/project.md (project memory — maintained by AutoDream & you)");
+                expect(out).toContain(".unown/memory/project.md (project memory — provenance in the injected header)"); // M10: origin-neutral label; the injected header carries the truth
                 expect(out).toContain("【USER】");
                 expect(out).toContain("memory/tier2-user.md (user memory — global preferences)");
                 expect(out).toContain("【LOCAL】");
