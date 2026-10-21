@@ -224,9 +224,17 @@ describe("runRetentionPass (throwaway stores)", () => {
                 const s = new Store(path);
                 const now = Date.now();
                 const old = now - 400 * DAY;
+                // One transaction, not 60k autocommit round-trips: bun's
+                // per-statement fsync made this loop the suite's slowest
+                // block — on a loaded 2-vCPU CI runner it alone exceeded
+                // the test budget (10.1s measured) while the two retention
+                // passes it feeds are batched DELETEs. BEGIN/COMMIT is the
+                // same shape the engine's own bulk writers use.
+                s.run(`BEGIN`);
                 for (let i = 0; i < 60_000; i++) {
                         s.run(`INSERT INTO hook_log (ts, hook, tool, decision) VALUES (?, 'PreToolUse', 'bash', 'allow')`, [old]);
                 }
+                s.run(`COMMIT`);
                 withEnv({}, () => {
                         const r1 = runRetentionPass(now, s);
                         expect(r1.pruned.hook_log).toBe(50_000);
@@ -236,7 +244,7 @@ describe("runRetentionPass (throwaway stores)", () => {
                         expect(r2.moreRemaining).toBe(false);
                 });
                 s.close();
-        });
+        }, 60_000);
 
         test("the registry covers exactly the six operational tables (precious tables have no predicate)", () => {
                 expect([...RETENTION_TABLES].sort()).toEqual([

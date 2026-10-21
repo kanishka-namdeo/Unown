@@ -52,9 +52,13 @@ describe("mineFailure — the mines-failures-only guard", () => {
         test("a genuine failed run passes the guard (fails later on the dead-bridge lane, NOT on the guard)", async () => {
                 // _env.ts points PI_BRIDGE_URL at a dead port, so the LLM call
                 // rejects — the point is the error is a BRIDGE error, proving the
-                // guard let the failed run through to the mining lane.
+                // guard let the failed run through to the mining lane. Explicit
+                // 120s timeout: chat()'s transient-retry ladder against a dead
+                // port (2s+4s backoff) plus the mining pipeline exceeds bun's
+                // 5s default on loaded 2-vCPU CI runners (the detachment suite
+                // hit the same class — see test/detachment.test.ts).
                 const err = await mineFailure(task as any, baseRun({ verify: { passed: false, summary: "nope", log: "assert failed" } })).catch((e: Error) => e);
                 expect(err).toBeInstanceOf(Error);
                 expect(String((err as Error).message)).not.toContain("not a mineable failure");
-        });
+        }, 120_000);
 });
