@@ -1,15 +1,22 @@
 /**
- * engine-cli.ts — `unown engine status|start|stop|repair|serve` (M3 + M6).
+ * engine-cli.ts — `unown engine status|start|stop|restart|repair|serve`
+ * (M3 + M6 + M8).
  *
  * The supervision surface for the detached self-learning engine
  * (docs/detached-engine-architecture.md, design rules 1 + 5):
  *
- *   status  ping + report (pid, uptime, jobs, governor budget/breaker, outbox,
- *           crash-loop circuit) — the DEGRADED-MODE diagnosis command
+ *   status  ping + report (pid, uptime, build/version-skew verdict, jobs,
+ *           governor budget/breaker, retention size, outbox, crash-loop
+ *           circuit) — the DEGRADED-MODE diagnosis command
  *   start   ping-or-spawn: detached `engine serve` child + jittered health poll;
- *           FORCE — bypasses and resets the M6 crash-loop circuit (manual wins)
+ *           FORCE — bypasses and resets the M6 crash-loop circuit (manual wins);
+ *           an up-but-stale engine reports the newer build + the restart hint
  *   stop    graceful: HTTP /api/shutdown (drains requests, stops the router,
  *           checkpoints the WAL, releases the lock) with hard-kill fallback
+ *   restart pick up the current build (M8): busy-aware stop → fresh spawn →
+ *           health wait → the new /api/version as the receipt. --force past a
+ *           running job, --wait <ms> to let it finish first; a down engine
+ *           just starts (there is nothing to drain).
  *   repair  quarantine a corrupt SQLite DB (backup-aside + fresh boot);
  *           memory files on disk and the note outbox survive by design
  *   serve   run the engine in the FOREGROUND of this process — the entry a
@@ -24,6 +31,14 @@ import { ENGINE_URL, outboxStats } from "./term.ts";
 import { DB_PATH } from "./store.ts";
 import { engineFetch } from "./engine-auth.ts";
 import {
+        agentVersion,
+        codeMtimeMs,
+        compareEngineBuild,
+        formatDuration,
+        type EngineBuildComparison,
+        type EngineBuildRef,
+} from "./engine-version.ts";
+import {
         engineHealth,
         enginePidFile,
         enginePidFromPidfile,
@@ -35,14 +50,76 @@ import {
 import { describeSpawnCircuit } from "./engine-status.ts";
 
 export const ENGINE_USAGE = `unown engine <sub> — the detached self-learning engine:
-  status   is the engine up? pid, uptime, jobs, governor, outbox, auto-start circuit
+  status   is the engine up? pid, uptime, build (version-skew verdict), jobs,
+           governor, retention size, outbox, auto-start circuit
   start    start it if down (detached; waits for health, Ctrl-C safe) — resets the
-           crash-loop circuit (use after repeated failed auto-starts)
+           crash-loop circuit (use after repeated failed auto-starts); an
+           up-but-older build prints the restart hint
   stop     graceful stop (drains requests, checkpoints the WAL, releases the lock)
+  restart  pick up the current build: busy-aware stop + fresh spawn (refuses to
+           cut a running job unless --force; --wait <ms> lets it finish first)
   repair   quarantine a corrupt engine DB (backs it up aside, boots fresh; memory
            files on disk + queued notes survive) — when the engine won't start
   serve    run the engine in THIS process (the supervisor entry — systemd/
            launchd/Windows services should use this)`;
+
+/** `unown engine restart` flags (--force, --wait <ms>). */
+export interface RestartFlags {
+        force: boolean;
+        waitMs: number;
+}
+
+/** Parse `unown engine restart` argv — the parseUpdateFlags pattern (pure). */
+export function parseRestartFlags(argv: string[]): { flags: RestartFlags; error?: string; help?: boolean } {
+        const flags: RestartFlags = { force: false, waitMs: 0 };
+        for (let i = 0; i < argv.length; i++) {
+                const a = argv[i];
+                if (a === "--force") flags.force = true;
+                else if (a === "--wait" || a.startsWith("--wait=")) {
+                        const raw = a === "--wait" ? argv[++i] : a.slice("--wait=".length);
+                        const v = Number(raw);
+                        if (raw === undefined || !Number.isFinite(v) || v < 0) {
+                                return { flags, error: `--wait needs a non-negative milliseconds value (e.g. --wait 30000)` };
+                        }
+                        flags.waitMs = Math.floor(v);
+                } else if (a === "--help" || a === "-h") {
+                        return { flags, help: true };
+                } else {
+                        return { flags, error: `unknown argument: ${a}` };
+                }
+        }
+        return { flags };
+}
+
+/** The staleness marker for the status UP line — non-stale verdicts (and
+ *  pre-version engines, which doctor reports instead) render nothing. */
+export function engineStaleMarker(cmp: EngineBuildComparison | undefined, agent: string): string {
+        if (!cmp) return "";
+        if (cmp.verdict === "old-build" || cmp.verdict === "stale" || cmp.verdict === "ancient") {
+                return ` — STALE (agent v${agent}; restart: unown engine restart)`;
+        }
+        return "";
+}
+
+/** The busy-gate refusal — the exact copy pinned by the M8 design. */
+export function busyRefusalMessage(activeJob: string, busyMs: number): string {
+        return `engine is mid-job '${activeJob}' (${Math.round(busyMs / 1000)}s elapsed) — retry when idle, or: unown engine restart --force`;
+}
+
+/** Humanize the engine DB size for the status retention line. */
+export function humanizeDbBytes(bytes: number): string {
+        if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+        if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+/** The agent's own side of the handshake for the CLI surfaces — sha null on
+ *  purpose: these run before any spawn, and the needrestart rule
+ *  (bootedAt < codeMtimeMs) already catches same-version skew after an
+ *  update rewrote the checkout. */
+function agentBuild() {
+        return { version: agentVersion(), gitSha: null as string | null, codeMtimeMs: codeMtimeMs() };
+}
 
 export async function runEngineCommand(argv: string[], ctx: { out?: (s: string) => void } = {}): Promise<number> {
         const out = ctx.out ?? ((s: string) => console.log(s));
@@ -54,11 +131,34 @@ export async function runEngineCommand(argv: string[], ctx: { out?: (s: string) 
         if (sub === "status") return cmdStatus(out);
         if (sub === "start") return cmdStart(out);
         if (sub === "stop") return cmdStop(out);
+        if (sub === "restart") {
+                const { flags, error, help } = parseRestartFlags(argv.slice(1));
+                if (help) {
+                        out(ENGINE_USAGE);
+                        return 0;
+                }
+                if (error) {
+                        out(`unown: ${error}`);
+                        return 2;
+                }
+                return cmdRestart(out, flags);
+        }
         if (sub === "repair") return cmdRepair(out);
         if (sub === "serve") return cmdServe();
         out(`unown: unknown engine subcommand '${sub}'`);
         out(ENGINE_USAGE);
         return 2;
+}
+
+/** Fetch /api/overview (null on any failure — callers degrade honestly). */
+async function fetchOverview(timeoutMs = 3000): Promise<any | null> {
+        try {
+                const res = await engineFetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(timeoutMs) });
+                if (!res.ok) return null;
+                return await res.json();
+        } catch {
+                return null;
+        }
 }
 
 async function cmdStatus(out: (s: string) => void): Promise<number> {
@@ -77,17 +177,24 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
         }
         // Full report (the cheap probe passed; now the detailed one, still bounded).
         try {
-                const res = await engineFetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
-                const body: any = await res.json();
+                const body = await fetchOverview(3000);
+                if (!body) throw new Error("overview failed");
                 const r = body?.router ?? {};
                 const g = body?.governor ?? {};
                 const b = g.budget ?? {};
                 const br = g.breaker ?? {};
-                const uptimeS = Math.round((body?.uptimeMs ?? 0) / 1000);
-                out(`engine: UP (pid ${body?.pid ?? "?"}, up ${Math.floor(uptimeS / 60)}m${uptimeS % 60}s)`);
+                // M8: the version-skew verdict — the engine's build vs this CLI's.
+                const v: EngineBuildRef | undefined = body?.version;
+                const cmp = compareEngineBuild(agentBuild(), v, Date.now());
+                const versionSeg = v?.version ? ` · v${v.version}${v.gitSha ? ` ·${v.gitSha}` : ""}` : "";
+                out(
+                        `engine: UP (pid ${body?.pid ?? "?"}, up ${formatDuration(body?.uptimeMs ?? 0)})${versionSeg}${engineStaleMarker(v ? cmp : undefined, agentVersion())}`,
+                );
                 out(`  router: ${r.busy ? `busy on '${r.activeJob}' for ${Math.round((r.busyMs ?? 0) / 1000)}s` : "idle"} (watchdog ${Math.round((r.jobTimeoutMs ?? 0) / 1000)}s)`);
                 out(`  budget: ${b.callsHour ?? "?"} calls/h, ${b.tokensHour ?? "?"} tok/h (limits ${b.limits?.callsHour ?? "?"}/${b.limits?.tokensHour ?? "?"})${b.overBudget ? " — THROTTLED" : ""}`);
                 out(`  breaker: ${br.open ? `OPEN (retry in ${Math.ceil((br.retryInMs ?? 0) / 1000)}s)` : "closed"}`);
+                // M9 observability: the retention job's high-water mark.
+                out(`  retention: ${humanizeDbBytes(body?.retention?.dbBytes)} db`);
                 out(`  kpis: ${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams, ${body?.kpis?.improvementsShipped ?? "?"} improvements shipped`);
                 out(`  outbox: ${stats.queued} note(s) pending sync${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}`);
                 // Audit 2-b D2: the auto-start circuit line used to print only in
@@ -107,6 +214,19 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
 async function cmdStart(out: (s: string) => void): Promise<number> {
         const pre = await engineHealth(1500);
         if (pre.up) {
+                // M8: an engine that is UP but an older build is a half-fixed
+                // state — start did its job (liveness), the version handshake
+                // says the build is behind. rc stays 0: nothing is broken,
+                // the user asked for "up" and has it.
+                const cmp = compareEngineBuild(agentBuild(), pre.version, Date.now());
+                if (cmp.verdict === "old-build" || cmp.verdict === "stale" || cmp.verdict === "ancient") {
+                        const bootedAge = pre.version?.bootedAt ? formatDuration(Date.now() - pre.version.bootedAt) : "unknown";
+                        out(
+                                `engine: already up (pid ${pre.pid ?? "?"}) — older build (v${pre.version?.version ?? "?"}, booted ${bootedAge} ago; agent v${agentVersion()})`,
+                        );
+                        out(`  pick up the new build: unown engine restart`);
+                        return 0;
+                }
                 out(`engine: already up (pid ${pre.pid ?? "?"})`);
                 return 0;
         }
@@ -196,6 +316,78 @@ async function cmdStop(out: (s: string) => void): Promise<number> {
                 out("engine: stopped");
                 return 0;
         }
+}
+
+/**
+ * `unown engine restart` (M8) — pick up the current build.
+ *
+ * WHY: the engine is a long-lived detached process; `unown update` (or a
+ * `git pull`) moves the checkout out from under it and NOTHING restarted
+ * it — the agent ran the new code while the engine kept dreaming on the
+ * old one, invisibly (that is the whole M8 version-skew problem). restart
+ * is the one-command fix every stale surface points at.
+ *
+ * Shape (each step reuses the path that already exists):
+ *   1. down engine → there is nothing to drain: behave as `start`;
+ *   2. busy gate → a router job mid-flight is real work (a dream, a cycle);
+ *      refuse unless --force, or poll until idle when --wait <ms> was given
+ *      (systemd reload-or-restart semantics: never kill work for a build);
+ *   3. stop → cmdStop's HTTP-first drain (requests finish, WAL checkpointed,
+ *      lock released — the M3/M5 restart-safety primitives);
+ *   4. spawn → cmdStart's tail: force-spawn (crash-loop circuit reset) +
+ *      the health wait with skipSpawn (we launched the child ourselves);
+ *   5. receipt → the fresh /api/version, so the user SEES the handshake
+ *      close: new boot timestamp, same build as the agent.
+ */
+async function cmdRestart(out: (s: string) => void, flags: RestartFlags): Promise<number> {
+        // 1. A down engine has nothing to drain — restart IS start.
+        const health = await engineHealth(1500);
+        if (!health.up) {
+                out("engine: down — nothing to drain, starting it");
+                return cmdStart(out);
+        }
+        // 2. Busy gate: never cut a running job in half unless forced.
+        if (!flags.force) {
+                const deadline = Date.now() + flags.waitMs;
+                for (;;) {
+                        const body = await fetchOverview(2000);
+                        const router = body?.router;
+                        if (!body || !router?.busy) break; // idle (or overview failed — cmdStop re-probes)
+                        if (Date.now() >= deadline) {
+                                out(busyRefusalMessage(router.activeJob ?? "job", router.busyMs ?? 0));
+                                return 1;
+                        }
+                        await new Promise((r) => setTimeout(r, Math.min(500, Math.max(50, deadline - Date.now()))));
+                }
+        }
+        // 3. The graceful drain (cmdStop's HTTP-first path, signals as fallback).
+        const stopRc = await cmdStop(out);
+        if (stopRc !== 0) return stopRc; // stop failed — do NOT spawn a second engine over it
+        // 4. Fresh spawn — cmdStart's tail verbatim (force = circuit reset;
+        //    skipSpawn = the force-spawn above already launched the child).
+        const spawned = await spawnEngineDetached({ force: true });
+        if (!spawned) {
+                out(`engine: spawn failed (see the log at .run/engine.log) — start the stack manually: bun run agent:start`);
+                return 1;
+        }
+        const result = await ensureEngineRunning(20_000, { skipSpawn: true });
+        if (!result.up) {
+                out("engine: spawned but not healthy yet after 20s — it may still be booting; check:");
+                out(`  unown engine status   ·   ${process.platform === "win32" ? "Get-Content -Wait .run\\engine.log" : "tail -f .run/engine.log"}`);
+                return 1;
+        }
+        // 5. Receipt: the fresh build, from the fresh /api/version.
+        out(`engine: UP (pid ${result.pid ?? "?"}) — restarted onto the current build`);
+        try {
+                const res = await engineFetch(`${ENGINE_URL}/api/version`, { signal: AbortSignal.timeout(3000) });
+                const v: any = await res.json();
+                if (v?.version) {
+                        out(`  build: v${v.version}${v.gitSha ? ` ·${v.gitSha}` : ""} (agent v${agentVersion()}, booted ${formatDuration(v.uptimeMs ?? 0)} ago)`);
+                }
+        } catch {
+                /* the receipt is best-effort — the restart itself succeeded */
+        }
+        return 0;
 }
 
 /**

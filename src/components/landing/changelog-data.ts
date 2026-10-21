@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 220;
+export const CHANGELOG_TOTAL_ENTRIES = 221;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 106,
+  "Added": 107,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 1,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 98,
+    "total": 99,
     "counts": {
-      "Added": 52,
+      "Added": 53,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 1,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "the engine reports its build, the agent compares, and every surface says the same fix: unown engine restart",
+            "behavior": false
+          },
           {
             "title": "bounded data growth: the db-retention job prunes operational telemetry past its window; precious data is…",
             "behavior": false

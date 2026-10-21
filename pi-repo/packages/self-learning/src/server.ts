@@ -3,7 +3,7 @@
  */
 
 import { emit, subscribe } from "./bus.ts";
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import {
         AutomationsScheduler,
@@ -15,6 +15,10 @@ import {
         updateAutomation,
 } from "./automations.ts";
 import { describeCron } from "./cron.ts";
+// M8: the version-skew handshake — /api/version + overview.version expose the
+// engine's build (version, boot sha, bootedAt); agentVersion() replaces the
+// hardcoded layer literal with the same source of truth.
+import { agentVersion, engineVersionInfo } from "./engine-version.ts";
 import {
         engineTokenPath,
         generateEngineToken,
@@ -39,7 +43,7 @@ import { breakerStatus, budgetStatus, markEngineProcess, pruneLedger } from "./g
 import { ensureAgentDir, getRun, listRuns, MODEL_ID, PROVIDER, runAgent } from "./runner.ts";
 import { listSandboxes } from "./sandbox.ts";
 import { getSkill, listSkills, retireSkill, rollbackSkill, skillVersions } from "./skills.ts";
-import { store, DATA_DIR } from "./store.ts";
+import { store, DATA_DIR, DB_PATH } from "./store.ts";
 import { getTask, listTasks, seedTasks } from "./tasks.ts";
 import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
 
@@ -79,6 +83,21 @@ function json(data: unknown, status = 200) {
                 status,
                 headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
         });
+}
+
+/** On-disk size of the engine DB + its WAL sidecar, bytes (0 per missing
+ *  file) — the retention observability number (M9) surfaced in
+ *  /api/overview and `unown engine status`. */
+function engineDbBytes(): number {
+        let bytes = 0;
+        for (const p of [DB_PATH, `${DB_PATH}-wal`]) {
+                try {
+                        bytes += statSync(p).size;
+                } catch {
+                        /* missing file — contributes 0 */
+                }
+        }
+        return bytes;
 }
 
 // ---------------------------------------------------------------------------
@@ -234,6 +253,16 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 }
 
                 // ------------------------------------------------------------------
+                // Version (M8) — the version-skew handshake block. GET and HEAD both
+                // answer (ollama's /api/version accepts both; a bare liveness poll
+                // should not need a body). Cheaper than /api/overview for version
+                // probes: no run scan, no bridge fetch.
+                // ------------------------------------------------------------------
+                if ((method === "GET" || method === "HEAD") && path === "/api/version") {
+                        return json({ ok: true, ...engineVersionInfo() });
+                }
+
+                // ------------------------------------------------------------------
                 // Overview
                 // ------------------------------------------------------------------
                 if (method === "GET" && path === "/api/overview") {
@@ -278,10 +307,19 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 uptimeMs: Date.now() - bootedAt,
                                 agent: {
                                         name: "pi (badlogic/pi-mono)",
-                                        layer: "self-learning v0.1",
+                                        // NEVER a literal: the MCP handshake once claimed 0.1.0 while the
+                                        // shipped package was 2.1.x (packaging.ts's founding anti-pattern).
+                                        // agentVersion() is the same chain `unown --version` asserts in CI.
+                                        layer: `self-learning v${agentVersion()}`,
                                         provider: `${PROVIDER}/${MODEL_ID}`,
                                         bridge,
                                 },
+                                // Version-skew handshake (M8): the same block /api/version serves,
+                                // inline so existing probes need zero extra round trips.
+                                version: engineVersionInfo(),
+                                // Retention observability (M9): on-disk size of the engine DB + WAL —
+                                // the number the retention job's high-water mark plateaus at.
+                                retention: { dbBytes: engineDbBytes() },
                                 kpis: {
                                         totalRuns: total,
                                         passed,
@@ -412,8 +450,8 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 // Memory
                 // ------------------------------------------------------------------
 if (method === "GET" && path === "/api/memory/projects") {
-	// Terminal project memories as first-class objects (TUI dashboard plan §5.6).
-	return json({ projects: projectTiers() });
+        // Terminal project memories as first-class objects (TUI dashboard plan §5.6).
+        return json({ projects: projectTiers() });
 }
                 if (method === "GET" && path === "/api/memory") {
                         return json({

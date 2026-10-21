@@ -55,6 +55,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { runMigrations } from "./migrations.ts";
+// M8: the post-update engine hint needs a liveness probe. engine-supervisor
+// is side-effect-free at module scope (the detachment contract) — importing
+// it here does NOT open the engine DB from a `unown update` run.
+import { engineHealth } from "./engine-supervisor.ts";
 
 // ---------------------------------------------------------------------------
 // Repo/home resolution (mirrors cli.ts VERSION — the ROOT package.json is the
@@ -544,7 +548,13 @@ export async function cmdUpdate(flags: UpdateFlags, ctx: UpdateCtx = {}): Promis
         }
         log("");
         log(`  release notes: https://github.com/kanishka-namdeo/Unown/releases/tag/${targetTag}`);
-        log(`  restart any running unown sessions / \`bun run agent:start\` to pick up the new build`);
+        log(`  restart any running unown sessions to pick up the new build`);
+        // M8: the engine is a LONG-LIVED process — updating the checkout does
+        // not (and must not) restart it under the user. If one is running, it
+        // is now the OLD build by construction; say so with the one-command
+        // fix instead of letting the skew surface later as a mystery.
+        const engineUp = (await engineHealth(1500)).up;
+        if (engineUp) log(`  engine: still running the OLD build until restarted — unown engine restart`);
         log(`  rollback anytime: unown update --rollback   (or: unown update ${current})`);
         return 0;
 }

@@ -48,7 +48,7 @@ const RECIPES_SUBCOMMANDS = ["list", "run", "create", "validate"];
 const WIKI_SUBCOMMANDS = ["generate", "search", "list", "show"];
 const WEBCACHE_SUBCOMMANDS = ["stats", "clear", "sweep"];
 const PROVIDERS_SUBCOMMANDS = ["list", "add", "remove", "key", "default", "test", "refresh"];
-const ENGINE_SUBCOMMANDS = ["status", "start", "stop", "repair", "serve"];
+const ENGINE_SUBCOMMANDS = ["status", "start", "stop", "restart", "repair", "serve"];
 
 const UPDATE_FLAGS = ["--check", "--json", "--allow-dirty", "--rollback", "--help"];
 const SESSION_FLAGS = [

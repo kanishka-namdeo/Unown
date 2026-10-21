@@ -61,6 +61,7 @@ import {
         unownAgentDirInit,
 } from "./term.ts";
 import { readSpawnState } from "./engine-supervisor.ts";
+import { agentGitSha, codeMtimeMs, compareEngineBuild } from "./engine-version.ts";
 import { CheckpointStore, checkpointsDir, createCheckpointsExtension, receiptsDir } from "./checkpoints.ts";
 import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
 import { createMcpExtension, formatConfigProblem, resolveMcpConfig } from "./mcp.ts";
@@ -156,10 +157,11 @@ Usage:
                            list | create | edit | pause | resume | run |
                            history | delete — needs the engine running;
                            cron is LOCAL timezone, default mode read-only
-  unown engine <sub>      the detached self-learning engine (M3+M6):
-                           status | start | stop | repair | serve — ping,
-                           spawn, graceful drain, corrupt-DB recovery,
-                           or run in-process (supervisor entry)
+  unown engine <sub>      the detached self-learning engine (M3+M6+M8):
+                           status | start | stop | restart | repair | serve —
+                           ping, spawn, graceful drain, the version-skew
+                           restart, corrupt-DB recovery, or run in-process
+                           (supervisor entry)
   unown usage            token & cost report for the LLM bridge
                            (--days N, --model M, --json; estimates unless
                            UNOWN_PRICE_* pins exact prices)
@@ -1396,6 +1398,40 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                 );
                         }
                 }
+                // 5c. engine version skew (M8): the engine reports its build in
+                // /api/overview; warn when it predates the current one — the fix
+                // is `unown engine restart`, never a broken state (chat and
+                // notes work regardless; new learning simply runs on the old
+                // build until restarted). A missing version block is a pre-M8
+                // engine: an info-pass with the same fix (the restart brings
+                // version reporting along).
+                {
+                        const engineVer = body?.version;
+                        const cmp = compareEngineBuild(
+                                { version: VERSION, gitSha: agentGitSha(), codeMtimeMs: codeMtimeMs() },
+                                engineVer,
+                                Date.now(),
+                        );
+                        if (cmp.verdict === "fresh") {
+                                check("engine version", true, `v${engineVer?.version ?? "?"}${engineVer?.gitSha ? ` (${engineVer.gitSha})` : ""}`);
+                        } else if (cmp.verdict === "unknown") {
+                                check("engine version", true, "engine predates version reporting — restart to update: unown engine restart");
+                        } else if (cmp.verdict === "ahead") {
+                                check(
+                                        "engine version",
+                                        false,
+                                        `engine v${engineVer?.version ?? "?"} is newer than agent v${VERSION} — run: unown update`,
+                                        "warn",
+                                );
+                        } else {
+                                check(
+                                        "engine version",
+                                        false,
+                                        `engine is an older build (v${engineVer?.version ?? "?"} vs agent v${VERSION}) — unown engine restart`,
+                                        "warn",
+                                );
+                        }
+                }
         } catch {
                 const stats = outboxStats();
                 check(
@@ -2001,7 +2037,8 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
 const DOCTOR_HELP = `unown doctor — diagnose configuration, bridge, engine and memory
 
 Checks the agent-home layout, model configuration, the chat path (the only
-hard-fail: a broken chat path), engine health, memory materialization, the
+hard-fail: a broken chat path), engine health + version skew (M8: an engine
+older than the agent warns with the restart fix), memory materialization, the
 PATH shims, and the SDLC surfaces (LSP servers on PATH, MCP config health
 incl. the project trust gate, .unown disk usage — all warn-level: chat works
 without them). Every failure carries an actionable hint.

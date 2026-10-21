@@ -40,6 +40,7 @@ import {
         type EngineStatusInfo,
 } from "../src/engine-status.ts";
 import { enginePidFile, readSpawnState, resetSpawnCircuit, spawnStateFile, type SpawnState } from "../src/engine-supervisor.ts";
+import { agentGitSha, agentVersion } from "../src/engine-version.ts";
 import { outboxStats, writeOutboxNote, UNOWN_OUTBOX_DIR } from "../src/term.ts";
 
 const PKG_ROOT = join(import.meta.dir, "..");
@@ -522,4 +523,146 @@ process.exit(0);
                         tryWrite(spawnStateFile(), saved);
                 }
         }, 15_000);
+});
+
+// ---------------------------------------------------------------------------
+// M8: the version-skew surfaces — footer suffix + one build toast per
+// fresh→stale transition. The handshake block injected through the probe is
+// crafted against the REAL agent build (agentVersion/agentGitSha/
+// codeMtimeMs of this checkout), exactly what a live probe would receive.
+// ---------------------------------------------------------------------------
+
+describe("engineFooterText — the M8 build suffix (UI copy, pinned exactly)", () => {
+        const verdict = (v: string) => ({ verdict: v as any, detail: "test" });
+
+        test("up + old-build (same version, different sha) → 'memory: up · old build'", () => {
+                expect(engineFooterText(makeInfo("up", { buildVerdict: verdict("old-build"), engineVersion: { version: "2.1.0" } }))).toBe(
+                        "memory: up · old build",
+                );
+        });
+
+        test("up + stale → 'memory: up · stale (v<engine version>)'", () => {
+                expect(engineFooterText(makeInfo("up", { buildVerdict: verdict("stale"), engineVersion: { version: "2.1.0" } }))).toBe(
+                        "memory: up · stale (v2.1.0)",
+                );
+        });
+
+        test("up + ancient → 'memory: up · very stale (v<engine version>)'", () => {
+                expect(engineFooterText(makeInfo("up", { buildVerdict: verdict("ancient"), engineVersion: { version: "1.9.0" } }))).toBe(
+                        "memory: up · very stale (v1.9.0)",
+                );
+        });
+
+        test("up + fresh / unknown / ahead / no verdict → the unchanged 'memory: up'", () => {
+                expect(engineFooterText(makeInfo("up"))).toBe("memory: up");
+                expect(engineFooterText(makeInfo("up", { buildVerdict: verdict("fresh"), engineVersion: { version: "2.1.0" } }))).toBe("memory: up");
+                expect(engineFooterText(makeInfo("up", { buildVerdict: verdict("unknown") }))).toBe("memory: up");
+                expect(engineFooterText(makeInfo("up", { buildVerdict: verdict("ahead"), engineVersion: { version: "9.9.9" } }))).toBe("memory: up");
+        });
+
+        test("the suffix never rides a non-up state (down/paused stay exactly as M6 pinned them)", () => {
+                expect(engineFooterText(makeInfo("down", { buildVerdict: verdict("stale"), engineVersion: { version: "2.1.0" } }))).toBe("memory: down");
+                expect(engineFooterText(makeInfo("paused", { buildVerdict: verdict("ancient") }))).toBe("memory: paused · /engine");
+        });
+});
+
+describe("engine status loop — the M8 version handshake (injected probe)", () => {
+        /** A handshake block that compares FRESH against this real checkout. */
+        function freshBlock() {
+                return { version: agentVersion(), gitSha: agentGitSha(), bootedAt: Date.now() };
+        }
+        /** A handshake block one minor version behind (plain stale — not ancient). */
+        function staleBlock() {
+                const [maj, min] = agentVersion().split(".").map(Number);
+                const older = `${maj}.${Math.max(0, min - 1)}.0`;
+                return { version: older, bootedAt: Date.now() - 3600_000 };
+        }
+
+        test("footer carries the stale suffix; ONE info toast on the fresh→stale transition, none at session start", async () => {
+                seedCircuit(freshCircuit());
+                let block: any = freshBlock();
+                const footers: string[] = [];
+                const toasts: Array<[string, string]> = [];
+                const loop = startFresh({
+                        probe: async () => ({ up: true, pid: 777, version: block }),
+                        kickSpawn: async () => false,
+                        onFooter: (t) => footers.push(t ?? ""),
+                        onToast: (m, l) => toasts.push([m, l]),
+                });
+                const first = await loop.probeNow(); // session starts fresh — silent
+                expect(first.state).toBe("up");
+                expect(first.buildVerdict?.verdict).toBe("fresh");
+                expect(footers).toContain("memory: up");
+                expect(toasts).toEqual([]);
+
+                block = staleBlock(); // the agent updated underneath the engine
+                const staleInfo = await loop.probeNow();
+                expect(staleInfo.buildVerdict?.verdict).toBe("stale");
+                expect(footers).toContain(`memory: up · stale (v${staleBlock().version})`);
+                expect(toasts).toHaveLength(1);
+                expect(toasts[0][1]).toBe("info");
+                expect(toasts[0][0]).toContain(`memory engine is an older build (v${staleBlock().version}`);
+                expect(toasts[0][0]).toContain("booted 1h 0m ago");
+                expect(toasts[0][0]).toContain("run `unown engine restart`; chat unaffected");
+
+                await loop.probeNow(); // still stale — the toast does NOT repeat
+                expect(toasts).toHaveLength(1);
+                stopEngineStatusLoop();
+        });
+
+        test("a session that STARTS against a stale engine is silent (fact, not event) — footer still says it", async () => {
+                seedCircuit(freshCircuit());
+                const block = staleBlock();
+                const footers: string[] = [];
+                const toasts: Array<[string, string]> = [];
+                const loop = startFresh({
+                        probe: async () => ({ up: true, pid: 778, version: block }),
+                        kickSpawn: async () => false,
+                        onFooter: (t) => footers.push(t ?? ""),
+                        onToast: (m, l) => toasts.push([m, l]),
+                });
+                const info = await loop.probeNow();
+                expect(info.state).toBe("up");
+                expect(info.buildVerdict?.verdict).toBe("stale");
+                expect(footers).toContain(`memory: up · stale (v${block.version})`);
+                expect(toasts).toEqual([]); // no session-start nagging
+                stopEngineStatusLoop();
+        });
+
+        test("a down probe clears the handshake (no stale verdict about an engine we cannot reach)", async () => {
+                seedCircuit(freshCircuit());
+                let up = true;
+                const block = freshBlock();
+                const loop = startFresh({
+                        probe: async () => (up ? { up: true, pid: 779, version: block } : { up: false }),
+                        kickSpawn: async () => false,
+                });
+                const upInfo = await loop.probeNow();
+                expect(upInfo.buildVerdict?.verdict).toBe("fresh");
+                up = false;
+                const downInfo = await loop.probeNow();
+                expect(downInfo.state).toBe("down");
+                expect(downInfo.buildVerdict).toBeUndefined();
+                expect(downInfo.engineVersion).toBeUndefined();
+                stopEngineStatusLoop();
+        });
+
+        test("a pre-M8 engine (up, no version block) reports verdict unknown and renders the plain footer", async () => {
+                seedCircuit(freshCircuit());
+                const footers: string[] = [];
+                const toasts: Array<[string, string]> = [];
+                const loop = startFresh({
+                        probe: async () => ({ up: true, pid: 780 }), // no version field
+                        kickSpawn: async () => false,
+                        onFooter: (t) => footers.push(t ?? ""),
+                        onToast: (m, l) => toasts.push([m, l]),
+                });
+                const info = await loop.probeNow();
+                expect(info.state).toBe("up");
+                expect(info.buildVerdict?.verdict).toBe("unknown");
+                expect(info.engineVersion).toBeUndefined();
+                expect(footers).toContain("memory: up"); // pre-M8 engines never break the footer
+                expect(toasts).toEqual([]);
+                stopEngineStatusLoop();
+        });
 });

@@ -50,6 +50,7 @@ import {
         startEngineStatusLoop,
         stopEngineStatusLoop,
 } from "./engine-status.ts";
+import { agentGitSha, agentVersion } from "./engine-version.ts";
 import { decideAdversary } from "./adversary.ts";
 import {
     hasHandlersFor,
@@ -858,6 +859,21 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                                 lines.push(
                                                         `  status: UP${info.pid ? ` (pid ${info.pid})` : ""}${info.busyMs !== undefined && info.busyMs > 0 ? ` · busy on '${info.activeJob ?? "job"}' ${Math.round(info.busyMs / 1000)}s` : " · router idle"} · observed ${upMin}m ago in this session`,
                                                 );
+                                                // M8: the version handshake — both sides of the build on one
+                                                // line, plus the restart hint when the engine is behind the
+                                                // agent (agentGitSha resolves lazily once — a user-invoked
+                                                // command, not a hot path).
+                                                if (info.engineVersion?.version) {
+                                                        const sha = (s?: string | null) => (s ? ` [${s}]` : "");
+                                                        const stale =
+                                                                info.buildVerdict &&
+                                                                ["old-build", "stale", "ancient"].includes(info.buildVerdict.verdict)
+                                                                        ? ` — stale (restart: unown engine restart)`
+                                                                        : "";
+                                                        lines.push(
+                                                                `  build: engine v${info.engineVersion.version}${sha(info.engineVersion.gitSha)} · agent v${agentVersion()}${sha(agentGitSha())}${stale}`,
+                                                        );
+                                                }
                                         } else if (info.state === "starting") {
                                                 lines.push("  status: STARTING — a start was kicked, first probes pending (~seconds)");
                                         } else if (info.state === "paused") {

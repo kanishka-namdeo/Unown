@@ -24,6 +24,7 @@ import { spawn } from "node:child_process";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { engineFetch } from "./engine-auth.ts";
+import type { EngineBuildRef } from "./engine-version.ts";
 import { stateRoot } from "./packaging.ts";
 
 /** Engine base URL (same resolution as term.ts ENGINE_URL). */
@@ -192,13 +193,18 @@ export function autoStartDisabled(env: NodeJS.ProcessEnv = process.env): boolean
         return /^(0|false|off|no)$/i.test(env.UNOWN_ENGINE_AUTOSTART ?? "");
 }
 
-/** Cheap liveness probe: is the engine answering HTTP right now? */
-export async function engineHealth(timeoutMs = 1500): Promise<{ up: boolean; pid?: number; busyMs?: number; activeJob?: string }> {
+/** Cheap liveness probe: is the engine answering HTTP right now? The
+ *  `version` field (M8) is the /api/overview version block — the
+ *  version-skew handshake payload; absent on pre-M8 engines, which
+ *  compareEngineBuild classifies as "unknown". */
+export async function engineHealth(
+        timeoutMs = 1500,
+): Promise<{ up: boolean; pid?: number; busyMs?: number; activeJob?: string; version?: EngineBuildRef }> {
         try {
                 const res = await engineFetch(`${engineUrl()}/api/overview`, { signal: AbortSignal.timeout(timeoutMs) });
                 if (!res.ok) return { up: false };
                 const body: any = await res.json();
-                return { up: true, pid: body?.pid, busyMs: body?.router?.busyMs, activeJob: body?.router?.activeJob };
+                return { up: true, pid: body?.pid, busyMs: body?.router?.busyMs, activeJob: body?.router?.activeJob, version: body?.version };
         } catch {
                 return { up: false };
         }

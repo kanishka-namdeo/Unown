@@ -179,6 +179,20 @@ Some users want the engine to stay off — privacy, a shared box, or just not wa
 - Notes keep queuing in the outbox, so nothing is lost if the engine is ever started later.
 - `unown engine start` still works — an explicit user action always beats the kill switch.
 
+### R10 — Engine stale (an old build running after an update)
+
+The engine is long-lived; `unown update` fast-forwards the checkout and rebuilds the CLI — but the already-running engine keeps executing the OLD code until restarted. Before M8 this was invisible. Now the engine reports its build (`/api/version` + the `version` block in `/api/overview`: version, boot sha, `bootedAt`, `api`), and every surface compares it against the agent's own build (`compareEngineBuild` — fresh / old-build (same version, different sha) / stale (older version, or booted-before-this-build — the needrestart rule) / ancient (a major behind, or >7 days) / ahead / unknown for pre-M8 engines):
+
+- **Footer**: `memory: up · old build` / `memory: up · stale (v2.1.0)` — the suffix rides the up state only; down/paused keep their exact M6 shapes.
+- **Toast**: one info toast per fresh→stale *transition* (never at session start — the initial state is a fact, not an event): "memory engine is an older build … run `unown engine restart`; chat unaffected".
+- **`/engine`**: a `build:` line with both sides (engine v + sha · agent v + sha) and the restart hint when stale.
+- **Doctor**: an `engine version` row — pass when fresh, warn on old-build/stale/ancient, info-pass `engine predates version reporting` for pre-M8 engines.
+- **`unown engine status`**: version + sha on the UP line, a `— STALE` marker with the restart command.
+- **`unown update`** prints: `engine: still running the OLD build until restarted — unown engine restart`.
+
+The fix is always `unown engine restart` — busy-aware (refuses to cut an active job without `--force`; `--wait <ms>` polls for idle), HTTP-drain-first (Windows-safe), and it reports the fresh build when done. Nothing ever hard-refuses on skew: chat works engine-down by contract (R1), so an old engine is a degradation, not an outage — dreams may miss recent improvements, but the agent never blocks.
+
+
 ## Bounded loss: what survives, what doesn't
 
 The design goal of the detachment work: an engine death — even a corrupt database — must cost at most the engine's *own internal history*. Everything the agent reads at session start, and every note not yet consolidated, lives outside the DB by construction:
