@@ -79,6 +79,9 @@ import {
         isFailoverError,
         backoffDelayMs,
         spacingWaitMs,
+        coherentKnownModels,
+        parseModelCatalog,
+        mergeCatalogIntoKnown,
         MAX_ATTEMPTS,
         type BridgeLogEntry,
         type SseStats,
@@ -98,7 +101,7 @@ const {
         upstreamUrl: UPSTREAM_URL,
         upstreamKey: UPSTREAM_KEY,
         routeDefault: ROUTE_DEFAULT,
-        knownModels: KNOWN_MODELS,
+        knownModels: ENV_KNOWN_MODELS,
         qwenThinking: QWEN_THINKING,
         minSpacingMs: MIN_SPACING_MS,
         localUrl: LOCAL_URL,
@@ -108,6 +111,43 @@ const {
         fallbackKey: FALLBACK_KEY,
         fallbackModel: FALLBACK_MODEL,
 } = loadConfig();
+
+// Advertised-id coherence (audit M4-a D1): the bridge's own guarantees — the
+// no-model default and the route default — must be routable and advertised
+// whatever the env allow-list says, or /health advertises a catalog whose
+// headline entry (defaultModel) is missing from its own models list.
+const KNOWN_MODELS = coherentKnownModels(ENV_KNOWN_MODELS, DEFAULT_MODEL, ROUTE_DEFAULT);
+
+// Upstream /models catalog (audit M4-a D1): parsed whenever an upstream
+// probe succeeds (at most every 30s). Served ids are merged into the
+// allow-list (capped) so /v1/models, /health and a fresh install's seeded
+// models.json reflect what the upstream ACTUALLY serves. Only ids pinned by
+// the OPERATOR (BRIDGE_KNOWN_MODELS) can be reported stale: provider
+// catalogs can flap between snapshots (Agnes alternates 6/9 ids), so a
+// catalog-merged id missing from one snapshot is noise, not a 404 trap.
+let upstreamCatalog: string[] | null = null;
+let staleKnownModels: string[] = [];
+let lastCatalogParse = 0;
+
+/** Merge a parsed upstream catalog into the coherence state. Pure enough to
+ *  call from /health probes and the boot probe alike. */
+function mergeUpstreamCatalog(catalog: string[]): void {
+        upstreamCatalog = catalog;
+        const { merged } = mergeCatalogIntoKnown(KNOWN_MODELS, catalog);
+        for (const id of merged) {
+                if (!KNOWN_MODELS.includes(id)) KNOWN_MODELS.push(id);
+        }
+        const served = new Set(catalog);
+        const stale = ENV_KNOWN_MODELS.filter((id) => !served.has(id));
+        if (stale.join(",") !== staleKnownModels.join(",")) {
+                staleKnownModels = stale;
+                if (stale.length) {
+                        console.warn(
+                                `[llm-bridge] WARNING: BRIDGE_KNOWN_MODELS lists ${stale.join(", ")} but the upstream catalog does not serve ${stale.length === 1 ? "it" : "them"} — requests naming ${stale.length === 1 ? "it" : "them"} pass through and 404 at the upstream. Remove ${stale.length === 1 ? "it" : "them"} from BRIDGE_KNOWN_MODELS so ${stale.length === 1 ? "it re-routes" : "they re-route"} to the default (${ROUTE_DEFAULT}) instead.`,
+                        );
+                }
+        }
+}
 
 // ---------------------------------------------------------------------------
 // Request log ring buffer (for the dashboard)
@@ -382,6 +422,19 @@ const server = Bun.serve({
                                 });
                                 upstreamHealthy = res.ok;
                                 upstream = { ok: res.ok, status: res.status };
+                                // Catalog coherence (audit M4-a D1): parse the
+                                // /models body we already fetched — at most every
+                                // 30s — so the allow-list reflects what the
+                                // upstream actually serves.
+                                if (res.ok && Date.now() - lastCatalogParse > 30_000) {
+                                        lastCatalogParse = Date.now();
+                                        try {
+                                                const catalog = parseModelCatalog(await res.json());
+                                                if (catalog) mergeUpstreamCatalog(catalog);
+                                        } catch {
+                                                /* non-JSON body — env-only behavior */
+                                        }
+                                }
                         } catch {
                                 upstreamHealthy = false;
                                 upstream = { ok: false };
@@ -427,6 +480,12 @@ const server = Bun.serve({
                                 upstreamUrl: UPSTREAM_URL,
                                 defaultModel: ROUTE_DEFAULT,
                                 models: KNOWN_MODELS,
+                                // Catalog coherence (audit M4-a D1): what the
+                                // upstream actually serves (null = probe not
+                                // succeeded yet) and which allow-listed ids it
+                                // disproves (they 404 at the upstream).
+                                upstreamModels: upstreamCatalog,
+                                staleKnownModels,
                                 // usage tracking (additive, non-breaking): where the
                                 // persistent log lives + appends since process start
                                 usageLog: { file: USAGE_FILE, entries: usageEntries },
@@ -561,6 +620,28 @@ const server = Bun.serve({
 if (!UPSTREAM_KEY) {
         console.warn("[llm-bridge] WARNING: BRIDGE_UPSTREAM_KEY is not set — upstream requests will be unauthenticated.");
 }
+// Boot-time catalog probe (audit M4-a D1): non-blocking — the allow-list and
+// /health converge as soon as it lands; a provider without /models or a down
+// upstream keeps env-only behavior.
+void (async () => {
+        try {
+                const res = await fetch(`${UPSTREAM_URL}/models`, {
+                        headers: UPSTREAM_KEY ? { Authorization: `Bearer ${UPSTREAM_KEY}` } : {},
+                        signal: AbortSignal.timeout(6000),
+                });
+                if (res.ok) {
+                        const catalog = parseModelCatalog(await res.json());
+                        if (catalog) {
+                                mergeUpstreamCatalog(catalog);
+                                console.log(
+                                        `[llm-bridge] upstream catalog: ${catalog.length} model(s); allow-list now ${KNOWN_MODELS.length} id(s)`,
+                                );
+                        }
+                }
+        } catch {
+                /* best effort — /health probes keep retrying */
+        }
+})();
 if (LOCAL_URL) {
         console.log(`[llm-bridge] local lane ENABLED: ${LOCAL_URL} (models: ${LOCAL_MODELS.length ? LOCAL_MODELS.join(", ") : "any local-* id"})`);
 }

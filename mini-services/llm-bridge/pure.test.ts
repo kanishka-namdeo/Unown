@@ -28,6 +28,9 @@ import {
         isRetryableError,
         isFailoverError,
         loadConfig,
+        coherentKnownModels,
+        parseModelCatalog,
+        mergeCatalogIntoKnown,
         routeModel,
         routeRequest,
         isLocalModel,
@@ -1118,5 +1121,73 @@ describe("buildUpstreamBody failover shaping", () => {
                 const out = buildUpstreamBody({ messages: [], tools: [{ type: "function", function: { name: "read", arguments: "{}" } }], temperature: 0.2 }, "agnes-3.0-flash", false);
                 expect(out.tools).toHaveLength(1);
                 expect(out.temperature).toBe(0.2);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Catalog coherence (audit M4-a D1 — the stale-allow-list 404 trap)
+// ---------------------------------------------------------------------------
+describe("coherentKnownModels (M4-a D1)", () => {
+        test("adds the default and route default to the allow-list when absent", () => {
+                expect(coherentKnownModels(["kimi-k2.5", "qwen3.7-plus"], "agnes-3.0-flash", "agnes-3.0-flash")).toEqual([
+                        "kimi-k2.5",
+                        "qwen3.7-plus",
+                        "agnes-3.0-flash",
+                ]);
+        });
+
+        test("keeps the allow-list untouched when both ids are already present", () => {
+                expect(coherentKnownModels(["a", "b"], "a", "b")).toEqual(["a", "b"]);
+        });
+
+        test("handles distinct default and route default ids", () => {
+                expect(coherentKnownModels(["a"], "dflt", "route")).toEqual(["a", "dflt", "route"]);
+        });
+
+        test("never duplicates an id that appears as both default and route default", () => {
+                expect(coherentKnownModels([], "m", "m")).toEqual(["m"]);
+        });
+});
+
+describe("parseModelCatalog (M4-a D1)", () => {
+        test("parses an OpenAI-compatible { data: [{id}] } body", () => {
+                expect(parseModelCatalog({ data: [{ id: "agnes-3.0-flash" }, { id: "agnes-2.5-flash" }] })).toEqual([
+                        "agnes-3.0-flash",
+                        "agnes-2.5-flash",
+                ]);
+        });
+
+        test("trims ids and drops empty/non-string entries", () => {
+                expect(parseModelCatalog({ data: [{ id: " a " }, { id: "" }, { nope: 1 }, "x" as any] })).toEqual(["a"]);
+        });
+
+        test("returns null for a missing/empty/malformed catalog", () => {
+                expect(parseModelCatalog(null)).toBeNull();
+                expect(parseModelCatalog({})).toBeNull();
+                expect(parseModelCatalog({ data: "nope" })).toBeNull();
+                expect(parseModelCatalog({ data: [] })).toBeNull();
+                expect(parseModelCatalog({ data: [{ id: "  " }] })).toBeNull();
+        });
+});
+
+describe("mergeCatalogIntoKnown (M4-a D1)", () => {
+        test("merges catalog ids after the allow-list, without duplicates", () => {
+                const { merged, stale } = mergeCatalogIntoKnown(["kimi-k2.5"], ["agnes-3.0-flash", "agnes-2.5-flash", "kimi-k2.5"]);
+                expect(merged).toEqual(["kimi-k2.5", "agnes-3.0-flash", "agnes-2.5-flash"]);
+                expect(stale).toEqual([]);
+        });
+
+        test("reports allow-listed ids the catalog does not serve (the 404 trap)", () => {
+                const { merged, stale } = mergeCatalogIntoKnown(["kimi-k2.5", "qwen3.7-plus"], ["agnes-3.0-flash"]);
+                expect(merged).toEqual(["kimi-k2.5", "qwen3.7-plus", "agnes-3.0-flash"]);
+                expect(stale).toEqual(["kimi-k2.5", "qwen3.7-plus"]);
+        });
+
+        test("caps the merged list so provider-scale catalogs cannot flood the picker", () => {
+                const catalog = Array.from({ length: 400 }, (_, i) => `m-${i}`);
+                const { merged } = mergeCatalogIntoKnown(["pinned"], catalog, 64);
+                expect(merged.length).toBe(64);
+                expect(merged[0]).toBe("pinned"); // allow-list keeps priority
+                expect(merged[1]).toBe("m-0");
         });
 });

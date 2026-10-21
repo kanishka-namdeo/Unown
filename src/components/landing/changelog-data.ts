@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 212;
+export const CHANGELOG_TOTAL_ENTRIES = 219;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 105,
   "Changed": 25,
   "Deprecated": 0,
   "Removed": 1,
-  "Fixed": 51,
+  "Fixed": 58,
   "Security": 3,
   "Behavior": 27
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 90,
+    "total": 97,
     "counts": {
       "Added": 51,
       "Changed": 6,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 25,
+      "Fixed": 32,
       "Security": 0,
       "Behavior": 7
     },
@@ -269,6 +269,34 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "first-run default model is the bridge's own route default (P0, the fresh-install 404)",
+            "behavior": false
+          },
+          {
+            "title": "the llm-bridge advertises a coherent catalog and knows what the upstream really serves",
+            "behavior": false
+          },
+          {
+            "title": "unown doctor flags the stale allow-list before it 404s",
+            "behavior": false
+          },
+          {
+            "title": "unown help dashboard and unown dashboard --help work (the dashboard was a real command invisible to help)",
+            "behavior": false
+          },
+          {
+            "title": "the dashboard's Back button returns to the previous tab, and one click is one history entry",
+            "behavior": false
+          },
+          {
+            "title": "macOS stray-service stop: the lsof fallback",
+            "behavior": false
+          },
+          {
+            "title": "docs truthfulness",
+            "behavior": false
+          },
           {
             "title": "bun run agent:start services survive the launcher on Windows (bun#31603)",
             "behavior": false

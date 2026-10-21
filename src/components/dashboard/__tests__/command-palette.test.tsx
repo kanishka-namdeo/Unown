@@ -29,7 +29,9 @@ const engine: EngineStub = createEngine();
 // recording replaceState calls; URL reads go through the location.search
 // setter, which happy-dom DOES implement.
 let replaceCalls: string[];
+let pushCalls: string[];
 let realReplace: typeof window.history.replaceState;
+let realPush: typeof window.history.pushState;
 
 beforeEach(() => {
   engine.install();
@@ -39,7 +41,9 @@ beforeEach(() => {
   useCommandPaletteStore.setState({ open: false });
   useTabStore.setState({ tab: "overview" });
   replaceCalls = [];
+  pushCalls = [];
   realReplace = window.history.replaceState.bind(window.history);
+  realPush = window.history.pushState.bind(window.history);
   (window.history as unknown as { replaceState: typeof window.history.replaceState }).replaceState = ((
     _s: unknown,
     _t: string,
@@ -47,6 +51,13 @@ beforeEach(() => {
   ) => {
     replaceCalls.push(String(url));
   }) as typeof window.history.replaceState;
+  (window.history as unknown as { pushState: typeof window.history.pushState }).pushState = ((
+    _s: unknown,
+    _t: string,
+    url?: string | URL
+  ) => {
+    pushCalls.push(String(url));
+  }) as typeof window.history.pushState;
   (window.location as unknown as { search: string }).search = "";
 });
 
@@ -54,6 +65,7 @@ afterEach(() => {
   cleanup();
   engine.restore();
   (window.history as unknown as { replaceState: typeof window.history.replaceState }).replaceState = realReplace;
+  (window.history as unknown as { pushState: typeof window.history.pushState }).pushState = realPush;
   // Both stores are module singletons shared with every later test file
   // (the page-shell test renders the real Page). Leaving the palette open
   // here mounts a modal CommandDialog there that aria-hides the whole page
@@ -125,7 +137,10 @@ describe("CommandPalette", () => {
     await user.click(await screen.findByText("Gateway"));
     expect(useCommandPaletteStore.getState().open).toBe(false);
     expect(useTabStore.getState().tab).toBe("gateway");
-    expect(replaceCalls).toContain("/dashboard?tab=gateway");
+    // User-initiated switches PUSH (audit M4-b: Back returns to the previous
+    // tab); a duplicate activation (radix pointerdown+click) must not push twice.
+    expect(pushCalls).toContain("/dashboard?tab=gateway");
+    expect(pushCalls.filter((u) => u === "/dashboard?tab=gateway")).toHaveLength(1);
   });
 
   test("the refresh action invalidates every query", async () => {

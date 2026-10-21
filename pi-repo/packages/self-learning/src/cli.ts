@@ -48,8 +48,8 @@ import { keyStatusLabel, listProviders, resolveProviderKey } from "./providers.t
 import {
         deliverTerminalNote,
         ENGINE_URL,
-        ensureUnownAgentDir,
-        ensureUnownAgentDirInfo,
+        ensureUnownAgentDirAsync,
+        ensureUnownAgentDirInfoAsync,
         initProjectMemory,
         outboxStats,
         projectMemoryPath,
@@ -107,7 +107,7 @@ import {
         resolveRepoRoot,
         UPDATE_HELP,
 } from "./update.ts";
-import { runDashboardCommand } from "./dashboard/dashboard-boot.ts";
+import { runDashboardCommand, DASHBOARD_HELP } from "./dashboard/dashboard-boot.ts";
 
 /** Unown's version — the value the release-artifact build injected, else the
  *  ROOT package.json (the source of truth CI asserts against). "unknown" when
@@ -591,7 +591,11 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         // MCP extension (reads UNOWN_MCP_SERVERS) and the agentsFilesOverride
         // callback (reads UNOWN_NO_AGENTS_MD) all observe the routed values.
         applySubagentEnvOverrides(bootOpts);
-        const agentDir = ensureUnownAgentDir();
+        // Async variant: on a FIRST run the bridge /health is probed before
+        // models.json is seeded, so the default model is the bridge's own
+        // route default instead of the hard-coded kimi-k2.5 fallback that
+        // 404s on non-Dashscope upstreams (audit M4-a D1).
+        const agentDir = await ensureUnownAgentDirAsync();
         // M3: point pi's own agent-dir resolution at unown's dir. The session
         // gets agentDir passed explicitly, but pi code that calls getAgentDir()/
         // getAuthPath()/getSettingsPath() DIRECTLY (the /login status line,
@@ -793,7 +797,7 @@ interface PreflightProblem {
 async function runPreflight(pinnedProvider?: string): Promise<PreflightProblem | null> {
         if (process.env.UNOWN_NO_PREFLIGHT) return null;
         if (process.env.UNOWN_SUBAGENT) return null; // subagents inherit the parent's validated path
-        const agentDir = ensureUnownAgentDir();
+        const agentDir = await ensureUnownAgentDirAsync();
         // The CLI pin wins: --provider X / --model provider/model probe THAT
         // provider's endpoint (the registry's default may be a different one —
         // probing it would report the wrong outage for this session).
@@ -1147,8 +1151,9 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                 }
         }
 
-        // 1. agent dir & models
-        const agentDir = ensureUnownAgentDir();
+        // 1. agent dir & models (async ensure: a first run triggered via
+        // `unown doctor` seeds the coherent bridge default too — audit M4-a D1)
+        const agentDir = await ensureUnownAgentDirAsync();
         const modelsExists = existsSync(join(agentDir, "models.json"));
         check("agent dir", modelsExists, agentDir);
         const active = resolveActiveProvider(agentDir);
@@ -1210,6 +1215,7 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                                 upstreamKeyIsSet?: boolean;
                                                 defaultModel?: string;
                                                 models?: string[];
+                                                staleKnownModels?: string[];
                                         };
                                         check(
                                                 "bridge upstream key",
@@ -1266,6 +1272,26 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
                                                         "bridge route default coherent",
                                                         false,
                                                         `route default "${body.defaultModel}" is not in the allow-list (BRIDGE_KNOWN_MODELS) — unknown model ids will 404 at the upstream; align BRIDGE_ROUTE_DEFAULT/BRIDGE_MODEL with the upstream catalog`,
+                                                        "warn",
+                                                );
+                                        }
+                                        // Stale allow-list ids (audit M4-a D1): the bridge's
+                                        // upstream /models catalog (when reachable) names ids in
+                                        // BRIDGE_KNOWN_MODELS it does NOT serve — requests naming
+                                        // them pass through and 404. Classic trigger: switching
+                                        // BRIDGE_UPSTREAM_URL to Agnes while the Dashscope
+                                        // allow-list stayed in .env, and a fresh install seeded
+                                        // kimi-k2.5 as its default.
+                                        const staleKnown = Array.isArray(body.staleKnownModels)
+                                                ? (body.staleKnownModels as unknown[]).filter(
+                                                            (m): m is string => typeof m === "string" && m.length > 0,
+                                                    )
+                                                : [];
+                                        if (staleKnown.length > 0) {
+                                                check(
+                                                        "bridge allow-list served by upstream",
+                                                        false,
+                                                        `BRIDGE_KNOWN_MODELS lists ${staleKnown.join(", ")} but the upstream catalog does not serve ${staleKnown.length === 1 ? "it" : "them"} — requests naming ${staleKnown.length === 1 ? "it" : "them"} will 404; remove ${staleKnown.length === 1 ? "it" : "them"} so they re-route to ${body.defaultModel ?? "the default"} instead`,
                                                         "warn",
                                                 );
                                         }
@@ -1788,7 +1814,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         // Pre-flight: fail fast with instructions when the model endpoint is
         // unreachable or rejects credentials (stderr — stdout may carry the
         // JSON event stream in --mode json).
-        ensureUnownAgentDirInfo();
+        await ensureUnownAgentDirInfoAsync();
         maybeShowUpdateNotice();
         // The pin for pre-flight: --provider wins; else the --model string's
         // provider prefix; else the registry default (inside runPreflight).
@@ -1931,7 +1957,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 
 async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: BootOptions = {}) {
         const cwd = process.cwd();
-        ensureUnownAgentDirInfo();
+        await ensureUnownAgentDirInfoAsync();
         maybeShowUpdateNotice();
         // M3 first-run onboarding (W1): a FRESH seed on an interactive TTY gets
         // the offer to connect a provider BEFORE the TUI boots — the guided
@@ -2082,6 +2108,7 @@ function cmdHelp(topics: string[]): number {
                 recipes: RECIPES_USAGE,
                 wiki: WIKI_USAGE,
                 webcache: WEBCACHE_HELP,
+                dashboard: DASHBOARD_HELP,
         };
         const page = pages[topic];
         if (!page) {
@@ -2241,7 +2268,7 @@ export async function runCli(argv: string[]) {
                         console.error("usage: unown acp [--verbose]");
                         process.exit(1);
                 }
-                ensureUnownAgentDir(); // silent scaffold — no banners: stdout is protocol
+                await ensureUnownAgentDirAsync(); // silent scaffold — no banners: stdout is protocol
                 await runAcpServer({
                         boot: (cwd, v, bootOpts) => bootRuntime(cwd, v, bootOpts as BootOptions),
                         agentName: "unown",

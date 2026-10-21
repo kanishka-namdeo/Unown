@@ -31,6 +31,7 @@ const COMMANDS = [
         "recipes",
         "wiki",
         "acp",
+        "dashboard",
         "note",
         "update",
         "changelog",

@@ -16,10 +16,12 @@
  *     matches only THIS checkout's mini-services dirs, so running stop from
  *     one worktree can never kill another checkout's live stack).
  *   - Windows: pidfile processes (and their whole trees) get
- *     `taskkill /F /T /PID <pid>`; no pkill/pgrep exists, so stray sweeping
- *     relies on the tree kill. If a pidfile is missing on Windows there is
- *     no portable way to find the stray — kill it by hand or re-run start
- *     so the pidfile exists again.
+ *     `taskkill /F /T /PID <pid>`; when a pidfile is missing or stale the
+ *     netstat -ano fallback (audit 2-d) maps the service PORT to its owning
+ *     pid and tree-kills it.
+ *   - macOS: like POSIX for pidfiles; for a missing/stale pidfile the lsof
+ *     fallback (audit M4-d) maps the service port to its owning pid
+ *     (`lsof -ti tcp:<port>`) — the darwin twin of the Windows netstat path.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -100,6 +102,39 @@ function stopServiceByPort(name: string, port: string): void {
   }
 }
 
+/** macOS lsof fallback (audit M4-d): the darwin twin of stopServiceByPort —
+ *  with a missing/stale pidfile, `lsof -ti tcp:<port>` maps the service port
+ *  to its owning pid (comma-separated when several), which gets SIGTERM.
+ *  Runs only when the pidfile is absent/stale, only on darwin, and only for
+ *  ports this stack owns. */
+function stopServiceByPortDarwin(name: string, port: string): void {
+  if (process.platform !== "darwin") return;
+  const pidFile = path.join(RUN_DIR, `${name}.pid`);
+  if (fs.existsSync(pidFile)) {
+    const pid = Number(fs.readFileSync(pidFile, "utf8").trim());
+    if (alive(pid)) return; // the pidfile path handles it
+  }
+  try {
+    const r = spawnSync("lsof", ["-ti", `tcp:${port}`, "-sTCP:LISTEN"], {
+      encoding: "utf8",
+    });
+    if (r.status !== 0 || !r.stdout) return;
+    for (const tok of r.stdout.split(/[\s,]+/)) {
+      const pid = Number(tok);
+      if (!Number.isInteger(pid) || pid <= 0) continue;
+      try {
+        process.kill(pid); // SIGTERM, like the pidfile path
+        console.log(`${sym.step} ${name} stopped (pid ${pid} via port ${port})`);
+        stoppedAny = true;
+      } catch {
+        // already gone — fine
+      }
+    }
+  } catch {
+    /* best effort */
+  }
+}
+
 stopService("dashboard");
 stopService("engine");
 stopService("bridge");
@@ -109,6 +144,11 @@ stopServiceByPort("dashboard", process.env.PI_DASHBOARD_PORT ?? "3000");
 stopServiceByPort("engine", process.env.PI_AGENT_PORT ?? "3030");
 stopServiceByPort("bridge", process.env.BRIDGE_PORT ?? "3031");
 stopServiceByPort("zai-upstream", process.env.ZAI_UPSTREAM_PORT ?? "3032");
+// macOS lsof fallback for missing/stale pidfiles (see stopServiceByPortDarwin).
+stopServiceByPortDarwin("dashboard", process.env.PI_DASHBOARD_PORT ?? "3000");
+stopServiceByPortDarwin("engine", process.env.PI_AGENT_PORT ?? "3030");
+stopServiceByPortDarwin("bridge", process.env.BRIDGE_PORT ?? "3031");
+stopServiceByPortDarwin("zai-upstream", process.env.ZAI_UPSTREAM_PORT ?? "3032");
 
 if (!IS_WIN) {
   // Fallback: catch strays spawned by `next dev` (pipelines, tee'd logs) or

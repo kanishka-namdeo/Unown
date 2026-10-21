@@ -20,9 +20,37 @@ import { DashboardStore } from "./dashboard-data.ts";
 import { DashboardApp } from "./dashboard-app.ts";
 import { ensureUnownAgentDirInfo, UNOWN_AGENT_DIR } from "../term.ts";
 
+/** `unown dashboard --help` / `unown help dashboard` — the usage page.
+ * Mirrors the dashboard row in cli.ts's HELP (screens, alias, keybindings). */
+export const DASHBOARD_HELP = `unown dashboard [screen] — the TUI mission control for the learning memory system
+
+Usage:
+  unown dashboard             boot on the overview screen
+  unown dashboard <screen>    boot on a specific screen
+  unown dash                  alias
+
+Screens: overview, memory, dreams, notes, skills, lab, hooks, router,
+         gateway, automations, webcache
+         (providers live in "unown providers" + the /providers command)
+
+Needs an interactive terminal (TTY). From a script, use the engine API
+instead: curl localhost:3030/api/overview — or the Next.js dashboard at
+http://localhost:3000/dashboard when the stack is running (bun run agent:start).
+
+See docs/tui-dashboard-plan.md for the full surface tour.`;
+
+
 /** Boot the standalone dashboard. Returns a promise that resolves with the
  * process exit code when the user quits. */
 export async function runDashboardCommand(args: string[]): Promise<number> {
+        // --help/-h before the TTY guard (audit M4-a): `unown dashboard --help`
+        // from a script or non-TTY context used to exit 1 with the TTY notice
+        // instead of printing usage — help must always be printable.
+        const helpIdx = args.findIndex((a) => a === "-h" || a === "--help");
+        if (helpIdx !== -1) {
+                process.stdout.write(DASHBOARD_HELP);
+                return 0;
+        }
         if (!process.stdout.isTTY || !process.stdin.isTTY) {
                 process.stderr.write(
                         "unown dashboard needs an interactive terminal (TTY).\n" +

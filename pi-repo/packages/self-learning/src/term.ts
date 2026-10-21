@@ -85,11 +85,51 @@ export function bridgeKnownModels(defaultModel: string): string[] {
         return [defaultModel, ...ids.filter((id) => id !== defaultModel)];
 }
 
+/** What a bridge /health probe tells us (audit M4-a D1 — first-run coherence).
+ *  A fresh install used to seed defaultModel from the PI_MODEL_ID env var or
+ *  the kimi-k2.5 fallback, but a terminal session in the USER's project
+ *  directory does not run from the repo root: the env var is unset, and the
+ *  hard-coded id is whatever the DEFAULT upstream served (Dashscope), not
+ *  what the operator actually configured. When the bridge is reachable, its
+ *  own route default is the truth — the first chat then works on ANY
+ *  upstream (Agnes, OpenRouter, vLLM, …) instead of 404ing out of the box. */
+export interface BridgeHealthLite {
+        defaultModel?: string;
+        models?: string[];
+}
+
+let bridgeHealthLite: BridgeHealthLite | null = null;
+
+/** Probe the bridge's /health once (2.5s budget). Best-effort: null when the
+ *  bridge is down, unreachable or malformed — callers then keep the env-var
+ *  fallback and the doctor's coherence warning covers the rest. */
+export async function probeBridgeHealth(baseUrl: string): Promise<BridgeHealthLite | null> {
+        try {
+                const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/health`, {
+                        signal: AbortSignal.timeout(2500),
+                });
+                if (!res.ok) return null;
+                const j = (await res.json()) as Record<string, unknown>;
+                const defaultModel = typeof j.defaultModel === "string" ? j.defaultModel.trim() : "";
+                const models = Array.isArray(j.models)
+                        ? j.models.filter((m): m is string => typeof m === "string" && m.trim().length > 0)
+                        : undefined;
+                if (!defaultModel) return null;
+                return { defaultModel, models: models?.length ? models : undefined };
+        } catch {
+                return null; // down / slow / malformed — never block boot on the probe
+        }
+}
+
 export function writeModelsJson(agentDir: string): { path: string; fresh: boolean; provider: string; modelId: string } {
         mkdirSync(agentDir, { recursive: true });
         const modelsPath = join(agentDir, "models.json");
         const provider = process.env.PI_PROVIDER || "zai-bridge";
-        const modelId = process.env.PI_MODEL_ID || "kimi-k2.5";
+        // First-run default (audit M4-a D1): the bridge's own route default wins
+        // (probeBridgeHealth, awaited by ensureUnownAgentDirInfoAsync before the
+        // first seed), then the env var, then the legacy fallback.
+        const modelId =
+                bridgeHealthLite?.defaultModel || process.env.PI_MODEL_ID || "kimi-k2.5";
         const baseUrl = (process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031").replace(/\/+$/, "");
         if (existsSync(modelsPath)) return { path: modelsPath, fresh: false, provider, modelId }; // never clobber user edits
         // The bridge placeholder key satisfies pi auth; when the bridge itself
@@ -107,7 +147,10 @@ export function writeModelsJson(agentDir: string): { path: string; fresh: boolea
                                                 baseUrl: `${baseUrl}/v1`,
                                                 api: "openai-completions",
                                                 apiKey,
-                                                models: bridgeKnownModels(modelId).map((id) => ({
+                                                models: (bridgeHealthLite?.models?.length
+                                                        ? [modelId, ...bridgeHealthLite.models.filter((id) => id !== modelId)]
+                                                        : bridgeKnownModels(modelId)
+                                                ).map((id) => ({
                                                         id,
                                                         name: `${id} (via unown)`,
                                                         contextWindow: 131072,
@@ -209,6 +252,24 @@ export function ensureUnownAgentDirInfo(): AgentDirInit {
 /** String-returning wrapper (existing callers). */
 export function ensureUnownAgentDir(): string {
         return ensureUnownAgentDirInfo().dir;
+}
+
+/** Async bootstrap for the user-facing first-run paths (TUI, print mode,
+ *  bootRuntime). When models.json does not exist yet — i.e. exactly on a
+ *  fresh install — the bridge /health probe runs BEFORE the seed so the
+ *  seeded defaultModel and catalog are coherent with the running bridge
+ *  (audit M4-a D1). Existing installs and a down bridge skip the probe
+ *  (no extra boot latency; env fallbacks apply). */
+export async function ensureUnownAgentDirInfoAsync(): Promise<AgentDirInit> {
+        if (!bridgeHealthLite && !existsSync(join(UNOWN_AGENT_DIR, "models.json"))) {
+                bridgeHealthLite = await probeBridgeHealth(process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031");
+        }
+        return ensureUnownAgentDirInfo();
+}
+
+/** Async string-returning wrapper — see ensureUnownAgentDirInfoAsync. */
+export async function ensureUnownAgentDirAsync(): Promise<string> {
+        return (await ensureUnownAgentDirInfoAsync()).dir;
 }
 
 /** The last ensureUnownAgentDirInfo() result (null before the first call). */

@@ -67,7 +67,13 @@ function DashboardTabs() {
   React.useEffect(() => syncTabFromUrl(), []);
 
   return (
-    <Tabs value={tab} onValueChange={setTab} className="gap-5">
+    <Tabs
+      value={tab}
+      // User-initiated tab clicks push a history entry (audit M4-b): Back
+      // returns to the previous tab instead of leaving the dashboard.
+      onValueChange={(v) => setTab(v, { push: true })}
+      className="gap-5"
+    >
       <div className="scroll-thin -mx-1 overflow-x-auto px-1 pb-1">
         <TabsList className="h-auto w-max gap-1 border border-zinc-800 bg-zinc-900/80 p-1">
           {tabs.map((t) => (

@@ -81,7 +81,7 @@ unown session ──► ~/.unown/agent/models.json ──► the endpoint it nam
 | Pre-flight: `cannot reach the model endpoint at …` | Dead endpoint or wrong URL | Loopback URL → start the stack (`bun run agent:start`); remote URL → check it, then re-run `unown setup` |
 | Pre-flight / doctor: `credentials rejected (HTTP 401/403)` | Bad API key in `~/.unown/agent/auth.json` (or `models.json`) | Re-run `unown setup` with the correct key |
 | Footer shows `glm-4-plus` (or another unexpected model) | Stale `~/.unown/agent/models.json` from an earlier configuration; the bootstrap never clobbers it, and the bridge silently routes unknown ids to its default | `unown setup --force` with the model you want — or delete `~/.unown/agent/models.json` and let the next run re-create it |
-| A service fails to start with `EADDRINUSE` | Something else owns the port (stale process without a pidfile, or another supervisor) | `bun run agent:stop`, then check what still listens (`ss -tlnp` / `lsof -i :3030`) and kill it — note `start.sh` reuses an already-healthy bridge on `:3031` by design |
+| A service fails to start with `EADDRINUSE` | Something else owns the port (stale process without a pidfile, or another supervisor) | `bun run agent:stop`, then check what still listens (`ss -tlnp` / `lsof -i :3030`) and kill it — note `bun run agent:start` (scripts/start.ts) reuses an already-healthy bridge on `:3031` by design |
 
 Two of these deserve a sentence more:
 

@@ -415,3 +415,62 @@ export function foldSseLine(line: string, stats: SseStats): void {
                 /* partial JSON frame — ignore */
         }
 }
+
+// ---------------------------------------------------------------------------
+// Catalog coherence (audit M4-a D1 — the stale-allow-list 404 trap)
+// ---------------------------------------------------------------------------
+
+/**
+ * Union the env allow-list with the bridge's own guaranteed ids: the
+ * no-model default (BRIDGE_MODEL) and the route default
+ * (BRIDGE_ROUTE_DEFAULT) are, by definition, ids this bridge serves, so they
+ * must be routable AND advertised by /v1/models + /health. Before this, an
+ * operator who set BRIDGE_MODEL=agnes-3.0-flash but left
+ * BRIDGE_KNOWN_MODELS at its Dashscope defaults shipped a /health whose
+ * headline default was absent from its own models list — and every fresh
+ * unown install that seeded from /health inherited the incoherence.
+ */
+export function coherentKnownModels(knownModels: string[], defaultModel: string, routeDefault: string): string[] {
+	const out = [...knownModels];
+	for (const id of [defaultModel, routeDefault]) {
+		if (id && !out.includes(id)) out.push(id);
+	}
+	return out;
+}
+
+/**
+ * Parse an OpenAI-compatible GET /models response body into id strings.
+ * null when the shape is wrong or empty — a provider without the endpoint
+ * keeps env-only behavior.
+ */
+export function parseModelCatalog(body: unknown): string[] | null {
+	const data = (body as { data?: unknown } | null)?.data;
+	if (!Array.isArray(data)) return null;
+	const ids = data
+		.map((m: unknown) => (typeof (m as { id?: unknown })?.id === "string" ? (m as { id: string }).id.trim() : ""))
+		.filter(Boolean);
+	return ids.length ? ids : null;
+}
+
+/**
+ * Merge a fetched upstream catalog into the allow-list (in place of the
+ * caller's array). Capped: a provider-scale catalog (OpenRouter: 400+) would
+ * flood the TUI /model picker and a fresh models.json; the operator can
+ * still allow-list more via BRIDGE_KNOWN_MODELS. Also reports which
+ * allow-listed ids the catalog does NOT serve — the stale-id trap: requests
+ * naming them pass through and 404 at the upstream instead of re-routing.
+ */
+export function mergeCatalogIntoKnown(
+	known: string[],
+	catalog: string[],
+	cap = 64,
+): { merged: string[]; stale: string[] } {
+	const served = new Set(catalog);
+	const stale = known.filter((id) => !served.has(id));
+	const merged = [...known];
+	for (const id of catalog) {
+		if (merged.length >= cap) break;
+		if (!merged.includes(id)) merged.push(id);
+	}
+	return { merged, stale };
+}

@@ -25,7 +25,7 @@ export type DashboardTab = (typeof DASHBOARD_TABS)[number];
 
 interface TabState {
   tab: DashboardTab;
-  setTab: (v: string, opts?: { updateUrl?: boolean }) => void;
+  setTab: (v: string, opts?: { updateUrl?: boolean; push?: boolean }) => void;
 }
 
 function tabFromUrl(): DashboardTab {
@@ -36,12 +36,34 @@ function tabFromUrl(): DashboardTab {
     : "overview";
 }
 
-export const useTabStore = create<TabState>((set) => ({
+export const useTabStore = create<TabState>((set, get) => ({
   tab: "overview",
   setTab: (v, opts) => {
     if (!(DASHBOARD_TABS as readonly string[]).includes(v)) return;
-    if (opts?.updateUrl !== false && typeof window !== "undefined") {
+    // Duplicate-activation guard (audit M4-b): Radix fires onValueChange for
+    // BOTH pointerdown and click on a controlled <Tabs>, so one user click
+    // reaches setTab twice. The second call is a no-op when the tab AND the
+    // URL already match — otherwise every click pushed TWO history entries
+    // and Back needed two presses per tab. A same-tab click with a divergent
+    // URL (e.g. /dashboard without ?tab=) repairs it with replaceState.
+    if (get().tab === v) {
+      if (typeof window === "undefined" || opts?.updateUrl === false) return;
+      const urlTab = new URLSearchParams(window.location.search).get("tab");
+      if (urlTab === v) return;
       window.history.replaceState(null, "", `/dashboard?tab=${v}`);
+      return;
+    }
+    if (opts?.updateUrl !== false && typeof window !== "undefined") {
+      // Tab switches PUSH a history entry (audit M4-b): replaceState made the
+      // browser Back button exit the dashboard entirely instead of returning
+      // to the previous tab. Programmatic navigation (initial hydration in
+      // syncTabFromUrl) still replaces so a fresh load never double-pushes.
+      // popstate (below) keeps the store synced on back/forward.
+      if (opts?.push) {
+        window.history.pushState(null, "", `/dashboard?tab=${v}`);
+      } else {
+        window.history.replaceState(null, "", `/dashboard?tab=${v}`);
+      }
     }
     set({ tab: v as DashboardTab });
   },

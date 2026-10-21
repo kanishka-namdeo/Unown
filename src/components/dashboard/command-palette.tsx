@@ -73,7 +73,8 @@ export function CommandPalette() {
 
   const goTab = (value: string) => {
     setOpen(false);
-    setTab(value);
+    // User-initiated navigation — push a history entry so Back returns here.
+    setTab(value, { push: true });
   };
 
   return (
