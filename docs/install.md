@@ -20,7 +20,7 @@ Related pages: [quickstart](quickstart.md) · [updating](updating.md) · [config
 | | Standalone binary (default) | Source checkout |
 |---|---|---|
 | What you get | the `unown` terminal agent only | `unown` **plus** the self-learning engine and `llm-bridge` (`bun run agent:start`) |
-| Needs | network (the download) — no git, no bun | git, bun ≥ 1.2, network |
+| Needs | network (the download) — no git, no bun | git, bun ≥ 1.4, network |
 | How | the default one-liner, `--binary` / `-Binary`, or a release archive by hand | `--source` / `-Source`, a manual clone, or `bun run agent:install` |
 | Updates | `unown update` (verified release download) | `unown update` (git tag to tag) |
 | On disk | a versioned root + a PATH shim that sets `UNOWN_INSTALL_ROOT` | your clone; the PATH shim runs `bun <repo>/bin/unown` |
@@ -213,7 +213,7 @@ The binary is the terminal agent only. The self-learning engine and `llm-bridge`
 
 `bun run agent:install` is idempotent and safe to re-run (it is also what `unown update` re-runs after moving the checkout):
 
-1. verifies bun ≥ 1.2 (install hint per OS when missing)
+1. verifies bun ≥ 1.4 (install hint per OS when missing) — the floor is 1.4 because pi-repo/bun.lock (lockfileVersion 3) does not parse on older bun
 2. `bun install --frozen-lockfile` at the repo root
 3. `bun install --frozen-lockfile` in `pi-repo/` (the vendored pi coding agent workspace)
 4. hydrates the pi provider model data on first run (network fetch, ~1–2 min — upstream gitignores that directory, a fresh clone cannot build without it)
@@ -226,7 +226,7 @@ The binary is the terminal agent only. The self-learning engine and `llm-bridge`
 
 | Requirement | Source checkout | Binary |
 |---|---|---|
-| [bun](https://bun.sh) ≥ 1.2 | yes — the one-liner installs it when missing | no |
+| [bun](https://bun.sh) ≥ 1.4 | yes — the one-liner installs it when missing | no |
 | [git](https://git-scm.com) | yes (Git-for-Windows is fine) | no |
 | Network | clone + first-run model-data hydration | the download (and later update checks) |
 | An OpenAI-compatible endpoint + key | configured after install — see [quickstart](quickstart.md) | same |

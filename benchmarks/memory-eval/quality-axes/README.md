@@ -11,35 +11,44 @@ GPT-4o-class agents) and the axes a tiered, versioned memory should win.
 
 One synthetic 12-session evolving project (`corpus.json`, the "Atlantis"
 invoice service) carries four rule families through a real dream pipeline —
-the production `SYSTEM` prompt from `src/dream.ts`, `chatJson` from
-`src/llm.ts`, and the real guard (`src/guard.ts`), imported from
-`pi-repo/packages/self-learning` (no re-implementation drift):
+the production **Mem0 consolidate() path** (the post-swap learning core,
+commit 25c6601): notes -> structural quarantine (`scanUntrustedText`,
+flagged notes never reach the extraction LLM) -> one mem0 extraction `add()`
+-> atomic guard sweep -> `reconcileMemories()` -> deterministic render
+(`renderProjectMemoryMarkdown`). Everything is imported from
+`pi-repo/packages/self-learning` through the shared `_lib/dream-pipeline.mjs`
+adapter (no re-implementation drift):
 
-| Axis | Storyline event | Deterministic assertion on the dream's projectMd candidate |
+| Axis | Storyline event | Deterministic assertion on the dream's rendered candidate |
 |---|---|---|
 | **contradiction** | lint convention changes: "imports sorted alphabetically" (S01–S06) → "imports grouped by type" (S07+) | the old rule must not be stated as current (its lines absent, or explicitly historical/superseded) while the new rule is; two scenarios — in-batch (all notes in one dream) and accumulated (old rule already in current memory, change arrives via notes — the add-only trap) |
 | **staleness** | dependency bump: zod 3 (S01–S05) → zod 4 (S06+) | candidate references the new version; no line states the old version as current |
 | **forgetting** | revocation: axios approved (S02) → forbidden, fetch only (S10) | no line states the axios approval/usage as current after the revocation (lines that explicitly revoke/mark it historical are exempt) |
 | **interference** | conflicting dominance: logging rule pino vs winston asserted, contradicted, re-asserted across 5 sessions (settled on pino) | exactly ONE logger stated as current in the final candidate — which one is recorded, plus the per-step oscillation trail |
 
-Every axis also runs the real `decideGuardAction` on its final candidate.
-These are **benign** rule changes: the expected verdict is `ship`; any
-`sanitize`/`gate` is a false-positive signal, and the axis assertion is
-re-evaluated on the sanitized text that would actually ship
-(`shippedAssertionPass` in the receipts).
+Every axis also runs the real `decideGuardAction` on its final candidate
+(and each per-step candidate). These are **benign** rule changes: the
+expected verdict is `ship`; any `sanitize`/`gate` is a false-positive
+signal, and the axis assertion is re-evaluated on the sanitized text that
+would actually ship (`shippedAssertionPass` in the receipts). A `gate`
+verdict also reverts the dream's platform events
+(`revertMemoryEvents`) and keeps the previous memory — production
+semantics.
 
 ## Why deterministic matching (no judge)
 
-The scoring is regex/substring **line classification** on the returned
-candidate: every line that mentions a rule family is classified as
-"stated as current" / "superseded/historical" / "in a losing transition
+The scoring is regex/substring **line classification** on the rendered
+candidate (`renderProjectMemoryMarkdown` output): every line that mentions
+a rule family is classified
+as "stated as current" / "superseded/historical" / "in a losing transition
 position", and each classification (raw line + reason) is recorded in the
 receipt — any verdict is human-auditable after the fact. No second LLM
 grades the first LLM's output, so no judge identity, rubric, or FPR probe
 is needed and nothing about the score depends on judge-prompt tuning
 (the failure mode §3.2 of the testing-strategy documents for the field).
-LLM usage is the dream calls themselves (~10 `chatJson` calls, kimi-k2.5
-via the llm-bridge) — nothing else.
+LLM usage is the dream calls themselves (mem0 extraction + reconcile,
+~2 per step, ~20 total live on kimi-k2.5 via the llm-bridge) — nothing
+else.
 
 The classifier semantics are pinned by `selftest.mjs` (no LLM, no bridge):
 `bun selftest.mjs` — exit 0 means the scoring regexes behave as documented.
@@ -47,28 +56,36 @@ The classifier semantics are pinned by `selftest.mjs` (no LLM, no bridge):
 ## How to run
 
 ```bash
-# bridge on :3031 must be healthy (checked before any dream call):
+# live mode: bridge on :3031 must be healthy (checked before any dream call)
 curl -s localhost:3031/health
 
 cd benchmarks/memory-eval/quality-axes
 bun selftest.mjs      # pin the classifier first (no LLM)
-bun runner.mjs        # all 4 axes, ~10 dream calls
+bun runner.mjs --dry  # no-LLM plumbing smoke (<1 s, no bridge, no receipts)
+bun runner.mjs        # all 4 axes, ~10 dream steps (extraction + reconcile each)
 bun runner.mjs --axis staleness   # one axis
 bun runner.mjs --fresh            # wipe results/ and re-run everything
 ```
 
 Model: `kimi-k2.5` (override with `PI_MODEL_ID`). The runner redirects
-`PI_SELFLEARNING_DATA`/`PI_SELFLEARNING_DB` to
-`scratch-mem/quality-axes/` **before** importing the package (`store.ts`
-opens SQLite at module scope — same convention as `mpbench/runner.mjs`),
-never touches `.env`, and never talks to the engine on :3030.
+`PI_SELFLEARNING_DATA`/`PI_SELFLEARNING_DB`/`PI_MEM0_DIR` to
+`scratch-mem/quality-axes/` **before** importing the package (the store
+opens SQLite on first use, the mem0 platform reads its dir at build — same
+convention as the other memory-eval suites), never touches `.env`, and
+never talks to the engine on :3030. Each scenario owns an isolated mem0
+scope (`projectScope("qa-<axis>-<scenario>")`), wiped and re-seeded before
+its first dream — the platform state accumulates across a scenario's steps
+(the accumulation IS the axis under test) but never leaks across scenarios
+or re-runs.
 
 Current live-run outcome (kimi-k2.5, 2026-10-17): 4/4 axes passed, 0 guard
 false positives — receipts and the honest findings record (including one
 classifier fix between runs) live in `RESULTS.md` and `results/`.
 
-**Expected runtime:** ~10 dream calls ≈ 1–8 min wall clock (each call
-5–60 s on the Dashscope bridge; `chatJson` retries malformed JSON once).
+**Expected runtime:** ~10 dream steps (extraction + reconcile each) ≈
+1–8 min wall clock live (each call 5–60 s on the Dashscope bridge;
+`chatJson` retries malformed JSON once). `--dry` runs the same plumbing
+with verbatim no-LLM adds in under a second.
 
 Resume-safe: an axis with an existing error-free receipt
 (`results/<axis>.json`) is skipped; errored axes re-run. Receipts:
@@ -80,10 +97,10 @@ audit trail, guard verdict, durations) + `results/summary.json`.
 - **This tests the DREAM (consolidation) quality, not the whole memory
   system.** The full path also involves tier injection, precedence and
   rollback; here only the AutoDream consolidation step is exercised. The
-  terminal project-memory path (`runProjectDream`) shares `dream.ts` —
-  same SYSTEM prompt, same `chatJson`, same guard — so results transfer
-  to it directionally, but the terminal path's own versioning/rollback is
-  not under test.
+  terminal project-memory path (`runProjectDream`) shares the same
+  consolidate() core — same platform, same reconcile, same render, same
+  guard — so results transfer to it directionally, but the terminal path's
+  own versioning/rollback is not under test.
 - **The dream is an LLM call; the assertions are not.** Single-run
   receipts, kimi-k2.5, one seed corpus. Re-run for variance; a pass/fail
   flip across runs is itself a finding (record it, don't average it away).
@@ -97,7 +114,8 @@ audit trail, guard verdict, durations) + `results/summary.json`.
 - **Notes are fed newest-first**, mirroring `undreamedNotes()`
   (`ORDER BY created_at DESC`) — the real pipeline's actual order. This
   makes contradiction resolution harder (recent evidence arrives first);
-  chronology is only visible through the note-header timestamps.
+  chronology is only visible through the note timestamps mem0 sees per
+  message.
 - The corpus deliberately avoids the guard's runner-switch poison family
   (no runner names in directive positions, no authority spoofs, no
   propagation phrasing) so that guard verdicts measure false positives on

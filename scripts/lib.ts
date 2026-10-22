@@ -3,7 +3,7 @@
  * scripts/lib.ts — shared cross-platform helpers for the Unown lifecycle
  * scripts (install.ts, link.ts, start.ts, stop.ts).
  *
- * The scripts run under bun (≥ 1.2) on Windows, macOS and Linux. Everything
+ * The scripts run under bun (≥ 1.4) on Windows, macOS and Linux. Everything
  * here uses only Node-compatible APIs (node:fs / node:path / node:child_process)
  * so the files stay reviewable and portable; bun executes them natively.
  *
@@ -107,12 +107,21 @@ export function bunVersion(bun: string): string | null {
   }
 }
 
-/** True when the parsed "1.x.y" version is ≥ 1.2 (the repo's floor). */
-export function bunAtLeast120(version: string): boolean {
+/**
+ * True when the parsed "1.x.y" version is ≥ 1.4 (the repo's floor).
+ *
+ * The floor is 1.4 — not 1.2 — because pi-repo/bun.lock is a text lockfile
+ * with "lockfileVersion": 3, which bun only reads from 1.4 onward: bun 1.2/1.3
+ * die with "Unknown lockfile version" and the frozen-lockfile install then
+ * fails on the rewrite it attempted anyway (verified live 2026-10-22: a
+ * 1.3.14 machine satisfied the old documented ≥ 1.2 floor and could not
+ * install).
+ */
+export function bunAtLeast140(version: string): boolean {
   const m = /^(\d+)\.(\d+)/.exec(version);
   if (!m) return false;
   const [major, minor] = [Number(m[1]), Number(m[2])];
-  return major > 1 || (major === 1 && minor >= 2);
+  return major > 1 || (major === 1 && minor >= 4);
 }
 
 /**

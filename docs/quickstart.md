@@ -14,7 +14,7 @@ Related pages: [usage](usage.md) · [providers](providers.md) · [memory](memory
 ## 1. Prerequisites
 
 - **The default binary install needs neither bun nor git.** The full-stack source install (`--source`) needs both:
-- [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` (or `brew install bun`) · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal).
+- [bun](https://bun.sh) ≥ 1.4 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` (or `brew install bun`) · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal).
 - [git](https://git-scm.com) (any build; on Windows the standard Git-for-Windows install is fine)
 - An API key for any OpenAI-compatible provider — Dashscope, OpenAI, OpenRouter, Anthropic, DeepSeek, or a local server (vLLM, Ollama, llama.cpp)
 - **Windows, macOS, or Linux** — the same commands and the full stack on all three. OS-level engine sandbox: Linux (bubblewrap) + macOS (seatbelt); native Windows uses the in-process path jail (WSL2 for kernel-grade isolation). Per-OS details: [Windows guide](windows.md) · [macOS guide](macos.md)

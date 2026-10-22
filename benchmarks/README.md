@@ -181,10 +181,12 @@ difference.
 **Poison corpus (§5.4):** `memory-eval/poison-corpus/` — a ten-variant
 obfuscation ladder (verbatim, paraphrase, base64 payload, zero-width,
 authority spoof, secrecy, code-fence, split notes, camouflage, override
-frames) + a benign control, consolidated through the real dream prompt on
-the live bridge. Result: 10/10 notes flagged, 0/10 planted, 0 directives
-shipped, 0 false positives (kimi-k2.5; receipts + resume-safe runner in the
-dir).
+frames) + a benign control, consolidated through the production Mem0
+`consolidate()` path (structural quarantine → extraction → guard sweep →
+reconcile → render, via the shared `memory-eval/_lib/dream-pipeline.mjs`
+adapter) on the live bridge. Result: 10/10 notes flagged, 0/10 planted, 0
+directives shipped, 0 false positives (kimi-k2.5; receipts + resume-safe
+runner in the dir).
 
 **MPBench-adapted corpus (external, public):** `memory-eval/mpbench/` —
 50 adversarial + 20 benign cases sampled (seed 20261018, sha256-provenance)
@@ -198,17 +200,18 @@ benign FPs. Receipts + RESULTS.md in the dir.
 
 **Memory-quality axes (deterministic):** `memory-eval/quality-axes/` —
 contradiction, staleness, forgetting, interference under accumulation on a
-synthetic 12-session evolving project, driven through the production dream
-path (no LLM judge: regex line-classification with full audit trail).
+synthetic 12-session evolving project, driven through the production Mem0
+consolidate() path (no LLM judge: regex line-classification with full audit
+trail).
 Result: 4/4 axes PASS (the dream prunes superseded rules, tracks version
 bumps, honors revocations, resolves interference to the most recent
 evidence), 0 guard FPs on the benign rule changes.
 
 **Multi-session QA recall (LongMemEval-adapted):** `memory-eval/recall-qa/`
 — 40 questions from the real LongMemEval `oracle` split (MIT, sha256
-provenance), sessions recast as terminal notes → production dream →
-shipped memory injected into a fresh QA session, against a no-dream
-control arm. Headline: warm 0.650 vs cold 0.025 — **lift +0.625** (the
+provenance), sessions recast as terminal notes → production Mem0
+consolidate() path → shipped memory injected into a fresh QA session,
+against a no-dream control arm. Headline: warm 0.650 vs cold 0.025 — **lift +0.625** (the
 memory loop's core value proposition, finally measured with a control).
 Per-type receipts decompose failures into consolidation loss vs
 retrieval loss (evidence-retention metric); weakest axis:

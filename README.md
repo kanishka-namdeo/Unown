@@ -148,7 +148,7 @@ Full usage docs live in [`docs/`](docs/):
 ### Prerequisites
 
 - **The default binary install needs neither bun nor git.** The full-stack source install (`--source`) needs both:
-- [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal)
+- [bun](https://bun.sh) ≥ 1.4 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal)
 - [git](https://git-scm.com) (any build; on Windows the standard Git-for-Windows install is fine)
 - An OpenAI-compatible LLM endpoint (see *Using a different model provider* below)
 - **Windows, macOS and Linux** — the full agent and stack run on all three; OS-level engine sandbox: **Linux (bubblewrap) + macOS (seatbelt)**; native Windows uses the in-process path jail (WSL2 gives you kernel-grade isolation). See the [Windows](docs/windows.md) and [macOS](docs/macos.md) guides

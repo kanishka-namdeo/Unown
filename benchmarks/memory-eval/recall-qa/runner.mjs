@@ -6,19 +6,25 @@
  * session ANSWER QUESTIONS about what happened? (The memory loop's core
  * value proposition — today only mechanics are tested, not recall.)
  *
- * Per case, against the PRODUCTION dream path (SYSTEM prompt from
- * src/dream.ts, chatJson/chatText from src/llm.ts, guard from src/guard.ts
- * — imported, not re-implemented; helpers copied, never imported from
- * sibling benchmarks):
+ * Per case, against the PRODUCTION post-swap path (commit 25c6601, the
+ * Mem0 learning core — notes -> consolidate() over a scratch mem0 platform:
+ * structural quarantine -> mem0 extraction -> guard sweep -> reconcile ->
+ * deterministic render; imported from packages/self-learning via
+ * _lib/dream-pipeline.mjs, never re-implemented; helpers copied, never
+ * imported from sibling benchmarks):
  *
  *   1. NOTES: the case's oracle haystack sessions (1-3) each become ONE
  *      Unown session note — a trimmed transcript: evidence turns
  *      (has_answer=true) kept full first, filler turns trimmed/dropped to
  *      fit the ~4000-char note budget.
- *   2. DREAM: one chatJson call with the production SYSTEM prompt + a
- *      realistic established CURRENT_PROJECT_MEMORY + the notes, fed
- *      NEWEST-FIRST with real quarantine banners (scanUntrustedText +
- *      noteGuardBanner) — mirroring runDream()/undreamedNotes() fidelity.
+ *   2. DREAM: ONE consolidate pass over an ISOLATED mem0 scope
+ *      (projectScope("rq-<id>")), wiped + seeded with the established
+ *      CURRENT_MEMORY stand-in exactly like production seeding
+ *      (importLegacyMarkdown kind "seed", verbatim infer:false, no LLM),
+ *      then the notes fed NEWEST-FIRST (undreamedNotes() order) as plain
+ *      user messages — flagged notes are structurally quarantined (they
+ *      never reach the extraction LLM) and their texts feed the guard's
+ *      layer-2.5 echo backstop.
  *   3. GUARD: decideGuardAction(candidate, current, {firstMint:false}) —
  *      the shipped memory is what the engine would actually inject:
  *      gate -> the pre-dream memory ships (nothing new), sanitize ->
@@ -28,7 +34,7 @@
  *        cold — control: the same QA call WITHOUT the dream memory (the
  *               pre-dream seed memory only — what a fresh session would
  *               see if AutoDream had never run)
- *      max_tokens 300.
+ *      max_tokens 300. (The QA arms are LLM calls — skipped in --dry.)
  *   5. SCORING (judge-free): normalized exact-match — content-word overlap
  *      >= 0.6 of the dataset's ground-truth answer in the response, or a
  *      4-word phrase hit (mpbench-style matcher, copied; numerals count as
@@ -42,8 +48,12 @@
  *      consolidation loss vs retrieval loss.
  *
  * Resume-safe: cases with an existing receipt are skipped.
- * Usage: bun runner.mjs [--fresh] [--limit N]
- * Requires the llm-bridge on :3031 (checked before any call).
+ * Usage: bun runner.mjs [--fresh] [--limit N] [--dry]
+ *   --dry: no-LLM smoke lane — the dream-side plumbing only (notes ->
+ *          verbatim infer:false adds -> guard sweep -> reconcile seam ->
+ *          render -> guard -> retention matcher), zero bridge calls, no
+ *          receipt writes; exits non-zero on plumbing errors.
+ * Requires the llm-bridge on :3031 in live mode (checked before any call).
  * Receipts: results/per-case/<id>.json + results/summary.json
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
@@ -63,24 +73,39 @@ try {
 const RESULTS = _RESULTS_MODEL !== _LEGACY_MODEL ? join(HERE, "results", _RESULTS_MODEL) : join(HERE, "results");
 const PER_CASE = join(RESULTS, "per-case");
 
-// Scratch env BEFORE importing the package (store.ts opens SQLite at import):
-// the benchmark never touches the live engine DB.
+// --dry (added with the Mem0 re-base): no-LLM smoke lane for CI — the
+// dream-side plumbing only (notes -> verbatim infer:false adds -> guard
+// sweep -> reconcile seam -> render -> guard -> retention matcher) with ZERO
+// bridge calls (the QA arms are LLM calls and are skipped), the deterministic
+// lexical embedder forced, and NO receipt writes. Exits non-zero on plumbing
+// errors.
+const DRY = process.argv.includes("--dry");
+
+// Scratch env BEFORE importing the package (the store proxy opens SQLite at
+// first use; the platform reads PI_MEM0_DIR at build): the benchmark never
+// touches the live engine DB or the live mem0 dir.
 process.env.PI_SELFLEARNING_DATA ??= "/home/z/my-project/scratch-mem/recall-qa/data";
 process.env.PI_SELFLEARNING_DB ??= "/home/z/my-project/scratch-mem/recall-qa/db/recall-qa.db";
+process.env.PI_MEM0_DIR ??= "/home/z/my-project/scratch-mem/recall-qa/mem0";
+if (DRY) process.env.PI_MEM0_EMBEDDER = "lexical"; // deterministic + fast: no ONNX lane probe
 process.env.PI_MODEL_ID ??= "kimi-k2.5";
 process.env.PI_PROVIDER ??= "zai-bridge";
 
-const { SYSTEM } = await import("../../../pi-repo/packages/self-learning/src/dream.ts");
-const { chatJson, chatText, bridgeHealth } = await import("../../../pi-repo/packages/self-learning/src/llm.ts");
-const { scanUntrustedText, noteGuardBanner, decideGuardAction } = await import(
-        "../../../pi-repo/packages/self-learning/src/guard.ts",
+const { chatText, bridgeHealth } = await import("../../../pi-repo/packages/self-learning/src/llm.ts");
+const { scanUntrustedText, decideGuardAction } = await import("../../../pi-repo/packages/self-learning/src/guard.ts");
+const { consolidateScope, seedScope, wipeScope, renderScope, projectScope, noOpReconcileLlm, platformInfo } = await import(
+        "../_lib/dream-pipeline.mjs",
 );
 
 const corpus = JSON.parse(readFileSync(join(HERE, "corpus.json"), "utf8"));
 const MODEL = process.env.PI_MODEL_ID ?? corpus.model ?? "kimi-k2.5";
 
-if (process.argv.includes("--fresh")) rmSync(PER_CASE, { recursive: true, force: true });
-mkdirSync(PER_CASE, { recursive: true });
+if (DRY) {
+        // no receipts in dry mode — committed results/ stay untouched
+} else {
+        if (process.argv.includes("--fresh")) rmSync(PER_CASE, { recursive: true, force: true });
+        mkdirSync(PER_CASE, { recursive: true });
+}
 const LIMIT = process.argv.includes("--limit")
         ? Number(process.argv[process.argv.indexOf("--limit") + 1])
         : Infinity;
@@ -217,52 +242,55 @@ function buildNote(session, questionId) {
 }
 
 // ---------------------------------------------------------------------------
-// Step 2/3 — dream + guard (mirrors runDream in src/dream.ts)
+// Step 2/3 — dream + guard (mirrors consolidate()/runProjectDream in src/dream.ts)
 // ---------------------------------------------------------------------------
 async function dreamCase(c, notes) {
         // NEWEST-FIRST note order (undreamedNotes() ORDER BY created_at DESC);
         // chronology rides on the note timestamps, exactly like the real pipeline
         const ordered = [...notes].sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0));
         const scans = ordered.map((n) => scanUntrustedText(n.text));
-        const notesText = ordered
-                .map((n, i) => {
-                        const banner = scans[i].rules.length > 0 ? `${noteGuardBanner(scans[i])}\n` : "";
-                        return `--- note (${n.ts}) run=${n.run} ---\n${banner}${n.text}`;
-                })
-                .join("\n\n");
-        const user = `CURRENT PROJECT MEMORY (version 2):\n\n${CURRENT_MEMORY}\n\nSESSION NOTES SINCE LAST DREAM (${ordered.length}):\n\n${notesText}`;
+        // ISOLATED mem0 scope per case, wiped + seeded with the established-memory
+        // stand-in exactly like production seeding; one consolidate pass (mem0
+        // extraction + reconcile live; verbatim/no-op in --dry) over the notes.
+        const scope = projectScope(`rq-${String(c.id).toLowerCase()}`);
+        await wipeScope(scope);
+        await seedScope(scope, CURRENT_MEMORY);
+        const current = await renderScope(scope);
         const started = Date.now();
         let candidate = "";
         let stats = null;
         let error = null;
-        try {
-                const result = await chatJson(
-                        [
-                                { role: "system", content: SYSTEM },
-                                { role: "user", content: user },
-                        ],
-                        { maxTokens: 3000 },
-                );
-                candidate = `${String(result.projectMd ?? "").trim()}\n`;
-                stats = result.stats ?? null;
-                if (!candidate.trim() || candidate.trim().length < 60) throw new Error("dream produced empty memory");
-        } catch (err) {
-                error = String(err?.message ?? err);
-        }
         // Guard + what the engine would actually ship. On dream error the engine
         // keeps the OLD memory (nothing ships) — the warm arm then equals cold.
         let guard = null;
-        let shipped = CURRENT_MEMORY;
-        if (!error) {
+        let shipped = current;
+        try {
+                const outcome = await consolidateScope(
+                        scope,
+                        ordered.map((n) => ({ id: `${n.run}/${n.ts}`, content: n.text, created_at: Date.parse(n.ts) })),
+                        DRY ? { infer: false, reconcileLlmFn: noOpReconcileLlm } : {},
+                );
+                stats = {
+                        added: outcome.added,
+                        merged: outcome.merged,
+                        pruned: outcome.pruned,
+                        quarantined: outcome.quarantined,
+                        guardDeleted: outcome.guardDeleted,
+                };
+                candidate = outcome.rendered;
+                if (!candidate.trim() || !/^- /m.test(candidate)) throw new Error("dream produced no substantive memories (render carries no bullets)");
                 // Layer 2.5 fidelity (2026-10-22): flagged note texts, same as the
                 // production dream path passes to the gate.
-                guard = decideGuardAction(candidate, CURRENT_MEMORY, {
+                guard = decideGuardAction(candidate, current, {
                         firstMint: false,
                         quarantinedNoteTexts: scans.map((s, i) => (s.rules.length ? ordered[i].text : null)).filter(Boolean),
                 });
-                shipped = guard.action === "gate" ? CURRENT_MEMORY : guard.sanitized;
+                shipped = guard.action === "gate" ? current : guard.sanitized;
+        } catch (err) {
+                error = String(err?.message ?? err);
         }
         return {
+                scope: scope.agentId,
                 dream: {
                         error,
                         stats,
@@ -278,7 +306,9 @@ async function dreamCase(c, notes) {
                         shipped,
                         durationMs: Date.now() - started,
                 },
-                notesInput: notesText,
+                // receipt-side rendering of what the dream consumed: post-swap each
+                // note is a plain user message (structural quarantine — no banners)
+                notesInput: ordered.map((n) => `--- note (${n.ts}) run=${n.run} ---\n${n.text}`).join("\n\n"),
                 noteScans: scans.map((s) => s.rules),
         };
 }
@@ -311,24 +341,27 @@ async function qaArm(memory, c) {
 // ---------------------------------------------------------------------------
 async function runCase(c, idx) {
         const receiptPath = join(PER_CASE, `${c.id}.json`);
-        if (existsSync(receiptPath)) {
+        if (!DRY && existsSync(receiptPath)) {
                 console.log(`[skip] ${c.id} (receipt exists)`);
                 return JSON.parse(readFileSync(receiptPath, "utf8"));
         }
         const started = Date.now();
         console.log(`[case ${idx + 1}/${corpus.cases.length}] ${c.id} ${c.questionType} — Q: ${c.question.slice(0, 70)}`);
         const notes = c.sessions.map((s) => buildNote(s, c.id));
-        const { dream, notesInput, noteScans } = await dreamCase(c, notes);
+        const { scope, dream, notesInput, noteScans } = await dreamCase(c, notes);
         console.log(
                 `  dream: ${dream.error ? `ERROR ${dream.error.slice(0, 100)}` : `${dream.candidate.length} chars, guard=${dream.guard.action}, ${dream.durationMs}ms`}${noteScans.some((r) => r.length > 0) ? ` [flagged notes: ${noteScans.filter((r) => r.length > 0).length}/${notes.length}]` : ""}`,
         );
-        const warm = await qaArm(dream.shipped, c);
-        const cold = await qaArm(CURRENT_MEMORY, c);
-        const warmMatch = warm.answer ? matchAnswer(c.answer, warm.answer) : null;
-        const coldMatch = cold.answer ? matchAnswer(c.answer, cold.answer) : null;
         // consolidation funnel: were the gt answer's content words kept in the
-        // SHIPPED memory at all (what the dream chose to keep vs drop)?
+        // SHIPPED memory at all (what the dream chose to keep vs drop)? — LLM-free,
+        // so it runs in --dry too (the dry lane's quality signal)
         const retention = dream.error ? null : matchAnswer(c.answer, dream.shipped);
+        // QA arms are LLM calls — skipped entirely in --dry (the dry receipt keeps
+        // the dream side + retention only)
+        const warm = DRY ? null : await qaArm(dream.shipped, c);
+        const cold = DRY ? null : await qaArm(CURRENT_MEMORY, c);
+        const warmMatch = warm?.answer ? matchAnswer(c.answer, warm.answer) : null;
+        const coldMatch = cold?.answer ? matchAnswer(c.answer, cold.answer) : null;
         const receipt = {
                 id: c.id,
                 questionType: c.questionType,
@@ -337,6 +370,7 @@ async function runCase(c, idx) {
                 questionDate: c.questionDate,
                 model: MODEL,
                 durationMs: Date.now() - started,
+                scope,
                 notes: notes.map((n) => ({ ts: n.ts, run: n.run, date: n.date, sessionId: n.sessionId, trim: n.trim, text: n.text })),
                 noteFlagged: noteScans.some((r) => r.length > 0),
                 noteRules: noteScans,
@@ -350,24 +384,61 @@ async function runCase(c, idx) {
                                         shipped: dream.shipped,
                                         durationMs: dream.durationMs,
                                 },
-                warm: { answer: warm.answer, error: warm.error, durationMs: warm.durationMs, match: warmMatch },
-                cold: { answer: cold.answer, error: cold.error, durationMs: cold.durationMs, match: coldMatch },
+                warm: warm ? { answer: warm.answer, error: warm.error, durationMs: warm.durationMs, match: warmMatch } : null,
+                cold: cold ? { answer: cold.answer, error: cold.error, durationMs: cold.durationMs, match: coldMatch } : null,
                 evidenceRetentionInShipped: retention,
         };
-        writeFileSync(receiptPath, JSON.stringify(receipt, null, 2));
-        console.log(
-                `  warm: ${warm.error ? `ERROR ${warm.error.slice(0, 80)}` : `${warmMatch.pass ? "PASS" : "fail"} (${warmMatch.score}) — ${String(warm.answer).slice(0, 90).replace(/\n/g, " ")}`}`,
-        );
-        console.log(
-                `  cold: ${cold.error ? `ERROR ${cold.error.slice(0, 80)}` : `${coldMatch.pass ? "PASS" : "fail"} (${coldMatch.score}) — ${String(cold.answer).slice(0, 90).replace(/\n/g, " ")}`}`,
-        );
+        if (!DRY) writeFileSync(receiptPath, JSON.stringify(receipt, null, 2));
+        if (!DRY)
+                console.log(
+                        `  warm: ${warm.error ? `ERROR ${warm.error.slice(0, 80)}` : `${warmMatch.pass ? "PASS" : "fail"} (${warmMatch.score}) — ${String(warm.answer).slice(0, 90).replace(/\n/g, " ")}`}`,
+                );
+        if (!DRY)
+                console.log(
+                        `  cold: ${cold.error ? `ERROR ${cold.error.slice(0, 80)}` : `${coldMatch.pass ? "PASS" : "fail"} (${coldMatch.score}) — ${String(cold.answer).slice(0, 90).replace(/\n/g, " ")}`}`,
+                );
         return receipt;
 }
 
 // ---------------------------------------------------------------------------
 // Bridge gate + main
 // ---------------------------------------------------------------------------
+/**
+ * --dry main: exercise the dream-side plumbing with zero LLM calls and no
+ * receipt writes, then assert plumbing health (NOT recall quality — without
+ * the extraction/reconcile LLM the verbatim notes simply accumulate, and the
+ * QA arms are LLM calls by construction). The evidence-retention matcher runs
+ * (it is LLM-free) but its score is not asserted. Exits non-zero on plumbing
+ * failure.
+ */
+async function runDry() {
+        const t0 = Date.now();
+        console.log(`[dry] no-LLM smoke mode — dream-side plumbing only, zero bridge calls, no receipt writes (model ${MODEL}, embedder forced lexical, ${Math.min(LIMIT, corpus.cases.length)} cases)`);
+        const failures = [];
+        const cases = corpus.cases.slice(0, Math.min(LIMIT, corpus.cases.length));
+        const receipts = [];
+        for (let i = 0; i < cases.length; i++) receipts.push(await runCase(cases[i], i));
+        for (const r of receipts) {
+                if (r.dream.error) failures.push(`${r.id}: dream error: ${r.dream.error}`);
+                if (!r.dream.shipped || r.dream.shipped.trim().length < 60) failures.push(`${r.id}: no shipped memory`);
+                if (!r.dream.error && !r.dream.guard) failures.push(`${r.id}: guard did not run`);
+                if (!r.dream.error && !r.dream.stats) failures.push(`${r.id}: no platform stats (consolidate outcome missing)`);
+                if (r.evidenceRetentionInShipped === null && !r.dream.error) failures.push(`${r.id}: retention matcher did not run`);
+        }
+        const ms = Date.now() - t0;
+        if (failures.length) {
+                console.error(`\n[dry] ${failures.length} plumbing failure(s):`);
+                for (const f of failures) console.error(`  - ${f}`);
+                process.exit(1);
+        }
+        console.log(`\n[dry] PASS — ${receipts.length} case(s) exercised end-to-end in ${ms}ms (plumbing only; recall verdicts are live-mode only)`);
+}
+
 async function main() {
+        if (DRY) {
+                await runDry();
+                return;
+        }
         const health = await bridgeHealth();
         if (!health?.ok) {
                 console.error(`llm-bridge on :3031 is not healthy — aborting before any call: ${JSON.stringify(health)}`);
@@ -406,6 +477,8 @@ async function main() {
                 suite: "recall-qa-longmemeval",
                 date: new Date().toISOString(),
                 model: MODEL,
+                dreamPath: "mem0 consolidate (structural quarantine -> extraction add -> guard sweep -> reconcile -> render) via _lib/dream-pipeline.mjs",
+                platform: platformInfo(),
                 bridgeUpstreamStatus: health.upstream?.status ?? null,
                 source: corpus.source,
                 seed: corpus.seed,

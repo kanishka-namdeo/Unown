@@ -10,13 +10,15 @@ proposition. Until this suite, the memory benchmarks tested mechanics
 
 ## What it measures
 
-Per case, against the **production dream + guard path** (imported from
-`packages/self-learning` — no re-implementation drift):
+Per case, against the **production post-swap dream + guard path** (the
+Mem0 learning core, commit 25c6601 — imported from `packages/self-learning`
+via `../_lib/dream-pipeline.mjs`, no re-implementation drift; helpers
+copied, never imported from sibling benchmarks):
 
 | Step | What happens |
 |---|---|
 | 1. notes | The case's oracle haystack sessions (1-3) each become ONE Unown session note: a trimmed transcript (~4000 chars/note). Evidence turns (`has_answer=true`, the LongMemEval oracle labels) are kept full FIRST; filler turns are trimmed (400 chars) and dropped only when the budget is exceeded — answer evidence is never cut before filler. |
-| 2. dream | ONE `chatJson` call with the production `SYSTEM` prompt + a realistic established `CURRENT_PROJECT_MEMORY` + the notes, fed **newest-first** (`undreamedNotes()` order) with real quarantine banners (`scanUntrustedText` + `noteGuardBanner`), `maxTokens 3000` — mirroring `runDream()` fidelity. |
+| 2. dream | ONE `consolidate()` pass over an isolated mem0 scope (`projectScope("rq-<id>")`), wiped + seeded with the established `CURRENT_MEMORY` stand-in exactly like production seeding (`importLegacyMarkdown` kind "seed", verbatim `infer:false`, no LLM), then the notes fed **newest-first** (`undreamedNotes()` order) as plain user messages — flagged notes are structurally quarantined (never reach the extraction LLM) and their texts feed the guard's layer-2.5 echo backstop. |
 | 3. guard | `decideGuardAction(candidate, current, {firstMint:false})` — the shipped memory is what the engine would actually inject: `gate` → the pre-dream memory ships (nothing new), `sanitize` → the quarantined-out remainder, `ship` → candidate verbatim. Dream error → engine keeps the old memory (warm arm equals cold). |
 | 4. QA (two arms) | A fresh `chatText` call (`maxTokens 300`), identical question message in both arms: **warm** = system message contains the SHIPPED post-dream memory; **cold** = control WITHOUT the dream memory (the pre-dream seed memory only — what a fresh session would see if AutoDream had never run). |
 | 5. scoring | Judge-free normalized exact-match: content-word overlap ≥ 0.6 of the ground-truth answer in the response, or a 4-word phrase hit (mpbench-style matcher, copied). Two documented deviations from mpbench semantics, both because numeric/unit answers are the recall payload: numerals count as content words with digit-letter splitting (`"7pm"` → `"7 pm"`), and 1-2-content-word ground truths require a FULL hit (a unit-only match on a wrong number must not pass). Both arms recorded per case. |
@@ -55,19 +57,23 @@ bun sample_corpus.mjs /tmp/longmemeval_oracle --seed 20261019
 ## Run
 
 ```bash
+bun runner.mjs --dry        # no-LLM dream-side plumbing smoke (<1 s, no bridge, no receipts)
 bun runner.mjs            # full corpus (resume-safe; ~10-60 min live)
 bun runner.mjs --limit 3  # smoke
 bun runner.mjs --fresh    # ignore existing receipts
 ```
 
-Requires the llm-bridge on `:3031` (checked before any call; live Dashscope
-upstream). Scratch env: `PI_SELFLEARNING_DATA=/home/z/my-project/scratch-mem/recall-qa/data`,
-`PI_SELFLEARNING_DB=.../db/recall-qa.db` (set BEFORE the package import —
-`store.ts` opens SQLite at import). 40 cases × (1 dream + 2 QA) ≈ 120 LLM
-calls on `kimi-k2.5`. Receipts: `results/per-case/<id>.json` (notes fed to
-the dream, the dream candidate verbatim, guard verdict, both answers, both
-match scores) + `results/summary.json`. RESULTS.md is hand-written from
-summary.json (the repo's convention for graded numbers).
+Requires the llm-bridge on `:3031` in live mode (checked before any call;
+the mem0 extraction + reconcile + QA calls go through it). Scratch env:
+`PI_SELFLEARNING_DATA=/home/z/my-project/scratch-mem/recall-qa/data`,
+`PI_SELFLEARNING_DB=.../db/recall-qa.db`, `PI_MEM0_DIR=.../mem0` (set BEFORE
+the package import); each case runs in an isolated mem0 scope
+(`projectScope("rq-<id>")`), wiped and re-seeded per run. 40 cases ×
+(1 dream + 2 QA) ≈ 120 LLM calls on `kimi-k2.5`. Receipts:
+`results/per-case/<id>.json` (notes fed to the dream, the dream candidate
+verbatim, guard verdict, both answers, both match scores) +
+`results/summary.json`. RESULTS.md is hand-written from summary.json (the
+repo's convention for graded numbers).
 
 ## Honest limitations
 

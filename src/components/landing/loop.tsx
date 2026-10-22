@@ -70,16 +70,14 @@ const BEATS: Beat[] = [
     lead: "Every terminal session is captured on the way out as a note in a fixed template, delivered to the engine. If the engine is down the note waits in an outbox and syncs when it comes back — so the learning loop never depends on the loop being up.",
     filename: "~/.unown/notes/outbox/1757...-checkout.md",
     body: [
-      "Terminal session in ~/code/checkout (3 min): 1 prompt(s),",
-      "14 tool call(s) (read, grep, edit, bash).",
+      "Terminal session outcome in ~/code/checkout:",
       "Final outcome: all 14 checkout specs green.",
       "",
-      "If the session hit failures or discovered project-specific",
-      "pitfalls, record them as concise imperative rules; otherwise",
-      "record any durable project conventions worth remembering.",
+      "Session metadata (never extractable — counts and duration only): 1 prompt(s),",
+      "14 tool call(s) (read, grep, edit, bash), 3 min.",
     ].join("\n"),
     caption2:
-      "The literal note template. A subagent session gets a [subagent] tag in the same line, so the engine can tell where a note came from.",
+      "The literal note template — outcome first (that is the knowledge), counts and duration demoted to a labeled metadata line. A subagent session gets a [subagent] tag in the same header, so the engine can tell where a note came from.",
   },
   {
     key: "learn",
@@ -107,21 +105,20 @@ const BEATS: Beat[] = [
     label: "Dream",
     caption: "it dreams",
     title: "Then the notes become a file you can read.",
-    lead: "AutoDream merges duplicates, drops stale observations and reorganises into topic sections. Its prompt tells it to never delete hard-won rules and to keep the file under 120 lines. A canary run gates the whole thing, and rolls it back if the last-passing task stops passing.",
+    lead: "AutoDream extracts atomic memories through the Mem0 learning core, reconciles them — newest evidence wins, hard-won verified rules are preserved — and renders the scope into topic sections with a provenance footer. A canary run gates the whole thing, and rolls it back if the last-passing task stops passing.",
     filename: ".unown/memory/project.md",
     body: [
-      "# Tier 1 — Project Memory",
+      "# Project Memory",
       "",
-      "## Engine restart procedure",
-      "- Find bun --hot PID with cwd mini-services/agent-service via /proc/<pid>/cwd.",
-      "- bun --hot does NOT reload changes outside mini-services/.",
+      "## Workflow",
+      "- Run: bunx biome check --write on changed files in pi-repo/.",
+      "- Verify engine restart: GET /api/overview returns ok:true.",
       "",
       "## Known pitfalls",
-      "- LLM bridge calls timeout at 240s with 3 retries; agent watchdog at 600s.",
       "- Failed cycles auto-recover — do NOT restart engine to fix them.",
     ].join("\n"),
     caption2:
-      "Verbatim lines from this repository's project memory, written by AutoDream. If a dream breaks the last-passing task, the log reads: rolled back to v5: canary task failed under the new memory.",
+      "Verbatim lines from this repository's project memory, rendered by the Mem0-backed AutoDream. If a dream breaks the last-passing task, the log reads: rolled back to v5: canary task failed under the new memory.",
   },
 ];
 

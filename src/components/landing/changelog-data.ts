@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 177;
+export const CHANGELOG_TOTAL_ENTRIES = 182;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 70,
+  "Added": 71,
   "Changed": 11,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 71,
+  "Fixed": 75,
   "Security": 0,
   "Behavior": 23
 };
@@ -46,20 +46,49 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 8,
+    "total": 13,
     "counts": {
-      "Added": 3,
+      "Added": 4,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 1,
+      "Fixed": 5,
       "Security": 0,
       "Behavior": 3
     },
     "groups": [
       {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "the learning loop's silent empty-extraction drop — terminal notes now actually become memories",
+            "behavior": false
+          },
+          {
+            "title": "memory metadata nesting — kind routing works on the real platform again",
+            "behavior": false
+          },
+          {
+            "title": "a fresh clone now installs on the bun the docs demand — and the docs demand the right bun",
+            "behavior": false
+          },
+          {
+            "title": "the instruction-set audit is warning-free again",
+            "behavior": false
+          },
+          {
+            "title": "the upstream pi credit now points where the repo lives",
+            "behavior": false
+          }
+        ]
+      },
+      {
         "bucket": "Added",
         "items": [
+          {
+            "title": "the memory-eval suites drive the real post-swap dream again — with a no-LLM CI lane",
+            "behavior": false
+          },
           {
             "title": "verify-first defaults — the project's own checks now run inside the agent loop",
             "behavior": false
@@ -88,15 +117,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "the first-run gate and banner no longer promise a bundled bridge the install does not ship",
             "behavior": true
-          }
-        ]
-      },
-      {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "the upstream pi credit now points where the repo lives",
-            "behavior": false
           }
         ]
       },

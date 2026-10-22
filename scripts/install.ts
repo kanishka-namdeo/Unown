@@ -8,7 +8,7 @@
  *   bun run agent:install        (or: bun scripts/install.ts)
  *
  * Steps:
- *   1. verify bun ≥ 1.2 (per-OS install hint if missing/too old)
+ *   1. verify bun ≥ 1.4 (per-OS install hint if missing/too old — the pi-repo lockfile needs it)
  *   2. bun install          (landing-page dependencies, repo root)
  *   3. bun install          (pi-repo/, vendored pi coding agent)
  *   4. bun run build:offline (pi-repo/, compiled packages)
@@ -33,7 +33,7 @@ import * as path from "node:path";
 import {
   IS_WIN,
   REPO_ROOT,
-  bunAtLeast120,
+  bunAtLeast140,
   bunInstallHint,
   bunVersion,
   loadEnvFile,
@@ -51,14 +51,14 @@ function die(message: string, code = 1): never {
 const BUN = resolveBun();
 if (!BUN) {
   die(
-    `${sym.fail} bun is required (>= 1.2) and was not found on this machine.\n` +
+    `${sym.fail} bun is required (>= 1.4) and was not found on this machine.\n` +
       `    install it with:  ${bunInstallHint()}`,
   );
 }
 const BUN_VERSION = bunVersion(BUN) ?? "";
-if (!BUN_VERSION || !bunAtLeast120(BUN_VERSION)) {
+if (!BUN_VERSION || !bunAtLeast140(BUN_VERSION)) {
   die(
-    `${sym.fail} bun >= 1.2 is required (found ${BUN_VERSION || "unknown"} at ${BUN}).\n` +
+    `${sym.fail} bun >= 1.4 is required — pi-repo/bun.lock (lockfileVersion 3) does not parse on older bun (found ${BUN_VERSION || "unknown"} at ${BUN}).\n` +
       `    upgrade it with:  bun upgrade   (or reinstall: ${bunInstallHint()})`,
   );
 }
