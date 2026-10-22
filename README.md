@@ -4,7 +4,7 @@
 
 # unown
 
-Unown takes the open-source **[pi coding agent](https://github.com/badlogic/pi-mono)** and turns it into a full-fledged **self-learning agent**, applying the five mechanisms Anthropic popularized by *using Claude Code to improve Claude Code*:
+Unown takes the open-source **[pi coding agent](https://github.com/earendil-works/pi)** and turns it into a full-fledged **self-learning agent**, applying the five mechanisms Anthropic popularized by *using Claude Code to improve Claude Code*:
 
 > Let the agent find its own weaknesses. Let it fix them. Let it remember what worked.
 
@@ -384,7 +384,7 @@ The six **learning-integrity gates** that police self-modification (ship gate, m
 
 ## Credits
 
-- [badlogic/pi-mono](https://github.com/badlogic/pi-mono) — Mario Zechner's pi coding agent, bundled and extended here.
+- [earendil-works/pi](https://github.com/earendil-works/pi) — Mario Zechner's pi coding agent (formerly badlogic/pi-mono; the old URL redirects), bundled and extended here.
 - The five self-improvement patterns popularized by Anthropic's engineering blog on improving Claude Code with Claude Code.
 - Unown v1 — the Claude Code harness blueprint this project grew out of — is preserved under [`blueprint/`](blueprint/) as reference material.
 

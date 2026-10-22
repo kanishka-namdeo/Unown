@@ -5,7 +5,7 @@
 
 ## Project Overview
 
-Unown is a self-improving coding agent built on the pi coding agent (vendored at `pi-repo/`, upstream: badlogic/pi-mono): tiered memory, hooks, AutoDreaming, a self-improving harness, sandbox testing, routing, and terminal-first mission control (`unown dashboard`).
+Unown is a self-improving coding agent built on the pi coding agent (vendored at `pi-repo/`, upstream: earendil-works/pi — formerly badlogic/pi-mono, which now 301-redirects): tiered memory, hooks, AutoDreaming, a self-improving harness, sandbox testing, routing, and terminal-first mission control (`unown dashboard`).
 
 Service map (`bun run agent:start` boots the two backend services; the landing page is a separate `bun run dev` on :3000):
 

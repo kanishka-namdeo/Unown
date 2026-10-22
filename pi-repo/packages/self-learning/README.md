@@ -1,6 +1,6 @@
 # @earendil-works/pi-self-learning
 
-The self-learning layer for the [pi coding agent](https://github.com/badlogic/pi-mono):
+The self-learning layer for the [pi coding agent](https://github.com/earendil-works/pi):
 a single package that turns pi into an agent that **finds its own weaknesses,
 fixes them, and remembers what worked**.
 

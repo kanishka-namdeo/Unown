@@ -640,7 +640,7 @@ export function Footer() {
           <p className="max-w-3xl text-[11px] leading-relaxed text-faint">
             Built on the{" "}
             <a
-              href="https://github.com/badlogic/pi-mono"
+              href="https://github.com/earendil-works/pi"
               target="_blank"
               rel="noreferrer noopener"
               className="underline underline-offset-2 hover:text-gold"

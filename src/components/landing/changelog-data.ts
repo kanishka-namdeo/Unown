@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 173;
+export const CHANGELOG_TOTAL_ENTRIES = 174;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 68,
   "Changed": 11,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 70,
+  "Fixed": 71,
   "Security": 0,
   "Behavior": 22
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 4,
+    "total": 5,
     "counts": {
       "Added": 1,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 0,
+      "Fixed": 1,
       "Security": 0,
       "Behavior": 2
     },
@@ -76,6 +76,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "the first-run gate and banner no longer promise a bundled bridge the install does not ship",
             "behavior": true
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "the upstream pi credit now points where the repo lives",
+            "behavior": false
           }
         ]
       },

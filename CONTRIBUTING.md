@@ -70,7 +70,7 @@ bin/unown                     the `unown` terminal agent entry point
 docs/                         usage docs: quickstart, providers, usage, subagents,
                               skills, memory, configuration, troubleshooting
 .github/assets/               README brand + dashboard screenshot assets
-pi-repo/                      the pi coding agent (badlogic/pi-mono)
+pi-repo/                      the pi coding agent (earendil-works/pi, formerly badlogic/pi-mono)
   packages/self-learning/     ★ the transformation — the self-learning layer
     src/memory.ts             tiered memory (pattern 1, engine side)
     src/term.ts               terminal-agent config: ~/.unown state, per-project memory resolution, note outbox, starter-skill seeding
