@@ -368,7 +368,14 @@ export function history(tier: Tier, limit = 30): MemoryVersion[] {
 
 /** A terminal project's memory tier, as the dashboard lists them (D-plan §5.6).
  * Project tiers version under `project:<slug>` (dream.ts); this surfaces them
- * as first-class objects beside the four engine tiers. */
+ * as first-class objects beside the four engine tiers.
+ *
+ * Legacy-scope hiding (composite-slug swap, project-identity.ts): tiers keyed
+ * by the OLD basename-only slug stop receiving writes the moment their
+ * project dreams under the composite key (`project:<basename>-<id6>`). A
+ * legacy tier whose composite successor exists is filtered out of the listing
+ * — its version rows remain (rollback/audit surface) but showing a dead scope
+ * next to its live successor reads as two projects sharing one memory. */
 export function projectTiers(): {
         slug: string;
         tier: string;
@@ -380,16 +387,31 @@ export function projectTiers(): {
                 `SELECT tier, MAX(version) AS version, MAX(created_at) AS created_at
                  FROM memory_versions WHERE tier LIKE 'project:%' GROUP BY tier ORDER BY tier`,
         );
-        return rows.map((r) => {
-                const content = readTier(r.tier as Tier);
-                return {
-                        slug: r.tier.slice("project:".length),
-                        tier: r.tier,
-                        version: r.version,
-                        chars: content.length,
-                        updatedAt: r.created_at ?? null,
-                };
-        });
+        const tierNames = new Set(rows.map((r) => r.tier));
+        const superseded = (tier: string): boolean => {
+                // A legacy tier is superseded when a composite successor exists
+                // (`project:<slug>-<6hex>`). Slug charset is [a-z0-9-] so embedding the
+                // tier name in the pattern is safe. A basename that coincidentally ends
+                // in 6-hex is indistinguishable from a composite key — and harmless:
+                // its own composite child (`<name>-<key6>`) still matches the same rule.
+                const childPattern = new RegExp(`^project:${tier.slice("project:".length)}-[0-9a-f]{6}$`);
+                for (const other of tierNames) {
+                        if (other !== tier && childPattern.test(other)) return true;
+                }
+                return false;
+        };
+        return rows
+                .filter((r) => !superseded(r.tier))
+                .map((r) => {
+                        const content = readTier(r.tier as Tier);
+                        return {
+                                slug: r.tier.slice("project:".length),
+                                tier: r.tier,
+                                version: r.version,
+                                chars: content.length,
+                                updatedAt: r.created_at ?? null,
+                        };
+                });
 }
 
 export function snapshot(): {

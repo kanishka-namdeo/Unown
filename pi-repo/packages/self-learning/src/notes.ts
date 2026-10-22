@@ -12,8 +12,8 @@
  *               into the project's own .unown/memory/project.md
  */
 import { randomUUID } from "node:crypto";
-import { basename } from "node:path";
 import { emit } from "./bus.ts";
+import { projectSlug } from "./project-identity.ts";
 import { store } from "./store.ts";
 
 export type NoteKind = "benchmark" | "terminal";
@@ -50,14 +50,25 @@ export function undreamedNotes(limit = 24, kind?: NoteKind) {
         );
 }
 
-/** Pending terminal notes grouped by project slug. */
+/** Pending terminal notes grouped by project PATH (not the stored slug —
+ *  identity resolution must happen at dream time, so legacy rows written
+ *  under the old basename-only slug heal onto the composite scope when the
+ *  project next dreams; grouping by path also keeps two same-named projects'
+ *  notes apart from the start). */
 export function pendingTerminalNotesByProject(limit = 40): Array<{ slug: string; projectPath: string; notes: any[] }> {
         const rows = undreamedNotes(limit, "terminal");
         const groups = new Map<string, { slug: string; projectPath: string; notes: any[] }>();
         for (const n of rows) {
-                const slug = n.project_slug ?? "unknown";
-                if (!groups.has(slug)) groups.set(slug, { slug, projectPath: n.project_path ?? "", notes: [] });
-                groups.get(slug)!.notes.push(n);
+                const projectPath = n.project_path ?? "";
+                const key = projectPath || n.project_slug || "unknown";
+                if (!groups.has(key)) {
+                        groups.set(key, {
+                                slug: projectPath ? slugifyProject(projectPath) : (n.project_slug ?? "unknown"),
+                                projectPath,
+                                notes: [],
+                        });
+                }
+                groups.get(key)!.notes.push(n);
         }
         return [...groups.values()];
 }
@@ -68,16 +79,14 @@ export function markDreamed(noteIds: string[], dreamId: string) {
         }
 }
 
-/** Stable short identifier for a project path (used as the memory-version tier key). */
+/** Stable short identifier for a project path (used as the memory-version tier key).
+ *
+ *  Composite form `<basename>-<identity6>` (project-identity.ts): the git
+ *  remote (or resolved path) hashed to 6 hex — two same-named directories in
+ *  different locations NO LONGER share one memory scope (the cross-project
+ *  memory leak), while clones/worktrees/renames of one repository DO. */
 export function slugifyProject(projectPath: string): string {
-        const base = basename(projectPath) || "project";
-        const cleaned =
-                base
-                        .toLowerCase()
-                        .replace(/[^a-z0-9]+/g, "-")
-                        .replace(/^-+|-+$/g, "")
-                        .slice(0, 32) || "project";
-        return cleaned;
+        return projectSlug(projectPath);
 }
 
 /** Build the note text for a completed run (called by the runner). */

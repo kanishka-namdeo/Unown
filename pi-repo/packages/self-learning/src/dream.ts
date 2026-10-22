@@ -27,6 +27,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { atomicWriteFileSync } from "./atomic.ts";
+import { basenameSlug } from "./project-identity.ts";
 import { emit } from "./bus.ts";
 import { analyzeCanaryRun, canaryK, sampleCanaryTasks } from "./canary.ts";
 import { decideGuardAction, guardSummary, scanUntrustedText, type GuardFlag } from "./guard.ts";
@@ -40,6 +41,7 @@ import {
         type PlatformMemory,
         type ReconcileOp,
         importLegacyMarkdown,
+        migrateLegacyScope,
         projectScope,
         reconcileMemories,
         renderProjectMemoryMarkdown,
@@ -477,11 +479,26 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 
                 try {
                         const scope = projectScope(group.slug);
+                        const prePlatform = await platformOrSingleton(opts);
+                        // Composite-slug migration (project-identity.ts, 2026-10-22):
+                        // scopes keyed by basename alone let two same-named directories
+                        // share one memory bank (cross-project leak) and split on
+                        // checkout rename. The composite key fixes both; this moves an
+                        // established legacy scope's memories across verbatim the first
+                        // time the project dreams under its composite key. Idempotent —
+                        // a non-empty destination is a no-op — and the legacy scope is
+                        // kept as the audit/rollback surface (it just never grows again).
+                        const legacySlug = basenameSlug(group.projectPath);
+                        if (legacySlug !== group.slug) {
+                                const migrated = await migrateLegacyScope(projectScope(legacySlug), scope, { platform: prePlatform });
+                                if (migrated > 0) {
+                                        emit("dream:note", { project: group.slug, detail: `migrated ${migrated} legacy-scope memories onto the composite key` });
+                                }
+                        }
                         // Swap-boundary migration: the terminal project's memory file IS the
                         // source of truth pre-swap — import its bullets into the platform
                         // (verbatim, kind legacy) before the first render rewrites the file,
                         // so an established project's accumulated learning survives the swap.
-                        const prePlatform = await platformOrSingleton(opts);
                         if ((await prePlatform.getAll(scope)).length === 0 && !isPristineSeedProjectMemory(current)) {
                                 await importLegacyMarkdown(current, scope, { platform: prePlatform });
                         }

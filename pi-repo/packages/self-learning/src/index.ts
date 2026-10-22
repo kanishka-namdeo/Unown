@@ -34,6 +34,7 @@ export {
         mem0EmbedderMode,
         MEM0_DIM,
         projectScope,
+        migrateLegacyScope,
         projectMemories,
         reconcileMemories,
         rememberNote,
@@ -65,6 +66,14 @@ export {
         slugifyProject,
         undreamedNotes,
 } from "./notes.ts";
+export {
+        basenameSlug,
+        normalizeGitRemote,
+        projectKey,
+        projectSlug,
+        readGitRemoteUrl,
+        resolveProjectIdentity,
+} from "./project-identity.ts";
 export { syncNoteOutbox } from "./outbox.ts";
 export { JOB_DEFS, listJobs, Router, router, setJobEnabled } from "./router.ts";
 export {

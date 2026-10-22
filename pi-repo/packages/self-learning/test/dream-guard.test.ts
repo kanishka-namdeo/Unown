@@ -39,7 +39,8 @@ import { runDream, runProjectDream } from "../src/dream.ts";
 import { currentVersion, readTier, writeTier, MEMORY_DIR } from "../src/memory.ts";
 import { ingestTerminalNote, undreamedNotes } from "../src/notes.ts";
 import { store } from "../src/store.ts";
-import { initProjectMemory, projectMemoryPath, isPristineSeedProjectMemory, slugifyPath } from "../src/term.ts";
+import { initProjectMemory, projectMemoryPath, isPristineSeedProjectMemory } from "../src/term.ts";
+import { slugifyProject } from "../src/notes.ts";
 import { makeFakePlatform, type FakePlatform } from "./_fake-platform.ts";
 
 const SCRATCH = join(tmpdir(), "engine-tests-dream-guard");
@@ -255,7 +256,9 @@ describe("project path — runProjectDream under the guard (F4B)", () => {
                 const platform = makeFakePlatform();
 
                 const results = await runProjectDream({ platform, reconcileLlmFn: noReconcile });
-                const slug = slugifyPath(project);
+                // the tier key is the composite scope slug (project-identity.ts),
+                // not the outbox-filename basename slug
+                const slug = slugifyProject(project);
 
                 expect(results.length).toBe(1);
                 expect(results[0].status).toBe("done");
