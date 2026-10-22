@@ -31,7 +31,7 @@ The marketing landing page: a single Next.js 16 App Router route served at `/` a
 
 ## Verification
 
-- `bun run lint` (eslint + eslint-config-next) — must be clean; CI (`.github/workflows/ci.yml`) enforces lint (`Lint (landing)`), `bun run typecheck` (`Typecheck (landing)`), `bun test src` (`Unit tests (landing)`, the 75 landing tests) and the changed-line coverage gate on push/PR.
+- `bun run lint` (eslint + eslint-config-next) — must be clean; CI (`.github/workflows/ci.yml`) enforces lint (`Lint (landing)`), `bun run typecheck` (`Typecheck (landing)`), `bun test src` (`Unit tests (landing)`, the 79 landing tests) and the changed-line coverage gate on push/PR.
 - `bun run build` — exit 0; `/` must prerender, and the standalone server must answer 200 on `/` (CI's `Production build (landing)` job does exactly this smoke on a scratch port).
 - The e2e lane is landing-scoped: `e2e/a11y.spec.ts` (axe-core WCAG 2.0/2.1 A+AA, two motion passes) + `e2e/landing-budget.spec.ts` — 3 tests, run by CI's `E2E + a11y (landing)` job.
 - Landing work additionally requires a visual pass against a production build, a reduced-motion pass, and the palette gates — see `src/components/landing/AGENTS.md` (Verification) and `scripts/AGENTS.md`.

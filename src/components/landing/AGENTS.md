@@ -3,15 +3,16 @@
 ## Purpose
 
 The marketing landing page served at `/` and auto-deployed to Vercel by a push to
-`main`. Ten self-contained bands plus the shared primitives they are built
+`main`. Nine self-contained bands plus the shared primitives they are built
 from: a hand-drawn 28-form "Unown script", the Pokédex-derived lexicon each
-form decodes, the capability dex that catalogs the feature creatures, an
-accessible terminal session replay, the shipping rail that
-renders `CHANGELOG.md`, and the effects layer that owns scroll reveals, the
-letter-rain and the Konami easter egg. Three of those bands carry data
-derived from repository artifacts instead of authored here — the rail, the
-benchmark figures and the engine's job cadence — and the proof band is a
-single tabbed section hosting three panes (benchmarks, integrity, models).
+form decodes, the capability dex that catalogs the ten feature creatures AND
+the filmed surfaces around them (one numbered spine № 001-020, each entry with
+its capture or its honest empty stage), an accessible terminal session replay,
+the shipping rail that renders `CHANGELOG.md`, and the effects layer that owns
+scroll reveals, the letter-rain and the Konami easter egg. Three of those bands
+carry data derived from repository artifacts instead of authored here — the
+rail, the benchmark figures and the engine's job cadence — and the proof band
+is a single tabbed section hosting three panes (benchmarks, integrity, models).
 The generators and the gates are what make "every number on this page is
 checkable" a build result rather than a caption; the contracts live under
 Local Contracts.
@@ -24,7 +25,11 @@ generated number, gated literal and receipt link survived the merge — that
 constraint is what the whole redesign was solved under. The same day's
 capability-dex round (Part 15) then added the ninth band — and paid for it
 before building it, so the nine-band page measured 12.0vh / ~2,490 words:
-half a viewport shorter than the eight-band page it replaced.
+half a viewport shorter than the eight-band page it replaced. The 2026-10-23
+round folded the feature-capture carousel (band five) back INTO that dex, so
+the catalog and its footage are one instrument: nine bands, 12.9vh, 3,016
+words, and the combined dex-plus-capture content went from 1,872px to 1,731px
+while the spine doubled from ten entries to twenty.
 
 ## Ownership
 
@@ -195,16 +200,17 @@ half a viewport shorter than the eight-band page it replaced.
     because it is the section making a Pokémon claim. `faq.tsx` answers the
     question in one sentence and points at the footer;
   - **"no font file, no image sprite"** (`alphabet.tsx` only);
-  - **the capability descriptions** (`dex-data.ts` — one entry per creature,
-    receipts-linked; `hero.tsx`'s cli expander names the session tools and
+  - **the capability descriptions** (`dex-data.ts` — one entry per catalogued
+    capability, receipts-linked, and the capture or the empty stage beside it;
+    `hero.tsx`'s cli expander names the session tools and
     points at `#dex`, it does not describe them — the descriptions moved
     here from the expander's prose and the retired loop bento, 2026-10-20);
   - **the TUI addon framework's copy** (`showcase.tsx`'s addons strip, data in
     `addons-data.ts` — the three pitches, the `addons.json` config surface and
     the `/addons` configurator; the key count is derived from `ADDON_KEYS`,
     and `__tests__/addons.test.tsx` re-reads `addons/config.ts` to fail the
-    run when the list drifts, so the figure cannot rot. The dex owns the ten
-    creatures' capabilities, the strip owns the addon framework's, and
+    run when the list drifts, so the figure cannot rot. The dex owns the
+    catalogued capabilities, the strip owns the addon framework's, and
     neither restates the other);
   - **what mission control shows** (`showcase.tsx`'s `SCREENS` — twelve
     surfaces: the eleven `unown dashboard` screens plus the embedded
@@ -219,11 +225,15 @@ half a viewport shorter than the eight-band page it replaced.
     collapsed expanders — the `COMMANDS` list, the `--goal` evidence contract,
     and the session-tools paragraph naming the tools and the slash
     commands) — no other band lists commands; the one exception is the
-    split-view display commands, which are `feature-carousel.tsx`'s own
-    surface (the hero keeps the `unown` CLI, the features band keeps the
+    split-view display commands, which are `dex.tsx`'s own
+    surface (the hero keeps the `unown` CLI, the capability dex keeps the
     `/split*` family in its collapsed expander — the split-view band became
-    the carousel 2026-10-22 and the gate's `PAGES.map` moved with it — and
-    `landing_claims.mjs` gates both against their sources); the
+    the carousel 2026-10-22 and the carousel merged into the dex 2026-10-23,
+    and the gate's `PAGES.map` moved with it both times — and
+    `landing_claims.mjs` gates both against their sources). `parseCommands`
+    reads the FIRST `const COMMANDS` in the file it is pointed at, so
+    `dex.tsx` carries exactly one: the `/split*` table. The catalog above it
+    is `DEX`, never a second `COMMANDS`); the
     `unown automations create` line carries the read-only-by-default claim,
     checkable against `docs/usage.md#automations-unown-automations`;
   - **the project-config trust gate** (`integrity.tsx`, the cloned-configs
@@ -395,18 +405,18 @@ parallel ones.
   and `toneAttr()`. `[data-tone="…"]` on a furniture element still overrides
   just that element's `--tone-fill` / `--tone-rim`.
   - **Allocation is a rule, not taste:** `psychic` is reserved for the two
-    bands about Unown itself (hero, alphabet); the other eight walk the four
+    bands about Unown itself (hero, alphabet); the other seven walk the four
     Gen 3 hues so no two adjacent bands share one, and "which hue does this
-    get" stays answerable without opening the file. The ten-band walk
-    (2026-10-20, pinned by the composition test): psychic (hero) → leaf
-    (loop) → magma (dex — the capability catalog; magma is the Gen-3 red
-    the actual dex device is, and showcase/gold keeps it clear of proof's
-    own magma) → gold (showcase) → aqua (features — the feature carousel;
-    the split-view band took this hue before it became the carousel, and the
-    requirement did not change: a hue clear of showcase's gold and proof's
-    magma) → magma
+    get" stays answerable without opening the file. The nine-band walk
+    (re-walked 2026-10-23 when the capture carousel folded into the dex,
+    pinned by the composition test): psychic (hero) → leaf
+    (loop) → magma (dex — the capability catalog AND its captures; magma is
+    the Gen-3 red the actual dex device is, and showcase/gold keeps it clear
+    of proof's own magma) → gold (showcase) → magma
     (proof) → psychic (alphabet — the reserved hue interrupts the cycle
     without disturbing it) → gold (faq) → aqua (changelog) → leaf (finale).
+    The aqua that band five carried is gone from the top-level walk; `aqua`
+    still lives inside the proof band's models pane and the changelog.
     The proof band's three panes carry
     their own `data-hue` wrappers inside the magma section (leaf / magma /
     aqua), which keeps each pane's accents on its historical hue without
@@ -529,16 +539,17 @@ parallel ones.
     (defining features of ONE named character), not by genre resemblance —
     VLMs over-trigger on chibi creatures and flip between rounds.
   - **Placement: the capability dex (`dex.tsx` + `dex-data.ts`) is the ONE
-    canonical home — since 2026-10-20, all ten creatures and the capability
-    copy live there.** The dex is band #3 (magma), an FRLG-style two-pane:
-    a searchable numbered list (fuse.js drives the search) and a detail
-    pane that mounts ALL ten entries with the inactive ones `hidden` (the
-    proof band's pane contract — crawlers and gates read every entry), each
-    with its specimen at 3×, its game-voice entry on the gb-box, the moved
-    capability copy under "in practice", the skeptic pain as a weakness
-    row, receipt links, and an original synthesized cry (deterministic
-    square-wave motif via Web Audio — nothing sampled, plays only on
-    explicit click, inert where AudioContext does not exist). The retired
+    canonical home — all ten creatures, the capability copy AND every feature
+    capture live there.** The dex is band #3 (magma), an FRLG-style two-pane:
+    a searchable numbered list on ONE spine (fuse.js drives the search) and a
+    detail pane that mounts ALL twenty entries with the inactive ones `hidden`
+    (the proof band's pane contract — crawlers and gates read every entry),
+    each with its capture or its empty stage, and — for a form — its specimen
+    at 3×, its game-voice entry on the gb-box, the moved capability copy under
+    "in practice", the skeptic pain as a weakness row, receipt links, and an
+    original synthesized cry (deterministic square-wave motif via Web Audio —
+    nothing sampled, plays only on explicit click, inert where AudioContext
+    does not exist). The retired
     placements (the hero's party strip, 2026-10-19→20; the loop bento's
     tile badges) stay retired — `creature.test.tsx` pins that NO creature
     renders outside the dex, so re-adding one elsewhere is a regression,
@@ -546,6 +557,48 @@ parallel ones.
     benchmark table would be a costume"). The hero's cli expander names
     the session tools and links `#dex`; it does not describe them
     (`dex-data.ts` owns the descriptions — see the canonical-homes list).
+  - **The spine is two kinds, and the difference is load-bearing.** № 001-010
+    are `form` entries: a drawn creature, a `category`, a `type` (session or
+    engine), game-voice `entry`, `weakness` and `habitat`. № 011-020 are
+    `behavior` entries: a filmed surface that belongs to no single form, so it
+    carries a one-line `summary`, its practice lines and its receipts — and NO
+    specimen, NO flavor and NO weakness row. `dex.test.tsx` pins that split
+    (a behavior pane mounts no creature img and no blockquote). Lore therefore
+    stays where the lore rule says it stays, and `FORMS_BY_ID` — not `DEX` —
+    is the sprite lookup, so a behavior id can never borrow a specimen.
+  - **The capture stage is the band's own contract, inherited from the
+    carousel it replaced.** The media is `public/landing/tui/`'s audited set
+    verbatim (`README.md` names the lanes; the workflow contract is
+    `docs/tui-capture-workflow.md`) and nothing is fabricated for this band:
+    an entry the harness has not turned through holds `{ kind: "pending" }`
+    and renders the same aspect box with a `no capture yet` label, so the
+    stage's height is CONSTANT and the band's measured height does not move
+    with the cursor. Every reel mounts and the inactive ones hide, so the SSR
+    DOM names all 9 movies and the 1 still. Playback is an effect decision,
+    never an `autoPlay` attribute (muted + loop started after hydration, when
+    reduced motion is known); under `prefers-reduced-motion` the stage keeps
+    its poster and the explicit button does the starting; nothing
+    auto-advances — the reader is the rotor. `loading="lazy"` belongs to the
+    still `<img>` only: on a `<video>` it delays the poster too. An entry with
+    two reels (№ 003 Task) gets a reel picker BELOW the stage, on the panel
+    surface, because the terminal bar is an accent fill and a `text-dim`
+    control on it is a low-contrast pairing.
+  - **Every figure the band prints is derived.** `TALLY` (total, forms,
+    behaviors, videos, stills, filmed, pending) reduces over `DEX`, and the
+    lead, the legend and the provenance line all read from it — so the
+    "9 of 20 carry a capture" sentence cannot rot while a capture's kind stays
+    where the data puts it. The band opens on `DEFAULT_INDEX` (the first entry
+    with footage) rather than № 001, so a reader who does nothing sees a
+    capture instead of an empty stage; that is derived too, never a typed
+    index. The harness-provenance sentence is stated ONCE, in the legend: it
+    used to repeat inside every empty stage, which cost ~35 words per pending
+    entry and is exactly the restatement the budget rule forbids.
+  - **Exactly two live regions**: the search tally and the selection readout
+    (`№ 003 — Task · reel 1/2 · subagent · playing`, which says "poster" under
+    reduced motion and "no capture yet" for a gap). The per-pane name is not
+    live — twenty mounted panes each shouting is announcement spam, and the
+    roving-tabindex option already carries № + name + filmed/pending in its
+    accessible name.
   - **Accessibility:** a creature is decoration beside its text label —
     `alt=""` + `aria-hidden` (WAI decorative-image rule); the `label` prop
     exists for the day one is the sole content of a meaningful control.
@@ -568,17 +621,19 @@ parallel ones.
   sits near 1:2 lore:tech, but that number hides two different problems, and
   they need opposite fixes:
   1. **A long dry run.** Lore is carried by the capability dex (position 3 —
-    the game-voice entries and categories), `alphabet` (position 7, the wall
-    + the Z highlight) with a pinch in the hero's seal captions. Rule:
-    **no more than three consecutive bands at zero.** The ten-band page
-    meets it exactly: loop (2) runs zero alone, ended by the dex;
-    showcase → features → proof (4-6) is three, ended by alphabet; faq →
-    changelog → finale (8-10) is three, ended by the footer. (The dex
+    the game-voice entries and categories of its ten forms), `alphabet`
+    (position 6, the wall + the Z highlight) with a pinch in the hero's seal
+    captions. Rule:
+    **no more than three consecutive bands at zero.** The nine-band page
+    meets it with room: loop (2) runs zero alone, ended by the dex;
+    showcase → proof (4-5) is two, ended by alphabet; faq →
+    changelog → finale (7-9) is three, ended by the footer. (The dex
     joining the page in 2026-10-20 *broke up* the old loop → showcase →
-    proof run of three; the split-view band joining between showcase and
-    proof — the slot the feature carousel holds now — re-lengthened that
-    run to three, which is the cap, not a breach. The carousel kept it
-    there: its captures are the proof zone's register, lore stays at zero.) If a
+    proof run of three; the band that later became the feature carousel
+    re-lengthened it to three, and the 2026-10-23 merge shortened it back to
+    two by folding the captures into the dex. The captures stay at zero lore:
+    they are the proof zone's register, and a behavior entry deliberately
+    carries no game-voice flavor.) If a
     band ever joins or leaves the page, re-check both runs, not just the
     one it touches.
   2. **A repeated punchline register, which is what actually reads as boring.**
@@ -613,13 +668,22 @@ parallel ones.
      argument is that its numbers are checkable — animate the container, never
      the measurement.
 - **The scroll budget is a contract, enforced by tooling.** The page must stay
-  at **≤ 13 viewports and ≤ 3,200 words at 1440×900**, measured by
+  at **≤ 13 viewports and ≤ 3,200 words at 1440×900**, and no top-level band
+  may exceed 3 viewports, measured by
   `node scripts/landing_audit.mjs` (add `--budget` to fail the run on a
-  breach; it is a CI step in the landing job). The 2026-10-20 baseline
-  after the dex round: 9 bands, 12.0vh, ~2,490 words — the dex round is
+  breach). The 2026-10-20 baseline after the dex round: 9 bands, 12.0vh,
+  ~2,490 words — the dex round is
   the worked example of the rule below: the ninth band was paid for BEFORE
   it was built (party strip, bento and DexCard retired; copy moved, not
   copied), so the page got a new band and half a viewport SHORTER. The
+  2026-10-23 merge is the second worked example: absorbing the capture
+  carousel left 9 bands, 12.9vh and 3,016 words (from 10 bands, 13.0vh and
+  3,014) while the catalog doubled to twenty entries and grew a media stage —
+  paid for by deleting one section head, one lead, one controls row and one
+  provenance line, by moving the carousel's writeups into the entries they
+  belonged to instead of restating them, and by collapsing a paragraph that
+  repeated inside every empty stage into one legend sentence. The band that
+  carries it measures 1.92vh, against a 3vh cap. The
   budget exists because the page once grew
   to 21.5 viewports and 5,488 words — fourteen sections whose back half was
   nearly unread real estate (research: ~57% of attention above the fold,
@@ -643,24 +707,6 @@ parallel ones.
   `landing_benchmarks.mjs --check` contract, and lets in-pane `whileInView`
   reveals re-trigger when a pane is shown. Do not switch to unmounting
   panes without a plan for the generated numbers.
-- **The features carousel is the split-view band continued, and the capture
-  rules carry over.** `feature-carousel.tsx` took band five's slot and its
-  aqua on 2026-10-22: fifteen slides — nine videos, split view's stills,
-  five empty slots — all mounted with the inactive ones `hidden` (the pane
-  contract above). No media is fabricated: the videos and posters are the
-  TUI-capture lane's audited set verbatim (`public/landing/tui/README.md`;
-  workflow contract in `docs/tui-capture-workflow.md`), a placeholder stays
-  empty until that lane turns through the feature, and slide writeups
-  document the capture in front of the viewer — they point at the dex, the
-  hero or the docs for any claim those bands own rather than restating it.
-  The media count in the lead is derived from the `SLIDES` data, never a
-  typed figure. Playback is an effect decision, never an `autoPlay`
-  attribute: the active video starts muted + looping after hydration so
-  reduced motion is known before anything plays, under
-  `prefers-reduced-motion` the stage shows the poster and the explicit play
-  button does the starting, and slides never auto-advance. The `/split*`
-  expander keeps this band as the display commands' one home (gated by
-  `scripts/landing_claims.mjs`, whose `PAGES` map names this file).
 - **Install first (2026-10-19 rework; OS tabs the same day; quickstart folded
   in 2026-10-20; installer default + binary lane 2026-10-21; binary became the
   default 2026-10-22): the hero carries one command per OS tab, and the
@@ -776,11 +822,15 @@ parallel ones.
 
 - `bunx eslint src --quiet` — clean.
 - **The scroll budget gate (2026-10-20):** `node scripts/landing_audit.mjs
-  --budget` (root `bun run audit:landing` prints the table; CI's landing job
-  runs the `--budget` form) loads the page at 1440×900, neutralises reveal
+  --budget` (root `bun run audit:landing` prints the table) loads the page at
+  1440×900, neutralises reveal
   motion, and fails the run when the document exceeds **13 viewports**,
   **3,200 words**, or when a top-level band exceeds 3 viewports on its own.
-  Run the plain form whenever you add a section or expand copy — it prints
+  The same three budgets are what CI enforces, but through the Playwright spec
+  `e2e/landing-budget.spec.ts` (the `e2e` job's `bunx playwright test`) —
+  `landing_audit.mjs` itself is a local/browser-free-of-that-kind gate and is
+  NOT a CI step. Run the plain form whenever you add a section or expand copy —
+  it prints
   per-band height/words/paragraph counts, which is how the 14-section bloat
   was found and how regressions get caught before review.
 - **The VLM design-review lane (optional, needs the bridge up):** `node

@@ -195,7 +195,7 @@ suite's path-semantics differ per OS and the differences are load-bearing
 
 | Surface | What exists | Measured | Gap |
 |---|---|---|---|
-| `src/` (the landing page only, since D7) | `bun test src` with happy-dom + RTL | 66 tests / 10 files, 0 fail `[V: 2026-10-21]`. History: this tree was the web dashboard + landing until D7 retired the web dashboard — it peaked at 355 tests / 31 files `[V: 2026-10-21]`; the dashboard half left with the web dashboard, and its replacement suites (TUI render/store/auth, 23 tests) live in the engine's own tree (`pi-repo/packages/self-learning/test/dashboard-*.test.ts`) and run in the 3-OS `build-test` matrix | E2E + a11y shipped and landing-scoped (§6 gate 16); still open: visual regression + landing behavioural tests; the changed-line coverage gate applies with an EMPTY exemption list (`scripts/coverage-exempt.txt` — the `agent-types.ts` entry left with the file) |
+| `src/` (the landing page only, since D7) | `bun test src` with happy-dom + RTL | 79 tests / 11 files, 0 fail `[V: 2026-10-23]`. History: this tree was the web dashboard + landing until D7 retired the web dashboard — it peaked at 355 tests / 31 files `[V: 2026-10-21]`; the dashboard half left with the web dashboard, and its replacement suites (TUI render/store/auth, 23 tests) live in the engine's own tree (`pi-repo/packages/self-learning/test/dashboard-*.test.ts`) and run in the 3-OS `build-test` matrix. The 2026-10-23 dex/capture merge folded `feature-carousel.test.tsx` into `dex.test.tsx`, which is why the file count moved with it | E2E + a11y shipped and landing-scoped (§6 gate 16); still open: visual regression + landing behavioural tests; the changed-line coverage gate applies with an EMPTY exemption list (`scripts/coverage-exempt.txt` — the `agent-types.ts` entry left with the file) |
 | `pi-repo/.../self-learning` (engine) | `bun test test/` unit + guard + canary + budget suites; `test/cli/golden.test.ts`; `test/termhooks.adversarial.test.ts`; `test/integration/`; new: `tools.test.ts`, seatbelt and Windows-hook tests (M2/M3) | pre-fix `888c8fa`: 603 pass / 35 skip / 64 fail of 702; post-fix `ae7b01b` (three-OS portability): **600 pass / 79 skip / 25 fail of 704** across 20 files `[V: 2026-10-18, Windows, bun 1.4.2 AND pinned 1.4.3 - not a bun-version delta]`; ubuntu leg green on both runs (733/37/0 at run 39071373372) | the 25 residuals (§7.2): canary suite 6, CLI golden 16, path tests 3; no fault injection, no load test, no coverage measurement, no property fuzzing; live suites are env-gated and therefore never run in CI |
 | `mini-services/llm-bridge` | `bun test pure.test.ts` (pure routing/thinking/retry/backoff/SSE math) + env-gated VLM smoke | 95 tests, 0 fail `[V: 2026-10-18, Windows]` | No load/chaos, no cancellation test, no contract test against a real OpenAI client; in CI since round three (§6 gate 11, the dedicated `bridge` job) |
 | `bin/unown` (CLI + TUI) | `test/cli/golden.test.ts` (setup/doctor/memory/plan/headless/env-knobs/parallel) | covered in the engine suite above | The golden suite still fails 16 cases on this Windows tree after `ae7b01b` (subprocess-spawn families, §7.2); no TUI interaction test, no `unown setup` idempotency-under-failure test |
@@ -497,7 +497,7 @@ Notes on the two decisions that changed from the original proposal:
 |---|---|---|---|
 | 1 | `bunx eslint src` | SHIPPED | |
 | 2 | `bun run typecheck` (`tsc --noEmit`) | SHIPPED | no `db:generate` prefix since prisma left with the web dashboard (D7) |
-| 3 | `bun test src` | SHIPPED | 66 tests (landing only since D7; the CI job is named `Unit tests (landing)`) |
+| 3 | `bun test src` | SHIPPED | 79 tests (landing only since D7; the CI job is named `Unit tests (landing)`) |
 | 4 | `bash -n scripts/*.sh` | SHIPPED | per-file, fails with `::error` annotations |
 | 5 | `bun scripts/check_theme.mjs` | SHIPPED | reads a `.ts` file from pi-repo, so it needs bun |
 | 6 | `bun scripts/gba_palette_check.mjs` | SHIPPED | browser-free, so it is a real gate not a caption |
@@ -543,7 +543,7 @@ preserved in the margin notes where they were cited from history.
   `width(0) and height(0)` warnings (radix `Presence`/`ForwardRef` animation
   ticks and recharts `ResponsiveContainer` measurements on chained rAF
   channels in happy-dom, after the last awaited assertion). Both sources left
-  with the web dashboard: `[V: 2026-10-21]` the landing-only suite (66 tests)
+  with the web dashboard: `[V: 2026-10-23]` the landing-only suite (79 tests)
   prints zero warnings of either signature. The investigation record survives
   above all because its method (a global act-flush `afterEach` in the `bunfig`
   preload AND a generous in-file flush both left the count unchanged — an
