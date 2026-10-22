@@ -142,7 +142,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "the windows CI leg is green-shaped again (11 pre-existing failures triaged to root causes)",
+            "title": "the windows CI leg is green-shaped again (11 pre-existing failures triaged to root causes, across two rounds)",
             "behavior": false
           }
         ]

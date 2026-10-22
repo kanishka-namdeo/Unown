@@ -14,10 +14,20 @@
  * and node ≥22.5 (node:sqlite driver) — the shim picks at load time.
  */
 import { describe, expect, test } from "bun:test";
-// 2026-10-22 windows fix: recursive rmSync cleanups now retry (maxRetries:
-// 10, retryDelay: 100ms) — right after db.close()/winner.kill("SIGKILL") the OS
-// can still hold handles (EBUSY), which failed the windows CI leg while the
-// assertions themselves were green.
+
+/** Best-effort recursive cleanup (2026-10-22 round 2): Windows can hold a
+ *  handle on the temp dir briefly after db.close() — the rmSync retry
+ *  options did NOT clear it on the 2026-10-22 windows leg (bun's rmSync retry
+ *  support is unverified; 1s of retries may simply not be enough), and the
+ *  leftover dir sits in the OS tmpdir costing nothing. Never fail green
+ *  assertions on cleanup noise. */
+const rmBestEffort = (p: string): void => {
+        try {
+                rmSync(p, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+        } catch {
+                /* EBUSY past retries — the OS tmpdir owns it now */
+        }
+};
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -37,7 +47,7 @@ describe("better-sqlite3 shim (the mem0 driver under Bun)", () => {
                 } finally {
                         db.close();
                         db.close(); // double close must not throw (mem0 calls close defensively)
-                        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+                        rmBestEffort(dir);
                 }
         });
 
@@ -70,7 +80,7 @@ describe("better-sqlite3 shim (the mem0 driver under Bun)", () => {
                         expect(r.changes).toBe(1);
                 } finally {
                         db.close();
-                        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+                        rmBestEffort(dir);
                 }
         });
 
@@ -95,7 +105,7 @@ describe("better-sqlite3 shim (the mem0 driver under Bun)", () => {
                         expect(db.prepare("SELECT COUNT(*) AS c FROM t").get()!.c).toBe(2);
                 } finally {
                         db.close();
-                        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+                        rmBestEffort(dir);
                 }
         });
 
@@ -118,7 +128,7 @@ describe("better-sqlite3 shim (the mem0 driver under Bun)", () => {
                         expect(Array.from(back)).toEqual([0.25, -0.5, 0.75, 1.0]);
                 } finally {
                         db.close();
-                        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+                        rmBestEffort(dir);
                 }
         });
 
@@ -133,7 +143,7 @@ describe("better-sqlite3 shim (the mem0 driver under Bun)", () => {
                         db.exec("SELECT 1");
                 } finally {
                         db.close();
-                        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+                        rmBestEffort(dir);
                 }
         });
 });

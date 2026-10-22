@@ -227,7 +227,15 @@ describe("checkCommandArgv", () => {
                 const argv = checkCommandArgv("npm run lint", "win32", "C:\\Windows\\system32\\cmd.exe");
                 expect(argv.file).toBe("C:\\Windows\\system32\\cmd.exe");
                 expect(argv.args).toEqual(["/d", "/s", "/c", "npm run lint"]);
-                expect(checkCommandArgv("x", "win32", undefined).file).toBe("cmd.exe");
+                // The FALLBACK is probed with "" (falsy): passing undefined would
+                // trigger the parameter DEFAULT (process.env.ComSpec — set on every
+                // real windows host, so the old `undefined` probe only ever tested
+                // the fallback on linux and went red the first time the windows leg
+                // actually ran, 2026-10-22).
+                expect(checkCommandArgv("x", "win32", "").file).toBe("cmd.exe");
+                // The env default itself: resolves ComSpec on windows, the fallback
+                // elsewhere — both spell cmd.
+                expect(checkCommandArgv("x", "win32").file?.toLowerCase()).toContain("cmd.exe");
         });
 });
 
