@@ -37,6 +37,7 @@ import { cycleTriggerGuard, getImprovement, listCycles, listImprovements, runCyc
 import { bridgeHealth, bridgeLog } from "./llm.ts";
 import { history, projectTiers, resolveMemory, rollback, seedMemoryIfEmpty, snapshot, type Tier } from "./memory.ts";
 import {
+        ENGINE_SCOPE,
         memoryPlatformStatus,
         projectMemories,
         searchMemories,
@@ -525,7 +526,12 @@ if (method === "GET" && path === "/api/memory/projects") {
                         const agentId = req.query.get("agent_id") || undefined;
                         const userId = req.query.get("user_id") || undefined;
                         const limit = Math.min(Number(req.query.get("limit") ?? 20) || 20, 100);
-                        const scope: MemoryScope = { agentId, userId };
+                        // Unscoped = the ENGINE scope (the learning core's own memories —
+                        // the same scope dreams and harness ships write). mem0 requires at
+                        // least one filter key, so an empty scope is an upstream error,
+                        // never a useful default.
+                        const scope: MemoryScope =
+                                agentId || userId ? { agentId, userId } : ENGINE_SCOPE;
                         try {
                                 const memories = q
                                         ? await searchMemories(q, scope, limit)

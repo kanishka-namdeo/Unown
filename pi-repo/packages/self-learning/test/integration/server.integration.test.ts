@@ -647,6 +647,29 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         });
 
         // -------------------------------------------------------------------------
+        // 9b. Memory platform over REAL HTTP — the unscoped-list regression
+        // -------------------------------------------------------------------------
+        // Live validation caught this one: a bare GET /api/memories built an
+        // EMPTY scope (no agent_id, no user_id) and mem0 rejects a filter set
+        // with no recognized key — the route 503'd on its own default view.
+        // The contract: unscoped = the ENGINE scope (what dreams and harness
+        // ships write); an explicit agent_id/user_id narrows it.
+        // -------------------------------------------------------------------------
+        test("GET /api/memories unscoped defaults to the engine scope, not a 503", async () => {
+                const res = await authFetch(api("/api/memories"));
+                expect(res.status).toBe(200);
+                const body = (await res.json()) as Record<string, any>;
+                expect(Array.isArray(body.memories)).toBe(true);
+                expect(body.scope).toEqual({ agentId: "unown-engine" });
+                expect(body.platform).toBeDefined();
+                // A scoped call narrows instead of erroring.
+                const scoped = await authFetch(api("/api/memories?agent_id=unown-engine"));
+                expect(scoped.status).toBe(200);
+                const scopedBody = (await scoped.json()) as Record<string, any>;
+                expect(scopedBody.scope).toEqual({ agentId: "unown-engine" });
+        });
+
+        // -------------------------------------------------------------------------
         // 10. Automations over REAL HTTP — the PATCH body-gate regression
         // -------------------------------------------------------------------------
         // The fetch layer parsed JSON bodies for POST only, so every PATCH
