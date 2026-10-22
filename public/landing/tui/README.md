@@ -42,7 +42,8 @@ this note is the honest provenance: its stills were captured with a PTY driver
 and a terminal-emulator render of real unown sessions at 128x36 (2026-10-20,
 same live stack), not the ttyd pipeline in `scripts/tui-capture/` — and it
 ships stills only (no videos), so the pane-truth + pixel + VLM audit has not
-been applied to it. Consumed by the landing page's feature carousel
-(`src/components/landing/feature-carousel.tsx`) as the split-view slide's
-screen — the video slides' posters come from each scenario's own audited
-stills above.
+been applied to it. Consumed by the landing page's capability dex
+(`src/components/landing/dex.tsx` + `dex-data.ts`) as the screen of its
+№ 017 "Split view" entry — the movie entries' posters come from each
+scenario's own audited stills above. (Until 2026-10-23 the consumer was the
+standalone feature-carousel band; the captures merged into the dex with it.)

@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 209;
+export const CHANGELOG_TOTAL_ENTRIES = 210;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 82,
-  "Changed": 14,
+  "Changed": 15,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 84,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 40,
+    "total": 41,
     "counts": {
       "Added": 15,
-      "Changed": 4,
+      "Changed": 5,
       "Deprecated": 0,
       "Removed": 1,
       "Fixed": 14,
@@ -118,6 +118,31 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "UNOWN_SANDBOX_REQUIRED — the fail-closed sandbox knob",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "the capability dex and the feature carousel are one band",
+            "behavior": false
+          },
+          {
+            "title": "the standalone CLI binary is now the default install; --source is the full stack",
+            "behavior": false
+          },
+          {
+            "title": "the invisible-Unicode lint discovers .unown/ at ANY depth; the doctor scans the memory tier; CODEOWNERS covers…",
+            "behavior": false
+          },
+          {
+            "title": "read-only git probes run with the full GitSpawn hardening set; git add/commit keep user hooks but close the…",
+            "behavior": false
+          },
+          {
+            "title": "the split-view band is now the feature carousel",
             "behavior": false
           }
         ]
@@ -209,27 +234,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": ".unown/memory/project.md and its provenance sidecar are not writable in-session; a preserved Manual-notes lane…",
             "behavior": true
-          }
-        ]
-      },
-      {
-        "bucket": "Changed",
-        "items": [
-          {
-            "title": "the standalone CLI binary is now the default install; --source is the full stack",
-            "behavior": false
-          },
-          {
-            "title": "the invisible-Unicode lint discovers .unown/ at ANY depth; the doctor scans the memory tier; CODEOWNERS covers…",
-            "behavior": false
-          },
-          {
-            "title": "read-only git probes run with the full GitSpawn hardening set; git add/commit keep user hooks but close the…",
-            "behavior": false
-          },
-          {
-            "title": "the split-view band is now the feature carousel",
-            "behavior": false
           }
         ]
       },

@@ -17,7 +17,7 @@ import { cleanup, render } from "@testing-library/react";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { CREATURE_IDS, Creature } from "../creature";
-import { DEX } from "../dex-data";
+import { DEX, FORMS_BY_ID } from "../dex-data";
 
 // The Hero's StarCount is an async server component; unauthenticated
 // api.github.com is rate-limited from a shared sandbox IP, and the fetch
@@ -87,11 +87,20 @@ describe("landing Creature", () => {
   });
 
   test("the dex data covers every creature exactly once, numbered 001-010", () => {
-    expect(DEX.length).toBe(CREATURE_IDS.length);
-    expect(new Set(DEX.map((e) => e.id))).toEqual(new Set(CREATURE_IDS));
-    expect(DEX.map((e) => e.no)).toEqual([
+    // № 001-010 are the drawn forms; № 011-020 are the filmed behaviors,
+    // which have no specimen — the forms must stay exactly the sprite set, or
+    // the bestiary grew a hole.
+    const forms = DEX.filter((e) => e.kind === "form");
+    expect(forms.length).toBe(CREATURE_IDS.length);
+    expect(FORMS_BY_ID.size).toBe(CREATURE_IDS.length);
+    expect(new Set(forms.map((e) => e.id))).toEqual(new Set(CREATURE_IDS));
+    expect(forms.map((e) => e.no)).toEqual([
       "001", "002", "003", "004", "005", "006", "007", "008", "009", "010",
     ]);
+    // A behavior id is never a creature id.
+    for (const e of DEX.filter((x) => x.kind === "behavior")) {
+      expect(CREATURE_IDS).not.toContain(e.id);
+    }
     // Every entry links at least one receipt — the catalog keeps the page's
     // every-number-checkable contract.
     for (const e of DEX) {
@@ -103,11 +112,12 @@ describe("landing Creature", () => {
     }
   });
 
-  test("the dex is the one home: all ten detail panes mount a creature, decorative beside the name", () => {
+  test("the dex is the one home: every form pane mounts a creature, decorative beside the name", () => {
     const { container } = render(<DexSection />);
     const imgs = creatureImgs(container);
-    // Ten entries, ten sprites — the hidden panes still mount theirs (the
-    // proof band's pane contract: crawlers and gates read every entry).
+    // Ten forms, ten sprites — the hidden panes still mount theirs (the
+    // proof band's pane contract: crawlers and gates read every entry), and
+    // the ten behaviors mount none.
     expect(imgs.length).toBe(10);
     for (const el of imgs) {
       expect(el.getAttribute("alt")).toBe("");
@@ -116,11 +126,12 @@ describe("landing Creature", () => {
       expect(el.className).toContain("creature");
       expect(el.className).toContain("h-48");
     }
-    // The visible pane is the first entry; its article is labeled by name.
+    // All twenty entries mount a pane; the visible one is the band's derived
+    // default — the first entry with footage — and its article is named.
     const articles = container.querySelectorAll("article[aria-label]");
-    expect(articles.length).toBe(10);
-    expect(articles[0].getAttribute("aria-label")).toContain("Websearch");
-    expect(articles[0].hasAttribute("hidden")).toBe(false);
+    expect(articles.length).toBe(DEX.length);
+    expect(articles[2].getAttribute("aria-label")).toContain("Task");
+    expect(articles[2].hasAttribute("hidden")).toBe(false);
   });
 
   test("no creature renders outside the dex — the hero party strip and the bento badges retired", () => {

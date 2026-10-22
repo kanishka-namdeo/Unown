@@ -341,7 +341,8 @@ export function Hero() {
                   <code className="font-mono text-dim">webfetch</code>,{" "}
                   <code className="font-mono text-dim">fetch_url</code> and{" "}
                   <code className="font-mono text-dim">lsp</code> — and any MCP server you
-                  configure joins it. Each one is catalogued, with its receipts, in{" "}
+                  configure joins it. Each one is catalogued, with its capture and its
+                  receipts, in{" "}
                   <a href="#dex" className="text-gold underline underline-offset-2">
                     the capability dex
                   </a>{" "}

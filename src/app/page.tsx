@@ -9,7 +9,6 @@ import {
 } from "@/components/landing/effects";
 import { DexSection } from "@/components/landing/dex";
 import { FaqSection } from "@/components/landing/faq";
-import { FeatureCarouselSection } from "@/components/landing/feature-carousel";
 import { FinaleSection } from "@/components/landing/finale";
 import { Hero } from "@/components/landing/hero";
 import { LoopSection } from "@/components/landing/loop";
@@ -22,7 +21,7 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  * itself in `src/components/landing/`, and the contracts for that folder live
  * in its own AGENTS.md.
  *
- * Ten bands. The page ran fourteen sections / 21.5 viewports / 5,488 words
+ * Nine bands. The page ran fourteen sections / 21.5 viewports / 5,488 words
  * (2026-10-20), and visitors scrolled past most of it (see
  * docs/landing-research.md: ~57% of attention lands above the fold, 74%
  * within two screenfuls). The redesign kept every checkable claim and cut the
@@ -33,22 +32,19 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *                                                     surface in collapsed expanders
  *   loop (origin + loop)                              how it learns: the three
  *                                                     artifacts and the two halves
- *   dex (the capability dex)                          what it can do: every feature
- *                                                     as a creature, searchable —
- *                                                     the one home for creature art
- *                                                     and capability copy since
- *                                                     the party strip and the
- *                                                     mechanisms bento moved in
+ *   dex (the capability dex)                          what it can do, and the proof
+ *                                                     it can: one numbered spine
+ *                                                     № 001-020 — the ten drawn
+ *                                                     forms, the ten filmed
+ *                                                     behaviors, each entry with
+ *                                                     its specimen, its capture or
+ *                                                     its honest empty stage, its
+ *                                                     weakness and its receipts. The
+ *                                                     one home for creature art,
+ *                                                     capability copy, the TUI
+ *                                                     captures and the `/split*`
+ *                                                     display-command table
  *   showcase (mission control)                        what the engine looks like
- *   features (the feature carousel)                   every feature's capture, in
- *                                                     motion — the fix loop, plan
- *                                                     mode, checkpoints, review,
- *                                                     subagents, the overlays, the
- *                                                     wiki, doctor, split view,
- *                                                     and the no-capture slots; the
- *                                                     split band's display-command
- *                                                     table keeps this band as its
- *                                                     home (collapsed)
  *   proof (benchmarks + integrity + models)           the receipts, one tabbed band
  *   alphabet (+ field notes)                          the identity: the wall, the
  *                                                     decode panel, the lexicon
@@ -61,7 +57,13 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  * the install IS the argument. The proof band's tabs keep all three panes
  * mounted (inactive ones `hidden`), so every generated number stays in the DOM
  * for crawlers and for the `landing_*.mjs` gates — the dex keeps the same
- * contract for its ten entries.
+ * contract for its twenty entries and their media.
+ *
+ * On 2026-10-23 the dex absorbed the feature-capture carousel (band five,
+ * `#features`): one subject, one instrument. The merge paid for itself before
+ * it landed — the carousel's writeups moved into the entries they belonged to
+ * instead of being restated, and the harness-provenance paragraph that used to
+ * repeat inside every empty stage is now said once for the whole band.
  *
  * `NAV_LINKS` in `shell.tsx` mirrors the top-level anchors. If you add a
  * section, add it there too or the page grows an orphan.
@@ -88,7 +90,6 @@ export default function LandingPage() {
             <LoopSection />
             <DexSection />
             <ShowcaseSection />
-            <FeatureCarouselSection />
             <ProofSection />
             <AlphabetSection />
             <FaqSection />

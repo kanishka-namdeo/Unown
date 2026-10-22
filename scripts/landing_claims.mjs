@@ -14,7 +14,7 @@
 //     not authored: engine-data.ts is this script's output, never hand-edited,
 //     and --check fails when the committed file no longer matches JOB_DEFS.
 //   - integrity.tsx's LOG rows, loop.tsx's BEATS bodies, hero.tsx's COMMANDS
-//     list and slash-command sentence, and feature-carousel.tsx's
+//     list and slash-command sentence, and dex.tsx's
 //     display-command table quote literals the engine writes. The gate
 //     re-reads both sides
 //     and fails on any quoted literal that no longer resolves in the source
@@ -61,14 +61,17 @@ const TARGET_REL = "src/components/landing/engine-data.ts";
 /** Page files the gate reads, keyed for the routes below. The commands and
  *  slash chips live in hero.tsx since the 2026-10-20 merge (the quickstart
  *  section folded into the hero's collapsed expanders); the split-view
- *  display commands live in feature-carousel.tsx, which owns that surface
- *  (the split-view band became the feature carousel 2026-10-22; the expander
- *  stayed in the band, so did the gate) — the hero keeps the `unown` CLI. */
+ *  display commands live in dex.tsx, which owns that surface
+ *  (the split-view band became the feature carousel 2026-10-22, and the
+ *  carousel merged into the capability dex 2026-10-23 — the expander stayed
+ *  with the band each time, so did the gate) — the hero keeps the `unown` CLI.
+ *  parseCommands reads the FIRST `const COMMANDS` in the file it is pointed
+ *  at, so dex.tsx carries exactly one: the /split* table, not the catalog. */
 const PAGES = {
   integrity: "src/components/landing/integrity.tsx",
   loop: "src/components/landing/loop.tsx",
   hero: "src/components/landing/hero.tsx",
-  splitview: "src/components/landing/feature-carousel.tsx",
+  splitview: "src/components/landing/dex.tsx",
 };
 
 /** Engine sources, by the name a FAIL line prints. */
@@ -342,7 +345,7 @@ function parseBeats(text, key) {
   return out;
 }
 
-/** COMMANDS rows (hero.tsx's CLI table, feature-carousel.tsx's display-command
+/** COMMANDS rows (hero.tsx's CLI table, dex.tsx's display-command
  *  table): the command string each row shows. `page` names the file in FAIL
  *  messages, so a failure blames the table that actually broke. */
 function parseCommands(text, page = PAGES.hero) {
@@ -362,7 +365,7 @@ function parseCommands(text, page = PAGES.hero) {
   return out;
 }
 
-/** feature-carousel.tsx COMMANDS rows (the split-view expander): the /split*
+/** dex.tsx COMMANDS rows (the split-view expander): the /split*
  *  display commands each row shows. */
 function parseSplitCommands(text) {
   return parseCommands(text, PAGES.splitview);
