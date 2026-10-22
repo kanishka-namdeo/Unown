@@ -121,13 +121,15 @@ describe("tierPath — composite tier keys sanitize to Windows-legal filenames",
                         expect(tierPath(t)).not.toContain("%");
                 }
         });
-        test("project:<slug> percent-encodes the colon — no illegal filename chars anywhere (the EINVAL crash)", () => {
+        test("project:<slug> percent-encodes the colon — the FILENAME carries no illegal char (the EINVAL crash)", () => {
                 const p = tierPath("project:it-api-1a2b3c" as Tier);
                 expect(p.endsWith("project%3Ait-api-1a2b3c.md")).toBe(true);
-                // every path segment is Windows-legal: none of < > : " / \ | ? *
-                for (const seg of p.split(/[\\/]/)) {
-                        expect(seg.match(/[<>:"\\|?*]/)).toBeNull();
-                }
+                // Only the FILENAME is ours to sanitize — the absolute prefix may
+                // legitimately carry a drive colon ("C:\") on win32, so assert on
+                // the basename: none of < > : " | ? * may appear in it.
+                const name = p.split(/[\\/]/).pop()!;
+                expect(name).toBe("project%3Ait-api-1a2b3c.md");
+                expect(name.match(/[<>:"|?*]/)).toBeNull();
         });
         test("collision-free: a literal 'project-foo' tier and 'project:foo' materialize to DIFFERENT files", () => {
                 expect(tierPath("project:foo" as Tier)).not.toBe(tierPath("project-foo" as Tier));
