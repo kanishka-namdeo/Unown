@@ -148,11 +148,11 @@ This package is Unowned (modified from upstream pi-mono); sibling packages (`ai`
   the same dir). Post-guard: the attacker's directive NEVER shipping is
   ASSERTED (deterministic guarantee); whether the dream LLM plants the
   poison pre-guard is recorded as measured (prompt-resistance, n=1).
-- `curl -s localhost:3030/api/overview` → up, provider `zai-bridge` with default model `kimi-k2.5`.
+- `curl -s -H "Authorization: Bearer $(cat data/self-learning/engine.token)" localhost:3030/api/overview` → `ok: true`, `.agent.provider` = `zai-bridge/kimi-k2.5`. The bearer token is REQUIRED on every `/api/*` route by default (`auth: {mode: token, bind: loopback}`) — a bare `curl` returns `{"error":"missing or invalid engine token"}`, which is an auth answer, not an engine outage. `UNOWN_ENGINE_AUTH=off` is the documented exemption.
 - `bin/unown doctor` from the repo root → all green (incl. "OS sandbox (bubblewrap)").
 - Sandbox suite (profile + engine) and the OS-sandbox profile contract are defined in `scripts/AGENTS.md`; both `bwrap_smoke.sh` (25 checks) and `verify_sandbox.mjs` (12 checks) must pass before committing sandbox changes or refreshing `native/bin/bwrap`.
-- A Learning Lab cycle passes end to end (sandboxed pi agent → bridge → model, with tool calls) and the router's autonomous runs pass; AutoDream produces a versioned memory update. Mint smoke: `curl -X POST localhost:3030/api/tasks/mint` → an authored task goes through self-check + validation and lands as minted (agent failed it) or discarded (agent solved it — the honest outcome); `GET /api/overview` `kpis.suite` reflects it.
-- Watch behavior live in the dashboard (:3000) — Learning Lab / Dreams / Router tabs.
+- A Learning Lab cycle passes end to end (sandboxed pi agent → bridge → model, with tool calls) and the router's autonomous runs pass; AutoDream produces a versioned memory update. Mint smoke: `curl -s -X POST -H "Authorization: Bearer $(cat data/self-learning/engine.token)" localhost:3030/api/tasks/mint` → an authored task goes through self-check + validation and lands as minted (agent failed it) or discarded (agent solved it — the honest outcome); `GET /api/overview` `kpis.suite` reflects it.
+- Watch behavior live in the TUI mission control — `unown dashboard` (or `/dashboard` inside a session): Learning Lab / Dreams / Router screens. The web dashboard on :3000 was retired in D7; `bun run dev` on that port now serves the landing page only.
 
 ## Child DOX Index
 
