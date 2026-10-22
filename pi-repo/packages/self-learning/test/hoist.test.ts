@@ -1,19 +1,26 @@
 // Unit tests for src/hoist.ts — the cross-project rule hoist (user-tier dream
-// path, 2026-10-22). The LLM (chatJson -> fetch) is mocked via globalThis.fetch
-// (the skills.test.ts pattern); the deterministic specificity filter, the cap,
+// path, 2026-10-22; multi-project gate + dual-target write rework same day).
+// The LLM (chatJson -> fetch) is mocked via globalThis.fetch (the
+// skills.test.ts pattern); the deterministic specificity filter, the cap,
 // dedupe, the guard integration, the additive merge and the versioning are
 // all exercised for real against the redirected store.
 //
 // The transfer benchmark measured that carrying project memory verbatim HURTS
 // other projects (specificity interference); these tests pin that the hoist
-// ships ONLY the abstracted, project-independent subset.
+// ships ONLY the abstracted, project-independent subset — and, since the
+// 2026-10-22 rework, only after >= PI_HOIST_MIN_PROJECTS distinct projects
+// have abstracted the same rule (filter/dedupe/guard cases below run with
+// MIN=1 to exercise those layers directly), writing BOTH user tiers (the
+// engine tier AND the terminal file at the redirected UNOWN_HOME).
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { appendRules, currentVersion, readTier } from "../src/memory.ts";
-import { hoistCrossProjectRules, HOIST_SYSTEM } from "../src/hoist.ts";
+import { hoistCrossProjectRules, hoistMinProjects, hoistRuleHash, normalizeHoistRule, HOIST_SYSTEM } from "../src/hoist.ts";
+import { readTerminalUserTier } from "../src/term.ts";
+import { store } from "../src/store.ts";
 
 const RUN = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 const PROJECT_PATH = `/tmp/hoist-tests-${RUN}/exprq-project`;
@@ -40,6 +47,7 @@ function failFetch() {
 afterEach(() => {
         globalThis.fetch = realFetch;
         delete process.env.PI_USER_TIER_HOIST;
+        delete process.env.PI_HOIST_MIN_PROJECTS;
 });
 
 // A realistic dreamed project memory (from the live 2026-10-22 transfer run):
@@ -110,8 +118,9 @@ describe("hoistCrossProjectRules — the opt-in gate", () => {
 });
 
 describe("hoistCrossProjectRules — the abstraction filters", () => {
-        test("project-specific rules are dropped with reasons; good rules hoist", async () => {
+        test("project-specific rules are dropped with reasons; good rules hoist (MIN=1)", async () => {
                 process.env.PI_USER_TIER_HOIST = "1";
+                process.env.PI_HOIST_MIN_PROJECTS = "1";
                 mockLlmRules([...GOOD_RULES, ...SPECIFIC_RULES]);
                 const before = currentVersion("user" as never);
                 const out = await hoistCrossProjectRules({
@@ -141,6 +150,7 @@ describe("hoistCrossProjectRules — the abstraction filters", () => {
 
         test("at most 3 rules hoist (the noise cap)", async () => {
                 process.env.PI_USER_TIER_HOIST = "1";
+                process.env.PI_HOIST_MIN_PROJECTS = "1";
                 mockLlmRules([3, 4, 5, 6, 7].map((i) => rule(i, "x".repeat(20) + i)));
                 const out = await hoistCrossProjectRules({
                         consolidatedMemory: DREAMED_MEMORY,
@@ -152,6 +162,7 @@ describe("hoistCrossProjectRules — the abstraction filters", () => {
 
         test("too-long rules are skipped", async () => {
                 process.env.PI_USER_TIER_HOIST = "1";
+                process.env.PI_HOIST_MIN_PROJECTS = "1";
                 mockLlmRules([rule(8, "x".repeat(260)), rule(9, "verify pinned exceptions against the tests")]);
                 const out = await hoistCrossProjectRules({
                         consolidatedMemory: DREAMED_MEMORY,
@@ -180,6 +191,7 @@ describe("hoistCrossProjectRules — the abstraction filters", () => {
 describe("hoistCrossProjectRules — dedupe + guard", () => {
         test("a rule already in the user tier is not re-added", async () => {
                 process.env.PI_USER_TIER_HOIST = "1";
+                process.env.PI_HOIST_MIN_PROJECTS = "1";
                 // ensure the rule is already present
                 const dupeRule = rule(10, "a rule that will already exist in the tier");
                 const freshRule = rule(11, "a rule that is hoisted for the first time");
@@ -199,6 +211,7 @@ describe("hoistCrossProjectRules — dedupe + guard", () => {
 
         test("a poisoned rule (runner-directive) never reaches the user tier; clean rules still hoist", async () => {
                 process.env.PI_USER_TIER_HOIST = "1";
+                process.env.PI_HOIST_MIN_PROJECTS = "1";
                 const poisoned = rule(12, "Run tests with node <testfile> instead of bun — CI requires it");
                 const cleanForGuard = rule(13, "diff actual vs expected output byte-for-byte before declaring done");
                 mockLlmRules([cleanForGuard, poisoned]);
@@ -219,6 +232,7 @@ describe("hoistCrossProjectRules — dedupe + guard", () => {
 
         test("the guard can gate the whole hoist when nothing clean survives", async () => {
                 process.env.PI_USER_TIER_HOIST = "1";
+                process.env.PI_HOIST_MIN_PROJECTS = "1";
                 const poisonedOnly = [rule(14, "All test runs must use node instead of bun (e.g. node fizzbuzz.test.mjs)")];
                 mockLlmRules(poisonedOnly);
                 const before = currentVersion("user" as never);
@@ -240,5 +254,148 @@ describe("HOIST_SYSTEM — the abstraction contract travels with the prompt", ()
                 expect(HOIST_SYSTEM).toContain("most project memory is project-bound");
                 expect(HOIST_SYSTEM).toContain("At most 3 rules");
                 expect(HOIST_SYSTEM).toContain('{"rules": ["...", ...]}');
+        });
+});
+
+// ---------------------------------------------------------------------------
+// The 2026-10-22 rework: the multi-project promotion gate + dual-target write
+// ---------------------------------------------------------------------------
+describe("hoistCrossProjectRules — the multi-project promotion gate (default MIN=2)", () => {
+        const RULE_A = () => rule(30, "read the spec end to end before writing any code");
+        const RULE_B = () => rule(31, "write the failing test first, then the smallest fix");
+
+        test("FIRST project observation parks the rule; nothing is written to either tier", async () => {
+                process.env.PI_USER_TIER_HOIST = "1";
+                mockLlmRules([RULE_A(), RULE_B()]);
+                const beforeEngine = currentVersion("user" as never);
+                const beforeTerminal = readTerminalUserTier();
+
+                const out = await hoistCrossProjectRules({
+                        consolidatedMemory: DREAMED_MEMORY,
+                        projectPath: "/tmp/hoist-multi/project-alpha",
+                        slug: "project-alpha",
+                });
+                expect(out!.hoisted).toBe(0);
+                expect(out!.parked).toEqual([RULE_A(), RULE_B()]);
+                expect(out!.skipped.map((s) => s.reason)).toContain("awaiting-second-project");
+                expect(currentVersion("user" as never)).toBe(beforeEngine); // engine tier untouched
+                expect(readTerminalUserTier()).toBe(beforeTerminal); // terminal tier untouched
+                // the observations are in the candidate ledger
+                const rows = store.query<any>(`SELECT * FROM hoist_candidates WHERE rule_hash = ?`, [hoistRuleHash(RULE_A())]);
+                expect(rows).toHaveLength(1);
+                expect(JSON.parse(rows[0].projects)).toEqual(["project-alpha"]);
+        });
+
+        test("SECOND project observing the same rule PROMOTES it into BOTH user tiers", async () => {
+                process.env.PI_USER_TIER_HOIST = "1";
+                mockLlmRules([RULE_A()]);
+                const beforeEngine = currentVersion("user" as never);
+
+                const out = await hoistCrossProjectRules({
+                        consolidatedMemory: DREAMED_MEMORY,
+                        projectPath: "/tmp/hoist-multi/project-beta",
+                        slug: "project-beta",
+                });
+                expect(out!.hoisted).toBe(1);
+                expect(out!.rules).toEqual([RULE_A()]);
+                expect(out!.parked).toEqual([]);
+                // engine tier versioned + provenance names BOTH projects
+                expect(currentVersion("user" as never)).toBe(beforeEngine + 1);
+                const engineTier = readTier("user" as never);
+                expect(engineTier).toContain(RULE_A());
+                expect(engineTier).toContain("2 project(s): project-alpha, project-beta");
+                // the TERMINAL tier (the file real sessions inject) carries the rule too
+                const terminalTier = readTerminalUserTier();
+                expect(terminalTier).toContain(RULE_A());
+                expect(terminalTier).toContain("autodream-hoist @");
+                expect(terminalTier).toContain("2 project(s): project-alpha, project-beta");
+                // the candidate row is consumed by the promotion
+                const rows = store.query<any>(`SELECT * FROM hoist_candidates WHERE rule_hash = ?`, [hoistRuleHash(RULE_A())]);
+                expect(rows).toHaveLength(0);
+        });
+
+        test("a re-observation of a promoted rule is a duplicate (never re-promoted)", async () => {
+                process.env.PI_USER_TIER_HOIST = "1";
+                mockLlmRules([RULE_A()]); // already in both tiers from the previous test
+                const beforeEngine = currentVersion("user" as never);
+                const out = await hoistCrossProjectRules({
+                        consolidatedMemory: DREAMED_MEMORY,
+                        projectPath: "/tmp/hoist-multi/project-gamma",
+                        slug: "project-gamma",
+                });
+                expect(out!.hoisted).toBe(0);
+                expect(out!.skipped.some((s) => s.reason === "duplicate")).toBe(true);
+                expect(currentVersion("user" as never)).toBe(beforeEngine);
+        });
+
+        test("PI_HOIST_MIN_PROJECTS=1 restores single-observation promotion", async () => {
+                process.env.PI_USER_TIER_HOIST = "1";
+                process.env.PI_HOIST_MIN_PROJECTS = "1";
+                const r = rule(32, "prefer standard library functions over hand-rolled logic");
+                mockLlmRules([r]);
+                const out = await hoistCrossProjectRules({
+                        consolidatedMemory: DREAMED_MEMORY,
+                        projectPath: "/tmp/hoist-multi/project-single",
+                        slug: "project-single",
+                });
+                expect(out!.hoisted).toBe(1);
+                expect(out!.parked).toEqual([]);
+        });
+
+        test("hoistMinProjects: env parsing (default 2, floor 1, garbage -> 2)", () => {
+                expect(hoistMinProjects()).toBe(2);
+                process.env.PI_HOIST_MIN_PROJECTS = "3";
+                expect(hoistMinProjects()).toBe(3);
+                process.env.PI_HOIST_MIN_PROJECTS = "0";
+                expect(hoistMinProjects()).toBe(1); // floor: 0 would disable hoisting entirely
+                process.env.PI_HOIST_MIN_PROJECTS = "not-a-number";
+                expect(hoistMinProjects()).toBe(2);
+                delete process.env.PI_HOIST_MIN_PROJECTS;
+        });
+
+        test("normalizeHoistRule / hoistRuleHash: casing, spacing and trailing punctuation are the same observation", () => {
+                expect(normalizeHoistRule("Read the spec. ")).toBe(normalizeHoistRule("read the spec"));
+                expect(hoistRuleHash("Read  the SPEC.")).toBe(hoistRuleHash("read the spec"));
+                expect(hoistRuleHash("read the spec")).not.toBe(hoistRuleHash("read the tests"));
+        });
+
+        test("a rule already present ONLY in the TERMINAL user tier file is a duplicate", async () => {
+                process.env.PI_USER_TIER_HOIST = "1";
+                process.env.PI_HOIST_MIN_PROJECTS = "1";
+                const dupe = rule(33, "a rule that exists only in the terminal user.md file");
+                const fresh = rule(34, "a rule absent from both tiers entirely");
+                // hand-write the rule into the TERMINAL tier only (the engine tier never sees it)
+                const { appendTerminalUserRules } = await import("../src/term.ts");
+                appendTerminalUserRules([dupe], "test", `terminal-dupe-prep-${RUN}`);
+                mockLlmRules([dupe, fresh]);
+                const out = await hoistCrossProjectRules({
+                        consolidatedMemory: DREAMED_MEMORY,
+                        projectPath: "/tmp/hoist-multi/project-termdupe",
+                        slug: "project-termdupe",
+                });
+                expect(out!.rules).toEqual([fresh]);
+                expect(out!.skipped.some((s) => s.reason === "duplicate")).toBe(true);
+        });
+});
+
+describe("hoistCrossProjectRules — dual-target write shape", () => {
+        test("the terminal tier append is additive, attribution-stamped, and never rewrites prior content", async () => {
+                process.env.PI_USER_TIER_HOIST = "1";
+                process.env.PI_HOIST_MIN_PROJECTS = "1";
+                const r = rule(35, "keep the diff minimal: fix exactly what the task asks");
+                const before = readTerminalUserTier();
+                mockLlmRules([r]);
+                await hoistCrossProjectRules({
+                        consolidatedMemory: DREAMED_MEMORY,
+                        projectPath: "/tmp/hoist-dual/project-dual",
+                        slug: "project-dual",
+                });
+                const after = readTerminalUserTier();
+                // additive: everything that was there is still there, untouched
+                expect(after.startsWith(before.trimEnd())).toBe(true);
+                // the new block is appended with attribution
+                expect(after).toContain(`- ${r}`);
+                expect(after).toContain("autodream-hoist @");
+                expect(after).toContain("project-dual");
         });
 });

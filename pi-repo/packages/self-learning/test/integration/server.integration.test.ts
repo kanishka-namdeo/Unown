@@ -670,6 +670,49 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         });
 
         // -------------------------------------------------------------------------
+        // 9c. Cross-scope memory search over REAL HTTP — the shared-memory
+        //     recall surface (across=1): one query over the engine scope AND
+        //     every dreamed project scope, results tagged by source scope.
+        //     Uses the REAL in-process mem0 platform (lexical embedder) — the
+        //     test seeds memories into two scopes via rememberNote (the same
+        //     primitive dreams use), then searches across.
+        // -------------------------------------------------------------------------
+        test("GET /api/memories?across=1 fans out across scopes with scope-tagged results; q required", async () => {
+                const { rememberNote, projectScope } = await import("../../src/memzero.ts");
+                const { writeTier } = await import("../../src/memory.ts");
+                // seed two scopes (idempotent across the suite's single engine run):
+                // platform memories (the dream primitive) + the memory_versions row a
+                // real dream leaves behind (the scope-enumeration source)
+                await rememberNote("the parser treats columns as 1-based offsets", projectScope("it-api-1a2b3c"), { kind: "terminal-note" }, { infer: false });
+                await rememberNote("run the verify script before declaring success", projectScope("it-kit-4d5e6f"), { kind: "terminal-note" }, { infer: false });
+                for (const slug of ["it-api-1a2b3c", "it-kit-4d5e6f"]) {
+                        const { currentVersion } = await import("../../src/memory.ts");
+                        if (currentVersion(`project:${slug}` as never) === 0) {
+                                await writeTier(`project:${slug}` as never, `# project ${slug}`, "mem0", "it-seed");
+                        }
+                }
+
+                // across without q is a 400 (search-only lane)
+                const noQ = await authFetch(api("/api/memories?across=1"));
+                expect(noQ.status).toBe(400);
+
+                // the cross-scope search surfaces both scopes' learning
+                const res = await authFetch(api("/api/memories?across=1&q=parser%20columns%20offsets&limit=12"));
+                expect(res.status).toBe(200);
+                const body = (await res.json()) as Record<string, any>;
+                expect(body.across).toBe(true);
+                expect(Array.isArray(body.scopes)).toBe(true);
+                expect(body.scopes).toContain("engine");
+                expect(body.scopes).toContain("it-api-1a2b3c");
+                expect(Array.isArray(body.memories)).toBe(true);
+                const parserHits = (body.memories as Array<Record<string, any>>).filter((m) =>
+                        String(m.text ?? "").includes("1-based offsets"),
+                );
+                expect(parserHits.length).toBeGreaterThan(0);
+                expect(parserHits[0].scope).toBe("it-api-1a2b3c"); // tagged with the source scope
+        });
+
+        // -------------------------------------------------------------------------
         // 10. Automations over REAL HTTP — the PATCH body-gate regression
         // -------------------------------------------------------------------------
         // The fetch layer parsed JSON bodies for POST only, so every PATCH

@@ -9,6 +9,7 @@ Related pages: [usage](usage.md) · [skills](skills.md) · [configuration](confi
 - [The note lifecycle](#the-note-lifecycle)
 - [AutoDream consolidation](#autodream-consolidation)
 - [The memory platform (Mem0)](#the-memory-platform-mem0)
+- [Shared memory across sessions and projects](#shared-memory-across-sessions-and-projects)
 - [Skills minting](#skills-minting)
 - [Editing memory by hand](#editing-memory-by-hand)
 - [What to commit](#what-to-commit)
@@ -110,6 +111,18 @@ Do not confuse the two files that share a tier name:
 
 The engine's own memory is what the five-mechanism loop improves; your project's memory is what your sessions accumulate. The TUI dashboard's Memory screen shows the engine's four tiers and the skills minted into your projects; your project's dreams show up on the Dreams screen.
 
+## Shared memory across sessions and projects
+
+Real setups run several agents at once — parallel sessions in one repo, the same repo cloned twice, worktrees for review branches, several projects that should share user-level habits. Three mechanisms keep that consistent (all 2026-10-22):
+
+**Stable project identity.** The memory scope is keyed by the repository, not the directory name: the git remote (origin, worktree-aware) normalized and hashed into a 6-hex key appended to the repo name (`project:api-3f9c21`). One repository → one memory everywhere it is cloned (clones, renames, worktrees, machines); two unrelated directories that happen to share a name → two scopes, each with its own memory (the old basename key let them leak into each other — a same-named `~/work/api` and `~/personal/api` shared ONE memory bank). Non-git directories fall back to the resolved path hash. Installs that dreamed under the old basename key migrate automatically: the first dream under the composite key copies the old scope's memories verbatim (per-kind metadata intact); the old scope stays as an audit surface and stops receiving writes.
+
+**Concurrent sessions, same project.** Sessions never write memory directly — they deliver notes (unique outbox filenames, 20k cap, engine-down queueing) and the engine serializes everything behind a single-instance lock, a one-job busy mutex and `BEGIN IMMEDIATE` version allocation in SQLite (WAL). Two sessions that exit simultaneously both land; the next dream consolidates both notes together. An open session injects the memory snapshot it booted with; `/new`, `/resume` and `/fork` re-read from disk.
+
+**Cross-project recall + gated hoist.**
+- `/memory search <query>` (in-session) and `GET /api/memories?across=1&q=…` run one semantic search over the engine scope AND every project scope that has dreamed — a session in project B can recall what was learned in project A, results tagged by source scope. Read-only: writes stay scoped, always.
+- The cross-project hoist (`PI_USER_TIER_HOIST=1`) promotes a rule from project memory into the user tier only after **`PI_HOIST_MIN_PROJECTS` distinct projects** (default 2) have abstracted the same rule — one project's dream is project-suspicious, the same rule from two projects is a user-level habit. Promotion writes BOTH user tiers (the terminal `~/.unown/memory/user.md` every real session injects, and the engine's versioned user tier), additively, with the observing projects named in the provenance comment. Rules observed once park in the engine's candidate ledger awaiting their second project.
+
 ## Skills minting
 
 When consolidated notes reveal a recurring, multi-step procedure — how to run this test suite, how to deploy, how to debug the flaky part — AutoDream mints it as an Agent Skill into `<project>/.unown/skills/<name>/SKILL.md`, and the very next session can pick it up.
@@ -161,6 +174,7 @@ What a teammate gets when they clone the repo: the shared project memory and the
 - `/learning` — the same stack, in-session, re-read from disk.
 - `unown doctor` — verifies the project and user memory files exist ([troubleshooting](troubleshooting.md)).
 - `unown dashboard` → **Memory** screen — the engine's four tiers with contents, full version history and one-key rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files). The engine's platform state (backend, model, dir, cap) rides `/api/overview`'s `memoryPlatform` block, and `GET /api/memories?q=…` searches the platform's memories per scope.
+- `/memory search <query>` — cross-project semantic search over every scope that has dreamed (see [shared memory](#shared-memory-across-sessions-and-projects)); `GET /api/memories?across=1&q=…` is the HTTP form.
 
 ## Learning integrity (how the system polices itself)
 

@@ -718,6 +718,48 @@ export async function searchMemories(
         return platform.search(query, scope, limit);
 }
 
+/** A platform memory annotated with the scope it came from (cross-scope search). */
+export type ScopedMemory = PlatformMemory & { scope: string };
+
+/**
+ * Cross-scope semantic search — the shared-memory recall surface.
+ *
+ * Fans one search out over MANY scopes (the engine's own + every terminal
+ * project scope), merges by score, and annotates each result with its source
+ * scope so a session in project B can recall what was learned in project A —
+ * "one memory, many surfaces" (the Hindsight bank model; Claude Code users
+ * hand-roll this with symlinked AGENTS.md today). Scope isolation stays
+ * intact per store (each search is scoped); this is deliberate cross-scope
+ * READ, not a merge — and it is read-only: no cross-scope writes exist.
+ *
+ * Sequential fan-out: the in-process platform is SQLite-backed (one writer,
+ * many readers); per-scope searches are embedding + cosine, no LLM calls —
+ * the whole fan-out stays single-digit-milliseconds per scope at lexical
+ * scale and remains honest (each scope's results keep their own scores,
+ * merged best-first across scopes).
+ */
+export async function searchAcrossScopes(
+        query: string,
+        scopes: Array<{ scope: MemoryScope; label: string }>,
+        limit = 12,
+        opts?: { platform?: MemoryPlatform; perScope?: number },
+): Promise<ScopedMemory[]> {
+        const platform = opts?.platform ?? (await getMemoryPlatform());
+        const perScope = Math.max(1, opts?.perScope ?? Math.min(limit, 8));
+        const all: ScopedMemory[] = [];
+        for (const { scope, label } of scopes) {
+                try {
+                        const hits = await platform.search(query, scope, perScope);
+                        for (const m of hits) all.push({ ...m, scope: label });
+                } catch {
+                        /* one dead scope must never kill the fan-out */
+                }
+        }
+        // merge best-first; a missing score (list-shaped platform rows) sorts last
+        all.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+        return all.slice(0, limit);
+}
+
 /** All memories in a scope. */
 export async function projectMemories(
         scope: MemoryScope,

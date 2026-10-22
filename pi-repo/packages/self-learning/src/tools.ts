@@ -2540,8 +2540,65 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 });
 
                 pi.registerCommand("memory", {
-                        description: "Open the dashboard's Memory screen (tiers, versions, projects, rollback)",
-                        handler: async (_args, ctx) => {
+                        description:
+                                "Memory: /memory search <query> searches every project's learned memory (cross-scope); bare /memory opens the dashboard Memory screen",
+                        handler: async (args, ctx) => {
+                                // /memory search <query> — the shared-memory recall surface:
+                                // one semantic search across the engine scope AND every project
+                                // scope that has dreamed (server.ts /api/memories?across=1).
+                                // A session in project B can recall what was learned in
+                                // project A — read-only, scope-tagged results.
+                                const trimmed = String(args ?? "").trim();
+                                if (/^search\s+\S/i.test(trimmed) || /^search$/i.test(trimmed)) {
+                                        const query = trimmed.replace(/^search\s+/i, "").trim();
+                                        if (!query) {
+                                                ctx.ui.notify(
+                                                        "usage: /memory search <query> — searches every project's learned memory",
+                                                        "info",
+                                                );
+                                                return;
+                                        }
+                                        try {
+                                                const res = await engineFetch(
+                                                        `${ENGINE_URL}/api/memories?across=1&q=${encodeURIComponent(query)}&limit=12`,
+                                                        { signal: AbortSignal.timeout(8000) },
+                                                );
+                                                if (!res.ok) {
+                                                        const body = (await res.json().catch(() => ({}))) as any;
+                                                        ctx.ui.notify(
+                                                                `memory search failed (engine ${res.status}): ${body?.error ?? "see unown engine status"}`,
+                                                                "error",
+                                                        );
+                                                        return;
+                                                }
+                                                const data = (await res.json()) as {
+                                                        memories: Array<{ text: string; scope: string; score?: number }>;
+                                                        scopes?: string[];
+                                                };
+                                                if (!data.memories?.length) {
+                                                        ctx.ui.notify(
+                                                                `no learned memory matches "${query}" across ${data.scopes?.length ?? 0} scope(s)`,
+                                                                "info",
+                                                        );
+                                                        return;
+                                                }
+                                                const lines = data.memories.map((m) => {
+                                                        const where = m.scope === "engine" ? "engine" : m.scope;
+                                                        const score = typeof m.score === "number" ? ` · ${(m.score * 100).toFixed(0)}%` : "";
+                                                        return `· [${where}${score}] ${m.text}`;
+                                                });
+                                                ctx.ui.notify(
+                                                        `cross-project memory search — "${query}" (${data.memories.length} match(es) across ${data.scopes?.length ?? "?"} scopes):\n${lines.join("\n")}`,
+                                                        "info",
+                                                );
+                                        } catch (err: any) {
+                                                ctx.ui.notify(
+                                                        `memory search unreachable (${err?.message ?? err}) — is the engine up? (unown engine status)`,
+                                                        "error",
+                                                );
+                                        }
+                                        return;
+                                }
                                 await openDashboardScreen(ctx, "memory");
                         },
                 });

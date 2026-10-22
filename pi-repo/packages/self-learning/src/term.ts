@@ -23,6 +23,7 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { pruneToBudget } from "./budget.ts";
 import { seedAddonsConfig } from "./addons/config.ts";
+import { atomicWriteFileSync } from "./atomic.ts";
 import { scanMemoryCandidate, type GuardFlag } from "./guard.ts";
 import { engineFetch } from "./engine-auth.ts";
 import { spawnEngineDetached } from "./engine-supervisor.ts";
@@ -329,7 +330,7 @@ export function refreshSeedPolicyAt(policyPath: string): boolean {
         }
 }
 
-const USER_SEED = `# Tier 2 — User Memory (global)
+export const USER_SEED = `# Tier 2 — User Memory (global)
 
 - The user values minimal diffs and clear, idiomatic code.
 - Prefer standard library functions over hand-rolled logic.
@@ -391,6 +392,49 @@ export function isPristineSeedProjectMemory(content: string): boolean {
         // Seed-marker fallback: the seed's empty-section markers are present and
         // there is no bullet-rule content beyond the seed's own two bullets.
         return t.includes("(empty — AutoDream fills this from session notes)") && !/^[-*]\s+(?!This file is maintained)/m.test(t);
+}
+
+/**
+ * Append hoisted rules to the TERMINAL user tier (~/.unown/memory/user.md) —
+ * the tier every real project session injects (tier 2).
+ *
+ * This is the dual-target write's terminal half (hoist.ts): the engine's own
+ * user tier (DATA_DIR/memory/user.md, versioned via appendRules) serves
+ * engine sandbox runs; WITHOUT this append, a hoisted rule only ever reached
+ * benchmark sandboxes and never the user's actual projects — the
+ * cross-project transfer feature that shipped to the wrong file.
+ *
+ * Contract (mirrors appendRules' non-project path):
+ *   - additive-only: existing content is never rewritten, the block lands at
+ *     the end with an attribution comment header (author, date, note);
+ *   - atomic (tmp+fsync+rename): a crash never truncates the user's file;
+ *   - the caller (hoist.ts) already ran dedupe + the deterministic guard.
+ */
+export function appendTerminalUserRules(rules: string[], changedBy: string, note: string): void {
+        const userPath = join(UNOWN_MEMORY_DIR, "user.md");
+        let current: string;
+        if (existsSync(userPath)) current = readFileSync(userPath, "utf8");
+        else {
+                mkdirSync(UNOWN_MEMORY_DIR, { recursive: true });
+                current = USER_SEED;
+        }
+        const stamp = new Date().toISOString().replace("T", " ").slice(0, 16);
+        const block = [`<!-- ${changedBy} @ ${stamp} — ${note} -->`, ...rules.map((r) => `- ${r}`)].join("\n");
+        const base = current.trim() ? `${current.trimEnd()}\n\n` : "";
+        atomicWriteFileSync(userPath, `${base}${block}\n`);
+}
+
+/** Read the terminal user tier (for hoist dedupe + guard context). */
+export function readTerminalUserTier(): string {
+        const userPath = join(UNOWN_MEMORY_DIR, "user.md");
+        if (existsSync(userPath)) return readFileSync(userPath, "utf8");
+        return USER_SEED;
+}
+
+/** True when the terminal user tier is still only the seed — the first-mint
+ *  moment for the hoist's TERMINAL write target (hoist.ts). */
+export function isPristineTerminalUserTier(content: string): boolean {
+        return content.trim() === USER_SEED.trim();
 }
 
 /** Resolve the full 4-tier memory stack for a terminal session in projectDir. */

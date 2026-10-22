@@ -184,6 +184,22 @@ CREATE TABLE IF NOT EXISTS memory_platform (
   value TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
+
+-- hoist.ts: the cross-project promotion ledger. A rule abstracted out of a
+-- project dream is OBSERVED here (rule_hash + observing project set); it
+-- promotes into the user tier only after PI_HOIST_MIN_PROJECTS distinct
+-- projects have produced it (the multi-repo gate — amnesia's PROMOTE
+-- pattern: a rule the agent derives in ONE project is project-suspicious,
+-- the same rule arriving from two projects is a user-level habit).
+-- rows are deleted on promotion; the table stays small (cap 500, LRU by
+-- last_seen_at in hoist.ts).
+CREATE TABLE IF NOT EXISTS hoist_candidates (
+  rule_hash TEXT PRIMARY KEY,
+  rule_text TEXT NOT NULL,
+  projects TEXT NOT NULL,
+  first_seen_at INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL
+);
 `;
 
 export class Store {

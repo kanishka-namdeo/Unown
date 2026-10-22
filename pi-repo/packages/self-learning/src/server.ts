@@ -37,11 +37,22 @@ import {
 import { dreamNotes, listDreams, runDream } from "./dream.ts";
 import { cycleTriggerGuard, getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
-import { history, projectTiers, resolveMemory, rollback, seedMemoryIfEmpty, snapshot, type Tier } from "./memory.ts";
+import {
+        history,
+        knownProjectScopes,
+        projectTiers,
+        resolveMemory,
+        rollback,
+        seedMemoryIfEmpty,
+        snapshot,
+        type Tier,
+} from "./memory.ts";
 import {
         ENGINE_SCOPE,
         memoryPlatformStatus,
         projectMemories,
+        projectScope,
+        searchAcrossScopes,
         searchMemories,
         type MemoryScope,
 } from "./memzero.ts";
@@ -563,7 +574,38 @@ if (method === "GET" && path === "/api/memory/projects") {
                         const q = req.query.get("q");
                         const agentId = req.query.get("agent_id") || undefined;
                         const userId = req.query.get("user_id") || undefined;
+                        const across = req.query.get("across") === "1" || req.query.get("across") === "true";
                         const limit = Math.min(Number(req.query.get("limit") ?? 20) || 20, 100);
+                        // CROSS-SCOPE SEARCH (shared-memory recall): `across=1` + `q`
+                        // fans the query out over the engine scope AND every project
+                        // scope that has dreamed, merging best-first with each result
+                        // tagged by its source scope — a session in project B can
+                        // recall what was learned in project A (read-only; scope
+                        // isolation of writes stays intact).
+                        if (across) {
+                                if (!q) {
+                                        return json({ error: "across=1 requires q (a search query)" }, 400);
+                                }
+                                const scopes = [
+                                        { scope: ENGINE_SCOPE, label: "engine" },
+                                        ...knownProjectScopes().map((slug) => ({
+                                                scope: projectScope(slug),
+                                                label: slug,
+                                        })),
+                                ];
+                                try {
+                                        const memories = await searchAcrossScopes(q, scopes, limit);
+                                        return json({
+                                                memories,
+                                                query: q,
+                                                across: true,
+                                                scopes: scopes.map((s) => s.label),
+                                                platform: memoryPlatformStatus(),
+                                        });
+                                } catch (err: any) {
+                                        return json({ error: `memory platform unavailable: ${err?.message ?? err}` }, 503);
+                                }
+                        }
                         // Unscoped = the ENGINE scope (the learning core's own memories —
                         // the same scope dreams and harness ships write). mem0 requires at
                         // least one filter key, so an empty scope is an upstream error,

@@ -414,6 +414,32 @@ export function projectTiers(): {
                 });
 }
 
+/**
+ * Every scope the cross-scope search should fan out over: the engine's own
+ * scope + every terminal project scope that has dreamed (memory_versions
+ * rows under `project:<slug>`). Legacy-superseded tiers are skipped (same
+ * rule as projectTiers — their memories were migrated onto the composite
+ * key; searching both would double-report).
+ *
+ * The mem0-platform scope object for a tier key is `projectScope(slug)`
+ * (memzero.ts) — the tier key IS the agent_id.
+ */
+export function knownProjectScopes(): string[] {
+        const rows = store.query<{ tier: string }>(
+                `SELECT tier FROM memory_versions WHERE tier LIKE 'project:%' GROUP BY tier ORDER BY tier`,
+        );
+        const tiers = rows.map((r) => r.tier);
+        const tierNames = new Set(tiers);
+        const superseded = (tier: string): boolean => {
+                const childPattern = new RegExp(`^project:${tier.slice("project:".length)}-[0-9a-f]{6}$`);
+                for (const other of tierNames) {
+                        if (other !== tier && childPattern.test(other)) return true;
+                }
+                return false;
+        };
+        return tiers.filter((t) => !superseded(t)).map((t) => t.slice("project:".length));
+}
+
 export function snapshot(): {
         tier: string;
         version: number;
