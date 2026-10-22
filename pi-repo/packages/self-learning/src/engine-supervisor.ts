@@ -256,19 +256,21 @@ export async function engineHealth(timeoutMs = 1500): Promise<{
 	}
 }
 
-/** Minimal .env loader (KEY=VALUE lines; comments/blanks ignored) — mirrors scripts/lib.ts. */
-function loadEnvValues(path: string): Record<string, string> {
-	const out: Record<string, string> = {};
-	try {
-		const raw = readFileSync(path, "utf8");
-		for (const line of raw.split(/\r?\n/)) {
-			const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-			if (m && !line.trimStart().startsWith("#")) out[m[1]] = m[2];
-		}
-	} catch {
-		/* no .env — inherit the environment as-is */
-	}
-	return out;
+/** Minimal .env loader (KEY=VALUE lines; comments/blanks ignored) — mirrors scripts/lib.ts.
+ *  Exported for engine-cli.ts's serve path (service-booted engines start with
+ *  a minimal environment and must load the state-root .env themselves). */
+export function loadEnvValues(path: string): Record<string, string> {
+        const out: Record<string, string> = {};
+        try {
+                const raw = readFileSync(path, "utf8");
+                for (const line of raw.split(/\r?\n/)) {
+                        const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+                        if (m && !line.trimStart().startsWith("#")) out[m[1]] = m[2];
+                }
+        } catch {
+                /* no .env — inherit the environment as-is */
+        }
+        return out;
 }
 
 /** In-process single-flight: concurrent callers share one spawn attempt. */

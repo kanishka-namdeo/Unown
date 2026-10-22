@@ -108,7 +108,17 @@ Agents can manage routines mid-session (the mutation tools are hidden inside rou
 - **No recursion.** Runs carry `UNOWN_AUTOMATION=1`, which hides the routine mutation tools inside the run — a routine cannot create or schedule routines.
 - **Nothing auto-merges.** Every run (and every skip, with its reason) is recorded; inspect with `history` before acting.
 
-Limits (zcode's, transliterated): 20 routines total, 2 concurrent runs (manual run-now respects the same cap), a 30-minute run timeout, and a dispatch retry ladder (30 s × 2ⁿ⁻¹, capped at 15 min, 5 attempts). Routines need the engine up (`bun run agent:start`); while it is down, due slots wait for the next poll.
+Limits (zcode's, transliterated): 20 routines total, 2 concurrent runs (manual run-now respects the same cap), a 30-minute run timeout, and a dispatch retry ladder (30 s × 2ⁿ⁻¹, capped at 15 min, 5 attempts). Routines need the engine up; while it is down, due slots wait for the next poll — see [Always-on](#always-on-the-engine-service) for keeping it up across reboots and logouts.
+
+## Always-on: the engine service
+
+The engine daemon owns routine scheduling, so routines fire with **no agent session in use** — but only while the engine process lives. Three layers keep it alive:
+
+1. **Agent-side auto-start** (the Ollama pattern): every touchpoint — note delivery, the live-session footer, and (since 2026-10-22) the routines CLI and the dashboard boot — pings the engine and spawns it detached on connection-refused, gated by a cross-process crash-loop circuit (5 doomed attempts → pause; `unown engine start` resets) and the `UNOWN_ENGINE_AUTOSTART=0` kill switch.
+2. **The OS service** (`unown engine install`): a per-user login service — a **systemd user unit** on Linux (`~/.config/systemd/user/unown-engine.service`, `Restart=on-failure`, `RestartPreventExitStatus=0` so a graceful stop or the single-instance lock loser never restarts, best-effort `loginctl enable-linger` so it survives logout), a **launchd LaunchAgent** on macOS (`~/Library/LaunchAgents/ai.unown.engine.plist`, `RunAtLoad` + `KeepAlive{Crashed:true, SuccessfulExit:false}` — restart on crash, never over a clean exit), and a **per-user scheduled task** on Windows (`unown-engine`, logon trigger, `ExecutionTimeLimit PT0S`, bounded `RestartCount 3`). The service owns the documented supervisor entry `unown engine serve`; the serve path loads the checkout's `.env` itself, so a service-booted engine runs with the same model/bridge config as `agent:start`. Installing drains a supervisor-spawned engine first (exactly one engine ever holds the lock), is **idempotent** (re-run after moving the repo to repair the drift), and is removable with `unown engine uninstall` — per-user, never root. `unown engine status` reports the service line either way.
+3. **Durable catch-up**: `next_run_at` lives in SQLite; an engine down at fire time applies the routine's misfire policy on the next boot (default skip-and-record; `--misfire catch-up` replays the most recent missed slot once, 24 h horizon).
+
+The pattern is reverse-engineered from OpenClaw's `gateway install` (one command, per-OS service generation, drift repair on re-run), pm2's `startup`+`save` (user-level, no root, explicit supervisor entry) and the systemd/launchd/schtasks restart semantics pinned in `test/engine-service.test.ts`.
 
 ## Scheduler semantics reference
 

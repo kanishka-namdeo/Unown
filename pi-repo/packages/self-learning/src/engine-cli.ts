@@ -23,9 +23,16 @@
  *           supervisor (systemd user unit, launchd agent, Windows service,
  *           dev shell) should own. The engine import is DYNAMIC: a normal
  *           terminal session never loads the engine half of the package
- *           (the M2 detachment contract).
+ *           (the M2 detachment contract)
+ *   install keep the engine ALWAYS ON: install the OS login service (systemd
+ *           --user unit / launchd LaunchAgent / Windows scheduled task) that
+ *           runs `engine serve` at login and restarts it on crash — routines
+ *           then fire even when no agent is in use. Idempotent; re-run to repair
+ *   uninstall  stop + remove that OS service (the engine returns to the
+ *           agent-touchpoint auto-start)
  */
 import { existsSync, renameSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { Database } from "bun:sqlite";
 import { ENGINE_URL, outboxStats } from "./term.ts";
 import { DB_PATH } from "./store.ts";
@@ -43,11 +50,13 @@ import {
         enginePidFile,
         enginePidFromPidfile,
         ensureEngineRunning,
+        loadEnvValues,
         spawnEngineDetached,
         readSpawnState,
         resetSpawnCircuit,
 } from "./engine-supervisor.ts";
 import { describeSpawnCircuit } from "./engine-status.ts";
+import { installEngineService, serviceStatus, uninstallEngineService } from "./engine-service.ts";
 
 export const ENGINE_USAGE = `unown engine <sub> — the detached self-learning engine:
   status   is the engine up? pid, uptime, build (version-skew verdict), jobs,
@@ -145,6 +154,11 @@ export async function runEngineCommand(argv: string[], ctx: { out?: (s: string) 
         }
         if (sub === "repair") return cmdRepair(out);
         if (sub === "serve") return cmdServe();
+        if (sub === "install" || sub === "install-service") {
+                const repoRoot = resolve(import.meta.dir, "../../../..");
+                return installEngineService(repoRoot, out);
+        }
+        if (sub === "uninstall" || sub === "uninstall-service") return uninstallEngineService(out);
         out(`unown: unknown engine subcommand '${sub}'`);
         out(ENGINE_USAGE);
         return 2;
@@ -209,11 +223,17 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
         if (!health.up) {
                 const pf = enginePidFromPidfile();
                 const circuit = readSpawnState();
+                const svc = await serviceStatus();
                 out(`engine: DOWN (${ENGINE_URL})`);
                 out(`  pidfile ${enginePidFile()}: ${pf.pid ? `pid ${pf.pid} (${pf.alive ? "alive — wedged beyond HTTP?" : "dead"})` : "absent"}`);
                 out(`  outbox: ${stats.queued} note(s) queued locally${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}`);
                 out(`  auto-start: ${describeSpawnCircuit(circuit)}`);
                 if (circuit.gaveUp) out(`  if it keeps failing: inspect .run/engine.log, then try unown engine repair (corrupt DB?)`);
+                out(
+                        svc.installed
+                                ? `  service: ${svc.kind} — ${svc.detail}`
+                                : "  service: not installed — unown engine install keeps it always on (routines fire without an agent)",
+                );
                 out("  start it with: unown engine start");
                 return 1;
         }
@@ -255,6 +275,15 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
                         const circuit = readSpawnState();
                         out(`  auto-start: ${describeSpawnCircuit(circuit)}`);
                         if (circuit.gaveUp) out(`  if it keeps failing: inspect .run/engine.log, then try unown engine repair (corrupt DB?)`);
+                }
+                // The always-on layer: is an OS service keeping the engine up?
+                {
+                        const svc = await serviceStatus();
+                        out(
+                                svc.installed
+                                        ? `  service: ${svc.kind} — ${svc.detail}`
+                                        : "  service: not installed — unown engine install keeps it always on",
+                        );
                 }
                 return 0;
         } catch {
@@ -521,6 +550,17 @@ async function cmdRepair(out: (s: string) => void): Promise<number> {
 }
 
 async function cmdServe(): Promise<number> {
+        // Services own this entry (unown engine install → systemd/launchd/
+        // schtasks), and they start it with a MINIMAL environment — load the
+        // state-root .env first, the same merge the detached spawn path does
+        // (engine-supervisor.ts spawnEngineDetached), or a service-booted
+        // engine would run with no PI_MODEL_ID / bridge config. Interactive
+        // `engine serve` runs also benefit: the config travels with the
+        // checkout, not the caller's cwd. Same precedence as the spawn path:
+        // .env wins over the inherited environment (agent:start semantics).
+        const stateRoot = resolve(import.meta.dir, "../../../..");
+        const envValues = loadEnvValues(join(stateRoot, ".env"));
+        for (const [k, v] of Object.entries(envValues)) process.env[k] = v;
         // DYNAMIC import — the M2 detachment contract: a terminal session must
         // never load the engine half of the package (or its SQLite handle).
         try {

@@ -83,6 +83,23 @@ export async function runDashboardCommand(args: string[]): Promise<number> {
         }
         initTheme(themeName);
 
+        // Always-on liveness (the P3 gap): the dashboard used to boot straight
+        // into its DEGRADED "engine down" state and wait for the user to run
+        // `unown engine start` elsewhere. Every other touchpoint (notes, the
+        // live-session footer) ping-and-spawns a down engine — the mission
+        // control surface deserves the same self-heal: kick a bounded spawn
+        // (gated by the crash-loop circuit + UNOWN_ENGINE_AUTOSTART=0) before
+        // the store starts polling. Best-effort: a down engine still boots the
+        // dashboard (it renders the degraded state and keeps retrying).
+        try {
+                if (process.env.PI_DISABLE_ENGINE_SPAWN !== "1") {
+                        const { ensureEngineRunning } = await import("../engine-supervisor.ts");
+                        await ensureEngineRunning(10_000);
+                }
+        } catch {
+                /* degraded boot — the store's own retry loop reports the state */
+        }
+
         const terminal = new ProcessTerminal();
         // Responsive (round 5, R2): the dashboard shares the chat TUI's
         // minimum-geometry gate — below 48x16 a centered notice explains the

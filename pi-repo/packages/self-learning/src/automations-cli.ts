@@ -120,6 +120,23 @@ function describeRow(a: any): string {
 export async function runAutomationsCommand(argv: string[], opts: { cwd: string }): Promise<CliResult> {
         const rest = argv.filter((a) => !a.startsWith("--") || a.includes("="));
         const sub = rest[0] ?? "list";
+        // Self-heal first (the P3 gap): every OTHER agent touchpoint (note
+        // delivery, the live-session footer) ping-and-spawns a down engine —
+        // the routines surface used to just error. A user who only ever
+        // manages routines (the "no agent in use" story) deserves the same
+        // liveness: probe, spawn if down (the crash-loop circuit and the
+        // UNOWN_ENGINE_AUTOSTART=0 kill switch still gate it), then proceed.
+        // Help/usage print without an engine; `serve`-less verbs are read-mostly,
+        // so one bounded wait covers every command uniformly.
+        const isHelp = sub === "help" || sub === "--help" || sub === "-h";
+        if (!isHelp && process.env.PI_DISABLE_ENGINE_SPAWN !== "1") {
+                try {
+                        const { ensureEngineRunning } = await import("./engine-supervisor.ts");
+                        await ensureEngineRunning(15_000);
+                } catch {
+                        /* the engine is genuinely down — the per-request error below is the honest report */
+                }
+        }
 
         if (hasFlag(argv, "-h") || hasFlag(argv, "--help") || sub === "help") {
                 return { stdout: AUTOMATIONS_USAGE, exitCode: 0 };
