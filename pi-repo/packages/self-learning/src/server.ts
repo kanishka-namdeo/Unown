@@ -12,9 +12,11 @@ import {
         getAutomation,
         listAutomations,
         listRuns as listAutomationRuns,
+        skipNextOccurrence,
+        snoozeNextOccurrence,
         updateAutomation,
 } from "./automations.ts";
-import { describeCron } from "./cron.ts";
+import { describeRoutineSchedule } from "./routine-schedule.ts";
 // M8: the version-skew handshake — /api/version + overview.version expose the
 // engine's build (version, boot sha, bootedAt); agentVersion() replaces the
 // hardcoded layer literal with the same source of truth.
@@ -205,29 +207,43 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         if (method === "GET") {
                                 const rows = listAutomations().map((a) => ({
                                         ...a,
-                                        schedule: a.cron_expr ? describeCron(a.cron_expr) : `one-shot at ${new Date(a.delay_ms ?? 0).toISOString()}`,
+                                        schedule: describeRoutineSchedule(a),
                                         lastRun: listAutomationRuns(a.id, 1)[0] ?? null,
                                 }));
                                 return json({ automations: rows });
                         }
                         if (method === "POST") {
+                                // `until` accepts epoch ms or an ISO string (the
+                                // CLI/tools normalize; both are unambiguous).
+                                const untilRaw = body?.until ?? body?.untilMs;
+                                const untilMs =
+                                        untilRaw === undefined || untilRaw === null
+                                                ? null
+                                                : Number.isFinite(Number(untilRaw))
+                                                        ? Number(untilRaw)
+                                                        : Date.parse(String(untilRaw));
                                 const created = createAutomation({
                                         title: String(body?.title ?? ""),
                                         prompt: String(body?.prompt ?? ""),
                                         workspace: String(body?.workspace ?? process.cwd()),
                                         schedule: {
                                                 cron: body?.cron !== undefined ? String(body.cron) : undefined,
+                                                every: body?.every !== undefined ? String(body.every) : undefined,
+                                                after: body?.after !== undefined ? String(body.after) : undefined,
                                                 delayMinutes: body?.delayMinutes !== undefined ? Number(body.delayMinutes) : undefined,
                                         },
+                                        timezone: body?.timezone !== undefined && body?.timezone !== null ? String(body.timezone) : null,
+                                        untilMs,
+                                        misfire: body?.misfire !== undefined && body?.misfire !== null ? (String(body.misfire) === "catch-up" ? "catch-up" : String(body.misfire) === "skip" ? "skip" : undefined) : null,
                                         mode: body?.mode === "standard" ? "standard" : "read-only",
                                         model: body?.model ? String(body.model) : null,
                                         maxRuns: body?.maxRuns !== undefined && body?.maxRuns !== null ? Number(body.maxRuns) : null,
                                 });
                                 if (!created.ok) return json({ error: created.error }, created.status ?? 400);
-                                return json({ automation: { ...created.automation, schedule: created.automation.cron_expr ? describeCron(created.automation.cron_expr) : "one-shot" } });
+                                return json({ automation: { ...created.automation, schedule: describeRoutineSchedule(created.automation) } });
                         }
                 }
-                const automationMatch = path.match(/^\/api\/automations\/([^/]+)(?:\/(run|runs))?$/);
+                const automationMatch = path.match(/^\/api\/automations\/([^/]+)(?:\/(run|runs|skip|snooze))?$/);
                 if (automationMatch) {
                         const id = decodeURIComponent(automationMatch[1]);
                         const sub = automationMatch[2];
@@ -236,6 +252,18 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 if (!triggered.ok) return json({ error: triggered.error }, triggered.status ?? 400);
                                 return json({ ok: true });
                         }
+                        if (sub === "skip" && method === "POST") {
+                                const skipped = skipNextOccurrence(id);
+                                if (!skipped.ok) return json({ error: skipped.error }, skipped.status ?? 400);
+                                return json({ automation: { ...skipped.automation, schedule: describeRoutineSchedule(skipped.automation) } });
+                        }
+                        if (sub === "snooze" && method === "POST") {
+                                const minutes = Number(body?.minutes);
+                                if (!Number.isFinite(minutes)) return json({ error: "snooze needs a { minutes } body (1..525600)" }, 400);
+                                const snoozed = snoozeNextOccurrence(id, minutes);
+                                if (!snoozed.ok) return json({ error: snoozed.error }, snoozed.status ?? 400);
+                                return json({ automation: { ...snoozed.automation, schedule: describeRoutineSchedule(snoozed.automation) } });
+                        }
                         if (sub === "runs" && method === "GET") {
                                 const limit = Number(query?.get("limit") ?? 20);
                                 return json({ runs: listAutomationRuns(id, Number.isFinite(limit) ? limit : 20) });
@@ -243,14 +271,24 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         if (method === "GET") {
                                 const automation = getAutomation(id);
                                 if (!automation) return json({ error: "unknown automation" }, 404);
-                                return json({ automation: { ...automation, schedule: automation.cron_expr ? describeCron(automation.cron_expr) : "one-shot" } });
+                                return json({ automation: { ...automation, schedule: describeRoutineSchedule(automation) } });
                         }
                         if (method === "PATCH") {
                                 const patch: any = {};
-                                for (const key of ["title", "prompt", "mode", "model", "lifecycle", "cron"]) {
+                                for (const key of ["title", "prompt", "mode", "model", "lifecycle", "cron", "every", "after", "timezone", "misfire"]) {
                                         if (body?.[key] !== undefined) patch[key] = body[key];
                                 }
                                 if (body?.maxRuns !== undefined) patch.max_runs = body.maxRuns; // REST camelCase → the row's snake_case
+                                const untilRaw = body?.until ?? body?.untilMs;
+                                if (untilRaw !== undefined) {
+                                        patch.until_ms =
+                                                untilRaw === null || untilRaw === ""
+                                                        ? null
+                                                        : Number.isFinite(Number(untilRaw))
+                                                                ? Number(untilRaw)
+                                                                : Date.parse(String(untilRaw));
+                                }
+                                if (patch.misfire === "default" || patch.misfire === "") patch.misfire = null;
                                 const updated = updateAutomation(id, patch);
                                 if (!updated.ok) return json({ error: updated.error }, updated.status ?? 400);
                                 return json({ automation: updated.automation });

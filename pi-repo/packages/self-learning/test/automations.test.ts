@@ -18,7 +18,7 @@
 // spawned. "Due" states are set up by bending next_run_at directly — the CRUD
 // layer itself is covered by creating through it.
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,6 +31,8 @@ import {
         listRuns,
         MAX_CONCURRENT_AUTOMATION_RUNS,
         planSchedule,
+        skipNextOccurrence,
+        snoozeNextOccurrence,
         type AutomationRow,
         READ_ONLY_TOOLS,
         updateAutomation,
@@ -117,7 +119,7 @@ describe("planSchedule", () => {
         test("delayMinutes bounds", () => {
                 expect(planSchedule({ delayMinutes: 0 })).toMatchObject({ ok: false });
                 expect(planSchedule({ delayMinutes: 525_601 })).toMatchObject({ ok: false });
-                const ok = planSchedule({ delayMinutes: 1 }, new Date(2026, 0, 1, 12, 0, 0));
+                const ok = planSchedule({ delayMinutes: 1 }, null, new Date(2026, 0, 1, 12, 0, 0));
                 expect(ok.ok).toBe(true);
                 if (ok.ok) expect(ok.nextRunAt).toBe(new Date(2026, 0, 1, 12, 1, 0, 0).getTime());
         });
@@ -133,7 +135,7 @@ describe("planSchedule", () => {
         });
         test("cron next run is strictly in the future", () => {
                 const now = new Date();
-                const r = planSchedule({ cron: "*/5 * * * *" }, now);
+                const r = planSchedule({ cron: "*/5 * * * *" }, null, now);
                 expect(r.ok).toBe(true);
                 if (r.ok) expect(r.nextRunAt).toBeGreaterThan(now.getTime());
         });
@@ -813,5 +815,284 @@ describe("automations CLI (runAutomationsCommand against a stubbed engine)", () 
                         restore();
                         rmSync(foreign, { recursive: true, force: true });
                 }
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Routines v2 — kinds, boundaries, skip/snooze, per-row misfire, concurrency
+// ---------------------------------------------------------------------------
+
+/** Hot-path cleanup (the 20-row cap bites mid-file; afterAll is too late). */
+function cleanupRoutine(id: string): void {
+        try {
+                store.run(`DELETE FROM automations WHERE id = ?`, [id]);
+                store.run(`DELETE FROM automation_runs WHERE automation_id = ?`, [id]);
+        } catch {
+                /* best effort */
+        }
+        const i = created.indexOf(id);
+        if (i >= 0) created.splice(i, 1);
+}
+
+describe("routines v2 — creation + kinds", () => {
+        beforeAll(() => {
+                // The file's earlier describes leave rows behind (afterAll is too
+                // late for the 20-row cap) — start this section from a clean slate.
+                store.run(`DELETE FROM automations`);
+                store.run(`DELETE FROM automation_runs`);
+        });
+
+        test("every 2d at 09:00 in a timezone lands the normalized columns", () => {
+                const r = createAutomation({
+                        title: "bi-daily standup digest",
+                        prompt: "summarize commits",
+                        workspace: WORKSPACE,
+                        schedule: { every: "2d at 09:00" },
+                        timezone: "America/New_York",
+                        misfire: "catch-up",
+                });
+                expect(r.ok).toBe(true);
+                if (!r.ok) return;
+                track(r);
+                expect(r.automation.schedule_kind).toBe("every");
+                expect(r.automation.interval_n).toBe(2);
+                expect(r.automation.interval_unit).toBe("d");
+                expect(r.automation.interval_at).toBe("09:00");
+                expect(r.automation.timezone).toBe("America/New_York");
+                expect(r.automation.misfire).toBe("catch-up");
+                cleanupRoutine(r.automation.id);
+        });
+        test("after 45m arms 45m out and records the kind", () => {
+                const r = createAutomation({
+                        title: "regen check",
+                        prompt: "check",
+                        workspace: WORKSPACE,
+                        schedule: { after: "45m" },
+                });
+                expect(r.ok).toBe(true);
+                if (!r.ok) return;
+                track(r);
+                expect(r.automation.schedule_kind).toBe("after");
+                expect(r.automation.next_run_at).toBeGreaterThan(Date.now() + 44 * 60_000);
+                cleanupRoutine(r.automation.id);
+        });
+        test("conflicting schedule inputs are rejected", () => {
+                const r = createAutomation({
+                        title: "x",
+                        prompt: "x",
+                        workspace: WORKSPACE,
+                        schedule: { every: "2d", cron: "0 9 * * *" },
+                });
+                expect(r).toMatchObject({ ok: false });
+        });
+        test("unknown timezone is rejected with the IANA hint", () => {
+                const r = createAutomation({
+                        title: "x",
+                        prompt: "x",
+                        workspace: WORKSPACE,
+                        schedule: { every: "2d" },
+                        timezone: "Mars/Olympus",
+                });
+                expect(r.ok).toBe(false);
+                if (!r.ok) expect(r.error).toContain("America/New_York");
+        });
+        test("until before the first occurrence is rejected", () => {
+                const r = createAutomation({
+                        title: "x",
+                        prompt: "x",
+                        workspace: WORKSPACE,
+                        schedule: { every: "1d" },
+                        untilMs: Date.now() - 1000,
+                });
+                expect(r).toMatchObject({ ok: false });
+        });
+        test("misfire validation", () => {
+                const r = createAutomation({
+                        title: "x",
+                        prompt: "x",
+                        workspace: WORKSPACE,
+                        schedule: { every: "1d" },
+                        misfire: "backfill" as any,
+                });
+                expect(r).toMatchObject({ ok: false });
+        });
+        test("legacy rows (no kind) infer cron/once and keep working", () => {
+                const r = createAutomation({ title: "legacy cron", prompt: "p", workspace: WORKSPACE, schedule: { cron: "0 9 * * *" } });
+                expect(r.ok).toBe(true);
+                if (!r.ok) return;
+                track(r);
+                expect(r.automation.schedule_kind).toBe("cron"); // normalized at insert
+                cleanupRoutine(r.automation.id);
+        });
+});
+
+describe("routines v2 — updateAutomation with new fields", () => {
+        test("schedule edits re-arm and switch kinds", () => {
+                const r = track(createAutomation({ title: "t", prompt: "p", workspace: WORKSPACE, schedule: { cron: "0 9 * * *" } })!);
+                const u = updateAutomation(r.id, { every: "3w at 08:30", timezone: "Europe/Berlin" });
+                expect(u.ok).toBe(true);
+                if (!u.ok) return;
+                expect(u.automation.schedule_kind).toBe("every");
+                expect(u.automation.interval_unit).toBe("w");
+                expect(u.automation.interval_n).toBe(3);
+                expect(u.automation.timezone).toBe("Europe/Berlin");
+                expect(u.automation.next_run_at).toBeGreaterThan(Date.now());
+                cleanupRoutine(r.id);
+        });
+        test("until + misfire + maxRuns edits validate", () => {
+                const r = track(createAutomation({ title: "t", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                expect(updateAutomation(r.id, { misfire: "weird" as any })).toMatchObject({ ok: false });
+                const u = updateAutomation(r.id, { until_ms: Date.now() + 90 * 86_400_000, misfire: "catch-up" });
+                expect(u.ok).toBe(true);
+                // A PAST until ends the routine instead of erroring (the
+                // "stop after today" flow): the pending slot is past the boundary.
+                const ended = updateAutomation(r.id, { until_ms: Date.now() - 5 });
+                expect(ended.ok).toBe(true);
+                if (ended.ok) expect(ended.automation.lifecycle).toBe("completed");
+                cleanupRoutine(r.id);
+        });
+        test("resume re-arms an every-routine phase-preserving", () => {
+                const r = track(createAutomation({ title: "t", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d at 09:00" } })!);
+                expect(updateAutomation(r.id, { lifecycle: "paused" })).toMatchObject({ ok: true });
+                // Bend the stale slot far into the past, then resume: the next
+                // slot must be a future 09:00 (same phase, not re-anchored).
+                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 20 * 86_400_000, r.id]);
+                const u = updateAutomation(r.id, { lifecycle: "active" });
+                expect(u.ok).toBe(true);
+                if (!u.ok) return;
+                expect(u.automation.next_run_at).toBeGreaterThan(Date.now());
+                expect(u.automation.next_run_at! - Date.now()).toBeLessThan(2 * 86_400_000);
+                cleanupRoutine(r.id);
+        });
+});
+
+describe("routines v2 — skip + snooze", () => {
+        test("skip records a skipped run and advances one slot", () => {
+                const r = track(createAutomation({ title: "t", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d at 09:00" } })!);
+                const before = getAutomation(r.id)!.next_run_at!;
+                const s = skipNextOccurrence(r.id);
+                expect(s.ok).toBe(true);
+                if (!s.ok) return;
+                expect(s.automation.next_run_at).toBe(before + 86_400_000); // exactly one slot later (local wall-clock)
+                const runs = listRuns(r.id);
+                expect(runs.some((x) => x.status === "skipped" && x.error === "skipped_by_user")).toBe(true);
+                cleanupRoutine(r.id);
+        });
+        test("skipping a one-shot completes it", () => {
+                const r = track(createAutomation({ title: "t", prompt: "p", workspace: WORKSPACE, schedule: { delayMinutes: 30 } })!);
+                const s = skipNextOccurrence(r.id);
+                expect(s.ok).toBe(true);
+                if (!s.ok) return;
+                expect(s.automation.lifecycle).toBe("completed");
+                cleanupRoutine(r.id);
+        });
+        test("skip refuses non-active routines", () => {
+                const r = track(createAutomation({ title: "t", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                updateAutomation(r.id, { lifecycle: "paused" });
+                expect(skipNextOccurrence(r.id)).toMatchObject({ ok: false });
+                cleanupRoutine(r.id);
+        });
+        test("snooze pushes next_run_at by N minutes, bounded by until", () => {
+                const r = track(createAutomation({ title: "t", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const before = getAutomation(r.id)!.next_run_at!;
+                const s = snoozeNextOccurrence(r.id, 30);
+                expect(s.ok).toBe(true);
+                if (!s.ok) return;
+                expect(s.automation.next_run_at).toBe(before + 30 * 60_000);
+                expect(snoozeNextOccurrence(r.id, 0)).toMatchObject({ ok: false });
+                store.run(`UPDATE automations SET until_ms = ? WHERE id = ?`, [before + 45 * 60_000, r.id]);
+                expect(snoozeNextOccurrence(r.id, 60)).toMatchObject({ ok: false });
+                cleanupRoutine(r.id);
+        });
+});
+
+describe("routines v2 — scheduler semantics per kind", () => {
+        test("an every-1m routine runs on the tick and re-arms one minute out", async () => {
+                const r = dueAutomation({ every: "1m" });
+                const { dispatch, release, dispatched } = gatedDispatcher();
+                const sched = new AutomationsScheduler(dispatch);
+                await sched.tick();
+                expect(dispatched).toContain(r.id);
+                release();
+                await Bun.sleep(20);
+                const after = getAutomation(r.id)!;
+                expect(after.next_run_at).toBeGreaterThan(Date.now());
+                expect(after.next_run_at! - Date.now()).toBeLessThanOrEqual(60_000);
+                cleanupRoutine(r.id);
+        });
+        test("an after-3m routine re-arms from the run's END, not its slot", async () => {
+                const r = dueAutomation({ after: "3m" });
+                const dispatch = async () => {
+                        await Bun.sleep(50); // a run that takes 50ms
+                        return { exitCode: 0, output: "done", turns: 1, tokensIn: 1, tokensOut: 1 };
+                };
+                const sched = new AutomationsScheduler(dispatch);
+                const startAt = Date.now();
+                await sched.tick();
+                await Bun.sleep(120); // let the run finish
+                const after = getAutomation(r.id)!;
+                // next = completion (startAt+50ish) + 3m — NOT slot + 3m (slot is in the past)
+                expect(after.next_run_at).toBeGreaterThan(startAt + 3 * 60_000 - 10);
+                expect(after.next_run_at).toBeLessThan(Date.now() + 3 * 60_000 + 100);
+                cleanupRoutine(r.id);
+        });
+        test("a manual run of an every-routine leaves the pending slot untouched", async () => {
+                const r = track(createAutomation({ title: "t", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d at 09:00" } })!);
+                const pending = getAutomation(r.id)!.next_run_at!;
+                const dispatch = async () => ({ exitCode: 0, output: "manual", turns: 1, tokensIn: 1, tokensOut: 1 });
+                const sched = new AutomationsScheduler(dispatch);
+                await sched.runNow(r.id);
+                await Bun.sleep(30);
+                expect(getAutomation(r.id)!.next_run_at).toBe(pending); // slot preserved
+                cleanupRoutine(r.id);
+        });
+        test("per-row misfire=catch-up runs a missed slot; default skips it", async () => {
+                // catch-up row
+                const cu = track(createAutomation({ title: "catchup", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" }, misfire: "catch-up" })!);
+                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 20 * 60_000, cu.id]); // lag 20m > 5m grace
+                // default row
+                const sk = track(createAutomation({ title: "skipper", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [Date.now() - 20 * 60_000, sk.id]);
+                const dispatched: string[] = [];
+                const dispatch = async (a: AutomationRow) => {
+                        dispatched.push(a.id);
+                        return { exitCode: 0, output: "x", turns: 0, tokensIn: 0, tokensOut: 0 };
+                };
+                const sched = new AutomationsScheduler(dispatch);
+                await sched.tick();
+                expect(dispatched).toContain(cu.id); // catch-up ran
+                expect(dispatched).not.toContain(sk.id); // default skipped
+                const skRuns = listRuns(sk.id);
+                expect(skRuns.some((x) => x.status === "skipped" && x.error === "computer_asleep_or_engine_not_running")).toBe(true);
+                await Bun.sleep(20);
+                cleanupRoutine(cu.id);
+                cleanupRoutine(sk.id);
+        });
+        test("runNow respects the engine-wide concurrency cap", async () => {
+                const a1 = track(createAutomation({ title: "one", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const a2 = track(createAutomation({ title: "two", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const a3 = track(createAutomation({ title: "three", prompt: "p", workspace: WORKSPACE, schedule: { every: "1d" } })!);
+                const { dispatch, release } = gatedDispatcher();
+                const sched = new AutomationsScheduler(dispatch);
+                expect((await sched.runNow(a1.id))).toMatchObject({ ok: true });
+                expect((await sched.runNow(a2.id))).toMatchObject({ ok: true });
+                const third = await sched.runNow(a3.id);
+                expect(third.ok).toBe(false);
+                if (!third.ok) expect(third.status).toBe(429);
+                release();
+                await Bun.sleep(20);
+                cleanupRoutine(a1.id);
+                cleanupRoutine(a2.id);
+                cleanupRoutine(a3.id);
+        });
+        test("deleting a routine removes ALL its runs, running ones included", () => {
+                const r = track(createAutomation({ title: "t", prompt: "p", workspace: WORKSPACE, schedule: { delayMinutes: 30 } })!);
+                store.run(
+                        `INSERT INTO automation_runs (id, automation_id, trigger_kind, status, started_at) VALUES (?, ?, 'schedule', 'running', ?)`,
+                        ["fake-running", r.id, Date.now()],
+                );
+                expect(deleteAutomation(r.id)).toBe(true);
+                expect(listRuns(r.id)).toHaveLength(0);
+                created.splice(created.indexOf(r.id), 1);
         });
 });

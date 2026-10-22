@@ -53,7 +53,18 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { emit } from "./bus.ts";
-import { nextRun, parseCron, CronParseError, type ParsedCron } from "./cron.ts";
+import { parseCron, type ParsedCron } from "./cron.ts";
+import {
+        advanceIntervalSlot,
+        inferLegacyKind,
+        isValidTimezone,
+        nextAfterSlot,
+        nextCronInZone,
+        nextScheduleSlot,
+        planRoutineSchedule,
+        rowIntervalSpec,
+        type ScheduleKind,
+} from "./routine-schedule.ts";
 import { store } from "./store.ts";
 
 // ---------------------------------------------------------------------------
@@ -113,6 +124,15 @@ export interface AutomationRow {
         prompt: string;
         cron_expr: string | null;
         delay_ms: number | null; // one-shot: absolute epoch ms
+        /** Routines v2 — the recurrence kind + spec (null kind = legacy row:
+         *  cron_expr → cron, delay_ms → once; see inferLegacyKind). */
+        schedule_kind: string | null; // 'cron' | 'every' | 'after' | 'once'
+        interval_n: number | null;
+        interval_unit: string | null; // 'm' | 'h' | 'd' | 'w'
+        interval_at: string | null; // 'HH:MM' wall time (d/w only)
+        timezone: string | null; // IANA name; null = engine-local (floating)
+        until_ms: number | null; // inclusive end boundary
+        misfire: string | null; // 'skip' | 'catch-up'; null = env default
         workspace: string;
         mode: "read-only" | "standard";
         model: string | null;
@@ -159,6 +179,13 @@ CREATE TABLE IF NOT EXISTS automations (
   prompt TEXT NOT NULL,
   cron_expr TEXT,
   delay_ms INTEGER,
+  schedule_kind TEXT,
+  interval_n INTEGER,
+  interval_unit TEXT,
+  interval_at TEXT,
+  timezone TEXT,
+  until_ms INTEGER,
+  misfire TEXT,
   workspace TEXT NOT NULL,
   mode TEXT NOT NULL DEFAULT 'read-only',
   model TEXT,
@@ -202,63 +229,78 @@ CREATE INDEX IF NOT EXISTS idx_automation_runs ON automation_runs (automation_id
 CREATE INDEX IF NOT EXISTS idx_automation_runs_started ON automation_runs (started_at);
 `;
 
-/** Install the automations schema (idempotent). Called at engine boot.
- *  NOTE: split per-statement — Store.run uses prepare(), which accepts
- *  exactly one statement. */
+/** Routines-v2 columns added to an existing `automations` table (pre-v2
+ *  installs). Paired with the CREATE TABLE above (fresh installs already
+ *  carry them); ALTER TABLE ADD COLUMN is idempotent-guarded via
+ *  pragma table_info. */
+const ROUTINES_V2_COLUMNS: Array<[name: string, ddl: string]> = [
+        ["schedule_kind", "TEXT"],
+        ["interval_n", "INTEGER"],
+        ["interval_unit", "TEXT"],
+        ["interval_at", "TEXT"],
+        ["timezone", "TEXT"],
+        ["until_ms", "INTEGER"],
+        ["misfire", "TEXT"],
+];
+
+/** Install the automations schema (idempotent; migrates pre-v2 tables).
+ *  Called at engine boot. NOTE: split per-statement — Store.run uses
+ *  prepare(), which accepts exactly one statement. */
 export function ensureAutomationsSchema(): void {
         for (const stmt of AUTOMATIONS_SCHEMA.split(";")) {
                 const trimmed = stmt.trim();
                 if (trimmed.length > 0) store.run(trimmed, []);
         }
+        // Migration: backfill routines-v2 columns on legacy tables.
+        const present = new Set(store.query<{ name: string }>(`PRAGMA table_info(automations)`).map((c) => c.name));
+        for (const [name, ddl] of ROUTINES_V2_COLUMNS) {
+                if (!present.has(name)) store.run(`ALTER TABLE automations ADD COLUMN ${name} ${ddl}`, []);
+        }
 }
 
 // ---------------------------------------------------------------------------
-// Schedule math
+// Schedule math (routines v2 — delegated to routine-schedule.ts; the legacy
+// planSchedule shape is kept for callers that only carry cron/delayMinutes)
 // ---------------------------------------------------------------------------
 
 export interface ScheduleSpec {
-        /** 5-field cron, local time. */
+        /** 5-field cron (evaluated in the routine's timezone). */
         cron?: string;
         /** One-shot: run once after N minutes (host clock). */
         delayMinutes?: number;
+        /** Schedule-anchored interval: "30m" | "6h" | "2d" | "3w" | "2d at 09:00". */
+        every?: string;
+        /** Completion-anchored interval: "45m" | "2h" | "3d" | "1w". */
+        after?: string;
 }
 
 export type ScheduleResult =
-        | { ok: true; cronExpr: string | null; delayMs: number | null; nextRunAt: number }
+        | {
+                  ok: true;
+                  cronExpr: string | null;
+                  delayMs: number | null;
+                  nextRunAt: number;
+                  scheduleKind: ScheduleKind;
+                  intervalN: number | null;
+                  intervalUnit: string | null;
+                  intervalAt: string | null;
+          }
         | { ok: false; error: string };
 
-/** Validate + compute the first next_run_at for a schedule. Pure. */
-export function planSchedule(spec: ScheduleSpec, now: Date = new Date()): ScheduleResult {
-        if (spec.cron !== undefined && spec.delayMinutes !== undefined) {
-                return { ok: false, error: "pass either cron or delayMinutes, not both" };
-        }
-        if (spec.delayMinutes !== undefined) {
-                if (!Number.isFinite(spec.delayMinutes) || spec.delayMinutes < 1 || spec.delayMinutes > 525_600) {
-                        return { ok: false, error: "delayMinutes must be 1..525600" };
-                }
-                const at = now.getTime() + spec.delayMinutes * 60_000;
-                return { ok: true, cronExpr: null, delayMs: at, nextRunAt: at };
-        }
-        if (spec.cron !== undefined) {
-                try {
-                        const first = nextRun(spec.cron, now);
-                        if (first === null) return { ok: false, error: `cron "${spec.cron}" has no occurrence in the next 4 years` };
-                        return { ok: true, cronExpr: spec.cron.trim(), delayMs: null, nextRunAt: first.getTime() };
-                } catch (err) {
-                        if (err instanceof CronParseError) return { ok: false, error: err.message };
-                        return { ok: false, error: String(err) };
-                }
-        }
-        return { ok: false, error: "pass cron or delayMinutes" };
-}
-
-/** The next fire after a completed run; null when the plan is exhausted
- *  (one-shot done or maxRuns reached — callers finalize lifecycle). */
-export function planNextRun(row: Pick<AutomationRow, "cron_expr" | "delay_ms" | "max_runs" | "scheduled_run_count">, now: Date = new Date()): number | null {
-        if (row.delay_ms !== null) return null; // one-shot: no recurrence
-        if (row.max_runs !== null && row.scheduled_run_count >= row.max_runs) return null;
-        const next = nextRun(row.cron_expr ?? "", now);
-        return next ? next.getTime() : null;
+/** Validate + compute the first next_run_at for a schedule (any kind). Pure. */
+export function planSchedule(spec: ScheduleSpec, timezone: string | null = null, now: Date = new Date()): ScheduleResult {
+        const plan = planRoutineSchedule(spec, timezone, now.getTime());
+        if (!plan.ok) return { ok: false, error: plan.error };
+        return {
+                ok: true,
+                cronExpr: plan.schedule.cronExpr,
+                delayMs: plan.schedule.delayMs,
+                nextRunAt: plan.nextRunAt,
+                scheduleKind: plan.schedule.kind,
+                intervalN: plan.schedule.intervalN,
+                intervalUnit: plan.schedule.intervalUnit,
+                intervalAt: plan.schedule.intervalAt,
+        };
 }
 
 /** Cron pre-parse for validation outside the scheduler (used by tools). */
@@ -266,8 +308,21 @@ export function tryParseCron(expr: string): { ok: true; parsed: ParsedCron } | {
         try {
                 return { ok: true, parsed: parseCron(expr) };
         } catch (err) {
-                return { ok: false, error: err instanceof CronParseError ? err.message : String(err) };
+                return { ok: false, error: err instanceof Error ? err.message : String(err) };
         }
+}
+
+/** The routine's effective misfire policy: the row's own choice, else the
+ *  env default (UNOWN_AUTOMATION_MISFIRE_CATCHUP=1 → catch-up). */
+export function effectiveMisfire(row: Pick<AutomationRow, "misfire">): "skip" | "catch-up" {
+        if (row.misfire === "catch-up") return "catch-up";
+        if (row.misfire === "skip") return "skip";
+        return misfireCatchupEnabled() ? "catch-up" : "skip";
+}
+
+/** Validate a misfire policy value. */
+export function validMisfire(v: unknown): "skip" | "catch-up" | null {
+        return v === "skip" || v === "catch-up" ? v : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -279,6 +334,9 @@ export type CreateAutomationInput = {
         prompt: string;
         workspace: string;
         schedule: ScheduleSpec;
+        timezone?: string | null;
+        untilMs?: number | null;
+        misfire?: "skip" | "catch-up" | null;
         mode?: "read-only" | "standard";
         model?: string | null;
         maxRuns?: number | null;
@@ -296,8 +354,19 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
         const mode = input.mode ?? "read-only";
         if (mode !== "read-only" && mode !== "standard") return { ok: false, error: `mode must be read-only or standard`, status: 400 };
         if (!existsSync(input.workspace)) return { ok: false, error: `workspace does not exist: ${input.workspace}`, status: 400 };
-        const plan = planSchedule(input.schedule, now);
+        const timezone = input.timezone?.trim() || null;
+        if (!isValidTimezone(timezone)) return { ok: false, error: `unknown timezone "${timezone}" (IANA names, e.g. America/New_York)`, status: 400 };
+        if (input.misfire !== undefined && input.misfire !== null && !validMisfire(input.misfire)) {
+                return { ok: false, error: "misfire must be skip or catch-up", status: 400 };
+        }
+        if (input.untilMs !== undefined && input.untilMs !== null && (!Number.isFinite(input.untilMs) || input.untilMs <= 0)) {
+                return { ok: false, error: "until must be a positive epoch-ms timestamp", status: 400 };
+        }
+        const plan = planSchedule(input.schedule, timezone, now);
         if (!plan.ok) return { ok: false, error: plan.error, status: 400 };
+        if (input.untilMs !== undefined && input.untilMs !== null && plan.nextRunAt > input.untilMs) {
+                return { ok: false, error: `until is before the routine's first occurrence (${new Date(plan.nextRunAt).toISOString()})`, status: 400 };
+        }
         const count = store.get<{ c: number }>(`SELECT COUNT(*) AS c FROM automations`);
         if ((count?.c ?? 0) >= AUTOMATION_CREATE_LIMIT) {
                 return { ok: false, error: `automation limit reached (${AUTOMATION_CREATE_LIMIT}) — delete one first`, status: 400 };
@@ -305,9 +374,29 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
         const id = `auto-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
         const ts = now.getTime();
         store.run(
-                `INSERT INTO automations (id, title, prompt, cron_expr, delay_ms, workspace, mode, model, max_runs, lifecycle, next_run_at, dispatch_status, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 'idle', ?, ?)`,
-                [id, title, prompt, plan.cronExpr, plan.delayMs, input.workspace, mode, input.model ?? null, input.maxRuns ?? null, plan.nextRunAt, ts, ts],
+                `INSERT INTO automations (id, title, prompt, cron_expr, delay_ms, schedule_kind, interval_n, interval_unit, interval_at, timezone, until_ms, misfire, workspace, mode, model, max_runs, lifecycle, next_run_at, dispatch_status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 'idle', ?, ?)`,
+                [
+                        id,
+                        title,
+                        prompt,
+                        plan.cronExpr,
+                        plan.delayMs,
+                        plan.scheduleKind,
+                        plan.intervalN,
+                        plan.intervalUnit,
+                        plan.intervalAt,
+                        timezone,
+                        input.untilMs ?? null,
+                        input.misfire ?? null,
+                        input.workspace,
+                        mode,
+                        input.model ?? null,
+                        input.maxRuns ?? null,
+                        plan.nextRunAt,
+                        ts,
+                        ts,
+                ],
         );
         const row = getAutomation(id);
         if (!row) return { ok: false, error: "insert failed", status: 500 };
@@ -330,7 +419,12 @@ export function listRuns(automationId: string, limit = 20): AutomationRunRow[] {
         );
 }
 
-export type UpdatePatch = Partial<Pick<AutomationRow, "title" | "prompt" | "mode" | "model" | "max_runs" | "lifecycle">> & { cron?: string };
+export type UpdatePatch = Partial<Pick<AutomationRow, "title" | "prompt" | "mode" | "model" | "max_runs" | "lifecycle" | "timezone" | "until_ms" | "misfire">> & {
+        cron?: string;
+        every?: string;
+        after?: string;
+        delayMinutes?: number;
+};
 
 export function updateAutomation(id: string, patch: UpdatePatch, now: Date = new Date()): CreateResult {
         const row = getAutomation(id);
@@ -360,6 +454,31 @@ export function updateAutomation(id: string, patch: UpdatePatch, now: Date = new
                 sets.push("max_runs = ?");
                 params.push(patch.max_runs ?? null);
         }
+        if (patch.timezone !== undefined) {
+                const tz = patch.timezone?.trim() || null;
+                if (!isValidTimezone(tz)) return { ok: false, error: `unknown timezone "${tz}" (IANA names, e.g. America/New_York)`, status: 400 };
+                sets.push("timezone = ?");
+                params.push(tz);
+        }
+        if (patch.until_ms !== undefined) {
+                if (patch.until_ms !== null && (!Number.isFinite(patch.until_ms) || patch.until_ms <= 0)) {
+                        return { ok: false, error: "until must be a positive epoch-ms timestamp (or null to clear)", status: 400 };
+                }
+                sets.push("until_ms = ?");
+                params.push(patch.until_ms ?? null);
+                // A boundary the pending slot is already past ENDS the routine
+                // (the "stop after today" flow) instead of erroring.
+                if (patch.until_ms !== null && row.lifecycle === "active" && row.next_run_at !== null && row.next_run_at > patch.until_ms) {
+                        sets.push("next_run_at = NULL", "lifecycle = 'completed'");
+                }
+        }
+        if (patch.misfire !== undefined) {
+                if (patch.misfire !== null && !validMisfire(patch.misfire)) {
+                        return { ok: false, error: "misfire must be skip or catch-up (or null for the default)", status: 400 };
+                }
+                sets.push("misfire = ?");
+                params.push(patch.misfire ?? null);
+        }
         if (patch.lifecycle !== undefined) {
                 if (!["active", "paused", "completed", "failed"].includes(patch.lifecycle)) {
                         return { ok: false, error: "lifecycle must be active | paused | completed | failed", status: 400 };
@@ -372,18 +491,32 @@ export function updateAutomation(id: string, patch: UpdatePatch, now: Date = new
                 sets.push("lifecycle = ?");
                 params.push(patch.lifecycle);
                 if (patch.lifecycle === "active") {
-                        const plan = planSchedule({ cron: row.cron_expr ?? undefined }, now);
-                        if (plan.ok) {
+                        const rearm = resumeNextRun(row, now.getTime());
+                        if (rearm !== null) {
                                 sets.push("next_run_at = ?");
-                                params.push(plan.nextRunAt);
+                                params.push(rearm);
                         }
                 }
         }
-        if (patch.cron !== undefined) {
-                const plan = planSchedule({ cron: patch.cron }, now);
+        // Schedule edits (any kind) re-arm the whole spec from now: exactly
+        // one of cron/every/after/delayMinutes may ride a patch.
+        const scheduleKeys = ["cron", "every", "after", "delayMinutes"].filter((k) => (patch as any)[k] !== undefined);
+        if (scheduleKeys.length > 1) {
+                return { ok: false, error: `pass only ONE schedule kind (got ${scheduleKeys.join(" + ")})`, status: 400 };
+        }
+        if (scheduleKeys.length === 1) {
+                const spec: ScheduleSpec = {};
+                if (patch.cron !== undefined) spec.cron = patch.cron;
+                if (patch.every !== undefined) spec.every = patch.every;
+                if (patch.after !== undefined) spec.after = patch.after;
+                if (patch.delayMinutes !== undefined) spec.delayMinutes = patch.delayMinutes;
+                const plan = planSchedule(spec, patch.timezone !== undefined ? patch.timezone?.trim() || null : row.timezone, now);
                 if (!plan.ok) return { ok: false, error: plan.error, status: 400 };
-                sets.push("cron_expr = ?", "delay_ms = ?", "next_run_at = ?");
-                params.push(plan.cronExpr, null, plan.nextRunAt);
+                if (row.until_ms !== null && plan.nextRunAt > row.until_ms) {
+                        return { ok: false, error: `until (${new Date(row.until_ms).toISOString()}) is before the new schedule's first occurrence`, status: 400 };
+                }
+                sets.push("cron_expr = ?", "delay_ms = ?", "schedule_kind = ?", "interval_n = ?", "interval_unit = ?", "interval_at = ?", "next_run_at = ?");
+                params.push(plan.cronExpr, plan.delayMs, plan.scheduleKind, plan.intervalN, plan.intervalUnit, plan.intervalAt, plan.nextRunAt);
         }
         if (sets.length === 0) return { ok: false, error: "nothing to update", status: 400 };
         sets.push("updated_at = ?");
@@ -401,10 +534,100 @@ export function deleteAutomation(id: string): boolean {
         const res = store.run(`DELETE FROM automations WHERE id = ?`, [id]);
         const deleted = (res as any).changes > 0;
         if (deleted) {
-                store.run(`DELETE FROM automation_runs WHERE automation_id = ? AND status != 'running'`, [id]);
+                // ALL runs go, running ones included: an in-flight run's final
+                // UPDATE simply no-ops against the deleted parent, and keeping
+                // them would leave orphan rows lingering until retention.
+                store.run(`DELETE FROM automation_runs WHERE automation_id = ?`, [id]);
                 emit("automation:deleted", { id });
         }
         return deleted;
+}
+
+// ---------------------------------------------------------------------------
+// Skip + snooze (routines controls — Things' skip-this-occurrence, Todoist's
+// postpone, without the modal)
+// ---------------------------------------------------------------------------
+
+/** The fresh next_run_at a paused routine gets on resume, per kind:
+ *  cron recomputes from now; every re-arms phase-preserving (the next FUTURE
+ *  slot on the old rhythm — firstIntervalSlot of the stale chain); after
+ *  starts a fresh N-window from now (the pause consumed the wait). */
+function resumeNextRun(row: AutomationRow, nowMs: number): number | null {
+        const kind = (row.schedule_kind as ScheduleKind | null) ?? inferLegacyKind(row);
+        if (row.max_runs !== null && row.scheduled_run_count >= row.max_runs) return null;
+        if (kind === "cron") {
+                return nextCronInZone(row.cron_expr ?? "", nowMs, row.timezone);
+        }
+        if (kind === "every") {
+                const spec = rowIntervalSpec(row);
+                const stale = row.next_run_at ?? nowMs;
+                let next = advanceIntervalSlot(stale, spec, row.timezone);
+                let guard = 0;
+                while (next <= nowMs && guard < 53 * 100) {
+                        next = advanceIntervalSlot(next, spec, row.timezone);
+                        guard++;
+                }
+                return next;
+        }
+        if (kind === "after") {
+                return nextAfterSlot(row, nowMs).nextRunAt;
+        }
+        return null; // once: no re-arm
+}
+
+export type SkipResult = { ok: true; automation: AutomationRow } | { ok: false; error: string; status: number };
+
+/** Skip the NEXT occurrence: record a skipped run (reason: user), advance
+ *  exactly ONE slot (the chain keeps its phase), finalize exhausted plans.
+ *  Skipping a one-shot's only occurrence completes it. */
+export function skipNextOccurrence(id: string, now: Date = new Date()): SkipResult {
+        const row = getAutomation(id);
+        if (!row) return { ok: false, error: `unknown automation ${id}`, status: 404 };
+        if (row.lifecycle !== "active") return { ok: false, error: `only an active routine can be skipped (this one is ${row.lifecycle})`, status: 400 };
+        if (row.running) return { ok: false, error: "a run is already in progress", status: 409 };
+        const slot = row.next_run_at ?? now.getTime();
+        recordSkip(row, now.getTime(), "skipped_by_user");
+        const kind = (row.schedule_kind as ScheduleKind | null) ?? inferLegacyKind(row);
+        let next: number | null;
+        if (kind === "cron") {
+                next = nextCronInZone(row.cron_expr ?? "", now.getTime(), row.timezone);
+        } else if (kind === "every" || kind === "after") {
+                next = advanceIntervalSlot(slot, rowIntervalSpec(row), row.timezone);
+        } else {
+                next = null; // once: the skipped occurrence was the only one
+        }
+        if (next !== null && row.until_ms !== null && next > row.until_ms) next = null;
+        if (next === null) {
+                store.run(`UPDATE automations SET next_run_at = NULL, lifecycle = 'completed', updated_at = ? WHERE id = ?`, [now.getTime(), id]);
+                emit("automation:completed", { id });
+        } else {
+                store.run(`UPDATE automations SET next_run_at = ?, updated_at = ? WHERE id = ?`, [next, now.getTime(), id]);
+        }
+        const updated = getAutomation(id)!;
+        emit("automation:skipped", { id, reason: "skipped_by_user" });
+        return { ok: true, automation: updated };
+}
+
+export type SnoozeResult = { ok: true; automation: AutomationRow } | { ok: false; error: string; status: number };
+
+/** Push the next occurrence out by N minutes (1..525600). The skipped-slot
+ *  gap stays visible in history: scheduled_at keeps the original slot. */
+export function snoozeNextOccurrence(id: string, minutes: number, now: Date = new Date()): SnoozeResult {
+        const row = getAutomation(id);
+        if (!row) return { ok: false, error: `unknown automation ${id}`, status: 404 };
+        if (row.lifecycle !== "active") return { ok: false, error: `only an active routine can be snoozed (this one is ${row.lifecycle})`, status: 400 };
+        if (!Number.isFinite(minutes) || minutes < 1 || minutes > 525_600) {
+                return { ok: false, error: "snooze minutes must be 1..525600", status: 400 };
+        }
+        const base = row.next_run_at ?? now.getTime();
+        const next = base + minutes * 60_000;
+        if (row.until_ms !== null && next > row.until_ms) {
+                return { ok: false, error: `snoozing past until (${new Date(row.until_ms).toISOString()}) would end the routine — skip or edit instead`, status: 400 };
+        }
+        store.run(`UPDATE automations SET next_run_at = ?, updated_at = ? WHERE id = ?`, [next, now.getTime(), id]);
+        const updated = getAutomation(id)!;
+        emit("automation:updated", { id, snoozedTo: next });
+        return { ok: true, automation: updated };
 }
 
 // ---------------------------------------------------------------------------
@@ -549,10 +772,12 @@ export class AutomationsScheduler {
                                 `UPDATE automation_runs SET status = 'failed', ended_at = ?, error = 'engine restarted mid-run (claim reclaimed)' WHERE automation_id = ? AND status = 'running'`,
                                 [now, row.id],
                         );
-                        const next = planNextRun(row, new Date(now));
-                        if (next === null && row.delay_ms !== null) {
-                                store.run(`UPDATE automations SET lifecycle = 'completed' WHERE id = ?`, [row.id]);
-                        } else if (next !== null) {
+                        // The claimed slot was consumed by the dead run — advance
+                        // from it (schedule kinds) or re-arm from now (after).
+                        const next = orphanNextRun(row, now);
+                        if (next === null) {
+                                store.run(`UPDATE automations SET next_run_at = NULL, lifecycle = 'completed' WHERE id = ?`, [row.id]);
+                        } else {
                                 store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [next, row.id]);
                         }
                         emit("automation:recovered", { id: row.id });
@@ -580,21 +805,19 @@ export class AutomationsScheduler {
                         );
                         if (!due) break;
                         // Misfire policy: a due slot older than the grace window is
-                        // stale. Default (cron-classic, zcode): SKIP + record +
-                        // reschedule — never replay. Opt-in
-                        // (UNOWN_AUTOMATION_MISFIRE_CATCHUP=1, launchd-style): a lag
-                        // within 24h runs ONCE (coalesced — never N replays) and
-                        // reschedules from now (executeClaimed's post-run reschedule
-                        // uses the run's end time). Older than 24h even catch-up
-                        // gives up: cron slots skip, one-shots complete.
+                        // stale. The routine's own `misfire` field picks the policy
+                        // (skip = cron-classic: record + advance, never replay;
+                        // catch-up = launchd-style: run ONCE when the lag is under
+                        // 24h, rescheduling from the run's end). Older than 24h
+                        // even catch-up gives up: slots skip, one-shots complete.
                         const lag = ts - due.next_run_at;
                         const misfired = lag > misfireGraceMs();
-                        const catchUp = misfired && misfireCatchupEnabled() && lag <= MISFIRE_CATCHUP_MAX_LAG_MS;
+                        const catchUp = misfired && effectiveMisfire(due) === "catch-up" && lag <= MISFIRE_CATCHUP_MAX_LAG_MS;
                         const claimed = claim(due.id, ts);
                         if (!claimed) continue; // raced with another claim — next tick
                         if (misfired && !catchUp) {
                                 recordSkip(due, ts, "computer_asleep_or_engine_not_running");
-                                reschedule(due, now, { skip: true });
+                                reschedule(due, { trigger: "schedule", slotMs: due.next_run_at!, fromMs: ts });
                                 continue;
                         }
                         this.inFlight.add(due.id);
@@ -643,7 +866,7 @@ export class AutomationsScheduler {
                                 [endedAt, ok ? null : `last run exited ${result.exitCode}`, automation.id],
                         );
                         const updated = getAutomation(automation.id);
-                        if (updated) reschedule(updated, new Date(endedAt), { skip: false });
+                        if (updated) reschedule(updated, { trigger, slotMs: scheduledAt, fromMs: endedAt });
                         emit(ok ? "automation:run-succeeded" : "automation:run-failed", { id: automation.id, runId, exitCode: result.exitCode });
                 } catch (err: any) {
                         // Dispatch failure — retry with backoff (zcode: same run id, frozen scheduledAt).
@@ -661,7 +884,7 @@ export class AutomationsScheduler {
                                         [`dispatch failed after ${attempts} attempts`, automation.id],
                                 );
                                 const updated = getAutomation(automation.id);
-                                if (updated) reschedule(updated, new Date(), { skip: true }); // recurring: next slot; one-shot: completed
+                                if (updated) reschedule(updated, { trigger: "schedule", slotMs: scheduledAt, fromMs: Date.now() }); // recurring: next slot; one-shot: completed
                                 emit("automation:dispatch-exhausted", { id: automation.id, attempts });
                         } else {
                                 store.run(
@@ -673,12 +896,17 @@ export class AutomationsScheduler {
                 }
         }
 
-        /** "Run now": manual trigger — fails when a run is already in progress. */
+        /** "Run now": manual trigger — fails when a run is already in progress
+         *  (this routine's own, or the engine-wide 2-run concurrency cap —
+         *  manual runs never bypass it). */
         async runNow(id: string): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
                 const automation = getAutomation(id);
                 if (!automation) return { ok: false, error: `unknown automation ${id}`, status: 404 };
                 if (automation.running || this.inFlight.has(id)) {
                         return { ok: false, error: "a run is already in progress", status: 409 };
+                }
+                if (this.inFlight.size >= MAX_CONCURRENT_AUTOMATION_RUNS) {
+                        return { ok: false, error: `the engine is already running ${this.inFlight.size} routine runs (cap ${MAX_CONCURRENT_AUTOMATION_RUNS}) — try again shortly`, status: 429 };
                 }
                 const claimed = claim(id, Date.now());
                 if (!claimed) return { ok: false, error: "a run is already in progress", status: 409 };
@@ -702,15 +930,46 @@ function recordSkip(automation: AutomationRow, ts: number, reason: string): void
         emit("automation:skipped", { id: automation.id, reason });
 }
 
-/** Post-run/post-skip scheduling: advance next_run_at; finalize exhausted plans. */
-function reschedule(row: AutomationRow, now: Date, opts: { skip: boolean }): void {
-        const next = planNextRun(row, now);
+/** Post-run/post-skip scheduling — kind-routed (routine-schedule.ts):
+ *
+ *  - once: exhausted, finalize
+ *  - after: re-arm N units from the completion instant for BOTH triggers
+ *    (Todoist after-semantics — measured from when the work finished;
+ *    a manual run re-arms an after-routine too)
+ *  - cron + manual: recompute from now (idempotent — the pending slot is
+ *    untouched; manual runs never consume schedule slots)
+ *  - every + manual: the pending slot is left alone entirely
+ *  - cron/every + schedule trigger (or misfire skip): advance from the
+ *    consumed slot, coalescing fully-elapsed slots into the next future one
+ */
+function reschedule(row: AutomationRow, opts: { trigger: "schedule" | "manual"; slotMs: number; fromMs: number }): void {
+        const kind = (row.schedule_kind as ScheduleKind | null) ?? inferLegacyKind(row);
+        let next: number | null;
+        if (kind === "after") {
+                next = nextAfterSlot(row, opts.fromMs).nextRunAt;
+        } else if (kind === "once") {
+                next = null;
+        } else if (opts.trigger === "manual" && kind === "every") {
+                return; // pending slot untouched — manual runs never consume it
+        } else {
+                const r = nextScheduleSlot(row, opts.slotMs, opts.fromMs);
+                next = r.nextRunAt;
+        }
         if (next === null) {
                 store.run(`UPDATE automations SET next_run_at = NULL, lifecycle = 'completed' WHERE id = ?`, [row.id]);
                 emit("automation:completed", { id: row.id });
                 return;
         }
         store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [next, row.id]);
+}
+
+/** Orphan recovery re-arm: the claimed slot died mid-run — schedule kinds
+ *  advance from it, after re-arms from now, once finalizes. */
+function orphanNextRun(row: AutomationRow, nowMs: number): number | null {
+        const kind = (row.schedule_kind as ScheduleKind | null) ?? inferLegacyKind(row);
+        if (kind === "after") return nextAfterSlot(row, nowMs).nextRunAt;
+        if (kind === "once") return null;
+        return nextScheduleSlot(row, row.next_run_at ?? nowMs, nowMs).nextRunAt;
 }
 
 /** Pending in-process runs (diagnostics/tests). */
