@@ -73,11 +73,11 @@ const BEATS: Beat[] = [
       "Terminal session outcome in ~/code/checkout:",
       "Final outcome: all 14 checkout specs green.",
       "",
-      "Session metadata (never extractable — counts and duration only): 1 prompt(s),",
+      "Session metadata (counts and duration only — data, not knowledge): 1 prompt(s),",
       "14 tool call(s) (read, grep, edit, bash), 3 min.",
     ].join("\n"),
     caption2:
-      "The literal note template — outcome first (that is the knowledge), counts and duration demoted to a labeled metadata line. A subagent session gets a [subagent] tag in the same header, so the engine can tell where a note came from.",
+      "The literal note template — outcome first (that is the knowledge), counts and duration demoted to a labeled data-only metadata line (a phrasing the injection guard can never trip on). A subagent session gets a [subagent] tag in the same header, so the engine can tell where a note came from.",
   },
   {
     key: "learn",

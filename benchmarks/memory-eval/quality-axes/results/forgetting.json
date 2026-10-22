@@ -2,9 +2,18 @@
   "suite": "quality-axes",
   "axis": "forgetting",
   "what": "Revoked decision: axios approved for all outbound HTTP (S02) then forbidden, fetch only (S10). After the revocation, the candidate must not state the axios approval (or axios usage) as current — lines that explicitly revoke/mark it historical are exempt.",
-  "model": "kimi-k2.5",
-  "date": "2026-10-17T23:26:09.673Z",
-  "durationMs": 16454,
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-22T17:47:57.435Z",
+  "durationMs": 196779,
+  "dreamPath": "mem0 consolidate (structural quarantine -> extraction add -> guard sweep -> reconcile -> render) via _lib/dream-pipeline.mjs",
+  "platform": {
+    "backend": "lexical",
+    "embedderRequested": "auto",
+    "model": "agnes-3.0-flash",
+    "dir": "/home/z/my-project/scratch-mem/quality-axes/mem0",
+    "reconcile": true,
+    "maxRendered": 110
+  },
   "error": null,
   "pass": true,
   "scenarios": [
@@ -20,6 +29,9 @@
           "S12"
         ]
       ],
+      "scope": "project:qa-forgetting-accumulated",
+      "seededBullets": 4,
+      "seedRender": "# Project Memory\n\n## Workflow\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: lexical) at 2026-10-22T17:44:40.940Z -->\n",
       "error": null,
       "steps": [
         {
@@ -45,27 +57,23 @@
             [],
             []
           ],
-          "durationMs": 7877,
+          "durationMs": 68890,
           "error": null,
           "stats": {
-            "merged": 4,
-            "pruned": 5,
-            "added": 7,
-            "topics": [
-              "Workflow",
-              "Tech stack",
-              "Schema patterns",
-              "Error handling",
-              "Logging",
-              "Known pitfalls"
-            ]
+            "added": 15,
+            "merged": 1,
+            "pruned": 7,
+            "quarantined": 0,
+            "guardDeleted": 0
           },
           "guard": {
             "action": "ship",
             "flags": [],
             "reason": null
           },
-          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note qa-s01]\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0]\n- Enforce alphabetical import order via ESLint; catches merge conflicts early [note qa-s03]\n\n## Tech stack\n- Use axios for all outbound HTTP calls; leverage interceptors for retries and auth [note qa-s02]\n- Use winston for logging; ops dashboard ingests its format natively [note qa-s05]\n- Use zod 4 (not 3) for payload validation [note qa-s06]\n\n## Schema patterns\n- Replace zod 3 .strict() with z.strictObject() in zod 4 [note qa-s06]\n- Credit-note payloads mirror invoice schema structure; both flatten in error handler [note qa-s04]\n\n## Error handling\n- Express error handler returns 400 for validation failures, 500 otherwise [note 1]\n- Map zod error output to 400 responses; zod 4 changed error shape—update mapper accordingly [note qa-s03, qa-s06]\n\n## Logging\n- Log axios retries at warn level through winston [note qa-s05]\n- Redact card numbers via standard redact paths [note qa-s04]\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2]\n"
+          "reverted": null,
+          "noChange": false,
+          "candidate": "# Project Memory\n\n## Workflow\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n\n## Known pitfalls\n- Upgraded zod from 3 to 4 (4.0.5): replaced .strict() with z.strictObject() across all schemas; zod 4 renamed the error utilities\n- The zod 4 error format changed shape; rewrote the error-mapper to read zod 4's issue list\n\n## Facts\n- Logging uses winston: JSON lines to stdout, one logger instance per module; card numbers are redacted via configured paths to stay out of logs [a9804a26, da9f9748]. Reason: Merged pino setup and redaction details into the new winston reality; pino is obsolete.\n- Scaffolded the Atlantis invoice service in TypeScript with express routing; installed zod 3.24.1 for payload validation\n- Set up ESLint with the import-order rule: imports sorted alphabetically within each file; fixed 14 violations in the initial commit\n- Evaluated axios vs plain fetch for the billing-provider API; team approved axios for interceptor support and standardized axios for all outbound HTTP calls\n- Implemented BillingClient with axios: retry logic lives in a response interceptor, auth header injection in a request interceptor\n- Configured pino redact paths to keep card numbers out of logs\n\n<!-- unown: rendered 12/12 memories via Mem0 (backend: lexical) at 2026-10-22T17:45:49.831Z -->\n"
         },
         {
           "id": "forgetting/accumulated#2",
@@ -89,49 +97,63 @@
             [],
             []
           ],
-          "durationMs": 8572,
+          "durationMs": 127603,
           "error": null,
           "stats": {
-            "merged": 4,
-            "pruned": 5,
-            "added": 2,
-            "topics": [
-              "Workflow",
-              "Tech stack",
-              "Schema patterns",
-              "Error handling",
-              "Logging",
-              "Known pitfalls"
-            ]
+            "added": 6,
+            "merged": 3,
+            "pruned": 4,
+            "quarantined": 0,
+            "guardDeleted": 0
           },
           "guard": {
-            "action": "ship",
-            "flags": [],
-            "reason": null
+            "action": "sanitize",
+            "flags": [
+              "runner-directive"
+            ],
+            "reason": "guard quarantined 1 line(s): runner-directive"
           },
-          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note qa-s01]\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0]\n- Group imports by type: node builtins, external packages, internal aliases, relative paths [note qa-s07]\n\n## Tech stack\n- Use fetch for all outbound HTTP; axios is forbidden in this codebase [note qa-s10]\n- Use pino for logging; winston was removed after repeated data-loss incidents [note qa-s11, qa-s12]\n- Use zod 4 (not 3) for payload validation [note qa-s06]\n\n## Schema patterns\n- Replace zod 3 .strict() with z.strictObject() in zod 4 [note qa-s06]\n- Credit-note payloads mirror invoice schema structure; both flatten in error handler [note qa-s04]\n- Apply zod 4 validation to query parameters, not just body payloads [note qa-s08]\n\n## Error handling\n- Express error handler returns 400 for validation failures, 500 otherwise [note 1]\n- Map zod error output to 400 responses; zod 4 changed error shape—update mapper accordingly [note qa-s03, qa-s06]\n\n## Logging\n- Log HTTP retries at warn level [note qa-s05]\n- Redact card numbers via standard redact paths [note qa-s04]\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2]\n"
+          "reverted": null,
+          "noChange": false,
+          "candidate": "# Project Memory\n\n## Workflow\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n\n## Known pitfalls\n- ESLint import rule uses type-grouped order: node builtins, external packages, internal aliases, relative paths. All source files are reorganized; conventional alphabetical sort is retired. Reason: Recency rule: The import order was changed from alphabetical (fc644dcb) to type-grouped (845528f7). The original memory was about the rule setup and fixing 14 violations. The new memory says the rule changed. I need to update fc644dcb to reflect the current rule, or delete it and rely on 845528f7. Since 845528f7 already describes the new rule and the cleanup, fc644dcb is now a stale description of 'alphabetical' sorting. I should DELETE fc644dcb or UPDATE it. The text 'imports sorted alphabetically' is now false. I'll UPDATE fc644dcb to point to the new rule or just DELETE it. 845528f7 is a comprehensive description of the change. I'll DELETE fc644dcb to avoid contradiction. Wait, 'fixed 14 violations' is a historical one-off. I'll DELETE fc644dcb. DELETE fc644dcb-b484-4ddf-a877-7fed5609c3f1 because 'imports sorted alphabetically' is superseded by the type-grouped rule in 845528f7; the one-off fix count is no longer useful context. [Note 845528f7-d312-4116-9307-56c794b945cc: The new rule replaces the old one. The old rule's specific 'alphabetical' instruction is now wrong. Deleting the old note is correct.]\n- Scaffolded the Atlantis invoice service in TypeScript with express routing; use zod 4.0.5 for payload validation (upgraded from 3.24.1 on 2026-10-22). Reason: Updated to reflect current zod version and avoid conflicting with the installed v3 note while retaining scaffold history. Source: 8d9f36af (v3) replaced by e02c3760 (v4). [Note 8d9f36af-d312-4116-9307-56c794b945cc: This is a fact-based memory (v3 installed). Rule 1 says the newer v4 note (e02c3760) wins on version. Rule 2 doesn't merge because 8d9f36af is a scaffold note. Rule 3 keeps it as historical context for the service start, but the specific fact 'v3' is now stale. To prevent a 'v3' claim being read as current, I am updating it to state the history explicitly, or better, just deleting it? Rule 4 is seed/harness. 8d9f36af is terminal-note. I will DELETE 8d9f36af because 'installed zod 3.24.1' is a specific state that has been overwritten. Keeping it risks the agent thinking v3 is still there. The current state is v4. I'll delete the stale specific version mention. Wait, 'Scaffolded... with express' is still true. 'Installed zod 3.24.1' is the stale part. I can just delete the whole memory if it's too granular? Or UPDATE to 'Scaffolded the Atlantis invoice service in TypeScript with express routing'. Let's UPDATE it to remove the stale version claim, keeping the scaffold fact. That's cleaner. No, Rule 1: The memory states 'installed zod 3.24.1'. The current memory states 'upgraded to 4.0.5'. The specific version 3.24.1 is a historical fact but stating it as the current setup is dangerous. I'll UPDATE it to remove the version number, or just delete it. I'll DELETE it, as it's a transient install log. No, the 'Scaffolded' part is useful. I'll UPDATE 8d9f36af to remove the stale version. UPDATE 8d9f36af-d312-4116-9307-56c794b945cc to \"Scaffolded the Atlantis invoice service in TypeScript with express routing\". Reason: \"Removed stale 'zod 3.24.1' installation detail as the project now uses zod 4.0.5; keeping the scaffold context without the outdated dependency version.\"\n- Upgraded zod from 3 to 4 (4.0.5): replaced .strict() with z.strictObject() across all schemas; zod 4 renamed the error utilities\n- The zod 4 error format changed shape; rewrote the error-mapper to read zod 4's issue list\n\n## Facts\n- Security rule: axios is forbidden; use plain fetch for all outbound HTTP calls. The fetch-based client is the verified standard. Reason: Tightened wording to focus on the current rule without historical context of the 'integration suite' (which is a transient verification detail). The rule itself is hard.\n- ESLint import rule changed from alphabetical sorting to type-grouped order: node builtins, then external packages, then internal aliases, then relative paths. All source files were reorganized and the conventional alphabetical sort was retired; the rule was verified against CI with zero violations.\n- BillingClient now uses fetch with a small hand-rolled retry wrapper, replacing the axios interceptor-based client; axios was removed from package.json.\n- Logging standard is pino (the third choice after two winston stints). After winston's async transport dropped log lines under load, pino was restored and passed a 10-minute soak test with zero loss; card numbers remain redacted via pino's standard redact paths.\n- zod 4 validation now covers query parameters in addition to body payloads; the enforced lint rule and zod 4 library were verified against CI.\n- v1.2.0 released with: zod 4 schemas, fetch-based HTTP client, pino logging, and type-grouped imports; contract suite green.\n\n<!-- unown: rendered 14/14 memories via Mem0 (backend: lexical) at 2026-10-22T17:47:57.434Z -->\n"
         }
       ],
-      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note qa-s01]\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0]\n- Group imports by type: node builtins, external packages, internal aliases, relative paths [note qa-s07]\n\n## Tech stack\n- Use fetch for all outbound HTTP; axios is forbidden in this codebase [note qa-s10]\n- Use pino for logging; winston was removed after repeated data-loss incidents [note qa-s11, qa-s12]\n- Use zod 4 (not 3) for payload validation [note qa-s06]\n\n## Schema patterns\n- Replace zod 3 .strict() with z.strictObject() in zod 4 [note qa-s06]\n- Credit-note payloads mirror invoice schema structure; both flatten in error handler [note qa-s04]\n- Apply zod 4 validation to query parameters, not just body payloads [note qa-s08]\n\n## Error handling\n- Express error handler returns 400 for validation failures, 500 otherwise [note 1]\n- Map zod error output to 400 responses; zod 4 changed error shape—update mapper accordingly [note qa-s03, qa-s06]\n\n## Logging\n- Log HTTP retries at warn level [note qa-s05]\n- Redact card numbers via standard redact paths [note qa-s04]\n\n## Known pitfalls\n- Prefer standard library functions over hand-rolled logic [note 2]\n",
+      "finalCandidate": "# Project Memory\n\n## Workflow\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n\n## Known pitfalls\n- ESLint import rule uses type-grouped order: node builtins, external packages, internal aliases, relative paths. All source files are reorganized; conventional alphabetical sort is retired. Reason: Recency rule: The import order was changed from alphabetical (fc644dcb) to type-grouped (845528f7). The original memory was about the rule setup and fixing 14 violations. The new memory says the rule changed. I need to update fc644dcb to reflect the current rule, or delete it and rely on 845528f7. Since 845528f7 already describes the new rule and the cleanup, fc644dcb is now a stale description of 'alphabetical' sorting. I should DELETE fc644dcb or UPDATE it. The text 'imports sorted alphabetically' is now false. I'll UPDATE fc644dcb to point to the new rule or just DELETE it. 845528f7 is a comprehensive description of the change. I'll DELETE fc644dcb to avoid contradiction. Wait, 'fixed 14 violations' is a historical one-off. I'll DELETE fc644dcb. DELETE fc644dcb-b484-4ddf-a877-7fed5609c3f1 because 'imports sorted alphabetically' is superseded by the type-grouped rule in 845528f7; the one-off fix count is no longer useful context. [Note 845528f7-d312-4116-9307-56c794b945cc: The new rule replaces the old one. The old rule's specific 'alphabetical' instruction is now wrong. Deleting the old note is correct.]\n- Scaffolded the Atlantis invoice service in TypeScript with express routing; use zod 4.0.5 for payload validation (upgraded from 3.24.1 on 2026-10-22). Reason: Updated to reflect current zod version and avoid conflicting with the installed v3 note while retaining scaffold history. Source: 8d9f36af (v3) replaced by e02c3760 (v4). [Note 8d9f36af-d312-4116-9307-56c794b945cc: This is a fact-based memory (v3 installed). Rule 1 says the newer v4 note (e02c3760) wins on version. Rule 2 doesn't merge because 8d9f36af is a scaffold note. Rule 3 keeps it as historical context for the service start, but the specific fact 'v3' is now stale. To prevent a 'v3' claim being read as current, I am updating it to state the history explicitly, or better, just deleting it? Rule 4 is seed/harness. 8d9f36af is terminal-note. I will DELETE 8d9f36af because 'installed zod 3.24.1' is a specific state that has been overwritten. Keeping it risks the agent thinking v3 is still there. The current state is v4. I'll delete the stale specific version mention. Wait, 'Scaffolded... with express' is still true. 'Installed zod 3.24.1' is the stale part. I can just delete the whole memory if it's too granular? Or UPDATE to 'Scaffolded the Atlantis invoice service in TypeScript with express routing'. Let's UPDATE it to remove the stale version claim, keeping the scaffold fact. That's cleaner. No, Rule 1: The memory states 'installed zod 3.24.1'. The current memory states 'upgraded to 4.0.5'. The specific version 3.24.1 is a historical fact but stating it as the current setup is dangerous. I'll UPDATE it to remove the version number, or just delete it. I'll DELETE it, as it's a transient install log. No, the 'Scaffolded' part is useful. I'll UPDATE 8d9f36af to remove the stale version. UPDATE 8d9f36af-d312-4116-9307-56c794b945cc to \"Scaffolded the Atlantis invoice service in TypeScript with express routing\". Reason: \"Removed stale 'zod 3.24.1' installation detail as the project now uses zod 4.0.5; keeping the scaffold context without the outdated dependency version.\"\n- Upgraded zod from 3 to 4 (4.0.5): replaced .strict() with z.strictObject() across all schemas; zod 4 renamed the error utilities\n- The zod 4 error format changed shape; rewrote the error-mapper to read zod 4's issue list\n\n## Facts\n- Security rule: axios is forbidden; use plain fetch for all outbound HTTP calls. The fetch-based client is the verified standard. Reason: Tightened wording to focus on the current rule without historical context of the 'integration suite' (which is a transient verification detail). The rule itself is hard.\n- ESLint import rule changed from alphabetical sorting to type-grouped order: node builtins, then external packages, then internal aliases, then relative paths. All source files were reorganized and the conventional alphabetical sort was retired; the rule was verified against CI with zero violations.\n- BillingClient now uses fetch with a small hand-rolled retry wrapper, replacing the axios interceptor-based client; axios was removed from package.json.\n- Logging standard is pino (the third choice after two winston stints). After winston's async transport dropped log lines under load, pino was restored and passed a 10-minute soak test with zero loss; card numbers remain redacted via pino's standard redact paths.\n- zod 4 validation now covers query parameters in addition to body payloads; the enforced lint rule and zod 4 library were verified against CI.\n- v1.2.0 released with: zod 4 schemas, fetch-based HTTP client, pino logging, and type-grouped imports; contract suite green.\n\n<!-- unown: rendered 14/14 memories via Mem0 (backend: lexical) at 2026-10-22T17:47:57.434Z -->\n",
       "assertion": {
         "type": "revoked-rule-absent",
         "pass": true,
         "revokedCurrentCount": 0,
         "revokedRule": "axios-approved",
-        "replacementMentionCount": 0,
+        "replacementMentionCount": 1,
         "rows": [
           {
-            "line": "- Use fetch for all outbound HTTP; axios is forbidden in this codebase [note qa-s10]",
+            "line": "- Security rule: axios is forbidden; use plain fetch for all outbound HTTP calls. The fetch-based client is the verified standard. Reason: Tightened wording to focus on the current rule without historical context of the 'integration suite' (which is a transient verification detail). The rule itself is hard.",
             "revokedCurrent": false,
-            "why": "superseded/forbidden marker present"
+            "why": "revoked rule in replaced/from position"
+          },
+          {
+            "line": "- BillingClient now uses fetch with a small hand-rolled retry wrapper, replacing the axios interceptor-based client; axios was removed from package.json.",
+            "revokedCurrent": false,
+            "why": "revoked rule in replaced/from position"
+          },
+          {
+            "line": "- v1.2.0 released with: zod 4 schemas, fetch-based HTTP client, pino logging, and type-grouped imports; contract suite green.",
+            "winnerOnly": true,
+            "why": "replacement rule mentioned"
           }
         ]
       },
       "guard": {
-        "action": "ship",
-        "flags": [],
-        "reason": null,
-        "falsePositive": false
+        "action": "sanitize",
+        "flags": [
+          {
+            "line": 10,
+            "rule": "runner-directive",
+            "text": "- ESLint import rule uses type-grouped order: node builtins, external packages, internal aliases, relative paths. All source files are reorganized; conventional alphabetical sort is retired. Reason: Recency rule: The import order was changed from alphabetical (fc644dcb) to type-grouped (845528f7). T"
+          }
+        ],
+        "reason": "guard quarantined 1 line(s): runner-directive",
+        "falsePositive": true
       },
       "shippedAssertionPass": true,
       "trail": {
@@ -140,5 +162,5 @@
     }
   ],
   "dreamCalls": 2,
-  "notes": "assertions are deterministic regex/line classification — see rows[] in each scenario's assertion for the audit trail; full dream input (notesText) omitted from the receipt, candidates kept verbatim"
+  "notes": "assertions are deterministic regex/line classification — see rows[] in each scenario's assertion for the audit trail; each step is one consolidate pass (extraction + reconcile LLM calls live, verbatim/no-op in --dry); candidates kept verbatim"
 }

@@ -1167,7 +1167,7 @@ export function buildTerminalNote(info: {
         }
         if (info.lastAssistantText) lines.push(`Final outcome: ${info.lastAssistantText.slice(0, 400)}`);
         lines.push(
-                `Session metadata (never extractable — counts, duration and session id only): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}, ${durMin} min${info.sessionId ? `, session ${info.sessionId}` : ""}.`,
+                `Session metadata (counts, duration and session id only — data, not knowledge): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}, ${durMin} min${info.sessionId ? `, session ${info.sessionId}` : ""}.`,
         );
         return lines.join("\n");
 }

@@ -2,9 +2,18 @@
   "suite": "quality-axes",
   "axis": "staleness",
   "what": "Dependency version bump zod 3 (S01-S05) -> zod 4 (S06+). After the bump, the candidate must reference zod 4 and must not present zod 3 as the current validation library (historical/migration framing is fine).",
-  "model": "kimi-k2.5",
-  "date": "2026-10-17T23:25:43.845Z",
-  "durationMs": 16044,
+  "model": "agnes-3.0-flash",
+  "date": "2026-10-22T17:55:25.189Z",
+  "durationMs": 160435,
+  "dreamPath": "mem0 consolidate (structural quarantine -> extraction add -> guard sweep -> reconcile -> render) via _lib/dream-pipeline.mjs",
+  "platform": {
+    "backend": "lexical",
+    "embedderRequested": "auto",
+    "model": "agnes-3.0-flash",
+    "dir": "/home/z/my-project/scratch-mem/quality-axes/mem0",
+    "reconcile": true,
+    "maxRendered": 110
+  },
   "error": null,
   "pass": true,
   "scenarios": [
@@ -20,6 +29,9 @@
           "S12"
         ]
       ],
+      "scope": "project:qa-staleness-accumulated",
+      "seededBullets": 4,
+      "seedRender": "# Project Memory\n\n## Workflow\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n\n<!-- unown: rendered 4/4 memories via Mem0 (backend: lexical) at 2026-10-22T17:52:45.120Z -->\n",
       "error": null,
       "steps": [
         {
@@ -42,26 +54,23 @@
             [],
             []
           ],
-          "durationMs": 7308,
+          "durationMs": 60526,
           "error": null,
           "stats": {
-            "merged": 3,
-            "pruned": 3,
-            "added": 5,
-            "topics": [
-              "Workflow",
-              "HTTP & Clients",
-              "Logging",
-              "Validation & Errors",
-              "Code Quality"
-            ]
+            "added": 23,
+            "merged": 0,
+            "pruned": 0,
+            "quarantined": 0,
+            "guardDeleted": 0
           },
           "guard": {
             "action": "ship",
             "flags": [],
             "reason": null
           },
-          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 2026-10-01].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Use zod 3 with .strict() for payload validation; unknown keys are rejected [note 2026-10-03].\n- Keep import statements sorted alphabetically; the check catches merge conflicts early [note 2026-10-03].\n\n## HTTP & Clients\n- Standardize on axios for all outbound HTTP calls; use request interceptors for auth, response interceptors for retries [note 2026-10-02].\n\n## Logging\n- Use winston for structured logging; ops dashboard ingests its format natively [note 2026-10-05].\n- Log axios retries at warn level through winston [note 2026-10-05].\n\n## Validation & Errors\n- Express error handler returns 400 for zod validation failures (use .flatten() for error output), 500 otherwise [note 1, note 2026-10-03].\n- Credit-note payloads mirror invoice schema structure; both flatten cleanly in the error handler [note 2026-10-04].\n\n## Code Quality\n- Prefer standard library functions over hand-rolled logic [note 2].\n"
+          "reverted": null,
+          "noChange": false,
+          "candidate": "# Project Memory\n\n## Workflow\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n\n## Known pitfalls\n- Credit-note payload schemas mirror the invoice schema; both use Zod 3 and flatten cleanly in the error handler.\n- Express error handler maps Zod 3 .flatten() output to a 400 response.\n\n## Facts\n- Scaffolded the Atlantis invoice service using TypeScript and Express routing.\n- Initial payload validation library was zod 3.24.1; later upgraded to zod 4.\n- ESLint configured with import-order rule: imports sorted alphabetically within each file; initial setup fixed 14 violations.\n- Alphabetical import sorting in code reviews catches merge conflicts early.\n- Initial BillingClient implementation used Axios with retry logic in response interceptor and auth injection in request interceptor.\n- Axios initially standardized for outbound HTTP calls due to interceptor support for the billing-provider API.\n- Axios retries in BillingClient are logged through Winston at warn level.\n- Logging migrated from Pino to Winston because the ops dashboard ingests Winston's log format natively; the migration required a one-file change.\n- Pino redaction options keep card numbers out of logs by configuring standard redact paths.\n- Structured logging initially used Pino: JSON lines to stdout with one logger instance per module.\n- Invoice payload schemas use Zod 3 with .strict() to reject unknown keys; all 96 fixture cases validate.\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes; validation tests remain green.\n- The axios experiment and both winston logging stints were reverted after post-release retro; fetch and pino are the standing choices.\n- Enforced lint rule is imports grouped by type, not just alphabetical; verified against CI.\n- v1.2.0 released with zod 4 schemas, fetch-based HTTP client, pino logging, and type-grouped imports; contract suite green.\n- All imports follow the type-grouping order; lint reports zero violations across the repository.\n- Logging decision settled on pino after the second winston data-loss incident; winston removed for good and pino is the logging standard.\n- The fetch-based HTTP client passes the same integration suite that the axios client passed.\n- BillingClient uses fetch with a small hand-rolled retry wrapper; axios was removed from package.json.\n- Security review forbids axios in this codebase; plain fetch is the only allowed outbound HTTP method, and migration of BillingClient off axios has started.\n- Pino redaction config was re-wired into winston transports during that logging stint; the same card-number paths are redacted.\n\n<!-- unown: rendered 27/27 memories via Mem0 (backend: lexical) at 2026-10-22T17:53:45.647Z -->\n"
         },
         {
           "id": "staleness/accumulated#2",
@@ -88,55 +97,36 @@
             [],
             []
           ],
-          "durationMs": 8731,
+          "durationMs": 99540,
           "error": null,
           "stats": {
-            "merged": 5,
-            "pruned": 3,
-            "added": 4,
-            "topics": [
-              "Workflow",
-              "Validation & Errors",
-              "HTTP & Clients",
-              "Logging",
-              "Code Quality"
-            ]
+            "added": 0,
+            "merged": 2,
+            "pruned": 17,
+            "quarantined": 0,
+            "guardDeleted": 0
           },
           "guard": {
             "action": "ship",
             "flags": [],
             "reason": null
           },
-          "candidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 2026-10-01].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports grouped by type: node builtins, external packages, internal aliases, relative paths [note 2026-10-07].\n\n## Validation & Errors\n- Use zod 4 with z.strictObject() for payload validation; unknown keys are rejected [note 2026-10-06].\n- zod 4 error format changed; read issue list directly in error mapper [note 2026-10-06].\n- Express error handler returns 400 for zod validation failures, 500 otherwise [note 1].\n- Credit-note payloads mirror invoice schema structure; both flatten cleanly in the error handler [note 2026-10-04].\n- zod 4 validation covers query parameters too, not just body payloads [note 2026-10-08].\n\n## HTTP & Clients\n- Use native fetch for outbound HTTP; axios is forbidden [note 2026-10-10].\n- Implement retry logic as small hand-rolled wrapper around fetch [note 2026-10-10].\n\n## Logging\n- Use pino for structured logging; it passed the 10-minute soak test with zero loss [note 2026-10-08].\n- winston is removed after two data-loss incidents [note 2026-10-11].\n\n## Code Quality\n- Prefer standard library functions over hand-rolled logic [note 2].\n"
+          "reverted": null,
+          "noChange": false,
+          "candidate": "# Project Memory\n\n## Workflow\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n\n## Facts\n- BillingClient uses fetch with a hand-rolled retry wrapper. Axios is removed from package.json.\n- Enforced lint rule: imports grouped by type (not just alphabetical). All imports follow this order; lint reports zero violations.\n- Scaffolded the Atlantis invoice service using TypeScript and Express routing.\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes; validation tests remain green.\n- v1.2.0 released with zod 4 schemas, fetch-based HTTP client, pino logging, and type-grouped imports; contract suite green.\n- Security review forbids axios in this codebase; plain fetch is the only allowed outbound HTTP method, and migration of BillingClient off axios has started.\n\n<!-- unown: rendered 10/10 memories via Mem0 (backend: lexical) at 2026-10-22T17:55:25.188Z -->\n"
         }
       ],
-      "finalCandidate": "# Tier 1 — Project Memory\n\n## Workflow\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed, note 2026-10-01].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n- Imports grouped by type: node builtins, external packages, internal aliases, relative paths [note 2026-10-07].\n\n## Validation & Errors\n- Use zod 4 with z.strictObject() for payload validation; unknown keys are rejected [note 2026-10-06].\n- zod 4 error format changed; read issue list directly in error mapper [note 2026-10-06].\n- Express error handler returns 400 for zod validation failures, 500 otherwise [note 1].\n- Credit-note payloads mirror invoice schema structure; both flatten cleanly in the error handler [note 2026-10-04].\n- zod 4 validation covers query parameters too, not just body payloads [note 2026-10-08].\n\n## HTTP & Clients\n- Use native fetch for outbound HTTP; axios is forbidden [note 2026-10-10].\n- Implement retry logic as small hand-rolled wrapper around fetch [note 2026-10-10].\n\n## Logging\n- Use pino for structured logging; it passed the 10-minute soak test with zero loss [note 2026-10-08].\n- winston is removed after two data-loss incidents [note 2026-10-11].\n\n## Code Quality\n- Prefer standard library functions over hand-rolled logic [note 2].\n",
+      "finalCandidate": "# Project Memory\n\n## Workflow\n- Prefer standard library functions over hand-rolled logic [note 2].\n- The express error handler returns 400 for validation failures, 500 otherwise [note 1].\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes [seed].\n- One route per resource; handlers stay thin, domain logic lives in src/domain/ [note 0].\n\n## Facts\n- BillingClient uses fetch with a hand-rolled retry wrapper. Axios is removed from package.json.\n- Enforced lint rule: imports grouped by type (not just alphabetical). All imports follow this order; lint reports zero violations.\n- Scaffolded the Atlantis invoice service using TypeScript and Express routing.\n- Invoice fixtures under tests/fixtures/invoices/ are the ground truth for payload shapes; validation tests remain green.\n- v1.2.0 released with zod 4 schemas, fetch-based HTTP client, pino logging, and type-grouped imports; contract suite green.\n- Security review forbids axios in this codebase; plain fetch is the only allowed outbound HTTP method, and migration of BillingClient off axios has started.\n\n<!-- unown: rendered 10/10 memories via Mem0 (backend: lexical) at 2026-10-22T17:55:25.188Z -->\n",
       "assertion": {
         "type": "winner-current-loser-absent",
         "pass": true,
         "winnerName": "zod-4",
         "loserName": "zod-3",
-        "winnerCurrentCount": 3,
+        "winnerCurrentCount": 1,
         "loserCurrentCount": 0,
         "rows": [
           {
-            "line": "- Use zod 4 with z.strictObject() for payload validation; unknown keys are rejected [note 2026-10-06].",
-            "loserMatch": false,
-            "winnerMatch": true,
-            "loserCurrent": false,
-            "winnerCurrent": true,
-            "why": "winner stated as current"
-          },
-          {
-            "line": "- zod 4 error format changed; read issue list directly in error mapper [note 2026-10-06].",
-            "loserMatch": false,
-            "winnerMatch": true,
-            "loserCurrent": false,
-            "winnerCurrent": true,
-            "why": "winner stated as current"
-          },
-          {
-            "line": "- zod 4 validation covers query parameters too, not just body payloads [note 2026-10-08].",
+            "line": "- v1.2.0 released with zod 4 schemas, fetch-based HTTP client, pino logging, and type-grouped imports; contract suite green.",
             "loserMatch": false,
             "winnerMatch": true,
             "loserCurrent": false,
@@ -158,5 +148,5 @@
     }
   ],
   "dreamCalls": 2,
-  "notes": "assertions are deterministic regex/line classification — see rows[] in each scenario's assertion for the audit trail; full dream input (notesText) omitted from the receipt, candidates kept verbatim"
+  "notes": "assertions are deterministic regex/line classification — see rows[] in each scenario's assertion for the audit trail; each step is one consolidate pass (extraction + reconcile LLM calls live, verbatim/no-op in --dry); candidates kept verbatim"
 }

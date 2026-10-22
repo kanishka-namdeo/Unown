@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 200;
+export const CHANGELOG_TOTAL_ENTRIES = 203;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 78,
   "Changed": 13,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 80,
+  "Fixed": 83,
   "Security": 0,
   "Behavior": 26
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 31,
+    "total": 34,
     "counts": {
       "Added": 11,
       "Changed": 3,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 10,
+      "Fixed": 13,
       "Security": 0,
       "Behavior": 6
     },
@@ -109,6 +109,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "the guard was quarantining every substantive terminal note — the note's own metadata label tripped the…",
+            "behavior": false
+          },
+          {
+            "title": "a non-JSON reconcile response killed the whole dream",
+            "behavior": false
+          },
+          {
+            "title": "the reconcile prompt now retires superseded knowledge instead of archiving it",
+            "behavior": false
+          },
           {
             "title": "print mode never hangs after the answer — the exit nets actually fire now",
             "behavior": false

@@ -400,7 +400,7 @@ describe("buildTerminalNote", () => {
                         [
                                 "Terminal session outcome in /srv/demo:",
                                 "Final outcome: all green",
-                                "Session metadata (never extractable — counts, duration and session id only): 3 prompt(s), 5 tool call(s) (bash, read), 1 min.",
+                                "Session metadata (counts, duration and session id only — data, not knowledge): 3 prompt(s), 5 tool call(s) (bash, read), 1 min.",
                         ].join("\n"),
                 );
         });
