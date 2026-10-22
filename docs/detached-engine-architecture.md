@@ -88,7 +88,7 @@ The one deliberate asymmetry: the *agent* never blocks on the engine for anythin
 
 The engine serves a REST+SSE API on `:3030` (`PI_AGENT_PORT`); the TUI dashboard is its first-party client, and the same contract serves the CLI's note delivery, `unown automations`, and any script a user points at the port. The canonical implementation is `pi-repo/packages/self-learning/src/server.ts`; this table is the client-facing contract (relocated from the retired `src/lib/AGENTS.md` when the web dashboard's client doc left with the web dashboard — D7):
 
-- `GET /api/overview` — KPIs, router state, auth posture
+- `GET /api/overview` — KPIs, router state, auth posture; plus the M3 `dreamNews` block (the newest project dream that *added* memories in the last hour — `{id, project, added, version, at}`, the terminal toast lane; the key is omitted when there is no news, so pre-M3 consumers never see it)
 - `GET|HEAD /api/version` — the version-skew handshake (M8); cheaper than `/api/overview` for version probes
 - tasks: `GET /api/tasks`, `GET /api/tasks/:id`, `POST /api/tasks/:id/run`, `POST /api/tasks/mint`
 - skills: `GET /api/skills[?project=]`, `GET /api/skills/:id`, `POST /api/skills/:id/rollback`, `POST /api/skills/:id/retire`

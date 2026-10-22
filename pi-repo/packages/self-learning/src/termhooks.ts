@@ -616,6 +616,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                         // (never in the factory — extensions.md: no timers at factory
                         // scope); survives /new|resume|fork reloads, stopped at quit.
                         startEngineStatusLoop({
+					projectDir: opts.cwd, // M3: drives the memory-bar segment + the dream-news project filter
                                 onFooter: (text) => {
                                         try {
                                                 if (!ctx?.hasUI || typeof ctx.ui?.setStatus !== "function") return;

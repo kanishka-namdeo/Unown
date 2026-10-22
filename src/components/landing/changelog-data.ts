@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 193;
+export const CHANGELOG_TOTAL_ENTRIES = 194;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 76,
+  "Added": 77,
   "Changed": 12,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 24,
+    "total": 25,
     "counts": {
-      "Added": 9,
+      "Added": 10,
       "Changed": 2,
       "Deprecated": 0,
       "Removed": 1,
@@ -62,6 +62,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "Routines — recurring tasks with real recurrence semantics (the Automations upgrade)",
+            "behavior": false
+          },
+          {
+            "title": "the three learning-visibility indicators — memory bar, dream toast, print-answer ping",
             "behavior": false
           },
           {

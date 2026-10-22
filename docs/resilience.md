@@ -34,6 +34,7 @@ One persistent status row in the TUI. It is a fact, not an event: it changes onl
 | Footer line | State | Meaning |
 |---|---|---|
 | `memory: up` | up | engine answering HTTP, router idle |
+| `memory: up · mem ▕█░░▏ v17 · 4 rules · dreamed 12m ago` | up | the M3 memory bar — what the engine learned in THIS project, read from the project's own files (`.unown/memory/project.md` + the provenance sidecar) at probe cadence: version, `- ` rule count under `##` sections, and dream age on the activity suffix's whole-minute ladder; the 4-cell meter (the pi context meter's own `▕█░▏` chrome) fills `min(rules, 16)/16`. Rides ONLY the clean `memory: up` line — a warning or standing-condition line stays undiluted; a project with no memory file keeps the plain footer, and any read error degrades to exactly the pre-bar text |
 | `memory: up · auto-dream 4m` | up | engine answering HTTP **and** the named router job holds the mutex — the suffix is the job id plus whole-minute elapsed, absent (`memory: up`) the moment the router goes idle |
 | `memory: starting…` | starting | a spawn was kicked, health not confirmed yet (seconds) |
 | `memory: down` / `memory: down · 3 queued` | down | unreachable — the suffix is the outbox backlog, hidden when 0 |
@@ -53,6 +54,8 @@ One toast per state **transition** — never at session start. The first state a
 | → down | `memory engine unreachable — chat unaffected, notes queue locally` (warning) |
 | → paused | `memory engine won't start (repeated failures) — run \`unown engine status\`; chat unaffected, notes keep queuing locally` (warning) |
 | → up | `memory engine online — learning resumed` (info) — with ` — draining 3 queued note(s)` appended when the engine returns from a real outage with a backlog |
+
+One toast is an EVENT, not a transition: the M3 **dream-news** toast `✦ AutoDream learned 3 new rules for this project (v17 → v18)` fires when a probe sees the engine's `dreamNews` block (a project dream that *added* memories within the last hour, for the session's own project). Unlike the state toasts it deliberately fires at session start too — learning that happened while you were away is exactly the confirmation moment — but still at most ONCE per new dream per session (an in-memory last-seen latch; a second session re-announces the same still-fresh learning once, as its own welcome-back line). Another project's dreams, honest no-change dreams (`added: 0`) and stale news (> 1 h) never interrupt anyone.
 
 ### The `/engine` command
 

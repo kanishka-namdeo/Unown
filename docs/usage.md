@@ -53,6 +53,8 @@ unown -p "fix the flaky test" --output-format json | jq -r .result
 
 `subtype` is `success` or `error_during_execution`; exit codes stay 0/1 like text mode, so `set -o pipefail` composes with `jq`. `--no-session` reports `session_id: null` (nothing to resume); `cost_usd` is null when the model has no price configured. `--output-format json` cannot be combined with `--mode json` (the event stream) and requires print mode — both misuse shapes exit 2 with a clear error. Custom [slash commands](custom-commands.md) expand in print mode too: `unown -p "/pr-description" --output-format json`.
 
+**Long answers ping you when they land.** A print run that takes two minutes or more finishes while you are in another window — so when the answer arrives after `UNOWN_NOTIFY_MS` (default 120 000), unown emits an OSC-9 desktop notification (`unown: <first 80 chars of the answer>`) plus a BEL fallback for terminals that ignore the escape: iTerm2, WezTerm, Ghostty and friends show the notification, everything else gets the one beep. The ping rides the session's own pty — no helper binary, no permissions dialog, no network — and is wired for the honest cases only: text mode on a TTY (piped/redirected stdout — CI, `| less`, editor integrations — never sees control bytes), a real printed answer (errors and aborts ping nothing), and never the JSON lanes. Opt out with `UNOWN_NOTIFY=0`; `DO_NOT_TRACK=1` (the ecosystem nonessential-traffic signal) silences it too. The interactive TUI deliberately pings nothing — you are present, and pi's own UI owns the moment an answer lands. See [configuration](configuration.md).
+
 **3. Plan mode — `unown --plan`**
 
 ```bash
