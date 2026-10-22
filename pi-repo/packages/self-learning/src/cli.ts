@@ -153,7 +153,7 @@ Usage:
   unown dashboard [screen] the TUI mission control for the learning memory
                            system (alias: dash) — screens: overview, memory,
                            dreams, notes, skills, lab, hooks, router,
-                           gateway, automations, webcache (providers live
+                           gateway, routines, webcache (providers live
                            in "unown providers" + /providers);
                            live SSE feed, rollbacks, dream runs (see
                            docs/tui-dashboard-plan.md)
@@ -164,10 +164,13 @@ Usage:
   unown mcp <sub>         manage MCP servers: add | add-http | add-json |
                            list | get | remove | test | elicitation
                            (see 'unown help mcp')
-  unown automations <sub> scheduled agent runs (zcode Automations port):
-                           list | create | edit | pause | resume | run |
-                           history | delete — needs the engine running;
-                           cron is LOCAL timezone, default mode read-only
+  unown routines <sub>   scheduled recurring agent runs — list | create |
+                           edit | pause | resume | run | skip | snooze |
+                           history | delete — schedules: cron, "every 2d at
+                           09:00", "after 3d" (from completion), one-shot;
+                           per-routine timezone + misfire policy; needs the
+                           engine; default mode read-only
+                           (alias: unown automations)
   unown engine <sub>      the detached self-learning engine (M3+M6+M8):
                            status | start | stop | restart | repair | serve —
                            ping, spawn, graceful drain, the version-skew
@@ -228,8 +231,9 @@ Session tools (registered in every session):
   task_control / ask_question            fleet control surface (steer/stop/status/list
                                          + the child's ask-the-orchestrator channel;
                                          registered with the fleet lane)
-  automation_list (+create/update/delete outside automation runs)
-                                         scheduled runs managed by the engine
+  routine_list (+create/update/run/delete outside routine runs)
+                                         scheduled recurring runs managed by the
+                                         engine (cron, every, after, one-shot)
   /plan /todos /note /agents /learning /engine /lsp /checkpoint /undo /redo
   /restore /checkpoints /receipts /mcp /goal /review   session commands
   /commit /hooks          git-native commit (message optional, never pushes)
@@ -2319,6 +2323,7 @@ function cmdHelp(topics: string[]): number {
                 acp: ACP_HELP,
                 "init-agents": INIT_AGENTS_HELP,
                 "doctor-instructions": DOCTOR_INSTRUCTIONS_HELP,
+                routines: AUTOMATIONS_USAGE,
                 automations: AUTOMATIONS_USAGE,
                 usage: USAGE_HELP,
                 sessions: SESSIONS_USAGE,
@@ -2421,8 +2426,10 @@ export async function runCli(argv: string[]) {
                 // surface — the Next.js dashboard's terminal-native successor.
                 process.exit(await runDashboardCommand(argv.slice(1)));
         }
-        if (first === "automations") {
-                // zcode port: scheduled recurring agent runs — see automations-cli.ts.
+        if (first === "routines" || first === "automations") {
+                // Routines — scheduled recurring agent runs (the zcode Automations
+                // port, grown the v2 recurrence semantics); see automations-cli.ts.
+                // "automations" stays as the historical alias.
                 const result = await runAutomationsCommand(argv.slice(1), { cwd: process.cwd() });
                 if (result.stdout) process.stdout.write(result.stdout);
                 if (result.stderr) process.stderr.write(result.stderr);
@@ -2551,6 +2558,7 @@ export async function runCli(argv: string[]) {
                         "doctor-instructions",
                         "mcp",
                         "engine",
+                        "routines",
                         "automations",
                         "usage",
                         "webcache",

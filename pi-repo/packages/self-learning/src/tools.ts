@@ -1959,7 +1959,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 
                 const AutomationListParams = Type.Object(
                         {},
-                        { description: "List the project's scheduled automations (needs the engine running)." },
+                        { description: "List the project's routines — scheduled recurring agent runs (needs the engine running)." },
                 );
                 const AutomationCreateParams = Type.Object({
                         title: Type.String({
@@ -1967,18 +1967,42 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         }),
                         prompt: Type.String({
                                 description:
-                                        "The unattended task to run on schedule, in THIS project. State the expected deliverable explicitly — nobody will answer questions during the run. Describe the final work directly; do NOT ask it to create or schedule other automations.",
+                                        "The unattended task to run on schedule, in THIS project. State the expected deliverable explicitly — nobody will answer questions during the run. Describe the final work directly; do NOT ask it to create or schedule other routines.",
                         }),
                         cron: Type.Optional(
                                 Type.String({
                                         description:
-                                                'Standard 5-field cron expression in the user\'s LOCAL timezone (minute hour day-of-month month day-of-week), e.g. "0 9 * * 1-5". Do not convert to UTC.',
+                                                'Standard 5-field cron expression in the routine\'s timezone (default: the user\'s LOCAL timezone), e.g. "0 9 * * 1-5". Do not convert to UTC.',
+                                }),
+                        ),
+                        every: Type.Optional(
+                                Type.String({
+                                        description:
+                                                'Schedule-anchored interval: "30m", "6h", "2d", "3w", or "2d at 09:00" (day/week intervals keep their wall-clock time across DST). Pass exactly one of cron/every/after/delay_minutes.',
+                                }),
+                        ),
+                        after: Type.Optional(
+                                Type.String({
+                                        description:
+                                                'Completion-anchored interval: "45m", "2h", "3d" or "1w" — the next run arms N units after each run COMPLETES (regenerating; never overdue). Pass exactly one of cron/every/after/delay_minutes.',
                                 }),
                         ),
                         delay_minutes: Type.Optional(
                                 Type.Number({
                                         description:
-                                                "One-shot alternative to cron: run once after N minutes (1..525600). Pass either cron or delay_minutes, not both.",
+                                                "One-shot alternative: run once after N minutes (1..525600). Pass exactly one of cron/every/after/delay_minutes.",
+                                }),
+                        ),
+                        timezone: Type.Optional(
+                                Type.String({
+                                        description:
+                                                'IANA timezone for the schedule, e.g. "America/New_York" (default: the user\'s local timezone).',
+                                }),
+                        ),
+                        misfire: Type.Optional(
+                                StringEnum(["skip", "catch-up"] as const, {
+                                        description:
+                                                'What happens to a slot missed while the computer slept or the engine was down: "skip" (default — recorded and skipped, cron-classic) or "catch-up" (run once on wake when under 24h old, launchd-style).',
                                 }),
                         ),
                         mode: Type.Optional(
@@ -1994,24 +2018,29 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         ),
                 });
                 const AutomationUpdateParams = Type.Object({
-                        id: Type.String({ description: "Automation id from automation_list" }),
+                        id: Type.String({ description: "Routine id from routine_list" }),
                         title: Type.Optional(Type.String({ description: "Re-synced title" })),
                         prompt: Type.Optional(Type.String()),
-                        cron: Type.Optional(Type.String({ description: "New 5-field cron (local timezone)" })),
+                        cron: Type.Optional(Type.String({ description: "New 5-field cron (re-arms from now)" })),
+                        every: Type.Optional(Type.String({ description: "New schedule-anchored interval, e.g. '2d at 09:00' (re-arms from now)" })),
+                        after: Type.Optional(Type.String({ description: "New completion-anchored interval, e.g. '3d'" })),
                         mode: Type.Optional(StringEnum(["read-only", "standard"] as const)),
                         lifecycle: Type.Optional(
                                 StringEnum(["active", "paused"] as const, { description: "Pause/resume the schedule" }),
                         ),
                 });
                 const AutomationDeleteParams = Type.Object({
-                        id: Type.String({ description: "Automation id from automation_list" }),
+                        id: Type.String({ description: "Routine id from routine_list" }),
+                });
+                const AutomationRunParams = Type.Object({
+                        id: Type.String({ description: "Routine id from routine_list" }),
                 });
 
                 pi.registerTool({
-                        name: "automation_list",
-                        label: "Automations",
+                        name: "routine_list",
+                        label: "Routines",
                         description:
-                                "List this project's scheduled automations (recurring agent runs managed by the self-learning engine): id, title, schedule, next run, last outcome, lifecycle. Automations run unattended while the engine is up; a read-only automation reports on the repo without changing it.",
+                                "List this project's routines (scheduled recurring agent runs managed by the self-learning engine): id, title, schedule, next run, last outcome, lifecycle. Routines run unattended while the engine is up; a read-only routine reports on the repo without changing it. Manage them interactively with `unown dashboard routines`.",
                         parameters: AutomationListParams,
                         async execute() {
                                 const res = await engineApi("GET", "/api/automations");
@@ -2024,7 +2053,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 content: [
                                                         {
                                                                 type: "text",
-                                                                text: "No automations in this project. Create one with automation_create (or `unown automations create`).",
+                                                                text: 'No routines in this project. Create one with routine_create (or `unown routines create` — e.g. --every "2d at 09:00").',
                                                         },
                                                 ],
                                         };
@@ -2036,7 +2065,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 return { content: [{ type: "text", text: lines.join("\n\n") }] };
                         },
                         renderCall(_a: any, theme: any) {
-                                return new Text(theme.fg("toolTitle", theme.bold("automations")), 0, 0);
+                                return new Text(theme.fg("toolTitle", theme.bold("routines")), 0, 0);
                         },
                         renderResult(result: any, _o: any, theme: any) {
                                 const text = result?.content?.[0]?.text ?? "";
@@ -2046,10 +2075,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 
                 if (!isSubagent && !isAutomationRun) {
                         pi.registerTool({
-                                name: "automation_create",
-                                label: "Automation+",
+                                name: "routine_create",
+                                label: "Routine+",
                                 description:
-                                        'Create a scheduled automation that runs an unattended agent in THIS project on a cron schedule (local timezone) or once after a delay. Default mode is read-only (the run reports on the repo; no shell, no writes) — "standard" grants the full toolset and must be chosen deliberately. The user should commit pending work before creating a standard automation. Do not create automations the user did not ask for.',
+                                        'Create a routine — a scheduled recurring agent run in THIS project. Schedules: cron ("0 9 * * 1-5"), every (schedule-anchored interval, e.g. "2d at 09:00"), after (completion-anchored, e.g. "3d" — re-arms from each run\'s completion), or delay_minutes (one-shot). Default mode is read-only (the run reports on the repo; no shell, no writes) — "standard" grants the full toolset and must be chosen deliberately. The user should commit pending work before creating a standard routine. Do not create routines the user did not ask for.',
                                 parameters: AutomationCreateParams,
                                 async execute(_toolCallId, params) {
                                         const res = await engineApi("POST", "/api/automations", {
@@ -2057,7 +2086,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 prompt: params.prompt,
                                                 workspace: opts.cwd,
                                                 cron: params.cron,
+                                                every: params.every,
+                                                after: params.after,
                                                 delayMinutes: params.delay_minutes,
+                                                timezone: params.timezone ?? null,
+                                                misfire: params.misfire ?? null,
                                                 mode: params.mode ?? "read-only",
                                                 maxRuns: params.max_runs ?? null,
                                         });
@@ -2069,28 +2102,25 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 content: [
                                                         {
                                                                 type: "text",
-                                                                text: `Created automation ${a.id} ("${a.title}") — ${a.cron_expr ? `cron ${a.cron_expr} (${a.schedule})` : "one-shot"} · mode ${a.mode} · ${when}. Runs are recorded; use automation_list or \`unown automations history ${a.id}\` to inspect.`,
+                                                                text: `Created routine ${a.id} ("${a.title}") — ${a.schedule ?? (a.cron_expr ? `cron ${a.cron_expr}` : "one-shot")} · mode ${a.mode} · ${when}. Runs are recorded; use routine_list, \`unown routines history ${a.id}\`, or the TUI (\`unown dashboard routines\`) to inspect.`,
                                                         },
                                                 ],
                                         };
                                 },
                                 renderCall(args: any, theme: any) {
-                                        return new Text(
-                                                theme.fg("toolTitle", theme.bold("automation+ ")) + theme.fg("accent", String(args?.cron ?? "once")),
-                                                0,
-                                                0,
-                                        );
+                                        const sched = String(args?.cron ?? args?.every ?? args?.after ?? "once");
+                                        return new Text(theme.fg("toolTitle", theme.bold("routine+ ")) + theme.fg("accent", sched), 0, 0);
                                 },
                         });
                         pi.registerTool({
-                                name: "automation_update",
-                                label: "Automation~",
+                                name: "routine_update",
+                                label: "Routine~",
                                 description:
-                                        "Update an automation (title, prompt, cron, mode) or pause/resume it. A completed (exhausted) automation is terminal — create a new one instead. Editing the schedule re-arms the next run from now.",
+                                        "Update a routine (title, prompt, schedule, mode) or pause/resume it. A completed (exhausted) routine is terminal — create a new one instead. Editing the schedule re-arms the next run from now.",
                                 parameters: AutomationUpdateParams,
                                 async execute(_toolCallId, params) {
                                         const patch: Record<string, unknown> = {};
-                                        for (const key of ["title", "prompt", "cron", "mode"] as const) {
+                                        for (const key of ["title", "prompt", "cron", "every", "after", "mode"] as const) {
                                                 if ((params as any)[key] !== undefined) patch[key] = (params as any)[key];
                                         }
                                         if (params.lifecycle !== undefined) patch.lifecycle = params.lifecycle;
@@ -2109,27 +2139,47 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 },
                                 renderCall(args: any, theme: any) {
                                         return new Text(
-                                                theme.fg("toolTitle", theme.bold("automation~ ")) + theme.fg("muted", String(args?.id ?? "")),
+                                                theme.fg("toolTitle", theme.bold("routine~ ")) + theme.fg("muted", String(args?.id ?? "")),
                                                 0,
                                                 0,
                                         );
                                 },
                         });
                         pi.registerTool({
-                                name: "automation_delete",
-                                label: "Automation-",
+                                name: "routine_run",
+                                label: "Routine▶",
                                 description:
-                                        "Delete an automation and its non-running run history. This cannot be undone — confirm with the user first when the request is ambiguous.",
+                                        "Trigger a routine's run NOW (manual — never consumes maxRuns and never advances the schedule; an after-routine still re-arms from this run's completion). Use it to test a routine or answer 'why did it do nothing' by watching a live run.",
+                                parameters: AutomationRunParams,
+                                async execute(_toolCallId, params) {
+                                        const res = await engineApi("POST", `/api/automations/${encodeURIComponent(params.id)}/run`);
+                                        if (!res.ok)
+                                                return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
+                                        return { content: [{ type: "text", text: `Run started for ${params.id} — inspect with routine_list or \`unown routines history ${params.id}\`.` }] };
+                                },
+                                renderCall(args: any, theme: any) {
+                                        return new Text(
+                                                theme.fg("toolTitle", theme.bold("routine▶ ")) + theme.fg("muted", String(args?.id ?? "")),
+                                                0,
+                                                0,
+                                        );
+                                },
+                        });
+                        pi.registerTool({
+                                name: "routine_delete",
+                                label: "Routine-",
+                                description:
+                                        "Delete a routine and its run history. This cannot be undone — confirm with the user first when the request is ambiguous.",
                                 parameters: AutomationDeleteParams,
                                 async execute(_toolCallId, params) {
                                         const res = await engineApi("DELETE", `/api/automations/${encodeURIComponent(params.id)}`);
                                         if (!res.ok)
                                                 return { content: [{ type: "text", text: `Error: ${res.data?.error ?? ENGINE_DOWN_HINT}` }] };
-                                        return { content: [{ type: "text", text: `Deleted automation ${params.id}.` }] };
+                                        return { content: [{ type: "text", text: `Deleted routine ${params.id}.` }] };
                                 },
                                 renderCall(args: any, theme: any) {
                                         return new Text(
-                                                theme.fg("toolTitle", theme.bold("automation- ")) + theme.fg("muted", String(args?.id ?? "")),
+                                                theme.fg("toolTitle", theme.bold("routine- ")) + theme.fg("muted", String(args?.id ?? "")),
                                                 0,
                                                 0,
                                         );
@@ -2479,6 +2529,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         description: "Alias of /dashboard",
                         handler: async (_args, ctx) => {
                                 await openDashboardScreen(ctx, "");
+                        },
+                });
+
+                pi.registerCommand("routines", {
+                        description: "Open the dashboard's Routines screen (scheduled recurring runs: create, edit, skip, snooze, history)",
+                        handler: async (_args, ctx) => {
+                                await openDashboardScreen(ctx, "automations");
                         },
                 });
 

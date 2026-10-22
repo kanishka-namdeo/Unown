@@ -9,9 +9,9 @@
 //      the 2-concurrent cap, misfire grace (skip, never replay), dispatch
 //      retry with backoff to exhaustion, maxRuns finalization, one-shot
 //      completion, and the frozen-run-id retry contract.
-//   3. The in-session trust gate — automation_list survives inside an
-//      automation run; automation_create/update/delete (and the task tool)
-//      are HIDDEN there and inside subagents (no recursion).
+//   3. The in-session trust gate — routine_list survives inside a routine
+//      run; routine_create/update/run/delete (and the task tool) are HIDDEN
+//      there and inside subagents (no recursion).
 //
 // The scheduler tests never start the poll loop (tick() is public for exactly
 // this reason) and inject a fake RunDispatcher, so no real CLI session is
@@ -621,18 +621,18 @@ function registeredToolNames(env: Record<string, string | undefined>): string[] 
 describe("automation session tools — the trust gate", () => {
         test("default session: list + create/update/delete all registered", () => {
                 const names = registeredToolNames({ UNOWN_AUTOMATION: undefined, UNOWN_SUBAGENT: undefined });
-                expect(names).toContain("automation_list");
-                expect(names).toContain("automation_create");
-                expect(names).toContain("automation_update");
-                expect(names).toContain("automation_delete");
+                expect(names).toContain("routine_list");
+                expect(names).toContain("routine_create");
+                expect(names).toContain("routine_update");
+                expect(names).toContain("routine_delete");
                 expect(names).toContain("task");
         });
-        test("inside an automation run (UNOWN_AUTOMATION=1): ONLY automation_list survives", () => {
+        test("inside an automation run (UNOWN_AUTOMATION=1): ONLY routine_list survives", () => {
                 const names = registeredToolNames({ UNOWN_AUTOMATION: "1", UNOWN_SUBAGENT: undefined });
-                expect(names).toContain("automation_list");
-                expect(names).not.toContain("automation_create");
-                expect(names).not.toContain("automation_update");
-                expect(names).not.toContain("automation_delete");
+                expect(names).toContain("routine_list");
+                expect(names).not.toContain("routine_create");
+                expect(names).not.toContain("routine_update");
+                expect(names).not.toContain("routine_delete");
                 // `task` stays REGISTERED in an automation run (a standard-mode run may
                 // use subagents; subagents inherit UNOWN_AUTOMATION=1, so they cannot
                 // mutate automations either). READ-ONLY runs exclude it not here but
@@ -641,13 +641,13 @@ describe("automation session tools — the trust gate", () => {
         });
         test("inside a subagent (UNOWN_SUBAGENT=1): automation mutations hidden too", () => {
                 const names = registeredToolNames({ UNOWN_AUTOMATION: undefined, UNOWN_SUBAGENT: "1" });
-                expect(names).toContain("automation_list");
-                expect(names).not.toContain("automation_create");
-                expect(names).not.toContain("automation_delete");
+                expect(names).toContain("routine_list");
+                expect(names).not.toContain("routine_create");
+                expect(names).not.toContain("routine_delete");
         });
         test("UNOWN_AUTOMATION accepts 1/true case-insensitively", () => {
-                expect(registeredToolNames({ UNOWN_AUTOMATION: "TRUE" })).not.toContain("automation_create");
-                expect(registeredToolNames({ UNOWN_AUTOMATION: "yes" })).toContain("automation_create"); // not a truthy spelling
+                expect(registeredToolNames({ UNOWN_AUTOMATION: "TRUE" })).not.toContain("routine_create");
+                expect(registeredToolNames({ UNOWN_AUTOMATION: "yes" })).toContain("routine_create"); // not a truthy spelling
         });
 
         test("READ_ONLY_TOOLS excludes every mutation + escape hatch (the --tools allowlist IS the read-only story)", () => {
@@ -795,7 +795,7 @@ describe("automations CLI (runAutomationsCommand against a stubbed engine)", () 
                 try {
                         const res = await runAutomationsCommand(["list"], { cwd: foreign });
                         expect(res.exitCode).toBe(0);
-                        expect(res.stdout).toContain("No automations in this project");
+                        expect(res.stdout).toContain("No routines in this project");
                         expect(res.stdout).toContain("2 filtered"); // both rows exist, neither is this cwd's
                         expect(res.stdout).toContain("--all");
                 } finally {
@@ -810,13 +810,78 @@ describe("automations CLI (runAutomationsCommand against a stubbed engine)", () 
                 try {
                         const res = await runAutomationsCommand(["list", "--all"], { cwd: foreign });
                         expect(res.exitCode).toBe(0);
-                        expect(res.stdout).toContain("No automations yet");
+                        expect(res.stdout).toContain("No routines yet");
                 } finally {
                         restore();
                         rmSync(foreign, { recursive: true, force: true });
                 }
         });
 });
+
+        test("routines create with --every sends the interval body", async () => {
+                const calls: Array<{ method: string; path: string; body: any }> = [];
+                const orig = globalThis.fetch;
+                globalThis.fetch = (async (url: any, init: any) => {
+                        calls.push({ method: init?.method ?? "GET", path: String(url), body: init?.body ? JSON.parse(init.body) : null });
+                        return new Response(JSON.stringify({ automation: { id: "auto-new", title: "bi-daily", cron_expr: null, schedule: "every 2 days at 09:00", mode: "read-only", lifecycle: "active", next_run_at: Date.now() + 3600_000, workspace: WORKSPACE } }), { status: 200 });
+                }) as typeof fetch;
+                try {
+                        const res = await runAutomationsCommand(
+                                ["create", "--title", "bi-daily", "--prompt", "do it", "--every", "2d at 09:00", "--timezone", "America/New_York", "--misfire", "catch-up"],
+                                { cwd: WORKSPACE },
+                        );
+                        expect(res.exitCode).toBe(0);
+                        const create = calls.find((c) => c.path.endsWith("/api/automations") && c.method === "POST");
+                        expect(create).toBeDefined();
+                        expect(create!.body.every).toBe("2d at 09:00");
+                        expect(create!.body.timezone).toBe("America/New_York");
+                        expect(create!.body.misfire).toBe("catch-up");
+                        expect(res.stdout).toContain("every 2 days at 09:00");
+                } finally {
+                        globalThis.fetch = orig;
+                }
+        });
+        test("routines create rejects conflicting schedule flags", async () => {
+                const res = await runAutomationsCommand(["create", "--title", "t", "--prompt", "p", "--cron", "* * * * *", "--every", "1d"], { cwd: WORKSPACE });
+                expect(res.exitCode).toBe(1);
+                expect(res.stderr).toContain("exactly ONE");
+        });
+        test("routines skip + snooze hit their endpoints", async () => {
+                const calls: Array<{ method: string; path: string; body: any }> = [];
+                const orig = globalThis.fetch;
+                globalThis.fetch = (async (url: any, init: any) => {
+                        calls.push({ method: init?.method ?? "GET", path: String(url), body: init?.body ? JSON.parse(init.body) : null });
+                        return new Response(JSON.stringify({ automation: { id: "auto-x", title: "t", lifecycle: "active", next_run_at: Date.now() + 7200_000 } }), { status: 200 });
+                }) as typeof fetch;
+                try {
+                        let res = await runAutomationsCommand(["skip", "auto-x"], { cwd: WORKSPACE });
+                        expect(res.exitCode).toBe(0);
+                        res = await runAutomationsCommand(["snooze", "auto-x", "30"], { cwd: WORKSPACE });
+                        expect(res.exitCode).toBe(0);
+                        const skip = calls.find((c) => c.path.endsWith("/api/automations/auto-x/skip"));
+                        const snooze = calls.find((c) => c.path.endsWith("/api/automations/auto-x/snooze"));
+                        expect(skip?.method).toBe("POST");
+                        expect(snooze?.body.minutes).toBe(30);
+                } finally {
+                        globalThis.fetch = orig;
+                }
+        });
+        test("routines list --json emits machine-readable rows", async () => {
+                const orig = globalThis.fetch;
+                globalThis.fetch = (async () =>
+                        new Response(JSON.stringify({ automations: [{ id: "auto-json", title: "j", workspace: WORKSPACE, schedule: "every 1 day", mode: "read-only", lifecycle: "active", run_count: 0, next_run_at: Date.now(), lastRun: null }] }), {
+                                status: 200,
+                        })) as typeof fetch;
+                try {
+                        const res = await runAutomationsCommand(["list", "--json"], { cwd: WORKSPACE });
+                        expect(res.exitCode).toBe(0);
+                        const parsed = JSON.parse((res.stdout ?? "").trim());
+                        expect(Array.isArray(parsed)).toBe(true);
+                        expect(parsed.some((r: any) => r.id === "auto-json")).toBe(true);
+                } finally {
+                        globalThis.fetch = orig;
+                }
+        });
 
 // ---------------------------------------------------------------------------
 // Routines v2 — kinds, boundaries, skip/snooze, per-row misfire, concurrency

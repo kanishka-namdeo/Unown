@@ -177,8 +177,9 @@ const KNOWN_TOOL_NAMES = new Set([
 
 export function isKnownToolName(tool: string): boolean {
         if (KNOWN_TOOL_NAMES.has(tool)) return true;
-        // the automation_* family (automation_list/create/update/delete)
-        return /^automation_[a-z0-9_]+$/.test(tool);
+        // the routine_* family (routine_list/create/update/run/delete) and the
+        // historical automation_* spelling (renamed pre-1.0; both accepted)
+        return /^routine_[a-z0-9_]+$/.test(tool) || /^automation_[a-z0-9_]+$/.test(tool);
 }
 
 // ---------------------------------------------------------------------------
