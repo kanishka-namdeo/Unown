@@ -2,10 +2,12 @@
 // injected removers, no git/network unless a fixture repo is created).
 import "./_env.ts";
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+        checkoutHasUncommittedWork,
         cmdUninstall,
         findInstallShims,
         findShims,
@@ -83,6 +85,67 @@ test("findShims marks ours vs foreign (no cross-install deletion)", () => {
         // from the OTHER checkout's perspective, the same files are foreign
         const foreign = findShims(other, { UNOWN_BIN_DIR: bin });
         expect(foreign.map((h) => h.ours)).toEqual(shims.map(() => false));
+});
+
+// ---------------------------------------------------------------------------
+// checkoutHasUncommittedWork — the purge guard's git probe, now routed
+// through the shared hardened helper (GitSpawn: `git status` must not execute
+// a repo-local core.fsmonitor binary —
+// https://shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/).
+// ---------------------------------------------------------------------------
+describe("checkoutHasUncommittedWork (hardened probe)", () => {
+        const gitHere = (): boolean => {
+                const r = spawnSync("git", ["--version"], { stdio: "ignore" });
+                return !r.error && r.status === 0;
+        };
+        const HAS_GIT = gitHere();
+        const g = (cwd: string, args: string[]) => spawnSync("git", args, { cwd, encoding: "utf8" });
+
+        function makeGuardRepo(): { repo: string; marker: string } {
+                const base = fresh();
+                const repo = join(base, "checkout");
+                mkdirSync(repo, { recursive: true });
+                g(repo, ["init", "-b", "main"]);
+                g(repo, ["config", "user.email", "t@unown"]);
+                g(repo, ["config", "user.name", "unown test"]);
+                writeFileSync(join(repo, "f.txt"), "hello\n");
+                g(repo, ["add", "."]);
+                g(repo, ["commit", "-m", "initial"]);
+                // Hostile core.fsmonitor OUTSIDE the repo (marker + script) so the
+                // repo's own cleanliness stays deterministic.
+                const marker = join(base, "fsmonitor-ran");
+                const script = join(base, "evil-fsmonitor.sh");
+                writeFileSync(script, `#!/bin/sh\ntouch "${marker}"\n`);
+                try {
+                        chmodSync(script, 0o755);
+                } catch {
+                        /* win32 no-op; the control below is skipped there */
+                }
+                g(repo, ["config", "core.fsmonitor", script]);
+                return { repo, marker };
+        }
+
+        test.skipIf(!HAS_GIT)("clean → false, dirty → true, non-repo → careful (true)", () => {
+                const { repo } = makeGuardRepo();
+                expect(checkoutHasUncommittedWork(repo)).toBe(false);
+                writeFileSync(join(repo, "uncommitted.txt"), "wip\n");
+                expect(checkoutHasUncommittedWork(repo)).toBe(true);
+                expect(checkoutHasUncommittedWork(join(repo, ".."))).toBe(true); // outside any repo
+        });
+
+        test.skipIf(!HAS_GIT)("a hostile repo-local core.fsmonitor never executes — and does not skew the verdict (GitSpawn)", () => {
+                const { repo, marker } = makeGuardRepo();
+                // CONTROL (POSIX only): plain git status runs the hostile helper →
+                // the fixture is a live sink.
+                if (process.platform !== "win32") {
+                        g(repo, ["status", "--porcelain"]);
+                        expect(existsSync(marker)).toBe(true);
+                        rmSync(marker, { force: true });
+                }
+                writeFileSync(join(repo, "uncommitted.txt"), "wip\n");
+                expect(checkoutHasUncommittedWork(repo)).toBe(true); // still refuses the purge — correct verdict, no exec
+                expect(existsSync(marker)).toBe(false);
+        });
 });
 
 test("the Windows shim set is fully owned by the checkout it points into", () => {

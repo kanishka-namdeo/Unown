@@ -25,7 +25,7 @@ import {
         type AutoCompactDecision,
 } from "./auto-compact.ts";
 import { emit } from "./bus.ts";
-import { resolveAgentIsolation, writeSandboxShell } from "./bwrap.ts";
+import { decideSandboxFallback, resolveAgentIsolation, SandboxRequiredError, writeSandboxShell } from "./bwrap.ts";
 import { createHooksExtension, logHook } from "./hooks.ts";
 import { currentVersion, type MemoryOverlay, resolveMemoryForAgentDetailed } from "./memory.ts";
 import { createNote, noteFromRun } from "./notes.ts";
@@ -445,6 +445,19 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                 // generated per-OS wrapper — bubblewrap on Linux, seatbelt on
                 // macOS (transparent when unavailable).
                 const sandboxShell = writeSandboxShell(AGENT_DIR);
+
+                // SA-B1 — fail-closed sandbox knob (UNOWN_SANDBOX_REQUIRED, see
+                // bwrap.ts): when the wrapper could not be generated (no backend
+                // on this host — including every native-Windows host — binary
+                // missing, or the UNOWN_OS_SANDBOX=0 kill-switch) the agent bash
+                // tool would silently degrade to the in-process TS path jail.
+                // With the knob armed the run must REFUSE instead: the throw
+                // lands in the catch below, which finalizes a typed status:'error'
+                // run row carrying the actionable message. Default (knob
+                // unset/0): the transparent degrade above is unchanged.
+                if (!sandboxShell && decideSandboxFallback(false) === "fail") {
+                        throw new SandboxRequiredError();
+                }
 
                 const hooksExt = createHooksExtension({
                         runId,

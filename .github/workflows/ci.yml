@@ -43,6 +43,14 @@ concurrency:
 #   - docs runs the docs link/anchor gate (`node scripts/check_docs.mjs
 #     docs/*.md`) so a broken relative link or a renamed heading anchor fails
 #     CI instead of a reader.
+#   - instruction-chars lints the instruction set — every file the agent
+#     loads as behavior (AGENTS.md / SKILL.md / CLAUDE.md at any depth,
+#     .unown/**, hook configs, subagent definitions) — for invisible
+#     Unicode: the emoji backdoor (Unicode Tags U+E0000-U+E007F), Trojan
+#     Source bidi overrides/isolates, zero-width carriers, Sneaky-Bits
+#     invisible operators, soft hyphen, variation-selector runs. Findings
+#     are printed hex-escaped (CI logs never echo the payload); exemptions
+#     live in scripts/instruction-chars-allowlist.txt (empty today).
 
 jobs:
   lint-shell:
@@ -411,6 +419,38 @@ jobs:
         # package breaks. On ubuntu `docs/*.md` is expanded by the shell; the
         # PowerShell glob limitation is a Windows-local concern only.
         run: node scripts/check_docs.mjs docs/*.md
+
+  instruction-chars:
+    name: Instruction-set unicode lint (invisible chars)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Workflow-level permissions are already contents:read; restated here so
+    # the gate stays least-privilege even if the workflow header ever widens.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Invisible-unicode lint over the instruction set
+        # The files the agent loads as behavior enter model context verbatim,
+        # so an invisible code point inside one is a prompt injection no human
+        # reviewer can see but the model reads as text. This is the CI leg of
+        # research/instruction_set_hardening.md P0-1. Zero-dep plain node
+        # (system node, like the docs gate — nothing to install, <1s); scans
+        # the working tree at any depth, including the vendored pi-repo
+        # instruction files and fixtures. Findings exit 1 with file/line/col,
+        # the exact U+XXXX code points, and a hex-escaped excerpt — the log
+        # never echoes the raw payload. Exemptions: only the checked-in
+        # scripts/instruction-chars-allowlist.txt, and a malformed/unknown
+        # rule in it is a hard config error, not a silent pass.
+        run: node scripts/check_instruction_chars.mjs
+      - name: Scanner unit tests
+        # Pins the gate itself, so it cannot rot into a no-op: every char
+        # class detected with line/col + code point, code-point (not
+        # UTF-16) columns, run thresholds (two selectors pass, three fail,
+        # mixed FE+MVS fails), never-echo output, --fix-hints modifies
+        # nothing, allowlist narrow/loud/fail-closed, and the repo's own
+        # instruction set scanning clean.
+        run: node --test scripts/check_instruction_chars.test.mjs
 
   theme:
     name: Theme contract

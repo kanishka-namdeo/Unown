@@ -1,0 +1,60 @@
+# Pre-commit hooks — the LOCAL first line of defense for Unown maintainers.
+#
+# CI REMAINS THE AUTHORITY. Every hook below has a CI counterpart that runs
+# on every PR whether or not a contributor has pre-commit installed:
+#   - gitleaks            <-> the `security` job (gitleaks-action, full history)
+#   - instruction-chars   <-> the `instruction-chars` job
+#     (.github/workflows/ci.yml). These hooks exist only to stop an accident
+#     BEFORE it reaches a commit — especially the class `git diff` cannot
+#     show a human: an invisible code point smuggled into an instruction
+#     file (AGENTS.md / SKILL.md / CLAUDE.md / .unown/** / hook configs) is
+#     a prompt-injection payload that review literally cannot see, but the
+#     model reads it as instructions every session. That is the exact attack
+#     this pair of hooks exists to kill.
+#
+# Install once per clone:   pipx install pre-commit && pre-commit install
+# Run over everything:      pre-commit run --all-files
+# Update the gitleaks rev:  pre-commit autoupdate
+# Bypass (emergencies):     git commit --no-verify  (CI still gates the PR)
+
+repos:
+  # ── secrets ───────────────────────────────────────────────────────────────
+  - repo: https://github.com/gitleaks/gitleaks
+    # v8.30.1 = latest release at adoption time, verified against
+    # github.com/gitleaks/gitleaks/releases (redirect target of /releases/latest).
+    # The hook id is the official one from gitleaks' .pre-commit-hooks.yaml:
+    # `gitleaks git --pre-commit --redact --staged --verbose`, language: golang
+    # (pre-commit builds the binary — needs Go). Machines without Go can swap
+    # the id to `gitleaks-docker` (needs Docker) or `gitleaks-system`
+    # (gitleaks on $PATH) without touching anything else here. Reads the
+    # repo's .gitleaks.toml automatically.
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # ── instruction set (invisible-Unicode backdoors) ─────────────────────────
+  - repo: local
+    hooks:
+      - id: instruction-chars
+        name: instruction-chars (invisible unicode lint)
+        # Staged-file mirror of the CI `instruction-chars` job: exits 1 on
+        # Unicode Tags (U+E0000-U+E007F, the emoji backdoor), Trojan-Source
+        # bidi overrides/isolates, zero-width carriers, soft hyphen,
+        # Sneaky-Bits invisible operators (U+2061-U+2064) and
+        # variation-selector runs in any staged instruction file. Findings
+        # print file:line:col + U+XXXX + a hex-escaped excerpt (the payload
+        # is never echoed raw), and `node scripts/check_instruction_chars.mjs
+        # --fix-hints <file>` prints remediation without touching files.
+        # language: system — plain node, zero deps, same behavior on
+        # Linux/macOS/Windows; the repo's own allowlist
+        # (scripts/instruction-chars-allowlist.txt, empty today) applies.
+        language: system
+        entry: node scripts/check_instruction_chars.mjs
+        pass_filenames: true
+        # Mirror the scanner's discovery patterns: instruction files at any
+        # depth (root, docs/, src/, pi-repo/**, vendored fixtures), .unown/**
+        # (gitignored runtime dirs are never staged, so no exclusions here),
+        # hook configs, Claude subagent definitions and CLAUDE.md.
+        files: (^|/)(AGENTS|SKILL|CLAUDE)\.md$|^\.unown/.*\.(md|json)$|(^|/)hooks\.json$|(^|/)\.claude/(settings\.json|agents/[^/]+\.md)$
+
+stages: [pre-commit]

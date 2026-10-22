@@ -28,13 +28,18 @@
  * Two PreToolUse guards ride on top: `decideAdversary` (file-gated LLM
  * reviewer, `./adversary.ts`) and `decideInjection` (regex + optional ML
  * classifier, `./injection-scanner.ts`). Both return PreToolDecision and
- * compose with `decideBash`/`jailPath` below.
+ * compose with `decideBash`/`jailPath` below. SA-B2 adds the
+ * instruction-set write gate (`./instruction-guard.ts` — engine runs may
+ * never write AGENTS.md/.unown rule files, same policy as the terminal) and
+ * the TOCTOU re-check: a PreToolUse user hook that mutates the tool input
+ * gets the built-in gates re-run on the mutated input before it executes.
  *
  * Every decision is logged to the hook_log table and pushed to the live bus.
  */
 import { emit } from "./bus.ts";
 import { adversaryPath, decideAdversary, type AdversaryConfig } from "./adversary.ts";
 import { decideInjection, injectionScannerPath } from "./injection-scanner.ts";
+import { instructionWriteDeny } from "./instruction-guard.ts";
 import {
     hasHandlersFor,
     loadHooksConfig,
@@ -222,29 +227,62 @@ export function createHooksExtension(ctx: RunHookContext) {
                         const input = event?.input ?? {};
                         let decision: PreToolDecision = { block: false };
 
-                        // 1) Built-in policies: bash deny regex + path jail.
-                        if (tool === "bash" || tool === "powershell") {
-                                const command = String(input.command ?? "");
-                                decision = decideBash(command);
-                                // 1b) Prompt-injection scanner (regex + optional ML classifier).
-                                if (!decision.block) {
-                                        const inj = decideInjection(tool, input, ctx.sandboxRoot);
-                                        if (inj.block) decision = inj;
+                        /** SA-B2 — the hard-coded built-in gate stack for one
+                         *  (tool, input): bash deny regex + injection scanner;
+                         *  path jail + instruction-set guard + injection
+                         *  scanner. ONE code path shared by the initial check
+                         *  and the post-mutation re-check (the TOCTOU fix) —
+                         *  duplication is how the second path rots open. */
+                        const builtInGates = (toolName: string, toolInput: Record<string, unknown>): PreToolDecision => {
+                                if (toolName === "bash" || toolName === "powershell") {
+                                        const command = String(toolInput.command ?? "");
+                                        const bash = decideBash(command);
+                                        if (bash.block) return bash;
+                                        // Prompt-injection scanner (regex + optional ML classifier).
+                                        const inj = decideInjection(toolName, toolInput, ctx.sandboxRoot);
+                                        if (inj.block) return inj;
+                                        return { block: false };
                                 }
-                        } else if (tool === "write" || tool === "edit" || tool === "read") {
-                                const p = String(input.path ?? input.file_path ?? "");
-                                if (p) {
-                                        const jail = jailPath(ctx.sandboxRoot, p);
-                                        if (!jail.ok) {
-                                                decision = { block: true, reason: `path escapes the sandbox: ${p} (resolved ${jail.resolved})` };
+                                if (toolName === "write" || toolName === "edit" || toolName === "read") {
+                                        const p = String(toolInput.path ?? toolInput.file_path ?? "");
+                                        if (p) {
+                                                const jail = jailPath(ctx.sandboxRoot, p);
+                                                if (!jail.ok) {
+                                                        return { block: true, reason: `path escapes the sandbox: ${p} (resolved ${jail.resolved})` };
+                                                }
                                         }
+                                        // SA-B2 — the SAME instruction-set write policy the
+                                        // terminal gate enforces: engine agent runs must never
+                                        // write instruction files (AGENTS.md / .unown/skills/** /
+                                        // hooks.json / .claude/settings.json …). The engine
+                                        // sandbox is an isolated dir, but the run's effective
+                                        // project root — and, when set, the real project dir —
+                                        // both carry the policy: a hijacked engine agent writing
+                                        // its own rule files persists across runs exactly like a
+                                        // terminal one (AutoRedClaw arXiv:2610.27244).
+                                        if (p && (toolName === "write" || toolName === "edit")) {
+                                                const roots =
+                                                        ctx.projectDir && ctx.projectDir !== ctx.sandboxRoot
+                                                                ? [ctx.sandboxRoot, ctx.projectDir]
+                                                                : [ctx.sandboxRoot];
+                                                for (const root of roots) {
+                                                        const guard = instructionWriteDeny(root, p);
+                                                        if (guard.deny) return { block: true, reason: guard.reason! };
+                                                }
+                                        }
+                                        // Injection scanner also scans write content.
+                                        if (toolName === "write" || toolName === "edit") {
+                                                const inj = decideInjection(toolName, toolInput, ctx.sandboxRoot);
+                                                if (inj.block) return inj;
+                                        }
+                                        return { block: false };
                                 }
-                                // 1c) Injection scanner also scans write content.
-                                if (!decision.block && (tool === "write" || tool === "edit")) {
-                                        const inj = decideInjection(tool, input, ctx.sandboxRoot);
-                                        if (inj.block) decision = inj;
-                                }
-                        }
+                                return { block: false };
+                        };
+
+                        // 1) Built-in policies: bash deny regex + path jail +
+                        //    instruction-set guard + injection scanner.
+                        decision = builtInGates(tool, input);
 
                         // 2) Adversary mode (file-gated LLM reviewer) — only when the
                         //    built-in policies allowed, and only when the gate file exists.
@@ -265,9 +303,29 @@ export function createHooksExtension(ctx: RunHookContext) {
                                         if (r.decision === "deny" || r.decision === "stop") {
                                                 decision = userHooksToDecision(r);
                                         } else if (r.decision === "mutate" && r.mutatedInput) {
-                                                // Replace the tool input with the mutated version.
-                                                event.input = r.mutatedInput;
-                                                for (const o of r.outputs) logHook(ctx.runId, "PreToolUse", tool, "mutate", o.message);
+                                                // SA-B2 — TOCTOU re-check: the built-in gates
+                                                // (and any approval that may have happened)
+                                                // covered the ORIGINAL input; the mutated one
+                                                // has passed NOTHING. Re-run the full built-in
+                                                // stack on it BEFORE applying — a once-approved
+                                                // poisoned hook must not become a policy bypass
+                                                // (hooks ADD policy, never subtract). See
+                                                // embracethered.com/blog/posts/2026/
+                                                // toctou-agent-what-you-click-is-not-what-you-get/.
+                                                const recheck = builtInGates(tool, r.mutatedInput);
+                                                if (recheck.block) {
+                                                        // The standard deny row below (logHook at the end of
+                                                        // this handler) records decision + reason; the
+                                                        // handler outputs are still logged by the hook layer.
+                                                        decision = {
+                                                                block: true,
+                                                                reason: `mutated tool input failed policy re-check: ${recheck.reason}`,
+                                                        };
+                                                } else {
+                                                        // Replace the tool input with the mutated version.
+                                                        event.input = r.mutatedInput;
+                                                        for (const o of r.outputs) logHook(ctx.runId, "PreToolUse", tool, "mutate", o.message);
+                                                }
                                         } else {
                                                 for (const o of r.outputs) logHook(ctx.runId, "PreToolUse", tool, o.kind, o.message);
                                         }

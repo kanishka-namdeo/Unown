@@ -26,12 +26,47 @@
  *     so a session opened in a subdirectory cannot sweep the rest of the
  *     repository into its commits.
  *   - Read-only probes (rev-parse / status / config / show) run with
- *     repository hooks DISABLED and `--no-optional-locks`, exactly like
- *     worktree.ts's hardened probes — hostile repo config must not execute
- *     hook commands when we merely LOOK. The commit path is different on
- *     purpose: `git add` / `git commit` run with the user's hooks live
- *     (husky / lint-staged installed by the user must gate agent commits
- *     like any other), and a failing hook surfaces as a typed failure.
+ *     repository hooks DISABLED, `--no-optional-locks`, AND the GitSpawn
+ *     exec-sink neutralization set — exactly like worktree.ts's hardened
+ *     probes (worktree.ts now literally calls this module's runGit, so the
+ *     arg set has ONE source of truth here). GitSpawn (September 2026,
+ *     https://shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/ — 7
+ *     coding agents, 4 unpatched at disclosure) showed that a repo-local
+ *     `.git/config` executes attacker code the moment an agent runs
+ *     background `git status` / `git diff` / `git rev-parse` in the cloned
+ *     repo, OUTSIDE any sandbox, BEFORE any approval prompt. `core.hooksPath`
+ *     redirects hooks, but hooks are NOT the only sink — the read-only set
+ *     therefore also neutralizes:
+ *       · core.fsmonitor=false   — the GitSpawn PRIMARY sink: git spawns the
+ *         configured helper binary on `git status` (and add/commit/checkout/
+ *         merge/reset — all verified on git 2.47).
+ *       · core.sshCommand=ssh    — executes on any fetch/push. Read-only
+ *         probes never fetch; this is belt-and-braces for probe args reused
+ *         by ops that might (the override also stomps a repo-local hostile
+ *         value).
+ *       · core.askPass=          — the credential-prompt exec sink; EMPTY
+ *         disables the program while git still falls back to the terminal
+ *         prompt (verified: interactive auth keeps working, background
+ *         probes fail fast instead of spawning the configured binary).
+ *       · core.pager=            — the pager exec sink; EMPTY value = no pager
+ *         (verified accepted by git; belt-and-braces — our pipes already
+ *         mean git never pages).
+ *     Deliberately NOT neutralized: `core.fsmonitorHookVersion` — the config
+ *     only selects WHICH fsmonitor hook runs on the git 2.36–2.40 migration
+ *     window, both of its code paths are already dead under
+ *     `core.fsmonitor=false`, the hook itself is covered by the empty
+ *     `core.hooksPath` dir, and an empty value may be a hard config error on
+ *     exactly those gits — a hardening flag must never break a supported git.
+ *   - The commit path is different ON PURPOSE for hooks, and ONLY for hooks:
+ *     `git add` / `git commit` run with the user's hooks live (husky /
+ *     lint-staged installed by the user must gate agent commits like any
+ *     other; a failing hook surfaces as a typed failure) — that documented
+ *     contract is preserved. `core.fsmonitor` is NOT a user workflow tool
+ *     (no husky/lint-staged setup depends on a filesystem-monitor daemon) and
+ *     it EXECUTES on `git add` just like on `git status`, so the mutation
+ *     path neutralizes fsmonitor + sshCommand too (NOT hooksPath): user hooks
+ *     are a deliberate reviewed gate; fsmonitor is an unreviewed exec sink no
+ *     legitimate workflow depends on.
  *   - Identity fallback: a fresh clone with no user.name/user.email would
  *     make `git commit` exit 128 — we probe both and pass
  *     `-c user.name=unown -c user.email=unown@local` ONLY for the missing
@@ -57,7 +92,7 @@
  * is out of scope for this change. The session transcript (the /commit
  * command + its notify) remains the visible audit trail.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -71,14 +106,79 @@ import { assistantTextOf } from "./messages.ts";
 const GIT_TIMEOUT_MS = 30_000;
 
 /** One private empty hooks dir per process — read-only git probes run with
- *  hooks disabled. Same construction as worktree.ts (the /dev/null trick is
- *  not portable to Windows; git silently skips an empty hook dir). */
+ *  hooks disabled. Same construction as the historical worktree.ts copy (the
+ *  `/dev/null` trick is not portable to Windows; git silently skips an empty
+ *  hook dir). Shared by every hardened call site via readOnlyGitArgs(). */
 let emptyHooksDir: string | null = null;
-function hooksDisabledArgs(): string[] {
+export function hooksDisabledArgs(): string[] {
     if (emptyHooksDir === null) {
         emptyHooksDir = mkdtempSync(join(tmpdir(), "unown-git-hooks-off-"));
     }
     return ["-c", `core.hooksPath=${emptyHooksDir}`];
+}
+
+// ---------------------------------------------------------------------------
+// GitSpawn exec-sink neutralization (single source of truth for the repo)
+// ---------------------------------------------------------------------------
+// September 2026 "GitSpawn" disclosure:
+// https://shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/ — a
+// repo-local `.git/config` executes attacker code the moment an agent runs
+// background `git status` / `git diff` / `git rev-parse` in the cloned repo,
+// OUTSIDE any sandbox, BEFORE any approval prompt. Disabling hooks is NOT
+// enough: git config carries other program-execution sinks. Each neutralizer
+// below names the sink it closes; every value was verified accepted by the
+// local git (2.47) before shipping.
+
+/** `core.fsmonitor` — the GitSpawn PRIMARY sink: git SPAWNS the configured
+ *  helper binary the moment it scans the working tree. Verified on git 2.47:
+ *  `git status`, `git add`, `git commit`, `git checkout`, `git reset --hard`
+ *  and `git merge --ff-only` all execute a hostile `core.fsmonitor` value;
+ *  `false` kills both the daemon and the hook code paths. Neutralized on the
+ *  read-only AND the mutation path — no legitimate user workflow (husky,
+ *  lint-staged) depends on a filesystem-monitor daemon, while user HOOKS are
+ *  a deliberate gate that stays live (see the module header). */
+export function fsmonitorNeutralizerArgs(): string[] {
+    return ["-c", "core.fsmonitor=false"];
+}
+
+/** `core.sshCommand` — executes on ANY remote-touching operation (fetch /
+ *  ls-remote / push: verified on git 2.47 — a hostile value runs before the
+ *  connection is even attempted). Read-only probes never fetch; this is
+ *  belt-and-braces for probe args reused by anything that might touch a
+ *  remote, and it stomps a repo-local hostile value on the mutation path.
+ *  Reset to plain `ssh` (not empty: an empty value makes git error on
+ *  "cannot run " instead of falling back — `ssh` is the documented default). */
+export function sshCommandNeutralizerArgs(): string[] {
+    return ["-c", "core.sshCommand=ssh"];
+}
+
+/** `core.askPass` (the credential-prompt exec sink — verified on git 2.47:
+ *  a hostile value EXECUTES on an authenticated http ls-remote) and
+ *  `core.pager` (the pager exec sink) — EMPTY values disable both (verified
+ *  accepted by git; empty askPass is treated as unset by the fallback chain,
+ *  so a user's GIT_ASKPASS env AND the terminal prompt keep working — only
+ *  the repo-configured program is disabled). Belt-and-braces for the
+ *  read-only set: probes never authenticate and never page, but these close
+ *  the sinks for any future reuse of the arg set. */
+export function promptSinkNeutralizerArgs(): string[] {
+    return ["-c", "core.askPass=", "-c", "core.pager="];
+}
+
+/** The FULL read-only hardening set (hooks disabled + no optional locks +
+ *  every GitSpawn exec/prompt sink closed). Exact shape pinned by
+ *  test/gittools.test.ts — the arg order keeps all `-c` overrides and the
+ *  global `--no-optional-locks` flag BEFORE the git subcommand. */
+export function readOnlyGitArgs(): string[] {
+    return [...hooksDisabledArgs(), "--no-optional-locks", ...fsmonitorNeutralizerArgs(), ...sshCommandNeutralizerArgs(), ...promptSinkNeutralizerArgs()];
+}
+
+/** The MUTATION-path hardening set: fsmonitor + sshCommand ONLY. User hooks
+ *  deliberately stay live (the documented husky/lint-staged contract — see
+ *  the module header) and `--no-optional-locks` stays off, but the exec sinks
+ *  no legitimate workflow depends on are closed on `git add` / `git commit`
+ *  too (both spawn a hostile `core.fsmonitor`; verified on git 2.47). */
+export function mutationGitArgs(): string[] {
+    return [...fsmonitorNeutralizerArgs(), ...sshCommandNeutralizerArgs()];
 }
 
 /** Environment for our git invocations: strip inherited GIT_* redirection
@@ -106,12 +206,14 @@ export interface GitResult {
 
 /** Run git in `cwd`. Never throws — callers decide what a failure means.
  *
- *  `readOnly: true` (probes) disables repository hooks and takes no optional
- *  locks; the default (mutations: add/commit) keeps the user's hooks live.
+ *  `readOnly: true` (probes) runs the FULL hardening set (hooks disabled,
+ *  `--no-optional-locks`, GitSpawn exec/prompt sinks neutralized); the
+ *  default (mutations: add/commit) keeps the user's hooks live but still
+ *  neutralizes fsmonitor + sshCommand (exec sinks no workflow depends on).
  *  A 30 s kill timer bounds every invocation (a hung hook, a giant repo). */
 export function runGit(cwd: string, args: string[], opts: { readOnly?: boolean } = {}): Promise<GitResult> {
     return new Promise((resolve) => {
-        const finalArgs = opts.readOnly ? [...hooksDisabledArgs(), "--no-optional-locks", ...args] : args;
+        const finalArgs = [...(opts.readOnly ? readOnlyGitArgs() : mutationGitArgs()), ...args];
         const child = spawn("git", finalArgs, {
             cwd,
             shell: false,
@@ -145,6 +247,35 @@ export function runGit(cwd: string, args: string[], opts: { readOnly?: boolean }
             finish({ code: -1, gitMissing: err?.code === "ENOENT" });
         });
     });
+}
+
+/** Synchronous twin of runGit for the CLI paths that cannot await (info /
+ *  uninstall / update probes): same hardened arg sets (`readOnly` default vs
+ *  mutation), same scrubbed env, same never-throws contract, same timeout
+ *  kill (spawnSync's `timeout` SIGTERMs the child; `r.error.code` tells us
+ *  whether it timed out or git was missing entirely). */
+export function runGitSync(cwd: string, args: string[], opts: { readOnly?: boolean; timeoutMs?: number } = {}): GitResult {
+    const finalArgs = [...(opts.readOnly ? readOnlyGitArgs() : mutationGitArgs()), ...args];
+    const r = spawnSync("git", finalArgs, {
+        cwd,
+        shell: false,
+        encoding: "utf8",
+        timeout: opts.timeoutMs ?? GIT_TIMEOUT_MS,
+        env: gitEnv(),
+        windowsHide: true,
+    });
+    const err = r.error as NodeJS.ErrnoException | undefined;
+    if (err) {
+        const base = (r.stderr ?? "") as string;
+        return {
+            code: -1,
+            stdout: (r.stdout ?? "") as string,
+            stderr: `${base}${base ? "\n" : ""}${String(err.message ?? err)}`,
+            gitMissing: err.code === "ENOENT" ? true : undefined,
+            timedOut: err.code === "ETIMEDOUT" ? true : undefined,
+        };
+    }
+    return { code: r.status ?? 1, stdout: (r.stdout ?? "") as string, stderr: (r.stderr ?? "") as string };
 }
 
 let gitAvailableCache: boolean | undefined;

@@ -30,31 +30,31 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 185;
+export const CHANGELOG_TOTAL_ENTRIES = 193;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 72,
-  "Changed": 11,
+  "Added": 76,
+  "Changed": 12,
   "Deprecated": 0,
-  "Removed": 2,
+  "Removed": 3,
   "Fixed": 77,
   "Security": 0,
-  "Behavior": 23
+  "Behavior": 25
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 16,
+    "total": 24,
     "counts": {
-      "Added": 5,
-      "Changed": 1,
+      "Added": 9,
+      "Changed": 2,
       "Deprecated": 0,
-      "Removed": 0,
+      "Removed": 1,
       "Fixed": 7,
       "Security": 0,
-      "Behavior": 3
+      "Behavior": 5
     },
     "groups": [
       {
@@ -78,6 +78,22 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "the post-first-task onboarding tips — \"You're flying\" + four one-time session tips",
+            "behavior": false
+          },
+          {
+            "title": "instruction-set write policy — the agent can no longer write its own rule files",
+            "behavior": false
+          },
+          {
+            "title": "invisible-Unicode lint over the instruction set — CI, pre-commit, and unown doctor-instructions",
+            "behavior": false
+          },
+          {
+            "title": "CODEOWNERS + branch protection on main — instruction files and guard sources are review-gated",
+            "behavior": false
+          },
+          {
+            "title": "UNOWN_SANDBOX_REQUIRED — the fail-closed sandbox knob",
             "behavior": false
           }
         ]
@@ -129,6 +145,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "the first-run gate and banner no longer promise a bundled bridge the install does not ship",
             "behavior": true
+          },
+          {
+            "title": "every session now denies instruction-set writes; sandbox and strict modes deny the DNS-exfiltration family…",
+            "behavior": true
+          },
+          {
+            "title": "AutoDream mints new skills into .unown/skills-staged/ — promotion into .unown/skills/ is a human mv",
+            "behavior": true
           }
         ]
       },
@@ -137,6 +161,19 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "the standalone CLI binary is now the default install; --source is the full stack",
+            "behavior": false
+          },
+          {
+            "title": "read-only git probes run with the full GitSpawn hardening set; git add/commit keep user hooks but close the…",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Removed",
+        "items": [
+          {
+            "title": "the root package-lock.json is gone — bun.lock is the single source of truth",
             "behavior": false
           }
         ]

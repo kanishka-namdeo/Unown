@@ -125,16 +125,16 @@ Real setups run several agents at once — parallel sessions in one repo, the sa
 
 ## Skills minting
 
-When consolidated notes reveal a recurring, multi-step procedure — how to run this test suite, how to deploy, how to debug the flaky part — AutoDream mints it as an Agent Skill into `<project>/.unown/skills/<name>/SKILL.md`, and the very next session can pick it up.
+When consolidated notes reveal a recurring, multi-step procedure — how to run this test suite, how to deploy, how to debug the flaky part — AutoDream mints it as an Agent Skill into `<project>/.unown/skills-staged/<name>/SKILL.md` (2026-10-22 hardening: minted skills are model-authored instruction content, so they are staged where no session loads them — skill discovery reads `.unown/skills/` only, and promotion into it is a human `mv`, recorded by the `staged: true` frontmatter and the README written into `skills-staged/` on the first mint). A **promoted** skill is picked up by the very next session; user-authored skills in `.unown/skills/` load as they always did.
 
 Guardrails on minting:
 
 - max **2 skills per dream** (quality bar) and a **24-skill ceiling per project** (context budget for the skill index)
-- every proposal is validated against the Agent Skills contract and deduplicated against everything already on disk
+- every proposal is validated against the Agent Skills contract and deduplicated against everything already on disk — the staged tree included, so a re-dream cannot overwrite a skill awaiting review
 - every version is recorded in the engine DB; rollback restores a previous version's file
 - **retiring** a skill (removing its directory from your project) is a deliberate TUI-dashboard action — the engine never deletes your files on its own
 
-See [skills](skills.md) for the full skills story, including the seeded starters.
+See [skills](skills.md) for the full skills story, including the seeded starters and the promotion step.
 
 ### A worked example
 
@@ -163,10 +163,11 @@ Do not bother formatting: bullets under topic headings is the shape the render w
 |------|---------|-----|
 | `.unown/memory/project.md` | yes | the rendered view of the platform's memories for this project; committing shares the accumulated learning across machines and teammates — a fresh engine imports the committed bullets verbatim at its first dream |
 | `.unown/memory/local.md` | no | personal, per-machine overrides; the scaffold's `.gitignore` already excludes it |
-| `.unown/skills/` | yes | minted skills are project assets — the point is that the next session (and the next teammate) picks them up |
+| `.unown/skills/` | yes | promoted skills are project assets — the point is that the next session (and the next teammate) picks them up; the agent itself cannot write here (in-session writes are denied by the instruction-set guard) |
+| `.unown/skills-staged/` | yes | where AutoDream mints — awaiting human promotion (`mv` into `.unown/skills/`); never auto-loaded, so committing it is committing a review queue, not a behavior change |
 | `.unown/agents/` | yes | your own subagent definitions |
 
-What a teammate gets when they clone the repo: the shared project memory and the minted skills. What they do not get: your `local.md` (gitignored), your `~/.unown/memory/user.md` (global, per-human) and any queued notes still sitting in your outbox. Their sessions start from the shared tiers and start accumulating their own.
+What a teammate gets when they clone the repo: the shared project memory and the promoted skills (plus the staged queue awaiting review). What they do not get: your `local.md` (gitignored), your `~/.unown/memory/user.md` (global, per-human) and any queued notes still sitting in your outbox. Their sessions start from the shared tiers and start accumulating their own.
 
 ## Inspecting memory
 
@@ -184,7 +185,7 @@ Self-modification without gates degenerates fast, so every memory write is contr
 - **Mint gate** — a minted task only becomes an active capability eval if the agent genuinely FAILS it in a fresh sandbox; tasks the agent already solves are discarded (honest outcome), and minted tasks graduate into the regression suite only by passing a later harness cycle.
 - **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`) — the memory version *and* the platform's event stream (exact ADD/UPDATE/DELETE reversal).
 - **Retention check** — if a task later fails after its improvement shipped, the improvement is marked `regressed` and the memory is rolled back to the pre-ship version (auto-unship).
-- **Skill mint gate** — skills are minted only from recurring multi-step procedures in consolidated notes, max 2 per dream, validated against the Agent Skills contract, deduplicated against everything already on disk; every version is recorded and rollback-able, retirement is a deliberate TUI-dashboard action (the engine never deletes your files on its own).
+- **Skill mint gate** — skills are minted only from recurring multi-step procedures in consolidated notes, max 2 per dream, validated against the Agent Skills contract, deduplicated against everything already on disk; every version is recorded and rollback-able, retirement is a deliberate TUI-dashboard action (the engine never deletes your files on its own). Since the 2026-10-22 hardening the gate is also structural: mints land in `.unown/skills-staged/` — never auto-loaded — and promotion into `.unown/skills/` is a human `mv`, so no model-authored skill rides the system prompt unreviewed.
 - **Full version history** — every write to every engine tier is versioned and attributable; engine tiers and minted skills roll back from the TUI dashboard. Project memory (`.unown/memory/project.md`) is a plain versioned Markdown file — the engine records every version it writes, and restoring means pasting a prior version back (skills additionally have one-key rollback/retire with file writeback).
 
 ## What a learning session looks like

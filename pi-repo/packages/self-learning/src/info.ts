@@ -20,6 +20,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { arch, homedir, platform, release } from "node:os";
 import { join } from "node:path";
 import { auditInstructionSet, summarizeInstructionAudit } from "./doctor-instructions.ts";
+import { runGitSync } from "./gittools.ts";
 import {
         describeAge,
         readRootVersion,
@@ -81,9 +82,19 @@ export interface UnownInfo {
 }
 
 function gitLines(repoRoot: string): { sha: string | null; branch: string | null; dirty: boolean | null } {
+        // These probes run in the UNOWN CHECKOUT itself (repoRoot is resolved
+        // from this module's location / install metadata — never a user
+        // project dir), i.e. a trusted cwd; they are still routed through the
+        // shared hardened helper for consistency: `git status` here must not
+        // execute a repo-configured `core.fsmonitor`/`core.askPass`/pager
+        // binary either (the September 2026 GitSpawn class,
+        // https://shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/ —
+        // a tampered .git/config in even a semi-trusted checkout is the same
+        // exec sink), and the helper additionally scrubs inherited GIT_*
+        // redirection env the raw spawnSync used to pass through.
         const run = (args: string[]): string | null => {
-                const r = spawnSync("git", args, { cwd: repoRoot, encoding: "utf8", timeout: 15_000 });
-                return r.status === 0 ? (r.stdout ?? "").trim() : null;
+                const r = runGitSync(repoRoot, args, { readOnly: true, timeoutMs: 15_000 });
+                return r.code === 0 ? r.stdout.trim() : null;
         };
         return {
                 sha: run(["rev-parse", "--short", "HEAD"]),

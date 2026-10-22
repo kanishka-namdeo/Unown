@@ -14,7 +14,7 @@
 import "./_env.ts"; // MUST be first: store.ts opens SQLite at module scope
 import { afterAll, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -25,13 +25,17 @@ import {
     gitAvailable,
     gitWorkflowSuppressed,
     hasStagedOrUnstagedChanges,
+    hooksDisabledArgs,
     isGitRepo,
+    mutationGitArgs,
     parsePorcelain,
     porcelainStatus,
+    readOnlyGitArgs,
     recentAssistantSummary,
     registerGitTools,
     resetGitAvailableCache,
     runGit,
+    runGitSync,
     summarizePorcelain,
     summarizeToSubject,
 } from "../src/gittools.ts";
@@ -192,6 +196,141 @@ describe("generateCommitMessage / generateAutoCommitMessage", () => {
 
     test("auto template is the dated session-end snapshot", () => {
         expect(generateAutoCommitMessage(date)).toBe("unown(auto): session end snapshot 2026-10-19\n\nGenerated-by: unown");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// GitSpawn neutralization — the hardened arg sets (pure)
+// ---------------------------------------------------------------------------
+
+describe("GitSpawn neutralization arg sets", () => {
+    test("readOnlyGitArgs(): hooksPath + --no-optional-locks + fsmonitor + sshCommand + askPass + pager, in that order", () => {
+        const args = readOnlyGitArgs();
+        // The hooks override leads (private empty temp dir — win32-safe, never
+        // /dev/null), then the global flag, then every exec/prompt sink.
+        expect(args[0]).toBe("-c");
+        expect(args[1]).toMatch(/^core\.hooksPath=.+unown-git-hooks-off-/);
+        expect(args.slice(2)).toEqual([
+            "--no-optional-locks",
+            "-c", "core.fsmonitor=false", // GitSpawn primary sink
+            "-c", "core.sshCommand=ssh", // exec sink on any fetch/push
+            "-c", "core.askPass=", // credential-prompt exec sink (empty = off)
+            "-c", "core.pager=", // pager exec sink (empty = off)
+        ]);
+        // Cross-platform contract: no POSIX-only literals anywhere in the set.
+        expect(args.some((a) => a.includes("/dev/null"))).toBe(false);
+    });
+
+    test("mutationGitArgs(): fsmonitor + sshCommand ONLY — hooksPath, askPass, pager and --no-optional-locks must stay out", () => {
+        // The commit path keeps the user's hooks live on purpose (husky /
+        // lint-staged gate agent commits); only the exec sinks no legitimate
+        // workflow depends on are closed. Exact shape — nothing else rides
+        // along on `git add` / `git commit`.
+        expect(mutationGitArgs()).toEqual(["-c", "core.fsmonitor=false", "-c", "core.sshCommand=ssh"]);
+    });
+
+    test("the hooks dir is one private empty dir per process, not per call", () => {
+        expect(hooksDisabledArgs()).toEqual(hooksDisabledArgs());
+    });
+});
+
+// ---------------------------------------------------------------------------
+// GitSpawn regression — a repo-local core.fsmonitor must never execute
+// (https://shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/)
+// ---------------------------------------------------------------------------
+
+/** The disclosure's exact setup: `.git/config` core.fsmonitor points at a
+ *  script that touches a marker file. Plain `git status` EXECUTES it (the
+ *  POSIX control proves the fixture is a live sink, so these tests can never
+ *  silently rot into vacuous green); every hardened invocation must not. */
+function makeHostileFsmonitorRepo(name: string): { repo: string; marker: string } {
+    const repo = makeRepo(name);
+    const marker = join(rootTmp, `${name}-fsmonitor-ran`);
+    const script = join(rootTmp, `${name}-evil-fsmonitor.sh`);
+    writeFileSync(script, `#!/bin/sh\ntouch "${marker}"\n`);
+    try {
+        chmodSync(script, 0o755);
+    } catch {
+        /* win32: exec bit is a no-op there; the control assertion is skipped */
+    }
+    gitSh(repo, ["config", "core.fsmonitor", script]);
+    return { repo, marker };
+}
+
+const POSIX_HOST = process.platform !== "win32";
+
+describe("GitSpawn regression (core.fsmonitor exec sink)", () => {
+    test.skipIf(!GIT_ON_PATH)(
+        "read-only probes (status/rev-parse) never execute a hostile repo-local core.fsmonitor",
+        async () => {
+            const { repo, marker } = makeHostileFsmonitorRepo("gitspawn-ro");
+            // CONTROL (POSIX only — the exec bit is what makes the sink live):
+            // plain git status runs the hostile helper → the fixture is real.
+            if (POSIX_HOST) {
+                gitSh(repo, ["status", "--porcelain"]);
+                expect(existsSync(marker)).toBe(true);
+                rmSync(marker, { force: true });
+            }
+            // The hardened probes must see the repo without running it.
+            expect(await porcelainStatus(repo)).toEqual([]);
+            expect(await isGitRepo(repo)).toBe(true);
+            expect(existsSync(marker)).toBe(false);
+        },
+    );
+
+    test.skipIf(!GIT_ON_PATH)(
+        "the mutation path (add/commit) neutralizes fsmonitor but keeps the user's hooks LIVE (the documented contract)",
+        async () => {
+            const { repo, marker } = makeHostileFsmonitorRepo("gitspawn-mutation");
+            // A real user pre-commit hook (husky-style gate): it must RUN —
+            // only POSIX can prove execution (shebang exec); everywhere else
+            // we still prove the commit succeeds and fsmonitor stays silent.
+            const hookMarker = join(rootTmp, "gitspawn-mutation-hook-ran");
+            writeFileSync(join(repo, ".git", "hooks", "pre-commit"), `#!/bin/sh\ntouch "${hookMarker}"\n`);
+            try {
+                chmodSync(join(repo, ".git", "hooks", "pre-commit"), 0o755);
+            } catch {
+                /* win32 no-op */
+            }
+            writeFileSync(join(repo, "feature.ts"), "export const x = 1;\n");
+            const outcome = await commitAll(repo, "feat: mutation-path hardening");
+            expect(outcome.ok).toBe(true);
+            if (!outcome.ok) return;
+            expect(existsSync(marker)).toBe(false); // fsmonitor sink closed on add/commit
+            if (POSIX_HOST) {
+                expect(existsSync(hookMarker)).toBe(true); // user hooks still gate the commit
+            }
+            expect(gitSh(repo, ["log", "-1", "--pretty=%B"]).trim()).toBe("feat: mutation-path hardening");
+        },
+    );
+
+    test.skipIf(!GIT_ON_PATH)("runGitSync mirrors runGit: readOnly hardening, typed gitMissing, never throws", async () => {
+        const { repo, marker } = makeHostileFsmonitorRepo("gitspawn-sync");
+        const ok = runGitSync(repo, ["rev-parse", "HEAD"], { readOnly: true });
+        expect(ok.code).toBe(0);
+        expect(ok.stdout.trim()).toMatch(/^[0-9a-f]{40}$/);
+        expect(existsSync(marker)).toBe(false);
+        // git missing entirely → typed result, not a throw
+        const emptyBin = join(rootTmp, "empty-bin-sync");
+        mkdirSync(emptyBin, { recursive: true });
+        const restore = patchEnv({ PATH: emptyBin });
+        try {
+            const missing = runGitSync(repo, ["rev-parse", "HEAD"]);
+            expect(missing.code).toBe(-1);
+            expect(missing.gitMissing).toBe(true);
+            expect(missing.stderr.length).toBeGreaterThan(0);
+        } finally {
+            restore();
+        }
+    });
+
+    test.skipIf(!GIT_ON_PATH || !POSIX_HOST)("runGitSync enforces its kill timer (typed timedOut)", async () => {
+        // A git shell alias that sleeps: the only portable way to make git
+        // itself hang deterministically. POSIX-only (the `!` alias needs sh).
+        const repo = makeRepo("gitspawn-hang");
+        const res = runGitSync(repo, ["-c", "alias.hang=!sleep 5", "hang"], { timeoutMs: 500 });
+        expect(res.code).toBe(-1);
+        expect(res.timedOut).toBe(true);
     });
 });
 

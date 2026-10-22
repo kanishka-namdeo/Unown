@@ -9,7 +9,7 @@
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
-import { osSandboxAvailable, resolveOsSandboxBackend, wrapCommand } from "./bwrap.ts";
+import { decideSandboxFallback, osSandboxAvailable, resolveOsSandboxBackend, SandboxRequiredError, wrapCommand } from "./bwrap.ts";
 import { DATA_DIR, store } from "./store.ts";
 
 export const SANDBOXES_DIR = join(DATA_DIR, "sandboxes");
@@ -97,6 +97,18 @@ export async function execInSandbox(
                         cmd = wrapped;
                         isolation = resolveOsSandboxBackend() === "seatbelt" ? "seatbelt" : "bwrap";
                 }
+        }
+        // SA-B1 — fail-closed sandbox knob (UNOWN_SANDBOX_REQUIRED, see
+        // bwrap.ts): an engine exec that would degrade to the in-process TS
+        // path jail (no backend on this host — including every native-Windows
+        // host — binary missing, probe failed, or the UNOWN_OS_SANDBOX=0
+        // kill-switch) must FAIL with the typed error instead of silently
+        // running un-isolated. The throw propagates to runAgent's catch
+        // (finalize status:'error' with the actionable message) and to the
+        // router's job error path. Default (knob unset/0): the historical
+        // transparent fallback above is unchanged.
+        if (isolation === "process" && decideSandboxFallback(false) === "fail") {
+                throw new SandboxRequiredError();
         }
         const proc = Bun.spawn(cmd, {
                 cwd: sandbox.workspace,

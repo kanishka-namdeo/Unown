@@ -28,10 +28,10 @@
  * per-method uninstall docs. Flags are explicit and non-interactive on
  * purpose — no prompts in pipes.
  */
-import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { runGitSync } from "./gittools.ts";
 import { installMetadataPath, readInstallMetadata, shimTargetsRoot, type InstallMode } from "./install-layout.ts";
 import { readRootVersion, redactUrl, resolveInstallInfo, type InstallInfo, unownHome } from "./update.ts";
 
@@ -193,15 +193,19 @@ function samePath(a: string, b: string): boolean {
         return norm(a) === norm(b);
 }
 
-/** The checkout has uncommitted work? (untracked-or-modified, like the updater guard) */
+/** The checkout has uncommitted work? (untracked-or-modified, like the updater guard)
+ *
+ *  Runs in the UNOWN CHECKOUT (trusted cwd — never a user project dir), but
+ *  hardened anyway via the shared read-only helper: `git status` is the exact
+ *  verb the GitSpawn disclosure (September 2026,
+ *  https://shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/) used to
+ *  execute a repo-local `core.fsmonitor` binary outside any sandbox, and a
+ *  `--purge-checkout` decision made on fsmonitor-poisoned output is not a
+ *  decision we want to make on attacker-controlled state. */
 export function checkoutHasUncommittedWork(repoRoot: string): boolean {
-        const r = spawnSync("git", ["status", "--porcelain", "--untracked-files=normal"], {
-                cwd: repoRoot,
-                encoding: "utf8",
-                timeout: 30_000,
-        });
-        if (r.status !== 0) return true; // not a git repo / git broken — treat as "careful"
-        return (r.stdout ?? "").trim() !== "";
+        const r = runGitSync(repoRoot, ["status", "--porcelain", "--untracked-files=normal"], { readOnly: true, timeoutMs: 30_000 });
+        if (r.code !== 0) return true; // not a git repo / git broken — treat as "careful"
+        return r.stdout.trim() !== "";
 }
 
 export interface UninstallCtx {
@@ -429,8 +433,11 @@ function cmdUninstallBinary(flags: UninstallFlags, opts: BinaryUninstallOptions)
 function resolveRepoRootBestEffort(): string | null {
         const guess = join(import.meta.dir, "..", "..", "..", "..");
         if (!existsSync(guess)) return null;
-        const r = spawnSync("git", ["rev-parse", "--show-toplevel"], { cwd: guess, encoding: "utf8", timeout: 30_000 });
-        return r.status === 0 && (r.stdout ?? "").trim() ? (r.stdout ?? "").trim() : guess;
+        // Read-only probe of the unown checkout — same shared hardening as
+        // checkoutHasUncommittedWork above (GitSpawn: `git rev-parse` in a
+        // repo whose .git/config carries an exec sink must not run it).
+        const r = runGitSync(guess, ["rev-parse", "--show-toplevel"], { readOnly: true, timeoutMs: 30_000 });
+        return r.code === 0 && r.stdout.trim() ? r.stdout.trim() : guess;
 }
 
 /** Home paths may contain the username; shims may contain anything — keep output lean. */

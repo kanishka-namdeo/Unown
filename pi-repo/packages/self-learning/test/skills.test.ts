@@ -15,7 +15,16 @@ import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { listSkills, mintSkillsForProject, projectSkillsDir, renderSkillMd, skillVersions } from "../src/skills.ts";
+import {
+        listSkills,
+        mintSkillsForProject,
+        projectSkillsDir,
+        projectStagedSkillsDir,
+        renderSkillMd,
+        retireSkill,
+        rollbackSkill,
+        skillVersions,
+} from "../src/skills.ts";
 import { subscribe } from "../src/bus.ts";
 
 // ---------------------------------------------------------------------------
@@ -115,11 +124,30 @@ describe("renderSkillMd", () => {
         test("markdown body is trimmed", () => {
                 expect(renderSkillMd("n", "d", "  body  ")).toBe("---\nname: n\ndescription: d\n---\n\nbody\n");
         });
+
+        // SA-B2 — the staged flag rides the frontmatter; the no-flag call keeps
+        // the exact pre-SA-B2 byte shape (the golden above pins that).
+        test("staged=true adds the `staged: true` frontmatter line", () => {
+                expect(renderSkillMd("run-tests", "Use when tests must run", "# Steps", true)).toBe(
+                        "---\nname: run-tests\ndescription: Use when tests must run\nstaged: true\n---\n\n# Steps\n",
+                );
+        });
 });
 
-describe("projectSkillsDir", () => {
-        test("is <project>/.unown/skills (terminal sessions discover it)", () => {
+describe("projectSkillsDir / projectStagedSkillsDir", () => {
+        test("loaded tree is <project>/.unown/skills (terminal sessions discover it)", () => {
                 expect(projectSkillsDir("/p")).toBe(join("/p", ".unown", "skills"));
+        });
+
+        test("SA-B2: staged tree is the SIBLING <project>/.unown/skills-staged", () => {
+                expect(projectStagedSkillsDir("/p")).toBe(join("/p", ".unown", "skills-staged"));
+                // The staged dir must sit OUTSIDE the discovery root (cli.ts
+                // additionalSkillPaths passes exactly <cwd>/.unown/skills):
+                // containment would make staged skills auto-load.
+                const staged = projectStagedSkillsDir("/p");
+                const loaded = projectSkillsDir("/p");
+                expect(staged.startsWith(`${loaded}/`)).toBe(false);
+                expect(staged.startsWith(`${join("/p", ".unown")}/`)).toBe(true);
         });
 });
 
@@ -127,17 +155,19 @@ describe("projectSkillsDir", () => {
 // Minting: happy path
 // ---------------------------------------------------------------------------
 describe("mintSkillsForProject — happy path", () => {
-        test("ships a valid proposal: file + DB row + version 1 + dream provenance", async () => {
+        test("ships a valid proposal: STAGED file + DB row + version 1 + dream provenance", async () => {
                 const { projectPath, slug } = newProject();
                 const shipped = await mint(projectPath, slug, [proposal()]);
                 expect(shipped).toHaveLength(1);
                 expect(shipped[0]).toEqual({
                         name: "run-tests",
                         description: "Use when the project test suite must be run or debugged.",
-                        path: join(projectPath, ".unown", "skills", "run-tests", "SKILL.md"),
+                        path: join(projectPath, ".unown", "skills-staged", "run-tests", "SKILL.md"),
                 });
                 const content = readFileSync(shipped[0].path, "utf8");
-                expect(content).toBe(renderSkillMd("run-tests", "Use when the project test suite must be run or debugged.", DEFAULT_BODY));
+                expect(content).toBe(
+                        renderSkillMd("run-tests", "Use when the project test suite must be run or debugged.", DEFAULT_BODY, true),
+                );
 
                 const rows = listSkills(slug);
                 expect(rows).toHaveLength(1);
@@ -150,6 +180,31 @@ describe("mintSkillsForProject — happy path", () => {
                 expect(versions).toHaveLength(1);
                 expect(versions[0].version).toBe(1);
                 expect(versions[0].changed_by).toBe("autodream");
+                // SA-B2: the version note records staging (no DB schema change —
+                // store.ts is out of this task's scope).
+                expect(String(versions[0].note)).toContain("staged");
+        });
+
+        test("SA-B2: the minted skill is NOT written into the loaded .unown/skills tree", async () => {
+                const { projectPath, slug } = newProject();
+                await mint(projectPath, slug, [proposal()]);
+                expect(existsSync(join(projectPath, ".unown", "skills", "run-tests"))).toBe(false);
+                expect(existsSync(join(projectPath, ".unown", "skills-staged", "run-tests", "SKILL.md"))).toBe(true);
+        });
+
+        test("SA-B2: skills-staged/ carries the promotion README after the first mint (and only then)", async () => {
+                const { projectPath, slug } = newProject();
+                await mint(projectPath, slug, [proposal()]);
+                const readme = join(projectPath, ".unown", "skills-staged", "README.md");
+                expect(existsSync(readme)).toBe(true);
+                const text = readFileSync(readme, "utf8");
+                expect(text).toContain("mv .unown/skills-staged/<name> .unown/skills/<name>");
+                expect(text).toContain("NOT loaded into any agent session");
+                // The minter never clobbers a human's README: a second mint leaves
+                // an edited README byte-identical.
+                writeFileSync(readme, "${text}\n(edited by a human)\n");
+                await mint(projectPath, slug, [proposal({ name: "second-skill" })]);
+                expect(readFileSync(readme, "utf8")).toBe("${text}\n(edited by a human)\n");
         });
 
         test("QUIRK: names are silently normalized (trim + lowercase) instead of rejected", async () => {
@@ -218,6 +273,15 @@ describe("mintSkillsForProject — proposal validation boundaries", () => {
                 expect(shipped).toEqual([]);
         });
 
+        test("SA-B2: a name already STAGED (awaiting review) is also a duplicate", async () => {
+                const { projectPath, slug } = newProject();
+                const dir = join(projectStagedSkillsDir(projectPath), "staged-dup");
+                mkdirSync(dir, { recursive: true });
+                writeFileSync(join(dir, "SKILL.md"), "awaiting review");
+                const shipped = await mint(projectPath, slug, [proposal({ name: "staged-dup" })]);
+                expect(shipped).toEqual([]);
+        });
+
         test("rejects a name already shipped in the DB for the project", async () => {
                 const { projectPath, slug } = newProject();
                 await mint(projectPath, slug, [proposal()]); // ships run-tests
@@ -243,6 +307,8 @@ describe("mintSkillsForProject — adversarial-content guard (F4)", () => {
                 expect(shipped).toEqual([]);
                 expect(listSkills(slug)).toEqual([]);
                 expect(existsSync(join(projectSkillsDir(projectPath), "run-tests"))).toBe(false); // no dir ever created
+                expect(existsSync(join(projectStagedSkillsDir(projectPath), "run-tests"))).toBe(false); // staged either — the guard runs BEFORE the write
+                expect(existsSync(join(projectStagedSkillsDir(projectPath), "README.md"))).toBe(false); // and the README never lands for an all-rejected dream
         });
 
         test("a proposal whose BODY carries the poison is REJECTED", async () => {
@@ -334,5 +400,109 @@ describe("mintSkillsForProject — context-budget ceiling (24 per project)", () 
                 });
                 expect(shipped).toEqual([]); // LLM failure is swallowed — minting never throws
                 expect(fetchCalls).toBe(1);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// SA-B2 — staged minting: rollback + retire resolve wherever the file lives
+// ---------------------------------------------------------------------------
+describe("mintSkillsForProject — staged lifecycle (rollback + retire)", () => {
+        test("rollback restores a STAGED skill in place (no live dir exists)", async () => {
+                const { projectPath, slug } = newProject();
+                await mint(projectPath, slug, [proposal()]);
+                const rows = listSkills(slug);
+                expect(rows).toHaveLength(1);
+                // Simulate a version 2 (the engine's mint writes version 1 only, so a
+                // rollback needs a target BELOW current): roll back to version 1 of a
+                // skill whose version is bumped to 2 — same store, real rows.
+                const v2Body = renderSkillMd("run-tests", "Use when the project test suite must be run or debugged.", "# Steps v2\n\n1. New step.", true);
+                const { store } = await import("../src/store.ts");
+                store.run(`UPDATE skills SET body = ?, version = 2 WHERE id = ?`, [v2Body, rows[0].id]);
+                store.run(
+                        `INSERT INTO skill_versions (skill_id, version, content, changed_by, note, created_at) VALUES (?, 2, ?, 'test', 'v2', ?)`,
+                        [rows[0].id, v2Body, Date.now()],
+                );
+                const result = rollbackSkill(rows[0].id, 1);
+                expect(result.ok).toBe(true);
+                // Restored WHERE THE FILE LIVES: staged (no live dir was ever created).
+                expect(readFileSync(join(projectStagedSkillsDir(projectPath), "run-tests", "SKILL.md"), "utf8")).toBe(
+                        renderSkillMd("run-tests", "Use when the project test suite must be run or debugged.", DEFAULT_BODY, true),
+                );
+                expect(existsSync(join(projectSkillsDir(projectPath), "run-tests"))).toBe(false);
+        });
+
+        test("rollback restores a PROMOTED (or legacy) skill in the loaded tree", async () => {
+                const { projectPath, slug } = newProject();
+                await mint(projectPath, slug, [proposal()]);
+                const rows = listSkills(slug);
+                // Promotion: the human moves the dir into the loaded tree.
+                mkdirSync(projectSkillsDir(projectPath), { recursive: true });
+                const { renameSync } = await import("node:fs");
+                renameSync(join(projectStagedSkillsDir(projectPath), "run-tests"), join(projectSkillsDir(projectPath), "run-tests"));
+                const v2Body = renderSkillMd("run-tests", "Use when the project test suite must be run or debugged.", "# Steps v2\n\n1. New step.", true);
+                const { store } = await import("../src/store.ts");
+                store.run(`UPDATE skills SET body = ?, version = 2 WHERE id = ?`, [v2Body, rows[0].id]);
+                store.run(
+                        `INSERT INTO skill_versions (skill_id, version, content, changed_by, note, created_at) VALUES (?, 2, ?, 'test', 'v2', ?)`,
+                        [rows[0].id, v2Body, Date.now()],
+                );
+                const result = rollbackSkill(rows[0].id, 1);
+                expect(result.ok).toBe(true);
+                expect(readFileSync(join(projectSkillsDir(projectPath), "run-tests", "SKILL.md"), "utf8")).toBe(
+                        renderSkillMd("run-tests", "Use when the project test suite must be run or debugged.", DEFAULT_BODY, true),
+                );
+        });
+
+        test("retire removes the staged dir (and the loaded one, wherever present)", async () => {
+                const { projectPath, slug } = newProject();
+                await mint(projectPath, slug, [proposal()]);
+                const rows = listSkills(slug);
+                expect(existsSync(join(projectStagedSkillsDir(projectPath), "run-tests"))).toBe(true);
+                expect(retireSkill(rows[0].id).ok).toBe(true);
+                expect(existsSync(join(projectStagedSkillsDir(projectPath), "run-tests"))).toBe(false);
+                expect(listSkills(slug)[0].status).toBe("retired");
+        });
+});
+
+// ---------------------------------------------------------------------------
+// SA-B2 — discovery exclusion: the REAL loader (pi's loadSkills) given the
+// terminal's discovery root must not see the staged sibling. cli.ts passes
+// exactly <cwd>/.unown/skills as additionalSkillPaths; skills-staged is a
+// sibling directory, so this pins the whole exclusion chain end-to-end.
+// ---------------------------------------------------------------------------
+describe("SA-B2 — the staged dir is outside skill discovery", () => {
+        test("loadSkills over the discovery root sees the LIVE skill, never the staged sibling", async () => {
+                // The REAL loader pi-coding-agent ships (dist/core/skills.js —
+                // synchronous, direct fs). cli.ts's exact wiring: the terminal
+                // passes exactly <cwd>/.unown/skills as additionalSkillPaths;
+                // skills-staged is a SIBLING of that root, so the walk (which
+                // never leaves the roots it is given) cannot see it.
+                const { loadSkills } = await import("@earendil-works/pi-coding-agent");
+                const dir = mkdtempSync(join(tmpdir(), "unown-staged-discovery-"));
+                try {
+                        // One skill in the LOADED tree, one in the STAGED sibling.
+                        mkdirSync(join(dir, ".unown", "skills", "live-skill"), { recursive: true });
+                        writeFileSync(
+                                join(dir, ".unown", "skills", "live-skill", "SKILL.md"),
+                                "---\nname: live-skill\ndescription: Loaded tree skill\n---\n\n# Steps\n\n1. A real procedure body.\n",
+                        );
+                        mkdirSync(join(dir, ".unown", "skills-staged", "staged-skill"), { recursive: true });
+                        writeFileSync(
+                                join(dir, ".unown", "skills-staged", "staged-skill", "SKILL.md"),
+                                "---\nname: staged-skill\ndescription: Staged skill awaiting review\n---\n\n# Steps\n\n1. A real procedure body.\n",
+                        );
+                        const discoveryRoot = join(dir, ".unown", "skills");
+                        const { skills, diagnostics } = loadSkills({
+                                cwd: dir,
+                                agentDir: join(dir, "agent"), // hermetic: never the real user agent dir
+                                skillPaths: [discoveryRoot],
+                                includeDefaults: false,
+                        });
+                        expect(diagnostics.filter((d: any) => d.type === "warning")).toEqual([]);
+                        expect(skills.map((s: any) => s.name)).toEqual(["live-skill"]);
+                        expect(skills.some((s: any) => s.name === "staged-skill")).toBe(false);
+                } finally {
+                        rmSync(dir, { recursive: true, force: true });
+                }
         });
 });

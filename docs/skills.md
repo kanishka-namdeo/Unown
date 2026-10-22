@@ -40,7 +40,8 @@ On first run, unown seeds four skills into `~/.unown/agent/skills/` (existing fi
 | Location | Scope | Notes |
 |---|---|---|
 | `~/.unown/agent/skills/` | global | unown's agent dir — the starter skills land here; your personal library too |
-| `<project>/.unown/skills/` | project | added by the unown CLI explicitly; **commit these** — this is also where AutoDream mints |
+| `<project>/.unown/skills/` | project | added by the unown CLI explicitly; **commit these** — the loaded tree; AutoDream's mints land in `skills-staged/` (below) and are promoted here by a human |
+| `<project>/.unown/skills-staged/` | project | where AutoDream mints (2026-10-22 hardening) — never auto-loaded; promote with `mv <project>/.unown/skills-staged/<name> <project>/.unown/skills/<name>` |
 | `~/.agents/skills/` | global | the cross-harness directory pi also scans |
 | `<project>/.pi/skills/`, `<project>/.agents/skills/` (and ancestors) | project | scanned by pi once the project is trusted (`/trust`) |
 
@@ -48,12 +49,12 @@ A skill directory is any directory containing `SKILL.md`; nested directories are
 
 ## AutoDream-minted skills
 
-This is the part that grows on its own. When AutoDream consolidates a project's session notes into memory ([memory](memory.md)) and the notes reveal a **recurring multi-step procedure** — how to run this test suite, how to deploy, how to debug the flaky part — it also mints that procedure as a skill into `<project>/.unown/skills/<name>/SKILL.md`, so the very next session can use it.
+This is the part that grows on its own. When AutoDream consolidates a project's session notes into memory ([memory](memory.md)) and the notes reveal a **recurring multi-step procedure** — how to run this test suite, how to deploy, how to debug the flaky part — it also mints that procedure as a skill into `<project>/.unown/skills-staged/<name>/SKILL.md`. Staged skills are **never auto-loaded** (skill discovery reads `.unown/skills/` only): minted skills are model-authored instruction content, and until a human reviews one it must not ride the system prompt. Promotion is a one-line move — `mv <project>/.unown/skills-staged/<name> <project>/.unown/skills/<name>` — documented in the README the minter writes into `skills-staged/` on its first mint (the `staged: true` frontmatter flag is the on-disk provenance); once promoted, the very next session can use it. User-authored skills in `.unown/skills/` load exactly as they always did.
 
 The minting pipeline is deliberately conservative:
 
 - at most **2 skills per dream**; minting nothing is a fine outcome,
-- proposals are validated against the frontmatter and body contracts and **deduplicated** against everything already on disk and in the engine DB,
+- proposals are validated against the frontmatter and body contracts and **deduplicated** against everything already on disk and in the engine DB — the staged tree counts, so a re-dream cannot overwrite a skill awaiting review,
 - only **new** names are minted — refinement happens by retiring and re-minting,
 - minting stops once a project has 24 skills (context-budget ceiling for the skill index),
 - every version is recorded in the engine DB with dream provenance — **rollback** restores a previous version's file from the TUI dashboard's Memory screen (`unown dashboard`),

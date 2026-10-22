@@ -12,7 +12,7 @@
 import "./_env.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -30,7 +30,9 @@ import {
         pickLatestTag,
         readUpdateCheckCache,
         readUpdatePrefs,
+        realGit,
         redactUrl,
+        resolveRepoRoot,
         type UpdateCheckCache,
         type UpdateFlags,
         unownHome,
@@ -397,6 +399,86 @@ test("changelogSlice returns sections in (from, to]", () => {
         expect(slice.join("\n")).not.toContain("[0.1.0]");
         expect(slice.join("\n")).toContain("- third");
         expect(changelogSlice(join(TMP, "no-such-dir"), "0.1.0", "0.2.0")).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------
+// realGit — the REAL runner seam now carries the GitSpawn hardening
+// (verb-classified: local read-only probes get the full shared set from
+// gittools.ts; ls-remote/fetch/checkout/merge/reset get fsmonitor + prompt
+// sinks with sshCommand deliberately left to the user's own remote config).
+// Pinned here against live hostile fixtures, not arg spelling.
+// ---------------------------------------------------------------------------
+describe("realGit GitSpawn hardening", () => {
+        /** A repo whose .git/config points core.fsmonitor at a marker-touching
+         *  script — the disclosure's exact setup
+         *  (https://shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/). */
+        function hostileFsmonitorRepo(): { repo: string; marker: string } {
+                fixtureSeq++;
+                const repo = join(TMP, `gitspawn-${fixtureSeq}`);
+                mkdirSync(repo, { recursive: true });
+                git(["init", "-b", "main"], repo);
+                commitVersion(repo, "0.0.1");
+                const marker = join(TMP, `gitspawn-${fixtureSeq}-ran`);
+                const script = join(TMP, `gitspawn-${fixtureSeq}-evil.sh`);
+                writeFileSync(script, `#!/bin/sh\ntouch "${marker}"\n`);
+                try {
+                        chmodSync(script, 0o755);
+                } catch {
+                        /* win32: no exec bit; the control below is skipped there */
+                }
+                git(["config", "core.fsmonitor", script], repo);
+                return { repo, marker };
+        }
+
+        test("local read-only verbs (status/rev-parse/remote) never execute a hostile core.fsmonitor", () => {
+                const { repo, marker } = hostileFsmonitorRepo();
+                // CONTROL (POSIX only): plain git status runs the hostile helper →
+                // the fixture is a live sink, not a vacuous green.
+                if (process.platform !== "win32") {
+                        git(["status", "--porcelain"], repo);
+                        expect(existsSync(marker)).toBe(true);
+                        rmSync(marker, { force: true });
+                }
+                const status = realGit(["status", "--porcelain", "--untracked-files=normal"], repo);
+                expect(status.code).toBe(0);
+                expect(status.out).toBe("");
+                const top = realGit(["rev-parse", "--show-toplevel"], repo);
+                expect(top.code).toBe(0);
+                expect(top.out.length).toBeGreaterThan(0);
+                expect(existsSync(marker)).toBe(false);
+        }, 60_000);
+
+        test("network/mutation verbs (reset/ls-remote) stay functional AND fsmonitor-neutralized", () => {
+                makeWorkRepo();
+                const { repo, marker } = hostileFsmonitorRepo();
+                // `git reset --hard` spawns a hostile fsmonitor when unneutralized
+                // (verified on git 2.47) — through realGit it must not run.
+                const reset = realGit(["reset", "--hard", "HEAD"], repo);
+                expect(reset.code).toBe(0);
+                expect(existsSync(marker)).toBe(false);
+                // ls-remote through the real seam against the local-path remote
+                // fixture still parses (the prepended neutralizers must not
+                // break the plumbing):
+                const ls = realGit(["ls-remote", "--tags", "--refs", "origin", "v*"], WORK);
+                expect(ls.code).toBe(0);
+                expect(ls.out).toContain("v0.1.0");
+                // and the whole check flow through the REAL runner (not the
+                // injected loggingGit) still resolves the local remote:
+                const check = checkForUpdate(WORK, realGit);
+                expect(check.ok).toBe(true);
+                expect(check.latest).toBe("0.1.0");
+        }, 60_000);
+
+        test("resolveRepoRoot works through the real hardened runner", () => {
+                makeWorkRepo();
+                // REPO_GUESS-relative resolution would depend on this suite's own
+                // checkout layout; instead prove the runner against an explicit
+                // root: rev-parse --show-toplevel is a local read-only verb.
+                const top = realGit(["rev-parse", "--show-toplevel"], WORK);
+                expect(top.code).toBe(0);
+                expect(top.out.length).toBeGreaterThan(0);
+                expect(resolveRepoRoot(realGit)).not.toBeNull(); // the dev checkout IS a repo
+        }, 60_000);
 });
 
 // ---------------------------------------------------------------------------

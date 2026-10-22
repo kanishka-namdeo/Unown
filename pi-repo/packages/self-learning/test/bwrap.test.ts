@@ -2,9 +2,10 @@
 //
 // Backlog reference: docs/testing-strategy.md §4.5 (sandbox and OS isolation).
 // Focus here is the PURE argv construction: the validated bubblewrap profile,
-// the env-knob derivation (UNOWN_OS_SANDBOX / UNOWN_SANDBOX_NET / UNOWN_BWRAP)
-// and the generated sandbox-shell wrapper. LIVE profile execution is covered
-// by scripts/bwrap_smoke.sh (25 checks) per package AGENTS.md — not here.
+// the env-knob derivation (UNOWN_OS_SANDBOX / UNOWN_SANDBOX_NET / UNOWN_BWRAP
+// / UNOWN_SANDBOX_REQUIRED) and the generated sandbox-shell wrapper. LIVE
+// profile execution is covered by scripts/bwrap_smoke.sh (25 checks) per
+// package AGENTS.md — not here.
 //
 // These tests run on `bun test` (bun:test is built in — zero new deps).
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -14,12 +15,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
         bwrapArgs,
+        decideSandboxFallback,
         netBlocked,
         osSandboxAvailable,
         osSandboxConfigured,
         resolveAgentIsolation,
         resolveBwrapPath,
         runtimeBindArgs,
+        SandboxRequiredError,
+        sandboxRequired,
+        sandboxRequiredMessage,
         wrapCommand,
         writeSandboxShell,
 } from "../src/bwrap.ts";
@@ -45,7 +50,7 @@ afterAll(() => {
 
 // The env knobs are read at CALL time by bwrap.ts, so per-test save/restore
 // gives full control.
-const ENV_KEYS = ["UNOWN_OS_SANDBOX", "UNOWN_SANDBOX_NET", "UNOWN_BWRAP"] as const;
+const ENV_KEYS = ["UNOWN_OS_SANDBOX", "UNOWN_SANDBOX_NET", "UNOWN_BWRAP", "UNOWN_SANDBOX_REQUIRED"] as const;
 const savedEnv: Record<string, string | undefined> = {};
 
 beforeEach(() => {
@@ -360,5 +365,86 @@ describe("resolveAgentIsolation — the run-record isolation level", () => {
         test("never returns null — 'process' is the auditable degraded state", () => {
                 const iso = resolveAgentIsolation();
                 expect(["bwrap", "seatbelt", "process"]).toContain(iso);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// UNOWN_SANDBOX_REQUIRED — the fail-closed sandbox knob (SA-B1, worklog 2-b
+// P0-7; the failIfUnavailable analog). All policy here is PURE: the knob
+// parse, the decision table, and the typed error. The two integration seams
+// that consume them (sandbox.ts execInSandbox, runner.ts runAgent) are pinned
+// in sandbox-jail.test.ts.
+// ---------------------------------------------------------------------------
+describe("UNOWN_SANDBOX_REQUIRED — fail-closed sandbox knob (SA-B1)", () => {
+        test("sandboxRequired: unset by default — the open fallback is preserved", () => {
+                expect(sandboxRequired()).toBe(false);
+        });
+
+        test('sandboxRequired: exactly "1" and "true" arm the knob', () => {
+                for (const v of ["1", "true"]) {
+                        process.env.UNOWN_SANDBOX_REQUIRED = v;
+                        expect(sandboxRequired()).toBe(true);
+                }
+        });
+
+        test('QUIRK: "0", "yes", "false", "TRUE", "on" and "" do NOT arm the knob', () => {
+                for (const v of ["0", "yes", "false", "TRUE", "on", ""]) {
+                        process.env.UNOWN_SANDBOX_REQUIRED = v;
+                        expect(sandboxRequired()).toBe(false);
+                }
+        });
+
+        test("decideSandboxFallback (pure): the full decision table", () => {
+                expect(decideSandboxFallback(true, false)).toBe("degrade");
+                expect(decideSandboxFallback(true, true)).toBe("degrade"); // sandbox present — nothing to fail
+                expect(decideSandboxFallback(false, false)).toBe("degrade"); // the historical transparent fallback
+                expect(decideSandboxFallback(false, true)).toBe("fail"); // the knob's whole point
+        });
+
+        test("decideSandboxFallback: the required default reads the env at call time", () => {
+                expect(decideSandboxFallback(false)).toBe("degrade"); // unset
+                process.env.UNOWN_SANDBOX_REQUIRED = "1";
+                expect(decideSandboxFallback(false)).toBe("fail");
+                expect(decideSandboxFallback(true)).toBe("degrade"); // available host never fails
+        });
+
+        test("SandboxRequiredError: stable name + actionable message", () => {
+                const err = new SandboxRequiredError();
+                expect(err).toBeInstanceOf(Error);
+                expect(err.name).toBe("SandboxRequiredError");
+                expect(err.message).toContain("UNOWN_SANDBOX_REQUIRED");
+                expect(err.message).toContain("Refusing to degrade engine runs");
+        });
+
+        test("sandboxRequiredMessage names the platform's expected backend", () => {
+                const msg = sandboxRequiredMessage();
+                if (process.platform === "darwin") expect(msg).toContain("seatbelt");
+                else if (process.platform === "win32") expect(msg).toContain("native Windows");
+                else expect(msg).toContain("bubblewrap");
+        });
+
+        test("kill-switch + knob (the contradictory pair): the message calls it out", () => {
+                process.env.UNOWN_OS_SANDBOX = "0";
+                process.env.UNOWN_SANDBOX_REQUIRED = "1";
+                expect(sandboxRequiredMessage()).toContain("UNOWN_OS_SANDBOX=0");
+        });
+
+        // The EXACT composition the two engine-run degrade points evaluate
+        // (runner.ts after writeSandboxShell, sandbox.ts execInSandbox after
+        // the wrap attempt). The kill-switch forces the degraded state on
+        // every platform — which is what a native-Windows host ALWAYS is.
+        test("runner/sandbox guard composition: knob armed + degraded isolation -> fail (the win32 story, forced on any host)", () => {
+                process.env.UNOWN_OS_SANDBOX = "0";
+                process.env.UNOWN_SANDBOX_REQUIRED = "1";
+                expect(resolveAgentIsolation()).toBe("process");
+                expect(writeSandboxShell(AGENT_DIR)).toBeNull();
+                expect(decideSandboxFallback(false)).toBe("fail");
+        });
+
+        test("knob unset: the same composition keeps the transparent fallback (no behavior change)", () => {
+                process.env.UNOWN_OS_SANDBOX = "0";
+                expect(resolveAgentIsolation()).toBe("process");
+                expect(writeSandboxShell(AGENT_DIR)).toBeNull();
+                expect(decideSandboxFallback(false)).toBe("degrade");
         });
 });

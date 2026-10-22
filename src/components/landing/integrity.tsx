@@ -15,6 +15,9 @@ import { FadeUp, GITHUB_URL, BENCH_URL } from "./shell";
  * 2026-10-20 compression: the gates list kept all seven rows with one-line
  * descriptions. The same day's detached-engine round added the eighth —
  * unattended discipline — plus its receipts link. Nothing gated was touched.
+ * 2026-10-22 hardening: two more deny rows — the instruction-set write gate
+ * and the DNS-exfiltration family — and the sandbox paragraph gained the
+ * same two denials in prose. Nothing pre-existing was re-worded.
  */
 
 const SRC = (file: string) => `${GITHUB_URL}/blob/main/pi-repo/packages/self-learning/src/${file}`;
@@ -62,7 +65,7 @@ const GATES = [
   },
   {
     t: "Skill mint gate",
-    d: "Skills mint only from recurring multi-step procedures, capped at two per dream, validated against the Agent Skills contract and deduped.",
+    d: "Skills mint only from recurring multi-step procedures, capped at two per dream, validated against the Agent Skills contract and deduped — and they land in a staging directory no session loads until a human promotes them.",
     tag: "max 2 / dream",
   },
   {
@@ -88,6 +91,12 @@ const LOG = [
   ["PostToolUse", "augment", "syntax gate flagged src/checkout.spec.ts"],
   ["PreToolUse", "deny", "refusing rm on filesystem root"],
   ["PreToolUse", "deny", "network access to external hosts is denied in the sandbox"],
+  ["PreToolUse", "deny", "DNS-capable commands to external hosts are denied in the sandbox (exfiltration channel)"],
+  [
+    "PreToolUse",
+    "deny",
+    "instruction-set file is not writable in-session: .unown/hooks.json (propose changes via a PR for human review)",
+  ],
   [
     "SubagentStop",
     "log",
@@ -156,7 +165,10 @@ export function IntegrityPane() {
             not visible from inside, and the network namespace is killed (Seatbelt on
             macOS, in-process jail on Windows). Terminal sessions stay scoped for real
             work instead: root deletion, fork bombs and writes outside the project are
-            refused, while network, <span className="font-mono">git push</span> and
+            refused, the agent&apos;s own rule files — AGENTS.md, .unown/skills, the hook
+            and permission configs — are not writable in-session (changes go through
+            a PR), and DNS-capable lookups to external hosts are denied in sandbox and
+            strict modes, while network, <span className="font-mono">git push</span> and
             installs stay available (<span className="font-mono text-ink">UNOWN_STRICT_HOOKS=1</span>{" "}
             restores sandbox-grade). Cloned project-scoped MCP/LSP configs are
             trust-gated with pinned fingerprints, so a repo you just cloned cannot

@@ -65,6 +65,7 @@ import {
         rollbackBinaryInstall,
         type VerifyBinary,
 } from "./bin-update.ts";
+import { fsmonitorNeutralizerArgs, promptSinkNeutralizerArgs, readOnlyGitArgs } from "./gittools.ts";
 // M8: the post-update engine hint needs a liveness probe. engine-supervisor
 // is side-effect-free at module scope (the detachment contract) — importing
 // it here does NOT open the engine DB from a `unown update` run.
@@ -161,8 +162,66 @@ export interface GitResult {
 }
 export type GitRunner = (args: string[], cwd?: string) => GitResult;
 
+/** Git verbs update.ts uses that only ever read LOCAL state (never touch a
+ *  remote, never write): the full hardened read-only probe set applies —
+ *  hooks disabled, `--no-optional-locks`, and the GitSpawn exec/prompt sink
+ *  neutralizers (fsmonitor/sshCommand/askPass/pager). The sshCommand override
+ *  is a no-op for these verbs (they never exec ssh) — pure belt-and-braces. */
+const LOCAL_READ_ONLY_GIT_VERBS = new Set([
+        "rev-parse",
+        "symbolic-ref",
+        "describe",
+        "status",
+        "rev-list",
+        "tag", // only ever `tag --list` here
+        "show",
+        "merge-base",
+        "remote", // only ever `remote get-url` here
+]);
+
+/** The real git runner. Everything update.ts does to git funnels through this
+ *  one seam (tests inject their own GitRunner), so the GitSpawn hardening
+ *  lives HERE, classified by verb:
+ *
+ *   - local read-only verbs (above) → the FULL shared read-only set from
+ *     gittools.ts (hooksPath override + --no-optional-locks + fsmonitor +
+ *     sshCommand + askPass + pager). `git status` is the exact verb the
+ *     September 2026 GitSpawn disclosure
+ *     (https://shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/)
+ *     used to execute a repo-local `core.fsmonitor` binary OUTSIDE any
+ *     sandbox; these probes run against the unown checkout (semi-trusted),
+ *     and a stale/hostile fsmonitor daemon also lies about dirtiness —
+ *     neutralizing it is a correctness fix, not just hardening.
+ *
+ *   - everything else (ls-remote / fetch / checkout / merge / reset, and any
+ *     unknown verb — fail-closed to the mutation bucket) → fsmonitor + the
+ *     prompt sinks (askPass/pager) ONLY, with two deliberate carve-outs:
+ *
+ *     · core.sshCommand is NOT overridden on the network/mutation bucket:
+ *       `ls-remote`/`fetch` genuinely exec it, and the unown checkout is the
+ *       user's OWN semi-trusted clone — a core.sshCommand they configured
+ *       there (1Password `op ssh --`, Windows plink, ProxyJump wrappers) is
+ *       legitimate auth for their own remote, and stomping it to bare `ssh`
+ *       would break the documented update flow (docs/updating.md: fetch
+ *       release tags from origin). The untrusted-repo GitSpawn context is
+ *       handled by the local read-only bucket + gittools/worktree probes.
+ *     · hooks stay LIVE on checkout/merge/reset (the same documented
+ *       distinction as gittools' commit path: user hooks are a deliberate
+ *       reviewed gate — e.g. a post-checkout hook — while fsmonitor is an
+ *       unreviewed exec sink no legitimate workflow depends on).
+ *
+ *     fsmonitor IS neutralized here too: verified on git 2.47, `git
+ *     checkout`, `git merge --ff-only` and `git reset --hard` all spawn a
+ *     hostile `core.fsmonitor` value. askPass= closes the credential-prompt
+ *     exec sink while preserving the terminal fallback (background
+ *     `--check` children fail fast instead of hanging on a prompt). */
 export const realGit: GitRunner = (args, cwd) => {
-        const r = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 60_000 });
+        const verb = args.find((a) => !a.startsWith("-"));
+        const hardened =
+                verb !== undefined && LOCAL_READ_ONLY_GIT_VERBS.has(verb)
+                        ? readOnlyGitArgs()
+                        : [...fsmonitorNeutralizerArgs(), ...promptSinkNeutralizerArgs()];
+        const r = spawnSync("git", [...hardened, ...args], { cwd, encoding: "utf8", timeout: 60_000 });
         return { code: r.status ?? 1, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() };
 };
 

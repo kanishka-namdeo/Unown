@@ -53,10 +53,13 @@
  * self)); there is no die-with-parent / new-session / cap-drop equivalent.
  *
  * Environment knobs:
- *   UNOWN_OS_SANDBOX     0 disables the OS sandbox (default: enabled)
- *   UNOWN_SANDBOX_NET    1 keeps the network shared (default: blocked)
- *   UNOWN_BWRAP          explicit path to the bwrap binary (Linux)
- *   UNOWN_SANDBOX_EXEC   explicit path to sandbox-exec (macOS)
+ *   UNOWN_OS_SANDBOX        0 disables the OS sandbox (default: enabled)
+ *   UNOWN_SANDBOX_REQUIRED  1|true fails engine runs when the OS sandbox is
+ *                           unavailable instead of degrading to the path jail
+ *                           (default: unset — transparent fallback)
+ *   UNOWN_SANDBOX_NET       1 keeps the network shared (default: blocked)
+ *   UNOWN_BWRAP             explicit path to the bwrap binary (Linux)
+ *   UNOWN_SANDBOX_EXEC      explicit path to sandbox-exec (macOS)
  */
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
@@ -114,6 +117,71 @@ export function osSandboxConfigured(): boolean {
 
 export function netBlocked(): boolean {
         return process.env.UNOWN_SANDBOX_NET !== "1";
+}
+
+// ---------------------------------------------------------------------------
+// UNOWN_SANDBOX_REQUIRED — the fail-closed sandbox knob (SA-B1)
+// ---------------------------------------------------------------------------
+// The historical contract is OPEN-fallback: a host whose OS sandbox is
+// unavailable (missing bwrap binary, failed bwrap/seatbelt smoke probe, no
+// backend on native Windows, UNOWN_OS_SANDBOX=0 kill-switch) silently degrades
+// engine runs to the in-process TS path jail — auditable after the fact via
+// run.sandbox_isolation = 'process' (M6-3) but never refused. Research task
+// 2-b P0-7 (worklog): operators who NEED the isolation guarantee (untrusted
+// curriculum, hostile-network hosts, compliance) must be able to make the
+// degrade IMPOSSIBLE — the Unown equivalent of Claude Code's documented
+// sandboxing `failIfUnavailable` contract. That is this knob: armed, the two
+// engine-run degrade points (sandbox.ts execInSandbox for verify/exec, and
+// runner.ts runAgent for the agent bash-tool shell) throw the typed
+// SandboxRequiredError instead of weakening the isolation level.
+
+/** Knob parse (call-time env read, the osSandboxConfigured/netBlocked
+ *  convention): "1" or "true" arms the fail-closed behavior; anything else
+ *  (unset included) keeps the historical transparent fallback. Only the two
+ *  exact strings — same strictness the other knobs pin as QUIRKs. */
+export function sandboxRequired(): boolean {
+        const v = process.env.UNOWN_SANDBOX_REQUIRED;
+        return v === "1" || v === "true";
+}
+
+/** PURE decision for the knob: what an engine run does when the OS sandbox is
+ *  NOT available on this host — "degrade" (default: the documented
+ *  transparent path-jail fallback) or "fail" (knob armed: typed error, no
+ *  silent weakening). Both arguments explicit so the decision table is
+ *  unit-testable without env plumbing; callers pass the probed availability
+ *  and take the `required` default from the env at call time. */
+export function decideSandboxFallback(available: boolean, required: boolean = sandboxRequired()): "degrade" | "fail" {
+        return !available && required ? "fail" : "degrade";
+}
+
+/** The actionable message SandboxRequiredError carries — names the backend
+ *  this platform was expected to provide (and the kill-switch clash when
+ *  UNOWN_OS_SANDBOX=0 is what disabled it) so the operator knows exactly what
+ *  to fix. Windows gets the documented story: kernel-grade isolation is not
+ *  available on native Windows — use WSL2 or unset the knob. */
+export function sandboxRequiredMessage(): string {
+        const expected =
+                process.platform === "darwin"
+                        ? "seatbelt (sandbox-exec at /usr/bin/sandbox-exec)"
+                        : process.platform === "win32"
+                                ? "none — kernel-grade isolation is not available on native Windows; use WSL2 or unset the knob"
+                                : "bubblewrap (vendored native/bin/bwrap, system bwrap, or UNOWN_BWRAP)";
+        const clash = osSandboxConfigured()
+                ? ""
+                : " — note UNOWN_OS_SANDBOX=0 is set: that kill-switch disables the very sandbox this knob requires";
+        return `UNOWN_SANDBOX_REQUIRED is set but the OS sandbox is unavailable on this host (expected here: ${expected})${clash}. Refusing to degrade engine runs to the TypeScript path jail — repair the sandbox backend or unset UNOWN_SANDBOX_REQUIRED to re-enable the documented path-jail fallback.`;
+}
+
+/** Typed failure thrown by the engine-run degrade points when the knob is
+ *  armed (see the knob block above). Same pattern as GhUnavailableError
+ *  (pr-review.ts): actionable message, stable name — runAgent's catch
+ *  finalizes it as a status:'error' run row and the router's job error path
+ *  records it, so the refusal is loud, typed and auditable. */
+export class SandboxRequiredError extends Error {
+        constructor(message: string = sandboxRequiredMessage()) {
+                super(message);
+                this.name = "SandboxRequiredError";
+        }
 }
 
 /** The validated bubblewrap profile (see scripts/bwrap_smoke.sh evidence). */

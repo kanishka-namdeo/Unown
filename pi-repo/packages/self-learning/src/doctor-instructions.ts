@@ -20,6 +20,15 @@
  *     as a markdown policy?)
  *   - Injection scanner state (`~/.config/unown/injection-scanner.json` —
  *     exists? parses as JSON?)
+ *   - Unicode integrity (SA-B2): the instruction files (AGENTS.md/CLAUDE.md at
+ *     any depth, `.unown/skills/**`, `.unown/skills-staged/**`,
+ *     `.unown/agents/**`, `.unown/hooks.json`) are scanned for the
+ *     invisible-Unicode backdoor classes (Unicode Tags behind emoji, Trojan-
+ *     Source bidi, zero-width carriers, Sneaky-Bits operators, VS payload
+ *     runs) with the compact core from `./instruction-guard.ts` — parity with
+ *     scripts/check_instruction_chars.mjs (SA-A), reimplemented inline because
+ *     this package never imports repo-root scripts. The staged tree is scanned
+ *     too: it is instruction-shaped content about to be promoted.
  *
  * Purity contract:
  *   - `node:fs` + `node:path` + `node:os` only. No pi imports, no bus, no
@@ -32,9 +41,10 @@
  * existing checks and renders the result inline. `/doctor-instructions`
  * (slash command) runs the audit only and prints it.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { join, relative } from "node:path";
+import { scanInstructionText, type InstructionCharFlag } from "./instruction-guard.ts";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -57,6 +67,8 @@ export interface InstructionAuditReport {
         adversaryMode: Finding[];
         injectionScanner: Finding[];
         staleConfig: Finding[];
+        /** SA-B2 — invisible-Unicode findings in the instruction files. */
+        unicodeIntegrity: Finding[];
 }
 
 export interface AuditOptions {
@@ -167,6 +179,18 @@ export function _resetGitIgnoreMemoForTests(): void {
         gitIgnoredMemo.clear();
 }
 
+/** One private empty hooks dir per process — the gittools.ts
+ *  hooksDisabledArgs() idiom, replicated minimally so this module keeps its
+ *  no-imports-beyond-node discipline. git silently skips an empty hook dir
+ *  (the /dev/null trick is not portable to Windows). */
+let emptyGitHooksDir: string | null = null;
+function gitHooksDisabledArgs(): string[] {
+        if (emptyGitHooksDir === null) {
+                emptyGitHooksDir = mkdtempSync(join(tmpdir(), "unown-doctor-git-hooks-off-"));
+        }
+        return ["-c", `core.hooksPath=${emptyGitHooksDir}`];
+}
+
 function isGitIgnored(cwd: string, ref: string): boolean {
         const memoKey = `${cwd}\u0000${ref}`;
         const cached = gitIgnoredMemo.get(memoKey);
@@ -177,8 +201,28 @@ function isGitIgnored(cwd: string, ref: string): boolean {
                 // git / not a repo → keep false. Bun.spawnSync avoids the audit's
                 // no-import discipline for child_process (mirrors the pure-stat
                 // approach above: fail closed to current behaviour).
+                //
+                // SA-B2 (GitSpawn class, September 2026 disclosure — 7 agents
+                // affected): a plain `git` invocation in a hostile repo executes
+                // repo-configured BINARIES. core.fsmonitor runs the repository's
+                // fsmonitor daemon process on ordinary status-class probes, and
+                // core.hooksPath points at the repo's hooks. Both are neutralized
+                // with `-c` overrides BEFORE the probe (the gittools.ts
+                // hooksDisabledArgs idiom; `-c` config beats repo config), and the
+                // hooks dir is an empty mkdtemp'd dir cached per process.
                 const proc = Bun.spawnSync({
-                        cmd: ["git", "-C", cwd, "check-ignore", "-q", "--", ref],
+                        cmd: [
+                                "git",
+                                "-c",
+                                "core.fsmonitor=false",
+                                ...gitHooksDisabledArgs(),
+                                "-C",
+                                cwd,
+                                "check-ignore",
+                                "-q",
+                                "--",
+                                ref,
+                        ],
                         stdout: "ignore",
                         stderr: "ignore",
                 });
@@ -824,6 +868,105 @@ function auditStaleConfig(cwd: string, agentDir: string): Finding[] {
 }
 
 // ---------------------------------------------------------------------------
+// Unicode integrity audit (SA-B2) — invisible-Unicode backdoor scan
+// ---------------------------------------------------------------------------
+
+/** Directories never scanned when walking the project tree (same set as
+ *  scripts/check_instruction_chars.mjs: build/vcs state, dependencies). */
+const UNICODE_SKIP_DIRS = new Set([".git", "node_modules", ".next", "dist"]);
+
+/** True when a project-relative (forward-slash) path is an instruction file
+ *  in the DOCTOR's scan scope: AGENTS.md / CLAUDE.md at ANY depth (the
+ *  runtime loads them from any subdirectory), the whole .unown/skills tree,
+ *  the STAGED tree (SA-B2 — instruction-shaped content about to be promoted;
+ *  scanning it is strictly better than missing it), .unown/agents/**, and
+ *  .unown/hooks.json. Parity with the repo-root lint's isInstructionPath for
+ *  this scope. */
+function isUnicodeScanTarget(relPosix: string): boolean {
+        const base = relPosix.slice(relPosix.lastIndexOf("/") + 1);
+        if (base === "AGENTS.md" || base === "CLAUDE.md") return true;
+        if (
+                relPosix.startsWith(".unown/skills/") ||
+                relPosix === ".unown/skills" ||
+                relPosix.startsWith(".unown/skills-staged/") ||
+                relPosix === ".unown/skills-staged" ||
+                relPosix.startsWith(".unown/agents/") ||
+                relPosix === ".unown/agents"
+        ) {
+                return true;
+        }
+        return relPosix === ".unown/hooks.json";
+}
+
+/** Walk `dir` (skip list honored), yielding project-relative forward-slash
+ *  paths of FILES only. Hidden directories other than `.unown` are skipped
+ *  (the doctor's scan scope lives in .unown and the visible tree); never
+ *  throws — an unreadable directory is skipped silently. */
+function* walkFiles(dir: string, root: string): Generator<string> {
+        let entries;
+        try {
+                entries = readdirSync(dir, { withFileTypes: true });
+        } catch {
+                return;
+        }
+        for (const e of entries) {
+                if (e.isDirectory()) {
+                        if (UNICODE_SKIP_DIRS.has(e.name)) continue;
+                        if (e.name.startsWith(".") && e.name !== ".unown") continue;
+                        yield* walkFiles(join(dir, e.name), root);
+                } else if (e.isFile()) {
+                        const rel = relative(root, join(dir, e.name)).replace(/\\/g, "/");
+                        if (isUnicodeScanTarget(rel)) yield rel;
+                }
+        }
+}
+
+/** Render one InstructionCharFlag into a Finding message fragment. */
+function describeFlag(flag: InstructionCharFlag): string {
+        return `line ${flag.line}, col ${flag.col}: ${flag.rule} (${flag.codepoints.join(" ")})`;
+}
+
+/**
+ * Audit the project's instruction files for invisible-Unicode backdoor
+ * classes (Embrace the Red "Scary Agent Skills" / "Sneaky Bits", Trojan
+ * Source arXiv:2111.00197): an instruction file is loaded into model context
+ * verbatim, so an invisible code point inside one is a prompt-injection
+ * payload no human reviewer can see. Findings are ERROR severity — this is
+ * the doctor leg of the same machine gate SA-A ships as the repo-root lint
+ * (scripts/check_instruction_chars.mjs; same 7 char classes via
+ * `scanInstructionText`). Unreadable instruction files are findings
+ * (fail-closed), never skips. Clean projects stay SILENT (no info noise —
+ * the renderer's `✓ Unicode integrity: clean` line covers the healthy case).
+ */
+function auditUnicodeIntegrity(cwd: string): Finding[] {
+        const out: Finding[] = [];
+        for (const rel of walkFiles(cwd, cwd)) {
+                const abs = join(cwd, rel);
+                let text: string | null = null;
+                try {
+                        text = readFileSync(abs, "utf8");
+                } catch {
+                        // Fail closed: an unreadable instruction file is a finding,
+                        // not a skip (the runtime loads from disk regardless).
+                        out.push({
+                                severity: "error",
+                                message: `unicode integrity: \`${rel}\` is not readable — cannot scan it`,
+                                fix: `check the file's permissions; the instruction set must be scannable`,
+                        });
+                        continue;
+                }
+                for (const flag of scanInstructionText(text)) {
+                        out.push({
+                                severity: "error",
+                                message: `unicode integrity: \`${rel}\` carries invisible content — ${describeFlag(flag)}`,
+                                fix: `strip the invisible characters (they are a prompt-injection payload class invisible to review); the repo-root gate scripts/check_instruction_chars.mjs --fix-hints prints the exact cleanup commands`,
+                        });
+                }
+        }
+        return out;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -832,7 +975,7 @@ function auditStaleConfig(cwd: string, agentDir: string): Finding[] {
  * throws — every parse failure or missing file becomes a structured
  * `Finding` (and missing optional files are silent).
  *
- * Sections returned (always all 7, possibly with empty `findings` arrays):
+ * Sections returned (always all 8, possibly with empty `findings` arrays):
  *   - `agentsMd` — AGENTS.md freshness + reference integrity
  *   - `skills` — `.unown/skills/<name>/SKILL.md` frontmatter + overlap
  *   - `mcpConfig` — mcp.json parseability + orphaned server binaries
@@ -840,6 +983,8 @@ function auditStaleConfig(cwd: string, agentDir: string): Finding[] {
  *   - `adversaryMode` — gate file presence + validity
  *   - `injectionScanner` — config file presence + JSON validity
  *   - `staleConfig` — cross-file references that don't resolve
+ *   - `unicodeIntegrity` — SA-B2: invisible-Unicode backdoor scan over the
+ *     instruction files (incl. the staged skills tree)
  */
 export function auditInstructionSet(cwd: string, opts: AuditOptions = {}): InstructionAuditReport {
         const configDir = opts.configDir ?? resolveConfigDir(process.env);
@@ -854,6 +999,7 @@ export function auditInstructionSet(cwd: string, opts: AuditOptions = {}): Instr
                 adversaryMode: auditAdversaryMode(configDir),
                 injectionScanner: auditInjectionScanner(configDir),
                 staleConfig: auditStaleConfig(cwd, agentDir),
+                unicodeIntegrity: auditUnicodeIntegrity(cwd),
         };
 }
 
@@ -870,6 +1016,7 @@ export function renderInstructionAudit(report: InstructionAuditReport): string {
                 { key: "adversaryMode", title: "Adversary mode" },
                 { key: "injectionScanner", title: "Injection scanner" },
                 { key: "staleConfig", title: "Stale config" },
+                { key: "unicodeIntegrity", title: "Unicode integrity" },
         ];
         const lines: string[] = [];
         lines.push(``);

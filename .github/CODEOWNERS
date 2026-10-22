@@ -1,0 +1,61 @@
+# CODEOWNERS — review gates for the surfaces that execute on every session.
+#
+# Why this file exists (October 2026 hardening): Unown's instruction set is
+# code the model executes as behavior, but it *reads* like documentation —
+# a single merged poison edit to a rule file persists into every future
+# session (AutoRedClaw arXiv:2610.27244; Agent Commander; the "Fable to
+# Haiku" subagent-config downgrade chain). Instruction files and the
+# guard/gate sources therefore get an explicit owner review on every PR,
+# on top of branch protection on main (require PR + review + CI green;
+# no direct pushes, no force-push, stale approvals dismissed).
+#
+# The default owner is the repo maintainer. Replace/add team handles as
+# the project grows — the review GATE is the point, not the identity.
+
+# ── Default owner: everything not matched below ────────────────────────────
+* @kanishka-namdeo
+
+# ── The instruction set: every file the agent loads as behavior ────────────
+# Rule files (root + every vendored copy), skills, agent definitions, and
+# the hook/permission configs that re-shape the gate stack itself.
+/AGENTS.md                          @kanishka-namdeo
+**/AGENTS.md                        @kanishka-namdeo
+**/CLAUDE.md                        @kanishka-namdeo
+/.unown/                            @kanishka-namdeo
+/pi-repo/AGENTS.md                  @kanishka-namdeo
+/pi-repo/**/AGENTS.md               @kanishka-namdeo
+/pi-repo/**/SKILL.md                @kanishka-namdeo
+
+# ── The referee: guard/gate sources are security-critical ──────────────────
+# The hard-coded policy layer — a change here re-shapes every session's
+# protections. Same owner review as the instruction set itself.
+/pi-repo/packages/self-learning/src/instruction-guard.ts @kanishka-namdeo
+/pi-repo/packages/self-learning/src/bash-policy.ts       @kanishka-namdeo
+/pi-repo/packages/self-learning/src/guard.ts             @kanishka-namdeo
+/pi-repo/packages/self-learning/src/shield.ts            @kanishka-namdeo
+/pi-repo/packages/self-learning/src/permissions.ts       @kanishka-namdeo
+/pi-repo/packages/self-learning/src/hooks.ts             @kanishka-namdeo
+/pi-repo/packages/self-learning/src/termhooks.ts         @kanishka-namdeo
+/pi-repo/packages/self-learning/src/injection-scanner.ts @kanishka-namdeo
+/pi-repo/packages/self-learning/src/config-trust.ts      @kanishka-namdeo
+
+# ── The security tooling itself ────────────────────────────────────────────
+# Lint gates, CI workflows and secret-scanning config: tampering here
+# silences the alarms.
+/scripts/check_instruction_chars.mjs          @kanishka-namdeo
+/scripts/instruction-chars-allowlist.txt      @kanishka-namdeo
+/.github/workflows/                           @kanishka-namdeo
+/.github/CODEOWNERS                           @kanishka-namdeo
+/.gitleaks.toml                               @kanishka-namdeo
+/.pre-commit-config.yaml                      @kanishka-namdeo
+
+# ── Sandbox + git invocation hardening ─────────────────────────────────────
+# OS isolation and the hardened git probe args (GitSpawn class).
+/pi-repo/packages/self-learning/src/bwrap.ts   @kanishka-namdeo
+/pi-repo/packages/self-learning/src/sandbox.ts @kanishka-namdeo
+/pi-repo/packages/self-learning/src/gittools.ts @kanishka-namdeo
+/pi-repo/packages/self-learning/src/worktree.ts @kanishka-namdeo
+
+# ── Security documentation ─────────────────────────────────────────────────
+/SECURITY.md   @kanishka-namdeo
+/docs/         @kanishka-namdeo

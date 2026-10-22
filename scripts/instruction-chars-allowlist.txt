@@ -1,0 +1,20 @@
+# instruction-chars allowlist — exemptions for scripts/check_instruction_chars.mjs
+#
+# One entry per line:   <repo-relative path>:<rule>     exempt ONE rule
+#                       <repo-relative path>:*         exempt the file entirely
+# `#` starts a comment. Paths use forward slashes. Unknown rule names are a
+# CONFIG ERROR (exit 2), so a typo'd exemption can never silently pass.
+#
+# Rules: bidi-control, bidi-isolate, zero-width, soft-hyphen,
+#        invisible-operator, unicode-tag, variation-selector-run
+#
+# CI is the authority: this file only shapes local runs and pre-commit. CI
+# runs the same scanner in discovery mode, which warns on stale entries
+# (path no longer scanned) and moot entries (nothing suppressed) — delete
+# them when they appear; an unused exemption is a pre-cut hole.
+#
+# Every entry needs a justification on its own comment line, naming the
+# char class and why it is deliberate. An entry without a justification is
+# a review failure. Nothing is allowlisted today — keep it that way unless
+# a vendored fixture genuinely requires it, and then prefer the narrowest
+# possible rule (never `:*`).

@@ -1,104 +1,156 @@
 // info.test.ts — `unown info` support bundle: the redaction contract is the point.
 import "./_env.ts";
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cmdInfo, collectInfo, renderInfo } from "../src/info.ts";
 import { writeInstallMetadata } from "../src/install-layout.ts";
 
+function gitOnPath(): boolean {
+        // spawnSync reports ENOENT via r.error, not by throwing.
+        const r = spawnSync("git", ["--version"], { stdio: "ignore" });
+        return !r.error && r.status === 0;
+}
+const HAS_GIT = gitOnPath();
+
 let TMP: string;
 function fresh(): string {
-	TMP ??= mkdtempSync(join(tmpdir(), "unown-info-"));
-	const d = join(TMP, `c-${Math.random().toString(36).slice(2)}`);
-	mkdirSync(d, { recursive: true });
-	return d;
+        TMP ??= mkdtempSync(join(tmpdir(), "unown-info-"));
+        const d = join(TMP, `c-${Math.random().toString(36).slice(2)}`);
+        mkdirSync(d, { recursive: true });
+        return d;
 }
 
 describe("unown info", () => {
-	test("collectInfo redacts credential-bearing provider URLs and never reads auth.json", () => {
-		const home = fresh();
-		mkdirSync(join(home, "agent"), { recursive: true });
-		writeFileSync(
-			join(home, "agent", "models.json"),
-			JSON.stringify({
-				providers: {
-					"custom-creds": {
-						baseUrl: "https://user:secret-token@private.example.com/v1",
-						models: [{ id: "m1" }, { id: "m2" }],
-					},
-				},
-			}),
-		);
-		writeFileSync(join(home, "agent", "auth.json"), JSON.stringify({ "sk-super-secret": "x" }));
+        test("collectInfo redacts credential-bearing provider URLs and never reads auth.json", () => {
+                const home = fresh();
+                mkdirSync(join(home, "agent"), { recursive: true });
+                writeFileSync(
+                        join(home, "agent", "models.json"),
+                        JSON.stringify({
+                                providers: {
+                                        "custom-creds": {
+                                                baseUrl: "https://user:secret-token@private.example.com/v1",
+                                                models: [{ id: "m1" }, { id: "m2" }],
+                                        },
+                                },
+                        }),
+                );
+                writeFileSync(join(home, "agent", "auth.json"), JSON.stringify({ "sk-super-secret": "x" }));
 
-		const info = collectInfo({ home, env: {}, repoRoot: "/nonexistent-repo" });
-		const raw = JSON.stringify(info);
-		expect(raw).not.toContain("secret-token");
-		expect(raw).not.toContain("sk-super-secret"); // auth.json contents never surface
-		expect(info.providers[0].baseUrl).toBe("https://private.example.com/v1");
-		expect(info.providers[0].models).toBe(2);
-		// auth.json: existence + file mode only
-		expect(info.state.authFile.exists).toBe(true);
-		expect(info.state.authFile.mode).toBeGreaterThan(0);
-	});
+                const info = collectInfo({ home, env: {}, repoRoot: "/nonexistent-repo" });
+                const raw = JSON.stringify(info);
+                expect(raw).not.toContain("secret-token");
+                expect(raw).not.toContain("sk-super-secret"); // auth.json contents never surface
+                expect(info.providers[0].baseUrl).toBe("https://private.example.com/v1");
+                expect(info.providers[0].models).toBe(2);
+                // auth.json: existence + file mode only
+                expect(info.state.authFile.exists).toBe(true);
+                expect(info.state.authFile.mode).toBeGreaterThan(0);
+        });
 
-	test("collectInfo reports opt-outs and the update-check cache; render is paste-safe", () => {
-		const home = fresh();
-		mkdirSync(join(home, "agent"), { recursive: true });
-		writeFileSync(
-			join(home, "update-check.json"),
-			JSON.stringify({
-				checkedAt: new Date().toISOString(),
-				latest: "2.1.0",
-				remoteUrl: "https://github.com/x/y.git",
-			}),
-		);
-		const info = collectInfo({
-			home,
-			env: { NO_UPDATE_NOTIFIER: "1", DO_NOT_TRACK: "1" },
-			repoRoot: "/nonexistent-repo",
-		});
-		expect(info.optOuts).toContain("NO_UPDATE_NOTIFIER");
-		expect(info.optOuts).toContain("DO_NOT_TRACK");
-		expect(info.updateCheck?.latest).toBe("2.1.0");
-		const text = renderInfo(info);
-		expect(text).toContain("opt-outs:");
-		expect(text).not.toContain("sk-");
-	});
+        test("collectInfo reports opt-outs and the update-check cache; render is paste-safe", () => {
+                const home = fresh();
+                mkdirSync(join(home, "agent"), { recursive: true });
+                writeFileSync(
+                        join(home, "update-check.json"),
+                        JSON.stringify({
+                                checkedAt: new Date().toISOString(),
+                                latest: "2.1.0",
+                                remoteUrl: "https://github.com/x/y.git",
+                        }),
+                );
+                const info = collectInfo({
+                        home,
+                        env: { NO_UPDATE_NOTIFIER: "1", DO_NOT_TRACK: "1" },
+                        repoRoot: "/nonexistent-repo",
+                });
+                expect(info.optOuts).toContain("NO_UPDATE_NOTIFIER");
+                expect(info.optOuts).toContain("DO_NOT_TRACK");
+                expect(info.updateCheck?.latest).toBe("2.1.0");
+                const text = renderInfo(info);
+                expect(text).toContain("opt-outs:");
+                expect(text).not.toContain("sk-");
+        });
 
-	test("cmdInfo --json emits parseable JSON; --json hides the issue hint", () => {
-		const home = fresh();
-		const lines: string[] = [];
-		const code = cmdInfo(true, { home, env: {}, repoRoot: "/nonexistent-repo", log: (l) => lines.push(l) });
-		expect(code).toBe(0);
-		const parsed = JSON.parse(lines.join("\n"));
-		expect(parsed.platform).toBeDefined();
-		expect(parsed.optOuts).toEqual([]);
-	});
+        test("cmdInfo --json emits parseable JSON; --json hides the issue hint", () => {
+                const home = fresh();
+                const lines: string[] = [];
+                const code = cmdInfo(true, { home, env: {}, repoRoot: "/nonexistent-repo", log: (l) => lines.push(l) });
+                expect(code).toBe(0);
+                const parsed = JSON.parse(lines.join("\n"));
+                expect(parsed.platform).toBeDefined();
+                expect(parsed.optOuts).toEqual([]);
+        });
 
-	test("a binary install reports its mode, root and version (and no checkout)", () => {
-		const home = fresh();
-		writeInstallMetadata(home, {
-			schema: 1,
-			mode: "binary",
-			version: "2.3.4",
-			platform: "linux-x64",
-			root: "/opt/unown",
-			bin: "/opt/unown/versions/2.3.4/unown",
-			shim: "/home/u/.local/bin/unown",
-			installedAt: new Date().toISOString(),
-		});
-		const info = collectInfo({ home, env: { UNOWN_INSTALL_ROOT: "/opt/unown" } });
-		expect(info.install).toMatchObject({ mode: "binary", root: "/opt/unown", platform: "linux-x64" });
-		expect(info.unownVersion).toBe("2.3.4");
-		expect(info.git.repoRoot).toBeNull();
-		const text = renderInfo(info);
-		expect(text).toContain("install:    binary");
-		expect(text).toContain("binary install - no checkout");
-	});
+        test("a binary install reports its mode, root and version (and no checkout)", () => {
+                const home = fresh();
+                writeInstallMetadata(home, {
+                        schema: 1,
+                        mode: "binary",
+                        version: "2.3.4",
+                        platform: "linux-x64",
+                        root: "/opt/unown",
+                        bin: "/opt/unown/versions/2.3.4/unown",
+                        shim: "/home/u/.local/bin/unown",
+                        installedAt: new Date().toISOString(),
+                });
+                const info = collectInfo({ home, env: { UNOWN_INSTALL_ROOT: "/opt/unown" } });
+                expect(info.install).toMatchObject({ mode: "binary", root: "/opt/unown", platform: "linux-x64" });
+                expect(info.unownVersion).toBe("2.3.4");
+                expect(info.git.repoRoot).toBeNull();
+                const text = renderInfo(info);
+                expect(text).toContain("install:    binary");
+                expect(text).toContain("binary install - no checkout");
+        });
+
+        test.skipIf(!HAS_GIT)(
+                "git lines (sha/branch/dirty) are correct AND a hostile repo-local core.fsmonitor never executes (GitSpawn)",
+                () => {
+                        // The info bundle's git probes run in the UNOWN checkout —
+                        // trusted cwd — but they are routed through the shared
+                        // hardened helper: the September 2026 GitSpawn fixture
+                        // (https://shattered.io/gitspawn-ai-coding-agent-vulnerability-2026/)
+                        // must not fire even here.
+                        const repo = join(fresh(), "repo");
+                        const outside = join(repo, "..");
+                        mkdirSync(repo, { recursive: true });
+                        const g = (args: string[]) => spawnSync("git", args, { cwd: repo, encoding: "utf8" });
+                        g(["init", "-b", "main"]);
+                        g(["config", "user.email", "t@unown"]);
+                        g(["config", "user.name", "unown test"]);
+                        writeFileSync(join(repo, "f.txt"), "hello\n");
+                        g(["add", "."]);
+                        g(["commit", "-m", "initial"]);
+                        // Script + marker live OUTSIDE the repo so the repo itself
+                        // stays clean and `dirty` is deterministic.
+                        const marker = join(outside, "fsmonitor-ran");
+                        const script = join(outside, "evil-fsmonitor.sh");
+                        writeFileSync(script, `#!/bin/sh\ntouch "${marker}"\n`);
+                        try {
+                                chmodSync(script, 0o755);
+                        } catch {
+                                /* win32 no-op; the control below is skipped there */
+                        }
+                        g(["config", "core.fsmonitor", script]);
+                        // CONTROL (POSIX only): plain git status executes the sink.
+                        if (process.platform !== "win32") {
+                                g(["status", "--porcelain"]);
+                                expect(existsSync(marker)).toBe(true);
+                                rmSync(marker, { force: true });
+                        }
+                        const info = collectInfo({ home: fresh(), env: {}, repoRoot: repo });
+                        expect(info.git.repoRoot).toBe(repo);
+                        expect(info.git.sha).toMatch(/^[0-9a-f]{7,40}$/);
+                        expect(info.git.branch).toBe("main");
+                        expect(info.git.dirty).toBe(false); // repo itself stays clean (script lives outside)
+                        expect(existsSync(marker)).toBe(false);
+                },
+        );
 });
 
 afterAll(() => {
-	if (TMP) rmSync(TMP, { recursive: true, force: true });
+        if (TMP) rmSync(TMP, { recursive: true, force: true });
 });
