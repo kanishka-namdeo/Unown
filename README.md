@@ -146,6 +146,7 @@ Full usage docs live in [`docs/`](docs/):
 
 ### Prerequisites
 
+- **The default binary install needs neither bun nor git.** The full-stack source install (`--source`) needs both:
 - [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal)
 - [git](https://git-scm.com) (any build; on Windows the standard Git-for-Windows install is fine)
 - An OpenAI-compatible LLM endpoint (see *Using a different model provider* below)
@@ -153,7 +154,7 @@ Full usage docs live in [`docs/`](docs/):
 
 ### 1. Install
 
-The default one-liner installs the **newest stable release tag** and the full stack (terminal agent + engine + bridge):
+The default one-liner installs the **newest stable release binary** — the terminal agent alone, verified by SHA-256, with no git and no bun:
 
 ```bash
 # macOS / Linux / WSL (POSIX sh)
@@ -165,9 +166,20 @@ curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 irm https://unown-nine.vercel.app/install.ps1 | iex
 ```
 
-`--main` / `-Main` installs the edge branch; `--version vX.Y.Z` / `-Version vX.Y.Z` pins a stable tag (see [Releases](https://github.com/kanishka-namdeo/Unown/releases)). PowerShell's `irm | iex` cannot pass flags — download `install.ps1` first to use them.
+For the **full stack** (terminal agent + engine + bridge, which is what makes Unown learn), add `--source` on POSIX or `-Source` on Windows — it clones the newest stable release tag and runs `bun run agent:install`:
 
-The manual route pins the same tag:
+```bash
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --source
+```
+
+```powershell
+irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1
+.\install.ps1 -Source
+```
+
+`--main` / `-Main` installs the edge branch; `--version vX.Y.Z` / `-Version vX.Y.Z` pins a stable release (see [Releases](https://github.com/kanishka-namdeo/Unown/releases)). PowerShell's `irm | iex` cannot pass flags — download `install.ps1` first to use them.
+
+The manual source route pins the same tag:
 
 ```bash
 git clone --branch vX.Y.Z https://github.com/kanishka-namdeo/Unown.git
@@ -175,15 +187,15 @@ cd Unown
 bun run agent:install
 ```
 
-(Plain `git clone` gives you `main` — the edge lane.) Only want the CLI on this machine, with no git and no bun? Add `--binary` on POSIX or use `install.ps1 -Binary`: a verified release download with a PATH shim. **The binary is the CLI only** — it has no engine, bridge or dashboard data source; use the source install for the learning stack ([docs/install.md](docs/install.md)).
+(Plain `git clone` gives you `main` — the edge lane.) **The default binary is the CLI only** — it has no engine, bridge or dashboard data source; use the `--source` install for the learning stack ([docs/install.md](docs/install.md)).
 
-The source install runs `bun install --frozen-lockfile` at the root and in the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), builds it, creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.
+The `--source` install runs `bun install --frozen-lockfile` at the root and in the bundled pi monorepo (`pi-repo/` — hydrating its provider model data on first run, ~1–2 min), builds it, creates `.env` from `.env.example` if missing, and puts `unown` on your PATH (a shim into `~/.local/bin` on macOS/Linux, `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1` on Windows — see below). Windows: if the installer just changed your PATH, restart your terminal; PowerShell may need `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once for the `.ps1` shim.
 
 **Keeping it current:** `unown update` is mode-aware — a source checkout moves tag to tag (fast-forward only, never over uncommitted work), a binary install downloads and verifies the next release; `unown update --check` reports without changing anything — [docs/updating.md](docs/updating.md).
 
 ### 2. Connect a model
 
-**One credential is required: an upstream API key.** Either wire the bundled bridge (recommended — full stack, model routing, nothing secret on client machines):
+**One credential is required: an upstream API key.** Either wire the bundled bridge (recommended for the full stack — model routing, nothing secret on client machines):
 
 ```bash
 # .env

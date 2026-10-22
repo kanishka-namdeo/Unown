@@ -6,6 +6,7 @@ Related pages: [quickstart](quickstart.md) · [windows guide](windows.md) · [tr
 
 ## Prerequisites
 
+- **The default binary install needs neither bun nor git.** The full-stack source install (`--source`) needs both:
 - **[Bun](https://bun.sh) ≥ 1.2**:
 
   ```bash
@@ -17,13 +18,19 @@ Related pages: [quickstart](quickstart.md) · [windows guide](windows.md) · [tr
 
 ## Install
 
-The default one-line installer clones the newest **stable release tag** and builds the full stack (checks git, installs bun when missing, runs `bun run agent:install`; [install](install.md)):
+The default one-line installer downloads the newest **stable release binary** — the terminal agent alone, verified by SHA-256, with no git and no bun ([install](install.md)):
 
 ```bash
 curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 ```
 
-`--main` installs the edge branch instead; `--version vX.Y.Z` pins a stable tag (take the current one from [Releases](https://github.com/kanishka-namdeo/Unown/releases)). Or the manual route, pinned to that tag:
+For the **full stack** (terminal agent + engine + bridge), add `--source`: it checks git, installs bun when missing, clones the newest **stable release tag**, and runs `bun run agent:install`:
+
+```bash
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --source
+```
+
+`--main` installs the edge branch instead; `--version vX.Y.Z` pins a stable release (take the current one from [Releases](https://github.com/kanishka-namdeo/Unown/releases)). Or the manual route, pinned to that tag:
 
 ```bash
 git clone --branch vX.Y.Z https://github.com/kanishka-namdeo/Unown.git
@@ -33,14 +40,14 @@ bun run agent:install
 
 (Plain `git clone` gives you `main` — the edge lane.) The PATH shim goes to `~/.local/bin/unown`; if that dir wasn't on your PATH, the installer prints the exact profile line to add.
 
-### The binary lane (`--binary`)
+### The default binary lane
 
 ```bash
-curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --binary
-# pin a release: curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --binary --version vX.Y.Z
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh
+# pin a release: curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --version vX.Y.Z
 ```
 
-This downloads `unown-darwin-arm64.tar.gz` (an x64 shell under Rosetta gets the arm64 build), verifies its exact SHA-256 against the release's `sha256sums.txt`, checks `VERSION` and `unown --version`, and installs under `~/.local/share/unown/versions/<version>/unown` with a `~/.local/bin/unown` shim and `~/.unown/install.json` metadata (`UNOWN_INSTALL_ROOT`, `UNOWN_BIN_DIR` and `UNOWN_HOME` override those paths). No git and no bun are required. It is the **CLI only** — the engine and bridge need the source install.
+This downloads `unown-darwin-arm64.tar.gz` (an x64 shell under Rosetta gets the arm64 build), verifies its exact SHA-256 against the release's `sha256sums.txt`, checks `VERSION` and `unown --version`, and installs under `~/.local/share/unown/versions/<version>/unown` with a `~/.local/bin/unown` shim and `~/.unown/install.json` metadata (`UNOWN_INSTALL_ROOT`, `UNOWN_BIN_DIR` and `UNOWN_HOME` override those paths). No git and no bun are required. It is the **CLI only** — the engine and bridge need the `--source` install.
 
 If you downloaded an archive by hand, verify it with the macOS-specific form (the manifest also covers files you may not have):
 

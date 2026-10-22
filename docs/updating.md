@@ -223,8 +223,8 @@ The release manifest is **not signed**. Its integrity comes from the transport �
 | `unown: cannot fast-forward HEAD` | The checkout diverged from release history — resolve manually, or pin to an explicit version. |
 | `unown: version X not found — available: …` | Typo or a tag your remote lacks; the message lists the known-good releases. |
 | `unown: update check failed` | Offline, no `origin`, or an unreachable remote/release feed — see [troubleshooting](troubleshooting.md). |
-| `unown: no release archive for this OS/arch` | The host is not a published binary target — use the source install. |
-| `unown: vX is not installable on <platform> (...)` | The latest release has no asset for this OS/arch, or the platform gate refused it (musl, windows-arm64 opt-in). The source install still works. |
+| `unown: no release archive for this OS/arch` | The host is not a published binary target — use the `--source` install. |
+| `unown: vX is not installable on <platform> (...)` | The latest release has no asset for this OS/arch, or the platform gate refused it (musl, windows-arm64 opt-in). The `--source` install still works. |
 | `unown: the Linux release binaries require glibc` | musl/Alpine cannot run the archive — build from source. |
 | `unown: windows-arm64 releases are experimental and un-smoked` | Re-run with `UNOWN_ALLOW_EXPERIMENTAL=1` (or the installer's `-Experimental`). |
 | `unown: invalid release manifest ...` | The feed served malformed JSON or a field failed validation; nothing was changed. Re-download from the official release or fix the mirror. |

@@ -1,10 +1,10 @@
 # Installing Unown
 
-The two install modes — a full source checkout and a standalone CLI binary — the one-line installers for both, manual and archive installs, requirements, offline use, version policy, and how to remove an install.
+The two install modes — the default standalone CLI binary and a full source checkout — the one-line installers for both, manual and archive installs, requirements, offline use, version policy, and how to remove an install.
 
 - [Two install modes](#two-install-modes)
 - [One-line installer](#one-line-installer)
-- [Binary install (CLI only)](#binary-install-cli-only)
+- [Binary install (default, CLI only)](#binary-install-default-cli-only)
 - [Manual source install (git clone)](#manual-source-install-git-clone)
 - [Standalone per-OS binaries](#standalone-per-os-binaries)
 - [What the source installer does](#what-the-source-installer-does)
@@ -17,15 +17,15 @@ Related pages: [quickstart](quickstart.md) · [updating](updating.md) · [config
 
 ## Two install modes
 
-| | Source checkout | Standalone binary |
+| | Standalone binary (default) | Source checkout |
 |---|---|---|
-| What you get | `unown` **plus** the self-learning engine and `llm-bridge` (`bun run agent:start`) | the `unown` terminal agent only |
-| Needs | git, bun ≥ 1.2, network | network (the download) — no git, no bun |
-| How | the default one-liner, a manual clone, or `bun run agent:install` | `--binary` / `-Binary`, or a release archive by hand |
-| Updates | `unown update` (git tag to tag) | `unown update` (verified release download) |
-| On disk | your clone; the PATH shim runs `bun <repo>/bin/unown` | a versioned root + a PATH shim that sets `UNOWN_INSTALL_ROOT` |
+| What you get | the `unown` terminal agent only | `unown` **plus** the self-learning engine and `llm-bridge` (`bun run agent:start`) |
+| Needs | network (the download) — no git, no bun | git, bun ≥ 1.2, network |
+| How | the default one-liner, `--binary` / `-Binary`, or a release archive by hand | `--source` / `-Source`, a manual clone, or `bun run agent:install` |
+| Updates | `unown update` (verified release download) | `unown update` (git tag to tag) |
+| On disk | a versioned root + a PATH shim that sets `UNOWN_INSTALL_ROOT` | your clone; the PATH shim runs `bun <repo>/bin/unown` |
 
-The binary is the CLI only. It has no engine, no bridge and no dashboard data source; the learning stack (session notes, AutoDream, harness, mission control) runs from a source checkout. Use the binary when you want a coding agent on a machine that should not carry a repo and a toolchain.
+The binary is the CLI only. It has no engine, no bridge and no dashboard data source; the learning stack (session notes, AutoDream, harness, mission control) runs from a source checkout. It is the default because it needs no toolchain and installs in one verified download; use `--source` when you want the learning stack.
 
 ## One-line installer
 
@@ -35,31 +35,44 @@ macOS / Linux / WSL (POSIX `sh` — on Windows this fails confusingly, because P
 curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 ```
 
-Windows (PowerShell) — the same contract: checks `git`, installs `bun` via bun's own PowerShell installer when missing, refuses an elevated shell, clones the newest **stable release tag**, and runs `bun run agent:install`:
+Windows (PowerShell) — the same contract: refuses an elevated shell, downloads the newest **latest release** binary, verifies its SHA-256, and installs it with a PATH shim. It needs no git and no bun:
 
 ```powershell
 irm https://unown-nine.vercel.app/install.ps1 | iex
 ```
 
-Without a flag both installers build the full stack from the newest stable `vX.Y.Z` tag (the newest entry on [Releases](https://github.com/kanishka-namdeo/Unown/releases) that is not marked prerelease). A tag whose `package.json` does not declare the tag's version is refused — a half-pushed release is never installed.
+Without a flag both installers install the standalone CLI binary from the release marked **latest** on [Releases](https://github.com/kanishka-namdeo/Unown/releases). The full stack is the source lane: add `--source` on POSIX or `-Source` on Windows (the PowerShell script must be downloaded first — `irm | iex` cannot pass switches):
+
+```bash
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --source
+```
+
+```powershell
+irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1
+.\install.ps1 -Source
+```
+
+The source lane clones the newest stable `vX.Y.Z` tag (the newest entry on [Releases](https://github.com/kanishka-namdeo/Unown/releases) that is not marked prerelease). A tag whose `package.json` does not declare the tag's version is refused — a half-pushed release is never installed.
 
 | POSIX | PowerShell | Effect |
 |---|---|---|
-| `--version vX.Y.Z` | `-Version vX.Y.Z` | pin a stable release tag (bare `X.Y.Z` accepted) |
-| `--main` | `-Main` | install the `main` branch — the edge lane |
-| `--binary` | `-Binary` | install the standalone CLI instead of the source stack |
-| `--dest DIR` | `-Dest DIR` | source clone directory (default `./Unown`); invalid with the binary lane |
+| `--source` | `-Source` | install the full source stack (needs git + bun) |
+| `--version vX.Y.Z` | `-Version vX.Y.Z` | pin a stable release (bare `X.Y.Z` accepted) |
+| `--main` | `-Main` | install the `main` branch — the edge lane (implies source) |
+| `--binary` | `-Binary` | explicit spelling of the default binary install |
+| `--dest DIR` | `-Dest DIR` | source clone directory (default `./Unown`; implies source, invalid with the binary lane) |
 | `--force` | `-Force` | install over an install recorded in the other mode (the old files are left for its own uninstall); also allows overwriting a foreign binary shim |
 | `--experimental` | `-Experimental` | allow the un-smoked windows-arm64 archive (Windows only; accepted for parity elsewhere) |
 | — | `-NoModifyPath` | do not add the binary shim directory to the user PATH |
 | `--help` | `-Help` | usage |
 
-`--main`/`-Main` and `--version`/`-Version` are mutually exclusive, and neither combines with the binary lane. Both installers refuse to run as root/Administrator; `UNOWN_INSTALL_ALLOW_ROOT=1` overrides that for a deliberately shared machine.
+`--main`/`-Main` and `--version`/`-Version` are mutually exclusive; `--binary`/`-Binary` cannot be combined with `--source`, `--main` or `--dest`. Both installers refuse to run as root/Administrator; `UNOWN_INSTALL_ALLOW_ROOT=1` overrides that for a deliberately shared machine. A bare run against a machine whose `install.json` records the other mode is refused with the flag that keeps it (`--source` or no flag).
 
-Pinned installs use a version placeholder — take the current one from [Releases](https://github.com/kanishka-namdeo/Unown/releases):
+Pinned installs use a version placeholder — take the current one from [Releases](https://github.com/kanishka-namdeo/Unown/releases). Without `--source` this pins the binary; add `--source` to pin a checkout:
 
 ```bash
 curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --version vX.Y.Z
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --source --version vX.Y.Z
 ```
 
 `irm | iex` always runs with default parameters. To pass a flag, download the script first, review it, then run it (the same review-before-running pattern as the POSIX side):
@@ -67,7 +80,8 @@ curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --version vX.Y.Z
 ```powershell
 irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1
 Get-Content .\install.ps1
-.\install.ps1 -Version vX.Y.Z
+.\install.ps1 -Version vX.Y.Z          # binary, pinned
+.\install.ps1 -Source -Version vX.Y.Z  # full stack, pinned
 ```
 
 The scripts are `public/install.sh` and `public/install.ps1` in the repository, served by the site deployment. You can review the POSIX one the same way, or verify-then-run with [checksum.sh](https://checksum.sh):
@@ -75,22 +89,22 @@ The scripts are `public/install.sh` and `public/install.ps1` in the repository, 
 ```bash
 curl -fsSL https://unown-nine.vercel.app/install.sh -o install.sh
 less install.sh          # review it
-sh install.sh
+sh install.sh            # binary (default); add --source for the stack
 ```
 
-Both run their whole body as one `main` call after argument parsing (with `set -eu` on POSIX and `$ErrorActionPreference = 'Stop'` on Windows), so a truncated or mid-stream-mutated download cannot execute half an install. Integrity of what lands on disk comes from the transport and the release: an HTTPS clone from GitHub for the source lane, and an exact SHA-256 from the same release's `sha256sums.txt` for the binary lane.
+Both run their whole body as one `main` call after argument parsing (with `set -eu` on POSIX and `$ErrorActionPreference = 'Stop'` on Windows), so a truncated or mid-stream-mutated download cannot execute half an install. Integrity of what lands on disk comes from the transport and the release: an exact SHA-256 from the release's `sha256sums.txt` for the default binary lane, and an HTTPS clone from GitHub for the source lane.
 
-## Binary install (CLI only)
+## Binary install (default, CLI only)
 
 ```bash
-curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --binary
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 ```
 
 ```powershell
-.\install.ps1 -Binary          # after downloading the script; -Version vX.Y.Z pins
+irm https://unown-nine.vercel.app/install.ps1 | iex
 ```
 
-By default the binary lane installs the release marked **latest**; `--version`/`-Version` pins a stable release instead. It needs no git and no bun: it downloads the release archive for the host platform, verifies the exact SHA-256 against that release's `sha256sums.txt`, extracts it, checks the archive's `VERSION` file and `unown --version`, and only then activates the install.
+`--binary` / `-Binary` is accepted as an explicit spelling of the default. The lane installs the release marked **latest**; `--version`/`-Version` pins a stable release instead. It needs no git and no bun: it downloads the release archive for the host platform, verifies the exact SHA-256 against that release's `sha256sums.txt`, extracts it, checks the archive's `VERSION` file and `unown --version`, and only then activates the install.
 
 ### Layout
 
@@ -145,7 +159,7 @@ Every GitHub Release carries six standalone builds of the `unown` CLI, produced 
 | the six `unown-<platform>.tar.gz` / `.zip` archives | `unown`/`unown.exe`, `VERSION`, `LICENSE`, `INSTALL.txt` inside `unown-<platform>/` |
 | `version.txt` | the plain release version — the installers and legacy update source |
 | `release.json` | the update manifest: version, per-platform asset name/size/SHA-256, severity, minimum version |
-| `install.sh`, `install.ps1` | the release's own installers (the binary lane uses them) |
+| `install.sh`, `install.ps1` | the release's own installers (the default lane uses them) |
 | `sha256sums.txt` | SHA-256 for the other 12 assets (it does not cover itself) |
 | `sbom-spdx.json` | SPDX SBOM of the installed dependency tree |
 | `release-checklist.md` | what this release actually verified |
@@ -227,8 +241,8 @@ The binary is the terminal agent only. The self-learning engine and `llm-bridge`
 ## Version policy
 
 - Releases are stable `vX.Y.Z` tags only. The release workflow rejects a hyphenated (prerelease) tag before it builds anything, and GitHub's "latest" marker ignores prereleases, so this repository never publishes a prerelease for a default lane to pick.
-- The source one-liner installs the newest stable tag; the manual route pins the tag you name. `--main`/`-Main` is the explicit edge lane, and `--version`/`-Version` pins a tag. The one-line installer refuses a tag whose `package.json` version differs from the tag.
-- The binary one-liner installs the release marked latest; `--version`/`-Version` pins one. Its update check reads that release's `release.json` (with a `version.txt` + `sha256sums.txt` fallback for releases that predate the manifest).
+- The default binary one-liner installs the release marked latest; `--version`/`-Version` pins one. Its update check reads that release's `release.json` (with a `version.txt` + `sha256sums.txt` fallback for releases that predate the manifest).
+- The source one-liner (`--source`) installs the newest stable tag; the manual route pins the tag you name. `--main`/`-Main` is the explicit edge lane, and `--version`/`-Version` pins a tag. The source lane refuses a tag whose `package.json` version differs from the tag.
 - `unown --version` prints the same version as the checkout's `package.json` (or the tag the binary was built from). That identity is asserted in CI.
 - Examples in this documentation use `vX.Y.Z` placeholders; the current version is always the newest stable entry on [Releases](https://github.com/kanishka-namdeo/Unown/releases).
 

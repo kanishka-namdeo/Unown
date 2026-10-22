@@ -1528,6 +1528,35 @@ implied. `__tests__/landing-copy.test.tsx` and
 `__tests__/quickstart.test.tsx` pin the label, both binary invocations and
 the CLI-only scope.
 
+**Correction, 2026-10-22 — the binary becomes the default.** The 2026-10-21
+record above is superseded on one point: the CLI-only binary is now the
+default lane, not an expander-only alternative. `public/install.sh` and
+`public/install.ps1` with no flag download the release marked latest, verify
+its SHA-256 and install it; `--source` / `-Source` selects the full stack
+(git + bun + `agent:install`). `--main` / `-Main` and `--dest` / `-Dest` imply
+the source lane; `--binary` / `-Binary` remains as an explicit spelling of the
+default. A bare run against a machine whose `install.json` records the other
+mode is refused and the error names the flag that keeps it, so an existing
+source install is never silently replaced. The release workflow's
+`smoke-install` matrix now installs with no mode flag (the command a visitor
+gets) and asserts the published scripts advertise `--source` / `-Source`.
+
+The page follows the scripts in the same change: the chip's commands are
+unchanged (`curl … | sh`, `irm … | iex`) because their meaning moved, and the
+chip's chain is now `unown setup → unown · CLI only` — a binary install has no
+engine to boot. The manual expander is relabelled `source`, carries the
+full-stack sequence and states explicitly that the chip installs the terminal
+agent alone while this lane adds the engine, llm-bridge and learning stack. Its
+one-command forms are `sh install.sh --source` and `.\install.ps1 -Source`.
+
+The default flip also moved the first-run copy: the standalone binary ships no
+llm-bridge, so `cli.ts` now probes `/health` before offering "keep the bundled
+bridge" and the first-run banner says no endpoint is answering instead of
+claiming the bridge is wired. `firstRunGateLines` / `firstRunBannerLines` are
+pure and pinned by `test/first-run-copy.test.ts`. The chip's label keeps the
+same version policy ("install · latest stable release") and still carries no
+version literal.
+
 **The six-at-zero run.** The install-first rework recorded, rather than
 fixed, the run of six technical sections between the lore carriers (positions
 5-10, loop → mechanisms → showcase → models → benchmarks → integrity, one

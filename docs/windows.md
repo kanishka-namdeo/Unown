@@ -15,6 +15,7 @@ Related pages: [quickstart](quickstart.md) · [troubleshooting](troubleshooting.
 
 ## Prerequisites
 
+- **Bun ≥ 1.2 and Git** are needed for the full-stack source install (`-Source`). The default binary install needs neither; skip to [Install](#install) if you only want the CLI.
 - **[Bun](https://bun.sh) ≥ 1.2** — install from PowerShell:
 
   ```powershell
@@ -22,17 +23,24 @@ Related pages: [quickstart](quickstart.md) · [troubleshooting](troubleshooting.
   ```
 
   then open a new terminal (the installer puts bun in `%USERPROFILE%\.bun\bin` and updates your PATH). Verify: `bun --version`.
-- **[Git for Windows](https://git-scm.com/download/win)** — recommended (you need git for the clone anyway, and the agent's bash tool resolves Git Bash automatically; see below). The default install options are fine.
+- **[Git for Windows](https://git-scm.com/download/win)** — recommended (the agent's bash tool resolves Git Bash automatically; see below). The default install options are fine.
 - An API key for any OpenAI-compatible provider — same as on every OS ([quickstart §3](quickstart.md#3-connect-a-model)).
 
 No WSL, no Docker, no Developer Mode required for the standard install.
 
 ## Install
 
-One command in PowerShell installs the full stack from the newest **stable release tag** — it checks `git`, installs `bun` via bun's own PowerShell installer when missing, refuses an elevated shell, clones, and runs `bun run agent:install`:
+One command in PowerShell installs the **latest release binary** — refuses an elevated shell, downloads `unown-windows-x64.zip`, verifies its exact SHA-256, and installs it with PATH shims. It needs no git and no bun:
 
 ```powershell
 irm https://unown-nine.vercel.app/install.ps1 | iex
+```
+
+For the **full stack** (terminal agent + engine + bridge), add `-Source`. That lane checks `git`, installs `bun` via bun's own PowerShell installer when missing, clones the newest **stable release tag**, and runs `bun run agent:install`:
+
+```powershell
+irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1
+.\install.ps1 -Source
 ```
 
 `irm | iex` runs with default parameters. To pass a flag, download the script first, review it, then run it:
@@ -45,10 +53,11 @@ Get-Content .\install.ps1
 
 | Flag | Effect |
 |---|---|
-| `-Version vX.Y.Z` | pin a stable release tag (bare `X.Y.Z` accepted) |
-| `-Main` | install the `main` branch — the edge lane |
-| `-Binary` | install the standalone CLI instead of the source stack |
-| `-Dest DIR` | source clone directory (default `.\Unown`); invalid with `-Binary` |
+| `-Source` | install the full source stack (needs git + bun) |
+| `-Version vX.Y.Z` | pin a stable release (bare `X.Y.Z` accepted) |
+| `-Main` | install the `main` branch — the edge lane (implies `-Source`) |
+| `-Binary` | explicit spelling of the default binary install |
+| `-Dest DIR` | source clone directory (default `.\Unown`); implies `-Source`; invalid with `-Binary` |
 | `-Force` | install over an install recorded in the other mode (the old files are left for its own uninstall); also allows overwriting a foreign binary shim |
 | `-Experimental` | allow the un-smoked windows-arm64 binary |
 | `-NoModifyPath` | do not add the binary shim directory to the user PATH |
@@ -64,11 +73,11 @@ bun run agent:install
 
 Plain `git clone` without `--branch` gives you `main` — the edge lane, not the stable default.
 
-### The binary lane (`-Binary`)
+### The default binary lane
 
 ```powershell
-.\install.ps1 -Binary                  # windows-x64
-.\install.ps1 -Binary -Experimental    # windows-arm64 (experimental; no CI runtime smoke)
+.\install.ps1                         # windows-x64
+.\install.ps1 -Experimental           # windows-arm64 (experimental; no CI runtime smoke)
 ```
 
 No git and no bun are required. The installer downloads `unown-windows-x64.zip` (or the arm64 archive) plus the same release's `sha256sums.txt`, verifies the exact SHA-256 before extracting, checks the archive's `VERSION` file and `unown.exe --version`, and installs atomically to:
@@ -78,7 +87,7 @@ No git and no bun are required. The installer downloads `unown-windows-x64.zip` 
 
 The shims set `UNOWN_INSTALL_ROOT`; `~/.unown/install.json` records the active version. To check an archive you downloaded by hand, compare `Get-FileHash .\unown-windows-x64.zip -Algorithm SHA256` with its line in `sha256sums.txt`. The builds are unsigned, so SmartScreen may warn on first run (`Unblock-File unown.exe` clears it). Update with `unown update` — it reads the `release.json` manifest, verifies the Windows asset's size and SHA-256 and keeps the previous version for `unown update --rollback` — and remove with `unown uninstall`.
 
-The binary is the **CLI only** — the engine and bridge need the source install above. Windows arm64 is opt-in with `-Experimental` because no GitHub arm64 Windows runner exists to execute that archive in CI.
+The binary is the **CLI only** — the engine and bridge need the `-Source` install. Windows arm64 is opt-in with `-Experimental` because no GitHub arm64 Windows runner exists to execute that archive in CI.
 
 What the source installer does on Windows (same as elsewhere, plus three Windows specifics):
 
@@ -95,7 +104,7 @@ What the source installer does on Windows (same as elsewhere, plus three Windows
 | cmd.exe | `%USERPROFILE%\.local\bin\unown.cmd` | Works out of the box, no policy questions. |
 | PowerShell | `%USERPROFILE%\.local\bin\unown.ps1` | If script execution is disabled on a locked-down machine you'll see *“running scripts is disabled on this system”* — fix once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, or just call `unown.cmd` (in PowerShell, typing `unown` may resolve to the `.cmd` anyway depending on PATHEXT order). |
 
-For a source install, both shims exec `bun <repo>\bin\unown` and propagate the exit code — `unown doctor; if ($LASTEXITCODE) { … }` works. A `-Binary` install's shims instead set `UNOWN_INSTALL_ROOT` and exec the active `versions\<version>\unown.exe`.
+For a source install, both shims exec `bun <repo>\bin\unown` and propagate the exit code — `unown doctor; if ($LASTEXITCODE) { … }` works. A binary install's shims instead set `UNOWN_INSTALL_ROOT` and exec the active `versions\<version>\unown.exe`.
 
 The interactive TUI is fully native on Windows: the vendored pi TUI ships a `win32-console-mode.node` prebuild (x64 + arm64) that switches the console into VT/UTF-8 mode, so colors, boxes and the editor work in Windows Terminal (recommended) and in the classic conhost.
 

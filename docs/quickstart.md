@@ -13,14 +13,15 @@ Related pages: [usage](usage.md) · [providers](providers.md) · [memory](memory
 
 ## 1. Prerequisites
 
-- [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` (or `brew install bun`) · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal). The `--binary` lane below needs neither bun nor git.
+- **The default binary install needs neither bun nor git.** The full-stack source install (`--source`) needs both:
+- [bun](https://bun.sh) ≥ 1.2 — macOS/Linux: `curl -fsSL https://bun.sh/install | bash` (or `brew install bun`) · Windows: `powershell -c "irm bun.sh/install.ps1 | iex"` (then open a new terminal).
 - [git](https://git-scm.com) (any build; on Windows the standard Git-for-Windows install is fine)
 - An API key for any OpenAI-compatible provider — Dashscope, OpenAI, OpenRouter, Anthropic, DeepSeek, or a local server (vLLM, Ollama, llama.cpp)
 - **Windows, macOS, or Linux** — the same commands and the full stack on all three. OS-level engine sandbox: Linux (bubblewrap) + macOS (seatbelt); native Windows uses the in-process path jail (WSL2 for kernel-grade isolation). Per-OS details: [Windows guide](windows.md) · [macOS guide](macos.md)
 
 ## 2. Install
 
-The default one-liner installs the **newest stable release tag** and the full stack (terminal agent + engine + bridge):
+The default one-liner installs the **newest stable release binary** — the terminal agent alone, verified by SHA-256, with no git and no bun:
 
 ```bash
 # macOS / Linux / WSL (POSIX sh)
@@ -32,9 +33,20 @@ curl -fsSL https://unown-nine.vercel.app/install.sh | sh
 irm https://unown-nine.vercel.app/install.ps1 | iex
 ```
 
-`--main` / `-Main` installs the edge branch instead; `--version vX.Y.Z` / `-Version vX.Y.Z` pins a stable tag (the current tag is on [Releases](https://github.com/kanishka-namdeo/Unown/releases)). PowerShell's `irm | iex` cannot pass flags — download `install.ps1` first to use them. The installer resolves the newest stable tag itself; prereleases are never picked.
+Want the **full stack** (terminal agent + engine + bridge, which is what makes Unown learn)? Add `--source` on POSIX or `-Source` on Windows. That lane clones the newest stable release tag and runs `bun run agent:install`:
 
-Or the three commands by hand, pinned to that same tag:
+```bash
+curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --source
+```
+
+```powershell
+irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1
+.\install.ps1 -Source
+```
+
+`--main` / `-Main` installs the edge branch instead; `--version vX.Y.Z` / `-Version vX.Y.Z` pins a stable release (the current one is on [Releases](https://github.com/kanishka-namdeo/Unown/releases)). PowerShell's `irm | iex` cannot pass flags — download `install.ps1` first to use them. The installer resolves the version itself; prereleases are never picked.
+
+Or the three source commands by hand, pinned to that same tag:
 
 ```bash
 git clone --branch vX.Y.Z https://github.com/kanishka-namdeo/Unown.git
@@ -44,9 +56,9 @@ bun run agent:install
 
 (Plain `git clone` gives you `main` — the edge lane.)
 
-Only want the CLI on this machine, with no git and no bun? Add `--binary` on POSIX or use `install.ps1 -Binary` on Windows: a verified release download installed under a versioned root with a PATH shim. The binary has no engine, bridge or dashboard data source — for those, use the source install ([details](install.md)).
+Only want the CLI? That is the default one-liner — a verified release download installed under a versioned root with a PATH shim, no git or bun. It has no engine, bridge or dashboard data source; the learning stack needs the `--source` install above ([details](install.md)).
 
-The source install runs `bun install --frozen-lockfile` at the repo root and in the vendored pi monorepo (`pi-repo/`), builds it — hydrating its provider model data on first run (that directory is gitignored upstream, so fresh clones fetch it once, ~1–2 min) — creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout; on Windows: `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1`). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
+The `--source` install runs `bun install --frozen-lockfile` at the repo root and in the vendored pi monorepo (`pi-repo/`), builds it — hydrating its provider model data on first run (that directory is gitignored upstream, so fresh clones fetch it once, ~1–2 min) — creates `.env` from `.env.example` if you don't have one, and puts the `unown` command on your PATH via a shim (`~/.local/bin/unown` → this checkout; on Windows: `%USERPROFILE%\.local\bin\unown.cmd` + `unown.ps1`). If your PATH misses it, the installer tells you exactly what to add — or re-run `bun run agent:link` anytime.
 
 > **Windows notes**
 > - If the installer just added `%USERPROFILE%\.local\bin` to your PATH, **restart your terminal** before `unown` resolves.
@@ -65,7 +77,7 @@ Stay current with `unown update`; `unown update --check` reports without changin
 
 **The one required credential is an upstream key.** Two supported shapes:
 
-### Option A — the bundled bridge (recommended: full stack + model routing)
+### Option A — the bundled bridge (recommended for the full stack: model routing)
 
 Put your provider key in `.env`:
 
@@ -106,6 +118,8 @@ Every step has a default (blank = take it), Ctrl+C cancels with `nothing written
 
 ## 4. Start the stack (optional but recommended)
 
+These two services ship with the `--source` install. A standalone binary install has no engine or bridge to start.
+
 The bridge + self-learning engine are what make unown *learn* (session notes → AutoDream → project memory + skills). Chat works without them — notes just queue locally until the engine returns. Mission control is not a web service: `unown dashboard` (or `/dashboard` inside a session) is a fullscreen TUI client of the engine, so the launcher starts no third server.
 
 ```bash
@@ -131,7 +145,7 @@ unown -p "explain the build error"     # one-shot headless, like claude -p
 unown --plan "add auth"                # read-only exploration → numbered plan → approve to execute
 ```
 
-**First run**: on a fresh install, `unown` asks once — `Connect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)` — `Enter` opens the same guided wizard `unown setup` runs; `n` keeps the bundled bridge wired (re-run `unown setup` any time). After a completed wizard the first-run banner is skipped (the setup summary already said everything); after declining it tells you exactly what you are on. The offer never repeats — delete `~/.unown/agent/` to see it again.
+**First run**: on a fresh install, `unown` asks once — `Connect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)` — `Enter` opens the same guided wizard `unown setup` runs; `n` skips (on a source install the bundled bridge stays wired; on a standalone binary there is no provider yet). Re-run `unown setup` any time. After a completed wizard the first-run banner is skipped (the setup summary already said everything); after declining it tells you exactly what you are on. The offer never repeats — delete `~/.unown/agent/` to see it again.
 
 Before the first message, unown pre-flights the model endpoint — if it can't reach it or the key is rejected you get the exact fix, not a stack trace. When you exit, the session leaves a note for AutoDream; come back tomorrow and the project's `.unown/memory/project.md` remembers what mattered.
 
