@@ -30,38 +30,38 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 171;
+export const CHANGELOG_TOTAL_ENTRIES = 173;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 67,
+  "Added": 68,
   "Changed": 11,
   "Deprecated": 0,
   "Removed": 2,
   "Fixed": 70,
   "Security": 0,
-  "Behavior": 21
+  "Behavior": 22
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 2,
+    "total": 4,
     "counts": {
-      "Added": 0,
+      "Added": 1,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 0,
       "Security": 0,
-      "Behavior": 1
+      "Behavior": 2
     },
     "groups": [
       {
-        "bucket": "Changed",
+        "bucket": "Added",
         "items": [
           {
-            "title": "the standalone CLI binary is now the default install; --source is the full stack",
+            "title": "verify-first defaults — the project's own checks now run inside the agent loop",
             "behavior": false
           }
         ]
@@ -70,8 +70,21 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Behavior",
         "items": [
           {
+            "title": "every session now starts verify-first",
+            "behavior": true
+          },
+          {
             "title": "the first-run gate and banner no longer promise a bundled bridge the install does not ship",
             "behavior": true
+          }
+        ]
+      },
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "the standalone CLI binary is now the default install; --source is the full stack",
+            "behavior": false
           }
         ]
       }

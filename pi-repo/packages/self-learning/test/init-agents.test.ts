@@ -434,3 +434,46 @@ describe("scanRepoForensics + renderAgentsMd split", () => {
                 }
         });
 });
+
+// ---------------------------------------------------------------------------
+// Verification section (the Factory AGENTS.md doctrine — the "definition of
+// done" shipped by the 2026-10 verify-first milestone)
+// ---------------------------------------------------------------------------
+
+describe("generateAgentsMd — Verification section", () => {
+        test("surfaces the project's own check commands with the never-weaken rule", () => {
+                const dir = freshDir("verify");
+                try {
+                        writeRel(
+                                dir,
+                                "package.json",
+                                JSON.stringify({
+                                        name: "demo-verify",
+                                        scripts: { typecheck: "tsc --noEmit", lint: "eslint .", test: "bun test" },
+                                }),
+                        );
+                        writeRel(dir, "bun.lock", "");
+                        const md = generateAgentsMd(dir);
+                        expect(md).toContain("### Verification");
+                        expect(md).toContain("never weaken a check or test to make it pass");
+                        expect(md).toMatch(/Typecheck: `bun run typecheck`/);
+                        expect(md).toMatch(/Lint: `bun run lint`/);
+                        expect(md).toMatch(/Tests: `bun run test`/);
+                } finally {
+                        rmSync(dir, { recursive: true, force: true });
+                }
+        });
+
+        test("prints the none-detected placeholders on a bare project", () => {
+                const dir = freshDir("verify-bare");
+                try {
+                        const md = generateAgentsMd(dir);
+                        expect(md).toContain("### Verification");
+                        expect(md).toMatch(/Typecheck: _\(none detected\)_/);
+                        expect(md).toMatch(/Lint: _\(none detected\)_/);
+                        expect(md).toMatch(/Tests: _\(none detected\)_/);
+                } finally {
+                        rmSync(dir, { recursive: true, force: true });
+                }
+        });
+});

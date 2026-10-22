@@ -240,6 +240,12 @@ export function ensureUnownAgentDirInfo(): AgentDirInit {
         // TUI addons (ask_user_question / todo / advisor) — seeded only when
         // absent, so user edits always survive (see addons/config.ts).
         seedAddonsConfig();
+        // Verify-first seed upgrade (2026-10): a PRISTINE v1 policy seed gains
+        // the read-before-edit / no-success-with-failing-check rules; a
+        // user-edited policy file is never touched (refreshSeedPolicyAt).
+        if (refreshSeedPolicyAt(join(UNOWN_MEMORY_DIR, "policy.md"))) {
+                console.error("[unown] policy seed upgraded to the verify-first guardrails (pristine seed refreshed; user edits are preserved)");
+        }
         const init: AgentDirInit = {
                 dir: UNOWN_AGENT_DIR,
                 created: models.fresh || !settingsExisted,
@@ -281,13 +287,47 @@ export function unownAgentDirInit(): AgentDirInit | null {
 // ---------------------------------------------------------------------------
 // Memory seeds & resolution
 // ---------------------------------------------------------------------------
-const POLICY_SEED = `# Tier 0 — Policy (non-negotiable guardrails)
+const POLICY_SEED_V1 = `# Tier 0 — Policy (non-negotiable guardrails)
 
 - Never delete or overwrite files outside the current working directory.
 - Always verify your work by running the available tests / build before declaring success.
 - Keep changes minimal: do exactly what the task asks for.
 - Never edit tests to make them pass; fix the root cause instead.
 `;
+
+/** The current Tier-0 seed — the v1 guardrails plus the verify-first pair
+ *  (read-before-edit; never report success with a failing check) from the
+ *  2026-10 quality defaults. Exported for tests and the pristine-seed
+ *  refresh below. */
+export const POLICY_SEED = `# Tier 0 — Policy (non-negotiable guardrails)
+
+- Never delete or overwrite files outside the current working directory.
+- Always verify your work by running the available tests / build before declaring success.
+- Keep changes minimal: do exactly what the task asks for.
+- Never edit tests to make them pass; fix the root cause instead.
+- Read a file before editing it, and match the style and conventions already in it.
+- When a check fails, fix the root cause and re-run it — never report success with a failing check.
+`;
+
+/**
+ * Upgrade a PRISTINE v1 policy seed to the current seed (the 2026-10
+ * verify-first defaults). A file the user has edited — anything that is not
+ * whitespace-equivalent to the old seed — is left untouched: seed upgrades
+ * may never clobber user policy. Returns true when an upgrade was written.
+ * Never throws.
+ */
+export function refreshSeedPolicyAt(policyPath: string): boolean {
+        try {
+                if (!existsSync(policyPath)) return false;
+                const content = readFileSync(policyPath, "utf8");
+                if (content.trim() !== POLICY_SEED_V1.trim()) return false; // user-edited or foreign
+                if (content.trim() === POLICY_SEED.trim()) return false; // already current
+                writeFileSync(policyPath, POLICY_SEED, "utf8");
+                return true;
+        } catch {
+                return false;
+        }
+}
 
 const USER_SEED = `# Tier 2 — User Memory (global)
 
@@ -358,12 +398,24 @@ export function resolveTerminalMemory(projectDir: string): TerminalMemoryFile[] 
         initProjectMemory(projectDir);
         const files: TerminalMemoryFile[] = [];
 
-        // Tier 0 — policy (global, optional override)
+        // Tier 0 — policy (global, optional override). Seeded on first use —
+        // the same never-clobber shape as the user tier below — so the file
+        // (the documented ops override point) is discoverable on disk and the
+        // pristine-seed refresh in ensureUnownAgentDirInfo has a file to
+        // upgrade on future seed changes. Injection is unchanged: the seed is
+        // byte-identical to what the absent-file fallback injected before.
         const policyPath = join(UNOWN_MEMORY_DIR, "policy.md");
+        let policyContent: string;
+        if (existsSync(policyPath)) policyContent = readFileSync(policyPath, "utf8");
+        else {
+                mkdirSync(UNOWN_MEMORY_DIR, { recursive: true });
+                writeFileSync(policyPath, POLICY_SEED, "utf8");
+                policyContent = POLICY_SEED;
+        }
         files.push({
                 path: "memory/tier0-policy.md (enterprise policy — highest authority)",
                 fsPath: policyPath,
-                content: existsSync(policyPath) ? readFileSync(policyPath, "utf8") : POLICY_SEED,
+                content: policyContent,
                 tier: "policy",
         });
 

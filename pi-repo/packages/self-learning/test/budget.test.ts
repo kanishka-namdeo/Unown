@@ -235,14 +235,16 @@ describe("term.ts — the terminal injection carries the same budget", () => {
                 const project = join(tmpdir(), "engine-tests-budget", "project");
                 try {
                         // Achievable cap: the protected stack (guide ≈ 660 +
-                        // policy ≈ 400 + local/user seeds ≈ 470) plus the project memory
-                        // MINUS the oldest block fits under 2200 — so one block drop
+                        // policy ≈ 555 + local/user seeds ≈ 470) plus the project memory
+                        // MINUS the oldest block fits under 2400 — so one block drop
                         // is exactly the degradation needed. (M10 raised the floor:
                         // the honest repo-supplied provenance comment is ~70 chars
                         // longer than the old "maintained by AutoDream" one; the
-                        // payload lines carry spaces so the injection scan's
-                        // opaque-blob rule — correctly — does not fire on them.)
-                        process.env.PI_MEMORY_TOTAL_CHARS = "2200";
+                        // 2026-10 verify-first defaults grew the policy seed by two
+                        // guardrails, so the cap grew with it; the payload lines carry
+                        // spaces so the injection scan's opaque-blob rule — correctly
+                        // — does not fire on them.)
+                        process.env.PI_MEMORY_TOTAL_CHARS = "2400";
                         mkdirSync(join(project, ".unown", "memory"), { recursive: true });
                         writeFileSync(
                                 join(project, ".unown", "memory", "project.md"),
@@ -254,7 +256,7 @@ describe("term.ts — the terminal injection carries the same budget", () => {
 
                         const files = terminalMemoryForAgent(project);
                         const total = files.reduce((s, f) => s + f.path.length + f.content.length, 0);
-                        expect(total).toBeLessThanOrEqual(2200);
+                        expect(total).toBeLessThanOrEqual(2400);
                         const paths = files.map((f) => f.path).join("\n");
                         expect(paths).toContain("how-to-use"); // guide kept
                         expect(paths).toContain("tier0-policy"); // policy kept

@@ -143,6 +143,7 @@ import {
         updateChipLine,
 } from "./update-status.ts";
 import { fetchPageContent, registerWebTools } from "./websearch.ts";
+import { createAutoVerifyRunner } from "./verify.ts";
 import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
 
 // ---------------------------------------------------------------------------
@@ -187,6 +188,7 @@ You receive ONE self-contained task; you do not see the parent conversation. Do 
 - the result / answer, with evidence (command output, file:line references)
 - anything the parent agent should know (blockers, follow-ups)
 
+Run the project's checks (tests/lint/build) when they exist and quote their verdicts — never declare success with a failing check; if you cannot run them, say so plainly.
 Use the todo tool to track multi-step work. Record durable project pitfalls you discover with the note tool. Be direct and factual; no filler.`,
                 source: "built-in",
         },
@@ -1328,6 +1330,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 invocation: (args) => getUnownInvocation(args),
                 log: (msg) => log(msg),
         });
+        // Auto-verify gate (aider-style PostToolUse quality loop, src/verify.ts):
+        // one runner per session boot — project check detection cached,
+        // cooldown state session-scoped, fail-open by contract. Wired into the
+        // tool_result seam below, next to the LSP diagnostics loop.
+        const autoVerify = createAutoVerifyRunner(opts.cwd, { log: (msg) => log(msg) });
 
         const factory = (pi: ExtensionAPI) => {
                 // ---- fleet surface (async-lane tools, /tasks, renderers, widget)
@@ -3624,47 +3631,75 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
                         }
                 });
 
-                // ---- LSP PostToolUse feedback loop: fresh diagnostics after edits.
-                // Cold start never blocks: the first edit kicks off the server,
-                // the second one onward gets compiler feedback appended.
+                // ---- PostToolUse feedback loop: LSP diagnostics + project auto-verify.
+                // LSP half (unchanged semantics): cold start never blocks — the first
+                // edit kicks off the server, the second one onward gets compiler
+                // feedback appended.
+                // Auto-verify half (aider-style, the 2026-10 survey's evidence-ranked
+                // #1 quality default): after write/edit, run the project's OWN check
+                // command (typecheck, else lint; tests only under UNOWN_AUTO_TEST=1)
+                // and feed failures back as an error result — a broken edit is a
+                // FAILED edit, not a confident wrong answer. Silent on success;
+                // cooldown-throttled; fail-open (src/verify.ts contract).
                 pi.on("tool_result", async (event: any, ctx: any) => {
                         const tool = event?.toolName as string;
                         if (tool !== "write" && tool !== "edit") return undefined;
                         const raw = String(event?.input?.path ?? "");
                         if (!raw) return undefined;
                         const path = resolveFile(raw);
-                        const language = languageFromPath(path);
-                        if (!language) return undefined;
-                        let manager: LspManager;
+
+                        let lspText: string | undefined;
+                        let lspErrors = false;
                         try {
-                                manager = getLsp();
-                        } catch {
-                                return undefined;
-                        }
-                        if (manager.disabled) return undefined;
-                        if (!manager.isLiveFor(language)) {
-                                void manager.warmFor(language).then(() => refreshLspFooter(ctx)); // "lsp: ts ready" once the server is up
-                                return undefined;
-                        }
-                        try {
-                                const changedTs = Date.now();
-                                await manager.syncDocument(path);
-                                const items = await manager.waitForFreshDiagnostics(path, changedTs);
-                                refreshLspFooter(ctx); // crash/respawn transitions surface here
-                                if (items.length === 0) return undefined;
-                                const errors = countErrors(items);
-                                const text =
-                                        `\n\n[lsp] ${errors > 0 ? `${errors} error(s)` : "diagnostics"} in ${path}:\n` +
-                                        renderDiagnostics(path, items, 20);
-                                if (errors > 0) {
-                                        log(`PostToolUse lsp gate flagged ${path} (${errors} errors)`);
-                                        return { content: [...(event.content ?? []), { type: "text", text }], isError: true };
+                                const language = languageFromPath(path);
+                                if (language) {
+                                        let manager: LspManager;
+                                        try {
+                                                manager = getLsp();
+                                        } catch {
+                                                manager = null as unknown as LspManager;
+                                        }
+                                        if (manager && !manager.disabled) {
+                                                if (!manager.isLiveFor(language)) {
+                                                        void manager.warmFor(language).then(() => refreshLspFooter(ctx)); // "lsp: ts ready" once the server is up
+                                                } else {
+                                                        try {
+                                                                const changedTs = Date.now();
+                                                                await manager.syncDocument(path);
+                                                                const items = await manager.waitForFreshDiagnostics(path, changedTs);
+                                                                refreshLspFooter(ctx); // crash/respawn transitions surface here
+                                                                if (items.length > 0) {
+                                                                        const errors = countErrors(items);
+                                                                        lspText =
+                                                                                `\n\n[lsp] ${errors > 0 ? `${errors} error(s)` : "diagnostics"} in ${path}:\n` +
+                                                                                renderDiagnostics(path, items, 20);
+                                                                        lspErrors = errors > 0;
+                                                                        if (lspErrors) log(`PostToolUse lsp gate flagged ${path} (${errors} errors)`);
+                                                                }
+                                                        } catch {
+                                                                refreshLspFooter(ctx);
+                                                        }
+                                                }
+                                        }
                                 }
-                                return { content: [...(event.content ?? []), { type: "text", text }] };
                         } catch {
-                                refreshLspFooter(ctx);
-                                return undefined; // LSP must never break the edit path
+                                /* LSP must never break the edit path */
                         }
+
+                        let verify: { text: string; isError: boolean } | null = null;
+                        try {
+                                verify = await autoVerify.feedbackFor(path);
+                        } catch {
+                                /* the verify gate must never break the edit path either */
+                        }
+
+                        if (lspText === undefined && !verify) return undefined;
+                        const text = `${lspText ?? ""}${verify ? verify.text : ""}`;
+                        const isError = lspErrors || (verify?.isError ?? false);
+                        if (isError) {
+                                return { content: [...(event.content ?? []), { type: "text", text }], isError: true };
+                        }
+                        return { content: [...(event.content ?? []), { type: "text", text }] };
                 });
 
                 // ---- restore state on session (re)start

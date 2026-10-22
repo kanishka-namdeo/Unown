@@ -87,6 +87,8 @@ const SEEDS: Record<Tier, string> = {
 - Always verify your work by running the provided tests before declaring success.
 - Keep changes minimal: fix exactly what the task asks for.
 - If a verification fails, inspect the failure output and fix the root cause — never edit tests to make them pass.
+- Read a file before editing it, and match the style and conventions already in it.
+- When a check fails, fix the root cause and re-run it — never report success with a failing check.
 `,
         project: `# Tier 1 — Project Memory
 

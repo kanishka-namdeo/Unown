@@ -136,6 +136,12 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_NO_AGENTS_MD` | unset | `1` skips AGENTS.md / per-tier memory injection into the session's system prompt (set by the `--no-agents-md` flag; your own `AGENTS.md`/`CLAUDE.md` chain still appends). |
 | `UNOWN_AUTOMATION` | unset | Set to `1` by the engine's scheduler on every [automation](usage.md#automations-unown-automations) run: hides the automation mutation tools inside the unattended session (an automation cannot schedule automations; subagents inherit the flag). You normally never set it by hand. |
 | `UNOWN_LSP_MAX_SYNC_BYTES` | `4194304` | Files larger than this skip LSP document sync (didOpen/didChange) — the server cannot help on huge files; logged once per file. |
+| `UNOWN_AUTO_VERIFY` | `1` | `0` disables the PostToolUse auto-verify gate: after every `write`/`edit` of a non-doc file, the project's own check command (package.json `typecheck` script, else `lint`; Makefile/pyproject fallbacks) runs and a failure is fed back into the tool result as an error — a broken edit is a failed edit. Silent on pass, cooldown-throttled, fail-open; the command passes the same bash-policy denylist the bash tool answers to. See [BEHAVIOR: verify-first defaults](BEHAVIOR.md#verify-first-defaults-2026-10-22). |
+| `UNOWN_AUTO_VERIFY_TIMEOUT_MS` | `120000` | Per-check timeout for the auto-verify fast lane. |
+| `UNOWN_AUTO_VERIFY_COOLDOWN_MS` | `20000` | Cooldown between auto-verify runs (an edit burst triggers one check, not one per file; `0` = every eligible edit). |
+| `UNOWN_AUTO_TEST` | unset | `1` opts the project's TEST command into the same PostToolUse loop (aider's `--auto-test` semantics — off by default because test suites can mutate state and hit the network). |
+| `UNOWN_AUTO_TEST_TIMEOUT_MS` | `300000` | Per-run timeout for the opt-in auto-test lane. |
+| `UNOWN_AUTO_TEST_COOLDOWN_MS` | `60000` | Cooldown between auto-test runs. |
 | `UNOWN_TRUST_PROJECT_CONFIG` | unset | `1`/`true` bypasses the project-config trust gate — `.unown/mcp.json`, `.unown/lsp.json`, `.unown/permissions.json` and `.unown/hooks.json` load without approval (CI/headless). Any other value keeps the gate on; approve interactively with `/mcp trust`, `/lsp trust`, `/permissions trust` or `/hooks trust`. |
 | `UNOWN_STATE_WARN_BYTES` | `536870912` | `unown doctor`'s unown-state check warns when the project's `.unown/` runtime state (checkpoints + receipts + reviews) exceeds this. |
 | `UNOWN_WEB_SEARCH` | `1` | `0` disables the `web_search` tool. |

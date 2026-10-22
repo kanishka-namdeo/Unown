@@ -34,6 +34,7 @@
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { detectProjectChecks, type ProjectChecks } from "./verify.ts";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -67,6 +68,8 @@ export interface RepoForensics {
         lintConfig: string | null;
         packageManager: string | null;
         buildCommands: string[];
+        /** The project's own check commands (the "definition of done"). */
+        verification: ProjectChecks;
         topDependencies: string[];
         fileStructure: DirectoryRole[];
         conventions: string[];
@@ -832,6 +835,7 @@ export function scanRepoForensics(cwd: string): RepoForensics {
         const lintConfig = detectLintConfig(cwd);
         const packageManager = detectPackageManager(cwd);
         const buildCommands = detectBuildCommands(cwd, packageManager);
+        const verification = detectProjectChecks(cwd);
         const topDependencies = detectTopDependencies(cwd);
         const fileStructure = detectFileStructure(cwd);
         const conventions = detectConventions(cwd, languages, lintConfig, packageManager);
@@ -847,6 +851,7 @@ export function scanRepoForensics(cwd: string): RepoForensics {
                 lintConfig,
                 packageManager,
                 buildCommands,
+                verification,
                 topDependencies,
                 fileStructure,
                 conventions,
@@ -918,6 +923,15 @@ export function renderAgentsMd(f: RepoForensics): string {
         } else {
                 lines.push(`- _(no build command detected)_`);
         }
+        lines.push(``);
+
+        // Verification (Factory's AGENTS.md doctrine — the "definition of done"):
+        // the exact commands the agent must run before declaring work finished.
+        lines.push(`### Verification`);
+        lines.push(`Run these before calling work finished; fix failures at the root cause — never weaken a check or test to make it pass:`);
+        lines.push(`- Typecheck: ${f.verification.typecheck ? `\`${f.verification.typecheck}\`` : "_(none detected)_"}`);
+        lines.push(`- Lint: ${f.verification.lint ? `\`${f.verification.lint}\`` : "_(none detected)_"}`);
+        lines.push(`- Tests: ${f.verification.test ? `\`${f.verification.test}\`` : "_(none detected)_"}`);
         lines.push(``);
 
         // Package manager

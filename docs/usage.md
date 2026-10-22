@@ -137,7 +137,7 @@ unown completions powershell >> $PROFILE                                  # Powe
 
 ## Session tools
 
-Every unown session registers **fifteen** unown tools on top of pi's built-ins (bash / read / edit / write / grep / find / ls — powershell on Windows); `todo` and `ask_user_question` ride the [addon framework](addons.md) and are user-configurable:
+Every unown session registers **fifteen** unown tools on top of pi's built-ins — `read`/`bash`/`edit`/`write` plus the **default-active search tools** `grep`/`find`/`ls` (enabled when their binaries answer on PATH; `ls` is pure JS and always on; a configured settings `defaultTools` or an explicit `--tools` list still wins; `powershell` on Windows); `todo` and `ask_user_question` ride the [addon framework](addons.md) and are user-configurable:
 
 | Tool | What the agent does with it |
 |---|---|
@@ -158,6 +158,8 @@ Every unown session registers **fifteen** unown tools on top of pi's built-ins (
 | `automation_delete` | Delete an automation and its non-running history — interactive sessions only. |
 
 One more addon surface registers **no tool**: the [advisor](addons.md#advisor) — a second model that watches the session as compact per-turn deltas, verifies claims with read-only tools, and sends advice mid-run (nits queue as asides at the next turn boundary; concerns and blockers steer immediately). It ships **off by default**; `/advisor on` or the `/addons` configurator enable it, with its model, cadence and budgets tunable in `~/.unown/agent/addons.json`.
+
+**Verify-first defaults** (2026-10): the base system prompt carries the quality doctrine — read a file before editing it, keep changes minimal, plan multi-step work, never weaken tests, run the project's checks before declaring work done — and after every `write`/`edit` of a non-doc file the session runs the project's own check command (`typecheck`, else `lint`, detected from package.json scripts / `Makefile` / `pyproject.toml`) and feeds failures back into the tool result as an error, alongside the LSP diagnostics above: a broken edit is a failed edit the model immediately fixes. Silent on pass, cooldown-throttled (20 s), fail-open on every path; `UNOWN_AUTO_VERIFY=0` disables the gate, `UNOWN_AUTO_TEST=1` opts the test suite into the same loop (own 300 s timeout, 60 s cooldown). The Tier-0 policy seed carries the same guardrails and is seeded on first use; `unown init` writes them into the project's `AGENTS.md` as a Verification section. Details: [BEHAVIOR: verify-first defaults](BEHAVIOR.md#verify-first-defaults-2026-10-22).
 
 When you quit a session in which something happened, a session note (prompt count, tool calls, final outcome) is delivered to the engine — or written to `~/.unown/notes/outbox/` if the engine is down, and synced later. That note is the raw material AutoDream consolidates into `.unown/memory/project.md`.
 

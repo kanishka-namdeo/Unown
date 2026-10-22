@@ -70,6 +70,7 @@ import { bridgeHealth } from "./llm.ts";
 import { keyStatusLabel, listProviders, resolveProviderKey } from "./providers.ts";
 import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
 import { RECIPES_USAGE, runRecipesCommand } from "./recipes-cli.ts";
+import { defaultSessionTools } from "./session-tools.ts";
 import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
 import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
 import { createSplitViewExtension } from "./splitview.ts";
@@ -651,6 +652,16 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
 
         const settingsManager = SettingsManager.create(cwd, agentDir);
 
+        // Verify-first defaults (2026-10): when the user has NOT configured a
+        // default tool set in settings, unown sessions start with pi's base four
+        // PLUS the dedicated search tools (grep/find/ls) when their binaries
+        // answer on PATH — the agent-survey default every major coding agent
+        // ships (Claude Code, Gemini CLI, OpenCode, Cursor, Cline). Passed as
+        // `defaultTools` (NOT `tools`): a default set, not an allowlist —
+        // extension tools still register. An explicit --tools list and a
+        // configured settings defaultTools both win unchanged (sdk.ts order).
+        const unownDefaultTools = defaultSessionTools();
+
         // Per-project unown skills (.unown/skills/) ride alongside pi's own skill dirs.
         const projectSkillsDir = join(cwd, ".unown", "skills");
         const additionalSkillPaths = existsSync(projectSkillsDir) ? [projectSkillsDir] : undefined;
@@ -731,6 +742,7 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                         sessionManager,
                         sessionStartEvent,
                         tools: bootOpts.tools,
+                        defaultTools: unownDefaultTools,
                         // Milestone 2.1 — per-session model routing. writeModelsJson
                         // never clobbers an existing models.json (setup owns it),
                         // so applySubagentEnvOverrides' PI_MODEL_ID write only
