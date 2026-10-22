@@ -24,6 +24,7 @@ import { chatJson, modelFor } from "./llm.ts";
 import { currentVersion, maxTierChars, readTier, rollback, writeTier } from "./memory.ts";
 import { markDreamed, pendingTerminalNotesByProject, undreamedNotes } from "./notes.ts";
 import { mintSkillsForProject } from "./skills.ts";
+import { hoistCrossProjectRules } from "./hoist.ts";
 import { store } from "./store.ts";
 import { initProjectMemory, isPristineSeedProjectMemory, projectMemoryPath, slugifyPath, writeProjectProvenance } from "./term.ts";
 
@@ -416,6 +417,8 @@ export interface ProjectDreamResult {
         slug: string;
         projectPath: string;
         notesIn: number;
+        /** Cross-project hoist receipt (present only when PI_USER_TIER_HOIST=1). */
+        hoist?: import("./hoist.ts").HoistResult;
         status: "done" | "no-change" | "error" | "gated";
         version?: number;
         note?: string;
@@ -426,6 +429,11 @@ export interface ProjectDreamResult {
 }
 
 export async function runProjectDream(): Promise<ProjectDreamResult[]> {
+        // Start stamp for honest dream-duration accounting (the 2026-10-22 fix:
+        // the done/gated/error INSERTs had stamped Date.now() for BOTH started_at
+        // and ended_at at insert time, so every successful project dream recorded
+        // 0 ms — the dashboard's dream latencies were fiction for this path).
+        const projectDreamStartMs = Date.now();
         const groups = pendingTerminalNotesByProject(40);
         const results: ProjectDreamResult[] = [];
 
@@ -503,7 +511,7 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
                                 const dreamId = `project-${randomUUID()}`;
                                 store.run(
                                         `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, output, note) VALUES (?, ?, ?, 'gated', ?, ?, ?)`,
-                                        [dreamId, Date.now(), Date.now(), notes.length, next, `${guard.reason} · ${guardSummary(guard)}`],
+                                        [dreamId, projectDreamStartMs, Date.now(), notes.length, next, `${guard.reason} · ${guardSummary(guard)}`],
                                 );
                                 markDreamed(
                                         notes.map((n: any) => n.id),
@@ -580,7 +588,7 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
                                 `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, output, note) VALUES (?, ?, ?, 'done', ?, ?, ?)`,
                                 [
                                         dreamId,
-                                        Date.now(),
+                                        projectDreamStartMs,
                                         Date.now(),
                                         notes.length,
                                         next,
@@ -602,22 +610,35 @@ export async function runProjectDream(): Promise<ProjectDreamResult[]> {
                                 dreamId,
                         });
 
+                        // ---- Cross-project hoist (user-tier dream path, 2026-10-22):
+                        // opt-in (PI_USER_TIER_HOIST=1). Runs AFTER the ship; a null
+                        // return means the feature is off. "Hoist nothing" is a
+                        // correct outcome — the transfer bench measured that carrying
+                        // project-bound rules verbatim HURTS other projects; this pass
+                        // keeps only what abstracts.
+                        const hoist = await hoistCrossProjectRules({
+                                consolidatedMemory: next,
+                                projectPath: group.projectPath,
+                                slug: group.slug,
+                        });
+
                         results.push({
                                 slug: group.slug,
                                 projectPath: group.projectPath,
                                 notesIn: notes.length,
                                 status: "done",
                                 version,
-                                note: `memory -> v${version}${skills.length > 0 ? ` · minted ${skills.length} skill(s): ${skills.map((sk) => sk.name).join(", ")}` : ""} · ${guardSummary(guard)}`,
+                                note: `memory -> v${version}${skills.length > 0 ? ` · minted ${skills.length} skill(s): ${skills.map((sk) => sk.name).join(", ")}` : ""}${hoist && hoist.hoisted > 0 ? ` · hoisted ${hoist.hoisted} rule(s) to the user tier` : ""} · ${guardSummary(guard)}`,
                                 skills: skills.map((sk) => ({ name: sk.name, description: sk.description })),
                                 guard: { action: guard.action, flags: guard.flags, summary: guardSummary(guard) },
+                                hoist,
                         });
                 } catch (err: any) {
                         const msg = err?.message ?? String(err);
                         const dreamId = `project-${randomUUID()}`;
                         store.run(
                                 `INSERT INTO dreams (id, started_at, ended_at, status, notes_in, note) VALUES (?, ?, ?, 'error', ?, ?)`,
-                                [dreamId, Date.now(), Date.now(), notes.length, `project dream error (${group.slug}): ${msg}`],
+                                [dreamId, projectDreamStartMs, Date.now(), notes.length, `project dream error (${group.slug}): ${msg}`],
                         );
                         emit("dream:finished", { id: dreamId, status: "error", project: group.slug, error: msg });
                         results.push({

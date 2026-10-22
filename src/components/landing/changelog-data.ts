@@ -30,19 +30,69 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 141;
+export const CHANGELOG_TOTAL_ENTRIES = 147;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 59,
+  "Added": 60,
   "Changed": 10,
   "Deprecated": 0,
   "Removed": 2,
   "Fixed": 63,
   "Security": 0,
-  "Behavior": 7
+  "Behavior": 12
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 6,
+    "counts": {
+      "Added": 1,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 0,
+      "Security": 0,
+      "Behavior": 5
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "benchmarks/transfer-bench — the cross-task memory-transfer benchmark (induce-on-A/test-on-B)",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "the Hoist: a second generalization pass that abstracts cross-project rules into the user tier —…",
+            "behavior": true
+          },
+          {
+            "title": "quarantined notes now contribute NOTHING to the next memory — at the prompt AND deterministically",
+            "behavior": true
+          },
+          {
+            "title": "the dream resolves contradictions recency-first — rule 5 can no longer protect invalidated rules",
+            "behavior": true
+          },
+          {
+            "title": "project dreams now record honest durations",
+            "behavior": true
+          },
+          {
+            "title": "print-mode sessions no longer crash at the first subagent-lane tick",
+            "behavior": true
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.2",
     "date": "2026-10-21",

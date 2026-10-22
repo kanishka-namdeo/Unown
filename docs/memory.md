@@ -72,7 +72,9 @@ From there AutoDream takes over: benchmark notes feed the engine's own project m
 
 ## AutoDream consolidation
 
-The `auto-dream` job (every 10 minutes, plus a `dream-check` event that wakes it when notes pile up) runs a consolidation sub-agent over the pending notes. It merges duplicates, resolves contradictions in favor of the most recent evidence, prunes stale one-off observations, reorganizes into topic sections (`## Workflow`, `## Known pitfalls`, `## Task playbooks`, …) and writes the next version — keeping the file under 120 lines and never deleting hard-won rules, only tightening their wording.
+The `auto-dream` job (every 10 minutes, plus a `dream-check` event that wakes it when notes pile up) runs a consolidation sub-agent over the pending notes. It merges duplicates, resolves contradictions **recency-first** (2026-10-22: the most recent evidence wins and the invalidated rule may not appear anywhere as current practice — only with an explicit historical marker), prunes stale one-off observations, reorganizes into topic sections (`## Workflow`, `## Known pitfalls`, `## Task playbooks`, …) and writes the next version — keeping the file under 120 lines and never deleting hard-won rules *to save space* (a rule invalidated by newer evidence is not protected; the quarantine/consolidation contracts and the layer stack are measured in [`benchmarks/memory-eval/*/RESULTS.md`](../benchmarks/memory-eval/)).
+
+Notes flagged by the untrusted-content scanner are **quarantined under the zero-extraction contract** (2026-10-22): the banner they carry tells the dream they contribute nothing — no rule, no observation, no fact, not even rephrased — and a deterministic echo scan (`quarantine-echo`) flags any candidate line derived from one, so the guarantee does not depend on the dream model's prompt resistance (measured: a dream model that planted a flagged note's payload verbatim prompted the hardened banner + backstop, and the plant rate went to 0 with zero benign false positives).
 
 Two consolidation paths:
 

@@ -142,6 +142,24 @@ note-flagged → dream-refused → nothing shipped. Pinned by
 0 benign FPs (layer-1 flag rate 0.26 — MPBench's weak/subtle classes are
 built to evade literal detection, which is why layers 2/3 exist).
 
+**F4 addendum 2 (2026-10-22, cross-model round):** switching the dream
+model exposed the next layer — agnes-3.0-flash PLANTED the F4 verbatim
+poison into its candidate (1/10, the v01-verbatim variant) *despite the
+quarantine banner*, filing it as a neutral "tooling notes" fact
+(layer 3 caught it; kimi-k2.5 had inoculated — layer-2 prompt resistance
+is model-dependent, so the guarantee was being enforced by the guard, not
+the prompt). **Fix (three layers):** the banner states the zero-extraction
+contract ("contributes NOTHING — no rule, no observation, no fact, no
+phrasing, not even rephrased"); SYSTEM rule 8 carries the same QUARANTINE
+CONTRACT paragraph; and a new deterministic layer 2.5 `scanQuarantineEcho`
+(`guard.ts`) flags any candidate line with ≥0.6 content-word containment
+or a 4-word content phrase shared with a quarantined note (`quarantine-echo`,
+merged into `decideGuardAction`, fed by both dream paths). Live post-fix:
+0/10 planted, 0 shipped, benign FPs 0 (poison-corpus), 0/50 planted on the
+hardened mpbench run (whose only "plant" turned out to be a matcher
+false-positive on a rejection line — the matcher is now per-line and
+rejection-aware, pinned by its own selftest).
+
 ### F5 [design] "Most specific tier wins" is a claim, not a mechanism
 
 Resolution is concatenation; conflict handling is delegated to the model

@@ -89,6 +89,11 @@ const TOOL_PATH = [join(HOME, ".local", "bin"), process.env.PATH].join(":");
 const FIXTURE_A = join(HERE, "fixtures", "task-a");
 const FIXTURE_B = join(HERE, "fixtures", "task-b");
 
+// Scratch env for the in-process hoist call (phase: hoist) — the production
+// hoist.ts imports store.ts which opens SQLite at import; the benchmark must
+// never touch the live engine DB (the memory-eval precedent).
+const ARMS = ["cold", "warm", "notes", "hoist"];
+
 // One benchmark instance per ROOT: two concurrent phases clobbered repos and
 // interleaved notes once already (the 2026-10-22 induce race). A live-pid
 // lockfile refuses the second instance.
@@ -156,7 +161,12 @@ function run(cmd, args, opts = {}) {
 
 function runAgentSession(prompt, cwd, unownHome, logBase, timeoutMs = SESSION_TIMEOUT_MS) {
         return new Promise((resolveRun) => {
-                const child = spawn(UNOWN_BIN, ["-p", "--model", `bridge/${MODEL}`, prompt], {
+                // No --model flag: each arm's UNOWN_HOME models.json IS the config
+                // (setup --provider bridge --model <MODEL> set the default). An
+                // explicit "bridge/<model>" id once failed resolution (the
+                // provider id is "zai-bridge") and the fallback stalled the
+                // session — the default is the honest path.
+                const child = spawn(UNOWN_BIN, ["-p", prompt], {
                         cwd,
                         env: { ...process.env, PATH: TOOL_PATH, UNOWN_HOME: unownHome, UNOWN_ENGINE_TOKEN: ENGINE_TOKEN },
                         stdio: ["ignore", "pipe", "pipe"],
@@ -232,9 +242,17 @@ async function api(method, path, body) {
         return { status: res.status, json };
 }
 
-/** The engine's slug for a project path (mirrors src/term.ts slugifyPath). */
+/** The engine's slug for a project path (mirrors src/term.ts slugifyPath:
+ *  BASENAME lowercased, slugified, capped at 32 — not the full path). */
 function slugify(p) {
-        return p.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "root";
+        const base = p.split("/").pop() || "project";
+        return (
+                base
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "-")
+                        .replace(/^-+|-+$/g, "")
+                        .slice(0, 32) || "project"
+        );
 }
 
 // ---------------------------------------------------------------------------
@@ -284,6 +302,44 @@ function hoistDreamToUser(unownHome) {
         const dreamed = readFileSync(join(repoA(), ".unown", "memory", "project.md"), "utf8");
         mkdirSync(join(unownHome, "memory"), { recursive: true });
         writeFileSync(join(unownHome, "memory", "user.md"), dreamed);
+}
+
+/** The hoist arm: ONLY the abstracted cross-project rules in the user tier. */
+function injectHoistedRules(unownHome) {
+        const rules = readFileSync(join(RESULTS, "a-hoist-rules.md"), "utf8");
+        mkdirSync(join(unownHome, "memory"), { recursive: true });
+        writeFileSync(
+                join(unownHome, "memory", "user.md"),
+                `# Tier 2 — User Memory\n\n## Learned workflow rules\n${rules}\n`,
+        );
+}
+
+async function phaseHoist() {
+        // In-process production hoist over A's dreamed memory (scratch store; the
+        // memory-eval precedent). The live LLM abstracts the transferable subset.
+        process.env.PI_SELFLEARNING_DATA = join(ROOT, "hoist-scratch", "data");
+        process.env.PI_SELFLEARNING_DB = join(ROOT, "hoist-scratch", "db", "hoist.db");
+        process.env.PI_MODEL_ID = MODEL;
+        process.env.PI_PROVIDER = "zai-bridge";
+        process.env.PI_USER_TIER_HOIST = "1";
+        mkdirSync(join(ROOT, "hoist-scratch", "db"), { recursive: true });
+        const { hoistCrossProjectRules } = await import(
+                "../../pi-repo/packages/self-learning/src/hoist.ts"
+        );
+        const memory = readFileSync(join(RESULTS, "a-dream-memory.md"), "utf8");
+        const out = await hoistCrossProjectRules({
+                consolidatedMemory: memory,
+                projectPath: repoA(),
+                slug: slugify(repoA()),
+        });
+        console.log(`[hoist] production pass returned: ${JSON.stringify(out, null, 1)}`);
+        mkdirSync(RESULTS, { recursive: true });
+        writeFileSync(
+                join(RESULTS, "a-hoist-rules.md"),
+                (out?.rules ?? []).map((r) => `- ${r}`).join("\n"),
+        );
+        writeFileSync(join(RESULTS, "a-hoist-receipt.json"), JSON.stringify(out, null, 2));
+        console.log(`[hoist] ${out?.hoisted ?? 0} abstracted rule(s) staged for the hoist arm`);
 }
 
 // ---------------------------------------------------------------------------
@@ -406,7 +462,7 @@ async function phaseSetup() {
         mkdirSync(RESULTS, { recursive: true });
         // provider config for every UNOWN_HOME the benchmark uses
         const homes = [aHome(0)];
-        for (let i = 0; i < N_B; i++) for (const arm of ["cold", "warm", "notes"]) homes.push(unownHomeOf(arm, i));
+        for (let i = 0; i < N_B; i++) for (const arm of ARMS) homes.push(unownHomeOf(arm, i));
         for (const h of homes) {
                 setupHome(h);
                 if (!existsSync(join(h, "agent", "models.json"))) {
@@ -419,7 +475,24 @@ async function phaseSetup() {
                 }
         }
         prepTaskA();
-        for (let i = 0; i < N_B; i++) for (const arm of ["cold", "warm", "notes"]) prepTaskB(arm, i);
+        for (let i = 0; i < N_B; i++) for (const arm of ARMS) prepTaskB(arm, i);
+        // Benchmark purity: quiesce the engine's autonomous jobs for the whole
+        // run. Interval auto-dream mid-benchmark would (a) consume induce notes
+        // before the pooled dream phase and (b) write B's project.md between
+        // transfer arms (contaminating later arms with B's own notes). The
+        // dream phase uses the manual trigger (router.execute runs disabled
+        // jobs — verified against server.ts). note-sync stays on (outbox drain
+        // is delivery, not dreaming).
+        const jobsList = (await api("GET", "/api/jobs", undefined)).json?.jobs ?? [];
+        const isEnabled = (id) => jobsList.find((j) => j.id === id)?.enabled === 1;
+        for (const job of ["harness-cycle", "task-mint", "auto-dream"]) {
+                if (isEnabled(job)) {
+                        await api("POST", `/api/jobs/${job}/toggle`, {});
+                        console.log(`[setup] job ${job}: disabled`);
+                } else {
+                        console.log(`[setup] job ${job}: already off`);
+                }
+        }
         console.log(`[setup] ${ROOT} ready (model ${MODEL}, ${N_A} induce runs, ${N_B} runs per transfer arm)`);
 }
 
@@ -489,6 +562,7 @@ async function phaseDream() {
                         const rows = db
                                 .query(`SELECT content, created_at FROM notes WHERE project_slug = ? AND kind = 'terminal' ORDER BY created_at`)
                                 .all(slugify(repoA()));
+                        if (!rows.length) console.log("[dream] WARNING: no terminal notes found for slug " + slugify(repoA()));
                         const raw = rows.map((r) => `--- note (${new Date(r.created_at).toISOString()}) ---\n${r.content}`).join("\n\n");
                         writeFileSync(join(RESULTS, "a-notes-raw.md"), raw);
                         console.log(`[dream] ${rows.length} terminal note(s) snapshotted for the notes arm`);
@@ -505,11 +579,13 @@ async function phaseTransfer() {
         // the warm arm needs the dream; the notes arm needs the notes snapshot
         const dreamed = existsSync(join(RESULTS, "a-dream-memory.md"));
         const rawNotes = existsSync(join(RESULTS, "a-notes-raw.md"));
+        const hoistedRules = existsSync(join(RESULTS, "a-hoist-rules.md"));
         if (!dreamed) console.log("[transfer] WARNING: no dream snapshot — warm arms run with template memory");
         if (!rawNotes) console.log("[transfer] WARNING: no notes snapshot — notes arms get no context file");
+        if (!hoistedRules) console.log("[transfer] WARNING: no hoisted rules — hoist arms run with template memory");
         const done = doneKeys();
         const order = [];
-        for (const arm of ["cold", "warm", "notes"]) for (let i = 0; i < N_B; i++) order.push([arm, i]);
+        for (const arm of ARMS) for (let i = 0; i < N_B; i++) order.push([arm, i]);
         for (const [arm, i] of order) {
                 if (done.has(`transfer:${arm}:${i}`)) {
                         console.log(`[skip] transfer ${arm}:${i}`);
@@ -522,6 +598,7 @@ async function phaseTransfer() {
                 // arm memory injection
                 setupHome(home);
                 if (arm === "warm" && dreamed) hoistDreamToUser(home);
+                if (arm === "hoist" && hoistedRules) injectHoistedRules(home);
                 const prompt = arm === "notes" ? transferPromptNotes() : transferPrompt();
                 const startMs = Date.now();
                 const agent = await runAgentSession(prompt, dir, home, join(ROOT, "logs", `transfer-${arm}${i}`));
@@ -574,6 +651,7 @@ function phaseReport() {
                         cold: agg(records.filter((r) => r.phase === "transfer" && r.arm === "cold")),
                         warm: agg(records.filter((r) => r.phase === "transfer" && r.arm === "warm")),
                         notes: agg(records.filter((r) => r.phase === "transfer" && r.arm === "notes")),
+                        hoist: agg(records.filter((r) => r.phase === "transfer" && r.arm === "hoist")),
                 },
         };
         const d = (a, b, key) => (a && b ? Number((a[key] - b[key]).toFixed(3)) : null);
@@ -591,6 +669,14 @@ function phaseReport() {
                         casePassRate: d(summary.arms.notes, summary.arms.cold, "casePassRateMean"),
                         allGreenRate: d(summary.arms.notes, summary.arms.cold, "allGreenRate"),
                 },
+                hoistVsCold: {
+                        casePassRate: d(summary.arms.hoist, summary.arms.cold, "casePassRateMean"),
+                        allGreenRate: d(summary.arms.hoist, summary.arms.cold, "allGreenRate"),
+                },
+                hoistVsWarm: {
+                        casePassRate: d(summary.arms.hoist, summary.arms.warm, "casePassRateMean"),
+                        allGreenRate: d(summary.arms.hoist, summary.arms.warm, "allGreenRate"),
+                },
         };
         mkdirSync(RESULTS, { recursive: true });
         writeFileSync(join(RESULTS, "summary.json"), JSON.stringify(summary, null, 2));
@@ -606,6 +692,9 @@ switch (PHASE) {
                 break;
         case "dream":
                 await phaseDream();
+                break;
+        case "hoist":
+                await phaseHoist();
                 break;
         case "transfer":
                 await phaseTransfer();
