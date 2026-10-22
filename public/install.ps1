@@ -2,25 +2,26 @@
 #
 #   irm https://unown-nine.vercel.app/install.ps1 | iex
 #   irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1
+#   .\install.ps1 -Source          # full stack (source checkout)
 #   .\install.ps1 -Main            # source install at the edge branch
-#   .\install.ps1 -Binary          # standalone CLI binary (no git, no bun)
 #
 # Two modes:
 #
-#   default (source checkout) - checks git, checks/installs bun (bun's own
-#     PowerShell installer), clones the newest STABLE release tag (vX.Y.Z, no
-#     prerelease suffix), and runs the repo's own installer
-#     (bun run agent:install) which builds the full stack and puts `unown` on
-#     your PATH (%USERPROFILE%\.local\bin\unown.cmd + unown.ps1). -Main is an
-#     explicit edge install of the main branch; -Version vX.Y.Z pins a tag.
-#
-#   -Binary - downloads the windows-x64 (or windows-arm64 with -Experimental)
-#     release archive, verifies its SHA-256 against the SAME release's
-#     sha256sums.txt, and installs the CLI atomically under
+#   default (standalone binary) - downloads the windows-x64 (or windows-arm64
+#     with -Experimental) release archive, verifies its SHA-256 against the SAME
+#     release's sha256sums.txt, and installs the CLI atomically under
 #     ${env:UNOWN_INSTALL_ROOT} (default %LOCALAPPDATA%\unown)\versions\
 #     <version>\ with PATH shims and %USERPROFILE%\.unown\install.json
 #     metadata. No git and no bun are required. The binary is the CLI only -
-#     the engine and learning stack need the source install.
+#     the engine and learning stack need -Source.
+#
+#   -Source - checks git, checks/installs bun (bun's own PowerShell installer),
+#     clones the newest STABLE release tag (vX.Y.Z, no prerelease suffix), and
+#     runs the repo's own installer (bun run agent:install) which builds the
+#     full stack and puts `unown` on your PATH (%USERPROFILE%\.local\bin\
+#     unown.cmd + unown.ps1). -Main is an explicit edge install of the main
+#     branch; -Version vX.Y.Z pins a tag. -Main and -Dest imply -Source;
+#     -Binary remains accepted as an explicit spelling of the default.
 #
 # Release assets come from https://github.com/kanishka-namdeo/Unown/releases
 # (override the base with UNOWN_RELEASES_BASE_URL). Latest is fetched from
@@ -49,6 +50,7 @@ param(
   [string]$Version = "",
   [string]$Dest = "Unown",
   [switch]$Main,
+  [switch]$Source,
   [switch]$Binary,
   [switch]$Force,
   [switch]$Experimental,
@@ -61,7 +63,7 @@ $Repo = 'https://github.com/kanishka-namdeo/Unown.git'
 $ReleasesBaseDefault = 'https://github.com/kanishka-namdeo/Unown/releases'
 
 # $PSBoundParameters is function-scoped inside Main; capture script-level binding
-# now so -Dest can be rejected together with -Binary.
+# now so -Dest can be rejected together with -Binary and can imply -Source.
 $script:DestBound = $PSBoundParameters.ContainsKey('Dest')
 
 $script:RequestedVersion = ''
@@ -74,23 +76,27 @@ function Show-Usage {
   Write-Host @'
 unown installer (Windows)
 
-  .\install.ps1 [-Version vX.Y.Z] [-Dest DIR] [-Main] [-Force]
-  .\install.ps1 -Binary [-Version vX.Y.Z] [-Force] [-Experimental] [-NoModifyPath]
+  .\install.ps1 [-Version vX.Y.Z] [-Force] [-Experimental] [-NoModifyPath]
+  .\install.ps1 -Source [-Version vX.Y.Z] [-Dest DIR] [-Main] [-Force]
 
-  default        source checkout: clone the newest stable release tag and run
-                 bun run agent:install (full stack; needs git + bun)
+  default        standalone CLI binary: verified release download, no git/bun
+  -Source        full stack: clone a stable release tag and run
+                 bun run agent:install (needs git + bun)
   -Main          source install from the main branch (edge) instead of a tag
-  -Binary        standalone CLI binary: verified download, no git/bun required
+  -Binary        explicit spelling of the default binary install
   -Version       pin a release (vX.Y.Z or X.Y.Z)
-  -Dest          source clone directory (default: .\Unown; not valid with -Binary)
+  -Dest          source clone directory (default: .\Unown; not valid with binary)
   -Force         replace an install recorded in the other mode
   -Experimental  allow windows-arm64 (no CI runtime smoke)
-  -NoModifyPath  do not append the shim directory to the user PATH (-Binary)
+  -NoModifyPath  do not append the shim directory to the user PATH (binary mode)
   -Help          this help
 
-Version policy: without -Version the source mode picks the newest stable
-vX.Y.Z tag; -Binary installs the release marked "latest". Prerelease tags
+Version policy: without -Version the default binary mode installs the release
+marked "latest"; -Source picks the newest stable vX.Y.Z tag. Prerelease tags
 are never picked implicitly.
+
+Existing installs: a bare run installs the binary. If install.json records a
+source checkout, re-run with -Source to update it (or -Force to replace it).
 
 After install: unown setup   (connect a model)
               unown doctor   (verify)
@@ -180,7 +186,7 @@ function Invoke-ReleaseDownload([string]$Url, [string]$OutFile) {
 function Install-Source {
   # git
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    Fail 'git is required for the source install (https://git-scm.com - the standard Git-for-Windows install is fine). Use -Binary for a CLI-only install with no git.'
+    Fail 'git is required for the -Source install (https://git-scm.com - the standard Git-for-Windows install is fine). Use the default binary install (no git), or install git and re-run with -Source.'
   }
 
   # bun (bootstrap via bun's own PowerShell installer when missing)
@@ -596,7 +602,7 @@ function Install-Binary {
     Write-Host '  unown update                # update this binary install'
     Write-Host ''
     Write-Host 'note: this is the CLI only - the engine/learning stack needs the source install:'
-    Write-Host '  .\install.ps1'
+    Write-Host '  .\install.ps1 -Source'
     Write-Host ''
     Write-Host 'the release binaries are unsigned (no code-signing certificate).'
     Write-Host 'provenance check (optional, against the archive you downloaded):'
@@ -621,10 +627,13 @@ function Main {
   if ($Binary -and $script:DestBound) {
     Fail '-Dest is a source-mode flag; the binary install lives under UNOWN_INSTALL_ROOT and cannot use -Dest'
   }
+  if ($Binary -and $Source) {
+    Fail '-Binary and -Source are mutually exclusive: pick the CLI-only binary or the full-stack checkout'
+  }
   if ($Main -and $Version) {
     Fail '-Main and -Version are mutually exclusive: pick the edge branch or a pinned release'
   }
-  if (-not $Binary -and -not $Dest) {
+  if ($script:DestBound -and -not $Dest) {
     Fail '-Dest needs a directory (for example: -Dest .\Unown)'
   }
 
@@ -632,8 +641,10 @@ function Main {
     $script:RequestedVersion = Normalize-Version $Version
   }
 
-  $mode = 'checkout'
-  if ($Binary) { $mode = 'binary' }
+  # -Main and -Dest are source-mode flags: they select the full stack.
+  $sourceMode = $Source -or $Main -or $script:DestBound
+  $mode = 'binary'
+  if ($sourceMode) { $mode = 'checkout' }
 
   # refuse admin: builds + PATH shims belong to a user account
   $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -671,7 +682,13 @@ function Main {
       if ($script:ExistingMode -ne $mode -and -not $Force) {
         $where = ''
         if ($script:ExistingShim) { $where = " at $($script:ExistingShim)" }
-        Fail "an existing $($script:ExistingMode) install is recorded$where ($metaPath); refusing to install the $mode mode over it. Re-run with -Force to replace it, or uninstall the $($script:ExistingMode) install first."
+        $hint = ''
+        if ($mode -eq 'binary') {
+          $hint = ' To keep the existing source install, re-run with -Source.'
+        } else {
+          $hint = ' To update the existing binary install, re-run without -Source.'
+        }
+        Fail "an existing $($script:ExistingMode) install is recorded$where ($metaPath); refusing to install the $mode mode over it.$hint Re-run with -Force to replace it, or uninstall the $($script:ExistingMode) install first."
       }
     }
   }
@@ -682,7 +699,7 @@ function Main {
   } catch {
   }
 
-  if ($Binary) {
+  if ($mode -eq 'binary') {
     Install-Binary
   } else {
     Install-Source

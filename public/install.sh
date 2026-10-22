@@ -2,23 +2,24 @@
 # unown installer - the one-line bootstrap.
 #
 #   curl -fsSL https://unown-nine.vercel.app/install.sh | sh
+#   curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --source
 #   curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --main
-#   curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --binary
 #
 # Two modes:
 #
-#   default (source checkout) - checks git, checks/installs bun (bun's own
-#     installer), clones the newest STABLE release tag (vX.Y.Z, no prerelease
-#     suffix), and runs the repo's own installer (bun run agent:install), which
-#     builds the full stack and puts `unown` on your PATH. --main is an explicit
-#     edge install of the main branch; --version vX.Y.Z pins a release tag.
-#
-#   --binary - downloads the per-OS release archive, verifies its SHA-256
-#     against the SAME release's sha256sums.txt, and installs the CLI
-#     atomically under ${UNOWN_INSTALL_ROOT:-$XDG_DATA_HOME/unown}/versions/
+#   default (standalone binary) - downloads the per-OS release archive, verifies
+#     its SHA-256 against the SAME release's sha256sums.txt, and installs the
+#     CLI atomically under ${UNOWN_INSTALL_ROOT:-$XDG_DATA_HOME/unown}/versions/
 #     <version>/ with a PATH shim and ~/.unown/install.json metadata. No git
 #     and no bun are required. The binary is the CLI only - the engine and
-#     learning stack need the source install.
+#     learning stack need --source.
+#
+#   --source - checks git, checks/installs bun (bun's own installer), clones the
+#     newest STABLE release tag (vX.Y.Z, no prerelease suffix), and runs the
+#     repo's own installer (bun run agent:install), which builds the full stack
+#     and puts `unown` on your PATH. --main is an explicit edge install of the
+#     main branch; --version vX.Y.Z pins a release tag. --main and --dest imply
+#     --source; --binary remains accepted as an explicit spelling of the default.
 #
 # Release assets come from https://github.com/kanishka-namdeo/Unown/releases
 # (override the base with UNOWN_RELEASES_BASE_URL). Latest is fetched from
@@ -49,6 +50,7 @@ TAG=""
 DEST="Unown"
 DEST_SET=0
 MAIN=0
+SOURCE=0
 BINARY=0
 FORCE=0
 REPO="https://github.com/kanishka-namdeo/Unown.git"
@@ -81,22 +83,26 @@ usage() {
   cat <<'USAGE'
 unown installer
 
-  sh install.sh [--version vX.Y.Z] [--dest DIR] [--main] [--force]
-  sh install.sh --binary [--version vX.Y.Z] [--force] [--experimental]
+  sh install.sh [--version vX.Y.Z] [--force] [--experimental]
+  sh install.sh --source [--version vX.Y.Z] [--dest DIR] [--main] [--force]
 
-  default        source checkout: clone the newest stable release tag and run
-                 bun run agent:install (full stack; needs git + bun)
+  default        standalone CLI binary: verified release download, no git/bun
+  --source       full stack: clone a stable release tag and run
+                 bun run agent:install (needs git + bun)
   --main         source install from the main branch (edge) instead of a tag
-  --binary       standalone CLI binary: verified download, no git/bun required
+  --binary       explicit spelling of the default binary install
   --version      pin a release (vX.Y.Z or X.Y.Z)
-  --dest         source clone directory (default: ./Unown; not valid with --binary)
+  --dest         source clone directory (default: ./Unown; not valid with binary)
   --force        replace an install recorded in the other mode
   --experimental accepted for install.ps1 parity (Windows arm64 only; no effect here)
   --help         this help
 
-Version policy: without --version the source mode picks the newest stable
-vX.Y.Z tag; --binary installs the release marked "latest". Prerelease tags
+Version policy: without --version the default binary mode installs the release
+marked "latest"; --source picks the newest stable vX.Y.Z tag. Prerelease tags
 are never picked implicitly.
+
+Existing installs: a bare run installs the binary. If install.json records a
+source checkout, re-run with --source to update it (or --force to replace it).
 
 After install: unown setup   (connect a model)
               unown doctor   (verify)
@@ -154,7 +160,13 @@ check_install_meta() {
       if [ -n "$EXISTING_SHIM" ]; then
         WHERE=" at $EXISTING_SHIM"
       fi
-      fail "an existing $EXISTING_MODE install is recorded$WHERE ($META); refusing to install the $1 mode over it. Re-run with --force to replace it, or uninstall the $EXISTING_MODE install first."
+      HINT=""
+      if [ "$1" = "binary" ]; then
+        HINT=" To keep the existing source install, re-run with --source."
+      else
+        HINT=" To update the existing binary install, re-run without --source."
+      fi
+      fail "an existing $EXISTING_MODE install is recorded$WHERE ($META); refusing to install the $1 mode over it.$HINT Re-run with --force to replace it, or uninstall the $EXISTING_MODE install first."
     fi
   fi
 }
@@ -184,7 +196,7 @@ verify_tag_version() {
 install_source() {
   # git
   if ! command -v git >/dev/null 2>&1; then
-    fail "git is required for the source install (https://git-scm.com). Use --binary for a CLI-only install with no git."
+    fail "git is required for the --source install (https://git-scm.com). Use the default binary install (no git), or install git and re-run with --source."
   fi
 
   # bun (bootstrap via bun's own installer when missing)
@@ -318,11 +330,11 @@ detect_platform() {
         MUSL=1
       fi
       if [ "$MUSL" = "1" ]; then
-        fail "this machine uses musl libc, but the released Linux binaries are glibc-only. Use the source install (sh install.sh) or build from source."
+        fail "this machine uses musl libc, but the released Linux binaries are glibc-only. Use the source install (sh install.sh --source) or build from source."
       fi
       ;;
     *)
-      fail "the binary install supports macOS and Linux; on Windows run the PowerShell installer (irm https://unown-nine.vercel.app/install.ps1 | iex). For source on this OS, use git clone + bun run agent:install."
+      fail "the binary install supports macOS and Linux; on Windows run the PowerShell installer (irm https://unown-nine.vercel.app/install.ps1 | iex). For the source stack, use sh install.sh --source (git + bun required)."
       ;;
   esac
 }
@@ -387,7 +399,7 @@ write_binary_metadata() {
 
 install_binary() {
   if ! command -v curl >/dev/null 2>&1; then
-    fail "curl is required for --binary (it is the downloader). Install curl, or use the source install: sh install.sh"
+    fail "curl is required for the binary install (it is the downloader). Install curl, or use the source install: sh install.sh --source"
   fi
 
   detect_platform
@@ -580,7 +592,7 @@ install_binary() {
   echo "  unown update                # update this binary install"
   echo ""
   echo "note: this is the CLI only - the engine/learning stack needs the source install:"
-  echo "  sh install.sh"
+  echo "  sh install.sh --source"
   echo ""
   echo "the release binaries are unsigned (no code-signing certificate)."
   echo "provenance check (optional, against the archive you downloaded):"
@@ -606,6 +618,7 @@ main() {
         shift 2
         ;;
       --main) MAIN=1; shift ;;
+      --source) SOURCE=1; shift ;;
       --binary) BINARY=1; shift ;;
       --force) FORCE=1; shift ;;
       --experimental) shift ;; # Windows installer only; accepted for flag parity
@@ -624,6 +637,13 @@ main() {
   if [ "$BINARY" = "1" ] && [ "$DEST_SET" = "1" ]; then
     fail "--dest is a source-mode flag; the binary install lives under UNOWN_INSTALL_ROOT and cannot use --dest"
   fi
+  if [ "$BINARY" = "1" ] && [ "$SOURCE" = "1" ]; then
+    fail "--binary and --source are mutually exclusive: pick the CLI-only binary or the full-stack checkout"
+  fi
+  # --main and --dest are source-mode flags: they select the full stack.
+  if [ "$MAIN" = "1" ] || [ "$DEST_SET" = "1" ]; then
+    SOURCE=1
+  fi
   if [ "$MAIN" = "1" ] && [ -n "$TAG" ]; then
     fail "--main and --version are mutually exclusive: pick the edge branch or a pinned release"
   fi
@@ -641,12 +661,12 @@ main() {
   trap cleanup EXIT
   trap 'cleanup; exit 1' HUP INT TERM
 
-  if [ "$BINARY" = "1" ]; then
-    check_install_meta "binary"
-    install_binary
-  else
+  if [ "$SOURCE" = "1" ]; then
     check_install_meta "checkout"
     install_source
+  else
+    check_install_meta "binary"
+    install_binary
   fi
 }
 

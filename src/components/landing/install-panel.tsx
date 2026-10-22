@@ -11,19 +11,20 @@ export type OsKey = "macos" | "linux" | "windows";
 
 /**
  * The one-line installer (`public/install.sh`, served by the site deployment,
- * documented in docs/install.md): refuses root, checks git, adds bun when it
- * is missing, clones the newest STABLE release tag, and runs the repo's own
- * installer. macOS and Linux both speak sh, so both tabs carry the same
- * command — their sandbox backends are what differ.
+ * documented in docs/install.md): the DEFAULT lane now installs the pre-built
+ * release binary — verified SHA-256 download, no git and no bun required.
+ * macOS and Linux both speak sh, so both tabs carry the same command — their
+ * sandbox backends are what differ. The full-stack source install is `--source`
+ * and lives in the hero's manual expander.
  */
 const INSTALLER_ONE_LINER =
   "curl -fsSL https://unown-nine.vercel.app/install.sh | sh";
 
 /**
  * The Windows one-liner installer (public/install.ps1 — same contract as the
- * POSIX script: refuses elevation, checks git, adds bun via bun's own
- * PowerShell installer when missing, clones the newest stable release tag,
- * runs agent:install).
+ * POSIX script): the default lane installs the release binary; no git, no bun.
+ * The full-stack source install is `-Source` and needs the script downloaded
+ * first (`irm | iex` cannot pass switches).
  */
 const INSTALLER_ONE_LINER_PS =
   "irm https://unown-nine.vercel.app/install.ps1 | iex";
@@ -43,7 +44,7 @@ const VARIANTS: { key: OsKey; label: string; cmd: string; note: React.ReactNode 
     cmd: INSTALLER_ONE_LINER,
     note: (
       <>
-        refuses root, checks git, adds bun when it is missing · sandbox:{" "}
+        refuses root, verified download, no git or bun · sandbox:{" "}
         <span className="text-ink">Seatbelt</span>
       </>
     ),
@@ -54,7 +55,7 @@ const VARIANTS: { key: OsKey; label: string; cmd: string; note: React.ReactNode 
     cmd: INSTALLER_ONE_LINER,
     note: (
       <>
-        refuses root, checks git, adds bun when it is missing · sandbox:{" "}
+        refuses root, verified download, no git or bun · sandbox:{" "}
         <span className="text-ink">bubblewrap</span>
       </>
     ),
@@ -65,7 +66,7 @@ const VARIANTS: { key: OsKey; label: string; cmd: string; note: React.ReactNode 
     cmd: INSTALLER_ONE_LINER_PS,
     note: (
       <>
-        refuses elevation, checks git, adds bun when it is missing · sandbox:{" "}
+        refuses elevation, verified download, no git or bun · sandbox:{" "}
         <span className="text-ink">in-process jail</span>
       </>
     ),
@@ -111,10 +112,10 @@ export function detectOS(platform: string | undefined, ua: string): OsKey {
 
 /**
  * The hero's install chip, one command per OS tab. The label names the
- * installer's default-version policy — the newest stable release tag — and
+ * installer's default-version policy — the newest stable release — and
  * deliberately carries no version literal, which would go stale between
- * releases. The CLI-only binary lane (`--binary` / `-Binary`) is a different
- * install and lives in the hero's manual expander, never on this chip.
+ * releases. This chip is the CLI-only binary lane; the full-stack source lane
+ * (`--source` / `-Source`) lives in the hero's manual expander, never here.
  *
  * Server-rendered default is macOS, so the static HTML and the first client
  * render agree (no hydration mismatch); after mount the tab auto-switches to
@@ -229,9 +230,9 @@ export function InstallPanel() {
         {"then: "}
         <span className="text-ink">unown setup</span>
         <span className="text-faint"> {"\u2192"} </span>
-        <span className="text-ink">bun run agent:start</span>
-        <span className="text-faint"> {"\u2192"} </span>
         <span className="text-ink">unown</span>
+        <span className="text-faint"> {"·"} </span>
+        <span className="text-faint">CLI only</span>
       </p>
     </div>
   );

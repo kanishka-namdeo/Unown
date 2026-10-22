@@ -289,9 +289,9 @@ export async function chatJson<T = any>(
         throw retry.error;
 }
 
-export async function bridgeHealth(): Promise<any> {
+export async function bridgeHealth(timeoutMs = 3000): Promise<any> {
         try {
-                const res = await fetch(`${bridgeUrl()}/health`, { signal: AbortSignal.timeout(3000) });
+                const res = await fetch(`${bridgeUrl()}/health`, { signal: AbortSignal.timeout(timeoutMs) });
                 return await res.json();
         } catch {
                 return { ok: false };

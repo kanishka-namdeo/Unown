@@ -2,7 +2,7 @@
 //
 // The changed-line coverage gate (scripts/check_coverage.mjs) flags landing
 // edits that no test exercises — this file pins the user-visible claims of
-// the quickstart surface (install commands, the CLI-only binary lane, per-OS
+// the quickstart surface (install commands, the full-stack source lane, per-OS
 // prerequisites incl. the sandbox ladder, command surface) so landing edits
 // stay covered. The quickstart used to be its own section; the 2026-10-20
 // merge folded it into the hero as collapsed <details> expanders, which is
@@ -45,13 +45,15 @@ afterEach(() => {
 });
 
 describe("landing quickstart (hero expanders)", () => {
-  test("renders the clone-and-run install sequence behind the manual expander", () => {
+  test("renders the clone-and-run install sequence behind the source expander", () => {
     setUA("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36");
     const { container } = render(<Hero />);
     const expanders = [...container.querySelectorAll("details")];
-    // three expanders: the delegation prompt, the manual sequence, the CLI surface
+    // three expanders: the delegation prompt, the source sequence, the CLI surface
     expect(expanders.length).toBe(3);
-    expect(container.textContent).toContain("Clone it, point it at a model, run it.");
+    expect(container.textContent).toContain(
+      "Full install — clone it, point it at a model, run it.",
+    );
     for (const line of [
       "git clone https://github.com/kanishka-namdeo/Unown.git",
       "cd Unown",
@@ -64,21 +66,18 @@ describe("landing quickstart (hero expanders)", () => {
     }
   });
 
-  test("names the CLI-only binary lane as a separate install, not the chain", () => {
+  test("the source expander names the full stack, not the chip's CLI-only binary", () => {
     setUA("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36");
     const { container } = render(<Hero />);
     const text = container.textContent ?? "";
-    // The manual expander carries the binary lane as an instruction with the
-    // two real invocations from public/install.sh and public/install.ps1.
-    expect(text).toContain("cli only");
-    expect(text).toContain("no git, no bun");
-    expect(text).toContain("install.sh | sh -s -- --binary");
+    // The chip above installs the binary; this lane adds the engine, bridge
+    // and learning stack, as one command per OS through the real installers.
+    expect(text).toContain("full stack");
+    expect(text).toContain("the chip above installs the terminal agent only");
+    expect(text).toContain("adds the engine, llm-bridge and learning stack");
+    expect(text).toContain("install.sh | sh -s -- --source");
     expect(text).toContain("-OutFile install.ps1");
-    expect(text).toContain(".\\install.ps1 -Binary");
-    // and states the scope: the terminal agent alone. The engine/learning
-    // stack stays on the source chain above (unown setup → agent:start → unown).
-    expect(text).toContain("installs the terminal agent alone");
-    expect(text).toContain("the engine and learning stack need the full install above");
+    expect(text).toContain(".\\install.ps1 -Source");
     // the lane is prose plus inline <code>, not a second terminal block
     expect(container.querySelectorAll("pre")).toHaveLength(1);
   });

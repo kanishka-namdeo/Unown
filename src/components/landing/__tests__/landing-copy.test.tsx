@@ -3,14 +3,17 @@
 //
 // The changed-line coverage gate (scripts/check_coverage.mjs) flags landing
 // edits no test exercises. These tests pin the *decisions* those edits encode:
-//   - the install path actually starts the engine (bun run agent:start), and the
-//     hero copy carries no placeholder key that would paste into a broken command;
+//   - the full-stack source lane actually starts the engine (bun run
+//     agent:start), and the hero copy carries no placeholder key that would
+//     paste into a broken command;
+//   - the install chip is the CLI-only binary lane by default: its one-liner
+//     installs the newest stable release archive (no git, no bun), its chain
+//     does not boot an engine, and the full-stack lane lives in the expander;
 //   - the hero's install chip is tabbed per OS (the Bun/Deno/uv pattern): the
 //     default tab shows the documented one-line installer plus the sandbox
 //     backend the engine really resolves on that platform, Windows carries the
-//     clone path (a fresh Windows box has no sh), exactly one <pre> stays on the
-//     chip, and detectOS is pinned branch by branch — including the darwin/win
-//     substring trap;
+//     PowerShell one-liner, exactly one <pre> stays on the chip, and detectOS
+//     is pinned branch by branch — including the darwin/win substring trap;
 //   - the H1 the deploy gate asserts verbatim ("It reads what you write down") is
 //     still present, so a copy edit cannot silently break verify-deploy;
 //   - every "Dashboard" affordance points at the in-page screenshots, not at the
@@ -71,37 +74,42 @@ describe("landing hero", () => {
     expect(container.innerHTML).not.toContain("sk-");
   });
 
-  test("the install chip defaults to the visitor's OS: one command, its sandbox note, the chain", () => {
+  test("the install chip defaults to the visitor's OS: the binary one-liner, its note, the CLI-only chain", () => {
     // One command chip above the fold — per OS tab, not a five-command wall.
-    // The full command-by-command sequence stays in the quickstart section,
-    // which sits directly below the hero.
+    // The full-stack source sequence stays in the manual expander below.
     setUA(MAC_UA);
     const { container } = render(<Hero />);
-    const text = container.textContent ?? "";
+    const chipText = container.querySelector(".gb-panel")?.textContent ?? "";
     // macOS default tab: the documented one-line installer (docs/install.md),
-    // and the sandbox backend the engine resolves on darwin (bwrap.ts).
-    expect(text).toContain("curl -fsSL https://unown-nine.vercel.app/install.sh | sh");
-    expect(text).toContain("Seatbelt");
-    // the payoff chain: connect a model, boot the stack, start a session
-    expect(text).toContain("then: unown setup");
-    expect(text).toContain("bun run agent:start");
-    expect(text).toContain("unown");
+    // whose default lane is the verified release binary, and the sandbox
+    // backend the engine resolves on darwin (bwrap.ts).
+    expect(chipText).toContain("curl -fsSL https://unown-nine.vercel.app/install.sh | sh");
+    expect(chipText).toContain("Seatbelt");
+    expect(chipText).toContain("CLI only");
+    expect(chipText).toContain("no git or bun");
+    // the binary lane's payoff chain: connect a model, start a session
+    expect(chipText).toContain("then: unown setup");
+    expect(chipText).toContain("unown");
+    // no engine boot on this chip — that is the source lane's chain
+    expect(chipText).not.toContain("bun run agent:start");
     expect(container.querySelectorAll("pre")).toHaveLength(1);
   });
 
   test("the chip names its default-version policy without a version literal", () => {
     setUA(MAC_UA);
     render(<Hero />);
-    // Both one-liners install the newest STABLE release tag (install.sh
-    // resolves `git ls-remote --tags --refs --sort=-v:refname`; install.ps1
-    // does the same). The label says so; a version number would go stale.
+    // Both one-liners install the newest STABLE release. The label says so; a
+    // version number would go stale.
     const label = screen.getByText("install · latest stable release");
     expect(label).toBeTruthy();
     const chip = label.closest(".gb-panel");
     expect(chip?.textContent ?? "").not.toMatch(/\bv?\d+\.\d+\.\d+\b/);
-    // the CLI-only binary lane is a different install and stays out of the
-    // one-command-per-OS chip; the manual expander carries it (quickstart test)
+    // the chip is the CLI-only binary lane; the full-stack source lane is a
+    // different install and lives in the manual expander (quickstart test)
+    expect(chip?.textContent ?? "").toContain("CLI only");
     expect(chip?.textContent ?? "").not.toContain("--binary");
+    expect(chip?.textContent ?? "").not.toContain("--source");
+    expect(chip?.textContent ?? "").not.toContain("bun run agent:start");
   });
 
   test("the tabs follow the WAI-ARIA pattern and exactly one is selected", () => {
@@ -132,9 +140,9 @@ describe("landing hero", () => {
     // CHIP shows, not the whole hero.
     const chip = () => container.querySelector('[role="tabpanel"]');
     let chipText = chip()?.textContent ?? "";
-    // Windows ships its own one-liner installer now (public/install.ps1 —
-    // the irm|iex twin of the POSIX script; the clone path stays in the
-    // manual expander). One command at a time on the chip.
+    // Windows ships its own one-liner installer (public/install.ps1 — the
+    // irm|iex twin of the POSIX script; its default lane is the release
+    // binary). One command at a time on the chip.
     expect(chipText).toContain("irm https://unown-nine.vercel.app/install.ps1 | iex");
     expect(chipText).toContain("refuses elevation");
     expect(chipText).toContain("in-process jail");

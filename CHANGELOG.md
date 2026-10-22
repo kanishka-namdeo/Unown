@@ -9,6 +9,16 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+### Changed
+
+- **the standalone CLI binary is now the default install; `--source` is the full stack** — `curl … install.sh | sh` and `irm … install.ps1 | iex` used to clone the repo and build the whole stack; with no flag they now download the release marked latest, verify its SHA-256 and install the terminal agent under a versioned root with a PATH shim — no git, no bun. The full stack (engine + llm-bridge + learning loop) moved behind `--source` / `-Source`; `--main`/`-Main` and `--dest`/`-Dest` imply the source lane, and `--binary`/`-Binary` remains an explicit spelling of the default. A bare run on a machine whose `install.json` records the other mode is refused and the error names the flag that keeps it, so an existing checkout is never silently replaced. The landing hero follows in the same change: its `then:` chain is `unown setup → unown · CLI only`, and the relabelled `source` expander carries the full-stack sequence plus the `--source` one-liners. The release workflow's `smoke-install` matrix now installs with no mode flag (the visitor's command) and asserts the published scripts advertise the source lane. Docs: install, quickstart, windows, macos, README.
+
+### Agent Behavior (binary-default onboarding — no bridge claim on a machine that has none, 2026-10-22)
+
+- **the first-run gate and banner no longer promise a bundled bridge the install does not ship** — the standalone binary is now the default install and carries no llm-bridge, but a fresh `~/.unown` seeds the loopback bridge provider, so the gate offered `n = keep the bundled bridge for now` and the banner said `using the bundled llm-bridge` even when nothing answered at `:3031`. The gate now probes `/health` (1 s) before offering that option; when it is down the decline is `n = skip for now (no provider connected)` and the banner says no model endpoint is answering and names `unown setup`. A source install with the bridge up is unchanged. `firstRunGateLines()` / `firstRunBannerLines()` are pure and pinned by `test/first-run-copy.test.ts` (bridge-up, bridge-down, direct-provider).
+
 ## [0.0.3] - 2026-10-22
 
 ### Added

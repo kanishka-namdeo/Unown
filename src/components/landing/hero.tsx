@@ -13,7 +13,7 @@ import { StarCount } from "./star-count";
  * documented install path.
  */
 const AGENT_PROMPT =
-  "Install the open-source coding agent Unown for me: clone " +
+  "Install the open-source coding agent Unown for me with the full stack: clone " +
   "https://github.com/kanishka-namdeo/Unown, run `bun run agent:install` " +
   "inside the clone, then run `unown setup` to connect a model and " +
   "`bun run agent:start` to boot the engine. Finish by reporting what `unown doctor` says.";
@@ -25,10 +25,10 @@ const WORD: GlyphId[] = ["U", "N", "O", "W", "N"];
 /* ------------------------------------------------------------------ */
 
 /**
- * The command-by-command install sequence. Mirrors the README quickstart and
- * docs/install.md's manual section — the hero's one-liner chip is the fast
- * path, this is the manual one, and it lives collapsed behind the chip so
- * the fast path stays the default.
+ * The command-by-command full-stack install sequence. Mirrors the README
+ * quickstart and docs/install.md's manual section — the hero's one-liner chip
+ * is the CLI-only binary fast path; this is the source lane that adds the
+ * engine, llm-bridge and learning stack, collapsed behind the chip.
  */
 const INSTALL = [
   "git clone https://github.com/kanishka-namdeo/Unown.git",
@@ -67,10 +67,10 @@ const COMMANDS: [string, string][] = [
  * requirement (incl. the local lane), and the three-OS sandbox ladder.
  */
 const PREREQS =
-  "bun ≥ 1.2 · an endpoint (any OpenAI-compatible base URL + key; background " +
-  "learning can also run on a local llama.cpp or Ollama lane, keyless and " +
-  "offline) · Windows, macOS or Linux — same commands. OS sandbox: bubblewrap " +
-  "(Linux), Seatbelt (macOS); native Windows runs the in-process jail.";
+  "Full install: bun ≥ 1.2 · an endpoint (any OpenAI-compatible base URL + " +
+  "key; background learning can also run on a local llama.cpp or Ollama lane, " +
+  "keyless and offline) · Windows, macOS or Linux — same commands. OS sandbox: " +
+  "bubblewrap (Linux), Seatbelt (macOS); native Windows runs the in-process jail.";
 
 /* ------------------------------------------------------------------ */
 /* the seal                                                            */
@@ -153,7 +153,7 @@ const TRUST = [
 
 export function Hero() {
   return (
-    <section data-hue="psychic" className="relative overflow-hidden pt-14 pb-16 sm:pt-20 sm:pb-24">
+    <section data-hue="psychic" className="relative overflow-hidden pt-14 pb-16 sm:pt-16 sm:pb-20">
       {/* one warm dither halo, top-left, following the left edge of the copy */}
       <div
         aria-hidden="true"
@@ -211,17 +211,17 @@ export function Hero() {
                 so it sits above the fold rather than at the bottom of the page:
                 one copyable chip per OS tab (macOS/Linux get the one-line
                 installer; Windows gets its PowerShell one-liner,
-                public/install.ps1 — both install the newest stable release tag,
-                check git and bootstrap bun), and the chain that follows either
-                command. The tabbed panel is a client island so
-                the chip stays server-rendered around it. The full
-                command-by-command sequence is the expander below. */}
+                public/install.ps1 — both install the newest stable release
+                BINARY: verified download, no git, no bun), and the chain that
+                follows either command. The tabbed panel is a client island so
+                the chip stays server-rendered around it. The full-stack source
+                sequence is the expander below. */}
             <div id="quickstart" className="scroll-mt-24">
               <InstallPanel />
             </div>
 
             {/* the delegation path: your agent installs Unown */}
-            <details className="group mt-3 max-w-xl border border-line bg-panel-2/40">
+            <details className="group mt-2 max-w-xl border border-line bg-panel-2/40">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 font-mono text-[11px] text-dim transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
                 <span className="gb-label text-[9px] text-gold">or</span>
                 have your agent install it
@@ -249,10 +249,10 @@ export function Hero() {
                 the sequence, the prerequisites and the command surface live
                 collapsed behind the one-liner chip, so the fast path stays the
                 default and the manual path stays one click away. */}
-            <details className="group mt-3 max-w-xl border border-line bg-panel-2/40">
+            <details className="group mt-2 max-w-xl border border-line bg-panel-2/40">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 font-mono text-[11px] text-dim transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
-                <span className="gb-label text-[9px] text-gold">manual</span>
-                Clone it, point it at a model, run it.
+                <span className="gb-label text-[9px] text-gold">source</span>
+                Full install — clone it, point it at a model, run it.
                 <span
                   aria-hidden="true"
                   className="ml-auto text-[9px] text-faint transition-transform group-open:rotate-90"
@@ -280,22 +280,23 @@ export function Hero() {
                     );
                   })}
                 </div>
-                {/* the CLI-only lane: an instruction beside the source
-                    sequence, never the chip's command and never the chain —
-                    the binary ships no engine or learning stack. */}
+                {/* the full-stack lane: the chip's one-liner is the CLI-only
+                    binary; this sequence adds the engine, llm-bridge and
+                    learning stack. The script form is the same lane, one
+                    command, and is never the chip's command. */}
                 <p className="mt-3 border-t border-line pt-2.5 font-mono text-[11px] leading-relaxed text-dim">
-                  <span className="gb-label text-[9px] text-gold">cli only</span>{" "}
-                  no git, no bun:{" "}
+                  <span className="gb-label text-[9px] text-gold">full stack</span>{" "}
+                  the chip above installs the terminal agent only; this lane adds the
+                  engine, llm-bridge and learning stack. As one command:{" "}
                   <code className="break-words font-mono text-ink">
-                    curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --binary
+                    curl -fsSL https://unown-nine.vercel.app/install.sh | sh -s -- --source
                   </code>{" "}
                   (macOS/Linux) or{" "}
                   <code className="break-words font-mono text-ink">
                     irm https://unown-nine.vercel.app/install.ps1 -OutFile install.ps1;
-                    .\install.ps1 -Binary
+                    .\install.ps1 -Source
                   </code>{" "}
-                  (Windows). It installs the terminal agent alone; the engine and learning
-                  stack need the full install above.
+                  (Windows).
                 </p>
                 <p className="mt-3 border-t border-line pt-2.5 text-[12px] leading-relaxed text-faint">
                   {PREREQS}
@@ -306,7 +307,7 @@ export function Hero() {
             {/* the command surface, still collapsed: the flagship commands
                 (gated against cli.ts HELP by landing_claims.mjs) and the
                 session tools every session ships. */}
-            <details className="group mt-3 max-w-xl border border-line bg-panel-2/40">
+            <details className="group mt-2 max-w-xl border border-line bg-panel-2/40">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 font-mono text-[11px] text-dim transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
                 <span className="gb-label text-[9px] text-gold">cli</span>
                 the whole command surface

@@ -66,6 +66,7 @@ import {
 import { unownVersion } from "./packaging.ts";
 import { createPermissionGate, createPermissionsExtension, permissionsDoctorSummary } from "./permissions.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
+import { bridgeHealth } from "./llm.ts";
 import { keyStatusLabel, listProviders, resolveProviderKey } from "./providers.ts";
 import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
 import { RECIPES_USAGE, runRecipesCommand } from "./recipes-cli.ts";
@@ -839,7 +840,60 @@ async function runPreflight(pinnedProvider?: string): Promise<PreflightProblem |
         };
 }
 
-function printFirstRunBanner(): void {
+/**
+ * First-run gate copy. `bridgeUp` matters because the standalone binary is the
+ * default install and ships no llm-bridge: offering "keep the bundled bridge"
+ * there would promise an endpoint that does not exist. Pure so the copy is
+ * unit-tested without a TTY.
+ */
+export function firstRunGateLines(bridgeUp: boolean): {
+        question: string;
+        declined: string[];
+        wizardFailed: string;
+} {
+        const decline = bridgeUp ? "n = keep the bundled bridge for now" : "n = skip for now (no provider connected)";
+        return {
+                question: `\nFirst run — no provider connected yet.\nConnect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  Enter = guided setup · ${decline}`,
+                declined: [
+                        bridgeUp
+                                ? "  Skipped — the bundled bridge is wired for now."
+                                : "  Skipped — no provider is connected yet.",
+                        "  (anytime: unown setup · unown providers add · unown providers list)",
+                ],
+                wizardFailed: bridgeUp
+                        ? "Continuing with the bundled bridge (re-run `unown setup` anytime)…"
+                        : "No provider connected (re-run `unown setup` anytime)…",
+        };
+}
+
+/** First-run banner lines. Pure so "never claim a bridge that is not
+ *  answering" is testable; the binary default is the case that motivated it. */
+export function firstRunBannerLines(opts: {
+        pid: string;
+        mid: string;
+        loopback: boolean;
+        bridgeUp: boolean;
+}): string[] {
+        const connect =
+                "  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup";
+        if (!opts.loopback) {
+                return [`unown: first run — using ${opts.pid} (${opts.pid}/${opts.mid}).`, connect, ""];
+        }
+        if (opts.bridgeUp) {
+                return [
+                        `unown: first run — using the bundled llm-bridge (${opts.pid}/${opts.mid}).`,
+                        connect,
+                        "",
+                ];
+        }
+        return [
+                "unown: first run — no model endpoint is answering. The bundled bridge is part of the source install (bun run agent:start).",
+                "  connect any provider instead: unown setup",
+                "",
+        ];
+}
+
+async function printFirstRunBanner(knownBridgeUp?: boolean): Promise<void> {
         const init = unownAgentDirInit();
         if (!init?.created) return;
         // Read the LIVE default, not the seed-time snapshot: a wizard that ran
@@ -848,10 +902,9 @@ function printFirstRunBanner(): void {
         const active = resolveActiveProvider(UNOWN_AGENT_DIR);
         const pid = active?.id ?? init.provider;
         const mid = active?.modelIds?.[0] ?? init.modelId;
-        const via = active && isLoopbackProvider(active) ? "the bundled llm-bridge" : `${pid}`;
-        console.error(`unown: first run — using ${via} (${pid}/${mid}).`);
-        console.error("  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup");
-        console.error();
+        const loopback = !!active && isLoopbackProvider(active);
+        const bridgeUp = loopback ? (knownBridgeUp ?? (await bridgeHealth(1000))?.ok === true) : false;
+        for (const line of firstRunBannerLines({ pid, mid, loopback, bridgeUp })) console.error(line);
 }
 
 // ---------------------------------------------------------------------------
@@ -1932,7 +1985,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         // The pin for pre-flight: --provider wins; else the --model string's
         // provider prefix; else the registry default (inside runPreflight).
         const pre = await runPreflight(args.provider ?? args.model);
-        printFirstRunBanner();
+        await printFirstRunBanner();
         if (pre) {
                 console.error(`unown: ${pre.message}`);
                 console.error(`  → ${pre.hint}`);
@@ -2083,20 +2136,17 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
         // itself is the SAME flow `unown setup` runs — one source of truth.
         const init = unownAgentDirInit();
         let wizardSucceeded = false;
+        let gateBridgeUp: boolean | undefined;
         if (init?.created && process.stdin.isTTY && process.stdout.isTTY && !bootOpts.provider && !bootOpts.model) {
-                if (
-                        promptYesNo(
-                                "\nFirst run — no provider connected yet.\nConnect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  Enter = guided setup · n = keep the bundled bridge for now",
-                                true,
-                        )
-                ) {
+                gateBridgeUp = (await bridgeHealth(1000))?.ok === true;
+                const gate = firstRunGateLines(gateBridgeUp);
+                if (promptYesNo(gate.question, true)) {
                         const code = await runSetupCommand([]);
                         wizardSucceeded = code === 0;
                         if (code === 0) console.log("\nStarting the session with your provider…\n");
-                        else console.log("\nContinuing with the bundled bridge (re-run `unown setup` anytime)…\n");
+                        else console.log(`\n${gate.wizardFailed}\n`);
                 } else {
-                        console.log("  Skipped — the bundled bridge is wired for now.");
-                        console.log("  (anytime: unown setup · unown providers add · unown providers list)");
+                        for (const line of gate.declined) console.log(line);
                 }
         }
         // Pre-flight honors the CLI pin: --provider / --model provider/… probe
@@ -2105,7 +2155,7 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
         // The first-run banner is redundant after a completed wizard — its setup
         // summary already said everything. Keep it for the decline/no-wizard path
         // (and print mode, which never runs a wizard).
-        if (!wizardSucceeded) printFirstRunBanner();
+        if (!wizardSucceeded) await printFirstRunBanner(gateBridgeUp);
         if (pre) {
                 // Warn and continue: the user may start the stack in another
                 // terminal — pi's built-in retries cover that window.

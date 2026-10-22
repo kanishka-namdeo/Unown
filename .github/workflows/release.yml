@@ -630,9 +630,18 @@ jobs:
           test -s install.sh
           test -s install.ps1
           wc -c install.sh install.ps1
+          # The published scripts must carry the full-stack lane the docs name,
+          # not just the binary default they are about to smoke.
+          if ! sh install.sh --help | grep -q -- '--source'; then
+            echo "::error::the published install.sh help does not advertise --source"; exit 1
+          fi
+          if ! grep -q -- '-Source' install.ps1; then
+            echo "::error::the published install.ps1 does not advertise -Source"; exit 1
+          fi
       - name: Install the published binary (POSIX)
-        # --binary downloads this release's archive; --version pins the tag so a
-        # rerun can never smoke "latest" instead of the release under test.
+        # No mode flag: the shipped default installs the release binary, so this
+        # smoke exercises the same command a visitor gets. --version pins the tag
+        # so a rerun can never smoke "latest" instead of the release under test.
         # HOME/UNOWN_HOME/UNOWN_BIN_DIR all point into runner.temp, so the
         # installer and `unown uninstall --dry-run` never touch the runner's
         # real profile or PATH.
@@ -648,7 +657,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$HOME" "$UNOWN_HOME" "$UNOWN_INSTALL_ROOT" "$UNOWN_BIN_DIR"
-          sh install.sh --binary --version "$TAG"
+          sh install.sh --version "$TAG"
           tag_version="${TAG#v}"
           bin=""
           for candidate in \
@@ -681,9 +690,10 @@ jobs:
           fi
           "$bin" uninstall --dry-run
       - name: Install the published binary (Windows)
-        # Same contract through install.ps1: -Binary is the standalone lane,
-        # -Version pins the tag, -NoModifyPath keeps the runner's user PATH out
-        # of it. USERPROFILE/HOME/UNOWN_* all point into runner.temp.
+        # Same contract through install.ps1, also with no mode switch: the
+        # default installs the binary. -Version pins the tag, -NoModifyPath keeps
+        # the runner's user PATH out of it. USERPROFILE/HOME/UNOWN_* all point
+        # into runner.temp.
         if: runner.os == 'Windows'
         shell: pwsh
         env:
@@ -702,7 +712,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path $env:USERPROFILE, $env:UNOWN_HOME, $env:UNOWN_INSTALL_ROOT, $env:UNOWN_BIN_DIR | Out-Null
-          powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Binary -Version $env:TAG -NoModifyPath
+          powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Version $env:TAG -NoModifyPath
           if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed (exit $LASTEXITCODE)" }
           $expected = $env:TAG -replace '^v', ''
           $bin = @(
