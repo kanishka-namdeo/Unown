@@ -236,7 +236,7 @@ The binary is the terminal agent only. The self-learning engine and `llm-bridge`
 
 | Mode | What `unown uninstall` removes | What it keeps |
 |---|---|---|
-| Source checkout | the PATH shims that point into THIS checkout (foreign shims are reported, not deleted) | the checkout and `~/.unown` |
+| Source checkout | the PATH shims that point into THIS checkout (foreign shims are reported, not deleted); with `--purge-checkout`, also the `install.json` record naming that checkout | the checkout and `~/.unown` |
 | Binary | the shims that point into this install root, the versioned root (including rollback copies), and `install.json` | `~/.unown` |
 
 ```bash
@@ -247,4 +247,4 @@ unown uninstall --purge-checkout   # source mode: also remove the checkout (refu
 unown uninstall --purge-all    # both of the above
 ```
 
-In binary mode `--purge-checkout` is a no-op note — the versioned root is the install and is already removed. The bin directory may stay on your PATH; remove its line from your shell profile if you want it gone. Full reference: [updating](updating.md).
+In binary mode `--purge-checkout` is a no-op note — the versioned root is the install and is already removed. A shims-only uninstall keeps the checkout's `install.json` record, which is still true: the checkout is on disk and `bun run agent:link` rewrites that record. The bin directory may stay on your PATH; remove its line from your shell profile if you want it gone. Full reference: [updating](updating.md).
