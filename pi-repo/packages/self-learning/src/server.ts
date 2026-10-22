@@ -8,17 +8,20 @@ import {
 	AutomationsScheduler,
 	createAutomation,
 	deleteAutomation,
+	EVENT_NAME_RE,
 	getAutomation,
 	listRuns as listAutomationRuns,
 	listAutomations,
 	skipNextOccurrence,
 	snoozeNextOccurrence,
 	updateAutomation,
+	type EventDispatchResult,
 } from "./automations.ts";
 import { emit, subscribe } from "./bus.ts";
 import { dreamNotes, latestDreamNews, listDreams, runDream } from "./dream.ts";
 import {
 	engineTokenPath,
+	ensureHooksToken,
 	generateEngineToken,
 	healEngineTokenFile,
 	hostHeaderAllowed,
@@ -253,12 +256,44 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 					mode: body?.mode === "standard" ? "standard" : "read-only",
 					model: body?.model ? String(body.model) : null,
 					maxRuns: body?.maxRuns !== undefined && body?.maxRuns !== null ? Number(body.maxRuns) : null,
+					// M2 event routines: `event` + `filter` (the CLI's spelling;
+					// eventKind/eventFilter aliases accepted for REST symmetry).
+					eventKind:
+						body?.event !== undefined
+							? String(body.event)
+							: body?.eventKind !== undefined
+								? String(body.eventKind)
+								: null,
+					eventFilter:
+						body?.filter !== undefined
+							? String(body.filter)
+							: body?.eventFilter !== undefined
+								? String(body.eventFilter)
+								: null,
 				});
 				if (!created.ok) return json({ error: created.error }, created.status ?? 400);
 				return json({
 					automation: { ...created.automation, schedule: describeRoutineSchedule(created.automation) },
 				});
 			}
+		}
+
+		// ------------------------------------------------------------------
+		// Event dispatch (M2) — the LOCAL trigger lane: the same handler
+		// as the webhook endpoint minus the hook-id check, behind the
+		// regular bearer gate. `unown routines trigger` and the tests use
+		// this; external senders use POST /api/hooks/<hookId> (below).
+		// ------------------------------------------------------------------
+		if (method === "POST" && path === "/api/automations/event-dispatch") {
+			const event = typeof body?.event === "string" ? body.event.trim() : "";
+			if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
+			const payload = body?.payload ?? {};
+			if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+				return json({ error: "payload must be a JSON object" }, 400);
+			}
+			const result = await automationsScheduler.dispatchEvent(event, payload);
+			recordHookEvent(event, result);
+			return json({ ok: true, ...result });
 		}
 		const automationMatch = path.match(/^\/api\/automations\/([^/]+)(?:\/(run|runs|skip|snooze))?$/);
 		if (automationMatch) {
@@ -686,8 +721,25 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 		}
 
 		// ------------------------------------------------------------------
-		// Hooks
+		// Hooks (the termhook log) + the inbound-webhook surface (M2):
+		// GET /api/hooks/info is bearer-gated (it reveals the hook id) and
+		// reports the hook lane's observability: how many event routines
+		// listen and the last few inbound events. The hook POST itself
+		// lives OUTSIDE handleApi — see handleWebhookPost at the fetch
+		// wrapper (auth-by-URL, 64KB cap, malformed-JSON 400).
 		// ------------------------------------------------------------------
+		if (method === "GET" && path === "/api/hooks/info") {
+			const hookId = ensureHooksToken();
+			const eventRoutines =
+				store.get<{ c: number }>(`SELECT COUNT(*) AS c FROM automations WHERE schedule_kind = 'event' AND lifecycle = 'active'`)?.c ?? 0;
+			return json({
+				hookId,
+				hookUrl: `/api/hooks/${hookId}`,
+				hint: 'POST {"event": "<name>", "payload": {...}} — knowing the URL is the authorization; `unown routines hook-url` prints the curl-able form',
+				eventRoutines,
+				lastEvents: [...hookEventRing],
+			});
+		}
 		if (method === "GET" && path === "/api/hooks") {
 			const limit = Math.min(Number(query.get("limit") ?? 100), 500);
 			const hooks = store.query<any>(`SELECT * FROM hook_log ORDER BY ts DESC LIMIT ?`, [limit]);
@@ -824,6 +876,81 @@ export function recoverOrphans() {
  *  equivalent; ours is an in-process poll loop). Created at module scope so
  *  REST handlers (POST .../run) can reach it. */
 export const automationsScheduler = new AutomationsScheduler();
+
+// ---------------------------------------------------------------------------
+// Inbound webhooks (M2 event routines) — POST /api/hooks/<hookId>
+// ---------------------------------------------------------------------------
+/** A hook body is a notification, not a file transfer. 64KB is ~2 orders of
+ *  magnitude above a GitHub webhook payload and small enough that a flood of
+ *  oversized bodies cannot pin memory before the gate answers. */
+const HOOK_MAX_BODY_BYTES = 64 * 1024;
+
+/** The last 10 inbound events (webhook + local triggers), surfaced by
+ *  GET /api/hooks/info — the senders' lane gets the same observability
+ *  discipline as every other engine surface. In-memory by design: it is a
+ *  LIVENESS signal ("is my hook wired up"), not an audit log (the run rows
+ *  are the durable record of what a trigger did). */
+interface HookEventRecord {
+	event: string;
+	at: number;
+	accepted: boolean;
+	routinesRun: number;
+}
+const hookEventRing: HookEventRecord[] = [];
+
+function recordHookEvent(event: string, result: EventDispatchResult): void {
+	hookEventRing.push({ event, at: Date.now(), accepted: result.dispatched > 0, routinesRun: result.dispatched });
+	while (hookEventRing.length > 10) hookEventRing.shift();
+}
+
+/**
+ * The webhook endpoint's HTTP half. Lives at the fetch wrapper, NOT in
+ * handleApi, for two reasons the shared body gate cannot express:
+ *
+ *   1. AUTH BY URL — knowing /api/hooks/<32-hex id> IS the authorization
+ *      (GitHub-webhook-URL semantics; tokenExempt exempts the lane), so a
+ *      wrong id must 404 without revealing whether hooks exist.
+ *   2. SIZE + SHAPE — the body is hard-capped at 64KB (checked against
+ *      Content-Length before buffering, then against the read text for
+ *      chunked senders) and malformed JSON answers 400, where the shared
+ *      gate would degrade it to null.
+ *
+ * Dispatch itself is automationsScheduler.dispatchEvent — the exact manual/
+ * scheduled-run machinery, never a routine mutation (a webhook may only ever
+ * cause runs).
+ */
+async function handleWebhookPost(pathname: string, req: Request): Promise<Response> {
+	const hookId = decodeURIComponent(pathname.split("/")[3] ?? "");
+	const expected = ensureHooksToken();
+	if (!tokenMatches(hookId, expected)) return json({ error: "unknown hook" }, 404);
+	const declared = Number(req.headers.get("content-length") ?? "0");
+	if (Number.isFinite(declared) && declared > HOOK_MAX_BODY_BYTES) {
+		return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
+	}
+	let raw: string;
+	try {
+		raw = await req.text();
+	} catch {
+		return json({ error: "unreadable body" }, 400);
+	}
+	if (raw.length > HOOK_MAX_BODY_BYTES) return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
+	let body: any;
+	try {
+		body = JSON.parse(raw);
+	} catch {
+		return json({ error: `body must be JSON: {"event": "<name>", "payload": {...}}` }, 400);
+	}
+	const event = typeof body?.event === "string" ? body.event.trim() : "";
+	if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
+	let payload = body?.payload ?? {};
+	if (payload === null) payload = {};
+	if (typeof payload !== "object" || Array.isArray(payload)) {
+		return json({ error: "payload must be a JSON object" }, 400);
+	}
+	const result = await automationsScheduler.dispatchEvent(event, payload);
+	recordHookEvent(event, result);
+	return json({ ok: true, ...result });
+}
 
 /** Async since the learning-core swap: the boot sequence seeds the memory
  * platform (mem0) and renders the project tier from it before binding. */
@@ -975,6 +1102,14 @@ export async function startServer(port: number = PORT) {
 						},
 					});
 				}
+			}
+
+			// Inbound webhooks (M2): the hook POST lane authenticates by
+			// KNOWING the URL (tokenExempt above), so it is routed here —
+			// before the SSE/handleApi block whose shared body gate cannot
+			// express the 64KB cap or the malformed-JSON 400.
+			if (req.method === "POST" && /^\/api\/hooks\/(?!info$)[^/]+$/.test(url.pathname)) {
+				return withCors(await handleWebhookPost(url.pathname, req), corsOrigin);
 			}
 
 			// SSE live event stream

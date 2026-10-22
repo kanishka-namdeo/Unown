@@ -30,6 +30,7 @@ const COMMANDS = [
         "blame",
         "recipes",
         "wiki",
+        "watch",
         "acp",
         "dashboard",
         "note",
@@ -46,6 +47,7 @@ const AUTOMATIONS_SUBCOMMANDS = ["list", "create", "edit", "pause", "resume", "r
 const SESSIONS_SUBCOMMANDS = ["list", "export", "import"];
 const RECIPES_SUBCOMMANDS = ["list", "run", "create", "validate"];
 const WIKI_SUBCOMMANDS = ["generate", "search", "list", "show"];
+const WATCH_SUBCOMMANDS = ["list", "run", "roots"];
 const WEBCACHE_SUBCOMMANDS = ["stats", "clear", "sweep"];
 const PROVIDERS_SUBCOMMANDS = ["list", "add", "remove", "key", "default", "test", "refresh"];
 const ENGINE_SUBCOMMANDS = ["status", "start", "stop", "restart", "repair", "serve"];
@@ -179,6 +181,10 @@ export function bashCompletion(): string {
                 `      COMPREPLY=( $(compgen -W "${WEBCACHE_SUBCOMMANDS.join(" ")}" -- "$cur") )`,
                 "      return 0",
                 "      ;;",
+                "    watch)",
+                `      COMPREPLY=( $(compgen -W "${WATCH_SUBCOMMANDS.join(" ")}" -- "$cur") )`,
+                "      return 0",
+                "      ;;",
                 "    completions)",
                 '      COMPREPLY=( $(compgen -W "bash zsh fish powershell" -- "$cur") )',
                 "      return 0",
@@ -215,6 +221,7 @@ export function zshCompletion(): string {
                 '    "blame:receipts-backed blame (which sessions touched a file)"',
                 '    "recipes:declarative instruction bundles (list/run/create/validate)"',
                 '    "wiki:auto-generated repo wiki (generate/search/list/show)"',
+                '    "watch:AI comments in code, resolved by the engine (list/run/roots)"',
                 '    "acp:run the ACP editor server on stdio (Zed et al.)"',
                 '    "dashboard:the TUI mission control (fullscreen; alias dash)"',
                 '    "note:deliver a session note to the engine"',
@@ -271,6 +278,9 @@ export function zshCompletion(): string {
                 "    wiki)",
                 `      _arguments "1:subcommand:(${WIKI_SUBCOMMANDS.join(" ")})"`,
                 "      ;;",
+                "    watch)",
+                `      _arguments "1:subcommand:(${WATCH_SUBCOMMANDS.join(" ")})"`,
+                "      ;;",
                 "    webcache)",
                 `      _arguments "1:subcommand:(${WEBCACHE_SUBCOMMANDS.join(" ")})"`,
                 "      ;;",
@@ -313,6 +323,7 @@ export function fishCompletion(): string {
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from sessions" -a "${SESSIONS_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from recipes" -a "${RECIPES_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from wiki" -a "${WIKI_SUBCOMMANDS.join(" ")}"`);
+        lines.push(`complete -c unown -n "__fish_seen_subcommand_from watch" -a "${WATCH_SUBCOMMANDS.join(" ")}"`);
         lines.push(`complete -c unown -n "__fish_seen_subcommand_from webcache" -a "${WEBCACHE_SUBCOMMANDS.join(" ")}"`);
         return lines.join("\n");
 }

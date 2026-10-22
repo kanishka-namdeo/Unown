@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 203;
+export const CHANGELOG_TOTAL_ENTRIES = 206;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 78,
+  "Added": 80,
   "Changed": 13,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 83,
+  "Fixed": 84,
   "Security": 0,
   "Behavior": 26
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 34,
+    "total": 37,
     "counts": {
-      "Added": 11,
+      "Added": 13,
       "Changed": 3,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 13,
+      "Fixed": 14,
       "Security": 0,
       "Behavior": 6
     },
@@ -60,6 +60,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "Event routines — the fifth schedule kind: webhooks + payload filters on the engine",
+            "behavior": false
+          },
+          {
+            "title": "Watch — AI comments in code, resolved by the always-on engine (aider's --watch-files)",
+            "behavior": false
+          },
           {
             "title": "Always-on routines — unown engine install: the OS service layer",
             "behavior": false
@@ -119,6 +127,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "the reconcile prompt now retires superseded knowledge instead of archiving it",
+            "behavior": false
+          },
+          {
+            "title": "unown doctor/setup probe with the real key — auth.json finally feeds the endpoint check",
             "behavior": false
           },
           {

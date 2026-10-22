@@ -20,6 +20,7 @@ import { RETENTION_BACKLOG_RESCHEDULE_MS, runRetentionPass } from "./retention.t
 import { gcSandboxes } from "./sandbox.ts";
 import { store } from "./store.ts";
 import { guardLearningJob } from "./governor.ts";
+import { runWatchScan, watchDisabled } from "./watch.ts";
 
 export interface JobDef {
         id: string;
@@ -90,15 +91,26 @@ export const JOB_DEFS: JobDef[] = [
                 description:
                         "Prunes operational telemetry past its retention window (hook_log, runs, dreams, cycles, automation_runs, dreamed notes); precious tables (memory, skills, tasks, improvements, automations) are never touched.",
         },
+        {
+                id: "watch-scan",
+                name: "AI comment watch",
+                kind: "interval",
+                scheduleMs: 120_000,
+                description:
+                        "Scans watch roots (opt-in .unown/watch.json) for new # AI:/AI!/AI? comments and dispatches one batched headless run per root (aider --watch-files semantics); hash dedup keeps quiet scans free.",
+        },
 ];
 
 /**
  * Jobs that CONSULT the governor before starting (they spend LLM tokens or
- * spawn agent runs). note-sync, sandbox-gc and db-retention never do — they
- * are the engine's catch-up and housekeeping mechanics (pure SQL/files) and
- * must always run, even while the governor throttles LLM spend.
+ * spawn agent runs) — watch-scan's batched runs go through the automations
+ * spawn seam, so budget exhaustion throttles them like any learning job (the
+ * correct behavior: an AI-comment firehose must not bypass the spend
+ * ceilings). note-sync, sandbox-gc and db-retention never do — they are the
+ * engine's catch-up and housekeeping mechanics (pure SQL/files) and must
+ * always run, even while the governor throttles LLM spend.
  */
-const LEARNING_JOBS = new Set(["harness-cycle", "auto-dream", "dream-check", "task-mint", "regression-on-ship"]);
+const LEARNING_JOBS = new Set(["harness-cycle", "auto-dream", "dream-check", "task-mint", "regression-on-ship", "watch-scan"]);
 
 /**
  * The M9 self-reschedule seam, as a pure function: a job result may carry
@@ -173,15 +185,22 @@ export class Router {
                 for (const def of JOB_DEFS) {
                         const existing = store.get(`SELECT id FROM jobs WHERE id = ?`, [def.id]);
                         if (!existing) {
+                                // M3 watch kill switch: PI_WATCH_DISABLE=1 at boot seeds the
+                                // job DISABLED (the row exists — visible/idle in the Router
+                                // screen — but never fires). The job body re-checks the env
+                                // too, so a var set after boot also stops the scans without
+                                // a toggle.
+                                const seedEnabled = def.id === "watch-scan" && watchDisabled() ? 0 : 1;
                                 store.run(
                                         `INSERT INTO jobs (id, name, kind, schedule_ms, event, enabled, next_run, run_count, status, description)
-                                         VALUES (?, ?, ?, ?, ?, 1, ?, 0, 'idle', ?)`,
+                                         VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'idle', ?)`,
                                         [
                                                 def.id,
                                                 def.name,
                                                 def.kind,
                                                 def.scheduleMs ?? null,
                                                 def.event ?? null,
+                                                seedEnabled,
                                                 def.kind === "interval" ? Date.now() + (def.scheduleMs ?? 0) : null,
                                                 def.description,
                                         ],
@@ -474,6 +493,16 @@ export class Router {
                                         moreRemaining: retention.moreRemaining,
                                         ...(retention.moreRemaining ? { rescheduleMs: RETENTION_BACKLOG_RESCHEDULE_MS } : {}),
                                 };
+                        }
+                        case "watch-scan": {
+                                // M3 AI-comment watch (docs/watch.md): scan every watch root;
+                                // one batched headless run per root with NEW comments
+                                // (hash-stable dedup — a quiet scan costs zero LLM). A
+                                // learning job: the governor gates it like every job that
+                                // spends tokens, and the kill switch is checked inside
+                                // runWatchScan too.
+                                const watch = await runWatchScan();
+                                return { watch };
                         }
                         default:
                                 throw new Error(`no runner for job ${jobId}`);

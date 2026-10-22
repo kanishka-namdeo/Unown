@@ -134,7 +134,9 @@ export async function printModelsOverview(): Promise<void> {
         }
         // Live list when the default provider is a local bridge.
         if (active?.baseUrl) {
-                const probe = await probeOpenAiEndpoint(active.baseUrl, active.apiKey ?? undefined, 3000);
+                // auth.json > models.json literal > $ENV — the same single key
+                // source the doctor probe uses (setup writes keys to auth.json).
+                const probe = await probeOpenAiEndpoint(active.baseUrl, resolveProviderKey(UNOWN_AGENT_DIR, active.id).key, 3000);
                 const served = probe.ok ? probe.models : undefined;
                 if (served && served.length > 0) {
                         console.log(`\nServed right now by ${active.baseUrl}:`);

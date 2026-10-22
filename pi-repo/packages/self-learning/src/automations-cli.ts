@@ -7,7 +7,8 @@
  *   unown routines list [--all] [--json]
  *   unown routines create --title T --prompt P
  *                        (--cron "0 9 * * 1-5" | --every "2d at 09:00"
- *                         | --after "3d" | --delay-minutes N)
+ *                         | --after "3d" | --delay-minutes N
+ *                         | --on-event <name> [--filter <expr>])
  *                        [--timezone America/New_York] [--until 2026-12-31]
  *                        [--misfire skip|catch-up] [--mode read-only|standard]
  *                        [--model M] [--max-runs N] [--workspace PATH]
@@ -20,17 +21,22 @@
  *   unown routines skip <id>       # skip the next occurrence (recorded)
  *   unown routines snooze <id> <minutes>
  *   unown routines history <id> [--limit N] [--json]
+ *   unown routines trigger <event> [--payload '<json>']   # local event dispatch
+ *   unown routines hook-url        # the curl-able inbound webhook URL
  *   unown routines delete <id>
  *
  * Schedule kinds (docs/routines.md): cron (5-field, evaluated in the
  * routine's timezone), every (schedule-anchored interval; d/w step by wall
  * clock), after (completion-anchored — re-arms N after each run finishes),
- * delay-minutes (one-shot). Default misfire policy is skip (a missed slot is
- * recorded and skipped); catch-up runs a missed slot once on wake (launchd
- * semantics, 24h horizon).
+ * delay-minutes (one-shot), on-event (M2: dispatched by inbound webhook
+ * events, optionally gated by the --filter payload expression — never by
+ * the tick). Default misfire policy is skip (a missed slot is recorded and
+ * skipped); catch-up runs a missed slot once on wake (launchd semantics,
+ * 24h horizon).
  */
 import { ENGINE_URL } from "./term.ts";
 import { engineFetch } from "./engine-auth.ts";
+import { describeHookFilter } from "./hook-filter.ts";
 
 export interface CliResult {
         stdout?: string;
@@ -44,7 +50,8 @@ export const AUTOMATIONS_USAGE = `unown routines — scheduled recurring agent r
 Usage:
   unown routines list [--all] [--json]
   unown routines create --title <t> --prompt <p>
-                        (--cron <expr> | --every <spec> | --after <spec> | --delay-minutes <n>)
+                        (--cron <expr> | --every <spec> | --after <spec> | --delay-minutes <n>
+                         | --on-event <name> [--filter <expr>])
                         [--timezone <IANA>] [--until <date>] [--misfire skip|catch-up]
                         [--mode read-only|standard] [--model <id>] [--max-runs <n>] [--workspace <path>]
   unown routines edit <id> [--title <t>] [--prompt <p>] [--cron <e> | --every <s> | --after <s>]
@@ -55,6 +62,8 @@ Usage:
   unown routines skip <id>         skip the next occurrence (recorded in history)
   unown routines snooze <id> <minutes>
   unown routines history <id> [--limit <n>] [--json]
+  unown routines trigger <event> [--payload '<json>']   dispatch an event locally (same path as a webhook)
+  unown routines hook-url          print the inbound webhook URL (its secret IS the auth)
   unown routines delete <id>
 
 Schedule kinds:
@@ -63,6 +72,10 @@ Schedule kinds:
   --every "2d at 09:00"     day/week intervals step by WALL CLOCK (DST-safe); "at" pins the time
   --after "3d"              N units after each run COMPLETES (regenerating; never overdue)
   --delay-minutes <n>       one-shot, once after N minutes
+  --on-event <name>         M2: runs when a matching event arrives (POST /api/hooks/<id>
+                            or 'unown routines trigger <name>'); never from the clock
+  --filter '<expr>'         payload gate for --on-event, e.g. 'payload.action == "opened"'
+                            (paths, ==/!=, integer ordering, contains(), exists(), ! and AND)
 Default mode is read-only: the unattended run reports on the repo without shell
 or write access. "standard" grants the full toolset — choose it deliberately.
 Docs: docs/routines.md.`;
@@ -114,7 +127,11 @@ function parseUntil(raw: string): number | { error: string } {
 function describeRow(a: any): string {
         const next = a.next_run_at ? new Date(a.next_run_at).toLocaleString() : "—";
         const last = a.lastRun ? `${a.lastRun.status} ${new Date(a.lastRun.started_at).toLocaleString()}` : "never";
-        return `${a.id}  ${a.title}\n    ${a.schedule ?? a.cron_expr ?? "one-shot"} · mode ${a.mode} · ${a.lifecycle} · runs ${a.run_count}\n    next: ${next} · last: ${last}`;
+        const sched =
+                a.schedule_kind === "event"
+                        ? `on ${a.event_kind}${a.event_filter ? ` · ${describeHookFilter(a.event_filter)}` : ""}`
+                        : (a.schedule ?? a.cron_expr ?? "one-shot");
+        return `${a.id}  ${a.title}\n    ${sched} · mode ${a.mode} · ${a.lifecycle} · runs ${a.run_count}\n    next: ${next} · last: ${last}`;
 }
 
 export async function runAutomationsCommand(argv: string[], opts: { cwd: string }): Promise<CliResult> {
@@ -151,6 +168,12 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                 // E2E; pinned by test/automations.test.ts "automations CLI".)
                 const all = hasFlag(argv, "--all");
                 const rows = (res.data.automations ?? []).filter((a: any) => all || a?.workspace === opts.cwd);
+                // Event routines sort AFTER scheduled ones (created_at order
+                // preserved within each group): they have no next occurrence,
+                // so "what runs next" — the list's whole point — stays on top.
+                const timed = rows.filter((a: any) => a?.schedule_kind !== "event");
+                const events = rows.filter((a: any) => a?.schedule_kind === "event");
+                const ordered = [...timed, ...events];
                 if (hasFlag(argv, "--json")) return { stdout: JSON.stringify(rows, null, 2) + "\n", exitCode: 0 };
                 if (rows.length === 0) {
                         const anyAtAll = (res.data.automations ?? []).length > 0;
@@ -162,7 +185,7 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                                 exitCode: 0,
                         };
                 }
-                return { stdout: rows.map(describeRow).join("\n\n") + "\n", exitCode: 0 };
+                return { stdout: ordered.map(describeRow).join("\n\n") + "\n", exitCode: 0 };
         }
 
         if (sub === "create") {
@@ -172,6 +195,8 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                 const every = flagValue(argv, "--every");
                 const after = flagValue(argv, "--after");
                 const delayMinutes = flagNumber(argv, "--delay-minutes");
+                const onEvent = flagValue(argv, "--on-event");
+                const filter = flagValue(argv, "--filter");
                 const timezone = flagValue(argv, "--timezone");
                 const until = flagValue(argv, "--until");
                 const misfire = flagValue(argv, "--misfire");
@@ -179,9 +204,12 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                 const model = flagValue(argv, "--model");
                 const maxRuns = flagNumber(argv, "--max-runs");
                 const workspace = flagValue(argv, "--workspace") ?? opts.cwd;
-                const scheduleCount = [cron, every, after, delayMinutes].filter((v) => v !== undefined).length;
+                const scheduleCount = [cron, every, after, delayMinutes, onEvent].filter((v) => v !== undefined).length;
                 if (!title || !prompt || scheduleCount !== 1) {
-                        return { stderr: `create needs --title, --prompt and exactly ONE of (--cron | --every | --after | --delay-minutes)\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
+                        return { stderr: `create needs --title, --prompt and exactly ONE of (--cron | --every | --after | --delay-minutes | --on-event)\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
+                }
+                if (filter !== undefined && onEvent === undefined) {
+                        return { stderr: `--filter gates an event routine — pair it with --on-event\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
                 }
                 if (misfire !== undefined && misfire !== "skip" && misfire !== "catch-up") {
                         return { stderr: `--misfire must be skip or catch-up\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
@@ -191,6 +219,10 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                 if (every !== undefined) body.every = every;
                 if (after !== undefined) body.after = after;
                 if (delayMinutes !== undefined) body.delayMinutes = delayMinutes;
+                if (onEvent !== undefined) {
+                        body.event = onEvent;
+                        if (filter !== undefined) body.filter = filter;
+                }
                 if (timezone !== undefined) body.timezone = timezone;
                 if (misfire !== undefined) body.misfire = misfire;
                 if (until !== undefined) {
@@ -206,7 +238,10 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                                 `Created ${a.id} ("${a.title}")\n` +
                                 `  schedule: ${a.schedule ?? a.cron_expr ?? "one-shot"}\n` +
                                 `  mode: ${a.mode}${a.model ? ` · model: ${a.model}` : ""}${a.max_runs ? ` · max scheduled runs: ${a.max_runs}` : ""}${a.timezone ? ` · tz: ${a.timezone}` : ""}\n` +
-                                `  next run: ${a.next_run_at ? new Date(a.next_run_at).toLocaleString() : "—"}\n` +
+                                (a.schedule_kind === "event"
+                                        ? `  fires when "${a.event_kind}" arrives (never from the clock; pause still blocks it)\n` +
+                                          `  trigger locally: unown routines trigger ${a.event_kind} · inbound URL: unown routines hook-url\n`
+                                        : `  next run: ${a.next_run_at ? new Date(a.next_run_at).toLocaleString() : "—"}\n`) +
                                 `  workspace: ${a.workspace}\n` +
                                 `Inspect: unown routines history ${a.id} · trigger now: unown routines run ${a.id} · manage in the TUI: unown dashboard routines`,
                         exitCode: 0,
@@ -310,6 +345,49 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                 const res = await api("DELETE", `/api/automations/${encodeURIComponent(id)}`);
                 if (!res.ok) return { stderr: String(res.data?.error ?? "delete failed"), exitCode: 1 };
                 return { stdout: `Deleted routine ${id}.`, exitCode: 0 };
+        }
+
+        if (sub === "trigger") {
+                const event = rest[1];
+                if (!event) return { stderr: `trigger needs an event name (e.g. unown routines trigger issue.opened)\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
+                const payloadRaw = flagValue(argv, "--payload");
+                let payload: unknown = {};
+                if (payloadRaw !== undefined) {
+                        try {
+                                payload = JSON.parse(payloadRaw);
+                        } catch {
+                                return { stderr: `--payload must be valid JSON (got: ${payloadRaw.slice(0, 80)})`, exitCode: 1 };
+                        }
+                        if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+                                return { stderr: "--payload must be a JSON object", exitCode: 1 };
+                        }
+                }
+                const res = await api("POST", "/api/automations/event-dispatch", { event, payload });
+                if (!res.ok) return { stderr: String(res.data?.error ?? "trigger failed"), exitCode: 1 };
+                const results: Array<{ id: string; title: string; outcome: string }> = res.data.results ?? [];
+                const fired = results.filter((r) => r.outcome === "dispatched");
+                const lines: string[] = [`Event "${event}" → ${res.data.dispatched ?? 0} routine(s) dispatched.`];
+                if (results.length === 0) {
+                        lines.push(`No routines listen for "${event}". Create one: unown routines create --title T --prompt P --on-event ${event}`);
+                } else {
+                        for (const r of results) lines.push(`  ${r.id}  ${r.title} — ${r.outcome}`);
+                }
+                if (fired.length > 0) lines.push(`History: unown routines history ${fired.length === 1 ? fired[0].id : "<id>"}`);
+                return { stdout: lines.join("\n") + "\n", exitCode: 0 };
+        }
+
+        if (sub === "hook-url") {
+                const res = await api("GET", "/api/hooks/info");
+                if (!res.ok) return { stderr: String(res.data?.error ?? "hook-url failed"), exitCode: 1 };
+                const hookId = res.data.hookId as string | undefined;
+                if (!hookId) return { stderr: "the engine reports no hook id", exitCode: 1 };
+                return {
+                        stdout:
+                                `${ENGINE_URL}/api/hooks/${hookId}\n` +
+                                `POST {"event": "<name>", "payload": {...}} — knowing this URL is the authorization.\n` +
+                                `Rotate by deleting data/self-learning/hooks.token and restarting the engine.\n`,
+                        exitCode: 0,
+                };
         }
 
         return { stderr: `unknown subcommand "${sub}"\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };

@@ -14,7 +14,8 @@
  *     health signal habit trackers taught (skips are visible, never hidden)
  *   - the CREATE WIZARD accepts every schedule kind in one field with live
  *     hints: cron "0 9 * * 1-5" · "every 2d at 09:00" · "every 30m" ·
- *     "after 3d" (completion-anchored) · "+90m" (one-shot)
+ *     "after 3d" (completion-anchored) · "+90m" (one-shot) · "on <event>"
+ *     (M2: webhook-triggered, no clock slot)
  *   - keys: a new · enter open · space pause/resume · n run now · s skip the
  *     next occurrence · S snooze · e edit (field picker → inline input) ·
  *     x delete
@@ -30,6 +31,7 @@ import { matchesKey } from "@earendil-works/pi-tui";
 import type { Automation, AutomationRun, AutomationsResponse } from "../dashboard-types.ts";
 import type { Screen, ScreenDeps, SelectionWindow } from "../screen.ts";
 import { SelectionWindow as Window } from "../screen.ts";
+import { describeHookFilter } from "../../hook-filter.ts";
 import {
         ageStamp,
         badge,
@@ -59,11 +61,21 @@ type SchedulePlan =
         | { kind: "cron"; value: string }
         | { kind: "every"; value: string }
         | { kind: "after"; value: string }
-        | { kind: "delay"; minutes: number };
+        | { kind: "delay"; minutes: number }
+        | { kind: "event"; value: string };
 
 function parseSchedule(text: string): { ok: true; plan: SchedulePlan } | { ok: false; error: string } {
         const t = text.trim();
-        if (!t) return { ok: false, error: "enter a cron expression, every/after interval, or +Nm" };
+        if (!t) return { ok: false, error: "enter a cron expression, every/after interval, +Nm, or on <event>" };
+        if (/^on\s+/i.test(t)) {
+                // M2: an event routine — "on issue.opened". The engine's event-name
+                // charset (lowercase dot/underscore/hyphen, 1..64) is the whole check.
+                const name = t.replace(/^on\s+/i, "");
+                if (!/^[a-z0-9._-]{1,64}$/.test(name)) {
+                        return { ok: false, error: 'event names are lowercase dot/underscore/hyphen tokens, e.g. "on issue.opened"' };
+                }
+                return { ok: true, plan: { kind: "event", value: name } };
+        }
         if (t.startsWith("+")) {
                 const n = Number(t.slice(1).replace(/m$/i, ""));
                 if (!Number.isFinite(n) || n < 1 || n > 525_600) return { ok: false, error: "delay must be +1..+525600 minutes" };
@@ -140,6 +152,13 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
 
         /** The card's schedule chip: the engine's human description. */
         function scheduleChip(a: Automation): string {
+                if (a.schedule_kind === "event") {
+                        // `on <event>` first; the filter (described) trails, truncated
+                        // hard — the row is a scannable index, the detail pane carries
+                        // the full spec.
+                        const filter = a.event_filter ? ` · ${describeHookFilter(a.event_filter)}` : "";
+                        return theme.fg("dim", trunc(`on ${a.event_kind ?? "?"}${filter}`, 42));
+                }
                 if (a.schedule) return theme.fg("dim", a.schedule);
                 if (a.cron_expr) return `${theme.fg("muted", "cron ")}${theme.fg("dim", a.cron_expr)}`;
                 if (typeof a.delay_ms === "number") return theme.fg("dim", `one-shot ${inAbout(a.delay_ms - Date.now())}`);
@@ -272,6 +291,12 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
                 lines.push(field("model", a.model || "engine default"));
                 lines.push(field("workspace", trunc(a.workspace ?? "—", Math.max(20, width - 12))));
                 lines.push(field("schedule", a.schedule ?? (a.cron_expr ?? "one-shot")));
+                if (a.schedule_kind === "event") {
+                        // M2: the trigger spec + the last event runs (the runs list
+                        // below carries trigger_kind 'event' rows with their outcomes).
+                        lines.push(field("trigger", `event ${a.event_kind ?? "?"} (never from the clock)`));
+                        lines.push(field("filter", a.event_filter ? describeHookFilter(a.event_filter) : "— (any payload)"));
+                }
                 lines.push(field("timezone", a.timezone ?? "engine local"));
                 lines.push(field("misfire", a.misfire ?? "skip (default)"));
                 lines.push(
@@ -341,7 +366,7 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
                         lines.push(dimField("title", trunc(f.title.text, 60)));
                         lines.push("");
                         lines.push(f.schedule.renderField(theme, "schedule", width));
-                        lines.push(theme.fg("dim", '  cron "0 9 * * 1-5" · "every 30m" · "every 2d at 09:00" · "after 3d" (from completion) · "+90m" (one-shot)'));
+                        lines.push(theme.fg("dim", '  cron "0 9 * * 1-5" · "every 30m" · "every 2d at 09:00" · "after 3d" (from completion) · "+90m" (one-shot) · "on <event>" (webhook-triggered)'));
                         return lines;
                 }
                 if (f.step === 3) {
@@ -409,7 +434,9 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
                                                                         ? `every ${plan.plan.value}`
                                                                         : plan.plan.kind === "after"
                                                                                 ? `after ${plan.plan.value} (from completion)`
-                                                                                : `one-shot in ${plan.plan.minutes}m`,
+                                                                                : plan.plan.kind === "event"
+                                                                                        ? `on ${plan.plan.value} (fires when the event arrives)`
+                                                                                        : `one-shot in ${plan.plan.minutes}m`,
                                                 )
                                         : theme.fg("error", "(invalid — esc and re-enter)")
                         }`,
@@ -564,6 +591,7 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
                 if (plan.plan.kind === "cron") body.cron = plan.plan.value;
                 else if (plan.plan.kind === "every") body.every = plan.plan.value;
                 else if (plan.plan.kind === "after") body.after = plan.plan.value;
+                else if (plan.plan.kind === "event") body.event = plan.plan.value;
                 else body.delayMinutes = plan.plan.minutes;
                 void store
                         .createAutomation(body)
@@ -601,6 +629,11 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
                         case "schedule": {
                                 const plan = parseSchedule(f.input.text);
                                 if (!plan.ok) return void toast(plan.error, "amber");
+                                if (plan.plan.kind === "event") {
+                                        // The engine refuses schedule edits on event rows (delete +
+                                        // recreate keeps the trigger spec honest); same answer here.
+                                        return void toast("an event routine's trigger cannot be edited in place — delete and recreate it", "amber");
+                                }
                                 const patch: Record<string, unknown> = {};
                                 if (plan.plan.kind === "cron") patch.cron = plan.plan.value;
                                 else if (plan.plan.kind === "every") patch.every = plan.plan.value;
@@ -995,6 +1028,10 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
                         }
 
                         if (matchesKey(data, "s")) {
+                                if (a.schedule_kind === "event") {
+                                        toast("an event routine has no next occurrence — it fires when its event arrives (pause instead)", "amber");
+                                        return true;
+                                }
                                 void store
                                         .skipAutomation(a.id)
                                         .then((u) => toast(`skipped — next ${u.next_run_at ? inAbout(u.next_run_at - Date.now()) : "—"}`, "zinc"))
@@ -1003,6 +1040,10 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
                         }
 
                         if (matchesKey(data, "shift+s")) {
+                                if (a.schedule_kind === "event") {
+                                        toast("an event routine has no next occurrence to snooze (pause instead)", "amber");
+                                        return true;
+                                }
                                 if (a.lifecycle !== "active") {
                                         toast(`only an active routine can be snoozed (this one is ${a.lifecycle})`, "amber");
                                         return true;

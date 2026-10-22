@@ -162,7 +162,9 @@ injection-cap pruning receipts (what got dropped to fit 80k).
 Actions: `/` filter by decision/hook; `enter` details; `esc` back.
 Workflows: "what did the guardrail block today?", "what did the budget prune?".
 
-### 3.8 Router — the eight jobs
+### 3.8 Router — the jobs
+
+(nine since M3's `watch-scan`; the original eight are documented below)
 
 Data: `/api/jobs`.
 View: one row per job (kind interval/event, schedule, next fire, run count with

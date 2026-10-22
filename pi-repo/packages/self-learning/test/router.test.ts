@@ -21,7 +21,7 @@ import { JOB_DEFS, listJobs, Router, router } from "../src/router.ts";
 import { Store, store } from "../src/store.ts";
 
 describe("JOB_DEFS", () => {
-        test("defines the eight engine jobs", () => {
+        test("defines the nine engine jobs", () => {
                 expect(JOB_DEFS.map((d) => d.id).sort()).toEqual([
                         "auto-dream",
                         "db-retention",
@@ -31,6 +31,7 @@ describe("JOB_DEFS", () => {
                         "regression-on-ship",
                         "sandbox-gc",
                         "task-mint",
+                        "watch-scan", // M3 — the AI-comment watch (docs/watch.md)
                 ]);
         });
 

@@ -293,16 +293,19 @@ unown routines skip <id>               # skip the next occurrence (recorded in h
 unown routines snooze <id> 30          # push the next occurrence out 30 minutes
 unown routines pause <id> | resume <id>
 unown routines edit <id> [--title|--prompt|--cron|--every|--after|--timezone|--misfire|--mode ...]
+unown routines trigger <event> [--payload '<json>']   # dispatch an event locally (the webhook lane)
+unown routines hook-url                # the curl-able inbound webhook URL (its secret IS the auth)
 unown routines delete <id>
 unown dashboard routines               # the full TUI manager (or /routines in a session)
 ```
 
-Schedules — four kinds (the full semantics, DST policies and the decision record live in [routines.md](routines.md)):
+Schedules — five kinds (the full semantics, DST policies and the decision record live in [routines.md](routines.md)):
 
 - **cron** — a standard 5-field expression in the routine's timezone (`"0 9 * * 1-5"`; names, ranges, lists and steps supported)
 - **every** — a schedule-anchored interval: `"30m"`, `"6h"`, `"2d"`, `"3w"`, or `"2d at 09:00"` (day/week intervals step by wall clock — a daily 09:00 routine stays at 09:00 across DST)
 - **after** — completion-anchored: `"45m"`, `"3d"` — the next run arms N units after the previous run *completes*; regenerating, never overdue
 - **one-shot** — `--delay-minutes N`, runs once and completes
+- **event** — `--on-event issue.opened` (+ `--filter` payload expression): no clock at all — dispatched by inbound webhook events (`POST /api/hooks/<id>`, flood-guarded) or `routines trigger`; see [routines.md § Event routines](routines.md#event-routines)
 
 Per-routine controls: `--timezone America/New_York` (IANA; default: local), `--misfire skip|catch-up` (a slot missed while asleep/engine-down is recorded and skipped, or runs once on wake when under 24 h old — launchd semantics; default skip), `--until 2026-12-31` (inclusive end boundary — past it, the routine completes), `--max-runs N` (manual runs never count). `--model` pins a model for the run; `--workspace` defaults to the current directory.
 

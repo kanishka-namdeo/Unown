@@ -205,7 +205,7 @@ export function createRouterScreen(deps: ScreenDeps): Screen {
 			const jobList = jobs();
 			const sbList = sandboxes();
 			if (jobList.length === 0) {
-				lines.push(...emptyState(theme, "no router jobs", "the router boots with eight jobs"));
+				lines.push(...emptyState(theme, "no router jobs", "the router boots with nine jobs"));
 			}
 			const view = Math.max(1, viewport - fixedRows());
 			win.resync();

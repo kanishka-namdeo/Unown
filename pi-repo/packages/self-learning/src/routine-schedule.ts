@@ -31,6 +31,9 @@
  *   after   "after 45m" | "after 3d"  N units after each run COMPLETES —
  *                                   regenerating semantics; cannot misfire
  *   once    delayMinutes (1..525600) the existing one-shot
+ *   event   "on <name>"            M2: no time slot at all — dispatched by
+ *                                   inbound webhook events (hook-filter.ts
+ *                                   carries the payload-filter half)
  *
  * Timezone/DST policies (pinned by test/routine-schedule.test.ts):
  *
@@ -55,13 +58,16 @@
  * (automations.ts) owns persistence, claiming and dispatch.
  */
 import { describeCron, nextRun, parseCron, CronParseError } from "./cron.ts";
+import { describeHookFilter } from "./hook-filter.ts";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-/** The recurrence kinds a routine can carry. `once` is the legacy one-shot. */
-export type ScheduleKind = "cron" | "every" | "after" | "once";
+/** The recurrence kinds a routine can carry. `once` is the legacy one-shot;
+ *  `event` (M2) is not a recurrence at all — the row's next_run_at stays
+ *  NULL forever and dispatch happens through the webhook lane. */
+export type ScheduleKind = "cron" | "every" | "after" | "once" | "event";
 
 export type IntervalUnit = "m" | "h" | "d" | "w";
 
@@ -456,7 +462,9 @@ export function planRoutineSchedule(spec: ScheduleInput, timezone: string | null
 // The row-facing planner (what the scheduler calls after each run/skip)
 // ---------------------------------------------------------------------------
 
-/** The schedule columns as they live on an automations row. */
+/** The schedule columns as they live on an automations row. The event-kind
+ *  columns (M2) are optional: every pre-event caller passes rows that never
+ *  carried them and must keep compiling. */
 export interface RoutineScheduleColumns {
         schedule_kind: string | null;
         cron_expr: string | null;
@@ -466,6 +474,8 @@ export interface RoutineScheduleColumns {
         delay_ms: number | null;
         timezone: string | null;
         until_ms: number | null;
+        event_kind?: string | null;
+        event_filter?: string | null;
 }
 
 /** Infer the kind of a LEGACY row (pre-routines schema): cron_expr → cron,
@@ -580,6 +590,11 @@ export function describeRoutineSchedule(row: RoutineScheduleColumns, nowMs: numb
                 }
                 case "after":
                         return `after ${row.interval_n} ${unitWord((row.interval_unit as IntervalUnit | null) ?? "d", row.interval_n ?? 1)} (from completion)${tz}`;
+                case "event":
+                        // M2: the trigger description (the filter is half of WHEN this
+                        // fires, so it rides the schedule line; describeHookFilter keeps
+                        // it short — long ones truncate at the display edges).
+                        return `on ${row.event_kind ?? "?"}${row.event_filter ? ` · ${describeHookFilter(row.event_filter)}` : ""}`;
                 default:
                         if (typeof row.delay_ms === "number") {
                                 const mins = Math.max(0, Math.round((row.delay_ms - nowMs) / 60_000));

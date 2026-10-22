@@ -480,7 +480,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
         // -------------------------------------------------------------------------
         // 7. Router jobs: list + toggle (+ trigger already covered by SSE test)
         // -------------------------------------------------------------------------
-        test("GET /api/jobs lists the eight seeded jobs; toggle flips and restores", async () => {
+        test("GET /api/jobs lists the nine seeded jobs; toggle flips and restores", async () => {
                 const { jobs } = (await (await authFetch(api("/api/jobs"))).json()) as {
                         jobs: Array<Record<string, unknown>>;
                 };
@@ -494,6 +494,7 @@ describe.skipIf(!INTEGRATION_ACTIVE)("engine integration (real server, temp DB/d
                                 "regression-on-ship",
                                 "sandbox-gc",
                                 "task-mint",
+                                "watch-scan",
                         ].sort(),
                 );
                 for (const j of jobs) {

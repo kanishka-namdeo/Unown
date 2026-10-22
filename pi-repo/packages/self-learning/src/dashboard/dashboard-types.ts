@@ -421,7 +421,7 @@ export interface JobsResponse {
 
 export type AutomationMode = "read-only" | "standard";
 export type AutomationLifecycle = "active" | "paused" | "completed" | "failed";
-export type AutomationRunTrigger = "schedule" | "manual";
+export type AutomationRunTrigger = "schedule" | "manual" | "event";
 export type AutomationRunStatus = "running" | "succeeded" | "failed" | "skipped";
 
 export interface Automation {
@@ -437,6 +437,9 @@ export interface Automation {
         timezone: string | null;
         until_ms: number | null;
         misfire: string | null;
+        /** M2 event routines: the webhook trigger spec (event rows only). */
+        event_kind?: string | null;
+        event_filter?: string | null;
         workspace: string;
         mode: AutomationMode;
         model: string | null;

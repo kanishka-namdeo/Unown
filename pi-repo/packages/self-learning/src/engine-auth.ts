@@ -60,6 +60,43 @@ export function engineTokenPath(): string {
         return join(DATA_DIR, ENGINE_TOKEN_FILE);
 }
 
+// ---------------------------------------------------------------------------
+// The inbound-webhook capability (M2 event routines)
+// ---------------------------------------------------------------------------
+
+export const HOOKS_TOKEN_FILE = "hooks.token";
+
+/** Where the per-install hook id lives — same data-dir resolution as the
+ *  engine token, so redirects (tests, UNOWN_HOME installs) cover it too. */
+export function hooksTokenPath(): string {
+        return join(DATA_DIR, HOOKS_TOKEN_FILE);
+}
+
+/** The hook id for POST /api/hooks/<id>: 32 hex chars generated ONCE and
+ *  persisted for the life of the data dir — unlike engine.token it must be
+ *  STABLE across engine restarts or every configured sender (a GitHub
+ *  webhook, a CI job) breaks on the next boot. Knowing the URL is the
+ *  authorization (GitHub-webhook-URL semantics: unguessable path, no
+ *  header secret to distribute), which is also why the file is 0600 and
+ *  the comparison is timing-safe. Rotate by deleting the file and
+ *  restarting — docs/routines.md "Event routines" documents the flow. */
+export function ensureHooksToken(): string {
+        try {
+                const existing = readFileSync(hooksTokenPath(), "utf8").trim();
+                if (/^[a-f0-9]{32}$/.test(existing)) return existing;
+        } catch {
+                /* missing or unreadable — generate below */
+        }
+        const token = randomBytes(16).toString("hex");
+        try {
+                mkdirSync(join(hooksTokenPath(), ".."), { recursive: true });
+                writeFileSync(hooksTokenPath(), token, { mode: 0o600 });
+        } catch {
+                /* read-only fs — the in-memory id still serves this boot */
+        }
+        return token;
+}
+
 export interface AuthPolicy {
         /** "token" (default) or "off" — the UNOWN_ENGINE_AUTH mode. */
         mode: "token" | "off";
@@ -258,10 +295,19 @@ export function tokenMatches(presented: string | null, expected: string): boolea
 
 /** Should this request skip the token gate? The plain-text liveness root
  *  (reveals only engine presence — gives third-party probes something to
- *  ping) and CORS preflights (cannot carry credentials by design). */
+ *  ping) and CORS preflights (cannot carry credentials by design).
+ *
+ *  M2 event routines add the inbound-webhook lane: POST /api/hooks/<hookId>
+ *  authenticates by KNOWING the URL — the 32-hex hook id IS the capability
+ *  (GitHub-webhook-URL semantics), and external senders cannot read
+ *  engine.token, so requiring the bearer would defeat the endpoint entirely.
+ *  The literal `info` segment is NOT exempt (it is GET-only and reveals the
+ *  hook id, so it stays behind the engine token). Everything else under
+ *  /api/hooks/ answers 404 before touching any state. */
 export function tokenExempt(method: string, pathname: string): boolean {
         if (method === "OPTIONS") return true;
         if (pathname === "/") return true;
+        if (method === "POST" && /^\/api\/hooks\/(?!info$)[^/]+$/.test(pathname)) return true;
         return false;
 }
 
