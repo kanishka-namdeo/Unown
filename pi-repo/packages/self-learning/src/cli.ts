@@ -51,6 +51,7 @@ import { readSpawnState } from "./engine-supervisor.ts";
 import { agentGitSha, codeMtimeMs, compareEngineBuild } from "./engine-version.ts";
 import { createFleetChildExtension } from "./fleet-child.ts";
 import { FLEET_DRAIN_SENTINEL } from "./fleet-runtime.ts";
+import { createFirstFlightsExtension } from "./flights.ts";
 import { cmdInfo } from "./info.ts";
 import { generateAgentsMd, shouldOverwriteAgentsMd } from "./init-agents.ts";
 import { commandExists, DEFAULT_SERVERS } from "./lsp.ts";
@@ -556,6 +557,11 @@ interface BootOptions {
         /** --provider pin (M3): resolved against the multi-provider registry
          * together with --model by resolveCliModel. */
         provider?: string;
+        /** The TUI lane's positional prompt (becomes InteractiveMode's
+         * initialMessage). Onboarding 2.1 "First flights": an immediate
+         * first message must suppress the startup catalog — the user already
+         * told us what they want to do. */
+        initialMessage?: string;
 }
 
 /**
@@ -649,6 +655,12 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         // a subagent's todo list rides its own session entries); the advisor is
         // foreground-only — see addons/index.ts.
         const addonsExtension = createUnownAddonsExtension({ cwd, verbose });
+        // Onboarding 2.1 "First flights": the guided first-task catalog that
+        // replaces the editor slot on a fresh TUI boot (see src/flights.ts).
+        // autoShow is off when the TUI lane carries an initialMessage — that
+        // message is the user's first task and fires the firstTaskAt latch
+        // anyway.
+        const firstFlightsExtension = createFirstFlightsExtension({ cwd, autoShow: !bootOpts.initialMessage });
 
         const settingsManager = SettingsManager.create(cwd, agentDir);
 
@@ -705,6 +717,7 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                         extension as any,
                                         toolsExtension as any,
                                         addonsExtension as any,
+                                        firstFlightsExtension as any,
                                         mcpExtension as any,
                                         permissionsExtension as any,
                                         splitviewExtension as any,
@@ -2175,7 +2188,13 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
                 console.log(`  → ${pre.hint}`);
                 console.log();
         }
-        const { runtime } = await bootRuntime(cwd, verbose, bootOpts);
+        const { runtime } = await bootRuntime(cwd, verbose, {
+                ...bootOpts,
+                // First flights: the positional prompt becomes the TUI's
+                // initialMessage — surface it to bootRuntime so the flights
+                // extension can suppress the startup catalog.
+                initialMessage: prompt,
+        });
         const mode = new InteractiveMode(runtime as any, {
                 // Brand the interactive TUI as unown (header, terminal title); suppress pi's own update check.
                 appName: "unown",

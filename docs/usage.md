@@ -304,11 +304,12 @@ Limits (zcode's, transliterated): 20 automations total, 2 concurrent runs, a 30-
 
 ## Slash commands
 
-unown adds thirty-one commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
+unown adds thirty-two commands of its own — plus the split-view display mode's eleven (`/split*` and `/files`), listed last:
 
 | Command | What it does |
 |---|---|
 | `/plan` | Toggle plan mode (read-only exploration → numbered plan → execute) |
+| `/flights` | Reopen the **First flights** starter catalog — the one-time guided first task a fresh TUI session opens with (digits `1`–`4` or ↑↓+Enter pick, the prompt lands in the editor ready to send; `Esc` closes, `x` never auto-shows it again) |
 | `/todos` | Show the session todo list, grouped by status with dependency chains ([todo addon](addons.md)) |
 | `/addons` | Interactive configurator for the [addons](addons.md) — enable/disable `ask_user_question` / `todo` / `advisor` and edit their settings; every change persists to `~/.unown/agent/addons.json` immediately (`/addons status` prints the effective config) |
 | `/advisor [status\|on\|off]` | [Advisor](addons.md#advisor) status and control — model, cadence, budgets, usage, watchdog state; `on`/`off` persist the flag (`/reload` applies). Registered only while the advisor addon is enabled |

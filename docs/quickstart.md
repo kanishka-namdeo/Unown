@@ -112,7 +112,7 @@ The wizard is a guided flow, not a form. In order:
 3. **API key** — typed input is **masked** (per-char `•`, backspace works, Ctrl+C cancels cleanly). A blank key continues keyless (fine for local servers). If a key is already stored, you get `sk-12345… ✓ already stored (auth.json)` and choose **Keep / Replace / Clear** — Keep preserves the storage form, Clear removes every local trace of it.
 4. **Model, live** — the endpoint is probed with the key you just gave, and you pick from what it **actually serves** (the preset default is preselected). Unreachable or a non-OpenAI wire (Anthropic) falls back to typing the id, with the reason stated.
 5. **The look** — pick a TUI theme (the current one first — blank keeps it; `dark`/`light` + any `~/.unown/agent/themes/*.json`). Switch any time in-session with `/settings`.
-6. **Setup summary** — provider, model (+N discovered), where the key lives (`auth.json` mode 0600 / `$ENV` ref / keyless / bridge placeholder), theme, verify result, kept sibling providers, and the files touched — followed by `Next` commands and **First flights** (four first-task suggestions to paste into a session).
+6. **Setup summary** — provider, model (+N discovered), where the key lives (`auth.json` mode 0600 / `$ENV` ref / keyless / bridge placeholder), theme, verify result, kept sibling providers, and the files touched — followed by `Next` commands and **First flights**, the four starter tasks (the first TUI session offers the same catalog interactively — below).
 
 Every step has a default (blank = take it), Ctrl+C cancels with `nothing written`, and existing providers are never dropped (merge semantics; `--force` is the explicit reset).
 
@@ -146,6 +146,8 @@ unown --plan "add auth"                # read-only exploration → numbered plan
 ```
 
 **First run**: on a fresh install, `unown` asks once — `Connect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)` — `Enter` opens the same guided wizard `unown setup` runs; `n` skips (on a source install the bundled bridge stays wired; on a standalone binary there is no provider yet). Re-run `unown setup` any time. After a completed wizard the first-run banner is skipped (the setup summary already said everything); after declining it tells you exactly what you are on. The offer never repeats — delete `~/.unown/agent/` to see it again.
+
+**First flights**: the first TUI session opens with a one-time starter catalog in place of the empty editor — the same four tasks the setup summary lists (`1`–`4` or ↑↓+Enter pick, `Esc` closes for this session, `x` stops the auto-show for good). Picking one drops the prompt into the editor ready to send — press Enter, or edit it first. The catalog retires the moment you send your first real message (a flight's or your own; `Esc` alone brings it back next session), `/flights` reopens it any time, and `unown "a prompt"` never shows it — that prompt is the first task.
 
 Before the first message, unown pre-flights the model endpoint — if it can't reach it or the key is rejected you get the exact fix, not a stack trace. When you exit, the session leaves a note for AutoDream; come back tomorrow and the project's `.unown/memory/project.md` remembers what mattered.
 

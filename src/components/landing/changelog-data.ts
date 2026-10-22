@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 175;
+export const CHANGELOG_TOTAL_ENTRIES = 176;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 68,
+  "Added": 69,
   "Changed": 11,
   "Deprecated": 0,
   "Removed": 2,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 6,
+    "total": 7,
     "counts": {
-      "Added": 1,
+      "Added": 2,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
@@ -62,6 +62,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "verify-first defaults — the project's own checks now run inside the agent loop",
+            "behavior": false
+          },
+          {
+            "title": "First flights — the guided first task inside the TUI",
             "behavior": false
           }
         ]

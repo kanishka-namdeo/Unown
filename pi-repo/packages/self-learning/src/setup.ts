@@ -20,6 +20,7 @@
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { firstFlightCatalog } from "./flights-core.ts";
 import { probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import {
         clearProviderKey,
@@ -241,14 +242,9 @@ export interface SetupOutcome {
         served?: string[];
 }
 
-function firstFlightCatalog(): string[] {
-        return [
-                '"explain how unown\'s memory tiers work"',
-                '"generate an AGENTS.md for this repo"  (or run: unown init-agents)',
-                '"open the dashboard and walk me through it"  (or run: unown dashboard)',
-                '"run unown doctor and explain anything yellow"',
-        ];
-}
+// (the local firstFlightCatalog string list moved to src/flights-core.ts —
+// the shared First flights catalog: the setup summary and the in-TUI starter
+// card render from one source of truth.)
 
 /** Pure builder (unit-tested): the summary text without printing. */
 export function buildSetupSummaryText(out: SetupOutcome): string {
@@ -292,7 +288,7 @@ export function buildSetupSummaryText(out: SetupOutcome): string {
         lines.push("  unown doctor         end-to-end diagnostics");
         lines.push("  unown providers list  see every configured provider");
         lines.push("\nFirst flights (paste into a session):");
-        for (const t of firstFlightCatalog()) lines.push(`  · ${t}`);
+        for (const f of firstFlightCatalog()) lines.push(`  · ${f.summary}`);
         return lines.join("\n") + "\n";
 }
 
