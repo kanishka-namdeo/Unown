@@ -91,6 +91,10 @@ export interface MockEngineCalls {
         skillsRetired: string[];
         /** POST /api/automations count. */
         automationsCreated: number;
+        /** POST /api/automations/:id/skip — ids. */
+        automationsSkipped: string[];
+        /** POST /api/automations/:id/snooze — {id, minutes}. */
+        automationsSnoozed: Array<{ id: string; minutes: number }>;
         /** PATCH /api/automations/:id — ids. */
         automationsPatched: string[];
         /** DELETE /api/automations/:id — ids. */
@@ -811,6 +815,13 @@ export async function startMockEngine(): Promise<MockEngine> {
                         prompt: "Review the repo health and report anomalies.",
                         cron_expr: "0 3 * * *",
                         delay_ms: null,
+                        schedule_kind: "cron",
+                        interval_n: null,
+                        interval_unit: null,
+                        interval_at: null,
+                        timezone: "America/New_York",
+                        until_ms: null,
+                        misfire: "catch-up",
                         workspace: "/home/dev/unown",
                         mode: "read-only",
                         model: null,
@@ -822,7 +833,7 @@ export async function startMockEngine(): Promise<MockEngine> {
                         last_run_at: T0 - 18 * MIN,
                         created_at: T0 - 3 * 24 * 60 * MIN,
                         updated_at: T0 - 18 * MIN,
-                        schedule: "at 03:00",
+                        schedule: "cron 0 3 * * * — at 03:00 (America/New_York)",
                         lastRun,
                 },
         ];
@@ -886,6 +897,8 @@ export async function startMockEngine(): Promise<MockEngine> {
                 skillsRolledBack: [],
                 skillsRetired: [],
                 automationsCreated: 0,
+                automationsSkipped: [],
+                automationsSnoozed: [],
                 automationsPatched: [],
                 automationsDeleted: [],
                 webcacheCleared: 0,
@@ -1177,12 +1190,23 @@ export async function startMockEngine(): Promise<MockEngine> {
                 if (p === "/api/automations") {
                         calls.automationsCreated++;
                         automationSeq++;
+                        const every = typeof body.every === "string" && body.every ? body.every : null;
+                        const after = typeof body.after === "string" && body.after ? body.after : null;
+                        const interval = every ?? after;
+                        const m = interval ? interval.match(/^(\d+)\s*(m|h|d|w)(?:\s*(?:at|@)\s*([0-2]?\d:[0-5]\d))?$/i) : null;
                         const created: Automation = {
                                 id: `auto-mock-${automationSeq}`,
-                                title: typeof body.title === "string" && body.title ? body.title : "untitled automation",
+                                title: typeof body.title === "string" && body.title ? body.title : "untitled routine",
                                 prompt: typeof body.prompt === "string" ? body.prompt : "",
                                 cron_expr: typeof body.cron === "string" && body.cron ? body.cron : null,
-                                delay_ms: null,
+                                delay_ms: typeof body.delayMinutes === "number" ? Date.now() + body.delayMinutes * 60_000 : null,
+                                schedule_kind: every ? "every" : after ? "after" : typeof body.cron === "string" && body.cron ? "cron" : "once",
+                                interval_n: m ? Number(m[1]) : null,
+                                interval_unit: m ? m[2].toLowerCase() : null,
+                                interval_at: m?.[3] ? m[3].padStart(5, "0") : null,
+                                timezone: typeof body.timezone === "string" && body.timezone ? body.timezone : null,
+                                until_ms: typeof body.until === "number" ? body.until : null,
+                                misfire: body.misfire === "catch-up" ? "catch-up" : body.misfire === "skip" ? "skip" : null,
                                 workspace: typeof body.workspace === "string" ? body.workspace : "/tmp",
                                 mode: body.mode === "standard" ? "standard" : "read-only",
                                 model: typeof body.model === "string" && body.model ? body.model : null,
@@ -1194,16 +1218,37 @@ export async function startMockEngine(): Promise<MockEngine> {
                                 last_run_at: null,
                                 created_at: Date.now(),
                                 updated_at: Date.now(),
-                                schedule: "at :00",
+                                schedule: every ? `every ${every}` : after ? `after ${after} (from completion)` : "at :00",
                                 lastRun: null,
                         };
                         automations.push(created);
                         json(res, { automation: created });
                         return;
                 }
-                const autoRun = p.match(/^\/api\/automations\/([^/]+)\/run$/);
+                const autoRun = p.match(/^\/api\/automations\/([^/]+)\/(run|skip|snooze)$/);
                 if (autoRun) {
-                        json(res, { ok: true });
+                        const id = decodeURIComponent(autoRun[1] ?? "");
+                        const a = automations.find((x) => x.id === id);
+                        if (!a) {
+                                json(res, { error: "automation not found" }, 404);
+                                return;
+                        }
+                        if (autoRun[2] === "run") {
+                                json(res, { ok: true });
+                                return;
+                        }
+                        if (autoRun[2] === "skip") {
+                                calls.automationsSkipped.push(id);
+                                a.next_run_at = Date.now() + 24 * 60 * MIN;
+                                emit("automation:skipped", { id, reason: "skipped_by_user" });
+                                json(res, { automation: a });
+                                return;
+                        }
+                        const minutes = typeof body.minutes === "number" ? body.minutes : 0;
+                        calls.automationsSnoozed.push({ id, minutes });
+                        if (minutes > 0 && a.next_run_at) a.next_run_at += minutes * 60_000;
+                        emit("automation:updated", { id, snoozedTo: a.next_run_at });
+                        json(res, { automation: a });
                         return;
                 }
                 json(res, { error: "not found" }, 404);
@@ -1221,7 +1266,14 @@ export async function startMockEngine(): Promise<MockEngine> {
                         }
                         if (typeof body.title === "string") a.title = body.title;
                         if (typeof body.prompt === "string") a.prompt = body.prompt;
+                        if (body.lifecycle === "paused" || body.lifecycle === "active") a.lifecycle = body.lifecycle;
                         if (typeof body.paused === "boolean") a.lifecycle = body.paused ? "paused" : "active";
+                        if (body.misfire === "catch-up" || body.misfire === "skip" || body.misfire === null) {
+                                a.misfire = body.misfire === null ? null : (body.misfire as string);
+                        }
+                        if (typeof body.timezone === "string" || body.timezone === null) a.timezone = body.timezone as string | null;
+                        if (typeof body.until === "number" || body.until === null) a.until_ms = body.until as number | null;
+                        if (typeof body.maxRuns === "number" || body.maxRuns === null) a.max_runs = body.maxRuns as number | null;
                         a.updated_at = Date.now();
                         json(res, { automation: a });
                         return;

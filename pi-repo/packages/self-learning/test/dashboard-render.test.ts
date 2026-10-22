@@ -105,7 +105,7 @@ describe("DashboardApp headless render", () => {
 			hooks: ["events", "filter", "f filter"],
 			router: ["router jobs", "auto-dream", "sandboxes", "1 job(s) failed their last run", "✗ 47 runs"],
 			gateway: ["requests", "latency"],
-			automations: ["automations", "cron"],
+			automations: ["routines", "cron"],
 			webcache: ["entries"],
 		};
 		for (const spec of SCREEN_SPECS) {
@@ -124,7 +124,7 @@ describe("DashboardApp headless render", () => {
 		expect(pane).toContain("2 Memory");
 		expect(pane).toContain("5 Skills");
 		expect(pane).toContain("9 Gateway");
-		expect(pane).toContain("0 Automations");
+		expect(pane).toContain("0 Routines");
 		expect(pane).toContain("· Web Cache");
 		// Group headers and the loop-state foot.
 		expect(pane).toContain("LEARNING");
@@ -378,5 +378,94 @@ describe("memory version diff (M11)", () => {
 		expect(diff, "the +N/−M tally line renders").toContain("+2 / −2");
 		app.handleInput("\x1b"); // esc → back to the rows, not out to the tier list
 		expect(plain(app.render(120))).toContain("version history");
+	});
+});
+
+describe("routines screen (v2 interactions)", () => {
+	test("detail shows the full spec — kind, timezone, misfire, streak", async () => {
+		app.setScreen("automations");
+		app.handleInput("\x1b"); // close any overlay a previous test left open
+		app.handleInput("\r"); // enter on the first routine → detail
+		await Bun.sleep(150); // the runs fetch is drill-in async
+		const pane = plain(app.render(120));
+		expect(pane).toContain("routine · nightly repo health check");
+		expect(pane).toContain("timezone");
+		expect(pane).toContain("America/New_York");
+		expect(pane).toContain("catch-up");
+		expect(pane).toContain("last 10:");
+		app.handleInput("\x1b"); // back
+	});
+
+	test("s skips the next occurrence (POST /skip)", async () => {
+		app.setScreen("automations");
+		app.handleInput("\x1b"); // close any overlay a previous test left open
+		app.handleInput("s");
+		await waitFor(() => mock.calls.automationsSkipped.length === 1, 2000, "POST /api/automations/:id/skip executed");
+		const pane = plain(app.render(120));
+		expect(pane).toContain("skipped");
+	});
+
+	test("S snoozes by typed minutes (POST /snooze)", async () => {
+		app.setScreen("automations");
+		app.handleInput("\x1b"); // close any overlay a previous test left open
+		app.handleInput("S"); // opens the snooze input
+		let pane = plain(app.render(120));
+		expect(pane).toContain("snooze next occurrence");
+		for (const ch of "15") app.handleInput(ch);
+		app.handleInput("\r");
+		await waitFor(
+			() => mock.calls.automationsSnoozed.some((x) => x.minutes === 15),
+			2000,
+			"POST /api/automations/:id/snooze executed with minutes=15",
+		);
+		pane = plain(app.render(120));
+		expect(pane).toContain("snoozed");
+	});
+
+	test("e opens the edit flow; a schedule edit PATCHes the new kind", async () => {
+		app.setScreen("automations");
+		app.handleInput("\x1b"); // close any overlay a previous test left open
+		app.handleInput("e"); // field picker
+		let pane = plain(app.render(120));
+		expect(pane).toContain("edit routine");
+		app.handleInput("j"); // → prompt
+		app.handleInput("j"); // → schedule
+		app.handleInput("\r"); // open the schedule input
+		pane = plain(app.render(120));
+		expect(pane).toContain("edit · schedule");
+		for (const ch of "every 2w at 08:30") app.handleInput(ch);
+		app.handleInput("\r"); // apply
+		await waitFor(() => mock.calls.automationsPatched.includes("auto-e2e-1"), 2000, "PATCH /api/automations/:id executed");
+		pane = plain(app.render(120));
+		expect(pane).toContain("routine updated");
+	});
+
+	test("the wizard creates an every-routine with timezone + misfire", async () => {
+		app.setScreen("automations");
+		app.handleInput("\x1b"); // close any overlay a previous test left open
+		app.handleInput("a"); // new routine wizard
+		let pane = plain(app.render(120));
+		expect(pane).toContain("new routine · title");
+		for (const ch of "bi-weekly dependency audit") app.handleInput(ch);
+		app.handleInput("\r");
+		for (const ch of "Audit dependencies and report drift.") app.handleInput(ch);
+		app.handleInput("\r");
+		for (const ch of "every 2w at 09:00") app.handleInput(ch);
+		app.handleInput("\r");
+		for (const ch of "Europe/Berlin") app.handleInput(ch);
+		app.handleInput("\r");
+		app.handleInput("j"); // misfire → catch-up
+		app.handleInput("\r");
+		app.handleInput("\r"); // mode read-only
+		app.handleInput("\r"); // model empty
+		pane = plain(app.render(120));
+		expect(pane).toContain("new routine · confirm");
+		expect(pane).toContain("every 2w at 09:00");
+		expect(pane).toContain("Europe/Berlin");
+		expect(pane).toContain("catch-up");
+		app.handleInput("y"); // create
+		await waitFor(() => mock.calls.automationsCreated >= 1, 2000, "POST /api/automations executed");
+		pane = plain(app.render(120));
+		expect(pane).toContain("routine created");
 	});
 });

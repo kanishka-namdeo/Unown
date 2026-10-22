@@ -31,7 +31,7 @@ Usage:
   unown dash                  alias
 
 Screens: overview, memory, dreams, notes, skills, lab, hooks, router,
-         gateway, automations, webcache
+         gateway, routines (id: automations), webcache
          (providers live in "unown providers" + the /providers command)
 
 Needs an interactive terminal (TTY). From a script, use the engine API
@@ -60,7 +60,12 @@ export async function runDashboardCommand(args: string[]): Promise<number> {
                 return 1;
         }
         maybeShowUpdateNotice();
-        const initialScreen = args.find((a) => !a.startsWith("-"));
+        // "routines" deep-links to the automations screen (the user-facing name;
+        // the id keeps the historical spelling for existing links/muscle memory).
+        const initialScreen = (() => {
+                const arg = args.find((a) => !a.startsWith("-"));
+                return arg === "routines" ? "automations" : arg;
+        })();
 
         // Agent dir + theme: the same seeding the chat TUI does on first run
         // (never clobbers user edits), then pi's sanctioned agent-dir override so

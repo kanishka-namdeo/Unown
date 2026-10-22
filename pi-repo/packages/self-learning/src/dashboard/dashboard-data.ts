@@ -205,6 +205,14 @@ const INVALIDATIONS: Record<string, ResourceId[]> = {
         "automation:completed": ["automations", "overview"],
         "automation:run-started": ["automations", "overview"],
         "automation:skipped": ["automations", "overview"],
+        // The terminal transitions previously leaned on the 4s fast-lane poll —
+        // the SSE stream should invalidate the list the moment they land.
+        "automation:run-succeeded": ["automations", "overview"],
+        "automation:run-failed": ["automations", "overview"],
+        "automation:recovered": ["automations", "overview"],
+        "automation:dispatch-retry": ["automations"],
+        "automation:dispatch-exhausted": ["automations", "overview"],
+        "automations:started": ["automations"],
         "job:started": ["jobs", "overview"],
         "job:finished": ["jobs", "overview"],
         "job:error": ["jobs", "overview"],
@@ -674,6 +682,22 @@ export class DashboardStore {
                 } finally {
                         void this.refresh("automations");
                 }
+        }
+
+        async skipAutomation(id: string): Promise<Automation> {
+                const r = await this.client.post<{ automation: Automation }>(`/api/automations/${encodeURIComponent(id)}/skip`);
+                void this.refresh("automations");
+                this.clearDetailCache(`automationruns:${id}`);
+                return r.automation;
+        }
+
+        async snoozeAutomation(id: string, minutes: number): Promise<Automation> {
+                const r = await this.client.post<{ automation: Automation }>(
+                        `/api/automations/${encodeURIComponent(id)}/snooze`,
+                        { minutes },
+                );
+                void this.refresh("automations");
+                return r.automation;
         }
 
         // ---- internals ----

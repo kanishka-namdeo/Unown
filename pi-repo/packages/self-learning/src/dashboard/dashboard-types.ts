@@ -430,6 +430,13 @@ export interface Automation {
         prompt: string;
         cron_expr: string | null;
         delay_ms: number | null;
+        schedule_kind: string | null;
+        interval_n: number | null;
+        interval_unit: string | null;
+        interval_at: string | null;
+        timezone: string | null;
+        until_ms: number | null;
+        misfire: string | null;
         workspace: string;
         mode: AutomationMode;
         model: string | null;
