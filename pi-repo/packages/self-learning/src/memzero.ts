@@ -1059,15 +1059,24 @@ export async function importLegacyMarkdown(
                                 .trim(),
                 )
                 .filter((l) => l.length >= 8); // HTML comments and markers fall below this
-        if (bullets.length === 0) return 0;
+        // Seed-instructional bullets are scaffolding copy, not learned rules — a
+        // file whose only non-pristine content is the seed's own instructions must
+        // not import "This file is maintained by Unown…" as a memory (both seed
+        // generations' instructional bullets are covered).
+        const INSTRUCTIONAL = [
+                /^this file is maintained by unown/i,
+                /^your own durable rules/i,
+        ];
+        const learnable = bullets.filter((b) => !INSTRUCTIONAL.some((re) => re.test(b)));
+        if (learnable.length === 0) return 0;
         const platform = opts.platform ?? (await getMemoryPlatform());
         await platform.add(
-                bullets.map((b) => ({ role: "user", content: b })),
+                learnable.map((b) => ({ role: "user", content: b })),
                 scope,
                 { kind: opts.kind ?? "legacy" },
                 { infer: false },
         );
-        return bullets.length;
+        return learnable.length;
 }
 
 /** Render sections in the old project-memory shape (Workflow first). */
@@ -1086,6 +1095,21 @@ const RENDER_SECTIONS: Array<{ title: string; test: RegExp }> = [
                 test: /environment|needs? |requires? |path |version|macos|windows|linux|machine|env\b|variable/i,
         },
 ];
+
+/** Extract the "## Manual notes" section from a previous project-memory file
+ *  (from the heading to the next `## ` heading or the footer comment/EOF).
+ *  Returns "" when the file has none. */
+export function extractManualNotesSection(markdown: string): string {
+        const src = String(markdown ?? "");
+        const start = src.indexOf("## Manual notes");
+        if (start === -1) return "";
+        let end = src.length;
+        const nextHeading = src.indexOf("\n## ", start + 1);
+        if (nextHeading !== -1) end = Math.min(end, nextHeading + 1); // keep the trailing newline
+        const footer = src.indexOf("<!-- unown: rendered", start + 1);
+        if (footer !== -1) end = Math.min(end, footer);
+        return src.slice(start, end).trim() + "\n";
+}
 
 /**
  * Deterministic markdown render of a scope's memories — the file-on-disk
@@ -1149,6 +1173,15 @@ export function renderProjectMemoryMarkdown(
                 parts.push(`## ${title}`);
                 for (const m of list) parts.push(`- ${m.text.replace(/\s+/g, " ").trim()}`);
                 parts.push("");
+        }
+        // The Manual notes section is the user's hand-edit lane: whatever the
+        // previous file carried under "## Manual notes" is re-appended VERBATIM —
+        // dreams re-render platform memories but never rewrite user-authored
+        // bullets. (The honest fix for the seed's old "edit freely" promise: a
+        // real preserved hand-edit path, not a misleading one.)
+        const manual = extractManualNotesSection(opts.preserveManualNotesFrom ?? "");
+        if (manual.trim()) {
+                parts.push(manual.trimEnd(), "");
         }
         const renderedTotal = kept.length;
         parts.push(

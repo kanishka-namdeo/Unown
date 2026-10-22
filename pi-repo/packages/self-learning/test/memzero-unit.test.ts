@@ -15,7 +15,7 @@ describe("reframeNoteForExtraction", () => {
 	const NEW_NOTE = [
 		"Terminal session outcome in /home/z/scratch/acme-api:",
 		'Final outcome: Fixed dedupeRows in src/dedupe.ts — the function only did exact-match dedup, so CRLF line endings left \\r in the comparison key and output. Normalized each line with line.replace(/\\r$/, "") before comparing. bun test passes 2/2.',
-		"Session metadata (never extractable — counts and duration only): 1 prompt(s), 5 tool call(s) (read, edit, bash), 1 min.",
+		"Session metadata (never extractable — counts, duration and session id only): 1 prompt(s), 5 tool call(s) (read, edit, bash), 1 min.",
 	].join("\n");
 
 	const OLD_NOTE = [
@@ -66,7 +66,7 @@ describe("reframeNoteForExtraction", () => {
 	test("metadata-only note returns null (no retry spend)", () => {
 		const metaOnly = [
 			"Terminal session outcome in /srv/demo:",
-			"Session metadata (never extractable — counts and duration only): 1 prompt(s), 0 tool call(s), 1 min.",
+			"Session metadata (never extractable — counts, duration and session id only): 1 prompt(s), 0 tool call(s), 1 min.",
 		].join("\n");
 		expect(reframeNoteForExtraction(metaOnly)).toBeNull();
 	});

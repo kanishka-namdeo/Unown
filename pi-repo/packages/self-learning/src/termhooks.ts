@@ -45,6 +45,7 @@
  *                 outbox for later sync; AutoDream then consolidates it into
  *                 the project's .unown/memory/project.md.
  */
+import { randomUUID } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve as resolvePath } from "node:path";
@@ -565,6 +566,13 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
         const toolNames = new Set<string>();
         let lastAssistantText = "";
         let sessionStartTs = Date.now();
+        // Session salt (2026-10-22 consistency fix): two concurrent sessions in the
+        // same project can produce byte-identical exit notes (same outcome text,
+        // same counts) — and the outbox drain dedupes on exact (content,
+        // project_path), silently DROPPING the second session's note. A random
+        // per-session id in the never-extractable metadata line makes identical
+        // content impossible across sessions.
+        const sessionSalt = randomUUID().slice(0, 8);
 
         // User-configurable hooks (Milestone 1): load once per session;
         // `/hooks trust` re-runs this loader after an approval. Project-scoped
@@ -1099,6 +1107,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                         toolNames: [...toolNames],
                                         lastAssistantText,
                                         sessionStartTs,
+					sessionId: sessionSalt,
                                 });
                                 // M6 fast path: a recent probe says the engine is down
                                 // (or the crash-loop circuit gave up) → skip the probe
@@ -1128,6 +1137,9 @@ export function buildTerminalNote(info: {
         toolNames: string[];
         lastAssistantText: string;
         sessionStartTs: number;
+        /** Random per-session id — makes concurrent sessions' notes distinct (the
+         *  outbox drain dedupes on exact content; see the session-salt note above). */
+        sessionId?: string;
 }): string {
         const durMin = Math.max(1, Math.round((Date.now() - info.sessionStartTs) / 60000));
         const subagentTag = process.env.UNOWN_SUBAGENT === "1" ? " [subagent]" : "";
@@ -1154,7 +1166,7 @@ export function buildTerminalNote(info: {
         }
         if (info.lastAssistantText) lines.push(`Final outcome: ${info.lastAssistantText.slice(0, 400)}`);
         lines.push(
-                `Session metadata (never extractable — counts and duration only): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}, ${durMin} min.`,
+                `Session metadata (never extractable — counts, duration and session id only): ${info.prompts} prompt(s), ${info.toolCalls} tool call(s)${info.toolNames.length ? ` (${info.toolNames.join(", ")})` : ""}, ${durMin} min${info.sessionId ? `, session ${info.sessionId}` : ""}.`,
         );
         return lines.join("\n");
 }

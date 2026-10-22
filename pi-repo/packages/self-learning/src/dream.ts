@@ -75,6 +75,9 @@ export interface DreamOpts {
         platform?: MemoryPlatform;
         /** Test seam: inject the reconcile verdict without a real LLM call. */
         reconcileLlmFn?: (memories: PlatformMemory[]) => Promise<{ ops: ReconcileOp[] }>;
+        /** The project's CURRENT memory file (runProjectDream) — its "## Manual
+         *  notes" section survives the re-render verbatim (the hand-edit lane). */
+        preserveManualNotesFrom?: string;
 }
 
 /** Resolve the platform once per pass (the seam tests override). */
@@ -145,7 +148,9 @@ async function consolidate(
                 llmFn: opts.reconcileLlmFn,
         });
         const memories = await platform.getAll(scope);
-        const rendered = renderProjectMemoryMarkdown(memories);
+        const rendered = renderProjectMemoryMarkdown(memories, {
+                preserveManualNotesFrom: opts.preserveManualNotesFrom,
+        });
         return {
                 added: surviving.filter((e) => e.event === "ADD").length,
                 merged: reconcile.merged,
@@ -502,7 +507,10 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
                         if ((await prePlatform.getAll(scope)).length === 0 && !isPristineSeedProjectMemory(current)) {
                                 await importLegacyMarkdown(current, scope, { platform: prePlatform });
                         }
-                        const out = await consolidate(scope, notes as any, opts);
+                        const out = await consolidate(scope, notes as any, {
+                                ...opts,
+                                preserveManualNotesFrom: current,
+                        });
                         const next = out.rendered;
                         const cap = maxTierChars();
                         if (next.length > cap)

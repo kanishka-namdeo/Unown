@@ -400,9 +400,23 @@ describe("buildTerminalNote", () => {
                         [
                                 "Terminal session outcome in /srv/demo:",
                                 "Final outcome: all green",
-                                "Session metadata (never extractable — counts and duration only): 3 prompt(s), 5 tool call(s) (bash, read), 1 min.",
+                                "Session metadata (never extractable — counts, duration and session id only): 3 prompt(s), 5 tool call(s) (bash, read), 1 min.",
                         ].join("\n"),
                 );
+        });
+
+        test("REGRESSION: concurrent sessions' notes differ via the session id (outbox dedup safety)", () => {
+                // Two sessions with identical outcomes and counts produce DIFFERENT
+                // notes when salted — the outbox drain dedupes on exact content and
+                // was silently dropping the second session's note (2026-10-22 fix).
+                const a = withFixedNow(() => buildTerminalNote({ ...info, sessionId: "aaaa1111" }));
+                const b = withFixedNow(() => buildTerminalNote({ ...info, sessionId: "bbbb2222" }));
+                expect(a).not.toBe(b);
+                expect(a).toContain("session aaaa1111");
+                expect(b).toContain("session bbbb2222");
+                // unsalted keeps the legacy shape (older builders) — no id suffix
+                const bare = withFixedNow(() => buildTerminalNote(info));
+                expect(bare).not.toMatch(/, session [0-9a-f]{8}\./);
         });
 
         test.each([

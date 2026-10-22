@@ -21,7 +21,7 @@ import { randomUUID, createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
-import { pruneToBudget } from "./budget.ts";
+import { pruneToBudget, type BudgetReport } from "./budget.ts";
 import { seedAddonsConfig } from "./addons/config.ts";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { scanMemoryCandidate, type GuardFlag } from "./guard.ts";
@@ -336,17 +336,22 @@ export const USER_SEED = `# Tier 2 — User Memory (global)
 - Prefer standard library functions over hand-rolled logic.
 `;
 
-const PROJECT_SEED = `# Tier 1 — Project Memory
+export const PROJECT_SEED = `# Tier 1 — Project Memory
 
 ## Workflow
 - This file is maintained by Unown: terminal session notes are consolidated
-  here by AutoDream. Edit freely — your edits are preserved as a new version.
+  here by AutoDream. Sections outside "Manual notes" are re-rendered by the
+  next dream — add durable hand-written rules under Manual notes instead.
 
 ## Conventions
 (empty — AutoDream fills this from session notes)
 
 ## Known pitfalls
 (empty)
+
+## Manual notes
+- Your own durable rules. AutoDream preserves this section verbatim — one
+  bullet per rule; everything outside it is re-rendered.
 `;
 
 const LOCAL_SEED = `# Tier 3 — Local Overrides
@@ -610,6 +615,16 @@ function terminalProvenanceLine(tier: string, opts: { projectDir?: string; conte
  * from the INJECTION only; the files on disk are untouched.
  */
 export function terminalMemoryForAgent(projectDir: string): TerminalMemoryFile[] {
+        return terminalMemoryForAgentDetailed(projectDir).files;
+}
+
+/** terminalMemoryForAgent + the §5.5 budget report — /learning surfaces the
+ *  injection budget so truncation is VISIBLE (the "did my memory load whole,
+ *  partial, or not at all" edge the research flags as invisible today). */
+export function terminalMemoryForAgentDetailed(projectDir: string): {
+        files: TerminalMemoryFile[];
+        report: BudgetReport;
+} {
         const files = resolveTerminalMemory(projectDir);
         // M10 report-only injection scan — REPO-RESIDENT tiers only (project,
         // local): the cloned-repo attack surface R4 identified (a malicious
@@ -650,8 +665,11 @@ export function terminalMemoryForAgent(projectDir: string): TerminalMemoryFile[]
                         };
                 }),
         ];
-        const { files: budgeted } = pruneToBudget(withGuide);
-        return budgeted.map((f) => ({ path: f.path, content: f.content, tier: f.tier ?? "memory" }));
+        const { files: budgeted, report } = pruneToBudget(withGuide);
+        return {
+                files: budgeted.map((f) => ({ path: f.path, content: f.content, tier: f.tier ?? "memory" })),
+                report,
+        };
 }
 
 // ---------------------------------------------------------------------------

@@ -131,7 +131,7 @@ import {
         type SubagentEffort,
         type SubagentRoutingFields,
 } from "./subagent-routing.ts";
-import { deliverTerminalNote, ENGINE_URL, resolveTerminalMemory, UNOWN_AGENT_DIR } from "./term.ts";
+import { deliverTerminalNote, ENGINE_URL, resolveTerminalMemory, terminalMemoryForAgentDetailed, UNOWN_AGENT_DIR } from "./term.ts";
 import { emitTerminalHookEvent } from "./termhooks.ts";
 import {
         cheapInstallStatus,
@@ -2604,9 +2604,9 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                 });
 
                 pi.registerCommand("learning", {
-                        description: "Show the effective 4-tier memory stack (fresh read from disk, with per-tier staleness)",
+                        description: "Show the effective 4-tier memory stack (fresh read from disk, with per-tier staleness + injection budget)",
                         handler: async (_args, ctx) => {
-                                const files = resolveTerminalMemory(opts.cwd);
+                                const { files, report } = terminalMemoryForAgentDetailed(opts.cwd);
                                 // M6: staleness transparency — with the engine down the
                                 // stack still serves the last-written files, so SAY how
                                 // old each tier is instead of letting a weeks-stale
@@ -2629,6 +2629,14 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                 : engine.state === "paused"
                                                         ? "memory engine: paused (won't start) — files below are the last engine writes; new notes queue locally"
                                                         : "memory engine: down — files below are the last engine writes; new notes queue locally and sync when it returns";
+                                // Injection-budget transparency (2026-10-22): the stack is
+                                // hard-capped at PI_MEMORY_TOTAL_CHARS at INJECTION time — a
+                                // session silently acting on truncated memory is the invisible-
+                                // truncation edge; say whether the whole stack fit.
+                                const budgetLine =
+                                        report.overflow || report.prunedBlocks.length > 0
+                                                ? `injection budget: ${report.totalAfter}/${report.cap} chars${report.prunedBlocks.length > 0 ? ` — ${report.prunedBlocks.length} oldest block(s) pruned` : ""}${report.truncatedTiers.length > 0 ? `, head-truncated: ${report.truncatedTiers.join(", ")}` : ""}${report.overflow ? " — OVERFLOW: protected content alone exceeds the cap" : ""}`
+                                                : `injection budget: ${report.totalAfter}/${report.cap} chars — the whole stack fits`;
                                 const parts = files.map((f) => {
                                         const lines = f.content.trimEnd().split("\n");
                                         const shown =
@@ -2637,7 +2645,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         return `── ${f.tier.toUpperCase()} · ${f.path}${age ? ` (${age})` : ""} ──\n${shown}`;
                                 });
                                 ctx.ui.notify(
-                                        `${header}\n\n${parts.join("\n\n")}\n\ndeep-dive: /dashboard — tiers, version history, rollbacks, dreams, notes, skills`,
+                                        `${header}\n${budgetLine}\n\n${parts.join("\n\n")}\n\ndeep-dive: /dashboard — tiers, version history, rollbacks, dreams, notes, skills · /memory search <q> — cross-project recall`,
                                         "info",
                                 );
                         },

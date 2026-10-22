@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS memory_versions (
   tier TEXT NOT NULL,
   version INTEGER NOT NULL,
   content TEXT NOT NULL,
-  changed_by TEXT NOT NULL,         -- seed | harness | autodream | manual | rollback
+  changed_by TEXT NOT NULL,         -- seed | harness | autodream | manual | rollback | mem0 (dream renders/imports, incl. every project:<slug> version) | autodream-hoist (cross-project user-tier promotion)
   note TEXT,
   created_at INTEGER NOT NULL
 );

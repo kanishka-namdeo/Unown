@@ -17,13 +17,13 @@
 //     wrappers), not the raw tier sum.
 import "./_env.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { maxTotalChars, pruneToBudget, type BudgetFile } from "../src/budget.ts";
 import { mem0MaxRendered, renderProjectMemoryMarkdown, type PlatformMemory } from "../src/memzero.ts";
 import { appendRules, readTier, resolveMemory, resolveMemoryForAgentDetailed, writeTier, MEMORY_DIR } from "../src/memory.ts";
-import { terminalMemoryForAgent } from "../src/term.ts";
+import { terminalMemoryForAgent, terminalMemoryForAgentDetailed } from "../src/term.ts";
 import { UNOWN_MEMORY_DIR, UNOWN_HOME } from "../src/term.ts";
 import { store } from "../src/store.ts";
 
@@ -284,5 +284,34 @@ describe("F8 — resolveMemory().totalChars is the actual block", () => {
                 expect(resolved.block).toContain("<project_instructions");
                 store.run(`DELETE FROM memory_versions`);
                 rmSync(MEMORY_DIR, { recursive: true, force: true });
+        });
+});
+
+// ---------------------------------------------------------------------------
+// terminalMemoryForAgentDetailed — the injection-budget report surface
+// (/learning shows truncation instead of silently acting on partial memory)
+// ---------------------------------------------------------------------------
+describe("terminalMemoryForAgentDetailed — budget report visibility", () => {
+        test("returns the files AND the report; a small stack fits whole", () => {
+                const dir = mkdtempSync(join(tmpdir(), "budget-detailed-"));
+                const { files, report } = terminalMemoryForAgentDetailed(dir);
+                expect(files.length).toBeGreaterThan(0);
+                expect(report.cap).toBeGreaterThan(0);
+                expect(report.totalAfter).toBeLessThanOrEqual(report.cap);
+                expect(report.prunedBlocks).toHaveLength(0);
+                expect(report.overflow).toBe(false);
+                rmSync(dir, { recursive: true, force: true });
+        });
+
+        test("an oversized project tier is honestly reported as truncated", () => {
+                const dir = mkdtempSync(join(tmpdir(), "budget-trunc-"));
+                // scaffold .unown/memory first (initProjectMemory runs on first resolve)
+                terminalMemoryForAgentDetailed(dir);
+                // blow past the per-tier + total caps with a giant local tier
+                const giant = "- " + "x".repeat(200_000);
+                writeFileSync(join(dir, ".unown", "memory", "local.md"), `# Tier 3\n\n${giant}\n`);
+                const { report } = terminalMemoryForAgentDetailed(dir);
+                expect(report.overflow === true || report.prunedBlocks.length > 0 || report.truncatedTiers.length > 0).toBe(true);
+                rmSync(dir, { recursive: true, force: true });
         });
 });

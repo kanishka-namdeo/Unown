@@ -151,7 +151,7 @@ and, if several notes kept describing the same multi-step procedure (clone → s
 
 All four tiers are plain Markdown — but they are not all equal anymore:
 
-- `project.md` — **read it, but hand edits no longer survive the next dream.** The file is a rendered view of the platform's memories; the next dream re-renders from platform state, not from the file. To add a durable rule by hand, record it as a note (`unown note "…"` or the in-session `note` tool) and let extraction pick it up — or make your edits before your engine's first platform import, which does read the file verbatim. Every version is still in the engine DB, so a render that overstepped is recoverable.
+- `project.md` — sections outside **`## Manual notes`** are re-rendered by the next dream from platform state. The `## Manual notes` section is yours: AutoDream preserves it **verbatim** across every re-render — one bullet per durable hand-written rule. (Before 2026-10-22 there was no preserved section and the seed's "edit freely" copy was misleading; the honest contract is now a real hand-edit lane.) To feed the learned sections, record a note (`unown note "…"` or the in-session `note` tool) and let extraction pick it up. Every version is still in the engine DB, so a render that overstepped is recoverable.
 - `user.md` / `policy.md` — yours entirely; unown only seeds them once.
 - `local.md` — the right place for machine-specific truth ("the work laptop needs `--network=host`"). Tiers 0/2/3 are untouched by the platform swap: plain hand-editable files, exactly as before.
 
@@ -172,7 +172,7 @@ What a teammate gets when they clone the repo: the shared project memory and the
 ## Inspecting memory
 
 - `unown memory` — prints the effective four-tier stack for the current directory, exactly as a session receives it.
-- `/learning` — the same stack, in-session, re-read from disk.
+- `/learning` — the same stack, in-session, re-read from disk, plus the injection budget line (whether the whole stack fit the cap or what was pruned/truncated — truncation is never silent).
 - `unown doctor` — verifies the project and user memory files exist ([troubleshooting](troubleshooting.md)).
 - `unown dashboard` → **Memory** screen — the engine's four tiers with contents, full version history and one-key rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files). The engine's platform state (backend, model, dir, cap) rides `/api/overview`'s `memoryPlatform` block, and `GET /api/memories?q=…` searches the platform's memories per scope.
 - `/memory search <query>` — cross-project semantic search over every scope that has dreamed (see [shared memory](#shared-memory-across-sessions-and-projects)); `GET /api/memories?across=1&q=…` is the HTTP form.
