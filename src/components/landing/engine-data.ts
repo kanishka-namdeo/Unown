@@ -66,11 +66,17 @@ export const ENGINE_JOBS: EngineJob[] = [
     "kind": "interval",
     "interval": "1440m",
     "event": null
+  },
+  {
+    "id": "watch-scan",
+    "kind": "interval",
+    "interval": "2m",
+    "event": null
   }
 ];
 
 export const ENGINE_JOB_COUNTS: { total: number; interval: number; event: number } = {
-  "total": 8,
-  "interval": 6,
+  "total": 9,
+  "interval": 7,
   "event": 2
 };

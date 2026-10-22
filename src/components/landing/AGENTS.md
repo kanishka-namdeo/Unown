@@ -161,7 +161,7 @@ half a viewport shorter than the eight-band page it replaced.
   `scripts/landing_claims.mjs` does two jobs this folder's honesty rule depends
   on. It writes `engine-data.ts` from `JOB_DEFS` in `router.ts`, so the pair
   strip's job listing in `loop.tsx` and the routing tile's generated job
-  sentence ("eight jobs … six on a timer, two on events" at the current
+  sentence ("nine jobs … seven on a timer, two on events" at the current
   JOB_DEFS) are read from the scheduler rather than retyped:
   `ENGINE_JOBS` and `ENGINE_JOB_COUNTS` are the only legal source for a job id,
   interval or tally on this page. And it gates every literal the page presents
