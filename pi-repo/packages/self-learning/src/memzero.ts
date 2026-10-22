@@ -1180,17 +1180,21 @@ export const MANUAL_NOTES_CAP = 4096;
 /** Deterministically remove the harness-authored session-metadata line from
  *  a terminal note BEFORE it is scanned or extracted (2026-10-22): the line
  *  names the tools the session used — "(bash, write, edit)" — and the
- *  injection guard's runner+directive conjunction reads "never extractable …
- *  bash" as a runner directive, quarantining EVERY bash-using session's note
- *  wholesale (the metadata line ships with every note since the session-salt
- *  fix). The line was already stripped on the reframe retry path; this is the
- *  primary-path move — telemetry is not note content, and "never extractable"
- *  is enforced deterministically, not by prompt. Same shape filter as
- *  reframeNoteForExtraction's (kept in sync deliberately). */
+ *  injection guard's runner+directive conjunction reads the original "never
+ *  extractable … bash" label as a runner directive, quarantining EVERY
+ *  bash-using session's note wholesale (the metadata line ships with every
+ *  note since the session-salt fix). Matches ANY "Session metadata (" label
+ *  spelling — the original generation AND the owner's same-day rephrase
+ *  ("counts, duration and session id only — data, not knowledge"): label
+ *  wording must never be load-bearing. Complements the guard's layer-0
+ *  scaffolding strip (same-day, covers every scanUntrustedText caller): THIS
+ *  one also keeps telemetry and the session salt out of the EXTRACTION input —
+ *  "not extractable" enforced deterministically, not by prompt. Same shape
+ *  filter as reframeNoteForExtraction's (kept in sync deliberately). */
 export function stripSessionMetadataLine(text: string): string {
         return String(text ?? "")
                 .split(/\r?\n/)
-                .filter((l) => !/^Session metadata \(never extractable/i.test(l))
+                .filter((l) => !/^Session metadata \(/i.test(l))
                 .join("\n");
 }
 

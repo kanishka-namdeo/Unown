@@ -320,8 +320,30 @@ describe("stripSessionMetadataLine — the quarantine false-positive fix", () =>
                 sessionStartTs: Date.now() - 5 * 60_000,
                 sessionId: "abcd1234",
         });
-        test("pin the bug shape: the metadata line trips runner-directive (pre-fix this quarantined the whole note)", () => {
-                expect(scanUntrustedText(note).rules).toContain("runner-directive");
+        test("the trip class is closed at BOTH layers (same-day double fix): guard layer-0 + the extraction-input strip", () => {
+                // The original label ("never extractable … (bash, write, edit)")
+                // tripped the guard's runner+directive conjunction and quarantined
+                // every bash-using session's note. TWO same-day fixes landed
+                // independently: the owner's guard layer-0 (harness scaffolding
+                // dropped before the language rules — immune to ANY label spelling)
+                // + label rephrase, and OUR deterministic strip before scan AND
+                // extraction. Pinned here: both the current label AND a crafted
+                // old-style ("never extractable") label scan clean — layer 0 holds.
+                expect(scanUntrustedText(note).rules).toEqual([]);
+                const crafted = note.replace(
+                        /Session metadata \([^)]*\):/,
+                        "Session metadata (never extractable):",
+                );
+                expect(scanUntrustedText(crafted).rules).toEqual([]);
+                // The extraction-input guarantee is OURS alone: layer-0 only
+                // shields the SCAN — the scaffolding line (and the session salt)
+                // still reaches the extraction LLM unless deterministically
+                // stripped, for either label spelling.
+                for (const n of [note, crafted]) {
+                        const stripped = stripSessionMetadataLine(n);
+                        expect(stripped).not.toContain("Session metadata");
+                        expect(stripped).not.toContain("abcd1234");
+                }
         });
         test("the strip removes the line (and the salt) — the session content scans clean", () => {
                 const stripped = stripSessionMetadataLine(note);
