@@ -347,7 +347,11 @@ export function createEditToolDefinition(
                                 const { bom, text: content } = splitBom(rawContent);
                                 const originalEnding = detectLineEnding(content);
                                 const normalizedContent = normalizeToLF(content);
-                                const { baseContent, newContent } = applyEditsToNormalizedContent(normalizedContent, edits, path);
+                                const { baseContent, newContent, usedFuzzyMatch } = applyEditsToNormalizedContent(
+                                        normalizedContent,
+                                        edits,
+                                        path,
+                                );
                                 throwIfAborted();
 
                                 const finalContent = bom + restoreLineEndings(newContent, originalEnding);
@@ -356,11 +360,18 @@ export function createEditToolDefinition(
 
                                 const diffResult = generateDiffString(baseContent, newContent);
                                 const patch = generateUnifiedPatch(path, baseContent, newContent);
+                                // Edit-reliability transparency (aider's "% correct edit format" lesson):
+                                // when the match needed whitespace/Unicode normalization, SAY SO — the model
+                                // self-corrects toward byte-exact oldText, and the receipts ledger records
+                                // the signal as an observable metric.
+                                const appliedVia = usedFuzzyMatch
+                                        ? " — note: the match required whitespace/Unicode normalization; copy the text exactly (including whitespace) for precise edits"
+                                        : "";
                                 return {
                                         content: [
                                                 {
                                                         type: "text",
-                                                        text: `Successfully replaced ${edits.length} block(s) in ${path}.`,
+                                                        text: `Successfully replaced ${edits.length} block(s) in ${path}${appliedVia}.`,
                                                 },
                                         ],
                                         details: { diff: diffResult.diff, patch, firstChangedLine: diffResult.firstChangedLine },

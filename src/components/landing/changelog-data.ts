@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 174;
+export const CHANGELOG_TOTAL_ENTRIES = 175;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 68,
@@ -39,14 +39,14 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Removed": 2,
   "Fixed": 71,
   "Security": 0,
-  "Behavior": 22
+  "Behavior": 23
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 5,
+    "total": 6,
     "counts": {
       "Added": 1,
       "Changed": 1,
@@ -54,7 +54,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Removed": 0,
       "Fixed": 1,
       "Security": 0,
-      "Behavior": 2
+      "Behavior": 3
     },
     "groups": [
       {
@@ -71,6 +71,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "every session now starts verify-first",
+            "behavior": true
+          },
+          {
+            "title": "the edit tool now tells the model when its oldText was not byte-exact",
             "behavior": true
           },
           {
