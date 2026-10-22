@@ -54,9 +54,12 @@ Usage:
                          | --on-event <name> [--filter <expr>])
                         [--timezone <IANA>] [--until <date>] [--misfire skip|catch-up]
                         [--mode read-only|standard] [--model <id>] [--max-runs <n>] [--workspace <path>]
+                        [--active-hours "09:00-18:00"] [--idle-only] [--deliver <url>] [--jitter <sec>]
   unown routines edit <id> [--title <t>] [--prompt <p>] [--cron <e> | --every <s> | --after <s>]
                        [--timezone <tz>] [--until <date> | --clear-until] [--misfire skip|catch-up|default]
                        [--mode <m>] [--model <id>] [--max-runs <n>]
+                       [--active-hours <win> | --clear-active-hours] [--idle-only | --no-idle-only]
+                       [--deliver <url> | --clear-deliver] [--jitter <sec> | --clear-jitter]
   unown routines pause <id> | resume <id>
   unown routines run <id>          run now (manual; never consumes maxRuns)
   unown routines skip <id>         skip the next occurrence (recorded in history)
@@ -76,6 +79,20 @@ Schedule kinds:
                             or 'unown routines trigger <name>'); never from the clock
   --filter '<expr>'         payload gate for --on-event, e.g. 'payload.action == "opened"'
                             (paths, ==/!=, integer ordering, contains(), exists(), ! and AND)
+
+Monitoring + delivery (M5, time-based rows; delivery works for events too):
+  --active-hours "09:00-18:00"  dispatch window in the routine's timezone (may wrap
+                            midnight: "18:00-06:00"); cron/every slots outside it are
+                            skipped and advanced, once/after are held for the window
+  --idle-only               yield to the foreground: the slot is skipped (or held)
+                            while a human is using an agent — bridge interactive
+                            traffic within the last minute or engine runs in flight
+  --deliver <url>           POST a fixed JSON result payload to this URL after each
+                            run (Slack-compatible incoming webhooks, n8n, any
+                            receiver); an output containing NO_REPLY suppresses
+                            delivery (the quiet-result contract)
+  --jitter <sec>            1..600: randomize computed cron/every slots by 0..N
+                            seconds — de-herd the top-of-hour crons
 Default mode is read-only: the unattended run reports on the repo without shell
 or write access. "standard" grants the full toolset — choose it deliberately.
 Docs: docs/routines.md.`;
@@ -131,7 +148,18 @@ function describeRow(a: any): string {
                 a.schedule_kind === "event"
                         ? `on ${a.event_kind}${a.event_filter ? ` · ${describeHookFilter(a.event_filter)}` : ""}`
                         : (a.schedule ?? a.cron_expr ?? "one-shot");
-        return `${a.id}  ${a.title}\n    ${sched} · mode ${a.mode} · ${a.lifecycle} · runs ${a.run_count}\n    next: ${next} · last: ${last}`;
+        const policies = [
+                a.active_hours ? `hours ${a.active_hours}` : null,
+                a.idle_only ? "idle-only" : null,
+                a.deliver_url ? `→ ${String(a.deliver_url).replace(/^https?:\/\//, "").slice(0, 48)}` : null,
+                a.jitter_secs ? `jitter ${a.jitter_secs}s` : null,
+        ].filter(Boolean);
+        return (
+                `${a.id}  ${a.title}\n` +
+                `    ${sched} · mode ${a.mode} · ${a.lifecycle} · runs ${a.run_count}\n` +
+                `    next: ${next} · last: ${last}` +
+                (policies.length > 0 ? `\n    ${policies.join(" · ")}` : "")
+        );
 }
 
 export async function runAutomationsCommand(argv: string[], opts: { cwd: string }): Promise<CliResult> {
@@ -230,6 +258,14 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                         if (typeof parsed === "object") return { stderr: parsed.error, exitCode: 1 };
                         body.until = parsed;
                 }
+                // M5 policies: the monitoring/delivery knobs.
+                const activeHours = flagValue(argv, "--active-hours");
+                if (activeHours !== undefined) body.activeHours = activeHours;
+                if (hasFlag(argv, "--idle-only")) body.idleOnly = true;
+                const deliver = flagValue(argv, "--deliver");
+                if (deliver !== undefined) body.deliverUrl = deliver;
+                const jitter = flagNumber(argv, "--jitter");
+                if (jitter !== undefined) body.jitterSecs = jitter;
                 const res = await api("POST", "/api/automations", body);
                 if (!res.ok) return { stderr: String(res.data?.error ?? "create failed"), exitCode: 1 };
                 const a = res.data.automation;
@@ -242,6 +278,10 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                                         ? `  fires when "${a.event_kind}" arrives (never from the clock; pause still blocks it)\n` +
                                           `  trigger locally: unown routines trigger ${a.event_kind} · inbound URL: unown routines hook-url\n`
                                         : `  next run: ${a.next_run_at ? new Date(a.next_run_at).toLocaleString() : "—"}\n`) +
+                                (a.active_hours ? `  active hours: ${a.active_hours}${a.timezone ? ` (${a.timezone})` : ""}\n` : "") +
+                                (a.idle_only ? `  idle-only: yields the slot while a human works\n` : "") +
+                                (a.deliver_url ? `  deliver: ${a.deliver_url}\n` : "") +
+                                (a.jitter_secs ? `  jitter: 0..${a.jitter_secs}s on computed slots\n` : "") +
                                 `  workspace: ${a.workspace}\n` +
                                 `Inspect: unown routines history ${a.id} · trigger now: unown routines run ${a.id} · manage in the TUI: unown dashboard routines`,
                         exitCode: 0,
@@ -276,6 +316,18 @@ export async function runAutomationsCommand(argv: string[], opts: { cwd: string 
                 }
                 if (hasFlag(argv, "--clear-until")) patch.until = null;
                 if (hasFlag(argv, "--clear-model")) patch.model = null;
+                // M5 policies: set/clear via edit (null/"" clears).
+                const activeHours = flagValue(argv, "--active-hours");
+                if (activeHours !== undefined) patch.activeHours = activeHours;
+                if (hasFlag(argv, "--clear-active-hours")) patch.activeHours = null;
+                if (hasFlag(argv, "--idle-only")) patch.idleOnly = true;
+                if (hasFlag(argv, "--no-idle-only")) patch.idleOnly = false;
+                const deliver = flagValue(argv, "--deliver");
+                if (deliver !== undefined) patch.deliverUrl = deliver;
+                if (hasFlag(argv, "--clear-deliver")) patch.deliverUrl = null;
+                const jitter = flagNumber(argv, "--jitter");
+                if (jitter !== undefined) patch.jitterSecs = jitter;
+                if (hasFlag(argv, "--clear-jitter")) patch.jitterSecs = null;
                 if (Object.keys(patch).length === 0) return { stderr: `edit needs at least one field flag\n\n${AUTOMATIONS_USAGE}`, exitCode: 1 };
                 const res = await api("PATCH", `/api/automations/${encodeURIComponent(id)}`, patch);
                 if (!res.ok) return { stderr: String(res.data?.error ?? "edit failed"), exitCode: 1 };

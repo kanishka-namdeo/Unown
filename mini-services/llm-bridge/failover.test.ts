@@ -20,7 +20,7 @@
 //   8. /v1/log marks failover-served requests with the fb: prefix
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -346,4 +346,56 @@ describe("llm-bridge failover (serving layer)", () => {
                 // And at least one of them settled with real stats from the fallback.
                 expect(fbEntries.some((e: any) => e.contentChars > 0)).toBe(true);
         });
+});
+
+// ---------------------------------------------------------------------------
+// M5: lane persistence + interactive presence (the --idle-only signal)
+// ---------------------------------------------------------------------------
+
+describe("llm-bridge lane presence + usage-log lanes (M5)", () => {
+        test("interactive traffic stamps /health lastInteractiveAt and the usage line; background traffic does neither", async () => {
+                const stateDir = mkdtempSync(join(tmpdir(), "unown-bridge-lane-"));
+                const b = spawnBridge({
+                        BRIDGE_UPSTREAM_URL: fallback.url, // healthy upstream — no failover noise
+                        BRIDGE_UPSTREAM_KEY: "test-primary-key",
+                        // The interactive-yield window (45s default) would park the
+                        // background-lane request while the test's interactive arrival
+                        // is "recent" — that IS the M7 semantics; shrink it to 1ms so
+                        // this test exercises the lane presence, not the yield.
+                        BRIDGE_BACKGROUND_YIELD_MS: "1",
+                        UNOWN_BRIDGE_STATE_DIR: stateDir,
+                });
+                const url = await waitForReady(b);
+                try {
+                        // Before any interactive traffic: presence is null.
+                        const h0 = await (await fetch(`${url}/health`)).json();
+                        expect(h0.lanes.lastInteractiveAt).toBeNull();
+
+                        // An interactive request (no lane marker — the terminal-agent shape).
+                        const before = Date.now();
+                        const res = await CHAT(url, { model: "kimi-k2.5", messages: [{ role: "user", content: "hi" }] });
+                        expect(res.status).toBe(200);
+                        const h1 = await (await fetch(`${url}/health`)).json();
+                        expect(h1.lanes.lastInteractiveAt).toBeGreaterThanOrEqual(before);
+
+                        // A background request (the engine-lane marker) must NOT move presence.
+                        const presence = h1.lanes.lastInteractiveAt;
+                        const bgRes = await fetch(`${url}/v1/chat/completions`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", "x-unown-lane": "background" },
+                                body: JSON.stringify({ model: "kimi-k2.5", messages: [{ role: "user", content: "engine work" }] }),
+                        });
+                        expect(bgRes.status).toBe(200);
+                        const h2 = await (await fetch(`${url}/health`)).json();
+                        expect(h2.lanes.lastInteractiveAt).toBe(presence);
+
+                        // The usage log records BOTH lanes (the unown usage / idle split).
+                        const lines = readFileSync(join(stateDir, "usage-log.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+                        expect(lines.some((l) => l.lane === "interactive")).toBe(true);
+                        expect(lines.some((l) => l.lane === "background")).toBe(true);
+                } finally {
+                        b.proc.kill();
+                        rmSync(stateDir, { recursive: true, force: true });
+                }
+        }, 30_000);
 });

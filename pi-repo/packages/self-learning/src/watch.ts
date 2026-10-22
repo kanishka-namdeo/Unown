@@ -548,6 +548,10 @@ export function spawnWatchRunViaAutomations(args: { root: string; prompt: string
                 misfire: null,
                 event_kind: null, // a watch run is scan-triggered, never an event listener
                 event_filter: null,
+                active_hours: null, // a watch run is scan-triggered — no policy gates apply
+                idle_only: 0,
+                deliver_url: null,
+                jitter_secs: null,
                 workspace: args.root,
                 mode: args.mode === "standard" ? "standard" : "read-only",
                 model: null,
@@ -580,6 +584,7 @@ export function spawnWatchRunViaAutomations(args: { root: string; prompt: string
                 turns: 0,
                 tokens_in: 0,
                 tokens_out: 0,
+                delivered: null,
         };
         return spawnAutomationRun(automation, run);
 }

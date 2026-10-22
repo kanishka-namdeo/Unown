@@ -440,6 +440,12 @@ export interface Automation {
         /** M2 event routines: the webhook trigger spec (event rows only). */
         event_kind?: string | null;
         event_filter?: string | null;
+        /** M5 policies: the monitoring/delivery knobs (optional — an engine
+         *  older than v4 simply does not send them). */
+        active_hours?: string | null;
+        idle_only?: number;
+        deliver_url?: string | null;
+        jitter_secs?: number | null;
         workspace: string;
         mode: AutomationMode;
         model: string | null;
@@ -473,6 +479,8 @@ export interface AutomationRun {
         turns: number;
         tokens_in: number;
         tokens_out: number;
+        /** M5: the delivery outcome (absent on pre-v4 engines). */
+        delivered?: string | null;
 }
 
 export interface AutomationRunsResponse {

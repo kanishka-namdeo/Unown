@@ -255,10 +255,14 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
                 const turns = theme.fg("dim", `${r.turns ?? 0} turns`);
                 const tok = theme.fg("dim", `${formatTokens((r.tokens_in ?? 0) + (r.tokens_out ?? 0))} tok`);
                 const when = theme.fg("dim", timeAgo(r.started_at));
+                // M5: the delivery outcome rides the run row (sent / suppressed / failed).
+                const delivered = r.delivered
+                        ? theme.fg(r.delivered.startsWith("failed") ? "error" : "dim", ` · ${r.delivered.startsWith("failed") ? "deliver " + r.delivered : r.delivered === "sent" ? "↗ delivered" : "∅ NO_REPLY"}`)
+                        : "";
                 const lines = [
                         trunc(
                                 `  ${status} ${theme.fg("dim", "·")} ${trig} ${theme.fg("dim", "·")} ${dur} ${theme.fg("dim", "·")} ` +
-                                        `${turns} ${theme.fg("dim", "·")} ${tok} ${theme.fg("dim", "·")} ${when}`,
+                                        `${turns} ${theme.fg("dim", "·")} ${tok} ${theme.fg("dim", "·")} ${when}${delivered}`,
                                 width,
                         ),
                 ];
@@ -299,6 +303,18 @@ export function createAutomationsScreen(deps: ScreenDeps): Screen {
                 }
                 lines.push(field("timezone", a.timezone ?? "engine local"));
                 lines.push(field("misfire", a.misfire ?? "skip (default)"));
+                // M5 policies: the monitoring/delivery knobs (absent on old engines → "—").
+                lines.push(field("hours", a.active_hours ?? "always"));
+                lines.push(field("yield", a.idle_only ? "idle-only (skips while a human works)" : "—"));
+                lines.push(
+                        field(
+                                "deliver",
+                                a.deliver_url
+                                        ? `${trunc(String(a.deliver_url).replace(/^[a-z]+:\/\//, ""), Math.max(20, width - 20))} · NO_REPLY suppresses`
+                                        : "—",
+                        ),
+                );
+                lines.push(field("jitter", a.jitter_secs ? `0..${a.jitter_secs}s on computed slots` : "—"));
                 lines.push(
                         field(
                                 "bounds",

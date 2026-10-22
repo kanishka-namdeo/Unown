@@ -246,6 +246,10 @@ export function spawnRalphRun(args: { kind: "worker" | "reviewer"; iteration: nu
                 misfire: null,
                 event_kind: null,
                 event_filter: null,
+                active_hours: null, // ralph runs are user-initiated — no policy gates
+                idle_only: 0,
+                deliver_url: null,
+                jitter_secs: null,
                 workspace: args.workspace,
                 mode: args.kind === "reviewer" ? "read-only" : "standard",
                 model: args.model,
@@ -278,6 +282,7 @@ export function spawnRalphRun(args: { kind: "worker" | "reviewer"; iteration: nu
                 turns: 0,
                 tokens_in: 0,
                 tokens_out: 0,
+                delivered: null,
         };
         return spawnAutomationRun(automation, run);
 }

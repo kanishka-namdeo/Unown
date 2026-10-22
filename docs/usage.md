@@ -309,7 +309,7 @@ Schedules — five kinds (the full semantics, DST policies and the decision reco
 - **one-shot** — `--delay-minutes N`, runs once and completes
 - **event** — `--on-event issue.opened` (+ `--filter` payload expression): no clock at all — dispatched by inbound webhook events (`POST /api/hooks/<id>`, flood-guarded) or `routines trigger`; see [routines.md § Event routines](routines.md#event-routines)
 
-Per-routine controls: `--timezone America/New_York` (IANA; default: local), `--misfire skip|catch-up` (a slot missed while asleep/engine-down is recorded and skipped, or runs once on wake when under 24 h old — launchd semantics; default skip), `--until 2026-12-31` (inclusive end boundary — past it, the routine completes), `--max-runs N` (manual runs never count). `--model` pins a model for the run; `--workspace` defaults to the current directory.
+Per-routine monitoring policies (M5): `--active-hours "09:00-18:00"` (dispatch window in the routine's tz; may wrap midnight), `--idle-only` (yield slots while a human is using an agent), `--deliver <url>` (POST a JSON result payload after each run; an output containing NO_REPLY suppresses it), `--jitter <sec>` (stagger top-of-hour crons). Per-routine controls: `--timezone America/New_York` (IANA; default: local), `--misfire skip|catch-up` (a slot missed while asleep/engine-down is recorded and skipped, or runs once on wake when under 24 h old — launchd semantics; default skip), `--until 2026-12-31` (inclusive end boundary — past it, the routine completes), `--max-runs N` (manual runs never count). `--model` pins a model for the run; `--workspace` defaults to the current directory.
 
 **The trust story** (this is why the feature shipped *after* the config trust gates, not before):
 

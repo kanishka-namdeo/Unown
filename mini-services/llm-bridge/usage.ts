@@ -51,6 +51,9 @@ export interface UsageRecord {
         status: "ok" | "error";
         /** Short upstream error string (capped 200 chars, never payloads). */
         error?: string;
+        /** Which admission lane served the request (M5; absent on pre-M5 lines —
+         *  readers treat missing as unknown, never as interactive). */
+        lane?: "interactive" | "background";
 }
 
 export interface UsageTotals {

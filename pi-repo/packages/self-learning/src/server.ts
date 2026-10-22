@@ -256,6 +256,29 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 					mode: body?.mode === "standard" ? "standard" : "read-only",
 					model: body?.model ? String(body.model) : null,
 					maxRuns: body?.maxRuns !== undefined && body?.maxRuns !== null ? Number(body.maxRuns) : null,
+					// M5 policies: activeHours/idleOnly/deliverUrl/jitterSecs (camelCase;
+					// active_hours/idle_only/deliver_url/jitter_secs row aliases accepted).
+					activeHours:
+						body?.activeHours !== undefined
+							? body.activeHours === null || body.activeHours === ''
+								? null
+								: String(body.activeHours)
+							: body?.active_hours !== undefined
+								? String(body.active_hours)
+								: undefined,
+					idleOnly: body?.idleOnly === true || body?.idle_only === 1 || body?.idle_only === true,
+					deliverUrl:
+						body?.deliverUrl !== undefined
+							? body.deliverUrl === null || body.deliverUrl === ''
+								? null
+								: String(body.deliverUrl)
+							: body?.deliver_url !== undefined
+								? String(body.deliver_url)
+								: undefined,
+					jitterSecs:
+						body?.jitterSecs !== undefined && body?.jitterSecs !== null ? Number(body.jitterSecs)
+							: body?.jitter_secs !== undefined && body?.jitter_secs !== null ? Number(body.jitter_secs)
+							: undefined,
 					// M2 event routines: `event` + `filter` (the CLI's spelling;
 					// eventKind/eventFilter aliases accepted for REST symmetry).
 					eventKind:
@@ -346,6 +369,19 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 					if (body?.[key] !== undefined) patch[key] = body[key];
 				}
 				if (body?.maxRuns !== undefined) patch.max_runs = body.maxRuns; // REST camelCase → the row's snake_case
+				// M5 policies (camelCase + row aliases; null clears).
+				if (body?.activeHours !== undefined || body?.active_hours !== undefined) {
+					patch.activeHours = body.activeHours ?? body.active_hours ?? null;
+				}
+				if (body?.idleOnly !== undefined || body?.idle_only !== undefined) {
+					patch.idleOnly = body.idleOnly ?? body.idle_only ?? false;
+				}
+				if (body?.deliverUrl !== undefined || body?.deliver_url !== undefined) {
+					patch.deliverUrl = body.deliverUrl ?? body.deliver_url ?? null;
+				}
+				if (body?.jitterSecs !== undefined || body?.jitter_secs !== undefined) {
+					patch.jitterSecs = body.jitterSecs ?? body.jitter_secs ?? null;
+				}
 				const untilRaw = body?.until ?? body?.untilMs;
 				if (untilRaw !== undefined) {
 					patch.until_ms =

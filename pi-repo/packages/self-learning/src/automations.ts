@@ -55,6 +55,7 @@ import { join } from "node:path";
 import { emit } from "./bus.ts";
 import { parseCron, type ParsedCron } from "./cron.ts";
 import { evalHookFilter, parseHookFilter } from "./hook-filter.ts";
+import { isWithinActiveHours, parseActiveHours, type ActiveHoursWindow } from "./active-hours.ts";
 import {
         advanceIntervalSlot,
         inferLegacyKind,
@@ -66,7 +67,7 @@ import {
         rowIntervalSpec,
         type ScheduleKind,
 } from "./routine-schedule.ts";
-import { store } from "./store.ts";
+import { BRIDGE_URL, store } from "./store.ts";
 
 // ---------------------------------------------------------------------------
 // Constants (zcode's, transliterated — see module doc)
@@ -156,6 +157,11 @@ export interface AutomationRow {
         /** Routines v3 — the webhook trigger spec (event rows only). */
         event_kind: string | null; // the event name this row listens for
         event_filter: string | null; // raw hook-filter source (validated at create)
+        /** Routines v4 (M5) — the monitoring/delivery policies. */
+        active_hours: string | null; // 'HH:MM-HH:MM' window (row's timezone); null = always
+        idle_only: number; // 1 = yield the slot while a human works (bridge interactive presence / engine live runs)
+        deliver_url: string | null; // POST the result JSON here after each run
+        jitter_secs: number | null; // 1..600: randomize computed slots (cron/every) up to this much
         workspace: string;
         mode: "read-only" | "standard";
         model: string | null;
@@ -189,6 +195,9 @@ export interface AutomationRunRow {
         turns: number;
         tokens_in: number;
         tokens_out: number;
+        /** Routines v4 (M5): null = no delivery configured; 'sent' |
+         * 'suppressed_no_reply' | 'failed: <reason>' (capped). */
+        delivered: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,6 +220,10 @@ CREATE TABLE IF NOT EXISTS automations (
   misfire TEXT,
   event_kind TEXT,
   event_filter TEXT,
+  active_hours TEXT,                     -- M5: 'HH:MM-HH:MM' dispatch window (row tz)
+  idle_only INTEGER NOT NULL DEFAULT 0,  -- M5: yield while a human works
+  deliver_url TEXT,                      -- M5: POST the result JSON here
+  jitter_secs INTEGER,                   -- M5: randomize computed slots (cron/every)
   workspace TEXT NOT NULL,
   mode TEXT NOT NULL DEFAULT 'read-only',
   model TEXT,
@@ -243,7 +256,8 @@ CREATE TABLE IF NOT EXISTS automation_runs (
   error TEXT,
   turns INTEGER DEFAULT 0,
   tokens_in INTEGER DEFAULT 0,
-  tokens_out INTEGER DEFAULT 0
+  tokens_out INTEGER DEFAULT 0,
+  delivered TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_automation_runs ON automation_runs (automation_id, started_at);
 -- M9: the retention pass (retention.ts) scans automation_runs by started_at.
@@ -275,6 +289,18 @@ const ROUTINES_V3_COLUMNS: Array<[name: string, ddl: string]> = [
         ["event_filter", "TEXT"],
 ];
 
+/** Routines-v4 (M5 monitoring/delivery policies): the active-hours window,
+ *  idle-only yield, result delivery webhook, slot jitter — plus the per-run
+ *  `delivered` outcome on automation_runs. Same pragma-guarded ALTER pattern,
+ *  one triple per column so each table's PRAGMA guard is explicit. */
+const ROUTINES_V4_COLUMNS: Array<[table: string, name: string, ddl: string]> = [
+        ["automations", "active_hours", "TEXT"],
+        ["automations", "idle_only", "INTEGER NOT NULL DEFAULT 0"],
+        ["automations", "deliver_url", "TEXT"],
+        ["automations", "jitter_secs", "INTEGER"],
+        ["automation_runs", "delivered", "TEXT"],
+];
+
 /** Install the automations schema (idempotent; migrates pre-v2 tables).
  *  Called at engine boot. NOTE: split per-statement — Store.run uses
  *  prepare(), which accepts exactly one statement. */
@@ -291,6 +317,12 @@ export function ensureAutomationsSchema(): void {
         // M2: routines-v3 (event routines) — same pragma guard, same shape.
         for (const [name, ddl] of ROUTINES_V3_COLUMNS) {
                 if (!present.has(name)) store.run(`ALTER TABLE automations ADD COLUMN ${name} ${ddl}`, []);
+        }
+        // M5: routines-v4 (monitoring/delivery policies) — per-table pragma
+        // guards (automations above, automation_runs freshly computed).
+        for (const [table, name, ddl] of ROUTINES_V4_COLUMNS) {
+                const cols = new Set(store.query<{ name: string }>(`PRAGMA table_info(${table})`).map((c) => c.name));
+                if (!cols.has(name)) store.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`, []);
         }
 }
 
@@ -382,6 +414,18 @@ export type CreateAutomationInput = {
         eventKind?: string | null;
         /** Payload filter (hook-filter.ts source); requires eventKind. */
         eventFilter?: string | null;
+        /** Routines v4 (M5): dispatch window 'HH:MM-HH:MM' in the routine's
+         *  timezone (time-based rows only — an event is a moment, never held). */
+        activeHours?: string | null;
+        /** Yield the slot while a human works (bridge interactive presence or
+         *  engine live runs). Time-based rows only, same reason. */
+        idleOnly?: boolean;
+        /** POST the finished run's result JSON to this URL after each run
+         *  (any kind, events included — delivery is orthogonal to schedule). */
+        deliverUrl?: string | null;
+        /** Randomize computed slots (cron/every) by 0..N seconds (1..600) —
+         *  de-herd the top-of-hour crons. */
+        jitterSecs?: number | null;
 };
 
 export type CreateResult = { ok: true; automation: AutomationRow } | { ok: false; error: string; status?: number };
@@ -412,6 +456,28 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
         // predicate is what keeps event rows invisible to it forever.
         const eventKind = input.eventKind?.trim() || null;
         const eventFilter = input.eventFilter?.trim() || null;
+        // ---- routines v4 (M5): the policy fields, validated before anything
+        // lands in the DB. Event rows reject the time-shaped policies — an
+        // event is a moment, never held — but keep delivery (orthogonal).
+        const activeHoursParsed = parseActiveHours(input.activeHours ?? null);
+        if (input.activeHours !== undefined && input.activeHours !== null && !activeHoursParsed.ok) {
+                return { ok: false, error: `active-hours: ${activeHoursParsed.error}`, status: 400 };
+        }
+        const activeHours = input.activeHours == null ? null : activeHoursParsed.ok ? activeHoursParsed.window.canonical : null;
+        const deliverUrl = input.deliverUrl?.trim() || null;
+        if (deliverUrl !== null) {
+                try {
+                        const u = new URL(deliverUrl);
+                        if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("http(s) only");
+                } catch {
+                        return { ok: false, error: `deliver must be an http(s) URL (got "${deliverUrl}")`, status: 400 };
+                }
+        }
+        const jitterSecs = input.jitterSecs ?? null;
+        if (jitterSecs !== null && (!Number.isInteger(jitterSecs) || jitterSecs < 1 || jitterSecs > 600)) {
+                return { ok: false, error: "jitter must be an integer 1..600 seconds", status: 400 };
+        }
+        const idleOnly = input.idleOnly === true ? 1 : 0;
         if (eventKind === null && eventFilter !== null) {
                 return { ok: false, error: "a filter needs an event routine — pass the event name too", status: 400 };
         }
@@ -431,6 +497,17 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
                 if (input.untilMs !== undefined && input.untilMs !== null) {
                         return { ok: false, error: "until has no meaning for an event routine (there are no occurrences to bound)", status: 400 };
                 }
+                // M5: the time-shaped policies are rejected on event rows — an
+                // event is a moment, never held or yielded. Delivery rides along.
+                if (activeHours !== null) {
+                        return { ok: false, error: "active-hours has no meaning for an event routine (the arrival is the moment; use a filter instead)", status: 400 };
+                }
+                if (idleOnly === 1) {
+                        return { ok: false, error: "idle-only has no meaning for an event routine (an arrival cannot be replayed when idle returns)", status: 400 };
+                }
+                if (jitterSecs !== null) {
+                        return { ok: false, error: "jitter has no meaning for an event routine (there are no slots to stagger)", status: 400 };
+                }
         } else {
                 plan = planSchedule(input.schedule, timezone, now);
                 if (!plan.ok) return { ok: false, error: plan.error, status: 400 };
@@ -446,8 +523,8 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
         const ts = now.getTime();
         const timed = plan !== null && plan.ok ? plan : null; // the event branch leaves this null
         store.run(
-                `INSERT INTO automations (id, title, prompt, cron_expr, delay_ms, schedule_kind, interval_n, interval_unit, interval_at, timezone, until_ms, misfire, event_kind, event_filter, workspace, mode, model, max_runs, lifecycle, next_run_at, dispatch_status, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 'idle', ?, ?)`,
+                `INSERT INTO automations (id, title, prompt, cron_expr, delay_ms, schedule_kind, interval_n, interval_unit, interval_at, timezone, until_ms, misfire, event_kind, event_filter, active_hours, idle_only, deliver_url, jitter_secs, workspace, mode, model, max_runs, lifecycle, next_run_at, dispatch_status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 'idle', ?, ?)`,
                 [
                         id,
                         title,
@@ -463,6 +540,10 @@ export function createAutomation(input: CreateAutomationInput, now: Date = new D
                         input.misfire ?? null,
                         timed ? null : eventKind,
                         timed ? null : eventFilter,
+                        activeHours,
+                        idleOnly,
+                        deliverUrl,
+                        jitterSecs,
                         input.workspace,
                         mode,
                         input.model ?? null,
@@ -498,6 +579,11 @@ export type UpdatePatch = Partial<Pick<AutomationRow, "title" | "prompt" | "mode
         every?: string;
         after?: string;
         delayMinutes?: number;
+        /** Routines v4 (M5). activeHours uses the 'HH:MM-HH:MM' grammar (null clears); idleOnly/deliverUrl/jitterSecs clear with null. */
+        activeHours?: string | null;
+        idleOnly?: boolean;
+        deliverUrl?: string | null;
+        jitterSecs?: number | null;
 };
 
 export function updateAutomation(id: string, patch: UpdatePatch, now: Date = new Date()): CreateResult {
@@ -552,6 +638,48 @@ export function updateAutomation(id: string, patch: UpdatePatch, now: Date = new
                 }
                 sets.push("misfire = ?");
                 params.push(patch.misfire ?? null);
+        }
+        // ---- routines v4 (M5): the policy fields. Event rows keep rejecting
+        // the time-shaped ones (same rule as create — an event is a moment).
+        const isEventRow = (row.schedule_kind ?? inferLegacyKind(row)) === "event";
+        if (patch.activeHours !== undefined) {
+                if (patch.activeHours === null || patch.activeHours.trim() === "") {
+                        sets.push("active_hours = ?");
+                        params.push(null);
+                } else {
+                        const parsed = parseActiveHours(patch.activeHours);
+                        if (!parsed.ok) return { ok: false, error: `active-hours: ${parsed.error}`, status: 400 };
+                        if (isEventRow) return { ok: false, error: "active-hours has no meaning for an event routine", status: 400 };
+                        sets.push("active_hours = ?");
+                        params.push(parsed.window.canonical);
+                }
+        }
+        if (patch.idleOnly !== undefined) {
+                if (patch.idleOnly && isEventRow) return { ok: false, error: "idle-only has no meaning for an event routine", status: 400 };
+                sets.push("idle_only = ?");
+                params.push(patch.idleOnly ? 1 : 0);
+        }
+        if (patch.deliverUrl !== undefined) {
+                const url = patch.deliverUrl?.trim() || null;
+                if (url !== null) {
+                        try {
+                                const u = new URL(url);
+                                if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("http(s) only");
+                        } catch {
+                                return { ok: false, error: `deliver must be an http(s) URL (got "${url}")`, status: 400 };
+                        }
+                }
+                sets.push("deliver_url = ?");
+                params.push(url);
+        }
+        if (patch.jitterSecs !== undefined) {
+                const j = patch.jitterSecs ?? null;
+                if (j !== null && (!Number.isInteger(j) || j < 1 || j > 600)) {
+                        return { ok: false, error: "jitter must be an integer 1..600 seconds (or null to clear)", status: 400 };
+                }
+                if (j !== null && isEventRow) return { ok: false, error: "jitter has no meaning for an event routine", status: 400 };
+                sets.push("jitter_secs = ?");
+                params.push(j);
         }
         if (patch.lifecycle !== undefined) {
                 if (!["active", "paused", "completed", "failed"].includes(patch.lifecycle)) {
@@ -914,15 +1042,20 @@ export class AutomationsScheduler {
                 // Event rows are excluded defensively: their next_run_at is NULL
                 // by construction, and a bent row (hand-edited DB, an old bug)
                 // must never start firing from the tick — the webhook lane is
-                // their only dispatch path.
+                // their only dispatch path. `held` carries the M5 policy-held
+                // rows (once/after gated by active-hours/idle-only): they stay
+                // due for a FUTURE tick, and the exclusion stops this tick's
+                // LIMIT-1 loop from re-picking a held row forever.
+                const held = new Set<string>();
                 while (this.inFlight.size < MAX_CONCURRENT_AUTOMATION_RUNS) {
                         const due = store.get<AutomationRow>(
                                 `SELECT * FROM automations
                                  WHERE lifecycle = 'active' AND running = 0 AND dispatch_status = 'idle'
                                    AND next_run_at IS NOT NULL AND next_run_at <= ?
                                    AND (schedule_kind IS NULL OR schedule_kind != 'event')
+                                   ${held.size > 0 ? `AND id NOT IN (${[...held].map(() => "?").join(", ")})` : ""}
                                  ORDER BY next_run_at LIMIT 1`,
-                                [ts],
+                                [ts, ...held],
                         );
                         if (!due) break;
                         // Misfire policy: a due slot older than the grace window is
@@ -931,9 +1064,40 @@ export class AutomationsScheduler {
                         // catch-up = launchd-style: run ONCE when the lag is under
                         // 24h, rescheduling from the run's end). Older than 24h
                         // even catch-up gives up: slots skip, one-shots complete.
-                        const lag = ts - due.next_run_at;
+                        const dueAt = due.next_run_at!; // non-null by the query predicate
+                        const lag = ts - dueAt;
                         const misfired = lag > misfireGraceMs();
                         const catchUp = misfired && effectiveMisfire(due) === "catch-up" && lag <= MISFIRE_CATCHUP_MAX_LAG_MS;
+                        // ---- routines v4 (M5): the monitoring-policy gates. They run
+                        // BEFORE the claim (a gated slot never spawns) and are
+                        // kind-routed: cron/every slots are MOMENTS (skip + advance,
+                        // recorded like a misfire), while once/after occurrences are
+                        // HELD (next_run_at untouched — the misfire grace above bounds
+                        // how long a held one-shot may wait, and an after-routine can
+                        // never be overdue by construction).
+                        if (!misfired) {
+                                const kind = due.schedule_kind ?? inferLegacyKind(due);
+                                const momentary = kind === "cron" || kind === "every";
+                                const window = due.active_hours !== null ? parseActiveHours(due.active_hours) : null;
+                                if (window?.ok && !isWithinActiveHours(dueAt, window.window, due.timezone)) {
+                                        if (momentary) {
+                                                recordSkip(due, ts, "outside_active_hours");
+                                                reschedule(due, { trigger: "schedule", slotMs: dueAt, fromMs: ts });
+                                                continue;
+                                        }
+                                        held.add(due.id);
+                                        continue; // held: the window opens (or misfire bounds the wait)
+                                }
+                                if (due.idle_only === 1 && (await foregroundBusy())) {
+                                        if (momentary) {
+                                                recordSkip(due, ts, "yielded_to_foreground");
+                                                reschedule(due, { trigger: "schedule", slotMs: dueAt, fromMs: ts });
+                                                continue;
+                                        }
+                                        held.add(due.id);
+                                        continue; // held until the human is done (misfire bounds it)
+                                }
+                        }
                         const claimed = claim(due.id, ts);
                         if (!claimed) continue; // raced with another claim — next tick
                         if (misfired && !catchUp) {
@@ -979,6 +1143,7 @@ export class AutomationsScheduler {
                                         turns: 0,
                                         tokens_in: 0,
                                         tokens_out: 0,
+                                        delivered: null,
                                 },
                                 eventPayload === undefined ? undefined : { eventPayload },
                         );
@@ -995,6 +1160,19 @@ export class AutomationsScheduler {
                         const updated = getAutomation(automation.id);
                         if (updated) reschedule(updated, { trigger, slotMs: scheduledAt, fromMs: endedAt });
                         emit(ok ? "automation:run-succeeded" : "automation:run-failed", { id: automation.id, runId, exitCode: result.exitCode });
+                        // M5 delivery: POST the finished result to the routine's
+                        // deliver_url (if any). Awaits inside the claim so `delivered`
+                        // lands in the run row; a delivery failure NEVER fails the
+                        // run — it is recorded on the row and the bus.
+                        if (current.deliver_url) {
+                                const delivered = await deliverRunResult(current, { id: runId, trigger, startedAt, endedAt, exitCode: result.exitCode, output: result.output, turns: result.turns, tokensIn: result.tokensIn, tokensOut: result.tokensOut });
+                                try {
+                                        store.run(`UPDATE automation_runs SET delivered = ? WHERE id = ?`, [delivered, runId]);
+                                } catch {
+                                        /* observability only */
+                                }
+                                emit("automation:delivered", { id: automation.id, runId, delivered });
+                        }
                 } catch (err: any) {
                         // Dispatch failure — retry with backoff (zcode: same run id, frozen scheduledAt).
                         const attempts = (getAutomation(automation.id)?.dispatch_attempts ?? 0) + 1;
@@ -1227,7 +1405,117 @@ function reschedule(row: AutomationRow, opts: { trigger: "schedule" | "manual" |
                 emit("automation:completed", { id: row.id });
                 return;
         }
+        // M5 jitter (cron/every only): spread the computed slot by 0..N seconds
+        // so a fleet of top-of-hour crons does not stampede the bridge at :00
+        // (OpenClaw's stagger, made per-routine and explicit). Injected rand
+        // for the tests; production is Math.random.
+        if (row.jitter_secs !== null && (kind === "cron" || kind === "every")) {
+                next += Math.floor(jitterRand() * row.jitter_secs * 1000);
+        }
         store.run(`UPDATE automations SET next_run_at = ? WHERE id = ?`, [next, row.id]);
+}
+
+/** The jitter source — injectable for deterministic tests. */
+let jitterRand: () => number = Math.random;
+export function setJitterRandForTest(fn: () => number): void {
+        jitterRand = fn;
+}
+
+// ---------------------------------------------------------------------------
+// M5: foreground presence + result delivery
+// ---------------------------------------------------------------------------
+
+/** The OpenClaw NO_REPLY sentinel: an unattended run whose report contains
+ * this token (word-bounded) says "nothing worth reporting" — delivery is
+ * suppressed, the run itself is untouched. */
+const NO_REPLY_RE = /\bNO_REPLY\b/;
+
+export interface DeliverableRun {
+        id: string;
+        trigger: "schedule" | "manual" | "event";
+        startedAt: number;
+        endedAt: number;
+        exitCode: number;
+        output: string;
+        turns: number;
+        tokensIn: number;
+        tokensOut: number;
+}
+
+/** POST the finished run's result JSON to the routine's deliver_url.
+ * Returns the `delivered` outcome for the run row. NEVER throws — a
+ * delivery problem is data, not a failure of the run it reports on.
+ * The payload is a fixed, documented shape (any receiver — Slack-compatible
+ * incoming webhook, n8n, a tiny adapter — can consume it). */
+async function deliverRunResult(row: AutomationRow, run: DeliverableRun): Promise<string> {
+        if (NO_REPLY_RE.test(run.output)) return "suppressed_no_reply"; // the quiet-result contract
+        const body = JSON.stringify({
+                type: "unown.routine.finished",
+                routineId: row.id,
+                title: row.title,
+                runId: run.id,
+                trigger: run.trigger,
+                status: run.exitCode === 0 ? "succeeded" : "failed",
+                exitCode: run.exitCode,
+                turns: run.turns,
+                tokensIn: run.tokensIn,
+                tokensOut: run.tokensOut,
+                startedAt: run.startedAt,
+                endedAt: run.endedAt,
+                output: run.output.slice(0, 10_000),
+        });
+        try {
+                const res = await fetch(row.deliver_url!, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "User-Agent": "unown-routines/1" },
+                        body,
+                        signal: AbortSignal.timeout(10_000),
+                });
+                if (!res.ok) return `failed: HTTP ${res.status}`;
+                return "sent";
+        } catch (err: any) {
+                return `failed: ${String(err?.message ?? err).slice(0, 120)}`;
+        }
+}
+
+/** How recent an interactive bridge request keeps the foreground "busy" for
+ * idle-only routines (the human left ~now; a minute of drain is plenty). */
+export const IDLE_PRESENCE_WINDOW_MS = Number(process.env.PI_IDLE_PRESENCE_WINDOW_MS || 60_000);
+
+/** The foreground-presence probe, injectable for tests. Production reads
+ * two honest signals: the bridge's /health lanes.lastInteractiveAt (a
+ * human made an LLM request through the bridge — the terminal agent's
+ * actual footprint) and the engine's own in-flight runs. */
+let foregroundProbe: () => Promise<boolean> = defaultForegroundBusy;
+export function setForegroundProbeForTest(fn: (() => Promise<boolean>) | null): void {
+        foregroundProbe = fn ?? defaultForegroundBusy;
+}
+
+export function foregroundBusy(): Promise<boolean> {
+        return foregroundProbe();
+}
+
+async function defaultForegroundBusy(): Promise<boolean> {
+        // Engine-side live runs (harness candidates, other automations) count:
+        // a machine-foreground is still foreground.
+        try {
+                const { listLiveRuns } = await import("./run-progress.ts");
+                if (listLiveRuns().length > 0) return true;
+        } catch {
+                /* run-progress unavailable — the bridge check still runs */
+        }
+        // Bridge interactive presence: a human's request inside the window.
+        try {
+                const res = await fetch(`${BRIDGE_URL}/health`, { signal: AbortSignal.timeout(2000) });
+                if (res.ok) {
+                        const body = (await res.json()) as { lanes?: { lastInteractiveAt?: number | null } };
+                        const last = body?.lanes?.lastInteractiveAt;
+                        if (typeof last === "number" && Date.now() - last < IDLE_PRESENCE_WINDOW_MS) return true;
+                }
+        } catch {
+                /* bridge unreachable = no interactive traffic through it — not busy */
+        }
+        return false;
 }
 
 /** Orphan recovery re-arm: the claimed slot died mid-run — schedule kinds

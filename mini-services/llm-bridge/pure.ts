@@ -45,6 +45,10 @@ export interface BridgeLogEntry {
         cachedTokens?: number;
         durationMs: number;
         error?: string;
+        /** Which admission lane served the request (M5: recorded for the usage
+         *  log — `unown usage` can split human vs engine traffic, and the
+         *  engine's --idle-only routines read interactive presence from it). */
+        lane?: BridgeLane;
 }
 
 /** Mutable stat sink shared by SSE folding and the log entry. */

@@ -169,6 +169,12 @@ const USAGE_FILE = join(resolveUsageStateDir(process.env, import.meta.dir), USAG
 let usageEntries = 0; // appends since process start (health/report only)
 let usageLogFailureLogged = false;
 
+/** Interactive presence (M5): when the last interactive-lane request was
+ * admitted — null until a human's request arrives this boot. Exposed via
+ * /health lanes.lastInteractiveAt; the engine's --idle-only routines read
+ * it to yield foreground priority to humans. */
+let lastInteractiveAt: number | null = null;
+
 /** Append one settled request to the usage log. NEVER throws — a broken
  *  usage log must not take the chat path down. */
 function persistUsage(entry: BridgeLogEntry) {
@@ -183,6 +189,7 @@ function persistUsage(entry: BridgeLogEntry) {
                 durationMs: entry.durationMs,
                 status: entry.error ? "error" : "ok",
                 ...(entry.error ? { error: String(entry.error).slice(0, 200) } : {}),
+                ...(entry.lane ? { lane: entry.lane } : {}),
         };
         const res = appendUsageRecord(USAGE_FILE, record);
         if (res.appended) {
@@ -654,6 +661,10 @@ const server = Bun.serve({
                                         backgroundSlotLimit: BACKGROUND_SLOT_LIMIT,
                                         backgroundYieldMs: BACKGROUND_YIELD_MS,
                                         backgroundYielded: backgroundYielded(),
+                                        // Interactive presence (M5): when the last interactive-lane
+                                        // request was admitted (null = never this boot). The engine's
+                                        // --idle-only routines read this to yield to humans.
+                                        lastInteractiveAt,
                                         inFlight,
                                         queued: { ...laneStats.queued, live: { interactive: waitingQueue.interactive.length, background: waitingQueue.background.length } },
                                         admitted: { ...laneStats.admitted },
@@ -750,6 +761,11 @@ const server = Bun.serve({
                                 // Admission lane: interactive (a human waits) vs background
                                 // (engine learning jobs signal via bearer/header — see pure.ts).
                                 const lane = laneForRequest(req.headers.get("authorization"), req.headers.get("x-unown-lane"));
+                                entry.lane = lane;
+                                // Interactive presence (M5): the engine's --idle-only routines ask
+                                // /health "has a human used an agent recently?" — this timestamp is
+                                // the honest answer (updated on admission, i.e. a human is waiting).
+                                if (lane === "interactive") lastInteractiveAt = Date.now();
                                 let res: Response;
                                 try {
                                         res = await callUpstream(upstreamBody, route, lane);
