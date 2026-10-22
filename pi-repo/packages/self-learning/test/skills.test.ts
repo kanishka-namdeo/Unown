@@ -143,11 +143,16 @@ describe("projectSkillsDir / projectStagedSkillsDir", () => {
                 expect(projectStagedSkillsDir("/p")).toBe(join("/p", ".unown", "skills-staged"));
                 // The staged dir must sit OUTSIDE the discovery root (cli.ts
                 // additionalSkillPaths passes exactly <cwd>/.unown/skills):
-                // containment would make staged skills auto-load.
-                const staged = projectStagedSkillsDir("/p");
-                const loaded = projectSkillsDir("/p");
+                // containment would make staged skills auto-load. Separator-
+                // agnostic boundary checks — the old template-literal prefixes
+                // hard-coded "/", which broke under win32 join()'s backslashes
+                // (the 2026-10-22 windows CI red; green on posix only ever
+                // because join happened to agree).
+                const staged = projectStagedSkillsDir("/p").replace(/\\/g, "/");
+                const loaded = projectSkillsDir("/p").replace(/\\/g, "/");
+                const unown = join("/p", ".unown").replace(/\\/g, "/");
                 expect(staged.startsWith(`${loaded}/`)).toBe(false);
-                expect(staged.startsWith(`${join("/p", ".unown")}/`)).toBe(true);
+                expect(staged.startsWith(`${unown}/`)).toBe(true);
         });
 });
 

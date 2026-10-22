@@ -21,16 +21,25 @@ import { BASE_SESSION_TOOLS, defaultSessionTools, whichBinary } from "../src/ses
 
 const cleanups: string[] = [];
 afterAll(() => {
-        for (const d of cleanups) rmSync(d, { recursive: true, force: true });
+        // maxRetries: windows can hold a handle briefly after a just-killed spawn
+for (const d of cleanups) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
-/** A fake PATH dir containing the given binary names (all regular files). */
+/** A fake PATH dir containing the given binary names (all regular files).
+ *  Windows-correct since 2026-10-22: whichBinary() probes PATHEXT extensions
+ *  there (rg -> rg.com/.exe/.bat/.cmd), so an extensionless file named `rg`
+ *  resolves to NOTHING — the fake dir must also carry `<name>.exe` twins or
+ *  every "binary present" assertion fails on the windows CI leg (the
+ *  2026-10-22 red; posix legs never noticed). */
 function fakeBinDir(names: string[]): { dir: string; env: NodeJS.ProcessEnv } {
         const dir = mkdtempSync(join(tmpdir(), "unown-bins-"));
         cleanups.push(dir);
         for (const name of names) {
                 const p = join(dir, name);
                 writeFileSync(p, "#!/bin/sh\nexit 0\n", "utf8");
+                if (process.platform === "win32") {
+                        writeFileSync(join(dir, `${name}.exe`), "", "utf8");
+                }
                 try {
                         chmodSync(p, 0o755);
                 } catch {

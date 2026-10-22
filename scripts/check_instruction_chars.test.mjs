@@ -32,7 +32,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -308,8 +308,9 @@ describe("the repo's own instruction set scans clean (the CI job's contract)", (
     test("discovery mode over the real repo: exit 0, broad scope", () => {
         const r = runCli([]);
         assert.equal(r.code, 0, `findings in the repo's instruction set:\nstderr: ${r.err}`);
-        // 39 instruction files today (AGENTS.md/SKILL.md/CLAUDE.md anywhere,
-        // .unown/**, .claude/settings.json + agents/). A floor of 20 catches a
+        // 40 instruction files today (AGENTS.md/SKILL.md/CLAUDE.md anywhere,
+        // .unown/** at ANY depth incl. the vendored package's nested tree,
+        // .claude/settings.json + agents/). A floor of 20 catches a
         // discovery regression that silently shrinks the scope; it must never
         // shrink to "whatever passed review" — the point is what did not.
         const m = r.out.match(/scanned (\d+) files?, (\d+) findings/);
@@ -317,5 +318,45 @@ describe("the repo's own instruction set scans clean (the CI job's contract)", (
         assert.ok(Number(m[1]) >= 20, `discovery scanned only ${m[1]} files — scope regression?`);
         assert.equal(m[2], "0");
         assert.doesNotMatch(r.out + r.err, ANY_FORBIDDEN);
+    });
+});
+
+// ── nested .unown discovery (2026-10-22) ────────────────────────────────────
+// The vendored pi-repo/packages/self-learning/.unown/ tree (committed seed
+// memory) is tier-1 instruction surface when the package dir is the working
+// project — a smuggled char there reaches the model exactly like one in the
+// root .unown/. The root-anchored matcher used to miss every nested tree.
+describe("nested .unown trees are instruction surface", () => {
+    test("a nested .unown/memory/project.md with an invisible char is flagged on a DIRECTORY walk", () => {
+        const dir = fixtureDir();
+        try {
+            const nested = join(dir, "pi-repo", "packages", "x", ".unown", "memory");
+            mkdirSync(nested, { recursive: true });
+            const file = join(nested, "project.md");
+            writeFileSync(file, `# Tier 1\n- hide ${ZWSP} inside line two\n`);
+            const r = runCli([dir]); // directory arg -> the discovery patterns decide scope
+            assert.notEqual(r.code, 0, `nested .unown/memory/project.md slipped past discovery\nstdout: ${r.out}\nstderr: ${r.err}`);
+            assert.match(r.err, new RegExp(escapeRe(outOfRepoKey(file)) + ":2:8\\b"), `file:line:col for the nested file\nstderr: ${r.err}`);
+            assert.doesNotMatch(r.out + r.err, ANY_FORBIDDEN, "output echoed a raw invisible char");
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test("runtime dirs under a NESTED .unown stay excluded (receipts are not instruction surface)", () => {
+        const dir = fixtureDir();
+        try {
+            const nested = join(dir, "app", ".unown", "receipts");
+            mkdirSync(nested, { recursive: true });
+            const poisoned = join(nested, "log.md");
+            writeFileSync(poisoned, `x ${RLO} y\n`);
+            const r = runCli([dir]);
+            assert.ok(
+                !r.err.includes(outOfRepoKey(poisoned)),
+                `runtime receipts file must not be scanned:\nstderr: ${r.err}`,
+            );
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
     });
 });

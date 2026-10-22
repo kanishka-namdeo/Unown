@@ -74,6 +74,14 @@ const SOURCES = {
   hooks: { rel: `${ENGINE}/hooks.ts`, name: `${ENGINE}/hooks.ts` },
   termhooks: { rel: `${ENGINE}/termhooks.ts`, name: `${ENGINE}/termhooks.ts` },
   harness: { rel: `${ENGINE}/harness.ts`, name: `${ENGINE}/harness.ts` },
+  /** The instruction-set write gate's deny reasons are AUTHORED here (both
+   *  gates return guard.reason verbatim) — the integrity page's deny rows
+   *  quote them, so the author is a gated source since the 2026-10-22 v2
+   *  memory-lane row. */
+  instructionGuard: {
+    rel: `${ENGINE}/instruction-guard.ts`,
+    name: `${ENGINE}/instruction-guard.ts`,
+  },
   help: { rel: `${ENGINE}/cli.ts`, name: `${ENGINE}/cli.ts (HELP)` },
   /** The split-view extension: the /split* command names the split-view band
    *  lists are gated against its registerCommand calls. */
@@ -589,7 +597,7 @@ function gate(pages, sources) {
     // the ones harness.ts passes through hooks.ts's logHook — the page says
     // "taken from `hooks.ts` or `harness.ts` with the ids filled in", and the
     // gate checks exactly the sources the page claims.
-    { page: PAGES.integrity, rows: parseHookLog(pages[PAGES.integrity]), bundles: [sources.hooks, sources.termhooks, sources.harness] },
+    { page: PAGES.integrity, rows: parseHookLog(pages[PAGES.integrity]), bundles: [sources.hooks, sources.termhooks, sources.harness, sources.instructionGuard] },
     { page: PAGES.loop, rows: parseBeats(pages[PAGES.loop], "work"), bundles: [sources.termhooks], chained: true },
     { page: PAGES.loop, rows: parseBeats(pages[PAGES.loop], "learn"), bundles: [sources.harness], chained: true },
     // The dream beat quotes this repository's own project memory and calls the
@@ -680,6 +688,7 @@ function run(check) {
     hooks: buildSource(SOURCES.hooks.name, read(SOURCES.hooks.rel)),
     termhooks: buildSource(SOURCES.termhooks.name, read(SOURCES.termhooks.rel)),
     harness: buildSource(SOURCES.harness.name, read(SOURCES.harness.rel)),
+    instructionGuard: buildSource(SOURCES.instructionGuard.name, read(SOURCES.instructionGuard.rel)),
     help: buildSource(SOURCES.help.name, helpText),
     memory: buildSource(SOURCES.memory.name, read(SOURCES.memory.rel)),
     splitview: buildSource(SOURCES.splitview.name, read(SOURCES.splitview.rel)),

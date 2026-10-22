@@ -36,13 +36,26 @@
  *     exactly <cwd>/.unown/skills), so it is writable surface whose promotion
  *     INTO .unown/skills is the human review point. The doctor's unicode
  *     audit still scans it (instruction-shaped content about to be promoted).
- *   - .unown/memory/project.md — AutoDream's dream target. The ENGINE
- *     process writes it directly (dream.ts), never through the tool gate;
- *     keeping it out of the in-session deny list changes nothing for the
- *     agent-session gate while keeping this list exactly the INSTRUCTION tier
- *     (the policy tier, .unown/memory/policy*, IS denied).
+ *   - .unown/memory/local.md — deliberately NOT denied: it is the documented
+ *     repo-suppliable "local overrides" lane (a cloned repo can ship one),
+ *     injected with the explicit "user/repo-authored, unverified" framing and
+ *     the injection-guard scan on every load — it never receives trust
+ *     framing, so there is no laundering gradient. (project.md IS denied —
+ *     see the table.)
  *   - out-of-project paths — the jail owns those (a /tmp/AGENTS.md is not
  *     loaded into any session's context).
+ *
+ * 2026-10-22 v2: .unown/memory/project.md + its provenance sidecar moved OUT
+ *  of the exclusion list and INTO the deny table. The owner's Manual-notes
+ *  lane (0d1a50e) made the old rationale false — dreams used to re-render
+ *  project.md from platform state, clobbering any agent-written text
+ *  (self-healing); they now re-append the "## Manual notes" section VERBATIM,
+ *  so an in-session write became a persistent prompt-injection channel whose
+ *  content the next dream launders into "written by AutoDream" trust framing
+ *  (the SA2-B audit). The ENGINE still writes both files directly (dream.ts,
+ *  never through the tool gate) and user hand-edits happen outside sessions —
+ *  exactly the lane's documented contract — so the deny closes only the
+ *  in-session channel.
  *
  * Also hosts `scanInstructionText` — the compact core of the invisible-
  * Unicode instruction lint (scripts/check_instruction_chars.mjs, SA-A),
@@ -84,6 +97,14 @@ export const INSTRUCTION_WRITE_DENY: ReadonlyArray<{ shape: string; why: string 
         { shape: ".claude/agents/**", why: "Claude-style subagent definitions — instruction context" },
         { shape: ".vscode/tasks.json (any depth)", why: "runs commands on project open — the Tensorlake dropper's persistence target" },
         { shape: ".vscode/settings.json (any depth)", why: "editor settings can rewire tasks/extensions on open" },
+        {
+                shape: ".unown/memory/project.md",
+                why: "tier-1 project memory — injected into every future session's system prompt; the Manual-notes lane made agent-written content DURABLE (dreams preserve it verbatim), so an in-session write is a persistent prompt-injection channel (2026-10-22 v2)",
+        },
+        {
+                shape: ".unown/memory/project.provenance.json",
+                why: "the M10 honesty sidecar — a forged sha256 would vouch for content AutoDream never wrote (provenance laundering)",
+        },
 ];
 
 /** Protected shapes as a plain list — doctor display + compact test pinning. */
@@ -215,10 +236,10 @@ export function instructionWriteDeny(projectPath: string, p: string): Instructio
         if (realL !== rootL && !realL.startsWith(`${rootL}/`)) return allow();
         const rel = realL === rootL ? "" : realL.slice(rootL.length + 1);
 
-        const denyWith = (match: string): InstructionWriteDecision => ({
+        const denyWith = (match: string, guidance = "propose changes via a PR for human review"): InstructionWriteDecision => ({
                 deny: true,
                 match,
-                reason: `instruction-set file is not writable in-session: ${match} (propose changes via a PR for human review)`,
+                reason: `instruction-set file is not writable in-session: ${match} (${guidance})`,
         });
 
         // AGENTS.md / CLAUDE.md — exact basename at any depth (`**/AGENTS.md`).
@@ -235,10 +256,27 @@ export function instructionWriteDeny(projectPath: string, p: string): Instructio
         if (rel === ".unown/permissions.json") return denyWith(".unown/permissions.json");
         if (rel === ".unown/adversary.md") return denyWith(".unown/adversary.md");
         // The tier-0 policy files — prefix shape (policy.md, policy-rules.md, …).
-        // project.md (the dream target) and local.md are deliberately absent:
-        // dream consolidation writes project.md from the ENGINE process, and
-        // the agent-session gate never sees that write.
+        // local.md is deliberately absent (repo-suppliable lane, injected as
+        // "user/repo-authored, unverified" — no trust gradient to launder).
         if (rel.startsWith(".unown/memory/policy")) return denyWith(".unown/memory/policy*");
+
+        // The dream target + its honesty sidecar (2026-10-22 v2 — see the module
+        // header): tier-1 memory is injected into every future session, the
+        // Manual-notes lane made agent writes durable (dreams re-append the
+        // section verbatim), and a forged sidecar upgrades the framing to
+        // "written by AutoDream". The ENGINE writes both directly (dream.ts,
+        // never through this gate); the user hand-edits outside sessions — the
+        // deny closes only the in-session echo/redirect channel.
+        if (rel === ".unown/memory/project.md")
+                return denyWith(
+                        ".unown/memory/project.md",
+                        "memory is engine-written — add Manual notes by editing the file outside a session; dreams preserve them verbatim",
+                );
+        if (rel === ".unown/memory/project.provenance.json")
+                return denyWith(
+                        ".unown/memory/project.provenance.json",
+                        "the provenance sidecar is engine-written — a forged one would misstate trust",
+                );
 
         // Tensorlake dropper targets (October 2026: writes .claude/settings.json
         // / .vscode/tasks.json for persistence on project open) + the Claude

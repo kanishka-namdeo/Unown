@@ -22,6 +22,7 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { pruneToBudget, type BudgetReport } from "./budget.ts";
+import { extractManualNotesSection } from "./memzero.ts";
 import { seedAddonsConfig } from "./addons/config.ts";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { scanMemoryCandidate, type GuardFlag } from "./guard.ts";
@@ -527,13 +528,26 @@ export interface ProjectProvenance {
         changedBy: string;
         at: number;
         sha256: string;
+        /** v2 (2026-10-22): sha256 of the preserved Manual-notes section this
+         *  dream recorded — lets the NEXT dream detect a hand-edit to the lane
+         *  between dreams (the whole-file sha cannot: the dream re-appends the
+         *  section verbatim, so its write always matches its own sidecar). */
+        manualSha256?: string;
+        /** v2, STICKY: the Manual-notes lane has carried hand-edited (never
+         *  dream-authored) content at least once. Once true it stays true —
+         *  the injection framing must never go back to vouching for the lane
+         *  as AutoDream-written. */
+        manualEdited?: boolean;
 }
 
 export function projectProvenancePath(projectDir: string): string {
         return join(projectDir, ".unown", "memory", "project.provenance.json");
 }
 
-/** Read the sidecar (best-effort; corrupt/missing → null = unverified). */
+/** Read the sidecar (best-effort; corrupt/missing → null = unverified).
+ *  v2 optional fields are validated strictly when present — a malformed
+ *  manualSha256/manualEdited makes the whole sidecar untrusted (null), which
+ *  the injection path treats as never-written: fail-closed. */
 export function readProjectProvenance(projectDir: string): ProjectProvenance | null {
         try {
                 const raw = JSON.parse(readFileSync(projectProvenancePath(projectDir), "utf8"));
@@ -541,7 +555,9 @@ export function readProjectProvenance(projectDir: string): ProjectProvenance | n
                         typeof raw?.version === "number" &&
                         typeof raw?.changedBy === "string" &&
                         typeof raw?.at === "number" &&
-                        typeof raw?.sha256 === "string"
+                        typeof raw?.sha256 === "string" &&
+                        (raw?.manualSha256 === undefined || typeof raw?.manualSha256 === "string") &&
+                        (raw?.manualEdited === undefined || typeof raw?.manualEdited === "boolean")
                 ) {
                         return raw as ProjectProvenance;
                 }
@@ -588,6 +604,16 @@ function terminalProvenanceLine(tier: string, opts: { projectDir?: string; conte
                         const { origin, meta } = projectMemoryOrigin(opts.projectDir ?? ".", opts.content ?? "");
                         if (origin === "autodream") {
                                 const when = new Date(meta!.at).toISOString().slice(0, 10);
+                                // v2 honesty (2026-10-22): a dream that preserved a hand-edited
+                                // Manual-notes lane writes a MATCHING whole-file sha — "written by
+                                // AutoDream" would launder the user's (or an attacker's) manual
+                                // text into engine-vetted framing. The sticky manualEdited flag
+                                // keeps the lane framed as hand-edited forever once it has been.
+                                // Heading detection uses the SAME line-anchored semantics as
+                                // extractManualNotesSection (imported for parity, not re-implemented).
+                                if (meta?.manualEdited && extractManualNotesSection(opts.content ?? "").trim().length > 0) {
+                                        return `<!-- source: project memory (.unown/memory/project.md — platform sections written by AutoDream v${meta!.version} on ${when}; Manual notes section hand-edited, unverified)${flagged} -->`;
+                                }
                                 return `<!-- source: project memory (.unown/memory/project.md — written by AutoDream v${meta!.version} on ${when}; content matches)${flagged} -->`;
                         }
                         if (origin === "hand-edited") {
@@ -644,7 +670,7 @@ export function terminalMemoryForAgentDetailed(projectDir: string): {
         // hop).
         const REPO_RESIDENT_TIERS = new Set(["project", "local"]);
         const withGuide = [
-                { path: MEMORY_GUIDE_PATH, content: MEMORY_GUIDE, tier: "guide" },
+                { path: MEMORY_GUIDE_PATH, content: MEMORY_GUIDE, tier: "guide", fsPath: "" },
                 ...files.map((f) => {
                         let flags: GuardFlag[] = [];
                         if (REPO_RESIDENT_TIERS.has(f.tier)) {
@@ -667,7 +693,17 @@ export function terminalMemoryForAgentDetailed(projectDir: string): {
         ];
         const { files: budgeted, report } = pruneToBudget(withGuide);
         return {
-                files: budgeted.map((f) => ({ path: f.path, content: f.content, tier: f.tier ?? "memory" })),
+                // fsPath rides along (M6 staleness): the /learning handler stats the
+                // real file — the pre-2026-10-22 map dropped it, so every tier's
+                // "updated Xm ago" line silently vanished while the command's
+                // description still promised it. The guide is inline content (no
+                // file) and keeps fsPath: "".
+                files: budgeted.map((f) => ({
+                        path: f.path,
+                        content: f.content,
+                        tier: f.tier ?? "memory",
+                        fsPath: typeof f.fsPath === "string" ? f.fsPath : "",
+                })),
                 report,
         };
 }

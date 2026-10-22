@@ -89,6 +89,7 @@ import {
 import { assistantTextOf } from "./messages.ts";
 import {
         isProviderStyleFailure,
+        isModelUnhealthy,
         loadModelHealth,
         markModelUnhealthy,
         saveModelHealth,
@@ -2641,7 +2642,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         const lines = f.content.trimEnd().split("\n");
                                         const shown =
                                                 lines.slice(0, 60).join("\n") + (lines.length > 60 ? `\n… (${lines.length - 60} more lines)` : "");
-                                        const age = ageOf(f.fsPath);
+                                        const age = f.fsPath ? ageOf(f.fsPath) : "";
                                         return `── ${f.tier.toUpperCase()} · ${f.path}${age ? ` (${age})` : ""} ──\n${shown}`;
                                 });
                                 ctx.ui.notify(

@@ -36,6 +36,10 @@ export interface BudgetFile {
         path: string;
         content: string;
         tier?: string;
+        /** Optional real filesystem path (M6 staleness stats ride it through
+         *  pruneToBudget; inline content like the memory guide has none —
+         *  callers default it to ""). */
+        fsPath?: string;
 }
 
 export interface PrunedBlock {

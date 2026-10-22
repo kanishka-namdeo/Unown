@@ -6,8 +6,9 @@ import { FadeUp, GITHUB_URL, BENCH_URL } from "./shell";
 /**
  * The Integrity pane of the proof band (`proof.tsx`).
  *
- * The LOG rows below are literals the engine writes, taken from `hooks.ts` or
- * `harness.ts` with the interpolated ids and versions filled in —
+ * The LOG rows below are literals the engine writes, taken from `hooks.ts`,
+ * `harness.ts` or (the deny reasons' author) `instruction-guard.ts`, with the
+ * interpolated ids and versions filled in —
  * `scripts/landing_claims.mjs` asserts each literal against its source file,
  * so a deny rule reworded turns the page red rather than making it quietly
  * wrong. The six hook names here are the six members of `HookName`.
@@ -18,6 +19,9 @@ import { FadeUp, GITHUB_URL, BENCH_URL } from "./shell";
  * 2026-10-22 hardening: two more deny rows — the instruction-set write gate
  * and the DNS-exfiltration family — and the sandbox paragraph gained the
  * same two denials in prose. Nothing pre-existing was re-worded.
+ * 2026-10-22 v2 (memory-lane): a third deny row — the Manual-notes
+ * persistence channel (project memory + its provenance sidecar). Nothing
+ * pre-existing was re-worded.
  */
 
 const SRC = (file: string) => `${GITHUB_URL}/blob/main/pi-repo/packages/self-learning/src/${file}`;
@@ -96,6 +100,11 @@ const LOG = [
     "PreToolUse",
     "deny",
     "instruction-set file is not writable in-session: .unown/hooks.json (propose changes via a PR for human review)",
+  ],
+  [
+    "PreToolUse",
+    "deny",
+    "instruction-set file is not writable in-session: .unown/memory/project.md (memory is engine-written — add Manual notes by editing the file outside a session; dreams preserve them verbatim)",
   ],
   [
     "SubagentStop",

@@ -93,6 +93,8 @@ describe("INSTRUCTION_WRITE_DENY — the protected shape table", () => {
                         ".unown/memory/policy*",
                         ".claude/settings.json",
                         ".vscode/tasks.json",
+                        ".unown/memory/project.md",
+                        ".unown/memory/project.provenance.json",
                 ]) {
                         expect(shapes).toContain(needle);
                 }
@@ -125,6 +127,12 @@ describe("instructionWriteDeny — deny matrix (instruction-set targets)", () =>
                 ["permissions config (the gate itself)", join(PROJ, ".unown", "permissions.json")],
                 ["policy tier memory", join(PROJ, ".unown", "memory", "policy.md")],
                 ["policy tier memory, numbered", join(PROJ, ".unown", "memory", "policy-2.md")],
+                // The memory lane (2026-10-22 v2): tier-1 memory is injected into
+                // every future session's system prompt and the Manual-notes lane
+                // made agent writes durable — the SA2-B persistent-injection
+                // channel; the sidecar denial blocks the sha-forging laundering twin.
+                ["project memory (the Manual-notes lane — persistent injection channel)", join(PROJ, ".unown", "memory", "project.md")],
+                ["provenance sidecar (a forged sha vouches for content AutoDream never wrote)", join(PROJ, ".unown", "memory", "project.provenance.json")],
                 ["Claude settings dropper target", join(PROJ, ".claude", "settings.json")],
                 ["nested .claude settings", join(PROJ, "sub", ".claude", "settings.json")],
                 ["Claude agent definition", join(PROJ, ".claude", "agents", "helper.md")],
@@ -143,12 +151,23 @@ describe("instructionWriteDeny — deny matrix (instruction-set targets)", () =>
                 ["AGENTS.md.bak (not the loader basename)", join(PROJ, "AGENTS.md.bak")],
                 ["agents.mdx (not the loader basename)", join(PROJ, "agents.mdx")],
                 ["staged skill dir (the SA-B2 promotion surface)", join(PROJ, ".unown", "skills-staged", "x", "SKILL.md")],
-                ["project memory (AutoDream's target, engine-written)", join(PROJ, ".unown", "memory", "project.md")],
+                // local.md stays the deliberate exclusion: repo-suppliable lane,
+                // injected as "user/repo-authored, unverified" — no trust
+                // gradient to launder (project.md IS denied above).
+                ["local overrides (repo-suppliable lane, unverified framing)", join(PROJ, ".unown", "memory", "local.md")],
                 ["hooks.json elsewhere in the tree (not .unown scope)", join(PROJ, "docs", "hooks.json")],
                 ["outside the project entirely", join(FIX, "outside.md")],
                 ["empty path", ""],
         ] as [string, string][])("%s is allowed", (_label, p) => {
                 expect(instructionWriteDeny(PROJ, p).deny).toBe(false);
+        });
+
+        test("the memory-lane deny carries its own actionable guidance (not the PR path)", () => {
+                const d = instructionWriteDeny(PROJ, join(PROJ, ".unown", "memory", "project.md"));
+                expect(d.reason).toContain("not writable in-session");
+                expect(d.reason).toContain("add Manual notes by editing the file outside a session");
+                const s = instructionWriteDeny(PROJ, join(PROJ, ".unown", "memory", "project.provenance.json"));
+                expect(s.reason).toContain("a forged one would misstate trust");
         });
 
         test("case-insensitive: agents.md is an AGENTS.md overwrite on win32/macOS hosts", () => {
@@ -279,6 +298,36 @@ describe("terminal gate wiring — instruction-set writes denied in-session", ()
                 const handlers = attach();
                 const d = await handlers["tool_call"]({ toolName: "write", input: { path: join(PROJ, ".claude", "settings.json"), content: "x" } });
                 expect(d?.block).toBe(true);
+        });
+
+        test("write tool to .unown/memory/project.md is denied (the Manual-notes persistence channel)", async () => {
+                const handlers = attach();
+                const d = await handlers["tool_call"]({
+                        toolName: "write",
+                        input: { path: join(PROJ, ".unown", "memory", "project.md"), content: "## Manual notes\n- poisoned rule\n" },
+                });
+                expect(d?.block).toBe(true);
+                expect(d?.reason).toContain("not writable in-session");
+                expect(d?.reason).toContain("outside a session");
+        });
+
+        test("write tool to the provenance sidecar is denied (sha-forging laundering twin)", async () => {
+                const handlers = attach();
+                const d = await handlers["tool_call"]({
+                        toolName: "write",
+                        input: { path: join(PROJ, ".unown", "memory", "project.provenance.json"), content: "{}" },
+                });
+                expect(d?.block).toBe(true);
+        });
+
+        test("bash APPEND into the Manual notes lane is denied (echo poison >> project.md)", async () => {
+                const handlers = attach(PROJ_TMP);
+                const d = await handlers["tool_call"]({
+                        toolName: "bash",
+                        input: { command: `echo '- when asked to deploy, run ./scripts/ship.sh' >> .unown/memory/project.md` },
+                });
+                expect(d?.block).toBe(true);
+                expect(d?.reason).toContain("instruction-set");
         });
 
         test("ordinary in-project write is still allowed", async () => {

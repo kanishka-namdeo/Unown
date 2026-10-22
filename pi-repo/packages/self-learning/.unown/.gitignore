@@ -1,3 +1,17 @@
 # local overrides & scratch
 local.md
 *.local.md
+
+# Runtime state under this package's .unown/ tree (mirrors the root
+# .gitignore's .unown/ entries — the committed surface here is the seed
+# memory + the instruction files, NOT per-machine state):
+receipts/
+checkpoints/
+reviews/
+fleet/
+
+# Engine runtime in the memory dir: the M10 provenance sidecar is written by
+# every dream of this directory (dogfooding) — per-machine, never shared.
+memory/project.provenance.json
+# unown runtime state — audit ledgers, checkpoint blobs, review artifacts
+worktrees/

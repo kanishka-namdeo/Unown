@@ -34,6 +34,7 @@ import { hoistCrossProjectRules } from "./hoist.ts";
 import { currentVersion, maxTierChars, readTier, rollback, writeTier } from "./memory.ts";
 import {
 	ENGINE_SCOPE,
+	extractManualNotesSection,
 	getMemoryPlatform,
 	importLegacyMarkdown,
 	type MemoryPlatform,
@@ -46,6 +47,7 @@ import {
 	reconcileMemories,
 	renderProjectMemoryMarkdown,
 	revertMemoryEvents,
+	stripSessionMetadataLine,
 } from "./memzero.ts";
 import { markDreamed, pendingTerminalNotesByProject, undreamedNotes } from "./notes.ts";
 import { basenameSlug } from "./project-identity.ts";
@@ -54,7 +56,9 @@ import { store } from "./store.ts";
 import {
 	initProjectMemory,
 	isPristineSeedProjectMemory,
+	PROJECT_SEED,
 	projectMemoryPath,
+	readProjectProvenance,
 	slugifyPath,
 	writeProjectProvenance,
 } from "./term.ts";
@@ -116,9 +120,18 @@ async function consolidate(
 	const quarantinedNoteTexts: string[] = [];
 	const cleanNotes: typeof notes = [];
 	for (const n of notes) {
-		const scan = scanUntrustedText(String(n.content ?? ""));
-		if (scan.rules.length > 0) quarantinedNoteTexts.push(String(n.content));
-		else cleanNotes.push(n);
+		// Harness telemetry is not note content (2026-10-22): strip the
+		// session-metadata line BEFORE the quarantine scan — it names the
+		// session's tools ("bash, write, edit") and the guard's
+		// runner+directive conjunction read "never extractable … bash" as a
+		// directive, quarantining every bash-using session's note wholesale
+		// since the metadata line became universal. Also the extraction
+		// input: "never extractable" is now enforced deterministically on
+		// the PRIMARY path, not only the reframe retry.
+		const content = stripSessionMetadataLine(String(n.content ?? ""));
+		const scan = scanUntrustedText(content);
+		if (scan.rules.length > 0) quarantinedNoteTexts.push(content);
+		else cleanNotes.push({ ...n, content });
 	}
 	// ONE extraction call for the whole batch (cost parity with the old
 	// AutoDream single-call dream): clean notes as user-role messages.
@@ -731,6 +744,15 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 				continue;
 			}
 
+			// The write target honors the guard's sanitize verdict
+			// (2026-10-22): the sanitize action used to be decorative here — the
+			// version row, the file write and the sidecar all recorded `next`,
+			// never `guard.sanitized`, so flagged lines (including any preserved
+			// Manual-notes lines the sweep caught) actually shipped. Everything
+			// downstream now uses toWrite.
+			const toWrite =
+				guard.action === "sanitize" && guard.sanitized.trim().length > 0 ? guard.sanitized : next;
+
 			// Version it in the engine DB under a synthetic tier so history/rollback
 			// works. DB-FIRST inside BEGIN IMMEDIATE, mirroring writeTier's
 			// durability model — the version row commits durably BEFORE the file is
@@ -749,8 +771,8 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 					[
 						tierKey,
 						version,
-						next,
-						`consolidated ${notes.length} terminal notes for ${group.slug} via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""})`,
+						toWrite,
+						`consolidated ${notes.length} terminal notes for ${group.slug} via Mem0 (added ${out.added}, merged ${out.merged}, pruned ${out.pruned}${out.quarantined > 0 ? `, ${out.quarantined} quarantined` : ""}${guard.action === "sanitize" ? `, guard sanitized ${guard.flags.length} line(s)` : ""})`,
 						Date.now(),
 					],
 				);
@@ -768,17 +790,49 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 			// mid-dream never leaves a truncated .unown/memory/project.md in the
 			// user's repo (the terminal agent reads this next session).
 			const memPath = projectMemoryPath(group.projectPath);
-			atomicWriteFileSync(memPath, next);
+			atomicWriteFileSync(memPath, toWrite);
 			// M10 provenance sidecar: record WHAT was written (sha256) so the
 			// DB-free terminal side can tell dreamed project memory from
 			// repo-supplied or hand-edited files at injection time — the honesty
 			// fix for the cloned-repo "maintained by AutoDream" false-authority
 			// gap (docs/detached-engine-architecture.md F16).
+			//
+			// v2 (2026-10-22, the SA2-B laundering fix): the sidecar ALSO records
+			// the sha256 of the preserved Manual-notes section and a sticky
+			// manualEdited flag. The whole-file sha alone launders hand-edits —
+			// the dream re-appends the user's manual section verbatim, writes the
+			// file, and the matching sidecar then reads "written by AutoDream;
+			// content matches": false authority for text AutoDream never authored.
+			// manualSha256 detects the hand-edit (the section changed since the
+			// previous dream's record); manualEdited is STICKY — once the lane has
+			// carried hand-edited content, every later sidecar says so and the
+			// injection framing stays honest forever. Unknown-origin sections
+			// (no prior v2 record, or a guard-altered render) count as edited:
+			// fail-closed in the honesty direction.
+			const sha256Hex = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
+			const prevMeta = readProjectProvenance(group.projectPath);
+			const manualNow = extractManualNotesSection(current);
+			const manualNext = extractManualNotesSection(toWrite);
+			// The seed's own instructional bullet is repo-shipped scaffolding
+			// (trusted like AGENTS.md), NOT a hand-edit — a byte-equal-to-seed
+			// section keeps the plain AutoDream framing; anything else in the
+			// lane (or a section the guard sweep altered) is user/attacker
+			// territory and counts as edited.
+			const seedManualSha = sha256Hex(extractManualNotesSection(PROJECT_SEED));
+			const manualEdited =
+				(prevMeta?.manualEdited ?? false) ||
+				(prevMeta?.manualSha256 !== undefined
+					? sha256Hex(manualNow) !== prevMeta.manualSha256
+					: manualNow.trim().length > 0 && sha256Hex(manualNow) !== seedManualSha) ||
+				(sha256Hex(manualNext) !== sha256Hex(manualNow) &&
+					sha256Hex(manualNext) !== seedManualSha);
 			writeProjectProvenance(group.projectPath, {
 				version,
 				changedBy: "mem0",
 				at: Date.now(),
-				sha256: createHash("sha256").update(next, "utf8").digest("hex"),
+				sha256: sha256Hex(toWrite),
+				manualSha256: sha256Hex(manualNext),
+				manualEdited,
 			});
 
 			// All terminal notes for this project are consumed by this dream.

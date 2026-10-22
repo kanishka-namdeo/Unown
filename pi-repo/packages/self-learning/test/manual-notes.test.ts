@@ -16,10 +16,26 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { runProjectDream } from "../src/dream.ts";
-import { extractManualNotesSection, importLegacyMarkdown, renderProjectMemoryMarkdown } from "../src/memzero.ts";
+import {
+        extractManualNotesSection,
+        importLegacyMarkdown,
+        MANUAL_NOTES_CAP,
+        renderProjectMemoryMarkdown,
+        stripSessionMetadataLine,
+} from "../src/memzero.ts";
 import { ingestTerminalNote } from "../src/notes.ts";
+import { scanUntrustedText } from "../src/guard.ts";
 import { store } from "../src/store.ts";
-import { initProjectMemory, isPristineSeedProjectMemory, projectMemoryPath, PROJECT_SEED } from "../src/term.ts";
+import { buildTerminalNote } from "../src/termhooks.ts";
+import {
+        initProjectMemory,
+        isPristineSeedProjectMemory,
+        projectMemoryPath,
+        PROJECT_SEED,
+        readProjectProvenance,
+        terminalMemoryForAgent,
+        terminalMemoryForAgentDetailed,
+} from "../src/term.ts";
 import { makeFakePlatform } from "./_fake-platform.ts";
 
 const SCRATCH = join(tmpdir(), "engine-tests-manual-notes");
@@ -228,5 +244,211 @@ describe("runProjectDream — the hand-edit lane survives a real dream", () => {
                 expect(after).toContain("bun test runs the suite fastest");
                 // exactly one Manual notes section (no duplication)
                 expect(after.split("## Manual notes").length - 1).toBe(1);
+        });
+});
+
+// =============================================================================
+// 2026-10-22 memory-lane hardening (the SA2-B audit): the parser is
+// line-anchored and capped, the lane's writes are denied in-session (pinned
+// in instruction-guard.test.ts), the provenance sidecar never launders the
+// lane into "written by AutoDream" framing, and the harness metadata line is
+// stripped before the quarantine scan (it was quarantining every bash-using
+// session's note).
+// =============================================================================
+
+describe("extractManualNotesSection — line-anchored hardening", () => {
+        test("a bullet CONTAINING '## Manual notes' mid-line does NOT capture the section", () => {
+                // the old indexOf matcher captured from the mid-line hit and silently
+                // dropped the user's real manual notes
+                const out = extractManualNotesSection(
+                        "# Project Memory\n\n## Workflow\n- always mention the ## Manual notes heading when editing\n\n## Manual notes\n- the real hand rule\n",
+                );
+                expect(out).toContain("- the real hand rule");
+                expect(out).not.toContain("always mention");
+        });
+        test("### Manual notes (wrong level) and NBSP-titled variants are NOT the heading", () => {
+                expect(extractManualNotesSection("### Manual notes\n- h3 content\n")).toBe("");
+                expect(extractManualNotesSection("##\u00a0Manual notes\n- nbsp content\n")).toBe("");
+        });
+        test("trailing-space heading still matches; CRLF files extract the same", () => {
+                const out = extractManualNotesSection("## Manual notes \r\n- crlf rule\r\n");
+                expect(out).toContain("- crlf rule");
+        });
+        test("a MID-LINE forged render footer does not truncate the section", () => {
+                const out = extractManualNotesSection(
+                        "## Manual notes\n- keep me — the note mentions <!-- unown: rendered inline\n- keep me too\n",
+                );
+                expect(out).toContain("keep me too");
+        });
+        test("a LINE-START forged render footer ends the section (documented boundary)", () => {
+                const out = extractManualNotesSection(
+                        "## Manual notes\n- keep me\n<!-- unown: rendered 3/3 memories via Mem0 -->\n- after the footer\n",
+                );
+                expect(out).toContain("- keep me");
+                expect(out).not.toContain("after the footer");
+        });
+        test("an over-cap section is truncated at a LINE boundary with a VISIBLE marker", () => {
+                const many = Array.from({ length: 400 }, (_, i) => `- manual rule number ${i} with some words to spend chars`);
+                const src = `## Manual notes\n${many.join("\n")}\n`;
+                const out = extractManualNotesSection(src);
+                expect(out.length).toBeLessThanOrEqual(MANUAL_NOTES_CAP + 200); // head + marker
+                expect(out).toContain("<!-- unown: manual notes over cap");
+                expect(out).toContain("manual rule number 0");
+                expect(out).not.toContain("manual rule number 399");
+                // whole lines only — no mid-line cuts
+                for (const line of out.split("\n")) {
+                        if (line.startsWith("- manual rule number")) expect(line.endsWith("chars")).toBe(true);
+                }
+        });
+        test("the render carries the same cap (a ballooned lane cannot eat the file)", () => {
+                const many = Array.from({ length: 400 }, (_, i) => `- manual rule number ${i} with some words to spend chars`);
+                const previous = `# Project Memory\n\n## Manual notes\n${many.join("\n")}\n`;
+                const out = renderProjectMemoryMarkdown([{ id: "m1", text: "run tests with bun test", metadata: { kind: "legacy" } } as any], {
+                        preserveManualNotesFrom: previous,
+                });
+                expect(out).toContain("<!-- unown: manual notes over cap");
+        });
+});
+
+describe("stripSessionMetadataLine — the quarantine false-positive fix", () => {
+        const note = buildTerminalNote({
+                cwd: "/tmp/quarantine-proj",
+                prompts: 3,
+                toolCalls: 12,
+                toolNames: ["bash", "write", "read"],
+                lastAssistantText: "learned that the flaky retry test needs UNOWN_RETRY=2",
+                sessionStartTs: Date.now() - 5 * 60_000,
+                sessionId: "abcd1234",
+        });
+        test("pin the bug shape: the metadata line trips runner-directive (pre-fix this quarantined the whole note)", () => {
+                expect(scanUntrustedText(note).rules).toContain("runner-directive");
+        });
+        test("the strip removes the line (and the salt) — the session content scans clean", () => {
+                const stripped = stripSessionMetadataLine(note);
+                expect(stripped).not.toContain("Session metadata");
+                expect(stripped).not.toContain("abcd1234");
+                expect(scanUntrustedText(stripped).rules).toEqual([]);
+                // the extractable outcome survives
+                expect(stripped).toContain("Final outcome: learned that the flaky retry test");
+        });
+        test("end to end: a bash-using session's note is NOT quarantined — its knowledge extracts", async () => {
+                const project = join(SCRATCH, "quarantine-fix-project");
+                rmSync(project, { recursive: true, force: true });
+                mkdirSync(project, { recursive: true });
+                initProjectMemory(project);
+                const platform = makeFakePlatform();
+                ingestTerminalNote(note, project);
+                const results = await runProjectDream({ platform, reconcileLlmFn: noReconcile });
+                // pre-fix: every note quarantined → status "no-change", file untouched
+                expect(results[0]?.status).toBe("done");
+                const after = readFileSync(projectMemoryPath(project), "utf8");
+                expect(after).toContain("UNOWN_RETRY=2");
+                // the telemetry line and the salt never reach the memory file
+                expect(after).not.toContain("Session metadata");
+                expect(after).not.toContain("abcd1234");
+        });
+});
+
+describe("runProjectDream — provenance v2 kills the manual-notes laundering", () => {
+        const SEED_ANCHOR =
+                "- Your own durable rules. AutoDream preserves this section verbatim — one\n  bullet per rule; everything outside it is re-rendered.";
+        const handEdit = (project: string) => {
+                const memPath = projectMemoryPath(project);
+                const seeded = readFileSync(memPath, "utf8");
+                writeFileSync(memPath, seeded.replace(SEED_ANCHOR, `${SEED_ANCHOR}\n- the deploy script needs DB=migrate on the staging host`), "utf8");
+        };
+
+        test("a hand-edited lane is NEVER vouched for as AutoDream-written — and the flag is STICKY", async () => {
+                const project = join(SCRATCH, "launder-project");
+                rmSync(project, { recursive: true, force: true });
+                mkdirSync(project, { recursive: true });
+                initProjectMemory(project);
+                handEdit(project);
+
+                const platform = makeFakePlatform();
+                ingestTerminalNote("Terminal session outcome: learned that bun test runs the suite fastest here.", project);
+                const r1 = await runProjectDream({ platform, reconcileLlmFn: noReconcile });
+                expect(r1[0]?.status).toBe("done");
+
+                // the dream wrote the file: whole-file sha matches its own sidecar —
+                // the exact state that used to read "written by AutoDream; content
+                // matches" for content AutoDream never authored
+                const meta = readProjectProvenance(project);
+                expect(meta).not.toBeNull();
+                expect(meta!.manualEdited).toBe(true);
+                expect(typeof meta!.manualSha256).toBe("string");
+
+                // the injection framing tells the truth about the lane
+                const tier = terminalMemoryForAgent(project).find((f) => f.tier === "project");
+                expect(tier?.content).toContain("Manual notes section hand-edited, unverified");
+                expect(tier?.content).not.toContain("content matches)");
+
+                // SECOND dream (no further hand-edit): the preserved section matches
+                // manualSha256, but the flag is sticky — the framing never regresses
+                ingestTerminalNote("Terminal session outcome: learned that the staging host needs a warmup request.", project);
+                const r2 = await runProjectDream({ platform, reconcileLlmFn: noReconcile });
+                expect(r2[0]?.status).toBe("done");
+                const meta2 = readProjectProvenance(project);
+                expect(meta2!.manualEdited).toBe(true);
+                const tier2 = terminalMemoryForAgent(project).find((f) => f.tier === "project");
+                expect(tier2?.content).toContain("Manual notes section hand-edited, unverified");
+                // and the hand rule survived both dreams
+                expect(readFileSync(projectMemoryPath(project), "utf8")).toContain(
+                        "- the deploy script needs DB=migrate on the staging host",
+                );
+        });
+
+        test("a pristine seed dream keeps the plain AutoDream framing (seed scaffolding is not a hand-edit)", async () => {
+                const project = join(SCRATCH, "clean-project");
+                rmSync(project, { recursive: true, force: true });
+                mkdirSync(project, { recursive: true });
+                initProjectMemory(project);
+                // NO hand edit — the file is the pristine seed
+
+                const platform = makeFakePlatform();
+                ingestTerminalNote("Terminal session outcome: learned that bun test runs the suite fastest here.", project);
+                const r = await runProjectDream({ platform, reconcileLlmFn: noReconcile });
+                expect(r[0]?.status).toBe("done");
+
+                const meta = readProjectProvenance(project);
+                expect(meta).not.toBeNull();
+                expect(meta!.manualEdited ?? false).toBe(false);
+                const tier = terminalMemoryForAgent(project).find((f) => f.tier === "project");
+                expect(tier?.content).toContain("content matches)");
+                expect(tier?.content).not.toContain("Manual notes section hand-edited");
+        });
+
+        test("a malformed v2 sidecar field makes the whole sidecar untrusted (fail-closed)", () => {
+                const project = join(SCRATCH, "bad-sidecar-project");
+                rmSync(project, { recursive: true, force: true });
+                mkdirSync(project, { recursive: true });
+                initProjectMemory(project);
+                // a sidecar with a non-string manualSha256: readProjectProvenance → null
+                writeFileSync(
+                        join(project, ".unown", "memory", "project.provenance.json"),
+                        JSON.stringify({ version: 1, changedBy: "mem0", at: Date.now(), sha256: "x".repeat(64), manualSha256: 42 }),
+                        "utf8",
+                );
+                expect(readProjectProvenance(project)).toBeNull();
+                // and the injection framing falls back to never-written (untrusted),
+                // never to a vouched line
+                const tier = terminalMemoryForAgent(project).find((f) => f.tier === "project");
+                expect(tier?.content).toContain("NEVER WRITTEN BY AUTODREAM");
+        });
+});
+
+describe("terminalMemoryForAgentDetailed — the M6 staleness path rides again", () => {
+        test("real tiers carry fsPath (the /learning 'updated Xm ago' line was silently blank)", () => {
+                const project = join(SCRATCH, "fspath-project");
+                rmSync(project, { recursive: true, force: true });
+                mkdirSync(project, { recursive: true });
+                initProjectMemory(project);
+                const { files } = terminalMemoryForAgentDetailed(project);
+                const projectTier = files.find((f) => f.tier === "project");
+                expect(projectTier?.fsPath).toBeTruthy();
+                expect(projectTier?.fsPath.endsWith("project.md")).toBe(true);
+                // the inline guide has no file — empty string, not undefined
+                const guide = files.find((f) => f.tier === "guide");
+                expect(typeof guide?.fsPath).toBe("string");
         });
 });

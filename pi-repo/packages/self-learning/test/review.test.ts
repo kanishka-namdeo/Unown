@@ -320,7 +320,7 @@ describe("captureReviewTarget", () => {
         // the 400 listed entries (what the artifact carries) still arrive
         expect(target.untracked.length).toBe(50); // the task-prompt slice
         expect(target.untracked[0]).toContain("file-with-a-deliberately-long-name");
-    });
+    }, 20_000); // git + 500 file writes: 6s on the 2026-10-22 windows CI leg (5s default timed out)
 });
 
 // ---------------------------------------------------------------------------

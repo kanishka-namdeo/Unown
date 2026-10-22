@@ -46,7 +46,7 @@ const FAQ = [
   },
   {
     q: "Will it rewrite my tests to make them pass?",
-    a: "The seeded policy tier in memory literally says not to: “If a verification fails, inspect the failure output and fix the root cause — never edit tests to make them pass.” In the terminal session that is an instruction; in the engine it is structural: benchmark tests are sha256-pinned and restored to pristine state before scoring, so an agent that edits them scores zero. Unown writes to .unown/memory/*.md and stages minted skills into .unown/skills-staged/*.md (never auto-loaded — promotion is a human mv) — not your source; and the agent cannot write its own rule files: in-session writes to AGENTS.md, .unown/skills/** and the hook/permission configs are hard-denied, changes go through a PR.",
+    a: "The seeded policy tier in memory literally says not to: “If a verification fails, inspect the failure output and fix the root cause — never edit tests to make them pass.” In the terminal session that is an instruction; in the engine it is structural: benchmark tests are sha256-pinned and restored to pristine state before scoring, so an agent that edits them scores zero. Unown writes to .unown/memory/*.md and stages minted skills into .unown/skills-staged/*.md (never auto-loaded — promotion is a human mv) — not your source; and the agent cannot write its own rule files: in-session writes to AGENTS.md, .unown/skills/**, the hook/permission configs — and the project memory file itself (the Manual-notes lane is hand-edit territory, preserved verbatim by dreams but framed as hand-edited) — are hard-denied, changes go through a PR.",
   },
   {
     q: "Does the loop actually do anything on its own?",

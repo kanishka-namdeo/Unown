@@ -42,9 +42,28 @@ resolving to any of these shapes inside the project are **denied**:
 | `.unown/hooks.json` | user-hook wiring — a poisoned hook becomes a policy layer |
 | `.unown/permissions.json` | this allow/deny/ask layer itself — self-modification of the gate |
 | `.unown/memory/policy*` | the tier-0 policy files (highest-authority memory tier) |
+| `.unown/memory/project.md` | tier-1 project memory — injected into every future session's system prompt; the Manual-notes lane makes agent-written content *durable* (dreams preserve it verbatim), so an in-session write is a persistent prompt-injection channel (added 2026-10-22 v2 — see below) |
+| `.unown/memory/project.provenance.json` | the honesty sidecar — a forged sha256 vouches for content AutoDream never wrote (provenance laundering; added 2026-10-22 v2) |
 | `.unown/adversary.md` | the adversary reviewer's in-project gate file — writing your own reviewer turns it off |
 | `.claude/settings.json`, `.claude/agents/**` (any depth) | Claude-style hook wiring / subagent definitions — the Tensorlake dropper's persistence targets |
 | `.vscode/tasks.json`, `.vscode/settings.json` (any depth) | editor tasks run commands on project open |
+
+**The memory lane (2026-10-22 v2)**: `project.md` was originally excluded —
+dreams re-rendered it from platform state, so agent-written text was
+clobbered next dream (self-healing). The Manual-notes preservation lane
+(0d1a50e) inverted that: whatever sits under `## Manual notes` now survives
+every dream *verbatim*, and the dream's provenance sidecar vouched for the
+whole file as "written by AutoDream" — laundering hand-edited (or
+attacker-planted) manual text into engine-vetted framing, exactly the
+memory-poisoning/provenance-laundering class the 2026 research names
+(OWASP ASI06 Memory & Context Poisoning; arXiv:2607.29167 *Memory Provenance
+Laundering in LLM Agents*). The lane's contract survives intact for its
+intended user: **hand-edits happen outside sessions** (an editor, not the
+agent), dreams preserve them verbatim, and the injection framing now marks
+the section `hand-edited, unverified` — sticky, forever — once it has ever
+carried hand-edited content. The agent itself is told to edit outside the
+session; the engine (dream.ts) writes both files directly, bypassing the
+tool gate, so dreams are unaffected.
 
 Behavioral contract:
 
@@ -57,7 +76,11 @@ Behavioral contract:
   `instruction-set file is not writable in-session: <shape> (propose changes
   via a PR for human review)`. Changes to the instruction set go through a
   pull request, where a human reads them — the one review path a
-  self-improving agent must not be able to route around.
+  self-improving agent must not be able to route around. The memory lane
+  carries its own remediation instead of the PR path (there is nothing to
+  PR — it is per-machine state): `memory is engine-written — add Manual
+  notes by editing the file outside a session; dreams preserve them
+  verbatim`.
 - **Redirects are covered**: the terminal's redirect checker
   (`bashRedirectEscape`) applies the same matcher to `> target` operands,
   so `echo x > .unown/hooks.json` cannot sidestep the write-tool gate. The
@@ -71,9 +94,11 @@ Behavioral contract:
 - **Deliberately excluded**: `.unown/skills-staged/**` (the skill minter's
   staging directory — never auto-loaded, promotion into `.unown/skills/` is
   the human review point; see [skills](skills.md)) and
-  `.unown/memory/project.md` (AutoDream's dream target — the *engine*
-  process writes it directly, never through the tool gate; the policy tier
-  above it *is* denied).
+  `.unown/memory/local.md` (the repo-suppliable local-overrides lane — a
+  cloned repo can ship one anyway, it is injected with the explicit
+  "user/repo-authored, unverified" framing plus the injection-guard scan on
+  every load, so there is no trust gradient to launder). `project.md` was
+  moved from this list INTO the deny table by the 2026-10-22 v2 change above.
 
 How this interacts with **trust-gating**: the project's
 `.unown/permissions.json` and `.unown/hooks.json` are already trust-gated

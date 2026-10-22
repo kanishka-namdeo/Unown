@@ -417,7 +417,7 @@ describe("Router job outcome columns (M11)", () => {
                                 }
                         }
                 }
-        });
+        }, 20_000); // real DB migration on the windows CI leg ran 5.4s vs the 5s default (2026-10-22)
 
         test("listJobs() carries the outcome fields to the API — SELECT * is the contract", () => {
                 const first = listJobs()[0] as Record<string, unknown> | undefined;

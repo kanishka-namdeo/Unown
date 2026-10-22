@@ -153,15 +153,23 @@ function toPosix(p) {
  * something the agent loads as behavior. AGENTS.md / SKILL.md / CLAUDE.md /
  * hooks.json at ANY depth (root, docs/, src/, pi-repo/**, vendored fixtures
  * — a smuggled char in a fixture reaches the model the same way), everything
- * under .unown/ except runtime state, Claude-style hook wiring
+ * under .unown/ AT ANY DEPTH except runtime state (the vendored
+ * pi-repo/packages/self-learning/.unown/ tree — committed seed memory + the
+ * dogfooding instruction surface — is an instruction file exactly like the
+ * root one; the 2026-10-22 nested-discovery fix closed the gap where a
+ * nested .unown shipped uninspected), Claude-style hook wiring
  * (.claude/settings.json) and subagent definitions (.claude/agents/*.md). */
 function isInstructionPath(relPosix) {
         const base = relPosix.slice(relPosix.lastIndexOf("/") + 1);
         if (base === "AGENTS.md" || base === "SKILL.md" || base === "CLAUDE.md" || base === "hooks.json") {
                 return true;
         }
-        if (relPosix.startsWith(".unown/")) {
-                const tier = relPosix.split("/")[1];
+        // .unown/ at ANY depth (root or nested — "pi-repo/.../.unown/memory/project.md"
+        // is tier-1 memory when the package dir is the working project).
+        const unownAt = relPosix.match(/(^|\/)\.unown\//);
+        if (unownAt) {
+                const after = relPosix.slice((unownAt.index ?? 0) + unownAt[0].length);
+                const tier = after.split("/")[0];
                 if (UNOWN_RUNTIME_DIRS.has(tier)) return false;
                 return base.endsWith(".md") || base.endsWith(".json");
         }

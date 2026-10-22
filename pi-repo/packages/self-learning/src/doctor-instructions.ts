@@ -895,7 +895,19 @@ function isUnicodeScanTarget(relPosix: string): boolean {
         ) {
                 return true;
         }
-        return relPosix === ".unown/hooks.json";
+        if (relPosix === ".unown/hooks.json") return true;
+        // The injected memory tier (2026-10-22): project.md is tier-1 memory —
+        // injected into every session's system prompt — and policy*/local.md
+        // ride the same injection stack; a smuggled invisible char there is an
+        // instruction-file backdoor exactly like one in AGENTS.md (the
+        // repo-root lint covers the vendored copy; this leg covers the USER's
+        // project). .md and .json only — runtime state dirs (receipts/, …)
+        // never carry instruction content and stay out of scope via the skip
+        // list below.
+        if (relPosix.startsWith(".unown/memory/") && (base.endsWith(".md") || base.endsWith(".json"))) {
+                return true;
+        }
+        return false;
 }
 
 /** Walk `dir` (skip list honored), yielding project-relative forward-slash

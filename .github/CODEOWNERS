@@ -22,6 +22,10 @@
 **/AGENTS.md                        @kanishka-namdeo
 **/CLAUDE.md                        @kanishka-namdeo
 /.unown/                            @kanishka-namdeo
+# Nested .unown trees (2026-10-22): the vendored
+# pi-repo/packages/self-learning/.unown/ seed memory is tier-1 instruction
+# surface exactly like the root one — owner review on every PR touching it.
+**/.unown/                          @kanishka-namdeo
 /pi-repo/AGENTS.md                  @kanishka-namdeo
 /pi-repo/**/AGENTS.md               @kanishka-namdeo
 /pi-repo/**/SKILL.md                @kanishka-namdeo
@@ -38,6 +42,12 @@
 /pi-repo/packages/self-learning/src/termhooks.ts         @kanishka-namdeo
 /pi-repo/packages/self-learning/src/injection-scanner.ts @kanishka-namdeo
 /pi-repo/packages/self-learning/src/config-trust.ts      @kanishka-namdeo
+# The memory-lane guard surface (2026-10-22 v2): dream/term/memzero carry
+# the manual-notes sweep, the provenance honesty framing and the quarantine
+# strip — a change here re-shapes what future sessions trust as memory.
+/pi-repo/packages/self-learning/src/dream.ts             @kanishka-namdeo
+/pi-repo/packages/self-learning/src/term.ts              @kanishka-namdeo
+/pi-repo/packages/self-learning/src/memzero.ts           @kanishka-namdeo
 
 # ── The security tooling itself ────────────────────────────────────────────
 # Lint gates, CI workflows and secret-scanning config: tampering here

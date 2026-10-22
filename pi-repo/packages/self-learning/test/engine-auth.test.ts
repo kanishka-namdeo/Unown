@@ -11,6 +11,10 @@
 // router, automations, store — side effects the in-process suite must not
 // grow).
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
+// 2026-10-22 windows fix: recursive rmSync cleanups now retry (maxRetries:
+// 10, retryDelay: 100ms) — right after db.close()/winner.kill("SIGKILL") the OS
+// can still hold handles (EBUSY), which failed the windows CI leg while the
+// assertions themselves were green.
 
 const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 import { spawn, spawnSync } from "node:child_process";
@@ -454,7 +458,7 @@ process.exit(0);
         const probePath = join(root, "probe.ts");
         writeFileSync(probePath, script);
         const res = spawnSync(process.execPath, [probePath], { env: { ...process.env, ...env }, encoding: "utf8", timeout: 90_000 });
-        rmSync(root, { recursive: true, force: true });
+        rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         return { code: res.status ?? -1, stdout: res.stdout ?? "", stderr: res.stderr ?? "" };
 }
 
@@ -468,7 +472,7 @@ describe("startServer HTTP auth gate (M7, fresh process)", () => {
                         UNOWN_ENGINE_HOSTS: "dash.example.com",
                         ...noPhoneHome(root),
                 });
-                rmSync(root, { recursive: true, force: true });
+                rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
                 const lines = out.stdout.trim().split("\n");
                 const by = (label: string) => lines.find((l) => l.startsWith(label + " "));
                 expect(out.code).toBe(0);
@@ -548,7 +552,7 @@ process.exit(0);
                         expect(loser.stdout).toContain("TOKEN_INTACT=true");
                 } finally {
                         winner.kill("SIGKILL");
-                        rmSync(root, { recursive: true, force: true });
+                        rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
                 }
         }, 120_000);
 
@@ -676,7 +680,7 @@ srv.listen(${port}, "127.0.0.1", () => {
                 } finally {
                         winner?.kill("SIGKILL");
                         holder?.kill("SIGKILL");
-                        rmSync(root, { recursive: true, force: true });
+                        rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
                 }
         }, 120_000);
 
@@ -709,6 +713,6 @@ process.exit(0);
                 const out = (res.stdout ?? "") + (res.stderr ?? "");
                 expect(out).toContain("BOOT=refused");
                 expect(out).toContain("UNOWN_ENGINE_AUTH=off");
-                rmSync(root, { recursive: true, force: true });
+                rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         }, 90_000);
 });

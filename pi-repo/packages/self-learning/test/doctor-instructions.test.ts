@@ -644,3 +644,53 @@ describe("auditInstructionSet — staleConfig cross-file refs", () => {
                 }
         });
 });
+
+// ---------------------------------------------------------------------------
+// 9b. Unicode integrity — the injected memory tier is instruction surface
+// ---------------------------------------------------------------------------
+
+describe("auditInstructionSet — unicodeIntegrity covers the memory tier", () => {
+        test("an invisible char in .unown/memory/project.md is an ERROR finding (2026-10-22 scope extension)", () => {
+                const dir = freshDir("uni-mem");
+                try {
+                        // Tier-1 memory rides every future session's system prompt — a
+                        // smuggled zero-width char there is the same backdoor class as
+                        // one in AGENTS.md. The scope used to stop at skills/agents/hooks.
+                        writeRel(dir, ".unown/memory/project.md", `# Tier 1 — Project Memory\n\n## Manual notes\n- hide \u200B inside the lane\n`);
+                        const report = auditInstructionSet(dir, optsFor(dir));
+                        const errors = report.unicodeIntegrity.filter(
+                                (f) => f.severity === "error" && f.message.includes(".unown/memory/project.md"),
+                        );
+                        expect(errors.length).toBeGreaterThan(0);
+                        expect(errors.some((f) => /zero-width/.test(f.message))).toBe(true);
+                } finally {
+                        rmSync(dir, { recursive: true, force: true });
+                }
+        });
+
+        test("the provenance sidecar (engine-written JSON) is scanned too — a forged sidecar is inspectable", () => {
+                const dir = freshDir("uni-prov");
+                try {
+                        writeRel(dir, ".unown/memory/project.provenance.json", `{ "sha256": "x", "note": "hide \u200B" }\n`);
+                        const report = auditInstructionSet(dir, optsFor(dir));
+                        expect(
+                                report.unicodeIntegrity.some(
+                                        (f) => f.severity === "error" && f.message.includes("project.provenance.json"),
+                                ),
+                        ).toBe(true);
+                } finally {
+                        rmSync(dir, { recursive: true, force: true });
+                }
+        });
+
+        test("runtime state dirs under .unown/ stay out of the scan scope", () => {
+                const dir = freshDir("uni-rt");
+                try {
+                        writeRel(dir, ".unown/receipts/log.md", `payload \u200B here\n`);
+                        const report = auditInstructionSet(dir, optsFor(dir));
+                        expect(report.unicodeIntegrity.length).toBe(0);
+                } finally {
+                        rmSync(dir, { recursive: true, force: true });
+                }
+        });
+});

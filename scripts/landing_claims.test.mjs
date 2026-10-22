@@ -299,6 +299,7 @@ function fixtureSources(cliHelp) {
     hooks: buildSource("pi-repo/hooks.ts", 'logHook(`session started (memory v${ctx.memoryVersion})`); log("refusing rm on filesystem root");'),
     termhooks: buildSource("pi-repo/termhooks.ts", '`Terminal session${tag} in ${cwd} (${min} min): ${p} prompt(s), ${c} tool call(s)${n}.`'),
     harness: buildSource("pi-repo/harness.ts", 'logCycle(`baseline passed${note} — no improvement needed`, cycleId);'),
+    instructionGuard: buildSource("pi-repo/instruction-guard.ts", 'reason: `instruction-set file is not writable in-session: ${match} (${guidance})`'),
     help: buildSource("pi-repo/cli.ts (HELP)", helpBody(`const HELP = \`${cliHelp}\`;\n`)),
     memory: buildSource(
       ".unown/memory/project.md",
@@ -342,7 +343,7 @@ test("a page literal that exists nowhere fails the gate — the gate can say no"
   });
   const { failures } = gate(pages, fixtureSources(FULL_HELP));
   assert.equal(failures.length, 1);
-  assert.match(renderFailure(failures[0]), /^FAIL {2}.+integrity\.tsx:2 {2}"session ended · note queued → engine" {2}not found in .+hooks\.ts or .+termhooks\.ts or .+harness\.ts$/);
+  assert.match(renderFailure(failures[0]), /^FAIL {2}.+integrity\.tsx:2 {2}"session ended · note queued → engine" {2}not found in .+hooks\.ts or .+termhooks\.ts or .+harness\.ts or .+instruction-guard\.ts$/);
 });
 
 test("one-directional: HELP is a superset, and an omitted command must NOT fail", () => {

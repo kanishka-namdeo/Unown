@@ -30,36 +30,40 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 194;
+export const CHANGELOG_TOTAL_ENTRIES = 199;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 77,
-  "Changed": 12,
+  "Added": 78,
+  "Changed": 13,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 77,
+  "Fixed": 79,
   "Security": 0,
-  "Behavior": 25
+  "Behavior": 26
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 25,
+    "total": 30,
     "counts": {
-      "Added": 10,
-      "Changed": 2,
+      "Added": 11,
+      "Changed": 3,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 7,
+      "Fixed": 9,
       "Security": 0,
-      "Behavior": 5
+      "Behavior": 6
     },
     "groups": [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "Always-on routines — unown engine install: the OS service layer",
+            "behavior": false
+          },
           {
             "title": "Routines — recurring tasks with real recurrence semantics (the Automations upgrade)",
             "behavior": false
@@ -132,6 +136,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "the upstream pi credit now points where the repo lives",
             "behavior": false
+          },
+          {
+            "title": "the Manual-notes parser is line-anchored and capped; /learning shows file ages again; the subagent fallback…",
+            "behavior": false
+          },
+          {
+            "title": "the windows CI leg is green-shaped again (11 pre-existing failures triaged to root causes)",
+            "behavior": false
           }
         ]
       },
@@ -157,6 +169,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "AutoDream mints new skills into .unown/skills-staged/ — promotion into .unown/skills/ is a human mv",
             "behavior": true
+          },
+          {
+            "title": ".unown/memory/project.md and its provenance sidecar are not writable in-session; a preserved Manual-notes lane…",
+            "behavior": true
           }
         ]
       },
@@ -165,6 +181,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "the standalone CLI binary is now the default install; --source is the full stack",
+            "behavior": false
+          },
+          {
+            "title": "the invisible-Unicode lint discovers .unown/ at ANY depth; the doctor scans the memory tier; CODEOWNERS covers…",
             "behavior": false
           },
           {

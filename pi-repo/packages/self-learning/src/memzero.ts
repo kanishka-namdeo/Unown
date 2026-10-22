@@ -1097,18 +1097,66 @@ const RENDER_SECTIONS: Array<{ title: string; test: RegExp }> = [
 ];
 
 /** Extract the "## Manual notes" section from a previous project-memory file
- *  (from the heading to the next `## ` heading or the footer comment/EOF).
- *  Returns "" when the file has none. */
+ *  (from the heading to the next `## ` heading or the render footer/EOF).
+ *  Returns "" when the file has none.
+ *
+ *  Line-anchored everywhere (2026-10-22 hardening): the old indexOf matcher
+ *  let a bullet CONTAINING "## Manual notes" mid-line capture the section
+ *  (silently dropping the user's real manual notes), let `### Manual notes`
+ *  and trailing-space spellings match, and let a mid-line forged
+ *  `<!-- unown: rendered` comment truncate preservation. The heading must
+ *  be exactly h2 at line start; the end boundary is the next line-start h2
+ *  heading or the line-start render footer. CRLF-safe. Over-cap sections
+ *  keep whole head lines and get a visible marker — never invisible
+ *  truncation (the same edge the injection-budget line fixes for the stack). */
 export function extractManualNotesSection(markdown: string): string {
         const src = String(markdown ?? "");
-        const start = src.indexOf("## Manual notes");
+        const lines = src.split(/\r?\n/);
+        const start = lines.findIndex((l) => /^##[ \t]+Manual notes[ \t]*$/.test(l));
         if (start === -1) return "";
-        let end = src.length;
-        const nextHeading = src.indexOf("\n## ", start + 1);
-        if (nextHeading !== -1) end = Math.min(end, nextHeading + 1); // keep the trailing newline
-        const footer = src.indexOf("<!-- unown: rendered", start + 1);
-        if (footer !== -1) end = Math.min(end, footer);
-        return src.slice(start, end).trim() + "\n";
+        let end = lines.length;
+        for (let i = start + 1; i < lines.length; i++) {
+                if (/^##[ \t]/.test(lines[i]) || /^<!--[ \t]*unown:[ \t]*rendered/.test(lines[i])) {
+                        end = i;
+                        break;
+                }
+        }
+        let section = `${lines.slice(start, end).join("\n").trim()}\n`;
+        if (section.length > MANUAL_NOTES_CAP) {
+                const kept: string[] = [];
+                let n = 0;
+                for (const l of lines.slice(start, end)) {
+                        if (n + l.length + 1 > MANUAL_NOTES_CAP) break;
+                        kept.push(l);
+                        n += l.length + 1;
+                }
+                section = `${kept.join("\n").trimEnd()}\n\n<!-- unown: manual notes over cap (${MANUAL_NOTES_CAP} chars) — the tail was dropped at render; prune the section -->\n`;
+        }
+        return section;
+}
+
+/** The Manual-notes preservation cap, in chars (2026-10-22): the lane is
+ *  unbounded user content by design, but a ballooned section would eat the
+ *  injection budget every session and can push the dream render over
+ *  maxTierChars into the throw-on-every-dream error loop. 4k chars is a
+ *  page of durable rules — far past honest use, far under the render cap. */
+export const MANUAL_NOTES_CAP = 4096;
+
+/** Deterministically remove the harness-authored session-metadata line from
+ *  a terminal note BEFORE it is scanned or extracted (2026-10-22): the line
+ *  names the tools the session used — "(bash, write, edit)" — and the
+ *  injection guard's runner+directive conjunction reads "never extractable …
+ *  bash" as a runner directive, quarantining EVERY bash-using session's note
+ *  wholesale (the metadata line ships with every note since the session-salt
+ *  fix). The line was already stripped on the reframe retry path; this is the
+ *  primary-path move — telemetry is not note content, and "never extractable"
+ *  is enforced deterministically, not by prompt. Same shape filter as
+ *  reframeNoteForExtraction's (kept in sync deliberately). */
+export function stripSessionMetadataLine(text: string): string {
+        return String(text ?? "")
+                .split(/\r?\n/)
+                .filter((l) => !/^Session metadata \(never extractable/i.test(l))
+                .join("\n");
 }
 
 /**
@@ -1121,7 +1169,15 @@ export function extractManualNotesSection(markdown: string): string {
  */
 export function renderProjectMemoryMarkdown(
         memories: PlatformMemory[],
-        opts: { title?: string; maxBullets?: number; backend?: string } = {},
+        opts: {
+                title?: string;
+                maxBullets?: number;
+                backend?: string;
+                /** The previous project-memory file whose "## Manual notes" section
+                 *  is re-appended verbatim (the hand-edit lane; dream.ts threads the
+                 *  current file here). */
+                preserveManualNotesFrom?: string;
+        } = {},
 ): string {
         const cap = opts.maxBullets ?? mem0MaxRendered();
         const sorted = [...memories].sort((a, b) => {
