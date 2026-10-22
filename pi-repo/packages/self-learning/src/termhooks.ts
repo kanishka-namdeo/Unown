@@ -1107,7 +1107,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                         toolNames: [...toolNames],
                                         lastAssistantText,
                                         sessionStartTs,
-					sessionId: sessionSalt,
+                                        sessionId: sessionSalt,
                                 });
                                 // M6 fast path: a recent probe says the engine is down
                                 // (or the crash-loop circuit gave up) → skip the probe
