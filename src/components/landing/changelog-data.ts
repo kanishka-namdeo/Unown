@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 154;
+export const CHANGELOG_TOTAL_ENTRIES = 161;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 62,
+  "Added": 67,
   "Changed": 10,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 68,
+  "Fixed": 70,
   "Security": 0,
   "Behavior": 12
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 13,
+    "total": 20,
     "counts": {
-      "Added": 3,
+      "Added": 8,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 5,
+      "Fixed": 7,
       "Security": 0,
       "Behavior": 5
     },
@@ -70,6 +70,26 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "benchmarks/transfer-bench — the cross-task memory-transfer benchmark (induce-on-A/test-on-B)",
+            "behavior": false
+          },
+          {
+            "title": "a running engine job is visible from the terminal",
+            "behavior": false
+          },
+          {
+            "title": "the Learning Lab shows live counters for an in-flight run",
+            "behavior": false
+          },
+          {
+            "title": "the sync task tool reports its children while they work",
+            "behavior": false
+          },
+          {
+            "title": "unown engine status reports job failures",
+            "behavior": false
+          },
+          {
+            "title": "the memory screen can now show what a consolidation CHANGED",
             "behavior": false
           }
         ]
@@ -95,6 +115,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "--purge-checkout no longer leaves the deleted checkout recorded as the active install",
+            "behavior": false
+          },
+          {
+            "title": "the Router screen's runs tally is a verdict, not a decoration",
+            "behavior": false
+          },
+          {
+            "title": "unown dashboard --help no longer sends users to the retired web dashboard",
             "behavior": false
           }
         ]

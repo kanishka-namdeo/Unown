@@ -33,11 +33,14 @@ One persistent status row in the TUI. It is a fact, not an event: it changes onl
 
 | Footer line | State | Meaning |
 |---|---|---|
-| `memory: up` | up | engine answering HTTP |
+| `memory: up` | up | engine answering HTTP, router idle |
+| `memory: up · auto-dream 4m` | up | engine answering HTTP **and** the named router job holds the mutex — the suffix is the job id plus whole-minute elapsed, absent (`memory: up`) the moment the router goes idle |
 | `memory: starting…` | starting | a spawn was kicked, health not confirmed yet (seconds) |
 | `memory: down` / `memory: down · 3 queued` | down | unreachable — the suffix is the outbox backlog, hidden when 0 |
 | `memory: paused · /engine` | paused | the crash-loop circuit gave up on auto-start — run `/engine` |
 | `memory: --` | unknown | first probe still in flight (clears within seconds of session start) |
+
+Two rules keep the activity suffix honest. The elapsed is bucketed to **whole minutes**, because a 30 s probe cadence plus a seconds-granularity counter would rewrite the line twice a minute for a number nobody acts on; a job under a minute old shows its name with no number, since the job starting is already the news. And the version-skew suffix **wins** over it (`memory: up · stale (v2.1.0)`): a stale engine is a standing condition the user must act on and the footer is its only notice, while job activity is transient and is spelled out by `/engine`, `unown engine status` and the dashboard's Router screen.
 
 The loop behind it starts with the session, probes `/api/overview` every 30 s (`PI_ENGINE_PROBE_INTERVAL_MS`, floor 5 s) with a 700 ms timeout (`PI_ENGINE_PROBE_TIMEOUT_MS`, floor 100 ms — loopback refusal is instant, so the timeout only bites a hanging port, in the background), and after a spawn kick schedules fast re-probes at 2/5/9/16 s so the footer flips as soon as the engine actually boots. It survives `/new`, `/resume` and `/fork` (the engine cares about the process, not the session branch) and stops at quit.
 
@@ -183,7 +186,7 @@ Some users want the engine to stay off — privacy, a shared box, or just not wa
 
 The engine is long-lived; `unown update` fast-forwards the checkout and rebuilds the CLI — but the already-running engine keeps executing the OLD code until restarted. Before M8 this was invisible. Now the engine reports its build (`/api/version` + the `version` block in `/api/overview`: version, boot sha, `bootedAt`, `api`), and every surface compares it against the agent's own build (`compareEngineBuild` — fresh / old-build (same version, different sha) / stale (older version, or booted-before-this-build — the needrestart rule) / ancient (a major behind, or >7 days) / ahead / unknown for pre-M8 engines):
 
-- **Footer**: `memory: up · old build` / `memory: up · stale (v2.1.0)` — the suffix rides the up state only; down/paused keep their exact M6 shapes.
+- **Footer**: `memory: up · old build` / `memory: up · stale (v2.1.0)` — the suffix rides the up state only; down/paused keep their exact M6 shapes. It also **wins over** the `· <job> <elapsed>` activity suffix from [The footer](#the-footer): one line cannot carry both, and the stale build is the one that needs an action.
 - **Toast**: one info toast per fresh→stale *transition* (never at session start — the initial state is a fact, not an event): "memory engine is an older build … run `unown engine restart`; chat unaffected".
 - **`/engine`**: a `build:` line with both sides (engine v + sha · agent v + sha) and the restart hint when stale.
 - **Doctor**: an `engine version` row — pass when fresh, warn on old-build/stale/ancient, info-pass `engine predates version reporting` for pre-M8 engines.

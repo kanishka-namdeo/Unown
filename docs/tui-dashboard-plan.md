@@ -85,12 +85,18 @@ meter of resolved chars against the 80k injection cap); full content viewer with
 provenance header; version history with `changed_by` badges (seed / harness /
 autodream / manual / rollback) and notes; per-project tiers (`project:<slug>`)
 listed beside the engine tiers — closing the gap where terminal project memories
-were second-class citizens of the web dashboard.
-Actions: `enter` open tier (content + history); `b` rollback with inline y/N
+were second-class citizens of the web dashboard. `enter` on a version row opens
+that version's DIFF against its predecessor (`+N / −M` tally, coloured hunks);
+the pairing is by version number, because the engine serves history newest-first,
+and the lowest version says it has no earlier state rather than printing its whole
+body as an addition.
+Actions: `enter` open tier (content + history); `tab` version history; `enter`
+again on a version row → its diff; `b` rollback with inline y/N
 confirm (always reversible — the engine writes a new version, never deletes);
 `p` jump to project tiers; `esc` back.
 Workflows: "what does the agent believe right now?", "who changed this and when?",
-"undo a bad dream", "how much context does memory cost?".
+"what exactly did that dream change?", "undo a bad dream",
+"how much context does memory cost?".
 
 ### 3.3 Dreams — AutoDreaming runs
 
@@ -129,15 +135,23 @@ Workflows: "what procedures has it internalized?", "restore an older version",
 
 ### 3.6 Learning Lab — cycles, improvements, evidence runs
 
-Data: `/api/cycles`, `/api/improvements`, `/api/runs`, `/api/runs/:id`.
+Data: `/api/cycles`, `/api/improvements`, `/api/runs`, `/api/runs/:id`,
+`/api/runs/live` (the engine's in-memory registry of in-flight runs —
+`src/run-progress.ts`).
 View: cycle timeline; improvement cards (status, target tier, memory version,
 diagnosis/proposal, patch with score-before→after); run table (status, kind,
 task, tools, tokens, duration); run detail with full transcript and verify
-output.
+output. A RUNNING run is rendered from the live registry, not from its DB row:
+the row's counters are written at finalize, so mid-flight it reads `0 tools ·
+0 tok · —`, which is indistinguishable from a stalled run. The row and the detail
+block both show turns, tool calls, tokens, elapsed and the tool the agent is
+inside, refreshed on the screen's 4 s fast lane; when the run finalizes its live
+entry disappears and the persisted row becomes authoritative.
 Actions: `t` run task cycle; `m` mint task from failure; `enter` drill into
 improvement → evidence runs; `esc` back.
 Workflows: "show me the receipts" — every shipped rule traces to baseline and
-candidate runs; "mine this failure into a regression task".
+candidate runs; "mine this failure into a regression task"; "what is the engine
+doing right now?".
 
 ### 3.7 Hooks — the policy layer, including MemoryBudget receipts
 
@@ -148,15 +162,23 @@ injection-cap pruning receipts (what got dropped to fit 80k).
 Actions: `/` filter by decision/hook; `enter` details; `esc` back.
 Workflows: "what did the guardrail block today?", "what did the budget prune?".
 
-### 3.8 Router — the seven jobs
+### 3.8 Router — the eight jobs
 
 Data: `/api/jobs`.
-View: job cards (kind interval/event, schedule, next fire, run count, last run,
-status) — auto-dream, note-sync, dream-check highlighted as the memory loop's
-heartbeat.
+View: one row per job (kind interval/event, schedule, next fire, run count with
+its OUTCOME glyph, last run, enabled/running badges), plus the sandbox
+workspaces they run in — auto-dream, note-sync, dream-check highlighted as the
+memory loop's heartbeat. The `jobs` table carries `last_ok` / `last_error` /
+`last_duration_ms` (written in the same UPDATE that reschedules), so the tally
+glyph is a verdict — `✓` last run passed, `✗` last run failed, no glyph for a
+job that has not completed a run since the columns landed (a legacy row reads as
+unknown, never as a pass) — and any failed job is named again in a banner under
+the list with its age, its duration (20m = the watchdog, 0.2s = a crash) and the
+recorded error.
 Actions: `enter`/`space` trigger now; `t` toggle enable/disable with confirm;
 live job events arrive over SSE.
-Workflows: "when does the next dream fire?", "pause the harness while I debug".
+Workflows: "when does the next dream fire?", "pause the harness while I debug",
+"did a job start failing and nobody notice?".
 
 ### 3.9 Providers — terminal-only by the owner's call (amended during D4)
 
