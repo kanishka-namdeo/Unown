@@ -121,6 +121,7 @@ import {
 } from "./update.ts";
 import { runUsageCommand, USAGE_HELP } from "./usage-cli.ts";
 import { WATCH_USAGE, runWatchCommand } from "./watch-cli.ts";
+import { RALPH_USAGE, runRalphCommand } from "./ralph-cli.ts";
 import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
 import { runWikiCommand, WIKI_USAGE } from "./wiki-cli.ts";
 
@@ -180,6 +181,11 @@ Usage:
                            //, --, ; per language); projects opt in via
                            .unown/watch.json; default mode report (read-only)
                            (see docs/watch.md)
+  unown ralph "<task>"    the worker→reviewer loop (goose's Ralph pattern):
+                           fresh-context iterations, file handoff, VERDICT:
+                           SHIP/REVISE; --iterations (default 5),
+                           --reviewer-model (use a different model)
+                           (see docs/ralph.md)
   unown engine <sub>      the detached self-learning engine (M3+M6+M8):
                            status | start | stop | restart | repair | serve —
                            ping, spawn, graceful drain, the version-skew
@@ -2412,6 +2418,7 @@ function cmdHelp(topics: string[]): number {
                 wiki: WIKI_USAGE,
                 webcache: WEBCACHE_HELP,
                 watch: WATCH_USAGE,
+                ralph: RALPH_USAGE,
                 dashboard: DASHBOARD_HELP,
         };
         const page = pages[topic];
@@ -2523,6 +2530,16 @@ export async function runCli(argv: string[]) {
                 // grammar; dispatch before the generic parser would eat the
                 // subcommand tokens as prompt text.
                 const result = await runWatchCommand(argv.slice(1), { cwd: process.cwd() });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "ralph") {
+                // M4 — `unown ralph "<task>"`: the worker→reviewer loop (goose's
+                // Ralph pattern). Owns its own flag grammar (a quoted free-text
+                // task + flags); dispatched before the generic parser for the
+                // same reason as watch.
+                const result = await runRalphCommand(argv.slice(1), { cwd: process.cwd() });
                 if (result.stdout) process.stdout.write(result.stdout);
                 if (result.stderr) process.stderr.write(result.stderr);
                 process.exit(result.exitCode);
