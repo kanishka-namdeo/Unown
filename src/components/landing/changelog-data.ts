@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 149;
+export const CHANGELOG_TOTAL_ENTRIES = 154;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 60,
+  "Added": 62,
   "Changed": 10,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 65,
+  "Fixed": 68,
   "Security": 0,
   "Behavior": 12
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 8,
+    "total": 13,
     "counts": {
-      "Added": 1,
+      "Added": 3,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 2,
+      "Fixed": 5,
       "Security": 0,
       "Behavior": 5
     },
@@ -61,7 +61,40 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
+            "title": "onboarding 2.0 — the Hermes-patterned first run and setup wizard (masked keys, existing-key states…",
+            "behavior": false
+          },
+          {
+            "title": "clearProviderKey — remove every local trace of a provider key",
+            "behavior": false
+          },
+          {
             "title": "benchmarks/transfer-bench — the cross-task memory-transfer benchmark (induce-on-A/test-on-B)",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "the interactive setup wizard no longer crashes or silently exits mid-question under a real terminal",
+            "behavior": false
+          },
+          {
+            "title": "the first-run banner no longer names the stale seeded bridge after a wizard ran",
+            "behavior": false
+          },
+          {
+            "title": "the first-run gate's decline now says what you are on",
+            "behavior": false
+          },
+          {
+            "title": "unown uninstall no longer leaves its own PowerShell shim behind",
+            "behavior": false
+          },
+          {
+            "title": "--purge-checkout no longer leaves the deleted checkout recorded as the active install",
             "behavior": false
           }
         ]
@@ -88,19 +121,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "print-mode sessions no longer crash at the first subagent-lane tick",
             "behavior": true
-          }
-        ]
-      },
-      {
-        "bucket": "Fixed",
-        "items": [
-          {
-            "title": "unown uninstall no longer leaves its own PowerShell shim behind",
-            "behavior": false
-          },
-          {
-            "title": "--purge-checkout no longer leaves the deleted checkout recorded as the active install",
-            "behavior": false
           }
         ]
       }

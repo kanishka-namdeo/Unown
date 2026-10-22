@@ -205,7 +205,7 @@ unown setup --provider openai --api-key sk-... --model gpt-4o
 unown setup                        # or the interactive wizard
 ```
 
-`unown setup` verifies the endpoint and key before declaring success, and writes `~/.unown/agent/{models.json,auth.json,settings.json}`. See [docs/providers.md](docs/providers.md).
+`unown setup` verifies the endpoint and key before declaring success, and writes `~/.unown/agent/{models.json,auth.json,settings.json}`. The interactive wizard is a guided flow: masked key entry (a stored key is shown as `key[:8]…` with Keep/Replace/Clear), live model discovery from the endpoint, a theme step, and a closing setup summary with first-task suggestions. On a fresh install, `unown` itself offers the same wizard once at first run — `Enter` opens it, `n` keeps the bundled bridge. See [docs/providers.md](docs/providers.md) and [docs/quickstart.md](docs/quickstart.md).
 
 ### 3. Start
 

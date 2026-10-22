@@ -278,7 +278,7 @@ export function upsertProvider(agentDir: string, entry: ProviderEntry, opts: Ups
         }
 }
 
-function mergeSettings(agentDir: string, patch: JsonRecord): void {
+export function mergeSettings(agentDir: string, patch: JsonRecord): void {
         const settingsPath = join(agentDir, "settings.json");
         const settings = readJson(settingsPath);
         writeFileSync(settingsPath, `${JSON.stringify({ ...settings, ...patch }, null, 2)}\n`, "utf8");
@@ -343,6 +343,56 @@ export function setProviderKey(agentDir: string, providerId: string, apiKey: str
                 auth[providerId] = { type: "api_key", key: apiKey };
         });
         return true;
+}
+
+export interface ClearKeyResult {
+        /** The provider existed in the registry. */
+        found: boolean;
+        /** An auth.json entry was removed. */
+        removedAuthEntry: boolean;
+        /** A provider-level apiKey (literal or $ENV ref) was removed from models.json. */
+        removedModelsKey: boolean;
+}
+
+/**
+ * Remove EVERY locally-stored trace of a provider's key: the auth.json entry
+ * and any provider-level apiKey in models.json (literal secrets AND `$ENV`
+ * references — the reference goes; the environment variable itself is the
+ * user's shell, not ours). Idempotent: clearing an already-keyless provider
+ * is a no-op success.
+ */
+export function clearProviderKey(agentDir: string, providerId: string): ClearKeyResult {
+        const file = readAgentModelsFile(agentDir);
+        const found = file.providers.some((p) => p.id === providerId);
+        let removedAuthEntry = false;
+        let removedModelsKey = false;
+        // auth.json: drop the entry if present.
+        const authPath = join(agentDir, "auth.json");
+        if (existsSync(authPath)) {
+                const auth = readJson(authPath);
+                if (auth[providerId] !== undefined) {
+                        delete auth[providerId];
+                        writeFileSync(authPath, `${JSON.stringify(auth, null, 2)}
+`, { encoding: "utf8" });
+                        secureFilePermissions(authPath);
+                        removedAuthEntry = true;
+                }
+        }
+        // models.json: drop a provider-level apiKey (literal or $ENV ref).
+        const modelsPath = join(agentDir, "models.json");
+        if (existsSync(modelsPath)) {
+                const raw = readJson(modelsPath);
+                const providers = (raw.providers ?? {}) as Record<string, { apiKey?: string }>;
+                const entry = providers[providerId];
+                if (entry && typeof entry.apiKey === "string" && entry.apiKey) {
+                        delete entry.apiKey;
+                        raw.providers = providers;
+                        writeFileSync(modelsPath, `${JSON.stringify(raw, null, 2)}
+`, { encoding: "utf8" });
+                        removedModelsKey = true;
+                }
+        }
+        return { found, removedAuthEntry, removedModelsKey };
 }
 
 export interface DefaultResult {

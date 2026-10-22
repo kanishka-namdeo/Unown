@@ -18,21 +18,30 @@
  *   settings.json — defaultProvider + defaultModel so sessions start on the
  *                   chosen model without any picker
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import * as readline from "node:readline/promises";
 import { probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
-import { keyStatusLabel, listProviders, upsertProvider, type ProviderEntry } from "./providers.ts";
+import {
+        clearProviderKey,
+        keyStatusLabel,
+        listProviders,
+        mergeSettings,
+        type ProviderEntry,
+        resolveProviderKey,
+        upsertProvider,
+} from "./providers.ts";
+import { createTerminalDialog, maskKey, SECRET_CANCEL, type SetupDialog } from "./setup-dialog.ts";
 import { bridgeKnownModels, UNOWN_AGENT_DIR } from "./term.ts";
 
+export type { ProviderPreset } from "./presets.ts";
 // ---------------------------------------------------------------------------
 // Provider presets — re-exported from presets.ts (M4 extraction: the registry
 // and the CLI share one table; presets.ts imports nothing from the
 // terminal half, so the import-graph detachment tests stay green).
 // ---------------------------------------------------------------------------
 export { PRESETS } from "./presets.ts";
-export type { ProviderPreset } from "./presets.ts";
-import { PRESETS } from "./presets.ts";
+
+import { PRESETS, type ProviderPreset } from "./presets.ts";
 
 // ---------------------------------------------------------------------------
 // Config writing
@@ -174,7 +183,6 @@ Adding a provider KEEPS existing ones (multi-provider registry; see
  * wizard launched anyway — `setup --help` opened the wizard, typos were
  * invisible); -h/--help prints the usage instead of running anything. */
 function parseSetupFlags(args: string[]): { flags: SetupFlags; help: boolean; unknown: string[] } {
-
         const flags: SetupFlags = { force: false, list: false };
         const unknown: string[] = [];
         let help = false;
@@ -204,10 +212,93 @@ function parseSetupFlags(args: string[]): { flags: SetupFlags; help: boolean; un
         return { flags, help, unknown };
 }
 
-async function ask(rl: readline.Interface, question: string, fallback?: string): Promise<string> {
-        const suffix = fallback !== undefined ? ` [${fallback || "none"}]: ` : ": ";
-        const answer = ((await rl.question(question + suffix)) as string).trim();
-        return answer || (fallback ?? "");
+// (the standalone readline `ask()` helper lived here; the dialog layer in
+// setup-dialog.ts owns prompts now — see that module for why readline was
+// dropped for the TTY path.)
+
+// ---------------------------------------------------------------------------
+// Setup outcome — everything the closing summary needs (the Hermes-agent
+// _print_setup_summary pattern: the user leaves knowing exactly what was
+// written where, in one screen).
+// ---------------------------------------------------------------------------
+export interface SetupOutcome {
+        providerId: string;
+        providerName: string;
+        baseUrl: string;
+        modelId: string;
+        /** Additional registered model ids (the bridge allow-list / live discovery). */
+        extraModels?: string[];
+        /** Where the key ended up — the summary line's source of truth. */
+        keyDisposition: "auth-json" | "env-ref" | "models-json" | "keyless" | "bridge";
+        /** Human note for the key line ("kept existing", "cleared", …). */
+        keyNote?: string;
+        /** Theme switched by the wizard (undefined = unchanged). */
+        theme?: string;
+        /** Sibling providers that survived (merge semantics). */
+        kept?: string[];
+        verified: "ok" | "auth-rejected" | "unreachable" | "skipped";
+        /** Live-discovered model list, when the endpoint answered. */
+        served?: string[];
+}
+
+function firstFlightCatalog(): string[] {
+        return [
+                '"explain how unown\'s memory tiers work"',
+                '"generate an AGENTS.md for this repo"  (or run: unown init-agents)',
+                '"open the dashboard and walk me through it"  (or run: unown dashboard)',
+                '"run unown doctor and explain anything yellow"',
+        ];
+}
+
+/** Pure builder (unit-tested): the summary text without printing. */
+export function buildSetupSummaryText(out: SetupOutcome): string {
+        const extra = out.extraModels?.length
+                ? `  (+${out.extraModels.length} more: ${out.extraModels.slice(0, 4).join(", ")}${out.extraModels.length > 4 ? " …" : ""})`
+                : "";
+        const keyLine = (() => {
+                switch (out.keyDisposition) {
+                        case "auth-json":
+                                return `auth.json (mode 0600)${out.keyNote ? ` — ${out.keyNote}` : ""}`;
+                        case "env-ref":
+                                return `models.json $ENV reference${out.keyNote ? ` — ${out.keyNote}` : ""}`;
+                        case "models-json":
+                                return `models.json (provider-level)${out.keyNote ? ` — ${out.keyNote}` : ""}`;
+                        case "bridge":
+                                return "bridge placeholder in models.json (the real secret lives in the repo .env)";
+                        default:
+                                return out.keyNote ? `none — ${out.keyNote}` : "none (keyless)";
+                }
+        })();
+        const verifyLine =
+                out.verified === "ok"
+                        ? `endpoint reachable${out.served?.length ? ` — serves ${out.served.slice(0, 6).join(", ")}${out.served.length > 6 ? " …" : ""}` : ""}`
+                        : out.verified === "auth-rejected"
+                                ? "endpoint reachable but REJECTED the key"
+                                : out.verified === "unreachable"
+                                        ? "endpoint not reachable (config written — verify later)"
+                                        : "not verified";
+        const lines: string[] = [];
+        lines.push("");
+        lines.push("✓ setup complete");
+        lines.push(`  provider  ${out.providerId} → ${out.baseUrl}`);
+        lines.push(`  model     ${out.modelId}${extra}`);
+        lines.push(`  key       ${keyLine}`);
+        lines.push(`  theme     ${out.theme ? `switched: ${out.theme}` : "unchanged"}`);
+        lines.push(`  verify    ${verifyLine}`);
+        if (out.kept?.length) lines.push(`  kept      existing providers: ${out.kept.join(", ")}`);
+        lines.push("  files     ~/.unown/agent/{models,auth,settings}.json");
+        lines.push("\nNext:");
+        lines.push("  unown                start a session in this project");
+        lines.push("  unown doctor         end-to-end diagnostics");
+        lines.push("  unown providers list  see every configured provider");
+        lines.push("\nFirst flights (paste into a session):");
+        for (const t of firstFlightCatalog()) lines.push(`  · ${t}`);
+        return lines.join("\n") + "\n";
+}
+
+/** Print it (the wizard's closer). */
+function printSetupSummary(out: SetupOutcome): void {
+        console.log(buildSetupSummaryText(out));
 }
 
 function printPresetTable(): void {
@@ -220,13 +311,22 @@ function printPresetTable(): void {
         }
 }
 
-/** Bridge health snippet for the wizard (best effort, 3s). */
-async function bridgeHealthSnippet(): Promise<string | null> {
+/** Bridge health, structured (best effort, 3s) — one fetch feeds the wizard's
+ *  recommendation marker, the bridge step's status line AND its model list. */
+interface BridgeHealth {
+        snippet: string | null;
+        upstreamOk: boolean;
+        keySet: boolean;
+        models: string[];
+        defaultModel?: string;
+}
+
+async function bridgeHealth(): Promise<BridgeHealth> {
         try {
                 const res = await fetch(`${(process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031").replace(/\/+$/, "")}/health`, {
                         signal: AbortSignal.timeout(3000),
                 });
-                if (!res.ok) return null;
+                if (!res.ok) return { snippet: null, upstreamOk: false, keySet: false, models: [] };
                 const body = (await res.json()) as {
                         upstream?: { ok?: boolean; status?: number };
                         upstreamKeyIsSet?: boolean;
@@ -238,28 +338,218 @@ async function bridgeHealthSnippet(): Promise<string | null> {
                         ? "upstream healthy"
                         : `upstream unhealthy (${body.upstream?.status ?? "no answer"})`;
                 const models = (body.models ?? []).join(", ");
-                return `${up} · ${key} · serves: ${models || "nothing"} (default ${body.defaultModel ?? "?"})`;
+                return {
+                        snippet: `${up} · ${key} · serves: ${models || "nothing"} (default ${body.defaultModel ?? "?"})`,
+                        upstreamOk: body.upstream?.ok === true,
+                        keySet: body.upstreamKeyIsSet === true,
+                        models: body.models ?? [],
+                        defaultModel: body.defaultModel,
+                };
         } catch {
-                return null;
+                return { snippet: null, upstreamOk: false, keySet: false, models: [] };
         }
+}
+
+/** Legacy string form (doctor etc. keep the exact snippet text). */
+async function bridgeHealthSnippet(): Promise<string | null> {
+        return (await bridgeHealth()).snippet;
+}
+
+// ---------------------------------------------------------------------------
+// Wizard steps shared by both interactive lanes
+// ---------------------------------------------------------------------------
+
+/** Read settings.json's current theme ("" when unset). */
+function currentTheme(): string {
+        try {
+                const raw = JSON.parse(readFileSync(join(UNOWN_AGENT_DIR, "settings.json"), "utf8")) as { theme?: string };
+                return typeof raw.theme === "string" && raw.theme ? raw.theme : "";
+        } catch {
+                return "";
+        }
+}
+
+/** Theme names available to the TUI: pi's built-ins + ~/.unown/agent/themes/*.json. */
+function availableThemes(): string[] {
+        const names = new Set<string>(["dark", "light"]);
+        const dir = join(UNOWN_AGENT_DIR, "themes");
+        try {
+                for (const f of readdirSync(dir)) {
+                        if (f.endsWith(".json")) names.add(f.slice(0, -".json".length));
+                }
+        } catch {
+                /* no themes dir yet — built-ins still apply */
+        }
+        return [...names];
+}
+
+/**
+ * The "Pick a look" beat (Hermes onboarding: name → theme → …). Asked AFTER
+ * the provider is verified — first run connects the model; the look is the
+ * dessert. Blank/first option = keep current (no write). Writes settings.json
+ * via mergeSettings (never clobbers sibling keys).
+ */
+async function runThemeStep(dialog: SetupDialog): Promise<string | undefined> {
+        const current = currentTheme() || "unown";
+        const others = availableThemes()
+                .filter((t) => t !== current)
+                .sort((a, b) => (a === "unown" ? -1 : b === "unown" ? 1 : a.localeCompare(b)));
+        const options = [`${current} (keep current)`, ...others];
+        dialog.note("\nThe look — pick a TUI theme (switch any time in-session: /settings):");
+        const idx = await dialog.choose("Theme", options, 0);
+        if (idx === 0) return undefined;
+        const theme = others[idx - 1];
+        if (!theme) return undefined;
+        mergeSettings(UNOWN_AGENT_DIR, { theme });
+        return theme;
+}
+
+/**
+ * The existing-secret question (Hermes main_provider_setup: `key[:8]… ✓` +
+ * Keep / Replace / Clear). Returns the effective key decision for the write.
+ */
+interface KeyDecision {
+        /** Final storage form for writeAgentConfig. */
+        apiKeyInAuthJson?: string;
+        apiKeyInModelsJson?: string;
+        apiKeyEnvRef?: string;
+        /** True when the stored key was cleared. */
+        cleared?: boolean;
+        /** For the summary keyNote. */
+        note: string;
+        cancelled?: boolean;
+}
+
+async function runKeyStep(
+        dialog: SetupDialog,
+        preset: ProviderPreset,
+        providerId: string,
+        effectiveProviderId: string,
+): Promise<KeyDecision> {
+        const existing = resolveProviderKey(UNOWN_AGENT_DIR, effectiveProviderId);
+        if (existing.source !== "none" && existing.key) {
+                const src =
+                        existing.source === "auth-json"
+                                ? "auth.json"
+                                : existing.source === "models-json"
+                                        ? "models.json"
+                                        : `$${existing.envVar ?? "?"} (env ref)`;
+                dialog.note(`  key: ${maskKey(existing.key)} ✓  already stored (${src})`);
+                const idx = await dialog.choose(
+                        "Use it?",
+                        ["Keep the stored key", "Replace with a new key", "Clear the stored key (continue keyless)"],
+                        0,
+                );
+                if (idx === 0) {
+                        return existing.source === "auth-json"
+                                ? { apiKeyInAuthJson: existing.key, note: "kept existing (auth.json)" }
+                                : existing.source === "models-json"
+                                        ? { apiKeyInModelsJson: existing.key, note: "kept existing (models.json)" }
+                                        : { apiKeyEnvRef: existing.envVar, note: "kept existing ($ENV ref)" };
+                }
+                if (idx === 2) {
+                        const res = clearProviderKey(UNOWN_AGENT_DIR, effectiveProviderId);
+                        return {
+                                cleared: true,
+                                note: res.removedAuthEntry || res.removedModelsKey ? "cleared the stored key" : "was already keyless",
+                        };
+                }
+                // idx === 1: replace — falls through to the masked prompt
+        } else if (existing.source === "env-ref" && existing.envVar) {
+                dialog.note(`  key: $${existing.envVar} is referenced but NOT set in this environment — requests would fail.`);
+        } else {
+                dialog.note(`  (key hint: ${preset.keyEnvHint}; stored in ~/.unown/agent/auth.json with mode 0600)`);
+        }
+        dialog.note("  The input is masked — type the key, Enter to finish. Blank = keyless (fine for local servers).");
+        const secret = await dialog.askSecret("API key");
+        if (secret === SECRET_CANCEL) return { note: "", cancelled: true };
+        if (!secret) return { note: "no key given — continuing keyless" };
+        return { apiKeyInAuthJson: secret, note: "entered masked" };
+}
+
+/**
+ * Model step with LIVE discovery: probe the endpoint with the effective key,
+ * then offer a numbered choice from what it actually serves. Falls back to a
+ * plain typed ask when the endpoint cannot be probed (down, or the
+ * anthropic-messages wire, which has no OpenAI /models probe).
+ */
+interface ModelDecision {
+        modelId: string;
+        extraModelIds: string[];
+        served?: string[];
+        verified: SetupOutcome["verified"];
+        note?: string;
+}
+
+async function runModelStep(
+        dialog: SetupDialog,
+        baseUrl: string,
+        preset: ProviderPreset,
+        key: string | undefined,
+        fallbackDefault: string,
+): Promise<ModelDecision> {
+        // Only the OpenAI wire has a /models discovery probe here.
+        if (preset.api !== "openai-completions") {
+                const modelId = await dialog.ask("Model id", fallbackDefault);
+                return { modelId, extraModelIds: [], verified: "skipped" };
+        }
+        const probe = await probeOpenAiEndpoint(baseUrl, key, 4000);
+        if (!probe.ok || !probe.models || probe.models.length === 0) {
+                if (probe.ok) {
+                        const modelId = await dialog.ask("Model id (endpoint served no list — type one)", fallbackDefault);
+                        return { modelId, extraModelIds: [], verified: "ok" };
+                }
+                dialog.note(`  ⚠ could not reach ${baseUrl} for model discovery — type the id by hand.`);
+                const modelId = await dialog.ask("Model id", fallbackDefault);
+                return {
+                        modelId,
+                        extraModelIds: [],
+                        verified: probe.problem === "auth" ? "auth-rejected" : "unreachable",
+                };
+        }
+        const served = probe.models;
+        const defaultIndex = Math.max(0, served.indexOf(fallbackDefault || served[0]));
+        const idx = await dialog.choose(
+                "Model (live list from the endpoint)",
+                served.map((m) => (m === served[defaultIndex] ? `${m} (preset default)` : m)),
+                defaultIndex,
+        );
+        const modelId = served[idx] ?? fallbackDefault;
+        const extraModelIds = served.filter((m) => m !== modelId).slice(0, 24);
+        return { modelId, extraModelIds, served, verified: "ok" };
 }
 
 async function runBridgeSetup(
         flags: Partial<SetupFlags>,
         preset: ProviderPreset,
-        rl: readline.Interface | null,
+        dialog: SetupDialog | null,
+        health?: BridgeHealth,
 ): Promise<number> {
-        const health = await bridgeHealthSnippet();
+        const h = health ?? (await bridgeHealth());
         console.log(`\nBundled llm-bridge: ${preset.baseUrl}`);
         console.log(
-                health ? `  status: ${health}` : "  status: not reachable right now (start the stack later: bun run agent:start)",
+                h.snippet
+                        ? `  status: ${h.snippet}`
+                        : "  status: not reachable right now (start the stack later: bun run agent:start)",
         );
-        if (health && !health.includes("key set")) {
+        if (h.snippet && !h.keySet) {
                 console.log("  ⚠ BRIDGE_UPSTREAM_KEY is not set in the repo's .env — chats will fail with 401 until you add it.");
         }
         let modelId = flags.model ?? preset.defaultModel;
-        if (rl && !flags.model) {
-                modelId = await ask(rl, "Model to use", preset.defaultModel);
+        let servedModelIds: string[] = [];
+        if (dialog && !flags.model) {
+                if (h.models.length >= 2) {
+                        const defaultIndex = Math.max(0, h.models.indexOf(h.defaultModel || h.models[0]));
+                        const idx = await dialog.choose(
+                                "Model (the bridge serves these live)",
+                                h.models.map((m) => (m === h.models[defaultIndex] ? `${m} (bridge default)` : m)),
+                                defaultIndex,
+                        );
+                        modelId = h.models[idx] ?? preset.defaultModel;
+                } else {
+                        modelId = await dialog.ask("Model to use", preset.defaultModel);
+                }
+                servedModelIds = h.models;
         }
         if (!modelId) {
                 console.error("unown setup: no model given (use --model)");
@@ -286,34 +576,71 @@ async function runBridgeSetup(
                 ...(flags.force ? { reset: true } : {}),
         });
         console.log(`\n✓ configured the bundled bridge (${modelId})`);
-        console.log("  next: unown            # start a session");
-        console.log("        unown doctor     # verify the whole path");
+        if (dialog) {
+                const theme = await runThemeStep(dialog);
+                const file = readAgentModelsFile(UNOWN_AGENT_DIR);
+                const kept = file.providers.map((p) => p.id).filter((id) => id !== "zai-bridge");
+                printSetupSummary({
+                        providerId: process.env.PI_PROVIDER || "zai-bridge",
+                        providerName: "unown llm-bridge",
+                        baseUrl: preset.baseUrl,
+                        modelId,
+                        extraModels: servedModelIds.filter((m) => m !== modelId),
+                        keyDisposition: "bridge",
+                        theme,
+                        kept,
+                        verified: h.upstreamOk ? "ok" : "unreachable",
+                        served: h.models,
+                });
+        } else {
+                console.log("  next: unown            # start a session");
+                console.log("        unown doctor     # verify the whole path");
+        }
         return 0;
 }
 
 async function runDirectSetup(
         flags: Partial<SetupFlags>,
         preset: ProviderPreset,
-        rl: readline.Interface | null,
+        dialog: SetupDialog | null,
 ): Promise<number> {
         let baseUrl = flags.baseUrl ?? preset.baseUrl;
         let modelId = flags.model ?? preset.defaultModel;
         let apiKey = flags.apiKey ?? "";
         let providerId = preset.id;
-        if (rl) {
+        // Filled by the interactive key step (keep-in-form / replace / clear).
+        let keyDecision: KeyDecision | null = null;
+        // Filled by the interactive model step (live discovery).
+        let modelDecision: ModelDecision | null = null;
+        if (dialog) {
                 console.log(`\n${preset.label}`);
                 console.log(`  endpoint: ${baseUrl}`);
                 if (preset.id === "custom") {
-                        baseUrl = await ask(rl, "Endpoint base URL (OpenAI-compatible, usually ends in /v1)", preset.baseUrl);
-                        providerId = (await ask(rl, "Provider id (short name used in config files)", "custom-llm")) || "custom-llm";
-                        modelId = await ask(rl, "Model id");
-                } else {
-                        modelId = await ask(rl, "Model id", preset.defaultModel);
+                        baseUrl = await dialog.ask("Endpoint base URL (OpenAI-compatible, usually ends in /v1)", preset.baseUrl);
+                        providerId = (await dialog.ask("Provider id (short name used in config files)", "custom-llm")) || "custom-llm";
                 }
+                // --- key step: existing-secret states, then masked entry ---
                 if (!flags.apiKey) {
-                        console.log(`  (key hint: ${preset.keyEnvHint}; stored in ~/.unown/agent/auth.json with mode 0600)`);
-                        apiKey = await ask(rl, "API key");
+                        keyDecision = await runKeyStep(dialog, preset, preset.id, providerId);
+                        if (keyDecision.cancelled) {
+                                console.log("\n✗ cancelled — nothing written. Re-run any time: unown setup");
+                                return 0;
+                        }
+                        apiKey =
+                                keyDecision.apiKeyInAuthJson ??
+                                keyDecision.apiKeyInModelsJson ??
+                                (keyDecision.apiKeyEnvRef ? (process.env[keyDecision.apiKeyEnvRef] ?? "") : "");
                 }
+                // --- model step: live discovery with the effective key ---
+                const probeKey =
+                        keyDecision?.apiKeyInAuthJson ??
+                        keyDecision?.apiKeyInModelsJson ??
+                        (keyDecision?.apiKeyEnvRef ? (process.env[keyDecision.apiKeyEnvRef] ?? "") : undefined) ??
+                        (flags.apiKey || undefined) ??
+                        (flags.keyEnv ? process.env[flags.keyEnv] : undefined);
+                const decision = await runModelStep(dialog, baseUrl, preset, probeKey, preset.defaultModel);
+                modelDecision = decision;
+                modelId = decision.modelId;
         }
         if (!baseUrl) {
                 console.error("unown setup: no base URL (use --base-url)");
@@ -323,7 +650,7 @@ async function runDirectSetup(
                 console.error("unown setup: no model id (use --model)");
                 return 1;
         }
-        if (!apiKey && !flags.apiKey) {
+        if (!apiKey && !flags.apiKey && !keyDecision) {
                 // Local servers (Ollama, llama.cpp, vLLM) may be keyless — allow it,
                 // but say so.
                 console.log("  · no API key given — continuing keyless (fine for local servers)");
@@ -335,15 +662,34 @@ async function runDirectSetup(
                 api: preset.api,
                 modelId,
                 input: preset.input,
-                ...(apiKey ? { apiKeyInAuthJson: apiKey } : {}),
-                ...(flags.keyEnv ? { apiKeyEnvRef: flags.keyEnv } : {}),
+                ...(dialog && keyDecision
+                        ? {
+                                        ...(keyDecision.apiKeyInAuthJson ? { apiKeyInAuthJson: keyDecision.apiKeyInAuthJson } : {}),
+                                        ...(keyDecision.apiKeyInModelsJson ? { apiKeyInModelsJson: keyDecision.apiKeyInModelsJson } : {}),
+                                        ...(keyDecision.apiKeyEnvRef ? { apiKeyEnvRef: keyDecision.apiKeyEnvRef } : {}),
+                                }
+                        : {
+                                        ...(apiKey ? { apiKeyInAuthJson: apiKey } : {}),
+                                        ...(flags.keyEnv ? { apiKeyEnvRef: flags.keyEnv } : {}),
+                                }),
+                // The discovered catalog registers alongside the chosen model so
+                // /model and --model can route without a manual models.json edit
+                // (the bridge preset has done exactly this since M4).
+                ...(dialog && modelDecision?.extraModelIds?.length ? { extraModelIds: modelDecision.extraModelIds } : {}),
                 ...(flags.force ? { reset: true } : {}),
         });
         // Verify reachability (best effort, non-fatal). With --key-env, probe
         // with the CURRENT env value so verification works without storing it.
-        const probeKey = apiKey || (flags.keyEnv ? process.env[flags.keyEnv] : undefined);
-        const probe = await probeOpenAiEndpoint(baseUrl, probeKey, 4000);
+        const verifyKey =
+                keyDecision?.apiKeyInAuthJson ??
+                keyDecision?.apiKeyInModelsJson ??
+                (keyDecision?.apiKeyEnvRef ? (process.env[keyDecision.apiKeyEnvRef] ?? "") : undefined) ??
+                (apiKey || undefined) ??
+                (flags.keyEnv ? process.env[flags.keyEnv] : undefined);
+        const probe = await probeOpenAiEndpoint(baseUrl, verifyKey, 4000);
+        let verified: SetupOutcome["verified"] = "unreachable";
         if (probe.ok) {
+                verified = "ok";
                 const list =
                         probe.models && probe.models.length > 0
                                 ? ` — serves ${probe.models.slice(0, 6).join(", ")}${probe.models.length > 6 ? " …" : ""}`
@@ -351,20 +697,69 @@ async function runDirectSetup(
                 console.log(`\n✓ configured ${providerId} → ${baseUrl}`);
                 console.log(`  endpoint reachable${list}`);
         } else if (probe.problem === "auth") {
+                verified = "auth-rejected";
                 console.log(`\n✓ wrote the configuration, but the endpoint rejected the key (HTTP ${probe.status}).`);
                 console.log("  double-check the API key, then re-run: unown setup");
+                if (dialog) {
+                        const file2 = readAgentModelsFile(UNOWN_AGENT_DIR);
+                        printSetupSummary({
+                                providerId,
+                                providerName: preset.label.split(" (")[0],
+                                baseUrl,
+                                modelId,
+                                extraModels: modelDecision?.extraModelIds,
+                                keyDisposition: keyDecision?.apiKeyInAuthJson
+                                        ? "auth-json"
+                                        : keyDecision?.apiKeyInModelsJson
+                                                ? "models-json"
+                                                : keyDecision?.apiKeyEnvRef
+                                                        ? "env-ref"
+                                                        : keyDecision?.cleared
+                                                                ? "keyless"
+                                                                : "keyless",
+                                keyNote: keyDecision?.note,
+                                kept: file2.providers.map((p) => p.id).filter((id) => id !== providerId),
+                                verified,
+                        });
+                }
                 return 1;
         } else {
                 console.log(`\n✓ wrote the configuration, but could not reach ${baseUrl}.`);
                 console.log("  start the endpoint (or point --base-url elsewhere) and re-run: unown setup");
         }
-        console.log("  next: unown            # start a session");
-        console.log("        unown doctor     # verify the whole path");
+        if (dialog) {
+                const theme = await runThemeStep(dialog);
+                const file2 = readAgentModelsFile(UNOWN_AGENT_DIR);
+                printSetupSummary({
+                        providerId,
+                        providerName: preset.label.split(" (")[0],
+                        baseUrl,
+                        modelId,
+                        extraModels: modelDecision?.extraModelIds,
+                        keyDisposition: keyDecision?.apiKeyInAuthJson
+                                ? "auth-json"
+                                : keyDecision?.apiKeyInModelsJson
+                                        ? "models-json"
+                                        : keyDecision?.apiKeyEnvRef
+                                                ? "env-ref"
+                                                : flags.apiKey
+                                                        ? "auth-json"
+                                                        : "keyless",
+                        keyNote: keyDecision?.note,
+                        theme,
+                        kept: file2.providers.map((p) => p.id).filter((id) => id !== providerId),
+                        verified,
+                        served: probe.models,
+                });
+        } else {
+                console.log("  next: unown            # start a session");
+                console.log("        unown doctor     # verify the whole path");
+        }
         return 0;
 }
 
 async function runInteractiveSetup(): Promise<number> {
-        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const dialog = createTerminalDialog();
         try {
                 const file = readAgentModelsFile(UNOWN_AGENT_DIR);
                 if (file.providers.length > 0) {
@@ -374,14 +769,23 @@ async function runInteractiveSetup(): Promise<number> {
                         );
                         console.log(`Files: ${join(UNOWN_AGENT_DIR, "models.json")}\n`);
                 } else {
-                        console.log("No provider configured yet.\n");
+                        console.log("No provider connected yet — let's fix that.\n");
                 }
+                // The recommendation marker: ONE fetch of bridge /health decides
+                // whether the bundled stack earns the "recommended" tag (Hermes's
+                // Quick Setup slot — the zero-key path when the stack is up).
+                const health = await bridgeHealth();
+                const bridgeRecommended = health.upstreamOk && health.keySet;
                 console.log("What should unown talk to?");
                 PRESETS.forEach((p, i) => {
-                        console.log(`  ${i + 1}) ${p.label}`);
+                        const tag =
+                                p.id === "bridge" && bridgeRecommended
+                                        ? "  ← recommended (your bundled stack is up, key set — zero extra keys)"
+                                        : "";
+                        console.log(`  ${i + 1}) ${p.label}${tag}`);
                 });
                 console.log(`  ${PRESETS.length + 1}) Keep the current configuration`);
-                const choice = await ask(rl, "Choose", "1");
+                const choice = await dialog.ask("Choose", "1");
                 const idx = Number.parseInt(choice, 10);
                 if (Number.isInteger(idx) && idx === PRESETS.length + 1) {
                         console.log("Keeping the current configuration — nothing written.");
@@ -398,9 +802,9 @@ async function runInteractiveSetup(): Promise<number> {
                                 console.log(`\nExisting providers are KEPT (added alongside): ${others.join(", ")}`);
                         }
                 }
-                return preset.id === "bridge" ? runBridgeSetup({}, preset, rl) : runDirectSetup({}, preset, rl);
+                return preset.id === "bridge" ? runBridgeSetup({}, preset, dialog, health) : runDirectSetup({}, preset, dialog);
         } finally {
-                rl.close();
+                // nothing to close — the dialog restores the terminal per prompt
         }
 }
 
@@ -444,7 +848,9 @@ export async function runSetupCommand(args: string[]): Promise<number> {
                         const file = readAgentModelsFile(UNOWN_AGENT_DIR);
                         const others = file.providers.filter((p) => p.id !== preset!.id && p.id !== "zai-bridge").map((p) => p.id);
                         if (others.length > 0) {
-                                console.log(`  ⚠ --force RESETS ~/.unown/agent/models.json to just ${preset.id} — drops: ${others.join(", ")}`);
+                                console.log(
+                                        `  ⚠ --force RESETS ~/.unown/agent/models.json to just ${preset.id} — drops: ${others.join(", ")}`,
+                                );
                         }
                 }
         }

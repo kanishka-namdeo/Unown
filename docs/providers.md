@@ -56,6 +56,8 @@ unown setup --provider custom \
 
 Presets: `bridge` (bundled), `openai`, `openrouter`, `anthropic`, `dashscope`, `deepseek`, `agnes`, `custom`. Every direct setup verifies the endpoint is reachable and the key is accepted before declaring success — a rejected key fails setup with the HTTP status instead of failing your first chat later.
 
+The interactive wizard (no flags, TTY) is a guided flow: current-state welcome → provider choice (the bundled bridge is marked `← recommended` when its stack is up and keyed) → **masked key entry** (a stored key shows as `key[:8]… ✓` with **Keep / Replace / Clear** — Keep preserves the storage form, Clear removes every local trace) → **live model discovery** (the endpoint is probed with your key and the list is what it actually serves; unreachable or the Anthropic wire falls back to typing the id) → **theme step** (current first — blank keeps it) → **setup summary** (provider, model +N discovered, key disposition, theme, verify, kept siblings) plus next commands and first-flight suggestions. Blank at any step takes the default; Ctrl+C cancels with `nothing written`.
+
 Setup **merges**: re-running it adds or updates that provider in place and keeps the rest of the registry; it also makes the provider the default (setup is a "make this my setup" action). `--force` resets instead — see [Multiple providers](#multiple-providers).
 
 ## unown providers

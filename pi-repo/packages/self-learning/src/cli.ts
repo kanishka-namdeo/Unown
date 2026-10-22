@@ -842,7 +842,14 @@ async function runPreflight(pinnedProvider?: string): Promise<PreflightProblem |
 function printFirstRunBanner(): void {
         const init = unownAgentDirInit();
         if (!init?.created) return;
-        console.error(`unown: first run — using the bundled llm-bridge (${init.provider}/${init.modelId}).`);
+        // Read the LIVE default, not the seed-time snapshot: a wizard that ran
+        // in this same process (the first-run gate) may have already connected
+        // a real provider — the banner must not name the stale seeded bridge.
+        const active = resolveActiveProvider(UNOWN_AGENT_DIR);
+        const pid = active?.id ?? init.provider;
+        const mid = active?.modelIds?.[0] ?? init.modelId;
+        const via = active && isLoopbackProvider(active) ? "the bundled llm-bridge" : `${pid}`;
+        console.error(`unown: first run — using ${via} (${pid}/${mid}).`);
         console.error("  connect any provider (OpenAI, OpenRouter, Anthropic, Dashscope, local): unown setup");
         console.error();
 }
@@ -2070,25 +2077,35 @@ async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: Bo
         // wizard (presets + live verification) instead of discovering the
         // bundled-bridge default by trial. Declining keeps today's behaviour:
         // the seeded bridge + the first-run banner.
+        // Hermes-posture (the reverse-engineered onboarding): state the
+        // situation plainly, make the offer ONE yes/no, name the recovery
+        // command on decline, and never re-ask (the `created` gate). The wizard
+        // itself is the SAME flow `unown setup` runs — one source of truth.
         const init = unownAgentDirInit();
+        let wizardSucceeded = false;
         if (init?.created && process.stdin.isTTY && process.stdout.isTTY && !bootOpts.provider && !bootOpts.model) {
                 if (
                         promptYesNo(
-                                "\nFirst run — connect a model provider now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  n = use the bundled bridge for now",
+                                "\nFirst run — no provider connected yet.\nConnect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)\n  Enter = guided setup · n = keep the bundled bridge for now",
                                 true,
                         )
                 ) {
                         const code = await runSetupCommand([]);
+                        wizardSucceeded = code === 0;
                         if (code === 0) console.log("\nStarting the session with your provider…\n");
                         else console.log("\nContinuing with the bundled bridge (re-run `unown setup` anytime)…\n");
                 } else {
+                        console.log("  Skipped — the bundled bridge is wired for now.");
                         console.log("  (anytime: unown setup · unown providers add · unown providers list)");
                 }
         }
         // Pre-flight honors the CLI pin: --provider / --model provider/… probe
         // THAT provider (warn-and-continue here, unlike print mode's exit 1).
         const pre = await runPreflight(bootOpts.provider ?? bootOpts.model);
-        printFirstRunBanner();
+        // The first-run banner is redundant after a completed wizard — its setup
+        // summary already said everything. Keep it for the decline/no-wizard path
+        // (and print mode, which never runs a wizard).
+        if (!wizardSucceeded) printFirstRunBanner();
         if (pre) {
                 // Warn and continue: the user may start the stack in another
                 // terminal — pi's built-in retries cover that window.

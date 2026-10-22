@@ -91,6 +91,19 @@ unown setup --provider openai --api-key sk-... --model gpt-4o
 
 Interactive wizard (pick a provider, paste a key, choose a model): just run `unown setup`.
 
+#### The interactive wizard, beat by beat
+
+The wizard is a guided flow, not a form. In order:
+
+1. **Welcome + current state** — the active provider/model, or `No provider connected yet — let's fix that.`
+2. **Provider choice** — the eight presets plus `Keep the current configuration`. When the bundled stack is up with its upstream key set, the bridge line carries a `← recommended` marker (the zero-extra-keys path).
+3. **API key** — typed input is **masked** (per-char `•`, backspace works, Ctrl+C cancels cleanly). A blank key continues keyless (fine for local servers). If a key is already stored, you get `sk-12345… ✓ already stored (auth.json)` and choose **Keep / Replace / Clear** — Keep preserves the storage form, Clear removes every local trace of it.
+4. **Model, live** — the endpoint is probed with the key you just gave, and you pick from what it **actually serves** (the preset default is preselected). Unreachable or a non-OpenAI wire (Anthropic) falls back to typing the id, with the reason stated.
+5. **The look** — pick a TUI theme (the current one first — blank keeps it; `dark`/`light` + any `~/.unown/agent/themes/*.json`). Switch any time in-session with `/settings`.
+6. **Setup summary** — provider, model (+N discovered), where the key lives (`auth.json` mode 0600 / `$ENV` ref / keyless / bridge placeholder), theme, verify result, kept sibling providers, and the files touched — followed by `Next` commands and **First flights** (four first-task suggestions to paste into a session).
+
+Every step has a default (blank = take it), Ctrl+C cancels with `nothing written`, and existing providers are never dropped (merge semantics; `--force` is the explicit reset).
+
 ## 4. Start the stack (optional but recommended)
 
 The bridge + self-learning engine are what make unown *learn* (session notes → AutoDream → project memory + skills). Chat works without them — notes just queue locally until the engine returns. Mission control is not a web service: `unown dashboard` (or `/dashboard` inside a session) is a fullscreen TUI client of the engine, so the launcher starts no third server.
@@ -117,6 +130,8 @@ unown "fix the failing tests"          # start with a prompt
 unown -p "explain the build error"     # one-shot headless, like claude -p
 unown --plan "add auth"                # read-only exploration → numbered plan → approve to execute
 ```
+
+**First run**: on a fresh install, `unown` asks once — `Connect one now? (Agnes, OpenAI, OpenRouter, Anthropic, Dashscope, DeepSeek, local…)` — `Enter` opens the same guided wizard `unown setup` runs; `n` keeps the bundled bridge wired (re-run `unown setup` any time). After a completed wizard the first-run banner is skipped (the setup summary already said everything); after declining it tells you exactly what you are on. The offer never repeats — delete `~/.unown/agent/` to see it again.
 
 Before the first message, unown pre-flights the model endpoint — if it can't reach it or the key is rejected you get the exact fix, not a stack trace. When you exit, the session leaves a note for AutoDream; come back tomorrow and the project's `.unown/memory/project.md` remembers what mattered.
 
