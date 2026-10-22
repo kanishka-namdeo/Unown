@@ -252,11 +252,11 @@ jobs:
         # attests all six archives at once, still bound to this workflow/commit
         # by the action's OIDC identity. Verify with:
         #   gh attestation verify <asset> --repo <owner>/<repo>
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: release-assets/unown-*
       - name: Build provenance attestation (installer scripts)
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: release-assets/install.*
       - name: Verify an artifact attestation
@@ -324,7 +324,7 @@ jobs:
           set -euo pipefail
           bun ../scripts/release-manifest.ts --check --require-all --out .
       - name: Build provenance attestation (release manifest)
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: release-assets/release.json
       - name: Verify the manifest attestation
