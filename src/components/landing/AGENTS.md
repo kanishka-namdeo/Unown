@@ -677,13 +677,16 @@ parallel ones.
   it was built (party strip, bento and DexCard retired; copy moved, not
   copied), so the page got a new band and half a viewport SHORTER. The
   2026-10-23 merge is the second worked example: absorbing the capture
-  carousel left 9 bands, 12.9vh and 3,016 words (from 10 bands, 13.0vh and
+  carousel left 9 bands, 12.9vh and 3,018 words (from 10 bands, 13.0vh and
   3,014) while the catalog doubled to twenty entries and grew a media stage —
   paid for by deleting one section head, one lead, one controls row and one
   provenance line, by moving the carousel's writeups into the entries they
   belonged to instead of restating them, and by collapsing a paragraph that
   repeated inside every empty stage into one legend sentence. The band that
-  carries it measures 1.92vh, against a 3vh cap. The
+  carries it measures 1.92vh, against a 3vh cap. Note that the word figure
+  moves with the rail — every `CHANGELOG.md` entry adds rail text — so the
+  number above is a measurement of a tree, not a constant: re-run the gate
+  after a pull instead of trusting this sentence. The
   budget exists because the page once grew
   to 21.5 viewports and 5,488 words — fourteen sections whose back half was
   nearly unread real estate (research: ~57% of attention above the fold,
