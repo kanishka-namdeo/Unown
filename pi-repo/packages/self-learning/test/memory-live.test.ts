@@ -208,7 +208,7 @@ describe.skipIf(!GATE)("memory live loop (scratch engine + real bridge)", () => 
                 notesMod = await import("../src/notes.ts");
                 routerMod = await import("../src/router.ts");
                 storeMod = await import("../src/store.ts");
-                engine = serverMod.startServer(ENGINE_PORT);
+                engine = await serverMod.startServer(ENGINE_PORT);
                 await pollUntil("engine boot", 15_000, async () => {
                         try {
                                 const r = await fetch(`${ENGINE}/api/memory`, { headers: engineAuth() });

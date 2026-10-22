@@ -5,6 +5,19 @@
 // Task ref: engine unit tests, module 2/4 (memory tier resolution/merge +
 // snapshot/rollback versioning).
 //
+// Post-swap (the Mem0 learning-core swap): the PROJECT tier is the mem0-backed
+// learning surface — appendRules("project") adds rules as atomic platform
+// memories (infer:false) and re-renders the tier; seedMemoryIfEmpty() seeds
+// the platform then renders. Both are now ASYNC, and these tests inject the
+// deterministic fake platform (test/_fake-platform.ts) via
+// setMemoryPlatformForTests so no real embedder/LLM is ever reached. The
+// string-append contracts (attributable comment header, blank-line
+// separation, cap refusal, version bumps) are still pinned on the
+// non-project tiers where that mechanism lives; the project tier pins its
+// NEW contracts (atomic memories, verbatim infer:false adds, render view,
+// attributable version rows). The platform override is reset in afterAll so
+// it never leaks into later test files in this single bun process.
+//
 // This file imports ./_env.ts FIRST: memory.ts reads DATA_DIR at module load
 // (via store.ts, which eagerly opens the SQLite db), so the shared redirect
 // (co-owned with the parallel b-suite) keeps all file + db fixtures under the
@@ -22,7 +35,9 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { bus } from "../src/bus.ts";
+import { setMemoryPlatformForTests } from "../src/memzero.ts";
 import { DATA_DIR, store } from "../src/store.ts";
+import { makeFakePlatform } from "./_fake-platform.ts";
 import {
         MEMORY_DIR,
         TIERS,
@@ -51,6 +66,9 @@ beforeAll(() => {
 afterAll(() => {
         rmSync(MEMORY_DIR, { recursive: true, force: true });
         store.run(`DELETE FROM memory_versions`);
+        // Never leak the fake platform singleton into later test files (bun runs
+        // every file in ONE process; the override is module state in src/memzero.ts).
+        setMemoryPlatformForTests(null);
 });
 
 test("env redirect is active (never touch the live engine state)", () => {
@@ -195,11 +213,14 @@ describe("history", () => {
 // ---------------------------------------------------------------------------
 
 describe("appendRules", () => {
-        test("appends rules under an attributable comment header", () => {
-                writeTier("project", "# base\n\nsome content", "unit-tests", "base");
-                const v = appendRules("project", ["prefer node:test", "no any"], "harness", "unit-tests");
-                expect(v).toBe(currentVersion("project"));
-                const content = readTier("project");
+        test("appends rules under an attributable comment header (string-append tiers)", async () => {
+                // The attributable-header contract is the non-project tiers' append
+                // mechanism (the project tier is the mem0-backed surface — its own
+                // contract is pinned in the next test).
+                writeTier("user", "# base\n\nsome content", "unit-tests", "base");
+                const v = await appendRules("user", ["prefer node:test", "no any"], "harness", "unit-tests");
+                expect(v).toBe(currentVersion("user"));
+                const content = readTier("user");
                 expect(content.startsWith("# base\n\nsome content")).toBe(true);
                 expect(content).toContain("<!-- harness @ ");
                 expect(STAMP_RE.test(content)).toBe(true); // <!-- harness @ YYYY-MM-DD HH:mm — unit-tests -->
@@ -208,19 +229,54 @@ describe("appendRules", () => {
                 expect(content.endsWith("- no any\n")).toBe(true);
         });
 
-        test("separates the block from prior content with a blank line", () => {
+        test("project tier (mem0-backed): rules become atomic platform memories and the tier re-renders", async () => {
+                const platform = makeFakePlatform();
+                setMemoryPlatformForTests(platform);
+                writeTier("project", "# base\n\nsome content", "unit-tests", "base");
+                const before = currentVersion("project");
+                const v = await appendRules("project", ["prefer node:test", "no any"], "harness", "unit-tests");
+
+                // The rules landed in the platform VERBATIM — atomic memories, no LLM
+                // extraction (infer:false), attributed with kind "harness" under the
+                // engine scope (retention's auto-unship keys off exactly these ids).
+                const texts = [...platform.store.values()].map((m) => m.text);
+                expect(texts).toContain("prefer node:test");
+                expect(texts).toContain("no any");
+                expect([...platform.store.values()].every((m) => m.metadata?.kind === "harness")).toBe(true);
+                const addCall = platform.calls.find((c) => c.op === "add");
+                expect(addCall).toBeDefined();
+                expect(addCall!.infer).toBe(false);
+                expect(addCall!.scope).toEqual({ agentId: "unown-engine" });
+
+                // The tier file is a RENDERED VIEW of the platform now — not a string
+                // append: the rules appear as bullets with the provenance footer.
+                expect(v).toBe(before + 1);
+                expect(v).toBe(currentVersion("project"));
+                const content = readTier("project");
+                expect(content).toContain("- prefer node:test");
+                expect(content).toContain("- no any");
+                expect(content).toContain("rendered"); // the Mem0 provenance footer
+
+                // The version row is attributable exactly like every other tier.
+                const top = history("project")[0];
+                expect(top.changed_by).toBe("harness");
+                expect(top.note).toBe("unit-tests");
+                expect(top.content).toBe(readTier("project"));
+        });
+
+        test("separates the block from prior content with a blank line", async () => {
                 writeTier("user", "# user", "unit-tests", "u");
-                appendRules("user", ["r1"], "unit-tests", "blank line");
+                await appendRules("user", ["r1"], "unit-tests", "blank line");
                 expect(readTier("user")).toContain("# user\n\n<!--");
         });
 
-        test("appendRules throws when the append would exceed the tier size cap, memory unchanged", () => {
+        test("appendRules throws when the append would exceed the tier size cap, memory unchanged", async () => {
                 process.env.PI_MEMORY_MAX_TIER_CHARS = "200";
                 try {
                         writeTier("policy", "x".repeat(150), "unit-tests", "near cap");
                         const before = readTier("policy");
                         const versionBefore = currentVersion("policy");
-                        expect(() => appendRules("policy", ["y".repeat(80)], "unit-tests", "over cap")).toThrow(/exceeds cap/);
+                        await expect(appendRules("policy", ["y".repeat(80)], "unit-tests", "over cap")).rejects.toThrow(/exceeds cap/);
                         expect(readTier("policy")).toBe(before); // refused, nothing shipped
                         expect(currentVersion("policy")).toBe(versionBefore);
                 } finally {
@@ -239,18 +295,18 @@ describe("appendRules", () => {
                 }
         });
 
-        test("appending to empty content starts at the comment header (no leading blank line)", () => {
+        test("appending to empty content starts at the comment header (no leading blank line)", async () => {
                 // memory.ts v2: an empty base no longer produces a leading "\n" — the
                 // block starts directly with the attributable comment header.
                 writeTier("local", "", "unit-tests", "empty base");
-                appendRules("local", ["only rule"], "unit-tests", "empty append");
+                await appendRules("local", ["only rule"], "unit-tests", "empty append");
                 expect(readTier("local").startsWith("<!--")).toBe(true);
                 expect(readTier("local")).toContain("- only rule\n");
         });
 
-        test("appendRules bumps the version and records changedBy/note", () => {
+        test("appendRules bumps the version and records changedBy/note", async () => {
                 const before = currentVersion("user");
-                const v = appendRules("user", ["another"], "autodream", "dream merge");
+                const v = await appendRules("user", ["another"], "autodream", "dream merge");
                 expect(v).toBe(before + 1);
                 const top = history("user")[0];
                 expect(top.changed_by).toBe("autodream");
@@ -264,26 +320,47 @@ describe("appendRules", () => {
 // ---------------------------------------------------------------------------
 
 describe("seedMemoryIfEmpty", () => {
-        test("seeds all four tiers as version 1 with changed_by 'seed'", () => {
+        test("seeds all four tiers as version 1 with changed_by 'seed' (project via the platform)", async () => {
                 rmSync(MEMORY_DIR, { recursive: true, force: true });
                 store.run(`DELETE FROM memory_versions`);
-                seedMemoryIfEmpty();
+                const platform = makeFakePlatform();
+                setMemoryPlatformForTests(platform);
+                await seedMemoryIfEmpty();
                 for (const tier of TIERS) {
                         expect(existsSync(tierPath(tier))).toBe(true);
                         expect(currentVersion(tier)).toBe(1);
                         const row = history(tier)[0];
                         expect(row.changed_by).toBe("seed");
-                        expect(row.note).toBe("initial tier seed");
                 }
+                // String-append tiers keep the classic seed note; the project tier's
+                // row records the mem0-backed seed.
+                expect(history("policy")[0].note).toBe("initial tier seed");
+                expect(history("project")[0].note).toBe("initial tier seed (mem0-backed)");
+                // The project seed bullets live in the platform as atomic memories
+                // (kind "seed" — immune to the render cap), and the tier file is their
+                // rendered view with the provenance footer.
+                const memories = [...platform.store.values()];
+                expect(memories.length).toBe(2);
+                expect(memories.every((m) => m.metadata?.kind === "seed")).toBe(true);
+                expect(memories.some((m) => m.text.includes("Run tests with `bun <testfile>`"))).toBe(true);
+                const project = readTier("project");
+                expect(project).toContain("## Workflow");
+                expect(project).toContain("Run tests with `bun <testfile>`");
+                expect(project).toContain("rendered 2/2 memories via Mem0");
         });
 
-        test("idempotent — existing tier files are never re-seeded or re-versioned", () => {
+        test("idempotent — existing tier files are never re-seeded or re-versioned", async () => {
                 const versions = TIERS.map((t) => currentVersion(t));
                 writeTier("project", "hand-edited", "manual", "user edit");
-                seedMemoryIfEmpty();
+                const platform = makeFakePlatform();
+                setMemoryPlatformForTests(platform);
+                await seedMemoryIfEmpty();
                 expect(readTier("project")).toBe("hand-edited"); // not clobbered
                 expect(currentVersion("policy")).toBe(versions[0]); // untouched tier unchanged
                 expect(currentVersion("project")).toBe(versions[1] + 1); // only the manual write bumped it
+                // Never re-seeded: an established project tier triggers no platform
+                // adds (the legacy-import path found no bullets in "hand-edited").
+                expect(platform.calls.filter((c) => c.op === "add")).toHaveLength(0);
         });
 });
 

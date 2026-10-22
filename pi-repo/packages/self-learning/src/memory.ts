@@ -38,6 +38,12 @@ import { atomicWriteFileSync } from "./atomic.ts";
 import { emit } from "./bus.ts";
 import { pruneToBudget, type BudgetFile, type BudgetReport } from "./budget.ts";
 import { MEMORY_GUIDE, MEMORY_GUIDE_PATH } from "./memory-guide.ts";
+import {
+        ENGINE_SCOPE,
+        getMemoryPlatform,
+        importLegacyMarkdown,
+        renderProjectMemoryMarkdown,
+} from "./memzero.ts";
 import { DATA_DIR, store } from "./store.ts";
 
 export const MEMORY_DIR = join(DATA_DIR, "memory");
@@ -191,7 +197,22 @@ export function writeTier(tier: Tier, content: string, changedBy: string, note: 
         return version;
 }
 
-export function appendRules(tier: Tier, rules: string[], changedBy: string, note: string): number {
+export async function appendRules(tier: Tier, rules: string[], changedBy: string, note: string): Promise<number> {
+        // The project tier is the mem0-backed learning surface (the swap): rules
+        // become atomic platform memories (verbatim — the caller already ran the
+        // ship gate), the tier file re-renders from the platform, and the version
+        // row records the render. Other tiers stay string-append file tiers.
+        if (tier === "project") {
+                const platform = await getMemoryPlatform();
+                await platform.add(
+                        rules.map((r) => ({ role: "user", content: r })),
+                        ENGINE_SCOPE,
+                        { kind: changedBy === "harness" ? "harness" : changedBy === "seed" ? "seed" : "manual" },
+                        { infer: false },
+                );
+                const rendered = renderProjectMemoryMarkdown(await platform.getAll(ENGINE_SCOPE));
+                return writeTier("project", rendered, changedBy, note);
+        }
         const current = readTier(tier);
         const stamp = new Date().toISOString().replace("T", " ").slice(0, 16);
         const block = [`<!-- ${changedBy} @ ${stamp} — ${note} -->`, ...rules.map((r) => `- ${r}`)].join("\n");
@@ -206,11 +227,30 @@ export function appendRules(tier: Tier, rules: string[], changedBy: string, note
         return writeTier(tier, next, changedBy, note);
 }
 
-export function seedMemoryIfEmpty() {
+export async function seedMemoryIfEmpty() {
         mkdirSync(MEMORY_DIR, { recursive: true });
         for (const tier of TIERS) {
+                if (tier === "project") continue; // the mem0-backed learning surface — below
                 if (!existsSync(tierPath(tier)) && currentVersion(tier) === 0) {
                         writeTier(tier, SEEDS[tier], "seed", "initial tier seed");
+                }
+        }
+        // Project tier (mem0-backed): fresh installs seed the starter rules into
+        // the platform (kind "seed" — render-immune to the bullet cap); legacy
+        // installs with old-style tier content import their bullets verbatim
+        // (kind "legacy") so nothing is lost at the swap, then re-render.
+        const platform = await getMemoryPlatform();
+        if (currentVersion("project") === 0) {
+                if ((await platform.getAll(ENGINE_SCOPE)).length === 0) {
+                        await importLegacyMarkdown(SEEDS.project, ENGINE_SCOPE, { kind: "seed" });
+                }
+                const rendered = renderProjectMemoryMarkdown(await platform.getAll(ENGINE_SCOPE));
+                writeTier("project", rendered, "seed", "initial tier seed (mem0-backed)");
+        } else if ((await platform.getAll(ENGINE_SCOPE)).length === 0) {
+                const imported = await importLegacyMarkdown(readTier("project"), ENGINE_SCOPE);
+                if (imported > 0) {
+                        const rendered = renderProjectMemoryMarkdown(await platform.getAll(ENGINE_SCOPE));
+                        writeTier("project", rendered, "mem0", `imported ${imported} legacy rules into the memory platform`);
                 }
         }
 }
@@ -328,26 +368,26 @@ export function history(tier: Tier, limit = 30): MemoryVersion[] {
  * Project tiers version under `project:<slug>` (dream.ts); this surfaces them
  * as first-class objects beside the four engine tiers. */
 export function projectTiers(): {
-	slug: string;
-	tier: string;
-	version: number;
-	chars: number;
-	updatedAt: number | null;
+        slug: string;
+        tier: string;
+        version: number;
+        chars: number;
+        updatedAt: number | null;
 }[] {
-	const rows = store.query<{ tier: string; version: number; created_at: number | null }>(
-		`SELECT tier, MAX(version) AS version, MAX(created_at) AS created_at
-		 FROM memory_versions WHERE tier LIKE 'project:%' GROUP BY tier ORDER BY tier`,
-	);
-	return rows.map((r) => {
-		const content = readTier(r.tier as Tier);
-		return {
-			slug: r.tier.slice("project:".length),
-			tier: r.tier,
-			version: r.version,
-			chars: content.length,
-			updatedAt: r.created_at ?? null,
-		};
-	});
+        const rows = store.query<{ tier: string; version: number; created_at: number | null }>(
+                `SELECT tier, MAX(version) AS version, MAX(created_at) AS created_at
+                 FROM memory_versions WHERE tier LIKE 'project:%' GROUP BY tier ORDER BY tier`,
+        );
+        return rows.map((r) => {
+                const content = readTier(r.tier as Tier);
+                return {
+                        slug: r.tier.slice("project:".length),
+                        tier: r.tier,
+                        version: r.version,
+                        chars: content.length,
+                        updatedAt: r.created_at ?? null,
+                };
+        });
 }
 
 export function snapshot(): {

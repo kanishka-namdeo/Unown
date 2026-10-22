@@ -21,6 +21,7 @@ import { modelFor } from "./llm.ts";
 import { logHook } from "./hooks.ts";
 import { chatJson } from "./llm.ts";
 import { appendRules, currentVersion, readTier, rollback, type Tier } from "./memory.ts";
+import { shipEngineRules, unshipEngineRules } from "./memzero.ts";
 import { graduateTask } from "./mint.ts";
 import { type RunResult, runAgent } from "./runner.ts";
 import { store } from "./store.ts";
@@ -485,17 +486,36 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
                                 }
                                 const shipLines = shipLinesFrom(guardShip, mining.patchLines);
 
-                                const shippedVersion = appendRules(
-                                        tier,
-                                        shipLines,
-                                        "harness",
-                                        `fixed ${taskId} (cycle ${cycleId.slice(0, 8)}, iteration ${i})${
-                                                        guardShip.action === "sanitize" ? ` · ${guardSummary(guardShip)}` : ""
-                                                }`,
-                                );
-                                store.run(`UPDATE improvements SET status = 'shipped', decided_at = ?, memory_version = ? WHERE id = ?`, [
+                                // The project tier is mem0-backed (the learning-core swap):
+                                // rules ship as verbatim atomic memories and the ids are
+                                // recorded on the improvement row so retention's auto-unship
+                                // deletes exactly this ship. Other tiers stay file appends.
+                                let shippedVersion: number;
+                                let shippedMemoryIds: string[] = [];
+                                if (tier === "project") {
+                                        const ship = await shipEngineRules(
+                                                shipLines,
+                                                "harness",
+                                                `fixed ${taskId} (cycle ${cycleId.slice(0, 8)}, iteration ${i})${
+                                                                guardShip.action === "sanitize" ? ` · ${guardSummary(guardShip)}` : ""
+                                                        }`,
+                                        );
+                                        shippedVersion = ship.version;
+                                        shippedMemoryIds = ship.memoryIds;
+                                } else {
+                                        shippedVersion = await appendRules(
+                                                tier,
+                                                shipLines,
+                                                "harness",
+                                                `fixed ${taskId} (cycle ${cycleId.slice(0, 8)}, iteration ${i})${
+                                                                guardShip.action === "sanitize" ? ` · ${guardSummary(guardShip)}` : ""
+                                                        }`,
+                                        );
+                                }
+                                store.run(`UPDATE improvements SET status = 'shipped', decided_at = ?, memory_version = ?, memory_ids = ? WHERE id = ?`, [
                                         Date.now(),
                                         shippedVersion,
+                                        shippedMemoryIds.length > 0 ? JSON.stringify(shippedMemoryIds) : null,
                                         improvementId,
                                 ]);
                                 logHook(
@@ -571,8 +591,8 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
  * version (auto-unship) so bad lessons cannot linger in memory.
  */
 async function retentionCheck(taskId: string, cycleId: string) {
-        const shipped = store.get<{ id: string; memory_version: number | null; target_tier: string }>(
-                `SELECT id, memory_version, target_tier FROM improvements WHERE task_id = ? AND status = 'shipped' ORDER BY created_at DESC LIMIT 1`,
+        const shipped = store.get<{ id: string; memory_version: number | null; target_tier: string; memory_ids: string | null }>(
+                `SELECT id, memory_version, target_tier, memory_ids FROM improvements WHERE task_id = ? AND status = 'shipped' ORDER BY created_at DESC LIMIT 1`,
                 [taskId],
         );
         if (!shipped) return;
@@ -580,28 +600,53 @@ async function retentionCheck(taskId: string, cycleId: string) {
         store.run(`UPDATE improvements SET status = 'regressed', decided_at = ? WHERE id = ?`, [Date.now(), shipped.id]);
         let note = `task ${taskId} failed again after the patch shipped — improvement marked regressed`;
 
-        const version = shipped.memory_version;
-        if (version && version > 1) {
+        // mem0-backed ships (the learning-core swap): delete the exact memory
+        // ids this ship added and re-render the tier — the lesson leaves the
+        // platform AND the injected file in one move.
+        const memoryIds = shipped.memory_ids ? safeParseIds(shipped.memory_ids) : [];
+        if (shipped.target_tier === "project" && memoryIds.length > 0) {
                 try {
-                        rollback(
-                                shipped.target_tier as Tier,
-                                version - 1,
-                                `retention: ${taskId} regressed — unshipped improvement (cycle ${cycleId.slice(0, 8)})`,
+                        const un = await unshipEngineRules(
+                                memoryIds,
+                                `retention: ${taskId} regressed — unshipped ${memoryIds.length} memory rule(s) (cycle ${cycleId.slice(0, 8)})`,
                         );
-                        note += `; memory rolled back to v${version - 1}`;
-                } catch {
-                        note += `; rollback to v${version - 1} unavailable`;
+                        note += `; ${un.unshipped} memory rule(s) unshipped, tier re-rendered${un.version ? ` -> v${un.version}` : ""}`;
+                } catch (err: any) {
+                        note += `; platform unship failed (${err?.message ?? err})`;
                 }
         } else {
-                note += "; legacy ship without recorded version — memory left as-is";
+                const version = shipped.memory_version;
+                if (version && version > 1) {
+                        try {
+                                rollback(
+                                        shipped.target_tier as Tier,
+                                        version - 1,
+                                        `retention: ${taskId} regressed — unshipped improvement (cycle ${cycleId.slice(0, 8)})`,
+                                );
+                                note += `; memory rolled back to v${version - 1}`;
+                        } catch {
+                                note += `; rollback to v${version - 1} unavailable`;
+                        }
+                } else {
+                        note += "; legacy ship without recorded version — memory left as-is";
+                }
         }
         logHook(null, "SubagentStop", null, "log", note);
         emit("improvement:regressed", {
                 id: shipped.id,
                 taskId,
                 cycleId,
-                rolledBackTo: version && version > 1 ? version - 1 : null,
+                rolledBackTo: shipped.memory_version && shipped.memory_version > 1 ? shipped.memory_version - 1 : null,
         });
+}
+
+function safeParseIds(raw: string): string[] {
+        try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string" && x) : [];
+        } catch {
+                return [];
+        }
 }
 
 /** Regression sweep triggered after an improvement ships. */

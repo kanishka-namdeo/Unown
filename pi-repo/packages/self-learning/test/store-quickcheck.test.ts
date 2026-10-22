@@ -109,7 +109,7 @@ function bootGateProbe(dbPath: string): { code: number; stdout: string; stderr: 
         const root = mkdtempSync(join(tmpdir(), "unown-gate-"));
         const script = `
 const { startServer } = await import(${JSON.stringify(join(PKG_ROOT, "src/server.ts"))});
-const server = startServer(0);
+const server = await startServer(0);
 console.log("BOOT_RESULT=" + (server === null ? "refused" : "booted"));
 if (server) server.stop(true);
 process.exit(0);

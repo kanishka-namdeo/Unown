@@ -525,7 +525,7 @@ async function cmdServe(): Promise<number> {
         // never load the engine half of the package (or its SQLite handle).
         try {
                 const { startServer } = await import("./index.ts");
-                const server = startServer(Number(process.env.PI_AGENT_PORT ?? 3030));
+                const server = await startServer(Number(process.env.PI_AGENT_PORT ?? 3030));
                 if (!server) {
                         // startServer already logged why (another engine holds the lock).
                         return 0;

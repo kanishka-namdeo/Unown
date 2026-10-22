@@ -9,7 +9,9 @@
 //     remain; head-truncation with a visible marker when no blocks remain;
 //     degenerate caps reported as overflow instead of dropping guardrails.
 //   - memory.ts: resolveMemoryForAgentDetailed caps the INJECTED block while
-//     the stored tiers stay untouched (injection-time degradation only).
+//     the stored tiers stay untouched (injection-time degradation only); the
+//     mem0-backed project tier's cap is mem0MaxRendered at render time —
+//     stored platform memories are never pruned.
 //   - term.ts: terminalMemoryForAgent carries the same budget.
 //   - F8: resolveMemory().totalChars counts the actual block (header +
 //     wrappers), not the raw tier sum.
@@ -19,6 +21,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { maxTotalChars, pruneToBudget, type BudgetFile } from "../src/budget.ts";
+import { mem0MaxRendered, renderProjectMemoryMarkdown, type PlatformMemory } from "../src/memzero.ts";
 import { appendRules, readTier, resolveMemory, resolveMemoryForAgentDetailed, writeTier, MEMORY_DIR } from "../src/memory.ts";
 import { terminalMemoryForAgent } from "../src/term.ts";
 import { UNOWN_MEMORY_DIR, UNOWN_HOME } from "../src/term.ts";
@@ -128,12 +131,16 @@ describe("pruneToBudget — pure degradation policy", () => {
 });
 
 describe("memory.ts — the injected block is capped, the stored memory is not", () => {
-        test("fat tiers + dated blocks: injection ≤ cap, oldest block out, stored tier untouched", () => {
+        test("fat tiers + dated blocks: injection ≤ cap, oldest block out, stored tier untouched", async () => {
+                // Post-swap note: appendRules' dated droppable blocks are pinned on the
+                // USER tier (the project tier is the mem0-backed surface — its cap is the
+                // render cap, pinned in the next test). The injection-budget contract is
+                // tier-agnostic: pruneToBudget runs over the whole resolved block.
                 const pad = (n: number) => `${"k".repeat(n)}`;
                 writeTier("project", `# project base\n${pad(30_000)}`, "test", "fat base");
-                appendRules("project", ["old appended rule one"], "harness", "old block");
-                appendRules("project", ["new appended rule two"], "harness", "new block");
                 writeTier("user", `# user\n${pad(30_000)}`, "test", "fat user");
+                await appendRules("user", ["old appended rule one"], "harness", "old block");
+                await appendRules("user", ["new appended rule two"], "harness", "new block");
                 writeTier("local", `# local\n${pad(25_000)}`, "test", "fat local");
 
                 const { files, report } = resolveMemoryForAgentDetailed();
@@ -142,20 +149,74 @@ describe("memory.ts — the injected block is capped, the stored memory is not",
                 expect(report.totalBefore).toBeGreaterThan(maxTotalChars()); // it genuinely needed degradation
                 expect(report.prunedBlocks.length).toBeGreaterThan(0);
 
-                const injectedProject = files.find((f) => f.path.includes("tier1-project"))!.content;
-                // Oldest dropped, newest kept, base kept (truncation may cut the pad).
-                expect(injectedProject).not.toContain("old appended rule one");
+                const injectedUser = files.find((f) => f.path.includes("tier2-user"))!.content;
+                // Oldest dropped (the newest block may fall to head-truncation — the
+                // undated pad is the bulk of the tier).
+                expect(injectedUser).not.toContain("old appended rule one");
                 // Guide + policy fully intact.
                 expect(files.find((f) => f.path.includes("how-to-use"))!.content).toContain("Four memory tiers");
                 expect(files.find((f) => f.path.includes("tier0-policy"))!.content).toContain("guardrail");
 
-                // Stored memory untouched: the block is still on disk/DB.
-                const stored = readTier("project");
+                // Stored memory untouched: both blocks are still on disk/DB.
+                const stored = readTier("user");
                 expect(stored).toContain("old appended rule one");
                 expect(stored).toContain("new appended rule two");
 
                 store.run(`DELETE FROM memory_versions`);
                 rmSync(MEMORY_DIR, { recursive: true, force: true });
+        });
+
+        test("mem0 shape: the rendered project tier honors mem0MaxRendered, stored platform memories are never pruned", () => {
+                // The project tier's size contract moved INTO the platform render: the
+                // deterministic render keeps the newest `cap` bullets (hard-won
+                // harness/seed rules immune), while every stored platform memory stays
+                // — nothing is lost at rest, the injection still fits the total budget.
+                const saved = process.env.PI_MEM0_MAX_RENDERED;
+                try {
+                        process.env.PI_MEM0_MAX_RENDERED = "6";
+                        expect(mem0MaxRendered()).toBe(6);
+                        const stamp = (i: number) => new Date(2024, 0, 1 + i).toISOString();
+                        const memories: PlatformMemory[] = [];
+                        for (let i = 0; i < 8; i++) {
+                                memories.push({
+                                        id: `note-${i}`,
+                                        text: `ordinary lesson number ${i} about the parser loop`,
+                                        createdAt: stamp(i),
+                                        updatedAt: stamp(i),
+                                        metadata: { kind: "note" },
+                                });
+                        }
+                        memories.push({ id: "seed-1", text: "run the workspace tests with bun directly", createdAt: stamp(0), updatedAt: stamp(0), metadata: { kind: "seed" } });
+                        memories.push({ id: "fix-1", text: "quote the CSV fields before splitting rows", createdAt: stamp(1), updatedAt: stamp(1), metadata: { kind: "harness" } });
+
+                        const rendered = renderProjectMemoryMarkdown(memories);
+                        const bullets = rendered.split("\n").filter((l) => l.startsWith("- "));
+                        expect(bullets).toHaveLength(8); // 6 newest notes + the 2 immune hard-won rules
+                        expect(rendered).toContain("ordinary lesson number 7");
+                        expect(rendered).toContain("ordinary lesson number 2");
+                        expect(rendered).not.toContain("ordinary lesson number 1");
+                        expect(rendered).not.toContain("ordinary lesson number 0");
+                        expect(rendered).toContain("run the workspace tests with bun directly");
+                        expect(rendered).toContain("quote the CSV fields before splitting rows");
+                        // the render footer is honest about the degradation
+                        expect(rendered).toContain("2 oldest pruned at render (cap 6; hard-won rules immune)");
+
+                        // STORED-NOT-PRUNED: the platform keeps every memory (the cap is
+                        // render-time only — injection hygiene, never data loss).
+                        expect(memories).toHaveLength(10);
+
+                        // And the capped tier still feeds the total-budget injection path.
+                        writeTier("project", rendered, "test", "rendered view");
+                        const { files, report } = resolveMemoryForAgentDetailed();
+                        const injected = files.reduce((s, f) => s + f.content.length, 0);
+                        expect(injected).toBeLessThanOrEqual(maxTotalChars());
+                        expect(report.totalAfter).toBeLessThanOrEqual(maxTotalChars());
+                } finally {
+                        if (saved === undefined) delete process.env.PI_MEM0_MAX_RENDERED;
+                        else process.env.PI_MEM0_MAX_RENDERED = saved;
+                        store.run(`DELETE FROM memory_versions`);
+                        rmSync(MEMORY_DIR, { recursive: true, force: true });
+                }
         });
 
         test("overlay candidates are budgeted too (candidate memory never bypasses the cap)", () => {

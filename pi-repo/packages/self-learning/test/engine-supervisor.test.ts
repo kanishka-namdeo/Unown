@@ -83,12 +83,12 @@ describe("engine single-instance lock (F9)", () => {
                 // into an engine-looking process) — use pid 4000000 (beyond typical
                 // pid_max; kill(pid,0) throws ESRCH).
                 writeFileSync(LOCK, "4000000");
-                const server = startServer(0); // ephemeral port, redirected DATA_DIR
+                const server = await startServer(0); // ephemeral port, redirected DATA_DIR
                 expect(server).not.toBeNull();
                 // The running server now holds the lock with OUR pid.
                 expect(readFileSync(LOCK, "utf8").trim()).toBe(String(process.pid));
                 // A second startServer in the same process re-enters (same pid).
-                const again = startServer(0);
+                const again = await startServer(0);
                 expect(again).not.toBeNull();
                 again?.stop(true);
                 server.stop(true);
@@ -98,9 +98,9 @@ describe("engine single-instance lock (F9)", () => {
                 // second process; that is covered by the integration suite.
         });
 
-        test("same-pid re-entrancy releases cleanly", () => {
+        test("same-pid re-entrancy releases cleanly", async () => {
                 writeFileSync(LOCK, String(process.pid));
-                const server = startServer(0);
+                const server = await startServer(0);
                 expect(server).not.toBeNull();
                 server?.stop(true);
                 expect(existsSync(LOCK)).toBe(true); // release happens on signal-drain, not stop()

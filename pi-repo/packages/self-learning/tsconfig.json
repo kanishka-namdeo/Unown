@@ -1,0 +1,15 @@
+{
+	"compilerOptions": {
+		"noEmit": true,
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": false,
+		"strict": true,
+		"skipLibCheck": true,
+		"noUnusedLocals": false,
+		"types": ["bun-types"]
+	},
+	"include": ["src/**/*.ts"]
+}

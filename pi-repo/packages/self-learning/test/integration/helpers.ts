@@ -273,7 +273,11 @@ export async function startEngine(bridge: MockBridge): Promise<EngineHandle> {
         }
 
         const { startServer } = await import("../../src/server.ts");
-        const server = startServer(0);
+        // startServer is async since the learning-core swap (the memory platform
+        // boots before the listener binds): await it or server.port is undefined
+        // and every authFetch URL is malformed.
+        const server = await startServer(0);
+        if (!server) throw new Error("engine refused to start (single-instance lock or bind failure)");
         if (server.port === 3030 || server.port === 3031) {
                 server.stop(true);
                 throw new Error(`engine bound a live-service port (${server.port}) — aborting`);

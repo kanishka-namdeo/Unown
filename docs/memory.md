@@ -1,13 +1,14 @@
 # Memory & learning
 
-How unown remembers: a four-tier memory stack injected into every session, a note pipeline that captures what actually happened, and AutoDream — the consolidation job that turns notes into memory and mints skills.
+How unown remembers: a four-tier memory stack injected into every session, a note pipeline that captures what actually happened, and AutoDream — the consolidation job that turns notes into memory and mints skills. Since 2026-10-22 the consolidation engine underneath AutoDream is a memory platform — [Mem0](https://github.com/mem0ai/mem0) (the `mem0ai` OSS TypeScript SDK) running in-process in the engine; the decision, the options table and the receipts live in [memory-platform-swap-assessment](memory-platform-swap-assessment.md).
 
-Related pages: [usage](usage.md) · [skills](skills.md) · [configuration](configuration.md) · [troubleshooting](troubleshooting.md) · [memory-classifier-evaluation](memory-classifier-evaluation.md) · [memory-system-review](memory-system-review.md)
+Related pages: [usage](usage.md) · [skills](skills.md) · [configuration](configuration.md) · [troubleshooting](troubleshooting.md) · [memory-classifier-evaluation](memory-classifier-evaluation.md) · [memory-system-review](memory-system-review.md) · [memory-platform-swap-assessment](memory-platform-swap-assessment.md)
 
 - [The four-tier stack](#the-four-tier-stack)
 - [What every session sees](#what-every-session-sees)
 - [The note lifecycle](#the-note-lifecycle)
 - [AutoDream consolidation](#autodream-consolidation)
+- [The memory platform (Mem0)](#the-memory-platform-mem0)
 - [Skills minting](#skills-minting)
 - [Editing memory by hand](#editing-memory-by-hand)
 - [What to commit](#what-to-commit)
@@ -16,9 +17,9 @@ Related pages: [usage](usage.md) · [skills](skills.md) · [configuration](confi
 
 Scope note: this page is about the **terminal agent's** memory — what your sessions see and feed. The engine's internal learning loop (harness, ship gates, task minting) is described in the [README](../README.md#the-learning-loop).
 
-The loop in one sentence: every session writes notes → the engine's AutoDream job consolidates them → the next version of your project's memory (and sometimes a new skill) lands in `<project>/.unown/` → your next session starts where the last one ended.
+The loop in one sentence: every session writes notes → the engine's AutoDream job runs them through the memory platform's extraction pipeline → the next version of your project's memory (and sometimes a new skill) lands in `<project>/.unown/` → your next session starts where the last one ended.
 
-If you only remember one thing: **memory is files on disk, re-read for every session** — there is no hidden database on the terminal side. Anything you can edit, you can inspect with `cat`.
+If you only remember one thing: **memory is files on disk, re-read for every session** — the terminal agent never opens a database, and anything you can inspect you can `cat`. The one nuance since the platform swap: the project tier's file is a deterministic *render* of engine-side platform memories (below), so there is now exactly one database in the loop — it lives in the unown repo's `data/self-learning/mem0`, never inside your project.
 
 ## The four-tier stack
 
@@ -27,7 +28,7 @@ Memory is four Markdown files, merged most-specific-wins and injected into every
 | Tier | File | Maintained by | Role |
 |------|------|---------------|------|
 | 0 · policy | `~/.unown/memory/policy.md` | you (ops / enterprise) | Non-negotiable guardrails. Optional — a built-in default policy applies when the file is absent. |
-| 1 · project | `<project>/.unown/memory/project.md` | AutoDream and you | The learning surface: terminal session notes are consolidated here. Hand edits survive (see below). |
+| 1 · project | `<project>/.unown/memory/project.md` | AutoDream (rendered from the memory platform) and you | The learning surface: terminal session notes are extracted into the platform and rendered here. Hand edits have a new contract — see [Editing memory by hand](#editing-memory-by-hand). |
 | 2 · user | `~/.unown/memory/user.md` | you | Global preferences across every project; seeded on first run. |
 | 3 · local | `<project>/.unown/memory/local.md` | you | Per-project, per-machine overrides. Highest precedence. Gitignored. |
 
@@ -72,16 +73,29 @@ From there AutoDream takes over: benchmark notes feed the engine's own project m
 
 ## AutoDream consolidation
 
-The `auto-dream` job (every 10 minutes, plus a `dream-check` event that wakes it when notes pile up) runs a consolidation sub-agent over the pending notes. It merges duplicates, resolves contradictions **recency-first** (2026-10-22: the most recent evidence wins and the invalidated rule may not appear anywhere as current practice — only with an explicit historical marker), prunes stale one-off observations, reorganizes into topic sections (`## Workflow`, `## Known pitfalls`, `## Task playbooks`, …) and writes the next version — keeping the file under 120 lines and never deleting hard-won rules *to save space* (a rule invalidated by newer evidence is not protected; the quarantine/consolidation contracts and the layer stack are measured in [`benchmarks/memory-eval/*/RESULTS.md`](../benchmarks/memory-eval/)).
+The `auto-dream` job (every 10 minutes, plus a `dream-check` event that wakes it when notes pile up) runs a consolidation pass over the pending notes. Since the platform swap the pass is: notes are quarantined or admitted (structurally — flagged notes never reach the extraction LLM at all), admitted notes go through the platform's extraction pipeline as atomic, deduplicated, scoped memories, a thin reconcile pass resolves contradictions **recency-first** (the shipped contract: the most recent evidence wins and the invalidated rule may not appear anywhere as current practice — only with an explicit historical marker) and prunes stale one-off observations, and a deterministic render writes the next version of the tier file in the familiar topic sections (`## Workflow`, `## Known pitfalls`, `## Task playbooks`, …) — capped at `PI_MEM0_MAX_RENDERED` bullets (default 110, oldest dropped first), never deleting hard-won rules *to save space* (a rule invalidated by newer evidence is not protected). The quarantine/consolidation contracts and the layer stack are measured in [`benchmarks/memory-eval/*/RESULTS.md`](../benchmarks/memory-eval/); the guard wiring of the new pipeline is pinned by `test/dream-guard.test.ts`.
 
-Notes flagged by the untrusted-content scanner are **quarantined under the zero-extraction contract** (2026-10-22): the banner they carry tells the dream they contribute nothing — no rule, no observation, no fact, not even rephrased — and a deterministic echo scan (`quarantine-echo`) flags any candidate line derived from one, so the guarantee does not depend on the dream model's prompt resistance (measured: a dream model that planted a flagged note's payload verbatim prompted the hardened banner + backstop, and the plant rate went to 0 with zero benign false positives).
+Notes flagged by the untrusted-content scanner are **quarantined under the zero-extraction contract** — and since the swap the contract is structural, not prompt-borne: a flagged note is dropped from the batch before the extraction call, so it cannot be paraphrased into memory even by a model with no prompt resistance. Defense in depth on the output side: every extracted memory is scanned before it survives the dream, and the rendered document still passes the deterministic guard gate (first mints gate on any flag).
 
 Two consolidation paths:
 
-- **Benchmark notes → the engine's own project memory**, gated by a canary: the freshly dreamed memory must re-pass the most recently passing task. A dream that breaks it is rolled back automatically and shows up with status `gated` in the TUI dashboard's Dreams screen. `PI_DREAM_GATE=0` disables the gate ([configuration](configuration.md)).
-- **Terminal notes → your project's `.unown/memory/project.md`.** Pending notes are grouped by project and each group is consolidated into that project's own memory file — the one the next session there reads. The engine-side dream needs at least 3 undreamed benchmark notes before it fires; project dreams run whenever terminal notes are pending.
+- **Benchmark notes → the engine's own project memory**, gated by a canary: the freshly dreamed memory must re-pass the most recently passing task. A dream that breaks it is rolled back automatically — the memory version *and* the platform's event stream — and shows up with status `gated` in the TUI dashboard's Dreams screen. `PI_DREAM_GATE=0` disables the gate ([configuration](configuration.md)).
+- **Terminal notes → your project's `.unown/memory/project.md`.** Pending notes are grouped by project and each group is consolidated into that project's own memory file — the one the next session there reads. The engine-side dream needs at least 3 undreamed benchmark notes before it fires; project dreams run whenever terminal notes are pending. A dream that extracts nothing substantive records an honest `no-change` (the file is untouched — never an empty skeleton over your memory).
 
-Every consolidation is versioned in the engine DB — engine tiers under their own names (attributable: `seed` / `harness` / `autodream` / `rollback`), your project's memory under a synthetic `project:<slug>` tier. For the engine's four tiers the TUI dashboard's Memory screen shows the full history with one-key rollback and a per-version **diff against its predecessor** (`enter` on a version row — the engine stores every version's full text, so "what did that dream change?" is a lookup, not a by-eye comparison of two dumps); for your project's file the versions are recorded (and the project dreams appear on the Dreams screen with their version numbers), but restoring means pasting a previous version back into the file — which is trivial, because the file is plain Markdown on your disk.
+Every consolidation is versioned in the engine DB — engine tiers under their own names (attributable: `seed` / `harness` / `mem0` / `rollback`), your project's memory under a synthetic `project:<slug>` tier. For the engine's four tiers the TUI dashboard's Memory screen shows the full history with one-key rollback and a per-version **diff against its predecessor** (`enter` on a version row — the engine stores every version's full text, so "what did that dream change?" is a lookup, not a by-eye comparison of two dumps); for your project's file the versions are recorded (and the project dreams appear on the Dreams screen with their version numbers), but restoring means pasting a previous version back into the file — which is trivial, because the file is plain Markdown on your disk (the platform-level revert — what the gates do — is exact event-stream rollback; a pasted file is re-rendered from platform state at the next dream).
+
+## The memory platform (Mem0)
+
+The engine behind the project tier (the "learning surface") since 2026-10-22 — full decision record and receipts in [memory-platform-swap-assessment](memory-platform-swap-assessment.md). What it is:
+
+- **In-process Mem0** (`mem0ai` OSS TS SDK, Apache-2.0) inside the self-learning engine: notes go in through the platform's ADD→DEDUP→UPDATE extraction pipeline (LLM calls through the same llm-bridge, same governor budget and circuit breaker as every other learning call), and come out as atomic, scoped memories — one fact or rule each, deduplicated, per project.
+- **Storage**: SQLite vector store + history under `DATA_DIR/mem0` (`PI_MEM0_DIR`) — engine-side runtime state, gitignored like the rest of `data/`.
+- **Embeddings**: the local ONNX lane (bge-small-en-v1.5, 384-dim) when installed, else a deterministic lexical fallback that keeps offline installs learning; the active backend is named in the render footer so a degraded mode is never silent (`PI_MEM0_EMBEDDER`).
+- **The render**: `project.md` is a deterministic Markdown view of the platform's memories for your project — topic sections, newest-first, bullet cap, provenance footer (`<!-- unown: rendered N/M memories via Mem0 (backend: …) -->`). It stays the committable artifact; a teammate's fresh engine imports its bullets verbatim at their first dream.
+- **Import at first run**: a pre-swap install's existing `project.md` (engine tier or terminal project) imports verbatim into the platform at the first dream — no LLM rewrites, nothing lost at the swap boundary.
+- **Semantic recall (new)**: the engine can now *search* memory — `GET /api/memories?q=…` (scoped, with the platform status on `/api/overview`) — a capability the flat-file pipeline never had.
+
+What it is not: a cloud service. The platform runs locally on your data; the only network traffic is the extraction LLM through your own bridge.
 
 ### Two different "project memories"
 
@@ -91,7 +105,7 @@ Do not confuse the two files that share a tier name:
 |---|------------------------------|------------------------|
 | File | inside `data/self-learning/` (repo runtime state) | `<project>/.unown/memory/project.md` |
 | Fed by | benchmark run notes | your terminal session notes |
-| Written by | harness improvements + benchmark dreams | project dreams (+ you, by hand) |
+| Written by | harness improvements + benchmark dreams (both through the memory platform) | project dreams — renders of the platform's memories for your project (+ the one-time verbatim import) |
 | Gated by | canary re-run of the last-passing task | nothing — your notes, your file |
 
 The engine's own memory is what the five-mechanism loop improves; your project's memory is what your sessions accumulate. The TUI dashboard's Memory screen shows the engine's four tiers and the skills minted into your projects; your project's dreams show up on the Dreams screen.
@@ -122,19 +136,19 @@ and, if several notes kept describing the same multi-step procedure (clone → s
 
 ## Editing memory by hand
 
-All four tiers are plain Markdown — edit them whenever:
+All four tiers are plain Markdown — but they are not all equal anymore:
 
-- `project.md` — safe. AutoDream consolidates *on top of* the current file content, so your edits survive and the next dream records them in the version history.
+- `project.md` — **read it, but hand edits no longer survive the next dream.** The file is a rendered view of the platform's memories; the next dream re-renders from platform state, not from the file. To add a durable rule by hand, record it as a note (`unown note "…"` or the in-session `note` tool) and let extraction pick it up — or make your edits before your engine's first platform import, which does read the file verbatim. Every version is still in the engine DB, so a render that overstepped is recoverable.
 - `user.md` / `policy.md` — yours entirely; unown only seeds them once.
-- `local.md` — the right place for machine-specific truth ("the work laptop needs `--network=host`").
+- `local.md` — the right place for machine-specific truth ("the work laptop needs `--network=host`"). Tiers 0/2/3 are untouched by the platform swap: plain hand-editable files, exactly as before.
 
-Do not bother formatting: bullets under topic headings is the shape AutoDream reads and writes best.
+Do not bother formatting: bullets under topic headings is the shape the render writes and the platform extracts best.
 
 ## What to commit
 
 | Path | Commit? | Why |
 |------|---------|-----|
-| `.unown/memory/project.md` | yes | AutoDream maintains it; committing shares the project's accumulated learning across machines and teammates |
+| `.unown/memory/project.md` | yes | the rendered view of the platform's memories for this project; committing shares the accumulated learning across machines and teammates — a fresh engine imports the committed bullets verbatim at its first dream |
 | `.unown/memory/local.md` | no | personal, per-machine overrides; the scaffold's `.gitignore` already excludes it |
 | `.unown/skills/` | yes | minted skills are project assets — the point is that the next session (and the next teammate) picks them up |
 | `.unown/agents/` | yes | your own subagent definitions |
@@ -146,7 +160,7 @@ What a teammate gets when they clone the repo: the shared project memory and the
 - `unown memory` — prints the effective four-tier stack for the current directory, exactly as a session receives it.
 - `/learning` — the same stack, in-session, re-read from disk.
 - `unown doctor` — verifies the project and user memory files exist ([troubleshooting](troubleshooting.md)).
-- `unown dashboard` → **Memory** screen — the engine's four tiers with contents, full version history and one-key rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files).
+- `unown dashboard` → **Memory** screen — the engine's four tiers with contents, full version history and one-key rollback, plus every skill AutoDream minted into your projects (skills rollback and retire write back to your project's files). The engine's platform state (backend, model, dir, cap) rides `/api/overview`'s `memoryPlatform` block, and `GET /api/memories?q=…` searches the platform's memories per scope.
 
 ## Learning integrity (how the system polices itself)
 
@@ -154,7 +168,7 @@ Self-modification without gates degenerates fast, so every memory write is contr
 
 - **Ship gate** — a mined patch only enters memory after its candidate run passes verification in a fresh sandbox — **and the pass replicates** in a second confirmation run (a built-in noise gate: a lucky pass does not ship).
 - **Mint gate** — a minted task only becomes an active capability eval if the agent genuinely FAILS it in a fresh sandbox; tasks the agent already solves are discarded (honest outcome), and minted tasks graduate into the regression suite only by passing a later harness cycle.
-- **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`).
+- **Dream canary gate** — an AutoDream consolidation of the engine's project memory must re-pass the most recently passing task; a dream that breaks it is rolled back automatically (status `gated`) — the memory version *and* the platform's event stream (exact ADD/UPDATE/DELETE reversal).
 - **Retention check** — if a task later fails after its improvement shipped, the improvement is marked `regressed` and the memory is rolled back to the pre-ship version (auto-unship).
 - **Skill mint gate** — skills are minted only from recurring multi-step procedures in consolidated notes, max 2 per dream, validated against the Agent Skills contract, deduplicated against everything already on disk; every version is recorded and rollback-able, retirement is a deliberate TUI-dashboard action (the engine never deletes your files on its own).
 - **Full version history** — every write to every engine tier is versioned and attributable; engine tiers and minted skills roll back from the TUI dashboard. Project memory (`.unown/memory/project.md`) is a plain versioned Markdown file — the engine records every version it writes, and restoring means pasting a prior version back (skills additionally have one-key rollback/retire with file writeback).

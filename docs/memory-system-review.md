@@ -2,16 +2,20 @@
 
 A full code read of the tiered-memory subsystem plus live probes against a real engine, agent runs and dreams: ten findings, each tagged with its status, and the matrix for re-running every check.
 
-**Date:** 2026-10-17 · **Scope:** the tiered-memory subsystem of the
+**Date:** 2026-10-17 · **updated 2026-10-22** (the learning-core swap landed — see the
+[F4 addendum 3](#f4-live-hardened-poisoning-the-dream-layer-is-a-real-attack-surface) and the
+[platform decision record](memory-platform-swap-assessment.md); the diagram and the
+authority-model findings below are re-stated for the swapped architecture, the historical
+probes keep their original scope) · **Scope:** the tiered-memory subsystem of the
 self-learning engine (`pi-repo/packages/self-learning/src/{memory,store,dream,
-runner,term,notes,harness}.ts`) and its terminal sibling (`cli.ts`, `tools.ts`).
+runner,term,notes,harness,memzero}.ts`) and its terminal sibling (`cli.ts`, `tools.ts`).
 **Method:** full code read + LIVE probes against a real scratch engine + real
 agent runs + real dreams through the llm-bridge (receipts:
 `benchmarks/memory-eval/results/`, live suites `test/memory-live.test.ts`,
 `test/memory-poison.test.ts`). Every finding below is either live-verified
 (marked **[live]**) or pinned by a unit test.
 
-Related pages: [memory](memory.md) · [memory-classifier-evaluation](memory-classifier-evaluation.md) · [testing-strategy](testing-strategy.md)
+Related pages: [memory](memory.md) · [memory-classifier-evaluation](memory-classifier-evaluation.md) · [memory-platform-swap-assessment](memory-platform-swap-assessment.md) · [testing-strategy](testing-strategy.md)
 
 - [1. Architecture as built](#1-architecture-as-built)
 - [2. Findings](#2-findings)
@@ -24,9 +28,11 @@ Related pages: [memory](memory.md) · [memory-classifier-evaluation](memory-clas
 ```
                          ┌────────────────────────── ENGINE (port 3030) ─────────────────────────┐
  benchmark/agent runs ──▶│ runner.ts ── resolveMemoryForAgent ──▶ pi agentsFilesOverride          │
-                         │   └─ notes (SQLite) ──▶ dream.ts (LLM consolidation via bridge)        │
-                         │        notes ──▶ harness.ts (mine → appendRules → ship/rollback)      │
-                         │ memory.ts: 4 tiers (policy/project/user/local)                        │
+                         │   └─ notes (SQLite) ──▶ dream.ts ──▶ memzero.ts (Mem0 platform)    │
+                         │        (extraction via bridge + reconcile; guard sweep + render)   │
+                         │        notes ──▶ harness.ts (mine → shipEngineRules → ship)       │
+                         │ memory.ts: 4 tiers (policy/project/user/local); the project tier   │
+                         │   is a render of platform memories; DATA_DIR/mem0/ = the stores    │
                          │   writeTier → memory_versions (SQLite WAL, authority)                 │
                          │             → DATA_DIR/memory/<tier>.md (materialized cache, atomic)  │
                          │ dream canary: re-run last-passing task under new memory               │
@@ -42,7 +48,9 @@ attributable), a consolidation loop (notes → dream → memory), a safety gate
 (policy → project → user → local). The live evaluation confirmed the whole
 loop works end-to-end. The findings below are where the implementation
 departs from the documented design, or where the design itself is weaker
-than its description.
+than its description. Since 2026-10-22 the consolidation engine behind the
+dream is [Mem0](memory-platform-swap-assessment.md) — the shape above is
+unchanged, the machinery underneath it is not.
 
 ## 2. Findings
 
@@ -73,7 +81,9 @@ the version row first, then the file is materialized atomically
 stale/missing files from the newest version row (live-probed: corrupted and
 deleted files both recovered). Semantic change: hand-edits of
 `DATA_DIR/memory/*.md` are shadowed by the DB (engine tiers are
-API-managed; the *terminal* project memory remains file-first by design).
+API-managed; the *terminal* project memory remains file-first by design
+— post-swap, "file-first" means the *terminal agent* reads the file, while
+the file itself is a render of platform state; see F10).
 
 ### F3 [live, FIXED] The SessionStart receipt never fired (57/57 runs)
 
@@ -160,6 +170,27 @@ hardened mpbench run (whose only "plant" turned out to be a matcher
 false-positive on a rejection line — the matcher is now per-line and
 rejection-aware, pinned by its own selftest).
 
+**F4 addendum 3 (2026-10-22, the platform swap — quarantine becomes
+structural):** the learning core now runs on Mem0
+([memory-platform-swap-assessment](memory-platform-swap-assessment.md)), and
+the layer stack above was re-based on it. The zero-extraction contract no
+longer depends on any model's prompt resistance: a flagged note is dropped
+from the batch **before the extraction call** — it never reaches the platform
+LLM, so there is nothing to paraphrase (pinned: "a poisoned note never
+reaches the platform; the dream completes honestly"). Defense in depth
+moved to the output side: every *extracted* memory is scanned and poison
+deleted at atomic-memory granularity before the render, the rendered
+document still passes `decideGuardAction` with first-mint gating on both
+paths, and a gated dream now also reverts the platform event stream
+(`revertMemoryEvents`). One honest correction the swap surfaced: the
+pre-swap dream fed the layer-2.5 echo backstop under a wrong property name
+(`quarantinedNoteTexts` vs `quarantinedNotes`), so the backstop never
+actually saw the texts — the swap fixes the key, restoring that layer as
+depth behind the now-structural primary. Pinned by `test/dream-guard.test.ts`
++ `test/dream-canary-crash.test.ts` over the fake platform (11/11,
+2026-10-22 run); the corpus re-runs above predate the swap and describe the
+banner-era pipeline they measured.
+
 ### F5 [design] "Most specific tier wins" is a claim, not a mechanism
 
 Resolution is concatenation; conflict handling is delegated to the model
@@ -174,7 +205,10 @@ prompt request, not a limit), and the resolved block could bloat the
 context. **Fix:** `PI_MEMORY_MAX_TIER_CHARS` (default 48k ≈ 12k
 tokens/tier) enforced in `writeTier`, `appendRules`, and project-dream
 output (oversized dream = error, old memory preserved). Live size-hygiene
-probe: 2,228 chars after the full loop.
+probe: 2,228 chars after the full loop. *Post-swap:* the project tier's
+`appendRules` ships into the platform and re-renders, so its size control is
+the render cap (`PI_MEM0_MAX_RENDERED`, default 110, hard-won rules immune);
+the char cap still guards `writeTier` and the non-project tiers.
 
 ### F7 [fixed, §5.2] Single canary = last-passing task only
 
@@ -199,13 +233,20 @@ provenance included (pinned in `test/budget.test.ts`).
 overlay of `''` yields an empty tier rather than falling back to disk.
 Pinned by a unit test; the harness never emits `''` overlays.
 
-### F10 [design] Engine tiers vs. terminal tiers: two authority models
+### F10 [design, updated by the swap] Engine tiers vs. terminal tiers: two authority models
 
 Engine tiers: DB-authoritative, file = cache (post-F2). Terminal project
 memory: file is the source of truth (read directly each session, versioned
 in the engine DB as `project:<slug>`). This split is deliberate (the
 terminal must work offline, without SQLite) but is the root of the
 project-path weaknesses (F4B: no canary, no caps beyond the dream guard).
+*Post-swap:* the split narrows to a chain — the terminal agent still reads
+the file (offline, no SQLite client-side), but the file is now a render of
+the engine-side platform memories, and the next dream re-renders from
+platform state (hand edits to a project tier no longer survive dreams;
+[memory](memory.md#editing-memory-by-hand) carries the contract). The
+platform's SQLite lives under `DATA_DIR/mem0`; deleting it re-imports the
+on-disk tiers, so the file chain remains the durable artifact.
 
 ## 3. Effectiveness — what the benchmarks say
 
@@ -233,7 +274,8 @@ project-path weaknesses (F4B: no canary, no caps beyond the dream guard).
 |---|---|---|
 | Unit (incl. new durability/cap/provenance tests) | `bun test test/` (self-learning pkg) | always |
 | Guard scanner + gate (§5.1/§5.3) | `bun test test/guard.test.ts` | always |
-| Guard wiring on both dream paths (stub bridge, canned poison) | `bun test test/dream-guard.test.ts` | always |
+| Guard wiring on both dream paths (fake memory platform, canned poison — the swap's structural-quarantine + sweep + gate + revert) | `bun test test/dream-guard.test.ts` | always |
+| Dream canary crash/rollback over the platform event stream | `bun test test/dream-canary-crash.test.ts` | always |
 | Canary sampling + drift/claim analysis (§5.2) | `bun test test/canary.test.ts` | always |
 | Resolved-block budget + degradation (§5.5) | `bun test test/budget.test.ts` | always |
 | Live e2e loop (7 live tests + receipts) | `UNOWN_MEMORY_LIVE=1 bun test test/memory-live.test.ts` | env |

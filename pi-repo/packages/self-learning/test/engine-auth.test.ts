@@ -14,7 +14,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:tes
 
 const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import net from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -358,6 +359,55 @@ describe("engineFetch (M7 client)", () => {
 
 const PKG_ROOT = join(import.meta.dir, "..");
 
+/** Fresh-process env hygiene: the engine under test must never depend on
+ * network egress. mem0ai's boot path AWAITS an un-timed "init" telemetry POST
+ * (always sent, not sampled — mem0ai/oss telemetry.ts: ALWAYS_SEND_EVENTS), so
+ * on a restricted or blackholed network `startServer` hangs BEFORE the bind —
+ * measured as the M7 winner zombies (no token file, no listener, an idle
+ * event loop awaiting a fetch that never settles). MEM0_TELEMETRY=false is
+ * mem0's own kill-switch (read when mem0ai/oss is imported); MEM0_DIR keeps
+ * its local telemetry-id state inside the per-test scratch root instead of
+ * contending on the developer's real ~/.mem0 from concurrent boots. */
+function noPhoneHome(root: string): { MEM0_TELEMETRY: string; MEM0_DIR: string } {
+        return { MEM0_TELEMETRY: "false", MEM0_DIR: join(root, "mem0-home") };
+}
+
+/** A loopback port verified free THIS run. The bind-race test used a fixed
+ * port (3199): anything else holding it — a winner leaked by an earlier
+ * failed run of this very test, a concurrent suite run on the same machine,
+ * an unrelated service — made the winner's bind fail for the WRONG reason,
+ * indistinguishable from the race under test. Probing below Linux's default
+ * ephemeral range (32768+) keeps an outbound connection's source port from
+ * claiming the candidate between probe and bind; the residual probe→bind
+ * window is an ordinary ephemeral-bind TOCTOU that now fails CLEANLY (bounded
+ * wait + the winner's boot log, and the finally always reaps the winner). */
+async function probeFreeLoopbackPort(): Promise<number> {
+        for (let i = 0; i < 25; i++) {
+                const candidate = 20000 + Math.floor(Math.random() * 12000);
+                const free = await new Promise<boolean>((resolve) => {
+                        const srv = net.createServer(() => {});
+                        srv.once("error", () => resolve(false));
+                        srv.listen(candidate, "127.0.0.1", () => srv.close(() => resolve(true)));
+                });
+                if (free) return candidate;
+        }
+        throw new Error("could not probe a free loopback port after 25 attempts");
+}
+
+/** Winner processes outlive a failed case until the finally reaps them, and
+ * this suite polls with sleepSync (the thread cannot drain a pipe meanwhile),
+ * so a spawned winner gets KERNEL-redirected stdio: its boot/router chatter
+ * lands in a log file — never blocked by a full, unread pipe, and readable
+ * for the failure message when it does not come up. */
+function spawnLogged(cmd: string, args: string[], opts: { env?: NodeJS.ProcessEnv }, logPath: string): ReturnType<typeof spawn> {
+        const fd = openSync(logPath, "w");
+        try {
+                return spawn(cmd, args, { ...opts, stdio: ["ignore", fd, fd] });
+        } finally {
+                closeSync(fd);
+        }
+}
+
 function gateProbe(env: NodeJS.ProcessEnv): { code: number; stdout: string; stderr: string } {
         const root = mkdtempSync(join(tmpdir(), "unown-auth-gate-"));
         // The token lives in the DATA DIR THE CALLER REDIRECTED THE ENGINE TO
@@ -369,7 +419,7 @@ function gateProbe(env: NodeJS.ProcessEnv): { code: number; stdout: string; stde
         const script = `
 const { startServer } = await import(${JSON.stringify(join(PKG_ROOT, "src/server.ts"))});
 const { readFileSync } = await import("node:fs");
-const server = startServer(0);
+const server = await startServer(0);
 if (!server) { console.log("BOOT=refused"); process.exit(0); }
 const base = "http://127.0.0.1:" + server.port;
 const tok = readFileSync(${JSON.stringify(tokenFile)}, "utf8").trim();
@@ -416,6 +466,7 @@ describe("startServer HTTP auth gate (M7, fresh process)", () => {
                         PI_SELFLEARNING_DB: join(root, "db", "selflearning.db"),
                         UNOWN_HOME: join(root, "unown-home"),
                         UNOWN_ENGINE_HOSTS: "dash.example.com",
+                        ...noPhoneHome(root),
                 });
                 rmSync(root, { recursive: true, force: true });
                 const lines = out.stdout.trim().split("\n");
@@ -452,7 +503,7 @@ describe("startServer HTTP auth gate (M7, fresh process)", () => {
                 // lock-reuse guard matches /self-learning/ in the holder's cmdline.
                 const winnerScript = `
 const { startServer } = await import(${JSON.stringify(join(PKG_ROOT, "src/server.ts"))});
-const a = startServer(0);
+const a = await startServer(0);
 console.log("WINNER=up");
 await new Promise(() => {});
 `;
@@ -460,7 +511,7 @@ await new Promise(() => {});
 const { readFileSync } = await import("node:fs");
 const { startServer } = await import(${JSON.stringify(join(PKG_ROOT, "src/server.ts"))});
 const before = readFileSync(${JSON.stringify(join(root, "data", "engine.token"))}, "utf8").trim();
-const b = startServer(0); // must lose the lock and return null
+const b = await startServer(0); // must lose the lock and return null
 const after = readFileSync(${JSON.stringify(join(root, "data", "engine.token"))}, "utf8").trim();
 console.log("LOSER=" + (b === null ? "exited" : "BOOTED-BAD") + " TOKEN_INTACT=" + (before === after));
 process.exit(0);
@@ -470,12 +521,13 @@ process.exit(0);
                         PI_SELFLEARNING_DATA: join(root, "data"),
                         PI_SELFLEARNING_DB: join(root, "db", "selflearning.db"),
                         UNOWN_HOME: join(root, "unown-home"),
+                        ...noPhoneHome(root),
                 };
                 const wPath = join(root, "self-learning-winner.ts");
                 const lPath = join(root, "loser.ts");
                 writeFileSync(wPath, winnerScript);
                 writeFileSync(lPath, loserScript);
-                const winner = spawn(process.execPath, [wPath], { env });
+                const winner = spawnLogged(process.execPath, [wPath], { env }, join(root, "winner.log"));
                 try {
                         // wait for the winner's lock + token (bounded)
                         const deadline = Date.now() + 30_000;
@@ -484,8 +536,14 @@ process.exit(0);
                                 if (existsSync(tokenFile) && existsSync(join(root, "data", "engine.lock"))) break;
                                 sleepSync(200);
                         }
+                        if (!existsSync(tokenFile)) {
+                                console.error(`winner never wrote its token file; boot log:\n${readFileSync(join(root, "winner.log"), "utf8") || "(no output)"}`);
+                        }
                         expect(existsSync(tokenFile)).toBe(true);
                         const loser = spawnSync(process.execPath, [lPath], { env, encoding: "utf8", timeout: 60_000 });
+                        if (!loser.stdout?.includes("LOSER=")) {
+                                console.error(`loser produced no verdict; stderr:\n${loser.stderr ?? "(none)"}`);
+                        }
                         expect(loser.stdout).toContain("LOSER=exited");
                         expect(loser.stdout).toContain("TOKEN_INTACT=true");
                 } finally {
@@ -503,11 +561,17 @@ process.exit(0);
                 // The invariant: the token on disk always belongs to the process
                 // HOLDING THE PORT — written only after Bun.serve succeeds.
                 const root = mkdtempSync(join(tmpdir(), "unown-auth-bindrace-"));
-                const port = 3199; // fixed port: the winner binds it; a dummy holder rebinds after the kill
+                // A probed-free port, not the historical fixed 3199: a leaked
+                // winner from a previous FAILED run of this very test (the old
+                // finally never killed the winner — the leak below) held 3199
+                // forever, turning every later run red at the winner-up assert
+                // with a 30s stall. A probed port keeps the race under test
+                // attributable and concurrent runs independent.
+                const port = await probeFreeLoopbackPort();
                 const winnerScript = `
 const { writeFileSync } = await import("node:fs");
 const { startServer } = await import(${JSON.stringify(join(PKG_ROOT, "src/server.ts"))});
-const a = startServer(${port});
+const a = await startServer(${port});
 writeFileSync(${JSON.stringify(join(root, "winner.up"))}, "up");
 await new Promise(() => {});
 `;
@@ -517,7 +581,7 @@ const { startServer } = await import(${JSON.stringify(join(PKG_ROOT, "src/server
 const tokenFile = ${JSON.stringify(join(root, "data", "engine.token"))};
 const before = readFileSync(tokenFile, "utf8").trim();
 try {
-        const b = startServer(${port}); // port held by the dummy listener → Bun.serve throws
+        const b = await startServer(${port}); // port held by the dummy listener → Bun.serve throws
         if (b) { console.log("VICTIM=BOOTED-UNEXPECTED"); b.stop(true); }
 } catch {
         console.log("VICTIM=bind-failed");
@@ -531,17 +595,27 @@ process.exit(0);
                         PI_SELFLEARNING_DATA: join(root, "data"),
                         PI_SELFLEARNING_DB: join(root, "db", "selflearning.db"),
                         UNOWN_HOME: join(root, "unown-home"),
+                        ...noPhoneHome(root),
                 };
                 const tokenFile = join(root, "data", "engine.token");
                 const upFile = join(root, "winner.up");
+                // Both engine processes are reaped by the finally no matter where
+                // the case fails — a leaked winner holds its port FOREVER
+                // (await new Promise(() => {})) and one leaked process used to
+                // redden every subsequent run (three immortal winners were found
+                // holding 3199 after three failed runs in this sandbox).
+                let winner: ReturnType<typeof spawn> | null = null;
                 let holder: ReturnType<typeof spawn> | null = null;
                 try {
                         // 1. The winner: fixed port, writes the token (post-bind commit).
                         const wPath = join(root, "self-learning-winner.ts");
                         writeFileSync(wPath, winnerScript);
-                        const winner = spawn(process.execPath, [wPath], { env: { ...env, PI_AGENT_PORT: String(port) } });
+                        winner = spawnLogged(process.execPath, [wPath], { env: { ...env, PI_AGENT_PORT: String(port) } }, join(root, "winner.log"));
                         const d1 = Date.now() + 30_000;
                         while (Date.now() < d1 && !existsSync(upFile)) sleepSync(200);
+                        if (!existsSync(upFile)) {
+                                console.error(`winner never came up on :${port}; boot log:\n${readFileSync(join(root, "winner.log"), "utf8") || "(no output)"}`);
+                        }
                         expect(existsSync(upFile)).toBe(true);
                         const tokenBefore = readFileSync(tokenFile, "utf8").trim();
                         // 2. Kill the winner (flock released at exit) and immediately
@@ -593,10 +667,14 @@ srv.listen(${port}, "127.0.0.1", () => {
                         const vPath = join(root, "victim.ts");
                         writeFileSync(vPath, victimScript);
                         const victim = spawnSync(process.execPath, [vPath], { env: { ...env, PI_AGENT_PORT: String(port) }, encoding: "utf8", timeout: 60_000 });
+                        if (!victim.stdout?.includes("VICTIM=")) {
+                                console.error(`victim produced no verdict (status ${victim.status}); stderr:\n${victim.stderr ?? "(none)"}`);
+                        }
                         expect(victim.stdout).toContain("VICTIM=bind-failed");
                         expect(victim.stdout).toContain("TOKEN_INTACT=true");
                         expect(readFileSync(tokenFile, "utf8").trim()).toBe(tokenBefore);
                 } finally {
+                        winner?.kill("SIGKILL");
                         holder?.kill("SIGKILL");
                         rmSync(root, { recursive: true, force: true });
                 }
@@ -606,7 +684,7 @@ srv.listen(${port}, "127.0.0.1", () => {
                 const root = mkdtempSync(join(tmpdir(), "unown-auth-refuse-"));
                 const script = `
 const { startServer } = await import(${JSON.stringify(join(PKG_ROOT, "src/server.ts"))});
-const server = startServer(0);
+const server = await startServer(0);
 console.log("BOOT=" + (server === null ? "refused" : "booted"));
 process.exit(0);
 `;

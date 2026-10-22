@@ -194,7 +194,7 @@ export async function hoistCrossProjectRules(opts: {
         }
 
         const stamp = new Date().toISOString().slice(0, 10);
-        const version = appendRules(
+        const version = await appendRules(
                 "user" as Tier,
                 guardSurvivors,
                 "autodream-hoist",

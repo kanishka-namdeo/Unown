@@ -745,6 +745,7 @@ grep -m2 '"version"' pi-repo/packages/coding-agent/package.json   # 0.84.3
 
 - [oh-my-pi swap assessment](oh-my-pi-swap-assessment.md) — the previous harness verdict, and the source of the chokepoint invariant used here. Its §3 blast-radius numbers are corrected by §3; its §9 LSP trigger is corrected by §12.
 - [Memory](memory.md) — the 4-tier stack, AutoDream, and the version/rollback model this assessment tests injection against.
+- [Memory-platform swap](memory-platform-swap-assessment.md) — the learning-core swap that did land (bespoke engine → Mem0, 2026-10-22): the re-platforming of the memory system both harness records assumed would stay bespoke.
 - [Providers](providers.md) and [Configuration](configuration.md) — how the llm-bridge is wired today; §4 and Appendix E are the opencode-shaped equivalents.
 - [Subagents](subagents.md) — the `task` tool contract, including the JSON-mode parser defect in Appendix F.
 - [Skills](skills.md) — the SKILL.md contract dream-minted skills are written against, and the loader opencode would replace.

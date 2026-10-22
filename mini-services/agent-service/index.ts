@@ -7,7 +7,7 @@
 import { startServer } from "../../pi-repo/packages/self-learning/src/index.ts";
 
 async function main() {
-        const server = startServer(Number(process.env.PI_AGENT_PORT ?? 3030));
+        const server = await startServer(Number(process.env.PI_AGENT_PORT ?? 3030));
         if (!server) {
                 // startServer already logged the reason (single-instance lock).
                 // Exit 0: "already running" is a healthy state for a supervisor.

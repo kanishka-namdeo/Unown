@@ -30,7 +30,7 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 163;
+export const CHANGELOG_TOTAL_ENTRIES = 171;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 67,
@@ -39,7 +39,7 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Removed": 2,
   "Fixed": 70,
   "Security": 0,
-  "Behavior": 13
+  "Behavior": 21
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
@@ -80,7 +80,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.3",
     "date": "2026-10-22",
-    "total": 20,
+    "total": 28,
     "counts": {
       "Added": 8,
       "Changed": 0,
@@ -88,7 +88,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Removed": 0,
       "Fixed": 7,
       "Security": 0,
-      "Behavior": 5
+      "Behavior": 13
     },
     "groups": [
       {
@@ -182,6 +182,38 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "print-mode sessions no longer crash at the first subagent-lane tick",
+            "behavior": true
+          },
+          {
+            "title": "the learning core (tier-memory storage for the project tier, AutoDream consolidation, dedup…",
+            "behavior": true
+          },
+          {
+            "title": "appendRules/seedMemoryIfEmpty are async for the project tier",
+            "behavior": true
+          },
+          {
+            "title": ".unown/memory/project.md is now a deterministic render of the platform's memories for the project",
+            "behavior": true
+          },
+          {
+            "title": "pre-swap memory imports verbatim at first run",
+            "behavior": true
+          },
+          {
+            "title": "quarantine is now structural: flagged notes never reach the extraction LLM",
+            "behavior": true
+          },
+          {
+            "title": "new PI_MEM0_* env knobs",
+            "behavior": true
+          },
+          {
+            "title": "dreams got an honest no-change status",
+            "behavior": true
+          },
+          {
+            "title": "the engine gained semantic recall: GET /api/memories?q=…",
             "behavior": true
           }
         ]

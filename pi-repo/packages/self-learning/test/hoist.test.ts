@@ -183,7 +183,7 @@ describe("hoistCrossProjectRules — dedupe + guard", () => {
                 // ensure the rule is already present
                 const dupeRule = rule(10, "a rule that will already exist in the tier");
                 const freshRule = rule(11, "a rule that is hoisted for the first time");
-                appendRules("user" as never, [dupeRule], "test", `dedupe-prep-${RUN}`);
+                await appendRules("user" as never, [dupeRule], "test", `dedupe-prep-${RUN}`);
                 mockLlmRules([dupeRule, freshRule]);
                 const before = currentVersion("user" as never);
                 const out = await hoistCrossProjectRules({

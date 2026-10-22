@@ -36,6 +36,12 @@ import { dreamNotes, listDreams, runDream } from "./dream.ts";
 import { cycleTriggerGuard, getImprovement, listCycles, listImprovements, runCycle } from "./harness.ts";
 import { bridgeHealth, bridgeLog } from "./llm.ts";
 import { history, projectTiers, resolveMemory, rollback, seedMemoryIfEmpty, snapshot, type Tier } from "./memory.ts";
+import {
+        memoryPlatformStatus,
+        projectMemories,
+        searchMemories,
+        type MemoryScope,
+} from "./memzero.ts";
 import { runMintJob, suiteStats } from "./mint.ts";
 import { ingestTerminalNote } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
@@ -359,6 +365,10 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                         budget: budgetStatus(),
                                         breaker: breakerStatus(),
                                 },
+                                // The memory platform behind the learning loop (the swap):
+                                // backend (onnx | lexical), model, dir — the honest degraded-mode
+                                // signal for `unown doctor`, the dashboard and the landing claims.
+                                memoryPlatform: memoryPlatformStatus(),
                         });
                 }
 
@@ -367,8 +377,9 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 // ------------------------------------------------------------------
                 if (method === "GET" && path === "/api/tasks") return json({ tasks: listTasks() });
                 if (method === "GET" && path === "/api/skills") {
-                        const url = new URL(req.url, "http://localhost");
-                        const project = url.searchParams.get("project");
+                        // ApiRequest carries the parsed query — req.url was a latent bug here
+                        // (undefined on ApiRequest, so the project filter never applied).
+                        const project = req.query.get("project");
                         return json({ skills: listSkills(project ?? undefined) });
                 }
                 if (method === "GET" && /^\/api\/skills\/[^/]+$/.test(path)) {
@@ -504,6 +515,25 @@ if (method === "GET" && path === "/api/memory/projects") {
                         if (!version) return json({ error: "version required" }, 400);
                         rollback(tier, version, `dashboard rollback to v${version}`);
                         return json({ ok: true });
+                }
+
+                // ------------------------------------------------------------------
+                // Memory platform (mem0) — list + semantic search, scoped
+                // ------------------------------------------------------------------
+                if (method === "GET" && path === "/api/memories") {
+                        const q = req.query.get("q");
+                        const agentId = req.query.get("agent_id") || undefined;
+                        const userId = req.query.get("user_id") || undefined;
+                        const limit = Math.min(Number(req.query.get("limit") ?? 20) || 20, 100);
+                        const scope: MemoryScope = { agentId, userId };
+                        try {
+                                const memories = q
+                                        ? await searchMemories(q, scope, limit)
+                                        : await projectMemories(scope);
+                                return json({ memories, query: q ?? null, scope, platform: memoryPlatformStatus() });
+                        } catch (err: any) {
+                                return json({ error: `memory platform unavailable: ${err?.message ?? err}` }, 503);
+                        }
                 }
 
                 // ------------------------------------------------------------------
@@ -672,7 +702,9 @@ export function recoverOrphans() {
  *  REST handlers (POST .../run) can reach it. */
 export const automationsScheduler = new AutomationsScheduler();
 
-export function startServer(port: number = PORT) {
+/** Async since the learning-core swap: the boot sequence seeds the memory
+ * platform (mem0) and renders the project tier from it before binding. */
+export async function startServer(port: number = PORT) {
         // Engine-process scope: the governor's ledger/breaker track THIS process's
         // unattended LLM spend; the shared llm.ts client is inert in CLI processes
         // without this flag (governor.ts, the M2 detachment contract).
@@ -724,7 +756,35 @@ export function startServer(port: number = PORT) {
                 return null;
         }
         ensureAgentDir();
-        seedMemoryIfEmpty();
+        // Async since the learning-core swap: seeding the project tier means
+        // seeding the memory platform (mem0) and rendering from it. Errors
+        // surface to the boot log + /api/overview's memoryPlatform status
+        // instead of killing the engine (policy/user/local file tiers above
+        // still seeded synchronously inside).
+        // BOOT-BOUNDED (the engine-auth flake autopsy): the platform's init
+        // awaits the outside world with no timeout of its own — mem0's
+        // always-sent "init" telemetry POST is an un-timed fetch — so on
+        // restricted/blackholed egress the await never settled and fresh
+        // engines hung BEFORE the bind: no API, no token file, no exit (the
+        // M7 winner zombies this test pins must never be the ENGINE's own
+        // steady state). The auth/bind contract must not depend on it: past
+        // the bound the engine boots degraded, exactly like a failed seed
+        // (the platform singleton settles later, or never — dream/platform
+        // calls report it; boot is what must not hang).
+        const seed = seedMemoryIfEmpty().catch((e) => {
+                console.error("[agent-service] memory platform seed failed:", e?.message ?? e);
+                console.error("  the engine runs degraded — dreams will report the platform error until it resolves");
+        });
+        await Promise.race([
+                seed,
+                new Promise<void>((resolve) => {
+                        const bound = setTimeout(() => {
+                                console.error("[agent-service] memory platform seed did not settle within 30s — booting degraded (restricted network? the platform init awaits un-timed outside calls)");
+                                resolve();
+                        }, 30_000);
+                        bound.unref?.();
+                }),
+        ]);
         seedTasks();
         recoverOrphans();
         const synced = syncNoteOutbox();

@@ -162,7 +162,7 @@ describe.skipIf(!GATE)("memory poisoning probes (live dreams, real bridge)", () 
                 notesMod = await import("../src/notes.ts");
                 routerMod = await import("../src/router.ts");
                 termMod = await import("../src/term.ts");
-                engine = serverMod.startServer(ENGINE_PORT);
+                engine = await serverMod.startServer(ENGINE_PORT);
                 await pollUntil("engine boot", 15_000, async () => {
                         try {
                                 return (await fetch(`${ENGINE}/api/memory`, { headers: engineAuth() })).ok;

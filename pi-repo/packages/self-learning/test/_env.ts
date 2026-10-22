@@ -88,3 +88,13 @@ process.env.PI_DISABLE_ENGINE_SPAWN ??= "1";
 // helpers use. Tests that boot a real engine on an ephemeral port override
 // this per-case.
 process.env.UNOWN_ENGINE_URL ??= "http://127.0.0.1:9";
+// Mem0 platform: the unit suite runs the deterministic LEXICAL embedder.
+// The ONNX lane is install-on-demand (local-ml owns its own node_modules) and
+// absent on stripped CI/sandboxes — `auto` would probe it at first platform
+// use, and a half-installed lane (files present, @huggingface/transformers
+// missing) fails at EMBED time deep inside mem0's pipeline. Tests that want
+// the real platform inject it via opts.platform / setMemoryPlatformForTests
+// (the fake is fully deterministic); anything that accidentally reaches the
+// singleton still gets the hermetic lexical backend. Live lanes
+// (memory-live/memory-poison) claim their own env under their gates.
+process.env.PI_MEM0_EMBEDDER ??= "lexical";

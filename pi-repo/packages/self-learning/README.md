@@ -6,18 +6,31 @@ fixes them, and remembers what worked**.
 
 Implementations:
 
-1. **Tiered memory** (`memory.ts`) — `policy → project → user → local`,
+1. **Tiered memory** (`memory.ts`, `memzero.ts`) — `policy → project → user → local`,
    most-specific-wins, versioned + rollback-able, injected into every pi
-   session via `agentsFilesOverride`.
+   session via `agentsFilesOverride`. Since the learning-core swap the project
+   tier is backed by the **Mem0 memory platform** ([memzero.ts](src/memzero.ts),
+   the `mem0ai` OSS TS SDK, in-process): rules ship in as atomic memories and
+   the tier file is a deterministic markdown render of them; the other three
+   tiers stay plain string-append files.
 2. **Self-improving harness** (`harness.ts`) — baseline → mine failure →
    propose memory patch → candidate run → ship/reject → regression sweep.
-   Ships record their memory version; a later baseline failure auto-unships
-   the patch (retention check).
+   Ships record their memory version *and* their platform memory ids; a later
+   baseline failure auto-unships the patch — deleting exactly those memories
+   and re-rendering the tier (retention check).
 3. **Routing** (`router.ts`) — interval + event jobs with a busy-mutex.
 4. **AutoDreaming** (`dream.ts`) — consolidate session notes into memory.
-   Benchmark dreams are gated by a canary run (rolled back if the
-   last-passing task breaks); terminal notes are dreamed into their own
-   project's `.unown/memory/project.md`.
+   The consolidation engine is the Mem0 platform: notes are quarantined or
+   admitted structurally (flagged notes never reach the extraction LLM),
+   extracted as atomic scoped memories, reconciled (recency-first
+   contradiction resolution, dedup, pruning — mem0's own update/delete
+   primitives, so every change lands in its history), and rendered back into
+   the same markdown files. Benchmark dreams are gated by a canary run (a
+   failing or crashing canary rolls back the memory version *and* the
+   platform event stream); terminal notes are dreamed into their own
+   project's `.unown/memory/project.md` (pre-swap content imports verbatim at
+   the first dream). Decision record: the repo's
+   `docs/memory-platform-swap-assessment.md`.
 5. **Hooks** (`hooks.ts`, `termhooks.ts`) — SessionStart / UserPromptSubmit /
    PreToolUse / PostToolUse / Stop / SubagentStop guardrails, fully logged.
 
@@ -37,7 +50,10 @@ migrations), `server.ts` (REST + SSE API), `llm.ts` (bridge client),
 `bus.ts` (in-process event bus), plus `mint.ts` (task authoring + validation +
 graduation), `skills.ts` + `skill-seeds.ts` (AutoDream-minted Agent Skills),
 `setup.ts` (provider wizard), `probe.ts` (endpoint probes), `tools.ts` (terminal
-session tools), `theme.ts` (brand theme), `term.ts`, `cli.ts`, `index.ts`.
+session tools), `theme.ts` (brand theme), `term.ts`, `cli.ts`, `index.ts`,
+and `memzero.ts` (the Mem0 memory platform: in-process Memory singleton,
+embedder resolution with lexical fallback, the governed-LLM wrapper, the
+reconcile pass, the markdown render, event-stream revert, legacy import).
 
 ## Running
 
@@ -72,6 +88,10 @@ and an OpenAI-compatible endpoint reachable at `PI_BRIDGE_URL` (default
 | `PI_SELFLEARNING_DATA` | `<repo>/data/self-learning` | Runtime data dir |
 | `PI_SELFLEARNING_DB` | `<repo>/db/selflearning.db` | SQLite file |
 | `PI_DREAM_GATE` | on | `0` disables the dream canary gate |
+| `PI_MEM0_DIR` | `DATA_DIR/mem0` | Mem0 platform data dir (`vector_store.db` + `history.db`) |
+| `PI_MEM0_EMBEDDER` | `auto` | `onnx` \| `lexical` \| `auto` (the local-ml lane, else the lexical fallback) |
+| `PI_MEM0_MAX_RENDERED` | `110` | render bullet cap (hard-won rules immune) |
+| `PI_MEM0_RECONCILE` | on | `0` disables the reconcile pass (mem0 additive-only) |
 | `UNOWN_HOME` | `~/.unown` | Terminal-agent state dir (agent config, global memory, note outbox) |
 | `UNOWN_ENGINE_URL` | http://127.0.0.1:3030 | Where the terminal agent delivers notes |
 | `UNOWN_STRICT_HOOKS` | off | `1` = sandbox-grade hooks in terminal sessions |

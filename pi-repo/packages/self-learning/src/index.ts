@@ -4,10 +4,12 @@
  * A self-learning layer for the pi coding agent, implementing the five
  * patterns Anthropic used to improve Claude Code with Claude:
  *
- *   1. Tiered Memory      — memory.ts   (policy > project > user > local)
+ *   1. Tiered Memory      — memory.ts + memzero.ts (policy > project > user > local;
+ *                          the learning core is Mem0 — extraction, storage, search,
+ *                          reconciliation — rendering to the same committable files)
  *   2. Self-Improving Harness — harness.ts (mine failures → patch → validate → ship)
  *   3. Routing            — router.ts   (interval + event jobs)
- *   4. Auto Dreaming      — dream.ts    (session notes → consolidated memory)
+ *   4. Auto Dreaming      — dream.ts    (session notes → mem0 consolidation → render)
  *   5. Hooks              — hooks.ts    (PreToolUse/PostToolUse/SessionStart/Stop/...)
  *
  * plus sandbox.ts (isolated deploy & test sandboxes) and server.ts (REST+SSE API).
@@ -19,6 +21,28 @@ export { listDreams, runDream, runProjectDream } from "./dream.ts";
 export { listCycles, listImprovements, mineFailure, pickNextTask, runCycle, runRegression } from "./harness.ts";
 export { createHooksExtension, decideBash, jailPath, logHook, syntaxCheck } from "./hooks.ts";
 export { bridgeHealth, bridgeLog, chat, chatJson, chatText } from "./llm.ts";
+export {
+        ENGINE_SCOPE,
+        getMemoryPlatform,
+        importLegacyMarkdown,
+        LexicalHashEmbedder,
+        type MemoryPlatform,
+        type MemoryPlatformEvent,
+        type MemoryScope,
+        memoryPlatformStatus,
+        mem0Dir,
+        mem0EmbedderMode,
+        MEM0_DIM,
+        projectScope,
+        projectMemories,
+        reconcileMemories,
+        rememberNote,
+        renderProjectMemoryMarkdown,
+        searchMemories,
+        setMemoryPlatformForTests,
+        shipEngineRules,
+        unshipEngineRules,
+} from "./memzero.ts";
 export {
         appendRules,
         history as memoryHistory,

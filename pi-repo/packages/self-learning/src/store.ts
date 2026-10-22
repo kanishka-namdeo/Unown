@@ -176,6 +176,14 @@ CREATE TABLE IF NOT EXISTS llm_ledger (
   model TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_llm_ledger_ts ON llm_ledger(ts);
+
+-- memzero.ts: the memory platform's engine-side bookkeeping (active embedder
+-- backend, migration markers). Key/value so future rows need no migration.
+CREATE TABLE IF NOT EXISTS memory_platform (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 `;
 
 export class Store {
@@ -207,16 +215,13 @@ export class Store {
                         // (M6-3, audit M4-c D2) — 'bwrap' | 'seatbelt' | 'process'; NULL =
                         // pre-M6 rows, when the level was not recorded.
                         ["runs", "sandbox_isolation", "ALTER TABLE runs ADD COLUMN sandbox_isolation TEXT"],
-                        // jobs: the per-job OUTCOME (M11). The table carried last_run /
-                        // next_run / run_count / status, which is a schedule, not a verdict:
-                        // a job erroring every cycle for three days rendered on screen
-                        // identically to one that simply has not come round yet, because
-                        // nothing recorded that it failed. NULL = no completed run since the
-                        // columns landed (every pre-M11 cycle, honestly unknown rather than
-                        // passed — the screen says "never" rather than inventing a pass).
                         ["jobs", "last_ok", "ALTER TABLE jobs ADD COLUMN last_ok INTEGER"],
                         ["jobs", "last_error", "ALTER TABLE jobs ADD COLUMN last_error TEXT"],
                         ["jobs", "last_duration_ms", "ALTER TABLE jobs ADD COLUMN last_duration_ms INTEGER"],
+                        // improvements: the mem0 memory ids a shipped patch produced (the
+                        // mem0-backed learning core) — retention's auto-unship deletes them
+                        // from the platform and re-renders the tier. NULL = legacy ships.
+                        ["improvements", "memory_ids", "ALTER TABLE improvements ADD COLUMN memory_ids TEXT"],
                 ];
                 for (const [table, col, ddl] of columns) {
                         const existing = this.query<any>(`PRAGMA table_info(${table})`).some((c: any) => c.name === col);

@@ -1,0 +1,15 @@
+{
+	"name": "better-sqlite3",
+	"version": "12.6.2-unown.1",
+	"description": "bun:sqlite/node:sqlite drop-in for the better-sqlite3 API surface mem0ai uses (Unown shim, resolves via package.json resolutions)",
+	"license": "MIT",
+	"type": "module",
+	"main": "./index.js",
+	"types": "./index.d.ts",
+	"exports": {
+		".": {
+			"types": "./index.d.ts",
+			"default": "./index.js"
+		}
+	}
+}

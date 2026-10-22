@@ -22,18 +22,32 @@
 //     the originals — the assembled dream prompt stays byte-identical.
 //   - the embedder degrades: PI_LOCAL_ML_DIR pointing at a nonexistent dir
 //     means MinHash-only dedup (no throw, embedder event absent).
-//   - runDream integration: unset flags -> ONE chat call with the original
-//     note bodies; live mode -> the same call shape with deduped/compressed
-//     note bodies + a lane:dream bus event.
+//   - runDream integration (post-swap): the lanes are RETIRED from the dream
+//     pipeline — dedup is the memory platform's job now (mem0 extraction + the
+//     reconcile pass), so the dream hands every note to the platform verbatim
+//     regardless of the legacy lane flags, and no lane:dream event fires. What
+//     is pinned: unset flags -> exactly ONE llm.ts chat call (the reconcile
+//     pass — cost parity with the old single-call dream) and every original
+//     note body reaching the platform's add() input; live mode -> the near-dup
+//     ALSO flows into the platform (the engine never pre-drops notes) and the
+//     collapse happens inside the platform via the reconcile verdict; shadow
+//     mode -> the platform input is byte-identical to flags-unset (the retired
+//     lanes cannot alter the dream's input surface).
 //
 // Env: ./_env.ts redirects the store to scratch before module scope opens.
 // The lane flags are CALL-time reads (the mint.ts pattern), so tests toggle
-// them per case; the LLM is mocked via globalThis.fetch.
+// them per case; the LLM is mocked via globalThis.fetch; runDream gets the
+// deterministic fake platform via opts.platform (dream-guard.test.ts style —
+// no real embedder, no mem0 SQLite, no network).
 import "./_env.ts";
 import { afterEach, describe, expect, test } from "bun:test";
+import { rmSync } from "node:fs";
 import { applyDreamNoteLanes, compressNote, localmlConfig, nearDupPairs, resetEmbedder, structuralScore } from "../src/localml.ts";
 import { runDream } from "../src/dream.ts";
 import { subscribe } from "../src/bus.ts";
+import { readTier, tierPath } from "../src/memory.ts";
+import { undreamedNotes } from "../src/notes.ts";
+import { makeFakePlatform, type FakePlatform } from "./_fake-platform.ts";
 import { store } from "../src/store.ts";
 
 // ---------------------------------------------------------------------------
@@ -43,12 +57,19 @@ import { store } from "../src/store.ts";
 const realFetch = globalThis.fetch;
 let bodies: any[] = [];
 
-function mockBridge(replies: Array<Record<string, unknown>>): void {
+/**
+ * Mock the llm-bridge chat endpoint. A reply is either a canned record or a
+ * function of the REQUEST body (the reconcile-verdict tests derive their
+ * verdict from the memory listing the engine actually sent).
+ */
+function mockBridge(replies: Array<Record<string, unknown> | ((body: any) => Record<string, unknown>)>): void {
         bodies = [];
         globalThis.fetch = (async (_input: unknown, init?: any) => {
-                bodies.push(JSON.parse(String(init?.body ?? "{}")));
+                const body = JSON.parse(String(init?.body ?? "{}"));
+                bodies.push(body);
                 const reply = replies[Math.min(bodies.length - 1, replies.length - 1)];
-                const content = reply.content ?? "";
+                const resolved = typeof reply === "function" ? (reply as (b: any) => Record<string, unknown>)(body) : reply;
+                const content = resolved.content ?? "";
                 return new Response(
                         JSON.stringify({ choices: [{ message: { role: "assistant", content }, finish_reason: "stop" }] }),
                         { headers: { "content-type": "application/json" } },
@@ -56,14 +77,24 @@ function mockBridge(replies: Array<Record<string, unknown>>): void {
         }) as typeof fetch;
 }
 
-function dreamReply(projectMd: string) {
-        const md = projectMd.length >= 60 ? projectMd : `${projectMd}\n- durable lesson about quoted CSV fields and test discipline [note 1]\n- keep the parser helper isolated [note 2]`;
-        return {
-                content: JSON.stringify({
-                        projectMd: md,
-                        stats: { merged: 1, pruned: 0, added: 1, topics: ["tests"] },
-                }),
-        };
+/** A benign reconcile verdict: the LLM said "nothing to reconcile". */
+function noOpsReply(): Record<string, unknown> {
+        return { content: JSON.stringify({ ops: [] }) };
+}
+
+/** The note contents handed to the platform's add() (the extraction input). */
+function platformAddInputs(platform: FakePlatform): string[] {
+        const inputs: string[] = [];
+        for (const c of platform.calls.filter((x) => x.op === "add")) {
+                try {
+                        const parsed = JSON.parse(String(c.input ?? "[]"));
+                        if (Array.isArray(parsed)) for (const m of parsed) inputs.push(String(m?.content ?? ""));
+                        else inputs.push(String(parsed));
+                } catch {
+                        /* non-JSON add input (string form) */
+                }
+        }
+        return inputs;
 }
 
 function seedNotes(n: number, prefix = "note"): Array<{ id: string; content: string; created_at: number; run_id: string }> {
@@ -307,26 +338,49 @@ describe("applyDreamNoteLanes", () => {
 });
 
 // ---------------------------------------------------------------------------
-// runDream integration (the seam)
+// runDream wiring (the seam, post-swap)
 // ---------------------------------------------------------------------------
 
+/** Reset the dream's engine-scope state so each wiring test is self-contained. */
+function resetDreamState(): void {
+        store.run(`DELETE FROM notes`);
+        store.run(`DELETE FROM dreams`);
+        store.run(`DELETE FROM memory_versions WHERE tier = 'project'`);
+        rmSync(tierPath("project"), { force: true });
+}
+
 describe("runDream wiring", () => {
-        test("flags unset: one chat call, original note contents, no lane events", async () => {
+        test("flags unset: one chat call, original note contents reach the platform, no lane events", async () => {
                 process.env.PI_DREAM_GATE = "0";
+                resetDreamState();
 
                 const notes = seedNotes(3);
                 insertNotes(notes);
-                mockBridge([dreamReply("# v2\n- rule [note 1]")]);
-                const { result: res, events } = await withBusEvents("lane:dream", () => runDream());
+                mockBridge([noOpsReply()]);
+                const platform = makeFakePlatform();
+                const { result: res, events } = await withBusEvents("lane:dream", () => runDream({ platform }));
                 expect(res.status).toBe("done");
+                // ONE llm.ts chat call: the reconcile pass over the extracted memories
+                // (cost parity with the old single-call AutoDream dream).
                 expect(bodies.length).toBe(1);
-                const user = String(bodies[0]!.messages[1].content);
-                for (const n of notes) expect(user).toContain(n.content); // untouched
+                // The reconcile call saw the extracted memories (kind=terminal-note),
+                // not a hand-built prompt of raw notes.
+                const reconcileUser = String(bodies[0]!.messages[1].content);
+                expect(reconcileUser).toContain("kind=terminal-note");
+                expect(reconcileUser).toContain("verified the fixture count matches the spec");
+                // Every ORIGINAL note body reached the platform's extraction input
+                // verbatim — the engine no longer rewrites dream input at all.
+                const inputs = platformAddInputs(platform);
+                for (const n of notes) expect(inputs).toContain(n.content);
+                // The retired lane pipeline never fires from the dream path.
                 expect(events.length).toBe(0);
+                // Notes consumed — the dream completed honestly.
+                expect(undreamedNotes(24, "benchmark").length).toBe(0);
         });
 
-        test("live mode: dedup collapses the seeded near-dup in the prompt + lane:dream event fires", async () => {
+        test("live mode: dedup is the platform's job — the near-dup flows in verbatim and the reconcile verdict collapses it", async () => {
                 process.env.PI_DREAM_GATE = "0";
+                resetDreamState();
 
                 process.env.PI_LOCAL_ML = "live";
                 process.env.PI_NOTE_DEDUP = "union";
@@ -334,68 +388,88 @@ describe("runDream wiring", () => {
                 const base = "Status: PASSED. Parser fix verified the fixture count matches the spec. Tool notes: ran the bash test command.";
                 const near = base + "\nLatency note: 2.1s wall clock on this run.";
                 const other = "Router note: hook payloads are fenced by schema before dispatch reaches the runner.";
-                // undreamedNotes returns NEWEST-FIRST, and the lane keeps the
-                // first-in-array duplicate — so base must be the newest note
+                // undreamedNotes returns NEWEST-FIRST — base must be the newest note
                 const notes = [
                         { id: `a-${Math.random().toString(36).slice(2, 8)}`, content: base, created_at: Date.now() - 30_000, run_id: "r1" },
                         { id: `b-${Math.random().toString(36).slice(2, 8)}`, content: near, created_at: Date.now() - 60_000, run_id: "r2" },
                         { id: `c-${Math.random().toString(36).slice(2, 8)}`, content: other, created_at: Date.now() - 90_000, run_id: "r3" },
                 ];
                 insertNotes(notes);
-                mockBridge([dreamReply("# v2\n- rule [note 1]")]);
-                const { result: res, events } = await withBusEvents("lane:dream", () => runDream());
+                const platform = makeFakePlatform();
+                // The reconcile verdict is derived from the memory listing the engine
+                // actually sent: the base line was extracted from BOTH near-dup notes —
+                // the verdict DELETEs the duplicate (mem0's dedup judgment, applied
+                // through the platform's own primitives).
+                mockBridge([
+                        (body: any) => {
+                                const listing = String(body.messages[1].content);
+                                const idsForText = (text: string) =>
+                                        [...listing.matchAll(/^- id=(\S+).*?: (.+)$/gm)].filter((m) => m[2] === text).map((m) => m[1]!);
+                                const dupIds = idsForText(base);
+                                expect(dupIds.length).toBe(2); // the near-dup pair, both in the platform
+                                return { content: JSON.stringify({ ops: [{ op: "DELETE", id: dupIds[1]!, reason: "near-duplicate" }] }) };
+                        },
+                ]);
+                const { result: res, events } = await withBusEvents("lane:dream", () => runDream({ platform }));
                 expect(res.status).toBe("done");
                 expect(bodies.length).toBe(1);
-                const user = String(bodies[0]!.messages[1].content);
-                expect(user).toContain(base); // survivor
-                expect(user).toContain(other); // distinct note
-                expect(user).not.toContain("Latency note: 2.1s"); // the near-dup DROPPED
-                expect(events.length).toBe(1);
-                expect(events[0]!.mode).toBe("live");
-                expect(events[0]!.dedup.dropped).toBe(1);
-                // note count in the prompt reflects the processed list
-                expect(user).toContain("SESSION NOTES SINCE LAST DREAM (2)");
+                // BOTH near-dup notes flowed into the platform VERBATIM: pre-dream note
+                // dedup is the platform's job now, never the engine's prompt surgery.
+                const inputs = platformAddInputs(platform);
+                expect(inputs).toContain(base);
+                expect(inputs).toContain(near);
+                expect(inputs).toContain(other);
+                // The duplicate collapsed INSIDE the platform: one copy left, and the
+                // shipped tier renders it exactly once.
+                expect([...platform.store.values()].filter((m) => m.text === base).length).toBe(1);
+                expect(res.pruned).toBe(1); // the DELETE verdict, attributed to the dream
+                const tier = readTier("project");
+                expect(tier.split(base).length - 1).toBe(1);
+                // The retired lane pipeline never fires from the dream path.
+                expect(events.length).toBe(0);
         });
 
-        test("shadow mode: prompt byte-identical to unset, but the event reports the would-be dedup", async () => {
+        test("shadow mode: the platform input is byte-identical to flags-unset (the retired lanes cannot alter the dream)", async () => {
                 process.env.PI_DREAM_GATE = "0";
 
                 const base = "Status: PASSED. Parser fix verified the fixture count matches the spec. Tool notes: ran the bash test command.";
                 const near = base + "\nLatency note: 2.1s wall clock on this run.";
                 const other = "Router note: hook payloads are fenced by schema before dispatch reaches the runner.";
-                const mk = (content: string, i: number) => ({
+                const mk = (content: string, i: number, at: number) => ({
                         id: `s-${i}-${Math.random().toString(36).slice(2, 8)}`,
                         content,
-                        created_at: Date.now() - (3 - i) * 60_000,
+                        created_at: at,
                         run_id: `r${i}`,
                 });
-                const notes = [mk(base, 1), mk(near, 2), mk(other, 3)];
+                const at = Date.now() - 60_000;
 
-                // -- baseline pass (unset)
-                insertNotes(notes);
-                mockBridge([dreamReply("# v2\n- rule [note 1]")]);
-                await runDream();
-                const baselineUser = String(bodies[0]!.messages[1].content);
+                // -- baseline pass (flags unset)
+                resetDreamState();
+                const notes1 = [mk(base, 1, at - 30_000), mk(near, 2, at - 60_000), mk(other, 3, at - 90_000)];
+                insertNotes(notes1);
+                mockBridge([noOpsReply()]);
+                const platformA = makeFakePlatform();
+                const unset = await withBusEvents("lane:dream", () => runDream({ platform: platformA }));
+                expect(unset.result.status).toBe("done");
+                expect(unset.events.length).toBe(0);
 
-                // -- shadow pass (same-shaped new notes, same seed text)
-                const notes2 = [mk(base, 4), mk(near, 5), mk(other, 6)];
+                // -- shadow pass (same note contents, same created_at ordering)
+                resetDreamState();
+                const notes2 = [mk(base, 4, at - 30_000), mk(near, 5, at - 60_000), mk(other, 6, at - 90_000)];
                 insertNotes(notes2);
                 process.env.PI_LOCAL_ML = "shadow";
                 process.env.PI_NOTE_DEDUP = "union";
+                process.env.PI_DREAM_CURATE = "hybrid";
                 process.env.PI_LOCAL_ML_DIR = "/nonexistent-local-ml";
-                mockBridge([dreamReply("# v2\n- rule [note 1]")]);
-                const { result: res, events } = await withBusEvents("lane:dream", () => runDream());
+                mockBridge([noOpsReply()]);
+                const platformB = makeFakePlatform();
+                const shadow = await withBusEvents("lane:dream", () => runDream({ platform: platformB }));
+                expect(shadow.result.status).toBe("done");
 
-                expect(res.status).toBe("done");
-                const shadowUser = String(bodies[0]!.messages[1].content);
-                // every note (INCLUDING the near-dup) is in the prompt
-                for (const n of notes2) expect(shadowUser).toContain(n.content);
-                expect(events.length).toBe(1);
-                expect(events[0]!.mode).toBe("shadow");
-                expect(events[0]!.dedup).toBeDefined();
-                // prompt shape identical to the baseline (modulo note headers and the
-                // memory version the baseline pass itself bumped)
-                const norm = (u: string) => u.replace(/--- note \(.*?\) run=.*? ---/g, "N").replace(/version \d+/g, "version V");
-                expect(norm(shadowUser)).toBe(norm(baselineUser));
+                // The dream's input surface (what it hands the platform) is byte-identical:
+                // shadow mode computes nothing that can reach the pipeline anymore.
+                expect(platformAddInputs(platformB)).toEqual(platformAddInputs(platformA));
+                // And the lane pipeline stays silent either way.
+                expect(shadow.events.length).toBe(0);
         });
 });

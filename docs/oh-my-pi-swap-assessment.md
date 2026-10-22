@@ -481,6 +481,7 @@ errors.
 ## Related pages
 
 - [memory.md](memory.md) — the 4-tier stack and AutoDream this record compares against
+- [memory-platform-swap-assessment.md](memory-platform-swap-assessment.md) — the learning-core swap record (bespoke engine → Mem0, 2026-10-22): the swap that DID land, for the layer above the harness this record protects
 - [opencode-swap-assessment.md](opencode-swap-assessment.md) — the second harness candidate, measured against the §2 invariant; it clears both chokepoints and is blocked further out, at the artifact
 - [subagents.md](subagents.md) — the `task` tool whose `--mode json` grammar would retarget
 - [providers.md](providers.md) — `models.json` / `auth.json` / `settings.json` wiring the bridge, and its `models.yml` counterpart in the candidate

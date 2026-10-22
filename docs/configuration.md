@@ -43,18 +43,24 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `PI_MODEL_ID` | `kimi-k2.5` | Model id registered with pi's `models.json`. Any id works through the bridge — unknown ids are routed onto its default. |
 | `PI_PROVIDER` | `zai-bridge` | Provider name registered with pi. |
 | `PI_MINER_MODEL_ID` | unset | Pins the harness's failure-mining calls to a different model id (e.g. a `local-*` id on the bridge's local lane). Unset = `PI_MODEL_ID`. |
-| `PI_DREAM_MODEL_ID` | unset | Same override for AutoDream consolidation calls. |
+| `PI_DREAM_MODEL_ID` | unset | Same override for AutoDream consolidation calls — and, since the learning-core swap, the memory platform's extraction + reconcile model too ([memory-platform swap](memory-platform-swap-assessment.md)). |
 | `PI_SKILLS_MODEL_ID` | unset | Same override for skill-minting calls. |
 | `PI_MINT_MODEL_ID` | unset | Same override for task-minting calls. |
 | `PI_MINT_CASCADE` | unset | `1` enables the task-minting cascade (verified [E8/H10](../benchmarks/local-llm/results/REPORT.md#e8--local-draft--remote-repair-mint-cascade-h10)): a small local model authors the draft grammar-constrained, the existing validator gates it, and only an invalid draft costs one remote repair call on the regular mint model. A valid local draft never touches the remote API. Unset = remote authoring, unchanged. |
 | `PI_MINT_DRAFT_MODEL_ID` | `local-qwen3-0.6b` | The local-lane model that authors cascade drafts (only with `PI_MINT_CASCADE=1`). Any `local-*` id routes to the bridge's local lane; the default is the E8-verified triage-class model. |
-| `PI_LOCAL_ML` | unset | Master switch for the local-ML dream lanes (verified [H9–H15](../benchmarks/nonllm/results/REPORT.md)): `shadow` computes and reports the lanes without changing the dream prompt; `1`/`live` lets them alter it. Unset = everything off, prompts byte-identical. |
-| `PI_NOTE_DEDUP` | unset | `union` — near-duplicate dream-input notes collapse before the prompt: MinHash structural tier always, cosine tier when the optional `local-ml` embedding package is installed ([H11/N2](../benchmarks/nonllm/results/REPORT.md): 100% recall on structural dups at 0.18ms/doc). |
-| `PI_MEMORY_RANK` | unset | `activation` — dream-input notes ordered by the no-recency activation recipe (relevance × log-frequency × structural, recency as tiebreaker; [H13/N4](../benchmarks/nonllm/results/REPORT.md): recency decay measured ANTI-correlated with consolidation value). |
-| `PI_DREAM_CURATE` | unset | `hybrid` — top-30% activation-ranked notes pass through full, the tail is LexRank-compressed (first line + floor always kept, guard banners untouched; [H14/N5](../benchmarks/nonllm/results/REPORT.md): 19.9% prompt-token cut, judge prefers the curated output). |
-| `PI_LOCAL_ML_DIR` | `pi-repo/packages/self-learning/local-ml` | Where the engine looks for the optional ONNX embedding sub-package (guarded dynamic import; absent = symbolic-only lanes). |
+| `PI_LOCAL_ML` | unset | **Retired by the 2026-10-22 learning-core swap** ([memory-platform swap](memory-platform-swap-assessment.md)): the dream no longer routes notes through the local-ML lanes — mem0's extraction pipeline owns dedup/consolidation — so the shadow/live master switch no longer gates anything on a live path (`localml.ts` still parses it). The lanes' ONNX lane survives as the platform's embedder (`PI_MEM0_EMBEDDER`). |
+| `PI_NOTE_DEDUP` | unset | **Retired by the swap** — near-duplicate collapse now happens inside the memory platform (mem0's ADD→DEDUP→UPDATE extraction; the reconcile pass merges survivors). |
+| `PI_MEMORY_RANK` | unset | **Retired by the swap** — dream-input ordering is moot when the batch enters as one extraction call, not a serialized prompt. |
+| `PI_DREAM_CURATE` | unset | **Retired by the swap** — LexRank compression of the dream prompt has no prompt to compress; the render cap (`PI_MEM0_MAX_RENDERED`) governs output size instead. |
+| `PI_LOCAL_ML_DIR` | `pi-repo/packages/self-learning/local-ml` | Where the engine looks for the optional ONNX embedding sub-package (guarded dynamic import) — now the memory platform's semantic embedder (`PI_MEM0_EMBEDDER=auto|onnx`); absent = the deterministic lexical fallback. |
 | `PI_SELFLEARNING_DATA` | `data/self-learning` (repo-relative) | Runtime data dir for the engine: sandboxes, sessions, memory. |
 | `PI_SELFLEARNING_DB` | `db/selflearning.db` (repo-relative) | SQLite store for runs, dreams, memory versions, skills. |
+| `PI_MEM0_DIR` | `DATA_DIR/mem0` (`data/self-learning/mem0`) | Data dir for the memory platform's SQLite stores (`vector_store.db` + `history.db`) — the Mem0-backed learning core behind the project tier. Self-contained: deleting it re-imports the on-disk tier content at next boot. See [memory-platform swap](memory-platform-swap-assessment.md). |
+| `PI_MEM0_EMBEDDER` | `auto` | The platform's embedder: `onnx` = the local-ml lane (bge-small-en-v1.5, 384-dim; fails loudly if the lane is absent), `lexical` = the deterministic fallback (same text → same vector, keyword-class recall), `auto` = onnx when the lane imports, else lexical (with a `mem0:embedder-degraded` event + a named backend in the render footer, so degraded is never silent). |
+| `PI_MEM0_MAX_RENDERED` | `110` | Render bullet cap for the project-tier markdown — the old "under 120 lines" shape. Oldest bullets drop first; hard-won rules (kind `harness`/`seed`) are immune. |
+| `PI_MEM0_RECONCILE` | on | `0` disables the reconcile pass (contradiction resolution, semantic dedup, pruning) — the platform becomes mem0-additive-only. |
+| `MEM0_TELEMETRY` | `false` (engine-set) | mem0ai's own kill-switch, read at import time. mem0's boot otherwise awaits an **untimed telemetry POST** (always sent, not sampled) — a boot hang on restricted networks and an un-asked phone-home for a local-first engine. The engine defaults it to `false` before importing mem0ai; set `MEM0_TELEMETRY=true` explicitly to opt in to upstream telemetry. |
+| `MEM0_DIR` | `PI_MEM0_DIR/mem0-home` (engine-set) | mem0ai's own local state (the telemetry id). Defaulted under the engine's mem0 dir so nothing writes to `~/.mem0`; user-set values are never overridden. |
 
 ### LLM bridge (mini-services/llm-bridge)
 
@@ -277,6 +283,7 @@ Where everything lives — all of it deletable, none of it required to pre-exist
 
 unown repo (runtime state, gitignored)
   data/self-learning/            engine data: sandboxes, sessions, memory (PI_SELFLEARNING_DATA)
+  data/self-learning/mem0/       the memory platform's SQLite: vector_store.db + history.db (PI_MEM0_DIR)
   db/selflearning.db             engine SQLite: runs, cycles, dreams, versions, skills (PI_SELFLEARNING_DB)
   .run/                          pidfiles + logs for the two services (bridge.log, engine.log)
 ```
