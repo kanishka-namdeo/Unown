@@ -48,12 +48,47 @@ exists precisely so no project-bound rule ever reaches another project.
 
 ## Round 2 — 420 s cap (n=3 per arm, the induce-conditions cap)
 
-Records: `results/agnes-3.0-flash.round300s.jsonl` (round 1) and the live
-`results/agnes-3.0-flash.jsonl` (round 2); summaries in `results/summary.round300s.json`
-and `results/summary.json`.
+| Arm | per-session | notes |
+|---|---|---|
+| cold | 18, 40, 43 | a collapse in the CONTROL arm |
+| warm | 0, 8, 41 | warm:0 died at the stall watchdog (14k tokens) |
+| notes | 12, 0, 41 | |
+| hoist | 0, 0, 0 | hoist:1/2 died in 23–32 s at ~9.4k input tokens each (first-turn stalls — upstream outage, not memory) |
 
-(See the round-2 table in `results/summary.json` after the run; this file is
-updated at the end of the campaign.)
+Records: `results/agnes-3.0-flash.round300s.jsonl` (round 1) and
+`results/agnes-3.0-flash.jsonl` (round 2).
+
+## The two-round verdict
+
+1. **Upstream stall variance dominates wall-clock-capped agentic measurement
+   here.** Collapses (0–18/44) appeared in EVERY arm across both rounds —
+   including cold — and the collapsed sessions are identifiable by event
+   counts (23–57 vs 72–84 converged) and token starvation (identical ~9.4k
+   first-turn deaths late in round 2, when the upstream was in a degraded
+   period). Arm means at n=3 are noise under this confounder.
+2. **Among converged sessions, no arm separates.** Converged sessions sit in
+   the same 35–43 band in all four arms of both rounds. At this n, this
+   provider, and this task pair: carried memory — verbatim, raw notes, or
+   abstracted — does not measurably help a fresh complex task the model can
+   already converge on. This is now the THIRD independent "the loop only
+   earns its keep when the model struggles" result in this repo's history
+   (selfimprove v3's 0 pp at 6/6, testing-strategy §10 A, this suite).
+3. **Naive verbatim carry-forward is rejected as a production mechanism** —
+   on the specificity-interference evidence (warm-0's column-convention
+   transplant pattern) and on principle (it ships project-bound rules into
+   every future project). The user tier stays hand-edited by default; the
+   Hoist (`PI_USER_TIER_HOIST=1`) is the opt-in, abstracted, guarded
+   alternative — safe by construction (10 unit tests + zero-leakage live
+   receipt), benefit unproven at this n.
+4. **Methodological receipts for future rounds**: (a) score
+   cases-until-green with generous budgets instead of green-at-cap —
+   wall-clock caps convert upstream slow bands into fake task failures;
+   (b) n ≥ 5 with stall-aware collapse exclusion (excluded WITH receipts,
+   reported, never silently — the edit-bench wedge-signature precedent);
+   (c) sample dream variance too (each arm's carry material is one dream's
+   output); (d) a difficulty regime where the model fails cold MOST of the
+   time (a harder task pair or a weaker model) is required for any positive
+   transfer to be measurable at all.
 
 ## What this benchmark established (regardless of transfer sign)
 

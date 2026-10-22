@@ -1,0 +1,75 @@
+{
+  "model": "agnes-3.0-flash",
+  "label": "cross-task transfer: 3 cold induce sessions on task A (exprq) -> production dream -> 3 sessions per arm on task B (csvrow): cold vs warm (A's dreamed memory in the user tier) vs notes (A's raw notes as context)",
+  "generatedAt": "2026-10-22T00:40:53.375Z",
+  "induce": {
+    "n": 3,
+    "allGreenRate": 0.667,
+    "casePassRateMean": 0.994,
+    "inputTokensMean": 119959,
+    "outputTokensMean": 24191,
+    "durationSMean": 312,
+    "timeouts": 1
+  },
+  "arms": {
+    "cold": {
+      "n": 3,
+      "allGreenRate": 0,
+      "casePassRateMean": 0.939,
+      "inputTokensMean": 60255,
+      "outputTokensMean": 13242,
+      "durationSMean": 290,
+      "timeouts": 2
+    },
+    "warm": {
+      "n": 3,
+      "allGreenRate": 0,
+      "casePassRateMean": 0.591,
+      "inputTokensMean": 54861,
+      "outputTokensMean": 14767,
+      "durationSMean": 301,
+      "timeouts": 3
+    },
+    "notes": {
+      "n": 3,
+      "allGreenRate": 0,
+      "casePassRateMean": 0.606,
+      "inputTokensMean": 40045,
+      "outputTokensMean": 13618,
+      "durationSMean": 301,
+      "timeouts": 3
+    },
+    "hoist": {
+      "n": 3,
+      "allGreenRate": 0,
+      "casePassRateMean": 0.508,
+      "inputTokensMean": 44528,
+      "outputTokensMean": 11287,
+      "durationSMean": 301,
+      "timeouts": 3
+    }
+  },
+  "deltas": {
+    "warmVsCold": {
+      "casePassRate": -0.348,
+      "allGreenRate": 0,
+      "inputTokens": -5394
+    },
+    "warmVsNotes": {
+      "casePassRate": -0.015,
+      "allGreenRate": 0
+    },
+    "notesVsCold": {
+      "casePassRate": -0.333,
+      "allGreenRate": 0
+    },
+    "hoistVsCold": {
+      "casePassRate": -0.431,
+      "allGreenRate": 0
+    },
+    "hoistVsWarm": {
+      "casePassRate": -0.083,
+      "allGreenRate": 0
+    }
+  }
+}

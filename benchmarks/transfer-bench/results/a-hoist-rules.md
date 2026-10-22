@@ -1,0 +1,3 @@
+- Let the tokenizer emit single, generic token kinds and defer role disambiguation to the parser using context to avoid fragile boundary detection.
+- When a spec defines error reporting, derive exact error strings and exit codes directly from the spec rather than guessing them.
+- After automated tests pass, manually verify untested edge cases like negative inputs, out-of-bounds values, and empty inputs before declaring completion.
