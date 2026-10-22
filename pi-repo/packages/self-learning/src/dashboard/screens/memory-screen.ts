@@ -4,11 +4,17 @@
  * tiers, and a version-history drill-in with one-key rollback (a rollback
  * writes a new version, so history is never destroyed).
  *
+ * M11: a history row now opens a VERSION DIFF (`enter`) — that version against
+ * its predecessor, with a +N/−M tally. The engine already stores every
+ * version's full text, so "what did that dream change?" used to be answerable
+ * only by reading two whole dumps and comparing them by eye.
+ *
  * Follows the overview-screen pattern: SelectionWindow over the list,
  * list⇄detail modes, per-mode footer hints, and the loading/empty/error
  * states from widgets/bits.ts.
  */
 
+import { generateDiffString } from "@earendil-works/pi-coding-agent";
 import { matchesKey } from "@earendil-works/pi-tui";
 import type { Screen, ScreenDeps, SelectionWindow } from "../screen.ts";
 import { SelectionWindow as Window } from "../screen.ts";
@@ -47,11 +53,40 @@ interface MemItem {
 	content: string | null;
 }
 
+/**
+ * M11: one version's unified diff against its predecessor — the answer to "what
+ * did that dream actually change?", which the screen used to make the reader
+ * reconstruct by comparing two whole dumps by eye. Every tier write is already
+ * versioned with its full text (`memory_versions.content`, store.ts), so this is
+ * a render gap, not a data gap.
+ *
+ * Exported and pure because the pairing rule is the part that can be wrong: the
+ * engine returns history rows in whatever order, so "the previous version" is
+ * the greatest version number BELOW the target, not the neighbouring array slot —
+ * and the first version has no predecessor, which is reported as such rather
+ * than diffed against an empty string that would print the whole block as added.
+ */
+export function memoryVersionDiff(
+	entries: MemoryHistoryEntry[],
+	version: number,
+): { text: string; prevVersion: number | null } | null {
+	const target = entries.find((e) => e.version === version);
+	if (!target) return null;
+	let prev: MemoryHistoryEntry | null = null;
+	for (const e of entries) {
+		if (e.version < target.version && (!prev || e.version > prev.version)) prev = e;
+	}
+	return {
+		prevVersion: prev ? prev.version : null,
+		text: generateDiffString(prev ? prev.content : target.content, target.content).diff,
+	};
+}
+
 export function createMemoryScreen(deps: ScreenDeps): Screen {
 	const { store, theme, toast, requestRender, confirm } = deps;
 	let viewport = 24;
 	let mode: "list" | "detail" = "list";
-	let subMode: "content" | "history" = "content";
+	let subMode: "content" | "history" | "diff" = "content";
 	let detailItem: MemItem | null = null;
 	let detailHistory: MemoryHistoryEntry[] = [];
 	let detailLoading = false;
@@ -61,6 +96,9 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 	let topRow = 0;
 
 	const BUDGET_CHARS = 80_000;
+	/** Hard cap on the rendered diff body — a memory tier is bounded by the
+	 *  injection budget, but a whole-block diff would still flood the pane. */
+	const DIFF_LINE_CAP = 400;
 
 	function items(): MemItem[] {
 		const tiers = store.snapshot<MemoryResponse>("memory").data?.tiers ?? [];
@@ -221,10 +259,74 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 		return out;
 	}
 
+	/**
+	 * M11: the version-diff view. Entered with `enter` on a history row; the
+	 * block is scrollable with the same keys as the content view. Lines are
+	 * coloured by their diff prefix here rather than through pi's renderDiff so
+	 * the dashboard's own theme stays the single palette authority.
+	 */
+	function renderDiffBlock(width: number): string[] {
+		const entry = detailHistory[historyWin.selected];
+		const item = detailItem;
+		if (!entry || !item) return [heading(theme, "diff"), theme.fg("dim", "· no version selected — esc back")];
+		const diff = memoryVersionDiff(detailHistory, entry.version);
+		const by = badge(theme, entry.changed_by, changedByTone(entry.changed_by));
+		const lines: string[] = [
+			heading(theme, `diff · ${item.label} v${entry.version}${diff?.prevVersion != null ? ` vs v${diff.prevVersion}` : ""}`),
+			theme.fg("dim", `  ${by} · ${timeAgo(entry.created_at)} · ${formatTokens(entry.content.length)} chars`),
+			"",
+		];
+		if (!diff) {
+			lines.push(theme.fg("dim", "· this version is no longer in the history payload"));
+			lines.push(theme.fg("dim", "  esc back to the version list"));
+			return lines.map((l) => trunc(l, width));
+		}
+		if (diff.prevVersion === null) {
+			lines.push(theme.fg("muted", `· v${entry.version} is the first recorded version — there is no earlier state to diff against`));
+			lines.push(theme.fg("dim", `  ${formatTokens(entry.content.length)} chars written by ${entry.changed_by}`));
+			lines.push("");
+			for (const l of wrap(entry.content, Math.max(20, width - 2)).slice(0, DIFF_LINE_CAP)) lines.push(theme.fg("text", l));
+			return lines.map((l) => trunc(l, width));
+		}
+		const body = diff.text.split("\n");
+		let added = 0;
+		let removed = 0;
+		for (const l of body) {
+			if (l.startsWith("+") && !l.startsWith("+++")) added++;
+			else if (l.startsWith("-") && !l.startsWith("---")) removed++;
+		}
+		const tail = body.length > DIFF_LINE_CAP ? theme.fg("dim", ` · truncated at ${DIFF_LINE_CAP} lines`) : "";
+		lines.push(`${theme.fg("success", `+${added}`)}${theme.fg("dim", " / ")}${theme.fg("error", `−${removed}`)}${tail}`);
+		lines.push("");
+		for (const l of body.slice(0, DIFF_LINE_CAP)) {
+			// pi's generateDiffString prefixes every line with its line number
+			// ("+3 c"), so the marker is the FIRST character — read it before the
+			// number, or the colouring silently falls through to context for every
+			// added and removed line.
+			const marker = l.charAt(0);
+			if (marker === "@") lines.push(trunc(theme.fg("accent", l), width));
+			else if (marker === "+") lines.push(trunc(theme.fg("success", l), width));
+			else if (marker === "-") lines.push(trunc(theme.fg("error", l), width));
+			else lines.push(trunc(theme.fg("dim", l), width));
+		}
+		lines.push("");
+		lines.push(theme.fg("dim", "j/k scroll · esc back to the version list"));
+		return lines;
+	}
+
 	function renderDetail(width: number): string[] {
 		if (detailError) return errorState(theme, detailError, width);
 		const item = detailItem;
 		if (!item) return loadingState(theme, "memory");
+		// The diff view owns its own block; it scrolls with the same window rule
+		// as the content view, so detailScroll means one thing across both.
+		if (subMode === "diff") {
+			const diffLines = renderDiffBlock(width);
+			const view = Math.max(1, viewport);
+			detailLines = diffLines.length;
+			detailScroll = Math.max(0, Math.min(detailScroll, Math.max(0, diffLines.length - view)));
+			return diffLines.slice(detailScroll, detailScroll + view);
+		}
 		const lines: string[] = [];
 		lines.push(heading(theme, `memory · ${item.label}`));
 		lines.push(
@@ -292,8 +394,14 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 
 		footerHints(): [string, string][] {
 			if (mode === "detail") {
+				if (subMode === "diff")
+					return [
+						["j/k", "scroll"],
+						["esc", "version list"],
+					];
 				return subMode === "history"
 					? [
+							["enter", "diff"],
 							["b", "rollback"],
 							["tab", "content"],
 							["esc", "back"],
@@ -311,13 +419,49 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 
 		handleKey(data: string): boolean {
 			if (mode === "detail") {
+				// esc from the diff view returns to the version rows, not to the tier
+				// list — the reader is inside one tier's history.
+				if (subMode === "diff" && matchesKey(data, "escape")) {
+					subMode = "history";
+					return true;
+				}
 				if (matchesKey(data, "escape")) {
 					mode = "list";
 					return true;
 				}
 				if (matchesKey(data, "tab")) {
-					subMode = subMode === "content" ? "history" : "content";
+					// diff and content both collapse back to the version rows; from the
+					// rows, TAB opens the content view (the original two-way toggle).
+					subMode = subMode === "history" ? "content" : "history";
 					return true;
+				}
+				if (subMode === "diff") {
+					// Scrolling keys only — the selected version is fixed while reading.
+					if (matchesKey(data, "j") || matchesKey(data, "down")) {
+						detailScroll += 1;
+						return true;
+					}
+					if (matchesKey(data, "k") || matchesKey(data, "up")) {
+						detailScroll -= 1;
+						return true;
+					}
+					if (matchesKey(data, "g")) {
+						detailScroll = 0;
+						return true;
+					}
+					if (matchesKey(data, "shift+g")) {
+						detailScroll = Math.max(0, detailLines - Math.max(1, viewport));
+						return true;
+					}
+					if (matchesKey(data, "pageDown")) {
+						detailScroll += Math.max(1, viewport);
+						return true;
+					}
+					if (matchesKey(data, "pageUp")) {
+						detailScroll -= Math.max(1, viewport);
+						return true;
+					}
+					return false;
 				}
 				if (subMode === "history") {
 					if (matchesKey(data, "j") || matchesKey(data, "down")) return historyWin.move(1);
@@ -326,6 +470,13 @@ export function createMemoryScreen(deps: ScreenDeps): Screen {
 					if (matchesKey(data, "shift+g")) return historyWin.end();
 					if (matchesKey(data, "pageDown")) return historyWin.page(1);
 					if (matchesKey(data, "pageUp")) return historyWin.page(-1);
+					// M11: enter on a version row opens its diff against the predecessor.
+					if (matchesKey(data, "enter")) {
+						if (!detailHistory[historyWin.selected]) return false;
+						subMode = "diff";
+						detailScroll = 0;
+						return true;
+					}
 					if (matchesKey(data, "b")) {
 						const entry = detailHistory[historyWin.selected];
 						const item = detailItem;

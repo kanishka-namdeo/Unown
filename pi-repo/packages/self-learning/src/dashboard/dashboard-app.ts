@@ -54,7 +54,7 @@ export const SCREEN_SPECS: ScreenSpec[] = [
 	{ id: "dreams", title: "Dreams", group: "learning", resources: ["dreams", "overview"] },
 	{ id: "notes", title: "Notes", group: "learning", resources: ["notes", "overview"] },
 	{ id: "skills", title: "Skills", group: "learning", resources: ["skills"] },
-	{ id: "lab", title: "Learning Lab", group: "learning", resources: ["cycles", "improvements", "runs", "tasks"] },
+	{ id: "lab", title: "Learning Lab", group: "learning", resources: ["cycles", "improvements", "runs", "liveRuns", "tasks"] },
 	{ id: "hooks", title: "Hooks", group: "learning", resources: ["hooks"] },
 	{ id: "router", title: "Router", group: "learning", resources: ["jobs", "sandboxes"] },
 	{ id: "gateway", title: "Gateway", group: "operations", resources: ["bridge"] },

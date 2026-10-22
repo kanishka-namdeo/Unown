@@ -294,6 +294,14 @@ export class Router {
                 return this.withBusy(async () => {
                         this.activeJobId = jobId;
                         try {
+                        // M11: declared before anything in this block can throw, because the
+                        // inner finally below writes the outcome and a `const` first assigned
+                        // after the throw point would be read there in its TDZ.
+                        // A throw BEFORE the job starts (unknown id, busy mutex) propagates out
+                        // of execute() without an outcome write — that is a caller error, not a
+                        // job run, and recording it would poison the job's health row.
+                        const startedAt = Date.now();
+                        let failure: string | null = null;
                         const job = store.get<any>(`SELECT * FROM jobs WHERE id = ?`, [jobId]);
                         if (!job) throw new Error(`unknown job: ${jobId}`);
                         // F7/F5 GOVERNOR GATE: learning jobs consult the budget + breaker
@@ -311,7 +319,7 @@ export class Router {
                                 }
                         }
                         store.run(`UPDATE jobs SET status = 'running', last_run = ?, run_count = run_count + 1 WHERE id = ?`, [
-                                Date.now(),
+                                startedAt,
                                 jobId,
                         ]);
                         if (jobId === "dream-check") this.lastDreamCheckAt = Date.now();
@@ -339,6 +347,7 @@ export class Router {
                                 result = await Promise.race([work, watchdog]);
                         } catch (err: any) {
                                 const message = err?.message ?? String(err);
+                                failure = message;
                                 if (message.startsWith("watchdog:")) {
                                         emit("router:watchdog", { id: jobId, timeoutMs });
                                         this.recoverRunningRows(jobId);
@@ -357,7 +366,13 @@ export class Router {
                                 // else keeps the job's own scheduleMs.
                                 const intervalMs = nextRunInterval(result, def?.scheduleMs);
                                 const next = intervalMs ? Date.now() + intervalMs : null;
-                                store.run(`UPDATE jobs SET status = 'idle', next_run = ? WHERE id = ?`, [next, jobId]);
+                                // M11: the outcome lands with the reschedule, in the same write,
+                                // so a job can never be left marked running-but-healthy. Duration
+                                // is measured from THIS run's start (last_run), not from boot.
+                                store.run(
+                                        `UPDATE jobs SET status = 'idle', next_run = ?, last_ok = ?, last_error = ?, last_duration_ms = ? WHERE id = ?`,
+                                        [next, failure ? 0 : 1, failure, Math.max(0, Date.now() - startedAt), jobId],
+                                );
                                 emit("job:finished", { id: jobId, name: job.name, result });
                         }
                         return result;

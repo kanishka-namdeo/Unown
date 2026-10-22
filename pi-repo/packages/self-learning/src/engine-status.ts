@@ -12,9 +12,13 @@
  *
  *   footer (always, one line, changes only on STATE change — never churns):
  *     memory: up
+ *     memory: up · auto-dream 4m   (M11 activity suffix: the job holding the
+ *                                   router mutex + whole-minute elapsed — see
+ *                                   engineBusySuffix for the churn rule)
  *     memory: up · old build       (M8 version-skew suffixes: same version
  *     memory: up · stale (v2.1.0)   but different sha / older version /
- *                                   booted before the current build)
+ *                                   booted before the current build — these
+ *                                   WIN over the activity suffix)
  *     memory: starting…            (a spawn was kicked, not healthy yet)
  *     memory: down · N queued      (N = outbox backlog, hidden when 0)
  *     memory: paused · /engine     (crash-loop circuit gave up)
@@ -104,6 +108,35 @@ function probeTimeoutMs(): number {
         return Number.isFinite(n) && n >= 100 ? Math.floor(n) : 700;
 }
 
+/**
+ * M11: the activity suffix — which job holds the router mutex and for how long.
+ *
+ * The engine has answered `router.activeJob` + `router.busyMs` since M6 and
+ * `/engine` has printed them (termhooks.ts), but the ONE line that is always on
+ * screen threw both away: a session running next to an hour-long harness cycle
+ * read exactly like an idle engine, which is how "is it learning, or is it
+ * stuck" became a question with no visible answer.
+ *
+ * The elapsed is bucketed to WHOLE MINUTES on purpose. This module's footer
+ * contract is "changes only on a state change — never churns", and the probe
+ * cadence is 30s, so a seconds-granularity value would rewrite the line twice a
+ * minute for no information anyone acts on. A job under a minute old shows no
+ * elapsed at all: the fact that a job started is already the news.
+ *
+ * `activeJob` is the idle test ('' = idle, the router's own contract), NOT
+ * busyMs: a job that started 200 ms ago rounds its elapsed to 0, and hiding the
+ * first minute of every job would hide exactly the moment a user decides
+ * whether to wait. A missing/negative/NaN busyMs degrades to job-name-only.
+ */
+function engineBusySuffix(info: EngineStatusInfo): string {
+        if (!info.activeJob) return "";
+        const ms = info.busyMs ?? 0;
+        const mins = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 60_000) : 0;
+        if (mins <= 0) return ` · ${info.activeJob}`;
+        if (mins < 60) return ` · ${info.activeJob} ${mins}m`;
+        return ` · ${info.activeJob} ${Math.floor(mins / 60)}h${mins % 60}m`;
+}
+
 /** The footer line for a state (undefined = nothing worth a line — never
  * happens today, kept for parity with the mcp footer's "all fine, nothing
  * to say" escape).
@@ -111,7 +144,12 @@ function probeTimeoutMs(): number {
  * M8: the up state carries a build suffix when the engine is an older build
  * than the agent — the version-skew handshake made visible on the one line
  * that is always on screen. `ahead` (engine newer) gets NO suffix: the fix
- * is on the agent side (`unown update`) and the footer is the engine's lane. */
+ * is on the agent side (`unown update`) and the footer is the engine's lane.
+ *
+ * M11 precedence: the build suffix WINS over the activity suffix. A stale
+ * build is a standing condition the user must act on and the footer is its only
+ * notice; job activity is transient and is printed in full by `/engine`, the
+ * dashboard router screen and `unown engine status`. */
 export function engineFooterText(info: EngineStatusInfo): string {
         switch (info.state) {
                 case "up": {
@@ -119,7 +157,7 @@ export function engineFooterText(info: EngineStatusInfo): string {
                         if (v === "old-build") return "memory: up · old build";
                         if (v === "stale") return `memory: up · stale (v${info.engineVersion?.version ?? "?"})`;
                         if (v === "ancient") return `memory: up · very stale (v${info.engineVersion?.version ?? "?"})`;
-                        return "memory: up";
+                        return `memory: up${engineBusySuffix(info)}`;
                 }
                 case "starting":
                         return "memory: starting…";

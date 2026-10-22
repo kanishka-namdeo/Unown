@@ -156,7 +156,10 @@ CREATE TABLE IF NOT EXISTS jobs (
   next_run INTEGER,
   run_count INTEGER DEFAULT 0,
   status TEXT DEFAULT 'idle',       -- idle | running
-  description TEXT
+  description TEXT,
+  last_ok INTEGER,                  -- M11 outcome: 1 pass | 0 error | NULL never
+  last_error TEXT,                  -- M11: the error text of the failed run
+  last_duration_ms INTEGER          -- M11: how long the last completed run took
 );
 CREATE INDEX IF NOT EXISTS idx_runs_task ON runs(task_id);
 CREATE INDEX IF NOT EXISTS idx_runs_cycle ON runs(cycle_id);
@@ -204,6 +207,16 @@ export class Store {
                         // (M6-3, audit M4-c D2) — 'bwrap' | 'seatbelt' | 'process'; NULL =
                         // pre-M6 rows, when the level was not recorded.
                         ["runs", "sandbox_isolation", "ALTER TABLE runs ADD COLUMN sandbox_isolation TEXT"],
+                        // jobs: the per-job OUTCOME (M11). The table carried last_run /
+                        // next_run / run_count / status, which is a schedule, not a verdict:
+                        // a job erroring every cycle for three days rendered on screen
+                        // identically to one that simply has not come round yet, because
+                        // nothing recorded that it failed. NULL = no completed run since the
+                        // columns landed (every pre-M11 cycle, honestly unknown rather than
+                        // passed — the screen says "never" rather than inventing a pass).
+                        ["jobs", "last_ok", "ALTER TABLE jobs ADD COLUMN last_ok INTEGER"],
+                        ["jobs", "last_error", "ALTER TABLE jobs ADD COLUMN last_error TEXT"],
+                        ["jobs", "last_duration_ms", "ALTER TABLE jobs ADD COLUMN last_duration_ms INTEGER"],
                 ];
                 for (const [table, col, ddl] of columns) {
                         const existing = this.query<any>(`PRAGMA table_info(${table})`).some((c: any) => c.name === col);

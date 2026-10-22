@@ -19,6 +19,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	busyRefusalMessage,
 	engineStaleMarker,
+	describeJobHealth,
 	humanizeDbBytes,
 	parseRestartFlags,
 } from "../src/engine-cli.ts";
@@ -122,5 +123,41 @@ describe("humanizeDbBytes", () => {
 		expect(humanizeDbBytes(Number.NaN)).toBe("0 KB");
 		expect(humanizeDbBytes(-5)).toBe("0 KB");
 		expect(humanizeDbBytes(undefined as unknown as number)).toBe("0 KB");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// describeJobHealth — the M11 per-job verdict line. The jobs table only grew an
+// OUTCOME column in M11, so this is the point at which `engine status` can
+// honestly answer the "jobs" promise its own HELP has always made.
+// ---------------------------------------------------------------------------
+describe("describeJobHealth (M11)", () => {
+	const job = (id: string, last_ok: number | null, enabled = 1) => ({ id, last_ok, enabled });
+
+	test("an all-green loop prints nothing — a passing schedule is not news", () => {
+		expect(describeJobHealth([job("harness-cycle", 1), job("auto-dream", 1)])).toBeNull();
+	});
+
+	test("a failed last run is named by job id", () => {
+		expect(describeJobHealth([job("harness-cycle", 1), job("auto-dream", 0)])).toBe(
+			"  jobs: 2 scheduled · 1 FAILED (auto-dream)",
+		);
+	});
+
+	test("a never-run enabled job is reported as NEVER RAN, never laundered into fine", () => {
+		expect(describeJobHealth([job("task-mint", null)])).toBe("  jobs: 1 scheduled · 1 never ran (task-mint)");
+	});
+
+	test("a DISABLED job that has never run is not a finding", () => {
+		expect(describeJobHealth([job("task-mint", null, 0)])).toBeNull();
+	});
+
+	test("both findings appear in one line, failures first", () => {
+		const line = describeJobHealth([job("auto-dream", 0), job("db-retention", 0), job("task-mint", null)]);
+		expect(line).toBe("  jobs: 3 scheduled · 2 FAILED (auto-dream, db-retention) · 1 never ran (task-mint)");
+	});
+
+	test("an empty job list is its own finding — never seeded is not 'all green'", () => {
+		expect(describeJobHealth([])).toBe("  jobs: none scheduled (the router has not seeded)");
 	});
 });

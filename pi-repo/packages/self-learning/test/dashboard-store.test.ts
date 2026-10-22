@@ -27,6 +27,7 @@ const RESOURCES: ResourceId[] = [
 	"overview",
 	"tasks",
 	"runs",
+	"liveRuns",
 	"memory",
 	"memoryProjects",
 	"cycles",
@@ -66,7 +67,7 @@ describe("DashboardStore against the mock engine", () => {
 			await waitFor(
 				() => RESOURCES.every((id) => store.snapshot(id).data !== null),
 				5000,
-				"all 16 resources loaded",
+				`all ${RESOURCES.length} resources loaded`,
 			);
 			for (const id of RESOURCES) {
 				const snap = store.snapshot(id);
@@ -76,6 +77,31 @@ describe("DashboardStore against the mock engine", () => {
 				expect(snap.ageMs ?? Infinity, `${id} snapshot age is small`).toBeLessThan(5000);
 			}
 			expect(store.connection).toBe("up");
+		} finally {
+			store.stop();
+		}
+	});
+
+	// M11: the live-progress lane the Learning Lab reads for an in-flight run (the
+	// endpoint itself is the M6-2 registry).
+	// The engine's own DB row is written at finalize, so these counters are the
+	// ONLY moving numbers a running run has — pinned here at the store edge,
+	// which is where the screen gets them.
+	test("liveRun() serves in-flight progress and nothing for a finished run", async () => {
+		const store = new DashboardStore(new EngineClient(mock.url));
+		store.start();
+		try {
+			await waitFor(() => store.liveRuns().length > 0, 5000, "liveRuns populated");
+			const live = store.liveRun("run-e2e-14");
+			expect(live, "the in-flight run has a live entry").not.toBeNull();
+			expect(live!.toolCalls).toBe(7);
+			expect(live!.turns).toBe(4);
+			expect(live!.elapsedMs).toBe(3 * 60 * 1000);
+			expect(live!.lastTool?.tool).toBe("bash");
+			// A finalized run is NOT in the live registry — the DB row is authoritative.
+			expect(store.liveRun("run-e2e-10")).toBeNull();
+			// And the live id must not be reachable through the /api/runs/:id pattern.
+			expect(store.snapshot("liveRuns").error).toBeNull();
 		} finally {
 			store.stop();
 		}

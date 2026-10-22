@@ -14,7 +14,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { initTheme, theme } from "@earendil-works/pi-coding-agent";
 import { DashboardApp, SCREEN_SPECS } from "../src/dashboard/dashboard-app.ts";
 import { DashboardStore, EngineClient } from "../src/dashboard/dashboard-data.ts";
-import type { HooksResponse, OverviewResponse } from "../src/dashboard/dashboard-types.ts";
+import type { HooksResponse, MemoryHistoryEntry, MemoryResponse, OverviewResponse, RunsResponse } from "../src/dashboard/dashboard-types.ts";
+import { memoryVersionDiff } from "../src/dashboard/screens/memory-screen.ts";
 import { type MockEngine, startMockEngine } from "./dashboard-mock-engine.ts";
 
 initTheme("dark");
@@ -102,7 +103,7 @@ describe("DashboardApp headless render", () => {
 			skills: ["skills", "recover-failed-cycle"],
 			lab: ["learning lab", "cycles", "improvements", "runs"],
 			hooks: ["events", "filter", "f filter"],
-			router: ["router jobs", "auto-dream", "sandboxes"],
+			router: ["router jobs", "auto-dream", "sandboxes", "1 job(s) failed their last run", "✗ 47 runs"],
 			gateway: ["requests", "latency"],
 			automations: ["automations", "cron"],
 			webcache: ["entries"],
@@ -141,6 +142,28 @@ describe("DashboardApp headless render", () => {
 		app.handleInput("\x1b"); // escape → back to the list
 		const list = plain(app.render(120));
 		expect(list).toContain("benchmark tasks");
+	});
+
+	test("M11: an in-flight run renders its LIVE counters, not the finalize-time zeros", async () => {
+		// The mock's running run has an all-zero DB row (counters are written at
+		// finalize) and a live entry with 7 tool calls / 4 turns / 3m elapsed.
+		// If the Lab ever reads the row again, this pane goes back to showing a
+		// running run that appears to have done nothing — the exact defect M6-2
+		// produced the live endpoint for.
+		app.setScreen("lab");
+		await waitFor(() => store.snapshot<RunsResponse>("runs").data != null, 2000, "runs data");
+		await waitFor(() => store.snapshot("liveRuns").data != null, 2000, "liveRuns data");
+		app.handleInput("\t"); // cycles → improvements
+		app.handleInput("\t"); // → runs
+		app.handleInput("G"); // shift+G → last row (the running run is appended last)
+		app.handleInput("\r"); // drill into its detail
+		await Bun.sleep(200); // the run detail fetch is async (same rule as the drill-in test)
+		const pane = plain(app.render(120));
+		expect(pane, "the detail carries the live block").toContain("live");
+		expect(pane).toContain("7 tools");
+		expect(pane).toContain("4 turns");
+		// A run that has not finalized has no verify block yet.
+		expect(pane, "no fake verify verdict for a running run").toContain("verify pending");
 	});
 
 	test("hooks detail g/G jump to the ends (help-card truth)", async () => {
@@ -287,5 +310,73 @@ describe("DashboardApp headless render", () => {
 				for (const line of lines) expect(typeof line, `${id} at ${w} line type`).toBe("string");
 			}
 		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// M11 — the memory screen's VERSION DIFF. The engine stores every tier write
+// with its full text, but the screen showed the current block plus a list of
+// version rows, so "what did that dream change?" was a by-eye comparison of two
+// dumps. memoryVersionDiff is the pure pairing rule; the render test walks the
+// real keys into the diff view.
+// ---------------------------------------------------------------------------
+describe("memory version diff (M11)", () => {
+	const entry = (version: number, content: string): MemoryHistoryEntry => ({
+		id: version,
+		tier: "project",
+		version,
+		content,
+		changed_by: "autodream",
+		note: null,
+		created_at: Date.now() - version * 1000,
+	});
+
+	test("pairs by VERSION NUMBER, not by neighbouring slot (the API is newest-first)", () => {
+		// Deliberately scrambled: a slot-based predecessor would diff v7 against v3.
+		const entries = [entry(7, "a\nb\nc"), entry(3, "old"), entry(5, "a\nb"), entry(1, "first")];
+		const d = memoryVersionDiff(entries, 7);
+		expect(d!.prevVersion).toBe(5);
+		// pi's generateDiffString prefixes each hunk line with its line number, so
+		// the added line reads "+3 c" — marker first, then the number, then text.
+		expect(d!.text).toContain("+3 c");
+		expect(d!.text).not.toContain("old");
+		expect(memoryVersionDiff(entries, 5)!.prevVersion).toBe(3);
+	});
+
+	test("the lowest version has NO predecessor (never diffed against an empty string)", () => {
+		const entries = [entry(7, "x\ny"), entry(1, "first")];
+		expect(memoryVersionDiff(entries, 1)!.prevVersion).toBeNull();
+		// The v1 diff against itself is empty — the view renders the whole block
+		// instead, and says so. An empty-string predecessor would print every line
+		// as an addition, which is a lie about a consolidation that edited it.
+		expect(memoryVersionDiff(entries, 1)!.text).toBe("");
+	});
+
+	test("a missing version returns null rather than a diff against nothing", () => {
+		expect(memoryVersionDiff([entry(2, "b")], 9)).toBeNull();
+	});
+
+	test("enter on a version row walks into the diff pane", async () => {
+		app.setScreen("memory");
+		await waitFor(() => store.snapshot<MemoryResponse>("memory").data != null, 2000, "memory data");
+		app.handleInput("\r"); // open the first tier → detail (content sub-mode)
+		// The tier's history is an async drill-in fetch, and the "version history"
+		// heading prints while it is still loading — poll for an actual row (the
+		// mock serves v5/v4/v3 newest-first) before driving the keys.
+		let pane = plain(app.render(120));
+		for (let attempt = 0; attempt < 40 && !pane.includes("v5"); attempt++) {
+			await Bun.sleep(25);
+			pane = plain(app.render(120));
+		}
+		expect(pane, "the version rows arrived").toContain("v5");
+		app.handleInput("\t"); // content → version history rows
+		app.handleInput("\r"); // enter on the selected row → its diff
+		const diff = plain(app.render(120));
+		expect(diff, "the diff pane names the version and its predecessor").toContain("v5 vs v4");
+		expect(diff, "the changed text is on screen, both sides").toContain("policy memory v5");
+		expect(diff).toContain("policy memory v4");
+		expect(diff, "the +N/−M tally line renders").toContain("+2 / −2");
+		app.handleInput("\x1b"); // esc → back to the rows, not out to the tier list
+		expect(plain(app.render(120))).toContain("version history");
 	});
 });

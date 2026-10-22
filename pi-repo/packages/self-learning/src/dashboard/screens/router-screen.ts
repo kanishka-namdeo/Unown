@@ -3,6 +3,13 @@
  * alive (harness cycle, AutoDream, note sync, task minting, sandbox GC) plus
  * the sandbox workspaces they run in. One combined list: jobs are selectable
  * (space triggers, d toggles), workspace rows ride along as context.
+ *
+ * M11: each job row carries its OUTCOME, not just its schedule. `runsSeg` makes
+ * the tally glyph a verdict (✓ passed / ✗ errored / no glyph = never completed
+ * since the columns landed), `ran <age>` shows when the last run started, and
+ * any failed job is named again in a banner under the list with its duration and
+ * the recorded error. The engine columns behind them live in store.ts (jobs
+ * last_ok / last_error / last_duration_ms), written by router.execute().
  */
 
 import { matchesKey } from "@earendil-works/pi-tui";
@@ -32,10 +39,13 @@ export function createRouterScreen(deps: ScreenDeps): Screen {
 	const totalRows = (): number => jobs().length + sandboxes().length;
 
 	// Header (heading + stat + blank), sandboxes section furniture (blank +
-	// heading + stat), the bottom note + age stamp.
+	// heading + stat), the bottom note + age stamp. The M11 failure banner is
+	// extra non-selectable furniture, so the reserved row count moves with it —
+	// a fixed constant here would let the banner push selectable rows off-screen.
 	const FIXED_ROWS = 9;
+	const fixedRows = (): number => FIXED_ROWS + failureBannerHeight(jobs());
 
-	const win: SelectionWindow = new Window(totalRows, () => Math.max(1, viewport - FIXED_ROWS));
+	const win: SelectionWindow = new Window(totalRows, () => Math.max(1, viewport - fixedRows()));
 
 	function selectedJob(): Job | null {
 		const list = jobs();
@@ -59,6 +69,62 @@ export function createRouterScreen(deps: ScreenDeps): Screen {
 		return ms > 0 ? formatInterval(ms) : "due";
 	}
 
+	/**
+	 * M11: the runs count is a VERDICT glyph, not a tally decoration. The row
+	 * used to print `✓ N runs` for every job unconditionally, which claimed a
+	 * passing history for a job whose last run errored — and the engine had no
+	 * outcome column to contradict it. `✗` = the LAST run failed, `✓` = it
+	 * passed, no glyph = no run has completed since the outcome columns landed
+	 * (unknown, honestly, rather than silently read as a pass).
+	 */
+	function runsSeg(job: Job): string {
+		const count = `${job.run_count} runs`;
+		if (job.last_ok === 1) return theme.fg("dim", `✓ ${count}`);
+		if (job.last_ok === 0) return theme.fg("error", `✗ ${count}`);
+		return theme.fg("dim", count);
+	}
+
+	/** When the last run STARTED (last_run is the execute() timestamp). */
+	function lastRunSeg(job: Job): string {
+		if (job.last_run == null) return "";
+		return theme.fg("dim", `ran ${timeAgo(job.last_run)}`);
+	}
+
+	/** The jobs whose LAST run failed — one source of truth for both the banner's
+	 *  height (which reserves the selectable rows) and its lines, so the two can
+	 *  never disagree and push rows off-screen. */
+	function failedJobs(list: Job[]): Job[] {
+		return list.filter((j) => j.last_ok === 0);
+	}
+
+	/** Rows failureLines() will emit for the current list — literally its output
+	 *  length (its first element is the blank separator), so the reservation and
+	 *  the drawing cannot disagree. Width is irrelevant: failureLines truncates,
+	 *  it never wraps. */
+	function failureBannerHeight(list: Job[]): number {
+		return failureLines(list, 120).length;
+	}
+
+	/**
+	 * M11: the failure banner. A row-level `✗` is easy to scroll past, and the
+	 * whole defect being fixed is that a job failing on every cycle was
+	 * indistinguishable from an idle engine — so any errored job names itself,
+	 * how long ago, how long it took (19m58s = the watchdog; 0.2s = a crash)
+	 * and the error the engine recorded.
+	 */
+	function failureLines(list: Job[], width: number): string[] {
+		const failed = failedJobs(list);
+		if (failed.length === 0) return [];
+		const out: string[] = ["", theme.fg("error", `⚠ ${failed.length} job(s) failed their last run`)];
+		for (const j of failed.slice(0, 4)) {
+			const dur = j.last_duration_ms != null ? ` after ${formatInterval(j.last_duration_ms)}` : "";
+			const err = (j.last_error ?? "no error recorded").replace(/\s+/g, " ").slice(0, 90);
+			out.push(trunc(theme.fg("dim", `  ${j.id} · ${timeAgo(j.last_run)}${dur} · ${err}`), width));
+		}
+		if (failed.length > 4) out.push(theme.fg("dim", `  … ${failed.length - 4} more`));
+		return out;
+	}
+
 	function headerLines(): string[] {
 		const list = jobs();
 		const dream = dreamJob(list);
@@ -77,7 +143,8 @@ export function createRouterScreen(deps: ScreenDeps): Screen {
 			job.kind === "event"
 				? theme.fg("dim", `event ${job.event ?? "—"}`)
 				: theme.fg("dim", `interval ${job.schedule_ms != null ? formatInterval(job.schedule_ms) : "—"}`);
-		const runs = theme.fg("dim", `✓ ${job.run_count} runs`);
+		const runs = runsSeg(job);
+		const ran = lastRunSeg(job);
 		const next =
 			job.enabled > 0
 				? job.next_run != null
@@ -86,7 +153,7 @@ export function createRouterScreen(deps: ScreenDeps): Screen {
 				: "";
 		const state = job.enabled > 0 ? badge(theme, "enabled", "emerald") : theme.fg("dim", "disabled");
 		const running = job.status === "running" ? ` ${badge(theme, "⟳ running", "amber")}` : "";
-		const row = `${cursor}${id}${fieldGap()}${schedule}${fieldGap()}${runs}${next ? `${fieldGap()}${next}` : ""}${fieldGap()}${state}${running}`;
+		const row = `${cursor}${id}${fieldGap()}${schedule}${fieldGap()}${runs}${next ? `${fieldGap()}${next}` : ""}${fieldGap()}${state}${running}${ran ? `${fieldGap()}${ran}` : ""}`;
 		return trunc(row, width);
 	}
 
@@ -138,9 +205,9 @@ export function createRouterScreen(deps: ScreenDeps): Screen {
 			const jobList = jobs();
 			const sbList = sandboxes();
 			if (jobList.length === 0) {
-				lines.push(...emptyState(theme, "no router jobs", "the router boots with seven jobs"));
+				lines.push(...emptyState(theme, "no router jobs", "the router boots with eight jobs"));
 			}
-			const view = Math.max(1, viewport - FIXED_ROWS);
+			const view = Math.max(1, viewport - fixedRows());
 			win.resync();
 			const total = totalRows();
 			const end = Math.min(total, win.scroll + view);
@@ -159,6 +226,9 @@ export function createRouterScreen(deps: ScreenDeps): Screen {
 				}
 				lines.push(renderSandboxRow(sbList[sbIndex]!, width));
 			}
+			// M11: directly under the list it describes, and only when something
+			// actually failed — an all-green router prints nothing here.
+			lines.push(...failureLines(jobList, width));
 			if (sbList.length === 0 && end >= total) {
 				lines.push("");
 				lines.push(heading(theme, "sandboxes"));

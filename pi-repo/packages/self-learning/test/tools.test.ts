@@ -19,7 +19,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createUnownToolsExtension, isBunVirtualScriptPath, isSafeCommand, resolveUnownCliScript } from "../src/tools.ts";
+import { createUnownToolsExtension, isBunVirtualScriptPath, isSafeCommand, resolveUnownCliScript, taskProgressFrames } from "../src/tools.ts";
 
 // ---------------------------------------------------------------------------
 // isSafeCommand — plan-mode vocabulary
@@ -192,6 +192,7 @@ afterAll(() => {
 function makeToolsFakePi() {
     const handlers = new Map<string, Array<(event: any, ctx?: any) => any>>();
     const commands = new Map<string, { description: string; handler: (args: string, ctx: any) => Promise<void> }>();
+    const tools = new Map<string, any>();
     const pi: any = {
         on: (event: string, handler: (event: any, ctx?: any) => any) => {
             if (!handlers.has(event)) handlers.set(event, []);
@@ -199,7 +200,10 @@ function makeToolsFakePi() {
         },
         registerCommand: (name: string, def: any) => commands.set(name, def),
         registerFlag: () => {},
-        registerTool: () => {},
+        // M11: tools are captured, not swallowed — the task tool's LIVE render
+        // lane is asserted against its real renderResult below. pi's contract is
+        // registerTool(def) with the name INSIDE the definition.
+        registerTool: (def: any) => tools.set(def.name, def),
         registerShortcut: () => {},
         appendEntry: () => {},
         getFlag: () => undefined,
@@ -218,7 +222,7 @@ function makeToolsFakePi() {
     const runCommand = async (name: string, args: string, ctx: any) => {
         await commands.get(name)!.handler(args, ctx);
     };
-    return { pi, emit, runCommand, commands };
+    return { pi, emit, runCommand, commands, tools };
 }
 
 /** ctx whose ui records notify AND setStatus (the footer seam). */
@@ -532,3 +536,98 @@ describe("/providers registration (R2)", () => {
     });
 });
 
+
+// ---------------------------------------------------------------------------
+// M11 — the sync task tool's LIVE lane. execute() used to name pi's onUpdate
+// parameter `_onUpdate` and drop it, so a delegation that can run the full 300 s
+// printed one call line and then its verdict minutes later, while the child's own
+// turn/tool events were already streaming past in runSubagentOnce. These pin what
+// the row says in between — and that an unfinished child never reads as a pass.
+// ---------------------------------------------------------------------------
+describe("task tool live progress (M11)", () => {
+    const themeStub = { fg: (_tone: string, s: string) => s, bold: (s: string) => s };
+    const plain = (component: any): string => component.render(200).join("\n");
+
+    test("taskProgressFrames keeps ARG order: finished verbatim, in-flight mapped, queued at zero", () => {
+        const jobs = [
+            { agent: "explore", task: "a" },
+            { agent: "general", task: "b" },
+            { agent: "worker", task: "c" },
+        ];
+        const finished = new Map<number, any>([[0, { agent: "explore", task: "a", exitCode: 0, turns: 3, toolResults: 5 }]]);
+        const live = new Map<number, any>([
+            [1, { agent: "general", turns: 2, toolResults: 4, currentTool: "bash", tokensIn: 10, tokensOut: 2, elapsedMs: 12_300 }],
+        ]);
+        const frames = taskProgressFrames(jobs, finished, live);
+        expect(frames.map((f) => f.task)).toEqual(["a", "b", "c"]);
+        // A finished frame is passed through UNTOUCHED — its exitCode is a verdict.
+        expect(frames[0]).toBe(finished.get(0));
+        expect(frames[0]!.running).toBeUndefined();
+        expect(frames[1]).toEqual({
+            agent: "general",
+            task: "b",
+            exitCode: 0,
+            turns: 2,
+            toolResults: 4,
+            running: true,
+            currentTool: "bash",
+            elapsedMs: 12_300,
+        });
+        // Not started yet: still a live frame (the row must account for every job).
+        expect(frames[2]).toMatchObject({ running: true, turns: 0, toolResults: 0, currentTool: "" });
+    });
+
+    test("renderResult paints an in-flight child with ⟳ and never with ✓", () => {
+        const dir = mkdtempSync(join(tmpdir(), "unown-task-live-"));
+        try {
+            const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:1" });
+            const { pi, tools } = makeToolsFakePi();
+            ext.factory(pi);
+            const taskTool = tools.get("task");
+            expect(taskTool, "the task tool registers in a non-subagent process").toBeDefined();
+
+            const frames = taskProgressFrames(
+                [
+                    { agent: "explore", task: "a" },
+                    { agent: "general", task: "b" },
+                ],
+                new Map<number, any>([[0, { agent: "explore", task: "a", exitCode: 0, turns: 3, toolResults: 5 }]]),
+                new Map<number, any>([
+                    [1, { agent: "general", turns: 2, toolResults: 4, currentTool: "bash", tokensIn: 1, tokensOut: 1, elapsedMs: 12_300 }],
+                ]),
+            );
+            const out = plain(
+                taskTool.renderResult({ content: [{ type: "text", text: "" }], details: { runs: frames } }, { isPartial: true }, themeStub),
+            );
+            expect(out).toContain("explore: ✓ 3 turns, 5 tools");
+            expect(out).toContain("general: ⟳ 2 turns, 4 tools in bash · 12s");
+            // Exactly one pass mark: the in-flight frame's placeholder exitCode 0 must
+            // not be read as a verdict — that inversion is the bug class this lane died.
+            expect(out.match(/✓/g)?.length).toBe(1);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test("a failed child still renders ✗ once finished (the live lane cannot mask it)", () => {
+        const dir = mkdtempSync(join(tmpdir(), "unown-task-live2-"));
+        try {
+            const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:1" });
+            const { pi, tools } = makeToolsFakePi();
+            ext.factory(pi);
+            const out = plain(
+                tools.get("task")!.renderResult(
+                    {
+                        content: [{ type: "text", text: "" }],
+                        details: { runs: [{ agent: "worker", task: "a", exitCode: 1, turns: 4, toolResults: 2 }] },
+                    },
+                    { isPartial: false },
+                    themeStub,
+                ),
+            );
+            expect(out).toContain("worker: ✗ 4 turns, 2 tools");
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+});

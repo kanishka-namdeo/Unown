@@ -171,8 +171,48 @@ export interface RunDetail extends Run {
         verify_output: VerifyOutput | null;
 }
 
+/**
+ * M6-2 live progress, mirrored from `src/run-progress.ts` (the engine's in-memory
+ * registry of in-flight runs). The DB row's counters are written at FINALIZE, so
+ * a run that is still going reads as zero turns / zero tools / no duration — the
+ * Learning Lab used to show a running row with nothing moving and a detail view
+ * stuck on "verify pending". These are the same counters the SSE events carry and
+ * finalize persists, observed mid-flight; they DISAPPEAR when the run finishes
+ * (the DB row becomes authoritative).
+ *
+ * Served two ways by the engine: GET /api/runs/live (all in-flight runs) and the
+ * `live` field of GET /api/runs/:id.
+ */
+export interface LiveRun {
+        id: string;
+        taskId: string | null;
+        kind: string;
+        cycleId: string | null;
+        improvementId: string | null;
+        label: string | null;
+        startedAt: number;
+        /** Completed turns (turn_end) — the model is often mid-turn. */
+        turns: number;
+        tokensIn: number;
+        tokensOut: number;
+        toolCalls: number;
+        toolsUsed: string[];
+        lastTool: { tool: string; phase: "start" | "end"; isError?: boolean; at: number } | null;
+        lastTextPreview: string;
+        contextTokens: number;
+        updatedAt: number;
+        /** Derived by the engine: now - startedAt. */
+        elapsedMs: number;
+}
+
+export interface LiveRunsResponse {
+        runs: LiveRun[];
+}
+
 export interface RunDetailResponse {
         run: RunDetail;
+        /** Null once the run has finalized (or on an engine predating M6-2). */
+        live?: LiveRun | null;
 }
 
 export interface MemoryTierInfo {
@@ -364,6 +404,13 @@ export interface Job {
         run_count: number;
         status: "idle" | "running";
         description: string;
+        /** M11 outcome columns (router.ts writes them in the same UPDATE as the
+         *  reschedule). `last_ok`: 1 = the last run passed, 0 = it errored,
+         *  null = no run has completed since the columns landed — which is
+         *  UNKNOWN, not a pass, and the Router screen renders it as no glyph. */
+        last_ok: number | null;
+        last_error: string | null;
+        last_duration_ms: number | null;
 }
 
 export interface JobsResponse {

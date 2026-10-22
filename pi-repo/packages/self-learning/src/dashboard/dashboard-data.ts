@@ -30,6 +30,8 @@ import type {
         HooksResponse,
         ImprovementsResponse,
         JobsResponse,
+        LiveRun,
+        LiveRunsResponse,
         MemoryHistoryResponse,
         MemoryResponse,
         MintResponse,
@@ -133,6 +135,7 @@ export type ResourceId =
         | "overview"
         | "tasks"
         | "runs"
+        | "liveRuns"
         | "memory"
         | "memoryProjects"
         | "cycles"
@@ -154,6 +157,9 @@ const LOADERS: Record<ResourceId, (c: EngineClient) => Promise<unknown>> = {
         overview: (c) => c.get<OverviewResponse>("/api/overview"),
         tasks: (c) => c.get<TasksResponse>("/api/tasks"),
         runs: (c) => c.get<RunsResponse>("/api/runs?limit=100"),
+        // M6-2 live progress of in-flight runs (engine-side run-progress.ts).
+        // A tiny payload — one entry per RUNNING run, empty when the engine is idle.
+        liveRuns: (c) => c.get<LiveRunsResponse>("/api/runs/live"),
         memory: (c) => c.get<MemoryResponse>("/api/memory"),
         memoryProjects: (c) => c.get<ProjectMemoryResponse>("/api/memory/projects"),
         cycles: (c) => c.get<CyclesResponse>("/api/cycles"),
@@ -171,8 +177,8 @@ const LOADERS: Record<ResourceId, (c: EngineClient) => Promise<unknown>> = {
 
 /** SSE event → resources that must refetch (ported 1:1 from the web dashboard). */
 const INVALIDATIONS: Record<string, ResourceId[]> = {
-        "run:started": ["runs", "overview", "tasks", "cycles", "sandboxes"],
-        "run:finished": ["runs", "overview", "tasks", "cycles", "sandboxes", "bridge"],
+        "run:started": ["runs", "liveRuns", "overview", "tasks", "cycles", "sandboxes"],
+        "run:finished": ["runs", "liveRuns", "overview", "tasks", "cycles", "sandboxes", "bridge"],
         "cycle:started": ["cycles", "overview"],
         "cycle:finished": ["cycles", "overview"],
         "improvement:proposed": ["improvements", "cycles", "overview"],
@@ -447,6 +453,23 @@ export class DashboardStore {
 
         activityRing(): readonly ActivityItem[] {
                 return this.activity;
+        }
+
+        /**
+         * M6-2: live progress of one in-flight run, read from the polled liveRuns
+         * snapshot — no extra request, because the Learning Lab's fast lane already
+         * refreshes that resource while the screen is visible. Returns null for a
+         * finalized run: the engine drops its live entry at finalize, and the DB row
+         * (with the persisted counters and the full transcript) becomes authoritative.
+         */
+        liveRun(id: string): LiveRun | null {
+                const runs = this.snapshot<LiveRunsResponse>("liveRuns").data?.runs ?? [];
+                return runs.find((r) => r.id === id) ?? null;
+        }
+
+        /** All in-flight runs (empty when the engine is idle or predates M6-2). */
+        liveRuns(): LiveRun[] {
+                return this.snapshot<LiveRunsResponse>("liveRuns").data?.runs ?? [];
         }
 
         // ---- detail fetches (drill-in; cached with the resource id) ----

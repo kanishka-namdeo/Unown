@@ -125,13 +125,20 @@ export function createLabScreen(deps: ScreenDeps): Screen {
         function renderRunRow(run: Run, selected: boolean, width: number): string {
                 const cursor = selected ? theme.fg("accent", "▸ ") : "  ";
                 const task = theme.fg(selected ? "text" : "muted", run.task_id);
-                const tokens = formatTokens(run.tokens_in + run.tokens_out);
-                const duration = formatDuration(run.ended_at != null ? run.ended_at - run.started_at : null);
+                // M11 consumer of the engine's M6-2 live registry: a RUNNING run's
+                // The DB row is written at finalize, so mid-run it reads `0 tools ·
+                // 0 tok · —` — which is what this row used to show while the agent was
+                // on its ninth turn, i.e. a live run indistinguishable from a stalled one.
+                const live = run.status === "running" ? store.liveRun(run.id) : null;
+                const toolCalls = live ? live.toolCalls : run.tool_calls;
+                const tokens = formatTokens(live ? live.tokensIn + live.tokensOut : run.tokens_in + run.tokens_out);
+                const duration = formatDuration(live ? live.elapsedMs : run.ended_at != null ? run.ended_at - run.started_at : null);
+                const liveTail = live ? ` · ${theme.fg("dim", `${live.turns} turns · ${live.lastTool?.tool ?? "thinking"}`)}` : "";
                 const row =
                         `${cursor}${runStatus(run.status)} · ${theme.fg("muted", run.kind)} · ${task}` +
-                        ` · ${theme.fg("dim", `${run.tool_calls} tools`)}` +
+                        ` · ${theme.fg("dim", `${toolCalls} tools`)}` +
                         ` · ${theme.fg("dim", `${tokens} tok`)}` +
-                        ` · ${theme.fg("dim", duration)}` +
+                        ` · ${theme.fg("dim", duration)}${liveTail}` +
                         ` · ${theme.fg("dim", timeAgo(run.started_at))}`;
                 return trunc(row, width);
         }
@@ -255,9 +262,37 @@ export function createLabScreen(deps: ScreenDeps): Screen {
                 lines.push(`${theme.fg("muted", "status ")}${runStatus(t.status)}`);
                 lines.push(field("kind", t.kind));
                 lines.push(field("task", t.task_id));
-                lines.push(field("tokens", `↑${formatTokens(t.tokens_in)} ↓${formatTokens(t.tokens_out)}`));
-                lines.push(field("tools", `${t.tool_calls}`));
-                lines.push(field("turns", `${t.turns}`));
+                // M6-2: while the run is in flight the live registry IS the counters —
+                // the persisted row reads zeros until finalize, so printing them here
+                // would tell the user an active run has done nothing. Re-read every
+                // render: the Learning Lab polls liveRuns on the 4s fast lane, so this
+                // block moves without re-opening the run.
+                const live = t.status === "running" ? store.liveRun(t.id) : null;
+                if (live) {
+                        lines.push(
+                                `${theme.fg("warning", "⟳ live ")}${theme.fg(
+                                        "text",
+                                        `${formatDuration(live.elapsedMs)} · ${live.turns} turns · ${live.toolCalls} tools · ${formatTokens(
+                                                live.tokensIn + live.tokensOut,
+                                        )} tok`,
+                                )}`,
+                        );
+                        if (live.lastTool) {
+                                const phase = live.lastTool.phase === "start" ? "running" : live.lastTool.isError ? "errored" : "done";
+                                lines.push(theme.fg("dim", `  tool ${live.lastTool.tool} ${phase} · ${live.toolsUsed.length} distinct`));
+                        } else {
+                                lines.push(theme.fg("dim", "  model is composing its first tool call"));
+                        }
+                        if (live.contextTokens > 0) lines.push(field("context", `${formatTokens(live.contextTokens)} tok in window`));
+                        for (const l of wrap(live.lastTextPreview, Math.max(20, width - 4)).slice(0, 3)) {
+                                lines.push(theme.fg("dim", `  ${l}`));
+                        }
+                } else {
+                        if (t.status === "running") lines.push(theme.fg("dim", "no live entry — the engine reports this run not in flight"));
+                        lines.push(field("tokens", `↑${formatTokens(t.tokens_in)} ↓${formatTokens(t.tokens_out)}`));
+                        lines.push(field("tools", `${t.tool_calls}`));
+                        lines.push(field("turns", `${t.turns}`));
+                }
                 // Wave 5 (M4-c D2): the OS jail this run actually ran under —
                 // 'process' means the weaker TS path jail (no OS sandbox), which
                 // deserves the warning tone; NULL (pre-wave rows) renders nothing.

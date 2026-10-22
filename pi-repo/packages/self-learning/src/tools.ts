@@ -359,7 +359,33 @@ export interface StructuredRunOptions {
          *  text with a visible warning; "strict": it is reported as an
          *  error. Mirrors oh-my-pi's schemaMode semantics. */
         schemaMode?: "permissive" | "strict";
+        /** Live progress of the in-flight child (see SubagentProgress). */
+        onProgress?: SubagentProgressFn;
 }
+
+/**
+ * What one in-flight subagent child has done SO FAR, pushed up from the JSONL
+ * stream the parent already parses (runSubagentOnce's processLine).
+ *
+ * Before this existed the sync `task` tool ignored the `onUpdate` channel pi
+ * hands it, so a delegation that can run for the full 300 s ceiling printed one
+ * call line and then, minutes later, its verdict — the same silence the async
+ * fleet lane had already solved with a live widget. The child's own turn/tool
+ * counts were being read for the FINAL result; this is the same data, observed
+ * mid-run.
+ */
+export interface SubagentProgress {
+        agent: string;
+        turns: number;
+        toolResults: number;
+        /** The tool the child is inside right now ('' = between tools / thinking). */
+        currentTool: string;
+        tokensIn: number;
+        tokensOut: number;
+        elapsedMs: number;
+}
+
+export type SubagentProgressFn = (progress: SubagentProgress) => void;
 
 /** Schema-validation retries before the permissive/strict verdict — the
  *  oh-my-pi shape is "up to 3 reminder prompts"; ours is one original run +
@@ -554,6 +580,7 @@ async function runSubagentOnce(
         cwd: string,
         signal: AbortSignal | undefined,
         modelOverride?: string,
+        onProgress?: SubagentProgressFn,
 ): Promise<SubagentRunResult> {
         const result: SubagentRunResult = {
                 agent: agent.name,
@@ -563,6 +590,28 @@ async function runSubagentOnce(
                 stderr: "",
                 toolResults: 0,
                 usage: { input: 0, output: 0, turns: 0 },
+        };
+        // Live progress: the counters below are the SAME ones the final result
+        // carries, published as they move. A missing/unparsable event never
+        // produces a progress frame, and a progress frame never throws into the
+        // spawn path (the child stream is not the place to fail a run).
+        const startedAt = Date.now();
+        let currentTool = "";
+        const publishProgress = () => {
+                if (!onProgress) return;
+                try {
+                        onProgress({
+                                agent: agent.name,
+                                turns: result.usage.turns,
+                                toolResults: result.toolResults,
+                                currentTool,
+                                tokensIn: result.usage.input,
+                                tokensOut: result.usage.output,
+                                elapsedMs: Date.now() - startedAt,
+                        });
+                } catch {
+                        /* never let telemetry break a delegation */
+                }
         };
         // M1.3 standalone emitters (docs/BEHAVIOR.md): the task tool fires
         // SubagentStart when a sub-run starts. Terminal sessions dispatch it to
@@ -644,9 +693,15 @@ async function runSubagentOnce(
                                                 }
                                                 const text = assistantText(msg);
                                                 if (text.trim()) lastText = text;
+                                                publishProgress();
                                         }
+                                } else if (event?.type === "tool_execution_start") {
+                                        currentTool = typeof event?.toolName === "string" ? event.toolName : "tool";
+                                        publishProgress();
                                 } else if (event?.type === "tool_result_end") {
                                         result.toolResults++;
+                                        currentTool = "";
+                                        publishProgress();
                                 }
                         };
 
@@ -731,10 +786,10 @@ async function runSubagentWithRetries(
         opts: StructuredRunOptions,
         modelOverride: string | undefined,
 ): Promise<SubagentRunResult> {
-        if (!opts.outputSchema) return runSubagentOnce(agent, task, cwd, signal, modelOverride);
+        if (!opts.outputSchema) return runSubagentOnce(agent, task, cwd, signal, modelOverride, opts.onProgress);
         const schema = opts.outputSchema;
         let attempts = 0;
-        let result = await runSubagentOnce(agent, task, cwd, signal, modelOverride);
+        let result = await runSubagentOnce(agent, task, cwd, signal, modelOverride, opts.onProgress);
         // usage/toolResults accumulate ACROSS retries (the caller bills and
         // reports the whole structured-output contract, not the last try).
         let usage = { ...result.usage };
@@ -772,9 +827,26 @@ async function runSubagentWithRetries(
                         result.toolResults = toolResults;
                         return result;
                 }
-                // Corrective re-run with the defects quoted back.
+                // Corrective re-run with the defects quoted back. The child restarts
+                // its own counters, so its live frames are offset by what the earlier
+                // attempts already spent — the row must never tick backwards.
                 currentTask = buildSchemaRetryTask(currentTask, schema, problems.join("; "));
-                const retry = await runSubagentOnce(agent, currentTask, cwd, signal, modelOverride);
+                const offsetTurns = usage.turns;
+                const offsetIn = usage.input;
+                const offsetOut = usage.output;
+                const offsetTools = toolResults;
+                const offsetProgress: SubagentProgressFn | undefined =
+                        opts.onProgress &&
+                        ((p) => {
+                                opts.onProgress!({
+                                        ...p,
+                                        turns: p.turns + offsetTurns,
+                                        toolResults: p.toolResults + offsetTools,
+                                        tokensIn: p.tokensIn + offsetIn,
+                                        tokensOut: p.tokensOut + offsetOut,
+                                });
+                        });
+                const retry = await runSubagentOnce(agent, currentTask, cwd, signal, modelOverride, offsetProgress);
                 usage = {
                         input: usage.input + retry.usage.input,
                         output: usage.output + retry.usage.output,
@@ -1105,7 +1177,48 @@ interface TaskRunDetails {
                 /** fallback-model lane: models actually attempted, in order
                  *  (present when a provider-style failure rotated the model). */
                 modelsAttempted?: string[];
+                /** M11 live lane: the run is still in flight, so exitCode means
+                 *  nothing and the counts below are what the child has done SO FAR.
+                 *  Only ever present on an onUpdate partial — the final result
+                 *  carries finished runs only. */
+                running?: boolean;
+                currentTool?: string;
+                elapsedMs?: number;
         }>;
+}
+
+/**
+ * M11: one LIVE frame per job, in argument order — finished runs verbatim, an
+ * in-flight job carries the child's counters so far, and a not-yet-started job
+ * reads as queued (`running`, zero counts). Extracted from the tool's execute()
+ * because the alternative is a progress lane no test can reach: the assembly is
+ * pure, only the child spawn is not.
+ *
+ * `exitCode: 0` on an unfinished frame is a PLACEHOLDER, not a verdict — that is
+ * exactly why renderResult branches on `running` before it reads exitCode.
+ */
+export function taskProgressFrames(
+        jobs: Array<{ agent: string; task: string }>,
+        finished: Map<number, TaskRunDetails["runs"][number]>,
+        live: Map<number, SubagentProgress>,
+): TaskRunDetails["runs"] {
+        return jobs.map((job, index) => {
+                const done = finished.get(index);
+                if (done) return done;
+                const p = live.get(index);
+                if (p)
+                        return {
+                                agent: p.agent,
+                                task: job.task,
+                                exitCode: 0,
+                                turns: p.turns,
+                                toolResults: p.toolResults,
+                                running: true,
+                                currentTool: p.currentTool,
+                                elapsedMs: p.elapsedMs,
+                        };
+                return { agent: job.agent, task: job.task, exitCode: 0, turns: 0, toolResults: 0, running: true, currentTool: "" };
+        });
 }
 
 const NoteParams = Type.Object({
@@ -1405,7 +1518,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                 description:
                                         "Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default), 'explore' / 'scout' (read-only; scout returns a compressed handoff), 'worker' (implementation, completion-guarded), 'reviewer' (P0/P1/P2 + verdict), 'planner' (writes plan.md, never executes), 'background-explore' (cheap sweep) plus any defined in .unown/agents/*.md (also listed in the advertised-subagents block of your system prompt). Pass {tasks: [...]} to run up to 4 in parallel. Set async: true to spawn in the BACKGROUND fire-and-forget (immediate ack; the result arrives as a new message — steer/stop/inspect via the task_control tool; the child can ask you questions). Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back; sync lane only). Prefer this whenever a focused investigation would pollute this session's context.",
                                 parameters: TaskParams,
-                                async execute(_toolCallId, params, signal, _onUpdate, executeCtx) {
+                                async execute(_toolCallId, params, signal, onUpdate, executeCtx) {
                                         const agents = discoverSubagents(opts.cwd);
                                         // Job = normalized spawn request (single form + batch form).
                                         const jobs = params.tasks
@@ -1562,6 +1675,34 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         }
                                         const sections: string[] = new Array(jobs.length).fill("");
                                         const runs: TaskRunDetails["runs"] = [];
+                                        // ---- M11 LIVE LANE (sync task tool). pi hands execute() an
+                                        // onUpdate channel; this tool used to name it `_onUpdate` and
+                                        // drop it, so a delegation that can run the full 300 s printed
+                                        // one call line and then its verdict minutes later — while the
+                                        // child's own turn/tool events were already streaming past in
+                                        // runSubagentOnce. Every child event now re-renders the row with
+                                        // one frame per job (finished / in-flight / queued), which is how
+                                        // the async fleet lane has shown its children all along.
+                                        // Indexed by JOB POSITION, not by name: a batch may legitimately
+                                        // repeat an agent, and a name-keyed map would merge two children
+                                        // into one row (and lose the other's counters).
+                                        const live = new Map<number, SubagentProgress>();
+                                        const finished = new Map<number, TaskRunDetails["runs"][number]>();
+                                        const pushProgress = () => {
+                                                if (!onUpdate) return;
+                                                const frames = taskProgressFrames(jobs, finished, live);
+                                                const inFlight = frames.filter((f) => f.running).length;
+                                                onUpdate({
+                                                        content: [{ type: "text", text: `${inFlight} subagent(s) in flight` }],
+                                                        details: { runs: frames },
+                                                });
+                                        };
+                                        const markFinished = (index: number, run: TaskRunDetails["runs"][number]) => {
+                                                runs.push(run);
+                                                finished.set(index, run);
+                                                live.delete(index);
+                                                pushProgress();
+                                        };
                                         const maxConcurrency = 4;
                                         const queue = jobs.map((job, index) => ({ job, index }));
                                         const workers = Array.from({ length: Math.min(maxConcurrency, queue.length) }, async () => {
@@ -1574,7 +1715,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                 const available = agents.map((a) => `"${a.name}"`).join(", ");
                                                                 sections[index] =
                                                                         `## ${job.agent}: FAILED\nUnknown agent "${job.agent}". Available: ${available}.`;
-                                                                runs.push({ agent: job.agent, task: job.task, exitCode: 1, turns: 0, toolResults: 0 });
+                                                                markFinished(index, { agent: job.agent, task: job.task, exitCode: 1, turns: 0, toolResults: 0 });
                                                                 continue;
                                                         }
                                                         // ---- worktree isolation (muse fan-out port): opt-in,
@@ -1591,7 +1732,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                                         log(`subagent ${agent.name} isolated in worktree ${tree.path}`);
                                                                 } else {
                                                                         treeFailure = `worktree isolation REJECTED (${created.reason}): ${created.detail} — the subagent was NOT run in the shared tree; retry without worktree_isolation or fix the cause.`;
-                                                                        runs.push({
+                                                                        markFinished(index, {
                                                                                 agent: agent.name,
                                                                                 task: job.task,
                                                                                 exitCode: 1,
@@ -1615,6 +1756,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         const result = await runSubagent(agent, await maybeBrief(agent, job.task), runCwd, signal, {
                                                                 outputSchema: job.outputSchema,
                                                                 schemaMode: job.schemaMode,
+                                                                onProgress: (p) => {
+                                                                        live.set(index, p);
+                                                                        pushProgress();
+                                                                },
                                                         });
                                                         const run: TaskRunDetails["runs"][number] = {
                                                                 agent: agent.name,
@@ -1665,7 +1810,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         if (result.structured) {
                                                                 run.structured = { ok: result.structured.ok, error: result.structured.error };
                                                         }
-                                                        runs.push(run);
+                                                        markFinished(index, run);
                                                         const modelsNote = run.modelsAttempted ? ` · models ${run.modelsAttempted.join(" → ")}` : "";
                                                         const header =
                                                                 `## ${agent.name} (${blocked.blocked ? "BLOCKED" : run.guard?.status === "failed" ? "GUARD FAILED" : result.exitCode === 0 ? "ok" : `exit ${result.exitCode}`}; ` +
@@ -1738,6 +1883,18 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                         if (!details) return new Text(theme.fg("dim", "subagent finished"), 0, 0);
                                         const summary = details.runs
                                                 .map((r) => {
+                                                        // M11: an in-flight frame has no verdict yet — its
+                                                        // exitCode is a placeholder (0), which the finished-run
+                                                        // logic below would read as a pass. So it is rendered
+                                                        // first, from the live counters, and never falls through.
+                                                        if (r.running) {
+                                                                const doing = r.currentTool ? ` in ${r.currentTool}` : "";
+                                                                const elapsed = r.elapsedMs != null ? ` · ${Math.round(r.elapsedMs / 1000)}s` : "";
+                                                                return `${laneName(theme, r.agent)}: ${theme.fg(
+                                                                        "warning",
+                                                                        `⟳ ${r.turns} turns, ${r.toolResults} tools${doing}${elapsed}`,
+                                                                )}`;
+                                                        }
                                                         const mark = r.blocked
                                                                 ? "⊘"
                                                                 : r.guard?.status === "failed"

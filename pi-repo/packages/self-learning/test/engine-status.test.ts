@@ -153,6 +153,72 @@ describe("engineFooterText", () => {
 });
 
 // ---------------------------------------------------------------------------
+// engineFooterText — the M11 activity suffix (UI copy, pinned exactly)
+// ---------------------------------------------------------------------------
+
+describe("engineFooterText — the router-activity suffix", () => {
+        test("an idle engine (no active job) is byte-identical to the M6 copy", () => {
+                expect(engineFooterText(makeInfo("up"))).toBe("memory: up");
+                expect(engineFooterText(makeInfo("up", { activeJob: "", busyMs: 0 }))).toBe("memory: up");
+        });
+
+        test("a running job names itself even before a minute elapses (activeJob, not busyMs, is the idle test)", () => {
+                expect(engineFooterText(makeInfo("up", { activeJob: "auto-dream" }))).toBe("memory: up · auto-dream");
+                expect(engineFooterText(makeInfo("up", { activeJob: "auto-dream", busyMs: 200 }))).toBe("memory: up · auto-dream");
+        });
+
+        test("under a minute of elapsed shows no number — the job starting IS the news", () => {
+                expect(engineFooterText(makeInfo("up", { activeJob: "note-sync", busyMs: 59_999 }))).toBe(
+                        "memory: up · note-sync",
+                );
+        });
+
+        test("elapsed buckets to whole minutes, so a 30s probe cadence cannot churn the line", () => {
+                expect(engineFooterText(makeInfo("up", { activeJob: "harness-cycle", busyMs: 60_000 }))).toBe(
+                        "memory: up · harness-cycle 1m",
+                );
+                expect(engineFooterText(makeInfo("up", { activeJob: "harness-cycle", busyMs: 90_000 }))).toBe(
+                        "memory: up · harness-cycle 1m",
+                );
+                expect(engineFooterText(makeInfo("up", { activeJob: "harness-cycle", busyMs: 259_000 }))).toBe(
+                        "memory: up · harness-cycle 4m",
+                );
+        });
+
+        test("an hour-plus job reads as h+m and never as a bare minute count", () => {
+                expect(engineFooterText(makeInfo("up", { activeJob: "harness-cycle", busyMs: 3_600_000 }))).toBe(
+                        "memory: up · harness-cycle 1h0m",
+                );
+                expect(engineFooterText(makeInfo("up", { activeJob: "harness-cycle", busyMs: 4_500_000 }))).toBe(
+                        "memory: up · harness-cycle 1h15m",
+                );
+        });
+
+        test("a wedged-but-alive engine (job far past the watchdog) still reports it — the suffix has no cap", () => {
+                expect(engineFooterText(makeInfo("up", { activeJob: "auto-dream", busyMs: 86_400_000 }))).toBe(
+                        "memory: up · auto-dream 24h0m",
+                );
+        });
+
+        test("negative/NaN busyMs never reaches the footer", () => {
+                expect(engineFooterText(makeInfo("up", { activeJob: "auto-dream", busyMs: -5 }))).toBe("memory: up · auto-dream");
+                expect(engineFooterText(makeInfo("up", { activeJob: "auto-dream", busyMs: Number.NaN }))).toBe("memory: up · auto-dream");
+        });
+
+        test("the M8 build suffix WINS: a stale engine shows the action, not the job", () => {
+                const verdict = (v: string) => ({ verdict: v as any, detail: "test" });
+                expect(
+                        engineFooterText(makeInfo("up", { buildVerdict: verdict("stale"), engineVersion: { version: "2.1.0" }, activeJob: "auto-dream", busyMs: 240_000 })),
+                ).toBe("memory: up · stale (v2.1.0)");
+        });
+
+        test("the activity suffix never rides a non-up state", () => {
+                expect(engineFooterText(makeInfo("down", { activeJob: "auto-dream", busyMs: 240_000 }))).toBe("memory: down");
+                expect(engineFooterText(makeInfo("starting", { activeJob: "auto-dream", busyMs: 240_000 }))).toBe("memory: starting…");
+        });
+});
+
+// ---------------------------------------------------------------------------
 // engineToastText — one toast per TRANSITION, never at session start
 // ---------------------------------------------------------------------------
 
@@ -265,7 +331,9 @@ describe("engine status loop (injected hooks)", () => {
                 expect(info.pid).toBe(4242);
                 expect(info.busyMs).toBe(12);
                 expect(info.activeJob).toBe("dream-check");
-                expect(footers).toContain("memory: up");
+                // M11: a busy engine names its job on the footer (busyMs 12 ms is
+                // under the whole-minute bucket, so no elapsed number yet).
+                expect(footers).toContain("memory: up · dream-check");
                 expect(toasts).toEqual([]); // session-start silence: the initial state is a fact, not an event
                 // markEngineHealthy side effect: an observed-healthy engine resets the crash circuit
                 const circuit = readSpawnState();

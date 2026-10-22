@@ -40,6 +40,7 @@ import type {
         HookEntry,
         Improvement,
         Job,
+        LiveRun,
         MemoryHistoryEntry,
         MemoryTierInfo,
         Note,
@@ -266,6 +267,52 @@ export async function startMockEngine(): Promise<MockEngine> {
                         turns: 1,
                         error: "bridge 504: upstream timeout",
                 },
+                {
+                        // An in-flight run, shaped like the real DB row MID-RUN: the
+                        // counters are written at finalize, so the row is all zeros and
+                        // ended_at is null. Everything moving about this row must come
+                        // from liveRuns below — that is the M6-2 contract the Lab renders.
+                        id: "run-e2e-14",
+                        task_id: "task-e2e-2",
+                        kind: "candidate",
+                        status: "running",
+                        started_at: T0 - 3 * MIN,
+                        ended_at: null,
+                        sandbox_id: "sbx-e2e-5",
+                        cycle_id: "cyc-e2e-4",
+                        improvement_id: null,
+                        tokens_in: 0,
+                        tokens_out: 0,
+                        tool_calls: 0,
+                        turns: 0,
+                        error: null,
+                },
+        ];
+
+        /**
+         * GET /api/runs/live — the live mirror of src/run-progress.ts's LiveRunView
+         * for the in-flight run above (same counters the SSE events carry).
+         */
+        const liveRuns: LiveRun[] = [
+                {
+                        id: "run-e2e-14",
+                        taskId: "task-e2e-2",
+                        kind: "candidate",
+                        cycleId: "cyc-e2e-4",
+                        improvementId: null,
+                        label: null,
+                        startedAt: T0 - 3 * MIN,
+                        turns: 4,
+                        tokensIn: 61_000,
+                        tokensOut: 2_400,
+                        toolCalls: 7,
+                        toolsUsed: ["read", "bash", "edit"],
+                        lastTool: { tool: "bash", phase: "start", at: T0 - 20_000 },
+                        lastTextPreview: "Running the suite once more before I touch the parser again.",
+                        contextTokens: 63_400,
+                        updatedAt: T0 - 5_000,
+                        elapsedMs: 3 * MIN,
+                },
         ];
 
         const runDetails = new Map<string, RunDetail>(
@@ -274,25 +321,34 @@ export async function startMockEngine(): Promise<MockEngine> {
                         {
                                 ...r,
                                 prompt: `Complete task ${r.task_id}.`,
-                                transcript: [
-                                        { type: "text", ts: r.started_at + 900, text: "Reading the task files first." },
-                                        { type: "tool_start", ts: r.started_at + 1500, tool: "read", input: "src/main.ts" },
-                                        { type: "tool_end", ts: r.started_at + 1700, tool: "read", output: "84 lines", isError: false },
-                                        { type: "tool_start", ts: r.started_at + 3000, tool: "bash", input: "bun test" },
-                                        {
-                                                type: "tool_end",
-                                                ts: r.started_at + 9000,
-                                                tool: "bash",
-                                                output: i === 0 ? "1 fail" : "all green",
-                                                isError: i === 0,
-                                        },
-                                        { type: "text", ts: r.started_at + 12000, text: "Done — summary written." },
-                                ],
-                                verify_output: {
-                                        passed: r.status === "passed",
-                                        summary: r.status === "passed" ? "tests green" : "1 failing test",
-                                        log: "ran 12 tests in 3.1s",
-                                },
+                                // runner.ts writes the transcript and the verify block at
+                                // FINALIZE, so a run that is still going has NEITHER — that is
+                                // why the Lab reads mid-run numbers from /api/runs/live instead.
+                                transcript:
+                                        r.status === "running"
+                                                ? []
+                                                : [
+                                                        { type: "text", ts: r.started_at + 900, text: "Reading the task files first." },
+                                                        { type: "tool_start", ts: r.started_at + 1500, tool: "read", input: "src/main.ts" },
+                                                        { type: "tool_end", ts: r.started_at + 1700, tool: "read", output: "84 lines", isError: false },
+                                                        { type: "tool_start", ts: r.started_at + 3000, tool: "bash", input: "bun test" },
+                                                        {
+                                                                type: "tool_end",
+                                                                ts: r.started_at + 9000,
+                                                                tool: "bash",
+                                                                output: i === 0 ? "1 fail" : "all green",
+                                                                isError: i === 0,
+                                                        },
+                                                        { type: "text", ts: r.started_at + 12000, text: "Done — summary written." },
+                                                ],
+                                verify_output:
+                                        r.status === "running"
+                                                ? null
+                                                : {
+                                                          passed: r.status === "passed",
+                                                          summary: r.status === "passed" ? "tests green" : "1 failing test",
+                                                          log: "ran 12 tests in 3.1s",
+                                                  },
                         },
                 ]),
         );
@@ -511,6 +567,10 @@ export async function startMockEngine(): Promise<MockEngine> {
                 },
         ];
 
+        // M11 outcome fields: the fixture covers all three verdict states on one
+        // screen — passed (last_ok 1), FAILED (auto-dream, so the Router screen's
+        // failure banner renders) and never-run-since-the-columns-landed (null,
+        // which the row shows with NO glyph rather than a false checkmark).
         const jobs: Job[] = [
                 {
                         id: "job-harness-cycle",
@@ -524,6 +584,9 @@ export async function startMockEngine(): Promise<MockEngine> {
                         run_count: 132,
                         status: "idle",
                         description: "Pick a task, run it in a fresh sandbox, mine failures.",
+                        last_ok: 1,
+                        last_error: null,
+                        last_duration_ms: 412_000,
                 },
                 {
                         id: "job-task-mint",
@@ -537,6 +600,9 @@ export async function startMockEngine(): Promise<MockEngine> {
                         run_count: 18,
                         status: "idle",
                         description: "Convert failures and curriculum variants into new tasks.",
+                        last_ok: null,
+                        last_error: null,
+                        last_duration_ms: null,
                 },
                 {
                         id: "job-auto-dream",
@@ -550,6 +616,9 @@ export async function startMockEngine(): Promise<MockEngine> {
                         run_count: 47,
                         status: "idle",
                         description: "Consolidate session notes into tiered memory.",
+                        last_ok: 0,
+                        last_error: "watchdog: job auto-dream exceeded 1200s",
+                        last_duration_ms: 1_200_000,
                 },
                 {
                         id: "job-note-sync",
@@ -563,6 +632,9 @@ export async function startMockEngine(): Promise<MockEngine> {
                         run_count: 921,
                         status: "running",
                         description: "Pull terminal session notes into the engine.",
+                        last_ok: 1,
+                        last_error: null,
+                        last_duration_ms: 640,
                 },
                 {
                         id: "job-sandbox-gc",
@@ -576,6 +648,9 @@ export async function startMockEngine(): Promise<MockEngine> {
                         run_count: 88,
                         status: "idle",
                         description: "Reap sandboxes older than the retention window.",
+                        last_ok: 1,
+                        last_error: null,
+                        last_duration_ms: 2_900,
                 },
                 {
                         id: "job-improvement-shipped",
@@ -589,6 +664,9 @@ export async function startMockEngine(): Promise<MockEngine> {
                         run_count: 12,
                         status: "idle",
                         description: "Sweep regressions right after a memory patch ships.",
+                        last_ok: 1,
+                        last_error: null,
+                        last_duration_ms: 88_400,
                 },
                 {
                         id: "job-run-finished",
@@ -602,6 +680,9 @@ export async function startMockEngine(): Promise<MockEngine> {
                         run_count: 304,
                         status: "idle",
                         description: "Record the run note for the next dream.",
+                        last_ok: 1,
+                        last_error: null,
+                        last_duration_ms: 1_150,
                 },
         ];
 
@@ -901,10 +982,21 @@ export async function startMockEngine(): Promise<MockEngine> {
                         json(res, { runs: limit > 0 ? list.slice(-limit) : list });
                         return;
                 }
+                // M6-2: MUST be matched before the /api/runs/:id regex below — "live"
+                // is a path segment that the id pattern would otherwise swallow and 404.
+                // (The real server orders the same way: server.ts checks the literal
+                // path before the regex.)
+                if (p === "/api/runs/live") {
+                        json(res, { runs: liveRuns });
+                        return;
+                }
                 const runMatch = p.match(/^\/api\/runs\/([^/]+)$/);
                 if (runMatch) {
-                        const d = runDetails.get(decodeURIComponent(runMatch[1] ?? ""));
-                        if (d) json(res, { run: d });
+                        const id = decodeURIComponent(runMatch[1] ?? "");
+                        const d = runDetails.get(id);
+                        // The engine pairs the row with its live block on the same endpoint
+                        // (server.ts: { run, live }) — mirror it, do not invent a shorter shape.
+                        if (d) json(res, { run: d, live: liveRuns.find((l) => l.id === id) ?? null });
                         else json(res, { error: "run not found" }, 404);
                         return;
                 }

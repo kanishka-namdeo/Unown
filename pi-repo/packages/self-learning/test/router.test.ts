@@ -10,10 +10,15 @@
 //
 // These tests run on `bun test` (bun:test is built in — zero new deps).
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { emit } from "../src/bus.ts";
+import { breakerStatus, breakerThreshold, markEngineProcess, recordLlmFailure, resetBreakerForTest, resetEngineProcessForTest } from "../src/governor.ts";
 import { JOB_DEFS, listJobs, Router, router } from "../src/router.ts";
-import { store } from "../src/store.ts";
+import { Store, store } from "../src/store.ts";
 
 describe("JOB_DEFS", () => {
         test("defines the eight engine jobs", () => {
@@ -251,4 +256,172 @@ describe("Router event-job queue (HIGH-1)", () => {
                         r.stop();
                 }
         }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
+// M11: the per-job OUTCOME columns (jobs.last_ok / last_error /
+// last_duration_ms). Until these landed the table carried a SCHEDULE and no
+// VERDICT, so a job erroring on every cycle was indistinguishable from one that
+// had not come round yet — and the Router screen's `✓ N runs` claimed a passing
+// history for both.
+// ---------------------------------------------------------------------------
+describe("Router job outcome columns (M11)", () => {
+        const PROBE = "m10-outcome-probe";
+        type OutcomeRow = {
+                last_ok: number | null;
+                last_error: string | null;
+                last_duration_ms: number | null;
+                last_run: number | null;
+                run_count: number;
+                status: string;
+                next_run: number | null;
+        };
+        const row = (): OutcomeRow =>
+                store.get<OutcomeRow>(
+                        `SELECT last_ok, last_error, last_duration_ms, last_run, run_count, status, next_run FROM jobs WHERE id = ?`,
+                        [PROBE],
+                )!;
+
+        function seedProbe() {
+                store.run(`DELETE FROM jobs WHERE id = ?`, [PROBE]);
+                store.run(
+                        `INSERT INTO jobs (id, name, kind, schedule_ms, event, enabled, next_run, run_count, status, description)
+                         VALUES (?, ?, 'interval', 3_600_000, NULL, 1, ?, 0, 'idle', 'M11 outcome probe')`,
+                        [PROBE, PROBE, Date.now() + 3_600_000],
+                );
+        }
+
+        /** Put a real learning job back the way router.start() seeded it. */
+        function clearOutcome(id: string) {
+                store.run(`UPDATE jobs SET last_ok = NULL, last_error = NULL, last_duration_ms = NULL WHERE id = ?`, [id]);
+        }
+
+        afterAll(() => {
+                store.run(`DELETE FROM jobs WHERE id = ?`, [PROBE]);
+                clearOutcome("db-retention");
+                clearOutcome("harness-cycle");
+        });
+
+        test("a failed run records last_ok=0 + the message, in the same write that reschedules", async () => {
+                seedProbe();
+                const r = new Router();
+                // execute() RESOLVES when a job's runner throws — the error is recorded
+                // and the mutex released, NOT propagated. That non-rejection is exactly
+                // why a permanently failing job used to look like a working one.
+                await expect(r.execute(PROBE)).resolves.toBeNull();
+                const after = row();
+                expect(after.last_ok).toBe(0);
+                expect(after.last_error).toBe(`no runner for job ${PROBE}`);
+                expect(after.last_duration_ms).toBeGreaterThanOrEqual(0);
+                expect(after.run_count).toBe(1);
+                // A failure must never leave the job stuck: idle + a future next_run.
+                expect(after.status).toBe("idle");
+                // next_run goes NULL for a job id that is not in JOB_DEFS: the schedule
+                // is owned by the def table, not by the row's schedule_ms column.
+                expect(after.next_run).toBeNull();
+        });
+
+        test("a passing run records last_ok=1 and CLEARS the previous error", async () => {
+                // db-retention is the pass-path job: pure SQL (retention.ts), no LLM, and
+                // deliberately NOT in LEARNING_JOBS, so the governor gate cannot turn the
+                // run into a skip (which returns BEFORE the outcome write — pinned below).
+                store.run(`UPDATE jobs SET last_ok = 0, last_error = 'previous failure', last_duration_ms = 1234 WHERE id = 'db-retention'`);
+                const r = new Router();
+                await r.execute("db-retention");
+                const after = store.get<OutcomeRow>(
+                        `SELECT last_ok, last_error, last_duration_ms, status FROM jobs WHERE id = 'db-retention'`,
+                )!;
+                expect(after.last_ok).toBe(1);
+                expect(after.last_error).toBeNull();
+                expect(after.last_duration_ms).toBeGreaterThanOrEqual(0);
+                expect(after.status).toBe("idle");
+        });
+
+        test("a governor SKIP writes no outcome: a skip is not a run", async () => {
+                seedProbe();
+                clearOutcome("harness-cycle");
+                store.run(`UPDATE jobs SET status = 'idle', run_count = 0 WHERE id = 'harness-cycle'`);
+                // Open the breaker so the GATE refuses (harness-cycle is a learning job).
+                // Note what this pins: a job whose RUNNER returns { skipped } because
+                // there is nothing to do is a PASS and does record a verdict — only the
+                // gate's early return writes nothing.
+                markEngineProcess();
+                try {
+                        for (let i = 0; i < breakerThreshold(); i++) recordLlmFailure();
+                        expect(breakerStatus().open).toBe(true);
+                        const r = new Router();
+                        const out = (await r.execute("harness-cycle")) as { skipped?: string };
+                        expect(out?.skipped).toContain("upstream backoff");
+                        const dream = store.get<OutcomeRow>(`SELECT last_ok, last_error, run_count FROM jobs WHERE id = 'harness-cycle'`)!;
+                        expect(dream.last_ok).toBeNull();
+                        expect(dream.last_error).toBeNull();
+                        expect(dream.run_count).toBe(0);
+                } finally {
+                        resetBreakerForTest();
+                        resetEngineProcessForTest();
+                }
+        });
+
+        test("the legacy jobs table gains the columns and reports never-run, not 'passed'", async () => {
+                // The DDL below is the pre-M11 shape taken VERBATIM from
+                // git show HEAD:src/store.ts — a migration test whose "old schema" is
+                // typed from memory proves nothing about the real migration.
+                const dir = mkdtempSync(join(tmpdir(), "unown-m10-legacy-"));
+                const dbPath = join(dir, "legacy.db");
+                const legacy = new Database(dbPath, { create: true });
+                legacy.exec(`CREATE TABLE IF NOT EXISTS jobs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL,               -- interval | event
+  schedule_ms INTEGER,
+  event TEXT,
+  enabled INTEGER DEFAULT 1,
+  last_run INTEGER,
+  next_run INTEGER,
+  run_count INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'idle',       -- idle | running
+  description TEXT
+);`);
+                legacy.run(`INSERT INTO jobs (id, name, kind, enabled, last_run, run_count, status) VALUES ('old-job', 'Old Job', 'interval', 1, ?, 5, 'idle')`, [
+                        Date.now() - 86_400_000,
+                ]);
+                legacy.close();
+
+                const migrated = new Store(dbPath);
+                try {
+                        const names = migrated.query<{ name: string }>(`PRAGMA table_info(jobs)`).map((c) => c.name);
+                        expect(names).toContain("last_ok");
+                        expect(names).toContain("last_error");
+                        expect(names).toContain("last_duration_ms");
+                        const old = migrated.get<{ last_ok: number | null; last_error: string | null; last_duration_ms: number | null }>(
+                                `SELECT last_ok, last_error, last_duration_ms FROM jobs WHERE id = 'old-job'`,
+                        )!;
+                        // NULL = unknown. The screen renders "no glyph", never a checkmark, for this.
+                        expect(old.last_ok).toBeNull();
+                        expect(old.last_error).toBeNull();
+                        expect(old.last_duration_ms).toBeNull();
+                        // Re-opening must be idempotent: the migration is guarded by PRAGMA.
+                        expect(() => new Store(dbPath).close()).not.toThrow();
+                } finally {
+                        // SQLite handles (and Defender scanning the fresh WAL) can keep a
+                        // just-closed temp dir EBUSY on Windows for a moment — the same
+                        // bounded-retry teardown idiom as test/retention.test.ts, so a
+                        // handle that has not released yet cannot fail the suite.
+                        migrated.close();
+                        for (let attempt = 0; attempt < 10; attempt++) {
+                                try {
+                                        rmSync(dir, { recursive: true, force: true });
+                                        break;
+                                } catch {
+                                        await new Promise((r) => setTimeout(r, 250));
+                                }
+                        }
+                }
+        });
+
+        test("listJobs() carries the outcome fields to the API — SELECT * is the contract", () => {
+                const first = listJobs()[0] as Record<string, unknown> | undefined;
+                expect(first).toBeDefined();
+                expect(Object.keys(first!)).toEqual(expect.arrayContaining(["last_ok", "last_error", "last_duration_ms"]));
+        });
 });

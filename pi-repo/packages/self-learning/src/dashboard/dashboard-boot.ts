@@ -35,8 +35,8 @@ Screens: overview, memory, dreams, notes, skills, lab, hooks, router,
          (providers live in "unown providers" + the /providers command)
 
 Needs an interactive terminal (TTY). From a script, use the engine API
-instead: curl localhost:3030/api/overview — or the Next.js dashboard at
-http://localhost:3000/dashboard when the stack is running (bun run agent:start).
+instead: curl localhost:3030/api/overview (see docs/tui-dashboard-plan.md
+for the endpoint list), or run this screen INSIDE a session with /dashboard.
 
 See docs/tui-dashboard-plan.md for the full surface tour.`;
 

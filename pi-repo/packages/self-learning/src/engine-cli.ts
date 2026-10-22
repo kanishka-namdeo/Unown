@@ -161,6 +161,48 @@ async function fetchOverview(timeoutMs = 3000): Promise<any | null> {
         }
 }
 
+/** M11 per-job health row (the shape /api/jobs returns; kept structural so the
+ *  formatter is testable without an engine). */
+export interface JobHealthRow {
+        id: string;
+        last_ok: number | null;
+        enabled: number;
+}
+
+/**
+ * M11: the job-health line that makes the HELP's long-standing "status reports
+ * jobs" claim true. Before the outcome columns the jobs table held a schedule and
+ * no verdict, so the only honest job line was "N jobs scheduled" — which is why
+ * the claim went unmet for a job failing every cycle.
+ *
+ * Returns null when every enabled job has a passing last run: a green loop is not
+ * news, and printing a happy tally would bury the two states that ARE news —
+ * FAILED and NEVER RAN (which must never be laundered into "fine"). An EMPTY list
+ * is its own finding: a router that never seeded has no learning loop at all, and
+ * silence about that would be the same defect as calling it green.
+ */
+export function describeJobHealth(jobs: JobHealthRow[]): string | null {
+        if (jobs.length === 0) return "  jobs: none scheduled (the router has not seeded)";
+        const failed = jobs.filter((j) => j.last_ok === 0);
+        const never = jobs.filter((j) => j.last_ok === null && j.enabled > 0);
+        if (failed.length === 0 && never.length === 0) return null;
+        const parts: string[] = [];
+        if (failed.length > 0) parts.push(`${failed.length} FAILED (${failed.map((j) => j.id).join(", ")})`);
+        if (never.length > 0) parts.push(`${never.length} never ran (${never.map((j) => j.id).join(", ")})`);
+        return `  jobs: ${jobs.length} scheduled · ${parts.join(" · ")}`;
+}
+
+async function fetchJobs(timeoutMs = 2000): Promise<JobHealthRow[] | null> {
+        try {
+                const res = await engineFetch(`${ENGINE_URL}/api/jobs`, { signal: AbortSignal.timeout(timeoutMs) });
+                if (!res.ok) return null;
+                const body = (await res.json()) as { jobs?: JobHealthRow[] };
+                return Array.isArray(body?.jobs) ? body.jobs : null;
+        } catch {
+                return null;
+        }
+}
+
 async function cmdStatus(out: (s: string) => void): Promise<number> {
         const health = await engineHealth(2500);
         const stats = outboxStats();
@@ -191,6 +233,16 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
                         `engine: UP (pid ${body?.pid ?? "?"}, up ${formatDuration(body?.uptimeMs ?? 0)})${versionSeg}${engineStaleMarker(v ? cmp : undefined, agentVersion())}`,
                 );
                 out(`  router: ${r.busy ? `busy on '${r.activeJob}' for ${Math.round((r.busyMs ?? 0) / 1000)}s` : "idle"} (watchdog ${Math.round((r.jobTimeoutMs ?? 0) / 1000)}s)`);
+                // M11: the per-job verdict, printed only when something needs reading
+                // (describeJobHealth returns null for an all-green loop).
+                {
+                        const jobs = await fetchJobs();
+                        if (jobs === null) out(`  jobs: /api/jobs unreadable — run 'unown dashboard' → router`);
+                        else {
+                                const line = describeJobHealth(jobs);
+                                if (line) out(line);
+                        }
+                }
                 out(`  budget: ${b.callsHour ?? "?"} calls/h, ${b.tokensHour ?? "?"} tok/h (limits ${b.limits?.callsHour ?? "?"}/${b.limits?.tokensHour ?? "?"})${b.overBudget ? " — THROTTLED" : ""}`);
                 out(`  breaker: ${br.open ? `OPEN (retry in ${Math.ceil((br.retryInMs ?? 0) / 1000)}s)` : "closed"}`);
                 // M9 observability: the retention job's high-water mark.
