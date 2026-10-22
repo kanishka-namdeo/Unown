@@ -14,8 +14,9 @@
 //     not authored: engine-data.ts is this script's output, never hand-edited,
 //     and --check fails when the committed file no longer matches JOB_DEFS.
 //   - integrity.tsx's LOG rows, loop.tsx's BEATS bodies, hero.tsx's COMMANDS
-//     list and slash-command sentence, and split-view.tsx's display-command
-//     table quote literals the engine writes. The gate re-reads both sides
+//     list and slash-command sentence, and feature-carousel.tsx's
+//     display-command table quote literals the engine writes. The gate
+//     re-reads both sides
 //     and fails on any quoted literal that no longer resolves in the source
 //     it claims: hook/log strings against hooks.ts + termhooks.ts + harness.ts
 //     (harness calls hooks.ts's logHook with its own lines), command names
@@ -60,13 +61,14 @@ const TARGET_REL = "src/components/landing/engine-data.ts";
 /** Page files the gate reads, keyed for the routes below. The commands and
  *  slash chips live in hero.tsx since the 2026-10-20 merge (the quickstart
  *  section folded into the hero's collapsed expanders); the split-view
- *  display commands live in split-view.tsx, which owns that surface (the
- *  hero keeps the `unown` CLI). */
+ *  display commands live in feature-carousel.tsx, which owns that surface
+ *  (the split-view band became the feature carousel 2026-10-22; the expander
+ *  stayed in the band, so did the gate) — the hero keeps the `unown` CLI. */
 const PAGES = {
   integrity: "src/components/landing/integrity.tsx",
   loop: "src/components/landing/loop.tsx",
   hero: "src/components/landing/hero.tsx",
-  splitview: "src/components/landing/split-view.tsx",
+  splitview: "src/components/landing/feature-carousel.tsx",
 };
 
 /** Engine sources, by the name a FAIL line prints. */
@@ -83,8 +85,8 @@ const SOURCES = {
     name: `${ENGINE}/instruction-guard.ts`,
   },
   help: { rel: `${ENGINE}/cli.ts`, name: `${ENGINE}/cli.ts (HELP)` },
-  /** The split-view extension: the /split* command names the split-view band
-   *  lists are gated against its registerCommand calls. */
+  /** The split-view extension: the /split* command names the carousel band's
+   *  expander lists are gated against its registerCommand calls. */
   splitview: {
     rel: `${ENGINE}/splitview.ts`,
     name: `${ENGINE}/splitview.ts`,
@@ -340,7 +342,7 @@ function parseBeats(text, key) {
   return out;
 }
 
-/** COMMANDS rows (hero.tsx's CLI table, split-view.tsx's display-command
+/** COMMANDS rows (hero.tsx's CLI table, feature-carousel.tsx's display-command
  *  table): the command string each row shows. `page` names the file in FAIL
  *  messages, so a failure blames the table that actually broke. */
 function parseCommands(text, page = PAGES.hero) {
@@ -360,7 +362,8 @@ function parseCommands(text, page = PAGES.hero) {
   return out;
 }
 
-/** split-view.tsx COMMANDS rows: the /split* display commands each row shows. */
+/** feature-carousel.tsx COMMANDS rows (the split-view expander): the /split*
+ *  display commands each row shows. */
 function parseSplitCommands(text) {
   return parseCommands(text, PAGES.splitview);
 }
@@ -611,9 +614,10 @@ function gate(pages, sources) {
       bundles: [sources.help],
     },
     { page: PAGES.hero, rows: parseSlashCommands(pages[PAGES.hero]), bundles: [sources.help] },
-    // The split-view band's command table: each row names a command the
-    // extension must actually register. The gloss beside each name is
-    // authored copy — the hero's table has the same split.
+    // The carousel band's command expander (the /split* family's page home):
+    // each row names a command the extension must actually register. The
+    // gloss beside each name is authored copy — the hero's table has the
+    // same split.
     {
       page: PAGES.splitview,
       rows: parseSplitCommands(pages[PAGES.splitview]).map((r) => ({

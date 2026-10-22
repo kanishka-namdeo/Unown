@@ -219,9 +219,11 @@ half a viewport shorter than the eight-band page it replaced.
     collapsed expanders — the `COMMANDS` list, the `--goal` evidence contract,
     and the session-tools paragraph naming the tools and the slash
     commands) — no other band lists commands; the one exception is the
-    split-view display commands, which are `split-view.tsx`'s own surface
-    (the hero keeps the `unown` CLI, the split band keeps the `/split*`
-    family, and `landing_claims.mjs` gates both against their sources); the
+    split-view display commands, which are `feature-carousel.tsx`'s own
+    surface (the hero keeps the `unown` CLI, the features band keeps the
+    `/split*` family in its collapsed expander — the split-view band became
+    the carousel 2026-10-22 and the gate's `PAGES.map` moved with it — and
+    `landing_claims.mjs` gates both against their sources); the
     `unown automations create` line carries the read-only-by-default claim,
     checkable against `docs/usage.md#automations-unown-automations`;
   - **the project-config trust gate** (`integrity.tsx`, the cloned-configs
@@ -399,8 +401,10 @@ parallel ones.
     (2026-10-20, pinned by the composition test): psychic (hero) → leaf
     (loop) → magma (dex — the capability catalog; magma is the Gen-3 red
     the actual dex device is, and showcase/gold keeps it clear of proof's
-    own magma) → gold (showcase) → aqua (split — the split-view TUI band,
-    which needs a hue clear of showcase's gold and proof's magma) → magma
+    own magma) → gold (showcase) → aqua (features — the feature carousel;
+    the split-view band took this hue before it became the carousel, and the
+    requirement did not change: a hue clear of showcase's gold and proof's
+    magma) → magma
     (proof) → psychic (alphabet — the reserved hue interrupts the cycle
     without disturbing it) → gold (faq) → aqua (changelog) → leaf (finale).
     The proof band's three panes carry
@@ -568,11 +572,13 @@ parallel ones.
     + the Z highlight) with a pinch in the hero's seal captions. Rule:
     **no more than three consecutive bands at zero.** The ten-band page
     meets it exactly: loop (2) runs zero alone, ended by the dex;
-    showcase → split → proof (4-6) is three, ended by alphabet; faq →
+    showcase → features → proof (4-6) is three, ended by alphabet; faq →
     changelog → finale (8-10) is three, ended by the footer. (The dex
     joining the page in 2026-10-20 *broke up* the old loop → showcase →
-    proof run of three; the split band joining between showcase and proof
-    re-lengthened that run to three, which is the cap, not a breach.) If a
+    proof run of three; the split-view band joining between showcase and
+    proof — the slot the feature carousel holds now — re-lengthened that
+    run to three, which is the cap, not a breach. The carousel kept it
+    there: its captures are the proof zone's register, lore stays at zero.) If a
     band ever joins or leaves the page, re-check both runs, not just the
     one it touches.
   2. **A repeated punchline register, which is what actually reads as boring.**
@@ -637,6 +643,24 @@ parallel ones.
   `landing_benchmarks.mjs --check` contract, and lets in-pane `whileInView`
   reveals re-trigger when a pane is shown. Do not switch to unmounting
   panes without a plan for the generated numbers.
+- **The features carousel is the split-view band continued, and the capture
+  rules carry over.** `feature-carousel.tsx` took band five's slot and its
+  aqua on 2026-10-22: fifteen slides — nine videos, split view's stills,
+  five empty slots — all mounted with the inactive ones `hidden` (the pane
+  contract above). No media is fabricated: the videos and posters are the
+  TUI-capture lane's audited set verbatim (`public/landing/tui/README.md`;
+  workflow contract in `docs/tui-capture-workflow.md`), a placeholder stays
+  empty until that lane turns through the feature, and slide writeups
+  document the capture in front of the viewer — they point at the dex, the
+  hero or the docs for any claim those bands own rather than restating it.
+  The media count in the lead is derived from the `SLIDES` data, never a
+  typed figure. Playback is an effect decision, never an `autoPlay`
+  attribute: the active video starts muted + looping after hydration so
+  reduced motion is known before anything plays, under
+  `prefers-reduced-motion` the stage shows the poster and the explicit play
+  button does the starting, and slides never auto-advance. The `/split*`
+  expander keeps this band as the display commands' one home (gated by
+  `scripts/landing_claims.mjs`, whose `PAGES` map names this file).
 - **Install first (2026-10-19 rework; OS tabs the same day; quickstart folded
   in 2026-10-20; installer default + binary lane 2026-10-21; binary became the
   default 2026-10-22): the hero carries one command per OS tab, and the

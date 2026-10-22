@@ -108,6 +108,10 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 - **the root `package-lock.json` is gone — `bun.lock` is the single source of truth** — two committed lockfiles is a supply-chain ambiguity (installers and CI drift between them, and `bun install --frozen-lockfile` never reads the npm one). The repo runs on bun; the root `package-lock.json` is deleted and `bun install --frozen-lockfile` verified clean against `bun.lock` ("Checked 412 installs (no changes)"). `benchmarks/nonllm/package-lock.json` stays — a deliberate pin inside that fixture's own npm flow. No workflow, doc or AGENTS.md referenced the removed file.
 
+### Changed (the landing page — the feature carousel, 2026-10-22)
+
+- **the split-view band is now the feature carousel** — band five plays every feature's own capture instead of demoing one display mode: the nine TUI-capture scenario videos (fix loop, plan mode, checkpoints, overlays, review, subagent, fleet, wiki, doctor CLI) plus split view's audited stills, each with the writeup style the split band had, and five features with no capture yet (goals, routines, MCP, web search, skills) as honest empty stages pointing at their docs. No new capture was made for it — placeholders stay placeholders. The `/split*` command table keeps the band as its canonical home, collapsed into a `<details>` expander; `landing_claims.mjs`'s `PAGES` map follows the rename. Playback is muted + looping on the active slide, poster + explicit play button under `prefers-reduced-motion`, and nothing auto-advances. Nav "Split view" → "Features"; anchor `#split` → `#features`.
+
 ## [0.0.3] - 2026-10-22
 
 ### Added

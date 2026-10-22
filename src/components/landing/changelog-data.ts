@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 206;
+export const CHANGELOG_TOTAL_ENTRIES = 207;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 80,
-  "Changed": 13,
+  "Changed": 14,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 84,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 37,
+    "total": 38,
     "counts": {
       "Added": 13,
-      "Changed": 3,
+      "Changed": 4,
       "Deprecated": 0,
       "Removed": 1,
       "Fixed": 14,
@@ -217,6 +217,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "read-only git probes run with the full GitSpawn hardening set; git add/commit keep user hooks but close the…",
+            "behavior": false
+          },
+          {
+            "title": "the split-view band is now the feature carousel",
             "behavior": false
           }
         ]

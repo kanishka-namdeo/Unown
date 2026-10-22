@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """pty_capture_splitview.py — the split-view display mode's landing stills.
 
-The landing page's split-view band (src/components/landing/split-view.tsx)
-ships six stills of the split-view display mode. They are PTY-lane assets
+The landing page's feature carousel (src/components/landing/feature-carousel.tsx)
+shows these six stills on its split-view slide. They are PTY-lane assets
 (see pty-README.md): the band/dock/response-only surfaces are composed through
 the fullscreen layout engine, a different visual language from the classic
 transcript the other nine landing scenarios capture — so this script is their

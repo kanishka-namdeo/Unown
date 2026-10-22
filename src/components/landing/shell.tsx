@@ -413,7 +413,7 @@ const NAV_LINKS = [
   { href: "#loop", label: "How it learns" },
   { href: "#dex", label: "The dex" },
   { href: "#showcase", label: "Dashboard" },
-  { href: "#split", label: "Split view" },
+  { href: "#features", label: "Features" },
   { href: "#proof", label: "Proof" },
   { href: "#alphabet", label: "Alphabet" },
   { href: "#faq", label: "FAQ" },

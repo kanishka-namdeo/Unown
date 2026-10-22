@@ -9,12 +9,12 @@ import {
 } from "@/components/landing/effects";
 import { DexSection } from "@/components/landing/dex";
 import { FaqSection } from "@/components/landing/faq";
+import { FeatureCarouselSection } from "@/components/landing/feature-carousel";
 import { FinaleSection } from "@/components/landing/finale";
 import { Hero } from "@/components/landing/hero";
 import { LoopSection } from "@/components/landing/loop";
 import { ProofSection } from "@/components/landing/proof";
 import { ShowcaseSection } from "@/components/landing/showcase";
-import { SplitViewSection } from "@/components/landing/split-view";
 import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
 
 /**
@@ -40,9 +40,15 @@ import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
  *                                                     the party strip and the
  *                                                     mechanisms bento moved in
  *   showcase (mission control)                        what the engine looks like
- *   split (the split-view TUI)                        what a session looks like
- *                                                     when it is composed rather
- *                                                     than scrolled
+ *   features (the feature carousel)                   every feature's capture, in
+ *                                                     motion — the fix loop, plan
+ *                                                     mode, checkpoints, review,
+ *                                                     subagents, the overlays, the
+ *                                                     wiki, doctor, split view,
+ *                                                     and the no-capture slots; the
+ *                                                     split band's display-command
+ *                                                     table keeps this band as its
+ *                                                     home (collapsed)
  *   proof (benchmarks + integrity + models)           the receipts, one tabbed band
  *   alphabet (+ field notes)                          the identity: the wall, the
  *                                                     decode panel, the lexicon
@@ -82,7 +88,7 @@ export default function LandingPage() {
             <LoopSection />
             <DexSection />
             <ShowcaseSection />
-            <SplitViewSection />
+            <FeatureCarouselSection />
             <ProofSection />
             <AlphabetSection />
             <FaqSection />
