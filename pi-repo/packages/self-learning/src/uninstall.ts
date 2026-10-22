@@ -136,22 +136,31 @@ export interface ShimHit {
 
 /** Read a shim file and extract the repo path it points at, if any.
  *  Windows shims (backslash separators) match FIRST so they are not
- *  captured and forward-slash-normalized by the POSIX pattern. */
+ *  captured and forward-slash-normalized by the POSIX pattern.
+ *  Both quote styles are accepted because that is what the producer writes:
+ *  `install-layout.ts` renders `.cmd` with double quotes and `.ps1` with
+ *  single quotes (PowerShell's call-operator idiom). A double-quote-only
+ *  parser made `unown uninstall` report its own `.ps1` shim as foreign and
+ *  leave an orphan `unown` on PATH. */
 export function shimTarget(content: string): string | null {
-        // unown.cmd: @"bun" "<repo>\bin\unown" %*   /  unown.ps1: & "bun" "<repo>\bin\unown" $args
-        const win = /"([^"]*bin\\unown)"/.exec(content);
-        if (win) return win[1];
+        // unown.cmd: @"bun" "<repo>\bin\unown" %*   /  unown.ps1: & 'bun' '<repo>\bin\unown' @args
+        const win = /(["'])([^"']*bin\\unown)\1/.exec(content);
+        if (win) return win[2];
         // POSIX shim: exec "<bun>" "<repo>/bin/unown" "$@"
-        const posix = /"([^"]*bin\/unown)"/.exec(content);
-        if (posix) return posix[1];
+        const posix = /(["'])([^"']*bin\/unown)\1/.exec(content);
+        if (posix) return posix[2];
         return null;
 }
 
 /** Find every unown shim on the candidate dirs. Ours = target resolves into `repoRoot`. */
-export function findShims(repoRoot: string, env: NodeJS.ProcessEnv = process.env): ShimHit[] {
+export function findShims(
+        repoRoot: string,
+        env: NodeJS.ProcessEnv = process.env,
+        platform: NodeJS.Platform = process.platform,
+): ShimHit[] {
         const hits: ShimHit[] = [];
-        const names = process.platform === "win32" ? ["unown.cmd", "unown.ps1"] : ["unown"];
-        for (const dir of shimCandidateDirs(env)) {
+        const names = platform === "win32" ? ["unown.cmd", "unown.ps1"] : ["unown"];
+        for (const dir of shimCandidateDirs(env, platform)) {
                 for (const name of names) {
                         const p = join(dir, name);
                         if (!existsSync(p)) continue;

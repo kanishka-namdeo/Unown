@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 147;
+export const CHANGELOG_TOTAL_ENTRIES = 148;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 60,
   "Changed": 10,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 63,
+  "Fixed": 64,
   "Security": 0,
   "Behavior": 12
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 6,
+    "total": 7,
     "counts": {
       "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 0,
+      "Fixed": 1,
       "Security": 0,
       "Behavior": 5
     },
@@ -88,6 +88,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "print-mode sessions no longer crash at the first subagent-lane tick",
             "behavior": true
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "unown uninstall no longer leaves its own PowerShell shim behind",
+            "behavior": false
           }
         ]
       }

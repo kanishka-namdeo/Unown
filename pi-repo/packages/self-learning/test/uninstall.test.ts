@@ -18,8 +18,12 @@ import {
         binaryPath,
         installMetadataPath,
         readInstallMetadata,
+        renderPosixShim,
+        renderWindowsCmdShim,
+        renderWindowsPs1Shim,
         writeBinaryShims,
         writeInstallMetadata,
+        writeShimSet,
         type ReleasePlatform,
 } from "../src/install-layout.ts";
 
@@ -40,13 +44,18 @@ test("parseUninstallFlags", () => {
 });
 
 test("shimTarget extracts the checkout path from every shim dialect", () => {
-        expect(shimTarget(`#!/usr/bin/env bash\nexec "/home/u/.bun/bin/bun" "/repo/Unown/bin/unown" "$@"\n`)).toBe(
-                "/repo/Unown/bin/unown",
-        );
-        expect(shimTarget('@"C:\\bun.exe" "C:\\repos\\Unown\\bin\\unown" %*\n')).toBe("C:\\repos\\Unown\\bin\\unown");
-        expect(shimTarget('& "C:\\bun.exe" "C:\\repos\\Unown\\bin\\unown" $args; exit $LASTEXITCODE\n')).toBe(
-                "C:\\repos\\Unown\\bin\\unown",
-        );
+        // Each string comes from the renderer that WRITES it, so a quoting change
+        // in install-layout moves this test. Hand-written dialects are what let
+        // the single-quoted .ps1 shape go unparser'd while uninstall skipped it.
+        expect(
+                shimTarget(renderPosixShim({ command: "/home/u/.bun/bin/bun", args: ["/repo/Unown/bin/unown"] })),
+        ).toBe("/repo/Unown/bin/unown");
+        expect(
+                shimTarget(renderWindowsCmdShim({ command: "C:\\bun.exe", args: ["C:\\repos\\Unown\\bin\\unown"] })),
+        ).toBe("C:\\repos\\Unown\\bin\\unown");
+        expect(
+                shimTarget(renderWindowsPs1Shim({ command: "C:\\bun.exe", args: ["C:\\repos\\Unown\\bin\\unown"] })),
+        ).toBe("C:\\repos\\Unown\\bin\\unown");
         expect(shimTarget("nothing here")).toBeNull();
 });
 
@@ -67,27 +76,44 @@ test("findShims marks ours vs foreign (no cross-install deletion)", () => {
         const other = join(home, "other-repo");
         const bin = join(home, "bin");
         for (const d of [join(repo, "bin"), join(other, "bin"), bin]) mkdirSync(d, { recursive: true });
-        const shim = writePlatformShim(bin, repo);
+        const shims = writePlatformShims(bin, repo);
         const ours = findShims(repo, { UNOWN_BIN_DIR: bin });
-        expect(ours.length).toBe(1);
-        expect(ours[0].ours).toBe(true);
-        // from the OTHER checkout's perspective, the same file is foreign
+        expect(ours.map((h) => h.path).sort()).toEqual([...shims].sort());
+        expect(ours.every((h) => h.ours)).toBe(true);
+        // from the OTHER checkout's perspective, the same files are foreign
         const foreign = findShims(other, { UNOWN_BIN_DIR: bin });
-        expect(foreign[0].ours).toBe(false);
-        expect(foreign[0].path).toBe(shim);
+        expect(foreign.map((h) => h.ours)).toEqual(shims.map(() => false));
 });
 
-/** Write the shim dialect the CURRENT platform's link.ts would write. */
-function writePlatformShim(bin: string, repo: string): string {
-        const target = join(repo, "bin", "unown");
-        if (process.platform === "win32") {
-                const p = join(bin, "unown.cmd");
-                writeFileSync(p, `@"C:\\bun.exe" "${target}" %*\n`);
-                return p;
-        }
-        const p = join(bin, "unown");
-        writeFileSync(p, `#!/usr/bin/env bash\nexec "/b/bun" "${target}" "$@"\n`);
-        return p;
+test("the Windows shim set is fully owned by the checkout it points into", () => {
+        // Platform-injected so the `.ps1` leg runs on the Linux and macOS CI
+        // runners too — the ones that shipped the skipped-shim bug.
+        const bin = join(fresh(), "bin");
+        const repo = "C:\\repos\\Unown";
+        const written = writeShimSet({
+                dir: bin,
+                platform: "win32",
+                command: "C:\\bun.exe",
+                args: [`${repo}\\bin\\unown`],
+        });
+        expect(written.all.length).toBe(2);
+        const hits = findShims(repo, { UNOWN_BIN_DIR: bin }, "win32");
+        expect(hits.map((h) => h.path)).toEqual(written.all);
+        expect(hits.map((h) => h.ours)).toEqual([true, true]);
+        // the lenient parser must still refuse another checkout's shims
+        expect(findShims("C:\\repos\\OTHER", { UNOWN_BIN_DIR: bin }, "win32").map((h) => h.ours)).toEqual([
+                false,
+                false,
+        ]);
+});
+
+/** Write the shim set the CURRENT platform's installer writes. */
+function writePlatformShims(bin: string, repo: string): string[] {
+        return writeShimSet({
+                dir: bin,
+                command: process.platform === "win32" ? "C:\\bun.exe" : "/b/bun",
+                args: [join(repo, "bin", "unown")],
+        }).all;
 }
 
 describe("cmdUninstall", () => {
@@ -95,7 +121,7 @@ describe("cmdUninstall", () => {
                 repo: string;
                 home: string;
                 bin: string;
-                shim: string;
+                shims: string[];
                 removed: string[];
                 removedDirs: string[];
                 lines: string[];
@@ -105,12 +131,12 @@ describe("cmdUninstall", () => {
                 const home = join(base, "unown-home");
                 const bin = join(base, "bin");
                 for (const d of [join(repo, "bin"), join(home, "agent"), bin]) mkdirSync(d, { recursive: true });
-                const shim = writePlatformShim(bin, repo);
+                const shims = writePlatformShims(bin, repo);
                 writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "unown", version: "9.9.9" }));
                 const removed: string[] = [];
                 const removedDirs: string[] = [];
                 const lines: string[] = [];
-                return { repo, home, bin, shim, removed, removedDirs, lines };
+                return { repo, home, bin, shims, removed, removedDirs, lines };
         }
 
         function run(flags: UninstallFlags, s: ReturnType<typeof setup>): number {
@@ -131,11 +157,11 @@ describe("cmdUninstall", () => {
                 });
         }
 
-        test("default removes the shim, keeps home + checkout", () => {
+        test("default removes every shim of the set, keeps home + checkout", () => {
                 const s = setup();
                 const code = run({}, s);
                 expect(code).toBe(0);
-                expect(s.removed).toEqual([s.shim]);
+                expect(s.removed).toEqual(s.shims);
                 expect(s.removedDirs).toEqual([]);
                 expect(s.lines.join("\n")).toContain("kept");
                 expect(s.lines.join("\n")).toContain("uninstalled");

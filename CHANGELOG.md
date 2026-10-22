@@ -26,6 +26,10 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 - **project dreams now record honest durations** — the done/gated/error `INSERT`s stamped `Date.now()` for both `started_at` and `ended_at`, so every successful project dream recorded 0 ms (the dashboard's dream latencies were fiction on this path); all three paths now carry the function-entry stamp.
 - **print-mode sessions no longer crash at the first subagent-lane tick** — a `unown -p` session using the task tool died at the first fleet UI refresh ("Theme not initialized"): the fleet surface bound `ctx.ui.theme` — the global theme PROXY, which throws on its first property read whenever `initTheme()` has not run — i.e. in every headless session, killing real work mid-task (found live by the transfer benchmark's induce run). `isThemeInitialized()` is now exported from the pi-coding-agent root, the bind site passes `undefined` when uninitialized, and `refreshUi` itself guards (defense in depth); a regression test binds the raw proxy and renders plain lanes without throwing.
 
+### Fixed
+
+- **`unown uninstall` no longer leaves its own PowerShell shim behind** — the checkout path read shim targets with a double-quote-only regex, but `install-layout.ts` renders `unown.cmd` with double quotes and `unown.ps1` with single quotes (PowerShell's call-operator idiom). `findShims()` therefore classified the `.ps1` it had written itself as "points at an unknown install", skipped it, and left an orphan `unown` on PATH that errors in every new PowerShell session. `shimTarget()` accepts both quote styles (backreference-locked, so a `"…'` pairing cannot match) and `findShims()` now takes the platform it probes the way `findInstallShims()` already did, so the Windows two-shim case runs on every runner. The suite stopped hand-writing shim dialects: each fixture is now produced by the renderer that writes it — the pre-fix run of that suite fails on four `.ps1` legs.
+
 ## [0.0.2] - 2026-10-21
 
 ### Added
