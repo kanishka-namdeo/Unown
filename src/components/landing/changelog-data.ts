@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 199;
+export const CHANGELOG_TOTAL_ENTRIES = 200;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 78,
   "Changed": 13,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 79,
+  "Fixed": 80,
   "Security": 0,
   "Behavior": 26
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 30,
+    "total": 31,
     "counts": {
       "Added": 11,
       "Changed": 3,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 9,
+      "Fixed": 10,
       "Security": 0,
       "Behavior": 6
     },
@@ -143,6 +143,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "the windows CI leg is green-shaped again (11 pre-existing failures triaged to root causes, across two rounds)",
+            "behavior": false
+          },
+          {
+            "title": "project:<slug> memory tiers crashed the engine on Windows with EINVAL",
             "behavior": false
           }
         ]

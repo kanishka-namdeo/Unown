@@ -110,8 +110,27 @@ const SEEDS: Record<Tier, string> = {
 `,
 };
 
+/**
+ * The .md file a tier materializes to. Tier KEYS may carry the composite
+ * `project:<slug>` spelling (dream.ts versions project dreams under it), and
+ * `:` is ILLEGAL in Windows filenames (EINVAL on rename — found by the first
+ * windows CI leg that ever ran the integration suite, 2026-10-22: the engine
+ * crashed materializing `project:it-api-1a2b3c.md`). The filename therefore
+ * percent-encodes every character outside [A-Za-z0-9._-] — reversible,
+ * collision-free (percent never occurs in a slug: slugifyPath collapses to
+ * [a-z0-9-]), and a no-op for the four classic tier names, so POSIX files for
+ * policy/project/user/local are byte-identical to before. Composite tiers'
+ * previously-materialized `project:<slug>.md` files (POSIX only — Windows
+ * never got that far) become orphaned derived artifacts; the DB is
+ * version-authoritative and readTier's self-heal rewrites the new spelling,
+ * so nothing is lost.
+ */
 export function tierPath(tier: Tier): string {
-        return join(MEMORY_DIR, `${tier}.md`);
+        const safe = String(tier).replace(/[^a-zA-Z0-9._-]/g, (c) => {
+                const h = c.codePointAt(0)!.toString(16).toUpperCase().padStart(2, "0");
+                return `%${h}`;
+        });
+        return join(MEMORY_DIR, `${safe}.md`);
 }
 
 interface LatestRow {

@@ -110,3 +110,26 @@ describe("shipGateForPatch — the SHIP-step guard decision", () => {
 test("suite cleanup: re-establish a real version row", () => {
 	establishTier(TIER);
 });
+
+// ---------------------------------------------------------------------------
+// tierPath — Windows-legal filenames for composite tier keys (2026-10-22)
+// ---------------------------------------------------------------------------
+describe("tierPath — composite tier keys sanitize to Windows-legal filenames", () => {
+        test("the four classic tiers are byte-identical to the old spelling (POSIX files unchanged)", () => {
+                for (const t of ["policy", "project", "user", "local"] as Tier[]) {
+                        expect(tierPath(t).endsWith(`${t}.md`)).toBe(true);
+                        expect(tierPath(t)).not.toContain("%");
+                }
+        });
+        test("project:<slug> percent-encodes the colon — no illegal filename chars anywhere (the EINVAL crash)", () => {
+                const p = tierPath("project:it-api-1a2b3c" as Tier);
+                expect(p.endsWith("project%3Ait-api-1a2b3c.md")).toBe(true);
+                // every path segment is Windows-legal: none of < > : " / \ | ? *
+                for (const seg of p.split(/[\\/]/)) {
+                        expect(seg.match(/[<>:"\\|?*]/)).toBeNull();
+                }
+        });
+        test("collision-free: a literal 'project-foo' tier and 'project:foo' materialize to DIFFERENT files", () => {
+                expect(tierPath("project:foo" as Tier)).not.toBe(tierPath("project-foo" as Tier));
+        });
+});
