@@ -82,7 +82,17 @@ export async function chat(
                         }
                         const res = await fetch(`${bridgeUrl()}/v1/chat/completions`, {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json" },
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        // M2 admission lane: the learning layer is background
+                                        // work — the bridge admits interactive (terminal/print)
+                                        // requests ahead of these when the upstream cap is hit.
+                                        // With BRIDGE_API_KEY set, the required key is presented
+                                        // instead (lane falls back to interactive; pure.ts quirk).
+                                        ...(process.env.BRIDGE_API_KEY
+                                                ? { Authorization: `Bearer ${process.env.BRIDGE_API_KEY}` }
+                                                : { Authorization: "Bearer bridge-background" }),
+                                },
                                 body: JSON.stringify(body),
                                 signal: ctrl.signal,
                         });

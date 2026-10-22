@@ -208,7 +208,13 @@ export function ensureAgentDir() {
                 [PROVIDER]: {
                         baseUrl: `${BRIDGE_URL}/v1`,
                         api: "openai-completions",
-                        apiKey: "bridge-local",
+                        // M2 admission lane: the engine's OWN agent sessions (canary
+                        // gates, harness runs, automations) are unattended background
+                        // work — the bearer "bridge-background" makes the bridge admit
+                        // interactive terminal sessions ahead of them under the
+                        // concurrency cap (see mini-services/llm-bridge pure.ts
+                        // laneForRequest). BRIDGE_API_KEY quirk applies as documented.
+                        apiKey: process.env.BRIDGE_API_KEY || "bridge-background",
                         models: [
                                 {
                                         id: MODEL_ID,

@@ -36,6 +36,7 @@ import {
         isLocalModel,
         withLocalThinkingCompat,
         sanitizeToolCalls,
+        laneForRequest,
         spacingWaitMs,
         upstreamTimeoutMs,
         type SseStats,
@@ -1189,5 +1190,48 @@ describe("mergeCatalogIntoKnown (M4-a D1)", () => {
                 expect(merged.length).toBe(64);
                 expect(merged[0]).toBe("pinned"); // allow-list keeps priority
                 expect(merged[1]).toBe("m-0");
+        });
+});
+
+// ---------------------------------------------------------------------------
+// laneForRequest (2026-10-22 M2 — the admission lanes)
+// ---------------------------------------------------------------------------
+describe("laneForRequest", () => {
+        test("no markers -> interactive (the human-waits default)", () => {
+                expect(laneForRequest(undefined, undefined)).toBe("interactive");
+                expect(laneForRequest("", "")).toBe("interactive");
+                expect(laneForRequest(null, null)).toBe("interactive");
+        });
+
+        test("the terminal agent's bridge-local key is interactive", () => {
+                expect(laneForRequest("Bearer bridge-local", undefined)).toBe("interactive");
+                expect(laneForRequest("bearer bridge-local", undefined)).toBe("interactive");
+        });
+
+        test("real provider keys are interactive", () => {
+                expect(laneForRequest("Bearer sk-real-key-123", undefined)).toBe("interactive");
+                expect(laneForRequest("Bearer cpk-whatever", undefined)).toBe("interactive");
+        });
+
+        test("the bridge-background bearer signals background", () => {
+                expect(laneForRequest("Bearer bridge-background", undefined)).toBe("background");
+                expect(laneForRequest("bearer bridge-background", undefined)).toBe("background");
+                expect(laneForRequest("  Bearer   bridge-background  ", undefined)).toBe("background");
+        });
+
+        test("the x-unown-lane header signals background (case/space tolerant)", () => {
+                expect(laneForRequest(undefined, "background")).toBe("background");
+                expect(laneForRequest(undefined, "Background")).toBe("background");
+                expect(laneForRequest(undefined, "  BACKGROUND  ")).toBe("background");
+        });
+
+        test("the header wins over the bearer (explicit opt-in outranks inference)", () => {
+                expect(laneForRequest("Bearer bridge-background", "interactive")).toBe("interactive");
+                expect(laneForRequest("Bearer bridge-local", "background")).toBe("background");
+        });
+
+        test("unrelated header values do not match the background lane", () => {
+                expect(laneForRequest(undefined, "fast")).toBe("interactive");
+                expect(laneForRequest(undefined, "background-ish")).toBe("interactive");
         });
 });

@@ -79,6 +79,7 @@ import {
         isRetryableError,
         isFailoverError,
         backoffDelayMs,
+        laneForRequest,
         spacingWaitMs,
         coherentKnownModels,
         parseModelCatalog,
@@ -195,22 +196,180 @@ function persistUsage(entry: BridgeLogEntry) {
 }
 
 // ---------------------------------------------------------------------------
-// Rate-limit protection: serialize upstream calls with spacing + retry on 429.
+// Rate-limit protection + admission lanes: cap in-flight upstream attempts,
+// space their starts, and admit interactive requests ahead of background work.
 // ---------------------------------------------------------------------------
-let chain: Promise<void> = Promise.resolve();
+/**
+ * 2026-10-22 M2 — the starvation fix. The old chain serialized request
+ * STARTS (400 ms apart) but let every stream run concurrently: with 3-4
+ * concurrent streams from one key the upstream degraded badly (measured:
+ * 2 s calls ballooning to 45 s — an engine dream made interactive terminal
+ * sessions look hung for minutes). Two changes, together:
+ *
+ *   1. CONCURRENCY CAP (BRIDGE_MAX_CONCURRENCY, default 3, floor 1): at
+ *      most this many remote/fallback upstream attempts are in flight —
+ *      headers-to-body-end. A slot is held for the whole streamed response
+ *      (the degradation happens during active streams, not just headers).
+ *   2. TWO LANES (pure.ts laneForRequest): when the cap is hit, INTERACTIVE
+ *      requests (terminal/print sessions — a human is waiting) are admitted
+ *      ahead of queued BACKGROUND work (engine learning jobs, which signal
+ *      via bearer `bridge-background` or the x-unown-lane header).
+ *
+ * Start spacing (BRIDGE_MIN_SPACING_MS) still applies at admission, so the
+ * rate-limit protection semantics are unchanged for a single lane.
+ */
+const MAX_CONCURRENCY = (() => {
+        const raw = Number(process.env.BRIDGE_MAX_CONCURRENCY);
+        return Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : 3;
+})();
+let inFlight = 0;
 let lastRequestAt = 0;
+const laneStats = { admitted: { interactive: 0, background: 0 }, queued: { interactive: 0, background: 0 } };
+const waitingQueue: { interactive: Array<() => void>; background: Array<() => void> } = { interactive: [], background: [] };
 
-async function acquireSlot() {
-        const run = chain.then(async () => {
-                const wait = spacingWaitMs(lastRequestAt, Date.now(), MIN_SPACING_MS);
-                if (wait > 0) await Bun.sleep(wait);
-                lastRequestAt = Date.now();
+/**
+ * Background requests may occupy at most this many slots — one is ALWAYS
+ * reserved for interactive traffic (measured 2026-10-22: with the cap fully
+ * shared, two admitted background streams + one interactive still degraded
+ * the interactive call to 118s on a concurrency-sensitive upstream; the lane
+ * queue alone cannot fix what already-admitted streams hold). Floor 1 so a
+ * BRIDGE_MAX_CONCURRENCY=1 deployment degrades to pure priority-FIFO instead
+ * of starving background forever.
+ */
+const BACKGROUND_SLOT_LIMIT = Math.max(1, MAX_CONCURRENCY - 1);
+
+/**
+ * Interactive-yield window (BRIDGE_BACKGROUND_YIELD_MS, default 45s, floor 0):
+ * after any interactive request ARRIVES, background admissions pause for this
+ * long — a concurrency-sensitive upstream degrades ALL streams when a
+ * background dream shares it with a human's session (measured 2026-10-22:
+ * 20-45s per call ballooning past 70s mid-session), so while a human is
+ * working, the dream waits. The window re-arms on every interactive arrival
+ * (a session's successive turns each reset it); once the human's session goes
+ * quiet past the window, background work resumes. 0 disables the yield
+ * (pure slot-limit semantics). An already-admitted background stream is never
+ * cancelled — the yield only gates NEW admissions.
+ */
+const BACKGROUND_YIELD_MS = (() => {
+        const raw = Number(process.env.BRIDGE_BACKGROUND_YIELD_MS);
+        return Number.isFinite(raw) && raw >= 0 ? raw : 45_000;
+})();
+let lastInteractiveArrival = 0;
+
+function backgroundYielded(): boolean {
+        return BACKGROUND_YIELD_MS > 0 && Date.now() - lastInteractiveArrival < BACKGROUND_YIELD_MS;
+}
+
+function admitNext() {
+        for (;;) {
+                // Interactive first — a human is waiting on that lane.
+                if (inFlight < MAX_CONCURRENCY && waitingQueue.interactive.length > 0) {
+                        const next = waitingQueue.interactive.shift();
+                        if (!next) return;
+                        inFlight++;
+                        next();
+                        continue;
+                }
+                // Background: capped one below the total, AND yielded while a
+                // human's session is recently active (see BACKGROUND_YIELD_MS).
+                if (inFlight < BACKGROUND_SLOT_LIMIT && waitingQueue.background.length > 0 && !backgroundYielded()) {
+                        const next = waitingQueue.background.shift();
+                        if (!next) return;
+                        inFlight++;
+                        next();
+                        continue;
+                }
+                return;
+        }
+}
+
+/** Re-check background admission when the yield window lapses (a parked timer
+ *  would never fire on an idle loop — the same lesson as the print watchdog). */
+let yieldTimer: ReturnType<typeof setTimeout> | null = null;
+function armYieldTimer() {
+        if (BACKGROUND_YIELD_MS <= 0) return;
+        if (yieldTimer) clearTimeout(yieldTimer);
+        yieldTimer = setTimeout(() => {
+                yieldTimer = null;
+                admitNext();
+        }, BACKGROUND_YIELD_MS + 5);
+        // NOT unref'd on purpose: this is the resume path for background work
+        // when nothing else is happening. The bridge is a long-lived server —
+        // a ref'd 45s timer is free here.
+}
+
+/** Acquire an upstream slot on a lane. Resolves when admitted (spacing applied). */
+async function acquireSlot(lane: "interactive" | "background"): Promise<() => void> {
+        if (waitingQueue.interactive.length + waitingQueue.background.length >= MAX_CONCURRENCY * 8) {
+                // Bounded queue: a pathological burst must not grow it unboundedly.
+                throw Object.assign(new Error("llm-bridge admission queue saturated — too many concurrent requests (raise BRIDGE_MAX_CONCURRENCY)"), { status: 503 });
+        }
+        laneStats.queued[lane]++;
+        if (lane === "interactive") {
+                // Arrival, not admission: the yield must cover the time an
+                // interactive request spends queued behind in-flight work too.
+                lastInteractiveArrival = Date.now();
+                armYieldTimer();
+        }
+        await new Promise<void>((resolve) => {
+                waitingQueue[lane].push(resolve);
+                admitNext();
         });
-        chain = run.then(
-                () => {},
-                () => {},
-        );
-        await run;
+        laneStats.queued[lane]--;
+        laneStats.admitted[lane]++;
+        const wait = spacingWaitMs(lastRequestAt, Date.now(), MIN_SPACING_MS);
+        if (wait > 0) await Bun.sleep(wait);
+        lastRequestAt = Date.now();
+        let released = false;
+        return () => {
+                if (released) return;
+                released = true;
+                inFlight--;
+                admitNext();
+        };
+}
+
+/**
+ * Wrap a Response so the upstream slot is released exactly when its body is
+ * fully consumed (json() reads it; pipeSse drains it; cancel/error end it).
+ * Releasing on headers-only would under-count: the upstream degradation is
+ * driven by ACTIVE STREAMS, so the cap must cover the body's lifetime.
+ */
+function trackResponse(res: Response, release: () => void): Response {
+        const body = res.body;
+        if (!body) {
+                release();
+                return res;
+        }
+        let released = false;
+        const once = () => {
+                if (!released) {
+                        released = true;
+                        release();
+                }
+        };
+        const wrapped = new ReadableStream({
+                async start(controller) {
+                        const reader = body.getReader();
+                        try {
+                                for (;;) {
+                                        const { done, value } = await reader.read();
+                                        if (done) break;
+                                        controller.enqueue(value);
+                                }
+                                controller.close();
+                        } catch (err) {
+                                controller.error(err);
+                        } finally {
+                                once();
+                        }
+                },
+                cancel(reason) {
+                        once();
+                        return body.cancel(reason);
+                },
+        });
+        return new Response(wrapped, { status: res.status, headers: res.headers });
 }
 
 /**
@@ -266,7 +425,11 @@ async function upstreamFetch(body: any, signal?: AbortSignal, target: { url: str
  *  possibly recover. The caller (the POST handler) then decides whether to
  *  retry the request on the fallback lane. The fallback lane itself gets the
  *  plain retry semantics — there is no third endpoint to fail over to. */
-async function callUpstream(body: any, route: "remote" | "local" | "fallback"): Promise<Response> {
+async function callUpstream(
+        body: any,
+        route: "remote" | "local" | "fallback",
+        lane: "interactive" | "background" = "interactive",
+): Promise<Response> {
         const target =
                 route === "local"
                         ? { url: LOCAL_URL, key: LOCAL_KEY }
@@ -274,25 +437,34 @@ async function callUpstream(body: any, route: "remote" | "local" | "fallback"): 
                           ? { url: FALLBACK_URL, key: FALLBACK_KEY }
                           : { url: UPSTREAM_URL, key: UPSTREAM_KEY };
         const throttled = route === "remote" || route === "fallback";
-        if (throttled) await acquireSlot();
+        // The slot is held from admission until the response body is consumed
+        // (trackResponse) or the attempt chain fails — see acquireSlot.
+        const release = throttled ? await acquireSlot(lane) : null;
         let lastError: any;
-        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-                try {
-                        return await upstreamFetch(body, undefined, target);
-                } catch (err: any) {
-                        lastError = err;
-                        const msg = String(err?.message ?? err);
-                        if (route === "remote" && FALLBACK_URL && isFailoverError(err)) {
-                                throw Object.assign(new Error(msg), { status: err?.status, failoverCandidate: true });
+        try {
+                for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+                        try {
+                                const res = await upstreamFetch(body, undefined, target);
+                                // Success: the slot tracks the streamed body's lifetime.
+                                return trackResponse(res, release ?? (() => {}));
+                        } catch (err: any) {
+                                lastError = err;
+                                const msg = String(err?.message ?? err);
+                                if (route === "remote" && FALLBACK_URL && isFailoverError(err)) {
+                                        throw Object.assign(new Error(msg), { status: err?.status, failoverCandidate: true });
+                                }
+                                if (!isRetryableError(err) || attempt === MAX_ATTEMPTS) throw err;
+                                const backoff = backoffDelayMs(attempt);
+                                console.log(`[llm-bridge] retryable error (attempt ${attempt}/${MAX_ATTEMPTS}), backing off ${Math.round(backoff)}ms: ${msg.slice(0, 120)}`);
+                                await Bun.sleep(backoff);
+                                if (throttled) lastRequestAt = Date.now();
                         }
-                        if (!isRetryableError(err) || attempt === MAX_ATTEMPTS) throw err;
-                        const backoff = backoffDelayMs(attempt);
-                        console.log(`[llm-bridge] retryable error (attempt ${attempt}/${MAX_ATTEMPTS}), backing off ${Math.round(backoff)}ms: ${msg.slice(0, 120)}`);
-                        await Bun.sleep(backoff);
-                        if (throttled) lastRequestAt = Date.now();
                 }
+                throw lastError;
+        } catch (err) {
+                release?.();
+                throw err;
         }
-        throw lastError;
 }
 
 // ---------------------------------------------------------------------------
@@ -476,6 +648,16 @@ const server = Bun.serve({
                                 local,
                                 fallback,
                                 failovers: totalFailovers,
+                                // Admission lanes (M2): concurrency cap + who is waiting.
+                                lanes: {
+                                        maxConcurrency: MAX_CONCURRENCY,
+                                        backgroundSlotLimit: BACKGROUND_SLOT_LIMIT,
+                                        backgroundYieldMs: BACKGROUND_YIELD_MS,
+                                        backgroundYielded: backgroundYielded(),
+                                        inFlight,
+                                        queued: { ...laneStats.queued, live: { interactive: waitingQueue.interactive.length, background: waitingQueue.background.length } },
+                                        admitted: { ...laneStats.admitted },
+                                },
                                 upstreamKeyIsSet: Boolean(UPSTREAM_KEY),
                                 authRequired: Boolean(BRIDGE_API_KEY),
                                 upstreamUrl: UPSTREAM_URL,
@@ -565,9 +747,12 @@ const server = Bun.serve({
                                 // error. Local-lane requests never fail over (they are
                                 // already a deliberate second-endpoint routing choice), and
                                 // the fallback lane itself gets no second-level failover.
+                                // Admission lane: interactive (a human waits) vs background
+                                // (engine learning jobs signal via bearer/header — see pure.ts).
+                                const lane = laneForRequest(req.headers.get("authorization"), req.headers.get("x-unown-lane"));
                                 let res: Response;
                                 try {
-                                        res = await callUpstream(upstreamBody, route);
+                                        res = await callUpstream(upstreamBody, route, lane);
                                 } catch (primaryErr: any) {
                                         const failover = route === "remote" && FALLBACK_URL && Boolean(primaryErr?.failoverCandidate || isFailoverError(primaryErr));
                                         if (!failover) throw primaryErr;
@@ -578,7 +763,7 @@ const server = Bun.serve({
                                         console.log(
                                                 `[llm-bridge] primary upstream unavailable (attempt failed: ${String(primaryErr?.message ?? primaryErr).slice(0, 160)}) — failing over to ${FALLBACK_URL} (model: ${fbModel})`,
                                         );
-                                        res = await callUpstream(fbBody, "fallback");
+                                        res = await callUpstream(fbBody, "fallback", lane);
                                 }
 
                                 if (wantsStream) {

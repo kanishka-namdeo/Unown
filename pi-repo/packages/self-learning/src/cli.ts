@@ -1944,10 +1944,20 @@ function printExitGraceMs(): number {
  *      contract for unattended callers (engine automations, CI) that cannot
  *      press Ctrl-C.
  *
- * Both are unref'd (never delay a clean exit) and best-effort (never break
- * the run they guard). A hard exit skips --output-format json's envelope in
- * the pathological case — the streamed text is already flushed; hanging
- * forever is the worse trade.
+ * 2026-10-22 (M2): all three timers are now REF'd. The unref rationale
+ * ("never delay a clean exit") was exactly backwards on a parked loop: when
+ * the only remaining ref'd handles are idle keep-alive sockets, Bun parks in
+ * epoll with no timeout and an unref'd timer never wakes it — the 2026-10-22
+ * benchtest caught a finished session (answer written, note delivered)
+ * surviving 6+ minutes with the hard-exit grace armed at +15s and never
+ * firing, and the unref'd 1s poll meant the session subscription (which
+ * arms the hard exit at all) might never attach. Ref'd is safe here because
+ * cmdPrint terminates through process.exit(code) on EVERY path — a ref'd
+ * timer cannot outlive a one-shot process that always hard-exits; it can
+ * only guarantee the nets actually fire. Best-effort semantics unchanged
+ * (never break the run they guard). A hard exit skips --output-format
+ * json's envelope in the pathological case — the streamed text is already
+ * flushed; hanging forever is the worse trade.
  */
 function installPrintStallWatchdog(runtime: any): void {
         try {
@@ -1960,7 +1970,6 @@ function installPrintStallWatchdog(runtime: any): void {
                                 );
                                 process.exit(1);
                         }, printStallMs());
-                        timer.unref?.();
                 };
                 arm();
                 let hardExit: any = null;
@@ -1970,7 +1979,6 @@ function installPrintStallWatchdog(runtime: any): void {
                                 // The agent finished; dispose had its grace. Leave quietly.
                                 process.exit(0);
                         }, printExitGraceMs());
-                        hardExit.unref?.();
                 };
                 let lastSession: unknown = null;
                 let off: (() => void) | null = null;
@@ -1994,7 +2002,6 @@ function installPrintStallWatchdog(runtime: any): void {
                                                 : null;
                         }
                 }, 1_000);
-                poll.unref?.();
         } catch {
                 /* best effort only */
         }

@@ -64,7 +64,8 @@ describe("ensureAgentDir — user-registry merge (M3)", () => {
                 expect(Object.keys(providers).sort()).toEqual(["agnes", "zai-bridge"]);
                 expect(providers.agnes.baseUrl).toBe("https://apihub.agnes-ai.com/v1");
                 expect(providers.agnes.apiKey).toBe("$AGNES_API_KEY"); // env ref passes through verbatim
-                expect(providers["zai-bridge"].apiKey).toBe("bridge-local");
+                // M2 admission lane: the engine's own sessions signal background.
+                expect(providers["zai-bridge"].apiKey).toBe("bridge-background");
         });
 
         test("auth.json secrets export as $UNOWN_KEY_<ID> env refs — never on disk", () => {

@@ -59,4 +59,4 @@
 - Unown sessions have access to: todo, note, task, fetch_url, web_search, webfetch, lsp, read, ls, grep.
 - Prune ephemeral health checks and probes (PONG, HANG*, SLOWCHECK, AUTOSTART, numeric latency IDs) during consolidation [note 2026-10-20T14:50:20.263Z, note 2026-10-20T15:49:00.012Z].
 
-<!-- unown: rendered 51/51 memories via Mem0 (backend: lexical) at 2026-10-22T12:41:41.217Z -->
+<!-- unown: rendered 51/51 memories via Mem0 (backend: lexical) at 2026-10-22T13:46:27.857Z -->

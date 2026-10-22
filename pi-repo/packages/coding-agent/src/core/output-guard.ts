@@ -8,6 +8,17 @@ let stdoutTakeoverState: StdoutTakeoverState | undefined;
 
 const RAW_STDOUT_RETRY_DELAY_MS = 10;
 
+/**
+ * Hard ceiling on continuous ENOBUFS/EAGAIN retries (ms). A full or orphaned
+ * stdout pipe (the reader died, or a harness stopped draining) would retry
+ * every 10 ms forever — an unbounded await inside the print-mode exit path
+ * (2026-10-22 M2 benchtest: the second forever-await candidate after the
+ * unref'd-watchdog park). Past the ceiling the chunk is DROPPED with a stderr
+ * note: nobody is reading; hanging the whole process on unwritten output is
+ * the worse trade.
+ */
+const RAW_STDOUT_RETRY_CEILING_MS = 30_000;
+
 let rawStdoutWriteTail: Promise<void> = Promise.resolve();
 
 function getRawStdoutWrite(): StdoutTakeoverState["rawStdoutWrite"] {
@@ -18,6 +29,7 @@ function getRawStdoutWrite(): StdoutTakeoverState["rawStdoutWrite"] {
 }
 
 async function writeRawStdoutChunk(text: string): Promise<void> {
+	const deadline = Date.now() + RAW_STDOUT_RETRY_CEILING_MS;
 	while (true) {
 		try {
 			await new Promise<void>((resolve, reject) => {
@@ -36,6 +48,14 @@ async function writeRawStdoutChunk(text: string): Promise<void> {
 			const code = (writeError as Error & { code?: unknown }).code;
 			if (code !== "ENOBUFS" && code !== "EAGAIN" && code !== "EWOULDBLOCK") {
 				throw writeError;
+			}
+			// Backpressure ceiling: a pipe nobody drains must not hang the
+			// process. Drop the chunk (stderr note) and let the caller proceed.
+			if (Date.now() > deadline) {
+				process.stderr.write(
+					`\n[output-guard] stdout stayed blocked for ${Math.round(RAW_STDOUT_RETRY_CEILING_MS / 1000)}s (full or orphaned pipe) — ${text.length} char(s) of output dropped\n`,
+				);
+				return;
 			}
 			await new Promise<void>((resolve) => setTimeout(resolve, RAW_STDOUT_RETRY_DELAY_MS));
 		}

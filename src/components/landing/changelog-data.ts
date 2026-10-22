@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 182;
+export const CHANGELOG_TOTAL_ENTRIES = 184;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 71,
   "Changed": 11,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 75,
+  "Fixed": 77,
   "Security": 0,
   "Behavior": 23
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 13,
+    "total": 15,
     "counts": {
       "Added": 4,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 5,
+      "Fixed": 7,
       "Security": 0,
       "Behavior": 3
     },
@@ -60,6 +60,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "print mode never hangs after the answer — the exit nets actually fire now",
+            "behavior": false
+          },
+          {
+            "title": "interactive sessions no longer starve behind engine dreams — bridge admission lanes + concurrency cap +…",
+            "behavior": false
+          },
           {
             "title": "the learning loop's silent empty-extraction drop — terminal notes now actually become memories",
             "behavior": false

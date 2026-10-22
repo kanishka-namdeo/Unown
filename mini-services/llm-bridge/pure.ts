@@ -214,6 +214,49 @@ export function spacingWaitMs(lastRequestAt: number, now: number, minSpacingMs: 
 }
 
 // ---------------------------------------------------------------------------
+// Admission lanes (2026-10-22 M2 — the starvation fix)
+// ---------------------------------------------------------------------------
+
+export type BridgeLane = "interactive" | "background";
+
+/**
+ * Which admission lane a request belongs to. The measured starvation
+ * (2026-10-22 benchtest) was upstream-side: with 3-4 concurrent streams from
+ * one key the provider degraded 2s calls into 45s calls, so an engine dream
+ * (a batch of sequential LLM calls) made interactive terminal sessions look
+ * hung for minutes. The bridge now caps in-flight upstream attempts and
+ * admits INTERACTIVE requests (a human waiting on a terminal/print session)
+ * ahead of queued BACKGROUND work (engine learning jobs).
+ *
+ * Signaling, in priority order:
+ *   1. `x-unown-lane: background` request header (explicit; works with any
+ *      client that can set headers, including BRIDGE_API_KEY deployments)
+ *   2. the bearer `bridge-background` (the engine's learning clients signal
+ *      through the apiKey because mem0's internal OpenAI client cannot
+ *      forward custom headers — apiKey/baseURL/timeout are all it passes)
+ *
+ * Anything else — including the terminal agent's `bridge-local`, real
+ * provider keys, and unauthenticated local traffic — is interactive: when a
+ * marker is absent, the request that cannot wait is the safe default.
+ * QUIRK (documented): when BRIDGE_API_KEY is set, the engine's mem0 calls
+ * must present THAT key, so they fall back to interactive priority; the
+ * header lane (1) remains available for explicit opt-in.
+ */
+export function laneForRequest(authHeader: string | undefined, laneHeader: string | undefined): BridgeLane {
+        // Explicit header wins in BOTH directions (an "interactive" marker
+        // outranks a background-looking bearer, and vice versa).
+        const header = typeof laneHeader === "string" ? laneHeader.trim().toLowerCase() : "";
+        if (header === "background") return "background";
+        if (header === "interactive") return "interactive";
+        const bearer = String(authHeader ?? "")
+                .trim()
+                .replace(/^Bearer\s+/i, "")
+                .trim();
+        if (bearer === "bridge-background") return "background";
+        return "interactive";
+}
+
+// ---------------------------------------------------------------------------
 // Model routing + request shaping
 // ---------------------------------------------------------------------------
 /**
@@ -431,11 +474,11 @@ export function foldSseLine(line: string, stats: SseStats): void {
  * unown install that seeded from /health inherited the incoherence.
  */
 export function coherentKnownModels(knownModels: string[], defaultModel: string, routeDefault: string): string[] {
-	const out = [...knownModels];
-	for (const id of [defaultModel, routeDefault]) {
-		if (id && !out.includes(id)) out.push(id);
-	}
-	return out;
+        const out = [...knownModels];
+        for (const id of [defaultModel, routeDefault]) {
+                if (id && !out.includes(id)) out.push(id);
+        }
+        return out;
 }
 
 /**
@@ -444,12 +487,12 @@ export function coherentKnownModels(knownModels: string[], defaultModel: string,
  * keeps env-only behavior.
  */
 export function parseModelCatalog(body: unknown): string[] | null {
-	const data = (body as { data?: unknown } | null)?.data;
-	if (!Array.isArray(data)) return null;
-	const ids = data
-		.map((m: unknown) => (typeof (m as { id?: unknown })?.id === "string" ? (m as { id: string }).id.trim() : ""))
-		.filter(Boolean);
-	return ids.length ? ids : null;
+        const data = (body as { data?: unknown } | null)?.data;
+        if (!Array.isArray(data)) return null;
+        const ids = data
+                .map((m: unknown) => (typeof (m as { id?: unknown })?.id === "string" ? (m as { id: string }).id.trim() : ""))
+                .filter(Boolean);
+        return ids.length ? ids : null;
 }
 
 /**
@@ -461,16 +504,16 @@ export function parseModelCatalog(body: unknown): string[] | null {
  * naming them pass through and 404 at the upstream instead of re-routing.
  */
 export function mergeCatalogIntoKnown(
-	known: string[],
-	catalog: string[],
-	cap = 64,
+        known: string[],
+        catalog: string[],
+        cap = 64,
 ): { merged: string[]; stale: string[] } {
-	const served = new Set(catalog);
-	const stale = known.filter((id) => !served.has(id));
-	const merged = [...known];
-	for (const id of catalog) {
-		if (merged.length >= cap) break;
-		if (!merged.includes(id)) merged.push(id);
-	}
-	return { merged, stale };
+        const served = new Set(catalog);
+        const stale = known.filter((id) => !served.has(id));
+        const merged = [...known];
+        for (const id of catalog) {
+                if (merged.length >= cap) break;
+                if (!merged.includes(id)) merged.push(id);
+        }
+        return { merged, stale };
 }

@@ -187,6 +187,25 @@ export type ReloadHandler = () => Promise<void>;
 export type ShutdownHandler = () => void;
 
 /**
+ * Deadline for the session_shutdown handler chain (ms). Generous by design —
+ * legitimate cleanup (the terminal note delivery path carries its own 2.5 s
+ * budget, MCP/LSP teardown is synchronous) finishes in well under a second —
+ * but a handler that never resolves must not hang the quit chain (upstream
+ * pi #9997: "Quit hangs without feedback when a session_shutdown handler
+ * never resolves"; the 2026-10-22 Unown benchtest caught a finished print
+ * session surviving 6+ minutes behind exactly this shape). Fail-open: on
+ * expiry the quit proceeds and the abandoned chain is reported through the
+ * extension error channel.
+ */
+/** Call-time resolution: tests (and ops) tune it per-run via the env. */
+function sessionShutdownDeadlineMs(): number {
+	// PI_SHUTDOWN_DEADLINE_MS is a test/ops escape hatch (floor 1s so a typo
+	// can never zero the net in production).
+	const raw = Number(process.env.PI_SHUTDOWN_DEADLINE_MS);
+	return Number.isFinite(raw) && raw >= 1_000 ? raw : 15_000;
+}
+
+/**
  * Helper function to emit session_shutdown event to extensions.
  * Returns true if the event was emitted, false if there were no handlers.
  */
@@ -195,7 +214,41 @@ export async function emitSessionShutdownEvent(
 	event: SessionShutdownEvent,
 ): Promise<boolean> {
 	if (extensionRunner.hasHandlers("session_shutdown")) {
-		await extensionRunner.emit(event);
+		let deadline: ReturnType<typeof setTimeout> | undefined;
+		try {
+			await Promise.race([
+				extensionRunner.emit(event),
+				new Promise<never>((_, reject) => {
+					// REF'd on purpose: this timer is the rescue net — an unref'd
+					// timer never wakes a parked loop (see the M2 print-watchdog
+					// note in self-learning/src/cli.ts). Cleared on settle below.
+					const deadlineMs = sessionShutdownDeadlineMs();
+					deadline = setTimeout(
+						() =>
+							reject(
+								new Error(
+									`session_shutdown handlers did not settle within ${deadlineMs}ms — proceeding with shutdown (a hung extension cleanup was abandoned)`,
+								),
+							),
+						deadlineMs,
+					);
+				}),
+			]);
+		} catch (err) {
+			// Fail-open: the quit continues; the hang is observable, not fatal.
+			const message = err instanceof Error ? err.message : String(err);
+			try {
+				extensionRunner.emitError({
+					extensionPath: "<session-shutdown-deadline>",
+					event: event.type,
+					error: message,
+				});
+			} catch {
+				console.error(`[shutdown] ${message}`);
+			}
+		} finally {
+			if (deadline) clearTimeout(deadline);
+		}
 		return true;
 	}
 	return false;
