@@ -149,6 +149,8 @@ unown --plan "add auth"                # read-only exploration → numbered plan
 
 **First flights**: the first TUI session opens with a one-time starter catalog in place of the empty editor — the same four tasks the setup summary lists (`1`–`4` or ↑↓+Enter pick, `Esc` closes for this session, `x` stops the auto-show for good). Picking one drops the prompt into the editor ready to send — press Enter, or edit it first. The catalog retires the moment you send your first real message (a flight's or your own; `Esc` alone brings it back next session), `/flights` reopens it any time, and `unown "a prompt"` never shows it — that prompt is the first task.
 
+**After the first task**: when that first reply fully settles, one transcript line marks the moment (`You're flying — the first task is done. …`) with the pointers that matter next; each later session then opens with one quiet tip you haven't seen — `/undo`, the `ctrl+k` palette, `/plan`, project memory — until all four are spent, after which onboarding stays silent. Every tip shows exactly once, ever (the same `onboarding.json` latch).
+
 Before the first message, unown pre-flights the model endpoint — if it can't reach it or the key is rejected you get the exact fix, not a stack trace. When you exit, the session leaves a note for AutoDream; come back tomorrow and the project's `.unown/memory/project.md` remembers what mattered.
 
 Every session also ships **native web access** — no keys, no MCP setup required:

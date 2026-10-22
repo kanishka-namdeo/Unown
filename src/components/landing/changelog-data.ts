@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 176;
+export const CHANGELOG_TOTAL_ENTRIES = 177;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 69,
+  "Added": 70,
   "Changed": 11,
   "Deprecated": 0,
   "Removed": 2,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 7,
+    "total": 8,
     "counts": {
-      "Added": 2,
+      "Added": 3,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
@@ -66,6 +66,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "First flights — the guided first task inside the TUI",
+            "behavior": false
+          },
+          {
+            "title": "the post-first-task onboarding tips — \"You're flying\" + four one-time session tips",
             "behavior": false
           }
         ]

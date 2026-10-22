@@ -15,6 +15,7 @@
  *
  *   - flightsDismissed  the user pressed "x" — never auto-show again
  *   - firstTaskAt       the timestamp of the FIRST real interactive message
+ *   - tipsSeen          one-time tip ids already shown (see below)
  *
  * firstTaskAt is deliberately NOT set by the catalog itself: the latch is
  * the first REAL user message (the "input" event, source "interactive"), so
@@ -25,6 +26,26 @@
  * The catalog content itself (titles, blurbs, prompts, summary lines) is
  * shared with the setup wizard's closing summary through flights-core.ts —
  * one source of truth, so `unown setup` and the in-TUI card can never drift.
+ *
+ * On top of the catalog, the same extension renders two one-time-ever TIP
+ * surfaces (the pinned copy lives in onboarding-tips.ts, the pure core):
+ *
+ *   - the "You're flying" tip — on agent_settled, only when THIS process
+ *     latched the first-ever firstTaskAt (the user's first real task just
+ *     fully settled). A firstTaskAt left over from an earlier session never
+ *     re-triggers it, and it fires at most once per process.
+ *
+ *   - one rotating session-start tip for RETURNING users (firstTaskAt set or
+ *     flightsDismissed — the catalog's own "not a fresh boot" conditions):
+ *     exactly one unseen tip per boot, in list order, until the list is
+ *     exhausted; then nothing, forever.
+ *
+ * Both latch their id in tipsSeen and render as quiet in-transcript status
+ * lines (ctx.ui.notify(text, "info")) — never dialogs, never LLM context,
+ * never blocking. One onboarding surface per boot: a session that shows the
+ * catalog never also shows a rotating tip, and the initialMessage lane
+ * (autoShow=false — `unown "prompt"`) shows NEITHER: its message is
+ * mid-task from t=0 and earns the flying tip itself.
  */
 
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
@@ -32,6 +53,7 @@ import type { Component } from "@earendil-works/pi-tui";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { firstFlightCatalog, flightsHandleKey, type Flight } from "./flights-core.ts";
 import { readOnboardingState, writeOnboardingState } from "./onboarding-state.ts";
+import { flyingTipText, FLYING_TIP_ID, nextSessionTip } from "./onboarding-tips.ts";
 
 export interface FirstFlightsOptions {
         cwd: string;
@@ -57,6 +79,22 @@ const setStatusLine = (ctx: ExtensionContext, key: string, text: string | undefi
                 ctx.ui.setStatus(key, text);
         } catch {
                 /* the footer is cosmetic — degrade silently */
+        }
+};
+
+/**
+ * One quiet in-transcript tip line: pi's `ctx.ui.notify(text, "info")` seam
+ * — a status line in the transcript, NOT LLM context and NOT a blocking
+ * dialog. Same cosmetic contract as setStatusLine: the UI shape varies
+ * across pi modes/builds, so a missing or throwing notify degrades to
+ * silence — a tip failure must never break anything.
+ */
+const notifyLine = (ctx: ExtensionContext, text: string): void => {
+        try {
+                if (!ctx?.hasUI || typeof ctx.ui?.notify !== "function") return;
+                ctx.ui.notify(text, "info");
+        } catch {
+                /* a tip is cosmetic — degrade silently */
         }
 };
 
@@ -240,24 +278,64 @@ export function createFirstFlightsExtension(options: FirstFlightsOptions) {
                 // /resume and /reload (each with its own reason), and only the
                 // FIRST interactive boot may replace the editor with the card.
                 let shownThisProcess = false;
+                // One rotating tip per process — a second session_start (test
+                // harnesses, exotic embedders) never doubles the hint.
+                let tipShownThisProcess = false;
                 // firstTaskAt is written at most once per process (this flag)
                 // and never over an existing value (the original timestamp of
                 // the user's very first task is the point of the field).
                 let latched = false;
+                // The flying tip is only for the process that WATCHED the
+                // first-ever task happen (the input handler actually wrote
+                // firstTaskAt just now) — a value left over from an earlier
+                // session never sets this flag.
+                let firstTaskLatchedThisProcess = false;
+                // The flying tip fires at most once per process, even before
+                // the onboarding state is read again.
+                let flyingShownThisProcess = false;
 
                 pi.on("session_start", (event, ctx) => {
                         if (!autoShow) return;
-                        if (shownThisProcess) return;
                         if (event?.reason !== "startup") return;
                         if (!ctx?.hasUI || ctx?.mode !== "tui") return;
                         const state = readOnboardingState(home);
-                        if (state.firstTaskAt || state.flightsDismissed) return;
-                        shownThisProcess = true;
-                        // Fire-and-forget with a silent catch: the catalog is
-                        // cosmetic — a failure must NEVER break boot.
-                        void showCatalog(pi, ctx, home).catch(() => {
-                                /* the card is best-effort */
-                        });
+                        if (!state.firstTaskAt && !state.flightsDismissed) {
+                                // The fresh boot: the catalog card owns this
+                                // session. One onboarding surface per boot —
+                                // never also a rotating tip.
+                                if (shownThisProcess) return;
+                                shownThisProcess = true;
+                                // Fire-and-forget with a silent catch: the catalog is
+                                // cosmetic — a failure must NEVER break boot.
+                                void showCatalog(pi, ctx, home).catch(() => {
+                                        /* the card is best-effort */
+                                });
+                                return;
+                        }
+                        // The returning boot (firstTaskAt set OR flightsDismissed
+                        // — the catalog's own "not fresh" conditions): show
+                        // exactly one unseen rotating tip instead. An
+                        // exhausted list means onboarding has said its piece.
+                        if (tipShownThisProcess) return;
+                        const tip = nextSessionTip(state.tipsSeen);
+                        if (!tip) return;
+                        tipShownThisProcess = true;
+                        writeOnboardingState({ ...state, tipsSeen: [...state.tipsSeen, tip.id] }, home);
+                        notifyLine(ctx, tip.text);
+                });
+
+                pi.on("agent_settled", (_event, ctx) => {
+                        // AgentSettledEvent carries no payload — the timing is
+                        // the signal: the first task has fully settled (no
+                        // retry, compaction or continuation pending).
+                        if (!firstTaskLatchedThisProcess) return;
+                        if (flyingShownThisProcess) return;
+                        if (!ctx?.hasUI || ctx?.mode !== "tui") return;
+                        flyingShownThisProcess = true;
+                        const state = readOnboardingState(home);
+                        if (state.tipsSeen.includes(FLYING_TIP_ID)) return;
+                        writeOnboardingState({ ...state, tipsSeen: [...state.tipsSeen, FLYING_TIP_ID] }, home);
+                        notifyLine(ctx, flyingTipText());
                 });
 
                 pi.on("input", (event, ctx) => {
@@ -271,6 +349,10 @@ export function createFirstFlightsExtension(options: FirstFlightsOptions) {
                         const state = readOnboardingState(home);
                         if (!state.firstTaskAt) {
                                 writeOnboardingState({ ...state, firstTaskAt: new Date().toISOString() }, home);
+                                // This process watched the first-ever task
+                                // happen — the flying tip may fire when that
+                                // task settles on agent_settled.
+                                firstTaskLatchedThisProcess = true;
                         }
                 });
 
