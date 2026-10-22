@@ -14,7 +14,7 @@ How to run the `unown` terminal agent, what it does inside a session, and where 
 - [Memory in sessions](#memory-in-sessions)
 - [Environment variables](#environment-variables)
 
-Related pages: [subagents](subagents.md) · [skills](skills.md) · [memory](memory.md) · [providers](providers.md) · [configuration](configuration.md) · [addons](addons.md) · [updating](updating.md) · [resilience](resilience.md)
+Related pages: [subagents](subagents.md) · [skills](skills.md) · [routines](routines.md) · [memory](memory.md) · [providers](providers.md) · [configuration](configuration.md) · [addons](addons.md) · [updating](updating.md) · [resilience](resilience.md)
 
 ## Three ways to run
 
@@ -107,7 +107,7 @@ Plan state is persisted as session entries, so a plan survives `/resume`. In pri
 | `unown recipes <sub>` | Declarative agent instruction bundles (the goose Recipes port) — `list` \| `run <name> [--key value]` \| `create <name>` \| `validate <file>`; discovered from `.unown/recipes/*.md` + `$UNOWN_HOME/recipes/*.md`. In-session alias: `/recipe`. See [recipes](recipes.md) |
 | `unown wiki <sub>` | Auto-generated repo documentation with `file:line` cross-links (the zcode Repo Wiki port) — `generate [--force]` \| `search <q>` \| `list` \| `show <page>`; written to `.unown/wiki/*.md`. In-session alias: `/wiki`. See [repo wiki](repo-wiki.md) |
 | `unown acp` | Run the ACP editor server on stdio (JSON-RPC 2.0, newline-delimited) — point Zed or any ACP client at it: agent program `unown`, args `acp`. See [acp](acp.md) |
-| `unown automations <sub>` | Scheduled recurring agent runs — `list` \| `create` \| `edit` \| `pause` \| `resume` \| `run` \| `history` \| `delete`. Needs the engine running; cron is in your **local** timezone, default mode `read-only`. See [Automations](#automations-unown-automations) |
+| `unown routines <sub>` | Scheduled recurring agent runs — `list` \| `create` \| `edit` \| `pause` \| `resume` \| `run` \| `skip` \| `snooze` \| `history` \| `delete`. Schedules: cron, `every` intervals (`2d at 09:00`), `after` (completion-anchored), one-shot; per-routine timezone + misfire policy. Needs the engine running; default mode `read-only`. See [Routines](#routines-unown-routines) (`unown automations` is the alias) |
 | `unown engine <sub>` | The detached self-learning engine — `status` (pid, uptime, active job, which jobs FAILED their last run or never ran, budget/breaker, outbox, auto-start circuit) \| `start` (spawn detached if down, wait for health — resets the crash-loop circuit) \| `stop` (graceful drain: finish in-flight requests, checkpoint the WAL, release the lock) \| `restart` (pick up the current build: busy-aware stop + fresh spawn — refuses to cut an active job without `--force`) \| `repair` (quarantine a corrupt DB — backs it up aside and boots fresh; memory files and queued notes survive by design) \| `serve` (run in the foreground — the systemd/launchd/Windows-service entry). Session-note delivery auto-starts the engine when it is down, so the terminal agent never needs it running to be useful. See [the detached engine](detached-engine-architecture.md) and [engine resilience](resilience.md) |
 | `unown usage` | Token/latency/cost report over the bridge's persistent usage log — `--days N`, `--model M`, `--json`. See [Usage tracking](usage-tracking.md) |
 | `unown webcache <sub>` | Inspect the [web results store](#web-search--webfetch) — `stats` (entries, size vs the byte cap, TTLs, hit rate, saved upstream requests, top providers; `--json` for the raw object; the default) \| `clear` (remove every entry) \| `sweep` (run the byte-capped LRU eviction pass on demand) |
@@ -152,7 +152,8 @@ Every unown session registers **fifteen** unown tools on top of pi's built-ins �
 | `lsp` | Language-server code intelligence: `diagnostics` (per file or `all`), `hover`, `definition`, `references`, `symbols`, `status`. Auto-detects servers on PATH (typescript-language-server, pyright/pylsp, gopls, rust-analyzer, clangd, bash-language-server, ruby-lsp, intelephense); configure or override with `.unown/lsp.json` / `~/.unown/agent/lsp.json`. After every `write`/`edit`, fresh diagnostics for that file are appended to the tool result — type errors get fed back to the agent instead of compounding (cold start never blocks; `UNOWN_LSP=0` disables). Also `/lsp`. |
 | `get_context_remaining` | Reports the live context budget — `{tokensUsed, maxTokens, remainingTokens, remainingPercent}` from pi's `getContextUsage()` seam, falling back to a chars/4 estimate of the message history; `maxTokens` resolves from `PI_MAX_TOKENS` → the session's context window → a 200,000 default. |
 | `view_image` | Loads an image file (PNG / JPEG / GIF / WebP, ≤ 4 MB, magic-byte validated) from the project dir or the system tmp dir as a vision-format image block — jail-checked like `write`/`edit`; missing/non-image/too-big/jail-escape are typed errors. |
-| `automation_list` | List this project's scheduled [automations](#automations-unown-automations) — id, schedule, next run, last outcome. Registered in every session. |
+| `routine_list` | List this project's scheduled [routines](#routines-unown-routines) — id, schedule, next run, last outcome. Registered in every session. |
+| `routine_create` \| `routine_update` \| `routine_run` \| `routine_delete` | Create / edit / trigger-now / delete [routines](#routines-unown-routines) (any schedule kind, per-routine timezone + misfire). Hidden inside routine runs and subagents — no recursion. |
 | `automation_create` | Create a scheduled automation (cron in the local timezone, or a one-shot `--delay-minutes`) — default mode `read-only`. Registered only in interactive sessions: hidden inside subagents and inside automation runs themselves, so a scheduled run cannot schedule more runs. |
 | `automation_update` | Edit an automation (title / prompt / cron / mode / max-runs) or pause/resume it — interactive sessions only. |
 | `automation_delete` | Delete an automation and its non-running history — interactive sessions only. |
@@ -276,31 +277,41 @@ Writes are atomic read-modify-write (existing entries and unknown keys are prese
 - Goal state persists as a session entry — it survives `/new`, `/resume`, `/fork`. `/goal` shows status, `/goal pause` stops the per-turn injection, `/goal resume` restores it, `/goal clear` removes the goal.
 - **Honest limit**: the gate is agent-honest, not cryptographic — it verifies that the model *cited* evidence, not that the evidence is true. Pair it with the LSP diagnostics loop and `/review` for actual verification.
 
-## Automations (`unown automations`)
+## Routines (`unown routines`)
 
-Automations are **scheduled, unattended agent runs** in your project — the zcode Automations port, adapted to unown's terminal-first shape. The engine polls every 20 s while it runs; each due automation spawns a real headless unown session (`--mode json -p --no-session`) in the automation's workspace, and the run's output, exit status, turns and token counts are recorded for inspection.
+Routines — historically "Automations" (`unown automations` still works as the alias) — are **scheduled, unattended agent runs** in your project. The engine polls every 20 s while it runs; each due routine spawns a real headless unown session (`--mode json -p --no-session`) in the routine's workspace, and the run's output, exit status, turns and token counts are recorded for inspection.
 
 ```bash
-unown automations create --title 'morning brief' --cron '0 9 * * 1-5' \
+unown routines create --title 'morning brief' --every '1d at 09:00' \
     --prompt "Summarize yesterday's commits and open TODOs; report risks."
-unown automations list                  # this project's automations (--all: every workspace)
-unown automations history <id>          # recorded runs: status, output, turns, tokens
-unown automations run <id>             # run now (manual runs never consume --max-runs)
-unown automations pause <id> | resume <id>
-unown automations edit <id> [--title|--prompt|--cron|--mode ...]
-unown automations delete <id>
+unown routines list [--json]           # this project's routines (--all: every workspace)
+unown routines history <id> [--json]   # recorded runs: status, output, turns, tokens
+unown routines run <id>                # run now (manual runs never consume --max-runs)
+unown routines skip <id>               # skip the next occurrence (recorded in history)
+unown routines snooze <id> 30          # push the next occurrence out 30 minutes
+unown routines pause <id> | resume <id>
+unown routines edit <id> [--title|--prompt|--cron|--every|--after|--timezone|--misfire|--mode ...]
+unown routines delete <id>
+unown dashboard routines               # the full TUI manager (or /routines in a session)
 ```
 
-Schedules: a standard **5-field cron expression in your local timezone** (`"0 9 * * 1-5"` — minute hour day-of-month month day-of-week; names, ranges, lists and steps all supported; zcode's constants apply — a missed attempt older than 5 minutes is *skipped*, never replayed), or a **one-shot** `--delay-minutes N` that runs once and completes. `--max-runs N` stops a recurring automation after N scheduled runs (manual `run`s never count). `--model` pins a model for the run; `--workspace` defaults to the current directory.
+Schedules — four kinds (the full semantics, DST policies and the decision record live in [routines.md](routines.md)):
+
+- **cron** — a standard 5-field expression in the routine's timezone (`"0 9 * * 1-5"`; names, ranges, lists and steps supported)
+- **every** — a schedule-anchored interval: `"30m"`, `"6h"`, `"2d"`, `"3w"`, or `"2d at 09:00"` (day/week intervals step by wall clock — a daily 09:00 routine stays at 09:00 across DST)
+- **after** — completion-anchored: `"45m"`, `"3d"` — the next run arms N units after the previous run *completes*; regenerating, never overdue
+- **one-shot** — `--delay-minutes N`, runs once and completes
+
+Per-routine controls: `--timezone America/New_York` (IANA; default: local), `--misfire skip|catch-up` (a slot missed while asleep/engine-down is recorded and skipped, or runs once on wake when under 24 h old — launchd semantics; default skip), `--until 2026-12-31` (inclusive end boundary — past it, the routine completes), `--max-runs N` (manual runs never count). `--model` pins a model for the run; `--workspace` defaults to the current directory.
 
 **The trust story** (this is why the feature shipped *after* the config trust gates, not before):
 
-- **Config lives in the engine's database, never in the repo.** A cloned repository carries no automation definitions, so the cloned-repo-RCE vector that gates `.unown/mcp.json` does not exist here. Automations are created only by you — via the CLI, the REST API, or the session tools.
-- **Permission is per-task.** The default `read-only` mode runs the unattended agent with a read/grep/find/ls/todo/note/fetch_url/web_search/webfetch/lsp toolset — no bash, no writes. The web tools are read-only network reads (the same classification plan mode gives them), so an unattended "morning brief" or "watch upstream for new releases" automation can search and read the web without gaining any mutation power. `standard` (the full session toolset) must be chosen explicitly with `--mode standard`; a standard run's file changes land in your working tree, reviewable through git before anything happens to them.
-- **No recursion.** Runs carry `UNOWN_AUTOMATION=1`, which hides the automation mutation tools inside the run — an automation cannot create or schedule automations (subagents inherit the flag too).
-- **Nothing auto-merges.** Every run is recorded with its output; inspect failures and successes with `history` before acting on them.
+- **Config lives in the engine's database, never in the repo.** A cloned repository carries no routine definitions, so the cloned-repo-RCE vector that gates `.unown/mcp.json` does not exist here. Routines are created only by you — via the CLI, the REST API, the TUI, or the session tools.
+- **Permission is per-task.** The default `read-only` mode runs the unattended agent with a read/grep/find/ls/todo/note/fetch_url/web_search/webfetch/lsp toolset — no bash, no writes. The web tools are read-only network reads (the same classification plan mode gives them), so an unattended "morning brief" or "watch upstream for new releases" routine can search and read the web without gaining any mutation power. `standard` (the full session toolset) must be chosen explicitly with `--mode standard`; a standard run's file changes land in your working tree, reviewable through git before anything happens to them.
+- **No recursion.** Runs carry `UNOWN_AUTOMATION=1`, which hides the routine mutation tools inside the run — a routine cannot create or schedule routines (subagents inherit the flag too).
+- **Nothing auto-merges.** Every run — and every skipped occurrence, with its reason — is recorded; inspect failures and successes with `history` before acting on them.
 
-Limits (zcode's, transliterated): 20 automations total, 2 concurrent runs, a 30-minute run timeout, and a dispatch retry ladder (30 s × 2ⁿ⁻¹, capped at 15 min, 5 attempts) for runs that fail to start. Automations need the engine up (`bun run agent:start`); while the engine is down, due slots simply wait for the next poll.
+Limits (zcode's, transliterated): 20 routines total, 2 concurrent runs (manual run-now respects the same cap), a 30-minute run timeout, and a dispatch retry ladder (30 s × 2ⁿ⁻¹, capped at 15 min, 5 attempts) for runs that fail to start. Routines need the engine up (`bun run agent:start`); while it is down, due slots simply wait for the next poll.
 
 ## Slash commands
 

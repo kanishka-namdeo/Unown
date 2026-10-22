@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 184;
+export const CHANGELOG_TOTAL_ENTRIES = 185;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 71,
+  "Added": 72,
   "Changed": 11,
   "Deprecated": 0,
   "Removed": 2,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 15,
+    "total": 16,
     "counts": {
-      "Added": 4,
+      "Added": 5,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
@@ -57,6 +57,31 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Behavior": 3
     },
     "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "Routines — recurring tasks with real recurrence semantics (the Automations upgrade)",
+            "behavior": false
+          },
+          {
+            "title": "the memory-eval suites drive the real post-swap dream again — with a no-LLM CI lane",
+            "behavior": false
+          },
+          {
+            "title": "verify-first defaults — the project's own checks now run inside the agent loop",
+            "behavior": false
+          },
+          {
+            "title": "First flights — the guided first task inside the TUI",
+            "behavior": false
+          },
+          {
+            "title": "the post-first-task onboarding tips — \"You're flying\" + four one-time session tips",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Fixed",
         "items": [
@@ -86,27 +111,6 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "the upstream pi credit now points where the repo lives",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Added",
-        "items": [
-          {
-            "title": "the memory-eval suites drive the real post-swap dream again — with a no-LLM CI lane",
-            "behavior": false
-          },
-          {
-            "title": "verify-first defaults — the project's own checks now run inside the agent loop",
-            "behavior": false
-          },
-          {
-            "title": "First flights — the guided first task inside the TUI",
-            "behavior": false
-          },
-          {
-            "title": "the post-first-task onboarding tips — \"You're flying\" + four one-time session tips",
             "behavior": false
           }
         ]

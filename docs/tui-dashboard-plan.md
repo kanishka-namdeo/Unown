@@ -196,16 +196,21 @@ latency sparkline; request log (model, stream, finish reason, tokens, duration).
 Actions: `r` refresh; `enter` request detail.
 Workflows: "what did the engine spend tokens on?".
 
-### 3.11 Automations — scheduled unattended runs
+### 3.11 Routines — scheduled recurring runs (screen id: `automations`)
 
-Data: `/api/automations`, `/api/automations/:id/runs`.
-View: automation cards (lifecycle, mode, cron + human hint, run counts, next/last
-run, tokens); run history with output/error.
-Actions: `a` create (form overlay: title, prompt, cron or delay, mode, model,
-maxRuns); `space` pause/resume; `n` run now; `e` edit; `x` delete with confirm;
-`enter` history.
-Workflows: "run the weekly changelog agent", "did last night's automation
-survive?".
+Data: `/api/automations`, `/api/automations/:id/runs`, `POST /:id/skip`, `POST /:id/snooze`.
+View: routine cards ordered by next occurrence (paused/terminal sink — Things'
+Repeating-list ordering): lifecycle, mode, the human schedule chip (every kind:
+cron/every/after/once, timezone), run counts, next/last run. Detail adds the
+full spec (timezone, misfire policy, boundaries) and a streak row — the last 10
+runs as glyphs, skips visible never hidden.
+Actions: `a` create (inline wizard: title, prompt, schedule — one field, every
+kind — timezone, misfire, mode, model, confirm); `e` edit (field picker →
+inline input over title/prompt/schedule/timezone/misfire/mode/model/until/max
+runs); `space` pause/resume; `n` run now; `s` skip next occurrence (recorded);
+`S` snooze (minutes); `x` delete with confirm; `enter` detail + history.
+Workflows: "run the weekly changelog agent", "did last night's routine
+survive?", "skip this week's cleanup". Full semantics: [routines.md](routines.md).
 
 ### 3.12 Web Cache — the research memory's cache layer
 

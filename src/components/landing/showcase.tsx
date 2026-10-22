@@ -32,7 +32,7 @@ const SCREENS: [string, string][] = [
   ["Hooks", "every allow, deny, augment"],
   ["Router", "the background jobs"],
   ["Gateway", "tokens, latency, per-model"],
-  ["Automations", "scheduled recurring runs"],
+  ["Routines", "scheduled recurring runs — cron, every, after"],
   ["Web Cache", "the persistent web results store"],
   ["Embedded", "/dashboard inside a live session"],
 ];
