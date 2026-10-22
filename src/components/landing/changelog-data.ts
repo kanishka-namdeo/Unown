@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 148;
+export const CHANGELOG_TOTAL_ENTRIES = 149;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 60,
   "Changed": 10,
   "Deprecated": 0,
   "Removed": 2,
-  "Fixed": 64,
+  "Fixed": 65,
   "Security": 0,
   "Behavior": 12
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 7,
+    "total": 8,
     "counts": {
       "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 1,
+      "Fixed": 2,
       "Security": 0,
       "Behavior": 5
     },
@@ -96,6 +96,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "unown uninstall no longer leaves its own PowerShell shim behind",
+            "behavior": false
+          },
+          {
+            "title": "--purge-checkout no longer leaves the deleted checkout recorded as the active install",
             "behavior": false
           }
         ]

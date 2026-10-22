@@ -30,6 +30,8 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 - **`unown uninstall` no longer leaves its own PowerShell shim behind** — the checkout path read shim targets with a double-quote-only regex, but `install-layout.ts` renders `unown.cmd` with double quotes and `unown.ps1` with single quotes (PowerShell's call-operator idiom). `findShims()` therefore classified the `.ps1` it had written itself as "points at an unknown install", skipped it, and left an orphan `unown` on PATH that errors in every new PowerShell session. `shimTarget()` accepts both quote styles (backreference-locked, so a `"…'` pairing cannot match) and `findShims()` now takes the platform it probes the way `findInstallShims()` already did, so the Windows two-shim case runs on every runner. The suite stopped hand-writing shim dialects: each fixture is now produced by the renderer that writes it — the pre-fix run of that suite fails on four `.ps1` legs.
 
+- **`--purge-checkout` no longer leaves the deleted checkout recorded as the active install** — `unown uninstall` cleared `install.json` only on the binary path, so a source install purged with `--purge-checkout` left `~/.unown/install.json` naming a root that no longer exists, and mode detection falls back to exactly that file. The checkout path now removes the record when it names the root being deleted — announced by `--dry-run`, kept when it names a different install, and kept when the purge is refused for uncommitted work. Proven against a throwaway install built by the real producers (git repo, rendered shims, `writeInstallMetadata`).
+
 ## [0.0.2] - 2026-10-21
 
 ### Added

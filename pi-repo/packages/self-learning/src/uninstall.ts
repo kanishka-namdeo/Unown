@@ -12,7 +12,10 @@
  * (the multi-install shadowing case). ~/.unown (user memories!) is kept
  * unless --purge-data. The checkout itself is kept unless --purge-checkout
  * (it may contain uncommitted work — the same never-discard rule the
- * updater applies). PATH registry entries the installer added on Windows
+ * updater applies), and a --purge-checkout that actually deletes the checkout
+ * also clears the ~/.unown/install.json record naming it, because mode
+ * detection falls back to that file and must not resolve a deleted root.
+ * PATH registry entries the installer added on Windows
  * are left in place (removing PATH entries from the registry for a dir that
  * may host other tools is riskier than the residue); the summary prints the
  * one-line manual cleanup instead.
@@ -53,7 +56,8 @@ Checkout install (git clone + agent:install): removes ONLY the shims
 (macOS/Linux: ~/.local/bin/unown or the dir UNOWN_BIN_DIR points at;
 Windows: %USERPROFILE%\\.local\\bin\\unown.cmd + unown.ps1) — and only when
 they point into THIS checkout; shims of other installs are reported and
-left alone.
+left alone. With --purge-checkout the ~/.unown/install.json record that names
+this checkout goes with it, so no install is recorded at a deleted path.
 
 Binary install (standalone release download): removes the shims that point
 into this install root, then the versioned root itself
@@ -305,6 +309,19 @@ export function cmdUninstall(flags: UninstallFlags, ctx: UninstallCtx = {}): num
                 }
                 log(`${flags.dryRun ? "would remove" : "removed"}  ${repoRoot} (the checkout)`);
                 if (!flags.dryRun) removeDir(repoRoot);
+
+                // A deleted checkout must not stay recorded as the ACTIVE install —
+                // `~/.unown/install.json` is the last fallback of mode detection, so a
+                // surviving record makes every later run resolve a root that is gone.
+                // Only a record naming THIS root goes; another install's is left alone,
+                // exactly like a foreign shim. (--purge-data already took the home dir,
+                // and the refusal paths above returned before reaching here.)
+                const record = readInstallMetadata(home);
+                if (record && samePath(record.root, repoRoot)) {
+                        const metaFile = installMetadataPath(home);
+                        log(`${flags.dryRun ? "would remove" : "removed"}  ${metaFile} — it named this checkout`);
+                        if (!flags.dryRun) removeFile(metaFile);
+                }
         } else if (repoRoot) {
                 log(`kept      ${repoRoot} — the checkout (pass --purge-checkout to delete)`);
         }

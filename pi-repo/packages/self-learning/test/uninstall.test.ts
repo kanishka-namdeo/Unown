@@ -200,6 +200,59 @@ describe("cmdUninstall", () => {
                 expect(code).toBe(1);
                 expect(s.lines.join("\n")).toContain("uncommitted work");
         });
+
+        function writeCheckoutRecord(s: ReturnType<typeof setup>, root = s.repo): string {
+                writeInstallMetadata(s.home, {
+                        schema: 1,
+                        mode: "checkout",
+                        version: "9.9.9",
+                        root,
+                        bin: join(root, "bin", "unown"),
+                        shim: s.shims[0],
+                        installedAt: "2026-01-01T00:00:00.000Z",
+                });
+                return installMetadataPath(s.home);
+        }
+
+        test("--purge-checkout clears the install record that names the deleted root", () => {
+                const s = setup();
+                const record = writeCheckoutRecord(s);
+                expect(run({ purgeCheckout: true }, s)).toBe(0);
+                expect(existsSync(record)).toBe(false);
+                // only the record: the kept home and its memories are untouched
+                expect(existsSync(join(s.home, "agent"))).toBe(true);
+        });
+
+        test("a dry run announces the record it would clear and leaves it", () => {
+                const s = setup();
+                const record = writeCheckoutRecord(s);
+                expect(run({ dryRun: true, purgeCheckout: true }, s)).toBe(0);
+                expect(existsSync(record)).toBe(true);
+                expect(s.lines.join("\n")).toContain("install.json");
+        });
+
+        test("a refused purge, and another checkout's record, both keep the record", () => {
+                const s = setup();
+                const foreign = writeCheckoutRecord(s, join(s.home, "..", "elsewhere"));
+                expect(run({ purgeCheckout: true }, s)).toBe(0);
+                expect(existsSync(foreign)).toBe(true); // the multi-install rule: report, never delete
+
+                const mine = writeCheckoutRecord(s);
+                const code = cmdUninstall(
+                        { purgeCheckout: true },
+                        {
+                                repoRoot: s.repo,
+                                home: s.home,
+                                env: { UNOWN_BIN_DIR: s.bin },
+                                log: (l) => s.lines.push(l),
+                                removeFile: () => {},
+                                removeDir: () => {},
+                                hasUncommitted: () => true,
+                        },
+                );
+                expect(code).toBe(1);
+                expect(existsSync(mine)).toBe(true); // nothing was deleted, so the record stays true
+        });
 });
 
 // ---------------------------------------------------------------------------
