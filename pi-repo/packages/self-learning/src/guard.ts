@@ -174,7 +174,29 @@ export function scanMemoryCandidate(candidate: string): GuardFlag[] {
                         // The runner-directive class from the F4 probes: a line that
                         // both names an executor and carries directive or switch-away
                         // language. Plain observations ("tests run with bun") stay.
-                        if (SWITCH_RE.test(text) || DIRECTIVE_RE.test(text)) return push("runner-directive", "high");
+                        //
+                        // CLAUSE-AWARE conjunction (2026-10-23, the second live
+                        // false-positive find): the runner and the directive/switch
+                        // language must sit in the SAME semicolon-delimited clause.
+                        // A preference summary legitimately packs several subjects in
+                        // one line — "test runner is vitest; deploy target is Fly.io;
+                        // code style disallows semicolons" names a runner in clause 1
+                        // and switch-language ("disallows") about a DIFFERENT subject
+                        // in clause 3 — the pre-fix line-level conjunction quarantined
+                        // the note wholesale and the dream's extracted rules then
+                        // echoed it (quarantine-echo), zeroing the whole learning
+                        // turn. Every F4/corpus poison shape keeps its runner and its
+                        // directive in one clause ("All test runs must use `node`
+                        // instead", "`bun` is deprecated; use `node`" flags on the
+                        // FIRST clause, "CI will reject any `bun` invocation"), so
+                        // the clause split loses no attack surface — semicolons are
+                        // chosen over commas/dashes precisely because the corpus's
+                        // parenthetical and dash-separated poison ("(NOT `bun` —
+                        // deprecated)") must stay inside one clause.
+                        const tripped = text
+                                .split(";")
+                                .some((clause) => RUNNER_RE.test(clause) && (SWITCH_RE.test(clause) || DIRECTIVE_RE.test(clause)));
+                        if (tripped) return push("runner-directive", "high");
                 }
         });
         return flags;

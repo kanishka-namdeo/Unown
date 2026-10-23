@@ -238,7 +238,7 @@ describe("canaryCheck — the gate decisions", () => {
                 writeTier("project", "# Memory\n- stable rule [seed]\n", "test", "v2 dream under canary");
         });
 
-        test("a FAILED canary rolls the dream back to v2's content", async () => {
+        test("a FAILED canary rolls the dream back to v2's content (verify-twice: both attempts fail)", async () => {
                 insertTask("taskA");
                 insertRun("taskA", "baseline", "passed", 100, REF_BUN);
                 const gate = await canaryCheck(3, {
@@ -249,7 +249,8 @@ describe("canaryCheck — the gate decisions", () => {
                 // reports the version it rolled back TO so runDream does not roll
                 // back again — one rollback, one version row, one event.
                 expect(gate.rolledBackVersion).toBe(2);
-                expect(gate.reason).toContain("taskA failed under new memory v3");
+                expect(gate.reason).toContain("taskA failed twice under new memory v3");
+                expect(gate.reason).toContain("verify-twice");
                 expect(readTier("project")).toBe("# Memory\n- stable rule [seed]\n");
                 // Exactly ONE rollback row was minted (v3 = the rollback of the dream's v2):
                 // the pre-fix path minted a second identical N-1 row via runDream.
@@ -258,6 +259,42 @@ describe("canaryCheck — the gate decisions", () => {
                 );
                 expect(rows.map((r) => r.version)).toEqual([1, 2, 3]);
                 expect(rows[2].changed_by).toBe("rollback");
+        }, CANARY_TIMEOUT);
+
+        test("FLAKY REFERENCE (2026-10-23): fail-once + pass-on-confirm does NOT gate the dream", async () => {
+                insertTask("taskA");
+                insertRun("taskA", "baseline", "passed", 100, REF_BUN);
+                let calls = 0;
+                const gate = await canaryCheck(3, {
+                        runAgentFn: () => {
+                                calls++;
+                                // First attempt fails, the confirmation passes — the measured
+                                // live shape: a hard minted task with ~50% upstream pass rate
+                                // was gating every other dream on upstream variance.
+                                return calls === 1
+                                        ? Promise.resolve({ status: "failed", transcript: "[]", lastAssistantText: "" })
+                                        : fakeAgent({ status: "passed", transcript: REF_BUN, lastAssistantText: "Tests pass with bun." });
+                        },
+                });
+                expect(gate.rolledBack).toBe(false);
+                expect(gate.canaries?.some((o) => o.includes("flaky reference"))).toBe(true);
+                expect(readTier("project")).toBe("# Memory\n- stable rule [seed]\n"); // the dream's v2 stands
+        }, CANARY_TIMEOUT);
+
+        test("FLAKY REFERENCE: fail-once + infra-error-confirm gates conservatively (unconfirmed failure)", async () => {
+                insertTask("taskA");
+                insertRun("taskA", "baseline", "passed", 100, REF_BUN);
+                let calls = 0;
+                const gate = await canaryCheck(3, {
+                        runAgentFn: () => {
+                                calls++;
+                                return calls === 1
+                                        ? Promise.resolve({ status: "failed", transcript: "[]", lastAssistantText: "" })
+                                        : Promise.resolve({ status: "error", transcript: "[]", lastAssistantText: "" });
+                        },
+                });
+                expect(gate.rolledBack).toBe(true);
+                expect(gate.reason).toContain("confirmation errored");
         }, CANARY_TIMEOUT);
 
         test("THE F4 CASE LIVE-PINNED: a PASSING canary that drifted bun→node gates the dream", async () => {

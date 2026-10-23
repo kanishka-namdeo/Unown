@@ -522,15 +522,53 @@ export async function canaryCheck(
 			label: `dream-canary-${task.id}`,
 		});
 		if (result.status === "failed") {
-			rollback("project", newVersion - 1, `dream canary failed on ${task.id} — consolidation rolled back`);
-			return {
-				rolledBack: true,
-				// Observable rollback ownership: runDream must not roll back again
-				// (one rollback, one version row, one memory:changed event).
-				rolledBackVersion: newVersion - 1,
-				reason: `canary ${task.id} failed under new memory v${newVersion}`,
-				canaries: [...outcomes, `${task.id}: FAILED`],
-			};
+			// Verify-twice for the canary's OWN verdict (2026-10-23, the
+			// flaky-reference find): sampleCanaryTasks picks the most recent
+			// passing baseline/candidate per task — but a hard minted task
+			// that passes only SOMETIMES (measured live: a minted
+			// multiplier-label-buzz variant, one passing candidate at 08:56,
+			// failures around it) turns the canary into a coin flip and
+			// gates ~every other dream on upstream variance, not on the
+			// memory. The harness itself never ships a patch on a single
+			// pass (verify-twice); the canary gate now holds itself to the
+			// same standard — a FAILED canary is re-run ONCE before the
+			// dream is rolled back. Two failures = deterministic evidence
+			// against the new memory; one failure + one pass = a flaky
+			// reference, recorded, dream proceeds. Drift/claim analysis is
+			// exempt (it reads the run's transcript, not its luck).
+			const confirm = await runAgentFn({
+				taskId: task.id,
+				kind: "regression",
+				prompt: task.prompt,
+				files: task.files,
+				verify: task.verify,
+				label: `dream-canary-confirm-${task.id}`,
+			});
+			if (confirm.status === "failed") {
+				rollback("project", newVersion - 1, `dream canary failed on ${task.id} — consolidation rolled back`);
+				return {
+					rolledBack: true,
+					// Observable rollback ownership: runDream must not roll back again
+					// (one rollback, one version row, one memory:changed event).
+					rolledBackVersion: newVersion - 1,
+					reason: `canary ${task.id} failed twice under new memory v${newVersion} (verify-twice)`,
+					canaries: [...outcomes, `${task.id}: FAILED x2 (verify-twice)`],
+				};
+			}
+			if (confirm.status === "error") {
+				// The confirmation died on infrastructure: the single
+				// failure stands unconfirmed — conservative gate (the
+				// pre-fix behavior for this sample).
+				rollback("project", newVersion - 1, `dream canary failed on ${task.id} (confirmation errored) — consolidation rolled back`);
+				return {
+					rolledBack: true,
+					rolledBackVersion: newVersion - 1,
+					reason: `canary ${task.id} failed under new memory v${newVersion}; confirmation errored`,
+					canaries: [...outcomes, `${task.id}: FAILED (confirm: infra error)`],
+				};
+			}
+			outcomes.push(`${sample.taskId}: flaky reference (failed once, passed on confirmation — not gated)`);
+			continue;
 		}
 		if (result.status === "error") {
 			outcomes.push(`${sample.taskId}: infrastructure error (skipped)`);
@@ -1042,8 +1080,8 @@ export function latestDreamNews(
 	try {
 		const rows = store.query<any>(
 			`SELECT id, ended_at, entries_added, note FROM dreams
-			 WHERE status = 'done' AND entries_added > 0 AND ended_at IS NOT NULL AND ended_at > ?
-			 ORDER BY ended_at DESC LIMIT 8`,
+                         WHERE status = 'done' AND entries_added > 0 AND ended_at IS NOT NULL AND ended_at > ?
+                         ORDER BY ended_at DESC LIMIT 8`,
 			[Date.now() - maxAgeMs],
 		);
 		for (const r of rows) {
