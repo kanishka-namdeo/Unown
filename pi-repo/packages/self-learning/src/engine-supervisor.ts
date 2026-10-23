@@ -21,7 +21,17 @@
  *     exactly one wins the port + lock; the loser exits cleanly.
  */
 import { spawn } from "node:child_process";
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	closeSync,
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	openSync,
+	readFileSync,
+	statSync,
+	truncateSync,
+	writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { engineFetch } from "./engine-auth.ts";
 import type { EngineBuildRef } from "./engine-version.ts";
@@ -42,6 +52,50 @@ export function supervisorStateRoot(): string {
 
 function runDir(): string {
 	return join(supervisorStateRoot(), ".run");
+}
+
+/** The engine's single unified log — supervisor-spawned engines write it via
+ *  inherited stdio; service-booted engines (launchd) write it via the plist's
+ *  StandardOut/ErrorPath. One file, one rotation policy (M6). */
+export function engineLogPath(): string {
+	return join(runDir(), "engine.log");
+}
+
+/** Log rotation cap (M6): past this size the log archives to engine.log.1
+ *  (one generation — a bounded ~2× footprint) and truncates. Env-tunable via
+ *  UNOWN_ENGINE_LOG_MAX_BYTES (floor 64 KiB). */
+export const ENGINE_LOG_MAX_BYTES = 5 * 1024 * 1024;
+
+function engineLogMaxBytes(): number {
+	const raw = process.env.UNOWN_ENGINE_LOG_MAX_BYTES || "";
+	if (raw === "") return ENGINE_LOG_MAX_BYTES;
+	const n = Number(raw);
+	return Number.isFinite(n) && n >= 64 * 1024 ? n : ENGINE_LOG_MAX_BYTES;
+}
+
+/** Rotate .run/engine.log when it outgrows the cap (M6 — the disk-full
+ *  backlog item). COPY-TRUNCATE, not rename: under `engine install` the OS
+ *  service (launchd Standard*Path) and under supervisor spawns the inherited
+ *  stdio fd BOTH point at this file with O_APPEND — a rename would strand
+ *  every writer on the archived inode forever. Copy the full file to
+ *  engine.log.1, then truncate in place: append-mode writers continue at
+ *  offset 0 of the fresh file mid-flight. Never throws — rotation is
+ *  housekeeping, never a dependency (the webcache events-feed rotate is the
+ *  in-repo precedent for a bounded log lane). */
+export function rotateEngineLogIfNeeded(
+	logPath?: string,
+	maxBytes: number = engineLogMaxBytes(),
+): { rotated: boolean } {
+	const path = logPath ?? engineLogPath();
+	try {
+		const st = statSync(path);
+		if (st.size < maxBytes) return { rotated: false };
+		copyFileSync(path, `${path}.1`);
+		truncateSync(path, 0);
+		return { rotated: true };
+	} catch {
+		return { rotated: false }; // missing/racing — the next boot retries
+	}
 }
 
 export function enginePidFile(): string {
@@ -260,17 +314,64 @@ export async function engineHealth(timeoutMs = 1500): Promise<{
  *  Exported for engine-cli.ts's serve path (service-booted engines start with
  *  a minimal environment and must load the state-root .env themselves). */
 export function loadEnvValues(path: string): Record<string, string> {
-        const out: Record<string, string> = {};
-        try {
-                const raw = readFileSync(path, "utf8");
-                for (const line of raw.split(/\r?\n/)) {
-                        const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-                        if (m && !line.trimStart().startsWith("#")) out[m[1]] = m[2];
-                }
-        } catch {
-                /* no .env — inherit the environment as-is */
-        }
-        return out;
+	const out: Record<string, string> = {};
+	try {
+		const raw = readFileSync(path, "utf8");
+		for (const line of raw.split(/\r?\n/)) {
+			const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+			if (m && !line.trimStart().startsWith("#")) out[m[1]] = m[2];
+		}
+	} catch {
+		/* no .env — inherit the environment as-is */
+	}
+	return out;
+}
+
+// ---------------------------------------------------------------------------
+// Env hot-reload (M6 — the config-hot-reload backlog item)
+// ---------------------------------------------------------------------------
+
+/** Stat-mtime gate for reloadEnvIfChanged (module state; one file watched). */
+let envWatch: { path: string; mtimeMs: number | null } | null = null;
+
+/** Hot-reload the state-root .env: PI_ and UNOWN_-prefixed keys only,
+ *  applied to
+ *  process.env when the file's mtime moved. Called by the automations
+ *  scheduler every tick (20s), so tuning the misfire grace, catch-up
+ *  policy, idle window, log cap or budget knobs lands WITHOUT an engine
+ *  restart — routine EDITS were always hot (they live in the DB and every
+ *  tick re-queries it); this covers the env lane, which `engine serve`
+ *  otherwise loads exactly once at boot.
+ *
+ *  Semantics (documented in docs/routines.md §configuration):
+ *   - only keys the FILE still defines are applied — a key REMOVED from .env
+ *     keeps its last loaded value (its reset path is the code default after a
+ *     restart); reloading is additive-diff, not a full env rebuild;
+ *   - non-PI_/UNOWN_ keys are ignored (the engine never re-evaluates PATH or
+ *     friends mid-flight);
+ *   - the first call primes the mtime gate without side effects (cmdServe
+ *     already applied the same file at boot). */
+export function reloadEnvIfChanged(envPath?: string): { reloaded: boolean; applied: string[] } {
+	const path = envPath ?? join(supervisorStateRoot(), ".env");
+	let mtimeMs: number | null;
+	try {
+		mtimeMs = statSync(path).mtimeMs;
+	} catch {
+		mtimeMs = null; // no .env — nothing to apply, remember we looked
+	}
+	if (envWatch && envWatch.path === path && envWatch.mtimeMs === mtimeMs) return { reloaded: false, applied: [] };
+	const applied: string[] = [];
+	if (mtimeMs !== null) {
+		for (const [k, v] of Object.entries(loadEnvValues(path))) {
+			if (!k.startsWith("PI_") && !k.startsWith("UNOWN_")) continue;
+			if (process.env[k] !== v) {
+				process.env[k] = v;
+				applied.push(k);
+			}
+		}
+	}
+	envWatch = { path, mtimeMs };
+	return { reloaded: true, applied };
 }
 
 /** In-process single-flight: concurrent callers share one spawn attempt. */
@@ -316,6 +417,9 @@ export function spawnEngineDetached(opts: { force?: boolean } = {}): Promise<boo
 			const command = process.execPath;
 			const args = isCompiled ? ["engine", "serve"] : [process.argv[1] ?? "bin/unown", "engine", "serve"];
 			mkdirSync(runDir(), { recursive: true });
+			// M6: rotate the previous generation's log BEFORE opening the append
+			// fd — no writer holds the file yet, this is the clean rotation point.
+			rotateEngineLogIfNeeded();
 			const logFd = openSync(join(runDir(), "engine.log"), "a");
 			// The Windows detach escape hatch: Bun's detached:true child dies
 			// with the parent on win32 (oven-sh/bun#31603). `cmd /c start /b`

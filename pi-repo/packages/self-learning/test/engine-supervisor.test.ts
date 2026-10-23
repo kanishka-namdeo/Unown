@@ -9,12 +9,15 @@
  */
 import "./_env.ts"; // MUST be the first import
 import { afterAll, describe, expect, test } from "bun:test";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	engineHealth,
 	enginePidFromPidfile,
 	parseDreamNews,
+	reloadEnvIfChanged,
+	rotateEngineLogIfNeeded,
 	spawnEngineDetached,
 	supervisorStateRoot,
 } from "../src/engine-supervisor.ts";
@@ -161,5 +164,121 @@ describe("engine single-instance lock (F9)", () => {
 		server?.stop(true);
 		expect(existsSync(LOCK)).toBe(true); // release happens on signal-drain, not stop()
 		rmSync(LOCK, { force: true });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// M6: log rotation + env hot-reload (the disk-full / config-hot-reload items)
+// ---------------------------------------------------------------------------
+
+describe("engine log rotation (M6)", () => {
+	const DIR = mkdtempSync(join(tmpdir(), "unown-m6-log-"));
+
+	test("a log past the cap archives to .1 and truncates in place", () => {
+		const log = join(DIR, "engine.log");
+		writeFileSync(log, "x".repeat(6000));
+		const r = rotateEngineLogIfNeeded(log, 5000);
+		expect(r.rotated).toBe(true);
+		expect(statSync(log).size).toBe(0); // truncated in place — held O_APPEND fds stay valid
+		expect(readFileSync(`${log}.1`, "utf8")).toHaveLength(6000); // the archived generation
+	});
+
+	test("a log under the cap is untouched", () => {
+		const log = join(DIR, "small.log");
+		writeFileSync(log, "x".repeat(10));
+		expect(rotateEngineLogIfNeeded(log, 5000).rotated).toBe(false);
+		expect(statSync(log).size).toBe(10);
+	});
+
+	test("a missing log is a no-op, never a throw", () => {
+		expect(rotateEngineLogIfNeeded(join(DIR, "absent.log"), 5000).rotated).toBe(false);
+	});
+
+	test("re-rotation replaces the previous .1 generation (one kept)", () => {
+		const log = join(DIR, "gen.log");
+		writeFileSync(log, "y".repeat(6000));
+		expect(rotateEngineLogIfNeeded(log, 5000).rotated).toBe(true);
+		writeFileSync(log, "z".repeat(6000));
+		expect(rotateEngineLogIfNeeded(log, 5000).rotated).toBe(true);
+		expect(readFileSync(`${log}.1`, "utf8")).toBe("z".repeat(6000)); // newest generation
+		expect(statSync(log).size).toBe(0);
+	});
+
+	test("an append-mode fd survives rotation mid-write (the copy-truncate contract)", () => {
+		const log = join(DIR, "append.log");
+		const { openSync, writeSync, closeSync } = require("node:fs") as typeof import("node:fs");
+		const fd = openSync(log, "a");
+		writeSync(fd, "first-gen\n");
+		expect(rotateEngineLogIfNeeded(log, 5).rotated).toBe(true);
+		writeSync(fd, "second-gen\n"); // the SAME fd — O_APPEND lands at the fresh EOF
+		closeSync(fd);
+		expect(readFileSync(log, "utf8")).toBe("second-gen\n");
+		expect(readFileSync(`${log}.1`, "utf8")).toBe("first-gen\n");
+	});
+
+	afterAll(() => {
+		rmSync(DIR, { recursive: true, force: true });
+	});
+});
+
+describe("env hot-reload (M6 — reloadEnvIfChanged)", () => {
+	const DIR = mkdtempSync(join(tmpdir(), "unown-m6-env-"));
+	const ENV = join(DIR, ".env");
+
+	test("a changed .env applies PI_/UNOWN_ keys; other keys are ignored", () => {
+		delete process.env.PI_M6_PROBE;
+		delete process.env.UNOWN_M6_PROBE;
+		writeFileSync(ENV, "PI_M6_PROBE=alpha\nUNOWN_M6_PROBE=beta\nSOMETHING_ELSE=nope\n");
+		const r = reloadEnvIfChanged(ENV);
+		expect(r.reloaded).toBe(true);
+		expect(r.applied).toContain("PI_M6_PROBE");
+		expect(r.applied).toContain("UNOWN_M6_PROBE");
+		expect(r.applied).not.toContain("SOMETHING_ELSE");
+		expect(process.env.PI_M6_PROBE).toBe("alpha");
+		expect(process.env.UNOWN_M6_PROBE).toBe("beta");
+		expect(process.env.SOMETHING_ELSE).toBeUndefined();
+	});
+
+	test("an unchanged mtime is a no-op; a re-edit re-applies", async () => {
+		expect(reloadEnvIfChanged(ENV).reloaded).toBe(false); // same mtime
+		writeFileSync(ENV, "PI_M6_PROBE=gamma\n");
+		// Bump the mtime EXPLICITLY (a future timestamp is legal) — filesystem
+		// mtime granularity varies (tmpfs ns vs some CI mounts at 1s), and the
+		// reload GATE is the unit under test, not the clock's tick rate.
+		const bumped = new Date(Date.now() + 5000);
+		utimesSync(ENV, bumped, bumped);
+		const r = reloadEnvIfChanged(ENV);
+		expect(r.reloaded).toBe(true);
+		expect(r.applied).toContain("PI_M6_PROBE");
+		expect(process.env.PI_M6_PROBE).toBe("gamma");
+	});
+
+	test("a missing .env is a no-op, never a throw", () => {
+		expect(reloadEnvIfChanged(join(DIR, "absent.env")).reloaded).toBe(true); // first sight primes the gate
+		expect(reloadEnvIfChanged(join(DIR, "absent.env")).reloaded).toBe(false); // stable after
+	});
+
+	afterAll(() => {
+		delete process.env.PI_M6_PROBE;
+		delete process.env.UNOWN_M6_PROBE;
+		rmSync(DIR, { recursive: true, force: true });
+	});
+});
+
+describe("idlePresenceWindowMs (M6 — call-time env read)", () => {
+	test("the default is 60s; a set env retunes it live; garbage falls back", async () => {
+		const { idlePresenceWindowMs } = await import("../src/automations.ts");
+		const saved = process.env.PI_IDLE_PRESENCE_WINDOW_MS;
+		try {
+			delete process.env.PI_IDLE_PRESENCE_WINDOW_MS;
+			expect(idlePresenceWindowMs()).toBe(60_000);
+			process.env.PI_IDLE_PRESENCE_WINDOW_MS = "5000";
+			expect(idlePresenceWindowMs()).toBe(5000);
+			process.env.PI_IDLE_PRESENCE_WINDOW_MS = "not-a-number";
+			expect(idlePresenceWindowMs()).toBe(60_000);
+		} finally {
+			if (saved === undefined) delete process.env.PI_IDLE_PRESENCE_WINDOW_MS;
+			else process.env.PI_IDLE_PRESENCE_WINDOW_MS = saved;
+		}
 	});
 });

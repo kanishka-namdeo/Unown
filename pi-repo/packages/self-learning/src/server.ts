@@ -9,13 +9,14 @@ import {
 	createAutomation,
 	deleteAutomation,
 	EVENT_NAME_RE,
+	type EventDispatchResult,
 	getAutomation,
 	listRuns as listAutomationRuns,
 	listAutomations,
+	ROUTINE_EVENT_PREFIX,
 	skipNextOccurrence,
 	snoozeNextOccurrence,
 	updateAutomation,
-	type EventDispatchResult,
 } from "./automations.ts";
 import { emit, subscribe } from "./bus.ts";
 import { dreamNotes, latestDreamNews, listDreams, runDream } from "./dream.ts";
@@ -260,7 +261,7 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 					// active_hours/idle_only/deliver_url/jitter_secs row aliases accepted).
 					activeHours:
 						body?.activeHours !== undefined
-							? body.activeHours === null || body.activeHours === ''
+							? body.activeHours === null || body.activeHours === ""
 								? null
 								: String(body.activeHours)
 							: body?.active_hours !== undefined
@@ -269,16 +270,32 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 					idleOnly: body?.idleOnly === true || body?.idle_only === 1 || body?.idle_only === true,
 					deliverUrl:
 						body?.deliverUrl !== undefined
-							? body.deliverUrl === null || body.deliverUrl === ''
+							? body.deliverUrl === null || body.deliverUrl === ""
 								? null
 								: String(body.deliverUrl)
 							: body?.deliver_url !== undefined
 								? String(body.deliver_url)
 								: undefined,
 					jitterSecs:
-						body?.jitterSecs !== undefined && body?.jitterSecs !== null ? Number(body.jitterSecs)
-							: body?.jitter_secs !== undefined && body?.jitter_secs !== null ? Number(body.jitter_secs)
-							: undefined,
+						body?.jitterSecs !== undefined && body?.jitterSecs !== null
+							? Number(body.jitterSecs)
+							: body?.jitter_secs !== undefined && body?.jitter_secs !== null
+								? Number(body.jitter_secs)
+								: undefined,
+					// M6: the failed-run retry policy (same camelCase + snake_case
+					// alias convention as the M5 fields).
+					retryMax:
+						body?.retryMax !== undefined && body?.retryMax !== null
+							? Number(body.retryMax)
+							: body?.retry_max !== undefined && body?.retry_max !== null
+								? Number(body.retry_max)
+								: undefined,
+					retryBackoffSecs:
+						body?.retryBackoffSecs !== undefined && body?.retryBackoffSecs !== null
+							? Number(body.retryBackoffSecs)
+							: body?.retry_backoff_secs !== undefined && body?.retry_backoff_secs !== null
+								? Number(body.retry_backoff_secs)
+								: undefined,
 					// M2 event routines: `event` + `filter` (the CLI's spelling;
 					// eventKind/eventFilter aliases accepted for REST symmetry).
 					eventKind:
@@ -381,6 +398,14 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 				}
 				if (body?.jitterSecs !== undefined || body?.jitter_secs !== undefined) {
 					patch.jitterSecs = body.jitterSecs ?? body.jitter_secs ?? null;
+				}
+				// M6: the failed-run retry policy (null clears; 0 also disarms
+				// a pending retry chain).
+				if (body?.retryMax !== undefined || body?.retry_max !== undefined) {
+					patch.retryMax = body.retryMax ?? body.retry_max ?? null;
+				}
+				if (body?.retryBackoffSecs !== undefined || body?.retry_backoff_secs !== undefined) {
+					patch.retryBackoffSecs = body.retryBackoffSecs ?? body.retry_backoff_secs ?? null;
 				}
 				const untilRaw = body?.until ?? body?.untilMs;
 				if (untilRaw !== undefined) {
@@ -767,7 +792,9 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
 		if (method === "GET" && path === "/api/hooks/info") {
 			const hookId = ensureHooksToken();
 			const eventRoutines =
-				store.get<{ c: number }>(`SELECT COUNT(*) AS c FROM automations WHERE schedule_kind = 'event' AND lifecycle = 'active'`)?.c ?? 0;
+				store.get<{ c: number }>(
+					`SELECT COUNT(*) AS c FROM automations WHERE schedule_kind = 'event' AND lifecycle = 'active'`,
+				)?.c ?? 0;
 			return json({
 				hookId,
 				hookUrl: `/api/hooks/${hookId}`,
@@ -969,7 +996,8 @@ async function handleWebhookPost(pathname: string, req: Request): Promise<Respon
 	} catch {
 		return json({ error: "unreadable body" }, 400);
 	}
-	if (raw.length > HOOK_MAX_BODY_BYTES) return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
+	if (raw.length > HOOK_MAX_BODY_BYTES)
+		return json({ error: `body too large (max ${HOOK_MAX_BODY_BYTES} bytes)` }, 413);
 	let body: any;
 	try {
 		body = JSON.parse(raw);
@@ -978,6 +1006,19 @@ async function handleWebhookPost(pathname: string, req: Request): Promise<Respon
 	}
 	const event = typeof body?.event === "string" ? body.event.trim() : "";
 	if (!EVENT_NAME_RE.test(event)) return json({ error: "event must match [a-z0-9._-]{1,64}" }, 400);
+	// M6: the routine.* namespace is engine-emitted (chained routines) — a
+	// sender who knows the hook URL must not be able to forge a
+	// "routine A just finished successfully" body any more than GitHub lets a
+	// webhook caller forge workflow_run. The token-gated LOCAL lane keeps it
+	// (tests + chain rehearsal).
+	if (event.startsWith(ROUTINE_EVENT_PREFIX)) {
+		return json(
+			{
+				error: `the ${ROUTINE_EVENT_PREFIX}* namespace is reserved for engine-emitted events (chained routines) — pick another event name`,
+			},
+			400,
+		);
+	}
 	let payload = body?.payload ?? {};
 	if (payload === null) payload = {};
 	if (typeof payload !== "object" || Array.isArray(payload)) {
