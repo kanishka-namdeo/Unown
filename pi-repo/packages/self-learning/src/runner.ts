@@ -32,6 +32,7 @@ import { createNote, noteFromRun } from "./notes.ts";
 import { beginLiveRun, finishLiveRun, touchLiveRun } from "./run-progress.ts";
 import { createSandbox, seedFiles, snapshotFiles, verifyInSandbox } from "./sandbox.ts";
 import { BRIDGE_URL, DATA_DIR, store } from "./store.ts";
+import { modelSpec } from "./model-specs.ts";
 import { createWebToolsExtension } from "./websearch.ts";
 
 export const AGENT_DIR = join(DATA_DIR, "pi-agent-dir");
@@ -219,8 +220,7 @@ export function ensureAgentDir() {
                                 {
                                         id: MODEL_ID,
                                         name: `${MODEL_ID} (via llm-bridge)`,
-                                        contextWindow: 131072,
-                                        maxTokens: 8192,
+                                        ...modelSpec(MODEL_ID),
                                         input: ["text", "image"],
                                 },
                         ],

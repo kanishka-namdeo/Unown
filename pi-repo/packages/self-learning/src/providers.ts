@@ -24,6 +24,7 @@
  */
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { modelSpec } from "./model-specs.ts";
 import { probeOpenAiEndpoint, readAgentModelsFile, type EndpointProbe } from "./probe.ts";
 
 // ---------------------------------------------------------------------------
@@ -199,13 +200,16 @@ export function listProviders(agentDir: string): ProviderList {
 // Write: upsert (the accumulate-never-rewrite core)
 // ---------------------------------------------------------------------------
 
-/** Default metadata stamped on newly-registered models. */
+/** Default metadata stamped on newly-registered models: the known-model
+ * spec catalog when the id has published limits, the conservative defaults
+ * otherwise (see model-specs.ts — the entry's own values still win). */
 function newModelRecord(entry: ProviderEntry, id: string): JsonRecord {
+        const spec = modelSpec(id);
         return {
                 id,
                 name: `${id} (via unown)`,
-                contextWindow: entry.contextWindow ?? 131072,
-                maxTokens: entry.maxTokens ?? 8192,
+                contextWindow: entry.contextWindow ?? spec.contextWindow,
+                maxTokens: entry.maxTokens ?? spec.maxTokens,
                 input: entry.input,
         };
 }
@@ -536,11 +540,12 @@ export async function refreshProviderModels(agentDir: string, providerId: string
         const added: string[] = [];
         for (const id of served) {
                 if (existingSet.has(id)) continue;
+                const spec = modelSpec(id);
                 entry.models.push({
                         id,
                         name: `${id} (via unown)`,
-                        contextWindow: 131072,
-                        maxTokens: 8192,
+                        contextWindow: spec.contextWindow,
+                        maxTokens: spec.maxTokens,
                         input: inputModalities,
                 });
                 added.push(id);

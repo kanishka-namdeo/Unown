@@ -97,6 +97,19 @@ describe("writeModelsJson — the full catalog ships on a fresh seed", () => {
                 });
         });
 
+        test("known ids stamp their published spec; unknown ids keep the conservative defaults", () => {
+                withKnownModels("agnes-3.0-flash,mystery-7b", () => {
+                        const out = writeModelsJson(DIR);
+                        expect(out.fresh).toBe(true);
+                        const written = JSON.parse(readFileSync(join(DIR, "models.json"), "utf8"));
+                        const models = written.providers["zai-bridge"].models as Array<Record<string, unknown>>;
+                        const agnes = models.find((m) => m.id === "agnes-3.0-flash")!;
+                        expect(agnes).toMatchObject({ contextWindow: 524288, maxTokens: 65536, input: ["text", "image"] });
+                        const mystery = models.find((m) => m.id === "mystery-7b")!;
+                        expect(mystery).toMatchObject({ contextWindow: 131072, maxTokens: 8192 });
+                });
+        });
+
         test("an existing models.json is never clobbered (setup owns rewrites)", () => {
                 withKnownModels("kimi-k2.5,qwen3.7-plus,qwen3.6-plus", () => {
                         writeModelsJson(DIR); // fresh write

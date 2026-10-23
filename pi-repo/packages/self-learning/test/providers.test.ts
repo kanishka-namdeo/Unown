@@ -134,10 +134,11 @@ describe("upsertProvider — accumulate (the M1 contract)", () => {
                 const models = rawModels();
                 models.providers.agnes.models[0].contextWindow = 200000; // user-tuned
                 writeFileSync(join(DIR, "models.json"), JSON.stringify(models, null, 2));
-                upsertProvider(DIR, agnes({ extraModelIds: ["agnes-2.5-flash"] }));
+                upsertProvider(DIR, agnes({ extraModelIds: ["agnes-2.5-flash", "mystery-7b"] }));
                 const after = rawModels().providers.agnes.models;
                 expect(after.find((m: any) => m.id === "agnes-3.0-flash").contextWindow).toBe(200000);
-                expect(after.find((m: any) => m.id === "agnes-2.5-flash").contextWindow).toBe(131072); // new model gets defaults
+                expect(after.find((m: any) => m.id === "agnes-2.5-flash")).toMatchObject({ contextWindow: 524288, maxTokens: 65536 }); // known model: published spec
+                expect(after.find((m: any) => m.id === "mystery-7b")).toMatchObject({ contextWindow: 131072, maxTokens: 8192 }); // unknown id: conservative defaults
         });
 
         test("a literal models.json key is cleared when the secret moves to auth.json", () => {

@@ -29,6 +29,7 @@ import { scanMemoryCandidate, type GuardFlag } from "./guard.ts";
 import { engineFetch } from "./engine-auth.ts";
 import { spawnEngineDetached } from "./engine-supervisor.ts";
 import { MEMORY_GUIDE, MEMORY_GUIDE_PATH } from "./memory-guide.ts";
+import { modelSpec } from "./model-specs.ts";
 import { STARTER_SKILLS } from "./skill-seeds.ts";
 import { UNOWN_THEME, UNOWN_THEME_NAME } from "./theme.ts";
 
@@ -156,8 +157,7 @@ export function writeModelsJson(agentDir: string): { path: string; fresh: boolea
                                                 ).map((id) => ({
                                                         id,
                                                         name: `${id} (via unown)`,
-                                                        contextWindow: 131072,
-                                                        maxTokens: 8192,
+                                                        ...modelSpec(id),
                                                         input: ["text", "image"],
                                                 })),
                                         },

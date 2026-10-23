@@ -136,6 +136,7 @@ All three live in `~/.unown/agent/` (override the whole dir with `UNOWN_HOME`).
 ```
 
 - `api`: `openai-completions` for OpenAI-compatible servers; `anthropic-messages` for Anthropic's native API.
+- When unown itself seeds a model record from an id alone (`unown setup`, the live `/models` refresh, the engine's sandbox dir, the first-run bridge seed), the record's `contextWindow`/`maxTokens` come from the known-model catalog (`model-specs.ts`): officially published limits where they exist (e.g. `agnes-3.0-flash` — 524288 context / 65536 output), the conservative 131072/8192 floor for unknown ids. The catalog only stamps what the vendor documents — it never guesses.
 - A literal `apiKey` inside a provider entry counts as configured auth — that's how the bundled-bridge shape works (`"bridge-local"` placeholder, or the shared secret when `BRIDGE_API_KEY` is set).
 - Keys entered through `unown setup` for direct providers go into `auth.json` instead (see below) — the file stays shareable.
 
