@@ -157,7 +157,7 @@ describe("CheckpointStore redo stack", () => {
         // the no-owner form keeps the newest `keep` globally (the pre-ownership prune shape)
         expect(store.pruneRedo(2)).toBe(58); // 60 → 2
         expect(store.listRedo().map((m) => m.id)).toEqual(["a64", "b2"]); // highest seqs survive
-    });
+    }, 20_000); // 60+ fs writes: crossed bun's 5s default on a loaded windows release runner
 
     test("gcBlobs never collects a blob referenced only by a redo entry", () => {
         const dir = join(tmpRoot, "store-redo-gc");

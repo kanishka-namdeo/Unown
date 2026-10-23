@@ -6,6 +6,7 @@
 // Chromium, per the repo's live-suite convention.
 import { describe, expect, test } from "bun:test";
 import "./_env.ts";
+import { join } from "node:path";
 import {
         browserCandidates,
         defaultProfileDir,
@@ -82,7 +83,10 @@ describe("browser discovery", () => {
         });
 
         test("default profile lives under the unown home", () => {
-                expect(defaultProfileDir("/tmp/unown-home")).toBe("/tmp/unown-home/browser/profile");
+                // join() on the HOST separator: the expectation must hold on
+                // windows too (where join("/tmp/x", "browser") yields
+                // "\tmp\x\browser" — caught by the 3-OS release runner)
+                expect(defaultProfileDir("/tmp/unown-home")).toBe(join("/tmp/unown-home", "browser", "profile"));
         });
 });
 

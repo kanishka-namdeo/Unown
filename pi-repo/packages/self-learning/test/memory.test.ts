@@ -205,7 +205,7 @@ describe("history", () => {
         test("default limit is 30", () => {
                 for (let i = 0; i < 34; i++) writeTier("local", `l${i}`, "unit-tests", "bulk");
                 expect(history("local")).toHaveLength(30);
-        });
+        }, 20_000); // 34 sequential sqlite writes: crossed bun's 5s default on a loaded windows release runner
 });
 
 // ---------------------------------------------------------------------------
