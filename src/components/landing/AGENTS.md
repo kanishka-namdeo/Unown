@@ -977,9 +977,12 @@ parallel ones.
   re-run both scripts before shipping it** — and note that the `color-mix` card
   blends are invisible to the static gate, which is exactly why the browser
   audit is not redundant.
-- `public/landing/landing-{hero,full,mobile}.png` are the OpenGraph images
-  `layout.tsx` names, and they are tracked screenshots of this page — so they go
-  stale the moment the palette moves. Regenerate with
+- `public/landing/landing-{hero,full,mobile}.png` are tracked screenshots
+  of this page, kept current by the same script — `layout.tsx` NAMES only
+  `landing-hero.png` (plus the TUI dashboard still) in its OpenGraph set;
+  `landing-full.png` / `landing-mobile.png` ship as tracked artifacts without
+  being named in the metadata. They go stale the moment the palette — or the
+  chrome they photograph — moves. Regenerate with
   `bun scripts/landing_og_shots.mjs` against the production build; it asserts
   `--color-canvas` resolved to the dark scheme's hex before each shot, so it
   cannot silently re-bake an old palette. `layout.tsx` also names

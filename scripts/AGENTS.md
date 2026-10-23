@@ -185,9 +185,11 @@ The lifecycle scripts are cross-platform bun TypeScript (`install.ts`, `link.ts`
     `localStorage.unown-theme` agree at every step; checks a forced choice
     survives reload (the inline `<head>` bootstrap's job) and the `aria-label`
     announces state. Same `LANDING_SHOTS_URL` base URL; non-zero on failure.
-  - `landing_og_shots.mjs` — regenerates the TRACKED OpenGraph images in
+  - `landing_og_shots.mjs` — regenerates the TRACKED screenshots in
     `public/landing/` (`landing-hero.png`, `landing-full.png`,
-    `landing-mobile.png`) that `layout.tsx` names. These are screenshots of the
+    `landing-mobile.png`); `layout.tsx` names only `landing-hero.png` (plus a
+    TUI dashboard still) in its OpenGraph metadata — full/mobile are kept
+    current as tracked artifacts. These are screenshots of the
     landing page, so they go stale the moment its palette moves. Runs against
     the production standalone server like the other three, asserts
     `--color-canvas` resolved to the dark scheme's hex before each shot (so it

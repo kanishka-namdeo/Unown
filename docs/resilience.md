@@ -83,6 +83,7 @@ Every engine row is ⚠-class — warnings affect learning features only, chat n
 | Doctor row | When | Detail line |
 |---|---|---|
 | `self-learning engine` | engine unreachable | `unreachable — learning paused, chat unaffected; notes queue in ~/.unown/notes/outbox (3 pending; start it: unown engine start)` |
+| `self-learning engine` | engine up, rejects this CLI's token (a binary install talking to a source-repo engine — the CLI reads its OWN data dir's `engine.token`) | `up but rejected this CLI's token — learning paused, chat unaffected; point UNOWN_ENGINE_TOKEN at the ENGINE's data/self-learning/engine.token (binary and source installs keep different data dirs)` |
 | `engine auto-start` | circuit gave up | `gave up after 5 failed start(s) — inspect .run/engine.log; then: unown engine repair (corrupt DB?) or unown engine start (resets the circuit)` |
 | `engine auto-start` | backing off between tries | `2 recent attempt(s) — backing off between tries (normal after failures)` — a pass, not a warning |
 | `engine router` | wedged but alive | `busy mutex held 2400s on 'auto-dream' — past 2x the job timeout; restart the engine` |
