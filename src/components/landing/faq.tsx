@@ -79,7 +79,15 @@ export function FaqSection() {
                 >
                   <AccordionTrigger className="group rounded-none text-left text-[14.5px] font-medium text-ink hover:no-underline hover:text-gold [&>svg]:hidden">
                     <span className="flex items-center gap-2.5">
-                      <PixelCursor className="h-3 w-[7px] shrink-0 text-gold opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
+                      {/* The disclosure affordance: a dim ▶ on every closed row
+                          (a closed question that shows nothing reads as plain
+                          text — the chevron-on-open-only version shipped that
+                          way and nobody could tell the list was clickable),
+                          brightening to gold on hover and to solid gold when
+                          open. Same PixelCursor the nav and the rail use. */}
+                      <PixelCursor
+                        className="h-3 w-[7px] shrink-0 text-faint transition-[color,opacity] [transition-timing-function:steps(2,end)] group-hover:text-dim group-data-[state=open]:text-gold"
+                      />
                       <span>{item.q}</span>
                     </span>
                   </AccordionTrigger>

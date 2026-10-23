@@ -222,6 +222,15 @@ function readout(entry: DexEntry, reel: number, reduced: boolean, paused: boolea
     : `${head} · ${what}`;
 }
 
+/** `entry.name` minus a leading English article, for accessible names that
+ *  already carry their own "the". Two entries are named with one ("The fix
+ *  loop", "The wiki") and the composed labels used to stutter — screen
+ *  readers announced "Play the The fix loop capture". The visible terminal
+ *  title keeps the full name: "unown — The fix loop" reads fine there. */
+function bareName(name: string): string {
+  return name.replace(/^the\s+/i, "");
+}
+
 /* ------------------------------------------------------------------ */
 /* the capture stage                                                   */
 /* ------------------------------------------------------------------ */
@@ -254,8 +263,8 @@ function CaptureStage({
               onClick={onTogglePause}
               aria-label={
                 paused
-                  ? `Play the ${entry.name} capture`
-                  : `Pause the ${entry.name} capture`
+                  ? `Play the ${bareName(entry.name)} capture`
+                  : `Pause the ${bareName(entry.name)} capture`
               }
               title={paused ? "play" : "pause"}
               /* The bar is an accent fill, so its ink is the canvas ink — the
@@ -392,8 +401,8 @@ function DexDetail({
           <button
             type="button"
             onClick={() => playCry(entry.id)}
-            aria-label={`play the ${entry.name} cry`}
-            title={`the ${entry.name} cry`}
+            aria-label={`play the ${bareName(entry.name)} cry`}
+            title={`the ${bareName(entry.name)} cry`}
             className="inline-flex size-9 shrink-0 items-center justify-center border border-line bg-panel-2 text-dim transition-colors hover:border-line-bright hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
           >
             <CryIcon />

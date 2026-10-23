@@ -45,6 +45,25 @@ export function GithubMark({ className }: { className?: string }) {
   );
 }
 
+/** The section menu's bars: three square 2px rows, `crispEdges` like every
+ *  other glyph in the chrome — a rounded lucide `Menu` would be the one
+ *  smooth vector shape on a page of square ones. */
+function PixelMenuIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 14 10"
+      aria-hidden="true"
+      shapeRendering="crispEdges"
+      className={className}
+      fill="currentColor"
+    >
+      <rect x="0" y="0" width="14" height="2" />
+      <rect x="0" y="4" width="14" height="2" />
+      <rect x="0" y="8" width="14" height="2" />
+    </svg>
+  );
+}
+
 /** Fade-up on scroll; skips the y-offset when the user prefers reduced motion. */
 export function FadeUp({
   children,
@@ -432,10 +451,43 @@ const NAV_LINKS = [
  * Start 2P is a fixed-width bitmap face, and "HOW IT LEARNED" in it overruns
  * the header below 1200px. The retro here comes from the rule, the wordmark
  * and the cursor, not from making the navigation hard to read.
+ *
+ * Below `lg` the seven anchors do not fit next to the wordmark and the
+ * actions (the bar measured exactly full at 390px with the CTA alone), so
+ * the links, GitHub and "Get started" live behind a section menu — a
+ * disclosure button (WAI-ARIA disclosure-navigation pattern: `aria-expanded`
+ * + `aria-controls`, focus stays on the button, Esc closes, focus leaving
+ * the header closes) opening a panel that overlays the page from the sticky
+ * header instead of pushing it. A visitor on a phone gets the same jumps the
+ * desktop bar has always had; before it, the only in-page navigation below
+ * `lg` was the footer at the very bottom of the page.
  */
 export function Nav() {
+  const [open, setOpen] = React.useState(false);
+
+  // Esc closes from anywhere inside the header and puts focus back on the
+  // button — the disclosure pattern's contract for keyboard users.
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const close = () => setOpen(false);
+
   return (
-    <header className="sticky top-0 z-50 border-b-[3px] border-gold bg-panel/92 backdrop-blur-sm">
+    <header
+      className="sticky top-0 z-50 border-b-[3px] border-gold bg-panel/92 backdrop-blur-sm"
+      // Focus leaving the sticky header (tabbing past the last menu link, or
+      // tapping the page behind the panel) closes the menu so it can never
+      // orphan itself open over content the visitor has scrolled to.
+      onBlur={(e) => {
+        if (open && !e.currentTarget.contains(e.relatedTarget)) close();
+      }}
+    >
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-5 sm:px-6">
         <Link href="/" className="group flex items-center gap-2.5">
           <Glyph
@@ -464,22 +516,82 @@ export function Nav() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5 lg:ml-0">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-controls="site-menu"
+            aria-label={open ? "Close the section menu" : "Open the section menu"}
+            className="gb-btn-dark inline-flex size-9 items-center justify-center lg:hidden"
+          >
+            <PixelMenuIcon className="h-2.5 w-3.5" />
+          </button>
           <ThemeToggle />
           <a
             href={GITHUB_URL}
             target="_blank"
             rel="noreferrer noopener"
             aria-label="Unown on GitHub"
-            className="inline-flex size-9 items-center justify-center text-dim transition-colors hover:text-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+            className="hidden size-9 items-center justify-center text-dim transition-colors hover:text-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-gold lg:inline-flex"
           >
             <GithubMark className="size-[18px]" />
           </a>
           <a
             href="#quickstart"
-            className="gb-btn gb-label px-4 py-2.5 text-[9px] font-normal"
+            className="gb-btn gb-label hidden px-4 py-2.5 text-[9px] font-normal lg:inline-flex"
           >
             Get started
           </a>
+        </div>
+      </div>
+
+      {/* The below-lg section menu. Rendered once and toggled through the
+          `hidden` attribute (not a conditional) so `aria-controls` always
+          resolves; `display: none` keeps it out of the tab order and the
+          accessibility tree while closed, which is what the composition and
+          copy tests assert against. */}
+      <div
+        id="site-menu"
+        hidden={!open}
+        className="absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto border-b-[3px] border-gold bg-panel lg:hidden"
+      >
+        <div className="mx-auto max-w-6xl px-5 pb-3 pt-4 sm:px-6">
+          {/* The two header actions that no longer fit the bar below lg,
+              led by the primary CTA so a phone visitor is one tap from the
+              install panel, exactly as the desktop bar orders them. */}
+          <div className="flex items-center gap-2.5">
+            <a
+              href="#quickstart"
+              onClick={close}
+              className="gb-btn gb-label flex-1 items-center justify-center px-4 py-3 text-[9px] font-normal"
+            >
+              Get started
+            </a>
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label="Unown on GitHub"
+              onClick={close}
+              className="gb-btn-dark inline-flex size-11 items-center justify-center text-dim hover:text-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+            >
+              <GithubMark className="size-[18px]" />
+            </a>
+          </div>
+
+          <nav aria-label="Main menu" className="mt-3 border-t border-line pt-1">
+            {NAV_LINKS.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={close}
+                className="group flex items-center border-b border-line py-3 text-[13px] text-dim transition-colors last:border-b-0 hover:text-gold focus-visible:text-gold focus:outline-none"
+              >
+                <PixelCursor className="mr-3 h-3 w-[7px] shrink-0 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+                {l.label}
+              </a>
+            ))}
+          </nav>
         </div>
       </div>
     </header>

@@ -111,12 +111,20 @@ describe("landing changelog rail", () => {
 
   test("the ◀ ▶ buttons actually scroll the band, in opposite directions", () => {
     const { container } = rail();
-    const ol = container.querySelector("ol[role='list']") as HTMLOListElement & {
+    // The scroll container is the region div (.gb-rail carries overflow-x in
+    // landing.css), NOT the <ol> track — a `width: max-content` flex row
+    // cannot scroll. The nudge originally called scrollBy on the track, which
+    // scrolls a non-scrollable element by exactly zero: the buttons shipped
+    // dead while this test passed, because the mock below was attached to the
+    // same wrong element the code targeted. The mock now pins the real
+    // contract — the region is the thing that must move.
+    const region = container.querySelector("div[role='region']") as HTMLDivElement & {
       scrollBy: (o: ScrollToOptions) => void;
     };
-    expect(ol).toBeTruthy();
+    expect(region).toBeTruthy();
+    expect(region.getAttribute("aria-label")).toBe("Release rail, newest stop first");
     const calls: ScrollToOptions[] = [];
-    ol.scrollBy = (o: ScrollToOptions) => calls.push(o);
+    region.scrollBy = (o: ScrollToOptions) => calls.push(o);
 
     fireEvent.click(screen.getByRole("button", { name: /older stops$/i }));
     fireEvent.click(screen.getByRole("button", { name: /newer stops$/i }));

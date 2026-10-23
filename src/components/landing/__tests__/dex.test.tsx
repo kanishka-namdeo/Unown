@@ -223,6 +223,33 @@ describe("landing DexSection", () => {
     expect(readout.textContent).toContain("paused");
   });
 
+  // Entries named with a leading article ("The fix loop", "The wiki") used to
+  // compose labels like "Pause the The fix loop capture" — a stutter every
+  // screen-reader user heard. The accessible names carry one article, the
+  // visible terminal title keeps the full name.
+  test("stage and cry labels never double the article in an entry's own name", () => {
+    const { container } = render(<DexSection />);
+    for (const a of Array.from(container.querySelectorAll("button[aria-label], a[aria-label]"))) {
+      const label = a.getAttribute("aria-label") ?? "";
+      expect(label, `"${label}" must not stutter the article`).not.toMatch(/\bthe\s+the\b/i);
+    }
+    // Walk to № 011 "The fix loop" and read its stage button both ways.
+    // All twenty panes stay mounted (the inactive ones `hidden`), so the
+    // button must be read from the SHOWN pane — the first match in the DOM
+    // belongs to № 003.
+    const opt = optionsIn(container).find((o) => o.textContent?.includes("011"));
+    fireEvent.click(opt!);
+    const pane = shownPane(container)[0];
+    expect(pane.getAttribute("aria-label")).toContain("The fix loop");
+    const pause = pane.querySelector('button[aria-label^="Pause the "]') as HTMLElement;
+    expect(pause.getAttribute("aria-label")).toBe("Pause the fix loop capture");
+    fireEvent.click(pause);
+    expect(pause.getAttribute("aria-label")).toBe("Play the fix loop capture");
+    // The cry button composes the same way (forms only — 011 is a behavior,
+    // so walk back to a form named with an article if one exists; none does,
+    // and the generic no-stutter sweep above is the guard for the cry too).
+  });
+
   test("an entry with two reels flips the stage without moving the cursor", () => {
     const { container } = render(<DexSection />);
     const pane = shownPane(container)[0];

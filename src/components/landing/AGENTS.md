@@ -50,6 +50,15 @@ while the spine doubled from ten entries to twenty.
   order in `page.tsx` is the page's argument — the comment above the component
   explains each placement, and `NAV_LINKS` in `shell.tsx` mirrors the anchors.
   Adding a section means adding it in both places or the page grows an orphan.
+  Below `lg` those anchors render through the header's disclosure menu
+  (`#site-menu`) instead of the bar — the menu maps over the SAME `NAV_LINKS`
+  array (a third hand-maintained list would drift), so an added section shows
+  up in the desktop bar and the phone menu together or not at all. The menu is
+  the WAI-ARIA disclosure-navigation pattern: panel always in the DOM, toggled
+  by the `hidden` attribute, closed by Esc, by focus leaving the header, and
+  by every link click; below `lg` the bar keeps only the wordmark, the screen
+  toggle and the menu button (the GitHub mark and Get started ride the panel —
+  the bar measured exactly full at 390px with them, zero slack).
 - **Dashboard affordances link in-page, never out.** The marketing route is
   the only thing Vercel hosts, and mission control is not a route at all
   anymore: `unown dashboard` is a TUI, and the retired `/dashboard` web page

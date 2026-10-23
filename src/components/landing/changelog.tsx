@@ -181,16 +181,26 @@ function Stop({ stop, isLatest }: { stop: ChangelogStop; isLatest: boolean }) {
  * number on a tile is read off the data.
  */
 export function ChangelogRail() {
-  const track = useRef<HTMLOListElement>(null);
+  // The scroll container is the `.gb-rail` region div — `overflow-x: auto`
+  // lives there in landing.css, NOT on the `<ol>` track (which is a plain
+  // `width: max-content` flex row). The nudge originally called `scrollBy` on
+  // the track itself: a non-scrollable element scrolls by exactly zero, so
+  // the ◀ ▶ buttons shipped dead while the page copy advertised them. The
+  // step is still measured off a `.gb-rail-stop` tile so a tile-width change
+  // never desynchronises the nudge distance from the CSS.
+  const scroller = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
   const latest = latestCutIndex(CHANGELOG_STOPS);
 
   const nudge = (dir: -1 | 1) => {
-    const el = track.current;
+    const el = scroller.current;
     if (!el) return;
-    // One tile plus its gap; measured from the track so it survives a tile-width
-    // change and never scrolls by a value the CSS has to agree with by hand.
-    const step = el.firstElementChild?.getBoundingClientRect().width ?? 320;
+    // One tile plus its gap; measured from the scroller so it survives a
+    // tile-width change and never scrolls by a value the CSS has to agree
+    // with by hand.
+    const step =
+      el.querySelector<HTMLElement>(".gb-rail-stop")?.getBoundingClientRect().width ??
+      320;
     el.scrollBy({ left: dir * (step + 16), behavior: reduced ? "auto" : "smooth" });
   };
 
@@ -246,12 +256,13 @@ export function ChangelogRail() {
       <div className="mx-auto mt-10 max-w-6xl px-5 sm:px-6">
         <FadeUp>
           <div
+            ref={scroller}
             className="gb-rail"
             role="region"
             tabIndex={0}
             aria-label="Release rail, newest stop first"
           >
-            <ol ref={track} role="list" reversed className="gb-rail-track">
+            <ol role="list" reversed className="gb-rail-track">
               {CHANGELOG_STOPS.map((stop) => (
                 <Stop
                   key={stop.label}

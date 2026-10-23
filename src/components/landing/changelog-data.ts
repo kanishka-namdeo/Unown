@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 215;
+export const CHANGELOG_TOTAL_ENTRIES = 219;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 85,
+  "Added": 86,
   "Changed": 15,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 86,
+  "Fixed": 89,
   "Security": 0,
   "Behavior": 26
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 46,
+    "total": 50,
     "counts": {
-      "Added": 18,
+      "Added": 19,
       "Changed": 5,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 16,
+      "Fixed": 19,
       "Security": 0,
       "Behavior": 6
     },
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "landing: a section menu below lg — the phone visitor gets the seven anchors back",
+            "behavior": false
+          },
           {
             "title": "Routines v5 — reliability: failed-run retries, chained routines, engine hygiene (env hot-reload, log rotation)",
             "behavior": false
@@ -162,6 +166,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "landing: the changelog rail's ◀ ▶ nudge buttons were dead — scrollBy targeted the track…",
+            "behavior": false
+          },
+          {
+            "title": "landing: the FAQ's closed questions showed no expandability affordance — the ▶ cursor was opacity-0 until open",
+            "behavior": false
+          },
+          {
+            "title": "landing: dex accessible names stuttered on entries named with an article — \"Play the The fix loop capture\"",
+            "behavior": false
+          },
           {
             "title": "docs: three dead memory links in usage.md (a botched edit ate the m) + the README's routines row was two kinds…",
             "behavior": false

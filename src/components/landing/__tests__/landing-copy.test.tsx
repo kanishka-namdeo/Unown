@@ -246,6 +246,23 @@ describe("landing loop (the process band)", () => {
       expect(text).toContain(fragment);
     }
   });
+
+  // The affordance contract: every question shows its ▶ cursor while CLOSED.
+  // The cursor used to be opacity-0 until open — a closed list of seven
+  // identical boxes with no marker reads as plain text, and no visitor could
+  // tell the FAQ was expandable (aria-expanded covers screen readers, not
+  // eyes). happy-dom cannot compute the rendered opacity, so this pins the
+  // class-level regression: the trigger's cursor must not carry opacity-0.
+  test("every FAQ trigger shows its cursor affordance while closed", () => {
+    const { container } = render(<FaqSection />);
+    const triggers = Array.from(container.querySelectorAll("button[aria-expanded]"));
+    expect(triggers.length).toBe(7);
+    for (const t of triggers) {
+      const cursor = t.querySelector("svg");
+      expect(cursor, "each trigger carries its ▶ cursor").toBeTruthy();
+      expect(cursor!.getAttribute("class")).not.toContain("opacity-0");
+    }
+  });
 });
 
 describe("landing models", () => {
@@ -311,6 +328,69 @@ describe("landing shell", () => {
     render(<Footer />);
     const footLinks = screen.getAllByRole("link", { name: /^Dashboard$/i });
     for (const l of footLinks) expect(l.getAttribute("href")).toBe("#showcase");
+  });
+
+  // Below lg the seven anchors live behind the section menu. These pin the
+  // disclosure contract: the panel exists (aria-controls resolves), starts
+  // closed and out of the accessibility tree (the `hidden` attribute), opens
+  // on the button, carries the same seven anchors plus the two header actions
+  // that no longer fit the bar, and closes on link click and Escape.
+  test("the section menu is a closed disclosure below lg, then opens with every anchor", () => {
+    render(<Nav />);
+    const button = screen.getByRole("button", { name: /open the section menu/i });
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(button.getAttribute("aria-controls")).toBe("site-menu");
+    // Closed: the panel is in the DOM (aria-controls must resolve) but the
+    // `hidden` attribute keeps it out of the tree and the tab order.
+    const panel = document.getElementById("site-menu");
+    expect(panel).toBeTruthy();
+    expect(panel!.hasAttribute("hidden")).toBe(true);
+    expect(screen.queryByRole("navigation", { name: "Main menu" })).toBeNull();
+
+    fireEvent.click(button);
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(panel!.hasAttribute("hidden")).toBe(false);
+    const menu = screen.getByRole("navigation", { name: "Main menu" });
+    for (const label of ["How it learns", "Capability dex", "Dashboard", "Proof", "Alphabet", "FAQ", "Changelog"]) {
+      const links = menu.querySelectorAll("a");
+      expect(
+        [...links].some((a) => a.textContent?.trim() === label),
+        `menu must carry the "${label}" anchor`,
+      ).toBe(true);
+    }
+    // The two actions that left the bar below lg ride the panel.
+    expect(screen.getAllByRole("link", { name: /^get started$/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: /unown on github/i }).length).toBeGreaterThanOrEqual(1);
+    // Every in-page jump the menu offers resolves to a real target.
+    for (const a of menu.querySelectorAll("a[href^='#']")) {
+      const id = a.getAttribute("href")!.slice(1);
+      expect(id.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("the section menu closes on a link click and on Escape", () => {
+    render(<Nav />);
+    const button = screen.getByRole("button", { name: /open the section menu/i });
+    fireEvent.click(button);
+    const panel = document.getElementById("site-menu")!;
+    expect(panel.hasAttribute("hidden")).toBe(false);
+    // Scope to the panel: the desktop nav renders its own FAQ link, and
+    // happy-dom applies no CSS, so a global role query would match it first.
+    const menuFaq = Array.from(panel.querySelectorAll("a")).find(
+      (a) => a.textContent?.trim() === "FAQ",
+    ) as HTMLElement;
+    expect(menuFaq).toBeTruthy();
+
+    // A link click navigates AND closes.
+    fireEvent.click(menuFaq);
+    expect(panel.hasAttribute("hidden")).toBe(true);
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+
+    // Escape closes from anywhere while open.
+    fireEvent.click(button);
+    expect(panel.hasAttribute("hidden")).toBe(false);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(panel.hasAttribute("hidden")).toBe(true);
   });
 });
 
