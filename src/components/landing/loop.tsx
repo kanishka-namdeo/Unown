@@ -169,7 +169,7 @@ export function LoopSection() {
   }
 
   return (
-    <section data-hue="leaf" id="loop" className="scroll-mt-16 border-y border-line py-16 sm:py-[72px]">
+    <section data-hue="leaf" id="loop" className="scroll-mt-16 border-t border-line py-16 sm:py-[72px]">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead kicker="The learning loop">
@@ -271,14 +271,14 @@ export function LoopSection() {
                     <div className="overflow-hidden border border-line">
                       <div className="flex items-center gap-2 border-b border-line bg-panel px-3.5 py-2">
                         <span
-                          className="size-1.5 rounded-full bg-gold/60"
+                          className="size-1.5 bg-gold/60"
                           aria-hidden="true"
                         />
                         <span className="truncate font-mono text-[10.5px] text-faint">
                           {beat.filename}
                         </span>
                       </div>
-                      <pre tabIndex={0} aria-label="terminal — session transcript" className="term-lines overflow-x-auto px-4 py-4 font-mono text-[11px] leading-relaxed text-dim focus:outline-none focus-visible:ring-2 focus-visible:ring-gold sm:text-[11.5px]">
+                      <pre tabIndex={0} aria-label="terminal — session transcript" className="term-lines whitespace-pre-wrap px-4 py-4 font-mono text-[11px] leading-relaxed text-dim focus:outline-none focus-visible:ring-2 focus-visible:ring-gold sm:text-[11.5px]">
                         {beat.body}
                       </pre>
                     </div>

@@ -64,6 +64,27 @@ function PixelMenuIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * Reduced motion, read the way a server render can agree with.
+ *
+ * `useReducedMotion()` returns the LIVE media-query value during the hydration
+ * render, while the server can only render its default (false). Any component
+ * that branches its rendered output on the raw hook ships two different trees
+ * for a reduced-motion visitor — `FadeUp` did, and React discarded the whole
+ * server render over it (a full hydration failure, reproduced under
+ * `prefers-reduced-motion: reduce`). This hook pins the first client render to
+ * the server's assumption and adopts the real value right after mount — one
+ * paint of full motion at worst, never a hydration throw. Use it for every
+ * render-path branch (initial states, rendered text); event handlers and
+ * effects run after mount and should keep the raw hook.
+ */
+export function useReducedMotionAfterMount(): boolean {
+  const live = useReducedMotion();
+  const [settled, setSettled] = React.useState(false);
+  React.useEffect(() => setSettled(true), []);
+  return settled && live === true;
+}
+
 /** Fade-up on scroll; skips the y-offset when the user prefers reduced motion. */
 export function FadeUp({
   children,
@@ -81,7 +102,9 @@ export function FadeUp({
    */
   as?: "div" | "li" | "article" | "section";
 }) {
-  const reduced = useReducedMotion();
+  // `useReducedMotionAfterMount`, not the raw hook: the raw value diverges
+  // from the server during hydration (see its doc comment).
+  const reduced = useReducedMotionAfterMount();
   const Comp = motion[as];
   return (
     <Comp
@@ -345,7 +368,7 @@ export function CopyButton({
       type="button"
       onClick={onCopy}
       aria-label={copied ? "Copied" : label}
-      className="inline-flex size-7 shrink-0 items-center justify-center rounded border border-line bg-panel-2 text-dim transition-colors hover:border-line-bright hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+      className="inline-flex size-7 shrink-0 items-center justify-center border border-line bg-panel-2 text-dim transition-colors hover:border-line-bright hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
     >
       {copied ? (
         <Check className="size-3.5 text-gold" aria-hidden="true" />
@@ -497,17 +520,25 @@ export function Nav() {
             label="Unown"
           />
           <span className="gb-label text-[13px] text-ink">unown</span>
-          <span className="gb-label hidden text-[7px] text-faint min-[430px]:inline">
+          <span className="gb-label hidden text-[8px] text-faint min-[430px]:inline">
             self-improving
           </span>
         </Link>
 
-        <nav aria-label="Main" className="ml-auto hidden items-center gap-5 lg:flex">
+        {/* `gap-4` + 12.5px at the lg floor, full size from 1100px: the seven
+            links, the wordmark and the actions measured exactly full at 1024,
+            and at 13px/20px the two longest labels wrapped onto a second line
+            inside the 64px bar. `whitespace-nowrap` keeps every label on one
+            line at every width in between. */}
+        <nav
+          aria-label="Main"
+          className="ml-auto hidden items-center gap-4 min-[1100px]:gap-5 lg:flex"
+        >
           {NAV_LINKS.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="group relative text-[13px] text-dim transition-colors hover:text-gold focus-visible:text-gold focus:outline-none"
+              className="group relative whitespace-nowrap text-[12.5px] text-dim transition-colors hover:text-gold focus-visible:text-gold focus:outline-none min-[1100px]:text-[13px]"
             >
               <PixelCursor className="absolute -left-3.5 top-1/2 h-3 w-[7px] -translate-y-1/2 text-gold opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
               {l.label}

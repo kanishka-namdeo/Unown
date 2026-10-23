@@ -8,9 +8,10 @@ import { ProviderMark, type ProviderSlug } from "./provider-marks";
  * for the model allow-list and the bridge spec: the hero's trust strip and
  * the FAQ's model answers point here rather than re-listing providers.
  *
- * Marks are CC0 Simple Icons, vendored (see `provider-marks.tsx`). OpenAI and
- * DashScope are deliberately text-only: one mark was retired at its owner's
- * request, the other has no slug.
+ * Marks are CC0 Simple Icons, vendored (see `provider-marks.tsx`). Three
+ * tiles are deliberately text-only — OpenAI (its mark was retired at the
+ * owner's request), Agnes AI and llama.cpp (no Simple Icons slug for either);
+ * DashScope carries the Alibaba Cloud mark.
  *
  * 2026-10-20 compression: the 260-word bridge/local-lane/nonllm paragraph
  * became three sentences with the REPORT links. The local-lane sentence and

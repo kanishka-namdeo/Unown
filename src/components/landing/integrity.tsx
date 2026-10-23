@@ -205,7 +205,7 @@ export function IntegrityPane() {
       <FadeUp delay={0.1}>
         <div className="gb-panel overflow-hidden">
           <div className="flex items-center gap-2 border-b border-line bg-panel px-3.5 py-2">
-            <span className="size-1.5 rounded-full bg-line-bright" aria-hidden="true" />
+            <span className="size-1.5 bg-line-bright" aria-hidden="true" />
             <span className="gb-term text-[17px] text-faint">
               hook_log — six layers, every decision recorded
             </span>

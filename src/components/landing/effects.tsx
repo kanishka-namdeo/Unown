@@ -25,14 +25,6 @@ const CSS = `
   100% { transform: translate3d(var(--drift),112vh,0) rotate(var(--rot)); opacity: 0; }
 }
 @keyframes unown-blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
-@keyframes unown-breathe {
-  0%, 100% { opacity: .55; transform: scale(1) }
-  50%      { opacity: .95; transform: scale(1.035) }
-}
-@keyframes unown-sweep {
-  0%   { transform: translateY(-120%) }
-  100% { transform: translateY(120%) }
-}
 @keyframes unown-glyph-flicker {
   0%, 100% { opacity: .06 }
   50%      { opacity: .13 }
@@ -43,13 +35,11 @@ const CSS = `
   position: absolute; top: 0; will-change: transform, opacity;
   animation: unown-drop var(--dur) linear var(--delay) forwards;
 }
-.unown-breathe { animation: unown-breathe 5.5s ease-in-out infinite; }
-.unown-sweep { animation: unown-sweep 7s linear infinite; }
 .unown-flicker { animation: unown-glyph-flicker 6s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .unown-cursor { animation: none; opacity: 1; }
-  .unown-breathe, .unown-sweep, .unown-flicker { animation: none; }
+  .unown-flicker { animation: none; }
   .unown-drop { display: none; }
   html { scroll-behavior: auto !important; }
 }

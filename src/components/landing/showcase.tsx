@@ -39,7 +39,7 @@ const SCREENS: [string, string][] = [
 
 export function ShowcaseSection() {
   return (
-    <section data-hue="gold" id="showcase" className="scroll-mt-16 py-12 sm:py-16">
+    <section data-hue="gold" id="showcase" className="scroll-mt-16 border-t border-line py-16 sm:py-[72px]">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead kicker="Mission control">
@@ -116,13 +116,17 @@ export function ShowcaseSection() {
                 {SCREENS.map(([screen, what]) => (
                   <li
                     key={screen}
-                    className="gb-panel lift flex h-11 items-center gap-2.5 px-3 hover:border-line-bright"
+                    className="gb-panel lift flex min-h-11 items-center gap-2.5 px-3 py-1.5 hover:border-line-bright"
                   >
                     <span className="min-w-0">
                       <span className="block truncate gb-label text-[9px] leading-tight text-ink">
                         {screen}
                       </span>
-                      <span className="block truncate font-mono text-[9px] leading-tight text-dim">
+                      {/* wraps instead of truncates: "scheduled recurring
+                          runs — cron, every, after" lost 76px behind an
+                          ellipsis at 390px, which on a screen-name index
+                          reads as broken rather than concise */}
+                      <span className="mt-0.5 block font-mono text-[9px] leading-tight text-dim">
                         {what}
                       </span>
                     </span>

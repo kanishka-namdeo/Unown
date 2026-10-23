@@ -182,7 +182,7 @@ export const LEXICON: LexiconEntry[] = [
     lore: "Its name is the word “unknown” with the spelling knocked about. Its Japanese name is simply アンノーン.",
     loreSrc: "PokémonDB · Bulbapedia",
     means: "Unknown. Point Unown at any endpoint you are allowed to use.",
-    proof: "9 providers on the model band",
+    proof: "10 provider tiles on the model band",
   },
   {
     id: "V",

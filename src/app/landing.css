@@ -1,6 +1,5 @@
 /*
- * Landing page stylesheet — `/` only. Imported by `src/app/page.tsx`, so
- * nothing here is loaded by `/dashboard`.
+ * Landing page stylesheet — `/` only. Imported by `src/app/page.tsx`.
  *
  * The palette (bg-canvas, text-dim, text-gold, border-line …) and the three
  * retro font utilities live in the `@theme` block in `globals.css`, because
@@ -21,6 +20,12 @@
  *     gate uses `@supports` with an `animation-range` check that filters
  *     partial implementations. Never ship a hero that depends on JS to be
  *     readable.
+ *
+ * The base state of every animated rule here is the finished state: a browser
+ * without `animation-timeline`, and a visitor with `prefers-reduced-motion`,
+ * see the finished page, never a half-drawn one. (The seal's dim base state
+ * used to leak into Firefox — the scroll timeline now carries its own
+ * backwards fill and the base rule is gone.)
  */
 
 html {
@@ -264,7 +269,6 @@ html {
 .link-sweep:focus-visible {
   outline: 2px solid var(--hue-accent);
   outline-offset: 3px;
-  border-radius: 2px;
 }
 
 /* ---------------------------------------------------------------- */
@@ -297,19 +301,14 @@ html {
  * position in the hero's `view()` timeline, so the word assembles itself top
  * to bottom as the hero crosses the viewport. Base state (no scroll support)
  * is the finished word — the page must never read as broken, only less alive.
+ * The keyframes' backwards fill (`both`) dims each form until its slice of the
+ * timeline starts, so the dim state lives only where the animation runs.
  */
-.seal-form {
-  opacity: 0.25;
-}
 
 @supports ((animation-timeline: view()) and (animation-range: 0% 100%)) {
   .seal-stage {
     view-timeline-name: --seal;
     view-timeline-axis: block;
-  }
-
-  .seal {
-    animation: seal-breathe 6s ease-in-out infinite;
   }
 
   .seal-form {
@@ -328,11 +327,6 @@ html {
 @keyframes seal-reveal {
   from { opacity: 0.16; transform: translateY(10px) scale(0.965); }
   to   { opacity: 1;    transform: none; }
-}
-
-@keyframes seal-breathe {
-  0%, 100% { transform: scale(1) rotate(-1.2deg); }
-  50%      { transform: scale(1.03) rotate(1.2deg); }
 }
 
 /* The eye halo drifts on its own so the seal never feels frozen. */
@@ -856,5 +850,12 @@ section[data-hue] {
   .gb-cont {
     animation: none;
     opacity: 1;
+  }
+
+  /* The seal's scroll-driven reveal and its drifting halo are ambient
+     animation: off entirely, leaving the finished word and a still halo. */
+  .seal-form,
+  .seal-halo {
+    animation: none;
   }
 }

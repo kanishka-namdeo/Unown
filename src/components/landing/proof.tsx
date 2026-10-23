@@ -61,6 +61,26 @@ export function ProofSection() {
   const [active, setActive] = React.useState(0);
   const tabs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
+  // Deep links into a PANE (benchmarks.tsx's "Integrity" link →
+  // #proof-tab-integrity). The panes are `hidden` until their tab activates,
+  // so an anchor that stopped at the section would land a reader on the
+  // Benchmarks pane while promising the zero behind the Integrity tab.
+  // Runs on mount (a visitor arriving with the hash set) and on hashchange
+  // (a click while already on the page); the ids come from PANES so the
+  // matcher cannot drift from the tab strip.
+  React.useEffect(() => {
+    const matcher = new RegExp(`^#proof-tab-(${PANES.map((p) => p.id).join("|")})$`);
+    function activateFromHash() {
+      const id = window.location.hash.match(matcher)?.[1];
+      if (!id) return;
+      const next = PANES.findIndex((p) => p.id === id);
+      if (next !== -1) setActive(next);
+    }
+    activateFromHash();
+    window.addEventListener("hashchange", activateFromHash);
+    return () => window.removeEventListener("hashchange", activateFromHash);
+  }, []);
+
   // Roving tabindex with arrow keys, per the WAI-ARIA tabs pattern.
   function onKeyDown(e: React.KeyboardEvent) {
     const last = PANES.length - 1;
@@ -76,7 +96,7 @@ export function ProofSection() {
   }
 
   return (
-    <section data-hue="magma" id="proof" className="scroll-mt-16 border-y border-line py-16 sm:py-[72px]">
+    <section data-hue="magma" id="proof" className="scroll-mt-16 border-t border-line py-16 sm:py-[72px]">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
           <SectionHead

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { MoveRight } from "lucide-react";
 import { CopyButton } from "./shell";
 
 /* ------------------------------------------------------------------ */
@@ -214,10 +215,14 @@ export function InstallPanel() {
       </div>
 
       <div role="tabpanel" id="os-install-panel" aria-labelledby={`os-tab-${active.key}`}>
+        {/* 10px below 430px so the one-liner fits a 320–390px viewport without
+            horizontal scroll; the copy button hands the pristine string to the
+            clipboard either way, so the smaller type costs nothing but a size
+            step. */}
         <pre
           tabIndex={0}
           aria-label={`terminal — install unown on ${active.label}`}
-          className="term-lines overflow-x-auto px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+          className="term-lines overflow-x-auto px-3 py-2.5 font-mono text-[10px] leading-relaxed text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-gold min-[430px]:text-[11.5px]"
         >
           {active.cmd}
         </pre>
@@ -229,7 +234,9 @@ export function InstallPanel() {
       <p className="border-t border-line px-3 py-2 font-mono text-[11px] leading-relaxed text-dim">
         {"then: "}
         <span className="text-ink">unown setup</span>
-        <span className="text-faint"> {"\u2192"} </span>
+        {/* drawn, not `\u2192`: the arrow is outside the latin subset the
+            page's fonts are sliced to and would render in an OS fallback */}
+        <MoveRight className="mx-0.5 inline size-3.5 align-[-2px] text-faint" aria-hidden="true" />
         <span className="text-ink">unown</span>
         <span className="text-faint"> {"·"} </span>
         <span className="text-faint">CLI only</span>

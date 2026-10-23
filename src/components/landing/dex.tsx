@@ -14,7 +14,7 @@ import {
   type DexEntry,
   type DexType,
 } from "./dex-data";
-import { FadeUp, PixelCursor, SectionHead, TerminalWindow, toneAttr } from "./shell";
+import { FadeUp, PixelCursor, SectionHead, TerminalWindow, toneAttr, useReducedMotionAfterMount } from "./shell";
 
 /**
  * The capability dex — band three, and since 2026-10-23 the one band that
@@ -189,7 +189,7 @@ function PauseBars({ className }: { className?: string }) {
  */
 function FilmMark({ filmed, selected }: { filmed: boolean; selected: boolean }) {
   const tone = selected
-    ? "text-canvas/80"
+    ? "text-canvas"
     : filmed
       ? "text-(--hue-accent)"
       : "text-faint";
@@ -370,7 +370,14 @@ function DexDetail({
     <article
       aria-label={`${entry.name}, capability ${entry.no} of ${TALLY.total}`}
       hidden={!shown}
-      className="gb-panel lift flex flex-col"
+      /* `lg:min-h` keeps the band's height constant as the cursor walks the
+         spine — the band's own contract ("the band's measured height does not
+         move with the cursor"), which the behavior entries' shorter copy was
+         breaking with a ~195px page shift per selection. The receipts row
+         pins to the panel's bottom edge (mt-auto below) so the floor reads
+         as structure, not empty space. Below lg the panes stack, there is no
+         second column to jump against, and natural height wins. */
+      className="gb-panel lift flex flex-col lg:min-h-[76rem]"
     >
       {entry.kind === "form" ? (
         /* the specimen — h-48 is 3× the 64px logical grid, so the sprite
@@ -433,17 +440,20 @@ function DexDetail({
 
       {entry.kind === "form" ? (
         /* the entry — the dex speaks from the screen, so it sits on the
-           gb-box like every quotation on this page */
+           gb-box like every dialogue box on this page. The face is `gb-term`,
+           not `.quote`: these are original sentences (see dex-data.ts), not
+           attributed quotations, and `.quote` is reserved for someone else's
+           words. */
         <div className="border-b border-line p-3 sm:p-3.5">
           <div className="gb-box p-3.5">
-            <blockquote className="quote text-[18px] leading-relaxed text-canvas">
+            <p className="gb-term text-[19px] leading-relaxed text-canvas">
               {entry.entry}
-            </blockquote>
+            </p>
           </div>
         </div>
       ) : null}
 
-      <dl className="flex-1 space-y-3 p-4 sm:p-5">
+      <dl className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
         <div className="flex gap-3">
           <dt className="gb-label w-20 shrink-0 pt-0.5 text-[8px] text-faint">in practice</dt>
           <dd className="min-w-0 space-y-1.5">
@@ -462,7 +472,7 @@ function DexDetail({
             </dd>
           </div>
         ) : null}
-        <div className="flex gap-3">
+        <div className="mt-auto flex gap-3">
           <dt className="gb-label w-20 shrink-0 pt-1 text-[8px] text-faint">receipts</dt>
           <dd className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
             {entry.receipts.map(([label, href]) => (
@@ -498,7 +508,14 @@ export function DexSection() {
   // The page's own reduced-motion read, the same one every other animated band
   // uses — the decision of whether a video may start is made with it, never
   // with an `autoPlay` attribute in the markup.
+  //
+  // TWO reads, deliberately: the playback effect runs after mount, where the
+  // raw hook's live value is already correct. The readout below renders during
+  // hydration, where the raw value would diverge from the server ("playing" vs
+  // "poster") and throw hydration — so the rendered text uses the after-mount
+  // read instead.
   const reduced = useReducedMotion() ?? false;
+  const reducedForRender = useReducedMotionAfterMount();
 
   // fuse.js: the drivable search dependency of this band (Part 15) —
   // fuzzy over everything a visitor might type: the name, the category, the
@@ -578,7 +595,7 @@ export function DexSection() {
     <section
       data-hue="magma"
       id="dex"
-      className="scroll-mt-16 border-y border-line py-16 sm:py-[72px]"
+      className="scroll-mt-16 border-t border-line py-16 sm:py-[72px]"
     >
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <FadeUp className="max-w-2xl">
@@ -717,7 +734,7 @@ export function DexSection() {
                   search tally, so the cursor's position is announced without
                   every pane shouting */}
               <p aria-live="polite" className="mt-3 font-mono text-[11.5px] tabular-nums text-dim">
-                {readout(entry, reel, reduced, paused)}
+                {readout(entry, reel, reducedForRender, paused)}
               </p>
             </div>
           </div>

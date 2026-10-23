@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Brain, Compass, ExternalLink, FlaskConical, Layers, Repeat, ShieldCheck, Swords, Target } from "lucide-react";
-import { FadeUp, BENCH_URL } from "./shell";
+import { FadeUp, BENCH_URL, useReducedMotionAfterMount } from "./shell";
 import {
   BENCH_SOURCES,
   EDIT_BENCH,
@@ -62,7 +62,10 @@ function BarRow({
   pct: number;
   delay?: number;
 }) {
-  const reduced = useReducedMotion();
+  // `useReducedMotionAfterMount`, not the raw hook: the raw value diverges
+  // from the server during hydration and React regenerates the tree (see the
+  // hook's doc comment in shell.tsx).
+  const reduced = useReducedMotionAfterMount();
   const tone = pct > 50 ? undefined : pct > 20 ? "mid" : "low";
   return (
     <div className="flex items-center gap-3 sm:gap-4">
@@ -138,7 +141,8 @@ function LiftBar({
   tick?: boolean;
   delay?: number;
 }) {
-  const reduced = useReducedMotion();
+  // See the note on BarRow: the after-mount read keeps hydration honest.
+  const reduced = useReducedMotionAfterMount();
   const fill =
     tone === "cold" ? "bg-line-bright" : tone === "win" ? "bg-gold" : "bg-amber";
   return (
@@ -215,9 +219,13 @@ export function BenchmarksPane() {
           ].map((s, i) => (
             <div
               key={s.l}
-              className={`rise rise-${i + 1} border-line px-4 py-6 sm:px-5 lg:border-l lg:first:border-l-0 ${i === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b sm:border-b-0 lg:border-b-0" : ""}`}
+              className={`rise rise-${i + 1} border-line px-4 py-6 sm:px-5 lg:border-l lg:first:border-l-0 ${i % 2 === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b lg:border-b-0" : ""}`}
             >
-              <p className="gb-h text-3xl tabular-nums tracking-tight text-gold">
+              {/* Geist Mono, not `.gb-h`: Pixelify Sans renders `57` as `S7`
+                  at display size, and these four are the pane's headline
+                  figures — the no-digit-in-font-display rule is at its most
+                  load-bearing exactly here. */}
+              <p className="font-mono text-3xl font-semibold tabular-nums tracking-tight text-gold">
                 {s.v}
               </p>
               <p className="mt-1.5 text-[13px] font-medium text-ink">{s.l}</p>
@@ -560,7 +568,10 @@ export function BenchmarksPane() {
             Terminal-Bench 2.0 are quoted from vendor reports, never our own runs. The
             one eval that scores zero (our extension-authoring eval, 0.0 for every
             model) sits beside the gates in{" "}
-            <a href="#proof" className="underline underline-offset-2">
+            {/* deep link, not just a section jump: the zero lives inside the
+                Integrity PANE, which is `hidden` until its tab activates —
+                proof.tsx reads this hash and switches the tab on arrival. */}
+            <a href="#proof-tab-integrity" className="underline underline-offset-2">
               Integrity
             </a>
             .

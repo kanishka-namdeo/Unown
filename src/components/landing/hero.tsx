@@ -3,7 +3,7 @@ import { Glyph } from "./glyph";
 import type { GlyphId } from "./glyphs";
 import { InstallPanel } from "./install-panel";
 import { SessionReplay } from "./session-replay";
-import { CopyButton, GhostLink, PrimaryLink, GITHUB_URL, DOCS_URL } from "./shell";
+import { CopyButton, GhostLink, PixelCursor, PrimaryLink, GITHUB_URL, DOCS_URL } from "./shell";
 import { StarCount } from "./star-count";
 
 /**
@@ -227,9 +227,11 @@ export function Hero() {
                 have your agent install it
                 <span
                   aria-hidden="true"
-                  className="ml-auto text-[9px] text-faint transition-transform group-open:rotate-90"
+                  className="ml-auto flex text-faint transition-transform group-open:rotate-90"
                 >
-                  {'\u25B8'}
+                  {/* drawn, not a font glyph: ▸ falls outside the latin subset
+                      the page's fonts are sliced to */}
+                  <PixelCursor className="h-[9px] w-[7px]" />
                 </span>
               </summary>
               <div className="border-t border-line px-3 py-2.5">
@@ -255,16 +257,15 @@ export function Hero() {
                 Full install — clone it, point it at a model, run it.
                 <span
                   aria-hidden="true"
-                  className="ml-auto text-[9px] text-faint transition-transform group-open:rotate-90"
+                  className="ml-auto flex text-faint transition-transform group-open:rotate-90"
                 >
-                  {'\u25B8'}
+                  {/* drawn, not a font glyph: ▸ falls outside the latin subset
+                      the page's fonts are sliced to */}
+                  <PixelCursor className="h-[9px] w-[7px]" />
                 </span>
               </summary>
               <div className="border-t border-line px-3 py-3">
-                <div
-                  aria-label="terminal — quickstart commands"
-                  className="term-lines font-mono text-[12px] leading-relaxed"
-                >
+                <div className="term-lines font-mono text-[12px] leading-relaxed">
                   {INSTALL.map((line, i) => {
                     const hash = line.indexOf("#");
                     const cmd = hash === -1 ? line : line.slice(0, hash);
@@ -313,9 +314,11 @@ export function Hero() {
                 the whole command surface
                 <span
                   aria-hidden="true"
-                  className="ml-auto text-[9px] text-faint transition-transform group-open:rotate-90"
+                  className="ml-auto flex text-faint transition-transform group-open:rotate-90"
                 >
-                  {'\u25B8'}
+                  {/* drawn, not a font glyph: ▸ falls outside the latin subset
+                      the page's fonts are sliced to */}
+                  <PixelCursor className="h-[9px] w-[7px]" />
                 </span>
               </summary>
               <div className="border-t border-line px-3 py-3">
@@ -376,7 +379,7 @@ export function Hero() {
                   key={t}
                   className="flex items-center gap-2 font-mono text-[11px] text-faint"
                 >
-                  <span className="size-1 rounded-full bg-gold/70" aria-hidden="true" />
+                  <span className="size-1 bg-gold/70" aria-hidden="true" />
                   {t}
                 </li>
               ))}

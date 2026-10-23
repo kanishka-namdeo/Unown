@@ -9,12 +9,17 @@
  * OG card and in view for crawlers), and it costs zero client JavaScript.
  *
  * Failure is silent by design: any error, non-OK status, timeout or unexpected
- * shape renders nothing and leaves the static fallback below in place. A star
- * counter must never be able to fail a build or break the page.
+ * shape renders the fallback count below and nothing else. A star counter must
+ * never be able to fail a build or break the page.
  */
 
-/** Last known count, shipped in the markup so the layout never collapses. */
-const FALLBACK = 128;
+/** Last known count, shipped in the markup so the layout never collapses.
+ *  It is the REPO'S ACTUAL count (0 as of 2026-10-23), not a rounded-up
+ *  placeholder: the page's argument is that every number it prints is
+ *  checkable, and a fallback that invents 128 stars would print a lie every
+ *  time GitHub is unreachable at build time. Bump it only when the real
+ *  count moves. */
+const FALLBACK = 0;
 
 const REPO = "kanishka-namdeo/Unown";
 
