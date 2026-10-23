@@ -3999,6 +3999,12 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 						sessionName: () => (typeof sm?.getSessionName === "function" ? sm.getSessionName() : undefined),
 						entries: () => (typeof sm?.getEntries === "function" ? sm.getEntries() : []),
 						chat: chatText,
+						// The LIVE session write: pi.setSessionName appends the
+						// session_info entry through the running session, so the
+						// title lands in the tree, the file AND the in-memory
+						// state at once — /name in this session sees it, the
+						// /resume picker in the next one does too.
+						writeTitle: (title) => pi.setSessionName(title),
 					}).then((result) => {
 						if (result.titled && opts.verbose) {
 								console.error(`[unown] session auto-titled: ${result.title}`);

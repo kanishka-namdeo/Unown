@@ -38,7 +38,6 @@
  * degrade to "no title", never crash the agent loop.
  */
 import { existsSync } from "node:fs";
-import { SessionManager } from "@earendil-works/pi-coding-agent";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -101,6 +100,13 @@ export interface AutoTitleOptions {
     chat: TitleChatFn;
     /** The caller's once-per-session guard — checked before the paid LLM call. */
     alreadyTitled?: () => boolean;
+    /** How the title is WRITTEN. Injected so this module stays pure: the
+     *  terminal agent passes the LIVE session's pi.setSessionName (the title
+     *  then lands in the session tree, the file AND the in-memory state at
+     *  once — /name in the same session sees it); tests pass a recorder.
+     *  When omitted, the caller has no live-session handle and the attempt
+     *  reports "no-writer" before any LLM call is paid for. */
+    writeTitle: (title: string) => void;
 }
 
 /** The outcome of one auto-title attempt. `reason` is a stable snake-case string (pin in tests). */
@@ -321,7 +327,7 @@ export function titleAttemptKey(sessionId: string): string {
  * snake-case string: no-session-file, disabled, already-named,
  * already-attempted, not-enough-material, no-valid-title,
  * named-during-generation, write-failed, titled. Reads env at call time.
- * The write goes through SessionManager.open(sessionFile)
+ * The write goes through the injected writeTitle callback
  * .appendSessionInfo(title) — the same entry /name writes — wrapped so a
  * SessionManager failure (unreadable/corrupt file) is reported as
  * write-failed, never thrown into the agent loop.
@@ -329,6 +335,9 @@ export function titleAttemptKey(sessionId: string): string {
 export async function maybeAutoTitleSession(opts: AutoTitleOptions): Promise<AutoTitleResult> {
     if (opts.sessionFile === undefined || !existsSync(opts.sessionFile)) {
         return { titled: false, reason: "no-session-file" };
+    }
+    if (typeof opts.writeTitle !== "function") {
+        return { titled: false, reason: "no-writer" };
     }
     if (!autoTitlesEnabled()) {
         return { titled: false, reason: "disabled" };
@@ -353,7 +362,7 @@ export async function maybeAutoTitleSession(opts: AutoTitleOptions): Promise<Aut
         return { titled: false, reason: "named-during-generation" };
     }
     try {
-        SessionManager.open(opts.sessionFile).appendSessionInfo(title);
+        opts.writeTitle(title);
     } catch {
         return { titled: false, reason: "write-failed" };
     }

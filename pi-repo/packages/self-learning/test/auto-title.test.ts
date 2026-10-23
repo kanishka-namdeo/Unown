@@ -388,11 +388,13 @@ describe("generateSessionTitle", () => {
 describe("maybeAutoTitleSession", () => {
     test("no session file (undefined or missing on disk) → no-session-file", async () => {
         const { chat, calls } = chatStub("Fix login auth flow");
+        const written: string[] = [];
         const res = await maybeAutoTitleSession({
             sessionFile: undefined,
             sessionName: () => undefined,
             entries: () => GOOD_ENTRIES,
             chat: chatStub("Fix login auth flow").chat,
+            writeTitle: (t) => written.push(t),
         });
         expect(res.titled).toBe(false);
         expect(res.reason).toBe("no-session-file");
@@ -403,10 +405,12 @@ describe("maybeAutoTitleSession", () => {
             sessionName: () => undefined,
             entries: () => GOOD_ENTRIES,
             chat,
+            writeTitle: (t) => written.push(t),
         });
         expect(res2.titled).toBe(false);
         expect(res2.reason).toBe("no-session-file");
         expect(calls.length).toBe(0);
+        expect(written).toHaveLength(0);
     });
 
     test("UNOWN_AUTO_TITLES=0 → disabled, no chat call, file untouched", async () => {
@@ -419,6 +423,7 @@ describe("maybeAutoTitleSession", () => {
             sessionName: () => undefined,
             entries: () => entries,
             chat,
+            writeTitle: () => { throw new Error("must not write when disabled"); },
         });
         expect(res.titled).toBe(false);
         expect(res.reason).toBe("disabled");
@@ -435,6 +440,7 @@ describe("maybeAutoTitleSession", () => {
             sessionName: () => "user named it",
             entries: () => entries,
             chat,
+            writeTitle: () => { throw new Error("must not write over a user name"); },
         });
         expect(res.titled).toBe(false);
         expect(res.reason).toBe("already-named");
@@ -452,6 +458,7 @@ describe("maybeAutoTitleSession", () => {
             entries: () => entries,
             chat,
             alreadyTitled: () => true,
+            writeTitle: () => { throw new Error("must not write twice"); },
         });
         expect(res.titled).toBe(false);
         expect(res.reason).toBe("already-attempted");
@@ -469,6 +476,7 @@ describe("maybeAutoTitleSession", () => {
             sessionName: () => undefined,
             entries: () => entries,
             chat,
+            writeTitle: () => { throw new Error("must not write without material"); },
         });
         expect(res.titled).toBe(false);
         expect(res.reason).toBe("not-enough-material");
@@ -485,6 +493,7 @@ describe("maybeAutoTitleSession", () => {
             sessionName: () => undefined,
             entries: () => entries,
             chat,
+            writeTitle: () => { throw new Error("must not write without a title"); },
         });
         expect(res.titled).toBe(false);
         expect(res.reason).toBe("no-valid-title");
@@ -492,30 +501,52 @@ describe("maybeAutoTitleSession", () => {
         expect(jsonlLines(file).length).toBe(3);
     });
 
-    test("corrupt session file → write-failed (SessionManager.open throws, swallowed)", async () => {
+    test("writer throwing → write-failed (the caller's write is wrapped, never thrown)", async () => {
         const dir = makeTmp();
-        const file = join(dir, "corrupt.jsonl");
-        writeFileSync(file, "this is not jsonl\n", "utf8");
+        const { file, entries } = writeSessionFile(dir, GOOD_ENTRIES);
         const res = await maybeAutoTitleSession({
             sessionFile: file,
             sessionName: () => undefined,
-            entries: () => GOOD_ENTRIES,
+            entries: () => entries,
             chat: chatStub("Fix login auth flow").chat,
+            writeTitle: () => { throw new Error("live session gone"); },
         });
         expect(res.titled).toBe(false);
         expect(res.reason).toBe("write-failed");
+    });
+
+    test("missing writeTitle → no-writer, before any chat call", async () => {
+        const dir = makeTmp();
+        const { file, entries } = writeSessionFile(dir, GOOD_ENTRIES);
+        const { chat, calls } = chatStub("Fix login auth flow");
+        const res = await maybeAutoTitleSession({
+            sessionFile: file,
+            sessionName: () => undefined,
+            entries: () => entries,
+            chat,
+            writeTitle: undefined as unknown as (t: string) => void,
+        });
+        expect(res.titled).toBe(false);
+        expect(res.reason).toBe("no-writer");
+        expect(calls.length).toBe(0);
     });
 
     test("success: appends a session_info entry the picker's reverse-walk finds", async () => {
         const dir = makeTmp();
         const { file, entries } = writeSessionFile(dir, GOOD_ENTRIES);
         const before = jsonlLines(file);
+        const written: string[] = [];
         const res = await maybeAutoTitleSession({
             sessionFile: file,
             sessionName: () => undefined,
             entries: () => entries,
             chat: chatStub("Fix login auth flow").chat,
+            writeTitle: (t) => {
+                written.push(t);
+                SessionManager.open(file).appendSessionInfo(t);
+            },
         });
+        expect(written).toEqual(["Fix login auth flow"]);
         expect(res.titled).toBe(true);
         expect(res.title).toBe("Fix login auth flow");
         expect(res.reason).toBe("titled");
@@ -547,6 +578,7 @@ describe("maybeAutoTitleSession", () => {
             sessionName,
             entries: () => entries,
             chat,
+            writeTitle: () => { throw new Error("must not write over a mid-flight /name"); },
         });
         expect(res.titled).toBe(false);
         expect(res.reason).toBe("named-during-generation");
