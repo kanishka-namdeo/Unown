@@ -30,31 +30,31 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 221;
+export const CHANGELOG_TOTAL_ENTRIES = 226;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 86,
   "Changed": 15,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 91,
+  "Fixed": 94,
   "Security": 0,
-  "Behavior": 26
+  "Behavior": 28
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 52,
+    "label": "0.0.4",
+    "date": "2026-10-23",
+    "total": 57,
     "counts": {
       "Added": 19,
       "Changed": 5,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 21,
+      "Fixed": 24,
       "Security": 0,
-      "Behavior": 6
+      "Behavior": 8
     },
     "groups": [
       {
@@ -167,6 +167,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
+            "title": "the 2026-10-23 real-user hardening round — four defects whose combined effect zeroed every real learning turn…",
+            "behavior": false
+          },
+          {
+            "title": "degenerate empty 200 completions are never success — a three-layer answer to an upstream that serves them",
+            "behavior": false
+          },
+          {
+            "title": "print mode hangs on an open silent stdin — the unref'd idle timer, the F10 lesson's mirror",
+            "behavior": false
+          },
+          {
             "title": "every model was seeded at 128K/8K — the known-model spec catalog stamps published limits instead",
             "behavior": false
           },
@@ -255,6 +267,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Behavior",
         "items": [
+          {
+            "title": "the dream guard stops flagging its own product's grammar",
+            "behavior": true
+          },
+          {
+            "title": "the dream canary holds itself to the harness's verify-twice standard",
+            "behavior": true
+          },
           {
             "title": "every session now starts verify-first",
             "behavior": true

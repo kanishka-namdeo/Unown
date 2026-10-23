@@ -244,6 +244,59 @@ export function writePayloadManifest(outDir: string, version: string, archives: 
     writeFileSync(join(outDir, "sha256sums.txt"), `${entries.map((e) => `${e.hash}  ${e.name}`).join("\n")}\n`);
 }
 
+/**
+ * mem0ai's OSS dist dynamically imports every optional store/embedder/LLM
+ * backend it can drive (30 module ids, from `mongodb` to
+ * `zeroentropy`). Only the SQLite vector store + the OpenAI SDK
+ * (both hard deps) are ever exercised by unown's in-process platform, and the
+ * optional ids are NOT installed in this repo — so the compile's module
+ * resolution dies on the first one it meets ("Could not resolve: mongodb",
+ * the post-Mem0-swap release-blocker: v0.0.3 predates the swap, every
+ * release:artifacts run after it failed at darwin-arm64). Marking them
+ * --external leaves the lazy `import()` calls in the bundle as runtime
+ * lookups: an optional backend a binary install never configures is never
+ * imported, and the one lane that COULD want an optional package
+ * (@huggingface/transformers, the local-ml ONNX embedder) is
+ * install-on-demand by design — a compiled binary runs the deterministic
+ * lexical embedder fallback either way (same posture as a source checkout
+ * without `npm install` in local-ml).
+ *
+ * Node builtins appearing in the same dist (crypto/fs/os/path) resolve
+ * natively and are deliberately NOT in this list.
+ */
+const MEM0_OPTIONAL_EXTERNALS = [
+        "@azure/identity",
+        "@azure/search-documents",
+        "@elastic/elasticsearch",
+        "@google-cloud/aiplatform",
+        "@huggingface/transformers",
+        "@langchain/core/documents",
+        "@langchain/core/messages",
+        "@mistralai/mistralai",
+        "@mochow/mochow-sdk-node",
+        "@opensearch-project/opensearch",
+        "@pinecone-database/pinecone",
+        "@qdrant/js-client-rest",
+        "@supabase/supabase-js",
+        "@turbopuffer/turbopuffer",
+        "@upstash/vector",
+        "cassandra-driver",
+        "chromadb",
+        "cloudflare",
+        "cohere-ai",
+        "fastembed",
+        "groq-sdk",
+        "iovalkey",
+        "mongodb",
+        "mysql2/promise",
+        "ollama",
+        "oracledb",
+        "pg",
+        "redis",
+        "weaviate-client",
+        "zeroentropy",
+];
+
 function compile(bun: string, p: Platform, version: string, stageDir: string): string {
     const out = join(stageDir, binaryName(p));
     const args = [
@@ -253,6 +306,7 @@ function compile(bun: string, p: Platform, version: string, stageDir: string): s
         `--define`,
         `__UNOWN_VERSION__="${version}"`,
         `--target=${bunTarget(p)}`,
+        ...MEM0_OPTIONAL_EXTERNALS.flatMap((id) => ["--external", id]),
         ENTRY,
         WORKER,
         "--outfile",

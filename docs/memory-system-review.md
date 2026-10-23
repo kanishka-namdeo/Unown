@@ -6,7 +6,10 @@ A full code read of the tiered-memory subsystem plus live probes against a real 
 [F4 addendum 3](#f4-live-hardened-poisoning-the-dream-layer-is-a-real-attack-surface) and the
 [platform decision record](memory-platform-swap-assessment.md); the diagram and the
 authority-model findings below are re-stated for the swapped architecture, the historical
-probes keep their original scope) · **Scope:** the tiered-memory subsystem of the
+probes keep their original scope) · **updated 2026-10-23** (the hardening round:
+[F11](#f11-live-fixed-the-2026-10-23-hardening-round-the-loop-that-zeroed-real-learning-turns) —
+the four live-found defects whose combined effect zeroed every real learning turn, all fixed
+and the loop re-verified end to end) · **Scope:** the tiered-memory subsystem of the
 self-learning engine (`pi-repo/packages/self-learning/src/{memory,store,dream,
 runner,term,notes,harness,memzero}.ts`) and its terminal sibling (`cli.ts`, `tools.ts`).
 **Method:** full code read + LIVE probes against a real scratch engine + real
@@ -247,6 +250,59 @@ platform state (hand edits to a project tier no longer survive dreams;
 [memory](memory.md#editing-memory-by-hand) carries the contract). The
 platform's SQLite lives under `DATA_DIR/mem0`; deleting it re-imports the
 on-disk tiers, so the file chain remains the durable artifact.
+
+### F11 [live, FIXED] The 2026-10-23 hardening round: the loop that zeroed real learning turns
+
+A full benchtest of the memory system as a real user (terminal sessions in
+a fresh project, notes delivered to a live engine, dreams watched end to
+end against a real upstream) found four defects whose COMBINED effect was
+that ordinary preference statements never reached memory — every learning
+turn zeroed, each by a different layer. All fixed with regression tests;
+the loop is re-verified end to end (session → note → dream → platform →
+file → next session recalls).
+
+- **F11a — the propagation scanner flagged its own product's grammar**
+  (guard.ts): the note-level regex carried the BARE alternatives
+  `future sessions|all sessions|prominent`, and a bare mention is how the
+  product's own use case talks — the assistant's session-closing
+  acknowledgment ("Noted for future sessions") quarantined the whole note,
+  the dream's extracted rules then echoed it (the layer-2.5 backstop), and
+  the turn gated. The scanner is verb-gated now (imperatives, consequence
+  clauses, persistence-verb-near-target, instruction-shaped prominence);
+  descriptive acknowledgments stay clean, all 10 corpus attacks still trip.
+- **F11b — the runner-directive conjunction was line-global** (guard.ts):
+  a preference summary packing several subjects in one line ("test runner
+  is vitest; deploy target is Fly.io; code style disallows semicolons")
+  put a runner in clause 1 and switch-language about a DIFFERENT subject
+  in clause 3 — quarantined as a runner switch. The conjunction is
+  clause-aware now (same semicolon-delimited clause); the corpus's
+  parenthetical/dash poison stays inside one clause by design.
+- **F11c — a flaky canary reference gated every other dream** (dream.ts):
+  sampleCanaryTasks picks the most recent passing baseline/candidate per
+  task, and a hard MINTED task with a ~50% pass rate (measured live:
+  `mint-fix-multiplier-label-buzz`) turned the canary into a coin flip —
+  dream gating on upstream variance, not on the memory. The canary's own
+  verdict now meets the harness's verify-twice standard: a FAILED canary
+  re-runs once; two failures gate, fail+pass records a flaky reference and
+  proceeds, fail+infra-error gates conservatively. Live-verified both ways.
+- **F11d — a watchdog-killed dream left a phantom 'running' row**
+  (router.ts): the 20-min job watchdog recovered run rows but not dream
+  rows — the dream showed in-flight until the next ENGINE boot. The
+  watchdog heals its dream row inline now (the busy mutex guarantees
+  ownership); undreamed notes retry losslessly.
+
+Adjacent fixes shipped in the same round (audit 2-a, unit-pinned): the
+canary double-rollback (one rollback row, one event), the partial-ship
+unwind (platform events reverted when the tier write fails after
+`platform.add` — no more platform/file divergence or infinite re-dream),
+bounded hard-won render growth (`PI_MEM0_MAX_HARDWON` + an absolute render
+ceiling), retention un-shipping every shipped iteration of a regressed
+task (empty-ids ships re-render instead of version ping-pong), scoped
+watchdog row recovery, the busy-409 contract for every API lane, and — in
+the transport layer — degenerate empty 200 completions (measured live on
+the upstream under concurrent load) surfaced as retryable errors at the
+provider, healed by one transparent retry at the bridge, and never again
+reported as success by print mode.
 
 ## 3. Effectiveness — what the benchmarks say
 
