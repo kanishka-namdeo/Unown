@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 231;
+export const CHANGELOG_TOTAL_ENTRIES = 232;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 86,
-  "Changed": 16,
+  "Changed": 17,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 97,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 5,
+    "total": 6,
     "counts": {
       "Added": 0,
-      "Changed": 1,
+      "Changed": 2,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 3,
@@ -62,6 +62,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "the code's no-env defaults still said Dashscope/kimi while the docs, the preset and the live wiring said Agnes",
+            "behavior": false
+          },
+          {
+            "title": "landing: the alphabet band shrank a tenth of a viewport without losing a fact, a tile or the Konami code",
             "behavior": false
           }
         ]

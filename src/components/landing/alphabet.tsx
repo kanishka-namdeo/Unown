@@ -18,6 +18,15 @@ import { FadeUp, SectionHead, TerminalWindow, PixelCursor, toneAttr, type Tone }
  * its facts mostly restated the hero seal's (№ 0201, アンノーン, Symbol ·
  * Psychic), and the one fact unique to it — ! and ? arrived in 2004 — moved
  * into the intro sentence below.
+ *
+ * 2026-10-23 light shrink (the "do we need this band?" round — answer: yes,
+ * but slimmer): the intro and the Z highlight stopped stacking full-width —
+ * the highlight now sits in a card beside the intro on desktop (the row was
+ * ~60% dead whitespace at 1440) and falls under it on mobile; the intro lost
+ * its one ornamental clause ("stuck to walls in ruins") and kept every
+ * checkable fact; padding, gaps and the fine-print block tightened. All 28
+ * tiles, the panel, the Konami hint, the lore and the non-affiliation
+ * paragraph are untouched.
  */
 
 /* ------------------------------------------------------------------ */
@@ -147,41 +156,51 @@ export function AlphabetSection() {
       <MarkField />
 
       <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
-        <div className="grid max-w-2xl gap-5">
-          <FadeUp>
-            <SectionHead kicker="The alphabet">
-              The name is a pun you have to read twice.
-            </SectionHead>
-          </FadeUp>
-          <FadeUp delay={0.06}>
-            <p className="text-pretty leading-relaxed text-dim">
-              <span className="text-ink">un</span>own — the <em>Symbol Pokémon</em>: a
-              flat black letter with one eye, alive since 1999, found stuck to walls in
-              ruins. Twenty-six letter forms to start, with ! and ? arriving in 2004;
-              the 28 below are ours, drawn from scratch as inline SVG — no font file,
-              no image sprite — and each one decodes twice: the lore it borrows, and
-              the real mechanism it stands for here.
-            </p>
-          </FadeUp>
+        {/* Header row: intro left, the Z highlight beside it on desktop (the
+            stacked row was ~60% dead whitespace at 1440 — 2026-10-23 light
+            shrink), stacked under it on mobile. The highlight stays static and
+            pointer-free: lore must be readable without interacting. */}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end lg:gap-10">
+          <div className="max-w-2xl">
+            <FadeUp>
+              <SectionHead kicker="The alphabet">
+                The name is a pun you have to read twice.
+              </SectionHead>
+            </FadeUp>
+            <FadeUp delay={0.06}>
+              <p className="text-pretty leading-relaxed text-dim">
+                <span className="text-ink">un</span>own — the <em>Symbol Pokémon</em>: a
+                flat black letter with one eye, alive since 1999. Twenty-six letter
+                forms to start, with ! and ? arriving in 2004; the 28 below are ours,
+                drawn from scratch as inline SVG — no font file, no image sprite — and
+                each decodes twice: the lore it borrows, the mechanism it stands for here.
+              </p>
+            </FadeUp>
+          </div>
           <FadeUp delay={0.12}>
-            <div className="flex items-start gap-4 border-t border-line border-b py-4">
-              <Glyph id={highlight.id} weight="heavy" className="size-10 shrink-0 text-gold" />
-              <div className="min-w-0">
-                <blockquote className="quote text-pretty text-[15px] italic leading-relaxed text-dim">
-                  {highlight.lore}
-                </blockquote>
-                <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.14em] text-faint">
-                  {highlight.loreSrc} — one of twenty-eight; the rest are in the wall
-                </p>
+            <figure className="border border-line bg-panel/60 p-4">
+              <div className="flex items-center gap-3">
+                <Glyph id={highlight.id} weight="heavy" className="size-9 shrink-0 text-gold" />
+                <figcaption className="gb-label text-[9px] leading-relaxed text-faint">
+                  one of twenty-eight ·
+                  <br />
+                  the rest are in the wall
+                </figcaption>
               </div>
-            </div>
+              <blockquote className="quote mt-3 text-pretty text-[14px] italic leading-relaxed text-dim">
+                {highlight.lore}
+              </blockquote>
+              <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-faint">
+                {highlight.loreSrc}
+              </p>
+            </figure>
           </FadeUp>
         </div>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
+        <div className="mt-8 grid gap-8 lg:mt-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
           {/* the forms */}
           <FadeUp className="lg:order-1">
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7 sm:gap-2">
               {GLYPH_IDS.map((id, i) => (
                 <FormTile
                   key={id}
@@ -196,7 +215,7 @@ export function AlphabetSection() {
                 />
               ))}
             </div>
-            <p className="mt-4 font-mono text-[11px] text-faint">
+            <p className="mt-3 font-mono text-[11px] text-faint">
               hover or focus to decode · click to pin it and rain the letter · psst, try
               ↑↑↓↓←→←→ba
             </p>
@@ -206,7 +225,7 @@ export function AlphabetSection() {
               band comment above) */}
           <FadeUp delay={0.08} className="lg:order-2">
             <TerminalWindow title={`form ${ordinal} / 28 · ${entry.id}`}>
-              <div aria-live="polite" className="p-5">
+              <div aria-live="polite" className="p-4">
                 <div className="flex items-center gap-4">
                   <div className="grid size-16 shrink-0 place-items-center border-[3px] border-canvas bg-gold/10">
                     <Glyph id={entry.id} weight="heavy" tone="lit" className="size-11 text-gold" />
@@ -219,7 +238,7 @@ export function AlphabetSection() {
                   </div>
                 </div>
 
-                <figure className="mt-5 border-t border-line pt-4">
+                <figure className="mt-4 border-t border-line pt-3">
                   <blockquote className="quote font-term text-[15px] italic leading-relaxed text-dim">
                     {entry.lore}
                   </blockquote>
@@ -228,7 +247,7 @@ export function AlphabetSection() {
                   </figcaption>
                 </figure>
 
-                <div className="mt-5 border-t border-line pt-4">
+                <div className="mt-4 border-t border-line pt-3">
                   <p className="gb-label text-[9px] text-gold">
                     in unown
                   </p>
@@ -244,25 +263,26 @@ export function AlphabetSection() {
           </FadeUp>
         </div>
 
-        <div className="mt-10 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-line pt-4">
-          <span className="gb-label text-[9px] text-faint">Field notes read at</span>
-          {[
-            ["Wikipedia", "https://en.wikipedia.org/wiki/Unown"],
-            ["Bulbapedia", "https://bulbapedia.bulbagarden.net/wiki/Unown_(Pok%C3%A9mon)"],
-            ["PokémonDB", "https://pokemondb.net/pokedex/unown"],
-          ].map(([label, href]) => (
-            <a
-              key={href}
-              href={href}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="font-mono text-[10.5px] text-dim underline decoration-line underline-offset-2 transition-colors hover:text-ink hover:decoration-current"
-            >
-              {label}
-            </a>
-          ))}
-        </div>
-        <p className="mt-4 max-w-3xl text-[11px] leading-relaxed text-faint">
+        <div className="mt-8 border-t border-line pt-4">
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <span className="gb-label text-[9px] text-faint">Field notes read at</span>
+            {[
+              ["Wikipedia", "https://en.wikipedia.org/wiki/Unown"],
+              ["Bulbapedia", "https://bulbapedia.bulbagarden.net/wiki/Unown_(Pok%C3%A9mon)"],
+              ["PokémonDB", "https://pokemondb.net/pokedex/unown"],
+            ].map(([label, href]) => (
+              <a
+                key={href}
+                href={href}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="font-mono text-[10.5px] text-dim underline decoration-line underline-offset-2 transition-colors hover:text-ink hover:decoration-current"
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+          <p className="mt-3 max-w-3xl text-[11px] leading-relaxed text-faint">
           Every line under <span className="text-dim">in unown</span> describes something
           that actually runs in this repository. Short quotations of game text appear for
           commentary, with the source named on each one; no sprite, card, logo or audio
@@ -270,7 +290,8 @@ export function AlphabetSection() {
           open-source project — not affiliated with, endorsed by or sponsored by Nintendo,
           Game Freak, Creatures Inc. or The Pokémon Company. Pokémon and Unown are
           trademarks of their respective owners.
-        </p>
+          </p>
+        </div>
       </div>
     </section>
   );

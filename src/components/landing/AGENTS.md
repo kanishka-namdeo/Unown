@@ -271,12 +271,14 @@ while the spine doubled from ten entries to twenty.
   the benchmark numbers back at the page. Name the mechanism; let the section
   that owns it do the explaining. `proof` stays a bare number or repo path.
 - **Lore must be reachable without interacting.** The decode panel shows one
-  lexicon entry at a time, so `alphabet.tsx` lifts the `Z` form into the
-  intro as a static highlight (one since the 2026-10-20 merge; it used to be
-  three). A section narrated as a payoff but built as a hover-revealed
-  reference table delivers nothing to the ~90% of visitors who scroll past
-  it — the page's best writing was behind a pointer event. If you add lore,
-  add it somewhere it can be read without a click.
+  lexicon entry at a time, so `alphabet.tsx` lifts the `Z` form into a static
+  highlight card beside the intro on desktop and under it on mobile (one
+  since the 2026-10-20 merge; it used to be three; side-by-side since the
+  2026-10-23 light shrink, which paid for the card with the dead whitespace
+  the stacked row left at 1440). A section narrated as a payoff but built as
+  a hover-revealed reference table delivers nothing to the ~90% of visitors
+  who scroll past it — the page's best writing was behind a pointer event.
+  If you add lore, add it somewhere it can be read without a click.
 - `lexicon.ts` lore may only contain facts verified against Bulbapedia,
   PokémonDB, Wikipedia or ssbwiki, quoted with the source named. Popular but
   wrong (the sleeping-stick line, Lavender Town, Unown letters in Deltarune
