@@ -33,6 +33,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, isAbsolute, join } from "node:path";
 
 import { atomicWriteFileSync } from "./atomic.ts";
+import { redactSecretsCounted } from "./adversary.ts";
 import { type CheckpointManifest, ReceiptsLedger, receiptsDir } from "./checkpoints.ts";
 
 // ---------------------------------------------------------------------------
@@ -111,6 +112,12 @@ export interface ExportOptions {
     /** Override the receipts file path (otherwise derived from cwd + sessionId). */
     receiptsFile?: string;
     checkpointStore?: CheckpointStoreLike;
+    /** Redact known secret shapes from the export before it is written
+     *  (default TRUE — a portable transfer artifact routinely changes hands,
+     *  and a transcript debugged with a real key must not carry that key
+     *  into the file). `--raw` in the CLI opts out for a lossless
+     *  self-transfer between machines you own. */
+    redact?: boolean;
 }
 
 export interface ImportOptions {
@@ -259,13 +266,15 @@ export function findReceiptsFile(cwd: string, sessionId: string): string | null 
 // ---------------------------------------------------------------------------
 
 /**
- * Serialize a session to a JSON file. Returns `{ path, bytes }`.
- * Throws on a missing sessionManager, an unreadable session or a write failure.
+ * Serialize a session to a JSON file. Returns `{ path, bytes, redacted }` —
+ * `redacted` counts the secrets the default redaction pass replaced (0 when
+ * clean or when `redact: false` opted out). Throws on a missing
+ * sessionManager, an unreadable session or a write failure.
  */
 export async function exportSession(
     sessionId: string,
     opts: ExportOptions = {},
-): Promise<{ path: string; bytes: number }> {
+): Promise<{ path: string; bytes: number; redacted: number }> {
     const sm = opts.sessionManager;
     if (!sm) throw new Error("exportSession: sessionManager is required (opts.sessionManager)");
 
@@ -309,9 +318,19 @@ export async function exportSession(
 
     const path = opts.outPath ?? defaultExportPath(sessionId, cwd);
     mkdirSync(dirname(path), { recursive: true });
-    const content = JSON.stringify(exportObj, null, 2);
+    const serialized = JSON.stringify(exportObj, null, 2);
+    // Redaction runs on the SERIALIZED form, so every string surface is
+    // covered uniformly (message text, tool outputs embedded in messages,
+    // note contents) without walking the object tree. JSON round-trip
+    // safety is not a concern — the redacted string is what gets written.
+    // Escaped-string edge: a secret can never span a JSON escape boundary
+    // (keys/PATs/tokens are single-token ASCII runs), so the regexes match
+    // the same shapes they would match in the raw text.
+    const redact = opts.redact !== false;
+    const result = redact ? redactSecretsCounted(serialized) : { text: serialized, count: 0 };
+    const content = result.text;
     atomicWriteFileSync(path, content);
-    return { path, bytes: Buffer.byteLength(content) };
+    return { path, bytes: Buffer.byteLength(content), redacted: redact ? result.count : 0 };
 }
 
 // ---------------------------------------------------------------------------

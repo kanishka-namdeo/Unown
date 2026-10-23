@@ -403,7 +403,7 @@ The rest:
 | `/scoped-models` | Enable/disable models for Ctrl+P cycling |
 | `/export` | Export session (HTML default, or a `.html`/`.jsonl` path) |
 | `/import` | Import and resume a session from a JSONL file |
-| `/share` | Share session as a secret GitHub gist |
+| `/share` | Share session as a secret GitHub gist (secret-redacted before upload) |
 | `/copy` | Copy last agent message to clipboard |
 | `/name` | Set session display name |
 | `/session` | Show session info and stats |
@@ -481,7 +481,7 @@ Sessions are append-only trees stored as JSONL files under `~/.unown/agent/sessi
 Two more session tools ride the same machinery:
 
 - **`/edit-resend <n> <new-message>`** rewrites history in place: it reverts every file to the checkpoint sealed just before the Nth user message (SHA-256-verified — any out-of-band edit aborts the whole operation), appends the edited message as the new leaf, and re-runs from there. The revert is all-or-nothing: a mid-way failure restores what it already rewrote. `/edit-resend list` prints the numbered user messages.
-- **`unown sessions export|import|list`** (in-session alias `/sessions`) moves a session between machines — the export is one self-describing JSON (`{version, manifest, messages, todos, notes, skills, files}`), and `import` rehydrates it under a fresh session id.
+- **`unown sessions export|import|list`** (in-session alias `/sessions`) moves a session between machines — the export is one self-describing JSON (`{version, manifest, messages, todos, notes, skills, files}`), and `import` rehydrates it under a fresh session id. Exports are **redacted by default**: known secret shapes (API keys, PATs, PEM blocks, bearer tokens) become `[REDACTED:<type>]` markers before the file is written — a transfer artifact routinely changes hands, and a transcript debugged with a real key must not carry that key into the file. The CLI reports how many were caught; `--raw` opts out for a lossless self-transfer between machines you own. `/share` applies the same secret table to the gist/Radius upload — every path that leaves the machine is redacted, local `/export` is not.
 
 **Context budget.** `/compact` (pi's own) compacts manually. Engine sandbox runs add an auto-compact guard on top — after every turn it checks the live context usage against a proportional curve: warn at 70% of the window, auto-compact at 85%, hard-block the next request at 95% (`UNOWN_AUTO_COMPACT_THRESHOLD` / `UNOWN_AUTO_COMPACT_HARD_LIMIT` tune the last two; see [configuration](configuration.md#terminal-agent-unown-cli)). The `get_context_remaining` tool reports the same numbers to the agent.
 

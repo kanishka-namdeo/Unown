@@ -28,7 +28,7 @@ export const SESSIONS_USAGE = `unown sessions — session export / import / list
 
 Usage:
   unown sessions list
-  unown sessions export <session-id> [--out <file>]
+  unown sessions export <session-id> [--out <file>] [--raw]
   unown sessions import <file>
 
 The exported JSON contains { version, manifest, messages, todos, notes, skills,
@@ -36,6 +36,11 @@ files } — a single self-describing file you can rehydrate on another machine
 with \`unown sessions import\`. The imported session appears in \`unown sessions
 list\` with a fresh id (the original id is preserved in the manifest for
 traceability).
+
+Exports are REDACTED by default: known secret shapes (API keys, PATs, PEM
+blocks, bearer tokens) become [REDACTED:<type>] markers, because a transfer
+artifact routinely changes hands. --raw opts out for a lossless self-transfer
+between machines you own.
 
 Docs: docs/usage.md (sessions).`;
 
@@ -148,10 +153,11 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
     if (sub === "export") {
         const sessionId = argv[1];
         if (!sessionId || sessionId.startsWith("--")) {
-            process.stderr.write("usage: unown sessions export <session-id> [--out <file>]\n");
+            process.stderr.write("usage: unown sessions export <session-id> [--out <file>] [--raw]\n");
             return 1;
         }
         const out = flagValue(argv, "--out");
+        const raw = hasFlag(argv, "--raw");
         const sessionDir = join(cwd, ".unown", "sessions");
         const sessionFile = findSessionFile(sessionDir, sessionId);
         if (!sessionFile) {
@@ -171,9 +177,14 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
             const result = await exportSession(sm.getSessionId(), {
                 sessionManager: sm,
                 outPath: out,
+                redact: !raw,
             });
+            const redactionNote =
+                result.redacted > 0
+                    ? ` — ${result.redacted} secret${result.redacted === 1 ? "" : "s"} redacted ([REDACTED:*] markers; --raw keeps them verbatim)`
+                    : "";
             process.stdout.write(
-                `✓ Exported session ${sm.getSessionId()} → ${result.path} (${result.bytes} bytes)\n`,
+                `✓ Exported session ${sm.getSessionId()} → ${result.path} (${result.bytes} bytes)${redactionNote}\n`,
             );
             return 0;
         } catch (err: any) {

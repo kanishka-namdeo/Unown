@@ -32,6 +32,7 @@
  * user hooks are skipped. Both log to the `hook_log` table via the caller.
  */
 import { existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -193,6 +194,27 @@ export function redactSecrets(s: string): string {
                 out = out.replace(re, `[REDACTED:${type}]`);
         }
         return out;
+}
+
+/** Counting variant of {@link redactSecrets} for share/transfer surfaces:
+ *  the same table and markers, plus how many secrets were caught (drives the
+ *  "N secrets redacted before export" notice) and per-occurrence SHA-256[:16]
+ *  digests of the redacted material — non-reversible, so the user can verify
+ *  after the fact WHICH secret was caught without the artifact carrying it.
+ *  The replace callback (not a replacement string) is used so a `$`-bearing
+ *  secret can never be interpreted as a replacement pattern. Pure. */
+export function redactSecretsCounted(s: string): { text: string; count: number; digests: string } {
+        let count = 0;
+        const digests: string[] = [];
+        let out = s;
+        for (const { re, type } of SECRET_PATTERNS) {
+                out = out.replace(re, (secret) => {
+                        count++;
+                        digests.push(createHash("sha256").update(secret).digest("hex").slice(0, 16));
+                        return `[REDACTED:${type}]`;
+                });
+        }
+        return { text: out, count, digests: digests.join(",") };
 }
 
 // ---------------------------------------------------------------------------

@@ -367,6 +367,73 @@ describe("exportSession", () => {
         expect(existsSync(expected)).toBe(true);
         expect(expected.endsWith(join(".unown", "sessions", `export-${sessionId}.json`))).toBe(true);
     });
+
+    test("3a. redacts known secret shapes by default and reports the count", async () => {
+        const cwd = join(TMP, "exp3a");
+        mkdirSync(join(cwd, ".unown", "receipts"), { recursive: true });
+        const sessionId = "sess-exp3a";
+        const t0 = "2026-10-19T10:00:00.000Z";
+        // Assembled at runtime (never a literal in source): the AWS docs
+        // example key, spelled so no scanner ever sees the whole token.
+        const awsKey = ["AKIA", "IOSFODNN7", "EXAMPLE"].join("");
+        const skKey = ["sk-", "abcdefghijklmnopqrst", "012345"].join("");
+        const sm = new MockSessionManager(cwd, sessionId, [
+            {
+                type: "message",
+                id: "m1",
+                parentId: null,
+                timestamp: t0,
+                message: {
+                    role: "user",
+                    content:
+                        `why does this 401? my key is ${skKey} and the AWS one ${awsKey}`,
+                    timestamp: Date.parse(t0),
+                },
+            },
+        ]);
+        const out = join(cwd, "export.json");
+        const result = await exportSession(sessionId, { sessionManager: sm, outPath: out });
+        expect(result.redacted).toBe(2);
+        const written = readFileSync(out, "utf8");
+        expect(written).toContain("[REDACTED:sk-key]");
+        expect(written).toContain("[REDACTED:aws-ak]");
+        expect(written).not.toContain(skKey);
+        expect(written).not.toContain("AKIAIOSFODNN7EXAMPLE");
+        // The export stays valid JSON after redaction.
+        expect(() => JSON.parse(written)).not.toThrow();
+    });
+
+    test("3b. --raw (redact: false) keeps secrets verbatim for self-transfer", async () => {
+        const cwd = join(TMP, "exp3b");
+        mkdirSync(join(cwd, ".unown", "receipts"), { recursive: true });
+        const sessionId = "sess-exp3b";
+        const t0 = "2026-10-19T10:00:00.000Z";
+        const secret = "ghp_" + "a".repeat(36);
+        const sm = new MockSessionManager(cwd, sessionId, [
+            {
+                type: "message",
+                id: "m1",
+                parentId: null,
+                timestamp: t0,
+                message: { role: "user", content: `token: ${secret}`, timestamp: Date.parse(t0) },
+            },
+        ]);
+        const out = join(cwd, "export-raw.json");
+        const result = await exportSession(sessionId, { sessionManager: sm, outPath: out, redact: false });
+        expect(result.redacted).toBe(0);
+        expect(readFileSync(out, "utf8")).toContain(secret);
+    });
+
+    test("3c. a clean session exports with zero redactions (and no marker noise)", async () => {
+        const cwd = join(TMP, "exp3c");
+        mkdirSync(join(cwd, ".unown", "receipts"), { recursive: true });
+        const sessionId = "sess-exp3c";
+        const { sm, receiptsFile } = makeSessionFixture(cwd, sessionId);
+        const out = join(cwd, "export-clean.json");
+        const result = await exportSession(sessionId, { sessionManager: sm, outPath: out, receiptsFile });
+        expect(result.redacted).toBe(0);
+        expect(readFileSync(out, "utf8")).not.toContain("[REDACTED:");
+    });
 });
 
 // ---------------------------------------------------------------------------
