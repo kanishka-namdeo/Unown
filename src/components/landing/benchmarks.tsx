@@ -34,6 +34,16 @@ import { formatPct, runStamp } from "./benchmark-figures";
  * half the length, the three secondary tracks share one strip, and the
  * regression + methodology panels merged into a single fine-print row. The
  * budget contract lives in the landing folder's AGENTS.md.
+ *
+ * 2026-10-23 density pass (the "shorten the benchmarks" round): every figure,
+ * receipt link, caveat and the negative-controls box survived, and the pane
+ * lost ~13% of its height. The memory-lift chart's two stacked labelled bars
+ * per model became one grouped cold/warm pair on a shared track — the
+ * grouped-bar pattern for a two-series comparison; the legend already names
+ * the series (per-bar `cold`/`warm` labels were duplication), the baseline
+ * tick now spans the pair, and both token counts read as one `cold → warm`
+ * figure, the same arrow the time chips use. Paddings and margins each dropped
+ * a step on the 4px grid; the regression suites render as divide-y rows.
  */
 
 /**
@@ -138,56 +148,68 @@ function TimeChip({ coldS, warmS, d }: { coldS: number; warmS: number; d: number
 }
 
 /**
- * One bar of the memory-lift chart. `width` is a share of the track: cold rows
- * pass the 100%-of-cold baseline, warm rows their measured share of the
- * 0–`LIFT_SCALE` domain (derived above, so a bigger spender widens the axis
- * instead of painting past it). Grows in on scroll like BarRow, transform not
+ * One model's cold/warm pair from the memory-lift chart, on the 0–`LIFT_SCALE`
+ * domain derived above. The pair shares one track — the grouped-bar pattern:
+ * two series, one category, compared in a single glance instead of two stacked
+ * labelled rows (the legend names the series; repeating `cold`/`warm` per bar
+ * was duplication). Both token counts stay on the right as one `cold → warm`
+ * readout, the same arrow the time chips use. The 100%-of-cold tick spans the
+ * pair, positioned at `COLD_BAR_W` so it can never drift from the cold bar's
+ * end (bar length encodes the data: an out-of-range receipt widens the axis,
+ * the bar is never clamped). Grows in on scroll like BarRow, transform not
  * width.
  */
-function LiftBar({
-  kind,
-  width,
-  tokens,
-  tone,
-  tick = false,
+function LiftPair({
+  coldIn,
+  warmIn,
+  win,
   delay = 0,
 }: {
-  kind: "cold" | "warm";
-  width: number;
-  tokens: number;
-  tone: "cold" | "win" | "cost";
-  tick?: boolean;
+  coldIn: number;
+  warmIn: number;
+  win: boolean;
   delay?: number;
 }) {
   // See the note on BarRow: the after-mount read keeps hydration honest.
   const reduced = useReducedMotionAfterMount();
-  const fill =
-    tone === "cold" ? "bg-line-bright" : tone === "win" ? "bg-gold" : "bg-amber";
+  const rows = [
+    { kind: "cold", width: COLD_BAR_W, tokens: coldIn, fill: "bg-line-bright" },
+    {
+      kind: "warm",
+      width: (warmIn / coldIn) * COLD_BAR_W,
+      tokens: warmIn,
+      fill: win ? "bg-gold" : "bg-amber",
+    },
+  ] as const;
   return (
     <div className="flex items-center gap-3">
-      <span className="w-9 shrink-0 font-mono text-[10px] text-faint">{kind}</span>
-      <div className="relative h-2 flex-1 bg-line">
-        {tick ? (
-          // the 100%-of-cold baseline sits exactly where the cold bar ends —
-          // COLD_BAR_W into the track, not a hardcoded position that goes
-          // stale the moment the domain moves
-          <span
-            aria-hidden="true"
-            className="absolute -top-1.5 -bottom-1.5 border-l border-dashed border-line-bright"
-            style={{ left: `${COLD_BAR_W}%` }}
-          />
-        ) : null}
-        <motion.div
-          className={`absolute inset-y-0 left-0 origin-left ${fill}`}
-          style={{ width: `${width}%` }}
-          initial={{ opacity: 0, scaleX: reduced ? 1 : 0 }}
-          whileInView={{ opacity: 1, scaleX: 1 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.9, delay, ease: "easeOut" }}
+      <div className="relative min-w-0 flex-1 space-y-[3px]">
+        {/* the 100%-of-cold baseline spans the pair and sits exactly where the
+            cold bar ends — COLD_BAR_W into the track, not a hardcoded position
+            that goes stale the moment the domain moves */}
+        <span
+          aria-hidden="true"
+          className="absolute -bottom-1 -top-1 border-l border-dashed border-line-bright"
+          style={{ left: `${COLD_BAR_W}%` }}
         />
+        {rows.map((r) => (
+          <div key={r.kind} className="relative h-2 bg-line">
+            <motion.div
+              className={`absolute inset-y-0 left-0 origin-left ${r.fill}`}
+              style={{ width: `${r.width}%` }}
+              role="img"
+              aria-label={`${r.kind} ${r.tokens.toLocaleString("en-US")} input tokens`}
+              initial={{ opacity: 0, scaleX: reduced ? 1 : 0 }}
+              whileInView={{ opacity: 1, scaleX: 1 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.9, delay, ease: "easeOut" }}
+            />
+          </div>
+        ))}
       </div>
-      <span className="w-[4.5rem] shrink-0 text-right font-mono text-[10px] tabular-nums text-dim">
-        {tokens.toLocaleString("en-US")}
+      <span className="w-32 shrink-0 text-right font-mono text-[10px] tabular-nums text-dim">
+        {coldIn.toLocaleString("en-US")} <span className="text-faint">→</span>{" "}
+        {warmIn.toLocaleString("en-US")}
       </span>
     </div>
   );
@@ -208,13 +230,13 @@ function TrackCard({
 }) {
   return (
     <FadeUp delay={delay} className="h-full">
-      <div className="gb-panel lift flex h-full flex-col p-5 hover:border-line-bright">
+      <div className="gb-panel lift flex h-full flex-col p-4 hover:border-line-bright">
         <div className="flex items-center gap-3">
           <Icon className="size-5 shrink-0 text-gold" aria-hidden="true" />
           <h3 className="text-[15px] font-medium text-ink">{name}</h3>
         </div>
-        <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">{source}</p>
-        <div className="mt-4 flex flex-1 flex-col justify-center gap-3">{children}</div>
+        <p className="mt-1.5 font-mono text-[10.5px] leading-relaxed text-faint">{source}</p>
+        <div className="mt-3 flex flex-1 flex-col justify-center gap-2.5">{children}</div>
       </div>
     </FadeUp>
   );
@@ -241,7 +263,7 @@ export function BenchmarksPane() {
           ].map((s, i) => (
             <div
               key={s.l}
-              className={`rise rise-${i + 1} border-line px-4 py-6 sm:px-5 lg:border-l lg:first:border-l-0 ${i % 2 === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b lg:border-b-0" : ""}`}
+              className={`rise rise-${i + 1} border-line px-4 py-5 sm:px-5 lg:border-l lg:first:border-l-0 ${i % 2 === 1 ? " sm:border-l" : ""}${i < 2 ? " border-b lg:border-b-0" : ""}`}
             >
               {/* Geist Mono, not `.gb-h`: Pixelify Sans renders `57` as `S7`
                   at display size, and these four are the pane's headline
@@ -250,8 +272,8 @@ export function BenchmarksPane() {
               <p className="font-mono text-3xl font-semibold tabular-nums tracking-tight text-gold">
                 {s.v}
               </p>
-              <p className="mt-1.5 text-[13px] font-medium text-ink">{s.l}</p>
-              <p className="mt-1 font-mono text-[10px] leading-relaxed text-faint">
+              <p className="mt-1 text-[13px] font-medium text-ink">{s.l}</p>
+              <p className="mt-0.5 font-mono text-[10px] leading-relaxed text-faint">
                 {s.s}
               </p>
             </div>
@@ -260,7 +282,7 @@ export function BenchmarksPane() {
       </div>
 
       {/* the two flagship tracks */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-5 grid gap-6 lg:grid-cols-2">
         <TrackCard
           icon={Swords}
           name="LiveCodeBench v6 — the contamination-aware headline"
@@ -318,7 +340,7 @@ export function BenchmarksPane() {
           is efficiency: cold vs warm input tokens and wall time, exactly as
           measured, including the two models that spent more. */}
       <FadeUp delay={0.05}>
-        <div id="memory-lift" className="gb-panel mt-6 scroll-mt-16 p-5" data-tone="magma">
+        <div id="memory-lift" className="gb-panel mt-5 scroll-mt-16 p-4" data-tone="magma">
           <div className="flex flex-wrap items-center gap-3">
             <Repeat className="size-5 shrink-0 text-gold" aria-hidden="true" />
             <h3 className="text-[15px] font-medium text-ink">Memory lift, cold vs warm</h3>
@@ -343,7 +365,7 @@ export function BenchmarksPane() {
             that spent more widen the axis and are never cropped.
           </p>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[10px] text-faint">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[10px] text-faint">
             <span className="flex items-center gap-1.5">
               <span aria-hidden="true" className="h-1.5 w-4 bg-line-bright" />
               cold
@@ -358,9 +380,9 @@ export function BenchmarksPane() {
             </span>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-3">
             {SELFIMPROVE.map((r, i) => (
-              <div key={r.model} className={i === 0 ? "" : "mt-5"}>
+              <div key={r.model} className={i === 0 ? "" : "mt-4"}>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                   <span className="font-mono text-[11px] text-ink">{r.model}</span>
                   <Delta v={r.input} unit="in" />
@@ -369,28 +391,19 @@ export function BenchmarksPane() {
                     pass {r.coldPass}/{r.coldTasks} → {r.warmPass}/{r.warmTasks}
                   </span>
                 </div>
-                <div className="mt-2 space-y-1">
-                  <LiftBar
-                    kind="cold"
-                    width={COLD_BAR_W}
-                    tokens={r.coldIn}
-                    tone="cold"
+                <div className="mt-1.5">
+                  <LiftPair
+                    coldIn={r.coldIn}
+                    warmIn={r.warmIn}
+                    win={r.input < 0}
                     delay={i * 0.12}
-                  />
-                  <LiftBar
-                    kind="warm"
-                    width={(r.warmIn / r.coldIn) * COLD_BAR_W}
-                    tokens={r.warmIn}
-                    tone={r.input < 0 ? "win" : "cost"}
-                    delay={i * 0.12 + 0.06}
-                    tick
                   />
                 </div>
               </div>
             ))}
           </div>
 
-          <p className="mt-5 font-mono text-[10.5px] leading-relaxed text-dim">
+          <p className="mt-4 font-mono text-[10.5px] leading-relaxed text-dim">
             <span className="text-gold">Pass-rate lift is 0pp</span> across all
             four models: three of four spent <em>more</em> input tokens with memory
             in the loop — agnes-3.0-flash most of all (+197%, the dreamed user-tier
@@ -400,7 +413,7 @@ export function BenchmarksPane() {
             correctness.
           </p>
 
-          <div className="gb-box mt-4 p-4" data-tone="magma">
+          <div className="gb-box mt-3 p-4" data-tone="magma">
             <p className="gb-label text-[10px] text-canvas">
               Negative controls, published as-is
             </p>
@@ -437,16 +450,16 @@ export function BenchmarksPane() {
           full cards. All three still render their generated numbers, and the
           receipts are one link away. */}
       <FadeUp delay={0.05}>
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <div className="gb-panel p-5">
+        <div className="mt-5 grid gap-6 lg:grid-cols-3">
+          <div className="gb-panel p-4">
             <div className="flex items-center gap-3">
               <FlaskConical className="size-5 shrink-0 text-gold" aria-hidden="true" />
               <h3 className="text-[15px] font-medium text-ink">HumanEval+</h3>
             </div>
-            <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">
+            <p className="mt-1.5 font-mono text-[10.5px] leading-relaxed text-faint">
               official evalplus CLI · 164 problems · greedy pass@1 · {runStamp(BENCH_SOURCES.HUMANEVAL_PLUS.run)}
             </p>
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 space-y-1.5">
               {HUMANEVAL_PLUS.map((r) => {
                 const figure = formatPct(r.pct);
                 return (
@@ -465,15 +478,15 @@ export function BenchmarksPane() {
             </p>
           </div>
 
-          <div className="gb-panel p-5">
+          <div className="gb-panel p-4">
             <div className="flex items-center gap-3">
               <Layers className="size-5 shrink-0 text-gold" aria-hidden="true" />
               <h3 className="text-[15px] font-medium text-ink">Aider polyglot subset</h3>
             </div>
-            <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">
+            <p className="mt-1.5 font-mono text-[10.5px] leading-relaxed text-faint">
               50 exercises · 6 languages · Aider&apos;s 2-attempt protocol · pass@2
             </p>
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 space-y-1.5">
               {POLYGLOT.map((r) => (
                 <div key={r.model} className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
                   <span className="truncate text-dim">{r.model}</span>
@@ -490,16 +503,16 @@ export function BenchmarksPane() {
             </p>
           </div>
 
-          <div className="gb-panel p-5">
+          <div className="gb-panel p-4">
             <div className="flex items-center gap-3">
               <Compass className="size-5 shrink-0 text-gold" aria-hidden="true" />
               <h3 className="text-[15px] font-medium text-ink">Long-horizon refactor</h3>
             </div>
-            <p className="mt-2 font-mono text-[10.5px] leading-relaxed text-faint">
+            <p className="mt-1.5 font-mono text-[10.5px] leading-relaxed text-faint">
               one hard multi-file contract change, 11-module TypeScript app · n=1 ·
               scored on the file diff
             </p>
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 space-y-1.5">
               {LONGHORIZON.map((r) => (
                 <div key={r.model} className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
                   <span className="truncate text-dim">{r.model}</span>
@@ -533,7 +546,7 @@ export function BenchmarksPane() {
           commit, so each suite is named by path and command — verifiable, and
           it does not rot. */}
       <FadeUp delay={0.05}>
-        <div className="mt-6 gb-panel p-5">
+        <div className="mt-5 gb-panel p-4">
           <div className="flex flex-wrap items-center gap-3">
             <ShieldCheck className="size-5 shrink-0 text-gold" aria-hidden="true" />
             <h3 className="text-[15px] font-medium text-ink">
@@ -559,7 +572,7 @@ export function BenchmarksPane() {
             </a>
             .
           </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 divide-y divide-line border border-line">
             {[
               {
                 s: "dashboard",
@@ -577,16 +590,14 @@ export function BenchmarksPane() {
                 r: "bun test test/",
               },
             ].map((c) => (
-              <div key={c.s} className="gb-inset p-4">
-                <p className="gb-label text-[9px] text-gold">{c.s}</p>
-                <p className="mt-2 break-words font-mono text-[11px] leading-snug text-ink">
-                  {c.p}
-                </p>
-                <p className="mt-1 font-mono text-[10.5px] text-faint">{c.r}</p>
+              <div key={c.s} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-1.5">
+                <span className="gb-label w-20 shrink-0 text-[9px] text-gold">{c.s}</span>
+                <span className="font-mono text-[10.5px] leading-snug text-ink">{c.p}</span>
+                <span className="font-mono text-[10px] text-faint">{c.r}</span>
               </div>
             ))}
           </div>
-          <p className="mt-4 font-mono text-[10.5px] leading-relaxed text-faint">
+          <p className="mt-3 font-mono text-[10.5px] leading-relaxed text-faint">
             <span className="text-gold">not measured here</span> — SWE-bench Verified and
             Terminal-Bench 2.0 are quoted from vendor reports, never our own runs. The
             one eval that scores zero (our extension-authoring eval, 0.0 for every

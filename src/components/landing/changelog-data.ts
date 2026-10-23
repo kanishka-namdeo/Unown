@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 237;
+export const CHANGELOG_TOTAL_ENTRIES = 238;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 87,
-  "Changed": 17,
+  "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 100,
@@ -71,10 +71,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.5",
     "date": "2026-10-23",
-    "total": 10,
+    "total": 11,
     "counts": {
       "Added": 1,
-      "Changed": 2,
+      "Changed": 3,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 5,
@@ -125,6 +125,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "landing: the capability dex grows an eleventh form — Browser, the window creature",
+            "behavior": false
+          },
+          {
+            "title": "landing: the benchmarks pane lost ~9% of its height and kept every figure, receipt link and caveat",
             "behavior": false
           }
         ]

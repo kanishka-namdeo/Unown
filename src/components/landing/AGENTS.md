@@ -327,7 +327,9 @@ while the spine doubled from ten entries to twenty.
   tween serialises as `style="width:0"`, matches neither substring, and the
   element stays at zero with scripting disabled. `BarRow` used to do exactly
   that and rendered every benchmark bar in both track cards as an empty track;
-  `LiftBar` was already correct. The pattern for a bar reveal is: put the
+  the lift chart's bars (now `LiftPair`, the grouped cold/warm pair since the
+  2026-10-23 density pass) were already correct. The pattern for a bar reveal
+  is: put the
   **finished** value in `style`, animate `scaleX` from 0 with `origin-left`, and
   branch on `useReducedMotionAfterMount()` so the finished state is the initial
   state for a reduced-motion reader without breaking hydration.
