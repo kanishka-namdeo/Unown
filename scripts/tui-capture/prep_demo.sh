@@ -12,7 +12,7 @@ set -euo pipefail
 D="${UNOWN_DEMO_DIR:-/home/z/my-project/demo-projects/api-server}"
 cd "$D"
 rm -rf /tmp/api-unown-bak
-cp -r .unown /tmp/api-unown-bak 2>/dev/null || true
+if [ -d .unown ]; then cp -r .unown /tmp/api-unown-bak; fi
 git reset -q --hard fixed
 git clean -qfdx -e .unown -- src/ test/
 case "${1:-default}" in
@@ -26,7 +26,11 @@ case "${1:-default}" in
     sed -i 's/page \* perPage + 1/page * perPage/' src/pagination.ts
     ;;
 esac
-rm -rf .unown && cp -r /tmp/api-unown-bak .unown
+# Restore .unown if it existed (part of the boot screen a real user sees);
+# otherwise leave it absent — the TUI scaffolds a fresh one on first boot,
+# exactly what a first-run user gets.
+rm -rf .unown
+[ -d /tmp/api-unown-bak ] && cp -r /tmp/api-unown-bak .unown
 echo "[$1] HEAD=$(git rev-parse --short HEAD) tags: $(git describe --tags)"
 git status --short
 echo "--- suite ---"
