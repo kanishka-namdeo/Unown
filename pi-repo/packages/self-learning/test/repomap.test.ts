@@ -247,11 +247,12 @@ describe("mentions + compose layers", () => {
                 expect(m.files).toContain("src/automations.ts");
                 expect(m.idents).toContain("pagerank");
         });
-        test("composeTaskWithMap frames the map read-only AFTER the task", () => {
-                const out = composeTaskWithMap("Do X", "file.ts:\n│fn x");
-                expect(out.startsWith("Do X")).toBe(true);
+        test("composeTaskWithMap frames the map read-only BEFORE the task (task LAST — end-anchored parsers depend on it)", () => {
+                const out = composeTaskWithMap("file.ts:\n│fn x", "Do X");
+                expect(out.trim().endsWith("Do X")).toBe(true); // the task is the LAST text
                 expect(out).toContain("Repo map");
                 expect(out).toContain("read-only");
+                expect(out).toContain("Task:");
         });
         test("parseRepomapArgs: clear, --tokens, --refresh, invalid tokens ignored", () => {
                 expect(parseRepomapArgs("clear").action).toBe("clear");

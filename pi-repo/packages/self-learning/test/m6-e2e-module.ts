@@ -14,7 +14,7 @@ const composed = await withRepoMap(repo, task);
 const ms1 = Date.now() - t0;
 console.log("first compose ms:", ms1);
 if (!composed.includes("Repo map (read-only structural summaries")) throw new Error("map block missing");
-if (!composed.startsWith(task)) throw new Error("task must lead");
+if (!composed.trim().endsWith(task)) throw new Error("task must be the LAST text (end-anchored parsers)");
 if (!composed.includes("graph.ts")) throw new Error("mentioned file must be in the map");
 
 const t1 = Date.now();

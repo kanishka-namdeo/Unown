@@ -56,6 +56,7 @@ import { receiptsDir } from "./checkpoints.ts";
 import { trustBypassed } from "./config-trust.ts";
 import { composeTaskWithBrief, summarizeParentContext } from "./context-brief.ts";
 import { runRepomapCommand, withRepoMap } from "./repomap/repomap-cli.ts";
+import { runPromoteCommand } from "./promote-cli.ts";
 import { registerContextTools } from "./context-tools.ts";
 import { DashboardApp } from "./dashboard/dashboard-app.ts";
 import { DashboardStore } from "./dashboard/dashboard-data.ts";
@@ -2531,6 +2532,27 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         description: "Alias of /dashboard",
                         handler: async (_args, ctx) => {
                                 await openDashboardScreen(ctx, "");
+                        },
+                });
+
+                pi.registerCommand("promote", {
+                        description:
+                                "Standing orders: /promote [focus] distills this session into a Program draft; /promote save [project|global]; /promote schedule <spec> creates + test-runs the routine",
+                        handler: async (args, ctx) => {
+                                try {
+                                        const entries =
+                                                typeof (executeCtx as any)?.sessionManager?.getEntries === "function"
+                                                        ? (executeCtx as any).sessionManager.getEntries()
+                                                        : [];
+                                        const result = await runPromoteCommand(args ?? "", {
+                                                cwd: opts.cwd,
+                                                chat: chatText,
+                                                entries,
+                                        });
+                                        ctx.ui.notify(result.message, result.level);
+                                } catch (err: any) {
+                                        ctx.ui.notify(`/promote failed: ${err?.message ?? err}`, "error");
+                                }
                         },
                 });
 

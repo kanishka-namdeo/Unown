@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 211;
+export const CHANGELOG_TOTAL_ENTRIES = 212;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 83,
+  "Added": 84,
   "Changed": 15,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 42,
+    "total": 43,
     "counts": {
-      "Added": 16,
+      "Added": 17,
       "Changed": 5,
       "Deprecated": 0,
       "Removed": 1,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "Standing orders + /promote — durable authority for unattended runs (OpenClaw's convention, adapted)",
+            "behavior": false
+          },
           {
             "title": "Repo map — the graph-ranked symbol map (aider's repomap, ported to Bun on web-tree-sitter)",
             "behavior": false

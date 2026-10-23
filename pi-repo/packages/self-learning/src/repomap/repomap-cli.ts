@@ -98,11 +98,15 @@ function buildForSpawn(cwd: string, task: string): Promise<RepoMapResult | null>
 }
 
 /** Compose the read-only map block onto a subagent task (aider's
- * repo_content_prefix wording, adapted). Pure string layer. */
-export function composeTaskWithMap(task: string, mapText: string): string {
+ * repo_content_prefix wording, adapted). The map rides BEFORE the task —
+ * the established composition order (context-brief.ts puts the brief
+ * first, the task LAST) so end-anchored scripting conventions (the test
+ * bridge's TOOLCALL/JSONREPLY matchers, downstream parsers) keep working;
+ * caught live by the worktree-isolation golden test. Pure string layer. */
+export function composeTaskWithMap(mapText: string, task: string): string {
         return (
-                `${task}\n\n` +
-                `Repo map (read-only structural summaries of the working directory — do NOT edit these files unless the task says to; use them to navigate and target your work):\n${mapText}`
+                `Repo map (read-only structural summaries of the working directory — do NOT edit these files unless the task says to; use them to navigate and target your work):\n${mapText}` +
+                `\n\nTask:\n${task}`
         );
 }
 
@@ -123,7 +127,7 @@ export async function withRepoMap(cwd: string, task: string, env: Record<string,
                 result = await build;
         }
         if (!result || !result.text.trim()) return task;
-        return composeTaskWithMap(task, result.text);
+        return composeTaskWithMap(result.text, task);
 }
 
 // ---------------------------------------------------------------------------
