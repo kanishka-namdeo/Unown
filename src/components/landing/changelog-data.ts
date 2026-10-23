@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 246;
+export const CHANGELOG_TOTAL_ENTRIES = 247;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 93,
+  "Added": 94,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -44,15 +44,15 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "0.0.6",
+    "label": "0.0.7",
     "date": "2026-10-24",
-    "total": 9,
+    "total": 8,
     "counts": {
       "Added": 6,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 3,
+      "Fixed": 2,
       "Security": 0,
       "Behavior": 0
     },
@@ -60,6 +60,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "landing: the memory, browser and dream lanes — three filmed gaps closed, the hard way",
+            "behavior": false
+          },
+          {
+            "title": "commit: Unown-Session provenance trailers on every unown commit (the Amp thread-ID pattern)",
+            "behavior": false
+          },
           {
             "title": "usage: the /usage in-session token & cost report (the Claude Code / Codex / Aider parity gap)",
             "behavior": false
@@ -69,19 +77,11 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
             "behavior": false
           },
           {
-            "title": "landing: the memory, browser and dream lanes — three filmed gaps closed, the hard way",
-            "behavior": false
-          },
-          {
             "title": "landing: the category screens — a dex that grows on a band that does not",
             "behavior": false
           },
           {
             "title": "landing: the search surface — canonical, sitemap, robots, one JSON-LD graph, a keyword-bearing h1",
-            "behavior": false
-          },
-          {
-            "title": "browser(v2): the stealth + CAPTCHA tiers — CDP-signal silence, coherent fingerprints, humanized input…",
             "behavior": false
           }
         ]
@@ -96,7 +96,37 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "capture harness: the fresh-clone and reload-flash round — four fixes the three new lanes earned",
             "behavior": false
-          },
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "0.0.6",
+    "date": "2026-10-24",
+    "total": 2,
+    "counts": {
+      "Added": 1,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "browser(v2): the stealth + CAPTCHA tiers — CDP-signal silence, coherent fingerprints, humanized input…",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
           {
             "title": "security: the supply-chain and static-analysis round — every Dependabot and CodeQL code-scanning alert cleared…",
             "behavior": false
