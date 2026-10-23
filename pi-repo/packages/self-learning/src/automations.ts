@@ -1634,7 +1634,7 @@ export class AutomationsScheduler {
 			const exhausted = attempts >= DISPATCH_MAX_ATTEMPTS;
 			store.run(`UPDATE automation_runs SET status = 'failed', ended_at = ?, error = ? WHERE id = ?`, [
 				Date.now(),
-				`dispatch attempt ${attempts}: ${String(err?.message ?? err).slice(0, 500)}`,
+				`dispatch attempt ${attempts}: ${err instanceof Error ? err.message : String(err).slice(0, 500)}`,
 				runId,
 			]);
 			if (exhausted) {
@@ -2040,7 +2040,7 @@ async function deliverRunResult(row: AutomationRow, run: DeliverableRun): Promis
 		if (!res.ok) return `failed: HTTP ${res.status}`;
 		return "sent";
 	} catch (err: any) {
-		return `failed: ${String(err?.message ?? err).slice(0, 120)}`;
+		return `failed: ${err instanceof Error ? err.message : String(err).slice(0, 120)}`;
 	}
 }
 

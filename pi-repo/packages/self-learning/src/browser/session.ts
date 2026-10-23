@@ -487,6 +487,44 @@ export class BrowserSession {
 		return res.result?.value;
 	}
 
+	/**
+	 * Call a page function with ARGUMENTS instead of interpolating values into
+	 * evaluated source (js/bad-code-sanitization: no stringifier can be proven
+	 * complete for code construction). The function declaration is a static
+	 * string; every dynamic value crosses the boundary as a CDP JSON argument —
+	 * data, never code. The page's `window` object is resolved fresh each call
+	 * so navigation invalidates nothing.
+	 */
+	private async pageCall(functionDeclaration: string, args: unknown[], opts: { awaitPromise?: boolean } = {}): Promise<any> {
+		const conn = this.requireConn();
+		const sessionId = this.requireSessionId();
+		const target = await conn.send(
+			"Runtime.evaluate",
+			{ expression: "window" },
+			{ sessionId },
+		);
+		const objectId = target?.result?.objectId;
+		if (!objectId) throw new Error("page JS error: no window object to call on");
+		const res = await conn.send(
+			"Runtime.callFunctionOn",
+			{
+				functionDeclaration,
+				objectId,
+				arguments: args.map((a) => ({ value: a === undefined ? null : a })),
+				returnByValue: true,
+				awaitPromise: opts.awaitPromise ?? false,
+				userGesture: true,
+			},
+			{ sessionId },
+		);
+		if (res.exceptionDetails) {
+			const d = res.exceptionDetails;
+			const text = d.exception?.description || d.text || "evaluation failed";
+			throw new Error(`page JS error: ${String(text).slice(0, 500)}`);
+		}
+		return res.result?.value;
+	}
+
 	/** Wait for the page load event (bounded by BROWSER_NAV_TIMEOUT_MS). */
 	private async waitForLoad(sessionId: string, timeoutMs = BROWSER_NAV_TIMEOUT_MS): Promise<boolean> {
 		return new Promise<boolean>((resolve) => {
@@ -736,8 +774,9 @@ export class BrowserSession {
 
 	async getHtml(selector?: string): Promise<ActionReport> {
 		await this.ensureStarted();
-		const html = await this.pageEval(
-			`(${selector ? `() => (document.querySelector(JSON.parse(${JSON.stringify(JSON.stringify(selector))})) || {}).outerHTML` : "() => document.documentElement.outerHTML"})()`,
+		const html = await this.pageCall(
+			"(sel) => (sel ? (document.querySelector(sel) || {}).outerHTML : document.documentElement.outerHTML)",
+			[selector ?? null],
 		);
 		const capped = String(html ?? "").slice(0, 60_000);
 		return { summary: `outerHTML (${capped.length} chars${selector ? ` of ${selector}` : ""})`, details: [capped] };
@@ -1325,7 +1364,10 @@ export class BrowserSession {
 			if ((res as any)?.success !== false) n++;
 		}
 		if (payload.localStorage && Object.keys(payload.localStorage).length) {
-			await this.pageEval(`(() => { const o = JSON.parse(${JSON.stringify(JSON.stringify(payload.localStorage))}); for (const k of Object.keys(o)) { try { localStorage.setItem(k, o[k]); } catch (e) {} } })()`).catch(() => undefined);
+			await this.pageCall(
+				"(o) => { for (const k of Object.keys(o)) { try { localStorage.setItem(k, o[k]); } catch (e) {} }",
+				[payload.localStorage],
+			).catch(() => undefined);
 		}
 		return { summary: `loaded storage state from ${path} (${n} cookies)` };
 	}

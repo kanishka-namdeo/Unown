@@ -318,7 +318,7 @@ async function authorDraftCascade(
         } catch (err: any) {
                 // Transport/parse failure (local server down, unparseable draft): E8
                 // still escalates — the repair call re-authors from the prompt.
-                draftFailure = String(err?.message ?? err);
+                draftFailure = err instanceof Error ? err.message : String(err);
         }
         const first =
                 draft === null

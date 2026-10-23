@@ -256,7 +256,7 @@ export class LocalOnnxEmbedder {
 			this.mod = mod;
 			return { ok: true };
 		} catch (err: any) {
-			this.loadError = String(err?.message ?? err);
+			this.loadError = err instanceof Error ? err.message : String(err);
 			return { ok: false, error: this.loadError };
 		}
 	}
@@ -1004,7 +1004,7 @@ export async function reconcileMemories(
 			verdict = await (opts?.llmFn ?? defaultReconcileLlm)(memories);
 			break;
 		} catch (err: any) {
-			reconcileError = String(err?.message ?? err);
+			reconcileError = err instanceof Error ? err.message : String(err);
 			if (attempt === 1) await new Promise((r) => setTimeout(r, 1_500));
 		}
 	}
@@ -1031,7 +1031,7 @@ export async function reconcileMemories(
 			try {
 				await platform.delete(op.id);
 			} catch (err) {
-				if (/not found/i.test(String(err?.message ?? err))) continue;
+				if (/not found/i.test(err instanceof Error ? err.message : String(err))) continue;
 				throw err;
 			}
 			events.push({ event: "DELETE", id: op.id, text: prior.text, previousText: prior.text });
@@ -1042,7 +1042,7 @@ export async function reconcileMemories(
 			try {
 				await platform.update(op.id, next);
 			} catch (err) {
-				if (/not found/i.test(String(err?.message ?? err))) continue;
+				if (/not found/i.test(err instanceof Error ? err.message : String(err))) continue;
 				throw err;
 			}
 			events.push({ event: "UPDATE", id: op.id, text: next, previousText: prior.text });
