@@ -249,7 +249,7 @@ export async function runRepomapCliCommand(argv: string[], opts: { cwd: string }
                 }
                 return { stdout: `${result.message}\n`, stderr: result.level === "error" ? "" : "", exitCode: result.level === "error" ? 1 : 0 };
         } catch (err: any) {
-                const message = `repomap failed: ${err?.message ?? err}`;
+                const message = `repomap failed: ${err instanceof Error ? err.message : String(err)}`;
                 return asJson
                         ? { stdout: "", stderr: `${JSON.stringify({ error: message })}\n`, exitCode: 2 }
                         : { stdout: "", stderr: `${message}\n`, exitCode: 2 };

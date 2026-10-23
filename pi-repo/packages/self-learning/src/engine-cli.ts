@@ -397,7 +397,7 @@ async function cmdStop(out: (s: string) => void): Promise<number> {
 	try {
 		process.kill(pid, "SIGTERM");
 	} catch (err: any) {
-		out(`engine: cannot signal pid ${pid}: ${err?.message ?? err}`);
+		out(`engine: cannot signal pid ${pid}: ${err instanceof Error ? err.message : String(err)}`);
 		return 1;
 	}
 	// The graceful drain (server.stop + router stop + WAL checkpoint) is fast;
@@ -531,7 +531,7 @@ async function cmdRepair(out: (s: string) => void): Promise<number> {
 		verdict = String(rows[0]?.quick_check ?? "unknown");
 		probe.close();
 	} catch (err: any) {
-		verdict = `unreadable: ${err?.message ?? err}`;
+		verdict = `unreadable: ${err instanceof Error ? err.message : String(err)}`;
 	}
 	const sizeKb = (() => {
 		try {
@@ -557,7 +557,7 @@ async function cmdRepair(out: (s: string) => void): Promise<number> {
 			renameSync(from, to);
 			moved.push(to);
 		} catch (err: any) {
-			out(`engine: repair failed — cannot move ${from}: ${err?.message ?? err}`);
+			out(`engine: repair failed — cannot move ${from}: ${err instanceof Error ? err.message : String(err)}`);
 			out("  (close any process holding the file and re-run: unown engine repair)");
 			return 1;
 		}
@@ -604,7 +604,7 @@ async function cmdServe(): Promise<number> {
 		// POST /api/shutdown, both handled by server.ts's graceful drain.
 		return new Promise<number>(() => {});
 	} catch (err: any) {
-		const msg = String(err?.message ?? err);
+		const msg = err instanceof Error ? err.message : String(err);
 		console.error(`unown engine: failed to start — ${msg}`);
 		if (/corrupt|malformed|not a database/i.test(msg)) {
 			console.error("  the database is damaged — quarantine it and boot fresh with: unown engine repair");

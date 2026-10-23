@@ -147,7 +147,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                 try {
                                         await runHooksForEvent(userHooks.handlers.SessionStart ?? [], evt, hookCtx);
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "SessionStart", null, "error", `user hook failed: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "SessionStart", null, "error", `user hook failed: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
                 });
@@ -164,7 +164,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                                 logHook(ctx.runId, "UserPromptSubmit", null, o.kind, o.message);
                                         }
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "UserPromptSubmit", null, "error", `user hook failed: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "UserPromptSubmit", null, "error", `user hook failed: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
                 });
@@ -177,7 +177,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                         await runHooksForEvent(userHooks.handlers.PreModelRequest ?? [], evt, hookCtx);
                                         logHook(ctx.runId, "PreModelRequest", null, "log", "pre-model hook ran");
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "PreModelRequest", null, "error", `user hook failed: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "PreModelRequest", null, "error", `user hook failed: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
                 });
@@ -190,7 +190,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                         await runHooksForEvent(userHooks.handlers.PostModelRequest ?? [], evt, hookCtx);
                                         logHook(ctx.runId, "PostModelRequest", null, "log", "post-model hook ran");
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "PostModelRequest", null, "error", `user hook failed: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "PostModelRequest", null, "error", `user hook failed: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
                 });
@@ -203,7 +203,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                         await runHooksForEvent(userHooks.handlers.PreCompact ?? [], evt, hookCtx);
                                         logHook(ctx.runId, "PreCompact", null, "log", "pre-compact hook ran");
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "PreCompact", null, "error", `user hook failed: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "PreCompact", null, "error", `user hook failed: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
                 });
@@ -216,7 +216,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                         await runHooksForEvent(userHooks.handlers.PostCompact ?? [], evt, hookCtx);
                                         logHook(ctx.runId, "PostCompact", null, "log", "post-compact hook ran");
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "PostCompact", null, "error", `user hook failed: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "PostCompact", null, "error", `user hook failed: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
                 });
@@ -291,7 +291,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                         const adv = await decideAdversary(tool, input, ctx.adversary ?? undefined, ctx.callLlm);
                                         if (adv.block) decision = adv;
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "PreToolUse", tool, "error", `adversary reviewer error: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "PreToolUse", tool, "error", `adversary reviewer error: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
 
@@ -330,7 +330,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                                 for (const o of r.outputs) logHook(ctx.runId, "PreToolUse", tool, o.kind, o.message);
                                         }
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "PreToolUse", tool, "error", `user hook failed: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "PreToolUse", tool, "error", `user hook failed: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
 
@@ -396,7 +396,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                                 }
                                         }
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "PostToolUse", tool, "error", `user hook failed: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "PostToolUse", tool, "error", `user hook failed: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
 
@@ -422,7 +422,7 @@ export function createHooksExtension(ctx: RunHookContext) {
                                 try {
                                         await runHooksForEvent(userHooks.handlers.Stop ?? [], evt, hookCtx);
                                 } catch (err: any) {
-                                        logHook(ctx.runId, "Stop", null, "error", `user hook failed: ${String(err?.message ?? err)}`);
+                                        logHook(ctx.runId, "Stop", null, "error", `user hook failed: ${err instanceof Error ? err.message : String(err)}`);
                                 }
                         }
                 });

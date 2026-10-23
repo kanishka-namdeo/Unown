@@ -281,7 +281,7 @@ export async function runRecipesCommand(argv: string[]): Promise<number> {
                         if (result.output) process.stderr.write(`Output:\n${result.output}\n`);
                         return 1;
                 } catch (err: any) {
-                        process.stderr.write(`unown recipes run: ${err?.message ?? err}\n`);
+                        process.stderr.write(`unown recipes run: ${err instanceof Error ? err.message : String(err)}\n`);
                         return 1;
                 }
         }
@@ -309,7 +309,7 @@ export async function runRecipesCommand(argv: string[]): Promise<number> {
                         process.stdout.write("Edit it to add parameters, response_schema, templates, etc.\n");
                         return 0;
                 } catch (err: any) {
-                        process.stderr.write(`unown recipes create: ${err?.message ?? err}\n`);
+                        process.stderr.write(`unown recipes create: ${err instanceof Error ? err.message : String(err)}\n`);
                         return 1;
                 }
         }
@@ -328,7 +328,7 @@ export async function runRecipesCommand(argv: string[]): Promise<number> {
                 try {
                         content = readFileSync(file, "utf8");
                 } catch (err: any) {
-                        process.stderr.write(`unown recipes validate: cannot read ${file}: ${err?.message ?? err}\n`);
+                        process.stderr.write(`unown recipes validate: cannot read ${file}: ${err instanceof Error ? err.message : String(err)}\n`);
                         return 1;
                 }
                 const recipe = parseRecipe(content, "user");

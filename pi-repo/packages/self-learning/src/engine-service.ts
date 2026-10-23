@@ -237,7 +237,7 @@ function runCaptured(cmd: string, args: string[], timeoutMs = 15_000): { ok: boo
 		}).toString();
 		return { ok: true, stdout, stderr: "" };
 	} catch (err: any) {
-		return { ok: false, stdout: String(err?.stdout ?? ""), stderr: String(err?.stderr ?? err?.message ?? err) };
+		return { ok: false, stdout: String(err?.stdout ?? ""), stderr: String(err?.stderr ?? err instanceof Error ? err.message : String(err)) };
 	}
 }
 

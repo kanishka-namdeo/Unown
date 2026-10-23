@@ -315,7 +315,7 @@ export function syntaxCheck(fileName: string | undefined, content: string | unde
                 transpiler.transformSync(content);
                 return null;
         } catch (err: any) {
-                const msg = String(err?.message ?? err).slice(0, 600);
+                const msg = err instanceof Error ? err.message : String(err).slice(0, 600);
                 return {
                         isError: true,
                         appended: `\n\n[PostToolUse:hooks] Syntax check FAILED for ${fileName}:\n${msg}\nFix the syntax error before continuing.`,

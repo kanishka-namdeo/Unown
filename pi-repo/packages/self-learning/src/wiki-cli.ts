@@ -176,7 +176,7 @@ export async function runWikiCommand(argv: string[]): Promise<number> {
                         }
                         return 0;
                 } catch (err: any) {
-                        process.stderr.write(`✗ Wiki generation failed: ${err?.message ?? err}\n`);
+                        process.stderr.write(`✗ Wiki generation failed: ${err instanceof Error ? err.message : String(err)}\n`);
                         return 1;
                 }
         }
@@ -220,7 +220,7 @@ export async function runWikiCommand(argv: string[]): Promise<number> {
                 try {
                         manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
                 } catch (err: any) {
-                        process.stderr.write(`Could not parse manifest: ${err?.message ?? err}\n`);
+                        process.stderr.write(`Could not parse manifest: ${err instanceof Error ? err.message : String(err)}\n`);
                         return 1;
                 }
                 process.stdout.write(`Wiki at ${dir} (generated ${new Date(manifest.generatedAt).toISOString()}):\n\n`);
@@ -266,7 +266,7 @@ export async function runWikiCommand(argv: string[]): Promise<number> {
                         if (!content.endsWith("\n")) process.stdout.write("\n");
                         return 0;
                 } catch (err: any) {
-                        process.stderr.write(`Could not read ${resolved}: ${err?.message ?? err}\n`);
+                        process.stderr.write(`Could not read ${resolved}: ${err instanceof Error ? err.message : String(err)}\n`);
                         return 1;
                 }
         }

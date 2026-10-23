@@ -2615,7 +2615,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					});
 					ctx.ui.notify(result.message, result.level);
 				} catch (err: any) {
-					ctx.ui.notify(`/promote failed: ${err?.message ?? err}`, "error");
+					ctx.ui.notify(`/promote failed: ${err instanceof Error ? err.message : String(err)}`, "error");
 				}
 			},
 		});
@@ -2679,7 +2679,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 						);
 					} catch (err: any) {
 						ctx.ui.notify(
-							`memory search unreachable (${err?.message ?? err}) — is the engine up? (unown engine status)`,
+							`memory search unreachable (${err instanceof Error ? err.message : String(err)}) — is the engine up? (unown engine status)`,
 							"error",
 						);
 					}
@@ -2755,7 +2755,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					const result = await runRepomapCommand(opts.cwd, args ?? "");
 					ctx.ui.notify(result.message, result.level);
 				} catch (err: any) {
-					ctx.ui.notify(`Repo map command failed: ${err?.message ?? err}`, "error");
+					ctx.ui.notify(`Repo map command failed: ${err instanceof Error ? err.message : String(err)}`, "error");
 				}
 			},
 		});
@@ -2828,7 +2828,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					);
 					refreshLspFooter(ctx);
 				} catch (err: any) {
-					ctx.ui.notify(`LSP command failed: ${err?.message ?? err}`, "error");
+					ctx.ui.notify(`LSP command failed: ${err instanceof Error ? err.message : String(err)}`, "error");
 				}
 			},
 		});
@@ -2902,7 +2902,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					// failure, timeout) AND `gh`-unavailable (PR review
 					// without the GitHub CLI) arrive as actionable messages —
 					// rendered as a command result, never a crash (R-b G1/G2).
-					ctx.ui.notify(`Review aborted: ${err?.message ?? err}`, "warning");
+					ctx.ui.notify(`Review aborted: ${err instanceof Error ? err.message : String(err)}`, "warning");
 					return;
 				}
 				if (!target.diff.trim() && target.untracked.length === 0) {
@@ -2978,7 +2978,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 							await postPrComment(prRef, text);
 							ctx.ui.notify(`Posted verdict as a comment on ${prRef}.`, "info");
 						} catch (err: any) {
-							ctx.ui.notify(`Could not post PR comment: ${err?.message ?? err}`, "warning");
+							ctx.ui.notify(`Could not post PR comment: ${err instanceof Error ? err.message : String(err)}`, "warning");
 						}
 					}
 				} finally {
@@ -3003,7 +3003,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 				try {
 					md = generateAgentsMd(opts.cwd);
 				} catch (err: any) {
-					ctx.ui.notify(`AGENTS.md generation failed: ${err?.message ?? err}`, "warning");
+					ctx.ui.notify(`AGENTS.md generation failed: ${err instanceof Error ? err.message : String(err)}`, "warning");
 					return;
 				}
 				// Long markdown in a notify popup is unreadable; cap at
@@ -3159,7 +3159,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 						});
 						ctx.ui.notify(`✓ Exported session ${sessionId} → ${result.path} (${result.bytes} bytes)`, "info");
 					} catch (err: any) {
-						ctx.ui.notify(`Export failed: ${err?.message ?? err}`, "warning");
+						ctx.ui.notify(`Export failed: ${err instanceof Error ? err.message : String(err)}`, "warning");
 					}
 					return;
 				}
@@ -3177,7 +3177,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 							"info",
 						);
 					} catch (err: any) {
-						ctx.ui.notify(`Import failed: ${err?.message ?? err}`, "warning");
+						ctx.ui.notify(`Import failed: ${err instanceof Error ? err.message : String(err)}`, "warning");
 					}
 					return;
 				}
@@ -3322,7 +3322,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 						);
 					}
 				} catch (err: any) {
-					ctx.ui.notify(`✗ Recipe ${recipe.name} aborted: ${err?.message ?? err}`, "warning");
+					ctx.ui.notify(`✗ Recipe ${recipe.name} aborted: ${err instanceof Error ? err.message : String(err)}`, "warning");
 				}
 			},
 		});
@@ -3391,7 +3391,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 							result.errors.length > 0 ? "warning" : "info",
 						);
 					} catch (err: any) {
-						ctx.ui.notify(`✗ Wiki generation failed: ${err?.message ?? err}`, "warning");
+						ctx.ui.notify(`✗ Wiki generation failed: ${err instanceof Error ? err.message : String(err)}`, "warning");
 					}
 					return;
 				}
@@ -3437,7 +3437,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					try {
 						manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 					} catch (err: any) {
-						ctx.ui.notify(`Could not parse manifest: ${err?.message ?? err}`, "warning");
+						ctx.ui.notify(`Could not parse manifest: ${err instanceof Error ? err.message : String(err)}`, "warning");
 						return;
 					}
 					const lines = manifest.pages.map((p) => `  ${p.path}  —  ${p.title}`);
@@ -3479,7 +3479,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					try {
 						content = readFileSync(resolved, "utf8");
 					} catch (err: any) {
-						ctx.ui.notify(`Could not read ${resolved}: ${err?.message ?? err}`, "warning");
+						ctx.ui.notify(`Could not read ${resolved}: ${err instanceof Error ? err.message : String(err)}`, "warning");
 						return;
 					}
 					const cap = 8 * 1024;
@@ -3591,7 +3591,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 						"info",
 					);
 				} catch (err: any) {
-					ctx.ui.notify(`✗ Edit-resend aborted: ${err?.message ?? err}`, "warning");
+					ctx.ui.notify(`✗ Edit-resend aborted: ${err instanceof Error ? err.message : String(err)}`, "warning");
 				}
 			},
 		});

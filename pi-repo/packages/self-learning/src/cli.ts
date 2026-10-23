@@ -1028,12 +1028,12 @@ function writeAgentsMd(cwd: string, opts: { overwrite?: boolean; prompt?: boolea
         try {
                 md = generateAgentsMd(cwd);
         } catch (err: any) {
-                return `[error] AGENTS.md generation failed: ${err?.message ?? err}`;
+                return `[error] AGENTS.md generation failed: ${err instanceof Error ? err.message : String(err)}`;
         }
         try {
                 writeFileSync(path, md + "\n", { encoding: "utf8" });
         } catch (err: any) {
-                return `[error] AGENTS.md write failed: ${err?.message ?? err}`;
+                return `[error] AGENTS.md write failed: ${err instanceof Error ? err.message : String(err)}`;
         }
         return `${path.replace(cwd, ".")}  ${exists ? "updated (was overwritten)" : "generated"}`;
 }

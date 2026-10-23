@@ -127,7 +127,7 @@ export function getRepomapRuntime(env: Record<string, string | undefined> = proc
                                 },
                         };
                 } catch (err: any) {
-                        runtimeError = `tree-sitter init failed: ${err?.message ?? err}`;
+                        runtimeError = `tree-sitter init failed: ${err instanceof Error ? err.message : String(err)}`;
                         return null;
                 }
         })();

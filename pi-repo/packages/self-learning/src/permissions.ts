@@ -340,7 +340,7 @@ function parseScope(file: string, source: "project" | "user"): ParsedScope {
         try {
                 raw = readFileSync(file, "utf8");
         } catch (err: any) {
-                return { rules: [], valid: false, mode: undefined, warnings: [`unreadable ${source} permissions file ${file}: ${err?.message ?? err}`] };
+                return { rules: [], valid: false, mode: undefined, warnings: [`unreadable ${source} permissions file ${file}: ${err instanceof Error ? err.message : String(err)}`] };
         }
         let doc: any;
         try {
@@ -350,7 +350,7 @@ function parseScope(file: string, source: "project" | "user"): ParsedScope {
                         rules: [],
                         valid: false,
                         mode: undefined,
-                        warnings: [`invalid JSON in ${source} permissions file ${file} — ignored, safe defaults active (${err?.message ?? err})`],
+                        warnings: [`invalid JSON in ${source} permissions file ${file} — ignored, safe defaults active (${err instanceof Error ? err.message : String(err)})`],
                 };
         }
         if (typeof doc !== "object" || doc === null || Array.isArray(doc)) {
@@ -671,7 +671,7 @@ export function persistLearnedAllow(userFile: string, tool: string, pattern: str
                 atomicWriteFileSync(userFile, `${JSON.stringify(doc, null, 2)}\n`);
                 return { ok: true };
         } catch (err: any) {
-                return { ok: false, note: `write failed: ${err?.message ?? err}` };
+                return { ok: false, note: `write failed: ${err instanceof Error ? err.message : String(err)}` };
         }
 }
 
@@ -771,7 +771,7 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
                         } catch (err: any) {
                                 // The layer augments; a bug in it must never break the session —
                                 // fail open to the (already-passed) hard-coded guardrails.
-                                log(`check failed (fail-open): ${err?.message ?? err}`);
+                                log(`check failed (fail-open): ${err instanceof Error ? err.message : String(err)}`);
                                 return PROCEED;
                         }
                 },
@@ -810,7 +810,7 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
                                         terminate: false,
                                 };
                         } catch (err: any) {
-                                log(`ask failed (fail-closed): ${err?.message ?? err}`);
+                                log(`ask failed (fail-closed): ${err instanceof Error ? err.message : String(err)}`);
                                 return degradeAsk(tool, evaluation.rule?.pattern ?? "(any)");
                         }
                 },
@@ -952,7 +952,7 @@ export function permissionsDoctorSummary(
                 if (loaded.requestedMode !== loaded.mode) parts.push(`requested "${loaded.requestedMode}" refused (strict hooks)`);
                 return { ok: true, detail: parts.join(" · ") };
         } catch (err: any) {
-                return { ok: true, detail: `check failed (fail-open): ${err?.message ?? err}` };
+                return { ok: true, detail: `check failed (fail-open): ${err instanceof Error ? err.message : String(err)}` };
         }
 }
 
@@ -1027,7 +1027,7 @@ export function createPermissionsExtension(opts: PermissionsExtensionOptions) {
                                         gate.reload(); // show the files as they are NOW, not as the session booted
                                         ctx?.ui?.notify?.(renderPermissionsStatus(gate.status()), "info");
                                 } catch (err: any) {
-                                        ctx?.ui?.notify?.(`Permissions command failed: ${err?.message ?? err}`, "error");
+                                        ctx?.ui?.notify?.(`Permissions command failed: ${err instanceof Error ? err.message : String(err)}`, "error");
                                 }
                         },
                 });

@@ -1995,7 +1995,7 @@ export function createMcpExtension(opts: McpOptions) {
                 // One hostile/duplicate tool must not block the rest (M-03).
                 registered.delete(name);
                 count--;
-                log(`tool ${name} registration failed: ${err?.message ?? err}`);
+                log(`tool ${name} registration failed: ${err instanceof Error ? err.message : String(err)}`);
             }
         }
         if (count > 0) log(`registered ${count} tool(s) from ${server}`);
@@ -2026,11 +2026,11 @@ export function createMcpExtension(opts: McpOptions) {
                         for (const server of okServers) registerServerTools(pi, server, registered);
                         setStatusLine(ctx, "mcp", mcpFooterText(m));
                     } catch (err: any) {
-                        log(`background connect failed: ${err?.message ?? err}`);
+                        log(`background connect failed: ${err instanceof Error ? err.message : String(err)}`);
                     }
                 })();
             } catch (err: any) {
-                log(`session_start connect failed: ${err?.message ?? err}`);
+                log(`session_start connect failed: ${err instanceof Error ? err.message : String(err)}`);
             }
         });
 
@@ -2143,7 +2143,7 @@ export function createMcpExtension(opts: McpOptions) {
                         ctx.ui.notify(`Connected ${newly.join(", ")} — ${toolCount} tool(s) registered as mcp__<server>__<tool>.`, "info");
                     }
                 } catch (err: any) {
-                    ctx.ui.notify(`MCP command failed: ${err?.message ?? err}`, "error");
+                    ctx.ui.notify(`MCP command failed: ${err instanceof Error ? err.message : String(err)}`, "error");
                 }
             },
         });

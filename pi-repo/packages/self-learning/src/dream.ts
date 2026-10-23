@@ -648,7 +648,7 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 				projectPath: group.projectPath,
 				notesIn: notes.length,
 				status: "error",
-				error: `cannot read project memory: ${err?.message ?? err}`,
+				error: `cannot read project memory: ${err instanceof Error ? err.message : String(err)}`,
 			});
 			continue;
 		}

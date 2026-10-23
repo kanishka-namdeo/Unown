@@ -335,13 +335,13 @@ export async function importSession(filePath: string, opts: ImportOptions = {}):
     try {
         raw = readFileSync(filePath, "utf8");
     } catch (err: any) {
-        throw new Error(`importSession: cannot read ${filePath}: ${err?.message ?? err}`);
+        throw new Error(`importSession: cannot read ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
     }
     let parsed: SessionExport;
     try {
         parsed = JSON.parse(raw);
     } catch (err: any) {
-        throw new Error(`importSession: malformed JSON in ${filePath}: ${err?.message ?? err}`);
+        throw new Error(`importSession: malformed JSON in ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
     }
     if (typeof parsed.version !== "number" || !Number.isFinite(parsed.version)) {
         throw new Error(`importSession: missing or invalid version field (expected number, got ${typeof parsed.version})`);

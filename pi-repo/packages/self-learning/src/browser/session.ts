@@ -695,7 +695,7 @@ export class BrowserSession {
 		} catch (e: any) {
 			// net errors surface here (ERR_NAME_NOT_RESOLVED etc.)
 			void loaded;
-			throw new Error(`navigation failed: ${e?.message ?? e}`);
+			throw new Error(`navigation failed: ${e instanceof Error ? e.message : String(e)}`);
 		}
 		return loaded;
 	}
@@ -1349,7 +1349,7 @@ export class BrowserSession {
 		try {
 			payload = JSON.parse(readFileSync(path, "utf8"));
 		} catch (err: any) {
-			throw new Error(`cannot read storage state ${path}: ${err?.message ?? err}`);
+			throw new Error(`cannot read storage state ${path}: ${err instanceof Error ? err.message : String(err)}`);
 		}
 		const sessionId = this.requireSessionId();
 		let n = 0;

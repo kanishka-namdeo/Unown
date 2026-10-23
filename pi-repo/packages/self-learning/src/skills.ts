@@ -355,7 +355,7 @@ Propose the skills.`,
                 }
                 return shipped;
         } catch (err: any) {
-                console.error(`[skills] minting failed for ${info.slug}: ${err?.message ?? err}`);
+                console.error(`[skills] minting failed for ${info.slug}: ${err instanceof Error ? err.message : String(err)}`);
                 return [];
         }
 }

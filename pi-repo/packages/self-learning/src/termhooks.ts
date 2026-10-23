@@ -601,7 +601,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                         if (verbose) for (const o of r.outputs) log(`user hook ${name}: [${o.kind}] ${o.message}`);
                         return r;
                 } catch (err: any) {
-                        log(`user hook ${name} failed (fail-open): ${String(err?.message ?? err)}`);
+                        log(`user hook ${name} failed (fail-open): ${err instanceof Error ? err.message : String(err)}`);
                         return undefined;
                 }
         };
@@ -799,7 +799,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                         if (resolved?.block) return deny(resolved.reason!);
                                 }
                         } catch (err: any) {
-                                log(`permissions layer failed (fail-open to the hard-coded guardrails): ${err?.message ?? err}`);
+                                log(`permissions layer failed (fail-open to the hard-coded guardrails): ${err instanceof Error ? err.message : String(err)}`);
                         }
 
                         // Adversary mode (M1.4): file-gated LLM reviewer over
@@ -811,7 +811,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                 const adv = await decideAdversary(tool, input, undefined, terminalCallLlm);
                                 if (adv.block) return deny(adv.reason ?? "denied by adversary reviewer");
                         } catch (err: any) {
-                                log(`adversary reviewer error (fail-open): ${String(err?.message ?? err)}`);
+                                log(`adversary reviewer error (fail-open): ${err instanceof Error ? err.message : String(err)}`);
                         }
 
                         // User-configurable PreToolUse hooks (M1): last word
@@ -853,7 +853,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                                         );
                                                 }
                                         } catch (err: any) {
-                                                log(`permissions re-check failed (fail-open to the hard-coded guardrails): ${err?.message ?? err}`);
+                                                log(`permissions re-check failed (fail-open to the hard-coded guardrails): ${err instanceof Error ? err.message : String(err)}`);
                                         }
                                         event.input = pre.mutatedInput;
                                         log(`PreToolUse user hook MUTATED ${tool} input`);
@@ -1029,7 +1029,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                                 }
                                                 ctx.ui?.notify?.(lines.join("\n"), "info");
                                         } catch (err: any) {
-                                                ctx.ui?.notify?.(`/engine failed: ${err?.message ?? err}`, "error");
+                                                ctx.ui?.notify?.(`/engine failed: ${err instanceof Error ? err.message : String(err)}`, "error");
                                         }
                                 },
                         });
@@ -1121,7 +1121,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                 );
                                 log(`session note ${result.delivered ? "delivered to engine" : "queued in outbox"} (${result.via})`);
                         } catch (err: any) {
-                                log(`failed to deliver session note: ${err?.message ?? err}`);
+                                log(`failed to deliver session note: ${err instanceof Error ? err.message : String(err)}`);
                         } finally {
                                 stopEngineStatusLoop();
                         }

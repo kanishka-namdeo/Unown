@@ -371,7 +371,7 @@ export function appendOrderToStore(
 		write(path, `${header}${existing ?? ""}${sep}${section.trim()}\n`);
 		return { ok: true };
 	} catch (err: any) {
-		return { ok: false, error: `could not write ${path}: ${err?.message ?? err}` };
+		return { ok: false, error: `could not write ${path}: ${err instanceof Error ? err.message : String(err)}` };
 	}
 }
 

@@ -461,7 +461,7 @@ export class Router {
                         );
                         if (info.changes > 0) console.log(`[router] watchdog: recovered ${info.changes} running row(s) from ${jobId}`);
                 } catch (err: any) {
-                        console.error(`[router] watchdog row recovery failed: ${err?.message ?? err}`);
+                        console.error(`[router] watchdog row recovery failed: ${err instanceof Error ? err.message : String(err)}`);
                 }
         }
 

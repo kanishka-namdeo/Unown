@@ -95,7 +95,7 @@ export async function promoteDraft(deps: PromoteCommandDeps, focus: string): Pro
         try {
                 raw = await deps.chat([{ role: "user", content: buildPromoteDistillPrompt(source, focus) }], { maxTokens: 800, timeoutMs: 60_000 });
         } catch (err: any) {
-                return { message: `The distillation call failed (${err?.message ?? err}) — nothing was written.`, level: "error" };
+                return { message: `The distillation call failed (${err instanceof Error ? err.message : String(err)}) — nothing was written.`, level: "error" };
         }
         const { order, issues } = parseProgramDraft(raw);
         if (!order) {

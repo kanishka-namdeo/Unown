@@ -674,7 +674,7 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                         // 500, never a false started.
                         try {
                                 // fire and forget under the busy mutex — poll cycles/runs for progress
-                                router.startFireAndForget(() => runCycle(id)).catch((e) => emit("router:error", { error: e?.message }));
+                                router.startFireAndForget(() => runCycle(id)).catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));
                         } catch (err) {
                                 if (isEngineBusyError(err)) return engineBusyResponse();
                                 throw err;
@@ -728,7 +728,7 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                                         label: "console",
                                                 }),
                                         )
-                                        .catch((e) => emit("router:error", { error: e?.message }));
+                                        .catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));
                         } catch (err) {
                                 if (isEngineBusyError(err)) return engineBusyResponse();
                                 throw err;
@@ -854,7 +854,7 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                         const pendingBenchmark = undreamedNotes(50, "benchmark").length;
                                         if (pendingBenchmark >= 3) await runDream();
                                         await runProjectDream();
-                                }).catch((e) => emit("router:error", { error: e?.message }));
+                                }).catch((e) => emit("router:error", { error: e instanceof Error ? e.message : String(e) }));
                         } catch (err) {
                                 if (isEngineBusyError(err)) return engineBusyResponse();
                                 throw err;
@@ -1204,7 +1204,7 @@ export async function startServer(port: number = PORT) {
         })();
         const seed = seedMemoryIfEmpty()
                 .catch((e) => {
-                        console.error("[agent-service] memory platform seed failed:", e?.message ?? e);
+                        console.error("[agent-service] memory platform seed failed:", e instanceof Error ? e.message : String(e));
                         console.error("  the engine runs degraded — dreams will report the platform error until it resolves");
                 })
                 .then(() => {
@@ -1454,7 +1454,7 @@ function acquireEngineLock(): { ok: true; release: () => void } | { ok: false; r
                 writeSync(fd, String(process.pid));
                 closeSync(fd);
         } catch (err: any) {
-                return { ok: false, reason: `cannot create engine lock ${lockPath}: ${err?.message ?? err}` };
+                return { ok: false, reason: `cannot create engine lock ${lockPath}: ${err instanceof Error ? err.message : String(err)}` };
         }
         return {
                 ok: true,

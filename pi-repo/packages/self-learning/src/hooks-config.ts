@@ -490,7 +490,7 @@ export async function runHookHandler(
     try {
         return await runHookHandlerSync(handler, event, ctx, timeoutMs);
     } catch (err: any) {
-        const msg = String(err?.message ?? err).slice(0, 1024);
+        const msg = err instanceof Error ? err.message : String(err).slice(0, 1024);
         if (handler.failClosed) {
             return {
                 decision: "deny",
@@ -620,13 +620,13 @@ async function runHookHandlerSync(
                 if (handler.failClosed) {
                     return {
                         decision: "deny",
-                        reason: `mcp error: ${String(err?.message ?? err)}`,
-                        outputs: [{ kind: "error", message: `mcp error: ${String(err?.message ?? err)}` }],
+                        reason: `mcp error: ${err instanceof Error ? err.message : String(err)}`,
+                        outputs: [{ kind: "error", message: `mcp error: ${err instanceof Error ? err.message : String(err)}` }],
                     };
                 }
                 return {
                     decision: "allow",
-                    outputs: [{ kind: "warning", message: `mcp error: ${String(err?.message ?? err)}` }],
+                    outputs: [{ kind: "warning", message: `mcp error: ${err instanceof Error ? err.message : String(err)}` }],
                 };
             }
         }
@@ -659,13 +659,13 @@ async function runHookHandlerSync(
                 if (handler.failClosed) {
                     return {
                         decision: "deny",
-                        reason: `${handler.type} error: ${String(err?.message ?? err)}`,
-                        outputs: [{ kind: "error", message: `${handler.type} error: ${String(err?.message ?? err)}` }],
+                        reason: `${handler.type} error: ${err instanceof Error ? err.message : String(err)}`,
+                        outputs: [{ kind: "error", message: `${handler.type} error: ${err instanceof Error ? err.message : String(err)}` }],
                     };
                 }
                 return {
                     decision: "allow",
-                    outputs: [{ kind: "warning", message: `${handler.type} error: ${String(err?.message ?? err)}` }],
+                    outputs: [{ kind: "warning", message: `${handler.type} error: ${err instanceof Error ? err.message : String(err)}` }],
                 };
             }
         }

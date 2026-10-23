@@ -164,7 +164,7 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
         try {
             sm = new FileSessionLike(sessionFile);
         } catch (err: any) {
-            process.stderr.write(`unown sessions export: cannot open session: ${err?.message ?? err}\n`);
+            process.stderr.write(`unown sessions export: cannot open session: ${err instanceof Error ? err.message : String(err)}\n`);
             return 1;
         }
         try {
@@ -177,7 +177,7 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
             );
             return 0;
         } catch (err: any) {
-            process.stderr.write(`unown sessions export: ${err?.message ?? err}\n`);
+            process.stderr.write(`unown sessions export: ${err instanceof Error ? err.message : String(err)}\n`);
             return 1;
         }
     }
@@ -195,7 +195,7 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
             );
             return 0;
         } catch (err: any) {
-            process.stderr.write(`unown sessions import: ${err?.message ?? err}\n`);
+            process.stderr.write(`unown sessions import: ${err instanceof Error ? err.message : String(err)}\n`);
             return 1;
         }
     }

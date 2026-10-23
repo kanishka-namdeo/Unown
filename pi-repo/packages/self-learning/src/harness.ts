@@ -645,7 +645,7 @@ export async function retentionCheck(taskId: string, cycleId: string) {
                                                         un.version ? ` -> v${un.version}` : ""
                                                 }`;
                                 } catch (err: any) {
-                                        note += `; [${ship.id.slice(0, 8)}] platform unship failed (${err?.message ?? err})`;
+                                        note += `; [${ship.id.slice(0, 8)}] platform unship failed (${err instanceof Error ? err.message : String(err)})`;
                                 }
                         } else {
                                 // BUG 4 (audit #4): empty memory_ids on a mem0-backed project
@@ -666,7 +666,7 @@ export async function retentionCheck(taskId: string, cycleId: string) {
                                         );
                                         note += `; [${ship.id.slice(0, 8)}] no memory ids recorded — project tier re-rendered from the platform -> v${version}`;
                                 } catch (err: any) {
-                                        note += `; [${ship.id.slice(0, 8)}] platform re-render failed (${err?.message ?? err})`;
+                                        note += `; [${ship.id.slice(0, 8)}] platform re-render failed (${err instanceof Error ? err.message : String(err)})`;
                                 }
                         }
                 } else {

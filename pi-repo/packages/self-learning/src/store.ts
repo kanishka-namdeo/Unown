@@ -249,7 +249,7 @@ export class Store {
                                         // anything else (read-only DB, corruption, permissions) must surface
                                         // here — swallowing it deferred the failure to every later query as a
                                         // confusing "no such column" far from the cause.
-                                        if (!/duplicate column name/i.test(String(err?.message ?? err))) throw err;
+                                        if (!/duplicate column name/i.test(err instanceof Error ? err.message : String(err))) throw err;
                                 }
                         }
                 }
@@ -264,7 +264,7 @@ export class Store {
                         this.db.exec(`DELETE FROM memory_versions WHERE id NOT IN (SELECT MAX(id) FROM memory_versions GROUP BY tier, version)`);
                         this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_versions_tier_version ON memory_versions(tier, version)`);
                 } catch (err: any) {
-                        console.warn(`[store] memory_versions unique index: ${err?.message ?? err}`);
+                        console.warn(`[store] memory_versions unique index: ${err instanceof Error ? err.message : String(err)}`);
                 }
 
                 // M9: the governor's budgetStatus() sums run tokens by ended_at
@@ -293,7 +293,7 @@ export class Store {
                         const rows = this.query<{ quick_check?: string }>("PRAGMA quick_check");
                         return String(rows[0]?.quick_check ?? "unknown");
                 } catch (err: any) {
-                        return `error: ${err?.message ?? err}`;
+                        return `error: ${err instanceof Error ? err.message : String(err)}`;
                 }
         }
         get<T = any>(sql: string, params: any[] = []): T | undefined {

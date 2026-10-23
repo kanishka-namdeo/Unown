@@ -167,7 +167,7 @@ export class CdpConnection {
                         try {
                                 ws = new WebSocket(this.wsUrl);
                         } catch (err: any) {
-                                reject(new CdpError(`cannot open CDP websocket (${err?.message ?? err})`));
+                                reject(new CdpError(`cannot open CDP websocket (${err instanceof Error ? err.message : String(err)})`));
                                 return;
                         }
                         this.ws = ws;
@@ -237,7 +237,7 @@ export class CdpConnection {
                         } catch (err: any) {
                                 this.pending.delete(id);
                                 clearTimeout(timer);
-                                reject(new CdpError(`CDP send failed (${err?.message ?? err})`, undefined, method));
+                                reject(new CdpError(`CDP send failed (${err instanceof Error ? err.message : String(err)})`, undefined, method));
                         }
                 });
         }

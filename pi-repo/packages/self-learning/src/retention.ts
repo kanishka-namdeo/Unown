@@ -274,7 +274,7 @@ export function runRetentionPass(now: number = Date.now(), storeOverride?: Store
                         }
                         if (hasPrunable(s, spec.table, predicates)) moreRemaining = true;
                 } catch (err: any) {
-                        console.warn(`[retention] skipping ${spec.table}: ${err?.message ?? err}`);
+                        console.warn(`[retention] skipping ${spec.table}: ${err instanceof Error ? err.message : String(err)}`);
                 }
                 pruned[spec.table] = deleted;
         }

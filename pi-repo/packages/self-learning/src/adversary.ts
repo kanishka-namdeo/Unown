@@ -419,7 +419,7 @@ export async function decideAdversary(
                 return parseAdversaryReply(reply);
         } catch (err: any) {
                 // Step 7: error/timeout posture.
-                const msg = String(err?.message ?? err);
+                const msg = err instanceof Error ? err.message : String(err);
                 if (failClosed) {
                         return { block: true, reason: `adversary reviewer error: ${msg}` };
                 }

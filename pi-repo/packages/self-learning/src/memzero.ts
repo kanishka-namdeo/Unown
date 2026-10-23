@@ -549,7 +549,7 @@ async function reindexMemories(memory: any, fromBackend: string, toBackend: stri
 			n++;
 		}
 	} catch (err: any) {
-		console.warn(`[mem0] reindex interrupted (${err?.message ?? err}) — rerun happens on next boot`);
+		console.warn(`[mem0] reindex interrupted (${err instanceof Error ? err.message : String(err)}) — rerun happens on next boot`);
 		return n;
 	}
 	emit("mem0:reindexed", { from: fromBackend, to: toBackend, memories: n });
@@ -924,7 +924,7 @@ export async function revertMemoryEvents(
 			}
 			reverted++;
 		} catch (err: any) {
-			errors.push(`${ev.event}:${ev.id} — ${err?.message ?? err}`);
+			errors.push(`${ev.event}:${ev.id} — ${err instanceof Error ? err.message : String(err)}`);
 		}
 	}
 	return { reverted, errors };

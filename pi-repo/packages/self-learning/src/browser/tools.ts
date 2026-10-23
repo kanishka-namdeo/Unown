@@ -245,7 +245,7 @@ async function dispatch(
                                 const d = discoverBrowser();
                                 discovery = `${d.path} (${d.source})`;
                         } catch (err: any) {
-                                discovery = `not found: ${err?.message ?? err}`;
+                                discovery = `not found: ${err instanceof Error ? err.message : String(err)}`;
                         }
                         if (!session.isRunning) {
                                 return { summary: "browser not running", details: [`discovered: ${discovery}`] };

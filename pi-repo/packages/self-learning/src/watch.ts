@@ -484,7 +484,7 @@ function parseWatchMarker(root: string): { root?: WatchRoot; warning?: string; d
 		parsed = JSON.parse(readFileSync(markerPath, "utf8"));
 	} catch (err: any) {
 		return {
-			warning: `watch: ${markerPath} is not valid JSON (${err?.message ?? err}) — watching disabled for ${root}`,
+			warning: `watch: ${markerPath} is not valid JSON (${err instanceof Error ? err.message : String(err)}) — watching disabled for ${root}`,
 		};
 	}
 	if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -810,7 +810,7 @@ export async function runWatchScan(
 				mode: root.mode,
 			});
 		} catch (err: any) {
-			outcome = { exitCode: 1, output: `spawn failed: ${err?.message ?? err}`, turns: 0, tokensIn: 0, tokensOut: 0 };
+			outcome = { exitCode: 1, output: `spawn failed: ${err instanceof Error ? err.message : String(err)}`, turns: 0, tokensIn: 0, tokensOut: 0 };
 		}
 
 		// Post-run reconcile, scoped to the PRE-scan comments: a comment
