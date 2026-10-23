@@ -19,7 +19,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createUnownToolsExtension, isBunVirtualScriptPath, isSafeCommand, resolveUnownCliScript, taskProgressFrames } from "../src/tools.ts";
+import { createUnownToolsExtension, isBunVirtualScriptPath, isSafeCommand, resolveUnownCliScript, sessionUsageSummary, taskProgressFrames } from "../src/tools.ts";
 
 // ---------------------------------------------------------------------------
 // isSafeCommand — plan-mode vocabulary
@@ -626,6 +626,113 @@ describe("task tool live progress (M11)", () => {
                 ),
             );
             expect(out).toContain("worker: ✗ 4 turns, 2 tools");
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// /usage — the in-session token & cost report (session rollup + bridge window)
+// ---------------------------------------------------------------------------
+
+describe("sessionUsageSummary", () => {
+    test("rolls up assistant usage blocks and models, tolerant of malformed entries", () => {
+        const entries = [
+            { type: "message", message: { role: "user", content: "hi" } },
+            {
+                type: "message",
+                message: {
+                    role: "assistant",
+                    model: "agnes-3.0-flash",
+                    usage: { input: 100, output: 50, cacheRead: 200, cacheWrite: 10 },
+                },
+            },
+            {
+                type: "message",
+                message: {
+                    role: "assistant",
+                    model: "agnes-3.0-flash",
+                    responseModel: "agnes-2.5-flash",
+                    usage: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4 },
+                },
+            },
+            { type: "message", message: { role: "toolResult", usage: { input: 7, output: 8 } } },
+            { type: "compaction", usage: { input: 5, output: 0 } },
+            null,
+            { type: "message" },
+            { type: "message", message: null },
+        ];
+        const summary = sessionUsageSummary(entries as any);
+        expect(summary.messages).toBe(2);
+        // responseModel wins over model when present (the /session attribution rule).
+        expect(summary.models).toEqual(["agnes-2.5-flash", "agnes-3.0-flash"]);
+        expect(summary.tokensIn).toBe(113); // 100 + 1 + 7 + 5
+        expect(summary.tokensOut).toBe(60); // 50 + 2 + 8 + 0
+        expect(summary.cacheRead).toBe(203);
+        expect(summary.cacheWrite).toBe(14);
+    });
+
+    test("empty and missing inputs degrade to zero totals", () => {
+        expect(sessionUsageSummary([])).toEqual({
+            messages: 0,
+            tokensIn: 0,
+            tokensOut: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            models: [],
+        });
+        expect(sessionUsageSummary(undefined as any).messages).toBe(0);
+    });
+});
+
+describe("/usage command wiring", () => {
+    test("registers the command and renders the session rollup header", async () => {
+        const dir = mkdtempSync(join(tmpdir(), "unown-usage-cmd-"));
+        try {
+            const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:1" });
+            const { pi, runCommand, commands } = makeToolsFakePi();
+            ext.factory(pi);
+            expect(commands.has("usage")).toBe(true);
+
+            const { messages, ctx } = makeStatusCtx();
+            const sessionManager = {
+                getEntries: () => [
+                    {
+                        type: "message",
+                        message: {
+                            role: "assistant",
+                            model: "agnes-3.0-flash",
+                            usage: { input: 120, output: 30, cacheRead: 400, cacheWrite: 0 },
+                        },
+                    },
+                ],
+            };
+            await runCommand("usage", "", { ...ctx, sessionManager });
+            expect(messages).toHaveLength(1);
+            const text = messages[0].text;
+            expect(text).toContain("This session (all turns, current branch):");
+            expect(text).toContain("messages: 1");
+            expect(text).toContain("in 120, out 30, cached 400");
+            expect(text).toContain("models: agnes-3.0-flash");
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test("a bare numeric arg becomes the --days window; malformed args still render", async () => {
+        const dir = mkdtempSync(join(tmpdir(), "unown-usage-days-"));
+        try {
+            const ext = createUnownToolsExtension({ cwd: dir, engineUrl: "http://127.0.0.1:1" });
+            const { pi, runCommand } = makeToolsFakePi();
+            ext.factory(pi);
+            const { messages, ctx } = makeStatusCtx();
+            await runCommand("usage", "7", ctx);
+            expect(messages).toHaveLength(1);
+            // The bridge report section is present (the pure CLI core ran; the
+            // redirected dead-bridge env means its exact wording is the
+            // unreachable-fallback path — the session header is the pinned part).
+            expect(messages[0].text).toContain("This session");
         } finally {
             rmSync(dir, { recursive: true, force: true });
         }

@@ -339,6 +339,7 @@ unown adds thirty-two commands of its own — plus the split-view display mode's
 | `/agents` | List available subagents (built-ins + `.unown/agents/*.md` + `~/.unown/agent/agents/*.md`) |
 | `/tasks` | The [async subagent fleet](subagents.md#the-fleet-widget-and-tasks): running children with live state + the finished ones that are resumable by name (`task_control steer <name> <message>`) |
 | `/learning` | Re-print the effective 4-tier memory stack, fresh from disk — with per-tier staleness ages when the engine is down ([resilience](resilience.md#learning-staleness-headers)) |
+| `/usage [days] [--model <id>] [--json]` | Token & cost report without leaving the session: this session's rollup (messages, in/out/cached tokens, models used — the `/session` attribution) followed by the bridge's windowed per-model table. A bare number is the days window (`/usage 7`); the same pure core as `unown usage`, so it works with the bridge up (live aggregate) or down (reads the usage log directly) |
 | `/engine` | Memory-engine status + degraded-mode diagnosis — up/down/paused, outbox backlog and drops, the auto-start crash-loop circuit, and the actions to take ([resilience](resilience.md#the-engine-command)) |
 | `/lsp` | Show LSP status: detected language servers (running/available), open documents, cached diagnostics |
 | `/checkpoint [label]` | Snapshot the current state of the files this session touched |
