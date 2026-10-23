@@ -14,7 +14,13 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { initTheme, theme } from "@earendil-works/pi-coding-agent";
 import { DashboardApp, SCREEN_SPECS } from "../src/dashboard/dashboard-app.ts";
 import { DashboardStore, EngineClient } from "../src/dashboard/dashboard-data.ts";
-import type { HooksResponse, MemoryHistoryEntry, MemoryResponse, OverviewResponse, RunsResponse } from "../src/dashboard/dashboard-types.ts";
+import type {
+	HooksResponse,
+	MemoryHistoryEntry,
+	MemoryResponse,
+	OverviewResponse,
+	RunsResponse,
+} from "../src/dashboard/dashboard-types.ts";
 import { memoryVersionDiff } from "../src/dashboard/screens/memory-screen.ts";
 import { type MockEngine, startMockEngine } from "./dashboard-mock-engine.ts";
 
@@ -435,12 +441,16 @@ describe("routines screen (v2 interactions)", () => {
 		expect(pane).toContain("edit · schedule");
 		for (const ch of "every 2w at 08:30") app.handleInput(ch);
 		app.handleInput("\r"); // apply
-		await waitFor(() => mock.calls.automationsPatched.includes("auto-e2e-1"), 2000, "PATCH /api/automations/:id executed");
+		await waitFor(
+			() => mock.calls.automationsPatched.some((x) => x.id === "auto-e2e-1"),
+			2000,
+			"PATCH /api/automations/:id executed",
+		);
 		pane = plain(app.render(120));
 		expect(pane).toContain("routine updated");
 	});
 
-	test("the wizard creates an every-routine with timezone + misfire", async () => {
+	test("the wizard creates an every-routine with timezone + misfire + retries", async () => {
 		app.setScreen("automations");
 		app.handleInput("\x1b"); // close any overlay a previous test left open
 		app.handleInput("a"); // new routine wizard
@@ -459,13 +469,105 @@ describe("routines screen (v2 interactions)", () => {
 		app.handleInput("\r"); // mode read-only
 		app.handleInput("\r"); // model empty
 		pane = plain(app.render(120));
+		expect(pane).toContain("new routine · retries");
+		for (const ch of "3 900") app.handleInput(ch);
+		app.handleInput("\r");
+		pane = plain(app.render(120));
 		expect(pane).toContain("new routine · confirm");
 		expect(pane).toContain("every 2w at 09:00");
 		expect(pane).toContain("Europe/Berlin");
 		expect(pane).toContain("catch-up");
+		expect(pane, "the parsed retry policy is on the confirm card").toContain("3 on failure · first backoff 900s");
 		app.handleInput("y"); // create
 		await waitFor(() => mock.calls.automationsCreated >= 1, 2000, "POST /api/automations executed");
+		const body = mock.calls.automationsCreateBodies.at(-1);
+		expect(body?.retryMax, "the retry policy rode the create body").toBe(3);
+		expect(body?.retryBackoffSecs, "the custom first backoff rode the create body").toBe(900);
 		pane = plain(app.render(120));
 		expect(pane).toContain("routine created");
+	});
+
+	test("an invalid retry spec is refused at its step, not at confirm", async () => {
+		app.setScreen("automations");
+		app.handleInput("\x1b");
+		app.handleInput("a");
+		for (const ch of "retry spec guard") app.handleInput(ch);
+		app.handleInput("\r");
+		for (const ch of "Try, then fail, then retry.") app.handleInput(ch);
+		app.handleInput("\r");
+		for (const ch of "+90m") app.handleInput(ch);
+		app.handleInput("\r");
+		app.handleInput("\r"); // timezone empty
+		app.handleInput("\r"); // misfire skip
+		app.handleInput("\r"); // mode read-only
+		app.handleInput("\r"); // model empty
+		for (const ch of "99") app.handleInput(ch); // retry-max over the 0..10 cap
+		app.handleInput("\r");
+		const pane = plain(app.render(120));
+		expect(pane).toContain("retry-max is 0..10");
+		expect(pane).toContain("new routine · retries"); // still on the step
+		app.handleInput("\x1b"); // cancel out
+	});
+
+	test("detail shows the retry policy, the armed chain, and retry runs", async () => {
+		app.setScreen("automations");
+		app.handleInput("\x1b"); // close any overlay a previous test left open
+		app.handleInput("\r"); // enter on the first routine → detail
+		await Bun.sleep(150); // the runs fetch is drill-in async
+		let pane = plain(app.render(120));
+		if (!pane.includes("routine · nightly repo health check")) {
+			// a previous test's created routine sorts first — step to the fixture row
+			app.handleInput("\x1b");
+			app.handleInput("j");
+			app.handleInput("\r");
+			await Bun.sleep(150);
+			pane = plain(app.render(120));
+		}
+		expect(pane).toContain("routine · nightly repo health check");
+		expect(pane).toContain("3 on failure (first 600s, doubling, cap 1h)");
+		expect(pane, "the armed chain gets its own pending line").toContain("retry attempt 3 in ");
+		expect(pane, "the pending line names the run it recovers").toContain("arun-e2e-0r");
+		// the runs section sits below the 24-line fold — scroll to it
+		for (let i = 0; i < 8; i++) app.handleInput("j");
+		pane = plain(app.render(120));
+		expect(pane, "a retry run renders with its attempt number").toContain("retry #2");
+		app.handleInput("\x1b"); // back
+	});
+
+	test("the routines list marks a routine with an armed retry", async () => {
+		app.setScreen("automations");
+		app.handleInput("\x1b"); // close any overlay a previous test left open
+		const pane = plain(app.render(120));
+		expect(pane, "the armed chain is visible from the index").toContain("⟳ retry in ");
+	});
+
+	test("e edits the retry policy — preloaded, patchable, clearable", async () => {
+		app.setScreen("automations");
+		app.handleInput("\x1b"); // close any overlay a previous test left open
+		app.handleInput("e"); // field picker on the selected routine
+		let pane = plain(app.render(120));
+		if (!pane.includes("edit routine · nightly repo health check")) {
+			// a previous test's created routine sorts first — step to the fixture row
+			app.handleInput("\x1b");
+			app.handleInput("j");
+			app.handleInput("e");
+			pane = plain(app.render(120));
+		}
+		expect(pane).toContain("edit routine · nightly repo health check");
+		for (let i = 0; i < 9; i++) app.handleInput("j"); // → retries (the 10th field)
+		app.handleInput("\r"); // open the retries input
+		pane = plain(app.render(120));
+		expect(pane).toContain("edit · retries");
+		expect(pane, "the current policy is preloaded as max backoff").toContain("3 600");
+		// clear it: the input cursor sits after the preloaded text — backspace it all away
+		for (let i = 0; i < 5; i++) app.handleInput("\x7f");
+		app.handleInput("\r"); // apply the clear
+		await waitFor(
+			() => mock.calls.automationsPatched.some((x) => x.id === "auto-e2e-1" && x.body?.retryMax === null),
+			2000,
+			"PATCH retryMax:null (the deliberate clear) executed",
+		);
+		pane = plain(app.render(120));
+		expect(pane).toContain("routine updated");
 	});
 });

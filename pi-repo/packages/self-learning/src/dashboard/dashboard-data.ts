@@ -17,12 +17,13 @@
  * share one store instance per dashboard session.
  */
 
+import { engineFetch } from "../engine-auth.ts";
 import type {
         ActivityItem,
         AgentEvent,
         Automation,
-        AutomationsResponse,
         AutomationRunsResponse,
+        AutomationsResponse,
         BridgeResponse,
         CyclesResponse,
         DreamNotesResponse,
@@ -50,7 +51,6 @@ import type {
         WebCacheClearResponse,
         WebCacheSweepResponse,
 } from "./dashboard-types.ts";
-import { engineFetch } from "../engine-auth.ts";
 
 /** Engine base URL (same env var the CLI uses; loopback by default). */
 export function engineBaseUrl(): string {
@@ -205,6 +205,10 @@ const INVALIDATIONS: Record<string, ResourceId[]> = {
         "automation:completed": ["automations", "overview"],
         "automation:run-started": ["automations", "overview"],
         "automation:skipped": ["automations", "overview"],
+        // M6: chained-routine bus events — a dispatched listener (or a refused
+        // hop) moves the chain state the routines list renders.
+        "automation:chained": ["automations"],
+        "automation:event-triggered": ["automations"],
         // The terminal transitions previously leaned on the 4s fast-lane poll —
         // the SSE stream should invalidate the list the moment they land.
         "automation:run-succeeded": ["automations", "overview"],
@@ -498,9 +502,7 @@ export class DashboardStore {
 
         async memoryHistory(tier: string): Promise<import("./dashboard-types.ts").MemoryHistoryEntry[]> {
                 const r = await this.cachedDetail(`memhist:${tier}`, () =>
-                        this.client.get<MemoryHistoryResponse>(
-                                `/api/memory/${encodeURIComponent(tier)}/history`,
-                        ),
+                        this.client.get<MemoryHistoryResponse>(`/api/memory/${encodeURIComponent(tier)}/history`),
                 );
                 return r.history;
         }
@@ -565,10 +567,9 @@ export class DashboardStore {
         }
 
         async rollbackMemory(tier: string, version: number): Promise<{ ok: boolean }> {
-                const r = await this.client.post<{ ok: boolean }>(
-                        `/api/memory/${encodeURIComponent(tier)}/rollback`,
-                        { version },
-                );
+                const r = await this.client.post<{ ok: boolean }>(`/api/memory/${encodeURIComponent(tier)}/rollback`, {
+                        version,
+                });
                 void this.refresh("memory");
                 void this.refresh("memoryProjects");
                 void this.refresh("overview");
@@ -634,9 +635,6 @@ export class DashboardStore {
                 return r;
         }
 
-
-
-
         /** Drop cached drill-in fetches (all, or only keys starting with the
          * prefix, e.g. "memhist:project"). Mutations call this so a rollback is
          * visible on the very next open instead of after the 15s TTL. */
@@ -650,7 +648,6 @@ export class DashboardStore {
                 }
         }
 
-
         async createAutomation(body: Record<string, unknown>): Promise<import("./dashboard-types.ts").Automation> {
                 const r = await this.client.post<{ automation: import("./dashboard-types.ts").Automation }>(
                         "/api/automations",
@@ -661,10 +658,7 @@ export class DashboardStore {
         }
 
         async patchAutomation(id: string, body: Record<string, unknown>): Promise<Automation> {
-                const r = await this.client.patch<{ automation: Automation }>(
-                        `/api/automations/${encodeURIComponent(id)}`,
-                        body,
-                );
+                const r = await this.client.patch<{ automation: Automation }>(`/api/automations/${encodeURIComponent(id)}`, body);
                 void this.refresh("automations");
                 this.clearDetailCache(`automationruns:${id}`);
                 return r.automation;
@@ -775,16 +769,17 @@ export class DashboardStore {
                                         const { done, value } = await reader.read();
                                         if (done) break;
                                         buf += decoder.decode(value, { stream: true });
-                                        let sep: number;
                                         // SSE frames are separated by a blank line.
-                                        while ((sep = buf.indexOf("\n\n")) !== -1) {
+                                        let sep = buf.indexOf("\n\n");
+                                        while (sep !== -1) {
                                                 const frame = buf.slice(0, sep);
                                                 buf = buf.slice(sep + 2);
                                                 this.handleFrame(frame);
+                                                sep = buf.indexOf("\n\n");
                                         }
                                 }
                                 throw new Error("event stream closed");
-                        } catch (e) {
+                        } catch {
                                 if (ctrl.signal.aborted || this.stopped) return;
                                 // Down or dropped: degrade, then retry with backoff.
                                 this.connection = this.lastContact && Date.now() - this.lastContact > 30_000 ? "down" : "reconnecting";
@@ -818,14 +813,20 @@ export class DashboardStore {
                 let event: string;
                 let payload: Record<string, unknown>;
                 let ts: number;
-                if (parsed !== null && typeof parsed === "object" && "event" in parsed && typeof (parsed as Record<string, unknown>).event === "string") {
+                if (
+                        parsed !== null &&
+                        typeof parsed === "object" &&
+                        "event" in parsed &&
+                        typeof (parsed as Record<string, unknown>).event === "string"
+                ) {
                         const env = parsed as { event: string; payload?: unknown; ts?: unknown };
                         event = env.event;
-                        payload = (env.payload !== null && typeof env.payload === "object" ? (env.payload as Record<string, unknown>) : {});
+                        payload =
+                                env.payload !== null && typeof env.payload === "object" ? (env.payload as Record<string, unknown>) : {};
                         ts = typeof env.ts === "number" ? env.ts : Date.now();
                 } else if (namedEvent !== null) {
                         event = namedEvent;
-                        payload = (parsed !== null && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {});
+                        payload = parsed !== null && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
                         ts = typeof payload.ts === "number" ? payload.ts : Date.now();
                 } else {
                         return;
@@ -844,17 +845,27 @@ export class DashboardStore {
                 // Invalidations.
                 const resources = INVALIDATIONS[event];
                 if (resources) {
-                        let touched = false;
                         for (const id of resources) {
                                 const st = this.states.get(id);
                                 if (st) {
                                         st.dirty = true;
-                                        touched = true;
                                         // Dirty + active (or cheap) → immediate refetch.
                                         if (this.activeResources.has(id)) void this.refresh(id);
                                 }
                         }
-                        if (touched) void 0;
+                }
+                // M6: run transitions also invalidate the OPEN detail pane's run
+                // history — the drill-in fetch is cached for 15s, so without this
+                // a run finishing under an open pane never appears until Esc+re-open
+                // past the TTL. The SSE payload carries the routine's id; a missing
+                // payload clears every cached automationruns:* key (<=20 routines).
+                if (event.startsWith("automation:run-") || event === "automation:skipped" || event === "automation:chained") {
+                        const rid = typeof (ev.payload as any)?.id === "string" ? (ev.payload as any).id : null;
+                        if (rid !== null) {
+                                this.clearDetailCache(`automationruns:${rid}`);
+                        } else {
+                                this.clearDetailCache("automationruns:");
+                        }
                 }
                 this.notify();
         }
