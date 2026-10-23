@@ -877,7 +877,7 @@ export class BrowserSession {
 			if (check.blocked) warnings.push("page looks BLOCKED by a challenge interstitial");
 			if (this.captchaCfg?.auto) {
 				const r = await this.captchaSolve({ attempt: "all" }).catch((e: any) => ({
-					summary: `auto-solve failed: ${e?.message ?? e}`,
+					summary: `auto-solve failed: ${e instanceof Error ? e.message : String(e)}`,
 					details: [],
 				} as ActionReport));
 				captchaLine += ` | auto-solve: ${r.summary}`;
@@ -1780,7 +1780,7 @@ export class BrowserSession {
 				attempts.push(`native-click: ${r.note}`);
 				solved = /solved it/.test(r.note);
 			} catch (err: any) {
-				attempts.push(`native-click failed: ${err?.message ?? err}`);
+				attempts.push(`native-click failed: ${err instanceof Error ? err.message : String(err)}`);
 			}
 		}
 
@@ -1796,7 +1796,7 @@ export class BrowserSession {
 					attempts.push(`service (${cfg.solver}): token received, injected into ${n} field(s)`);
 					solved = n > 0;
 				} catch (err: any) {
-					attempts.push(`service (${cfg.solver}) failed: ${err?.message ?? err}`);
+					attempts.push(`service (${cfg.solver}) failed: ${err instanceof Error ? err.message : String(err)}`);
 				}
 			}
 		}
@@ -1808,7 +1808,7 @@ export class BrowserSession {
 				attempts.push(`vision OCR: answer ${JSON.stringify(answer)}`);
 				solved = !!answer;
 			} catch (err: any) {
-				attempts.push(`vision OCR failed: ${err?.message ?? err}`);
+				attempts.push(`vision OCR failed: ${err instanceof Error ? err.message : String(err)}`);
 			}
 		}
 
