@@ -1542,68 +1542,94 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
         try {
                 const res = await engineFetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
                 const body: any = await res.json();
-                check(
-                        "self-learning engine",
-                        res.ok && body.ok,
-                        `${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`,
-                );
-                // 5b. wedged-but-alive engine (F4, docs/detached-engine-architecture.md):
-                // the router reports how long its busy mutex has been held; past 2x
-                // the job timeout the watchdog should have cut the job off — if it
-                // hasn't, the engine is wedged at a level the watchdog cannot reach
-                // and the operator should restart it (`bun run agent:stop && agent:start`).
-                const routerInfo = body?.router;
-                if (routerInfo && typeof routerInfo.busyMs === "number" && typeof routerInfo.jobTimeoutMs === "number") {
-                        const limit = 2 * routerInfo.jobTimeoutMs;
-                        if (routerInfo.busyMs > limit) {
-                                check(
-                                        "engine router",
-                                        false,
-                                        `busy mutex held ${Math.round(routerInfo.busyMs / 1000)}s on '${routerInfo.activeJob}' — past 2x the job timeout; restart the engine`,
-                                        "warn",
-                                );
-                        }
-                }
-                // 5c. engine version skew (M8): the engine reports its build in
-                // /api/overview; warn when it predates the current one — the fix
-                // is `unown engine restart`, never a broken state (chat and
-                // notes work regardless; new learning simply runs on the old
-                // build until restarted). A missing version block is a pre-M8
-                // engine: an info-pass with the same fix (the restart brings
-                // version reporting along).
-                {
-                        const engineVer = body?.version;
-                        const cmp = compareEngineBuild(
-                                { version: VERSION, gitSha: agentGitSha(), codeMtimeMs: codeMtimeMs() },
-                                engineVer,
-                                Date.now(),
+                if (res.status === 401) {
+                        // The engine is UP and answering — it just refused this CLI's
+                        // bearer token. That happens when the CLI's data dir (where it
+                        // looks for engine.token) is not the engine's data dir: a
+                        // binary install talking to a source-repo engine, or a second
+                        // checkout. Restarting cannot fix it, and the pre-M8 reading
+                        // below would print "engine predates version reporting" off
+                        // the error body — actively wrong advice — so 5b/5c are skipped
+                        // entirely on 401: nothing can be learned from an error payload.
+                        check(
+                                "self-learning engine",
+                                false,
+                                `up but rejected this CLI's token — learning paused, chat unaffected; point UNOWN_ENGINE_TOKEN at the ENGINE's data/self-learning/engine.token (binary and source installs keep different data dirs)`,
+                                "warn",
                         );
-                        if (cmp.verdict === "fresh") {
-                                check(
-                                        "engine version",
-                                        true,
-                                        `v${engineVer?.version ?? "?"}${engineVer?.gitSha ? ` (${engineVer.gitSha})` : ""}`,
+                } else if (!res.ok) {
+                        check(
+                                "self-learning engine",
+                                false,
+                                `engine answered HTTP ${res.status}${body?.error ? `: ${String(body.error).slice(0, 120)}` : ""} — learning paused, chat unaffected`,
+                                "warn",
+                        );
+                } else {
+                        check(
+                                "self-learning engine",
+                                res.ok && body.ok,
+                                `${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`,
+                        );
+                }
+                if (res.ok) {
+                        // 5b. wedged-but-alive engine (F4, docs/detached-engine-architecture.md):
+                        // the router reports how long its busy mutex has been held; past 2x
+                        // the job timeout the watchdog should have cut the job off — if it
+                        // hasn't, the engine is wedged at a level the watchdog cannot reach
+                        // and the operator should restart it (`bun run agent:stop && agent:start`).
+                        const routerInfo = body?.router;
+                        if (routerInfo && typeof routerInfo.busyMs === "number" && typeof routerInfo.jobTimeoutMs === "number") {
+                                const limit = 2 * routerInfo.jobTimeoutMs;
+                                if (routerInfo.busyMs > limit) {
+                                        check(
+                                                "engine router",
+                                                false,
+                                                `busy mutex held ${Math.round(routerInfo.busyMs / 1000)}s on '${routerInfo.activeJob}' — past 2x the job timeout; restart the engine`,
+                                                "warn",
+                                        );
+                                }
+                        }
+                        // 5c. engine version skew (M8): the engine reports its build in
+                        // /api/overview; warn when it predates the current one — the fix
+                        // is `unown engine restart`, never a broken state (chat and
+                        // notes work regardless; new learning simply runs on the old
+                        // build until restarted). A missing version block is a pre-M8
+                        // engine: an info-pass with the same fix (the restart brings
+                        // version reporting along).
+                        {
+                                const engineVer = body?.version;
+                                const cmp = compareEngineBuild(
+                                        { version: VERSION, gitSha: agentGitSha(), codeMtimeMs: codeMtimeMs() },
+                                        engineVer,
+                                        Date.now(),
                                 );
-                        } else if (cmp.verdict === "unknown") {
-                                check(
-                                        "engine version",
-                                        true,
-                                        "engine predates version reporting — restart to update: unown engine restart",
-                                );
-                        } else if (cmp.verdict === "ahead") {
-                                check(
-                                        "engine version",
-                                        false,
-                                        `engine v${engineVer?.version ?? "?"} is newer than agent v${VERSION} — run: unown update`,
-                                        "warn",
-                                );
-                        } else {
-                                check(
-                                        "engine version",
-                                        false,
-                                        `engine is an older build (v${engineVer?.version ?? "?"} vs agent v${VERSION}) — unown engine restart`,
-                                        "warn",
-                                );
+                                if (cmp.verdict === "fresh") {
+                                        check(
+                                                "engine version",
+                                                true,
+                                                `v${engineVer?.version ?? "?"}${engineVer?.gitSha ? ` (${engineVer.gitSha})` : ""}`,
+                                        );
+                                } else if (cmp.verdict === "unknown") {
+                                        check(
+                                                "engine version",
+                                                true,
+                                                "engine predates version reporting — restart to update: unown engine restart",
+                                        );
+                                } else if (cmp.verdict === "ahead") {
+                                        check(
+                                                "engine version",
+                                                false,
+                                                `engine v${engineVer?.version ?? "?"} is newer than agent v${VERSION} — run: unown update`,
+                                                "warn",
+                                        );
+                                } else {
+                                        check(
+                                                "engine version",
+                                                false,
+                                                `engine is an older build (v${engineVer?.version ?? "?"} vs agent v${VERSION}) — unown engine restart`,
+                                                "warn",
+                                        );
+                                }
                         }
                 }
         } catch {

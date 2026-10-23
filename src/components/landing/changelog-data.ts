@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 219;
+export const CHANGELOG_TOTAL_ENTRIES = 220;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 86,
   "Changed": 15,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 89,
+  "Fixed": 90,
   "Security": 0,
   "Behavior": 26
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 50,
+    "total": 51,
     "counts": {
       "Added": 19,
       "Changed": 5,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 19,
+      "Fixed": 20,
       "Security": 0,
       "Behavior": 6
     },
@@ -166,6 +166,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "unown doctor misdiagnosed an engine auth miss as broken stats + wrong restart advice",
+            "behavior": false
+          },
           {
             "title": "landing: the changelog rail's ◀ ▶ nudge buttons were dead — scrollBy targeted the track…",
             "behavior": false
