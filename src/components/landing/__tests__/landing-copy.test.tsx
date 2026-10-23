@@ -62,13 +62,20 @@ describe("landing hero", () => {
   };
   const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
-  test("states the category, keeps the gated H1, and offers a runnable install", () => {
+  test("states the category, keeps the gated headline, and offers a runnable install", () => {
     setUA(MAC_UA);
     const { container } = render(<Hero />);
     const text = container.textContent ?? "";
     expect(text).toContain("Open-source AI coding agent");
-    // The deploy gate asserts the H1 verbatim — a copy edit must not drop it.
-    expect(text).toContain("It reads what you write down.");
+    // The deploy gate asserts the signature line verbatim — a copy edit must
+    // not drop it. It moved from the h1 into the subhead (2026-10-24) so the
+    // h1 could carry the search phrases; the sentence survives, gates green.
+    expect(text).toContain("It reads what you write down");
+    // The h1 is the strongest on-page relevance signal, so it — not only the
+    // meta title — carries the product category. Pinned by e2e/seo.spec.ts
+    // against the served page too.
+    const h1 = container.querySelector("h1");
+    expect(h1?.textContent).toContain("The terminal coding agent that remembers.");
     // Install is runnable: it starts the engine and carries no placeholder key.
     expect(container.innerHTML).toContain("bun run agent:start");
     expect(container.innerHTML).not.toContain("sk-");

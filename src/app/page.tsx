@@ -14,6 +14,7 @@ import { Hero } from "@/components/landing/hero";
 import { LoopSection } from "@/components/landing/loop";
 import { ProofSection } from "@/components/landing/proof";
 import { ShowcaseSection } from "@/components/landing/showcase";
+import { LandingJsonLd } from "@/components/landing/seo";
 import { Footer, LandingMotion, Nav } from "@/components/landing/shell";
 
 /**
@@ -76,6 +77,10 @@ export default function LandingPage() {
             `prefers-reduced-motion`, including the staged ones that are not
             written through `FadeUp`. See its doc comment in `shell.tsx`. */}
         <LandingMotion>
+        {/* The page's structured data (Organization + SoftwareApplication +
+            FAQPage, one graph) — a server-rendered <script>, first in the
+            body so it never paints. See `seo.tsx`. */}
+        <LandingJsonLd />
         <LandingStyles />
         <div className="grain grain-fixed relative isolate flex min-h-screen flex-col overflow-x-clip bg-canvas text-ink">
           <a

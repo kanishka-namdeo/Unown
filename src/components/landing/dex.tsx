@@ -745,8 +745,7 @@ export function DexSection() {
           <p className="mt-4 text-pretty leading-relaxed text-dim">
             The session tools, the engine mechanisms, the workflows and the
             configurable surfaces — one numbered spine you can walk whole or a
-            screen at a time. Walk the list, type to filter, play a cry, watch
-            the capture. {TALLY_SENTENCE}
+            screen at a time. Play a cry, watch the capture. {TALLY_SENTENCE}
           </p>
         </FadeUp>
 
@@ -948,8 +947,7 @@ export function DexSection() {
             The {TALLY.videos} movies and the {TALLY.stills} still set were
             captured 2026-10-20 by the harness from real unown sessions at
             128 × 36 and audited still by still; each poster is that scenario's
-            first audited still. {TALLY.pending} entries have no capture, and
-            the page says so instead of making media up.
+            first audited still. {TALLY.pending} entries have no capture yet.
           </p>
 
           {/* the display-command surface keeps this band as its one home,

@@ -6,6 +6,7 @@ import {
   Press_Start_2P,
   VT323,
 } from "next/font/google";
+import { SITE } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -62,11 +63,37 @@ const termFont = VT323({
   display: "swap",
 });
 
+/**
+ * The page's search surface. Everything a crawler or link-unfurler reads is
+ * declared here against `SITE` (src/lib/site.ts) — the one module that knows
+ * the production origin — and pinned end to end by `e2e/seo.spec.ts` plus
+ * `scripts/verify-deploy.mjs`'s SEO section.
+ *
+ * - `alternates.canonical` consolidates every alias (Vercel preview URLs are
+ *   platform-noindexed; the canonical is the belt to that braces) onto the
+ *   one origin Google should index.
+ * - `robots` allows full previews: a snippet cap or a small image cap would
+ *   quietly degrade how the page renders in results. `max-image-preview:
+ *   large` is what lets the OG screenshot appear at full size.
+ * - the OG set is ONE image with explicit dimensions and alt text — crawlers
+ *   reliably use the first `og:image` and some ignore the rest, so a second
+ *   image was noise, not reach. (The TUI dashboard still stays on the page as
+ *   content; it just left the metadata.)
+ * - `keywords` is kept for non-Google consumers only; Google has ignored the
+ *   tag since 2009 and no ranking claim is made on it.
+ * - the description is ~150 characters: Google truncates what it shows by
+ *   device width, and the front-loaded sentence carries the search phrases
+ *   ("terminal coding agent", "memory", "self-improving") that the fuller
+ *   poetic line did not.
+ */
 export const metadata: Metadata = {
-  metadataBase: new URL("https://unown-nine.vercel.app"),
-  title: "Unown — the terminal coding agent that remembers",
+  metadataBase: new URL(SITE.url),
+  title: {
+    default: "Unown — the terminal coding agent that remembers",
+    template: "%s — Unown",
+  },
   description:
-    "An open-source terminal coding agent with four-tier memory, AutoDreaming and a verify-gated self-improving harness. It reads what you write down, and refuses to keep a rule it cannot prove. Works with any OpenAI-compatible model.",
+    "An open-source terminal coding agent with four-tier memory, AutoDreaming and a verify-gated self-improving harness. Works with any OpenAI-compatible model.",
   keywords: [
     "unown",
     "coding agent",
@@ -79,13 +106,41 @@ export const metadata: Metadata = {
     "open source ai agent",
     "bubblewrap sandbox",
   ],
-  authors: [{ name: "Unown" }],
+  authors: [{ name: "Unown", url: SITE.repo }],
+  alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
     type: "website",
+    url: "/",
+    siteName: SITE.name,
     title: "Unown — the terminal coding agent that remembers",
     description:
       "It reads what you write down. An open-source terminal coding agent with four-tier memory, AutoDreaming and a verify-gated self-improving harness.",
-    images: ["/landing/landing-hero.png", "/landing/tui/dashboard/stills/01-overview.png"],
+    images: [
+      {
+        url: SITE.ogImage.url,
+        width: SITE.ogImage.width,
+        height: SITE.ogImage.height,
+        alt: SITE.ogImage.alt,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Unown — the terminal coding agent that remembers",
+    description:
+      "It reads what you write down. An open-source terminal coding agent with four-tier memory, AutoDreaming and a verify-gated self-improving harness.",
+    images: [SITE.ogImage.url],
   },
   icons: {
     icon: "/logo.svg",

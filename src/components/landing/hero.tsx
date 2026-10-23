@@ -174,15 +174,21 @@ export function Hero() {
               Open-source AI coding agent · built on pi
             </p>
 
+            {/* The h1 carries the search phrases ("terminal coding agent") —
+                it is the strongest on-page relevance signal, and a purely
+                poetic h1 wasted it. The old headline moved into the subhead
+                below verbatim, so the page's voice is unchanged and the
+                deploy gate's text assertion ("It reads what you write down")
+                still holds. `e2e/seo.spec.ts` pins the h1's keyword line. */}
             <h1 className="mt-5 font-display text-balance text-[2.75rem] font-semibold leading-[1.04] tracking-tight sm:text-6xl lg:text-[4.25rem]">
-              It reads what you write down.
+              The terminal coding agent that remembers.
             </h1>
 
             <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-dim">
-              Unown is a coding agent that runs in your terminal and{" "}
-              <span className="text-ink">remembers</span>. Every session ends by handing a
-              background engine a note. Overnight that engine turns notes into project
-              memory, and refuses to keep any of it until a fresh sandbox has proven it
+              It reads what you write down: every session ends by handing a
+              background engine a{" "}
+              <span className="text-ink">note</span>. Overnight that engine turns notes into
+              project memory, and refuses to keep any of it until a fresh sandbox has proven it
               twice.
             </p>
 

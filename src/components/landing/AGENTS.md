@@ -44,7 +44,12 @@ function of how many capabilities the catalog holds.
   It also owns the contracts of `scripts/landing_changelog.mjs`,
   `scripts/landing_benchmarks.mjs` and `scripts/landing_claims.mjs`, which live
   in `scripts/` but exist only to feed `changelog-data.ts`, `benchmarks-data.ts`
-  and `engine-data.ts` in this folder.
+  and `engine-data.ts` in this folder. Since the 2026-10-24 search-surface
+  round it also owns the contracts of three files that live outside the
+  folder but exist only for this page: `src/lib/site.ts` (the one production
+  origin constant), `src/app/sitemap.ts` and `src/app/robots.ts` (the
+  convention routes for the sitemap and robots.txt), plus the SEO section of
+  `scripts/verify-deploy.mjs` and the `e2e/seo.spec.ts` gate.
 - Owns the landing palette, which is declared in `src/app/globals.css` — see
   Local Contracts for why it cannot live here.
 - Children: none. A flat folder.
@@ -1068,20 +1073,70 @@ parallel ones.
   audit is not redundant.
 - `public/landing/landing-{hero,full,mobile}.png` are tracked screenshots
   of this page, kept current by the same script — `layout.tsx` NAMES only
-  `landing-hero.png` (plus the TUI dashboard still) in its OpenGraph set;
+  `landing-hero.png` in its OpenGraph set (ONE image, with explicit
+  dimensions and alt — see the search-surface bullet below; the TUI dashboard
+  still left the metadata in the same round);
   `landing-full.png` / `landing-mobile.png` ship as tracked artifacts without
   being named in the metadata. They go stale the moment the palette — or the
   chrome they photograph — moves. Regenerate with
   `bun scripts/landing_og_shots.mjs` against the production build; it asserts
   `--color-canvas` resolved to the dark scheme's hex before each shot, so it
-  cannot silently re-bake an old palette. `layout.tsx` also names
-  `/landing/tui/dashboard/stills/01-overview.png` in its OG image set — that
-  file belongs to the TUI still set, not to this page's own capture pipeline:
+  cannot silently re-bake an old palette. `/landing/tui/dashboard/stills/01-overview.png`
+  belongs to the TUI still set, not to this page's own capture pipeline:
   the twelve stills in `public/landing/tui/dashboard/stills/` are real
   `unown dashboard` PTY captures produced by the `scripts/tui-capture/` lane
   (`pty_capture_dashboard.py` + the fixture engine; pane receipts and audit
   trail under `benchmarks/tui-beauty/dashboard-stills/`), and regenerating them
   is that lane's job, never a landing screenshot script.
+- **The search surface is a contract, and it is checkable** (2026-10-24 round,
+  `docs/landing-research.md` "the search surface"). Everything a crawler or a
+  link-unfurler reads is declared against one constant (`SITE` in
+  `src/lib/site.ts`), so a domain move is a one-line edit:
+  - **canonical + og:url + sitemap loc are byte-identical** — the origin with
+    no trailing slash, because that is the form Next normalizes to
+    (`trailingSlash: false`) and the sitemap must name the canonical URL
+    exactly. `e2e/seo.spec.ts` pins all three against the served page.
+  - **the OG set is ONE image** with explicit width/height/alt (see the
+    screenshots bullet below): crawlers reliably use the first `og:image` and
+    some ignore the rest, and a second image was reach-noise. The TUI
+    dashboard still stays on the page as content; it left the metadata.
+  - **robots meta allows full previews** (`max-image-preview: large`,
+    `max-snippet: -1`) — a capped snippet or a thumbnail-only image cap is a
+    quiet degradation of how the page renders in results.
+  - **robots.txt is the `robots.ts` convention, not a static file** (the old
+    `public/robots.txt` is deleted — a static file and the convention must
+    not both exist), one rule group (the old file's five groups were five
+    copies of "allow everything"), and its `Sitemap:` line derives from
+    `SITE`.
+  - **the sitemap's `lastmod` is the newest CUT release date**, read from the
+    generated `CHANGELOG_STOPS` — never `new Date()` (a content-less rebuild
+    would bump it, and Google disregards a `lastmod` it catches inflating)
+    and never `[Unreleased]` (undated by design; a date the repository does
+    not have must not reach a sitemap).
+  - **the JSON-LD graph is one `@graph` in `seo.tsx`**: Organization (no
+    required properties — name/url/`sameAs`→the repo), SoftwareApplication
+    (`offers.price: 0` is REQUIRED for a free app; `applicationCategory:
+    DeveloperApplication`; **no `aggregateRating` — a fabricated one is the
+    self-review spam Google excludes, on the one page whose argument is that
+    its numbers are checkable**), and FAQPage serialized from `faq-data.ts` —
+    the same module the accordion renders, so the markup cannot drift from
+    the visible answers. `featureList` is the dex's own first practice line
+    per entry — the canonical capability copy, not a hand-typed third
+    summary. `softwareVersion` reads `package.json` at build time. FAQPage
+    yields no Google rich result anymore (the feature was removed in 2026);
+    it stays because answer-engine crawlers read structured data first.
+  - **the h1 carries the product category** ("The terminal coding agent that
+    remembers.") — the strongest on-page relevance signal was a purely poetic
+    line. The old headline lives on verbatim as the subhead's opening
+    ("It reads what you write down:"), which is why the deploy gate's text
+    assertion survived the move. The description stays in the 70–160 band
+    with the search phrases front-loaded.
+  - Gates: `e2e/seo.spec.ts` (the served build — head tags, robots.txt,
+    sitemap.xml, the JSON-LD graph's required properties, one keyword-bearing
+    h1 and no skipped heading levels) and `scripts/verify-deploy.mjs`'s SEO
+    section (the live deployment, the same assertions). Lighthouse's SEO,
+    accessibility and best-practices scores must stay at 1.00 (the
+    Verification bullet below).
 
 ## Child DOX Index
 

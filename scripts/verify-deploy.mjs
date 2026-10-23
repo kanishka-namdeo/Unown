@@ -48,6 +48,8 @@ console.log(`verifying ${URL_ARG}\n`);
 section("routes");
 const routes = [
   ["/", 200],
+  ["/robots.txt", 200],
+  ["/sitemap.xml", 200],
 ];
 const bodies = {};
 for (const [path, want] of routes) {
@@ -71,7 +73,61 @@ if (!html) {
 /* ---------------------------------------------------------------- */
 
 section("page content");
-note(html.includes("It reads what you write down"), "hero headline");
+note(html.includes("It reads what you write down"), "signature line (subhead since 2026-10-24)");
+note(html.includes("The terminal coding agent that remembers"), "keyword-bearing h1");
+
+/* ---------------------------------------------------------------- */
+/* SEO: the search surface a crawler reads, on the deployed page     */
+/* ---------------------------------------------------------------- */
+
+section("seo surface");
+note(
+  /<link rel="canonical" href="https:\/\/unown-nine\.vercel\.app\/?"\s*\/?>/.test(html),
+  "canonical link resolves to the production origin",
+);
+note(
+  /<meta name="robots" content="[^"]*index[^"]*follow[^"]*"/.test(html),
+  "robots meta allows indexing",
+);
+note(
+  /<meta name="googlebot" content="[^"]*max-image-preview:large[^"]*"/.test(html),
+  "googlebot directives keep full previews",
+);
+const ogImages = [...html.matchAll(/property="og:image" content="([^"]+)"/g)].map((m) => m[1]);
+note(ogImages.length === 1, "one og:image (crawlers use the first)", `${ogImages.length}: ${ogImages.join(", ")}`);
+note(html.includes('property="og:image:width"'), "og:image carries explicit width/height");
+note(html.includes('property="og:site_name"'), "og:site_name present");
+note(html.includes('name="twitter:card" content="summary_large_image"'), "twitter large card");
+const ldGraphs = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+  .map((m) => m[1])
+  .filter((s) => s.includes('"@graph"'));
+note(ldGraphs.length === 1, "one JSON-LD graph", `${ldGraphs.length} graph(s)`);
+try {
+  const graph = JSON.parse(ldGraphs[0]);
+  const types = graph["@graph"].map((n) => n["@type"]);
+  note(types.includes("SoftwareApplication"), "SoftwareApplication node");
+  note(types.includes("Organization"), "Organization node");
+  note(types.includes("FAQPage"), "FAQPage node");
+  const app = graph["@graph"].find((n) => n["@type"] === "SoftwareApplication");
+  note(app?.offers?.price === 0, "offers.price is 0 (required for a free app)");
+} catch (err) {
+  note(false, "JSON-LD graph parses", String(err.message ?? err));
+}
+try {
+  const robotsTxt = bodies["/robots.txt"] ?? "";
+  note(/Sitemap: https:\/\/unown-nine\.vercel\.app\/sitemap\.xml/.test(robotsTxt), "robots.txt names the sitemap");
+  // Case-insensitive: Next's robots.ts convention emits "User-Agent" with a
+  // capital A — the first draft of this check assumed the lowercase spelling
+  // and failed against a healthy file.
+  note(/user-agent: \*\s*\nallow: \//i.test(robotsTxt), "robots.txt allows all crawlers");
+  const sitemap = bodies["/sitemap.xml"] ?? "";
+  note(/<loc>https:\/\/unown-nine\.vercel\.app\/?<\/loc>/.test(sitemap), "sitemap.xml carries the production URL");
+  note(/<lastmod>/.test(sitemap), "sitemap.xml carries a lastmod");
+} catch (err) {
+  note(false, "robots.txt + sitemap.xml checks", String(err.message ?? err));
+}
+
+section("page content (cont)");
 note(/id="alphabet"/.test(html), "alphabet section");
 note((html.match(/viewBox="0 0 100 100"/g) || []).length >= 28, "the 28-form script", `${(html.match(/viewBox="0 0 100 100"/g) || []).length} glyph SVGs`);
 note(html.includes("seal-form"), "hero seal");
