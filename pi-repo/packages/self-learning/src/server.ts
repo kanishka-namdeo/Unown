@@ -19,7 +19,7 @@ import {
 	updateAutomation,
 } from "./automations.ts";
 import { emit, subscribe } from "./bus.ts";
-import { dreamNotes, latestDreamNews, listDreams, runDream } from "./dream.ts";
+import { dreamNotes, latestDreamNews, listDreams, runDream, runProjectDream } from "./dream.ts";
 import {
         engineTokenPath,
         ensureHooksToken,
@@ -61,7 +61,7 @@ import {
         searchMemories,
 } from "./memzero.ts";
 import { runMintJob, suiteStats } from "./mint.ts";
-import { ingestTerminalNote } from "./notes.ts";
+import { ingestTerminalNote, undreamedNotes } from "./notes.ts";
 import { syncNoteOutbox } from "./outbox.ts";
 import { jobTimeoutMs, listJobs, router, setJobEnabled } from "./router.ts";
 import { describeRoutineSchedule } from "./routine-schedule.ts";
@@ -823,10 +823,21 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 if (method === "POST" && path === "/api/dreams/run") {
                         const pending = store.get<any>(`SELECT COUNT(*) AS c FROM notes WHERE dream_id IS NULL`)?.c ?? 0;
                         if (pending < 1) return json({ skipped: "no undreamed notes" });
-                        // BUG 13 (audit #13): same engine-busy 409 contract as the other
-                        // fire-and-forget lanes (see /api/tasks/:id/run).
+                        // The manual trigger mirrors the auto-dream job exactly (router.ts
+                        // `case "auto-dream"`): the ENGINE dream consolidates benchmark
+                        // notes (needs >= 3 — below that threshold runDream() would just
+                        // insert a junk no-notes row), and runProjectDream() consolidates
+                        // pending TERMINAL notes into their own projects' memory. Before
+                        // this mirror, a project note alone reported {started:true} and
+                        // then silently consolidated nothing — the dashboard's "dream now"
+                        // key was a no-op for the most common note kind a real user
+                        // produces (terminal session notes).
                         try {
-                                router.startFireAndForget(() => runDream()).catch((e) => emit("router:error", { error: e?.message }));
+                                router.startFireAndForget(async () => {
+                                        const pendingBenchmark = undreamedNotes(50, "benchmark").length;
+                                        if (pendingBenchmark >= 3) await runDream();
+                                        await runProjectDream();
+                                }).catch((e) => emit("router:error", { error: e?.message }));
                         } catch (err) {
                                 if (isEngineBusyError(err)) return engineBusyResponse();
                                 throw err;

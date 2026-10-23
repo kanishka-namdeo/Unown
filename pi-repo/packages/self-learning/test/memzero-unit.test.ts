@@ -127,6 +127,22 @@ describe("MEM0_CUSTOM_INSTRUCTIONS", () => {
 		expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("Terminal-session notes");
 		expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("ONLY the counts/duration metadata itself is never extractable");
 	});
+
+	test("carries the pitfall-remedy carve-out (2026-10-23 extraction fix)", () => {
+		// Measured live: agnes-3.0-flash read the old "runner/tool switches"
+		// prohibition as covering VERIFIED WORKAROUNDS too — a flaky-suite
+		// note whose remedy is a runner flag ("use bun test --runInBand when
+		// results look wrong") extracted 0 memories, primary AND reframe
+		// retry (run-to-run nondeterministic). The fix narrows the injection
+		// prohibition to agent-behavior policy and states the environment-
+		// workaround carve-out in both directions. These pins keep the
+		// distinction answerable.
+		expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("behavioral-policy directives");
+		expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("agent-behavior policy ONLY, never environment facts");
+		expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("pitfall and its remedy together");
+		// the over-broad phrase that caused the misclassification is gone
+		expect(MEM0_CUSTOM_INSTRUCTIONS).not.toContain("runner/tool switches");
+	});
 });
 
 // ---------------------------------------------------------------- reconcile fail-open
