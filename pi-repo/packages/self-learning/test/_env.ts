@@ -89,6 +89,14 @@ process.env.PI_LLM_BREAKER_THRESHOLD ??= "1000000";
 // would re-execute the test file. The spawn path is validated live
 // (unown engine start against the real stack) instead.
 process.env.PI_DISABLE_ENGINE_SPAWN ??= "1";
+// Same class, the scheduler's env hot-reload: an in-process engine booted by
+// the suite ticks reloadEnvIfChanged() on the DEFAULT state-root path, which
+// in a checkout is the REPO's own .env — its live values (PI_BRIDGE_URL,
+// model pins) hot-applied over these redirects mid-suite (the mine-guard
+// dead-bridge lane and the models-catalog isolation tripwire both tripped on
+// it). The hot-reload unit tests pass an explicit envPath and bypass the
+// guard; live behavior is validated by the real stack.
+process.env.PI_DISABLE_ENV_HOT_RELOAD ??= "1";
 // M3: the supervisor's health probes must never find the DEVELOPER's live
 // engine (:3030) from inside the suite — same dead-port convention the CLI
 // helpers use. Tests that boot a real engine on an ephemeral port override

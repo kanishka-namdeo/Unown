@@ -148,6 +148,17 @@ export function jobTimeoutMs(): number {
  */
 export const ROUTER_TEST_ONLY = { timeoutOverrideMs: undefined as number | undefined };
 
+/**
+ * Watchdog row-recovery grace, ms (BUG 7): recoverRunningRows floors a run's
+ * started_at this far BELOW the job's own start — rows minted in the same
+ * breath as the job (a harness run INSERTed a tick before execute() takes
+ * the jobs row) belong to the job; genuinely foreign rows (minutes/hours
+ * old — a crashed boot's leftovers, another lane's live run) stay outside
+ * the window and survive. 2s is far below any real job's cadence and far
+ * above scheduler/test-setup jitter.
+ */
+const WATCHDOG_RECOVERY_GRACE_MS = 2_000;
+
 export function dreamCheckCooldownMs(): number {
         const raw = Number(process.env.PI_DREAM_CHECK_COOLDOWN_MS);
         return Number.isFinite(raw) && raw >= 0 ? raw : 10 * 60_000;
@@ -406,18 +417,29 @@ export class Router {
 
         /**
          * F2: mark the timed-out job's still-running runs as errored. Scoped to
-         * runs STARTED DURING THIS JOB (started_at >= the job's start) — the
-         * pre-fix UPDATE was global over status='running', so any run row alive
-         * outside the timed-out job (a run left 'running' by a crashed earlier
-         * boot, or one created by a lane that slipped past the router mutex) was
-         * falsely errored while this job hung (audit #7). Mirrors recoverOrphans'
-         * row healing (server.ts) so the zombie's late finalize no-ops.
+         * runs STARTED AROUND THIS JOB (started_at >= the job's start minus a
+         * small grace) — the pre-fix UPDATE was global over status='running', so
+         * any run row alive outside the timed-out job (a run left 'running' by
+         * a crashed earlier boot, or one created by a lane that slipped past
+         * the router mutex) was falsely errored while this job hung (audit #7).
+         * Mirrors recoverOrphans' row healing (server.ts) so the zombie's late
+         * finalize no-ops.
+         *
+         * The GRACE (2s) covers rows minted in the same breath as the job — a
+         * harness task run is INSERTed immediately before/after execute() flips
+         * the jobs row (the governor test mints the run row first, then starts
+         * the router job a tick later; under suite load the two Date.now() calls
+         * straddle a millisecond boundary and a strict >= scoping would leave
+         * the job's OWN row unrecovered). Genuinely foreign rows — anything
+         * older than the grace — survive for their owner or boot-time orphan
+         * recovery to heal.
          */
         private recoverRunningRows(jobId: string, jobStartedAt: number): void {
                 try {
+                        const floor = jobStartedAt - WATCHDOG_RECOVERY_GRACE_MS;
                         const info = store.run(
                                 `UPDATE runs SET status = 'error', ended_at = ?, error = ? WHERE status = 'running' AND started_at >= ?`,
-                                [Date.now(), `job ${jobId} timed out (watchdog)`, jobStartedAt],
+                                [Date.now(), `job ${jobId} timed out (watchdog)`, floor],
                         );
                         if (info.changes > 0) console.log(`[router] watchdog: recovered ${info.changes} running row(s) from ${jobId}`);
                 } catch (err: any) {
