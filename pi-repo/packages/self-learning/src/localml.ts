@@ -361,7 +361,7 @@ export async function getEmbedder(dir?: string): Promise<Embedder | null> {
                 await warmEmbedder(mod);
                 return embedderCache;
         } catch (err) {
-                emit("lane:embed", { ok: false, error: String((err as Error)?.message ?? err) });
+                emit("lane:embed", { ok: false, error: err instanceof Error ? err.message : String(err) });
                 embedderCache = null;
                 return null;
         }

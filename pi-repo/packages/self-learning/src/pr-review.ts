@@ -191,7 +191,7 @@ export function defaultSpawn(cmd: string, args: string[], opts: SpawnOpts): Spaw
             encoding: "buffer",
         });
     } catch (err) {
-        return { ok: false, code: -1, stdout: "", stderr: String(err), spawnError: "SPAWN_FAILED" };
+        return { ok: false, code: -1, stdout: "", stderr: err instanceof Error ? err.message : String(err), spawnError: "SPAWN_FAILED" };
     }
     const stdout = Buffer.from(res.stdout ?? []).toString("utf8");
     const stderr = Buffer.from(res.stderr ?? []).toString("utf8");

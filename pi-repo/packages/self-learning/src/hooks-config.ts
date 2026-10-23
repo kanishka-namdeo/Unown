@@ -368,7 +368,7 @@ function runCommand(
         });
         child.on("error", (err) => {
             clearTimeout(timer);
-            resolve({ exit: -1, stdout, stderr: stderr + String(err), timedOut });
+            resolve({ exit: -1, stdout, stderr: stderr + (err instanceof Error ? err.message : String(err)), timedOut });
         });
         child.on("close", (code) => {
             clearTimeout(timer);
@@ -406,7 +406,7 @@ async function runHttp(
         const text = await res.text();
         return { ok: res.ok, status: res.status, body: text.slice(0, 64 * 1024) };
     } catch (err: any) {
-        return { ok: false, status: 0, body: "", error: String(err?.message ?? err) };
+        return { ok: false, status: 0, body: "", error: err instanceof Error ? err.message : String(err) };
     } finally {
         clearTimeout(timer);
     }

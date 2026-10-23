@@ -111,7 +111,7 @@ export async function chat(
                         try {
                                 return await attempt(withSchema);
                         } catch (err: any) {
-                                const msg = String(err?.message ?? err);
+                                const msg = err instanceof Error ? err.message : String(err);
                                 if (i === 2 || !/abort|network|socket|ECONN|fetch failed|timeout/i.test(msg)) throw err;
                                 await Bun.sleep(2000 * (i + 1));
                         }
@@ -151,10 +151,11 @@ export async function chat(
         try {
                 return await governed(true);
         } catch (err: any) {
-                if (!/^llm-bridge 400:/.test(String(err?.message ?? err))) throw err;
+                const bridgeMsg = err instanceof Error ? err.message : String(err);
+                if (!/^llm-bridge 400:/.test(bridgeMsg)) throw err;
                 emit("llm:schema-fallback", {
                         model: opts.model ?? LLM_MODEL,
-                        reason: String(err?.message ?? err).slice(0, 240),
+                        reason: bridgeMsg.slice(0, 240),
                 });
                 return governed(false);
         }

@@ -1582,7 +1582,9 @@ export class DefaultPackageManager implements PackageManager {
 			}
 			// A branch name can never start with "-" (git's own rule) — if the
 			// checkout reports one anyway, it is hostile metadata, not a branch.
-			this.assertSafeGitRef(branch);
+			if (this.safeGitRef(branch) === null) {
+				throw new Error(`Upstream branch name looks like a git option: ${branch}`);
+			}
 			const head = await this.runCommandCapture("git", ["rev-parse", "@{upstream}"], {
 				cwd: installedPath,
 				timeoutMs: NETWORK_TIMEOUT_MS,
@@ -1732,29 +1734,32 @@ export class DefaultPackageManager implements PackageManager {
 	}
 
 	/**
-	 * Allowed git remote shapes for package sources: an URL scheme git can
-	 * clone, or an scp-like git@host:path. parseGitUrl() only ever produces
-	 * these forms; anything else reaching this point (in particular an
+	 * The git remote, validated for installation: an URL scheme git can clone,
+	 * or an scp-like git@host:path. parseGitUrl() only ever produces these
+	 * forms; anything else reaching this point — in particular an
 	 * option-looking string such as --upload-pack=<cmd>, whose value git
-	 * passes to a shell) is refused rather than executed.
+	 * passes to a shell — yields null and is refused by the caller. The
+	 * returned value flows from inside the prefix checks, so every git
+	 * invocation below only ever sees a scheme-validated remote.
 	 */
-	private assertSafeGitRemote(repo: string): void {
-		if (
-			!repo.startsWith("https://") &&
-			!repo.startsWith("http://") &&
-			!repo.startsWith("ssh://") &&
-			!repo.startsWith("git://") &&
-			!repo.startsWith("git@")
-		) {
-			throw new Error(`Refusing to install git source with unexpected remote: ${repo}`);
-		}
+	private safeGitRemote(repo: string): string | null {
+		if (repo.startsWith("https://")) return repo;
+		if (repo.startsWith("http://")) return repo;
+		if (repo.startsWith("ssh://")) return repo;
+		if (repo.startsWith("git://")) return repo;
+		if (repo.startsWith("git@")) return repo;
+		return null;
 	}
 
-	/** A git ref (branch/tag/commit) must never look like a git option. */
-	private assertSafeGitRef(ref: string): void {
-		if (ref.startsWith("-")) {
-			throw new Error(`Refusing git ref that looks like an option: ${ref}`);
-		}
+	/**
+	 * A git ref (branch/tag/commit) as used by fetch/checkout/rev-parse:
+	 * null when it could be parsed as a git option instead (refs never
+	 * start with a dash — git's own check-ref-format rule).
+	 */
+	private safeGitRef(ref: string): string | null {
+		if (ref.startsWith("--")) return null;
+		if (ref.startsWith("-")) return null;
+		return ref;
 	}
 
 	private parseNpmSpec(spec: string): { name: string; version?: string } {
@@ -1864,12 +1869,18 @@ export class DefaultPackageManager implements PackageManager {
 	}
 
 	private async installGit(source: GitSource, scope: SourceScope): Promise<void> {
-		this.assertSafeGitRemote(source.repo);
-		if (source.ref) this.assertSafeGitRef(source.ref);
+		const repo = this.safeGitRemote(source.repo);
+		if (repo === null) {
+			throw new Error(`Refusing to install git source with unexpected remote: ${source.repo}`);
+		}
+		const ref = source.ref === undefined ? undefined : this.safeGitRef(source.ref);
+		if (source.ref !== undefined && ref === null) {
+			throw new Error(`Refusing git ref that looks like an option: ${source.ref}`);
+		}
 		const targetDir = this.getGitInstallPath(source, scope);
 		if (existsSync(targetDir)) {
-			if (source.ref) {
-				await this.ensureGitRef(targetDir, ["fetch", "origin", source.ref], "FETCH_HEAD");
+			if (ref) {
+				await this.ensureGitRef(targetDir, ["fetch", "--", "origin", ref], "FETCH_HEAD");
 				return;
 			}
 			const target = await this.getLocalGitUpdateTarget(targetDir);
@@ -1884,9 +1895,12 @@ export class DefaultPackageManager implements PackageManager {
 		rmSync(this.getGitUpdateMarkerPath(targetDir), { force: true });
 
 		try {
-			await this.runCommand("git", ["clone", source.repo, targetDir]);
-			if (source.ref) {
-				await this.runCommand("git", ["checkout", source.ref], { cwd: targetDir });
+			// "--" ends git's option parsing: the remote and the target dir are
+			// positional from here, so neither can be read as an option
+			// (--upload-pack's value is passed to a shell by git).
+			await this.runCommand("git", ["clone", "--", repo, targetDir]);
+			if (ref) {
+				await this.runCommand("git", ["checkout", ref], { cwd: targetDir });
 			}
 			const packageJsonPath = join(targetDir, "package.json");
 			if (existsSync(packageJsonPath)) {
@@ -1900,16 +1914,22 @@ export class DefaultPackageManager implements PackageManager {
 	}
 
 	private async updateGit(source: GitSource, scope: SourceScope): Promise<void> {
-		this.assertSafeGitRemote(source.repo);
-		if (source.ref) this.assertSafeGitRef(source.ref);
+		const repo = this.safeGitRemote(source.repo);
+		if (repo === null) {
+			throw new Error(`Refusing to update git source with unexpected remote: ${source.repo}`);
+		}
+		const ref = source.ref === undefined ? undefined : this.safeGitRef(source.ref);
+		if (source.ref !== undefined && ref === null) {
+			throw new Error(`Refusing git ref that looks like an option: ${source.ref}`);
+		}
 		const targetDir = this.getGitInstallPath(source, scope);
 		if (!existsSync(targetDir)) {
 			await this.installGit(source, scope);
 			return;
 		}
 
-		if (source.ref) {
-			await this.ensureGitRef(targetDir, ["fetch", "origin", source.ref], "FETCH_HEAD");
+		if (ref) {
+			await this.ensureGitRef(targetDir, ["fetch", "--", "origin", ref], "FETCH_HEAD");
 			return;
 		}
 
@@ -1976,7 +1996,10 @@ export class DefaultPackageManager implements PackageManager {
 		// git). Literal options (--prune, --no-tags) and the remote name are
 		// constructed here; refspec-shaped args must be +-prefixed forced
 		// refspecs so the embedded branch name can never reach option position.
-		this.assertSafeGitRef(ref);
+		const safeRef = this.safeGitRef(ref);
+		if (safeRef === null) {
+			throw new Error(`Refusing git ref that looks like an option: ${ref}`);
+		}
 		for (const arg of fetchArgs) {
 			if (arg.includes(":") && !arg.startsWith("+")) {
 				throw new Error(`Refusing non-forced git refspec: ${arg}`);
@@ -1988,7 +2011,7 @@ export class DefaultPackageManager implements PackageManager {
 			cwd: targetDir,
 			timeoutMs: NETWORK_TIMEOUT_MS,
 		});
-		const commitRef = `${ref}^{commit}`;
+		const commitRef = `${safeRef}^{commit}`;
 		const targetHead = await this.runCommandCapture("git", ["rev-parse", commitRef], {
 			cwd: targetDir,
 			timeoutMs: NETWORK_TIMEOUT_MS,

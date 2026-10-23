@@ -243,7 +243,7 @@ export function runGit(cwd: string, args: string[], opts: { readOnly?: boolean }
         child.stderr.on("data", (d) => (stderr += d.toString()));
         child.on("close", (c) => finish({ code: timedOut ? -1 : (c ?? 1), timedOut: timedOut || undefined }));
         child.on("error", (err: NodeJS.ErrnoException) => {
-            stderr += String(err?.message ?? err);
+            stderr += err instanceof Error ? err.message : String(err);
             finish({ code: -1, gitMissing: err?.code === "ENOENT" });
         });
     });
@@ -270,7 +270,7 @@ export function runGitSync(cwd: string, args: string[], opts: { readOnly?: boole
         return {
             code: -1,
             stdout: (r.stdout ?? "") as string,
-            stderr: `${base}${base ? "\n" : ""}${String(err.message ?? err)}`,
+            stderr: `${base}${base ? "\n" : ""}${err instanceof Error ? err.message : String(err)}`,
             gitMissing: err.code === "ENOENT" ? true : undefined,
             timedOut: err.code === "ETIMEDOUT" ? true : undefined,
         };

@@ -582,18 +582,53 @@ function mapAddResults(results: any[]): MemoryPlatformEvent[] {
  * substantive remains (a metadata-only note must not pay for a retry).
  * Purely textual — no LLM, no state; safe to run on every empty extraction.
  */
+/**
+ * Old terminal-note header: "Terminal session in X (N min): a prompt(s), b tool
+ * call(s)…" — the prefix, then at least one character, then an open paren, then
+ * (anywhere after it) a digit optionally spaced before " prompt(s)". Linear
+ * reimplementation of /^Terminal session( \[subagent\])? in .+\(.*\d\s*prompt\(s\)/i.
+ */
+function isOldTerminalNoteHeader(line: string): boolean {
+	const prefix = /^Terminal session( \[subagent\])? in /i.exec(line);
+	if (!prefix) return false;
+	const rest = line.slice(prefix[0].length);
+	// ".+\(" — at least one character before the open paren (search starts at
+	// index 1). If the digit pattern appears after ANY later paren it also
+	// appears after this one — the slice covers the whole tail.
+	const paren = rest.indexOf("(", 1);
+	if (paren === -1) return false;
+	return /\d\s*prompt\(s\)/i.test(rest.slice(paren));
+}
+
+/**
+ * Outcome-first header: "Terminal session [subagent] outcome in X:" — the
+ * prefix, at least one character, a trailing colon, nothing but whitespace
+ * after. Linear reimplementation of
+ * /^Terminal session( \[subagent\])?( outcome)? in .+:\s*$/i.
+ */
+function isOutcomeTerminalNoteHeader(line: string): boolean {
+	const prefix = /^Terminal session( \[subagent\])?( outcome)? in /i.exec(line);
+	if (!prefix) return false;
+	const rest = line.slice(prefix[0].length);
+	return rest.length >= 2 && rest.trimEnd().endsWith(":");
+}
+
 export function reframeNoteForExtraction(text: string | Array<{ role: string; content: string }>): string | null {
 	const joined = typeof text === "string" ? text : text.map((m) => `${m.role}: ${m.content}`).join("\n");
 	const lines = joined.split("\n").filter((l) => l.trim().length > 0);
 	const kept = lines.filter((l) => {
 		const s = l.trim();
-		// the old terminal-note header: "Terminal session in X (N min): a prompt(s), b tool call(s)…"
-		// (ReDoS fix: `\d` not `\d+` — under a preceding .*, a single digit is
-		// language-equivalent and removes the overlapping-quantifier
-		// backtracking that was quadratic on runs of '0'.)
-		if (/^Terminal session( \[subagent\])? in .+\(.*\d\s*prompt\(s\)/i.test(s)) return false;
-		// the new outcome-first header (bare, no counts): "Terminal session [subagent] outcome in X:"
-		if (/^Terminal session( \[subagent\])?( outcome)? in .+:\s*$/i.test(s)) return false;
+		// (ReDoS fix, round two) Both header filters used to be single regexes
+		// with `.+/\(.*` and `.+:` — adjacent dot-quantifiers straddling a
+		// mandatory pivot char backtracked polynomially ("a(" and ":" runs).
+		// The manual checks below reproduce the exact match languages in
+		// linear time: the old-header form needs the "in " prefix, then at
+		// least one character, then an open paren, then a digit (with optional
+		// spacing) before " prompt(s)" somewhere after it; the outcome form
+		// needs the prefix, at least one character, a trailing ":" and nothing
+		// but whitespace after it.
+		if (isOldTerminalNoteHeader(s)) return false;
+		if (isOutcomeTerminalNoteHeader(s)) return false;
 		if (/^Session metadata \(/i.test(s)) return false; // phrasing-agnostic: any metadata-label line
 		// the old harness-authored consolidation instruction line
 		if (/^If the (session hit failures|outcome above records)/i.test(s)) return false;

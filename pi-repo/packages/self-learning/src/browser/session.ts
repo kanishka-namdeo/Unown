@@ -184,7 +184,7 @@ export class BrowserSession {
 				windowSize: this.viewport,
 			});
 		} catch (err: any) {
-			const msg = String(err?.message ?? err);
+			const msg = err instanceof Error ? err.message : String(err);
 			// containers/ci often need --no-sandbox; retry once with it
 			if (/exited during startup|DevTools endpoint/i.test(msg)) {
 				conn = await CdpConnection.launch({
@@ -737,7 +737,7 @@ export class BrowserSession {
 	async getHtml(selector?: string): Promise<ActionReport> {
 		await this.ensureStarted();
 		const html = await this.pageEval(
-			`(${selector ? `() => (document.querySelector(${JSON.stringify(selector)}) || {}).outerHTML` : "() => document.documentElement.outerHTML"})()`,
+			`(${selector ? `() => (document.querySelector(JSON.parse(${JSON.stringify(JSON.stringify(selector))})) || {}).outerHTML` : "() => document.documentElement.outerHTML"})()`,
 		);
 		const capped = String(html ?? "").slice(0, 60_000);
 		return { summary: `outerHTML (${capped.length} chars${selector ? ` of ${selector}` : ""})`, details: [capped] };
@@ -1325,7 +1325,7 @@ export class BrowserSession {
 			if ((res as any)?.success !== false) n++;
 		}
 		if (payload.localStorage && Object.keys(payload.localStorage).length) {
-			await this.pageEval(`(() => { const o = ${JSON.stringify(payload.localStorage)}; for (const k of Object.keys(o)) { try { localStorage.setItem(k, o[k]); } catch (e) {} } })()`).catch(() => undefined);
+			await this.pageEval(`(() => { const o = JSON.parse(${JSON.stringify(JSON.stringify(payload.localStorage))}); for (const k of Object.keys(o)) { try { localStorage.setItem(k, o[k]); } catch (e) {} } })()`).catch(() => undefined);
 		}
 		return { summary: `loaded storage state from ${path} (${n} cookies)` };
 	}

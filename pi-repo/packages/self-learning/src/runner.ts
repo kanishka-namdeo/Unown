@@ -658,7 +658,7 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                 lastAssistantText,
                                 toolsUsed,
                                 durationMs: Date.now() - startedAt,
-                                error: `${runError} (finalize also failed: ${finErr?.message ?? finErr})`,
+                                error: `${runError} (finalize also failed: ${finErr instanceof Error ? finErr.message : String(finErr)})`,
                         };
                 }
         } finally {

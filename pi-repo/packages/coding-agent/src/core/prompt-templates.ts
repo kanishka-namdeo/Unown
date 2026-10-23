@@ -70,48 +70,91 @@ export function parseCommandArgs(argsString: string): string[] {
 export function substituteArgs(content: string, args: string[]): string {
         const allArgs = args.join(" ");
 
-        // (ReDoS fix) The first alternative used to be \$\{(\d+|ARGUMENTS|@):-… —
-        // the alternation inside the group overlaps with what follows it, and
-        // the backtracking across "${{@:-" runs was polynomial. Splitting it
-        // into one alternative per literal target keeps the matched language
-        // identical (the targets are mutually exclusive after "${") while
-        // giving every alternative a literal, unambiguous prefix.
-        return content.replace(
-                /\$\{ARGUMENTS:-([^}]*)\}|\$\{@:-([^}]*)\}|\$\{(\d+):-([^}]*)\}|\$\{@:(\d+)(?::(\d+))?\}|\$(ARGUMENTS|@|\d+)/g,
-                (_match, argumentsDefault, atDefault, numberTarget, numberDefault, sliceStart, sliceLength, simple) => {
-                        if (argumentsDefault !== undefined) {
-                                return allArgs ? allArgs : argumentsDefault;
-                        }
-
-                        if (atDefault !== undefined) {
-                                return allArgs ? allArgs : atDefault;
-                        }
-
-                        if (numberTarget !== undefined) {
-                                const value = args[parseInt(numberTarget, 10) - 1];
-                                return value ? value : numberDefault;
-                        }
-
-                        if (sliceStart) {
-                                let start = parseInt(sliceStart, 10) - 1; // Convert to 0-indexed (user provides 1-indexed)
-                                // Treat 0 as 1 (bash convention: args start at 1)
-                                if (start < 0) start = 0;
-
-                                if (sliceLength) {
-                                        const length = parseInt(sliceLength, 10);
-                                        return args.slice(start, start + length).join(" ");
+        // (ReDoS fix, round two) The one-regex replace kept a polynomial
+        // shape: every ${… alternative ends in ([^}]*)\} — an unbounded
+        // quantifier over a complement class feeding a mandatory single char,
+        // which backtracks quadratically on unterminated "${" runs. The
+        // manual scanner below reproduces the regex's exact leftmost-match
+        // semantics (alternative precedence included) in linear time:
+        // at each "$" it tries ${TARGET:-default}, then ${@:N} / ${@:N:L},
+        // then $ARGUMENTS / $@ / $N — exactly the alternation order the
+        // regex used — and a "$" that matches none of them stays literal.
+        let out = "";
+        let i = 0;
+        scan: while (i < content.length) {
+                if (content[i] !== "$") {
+                        out += content[i];
+                        i++;
+                        continue;
+                }
+                if (content[i + 1] === "{") {
+                        const close = content.indexOf("}", i + 2);
+                        if (close !== -1) {
+                                const inner = content.slice(i + 2, close);
+                                const sep = inner.indexOf(":-");
+                                if (sep > 0) {
+                                        const target = inner.slice(0, sep);
+                                        const fallback = inner.slice(sep + 2);
+                                        if (target === "ARGUMENTS" || target === "@") {
+                                                out += allArgs ? allArgs : fallback;
+                                                i = close + 1;
+                                                continue;
+                                        }
+                                        if (/^\d+$/.test(target)) {
+                                                const value = args[parseInt(target, 10) - 1];
+                                                out += value ? value : fallback;
+                                                i = close + 1;
+                                                continue;
+                                        }
                                 }
-                                return args.slice(start).join(" ");
-                        }
+                                if (inner.startsWith("@:")) {
+                                        const sliceMatch = /^(\d+)(?::(\d+))?$/.exec(inner.slice(2));
+                                        if (sliceMatch) {
+                                                let start = parseInt(sliceMatch[1], 10) - 1; // Convert to 0-indexed (user provides 1-indexed)
+                                                // Treat 0 as 1 (bash convention: args start at 1)
+                                                if (start < 0) start = 0;
 
-                        if (simple === "ARGUMENTS" || simple === "@") {
-                                return allArgs;
+                                                if (sliceMatch[2] !== undefined) {
+                                                        const length = parseInt(sliceMatch[2], 10);
+                                                        out += args.slice(start, start + length).join(" ");
+                                                } else {
+                                                        out += args.slice(start).join(" ");
+                                                }
+                                                i = close + 1;
+                                                continue;
+                                        }
+                                }
                         }
-
-                        const index = parseInt(simple, 10) - 1;
-                        return args[index] ?? "";
-                },
-        );
+                        // Not a recognized ${…} form: the regex would have
+                        // fallen through to the $-prefixed alternatives at
+                        // this position, and "$" + "{" matches none of them —
+                        // the "$" stays literal.
+                        out += "$";
+                        i++;
+                        continue;
+                }
+                if (content.startsWith("ARGUMENTS", i + 1)) {
+                        out += allArgs;
+                        i += "ARGUMENTS".length + 1;
+                        continue;
+                }
+                if (content[i + 1] === "@") {
+                        out += allArgs;
+                        i += 2;
+                        continue;
+                }
+                let j = i + 1;
+                while (j < content.length && /\d/.test(content[j])) j++;
+                if (j > i + 1) {
+                        const index = parseInt(content.slice(i + 1, j), 10) - 1;
+                        out += args[index] ?? "";
+                        i = j;
+                        continue;
+                }
+                out += "$";
+                i++;
+        }
+        return out;
 }
 
 function loadTemplateFromFile(filePath: string, sourceInfo: SourceInfo): PromptTemplate | null {
