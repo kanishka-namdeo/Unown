@@ -8,7 +8,7 @@ import { emit } from "./bus.ts";
 import { BRIDGE_URL } from "./store.ts";
 import { recordLlmCall, recordLlmFailure, recordLlmSuccess } from "./governor.ts";
 
-const LLM_MODEL = process.env.PI_MODEL_ID || "kimi-k2.5"; // `||`: empty .env value means unset
+const LLM_MODEL = process.env.PI_MODEL_ID || "agnes-3.0-flash"; // `||`: empty .env value means unset
 
 /**
  * Bridge endpoint, read at CALL time (not module-load time): tests and

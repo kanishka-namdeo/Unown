@@ -25,7 +25,7 @@ Terminal-agent-only contributions (docs, CLI) need nothing beyond step 3's direc
 |---|---|
 | `bun run typecheck` | `tsc --noEmit` |
 | `bun run lint` | `eslint .` |
-| `bun run test:unit` | dashboard + landing suite (`bun test src`) |
+| `bun run test:unit` | landing suite (`bun test src`) |
 | `bun run test:coverage` | suite plus the changed-line coverage gate (80% of touched lines) |
 | `bun run check:docs` | link/anchor gate over `docs/*.md` |
 | `bun run agent:install` / `agent:start` / `agent:stop` / `agent:link` | lifecycle (cross-platform bun TS; `agent:link` is the supported global-install path) |
@@ -45,7 +45,7 @@ Terminal-agent-only contributions (docs, CLI) need nothing beyond step 3's direc
 
 ## Test Expectations
 
-- All suites green before you ask for review: dashboard (`bun run test:unit`), engine (`pi-repo/packages/self-learning`), bridge (`mini-services/llm-bridge`). CI runs all three plus the 3-OS matrix.
+- All suites green before you ask for review: landing (`bun run test:unit`), engine (`pi-repo/packages/self-learning`), bridge (`mini-services/llm-bridge`). CI runs all three plus the 3-OS matrix.
 - New behavior needs pinning tests. Changes to prompts, default models, routing, guard rules, hooks or memory injection additionally need a **CHANGELOG "Agent Behavior" entry** — the worked example (the `security-bypass` rule and its tests) is in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 - A user-visible feature or fix does not stop at `CHANGELOG.md`: the landing page's shipping rail is generated from that file. Run `bun scripts/landing_changelog.mjs` to regenerate `src/components/landing/changelog-data.ts`, and never hand-edit the generated file. `bun run check:changelog` proves the two agree, and CI's landing job runs it next to `node --test scripts/landing_changelog.test.mjs` — so an entry that never reached the page is a red build, not a stale marketing site.
 - Two more landing surfaces are generated, and one more is gated — the same obligation applies at the moment your change lands, not at review: a benchmark run under `benchmarks/` moves `bun scripts/landing_benchmarks.mjs` → `benchmarks-data.ts` (`bun run check:benchmarks`), and a job in `router.ts` `JOB_DEFS`, a hook/harness log string, a CLI command name or an AutoDream-written line in `.unown/memory/project.md` moves `bun scripts/landing_claims.mjs` → `engine-data.ts` and the page's quoted copy (`bun run check:claims`). All three `--check`s run in CI's landing job beside their extractor suites, and a generated data file is never the thing you edit to make one pass.
@@ -69,7 +69,7 @@ Prefixes in use: `engine:`, `docs:`, `benchmarks:`, `landing:`, `scripts:`, `ci:
 bin/unown                     the `unown` terminal agent entry point
 docs/                         usage docs: quickstart, providers, usage, subagents,
                               skills, memory, configuration, troubleshooting
-.github/assets/               README brand + dashboard screenshot assets
+.github/assets/               README brand assets (banner, diagram-memory, logo, social-preview)
 pi-repo/                      the pi coding agent (earendil-works/pi, formerly badlogic/pi-mono)
   packages/self-learning/     ★ the transformation — the self-learning layer
     src/memory.ts             tiered memory (pattern 1, engine side)
@@ -96,8 +96,8 @@ pi-repo/                      the pi coding agent (earendil-works/pi, formerly b
 mini-services/
   llm-bridge/                 OpenAI-compatible gateway: routing, auth, SSE passthrough
   agent-service/              boots the engine (memory/tasks/router/API)
-src/                          dashboard (Next.js App Router + shadcn/ui)
-e2e/                          Playwright E2E + axe-core suite against a mock engine
+src/                          the marketing landing page (Next.js 16 App Router; the web dashboard was retired in D7 — mission control is the TUI `unown dashboard`)
+e2e/                          Playwright E2E + axe-core suite against the landing page's production standalone build
 scripts/                      install/start/stop/link + verification tooling
 data/self-learning/           runtime state (sandboxes, sessions, memory) — created on first run
 db/selflearning.db            runtime SQLite store — created on first run

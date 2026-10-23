@@ -7,7 +7,7 @@ The marketing landing page: a single Next.js 16 App Router route served at `/` a
 ## Ownership
 
 - Owns: `src/app/` (the route + layout + the two stylesheets), `src/test-dom-setup.ts`, `src/types/bun-test.d.ts` and this doc. (`src/hooks/` and the dashboard trees it served were removed with the web dashboard — D7.)
-- Children own: `src/components/landing/` (every band of the page — its own contract doc is the authority) and `src/lib/` (`utils.ts` + test).
+- Children own: `src/components/landing/` (every band of the page — its own contract doc is the authority). `src/lib/` (`utils.ts` + test) has no child doc — it is covered by this file.
 - `src/components/ui/` is down to ONE vendored shadcn/ui primitive — `accordion.tsx`, the FAQ's disclosure. Treat as generated code; do not hand-edit, regenerate via the shadcn CLI instead. (The other 47 primitives, the Toaster mount and `use-toast` left with the web dashboard.)
 
 ## Local Contracts
@@ -40,4 +40,3 @@ The marketing landing page: a single Next.js 16 App Router route served at `/` a
 ## Child DOX Index
 
 - `src/components/landing/AGENTS.md` — the marketing page: the Unown script, the lexicon, bands, effects, the honesty/generation rules and the motion contracts
-- `src/lib/AGENTS.md` — (pending deletion; its engine-API contract content was relocated to `docs/detached-engine-architecture.md` §"The engine API surface")

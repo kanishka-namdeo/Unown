@@ -61,7 +61,7 @@ flowchart TB
     subgraph bridge["llm-bridge :3031"]
         BR["model routing + auth<br>SSE passthrough · backoff"]
     end
-    LLM["OpenAI-compatible upstream<br>kimi-k2.5 · qwen3.7-plus · qwen3.6-plus"]
+    LLM["OpenAI-compatible upstream<br>agnes-3.0-flash · agnes-2.5-flash"]
 
     TUI -- "session notes" --> ENG
     UI -- "REST + SSE" --> ENG
@@ -137,14 +137,20 @@ Full usage docs live in [`docs/`](docs/):
 | [oh-my-pi-swap-assessment](docs/oh-my-pi-swap-assessment.md) | decision record: why the vendored pi harness stays, and what would reopen that call |
 | [opencode-swap-assessment](docs/opencode-swap-assessment.md) | decision record: opencode clears both harness chokepoints, and is still not adoptable — why the blocker moved to the artifact |
 | [sdlc-feature-parity](docs/sdlc-feature-parity.md) | decision record: which 2026-agent SDLC features (LSP, checkpoints/receipts, MCP, /review, /goal) were adopted, which stay out, and why — plus the hardening follow-ups |
+| [sdlc-feature roadmap](docs/sdlc-feature-roadmap.md) | the 2026-10-19 forward roadmap — the reverse-engineering sweep across nine coding agents, synthesized into shipped-milestone order |
+| [agentic asset workflow](docs/agentic-asset-workflow.md) | the gated pipeline that shipped the landing page's feature creatures — the repeatable process for the next visual-asset exercise |
 | [configuration](docs/configuration.md) | every environment variable, `.env` semantics, state files layout, [production notes](docs/configuration.md#production-notes) |
 | [windows guide](docs/windows.md) | native Windows: install, cmd/PowerShell shims, Git Bash + the powershell tool, sandbox story, WSL2 |
 | [macos guide](docs/macos.md) | macOS: seatbelt sandbox notes, darwin prebuilds, install one-liners |
 | [troubleshooting](docs/troubleshooting.md) | symptom → cause → fix (including `unown doctor` semantics) |
 | [TUI capture workflow](docs/tui-capture-workflow.md) | how the landing page's terminal screenshots/video are captured from real sessions — the harness contract, geometry rules, audit gates |
+| [landing research](docs/landing-research.md) | the landing page's design rationale and claim-sourcing rules — why the page looks the way it does, and what keeps every number on it defensible |
+| [TUI beautification plan](docs/tui-beautification-plan.md) | the evidence-based TUI design plan — VLM critique over the audited capture set, pixel-level color audit, defect-to-source traces |
 | [TUI dashboard](docs/tui-dashboard-plan.md) | the terminal dashboard (`unown dashboard` / `/dashboard`) — the D-series design record: screens, both mounts, the live engine feed, and the web dashboard's retirement |
 | [TUI responsiveness](docs/tui-responsive-plan.md) | the R-series responsive design record — viewport tiers, the min-size gate, footer degradation, overlay scaling, the graduated files dock |
 | [behavior](docs/BEHAVIOR.md) | the agent behavior card: default models, memory stack, session tools, sandbox, hooks, and the behavior-change policy |
+| [testing strategy](docs/testing-strategy.md) | the engineering contract for proving the harness works: which layers get which tests, what runs in CI, what must be true before a number may be published |
+| [benchmark research](docs/benchmark-research.md) | what comparable coding agents run and publish, and the Docker-free benchmarks Unown adopted for the landing page |
 
 ---
 
@@ -205,12 +211,12 @@ The `--source` install runs `bun install --frozen-lockfile` at the root and in t
 
 ```bash
 # .env
-BRIDGE_UPSTREAM_URL=https://dashscope.aliyuncs.com/compatible-mode/v1   # any OpenAI-compatible base URL
+BRIDGE_UPSTREAM_URL=https://apihub.agnes-ai.com/v1   # any OpenAI-compatible base URL
 BRIDGE_UPSTREAM_KEY=<your key>
-BRIDGE_KNOWN_MODELS=kimi-k2.5,qwen3.7-plus,qwen3.6-plus
-# optional: fail over to a second endpoint (e.g. Agnes AI) when the primary cannot serve
-# BRIDGE_FALLBACK_URL=https://apihub.agnes-ai.com/v1
-# BRIDGE_FALLBACK_MODEL=agnes-3.0-flash
+BRIDGE_KNOWN_MODELS=agnes-3.0-flash,agnes-2.5-flash
+# optional: fail over to a second endpoint (e.g. a Dashscope or OpenAI account) when the primary cannot serve
+# BRIDGE_FALLBACK_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+# BRIDGE_FALLBACK_MODEL=kimi-k2.5
 
 unown setup --provider bridge     # point the terminal agent at it
 ```
@@ -367,7 +373,7 @@ All variables are optional with sane defaults; author `.env` from [`.env.example
 
 ### Using a different model provider
 
-The bundled `llm-bridge` turns **any OpenAI-compatible upstream** (Dashscope, OpenAI, OpenRouter, vLLM, llama.cpp server, …) into a local endpoint the pi agent can use: it injects upstream authentication, routes requested model ids onto its allow-list, translates `thinking` flags for qwen models, passes tool calls and image content through natively, streams SSE back untouched, and serializes/throttles/retries requests. Or skip the bridge entirely — `unown setup` connects the terminal agent straight to any provider (see [docs/providers.md](docs/providers.md)).
+The bundled `llm-bridge` turns **any OpenAI-compatible upstream** (Agnes AI, Dashscope, OpenAI, OpenRouter, vLLM, llama.cpp server, …) into a local endpoint the pi agent can use: it injects upstream authentication, routes requested model ids onto its allow-list, translates `thinking` flags for qwen models, passes tool calls and image content through natively, streams SSE back untouched, and serializes/throttles/retries requests. Or skip the bridge entirely — `unown setup` connects the terminal agent straight to any provider (see [docs/providers.md](docs/providers.md)).
 
 ```bash
 PI_BRIDGE_URL=https://api.openai.com/v1 \

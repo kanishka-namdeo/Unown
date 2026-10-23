@@ -81,7 +81,7 @@ let lastInit: AgentDirInit | null = null;
  *  subagent routing frontmatter can then route between them without a
  *  manual models.json edit. */
 export function bridgeKnownModels(defaultModel: string): string[] {
-        const raw = process.env.BRIDGE_KNOWN_MODELS || "kimi-k2.5,qwen3.7-plus,qwen3.6-plus";
+        const raw = process.env.BRIDGE_KNOWN_MODELS || "agnes-3.0-flash,agnes-2.5-flash";
         const ids = raw
                 .split(",")
                 .map((s) => s.trim())
@@ -91,9 +91,9 @@ export function bridgeKnownModels(defaultModel: string): string[] {
 
 /** What a bridge /health probe tells us (audit M4-a D1 — first-run coherence).
  *  A fresh install used to seed defaultModel from the PI_MODEL_ID env var or
- *  the kimi-k2.5 fallback, but a terminal session in the USER's project
+ *  the hard-coded fallback, but a terminal session in the USER's project
  *  directory does not run from the repo root: the env var is unset, and the
- *  hard-coded id is whatever the DEFAULT upstream served (Dashscope), not
+ *  hard-coded id is whatever the DEFAULT upstream served, not
  *  what the operator actually configured. When the bridge is reachable, its
  *  own route default is the truth — the first chat then works on ANY
  *  upstream (Agnes, OpenRouter, vLLM, …) instead of 404ing out of the box. */
@@ -133,7 +133,7 @@ export function writeModelsJson(agentDir: string): { path: string; fresh: boolea
         // (probeBridgeHealth, awaited by ensureUnownAgentDirInfoAsync before the
         // first seed), then the env var, then the legacy fallback.
         const modelId =
-                bridgeHealthLite?.defaultModel || process.env.PI_MODEL_ID || "kimi-k2.5";
+                bridgeHealthLite?.defaultModel || process.env.PI_MODEL_ID || "agnes-3.0-flash";
         const baseUrl = (process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031").replace(/\/+$/, "");
         if (existsSync(modelsPath)) return { path: modelsPath, fresh: false, provider, modelId }; // never clobber user edits
         // The bridge placeholder key satisfies pi auth; when the bridge itself

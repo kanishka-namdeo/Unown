@@ -639,8 +639,8 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
         applySubagentEnvOverrides(bootOpts);
         // Async variant: on a FIRST run the bridge /health is probed before
         // models.json is seeded, so the default model is the bridge's own
-        // route default instead of the hard-coded kimi-k2.5 fallback that
-        // 404s on non-Dashscope upstreams (audit M4-a D1).
+        // route default instead of any hard-coded fallback that can 404 on
+        // the configured upstream (audit M4-a D1).
         const agentDir = await ensureUnownAgentDirAsync();
         // M3: point pi's own agent-dir resolution at unown's dir. The session
         // gets agentDir passed explicitly, but pi code that calls getAgentDir()/

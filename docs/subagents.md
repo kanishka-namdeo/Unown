@@ -64,8 +64,8 @@ The contract: isolation is opt-in and **fail-closed** — outside a git reposito
 |---|---|---|
 | `general` | full toolset (read/write/edit/bash + todo/note/web_search/webfetch), same tiered memory | Self-contained implementation or investigation tasks that deserve a fresh context |
 | `explore` | `read`, `grep`, `find`, `ls` — read-only | Mapping where things live in the repo and returning file:line evidence, whenever broad code search would pollute the parent context |
-| `scout` | `read`, `grep`, `find`, `ls` — read-only, cheap routing (qwen3.7-plus, effort low, no MCP, no memory injection) | First-pass recon that comes back SMALL: a compressed inventory + anchors handoff built to protect the parent's context window — cheaper on context than `explore` |
-| `background-explore` | `read`, `grep`, `find`, `ls` — read-only | Low-cost background sweeps: same evidence-first shape as `explore`, but routed to a cheaper model (`qwen3.7-plus`) at `effort: low`, loading **no MCP servers** and skipping AGENTS.md/memory injection — the minimal-overhead lane for parallel fact-finding |
+| `scout` | `read`, `grep`, `find`, `ls` — read-only, minimal overhead (effort low, no MCP, no memory injection) | First-pass recon that comes back SMALL: a compressed inventory + anchors handoff built to protect the parent's context window — cheaper on context than `explore` |
+| `background-explore` | `read`, `grep`, `find`, `ls` — read-only | Low-cost background sweeps: same evidence-first shape as `explore`, at `effort: low`, loading **no MCP servers** and skipping AGENTS.md/memory injection — the minimal-overhead lane for parallel fact-finding |
 | `worker` | full toolset, **completion guard on** | Implementation with evidence: a run that finishes without touching a single file is reported as FAILED (silent no-op success cannot happen), and the reply follows a fixed evidence report — Changed / Commands / Residual risks. Falls back across models on provider failures |
 | `reviewer` | `read`, `grep`, `find`, `ls`, `bash` (read-only inspection) | Second pair of eyes: P0/P1/P2 findings with file:line evidence and an explicit merge verdict — BLOCK, OK, or OK with notes. A P0 forces BLOCK |
 | `planner` | `read`, `grep`, `find`, `ls`, `write` (plan.md only) | Writes a step-by-step `plan.md` to the project root and STOPS — the plan file is the review gate; read it, edit it, then hand the approved steps to a `worker`. Not listed in the advertised catalog (reached explicitly) |
@@ -169,7 +169,7 @@ Each agent definition can pin its own model, reasoning effort, MCP surface and c
 | `mcpServers: []` | `--mcp-servers ""` | **loads no MCP servers** (an empty whitelist is meaningful, not a no-op) |
 | `injectAgentsMd: false` | `--no-agents-md` | sets `UNOWN_NO_AGENTS_MD=1` — AGENTS.md and the per-tier memory files are not injected |
 
-Resolution order for the model: the agent's `model` field wins, then the `UNOWN_SUBAGENT_MODEL` env var (a global override — route *every* subagent to a local model with one line), then the default the child would otherwise resolve from `PI_MODEL_ID` / `models.json`. An agent that sets none of the four fields spawns exactly as before — routing is opt-in per definition, and `background-explore` is the shipped example of the full shape (cheap model + low effort + no MCP + no memory injection).
+Resolution order for the model: the agent's `model` field wins, then the `UNOWN_SUBAGENT_MODEL` env var (a global override — route *every* subagent to a local model with one line), then the default the child would otherwise resolve from `PI_MODEL_ID` / `models.json`. An agent that sets none of the four fields spawns exactly as before — routing is opt-in per definition, and `background-explore` is the shipped example of the minimal-overhead shape (low effort + no MCP + no memory injection; it carries no `model` override, so it resolves the session default).
 
 The same four flags are accepted on any `unown` launch (TUI or print mode), where they route **that whole session** the same way — `unown --model kimi-k2.5 --effort low -p "summarize the diff"`, or `--mcp-servers github` to start a session with only one MCP server live. See [usage](usage.md) and [configuration](configuration.md).
 
@@ -181,13 +181,13 @@ A provider outage used to cost the whole delegation: the subagent died with `429
 ---
 name: heavy-worker
 description: Implementation worker for large refactors.
-fallbackModels: qwen3.7-plus, qwen3.6-plus
+fallbackModels: agnes-2.5-flash
 ---
 ```
 
 The chain is the agent's `model` (when set) followed by the fallbacks, deduplicated. A candidate advances **only** on a provider-style failure — auth (401/403), quota, rate limits (429), 5xx, timeouts, connection resets, or a silent non-zero exit — **and only when the child had done no work yet** (zero tool calls: rotating mid-task would discard real work). A context overflow or a crash after work started never rotates; the failure surfaces to the parent as before.
 
-Hard-failed models get a **30-minute health mark** in `~/.unown/agent/model-health.json` — a tiny shared store every unown process reads, so the outage is paid once per window across a whole fleet of subagents instead of once per spawn. Marks auto-expire; the store is atomic-written and fails closed (an unreadable store means "try the model", never "skip everything"). The run's report lists the models actually attempted (`worker · models kimi-k2.5 → qwen3.7-plus`) and usage is billed across the whole chain, not just the survivor.
+Hard-failed models get a **30-minute health mark** in `~/.unown/agent/model-health.json` — a tiny shared store every unown process reads, so the outage is paid once per window across a whole fleet of subagents instead of once per spawn. Marks auto-expire; the store is atomic-written and fails closed (an unreadable store means "try the model", never "skip everything"). The run's report lists the models actually attempted (`worker · models agnes-3.0-flash → agnes-2.5-flash`) and usage is billed across the whole chain, not just the survivor.
 
 ## Context briefs
 
@@ -256,7 +256,7 @@ The task string is all the subagent ever sees — it does not see the parent con
 src/middleware/auth.ts:12 registers requireAuth on the router...
 ```
 
-The header carries the [BLOCKED](#the-blocked-protocol) status (`## worker (BLOCKED; …)`), the [guard](#the-completion-guard) failure (`## worker (GUARD FAILED; …)`), and the [fallback chain](#fallback-models) when it rotated (`· models kimi-k2.5 → qwen3.7-plus`). The compact TUI result line marks blocked runs `⊘` and guard failures `✗`.
+The header carries the [BLOCKED](#the-blocked-protocol) status (`## worker (BLOCKED; …)`), the [guard](#the-completion-guard) failure (`## worker (GUARD FAILED; …)`), and the [fallback chain](#fallback-models) when it rotated (`· models agnes-3.0-flash → agnes-2.5-flash`). The compact TUI result line marks blocked runs `⊘` and guard failures `✗`.
 
 Parallel results are separated by `---` and returned in the order they were requested. The parent's copy is capped (see below), so tell subagents to end with a concise summary, not a transcript dump.
 
@@ -409,7 +409,7 @@ Print-mode orchestrators (`unown -p`) are not left behind: the run appends an un
 - **Fresh context** — a focused investigation (trace one bug, audit one module) whose intermediate tool output would otherwise flood and eventually compact the parent session.
 - **Parallel exploration** — several independent questions about the codebase answered at once via `tasks: [...]`.
 - **Background delegation** — `async: true` hands the job to the [fleet](#the-interactive-fleet-async-subagents) and keeps the session responsive; steer it mid-run, answer its questions, resume it by name when the result raises a follow-up.
-- **Cheap background fact-finding** — `background-explore` runs the same evidence-first sweep as `explore` on a cheaper model at low effort, without MCP servers or memory injection, when the parent just needs facts cited and the question does not deserve a full unown context.
+- **Cheap background fact-finding** — `background-explore` runs the same evidence-first sweep as `explore` at low effort, without MCP servers or memory injection, when the parent just needs facts cited and the question does not deserve a full unown context.
 - **Isolated read-only sweeps** — `explore` maps the repo and returns cited evidence with zero risk of touching anything.
 - **Self-contained implementation** — hand `general` a well-specified task and review its report instead of watching twenty tool calls scroll by.
 

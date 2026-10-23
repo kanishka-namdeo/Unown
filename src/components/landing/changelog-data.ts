@@ -30,19 +30,62 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 226;
+export const CHANGELOG_TOTAL_ENTRIES = 229;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 86,
-  "Changed": 15,
+  "Changed": 16,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 94,
+  "Fixed": 95,
   "Security": 0,
-  "Behavior": 28
+  "Behavior": 29
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 3,
+    "counts": {
+      "Added": 0,
+      "Changed": 1,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 1
+    },
+    "groups": [
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "the code's no-env defaults still said Dashscope/kimi while the docs, the preset and the live wiring said Agnes",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "the built-in agents' model fields were Dashscope relics — two no-op overrides dropped…",
+            "behavior": true
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "the DOX tree was two upstreams behind — every stale documentation surface caught up in one round",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.4",
     "date": "2026-10-23",

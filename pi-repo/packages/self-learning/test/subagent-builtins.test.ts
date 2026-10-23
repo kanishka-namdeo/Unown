@@ -25,10 +25,10 @@ describe("ROLE_BUILTIN_AGENTS", () => {
         expect(worker.fallbackModels).toBeDefined();
         expect(worker.fallbackModels!.length).toBeGreaterThan(0);
     });
-    test("scout: read-only toolset + cheap routing (model, low effort, no MCP, no AGENTS.md)", () => {
+    test("scout: read-only toolset + minimal overhead (low effort, no MCP, no AGENTS.md, no model override — resolves the session default)", () => {
         const scout = ROLE_BUILTIN_AGENTS.find((a) => a.name === "scout")!;
         expect(scout.tools).toEqual(["read", "grep", "find", "ls"]);
-        expect(scout.model).toBeDefined();
+        expect(scout.model).toBeUndefined(); // no model override — the child resolves the session default (the qwen hardcode died with the Dashscope upstream: it only existed via bridge routing)
         expect(scout.effort).toBe("low");
         expect(scout.mcpServers).toEqual([]);
         expect(scout.injectAgentsMd).toBe(false);

@@ -60,7 +60,6 @@ You receive ONE self-contained question about the codebase. Your entire job is t
 
 Compress ruthlessly — the parent's context window is the scarce resource you were spawned to protect. Never paste whole files; cite ranges. Do not propose changes. If the answer is not in the repo, say so plainly.`,
                 source: "built-in",
-                model: "qwen3.7-plus",
                 effort: "low",
                 mcpServers: [],
                 injectAgentsMd: false,
@@ -89,7 +88,7 @@ Rules:
 - Be direct and factual; no filler.`,
                 source: "built-in",
                 completionGuard: true,
-                fallbackModels: ["qwen3.7-plus", "qwen3.6-plus"],
+                fallbackModels: ["agnes-2.5-flash"],
                 advertise: true,
         },
         {

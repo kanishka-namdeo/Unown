@@ -190,7 +190,8 @@ describe("unown providers add", () => {
                                 expect(models.providers["zai-bridge"].apiKey).toBe("bridge-local");
                                 const ids = models.providers["zai-bridge"].models.map((m: any) => m.id);
                                 expect(ids[0]).toBe("kimi-k2.5");
-                                expect(ids).toContain("qwen3.7-plus"); // the shipped default allow-list
+                                expect(ids).toContain("agnes-3.0-flash"); // the shipped default allow-list
+                                expect(ids).toContain("agnes-2.5-flash");
                         } finally {
                                 rmSync(root, { recursive: true, force: true });
                         }

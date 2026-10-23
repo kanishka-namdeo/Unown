@@ -56,20 +56,20 @@ export type SubagentEffort = "low" | "medium" | "high";
  *  Kept as a separate interface so SubagentConfig can extend it without
  *  dragging the test runtime into pi. */
 export interface SubagentRoutingFields {
-	/** Override `PI_MODEL_ID` for this subagent's run only. Per-agent value
-	 *  takes precedence over the `UNOWN_SUBAGENT_MODEL` env var. */
-	model?: string;
-	/** Reasoning effort. `low` → BRIDGE_QWEN_THINKING=0; `high` → =1;
-	 *  `medium` (or unset) → leave the bridge default alone. */
-	effort?: SubagentEffort;
-	/** Whitelist of MCP server names to load for this subagent. An EMPTY
-	 *  array means "load NO MCP servers" (the background-explore shape);
-	 *  undefined means "load all" (the legacy behavior). */
-	mcpServers?: string[];
-	/** Whether to inject the per-tier AGENTS.md / memory files into the
-	 *  subagent's system prompt. Default `true` (legacy). `false` skips
-	 *  injection (lighter context, lower cost). */
-	injectAgentsMd?: boolean;
+        /** Override `PI_MODEL_ID` for this subagent's run only. Per-agent value
+         *  takes precedence over the `UNOWN_SUBAGENT_MODEL` env var. */
+        model?: string;
+        /** Reasoning effort. `low` → BRIDGE_QWEN_THINKING=0; `high` → =1;
+         *  `medium` (or unset) → leave the bridge default alone. */
+        effort?: SubagentEffort;
+        /** Whitelist of MCP server names to load for this subagent. An EMPTY
+         *  array means "load NO MCP servers" (the background-explore shape);
+         *  undefined means "load all" (the legacy behavior). */
+        mcpServers?: string[];
+        /** Whether to inject the per-tier AGENTS.md / memory files into the
+         *  subagent's system prompt. Default `true` (legacy). `false` skips
+         *  injection (lighter context, lower cost). */
+        injectAgentsMd?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,11 +104,11 @@ export const SUBAGENT_QWEN_THINKING_ENV = "BRIDGE_QWEN_THINKING";
  *  array. `rest` is the argv with the consumed flags removed (so the
  *  existing parseArgs loop does not treat them as prompt text). */
 export interface ParsedSubagentFlags {
-	rest: string[];
-	model?: string;
-	effort?: SubagentEffort;
-	mcpServers?: string[];
-	noAgentsMd?: boolean;
+        rest: string[];
+        model?: string;
+        effort?: SubagentEffort;
+        mcpServers?: string[];
+        noAgentsMd?: boolean;
 }
 
 /**
@@ -127,50 +127,50 @@ export interface ParsedSubagentFlags {
  * value — same shape as `--tools` and `--append-system-prompt`).
  */
 export function parseSubagentFlags(argv: string[]): ParsedSubagentFlags {
-	const rest: string[] = [];
-	let model: string | undefined;
-	let effort: SubagentEffort | undefined;
-	let mcpServers: string[] | undefined;
-	let noAgentsMd: boolean | undefined;
-	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i];
-		if (a === "--model") {
-			const next = argv[i + 1];
-			if (next !== undefined && !next.startsWith("--")) {
-				model = next;
-				i++;
-			}
-			continue;
-		}
-		if (a === "--effort") {
-			const next = argv[i + 1];
-			if (next !== undefined && !next.startsWith("--")) {
-				const e = next.trim().toLowerCase();
-				if (e === "low" || e === "medium" || e === "high") effort = e;
-				// invalid effort values are silently dropped (the flag is
-				// still consumed — same posture as parseToolList on bad input)
-				i++;
-			}
-			continue;
-		}
-		if (a === "--mcp-servers") {
-			const next = argv[i + 1];
-			if (next !== undefined && !next.startsWith("--")) {
-				mcpServers = next
-					.split(",")
-					.map((s) => s.trim())
-					.filter(Boolean);
-				i++;
-			}
-			continue;
-		}
-		if (a === "--no-agents-md") {
-			noAgentsMd = true;
-			continue;
-		}
-		rest.push(a);
-	}
-	return { rest, model, effort, mcpServers, noAgentsMd };
+        const rest: string[] = [];
+        let model: string | undefined;
+        let effort: SubagentEffort | undefined;
+        let mcpServers: string[] | undefined;
+        let noAgentsMd: boolean | undefined;
+        for (let i = 0; i < argv.length; i++) {
+                const a = argv[i];
+                if (a === "--model") {
+                        const next = argv[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                model = next;
+                                i++;
+                        }
+                        continue;
+                }
+                if (a === "--effort") {
+                        const next = argv[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                const e = next.trim().toLowerCase();
+                                if (e === "low" || e === "medium" || e === "high") effort = e;
+                                // invalid effort values are silently dropped (the flag is
+                                // still consumed — same posture as parseToolList on bad input)
+                                i++;
+                        }
+                        continue;
+                }
+                if (a === "--mcp-servers") {
+                        const next = argv[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                mcpServers = next
+                                        .split(",")
+                                        .map((s) => s.trim())
+                                        .filter(Boolean);
+                                i++;
+                        }
+                        continue;
+                }
+                if (a === "--no-agents-md") {
+                        noAgentsMd = true;
+                        continue;
+                }
+                rest.push(a);
+        }
+        return { rest, model, effort, mcpServers, noAgentsMd };
 }
 
 // ---------------------------------------------------------------------------
@@ -189,48 +189,48 @@ export function parseSubagentFlags(argv: string[]): ParsedSubagentFlags {
  * Pure: no I/O, no env. Invalid values are dropped silently.
  */
 export function parseAgentFrontmatterExtras(frontmatter: unknown): SubagentRoutingFields {
-	if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return {};
-	const fm = frontmatter as Record<string, unknown>;
-	const out: SubagentRoutingFields = {};
+        if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return {};
+        const fm = frontmatter as Record<string, unknown>;
+        const out: SubagentRoutingFields = {};
 
-	if (typeof fm.model === "string" && fm.model.trim()) {
-		out.model = fm.model.trim();
-	}
+        if (typeof fm.model === "string" && fm.model.trim()) {
+                out.model = fm.model.trim();
+        }
 
-	if (typeof fm.effort === "string") {
-		const e = fm.effort.trim().toLowerCase();
-		if (e === "low" || e === "medium" || e === "high") out.effort = e;
-	}
+        if (typeof fm.effort === "string") {
+                const e = fm.effort.trim().toLowerCase();
+                if (e === "low" || e === "medium" || e === "high") out.effort = e;
+        }
 
-	// mcpServers accepts a comma-separated string OR an array (matching
-	// parseToolList's permissiveness). snake_case fallback for zcode parity.
-	const mcpRaw = fm.mcpServers ?? fm.mcp_servers;
-	if (typeof mcpRaw === "string") {
-		const list = mcpRaw
-			.split(",")
-			.map((s) => s.trim())
-			.filter(Boolean);
-		if (list.length > 0) out.mcpServers = list;
-	} else if (Array.isArray(mcpRaw)) {
-		const list = mcpRaw
-			.filter((s): s is string => typeof s === "string")
-			.map((s) => s.trim())
-			.filter(Boolean);
-		if (list.length > 0) out.mcpServers = list;
-	}
+        // mcpServers accepts a comma-separated string OR an array (matching
+        // parseToolList's permissiveness). snake_case fallback for zcode parity.
+        const mcpRaw = fm.mcpServers ?? fm.mcp_servers;
+        if (typeof mcpRaw === "string") {
+                const list = mcpRaw
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                if (list.length > 0) out.mcpServers = list;
+        } else if (Array.isArray(mcpRaw)) {
+                const list = mcpRaw
+                        .filter((s): s is string => typeof s === "string")
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                if (list.length > 0) out.mcpServers = list;
+        }
 
-	// injectAgentsMd accepts a boolean OR a string ("true"/"1" → true,
-	// "false"/"0" → false). snake_case fallback for zcode parity.
-	const injRaw = fm.injectAgentsMd ?? fm.inject_agents_md;
-	if (typeof injRaw === "boolean") {
-		out.injectAgentsMd = injRaw;
-	} else if (typeof injRaw === "string") {
-		const v = injRaw.trim().toLowerCase();
-		if (v === "true" || v === "1") out.injectAgentsMd = true;
-		else if (v === "false" || v === "0") out.injectAgentsMd = false;
-	}
+        // injectAgentsMd accepts a boolean OR a string ("true"/"1" → true,
+        // "false"/"0" → false). snake_case fallback for zcode parity.
+        const injRaw = fm.injectAgentsMd ?? fm.inject_agents_md;
+        if (typeof injRaw === "boolean") {
+                out.injectAgentsMd = injRaw;
+        } else if (typeof injRaw === "string") {
+                const v = injRaw.trim().toLowerCase();
+                if (v === "true" || v === "1") out.injectAgentsMd = true;
+                else if (v === "false" || v === "0") out.injectAgentsMd = false;
+        }
 
-	return out;
+        return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -251,9 +251,9 @@ export function parseAgentFrontmatterExtras(frontmatter: unknown): SubagentRouti
  * length. For now only the env var is set.
  */
 export function applyEffortToEnv(effort: SubagentEffort | undefined): Record<string, string> {
-	if (effort === "low") return { [SUBAGENT_QWEN_THINKING_ENV]: "0" };
-	if (effort === "high") return { [SUBAGENT_QWEN_THINKING_ENV]: "1" };
-	return {};
+        if (effort === "low") return { [SUBAGENT_QWEN_THINKING_ENV]: "0" };
+        if (effort === "high") return { [SUBAGENT_QWEN_THINKING_ENV]: "1" };
+        return {};
 }
 
 // ---------------------------------------------------------------------------
@@ -271,12 +271,12 @@ export function applyEffortToEnv(effort: SubagentEffort | undefined): Record<str
  * Pure: reads `env` (defaults to `process.env`) but never mutates it.
  */
 export function resolveSubagentModel(
-	agent: Pick<SubagentRoutingFields, "model">,
-	env: Record<string, string | undefined> = process.env,
+        agent: Pick<SubagentRoutingFields, "model">,
+        env: Record<string, string | undefined> = process.env,
 ): string | undefined {
-	if (typeof agent.model === "string" && agent.model.length > 0) return agent.model;
-	const global = env[SUBAGENT_MODEL_ENV];
-	return typeof global === "string" && global.length > 0 ? global : undefined;
+        if (typeof agent.model === "string" && agent.model.length > 0) return agent.model;
+        const global = env[SUBAGENT_MODEL_ENV];
+        return typeof global === "string" && global.length > 0 ? global : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -289,8 +289,8 @@ export function resolveSubagentModel(
  *  SubagentConfig satisfies this (it has `name`, `tools?`, plus the four
  *  routing fields when extended with SubagentRoutingFields). */
 export interface BuildSubagentArgsAgent extends SubagentRoutingFields {
-	name: string;
-	tools?: string[];
+        name: string;
+        tools?: string[];
 }
 
 /**
@@ -309,35 +309,35 @@ export interface BuildSubagentArgsAgent extends SubagentRoutingFields {
  * reads beyond `resolveSubagentModel` (which is itself pure).
  */
 export function buildSubagentArgs(agent: BuildSubagentArgsAgent): string[] {
-	const args: string[] = ["--mode", "json", "-p", "--no-session"];
+        const args: string[] = ["--mode", "json", "-p", "--no-session"];
 
-	if (agent.tools && agent.tools.length > 0) {
-		args.push("--tools", agent.tools.join(","));
-	}
+        if (agent.tools && agent.tools.length > 0) {
+                args.push("--tools", agent.tools.join(","));
+        }
 
-	const model = resolveSubagentModel(agent);
-	if (model) {
-		args.push("--model", model);
-	}
+        const model = resolveSubagentModel(agent);
+        if (model) {
+                args.push("--model", model);
+        }
 
-	if (agent.effort === "low" || agent.effort === "medium" || agent.effort === "high") {
-		args.push("--effort", agent.effort);
-	}
+        if (agent.effort === "low" || agent.effort === "medium" || agent.effort === "high") {
+                args.push("--effort", agent.effort);
+        }
 
-	if (Array.isArray(agent.mcpServers)) {
-		// Even an empty whitelist is meaningful: it means "load NO MCP
-		// servers" (the background-explore shape). So we always pass the
-		// flag when the field is set; the consumer side (parseSubagentFlags
-		// → cli.ts → mcp.ts) treats an empty CSV as "load none".
-		args.push("--mcp-servers", agent.mcpServers.join(","));
-	}
+        if (Array.isArray(agent.mcpServers)) {
+                // Even an empty whitelist is meaningful: it means "load NO MCP
+                // servers" (the background-explore shape). So we always pass the
+                // flag when the field is set; the consumer side (parseSubagentFlags
+                // → cli.ts → mcp.ts) treats an empty CSV as "load none".
+                args.push("--mcp-servers", agent.mcpServers.join(","));
+        }
 
-	if (agent.injectAgentsMd === false) {
-		// Default is `true` (legacy injection). Only `=== false` opts out.
-		args.push("--no-agents-md");
-	}
+        if (agent.injectAgentsMd === false) {
+                // Default is `true` (legacy injection). Only `=== false` opts out.
+                args.push("--no-agents-md");
+        }
 
-	return args;
+        return args;
 }
 
 // ---------------------------------------------------------------------------
@@ -351,26 +351,25 @@ export function buildSubagentArgs(agent: BuildSubagentArgsAgent): string[] {
  *  tools.ts imports this const and adds it to BUILTIN_AGENTS so the
  *  discovery + override semantics (built-in < user < project) apply. */
 export const BACKGROUND_EXPLORE_AGENT: {
-	name: string;
-	description: string;
-	tools: string[];
-	systemPrompt: string;
-	source: "built-in";
+        name: string;
+        description: string;
+        tools: string[];
+        systemPrompt: string;
+        source: "built-in";
 } & SubagentRoutingFields = {
-	name: "background-explore",
-	description:
-		"Read-only exploration subagent for low-cost background sweeps. Maps where things live in the repo and returns file:line evidence. Uses a cheaper model (qwen3.7-plus) and lower reasoning effort than `explore`, loads no MCP servers, and skips AGENTS.md injection — the minimal-overhead choice for parallel fact-finding where the parent agent does not need a full unown context.",
-	tools: ["read", "grep", "find", "ls"],
-	systemPrompt: `You are unown's background exploration subagent — read-only, minimal overhead.
+        name: "background-explore",
+        description:
+                "Read-only exploration subagent for low-cost background sweeps. Maps where things live in the repo and returns file:line evidence. Runs at lower reasoning effort than `explore`, loads no MCP servers, and skips AGENTS.md injection — the minimal-overhead choice for parallel fact-finding where the parent agent does not need a full unown context.",
+        tools: ["read", "grep", "find", "ls"],
+        systemPrompt: `You are unown's background exploration subagent — read-only, minimal overhead.
 
 You receive ONE self-contained question about the codebase. Answer concisely with evidence:
 - cite file:line for every claim
 - end with a short direct answer first, details after
 
 Do not propose changes; do not edit anything. If the answer is not in the repo, say so.`,
-	source: "built-in",
-	model: "qwen3.7-plus",
-	effort: "low",
-	mcpServers: [],
-	injectAgentsMd: false,
+        source: "built-in",
+        effort: "low",
+        mcpServers: [],
+        injectAgentsMd: false,
 };

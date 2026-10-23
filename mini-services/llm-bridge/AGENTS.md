@@ -2,7 +2,7 @@
 
 ## Purpose
 
-OpenAI-compatible gateway over the upstream Dashscope coding-plan endpoint. Lets the pi coding agent (and the whole self-learning stack) talk to `kimi-k2.5` / `qwen3.7-plus` / `qwen3.6-plus` through a standard `openai-completions` provider config pointing at `http://127.0.0.1:3031/v1`.
+OpenAI-compatible gateway over the upstream Agnes AI endpoint (`https://apihub.agnes-ai.com/v1`). Lets the pi coding agent (and the whole self-learning stack) talk to `agnes-3.0-flash` / `agnes-2.5-flash` through a standard `openai-completions` provider config pointing at `http://127.0.0.1:3031/v1`. The upstream is env-driven — any OpenAI-compatible server works (see `BRIDGE_UPSTREAM_URL`).
 
 ## Ownership
 
@@ -12,18 +12,18 @@ OpenAI-compatible gateway over the upstream Dashscope coding-plan endpoint. Lets
 
 - Environment (read from the root `.env` via symlink; defaults in parentheses):
   - `BRIDGE_PORT` (3031)
-  - `BRIDGE_MODEL` — advertised default model (kimi-k2.5)
-  - `BRIDGE_UPSTREAM_URL` — upstream base URL, no trailing slash (Dashscope coding-intl `/v1`)
+  - `BRIDGE_MODEL` — advertised default model (agnes-3.0-flash)
+  - `BRIDGE_UPSTREAM_URL` — upstream base URL, no trailing slash (Agnes AI `https://apihub.agnes-ai.com/v1`)
   - `BRIDGE_UPSTREAM_KEY` — upstream bearer key (secret — lives only in `.env`, never in tracked files)
-  - `BRIDGE_ROUTE_DEFAULT` — model used when a request names an unknown model (kimi-k2.5)
-  - `BRIDGE_KNOWN_MODELS` — comma-separated passthrough allow-list (kimi-k2.5,qwen3.7-plus,qwen3.6-plus)
+  - `BRIDGE_ROUTE_DEFAULT` — model used when a request names an unknown model (empty = follow `BRIDGE_MODEL`; recommended)
+  - `BRIDGE_KNOWN_MODELS` — comma-separated passthrough allow-list (agnes-3.0-flash,agnes-2.5-flash)
   - `BRIDGE_QWEN_THINKING` — `1` leaves qwen thinking models in thinking mode; default disables (snappier agent turns)
   - `BRIDGE_API_KEY` — optional local shared secret requiring `Authorization: Bearer <key>` on every request
   - `BRIDGE_MIN_SPACING_MS` — min ms between upstream request STARTS (400)
   - `BRIDGE_MAX_CONCURRENCY` — cap on in-flight remote/fallback upstream attempts, headers-to-body-end (3, floor 1). The 2026-10-22 M2 starvation fix: 3-4 concurrent streams from one key degraded the measured upstream from ~2s to ~45s per call, so an engine dream made interactive sessions look hung. Slots are held for the whole streamed response.
   - Admission lanes (M2): INTERACTIVE requests (no lane marker — terminal/print sessions) are admitted ahead of queued BACKGROUND work when the cap is hit, background is additionally capped at `maxConcurrency - 1` slots, and NEW background admissions yield entirely for `BRIDGE_BACKGROUND_YIELD_MS` (45s) after any interactive arrival — a concurrency-sensitive upstream degrades every stream it shares, so the dream waits while a human works (already-admitted background streams finish uncanceled; the yield re-arms on each interactive arrival). Background is signaled by bearer `bridge-background` (the engine's learning clients — mem0's OpenAI client cannot forward custom headers, so the apiKey doubles as the signal) or the `x-unown-lane: background` header. QUIRK: with `BRIDGE_API_KEY` set, the engine's mem0 calls must present that key and fall back to interactive priority; the header lane remains available. `/health` exposes `lanes` (cap, in-flight, queued, admitted).
   - `BRIDGE_UPSTREAM_TIMEOUT_MS` — cap on time-to-response-HEADERS per upstream attempt (180000). Bodies may stream longer once headers arrive; a stalled upstream fails fast instead of wedging callers (the engine's own timeouts are 240s, so the bridge fires first).
-  - `BRIDGE_FALLBACK_URL` / `BRIDGE_FALLBACK_KEY` / `BRIDGE_FALLBACK_MODEL` — optional FAILOVER lane: a second REMOTE OpenAI-compatible endpoint (e.g. Agnes AI `https://apihub.agnes-ai.com/v1` + `agnes-3.0-flash`) that takes over when the primary cannot serve (see the failover rule below). Empty = off.
+  - `BRIDGE_FALLBACK_URL` / `BRIDGE_FALLBACK_KEY` / `BRIDGE_FALLBACK_MODEL` — optional FAILOVER lane: a second REMOTE OpenAI-compatible endpoint (e.g. a Dashscope or OpenAI account) that takes over when the primary cannot serve (see the failover rule below). Empty = off.
 - Model routing rules (binding):
   - Requests naming an allow-listed model pass through unchanged.
   - Requests naming anything else (unknown/legacy ids like `glm-4-plus`) are routed to `BRIDGE_ROUTE_DEFAULT`.
@@ -39,7 +39,7 @@ OpenAI-compatible gateway over the upstream Dashscope coding-plan endpoint. Lets
 ## Work Guidance
 
 - Keep the wire format subset in sync with `pi-repo/packages/ai/src/api/openai-completions.ts` (the client that talks to this bridge) — extend both together.
-- The upstream is a paid coding plan: no need to ration calls, but keep the serialization/backoff guards so bursts don't trip 429s.
+- The upstream is a metered free tier (~20 RPM measured on the Agnes key, with 2–70 s latency variance): keep the serialization/backoff/concurrency guards — they exist for exactly this profile — and prefer batching over parallel calls when nothing interactive waits.
 - Changing routing/thinking behavior means updating this doc's Model routing rules in the same change.
 
 ## Verification

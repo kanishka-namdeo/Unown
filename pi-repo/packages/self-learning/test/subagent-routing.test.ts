@@ -195,8 +195,8 @@ describe("BACKGROUND_EXPLORE_AGENT (the new built-in)", () => {
                 expect(BACKGROUND_EXPLORE_AGENT.tools).toEqual(["read", "grep", "find", "ls"]);
         });
 
-        test("uses the cheaper qwen3.7-plus model", () => {
-                expect(BACKGROUND_EXPLORE_AGENT.model).toBe("qwen3.7-plus");
+        test("carries no model override (resolves the session default — the qwen hardcode only existed via bridge routing)", () => {
+                expect(BACKGROUND_EXPLORE_AGENT.model).toBeUndefined();
         });
 
         test("uses low reasoning effort", () => {

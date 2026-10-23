@@ -767,11 +767,11 @@ describe("loadConfig", () => {
                 expect(loadConfig({})).toEqual({
                         port: 3031,
                         apiKey: "",
-                        defaultModel: "kimi-k2.5",
-                        upstreamUrl: "https://coding-intl.dashscope.aliyuncs.com/v1",
+                        defaultModel: "agnes-3.0-flash",
+                        upstreamUrl: "https://apihub.agnes-ai.com/v1",
                         upstreamKey: "",
-                        routeDefault: "kimi-k2.5",
-                        knownModels: ["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"],
+                        routeDefault: "agnes-3.0-flash",
+                        knownModels: ["agnes-3.0-flash", "agnes-2.5-flash"],
                         qwenThinking: false,
                         minSpacingMs: 400,
                         localUrl: "",
@@ -859,12 +859,12 @@ describe("loadConfig", () => {
                         BRIDGE_UPSTREAM_URL: "",
                 };
                 const cfg = loadConfig(empty);
-                expect(cfg.defaultModel).toBe("kimi-k2.5");
+                expect(cfg.defaultModel).toBe("agnes-3.0-flash");
                 expect(cfg.port).toBe(3031);
-                expect(cfg.routeDefault).toBe("kimi-k2.5");
-                expect(cfg.knownModels).toEqual(["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"]);
+                expect(cfg.routeDefault).toBe("agnes-3.0-flash");
+                expect(cfg.knownModels).toEqual(["agnes-3.0-flash", "agnes-2.5-flash"]);
                 expect(cfg.minSpacingMs).toBe(400);
-                expect(cfg.upstreamUrl).toBe("https://coding-intl.dashscope.aliyuncs.com/v1");
+                expect(cfg.upstreamUrl).toBe("https://apihub.agnes-ai.com/v1");
                 expect(upstreamTimeoutMs({ BRIDGE_UPSTREAM_TIMEOUT_MS: "" })).toBe(180_000);
         });
 });

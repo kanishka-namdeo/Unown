@@ -33,5 +33,5 @@ The two bun background services that make up the agent runtime: `llm-bridge` (Op
 
 ## Child DOX Index
 
-- `llm-bridge/AGENTS.md` — the OpenAI-compatible gateway to the upstream Dashscope endpoint
+- `llm-bridge/AGENTS.md` — the OpenAI-compatible gateway to the upstream Agnes AI endpoint
 - `zai-upstream/` (no AGENTS.md) — optional sandbox upstream shim (port 3032, model id `glm-4-plus`); not supervisor-managed

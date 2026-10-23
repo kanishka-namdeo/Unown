@@ -72,9 +72,9 @@ describe("bridgeKnownModels — the served-catalog helper", () => {
                 });
         });
 
-        test("falls back to the shipped default trio when the env is unset", () => {
+        test("falls back to the shipped default pair when the env is unset", () => {
                 withKnownModels(undefined, () => {
-                        expect(bridgeKnownModels("kimi-k2.5")).toEqual(["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"]);
+                        expect(bridgeKnownModels("kimi-k2.5")).toEqual(["kimi-k2.5", "agnes-3.0-flash", "agnes-2.5-flash"]);
                 });
         });
 
@@ -90,10 +90,10 @@ describe("writeModelsJson — the full catalog ships on a fresh seed", () => {
                 withKnownModels("kimi-k2.5,qwen3.7-plus,qwen3.6-plus", () => {
                         const out = writeModelsJson(DIR);
                         expect(out.fresh).toBe(true);
-                        expect(out.modelId).toBe("kimi-k2.5");
+                        expect(out.modelId).toBe("agnes-3.0-flash"); // the no-env fallback default
                         const written = JSON.parse(readFileSync(join(DIR, "models.json"), "utf8"));
                         const ids = written.providers["zai-bridge"].models.map((m: any) => m.id);
-                        expect(ids).toEqual(["kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"]);
+                        expect(ids).toEqual(["agnes-3.0-flash", "kimi-k2.5", "qwen3.7-plus", "qwen3.6-plus"]);
                 });
         });
 

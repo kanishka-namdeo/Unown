@@ -25,10 +25,10 @@ export interface ProviderPreset {
 export const PRESETS: ProviderPreset[] = [
         {
                 id: "bridge",
-                label: "The bundled llm-bridge (this repo's stack — Dashscope coding plan)",
+                label: "The bundled llm-bridge (this repo's stack — Agnes AI upstream)",
                 baseUrl: `${(process.env.PI_BRIDGE_URL || "http://127.0.0.1:3031").replace(/\/+$/, "")}/v1`,
                 api: "openai-completions",
-                defaultModel: process.env.PI_MODEL_ID || "kimi-k2.5",
+                defaultModel: process.env.PI_MODEL_ID || "agnes-3.0-flash",
                 input: ["text", "image"],
                 keyEnvHint: "BRIDGE_UPSTREAM_KEY (in the repo's .env — nothing stored locally)",
                 note: "model routing, thinking translation and SSE passthrough handled by the bridge",

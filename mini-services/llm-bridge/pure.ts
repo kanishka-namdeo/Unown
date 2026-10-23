@@ -91,25 +91,25 @@ export interface BridgeConfig {
 /**
  * Parse the bridge config from an env-like record. Defaults exactly as
  * documented in index.ts / AGENTS.md:
- *   BRIDGE_PORT 3031, BRIDGE_MODEL kimi-k2.5, upstream
- *   https://coding-intl.dashscope.aliyuncs.com/v1 (trailing slashes stripped),
+ *   BRIDGE_PORT 3031, BRIDGE_MODEL agnes-3.0-flash, upstream
+ *   https://apihub.agnes-ai.com/v1 (trailing slashes stripped),
  *   BRIDGE_ROUTE_DEFAULT falls back to BRIDGE_MODEL, KNOWN_MODELS
- *   "kimi-k2.5,qwen3.7-plus,qwen3.6-plus", BRIDGE_QWEN_THINKING off,
+ *   "agnes-3.0-flash,agnes-2.5-flash", BRIDGE_QWEN_THINKING off,
  *   BRIDGE_MIN_SPACING_MS 400.
  */
 export function loadConfig(env: Record<string, string | undefined> = process.env): BridgeConfig {
         // `||` (never `??`) on every defaulted var: bun auto-loads the repo .env
         // where optional vars ship EMPTY ("KEY=") — an empty value must mean
         // "unset, use the default", or Number("") = 0 flips ports/thresholds.
-        const defaultModel = env.BRIDGE_MODEL || "kimi-k2.5";
+        const defaultModel = env.BRIDGE_MODEL || "agnes-3.0-flash";
         return {
                 port: Number(env.BRIDGE_PORT || 3031),
                 apiKey: env.BRIDGE_API_KEY ?? "",
                 defaultModel,
-                upstreamUrl: (env.BRIDGE_UPSTREAM_URL || "https://coding-intl.dashscope.aliyuncs.com/v1").replace(/\/+$/, ""),
+                upstreamUrl: (env.BRIDGE_UPSTREAM_URL || "https://apihub.agnes-ai.com/v1").replace(/\/+$/, ""),
                 upstreamKey: env.BRIDGE_UPSTREAM_KEY ?? "",
                 routeDefault: env.BRIDGE_ROUTE_DEFAULT || defaultModel,
-                knownModels: (env.BRIDGE_KNOWN_MODELS || "kimi-k2.5,qwen3.7-plus,qwen3.6-plus")
+                knownModels: (env.BRIDGE_KNOWN_MODELS || "agnes-3.0-flash,agnes-2.5-flash")
                         .split(",")
                         .map((s) => s.trim())
                         .filter(Boolean),

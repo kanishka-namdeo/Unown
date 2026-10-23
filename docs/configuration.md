@@ -40,7 +40,7 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 |----------|---------|---------|
 | `PI_AGENT_PORT` | `3030` | Port for the REST+SSE API the TUI dashboard and CLI clients (the `unown` CLI's note delivery) talk to. |
 | `PI_BRIDGE_URL` | `http://127.0.0.1:3031` | The OpenAI-compatible LLM endpoint the engine's agent talks to. Point it at the bundled bridge or any direct endpoint. |
-| `PI_MODEL_ID` | `kimi-k2.5` | Model id registered with pi's `models.json`. Any id works through the bridge — unknown ids are routed onto its default. |
+| `PI_MODEL_ID` | `agnes-3.0-flash` | Model id registered with pi's `models.json`. Any id works through the bridge — unknown ids are routed onto its default. |
 | `PI_PROVIDER` | `zai-bridge` | Provider name registered with pi. |
 | `PI_MINER_MODEL_ID` | unset | Pins the harness's failure-mining calls to a different model id (e.g. a `local-*` id on the bridge's local lane). Unset = `PI_MODEL_ID`. |
 | `PI_DREAM_MODEL_ID` | unset | Same override for AutoDream consolidation calls — and, since the learning-core swap, the memory platform's extraction + reconcile model too ([memory-platform swap](memory-platform-swap-assessment.md)). |
@@ -67,11 +67,11 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `BRIDGE_PORT` | `3031` | Listen port. |
-| `BRIDGE_MODEL` | `kimi-k2.5` | The model the bridge advertises as its default. |
-| `BRIDGE_UPSTREAM_URL` | `https://coding-intl.dashscope.aliyuncs.com/v1` | Upstream OpenAI-compatible base URL, no trailing slash. Any OpenAI-compatible server works. |
+| `BRIDGE_MODEL` | `agnes-3.0-flash` | The model the bridge advertises as its default. |
+| `BRIDGE_UPSTREAM_URL` | `https://apihub.agnes-ai.com/v1` | Upstream OpenAI-compatible base URL, no trailing slash. Any OpenAI-compatible server works. |
 | `BRIDGE_UPSTREAM_KEY` | (empty) | Upstream bearer key. **The one required secret** — see above. |
-| `BRIDGE_ROUTE_DEFAULT` | `kimi-k2.5` | Model used when a request names an unknown or legacy model id. |
-| `BRIDGE_KNOWN_MODELS` | `kimi-k2.5,qwen3.7-plus,qwen3.6-plus` | Comma-separated allow-list of model ids that pass through unrouted; anything else maps onto `BRIDGE_ROUTE_DEFAULT`. |
+| `BRIDGE_ROUTE_DEFAULT` | follows `BRIDGE_MODEL` | Model used when a request names an unknown or legacy model id. |
+| `BRIDGE_KNOWN_MODELS` | `agnes-3.0-flash,agnes-2.5-flash` | Comma-separated allow-list of model ids that pass through unrouted; anything else maps onto `BRIDGE_ROUTE_DEFAULT`. |
 | `BRIDGE_QWEN_THINKING` | off | `1` leaves qwen thinking models in thinking mode; the default disables thinking for snappier agent turns. This is also what feeds the split-view [thinking panel](split-view.md#model-notes-the-thinking-panel) — with the default, qwen streams no reasoning and the panel stays idle; with `1`, `qwen3.7-plus` streams reasoning the panel renders live |
 | `BRIDGE_MIN_SPACING_MS` | `400` | Minimum spacing between upstream requests (serialized throttle). |
 | `BRIDGE_UPSTREAM_TIMEOUT_MS` | `180000` | Cap on time-to-response-headers per upstream attempt, in ms. Streaming bodies stay uncapped once headers arrive; a stalled upstream fails fast instead of wedging callers. |

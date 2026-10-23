@@ -487,7 +487,7 @@ async function terminalCallLlm(prompt: string, model?: string): Promise<string> 
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                                model: model || process.env.PI_MODEL_ID || "kimi-k2.5",
+                                model: model || process.env.PI_MODEL_ID || "agnes-3.0-flash",
                                 messages: [{ role: "user", content: prompt }],
                                 max_tokens: 2048,
                                 stream: false,
@@ -616,7 +616,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                         // (never in the factory — extensions.md: no timers at factory
                         // scope); survives /new|resume|fork reloads, stopped at quit.
                         startEngineStatusLoop({
-					projectDir: opts.cwd, // M3: drives the memory-bar segment + the dream-news project filter
+                                        projectDir: opts.cwd, // M3: drives the memory-bar segment + the dream-news project filter
                                 onFooter: (text) => {
                                         try {
                                                 if (!ctx?.hasUI || typeof ctx.ui?.setStatus !== "function") return;
