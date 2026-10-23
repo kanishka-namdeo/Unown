@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 230;
+export const CHANGELOG_TOTAL_ENTRIES = 231;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 86,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 96,
+  "Fixed": 97,
   "Security": 0,
   "Behavior": 29
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 4,
+    "total": 5,
     "counts": {
       "Added": 0,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 2,
+      "Fixed": 3,
       "Security": 0,
       "Behavior": 1
     },
@@ -84,6 +84,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "the DOX tree was two upstreams behind — every stale documentation surface caught up in one round",
+            "behavior": false
+          },
+          {
+            "title": "landing: the memory-lift chart's axis was typed at 125% and the agnes-3.0-flash receipt spent +197.1% — the…",
             "behavior": false
           }
         ]

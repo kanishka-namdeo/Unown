@@ -40,9 +40,25 @@ import { formatPct, runStamp } from "./benchmark-figures";
  * The memory-lift chart's shared domain: each bar is a percentage of its
  * model's cold run. Cold is pinned at 100 and the axis runs past it so the
  * warm bars that grew (see `SELFIMPROVE.input`) are shown, not cropped.
+ *
+ * The domain is derived from the receipts, not typed: the smallest multiple
+ * of 25 that covers every warm run's share of its cold run, floored at 125 so
+ * the axis always runs past the baseline. A hardcoded 125 met the +197.1%
+ * agnes-3.0-flash receipt and its warm bar rendered at 237.7% of the track —
+ * across the token label, the panel border and the page (bar length encodes
+ * the data, so an out-of-range receipt widens the axis; a clamped bar is a
+ * distorted bar). Exported for the invariant test in __tests__.
  */
-const LIFT_SCALE = 125;
-const COLD_BAR_W = (100 / LIFT_SCALE) * 100;
+export const LIFT_SCALE = Math.max(
+  125,
+  ...SELFIMPROVE.map((r) => Math.ceil((r.warmIn / r.coldIn) * 4) * 25),
+);
+
+/**
+ * Where a 100%-of-cold bar ends inside the track — the cold bars' width and
+ * the warm baseline tick's position, one number so they can never drift apart.
+ */
+export const COLD_BAR_W = (100 / LIFT_SCALE) * 100;
 
 /* ------------------------------------------------------------------ */
 /* bits                                                                */
@@ -124,7 +140,9 @@ function TimeChip({ coldS, warmS, d }: { coldS: number; warmS: number; d: number
 /**
  * One bar of the memory-lift chart. `width` is a share of the track: cold rows
  * pass the 100%-of-cold baseline, warm rows their measured share of the
- * 0–125% domain. Grows in on scroll like BarRow, transform not width.
+ * 0–`LIFT_SCALE` domain (derived above, so a bigger spender widens the axis
+ * instead of painting past it). Grows in on scroll like BarRow, transform not
+ * width.
  */
 function LiftBar({
   kind,
@@ -150,9 +168,13 @@ function LiftBar({
       <span className="w-9 shrink-0 font-mono text-[10px] text-faint">{kind}</span>
       <div className="relative h-2 flex-1 bg-line">
         {tick ? (
+          // the 100%-of-cold baseline sits exactly where the cold bar ends —
+          // COLD_BAR_W into the track, not a hardcoded position that goes
+          // stale the moment the domain moves
           <span
             aria-hidden="true"
-            className="absolute -top-1.5 -bottom-1.5 left-[80%] border-l border-dashed border-line-bright"
+            className="absolute -top-1.5 -bottom-1.5 border-l border-dashed border-line-bright"
+            style={{ left: `${COLD_BAR_W}%` }}
           />
         ) : null}
         <motion.div
@@ -317,7 +339,8 @@ export function BenchmarksPane() {
             Each model solved the same 10-task Python Exercism set cold (fresh project,
             fresh memory), then warm: a brand-new workspace carrying only the dreamed
             memory from its cold pass. Bars are input tokens, normalized per model; the
-            scale runs to 125% so the models that spent more are not cropped.
+            scale runs to {LIFT_SCALE}% — recomputed from these receipts, so the models
+            that spent more widen the axis and are never cropped.
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[10px] text-faint">

@@ -172,6 +172,15 @@ while the spine doubled from ten entries to twenty.
   - **a figure with no receipt is cut, never re-worded.** `2.4–5.4× fewer input
     tokens` stays because `benchmarks/edit-bench/results/RESULTS.md` states it;
     `300 scored runs across two days` went because nothing anywhere did.
+  - **the lift chart's axis is derived from the same receipts, not typed.**
+    `LIFT_SCALE` in `benchmarks.tsx` is the smallest multiple of 25 that
+    covers every warm run's share of its cold run, floored at 125 so the axis
+    always runs past the baseline, and the warm baseline tick sits at
+    `COLD_BAR_W` — the same number as the cold bars' width, never a hardcoded
+    position. Bar length encodes the data: a receipt that spends beyond the
+    current axis widens it, because a clamped bar is a distorted bar and an
+    unclipped overflow paints across the card (the typed 125 met a +197% warm
+    run and did exactly that). Pinned by `__tests__/benchmarks-lift.test.ts`.
 - **Quoted engine strings are gated, and the job list is generated.**
   `scripts/landing_claims.mjs` does two jobs this folder's honesty rule depends
   on. It writes `engine-data.ts` from `JOB_DEFS` in `router.ts`, so the pair
