@@ -4,7 +4,9 @@
  * Three subcommands:
  *   unown sessions list                          list persisted sessions in cwd
  *   unown sessions export <session-id> [--out F] write the export JSON
- *   unown sessions import <file>                 rehydrate into a new session id
+ *   unown sessions import <file> [--from F]      rehydrate an export JSON — or
+ *                                                 convert a Claude Code / Codex
+ *                                                 session .jsonl (import-convert.ts)
  *
  * Pattern matches `automations-cli.ts` / `mcp-cli.ts`: returns an exit code,
  * writes to stdout/stderr directly. The actual export/import logic lives in
@@ -23,19 +25,29 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { exportSession, importSession, listSessions, type SessionEntryLike, type SessionLike } from "./sessions.ts";
+import { convertAndWriteSession, detectSessionFormat, type SessionFormat } from "./import-convert.ts";
 
 export const SESSIONS_USAGE = `unown sessions — session export / import / list (Milestone 3.5)
 
 Usage:
   unown sessions list
   unown sessions export <session-id> [--out <file>] [--raw]
-  unown sessions import <file>
+  unown sessions import <file> [--from <auto|claude|codex|unown>]
 
 The exported JSON contains { version, manifest, messages, todos, notes, skills,
 files } — a single self-describing file you can rehydrate on another machine
 with \`unown sessions import\`. The imported session appears in \`unown sessions
 list\` with a fresh id (the original id is preserved in the manifest for
 traceability).
+
+\`sessions import\` also converts FOREIGN agent transcripts (the migration
+path away from Claude Code / Codex CLI, which both ship /import themselves):
+a Claude Code session (~/.claude/projects/<slug>/*.jsonl) or a Codex rollout
+(~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl) is rewritten into a native
+unown session .jsonl with fresh ids and a linear parent chain, landing in the
+same .unown/sessions directory — \`--from\` names the source explicitly
+(claude | codex | unown), the default \`auto\` sniffs the line shapes, and a
+plain unown export JSON keeps flowing through the rehydrate path above.
 
 Exports are REDACTED by default: known secret shapes (API keys, PATs, PEM
 blocks, bearer tokens) become [REDACTED:<type>] markers, because a transfer
@@ -53,6 +65,21 @@ function hasFlag(argv: string[], name: string): boolean {
     return argv.includes(name);
 }
 
+/** First positional (non-flag) argument in `argv`, skipping flags and the
+ *  values of value-taking flags — so `import <file> --from <fmt>` and
+ *  `import --from <fmt> <file>` both find <file>. */
+function positionalArg(argv: string[], valueFlags: string[]): string | undefined {
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if (arg.startsWith("-")) {
+            if (valueFlags.includes(arg) && i + 1 < argv.length) i++; // skip the flag's value
+            continue;
+        }
+        return arg;
+    }
+    return undefined;
+}
+
 /** Find the .jsonl session file under <cwd>/.unown/sessions/ that matches
  *  `sessionId` (substring on filename). */
 function findSessionFile(sessionDir: string, sessionId: string): string | null {
@@ -67,6 +94,63 @@ function findSessionFile(sessionDir: string, sessionId: string): string | null {
     const byName = files.find((f) => f.includes(sessionId));
     if (byName) return join(sessionDir, byName);
     return null;
+}
+
+/**
+ * Try the foreign-format conversion path for `unown sessions import` (the
+ * `--from` flag / .jsonl transcripts from Claude Code or Codex). Returns the
+ * exit code when the file was handled — converted successfully, or skipped
+ * with a reason — and null when the caller should fall through to the
+ * portable-JSON `importSession` path (missing file, or an unknown shape
+ * under `auto` that may still be an export JSON).
+ *
+ * Writes into the SAME directory `importSession` uses
+ * (`<cwd>/.unown/sessions`) so the converted session shows up in `unown
+ * sessions list` and /resume immediately.
+ */
+function importForeignSession(file: string, from: string, cwd: string): number | null {
+    let raw: string;
+    try {
+        raw = readFileSync(file, "utf8");
+    } catch {
+        return null; // missing/unreadable — importSession reports the error
+    }
+    const lines = raw.split("\n").filter((l) => l.trim().length > 0);
+    if (lines.length === 0) return null;
+    const format: SessionFormat = from === "auto" ? detectSessionFormat(lines) : (from as SessionFormat);
+    if (format === "unknown") return null;
+    const result = convertAndWriteSession(lines, {
+        format,
+        targetDir: join(cwd, ".unown", "sessions"),
+        fallbackCwd: cwd,
+    });
+    const { path: convertedPath, bytes } = result;
+    if (result.skipped || convertedPath === undefined || bytes === undefined) {
+        process.stderr.write(`unown sessions import: ${result.reason ?? "conversion produced no session"}\n`);
+        return 1;
+    }
+    // Re-read the written file for the summary line (fresh id + message
+    // count) — convertAndWriteSession's return stays deliberately minimal.
+    const written = readFileSync(convertedPath, "utf8").split("\n").filter((l) => l.trim().length > 0);
+    let newId = "";
+    let messages = 0;
+    try {
+        const header = JSON.parse(written[0]) as Record<string, unknown>;
+        if (typeof header.id === "string") newId = header.id;
+    } catch {
+        // unreachable — writeConvertedSession just serialized this file
+    }
+    for (const line of written.slice(1)) {
+        try {
+            if ((JSON.parse(line) as Record<string, unknown>).type === "message") messages++;
+        } catch {
+            continue; // tolerate malformed lines
+        }
+    }
+    process.stdout.write(
+        `✓ Imported ${format} session → new id ${newId} (${messages} messages, ${bytes} bytes) — /resume or unown sessions list will show it\n`,
+    );
+    return 0;
 }
 
 /**
@@ -194,10 +278,25 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
     }
 
     if (sub === "import") {
-        const file = argv[1];
-        if (!file || file.startsWith("--")) {
-            process.stderr.write("usage: unown sessions import <file>\n");
+        const file = positionalArg(argv.slice(1), ["--from"]);
+        if (!file) {
+            process.stderr.write("usage: unown sessions import <file> [--from <auto|claude|codex|unown>]\n");
             return 1;
+        }
+        const from = flagValue(argv, "--from") ?? "auto";
+        if (from !== "auto" && from !== "claude" && from !== "codex" && from !== "unown") {
+            process.stderr.write(
+                `unown sessions import: invalid --from value "${from}" (expected auto, claude, codex or unown)\n`,
+            );
+            return 1;
+        }
+        // Foreign transcripts (Claude Code / Codex .jsonl) are CONVERTED into
+        // a native unown session instead of rehydrating a portable export.
+        if (file.endsWith(".jsonl") || from !== "auto") {
+            const code = importForeignSession(file, from, cwd);
+            if (code !== null) return code;
+            // null: not a convertible foreign session — fall through to the
+            // portable-JSON path below, which reports its own clear errors.
         }
         try {
             const result = await importSession(file);

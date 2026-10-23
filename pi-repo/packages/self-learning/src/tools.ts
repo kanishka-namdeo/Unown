@@ -52,10 +52,13 @@ import { Key, stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { foregroundTodosForGoalGate } from "./addons/todo.ts";
 import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
+import { answerBtw, btwHeader } from "./btw.ts";
+import { BtwOverlay } from "./btw-overlay.ts";
 import { receiptsDir } from "./checkpoints.ts";
 import { trustBypassed } from "./config-trust.ts";
 import { composeTaskWithBrief, summarizeParentContext } from "./context-brief.ts";
 import { registerBrowserTools } from "./browser/tools.ts";
+import { maybeAutoTitleSession } from "./auto-title.ts";
 import { registerContextTools } from "./context-tools.ts";
 import { DashboardApp } from "./dashboard/dashboard-app.ts";
 import { DashboardStore } from "./dashboard/dashboard-data.ts";
@@ -96,11 +99,21 @@ import {
 	saveModelHealth,
 } from "./model-health.ts";
 import { IS_COMPILED_BINARY, isBunVirtualPath } from "./packaging.ts";
+import { scheduleTurnEndPing } from "./notify-tui.ts";
 import { postPrComment } from "./pr-review.ts";
 import { runPromoteCommand } from "./promote-cli.ts";
+import {
+	activeStyleName,
+	describeStyles,
+	listStyles,
+	resolveStyle,
+	saveActiveStyle,
+	styleSystemPromptAppendix,
+} from "./output-style.ts";
 import { providersArgumentCompletions, runProvidersCommand } from "./providers-command.ts";
 import { loadRecipes, runRecipe, userRecipesDir } from "./recipes.ts";
 import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
+import { buildInsightsReport, insightsHintLine, renderInsightsReport } from "./insights.ts";
 import { runRepomapCommand, withRepoMap } from "./repomap/repomap-cli.ts";
 import {
 	buildReviewerTask,
@@ -146,7 +159,7 @@ import {
 	unownHome,
 	updateChipLine,
 } from "./update-status.ts";
-import { runUsageCommand } from "./usage-cli.ts";
+import { fetchBridgeUsage, resolveBridgeUrl, runUsageCommand } from "./usage-cli.ts";
 import { createAutoVerifyRunner } from "./verify.ts";
 import { fetchPageContent, registerWebTools } from "./websearch.ts";
 import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
@@ -1399,6 +1412,13 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		// ---- fleet surface (async-lane tools, /tasks, renderers, widget)
 		if (!isSubagent) registerFleetSurface(pi, fleetManager, { cwd: opts.cwd });
 		// ---- plan-mode state
+	// TUI attention + auto-title runtime state (factory scope): turn timing
+	// for the deferred turn-complete ping, and the once-per-session title
+	// guard (the module's own guards do the real gating).
+	let turnStartTs: number | null = null;
+	let pendingTurnPing: { cancel(): void } | null = null;
+	const titledSessions = new Set<string>();
+
 		let planModeEnabled = false;
 		let executionMode = false;
 		let planItems: PlanStep[] = [];
@@ -2832,7 +2852,100 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			},
 		});
 
-		pi.registerCommand("repomap", {
+		// /btw — the 2026 consensus side-question lane (Claude Code /btw,
+		// Antigravity /btw, OpenCode /btw): one answer about the session,
+		// rendered in a dismissible overlay, never entering the transcript,
+		// the receipts ledger or AutoDream's note mining. See btw.ts.
+		pi.registerCommand("btw", {
+			description: "Ask a side question about the session — answered in an overlay, never added to the transcript: /btw <question>",
+			handler: async (args: string, ctx) => {
+				const question = (args ?? "").trim();
+				const entries =
+					typeof (ctx as any)?.sessionManager?.getEntries === "function"
+						? (ctx as any).sessionManager.getEntries()
+						: [];
+				const result = await answerBtw(entries, question);
+				if (result.error) {
+					ctx.ui.notify(result.error, "warning");
+					return;
+				}
+				const answer = result.answer ?? "";
+				if (ctx.mode === "tui" && ctx.hasUI) {
+					await ctx.ui.custom<void>(
+						(tui, theme, keybindings, done) =>
+							new BtwOverlay({
+								header: btwHeader(question),
+								answer,
+								theme,
+								keybindings,
+								done,
+							}),
+						{ overlay: false },
+					);
+				} else {
+					// print/RPC/headless: the answer prints as a notification block.
+					ctx.ui.notify(`btw · ${btwHeader(question).slice(6)}\n${answer}\n(side channel — not added to the session)`, "info");
+				}
+			},
+		});
+
+		// /output-style — Claude Code /output-style parity: built-in styles
+		// (default/concise/explanatory/proactive) + custom .unown/styles/*.md,
+		// persisted per project, applied as a system-prompt appendix.
+		pi.registerCommand("output-style", {
+			description: "Show or set the output style: /output-style [name] — built-ins + .unown/styles/*.md",
+			handler: async (args: string, ctx) => {
+				const name = (args ?? "").trim();
+				if (!name) {
+					ctx.ui.notify(`Output styles — active: ${activeStyleName(opts.cwd)}\n\n${describeStyles(opts.cwd)}\n\n/output-style <name> switches (persists to .unown/output-style.json; "default" clears).`, "info");
+					return;
+				}
+				const style = resolveStyle(name, opts.cwd);
+				if (!style) {
+					ctx.ui.notify(`Unknown output style "${name}".\n\n${describeStyles(opts.cwd)}\n\nCustom styles: drop a .md file (frontmatter name+description, body = directive) into .unown/styles/ or ~/.unown/agent/styles/.`, "warning");
+					return;
+				}
+				try {
+					saveActiveStyle(opts.cwd, style.name);
+				} catch (err: any) {
+					ctx.ui.notify(`/output-style failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+					return;
+				}
+				ctx.ui.notify(
+					`Output style set: ${style.name} (${style.source}) — applies from the next message${style.directive ? "" : " (no directive — base behavior)"}.`,
+					"info",
+				);
+			},
+		});
+
+		// /insights — Claude Code /insights parity: cross-session analytics
+		// over the user's OWN history (sessions, files, tools, tokens, friction).
+		pi.registerCommand("insights", {
+			description: "Cross-session analytics: what you worked on, top files/tools, tokens, friction (/insights [days])",
+			handler: async (args: string, ctx) => {
+				const daysRaw = (args ?? "").trim().split(/\s+/)[0] ?? "";
+				const days = /^\d+$/.test(daysRaw) ? Math.min(Number(daysRaw), 365) : 7;
+				ctx.ui.notify(`Building insights over the last ${days} day(s)…`, "info");
+				try {
+					const report = await buildInsightsReport({
+						cwd: opts.cwd,
+						days,
+						fetchUsage: (d) =>
+							fetchBridgeUsage(
+								resolveBridgeUrl(process.env),
+								d,
+								undefined,
+								process.env.BRIDGE_API_KEY || undefined,
+							),
+					});
+					ctx.ui.notify(`${renderInsightsReport(report)}\n${insightsHintLine()}`, "info");
+				} catch (err: any) {
+					ctx.ui.notify(`/insights failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+				}
+			},
+		});
+
+				pi.registerCommand("repomap", {
 			description:
 				"repo map: /repomap [--tokens N] [--refresh] | /repomap clear — the graph-ranked tree-sitter symbol map",
 			handler: async (args, ctx) => {
@@ -3806,12 +3919,55 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 			// Merge the base result (plan/goal context message) with the
 			// catalog system-prompt append (both are legal return shapes of
 			// one before_agent_start handler).
+			// Output style (Claude Code /output-style parity): the active
+			// style's directive rides as a system-prompt appendix. Composed
+			// with the advertised-subagent catalog above by appending BOTH to
+			// the one base system prompt — never by concatenating two
+			// already-extended copies (the duplication trap).
+			if (typeof event?.systemPrompt === "string" && event.systemPrompt) {
+				const style = resolveStyle(activeStyleName(opts.cwd), opts.cwd);
+				const styleAppendix = style ? styleSystemPromptAppendix(style) : "";
+				const catalogAppendix = catalogPrompt && catalogPrompt.startsWith(event.systemPrompt)
+					? catalogPrompt.slice(event.systemPrompt.length)
+					: "";
+				const mergedAppendix = [catalogAppendix.trim(), styleAppendix.trim()]
+					.filter((part) => part.length > 0)
+					.join("\n\n");
+				if (mergedAppendix) {
+					const mergedPrompt = `${event.systemPrompt}\n\n${mergedAppendix}`;
+					if (!base) return { systemPrompt: mergedPrompt };
+					return { ...base, systemPrompt: mergedPrompt };
+				}
+			}
 			if (!catalogPrompt) return base ?? undefined;
 			if (!base) return { systemPrompt: catalogPrompt };
 			return { ...base, systemPrompt: catalogPrompt };
 		});
 
+		pi.on("turn_start", async (_event: any) => {
+			// TUI turn-complete attention (notify-tui.ts): the fresh turn
+			// cancels any pending ping — notifications never stack.
+			turnStartTs = Date.now();
+			if (pendingTurnPing) {
+				pendingTurnPing.cancel();
+				pendingTurnPing = null;
+			}
+		});
+
 		pi.on("turn_end", async (event: any, ctx: any) => {
+			// TUI turn-complete attention: a long turn (UNOWN_NOTIFY_MS, default
+			// 120s) earns a deferred OSC-9 + BEL ping once the frame settles —
+			// the "come back, it's done" signal print mode always had.
+			try {
+				if (turnStartTs) {
+					const preview = assistantTextOf(event?.message);
+					pendingTurnPing =
+						scheduleTurnEndPing(Date.now() - turnStartTs, preview, { isTty: Boolean(process.stdout.isTTY) }) ?? null;
+				}
+				turnStartTs = null;
+			} catch {
+				/* attention must never break a turn */
+			}
 			if (!executionMode || planItems.length === 0) return;
 			const msg = event?.message;
 			if (msg?.role !== "assistant" || !Array.isArray(msg.content)) return;
@@ -3826,6 +3982,35 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 		});
 
 		pi.on("agent_end", async (event: any, ctx: any) => {
+			// ---- session auto-titles (the every-competitor feature): after the
+			// turn settles, a cheap background call names the session so /resume
+			// is scannable. All guards live in auto-title.ts (enabled flag,
+			// no-user-name, enough material, race check before the write);
+			// this layer adds the once-per-session-id memory + fire-and-forget
+			// posture (a title must never delay or fail a turn).
+			try {
+				const sm = (ctx as any)?.sessionManager;
+				const sessionFile = typeof sm?.getSessionFile === "function" ? sm.getSessionFile() : undefined;
+				const sessionId = typeof sm?.getSessionId === "function" ? sm.getSessionId() : undefined;
+				if (sessionFile && sessionId && !titledSessions.has(sessionId) && ctx?.mode === "tui") {
+					titledSessions.add(sessionId);
+					void maybeAutoTitleSession({
+						sessionFile,
+						sessionName: () => (typeof sm?.getSessionName === "function" ? sm.getSessionName() : undefined),
+						entries: () => (typeof sm?.getEntries === "function" ? sm.getEntries() : []),
+						chat: chatText,
+					}).then((result) => {
+						if (result.titled && opts.verbose) {
+								console.error(`[unown] session auto-titled: ${result.title}`);
+							}
+						if (!result.titled && opts.verbose) {
+								console.error(`[unown] auto-title skipped: ${result.reason}`);
+							}
+					});
+				}
+			} catch {
+				/* titling is best-effort */
+			}
 			// ---- goal completion gate (zcode/muse port): tag + todos + evidence
 			if (goal && goal.status === "active") {
 				const messages = Array.isArray(event?.messages) ? event.messages : [];
