@@ -1,17 +1,31 @@
 // Component test for src/components/landing/dex.tsx — the capability dex,
-// which since 2026-10-23 is also the band that plays the feature captures.
+// which since 2026-10-23 is also the band that plays the feature captures,
+// and since 2026-10-24 is browsed a screen at a time.
 //
 // The changed-line coverage gate (scripts/check_coverage.mjs) flags landing
 // edits that no test exercises — this file pins the band's contracts:
 //   - the list is a WAI-ARIA listbox with roving tabindex over ONE numbered
-//     spine (№ 001-020: ten drawn forms, ten filmed behaviors), and arrow keys
-//     move selection the way the handheld's cursor moves (selection follows
+//     spine (the eleven drawn forms, then the ten filmed behaviors), and arrow
+//     keys move selection the way the handheld's cursor moves (selection follows
 //     focus);
+//   - the numbers on the spine are DERIVED from array position — no entry
+//     types one, so appending the twenty-second capability cannot misnumber
+//     it, and reordering is the only edit that renumbers;
+//   - the screen selector (the Gen-3 mode select, returned) renders `all` plus
+//     one button per category with counts derived from the data, filters the
+//     list to its pool, snaps the cursor to the pool's first filmed entry, and
+//     walks with the same roving-tabindex arrows as the listbox;
+//   - every entry is addressable as `#dex-<id>` (URLs are UI): a cold deep
+//     link selects the entry, lands on its screen, and walking the list keeps
+//     the hash in step through replaceState — never pushState;
 //   - the search box filters through fuse.js (the band's one real dependency)
-//     with an N-of-total counter and an esc-to-clear escape;
-//   - the detail pane mounts all twenty-one entries (inactive ones `hidden` — the
+//     with an N-of-pool counter and an esc-to-clear escape, intersecting the
+//     active screen's pool;
+//   - the detail pane mounts all entries (inactive ones `hidden` — the
 //     proof band's pane contract), each with its capture stage or its honest
-//     empty plate, its cry (forms) and its receipt links;
+//     empty plate, its cry (forms) and its receipt links — and only the SHOWN
+//     pane mounts real `poster` attributes (hidden panes carry `data-poster`),
+//     so a growing catalog does not grow its up-front poster fetches;
 //   - the media is exactly the TUI-capture lane's audited set, playback is an
 //     effect decision and never an `autoPlay` attribute, and every figure in
 //     the lead is read off DEX — the rules the feature carousel brought with it
@@ -23,7 +37,17 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { DexSection } from "../dex";
-import { DEX, DEFAULT_INDEX, TALLY, isFilmed } from "../dex-data";
+import {
+  CATEGORY_DEFS,
+  DEX,
+  DEX_BY_CATEGORY,
+  DEFAULT_INDEX,
+  poolFor,
+  SCREENS,
+  screenOf,
+  TALLY,
+  isFilmed,
+} from "../dex-data";
 import { ENGINE_JOB_COUNTS } from "../engine-data";
 
 afterEach(async () => {
@@ -32,6 +56,10 @@ afterEach(async () => {
   // which bun reports as a suite error and the coverage gate treats as a
   // red suite. Same reason as loop.test.tsx.
   await new Promise((r) => setTimeout(r, 320));
+  // The band writes the selected entry into the URL hash (replaceState), and
+  // the deep-link effect reads it on mount — without this reset, one test's
+  // walk would select the next test's opening pane.
+  window.location.hash = "";
   cleanup();
 });
 
@@ -65,7 +93,12 @@ describe("landing DexSection", () => {
       expect(el.getAttribute("tabIndex")).toBe(i === DEFAULT_INDEX ? "0" : "-1");
     }
     expect(DEX[DEFAULT_INDEX].name).toBe("Task");
-    // The spine: forms № 001-011, behaviors № 012-021, in data order.
+    // The spine's numbers are derived from position, so the literals below
+    // pin the DERIVATION (forms first, then behaviors, three-digit padded),
+    // not hand-typed values that could drift from the data.
+    expect(DEX.map((e) => e.no)).toEqual(
+      Array.from({ length: DEX.length }, (_, i) => String(i + 1).padStart(3, "0")),
+    );
     expect(options[0].textContent).toContain("001");
     expect(options[0].textContent).toContain("Websearch");
     expect(options[9].textContent).toContain("010");
@@ -126,6 +159,158 @@ describe("landing DexSection", () => {
     expect(options()[0].getAttribute("aria-selected")).toBe("true");
   });
 
+  /* ------------------------------------------------------------------ */
+  /* the screens — the category taxonomy and the mode select            */
+  /* ------------------------------------------------------------------ */
+
+  test("the taxonomy covers every entry exactly once, forms by their type", () => {
+    // The data-level contract the selector reduces over: every entry maps to
+    // exactly one declared category, a form's screen is its type, and the
+    // four pools partition the spine — so a taxonomy edit that strands an
+    // entry (or double-books it) fails here before it ships a broken screen.
+    for (const e of DEX) {
+      const cat = screenOf(e);
+      expect(CATEGORY_DEFS.some((c) => c.id === cat), `${e.name} → ${cat}`).toBe(true);
+      if (e.kind === "form") expect(screenOf(e)).toBe(e.type);
+      else expect(["workflow", "extend"]).toContain(e.screen);
+    }
+    const pooled = CATEGORY_DEFS.reduce(
+      (n, c) => n + (DEX_BY_CATEGORY.get(c.id)?.length ?? 0),
+      0,
+    );
+    expect(pooled).toBe(TALLY.total);
+    // Every entry id is unique and URL-safe — it is the deep-link handle.
+    const ids = DEX.map((e) => e.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) expect(id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+  });
+
+  test("the selector renders one button per screen with counts read off the data", () => {
+    const { container } = render(<DexSection />);
+    const group = container.querySelector('[role="group"][aria-label="dex screens"]');
+    expect(group).toBeTruthy();
+    const buttons = Array.from(group!.querySelectorAll("button"));
+    expect(buttons.length).toBe(SCREENS.length);
+    // Walk order: `all` first, then the categories in the order the lead
+    // names them. The counts are derived — a new entry moves them by itself.
+    for (const [i, s] of SCREENS.entries()) {
+      const def = CATEGORY_DEFS.find((c) => c.id === s);
+      const count = poolFor(s).length;
+      expect(buttons[i].textContent).toContain(def ? def.label : "all");
+      expect(buttons[i].textContent).toContain(String(count));
+      expect(buttons[i].getAttribute("aria-pressed")).toBe(s === "all" ? "true" : "false");
+      // Roving tabindex: only the active screen is a tab stop.
+      expect(buttons[i].getAttribute("tabIndex")).toBe(s === "all" ? "0" : "-1");
+      // No aria-label override (WCAG 2.5.3 label-in-name: the visible text is
+      // the accessible name), and the gloss rides in the name as an sr-only
+      // tail — so a screen reader hears the whole line.
+      expect(buttons[i].hasAttribute("aria-label")).toBe(false);
+      expect(buttons[i].textContent).toContain(def ? def.gloss : "the whole spine");
+    }
+  });
+
+  test("a screen filters the list to its pool and snaps the cursor to its first footage", () => {
+    const { container } = render(<DexSection />);
+    const engineBtn = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[role="group"] button'),
+    ).find((b) => b.textContent?.includes("engine"))!;
+    fireEvent.click(engineBtn);
+    const pool = DEX_BY_CATEGORY.get("engine")!;
+    const options = optionsIn(container);
+    expect(options.length).toBe(pool.length);
+    // Every visible row belongs to the screen — and keeps its spine number,
+    // which is why the numbers on a category screen are not contiguous: the
+    // spine is arrival order, the screen is a lens over it.
+    for (const [i, o] of options.entries()) {
+      expect(o.textContent).toContain(pool[i].no);
+      expect(o.textContent).toContain(pool[i].name);
+    }
+    // The cursor snapped to the pool's first FILMED entry (memory, harness,
+    // router and dream are pending — hooks is the engine's first footage),
+    // never to a row the screen cannot show.
+    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Hooks");
+    // The tally reads against the pool, not the whole spine.
+    expect(screen.getByText(`${pool.length}/${pool.length}`)).toBeTruthy();
+    // And switching back to `all` keeps the walkable spine.
+    const allBtn = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[role="group"] button'),
+    )[0];
+    fireEvent.click(allBtn);
+    expect(optionsIn(container).length).toBe(TALLY.total);
+  });
+
+  test("arrow keys walk the screens with the same roving-tabindex contract", () => {
+    const { container } = render(<DexSection />);
+    const group = container.querySelector('[role="group"]') as HTMLElement;
+    const buttons = () =>
+      Array.from(group.querySelectorAll<HTMLButtonElement>("button"));
+    buttons()[0].focus();
+    // Selection follows focus, wrapping, exactly like the listbox below it.
+    fireEvent.keyDown(group, { key: "ArrowRight" });
+    expect(buttons()[1].getAttribute("aria-pressed")).toBe("true");
+    expect(document.activeElement).toBe(buttons()[1]);
+    expect(optionsIn(container).length).toBe(DEX_BY_CATEGORY.get("session")!.length);
+    fireEvent.keyDown(group, { key: "End" });
+    expect(buttons()[SCREENS.length - 1].getAttribute("aria-pressed")).toBe("true");
+    // The extend screen has no footage yet — its honest empty stage IS the
+    // point, so the cursor snaps to the pool's first entry, not past it.
+    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Goals");
+    fireEvent.keyDown(group, { key: "ArrowLeft" });
+    expect(buttons()[SCREENS.length - 2].getAttribute("aria-pressed")).toBe("true");
+    expect(document.activeElement).toBe(buttons()[SCREENS.length - 2]);
+  });
+
+  test("search intersects the active screen's pool", () => {
+    const { container } = render(<DexSection />);
+    // On `all` the search behaves exactly as it did before the screens.
+    const input = screen.getByLabelText("search the dex");
+    fireEvent.change(input, { target: { value: "checkpoints" } });
+    expect(optionsIn(container).length).toBe(1);
+    fireEvent.keyDown(input, { key: "Escape" });
+    // On a category screen, the query narrows WITHIN the screen — a search
+    // for a session tool on the engine screen says so, honestly, instead of
+    // reaching across the filter the reader chose.
+    const engineBtn = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[role="group"] button'),
+    ).find((b) => b.textContent?.includes("engine"))!;
+    fireEvent.click(engineBtn);
+    fireEvent.change(input, { target: { value: "browser" } });
+    expect(screen.getByText(/no entry matches/i)).toBeTruthy();
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(optionsIn(container).length).toBe(DEX_BY_CATEGORY.get("engine")!.length);
+  });
+
+  /* ------------------------------------------------------------------ */
+  /* deep links — URLs are UI                                            */
+  /* ------------------------------------------------------------------ */
+
+  test("a cold #dex-<id> arrival selects the entry and lands on its screen", () => {
+    window.location.hash = "#dex-review";
+    const { container } = render(<DexSection />);
+    // № 015 Review is a workflow behavior: the pane shows it, the screen is
+    // its own, and the list the reader then walks is the workflow pool.
+    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Review");
+    const options = optionsIn(container);
+    expect(options.length).toBe(DEX_BY_CATEGORY.get("workflow")!.length);
+    expect(
+      options.some((o) => o.getAttribute("aria-selected") === "true" && o.textContent?.includes("Review")),
+    ).toBe(true);
+    // The mount deep link owns the hash: the first render must not rewrite
+    // it away (the replaceState sync exists to write CHANGES, not echoes).
+    expect(window.location.hash).toBe("#dex-review");
+  });
+
+  test("walking the list keeps the URL in step through replaceState", () => {
+    const { container } = render(<DexSection />);
+    expect(window.location.hash).toBe(""); // the first render writes nothing
+    fireEvent.click(optionsIn(container)[10]); // № 011 Browser
+    expect(window.location.hash).toBe("#dex-browser");
+    // The pane followed, and the URL now names what the reader is looking at.
+    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Browser");
+    fireEvent.click(optionsIn(container)[20]); // № 021 Skills
+    expect(window.location.hash).toBe("#dex-skills");
+  });
+
   test("the pane contract: twenty-one entries mounted, the inactive ones hidden", () => {
     const { container } = render(<DexSection />);
     const panes = articles(container);
@@ -162,7 +347,6 @@ describe("landing DexSection", () => {
       expect(v.getAttribute("loop")).toBe("");
       expect(v.getAttribute("playsinline")).toBe("");
       expect(v.getAttribute("preload")).toBe("none");
-      expect(v.getAttribute("poster")?.length).toBeGreaterThan(0);
       // loading="lazy" belongs to images: on a <video> it delays the poster.
       expect(v.hasAttribute("loading")).toBe(false);
       const sources = Array.from(v.querySelectorAll("source[type]"));
@@ -170,6 +354,22 @@ describe("landing DexSection", () => {
       for (const s of sources) {
         expect(s.getAttribute("src")).toContain("/landing/tui/");
       }
+    }
+    // Posters are a live-pane attribute: a `poster` on a hidden pane still
+    // fetches (display:none does not stop it — measured: 9 eager fetches,
+    // ~1 MB, for one visible stage), so only the pane the reader can see
+    // mounts the real attribute and the hidden panes carry `data-poster`,
+    // swapped in by React the moment a pane is shown. Every movie still
+    // names its poster in the DOM — the pane contract holds.
+    const shown = shownPane(container)[0];
+    for (const v of Array.from(shown.querySelectorAll("video"))) {
+      expect(v.getAttribute("poster")?.length).toBeGreaterThan(0);
+    }
+    const hidden = videos.filter((v) => !shown.contains(v));
+    expect(hidden.length).toBe(TALLY.videos - shown.querySelectorAll("video").length);
+    for (const v of hidden) {
+      expect(v.getAttribute("poster")).toBeNull();
+      expect(v.getAttribute("data-poster")?.length).toBeGreaterThan(0);
     }
     const captures = bySrc(container, "/landing/tui/");
     expect(captures.length).toBe(TALLY.stills);

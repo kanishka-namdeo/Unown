@@ -5,9 +5,10 @@
 The marketing landing page served at `/` and auto-deployed to Vercel by a push to
 `main`. Nine self-contained bands plus the shared primitives they are built
 from: a hand-drawn 28-form "Unown script", the Pokédex-derived lexicon each
-form decodes, the capability dex that catalogs the ten feature creatures AND
-the filmed surfaces around them (one numbered spine № 001-020, each entry with
-its capture or its honest empty stage), an accessible terminal session replay,
+form decodes, the capability dex that catalogs the eleven feature creatures AND
+the filmed surfaces around them (one numbered spine browsed a screen at a
+time — every entry with its capture or its honest empty stage), an accessible
+terminal session replay,
 the shipping rail that renders `CHANGELOG.md`, and the effects layer that owns
 scroll reveals, the letter-rain and the Konami easter egg. Three of those bands
 carry data derived from repository artifacts instead of authored here — the
@@ -29,7 +30,12 @@ half a viewport shorter than the eight-band page it replaced. The 2026-10-23
 round folded the feature-capture carousel (band five) back INTO that dex, so
 the catalog and its footage are one instrument: nine bands, 12.9vh, 3,016
 words, and the combined dex-plus-capture content went from 1,872px to 1,731px
-while the spine doubled from ten entries to twenty.
+while the spine doubled from ten entries to twenty. The 2026-10-24 round
+then re-plumbed the dex for growth ("the category screens",
+`docs/landing-research.md`): derived numbers, a category taxonomy that lives
+in the data, a screen selector over the pools, per-entry deep links and
+lazy posters — the band's height and its up-front fetches stopped being a
+function of how many capabilities the catalog holds.
 
 ## Ownership
 
@@ -569,10 +575,10 @@ parallel ones.
     (defining features of ONE named character), not by genre resemblance —
     VLMs over-trigger on chibi creatures and flip between rounds.
   - **Placement: the capability dex (`dex.tsx` + `dex-data.ts`) is the ONE
-    canonical home — all ten creatures, the capability copy AND every feature
+    canonical home — all eleven creatures, the capability copy AND every feature
     capture live there.** The dex is band #3 (magma), an FRLG-style two-pane:
     a searchable numbered list on ONE spine (fuse.js drives the search) and a
-    detail pane that mounts ALL twenty entries with the inactive ones `hidden`
+    detail pane that mounts ALL entries with the inactive ones `hidden`
     (the proof band's pane contract — crawlers and gates read every entry),
     each with its capture or its empty stage, and — for a form — its specimen
     at 3×, its game-voice entry on the gb-box, the moved capability copy under
@@ -587,9 +593,62 @@ parallel ones.
     benchmark table would be a costume"). The hero's cli expander names
     the session tools and links `#dex`; it does not describe them
     (`dex-data.ts` owns the descriptions — see the canonical-homes list).
-  - **The spine is two kinds, and the difference is load-bearing.** № 001-010
+  - **The dex scales by deriving, and the 2026-10-24 round is the contract**
+    (`docs/landing-research.md`, "the category screens"):
+    - **numbers are derived, never typed.** No entry in `dex-data.ts` carries
+      a hand-written `no` — `DEX` stamps it from array position at module
+      load. Appending an entry is a one-object edit to `RAW` and the number
+      is the next one; reordering the array is the one edit that renumbers,
+      so the spine's order is contract, not accident. `dex.test.tsx` pins
+      the derivation.
+    - **the screens are a category taxonomy that lives in the data.**
+      `CATEGORY_DEFS` (label + gloss each) + `SCREENS` (`all` first, then the
+      categories) are the whole selector; the buttons, the per-screen
+      counts, the pools the search intersects and the screen a deep link
+      lands on all reduce over them. A form's screen is its `type`; a
+      behavior declares its own `screen` field (named `screen` — a form's
+      `category` is its game-voice gloss, and one field name must not mean
+      two things across the union). The selector is a `role="group"` of
+      `aria-pressed` buttons with the same roving-tabindex arrows as the
+      listbox — a filter that changes one list's membership, not a tab set
+      with panels it does not have. The visible text IS each button's
+      accessible name (WCAG 2.5.3 label-in-name — no `aria-label` override);
+      the gloss rides in the name as an sr-only tail.
+    - **adding a capability is the documented workflow**: append one object
+      to `RAW` with its `kind`, stable URL-safe `id` (also the deep-link
+      handle — never rename one once shipped), copy, `receipts` and
+      `captures`. Everything else — number, screen, counts, default pane,
+      the tallies the lead prints — derives. `dex.test.tsx` fails the run
+      on a taxonomy edit that strands or double-books an entry.
+    - **URLs are UI.** Every entry is addressable as `#dex-<id>`: a cold
+      arrival selects it, lands on its screen and scrolls the band into
+      view (the proof tabs' hash pattern), and walking the list keeps the
+      hash in step through `history.replaceState` — never `pushState`, so
+      Back keeps meaning "leave the page". The first render never writes
+      the hash (a cold deep link owns it).
+    - **the list column has a ceiling, and the ceiling is the design.** The
+      listbox is capped at `max-h-[26rem]` below `lg` and `lg:max-h-[65rem]`
+      above it, and the 65rem is arithmetic, not taste: 65rem list + ~11rem
+      of column chrome (screens row, search box, legend) stays under the
+      detail pane's `lg:min-h-[76rem]` floor, so the BAND's height is bound
+      to the pane no matter how many entries ship — the catalog grows, the
+      band does not. If the pane floor is re-measured, keep the 65 in step
+      (76 − 11). Past ~24 whole-spine rows the `all` screen scrolls inside
+      its own window — the handheld's LIST screen scrolled too — and the
+      category screens keep each view short.
+    - **posters are live-pane attributes.** A `poster` attribute on a
+      `<video>` fetches its image the moment the element enters the DOM —
+      `display:none` does not stop it (measured: 9 eager fetches, ~1 MB,
+      for one visible stage). Only the pane the reader can see renders
+      `poster`; the hidden panes carry `data-poster`, and React adds the
+      real attribute the moment a pane is shown. Every reel still mounts
+      and every poster is still named in the SSR DOM — the pane contract
+      holds; the fetch does not scale with the catalog. The no-JS reader
+      keeps the default pane's poster, which is the only pane they can
+      reach.
+  - **The spine is two kinds, and the difference is load-bearing.** № 001-011
     are `form` entries: a drawn creature, a `category`, a `type` (session or
-    engine), game-voice `entry`, `weakness` and `habitat`. № 011-020 are
+    engine), game-voice `entry`, `weakness` and `habitat`. № 012-021 are
     `behavior` entries: a filmed surface that belongs to no single form, so it
     carries a one-line `summary`, its practice lines and its receipts — and NO
     specimen, NO flavor and NO weakness row. `dex.test.tsx` pins that split

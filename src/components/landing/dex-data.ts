@@ -2,28 +2,37 @@ import type { CreatureId } from "./creature";
 import { ENGINE_JOB_COUNTS } from "./engine-data";
 
 /**
- * The capability dex — twenty-one catalogued capabilities as one numbered spine.
+ * The capability dex — a growing catalog on one numbered spine, browsed a
+ * screen at a time.
  *
- * Two kinds share one list, one cursor and one detail pane:
+ * Scalability is the file's first contract (2026-10-24 round,
+ * docs/landing-research.md "the category screens"): the project keeps adding
+ * capabilities, so the design that held at twenty-one entries has to hold at
+ * a hundred without the band growing a hundred-row list. Three rules do it:
  *
- *  - `form` (№ 001-011) is a feature the page draws: one original creature
- *    sprite (`creature.tsx`, the pipeline in `scripts/creature_sprites.mjs`),
- *    a game-voice `entry`, a `weakness` and the real capability copy. The dex
- *    is the ONE canonical home for creature art and capability prose; the
- *    retired placements (the hero's party strip, the loop's bento) stay
- *    retired.
- *  - `behavior` (№ 012-021) is a feature the page films instead: a workflow
- *    or surface that is not one form's capability, so it carries no specimen
- *    and no flavor — one summary gloss, its practice lines and its receipt.
- *    Lore stays on the forms, which is what keeps the page's lore:tech rule
- *    answerable rather than aspirational.
+ *  - **the number is derived, never typed.** No entry carries a hand-written
+ *    `no` — it is stamped from array position at module load. Appending the
+ *    twenty-second capability is a one-object edit; the number it gets is
+ *    the next one, not a decision. Reordering the array is the one edit that
+ *    renumbers, so the spine's order is contract, not accident.
+ *  - **the screen is a category, and categories live in data.** The selector
+ *    row, the per-screen counts, the pool the search intersects and the
+ *    screen a deep link lands on all reduce over `CATEGORY_DEFS` — adding a
+ *    category is a one-object edit there, and adding an entry to a category
+ *    is the `screen`/`type` field it already carries.
+ *  - **two kinds still share one list** — `form` entries (a drawn creature,
+ *    game-voice `entry`, `weakness`, real capability copy) and `behavior`
+ *    entries (a filmed or filmed-someday surface that belongs to no single
+ *    form: one `summary` gloss, practice lines, receipts). Lore stays on the
+ *    forms, which is what keeps the page's lore:tech rule answerable.
  *
- * Every entry carries `captures`: the feature's own terminal capture. Media
- * here is the TUI-capture lane's audited set verbatim (`public/landing/tui/
- * README.md`; workflow contract in `docs/tui-capture-workflow.md`) — nothing
- * was filmed for this band and nothing is made up. An entry the harness has
- * not turned through holds a `{ kind: "pending" }` element and renders the
- * honest empty stage, so the catalog's gap is a visible state, not a footnote.
+ * Adding a capability, the whole workflow: append one object to `RAW` with
+ * its `kind`, stable `id`, copy, `receipts` and `captures` — everything the
+ * page prints (its number, its screen, every tally, the default pane) is
+ * derived. A capture is `REEL(…)`/`STILL(…)` from the TUI-capture lane's
+ * audited set or `PENDING` for the honest empty stage — nothing is filmed
+ * by hand and nothing is made up (`public/landing/tui/README.md`; workflow
+ * contract in `docs/tui-capture-workflow.md`).
  *
  * Voice: `entry` is game-voice flavor — what the form IS, in the collector
  * register the wall art already speaks (generic creature-collector vocabulary
@@ -32,9 +41,9 @@ import { ENGINE_JOB_COUNTS } from "./engine-data";
  * `scripts/landing_claims.mjs`. `weakness` is the skeptic's pain the feature
  * answers, phrased as a dex weakness row.
  *
- * `DexSection` renders this list verbatim; `dex.test.tsx` pins the spine and
- * the derived tallies, `creature.test.tsx` pins that the forms are exactly the
- * ten sprites.
+ * `DexSection` renders this list verbatim; `dex.test.tsx` pins the spine,
+ * the screens and the derived tallies, `creature.test.tsx` pins that the
+ * forms are exactly the eleven sprites.
  */
 
 /** The two sides of the house: what joins a session vs what runs in the engine. */
@@ -76,13 +85,73 @@ export type FormEntry = DexBase & {
 
 export type BehaviorEntry = DexBase & {
   kind: "behavior";
-  /** A stable slug, never a `CreatureId` — behaviors have no specimen. */
+  /** A stable slug, never a `CreatureId` — behaviors have no specimen. The
+   * slug is also the deep-link handle (`#dex-<id>`), so it is URL-safe and
+   * never renamed once shipped. */
   id: string;
+  /** The screen this surface browses under — a behavior never joins the
+   * session/engine split, so it declares its own. (Named `screen`, not
+   * `category`: a form's `category` is its game-voice gloss, and one field
+   * name must not mean two things across the union.) */
+  screen: BehaviorCategory;
   /** One-line gloss under the name. */
   summary: string;
 };
 
 export type DexEntry = FormEntry | BehaviorEntry;
+
+/* ------------------------------------------------------------------ */
+/* the screens — the taxonomy that keeps a growing catalog browsable    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The dex's screens. The spine stays ONE list — every entry keeps its
+ * number for life — but the list is browsed a screen at a time, and a
+ * screen is a category. Four exist today; adding one is a one-object edit
+ * to `CATEGORY_DEFS`, and the selector row, the counts, the pools and the
+ * deep-link landing all follow without another edit.
+ *
+ * A form's screen is its `type` — what runs where is already the split the
+ * pane's badge prints — and a behavior declares its own `screen`, since
+ * a filmed surface belongs to no single form. The mapping is pinned by
+ * `dex.test.tsx`, so a taxonomy edit that strands an entry fails the run.
+ */
+export type DexCategory = "session" | "engine" | "workflow" | "extend";
+
+/** The screens a behavior can belong to — it never joins the session/engine
+ * split, which is the forms' own "where it runs" pair. */
+export type BehaviorCategory = Exclude<DexCategory, "session" | "engine">;
+
+export interface CategoryDef {
+  id: DexCategory;
+  /** The screen button's word, lowercase like the rest of the chrome. */
+  label: string;
+  /** What the screen holds, one line in the collector register — the
+   * button's aria-label, so the gloss travels with the control. */
+  gloss: string;
+}
+
+/** The category set, in the order the section lead names them. */
+export const CATEGORY_DEFS: readonly CategoryDef[] = [
+  { id: "session", label: "session", gloss: "what joins every session" },
+  { id: "engine", label: "engine", gloss: "what runs while you are away" },
+  { id: "workflow", label: "workflows", gloss: "the surfaces you drive" },
+  { id: "extend", label: "configure", gloss: "what you point at your own work" },
+];
+
+/** `all` is a screen too — the default one: the whole spine, walkable end
+ * to end, and the pool the search starts from. */
+export type DexScreen = "all" | DexCategory;
+
+/** The screen set in walk order — the selector row renders this verbatim. */
+export const SCREENS: readonly DexScreen[] = [
+  "all",
+  ...CATEGORY_DEFS.map((c) => c.id),
+];
+
+/** A form's screen is its type; a behavior's is declared on the entry. */
+export const screenOf = (e: DexEntry): DexCategory =>
+  e.kind === "form" ? e.type : e.screen;
 
 const SRC = (file: string) =>
   `https://github.com/kanishka-namdeo/Unown/blob/main/pi-repo/packages/self-learning/src/${file}`;
@@ -135,14 +204,27 @@ const PARITY_RECEIPTS = [
   ["auto-compact.ts", SRC("auto-compact.ts")],
 ] as const;
 
-export const DEX: readonly DexEntry[] = [
+/**
+ * The catalog itself. Entries carry NO hand-typed number — `no` is stamped
+ * from array position at module load, which is the derive-don't-type rule
+ * applied to the spine itself: appending an entry is a one-object edit and
+ * the number it gets is the next one, never a choice, never a duplicate.
+ * Reordering the array is the one edit that renumbers, and the spine's
+ * order is part of the page's contract (the forms first, then the
+ * behaviors) — `dex.test.tsx` pins both halves stay contiguous.
+ */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
+type DexEntryInput = DistributiveOmit<DexEntry, "no">;
+
+const RAW: readonly DexEntryInput[] = [
   /* ---------------------------------------------------------------- */
   /* № 001-011 — the forms: drawn, catalogued, filmed where filmed      */
   /* ---------------------------------------------------------------- */
   {
     kind: "form",
     id: "websearch",
-    no: "001",
     name: "Websearch",
     category: "the crawler form",
     type: "session",
@@ -165,7 +247,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "mcp",
-    no: "002",
     name: "Mcp",
     category: "the many-socketed form",
     type: "session",
@@ -185,7 +266,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "task",
-    no: "003",
     name: "Task",
     category: "the splitting form",
     type: "session",
@@ -211,7 +291,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "lsp",
-    no: "004",
     name: "Lsp",
     category: "the reading form",
     type: "session",
@@ -229,7 +308,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "memory",
-    no: "005",
     name: "Memory",
     category: "the keeper form",
     type: "engine",
@@ -246,7 +324,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "harness",
-    no: "006",
     name: "Harness",
     category: "the proving form",
     type: "engine",
@@ -263,7 +340,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "router",
-    no: "007",
     name: "Router",
     category: "the wayfinding form",
     type: "engine",
@@ -281,7 +357,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "dream",
-    no: "008",
     name: "Dream",
     category: "the sleeping form",
     type: "engine",
@@ -298,7 +373,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "hooks",
-    no: "009",
     name: "Hooks",
     category: "the watchful form",
     type: "engine",
@@ -320,7 +394,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "sdlc",
-    no: "010",
     name: "Parity",
     category: "the checklist form",
     type: "engine",
@@ -343,7 +416,6 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "form",
     id: "browser",
-    no: "011",
     name: "Browser",
     category: "the window form",
     type: "session",
@@ -375,7 +447,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "fix-loop",
-    no: "012",
+    screen: "workflow",
     name: "The fix loop",
     summary: "the working loop, start to finish",
     practice: [
@@ -387,7 +459,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "plan-mode",
-    no: "013",
+    screen: "workflow",
     name: "Plan mode",
     summary: "read-only until you approve",
     practice: [
@@ -399,7 +471,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "checkpoints",
-    no: "014",
+    screen: "workflow",
     name: "Checkpoints",
     summary: "write, list, undo, redo — one session",
     practice: [
@@ -411,7 +483,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "review",
-    no: "015",
+    screen: "workflow",
     name: "Review",
     summary: "adversarial reviewers before the ship",
     practice: [
@@ -423,7 +495,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "wiki",
-    no: "016",
+    screen: "workflow",
     name: "The wiki",
     summary: "generate this repository's wiki, then search it",
     practice: [
@@ -438,7 +510,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "doctor",
-    no: "017",
+    screen: "workflow",
     name: "Doctor",
     summary: "the CLI outside a session",
     practice: [
@@ -450,7 +522,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "split-view",
-    no: "018",
+    screen: "workflow",
     name: "Split view",
     summary: "the display mode's own band, dock and transcript",
     practice: [
@@ -467,7 +539,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "goals",
-    no: "019",
+    screen: "extend",
     name: "Goals",
     summary: "objectives closed against cited evidence",
     practice: [
@@ -479,7 +551,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "routines",
-    no: "020",
+    screen: "extend",
     name: "Routines",
     summary: "recurring runs on real recurrence semantics",
     practice: [
@@ -491,7 +563,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "skills",
-    no: "021",
+    screen: "extend",
     name: "Skills",
     summary: "instruction files loaded on demand",
     practice: [
@@ -501,6 +573,30 @@ export const DEX: readonly DexEntry[] = [
     captures: PENDING,
   },
 ];
+
+/** The numbered spine — `RAW` in walk order, each entry stamped with its
+ * position. This is the ONE catalog export the band renders; every figure,
+ * screen pool and lookup below reduces over it. (The cast is the price of a
+ * distributive Omit: the spread of a union widens in TS, while the runtime
+ * shape is exactly `DexEntry` — `no` added, nothing else touched.) */
+export const DEX: readonly DexEntry[] = RAW.map(
+  (entry, i) => ({ ...entry, no: String(i + 1).padStart(3, "0") }) as DexEntry,
+);
+
+/** Every screen's pool, derived. A category that grows is a pool that
+ * grows; nothing else on the page moves. */
+export const DEX_BY_CATEGORY: ReadonlyMap<
+  DexCategory,
+  readonly DexEntry[]
+> = new Map(
+  CATEGORY_DEFS.map(
+    (c) => [c.id, DEX.filter((e) => screenOf(e) === c.id)] as const,
+  ),
+);
+
+/** The pool a screen walks — `all` is the whole spine. */
+export const poolFor = (screen: DexScreen): readonly DexEntry[] =>
+  screen === "all" ? DEX : (DEX_BY_CATEGORY.get(screen) ?? []);
 
 /* ------------------------------------------------------------------ */
 /* derived tallies — every figure on the band is read off this list    */

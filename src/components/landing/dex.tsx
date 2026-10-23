@@ -5,13 +5,18 @@ import { useReducedMotion } from "framer-motion";
 import Fuse from "fuse.js";
 import { Creature } from "./creature";
 import {
+  CATEGORY_DEFS,
   DEX,
   DEFAULT_INDEX,
   isFilmed,
+  poolFor,
+  SCREENS,
+  screenOf,
   TALLY,
   TALLY_SENTENCE,
   type Capture,
   type DexEntry,
+  type DexScreen,
   type DexType,
 } from "./dex-data";
 import { FadeUp, PixelCursor, SectionHead, TerminalWindow, toneAttr, useReducedMotionAfterMount } from "./shell";
@@ -21,15 +26,34 @@ import { FadeUp, PixelCursor, SectionHead, TerminalWindow, toneAttr, useReducedM
  * holds BOTH what the agent can do and the footage that shows it.
  *
  * It absorbed the feature-capture carousel (band five, `feature-carousel.tsx`)
- * on the merge: one numbered spine № 001-020, where the ten drawn forms keep
- * their specimen, flavor and weakness and the ten behaviors are the filmed
- * surfaces that belong to no single form. One search, one cursor, one detail
- * pane — the reader stops meeting the capability at position 3 and its
- * evidence at position 5.
+ * on the merge: one numbered spine, where the drawn forms keep their
+ * specimen, flavor and weakness and the behaviors are the filmed surfaces
+ * that belong to no single form. One search, one cursor, one detail pane —
+ * the reader stops meeting the capability at position 3 and its evidence at
+ * position 5.
  *
- * The interaction is the Gen-3 Pokédex pattern (docs/landing-research.md
- * Part 15): a numbered list you walk with the arrow keys, a search box, and a
- * detail pane that redraws the moment the cursor moves — selection follows
+ * THE SCREENS (2026-10-24 round, docs/landing-research.md "the category
+ * screens"): the catalog keeps growing, and the design that held one flat
+ * twenty-row list does not hold a hundred of them — the list column grows a
+ * row per feature while the pane column stays fixed, and a reader looking
+ * for one capability walks the whole spine to find it. So the spine is now
+ * browsed a SCREEN at a time — the Gen-3 handheld's mode select, returned:
+ * `all` plus one button per category, counts derived from the data, the
+ * search intersecting the active screen's pool. The spine itself does not
+ * shrink — every pane still mounts below — but the LIST a reader walks
+ * stays the size of one screen, which is the size that stays browsable.
+ * Categories live in `dex-data.ts` (`CATEGORY_DEFS`), not here: adding one
+ * is a one-object data edit, and this band renders whatever it finds.
+ *
+ * URLs are UI: every entry is addressable as `#dex-<id>` — a cold arrival
+ * selects the entry, lands on its screen and scrolls the band into view
+ * (the same pattern the proof band's tabs use), and walking the list keeps
+ * the hash in step through `history.replaceState` (never `pushState` —
+ * Back must keep meaning "leave the page").
+ *
+ * The interaction stays the Gen-3 Pokédex pattern (docs/landing-research.md
+ * Part 15): a numbered list you walk with the arrow keys, a search box, and
+ * a detail pane that redraws the moment the cursor moves — selection follows
  * focus, exactly like the handheld's cursor. No npm library renders this with
  * a project's OWN sprites, so the pattern is built here in the page's
  * furniture and the one genuine dependency is real: fuse.js drives the search.
@@ -43,20 +67,34 @@ import { FadeUp, PixelCursor, SectionHead, TerminalWindow, toneAttr, useReducedM
  * `autoPlay` attribute: the active reel starts muted + looping after hydration,
  * when reduced motion is already known; under `prefers-reduced-motion` the
  * stage keeps its poster and the explicit button does the starting; nothing
- * auto-advances, because the reader is the rotor. `loading="lazy"` stays on
+ * auto-advances, because the reader is the rotor.
+ *
+ * POSTERS ARE LAZY THE WAY THE PANE CONTRACT ALLOWS (2026-10-24): every reel
+ * still mounts, but a `poster` attribute on a `<video>` fetches its image the
+ * moment the element enters the DOM — `display:none` does not stop it, and
+ * twenty mounted panes meant every poster on the page loading up front
+ * (measured: 9 fetches, ~1 MB, for one visible stage). So only the pane the
+ * reader can actually see renders `poster`; the others carry `data-poster`, and
+ * React adds the real attribute the moment a pane is shown — the fetch happens
+ * on demand, the SSR DOM still names every reel, and a catalog that grows to
+ * fifty movies still fetches one poster on load. `loading="lazy"` stays on
  * the still image only — on a `<video>` it would delay the poster too.
  *
  * A11y: the list is a WAI-ARIA listbox (roving tabindex, arrows / Home / End,
- * selection follows focus) and the detail pane mounts ALL twenty-one entries with
- * the inactive ones `hidden` — the proof band's pane contract, so every
- * capability line, receipt and pending plate stays in the DOM for crawlers and
- * for the `landing_*.mjs` gates. Exactly two live regions: the search tally and
- * the selection readout. The cry is an ORIGINAL synthesized chirp (Web Audio
- * square wave, deterministic per creature) — nothing sampled, nothing borrowed,
- * inert where AudioContext does not exist.
+ * selection follows focus) and the screen selector is a `role="group"` of
+ * `aria-pressed` buttons with the same roving-tabindex arrows — a filter that
+ * changes one list's membership, honestly labelled as pressed-state, not
+ * dressed up as tabs with panels it does not have. The detail pane mounts ALL
+ * entries with the inactive ones `hidden` — the proof band's pane contract, so
+ * every capability line, receipt and pending plate stays in the DOM for
+ * crawlers and for the `landing_*.mjs` gates. Exactly two live regions: the
+ * search tally and the selection readout. The cry is an ORIGINAL synthesized
+ * chirp (Web Audio square wave, deterministic per creature) — nothing sampled,
+ * nothing borrowed, inert where AudioContext does not exist.
  *
- * No-JS: the server renders the full list and the default entry's detail,
- * which is the same deal the beats tabs and the proof panes offer.
+ * No-JS: the server renders the full list and the default entry's detail
+ * (with its poster — the one pane a script-free reader can reach), which is
+ * the same deal the beats tabs and the proof panes offer.
  */
 
 const TYPE_LABEL: Record<DexType, string> = {
@@ -242,6 +280,7 @@ function CaptureStage({
   paused,
   onTogglePause,
   registerVideo,
+  live,
 }: {
   entry: DexEntry;
   reel: number;
@@ -249,6 +288,10 @@ function CaptureStage({
   paused: boolean;
   onTogglePause: () => void;
   registerVideo: (no: string, i: number, el: HTMLVideoElement | null) => void;
+  /** Only the pane the reader can see mounts real `poster` attributes — see
+   * the module comment. Inactive panes carry `data-poster`, and React swaps
+   * it in the moment the pane is shown. */
+  live: boolean;
 }) {
   const active: Capture = entry.captures[reel] ?? { kind: "pending" };
 
@@ -291,7 +334,8 @@ function CaptureStage({
                   loop
                   playsInline
                   preload="none"
-                  poster={c.poster}
+                  poster={live ? c.poster : undefined}
+                  data-poster={c.poster}
                   width={1600}
                   height={1074}
                 >
@@ -436,6 +480,7 @@ function DexDetail({
         paused={paused}
         onTogglePause={onTogglePause}
         registerVideo={registerVideo}
+        live={shown}
       />
 
       {entry.kind === "form" ? (
@@ -501,10 +546,16 @@ function DexDetail({
 export function DexSection() {
   const [sel, setSel] = React.useState(DEFAULT_INDEX);
   const [q, setQ] = React.useState("");
+  /** The active screen — `all` by default, so the band opens exactly the way
+   * it opened before the screens existed: the whole spine, cursor on the
+   * first filmed entry. */
+  const [screen, setScreen] = React.useState<DexScreen>("all");
   const [reels, setReels] = React.useState<Record<string, number>>({});
   const [paused, setPaused] = React.useState(false);
   const opts = React.useRef<(HTMLButtonElement | null)[]>([]);
+  const screenBtns = React.useRef<(HTMLButtonElement | null)[]>([]);
   const videoEls = React.useRef(new Map<string, HTMLVideoElement>());
+  const firstRender = React.useRef(true);
   // The page's own reduced-motion read, the same one every other animated band
   // uses — the decision of whether a video may start is made with it, never
   // with an `autoPlay` attribute in the markup.
@@ -534,17 +585,88 @@ export function DexSection() {
     [],
   );
 
+  // The active screen's pool, in DEX-index space. One memo, one dependency —
+  // the pool is what a screen switch recomputes, and the list, the counter and
+  // the cursor snap all read from it.
+  const poolIdx = React.useMemo(
+    () => poolFor(screen).map((e) => DEX.indexOf(e)),
+    [screen],
+  );
+
+  // Search intersects the screen: on `all` this is the old behavior verbatim
+  // (the whole dex is the pool); on a category screen a query narrows WITHIN
+  // it, which is the honest reading of a filter stack — the tally says so.
   const visible = React.useMemo(() => {
+    const inPool = new Set(poolIdx);
     const s = q.trim();
-    if (!s) return DEX.map((_, i) => i);
-    return fuse.search(s).map((r) => r.refIndex);
-  }, [q, fuse]);
+    if (!s) return poolIdx;
+    return fuse.search(s).map((r) => r.refIndex).filter((i) => inPool.has(i));
+  }, [q, fuse, poolIdx]);
 
   // The cursor never points at a filtered-out row: an empty result keeps
   // the last selection, anything else snaps to the first match.
   const shown = visible.length === 0 || visible.includes(sel) ? sel : visible[0];
   const entry = DEX[shown];
   const reel = Math.min(reels[entry.no] ?? 0, Math.max(0, entry.captures.length - 1));
+
+  // A screen switch never strands the cursor on a row the screen cannot show:
+  // it snaps to the pool's first FILMED entry — the same philosophy as
+  // DEFAULT_INDEX, a reader who does nothing still lands on footage — or to
+  // the pool's first entry when nothing is filmed yet (the `extend` screen
+  // today: its honest empty stages are the point).
+  React.useEffect(() => {
+    if (poolIdx.includes(sel)) return;
+    const snap = poolIdx.find((i) => isFilmed(DEX[i]));
+    if (snap !== undefined) setSel(snap);
+    else if (poolIdx.length > 0) setSel(poolIdx[0]);
+  }, [poolIdx, sel]);
+
+  // Deep links — URLs are UI. `#dex-<id>` selects the entry AND lands on its
+  // screen, so the list the reader then walks is the one that holds the entry.
+  // The proof band's hash pattern: match on mount and on `hashchange`; the
+  // replaceState below never fires this listener. A cold arrival cannot rely
+  // on the browser's own anchor scroll (the pane was `hidden` when the browser
+  // tried), so the band is scrolled to by hand — once, on mount only, with the
+  // section's `scroll-mt-16` giving the same offset the #dex nav anchor gets.
+  const entryHash = React.useMemo(
+    () => new RegExp(`^#dex-(${DEX.map((e) => e.id).join("|")})$`),
+    [],
+  );
+  React.useEffect(() => {
+    const apply = (initial: boolean) => {
+      const m = window.location.hash.match(entryHash);
+      if (!m) return;
+      const i = DEX.findIndex((e) => e.id === m[1]);
+      if (i < 0) return;
+      setSel(i);
+      setScreen(screenOf(DEX[i]));
+      if (initial) {
+        document.getElementById("dex")?.scrollIntoView({ block: "start" });
+      }
+    };
+    apply(true);
+    const onHash = () => apply(false);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [entryHash]);
+
+  // The URL follows the cursor: a reader who found the entry worth reading
+  // has an address for it in the bar already. replaceState, never pushState —
+  // walking twenty entries must not stack twenty history entries between the
+  // reader and Back. Skipped on the first render: a cold deep link already
+  // owns the hash, and this sync exists to write changes, not to echo the one
+  // it read.
+  React.useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const want = `#dex-${DEX[shown].id}`;
+    if (window.location.hash === want) return;
+    const u = new URL(window.location.href);
+    u.hash = want;
+    history.replaceState(null, "", u);
+  }, [shown]);
 
   // Playback sync, the rule the carousel brought: no autoplay attribute is
   // ever rendered, so the decision (muted, looping, entitled to play) is made
@@ -591,6 +713,24 @@ export function DexSection() {
     opts.current[visible[next]]?.scrollIntoView({ block: "nearest" });
   }
 
+  /** The screens' own arrow walk — the same roving-tabindex contract the
+   * listbox and the proof tabs carry, so the whole band is one keyboard
+   * surface: ◀ ▶ between screens, ↑ ↓ inside the screen's list. Selection
+   * follows focus here too, exactly like the handheld's mode select. */
+  function onScreensKey(e: React.KeyboardEvent) {
+    const pos = SCREENS.indexOf(screen);
+    let next = pos < 0 ? 0 : pos;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (next + 1) % SCREENS.length;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp")
+      next = (next - 1 + SCREENS.length) % SCREENS.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = SCREENS.length - 1;
+    else return;
+    e.preventDefault();
+    setScreen(SCREENS[next]);
+    screenBtns.current[next]?.focus();
+  }
+
   return (
     <section
       data-hue="magma"
@@ -603,16 +743,75 @@ export function DexSection() {
             Every capability, catalogued and filmed.
           </SectionHead>
           <p className="mt-4 text-pretty leading-relaxed text-dim">
-            The session tools, the engine mechanisms and the filmed surfaces —
-            one numbered spine. Walk the list, type to filter, play a cry, watch
+            The session tools, the engine mechanisms, the workflows and the
+            configurable surfaces — one numbered spine you can walk whole or a
+            screen at a time. Walk the list, type to filter, play a cry, watch
             the capture. {TALLY_SENTENCE}
           </p>
         </FadeUp>
 
         <FadeUp delay={0.06} className="mt-8">
           <div className="grid gap-5 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-8">
-            {/* the list — search box, then the numbered rows */}
+            {/* the list — screens, search box, then the numbered rows */}
             <div className="min-w-0">
+              {/* the screens: the Gen-3 mode select, returned — a fixed
+                  3-column chip menu, the battle-menu shape, so the row reads as
+                  a deliberate control and not a wrapped tag cloud; a sixth
+                  category fills the grid's second row exactly, and the band is
+                  the catalog's answer to its own growth — the LIST a reader
+                  walks stays the size of one screen, and every count on the
+                  row is read off the data. `aria-pressed`, not a tab set: a
+                  filter that changes one list's membership has pressed-state
+                  semantics, and the listbox below is the panel every screen
+                  shares. */}
+              <div
+                role="group"
+                aria-label="dex screens"
+                onKeyDown={onScreensKey}
+                className="grid grid-cols-3 gap-1.5 border border-b-0 border-line bg-panel-2/40 p-2.5"
+              >
+                {SCREENS.map((s, i) => {
+                  const on = screen === s;
+                  const def = CATEGORY_DEFS.find((c) => c.id === s);
+                  const count = poolFor(s).length;
+                  const label = def ? def.label : "all";
+                  return (
+                    <button
+                      key={s}
+                      ref={(el) => {
+                        screenBtns.current[i] = el;
+                      }}
+                      type="button"
+                      aria-pressed={on}
+                      /* No aria-label override: the visible text IS the
+                         accessible name (WCAG 2.5.3 label-in-name — a
+                         speech-input user saying "engine six" must reach
+                         this button), and the gloss rides inside the name
+                         as an sr-only tail so a screen reader hears the
+                         whole line: "engine 6 — what runs while you are
+                         away". */
+                      tabIndex={on ? 0 : -1}
+                      onClick={() => setScreen(s)}
+                      className={`gb-label flex h-8 items-center justify-center gap-1 px-1 text-[8px] transition-colors [transition-timing-function:steps(2,end)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold ${
+                        on
+                          ? "gb-box text-canvas"
+                          : "border border-line bg-panel text-dim hover:bg-panel-2 hover:text-ink"
+                      }`}
+                    >
+                      <span className="whitespace-nowrap">{label}</span>
+                      <span
+                        className={`tabular-nums ${on ? "text-canvas" : "text-faint"}`}
+                      >
+                        {count}
+                      </span>
+                      <span className="sr-only">
+                        — {def ? def.gloss : "the whole spine"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="border border-b-0 border-line bg-panel-2/40 px-3.5 pb-2.5 pt-3">
                 <label htmlFor="dex-search" className="gb-label text-[10px] text-faint">
                   search the dex
@@ -638,22 +837,26 @@ export function DexSection() {
                     aria-live="polite"
                     className="shrink-0 font-mono text-[10px] tabular-nums text-faint"
                   >
-                    {visible.length}/{TALLY.total}
+                    {visible.length}/{poolIdx.length}
                   </span>
                 </div>
               </div>
 
               <div
                 role="listbox"
-                aria-label={`The capability dex — ${TALLY.total} entries`}
+                aria-label={`The capability dex — ${poolIdx.length} of ${TALLY.total} entries`}
                 onKeyDown={onListKey}
-                /* Capped + scrollable below lg so the mobile page cannot grow
-                   an eighth-of-the-page list; on desktop every row shows,
-                   because a cut-off row with no scroll affordance read as a
-                   broken list (VLM review round 1, light scheme). Twenty rows
-                   still stand shorter than the detail column, so the pane is
-                   what binds the band's height. */
-                className="grid max-h-[26rem] gap-px overflow-y-auto border border-line bg-line lg:max-h-none lg:overflow-visible"
+                /* Capped + scrollable at every size, and the cap is the load-bearing
+                   part: the list column's ceiling (65rem) plus its chrome (the
+                   screens row, the search box, the legend — ~11rem) never exceeds
+                   the detail pane's 76rem floor, so the BAND's height stays bound
+                   to the pane no matter how many entries the catalog grows to.
+                   Past ~24 whole-spine rows the list scrolls inside its own
+                   window — which is what the handheld's LIST screen did too —
+                   and the screens keep each category's view short anyway. If the
+                   pane floor is ever re-measured, keep this 65 in step (76 − 11).
+                   Below lg the same behavior at a mobile height. */
+                className="grid max-h-[26rem] gap-px overflow-y-auto border border-line bg-line lg:max-h-[65rem]"
               >
                 {visible.length === 0 ? (
                   <p className="bg-panel px-3.5 py-4 font-mono text-[11px] text-faint">
@@ -705,14 +908,15 @@ export function DexSection() {
                   media — stated once for the whole band instead of once per
                   pending stage, which is what keeps the word budget */}
               <p className="mt-3 font-mono text-[10px] leading-relaxed text-faint">
-                ↑ ↓ walk the list · type to filter · esc clears ·{" "}
-                <span aria-hidden="true">●</span> filmed <span aria-hidden="true">○</span> pending ·
-                captures come only from the harness in{" "}
+                ↑ ↓ walk the list · ◀ ▶ switch screens · type to filter · esc
+                clears · <span aria-hidden="true">●</span> filmed{" "}
+                <span aria-hidden="true">○</span> pending · captures come only
+                from the harness in{" "}
                 <code className="font-mono text-dim">scripts/tui-capture/</code>, never by hand
               </p>
             </div>
 
-            {/* the detail — all twenty-one entries mounted, the inactive ones
+            {/* the detail — every entry mounted, the inactive ones
                 hidden (the proof band's pane contract: crawlers and gates read
                 every capability line and every pending gap) */}
             <div className="min-w-0">
