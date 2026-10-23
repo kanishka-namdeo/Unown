@@ -38,7 +38,7 @@ import {
         writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join, posix, win32 } from "node:path";
+import { basename, dirname, join, posix, win32 } from "node:path";
 import { parseSemver } from "./semver.ts";
 
 /** Path joining for the TARGET platform, not the host: a POSIX layout
@@ -449,7 +449,16 @@ export function shimTargetsRoot(content: string, root: string, platform: NodeJS.
         // `export UNOWN_INSTALL_ROOT=$HOME/.local/share/unown` is legal sh.
         for (const m of content.matchAll(/UNOWN_INSTALL_ROOT\s*[=:]\s*([^\s"';]+)/g)) candidates.push(m[1]);
         return candidates.some((c) => {
-                if (!isAbsolute(c)) return false;
+                // The absoluteness gate must answer for the SHIM's platform, not the
+                // host's: `C:\repos\Unown\bin\unown` is absolute on Windows and
+                // relative-shaped on a POSIX host — node:path's isAbsolute is bound to
+                // the RUNNING platform, so the Linux/macOS CI legs (and every
+                // platform-injected win32 test) rejected the install's own shim as a
+                // foreign non-absolute path before normalization ever ran. (The same
+                // class as the 2efb970 realpath fix: compare by the target platform's
+                // semantics.)
+                const abs = platform === "win32" ? win32.isAbsolute(c) : posix.isAbsolute(c);
+                if (!abs) return false;
                 const n = normalizePathForCompare(c, platform);
                 return n === target || n.startsWith(`${target}/`);
         });
