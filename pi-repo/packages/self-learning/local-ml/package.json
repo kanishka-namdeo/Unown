@@ -9,5 +9,8 @@
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.1"
+  },
+  "allowScripts": {
+    "onnxruntime-node@1.30.0": true
   }
 }
