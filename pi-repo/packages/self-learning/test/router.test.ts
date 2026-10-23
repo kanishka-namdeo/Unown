@@ -310,6 +310,36 @@ describe("watchdog row recovery is scoped to THIS job's runs (BUG 7)", () => {
                         ROUTER_TEST_ONLY.timeoutOverrideMs = undefined;
                 }
         });
+
+        test("a watchdog-killed job heals its orphaned 'running' DREAM row in the same tick (2026-10-23)", async () => {
+                // Measured live: an auto-dream exceeding the 20-min watchdog left its dream
+                // row 'running' forever — recoverOrphans heals dreams only at the NEXT
+                // engine boot, so the dashboard showed a phantom in-flight dream until a
+                // restart. The busy mutex guarantees any 'running' dream belongs to the
+                // killed job; the watchdog now heals it inline.
+                store.run(`UPDATE jobs SET status = 'idle' WHERE id = 'auto-dream'`);
+                store.run(`DELETE FROM dreams WHERE id = 'wd-dream-1'`);
+                store.run(
+                        `INSERT INTO dreams (id, started_at, status, notes_in) VALUES ('wd-dream-1', ?, 'running', 2)`,
+                        [Date.now()],
+                );
+                const r = new Router();
+                (r as any).runJobInternal = () => new Promise(() => {});
+                ROUTER_TEST_ONLY.timeoutOverrideMs = 100;
+                try {
+                        const result = (await r.execute("auto-dream")) as { error?: string };
+                        expect(result?.error).toContain("watchdog: job auto-dream exceeded");
+                        const dream = store.get<{ status: string; ended_at: number | null; note: string }>(
+                                `SELECT status, ended_at, note FROM dreams WHERE id = 'wd-dream-1'`,
+                        )!;
+                        expect(dream.status).toBe("error");
+                        expect(dream.ended_at).not.toBeNull();
+                        expect(dream.note).toContain("job killed by watchdog");
+                } finally {
+                        store.run(`DELETE FROM dreams WHERE id = 'wd-dream-1'`);
+                        ROUTER_TEST_ONLY.timeoutOverrideMs = undefined;
+                }
+        });
 });
 
 // ---------------------------------------------------------------------------

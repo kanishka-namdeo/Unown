@@ -384,6 +384,24 @@ export class Router {
                                         // only touches runs the job itself started — never a
                                         // foreign 'running' row from before the job began.
                                         this.recoverRunningRows(jobId, startedAt);
+                                        // Dream-row healing (2026-10-23, measured live): a
+                                        // watchdog-killed auto-dream/dream-check left its dream
+                                        // row 'running' FOREVER — recoverOrphans heals it, but
+                                        // only at the next ENGINE BOOT, so the dashboard showed
+                                        // a phantom in-flight dream and the notes it consumed
+                                        // (the row insert happens per-group in runProjectDream)
+                                        // stayed ambiguous until a restart. The busy mutex
+                                        // guarantees any 'running' dream at this moment belongs
+                                        // to the killed job — heal it here, same tick, with the
+                                        // honest reason. The undreamed NOTES stay undreamed
+                                        // (nothing marked them) and retry on the next dream —
+                                        // correct, lossless semantics for an interrupted dream.
+                                        const healed = store.run(
+                                                `UPDATE dreams SET status = 'error', ended_at = ?, note = COALESCE(note, '') || ' [job killed by watchdog]' WHERE status = 'running'`,
+                                                [Date.now()],
+                                        );
+                                        if (healed.changes > 0)
+                                                console.log(`[router] watchdog: healed ${healed.changes} orphaned dream row(s) from ${jobId}`);
                                         emit("job:error", { id: jobId, error: message });
                                         result = { error: message };
                                 } else {
