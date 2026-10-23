@@ -245,8 +245,19 @@ describe("canaryCheck — the gate decisions", () => {
                         runAgentFn: () => Promise.resolve({ status: "failed", transcript: "[]", lastAssistantText: "" }),
                 });
                 expect(gate.rolledBack).toBe(true);
+                // Observable rollback ownership (double-rollback fix): canaryCheck
+                // reports the version it rolled back TO so runDream does not roll
+                // back again — one rollback, one version row, one event.
+                expect(gate.rolledBackVersion).toBe(2);
                 expect(gate.reason).toContain("taskA failed under new memory v3");
                 expect(readTier("project")).toBe("# Memory\n- stable rule [seed]\n");
+                // Exactly ONE rollback row was minted (v3 = the rollback of the dream's v2):
+                // the pre-fix path minted a second identical N-1 row via runDream.
+                const rows = store.query<{ version: number; changed_by: string }>(
+                        `SELECT version, changed_by FROM memory_versions WHERE tier = 'project' ORDER BY version`,
+                );
+                expect(rows.map((r) => r.version)).toEqual([1, 2, 3]);
+                expect(rows[2].changed_by).toBe("rollback");
         }, CANARY_TIMEOUT);
 
         test("THE F4 CASE LIVE-PINNED: a PASSING canary that drifted bun→node gates the dream", async () => {
@@ -256,6 +267,7 @@ describe("canaryCheck — the gate decisions", () => {
                         runAgentFn: fakeAgent({ status: "passed", transcript: CANARY_NODE, lastAssistantText: "All tests pass with node." }),
                 });
                 expect(gate.rolledBack).toBe(true);
+                expect(gate.rolledBackVersion).toBe(2); // drift gates roll back exactly once too
                 expect(gate.reason).toContain("tool drift");
                 expect(gate.reason).toContain("node");
                 expect(readTier("project")).toBe("# Memory\n- stable rule [seed]\n");

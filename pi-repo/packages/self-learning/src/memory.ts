@@ -43,6 +43,7 @@ import {
         getMemoryPlatform,
         importLegacyMarkdown,
         renderProjectMemoryMarkdown,
+        revertMemoryEvents,
 } from "./memzero.ts";
 import { DATA_DIR, store } from "./store.ts";
 
@@ -225,14 +226,26 @@ export async function appendRules(tier: Tier, rules: string[], changedBy: string
         // row records the render. Other tiers stay string-append file tiers.
         if (tier === "project") {
                 const platform = await getMemoryPlatform();
-                await platform.add(
+                const events = await platform.add(
                         rules.map((r) => ({ role: "user", content: r })),
                         ENGINE_SCOPE,
                         { kind: changedBy === "harness" ? "harness" : changedBy === "seed" ? "seed" : "manual" },
                         { infer: false },
                 );
-                const rendered = renderProjectMemoryMarkdown(await platform.getAll(ENGINE_SCOPE));
-                return writeTier("project", rendered, changedBy, note);
+                try {
+                        const rendered = renderProjectMemoryMarkdown(await platform.getAll(ENGINE_SCOPE));
+                        return writeTier("project", rendered, changedBy, note);
+                } catch (err) {
+                        // Atomic ship (partial-ship fix, 2026-10-23): the rules are already
+                        // in the platform — if the re-render or the versioned write throws
+                        // (a cap refusal, a disk error), revert the platform events or the
+                        // platform and the tier file diverge (every later render re-includes
+                        // the rules while the file/versions say they never shipped). Mirrors
+                        // memzero.ts shipEngineRules' unwind. The error propagates so the
+                        // caller (harness ship step) records the failed ship.
+                        await revertMemoryEvents(events, ENGINE_SCOPE, { platform }).catch(() => {});
+                        throw err;
+                }
         }
         const current = readTier(tier);
         const stamp = new Date().toISOString().replace("T", " ").slice(0, 16);

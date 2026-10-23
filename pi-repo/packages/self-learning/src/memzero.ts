@@ -88,6 +88,37 @@ export function mem0MaxRendered(): number {
 	return Number.isFinite(n) && n > 0 ? n : 110;
 }
 
+/**
+ * Hard-won (kind harness/seed) bullet cap — the bounded-overflow ceiling
+ * (2026-10-22). Hard-won rules used to bypass the render cap ENTIRELY
+ * (`kept.length < cap || isHardWon(m)`), so a long-lived engine with hundreds
+ * of shipped harness fixes rendered an unbounded "Verified fixes" section,
+ * pushed the render past maxTierChars and bricked every later dream in the
+ * writeTier throw loop. They stay immune to the TOPIC-cap pruning (a verified
+ * fix outranks any note-derived fact) but are now bounded by their own cap:
+ * seeds first (the repo's own scaffolding — a handful by construction), then
+ * the most recent harness fixes, newest-first. The render footer carries the
+ * overflow count so the degradation is visible, never silent.
+ */
+export function mem0MaxHardWon(): number {
+	const n = Number(process.env.PI_MEM0_MAX_HARDWON ?? 60);
+	return Number.isFinite(n) && n > 0 ? n : 60;
+}
+
+/**
+ * The ABSOLUTE render ceiling in chars: the render may never exceed the
+ * writeTier cap, or every dream/ship that renders this document dies in
+ * memory.ts's `exceeds cap` throw. Reads the SAME env knob and default as
+ * memory.ts's maxTierChars() — memzero.ts cannot import memory.ts for the
+ * value (memory.ts imports this module; the cycle is broken only the other
+ * way, via dynamic import), so the parse is mirrored here deliberately and
+ * must stay in sync.
+ */
+export function mem0MaxRenderChars(): number {
+	const n = Number(process.env.PI_MEMORY_MAX_TIER_CHARS ?? 48_000);
+	return Number.isFinite(n) && n > 0 ? n : 48_000;
+}
+
 /** The reconcile pass toggle (PI_MEM0_RECONCILE=0 → mem0 additive-only). */
 export function mem0ReconcileEnabled(): boolean {
 	return String(process.env.PI_MEM0_RECONCILE ?? "").trim() !== "0";
@@ -469,7 +500,7 @@ async function buildMem0Platform(): Promise<MemoryPlatform> {
 	}
 	store.run(
 		`INSERT INTO memory_platform (key, value, updated_at) VALUES ('embedder_backend', ?, ?)
-                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+		 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
 		[embedder.backend, Date.now()],
 	);
 
@@ -1029,6 +1060,14 @@ async function defaultReconcileLlm(memories: PlatformMemory[]): Promise<{ ops: R
  * memories (the caller already ran the ship gate — sanitize happened on the
  * rule lines), re-render, version. Returns the memory ids so retention's
  * auto-unship can delete exactly what this ship added (harness.ts).
+ *
+ * Atomic-ship guarantee (2026-10-22 partial-ship fix): if the tier write
+ * fails AFTER the platform accepted the rules (render/read failure, the
+ * 48k writeTier cap, a disk error), the platform events are reverted before
+ * the error propagates — otherwise the rules lived in the platform with no
+ * version row and no revertMemoryEvents receipt, every later render
+ * re-included them, and a cap-sized render made each retry throw again (the
+ * ship loop that never converges). Platform and tier now fail together.
  */
 export async function shipEngineRules(
 	rules: string[],
@@ -1044,8 +1083,16 @@ export async function shipEngineRules(
 		{ kind: changedBy === "harness" ? "harness" : "manual" },
 		{ infer: false },
 	);
-	const rendered = renderProjectMemoryMarkdown(await platform.getAll(ENGINE_SCOPE));
-	const version = writeTier("project", rendered, changedBy, note);
+	let version: number;
+	try {
+		const rendered = renderProjectMemoryMarkdown(await platform.getAll(ENGINE_SCOPE));
+		version = writeTier("project", rendered, changedBy, note);
+	} catch (err) {
+		// Unwind the platform half of the ship (best-effort — the error
+		// propagates either way so the harness/cycle records the failure).
+		await revertMemoryEvents(events, ENGINE_SCOPE, { platform }).catch(() => {});
+		throw err;
+	}
 	return { version, memoryIds: events.filter((e) => e.event === "ADD" && e.id).map((e) => e.id) };
 }
 
@@ -1145,29 +1192,29 @@ const RENDER_SECTIONS: Array<{ title: string; test: RegExp }> = [
  *  keep whole head lines and get a visible marker — never invisible
  *  truncation (the same edge the injection-budget line fixes for the stack). */
 export function extractManualNotesSection(markdown: string): string {
-        const src = String(markdown ?? "");
-        const lines = src.split(/\r?\n/);
-        const start = lines.findIndex((l) => /^##[ \t]+Manual notes[ \t]*$/.test(l));
-        if (start === -1) return "";
-        let end = lines.length;
-        for (let i = start + 1; i < lines.length; i++) {
-                if (/^##[ \t]/.test(lines[i]) || /^<!--[ \t]*unown:[ \t]*rendered/.test(lines[i])) {
-                        end = i;
-                        break;
-                }
-        }
-        let section = `${lines.slice(start, end).join("\n").trim()}\n`;
-        if (section.length > MANUAL_NOTES_CAP) {
-                const kept: string[] = [];
-                let n = 0;
-                for (const l of lines.slice(start, end)) {
-                        if (n + l.length + 1 > MANUAL_NOTES_CAP) break;
-                        kept.push(l);
-                        n += l.length + 1;
-                }
-                section = `${kept.join("\n").trimEnd()}\n\n<!-- unown: manual notes over cap (${MANUAL_NOTES_CAP} chars) — the tail was dropped at render; prune the section -->\n`;
-        }
-        return section;
+	const src = String(markdown ?? "");
+	const lines = src.split(/\r?\n/);
+	const start = lines.findIndex((l) => /^##[ \t]+Manual notes[ \t]*$/.test(l));
+	if (start === -1) return "";
+	let end = lines.length;
+	for (let i = start + 1; i < lines.length; i++) {
+		if (/^##[ \t]/.test(lines[i]) || /^<!--[ \t]*unown:[ \t]*rendered/.test(lines[i])) {
+			end = i;
+			break;
+		}
+	}
+	let section = `${lines.slice(start, end).join("\n").trim()}\n`;
+	if (section.length > MANUAL_NOTES_CAP) {
+		const kept: string[] = [];
+		let n = 0;
+		for (const l of lines.slice(start, end)) {
+			if (n + l.length + 1 > MANUAL_NOTES_CAP) break;
+			kept.push(l);
+			n += l.length + 1;
+		}
+		section = `${kept.join("\n").trimEnd()}\n\n<!-- unown: manual notes over cap (${MANUAL_NOTES_CAP} chars) — the tail was dropped at render; prune the section -->\n`;
+	}
+	return section;
 }
 
 /** The Manual-notes preservation cap, in chars (2026-10-22): the lane is
@@ -1192,10 +1239,10 @@ export const MANUAL_NOTES_CAP = 4096;
  *  "not extractable" enforced deterministically, not by prompt. Same shape
  *  filter as reframeNoteForExtraction's (kept in sync deliberately). */
 export function stripSessionMetadataLine(text: string): string {
-        return String(text ?? "")
-                .split(/\r?\n/)
-                .filter((l) => !/^Session metadata \(/i.test(l))
-                .join("\n");
+	return String(text ?? "")
+		.split(/\r?\n/)
+		.filter((l) => !/^Session metadata \(/i.test(l))
+		.join("\n");
 }
 
 /**
@@ -1205,20 +1252,34 @@ export function stripSessionMetadataLine(text: string): string {
  * drops OLDEST bullets first, but never a hard-won rule (kind harness/seed,
  * which carry verified fixes); a provenance footer names the platform,
  * backend and counts so a stale or degraded render is always visible.
+ *
+ * Bounded hard-won growth (2026-10-22): hard-won rules no longer bypass
+ * EVERY cap. They stay immune to the topic-cap pruning (a verified fix
+ * outranks note-derived facts) but are bounded by mem0MaxHardWon()
+ * (PI_MEM0_MAX_HARDWON, default 60 — seeds first, then newest harness
+ * fixes), and the WHOLE document is hard-ceilinged at mem0MaxRenderChars()
+ * (= the writeTier cap): the pre-fix unbounded "Verified fixes" section
+ * pushed renders past maxTierChars and bricked dreams in a throw-on-every-
+ * attempt loop. Over-ceiling trimming drops the OLDEST bullets of the
+ * LEAST-canonical sections first (Facts before Workflow) with a visible
+ * footer marker — bounded degradation, never a silent truncate and never a
+ * render writeTier can refuse.
  */
 export function renderProjectMemoryMarkdown(
-        memories: PlatformMemory[],
-        opts: {
-                title?: string;
-                maxBullets?: number;
-                backend?: string;
-                /** The previous project-memory file whose "## Manual notes" section
-                 *  is re-appended verbatim (the hand-edit lane; dream.ts threads the
-                 *  current file here). */
-                preserveManualNotesFrom?: string;
-        } = {},
+	memories: PlatformMemory[],
+	opts: {
+		title?: string;
+		maxBullets?: number;
+		backend?: string;
+		/** The previous project-memory file whose "## Manual notes" section
+		 *  is re-appended verbatim (the hand-edit lane; dream.ts threads the
+		 *  current file here). */
+		preserveManualNotesFrom?: string;
+	} = {},
 ): string {
 	const cap = opts.maxBullets ?? mem0MaxRendered();
+	const hardWonCap = mem0MaxHardWon();
+	const maxChars = mem0MaxRenderChars();
 	const sorted = [...memories].sort((a, b) => {
 		const ta = Date.parse(String(a.updatedAt ?? a.createdAt ?? "")) || 0;
 		const tb = Date.parse(String(b.updatedAt ?? b.createdAt ?? "")) || 0;
@@ -1228,11 +1289,28 @@ export function renderProjectMemoryMarkdown(
 		const kind = String(m.metadata?.kind ?? "");
 		return kind === "harness" || kind === "seed";
 	};
-	const kept: PlatformMemory[] = [];
+	// Seed rules are the repo's own scaffolding (a handful by construction)
+	// and outrank harness fixes within the hard-won budget: collect them
+	// first so a wall of shipped fixes can never evict "run tests with bun".
+	const seeds = sorted.filter((m) => String(m.metadata?.kind ?? "") === "seed");
+	const kept: PlatformMemory[] = [...seeds];
+	let hardWonKept = seeds.length;
+	let hardWonDropped = 0;
+	let regularKept = 0;
 	let dropped = 0;
 	for (const m of sorted) {
-		if (kept.length < cap || isHardWon(m)) kept.push(m);
-		else dropped++;
+		if (!isHardWon(m)) {
+			if (regularKept < cap) {
+				kept.push(m);
+				regularKept++;
+			} else dropped++;
+			continue;
+		}
+		if (String(m.metadata?.kind ?? "") === "seed") continue; // already kept above
+		if (hardWonKept < hardWonCap) {
+			kept.push(m);
+			hardWonKept++;
+		} else hardWonDropped++;
 	}
 	const sections = new Map<string, PlatformMemory[]>();
 	for (const m of kept) {
@@ -1261,32 +1339,62 @@ export function renderProjectMemoryMarkdown(
 		sections.get(section)!.push(m);
 	}
 	const order = ["Workflow", "Known pitfalls", "Task playbooks", "Environment", "Verified fixes", "Facts"];
-	const parts: string[] = [`# ${opts.title ?? "Project Memory"}`, ""];
-	for (const title of order) {
-		const list = sections.get(title);
-		if (!list?.length) continue;
-		parts.push(`## ${title}`);
-		for (const m of list) parts.push(`- ${m.text.replace(/\s+/g, " ").trim()}`);
-		parts.push("");
-	}
 	// The Manual notes section is the user's hand-edit lane: whatever the
 	// previous file carried under "## Manual notes" is re-appended VERBATIM —
 	// dreams re-render platform memories but never rewrite user-authored
 	// bullets. (The honest fix for the seed's old "edit freely" promise: a
 	// real preserved hand-edit path, not a misleading one.)
 	const manual = extractManualNotesSection(opts.preserveManualNotesFrom ?? "");
-	if (manual.trim()) {
-		parts.push(manual.trimEnd(), "");
+	/** Assemble the document from the CURRENT section lists (re-measured per trim). */
+	const assemble = (charTrimmed: number): string => {
+		const parts: string[] = [`# ${opts.title ?? "Project Memory"}`, ""];
+		for (const title of order) {
+			const list = sections.get(title);
+			if (!list?.length) continue;
+			parts.push(`## ${title}`);
+			for (const m of list) parts.push(`- ${m.text.replace(/\s+/g, " ").trim()}`);
+			parts.push("");
+		}
+		if (manual.trim()) {
+			parts.push(manual.trimEnd(), "");
+		}
+		const renderedTotal = kept.length - charTrimmed;
+		parts.push(
+			`<!-- unown: rendered ${renderedTotal}/${memories.length} memories via Mem0 (backend: ${opts.backend ?? memoryPlatformStatus().backend})${
+				dropped > 0 ? ` · ${dropped} oldest pruned at render (cap ${cap}; hard-won rules immune)` : ""
+			}${hardWonDropped > 0 ? ` · ${hardWonDropped} hard-won beyond the hard-won cap ${hardWonCap} (oldest shipped fixes dropped)` : ""}${
+				charTrimmed > 0 ? ` · ${charTrimmed} bullet(s) trimmed at the ${maxChars}-char render ceiling` : ""
+			} at ${new Date().toISOString()} -->`,
+		);
+		const out = parts.join("\n");
+		return out.length > 0 ? `${out}\n` : out;
+	};
+	// Absolute ceiling pass: per-bullet caps alone cannot bound the document
+	// (a single memory may carry kilobytes of text), and a render over
+	// maxTierChars kills every downstream writeTier. Trim the OLDEST bullet
+	// of the LEAST-canonical section first (reverse render order — Facts,
+	// then Verified fixes, … Workflow last), re-measuring after each removal
+	// so the converging footer itself stays inside the budget.
+	let charTrimmed = 0;
+	let out = assemble(0);
+	while (out.length > maxChars && charTrimmed < kept.length) {
+		let trimmedOne = false;
+		for (const title of [...order].reverse()) {
+			const list = sections.get(title);
+			if (list && list.length > 0) {
+				list.pop(); // newest-first list → the tail is the OLDEST entry
+				charTrimmed++;
+				trimmedOne = true;
+				break;
+			}
+		}
+		if (!trimmedOne) break; // nothing left to trim
+		out = assemble(charTrimmed);
 	}
-	const renderedTotal = kept.length;
-	parts.push(
-		`<!-- unown: rendered ${renderedTotal}/${memories.length} memories via Mem0 (backend: ${opts.backend ?? memoryPlatformStatus().backend})${dropped > 0 ? ` · ${dropped} oldest pruned at render (cap ${cap}; hard-won rules immune)` : ""} at ${new Date().toISOString()} -->`,
-	);
-	const out = parts.join("\n");
 	// never hand the agent an empty file: a scope with no memories keeps the
 	// section skeleton so the next dream has the shape to write into
 	if (memories.length === 0) {
 		return `# ${opts.title ?? "Project Memory"}\n\n## Workflow\n\n## Known pitfalls\n\n## Task playbooks\n\n<!-- unown: rendered 0/0 memories via Mem0 (backend: ${opts.backend ?? memoryPlatformStatus().backend}) at ${new Date().toISOString()} -->\n`;
 	}
-	return out.length > 0 ? `${out}\n` : out;
+	return out;
 }

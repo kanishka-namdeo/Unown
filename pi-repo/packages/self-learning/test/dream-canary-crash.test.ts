@@ -11,14 +11,20 @@
 // no LLM, no network) + the canary injected via runDream's opts.canaryFn
 // seam (no agent loop needed to make it CRASH). The canary-crash rollback
 // must revert BOTH the memory version AND the platform event stream.
+//
+// Double-rollback regression (2026-10-22 fix): canaryCheck rolls the version
+// back ITSELF and reports it via `rolledBackVersion`; runDream must not roll
+// back again — the pre-fix pair minted two identical version rows and two
+// memory:changed events per gated dream.
 import "./_env.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { runDream } from "../src/dream.ts";
-import { currentVersion, readTier, tierPath, writeTier } from "../src/memory.ts";
+import { currentVersion, readTier, rollback, tierPath, writeTier } from "../src/memory.ts";
 import { createNote, undreamedNotes } from "../src/notes.ts";
+import { bus } from "../src/bus.ts";
 import { store } from "../src/store.ts";
 import { makeFakePlatform } from "./_fake-platform.ts";
 
@@ -27,74 +33,169 @@ const SCRATCH = join(tmpdir(), "engine-tests-dream-canary-crash");
 const noReconcile = async () => ({ ops: [] });
 
 beforeAll(() => {
-        rmSync(SCRATCH, { recursive: true, force: true });
-        store.run(`DELETE FROM memory_versions WHERE tier = 'project'`);
-        rmSync(tierPath("project"), { force: true });
-        // v1 = established benign memory (not a first mint; the dream writes v2)
-        writeTier("project", "# established benign memory\n\n- read-only files are honored [seed]\n", "unit-tests", "establish v1");
+	rmSync(SCRATCH, { recursive: true, force: true });
+	store.run(`DELETE FROM memory_versions WHERE tier = 'project'`);
+	rmSync(tierPath("project"), { force: true });
+	// v1 = established benign memory (not a first mint; the dream writes v2)
+	writeTier("project", "# established benign memory\n\n- read-only files are honored [seed]\n", "unit-tests", "establish v1");
 });
 
 afterAll(() => {
-        store.run(`DELETE FROM memory_versions WHERE tier = 'project'`);
-        store.run(`DELETE FROM dreams`);
-        store.run(`DELETE FROM notes`);
-        rmSync(SCRATCH, { recursive: true, force: true });
+	store.run(`DELETE FROM memory_versions WHERE tier = 'project'`);
+	store.run(`DELETE FROM dreams`);
+	store.run(`DELETE FROM notes`);
+	rmSync(SCRATCH, { recursive: true, force: true });
 });
 
 describe("runDream — a CRASHED canary gates and rolls back (MEDIUM-1)", () => {
-        test("canary exception -> status gated, memory rolled back to the pre-dream content, platform reverted, notes consumed", async () => {
-                // three undreamed benchmark notes make the dream eligible
-                const noteIds = [createNote(null, "Benchmark note: agent honored read-only files, iterated once before green.", "benchmark"),
-                        createNote(null, "Benchmark note: verify script is ground truth; tests run with bun.", "benchmark"),
-                        createNote(null, "Benchmark note: prefer stdlib over hand-rolled logic.", "benchmark")];
-                expect(undreamedNotes(50, "benchmark").length).toBeGreaterThanOrEqual(3);
+	test("canary exception -> status gated, memory rolled back to the pre-dream content, platform reverted, notes consumed", async () => {
+		// three undreamed benchmark notes make the dream eligible
+		const noteIds = [createNote(null, "Benchmark note: agent honored read-only files, iterated once before green.", "benchmark"),
+			createNote(null, "Benchmark note: verify script is ground truth; tests run with bun.", "benchmark"),
+			createNote(null, "Benchmark note: prefer stdlib over hand-rolled logic.", "benchmark")];
+		expect(undreamedNotes(50, "benchmark").length).toBeGreaterThanOrEqual(3);
 
-                const before = readTier("project");
-                const beforeVersion = currentVersion("project");
-                const platform = makeFakePlatform();
+		const before = readTier("project");
+		const beforeVersion = currentVersion("project");
+		const platform = makeFakePlatform();
 
-                const result = await runDream({
-                        platform,
-                        reconcileLlmFn: noReconcile,
-                        canaryFn: async () => { throw new Error("infrastructure exploded"); },
-                });
+		const result = await runDream({
+			platform,
+			reconcileLlmFn: noReconcile,
+			canaryFn: async () => { throw new Error("infrastructure exploded"); },
+		});
 
-                expect(result.status).toBe("gated");
-                expect(String(result.note)).toContain("infrastructure exploded");
-                // The new memory did NOT stay live: content is back to the pre-dream state.
-                expect(readTier("project")).toBe(before);
-                expect(currentVersion("project")).toBeGreaterThan(beforeVersion); // rollback wrote a NEW version with old content
-                // The platform event stream was reverted: every ADD the dream made is
-                // gone — only the pre-dream LEGACY IMPORT (the established v1 content,
-                // imported by the swap-boundary guard) survives, which is correct.
-                expect([...platform.store.values()].some((m) => m.text.includes("Benchmark note"))).toBe(false);
-                expect(platform.calls.filter((c) => c.op === "delete").length).toBeGreaterThan(0);
-                // The notes were consumed — no re-dream of the same session.
-                const dreamed = noteIds.every((id: string) => {
-                        const row = store.get<{ dream_id: string | null }>(`SELECT dream_id FROM notes WHERE id = ?`, [id]);
-                        return row?.dream_id != null;
-                });
-                expect(dreamed).toBe(true);
-                // The dream row records the gate with the reason.
-                const row = store.get<{ status: string; note: string }>(`SELECT status, note FROM dreams WHERE id = ?`, [result.id]);
-                expect(row!.status).toBe("gated");
-                expect(row!.note).toContain("canary");
-        });
+		expect(result.status).toBe("gated");
+		expect(String(result.note)).toContain("infrastructure exploded");
+		// The new memory did NOT stay live: content is back to the pre-dream state.
+		expect(readTier("project")).toBe(before);
+		expect(currentVersion("project")).toBeGreaterThan(beforeVersion); // rollback wrote a NEW version with old content
+		// The platform event stream was reverted: every ADD the dream made is
+		// gone — only the pre-dream LEGACY IMPORT (the established v1 content,
+		// imported by the swap-boundary guard) survives, which is correct.
+		expect([...platform.store.values()].some((m) => m.text.includes("Benchmark note"))).toBe(false);
+		expect(platform.calls.filter((c) => c.op === "delete").length).toBeGreaterThan(0);
+		// The notes were consumed — no re-dream of the same session.
+		const dreamed = noteIds.every((id: string) => {
+			const row = store.get<{ dream_id: string | null }>(`SELECT dream_id FROM notes WHERE id = ?`, [id]);
+			return row?.dream_id != null;
+		});
+		expect(dreamed).toBe(true);
+		// The dream row records the gate with the reason.
+		const row = store.get<{ status: string; note: string }>(`SELECT status, note FROM dreams WHERE id = ?`, [result.id]);
+		expect(row!.status).toBe("gated");
+		expect(row!.note).toContain("canary");
+	});
 
-        test("a healthy canary outcome still completes the dream (seam sanity, both directions)", async () => {
-                store.run(`DELETE FROM memory_versions WHERE tier = 'project'`);
-                rmSync(tierPath("project"), { force: true });
-                writeTier("project", "# established benign memory\n\n- read-only files are honored [seed]\n", "unit-tests", "re-establish v1");
-                for (let i = 0; i < 3; i++) createNote(null, `Benchmark note ${i}: agent used bun for tests and iterated once.`, "benchmark");
+	test("a healthy canary outcome still completes the dream (seam sanity, both directions)", async () => {
+		store.run(`DELETE FROM memory_versions WHERE tier = 'project'`);
+		rmSync(tierPath("project"), { force: true });
+		writeTier("project", "# established benign memory\n\n- read-only files are honored [seed]\n", "unit-tests", "re-establish v1");
+		for (let i = 0; i < 3; i++) createNote(null, `Benchmark note ${i}: agent used bun for tests and iterated once.`, "benchmark");
 
-                const platform = makeFakePlatform();
-                const result = await runDream({
-                        platform,
-                        reconcileLlmFn: noReconcile,
-                        canaryFn: async () => ({ rolledBack: false, skipped: true, reason: "injected healthy canary" }),
-                });
-                expect(result.status).toBe("done");
-                expect(readTier("project")).toContain("read-only files");
-                expect(platform.store.size).toBeGreaterThan(0); // the dream's memories stayed
-        });
+		const platform = makeFakePlatform();
+		const result = await runDream({
+			platform,
+			reconcileLlmFn: noReconcile,
+			canaryFn: async () => ({ rolledBack: false, skipped: true, reason: "injected healthy canary" }),
+		});
+		expect(result.status).toBe("done");
+		expect(readTier("project")).toContain("read-only files");
+		expect(platform.store.size).toBeGreaterThan(0); // the dream's memories stayed
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Double rollback (2026-10-22 fix): a canary that gates rolls the tier back
+// EXACTLY ONCE. The real canaryCheck performs the version rollback itself
+// and reports it (`rolledBackVersion`); runDream reverts the mem0 event stream
+// but must not roll the version back a second time. The pre-fix pair minted
+// two identical N-1 version rows + two memory:changed events per gated dream.
+// ---------------------------------------------------------------------------
+describe("runDream — a gating canary rolls back EXACTLY ONCE", () => {
+	const V1 = "# established benign memory\n\n- read-only files are honored [seed]\n";
+
+	/** Reset the project tier to a single established v1 row. */
+	function resetV1(): void {
+		store.run(`DELETE FROM memory_versions WHERE tier = 'project'`);
+		rmSync(tierPath("project"), { force: true });
+		writeTier("project", V1, "unit-tests", "establish v1");
+	}
+
+	/** Three fresh undreamed benchmark notes (the dream's input). */
+	function seedNotes(): void {
+		store.run(`DELETE FROM notes`);
+		for (let i = 0; i < 3; i++) createNote(null, `Benchmark note ${i}: agent honored read-only files and iterated once.`, "benchmark");
+		expect(undreamedNotes(50, "benchmark").length).toBe(3);
+	}
+
+	test("canaryCheck-style gate (own rollback + rolledBackVersion): ONE rollback row, ONE rollback event", async () => {
+		resetV1();
+		seedNotes();
+		const platform = makeFakePlatform();
+		const seen: Array<Record<string, unknown>> = [];
+		const listener = (payload: Record<string, unknown>) => seen.push(payload);
+		bus.on("memory:changed", listener);
+		try {
+			const result = await runDream({
+				platform,
+				reconcileLlmFn: noReconcile,
+				// Mimics the FIXED canaryCheck contract: it rolls the version
+				// back itself and REPORTS it (rolledBackVersion) — runDream
+				// must trust the report instead of rolling back again.
+				canaryFn: async (version: number) => {
+					rollback("project", version - 1, "injected canary gate — consolidation rolled back");
+					return { rolledBack: true, rolledBackVersion: version - 1, reason: "injected canary gate" };
+				},
+			});
+
+			expect(result.status).toBe("gated");
+			// Content is back to the pre-dream state...
+			expect(readTier("project")).toBe(V1);
+			// ...via EXACTLY ONE rollback row: v1 (established) + v2 (the dream's
+			// writeTier) + v3 (the single rollback). The pre-fix double rollback
+			// minted a 4th row with identical v1 content.
+			const rows = store.query<{ version: number; changed_by: string }>(
+				`SELECT version, changed_by FROM memory_versions WHERE tier = 'project' ORDER BY version`,
+			);
+			expect(rows.map((r) => r.version)).toEqual([1, 2, 3]);
+			expect(rows.filter((r) => r.changed_by === "rollback")).toHaveLength(1);
+			// And exactly ONE memory:changed event per write (the dream's v2 + the
+			// rollback's v3 — a duplicate rollback event is signal loss for the
+			// dashboard's version timeline).
+			expect(seen.filter((e) => e.changedBy === "rollback")).toHaveLength(1);
+			expect(seen).toHaveLength(2);
+			// The dream's platform events were reverted (the canary never touches
+			// the platform — that stays runDream's job).
+			expect([...platform.store.values()].some((m) => m.text.includes("Benchmark note"))).toBe(false);
+			expect(platform.calls.filter((c) => c.op === "delete").length).toBeGreaterThan(0);
+			// Notes consumed — no re-dream of the same session.
+			expect(undreamedNotes(50, "benchmark").length).toBe(0);
+		} finally {
+			bus.off("memory:changed", listener);
+		}
+	});
+
+	test("legacy canaryFn (rolledBack without acting): runDream still rolls back itself", async () => {
+		resetV1();
+		seedNotes();
+		const platform = makeFakePlatform();
+		const result = await runDream({
+			platform,
+			reconcileLlmFn: noReconcile,
+			// An older fake that reports a gate WITHOUT rolling back — runDream's
+			// own rollback must still fire (backwards-compatible seam).
+			canaryFn: async () => ({ rolledBack: true, reason: "legacy injected canary gate" }) as any,
+		});
+
+		expect(result.status).toBe("gated");
+		expect(readTier("project")).toBe(V1);
+		const rows = store.query<{ version: number; changed_by: string }>(
+			`SELECT version, changed_by FROM memory_versions WHERE tier = 'project' ORDER BY version`,
+		);
+		expect(rows.map((r) => r.version)).toEqual([1, 2, 3]);
+		expect(rows.filter((r) => r.changed_by === "rollback")).toHaveLength(1);
+		expect([...platform.store.values()].some((m) => m.text.includes("Benchmark note"))).toBe(false);
+		expect(undreamedNotes(50, "benchmark").length).toBe(0);
+	});
 });

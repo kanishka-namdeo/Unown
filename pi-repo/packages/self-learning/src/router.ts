@@ -369,7 +369,10 @@ export class Router {
                                 failure = message;
                                 if (message.startsWith("watchdog:")) {
                                         emit("router:watchdog", { id: jobId, timeoutMs });
-                                        this.recoverRunningRows(jobId);
+                                        // BUG 7 (audit #7): pass THIS job's start so the recovery
+                                        // only touches runs the job itself started — never a
+                                        // foreign 'running' row from before the job began.
+                                        this.recoverRunningRows(jobId, startedAt);
                                         emit("job:error", { id: jobId, error: message });
                                         result = { error: message };
                                 } else {
@@ -403,15 +406,18 @@ export class Router {
 
         /**
          * F2: mark the timed-out job's still-running runs as errored. Scoped to
-         * rows actually in 'running' — the single-tenant mutex guarantees only
-         * the active job's runs can be in that state. Mirrors recoverOrphans'
+         * runs STARTED DURING THIS JOB (started_at >= the job's start) — the
+         * pre-fix UPDATE was global over status='running', so any run row alive
+         * outside the timed-out job (a run left 'running' by a crashed earlier
+         * boot, or one created by a lane that slipped past the router mutex) was
+         * falsely errored while this job hung (audit #7). Mirrors recoverOrphans'
          * row healing (server.ts) so the zombie's late finalize no-ops.
          */
-        private recoverRunningRows(jobId: string): void {
+        private recoverRunningRows(jobId: string, jobStartedAt: number): void {
                 try {
                         const info = store.run(
-                                `UPDATE runs SET status = 'error', ended_at = ?, error = ? WHERE status = 'running'`,
-                                [Date.now(), `job ${jobId} timed out (watchdog)`],
+                                `UPDATE runs SET status = 'error', ended_at = ?, error = ? WHERE status = 'running' AND started_at >= ?`,
+                                [Date.now(), `job ${jobId} timed out (watchdog)`, jobStartedAt],
                         );
                         if (info.changes > 0) console.log(`[router] watchdog: recovered ${info.changes} running row(s) from ${jobId}`);
                 } catch (err: any) {
@@ -430,6 +436,26 @@ export class Router {
                         this.busy = false;
                         this.busySince = 0;
                 }
+        }
+
+        /**
+         * BUG 13 (audit #13) — the fire-and-forget busy gate for the API lanes.
+         * withBusy() reports a lost mutex race as a REJECTED promise, which
+         * arrives a microtask later — after an HTTP handler that fires and
+         * forgets already answered {started:true}, leaving the client polling
+         * for a cycle that never runs (the rejection only surfaced as a
+         * router:error SSE event, and in the awaited lanes as a raw 500).
+         * This variant throws SYNCHRONOUSLY in the same tick as the call, so
+         * the handler can answer the engine-busy 409 contract in the very
+         * response that would otherwise lie. The synchronous busy check and
+         * the withBusy() acquire below it have no await between them, so the
+         * check-acquire pair is atomic — the TOCTOU window the cycleTriggerGuard
+         * probe closed only by accident (runCycle's synchronous INSERT) is
+         * closed by construction instead.
+         */
+        startFireAndForget<T>(fn: () => Promise<T>): Promise<T> {
+                if (this.busy) throw new Error("engine is busy with another job");
+                return this.withBusy(fn);
         }
 
         isBusy(): boolean {

@@ -84,6 +84,8 @@ import {
         coherentKnownModels,
         parseModelCatalog,
         mergeCatalogIntoKnown,
+        sseFrameSignalsContent,
+        isDegenerateCompletion,
         MAX_ATTEMPTS,
         type BridgeLogEntry,
         type SseStats,
@@ -158,6 +160,10 @@ const log: BridgeLogEntry[] = [];
 let totalRequests = 0;
 let totalErrors = 0;
 let totalFailovers = 0;
+/** Degenerate-completion counter (2026-10-23): upstream 200s that carried
+ *  zero completion content (empty streams + empty JSON bodies) — healed by
+ *  the bridge retry when possible, always surfaced in /health. */
+let totalDegenerate = 0;
 let upstreamHealthy: boolean | null = null;
 
 // ---------------------------------------------------------------------------
@@ -482,9 +488,23 @@ async function callUpstream(
 // at finish_reason / usage / tool-call deltas (pure.ts foldSseLine) so the
 // request log stays accurate for streamed requests too.
 // ---------------------------------------------------------------------------
-function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Response {
+function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void, retry?: () => Promise<Response>): Response {
         const decoder = new TextDecoder();
         let buffer = "";
+        // Degenerate-stream holdback (2026-10-23): frames are HELD (not forwarded)
+        // until the first frame that signals assistant work product — text
+        // content, a tool call, or reasoning (pure.ts sseFrameSignalsContent).
+        // A stream that ends while still held is degenerate (a 200 with zero
+        // completion content — measured live on the Agnes flash upstream under
+        // concurrent load, 48-81s hangs then empty): when a retry fn is provided
+        // the whole upstream call is re-issued ONCE (the client never sees the
+        // empty attempt); a second degenerate stream is forwarded verbatim so
+        // the client-side guard (pi-ai's empty-completion throw) answers it.
+        // Role-only / bare-finish_reason / usage-only frames never release the
+        // holdback — they are exactly the frames a degenerate stream consists of.
+        let released = false;
+        let held: Uint8Array[] = [];
+        let degenerateRetried = false;
         // Stats accumulator, folded per frame by pure.ts foldSseLine. The
         // entry's finishReason / toolCalls / token counts update live as frames
         // flow (so /v1/log shows progress mid-stream); contentChars lands on
@@ -504,13 +524,42 @@ function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Resp
         let reader: any;
         const stream = new ReadableStream({
                 async start(controller) {
+                        let current = res;
+                        for (;;) {
                         try {
                                 // @ts-ignore - Bun exposes the response body stream
-                                reader = res.body.getReader();
+                                reader = current.body.getReader();
                                 for (;;) {
                                         const { done, value } = await reader.read();
                                         if (done) break;
-                                        // peek into the frame stream for log stats
+                                        if (!released) {
+                                                // holdback phase: buffer raw bytes + scan for the release trigger
+                                                held.push(value);
+                                                buffer += decoder.decode(value, { stream: true });
+                                                let nl: number;
+                                                while ((nl = buffer.indexOf("\n")) !== -1) {
+                                                        const line = buffer.slice(0, nl).trim();
+                                                        buffer = buffer.slice(nl + 1);
+                                                        foldSseLine(line, stats);
+                                                        entry.finishReason = stats.finishReason;
+                                                        entry.toolCalls = stats.toolCalls;
+                                                        entry.promptTokens = stats.promptTokens;
+                                                        entry.completionTokens = stats.completionTokens;
+                                                        entry.cachedTokens = stats.cachedTokens;
+                                                        if (sseFrameSignalsContent(line)) {
+                                                                released = true;
+                                                                break;
+                                                        }
+                                                }
+                                                if (released) {
+                                                        // First work product seen: flush every held raw byte and
+                                                        // continue as a pure passthrough for the rest of the stream.
+                                                        for (const v of held) controller.enqueue(v);
+                                                        held = [];
+                                                }
+                                                continue;
+                                        }
+                                        // passthrough phase: forward verbatim, folding stats for the log
                                         buffer += decoder.decode(value, { stream: true });
                                         let nl: number;
                                         while ((nl = buffer.indexOf("\n")) !== -1) {
@@ -525,19 +574,47 @@ function pipeSse(res: Response, entry: BridgeLogEntry, onDone: () => void): Resp
                                         }
                                         controller.enqueue(value);
                                 }
+                                if (released) break; // normal end of a released stream
+                                // Degenerate: the upstream stream ended with zero work product.
+                                if (retry && !degenerateRetried) {
+                                        degenerateRetried = true;
+                                        totalDegenerate++;
+                                        console.log(
+                                                `[llm-bridge] degenerate upstream stream (200, no content frames) — retrying once`,
+                                        );
+                                        try {
+                                                const next = await retry();
+                                                current = next;
+                                                continue; // restart the read loop on the retry response
+                                        } catch (err: any) {
+                                                console.log(
+                                                        `[llm-bridge] degenerate-stream retry failed (${String(err?.message ?? err).slice(0, 120)}) — forwarding the degenerate stream`,
+                                                );
+                                        }
+                                } else if (!degenerateRetried) {
+                                        totalDegenerate++; // no retry lane: count, forward, client guard answers
+                                }
+                                // Forward the degenerate stream as-is: the client-side empty-completion
+                                // guard (pi-ai openai-completions) turns it into a retryable error.
+                                for (const v of held) controller.enqueue(v);
+                                held = [];
+                                break;
                         } catch (err: any) {
                                 // Client disconnect or upstream reset mid-stream:
-                                // close cleanly rather than surface a broken stream.
+                                // close cleanly rather than surface a broken stream. Held (never
+                                // released) bytes are dropped — an interrupted stream has no
+                                // contract left to honor.
                                 console.log(`[llm-bridge] stream ended early: ${String(err?.message ?? err).slice(0, 120)}`);
-                        } finally {
-                                entry.contentChars = stats.contentChars;
-                                try {
-                                        controller.close();
-                                } catch {
-                                        /* already closed */
-                                }
-                                onDone();
+                                break;
                         }
+                        }
+                        try {
+                                controller.close();
+                        } catch {
+                                /* already closed */
+                        }
+                        entry.contentChars = stats.contentChars;
+                        onDone();
                 },
                 cancel() {
                         // Client went away mid-stream: stop the upstream transfer.
@@ -655,6 +732,11 @@ const server = Bun.serve({
                                 local,
                                 fallback,
                                 failovers: totalFailovers,
+                                // Degenerate-completion counter (2026-10-23): upstream 200s
+                                // with zero completion content — healed where possible,
+                                // always counted. A climbing number means the upstream
+                                // (not the bridge) is serving empty answers.
+                                degenerate: totalDegenerate,
                                 // Admission lanes (M2): concurrency cap + who is waiting.
                                 lanes: {
                                         maxConcurrency: MAX_CONCURRENCY,
@@ -783,9 +865,11 @@ const server = Bun.serve({
                                 }
 
                                 if (wantsStream) {
-                                        // True SSE passthrough. Push the log entry at stream
-                                        // open, then let the pipe fill in finish_reason /
-                                        // usage / content stats as frames flow through.
+                                        // True SSE passthrough with the degenerate-stream holdback
+                                        // (2026-10-23): frames are held until the first real work
+                                        // product; an empty 200 stream is retried ONCE here —
+                                        // transparent to the client — before being forwarded for
+                                        // the client-side guard to answer. See pipeSse.
                                         pushLog();
                                         let settled = false;
                                         const settle = () => {
@@ -794,10 +878,42 @@ const server = Bun.serve({
                                                 entry.durationMs = Date.now() - started;
                                                 persist();
                                         };
-                                        return pipeSse(res, entry, settle);
+                                        return pipeSse(res, entry, settle, () => callUpstream(upstreamBody, route, lane));
                                 }
 
+                                // Non-stream path: same degenerate-completion guard (2026-10-23).
+                                // A 200 JSON body with no content, no tool calls and zero
+                                // completion tokens is an upstream fault (measured on the Agnes
+                                // flash endpoint under concurrent load) — retry ONCE, and if the
+                                // upstream repeats it, answer 502 so every client class (mem0's
+                                // OpenAI SDK, probes, engine LLM wrappers) treats it as a
+                                // failure instead of silently consuming an empty answer.
                                 const completion = await res.json();
+                                if (isDegenerateCompletion(completion)) {
+                                        totalDegenerate++;
+                                        console.log("[llm-bridge] degenerate upstream completion (200, no content, 0 completion tokens) — retrying once");
+                                        try {
+                                                const retryRes = await callUpstream(upstreamBody, route, lane);
+                                                const retryCompletion = await retryRes.json();
+                                                if (!isDegenerateCompletion(retryCompletion)) {
+                                                        Object.assign(entry, completionStats(retryCompletion));
+                                                        pushLog();
+                                                        persist();
+                                                        return Response.json(retryCompletion);
+                                                }
+                                                // Twice degenerate: an honest 502, not a silent empty 200.
+                                                totalDegenerate++;
+                                                entry.error = "upstream returned an empty completion twice (degenerate 200: no content, no tool calls, 0 completion tokens)";
+                                        } catch (retryErr: any) {
+                                                entry.error = `degenerate upstream completion; retry failed (${String(retryErr?.message ?? retryErr).slice(0, 160)})`;
+                                        }
+                                        pushLog();
+                                        persist();
+                                        return Response.json(
+                                                { error: { message: `llm-bridge: ${entry.error}`, type: "bridge_error", code: 502 } },
+                                                { status: 502 },
+                                        );
+                                }
                                 Object.assign(entry, completionStats(completion));
                                 pushLog();
                                 persist();

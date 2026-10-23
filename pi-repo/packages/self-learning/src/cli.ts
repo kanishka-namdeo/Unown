@@ -2141,13 +2141,20 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                                         return;
                                 }
                                 if (idleTimer) clearTimeout(idleTimer);
-                                // Re-arm: keep reading while the pipe delivers.
+                                // Re-arm: keep reading while the pipe delivers. REF'd on
+                                // purpose — the F10 lesson (print-mode timers, 2026-10-22):
+                                // an unref'd timer never wakes a Bun event loop parked on
+                                // an idle-but-open pipe's poll. Measured live (2026-10-23):
+                                // `unown -p` with a silent open stdin (a supervisor's
+                                // control pipe) hung >110s with the 500ms idle timer armed
+                                // but unref'd — the loop had nothing ref'd left to wake it.
+                                // Ref'd is safe: settle() clears it, and the byte cap +
+                                // idle window bound the read either way.
                                 idleTimer = setTimeout(settle, idleMs);
-                                idleTimer.unref?.();
                         });
                         process.stdin.on("end", settle);
+                        // Same F10 mirror for the initial arm (see comment above).
                         idleTimer = setTimeout(settle, idleMs);
-                        idleTimer.unref?.();
                 });
         }
         const message = [prompt, piped.trim()].filter(Boolean).join("\n\n");
@@ -2214,14 +2221,23 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                         // --no-session: the id names an ephemeral in-memory
                         // session — nothing to resume, so the contract says null.
                         if (args.noSession) capture.sessionId = null;
+                        // F11 empty-answer guard (2026-10-23): never report success on an
+                        // empty result — a silent empty 200 from the upstream (see the
+                        // bridge/pi-ai guards) must not reach automation callers as
+                        // subtype "success" + exit 0.
+                        const emptyAnswer = code === 0 && text.length === 0;
                         const result = assembleResultJson({
                                 capture,
                                 text,
-                                subtype: code === 0 ? "success" : "error_during_execution",
+                                subtype: code === 0 && !emptyAnswer ? "success" : "error_during_execution",
                                 durationMs: Date.now() - startedAt,
                                 version: VERSION,
                         });
                         process.stdout.write(JSON.stringify(result) + "\n");
+                        if (emptyAnswer) {
+                                console.error("unown: the run ended without an answer (empty completion) — reported as error, not success");
+                                process.exit(1);
+                        }
                 }
                 process.exit(code);
         }
@@ -2229,6 +2245,21 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 mode: args.jsonMode ? "json" : "text",
                 messages: [message, ...drainTail],
         });
+        // F11 empty-answer guard (2026-10-23, text lane): a completed run whose
+        // final assistant message carries no text is NOT success. Measured live:
+        // an Agnes flash upstream under concurrent load answers 200 streams with
+        // zero content — pre-fix, print mode wrote an empty stdout and exited 0,
+        // poison for every unattended caller (CI, engine automations, scripts).
+        // The bridge retry + pi-ai's empty-completion throw are the first two
+        // layers; this is the last net: a loud stderr line + exit 1. The
+        // --mode json event stream is exempt (its consumer sees the raw events);
+        // --output-format json is guarded in its own branch above.
+        if (!args.jsonMode && code === 0 && (answerWatch.answer?.text ?? "").trim().length === 0) {
+                console.error(
+                        "unown: the model returned an empty answer (no text content) — likely an upstream fault; retry the run (the bridge and the provider layer already retried once each)",
+                );
+                process.exit(1);
+        }
         // M3 answer ping (notify.ts) — TEXT LANE ONLY: `--mode json` streams
         // JSONL events and `--output-format json` returned above, so neither
         // framed channel can ever see these bytes. runPrintMode has already

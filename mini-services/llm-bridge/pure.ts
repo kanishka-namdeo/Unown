@@ -464,6 +464,81 @@ export function foldSseLine(line: string, stats: SseStats): void {
 }
 
 // ---------------------------------------------------------------------------
+// Degenerate-completion detection (2026-10-23 — the silent-empty-upstream fix)
+// ---------------------------------------------------------------------------
+
+/**
+ * Release trigger for the degenerate-stream holdback: does this SSE data
+ * frame carry ASSISTANT WORK PRODUCT (text content, a tool call, or
+ * reasoning)? Role-only frames, bare finish_reason frames, usage-only
+ * frames and [DONE] do NOT release — a stream that ends without ever
+ * releasing is degenerate.
+ *
+ * WHY THIS EXISTS (measured live, 2026-10-23): the Agnes AI flash upstream
+ * under concurrent load occasionally answers a 200 SSE stream that carries
+ * ZERO content frames — a role delta, a bare finish_reason "stop", maybe a
+ * 0/0 usage chunk, then [DONE] — after holding the connection 48-81s. Every
+ * layer used to treat that as a successful (empty) answer: the bridge logged
+ * status "ok" with pt=0/ct=0, pi-ai minted a valid empty assistant turn, and
+ * `unown -p` exited 0 with an empty stdout. The bridge now HOLDS frames
+ * until this predicate releases (the first real work product) and retries
+ * the upstream once when the stream degenerates instead; the client-side
+ * guard (pi-ai openai-completions' empty-completion throw) is the second
+ * layer. Pure + unit-tested (pure.test.ts).
+ */
+export function sseFrameSignalsContent(line: string): boolean {
+        if (!line.startsWith("data:")) return false;
+        const payload = line.slice(5).trim();
+        if (payload === "[DONE]") return false;
+        try {
+                const obj = JSON.parse(payload);
+                const choice = obj?.choices?.[0];
+                const delta = choice?.delta;
+                if (typeof delta?.content === "string" && delta.content.length > 0) return true;
+                if (Array.isArray(delta?.tool_calls) && delta.tool_calls.length > 0) return true;
+                // Reasoning deltas (llama.cpp reasoning_content, other OpenAI-compatible
+                // servers' reasoning / reasoning_text) are work product for thinking models.
+                for (const field of ["reasoning_content", "reasoning", "reasoning_text"]) {
+                        const value = (delta as Record<string, unknown> | undefined)?.[field];
+                        if (typeof value === "string" && value.length > 0) return true;
+                }
+                // Some providers leak non-streaming shapes inside streams.
+                const message = choice?.message;
+                if (typeof message?.content === "string" && message.content.length > 0) return true;
+                if (Array.isArray(message?.tool_calls) && message.tool_calls.length > 0) return true;
+                return false;
+        } catch {
+                return false; // partial/garbage JSON — keep holding (a later frame decides)
+        }
+}
+
+/**
+ * Degenerate NON-STREAM completion detector: a 200 JSON body whose single
+ * choice carries no message content, no tool calls, no reasoning and zero
+ * completion tokens is not an answer — the same upstream fault as the empty
+ * stream above, in the request/response shape (this is what mem0's OpenAI
+ * SDK client sees). A missing/empty choices array with a 200 is degenerate
+ * too. Pure + unit-tested.
+ */
+export function isDegenerateCompletion(body: unknown): boolean {
+        const choice = (body as { choices?: unknown[] } | null)?.choices?.[0] as
+                | { message?: { content?: unknown; tool_calls?: unknown; reasoning_content?: unknown } }
+                | undefined;
+        if (!choice) return true;
+        const message = choice.message ?? {};
+        const content = typeof message.content === "string" ? message.content : "";
+        const toolCalls = Array.isArray(message.tool_calls) ? message.tool_calls.length : 0;
+        const reasoning = typeof message.reasoning_content === "string" ? message.reasoning_content.length : 0;
+        const completionTokens = (body as { usage?: { completion_tokens?: unknown } } | null)?.usage?.completion_tokens;
+        return (
+                content.length === 0 &&
+                toolCalls === 0 &&
+                reasoning === 0 &&
+                (typeof completionTokens === "number" ? completionTokens : 0) === 0
+        );
+}
+
+// ---------------------------------------------------------------------------
 // Catalog coherence (audit M4-a D1 — the stale-allow-list 404 trap)
 // ---------------------------------------------------------------------------
 

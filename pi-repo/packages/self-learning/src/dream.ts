@@ -370,11 +370,21 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
 			};
 		}
 		if (gate.rolledBack) {
+			// The canary's mem0 events are ALWAYS reverted here — canaryCheck
+			// never touches the platform (its rollback is version-tier only).
 			await revertMemoryEvents(out.events, ENGINE_SCOPE, { platform: opts.platform });
-			try {
-				if (version > 1) rollback("project", version - 1, `dream canary rolled back to v${version - 1}`);
-			} catch {
-				/* v1 seed */
+			// Double-rollback fix: canaryCheck rolls the VERSION back itself and
+			// reports it via rolledBackVersion — rolling back again here minted a
+			// second, redundant version row (identical N-1 content) plus a
+			// duplicate memory:changed event on every gated dream. Only a legacy
+			// canaryFn that returns rolledBack:true without acting (no
+			// rolledBackVersion) still gets runDream's own rollback.
+			if (gate.rolledBackVersion === undefined) {
+				try {
+					if (version > 1) rollback("project", version - 1, `dream canary rolled back to v${version - 1}`);
+				} catch {
+					/* v1 seed */
+				}
 			}
 			markDreamed(
 				notes.map((n: any) => n.id),
@@ -471,11 +481,21 @@ function canaryNote(gate: { skipped?: boolean; reason?: string; canaries?: strin
  * claims verification it never ran (self-verification corruption). An
  * infrastructure ERROR on a canary skips that sample (recorded), keeping the
  * dream. Returns { skipped } when sampling is disabled or unavailable.
+ *
+ * ROLLBACK OWNERSHIP (the double-rollback fix, 2026-10-22): this function
+ * performs the memory-version rollback ITSELF and reports it via
+ * `rolledBackVersion` — the version it rolled the tier back TO. runDream
+ * reads that field and does NOT roll back again: the pre-fix caller rolled
+ * back a second time on `rolledBack: true`, minting a redundant version row
+ * (identical N-1 content) and a duplicate memory:changed event for every
+ * gated dream. A `rolledBack: true` WITHOUT `rolledBackVersion` (a legacy
+ * injected canaryFn that gated without acting) still gets runDream's own
+ * rollback — backwards compatible with the test seam's older fakes.
  */
 export async function canaryCheck(
 	newVersion: number,
 	opts?: { runAgentFn?: (o: any) => Promise<{ status: string; transcript?: unknown; lastAssistantText?: string }> },
-): Promise<{ rolledBack: boolean; skipped?: boolean; reason?: string; canaries?: string[] }> {
+): Promise<{ rolledBack: boolean; rolledBackVersion?: number; skipped?: boolean; reason?: string; canaries?: string[] }> {
 	const k = canaryK();
 	if (k <= 0) return { rolledBack: false, skipped: true, reason: "canary sampling disabled (PI_DREAM_CANARY_K<=0)" };
 	const samples = sampleCanaryTasks(k);
@@ -505,6 +525,9 @@ export async function canaryCheck(
 			rollback("project", newVersion - 1, `dream canary failed on ${task.id} — consolidation rolled back`);
 			return {
 				rolledBack: true,
+				// Observable rollback ownership: runDream must not roll back again
+				// (one rollback, one version row, one memory:changed event).
+				rolledBackVersion: newVersion - 1,
 				reason: `canary ${task.id} failed under new memory v${newVersion}`,
 				canaries: [...outcomes, `${task.id}: FAILED`],
 			};
@@ -525,6 +548,8 @@ export async function canaryCheck(
 			);
 			return {
 				rolledBack: true,
+				// Observable rollback ownership — see the failed-branch comment above.
+				rolledBackVersion: newVersion - 1,
 				reason: `canary ${task.id}: ${analysis.reason}`,
 				canaries: [...outcomes, `${task.id}: GATED (${analysis.drift ? "drift" : "claim"})`],
 			};
@@ -590,8 +615,15 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 			continue;
 		}
 
+		// Hoisted so the catch below can unwind a PARTIALLY-APPLIED dream:
+		// `out` is set once consolidate() has written platform events, and
+		// `shippedThisDream` flips when the version row COMMITS (the memory
+		// is live from that point — later failures must not unwind it).
+		let scope: MemoryScope | null = null;
+		let out: Awaited<ReturnType<typeof consolidate>> | null = null;
+		let shippedThisDream = false;
 		try {
-			const scope = projectScope(group.slug);
+			scope = projectScope(group.slug);
 			const prePlatform = await platformOrSingleton(opts);
 			// Composite-slug migration (project-identity.ts, 2026-10-22):
 			// scopes keyed by basename alone let two same-named directories
@@ -618,16 +650,56 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 			if ((await prePlatform.getAll(scope)).length === 0 && !isPristineSeedProjectMemory(current)) {
 				await importLegacyMarkdown(current, scope, { platform: prePlatform });
 			}
-			const out = await consolidate(scope, notes as any, {
+			out = await consolidate(scope, notes as any, {
 				...opts,
 				preserveManualNotesFrom: current,
 			});
 			const next = out.rendered;
 			const cap = maxTierChars();
-			if (next.length > cap)
-				throw new Error(
-					`project dream render (${next.length} chars) exceeds cap ${cap} — project memory preserved`,
+			if (next.length > cap) {
+				// Bounded-refusal gate (the 2026-10-22 partial-ship fix): the
+				// render refuses to ship — the platform events this dream
+				// just wrote are NOT reflected by any version row, so they are
+				// reverted (platform and file stay consistent) and the notes
+				// are CONSUMED: the pre-fix code threw into the generic catch,
+				// which neither reverted nor consumed — the same notes were
+				// re-dreamed into the same oversized render forever (the
+				// infinite dream loop). Status 'gated' mirrors the guard gate:
+				// a deterministic policy refusal, honestly recorded.
+				await revertMemoryEvents(out.events, scope, { platform: opts.platform });
+				const dreamId = `project-${randomUUID()}`;
+				store.run(
+					`INSERT INTO dreams (id, started_at, ended_at, status, notes_in, entries_added, output, note) VALUES (?, ?, ?, 'gated', ?, ?, ?, ?)`,
+					[
+						dreamId,
+						projectDreamStartMs,
+						Date.now(),
+						notes.length,
+						0,
+						next,
+						`project dream: ${group.slug} render (${next.length} chars) exceeds cap ${cap} — platform events reverted, file preserved`,
+					],
 				);
+				markDreamed(
+					notes.map((n: any) => n.id),
+					dreamId,
+				);
+				emit("dream:finished", {
+					id: dreamId,
+					status: "gated",
+					notesIn: notes.length,
+					project: group.slug,
+					reason: `render exceeds cap (${next.length} > ${cap})`,
+				});
+				results.push({
+					slug: group.slug,
+					projectPath: group.projectPath,
+					notesIn: notes.length,
+					status: "gated",
+					note: `render exceeds cap (${next.length} chars > ${cap}) — platform reverted, file preserved, notes consumed`,
+				});
+				continue;
+			}
 
 			// Nothing substantive survived (all notes quarantined, nothing
 			// extracted): consume the notes, keep the current file untouched —
@@ -777,6 +849,11 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 					],
 				);
 				store.run(`COMMIT`);
+				// The version row is durable — the dream's memory is LIVE from
+				// here on. Failures after this point (file write, sidecar,
+				// skills minting, hoist) must NOT unwind the platform events:
+				// the catch below uses this flag as the unwind boundary.
+				shippedThisDream = true;
 			} catch (err: any) {
 				try {
 					store.run(`ROLLBACK`);
@@ -896,9 +973,30 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 		} catch (err: any) {
 			const msg = err?.message ?? String(err);
 			const dreamId = `project-${randomUUID()}`;
+			let note = `project dream error (${group.slug}): ${msg}`;
+			// Partial-apply unwind (the 2026-10-22 partial-ship fix), scoped to
+			// WHERE the dream died:
+			//  - events applied but the memory NOT yet live (pre-COMMIT failure):
+			//    revert the platform events (platform and file must not diverge)
+			//    and consume the notes — a deterministic failure here re-dreamed
+			//    the same notes forever pre-fix; a transient one loses one batch,
+			//    the honest price of never looping;
+			//  - nothing applied yet (pre-consolidate failure): keep the notes
+			//    undreamed — nothing diverged, retry is correct and lossless;
+			//  - memory already live (post-COMMIT failure: file write, sidecar,
+			//    skills minting, hoist): the ship stands; record the error only —
+			//    unwinding now would diverge file and platform the OTHER way.
+			if (out && scope && !shippedThisDream) {
+				const unwind = await revertMemoryEvents(out.events, scope, { platform: opts.platform });
+				markDreamed(
+					notes.map((n: any) => n.id),
+					dreamId,
+				);
+				note += ` · platform events reverted (${unwind.reverted} ok${unwind.errors.length ? `, ${unwind.errors.length} failed` : ""}), notes consumed`;
+			}
 			store.run(
 				`INSERT INTO dreams (id, started_at, ended_at, status, notes_in, note) VALUES (?, ?, ?, 'error', ?, ?)`,
-				[dreamId, projectDreamStartMs, Date.now(), notes.length, `project dream error (${group.slug}): ${msg}`],
+				[dreamId, projectDreamStartMs, Date.now(), notes.length, note],
 			);
 			emit("dream:finished", { id: dreamId, status: "error", project: group.slug, error: msg });
 			results.push({
@@ -944,8 +1042,8 @@ export function latestDreamNews(
 	try {
 		const rows = store.query<any>(
 			`SELECT id, ended_at, entries_added, note FROM dreams
-                         WHERE status = 'done' AND entries_added > 0 AND ended_at IS NOT NULL AND ended_at > ?
-                         ORDER BY ended_at DESC LIMIT 8`,
+			 WHERE status = 'done' AND entries_added > 0 AND ended_at IS NOT NULL AND ended_at > ?
+			 ORDER BY ended_at DESC LIMIT 8`,
 			[Date.now() - maxAgeMs],
 		);
 		for (const r of rows) {

@@ -17,7 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { emit } from "../src/bus.ts";
 import { breakerStatus, breakerThreshold, markEngineProcess, recordLlmFailure, resetBreakerForTest, resetEngineProcessForTest } from "../src/governor.ts";
-import { JOB_DEFS, listJobs, Router, router } from "../src/router.ts";
+import { JOB_DEFS, listJobs, Router, router, ROUTER_TEST_ONLY } from "../src/router.ts";
 import { Store, store } from "../src/store.ts";
 
 describe("JOB_DEFS", () => {
@@ -257,6 +257,59 @@ describe("Router event-job queue (HIGH-1)", () => {
                         r.stop();
                 }
         }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
+// BUG 7 (audit #7): the watchdog's running-row recovery used to be a GLOBAL
+// `UPDATE runs SET status='error' WHERE status='running'` — any run row alive
+// outside the timed-out job (an automation-lane run, an API-triggered run
+// that slipped past the mutex, or a row left 'running' by a crashed earlier
+// boot — recoverOrphans heals those only at boot) was falsely errored while
+// THIS job hung. The recovery is now scoped to runs started AT OR AFTER the
+// job's own start timestamp.
+// ---------------------------------------------------------------------------
+describe("watchdog row recovery is scoped to THIS job's runs (BUG 7)", () => {
+        test("a foreign 'running' row from before the job start survives the timeout; rows started during the job are recovered", async () => {
+                // The jobs table is seeded by the earlier start()/stop() suite; pin the
+                // row back to idle so execute() can take it.
+                store.run(`UPDATE jobs SET status = 'idle' WHERE id = 'dream-check'`);
+                // A foreign run row: started 60s BEFORE the job (e.g. left 'running' by
+                // a lane that does not hold the router mutex, or a crashed earlier boot).
+                store.run(
+                        `INSERT INTO runs (id, task_id, kind, status, started_at) VALUES ('bug7-foreign-run', 't', 'regression', 'running', ?)`,
+                        [Date.now() - 60_000],
+                );
+                const r = new Router();
+                // A job whose internal work starts a run row DURING the job, then hangs
+                // forever — the pre-fix engine would hold the busy mutex forever.
+                (r as any).runJobInternal = async () => {
+                        store.run(
+                                `INSERT INTO runs (id, task_id, kind, status, started_at) VALUES ('bug7-job-run', 't', 'regression', 'running', ?)`,
+                                [Date.now()],
+                        );
+                        return new Promise(() => {});
+                };
+                ROUTER_TEST_ONLY.timeoutOverrideMs = 100;
+                try {
+                        const result = (await r.execute("dream-check")) as { error?: string };
+                        expect(result?.error).toContain("watchdog: job dream-check exceeded");
+                        // The job's OWN run row (started during the job) was healed to error.
+                        const jobRow = store.get<{ status: string; error: string }>(
+                                `SELECT status, error FROM runs WHERE id = 'bug7-job-run'`,
+                        )!;
+                        expect(jobRow.status).toBe("error");
+                        expect(jobRow.error).toContain("watchdog");
+                        // The FOREIGN row (started before the job) SURVIVES — the global
+                        // UPDATE of the pre-fix code errored it out from under its owner.
+                        const foreignRow = store.get<{ status: string }>(
+                                `SELECT status FROM runs WHERE id = 'bug7-foreign-run'`,
+                        )!;
+                        expect(foreignRow.status).toBe("running");
+                } finally {
+                        store.run(`DELETE FROM runs WHERE id IN ('bug7-foreign-run', 'bug7-job-run')`);
+                        ROUTER_TEST_ONLY.timeoutOverrideMs = undefined;
+                }
+        });
 });
 
 // ---------------------------------------------------------------------------

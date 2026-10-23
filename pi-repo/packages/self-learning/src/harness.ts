@@ -20,8 +20,14 @@ import { decideGuardAction, guardSummary } from "./guard.ts";
 import { modelFor } from "./llm.ts";
 import { logHook } from "./hooks.ts";
 import { chatJson } from "./llm.ts";
-import { appendRules, currentVersion, readTier, rollback, type Tier } from "./memory.ts";
-import { shipEngineRules, unshipEngineRules } from "./memzero.ts";
+import { appendRules, currentVersion, readTier, rollback, writeTier, type Tier } from "./memory.ts";
+import {
+        ENGINE_SCOPE,
+        getMemoryPlatform,
+        renderProjectMemoryMarkdown,
+        shipEngineRules,
+        unshipEngineRules,
+} from "./memzero.ts";
 import { graduateTask } from "./mint.ts";
 import { type RunResult, runAgent } from "./runner.ts";
 import { store } from "./store.ts";
@@ -586,58 +592,113 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
 
 /**
  * Retention check: a baseline failure on a task with a SHIPPED improvement
- * means the shipped lesson did not hold. Mark the improvement 'regressed';
- * when we know the memory version it produced, roll back to the pre-ship
- * version (auto-unship) so bad lessons cannot linger in memory.
+ * means the shipped lesson did not hold. Mark EVERY shipped improvement of
+ * the task 'regressed' and undo each one from memory:
+ *
+ *   - project tier with recorded memory_ids (the normal mem0 ship): delete
+ *     the exact ids this ship added and re-render the tier — the lesson
+ *     leaves the platform AND the injected file in one move.
+ *   - project tier with EMPTY memory_ids (every event was UPDATE/NONE —
+ *     mem0's dedup folded the ship into existing memories): there is nothing
+ *     to delete by id and NO version to roll back to. The pre-fix code fell
+ *     into the legacy branch and rolled the tier back to version-1,
+ *     resurrecting a render that no longer matched platform state while the
+ *     next dream re-rendered the same content — version ping-pong between
+ *     render and platform (audit #4). Instead, re-render the project tier
+ *     FROM the platform so the file and the platform stay in sync.
+ *   - other tiers (pre-swap file ships): roll the tier back to the pre-ship
+ *     version when one was recorded (legacy auto-unship, unchanged).
+ *
+ * The old query took ORDER BY created_at DESC LIMIT 1 — only the LATEST ship
+ * per task was ever un-shipped, so a task with several shipped iterations
+ * kept every older lesson in memory while its row still claimed 'shipped'
+ * (audit #4). We now iterate them all, each with its own memory_ids/version
+ * handling, and aggregate the retention note.
+ *
+ * Exported for unit tests (test/harness-retention.test.ts drives it against
+ * the fake platform); runCycle calls it after a failed baseline.
  */
-async function retentionCheck(taskId: string, cycleId: string) {
-        const shipped = store.get<{ id: string; memory_version: number | null; target_tier: string; memory_ids: string | null }>(
-                `SELECT id, memory_version, target_tier, memory_ids FROM improvements WHERE task_id = ? AND status = 'shipped' ORDER BY created_at DESC LIMIT 1`,
+export async function retentionCheck(taskId: string, cycleId: string) {
+        const shipped = store.query<{ id: string; memory_version: number | null; target_tier: string; memory_ids: string | null }>(
+                `SELECT id, memory_version, target_tier, memory_ids FROM improvements WHERE task_id = ? AND status = 'shipped' ORDER BY created_at ASC`,
                 [taskId],
         );
-        if (!shipped) return;
+        if (shipped.length === 0) return;
 
-        store.run(`UPDATE improvements SET status = 'regressed', decided_at = ? WHERE id = ?`, [Date.now(), shipped.id]);
-        let note = `task ${taskId} failed again after the patch shipped — improvement marked regressed`;
+        let note = `task ${taskId} failed again after the patch shipped — ${shipped.length} improvement(s) marked regressed`;
 
-        // mem0-backed ships (the learning-core swap): delete the exact memory
-        // ids this ship added and re-render the tier — the lesson leaves the
-        // platform AND the injected file in one move.
-        const memoryIds = shipped.memory_ids ? safeParseIds(shipped.memory_ids) : [];
-        if (shipped.target_tier === "project" && memoryIds.length > 0) {
-                try {
-                        const un = await unshipEngineRules(
-                                memoryIds,
-                                `retention: ${taskId} regressed — unshipped ${memoryIds.length} memory rule(s) (cycle ${cycleId.slice(0, 8)})`,
-                        );
-                        note += `; ${un.unshipped} memory rule(s) unshipped, tier re-rendered${un.version ? ` -> v${un.version}` : ""}`;
-                } catch (err: any) {
-                        note += `; platform unship failed (${err?.message ?? err})`;
-                }
-        } else {
-                const version = shipped.memory_version;
-                if (version && version > 1) {
-                        try {
-                                rollback(
-                                        shipped.target_tier as Tier,
-                                        version - 1,
-                                        `retention: ${taskId} regressed — unshipped improvement (cycle ${cycleId.slice(0, 8)})`,
-                                );
-                                note += `; memory rolled back to v${version - 1}`;
-                        } catch {
-                                note += `; rollback to v${version - 1} unavailable`;
+        for (const ship of shipped) {
+                store.run(`UPDATE improvements SET status = 'regressed', decided_at = ? WHERE id = ?`, [Date.now(), ship.id]);
+
+                const memoryIds = ship.memory_ids ? safeParseIds(ship.memory_ids) : [];
+                if (ship.target_tier === "project") {
+                        if (memoryIds.length > 0) {
+                                // mem0-backed ship (the learning-core swap): delete the exact
+                                // memory ids this ship added and re-render the tier — the lesson
+                                // leaves the platform AND the injected file in one move.
+                                try {
+                                        const un = await unshipEngineRules(
+                                                memoryIds,
+                                                `retention: ${taskId} regressed — unshipped ${memoryIds.length} memory rule(s) (cycle ${cycleId.slice(0, 8)})`,
+                                        );
+                                        note += `; [${ship.id.slice(0, 8)}] ${un.unshipped} memory rule(s) unshipped, tier re-rendered${
+                                                        un.version ? ` -> v${un.version}` : ""
+                                                }`;
+                                } catch (err: any) {
+                                        note += `; [${ship.id.slice(0, 8)}] platform unship failed (${err?.message ?? err})`;
+                                }
+                        } else {
+                                // BUG 4 (audit #4): empty memory_ids on a mem0-backed project
+                                // ship. Nothing to delete by id (the platform folded the rules
+                                // into existing memories via UPDATE/NONE events) and no honest
+                                // version to roll back to — a rollback would resurrect a stale
+                                // render that no longer matches platform state. Re-render the
+                                // project tier from the platform instead, so the file tracks
+                                // the platform.
+                                try {
+                                        const platform = await getMemoryPlatform();
+                                        const rendered = renderProjectMemoryMarkdown(await platform.getAll(ENGINE_SCOPE));
+                                        const version = writeTier(
+                                                "project",
+                                                rendered,
+                                                "rollback",
+                                                `retention: ${taskId} regressed — project tier re-rendered from the platform, no memory ids to unship (cycle ${cycleId.slice(0, 8)})`,
+                                        );
+                                        note += `; [${ship.id.slice(0, 8)}] no memory ids recorded — project tier re-rendered from the platform -> v${version}`;
+                                } catch (err: any) {
+                                        note += `; [${ship.id.slice(0, 8)}] platform re-render failed (${err?.message ?? err})`;
+                                }
                         }
                 } else {
-                        note += "; legacy ship without recorded version — memory left as-is";
+                        const version = ship.memory_version;
+                        if (version && version > 1) {
+                                try {
+                                        rollback(
+                                                ship.target_tier as Tier,
+                                                version - 1,
+                                                `retention: ${taskId} regressed — unshipped improvement (cycle ${cycleId.slice(0, 8)})`,
+                                        );
+                                        note += `; [${ship.id.slice(0, 8)}] ${ship.target_tier} memory rolled back to v${version - 1}`;
+                                } catch {
+                                        note += `; [${ship.id.slice(0, 8)}] rollback to v${version - 1} unavailable`;
+                                }
+                        } else {
+                                note += `; [${ship.id.slice(0, 8)}] legacy ship without recorded version — memory left as-is`;
+                        }
                 }
+                emit("improvement:regressed", {
+                        id: ship.id,
+                        taskId,
+                        cycleId,
+                        // Only the legacy file-tier branch rolls back to a recorded version;
+                        // project-tier ships re-render from the platform instead (BUG 4).
+                        rolledBackTo:
+                                ship.target_tier !== "project" && ship.memory_version && ship.memory_version > 1
+                                        ? ship.memory_version - 1
+                                        : null,
+                });
         }
         logHook(null, "SubagentStop", null, "log", note);
-        emit("improvement:regressed", {
-                id: shipped.id,
-                taskId,
-                cycleId,
-                rolledBackTo: shipped.memory_version && shipped.memory_version > 1 ? shipped.memory_version - 1 : null,
-        });
 }
 
 function safeParseIds(raw: string): string[] {
@@ -649,10 +710,36 @@ function safeParseIds(raw: string): string[] {
         }
 }
 
+/**
+ * Uniform Fisher-Yates shuffle (BUG 9, audit #9). The old
+ * `tasks.sort(() => Math.random() - 0.5)` was the classic biased comparator
+ * shuffle: a comparison sort can only permute through its O(n log n)
+ * comparison outcomes, and a random comparator breaks transitivity, so some
+ * permutations come out measurably hotter than others — the regression
+ * sweep's "random" sample was quietly weighted toward the same tasks every
+ * time. Fisher-Yates draws a uniform swap partner for every position, so
+ * each of the n! permutations is equally likely. Pure (returns a copy, never
+ * mutates the input) and rng-injectable for deterministic tests.
+ */
+export function shuffled<T>(items: readonly T[], rng: () => number = Math.random): T[] {
+        const out = [...items];
+        for (let i = out.length - 1; i > 0; i--) {
+                // Clamp the index: an injected rng returning exactly 1.0 must not read
+                // past position i (Math.random is [0,1), but a test double need not be).
+                const j = Math.min(i, Math.floor(rng() * (i + 1)));
+                if (j !== i) {
+                        const tmp = out[i];
+                        out[i] = out[j];
+                        out[j] = tmp;
+                }
+        }
+        return out;
+}
+
 /** Regression sweep triggered after an improvement ships. */
 export async function runRegression(sampleSize = 2): Promise<{ taskId: string; status: string }[]> {
         const tasks = listTasks().filter((t: any) => t.passes + t.fails > 0);
-        const sample = tasks.sort(() => Math.random() - 0.5).slice(0, sampleSize);
+        const sample = shuffled(tasks).slice(0, sampleSize);
         const results: { taskId: string; status: string }[] = [];
         for (const t of sample) {
                 const task = getTask(t.id);
@@ -665,13 +752,35 @@ export async function runRegression(sampleSize = 2): Promise<{ taskId: string; s
                         verify: task.verify,
                         label: `${t.id}-regression`,
                 });
-                store.run(
-                        `UPDATE tasks SET ${run.status === "passed" ? "pass_count" : "fail_count"} = ${run.status === "passed" ? "pass_count" : "fail_count"} + 1 WHERE id = ?`,
-                        [t.id],
-                );
+                await recordRegressionOutcome(t.id, run);
                 results.push({ taskId: t.id, status: run.status });
         }
         return results;
+}
+
+/**
+ * Record one regression-sweep outcome: bump the task's pass/fail counter and —
+ * BUG 9 (audit #9) — route a FAILED sweep of a task with a shipped improvement
+ * through the same retention path a failed baseline takes. Until this hook,
+ * a shipped patch that broke OTHER tasks only bumped fail_count: only a later
+ * failed baseline of the SAME task ever triggered the un-ship, so a bad
+ * lesson lingered in memory no matter how many sweeps it failed. A sweep
+ * failure is the same evidence class as a baseline failure (the task, run
+ * with the currently shipped memory, did not pass). Conservative by design:
+ * only FAILED runs — an 'error' died on infrastructure and is not evidence
+ * about the lesson.
+ *
+ * Exported for unit tests (test/harness-retention.test.ts) — runRegression's
+ * own loop needs a live sandbox, but this seam is pure store + retention.
+ */
+export async function recordRegressionOutcome(taskId: string, run: { id: string; status: string }): Promise<void> {
+        store.run(
+                `UPDATE tasks SET ${run.status === "passed" ? "pass_count" : "fail_count"} = ${run.status === "passed" ? "pass_count" : "fail_count"} + 1 WHERE id = ?`,
+                [taskId],
+        );
+        if (run.status === "failed") {
+                await retentionCheck(taskId, `sweep-${run.id.slice(0, 8)}`);
+        }
 }
 
 export function listCycles(limit = 40) {

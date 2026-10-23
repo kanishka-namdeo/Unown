@@ -25,6 +25,8 @@ import {
         buildUpstreamBody,
         completionStats,
         foldSseLine,
+        sseFrameSignalsContent,
+        isDegenerateCompletion,
         isRetryableError,
         isFailoverError,
         loadConfig,
@@ -1233,5 +1235,117 @@ describe("laneForRequest", () => {
         test("unrelated header values do not match the background lane", () => {
                 expect(laneForRequest(undefined, "fast")).toBe("interactive");
                 expect(laneForRequest(undefined, "background-ish")).toBe("interactive");
+        });
+});
+
+// ---------------------------------------------------------------------------
+// Degenerate-completion detection (2026-10-23): the silent-empty-upstream fix.
+// sseFrameSignalsContent is the release trigger for the bridge's stream
+// holdback; isDegenerateCompletion guards the non-stream path. Both exist
+// because the Agnes flash upstream was measured returning 200 completions
+// with ZERO content under concurrent load (empty streams with usage 0/0 and
+// 48-81s latencies; empty JSON bodies) — every layer used to treat those as
+// successful empty answers.
+// ---------------------------------------------------------------------------
+describe("sseFrameSignalsContent — the holdback release trigger", () => {
+        test("text content deltas release", () => {
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ delta: { content: "hello" } }] })}`)).toBe(true);
+        });
+
+        test("tool-call deltas release", () => {
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "bash" } }] } }] })}`)).toBe(true);
+        });
+
+        test("reasoning deltas release (thinking models)", () => {
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: "thinking" } }] })}`)).toBe(true);
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ delta: { reasoning: "thinking" } }] })}`)).toBe(true);
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ delta: { reasoning_text: "thinking" } }] })}`)).toBe(true);
+        });
+
+        test("role-only frames do NOT release", () => {
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ delta: { role: "assistant" } }] })}`)).toBe(false);
+        });
+
+        test("a bare finish_reason frame does NOT release (the degenerate shape)", () => {
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: "stop" }] })}`)).toBe(false);
+        });
+
+        test("usage-only frames do NOT release", () => {
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ delta: {} }], usage: { prompt_tokens: 9200, completion_tokens: 0 } })}`)).toBe(false);
+        });
+
+        test("[DONE] does not release", () => {
+                expect(sseFrameSignalsContent("data: [DONE]")).toBe(false);
+        });
+
+        test("empty-string content does not release (an empty string is not work product)", () => {
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ delta: { content: "" } }] })}`)).toBe(false);
+        });
+
+        test("non-data and garbage lines do not release", () => {
+                expect(sseFrameSignalsContent(": keepalive")).toBe(false);
+                expect(sseFrameSignalsContent("data: {broken json")).toBe(false);
+                expect(sseFrameSignalsContent("")).toBe(false);
+        });
+
+        test("non-streaming shapes leaked into streams release (defensive)", () => {
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ message: { content: "full answer" } }] })}`)).toBe(true);
+                expect(sseFrameSignalsContent(`data: ${JSON.stringify({ choices: [{ message: { tool_calls: [{ id: "t1", function: { name: "x" } }] } }] })}`)).toBe(true);
+        });
+});
+
+describe("isDegenerateCompletion — the non-stream guard", () => {
+        test("the measured Agnes shape is degenerate: empty content, no tools, 0 completion tokens", () => {
+                expect(
+                        isDegenerateCompletion({
+                                choices: [{ message: { role: "assistant", content: "" }, finish_reason: "stop" }],
+                                usage: { prompt_tokens: 9200, completion_tokens: 0 },
+                        }),
+                ).toBe(true);
+        });
+
+        test("missing usage entirely is degenerate when content is empty", () => {
+                expect(isDegenerateCompletion({ choices: [{ message: { role: "assistant", content: "" }, finish_reason: "stop" }] })).toBe(true);
+        });
+
+        test("a real answer is not degenerate", () => {
+                expect(
+                        isDegenerateCompletion({
+                                choices: [{ message: { role: "assistant", content: "here is the answer" }, finish_reason: "stop" }],
+                                usage: { prompt_tokens: 50, completion_tokens: 7 },
+                        }),
+                ).toBe(false);
+        });
+
+        test("a tool-call-only answer is not degenerate", () => {
+                expect(
+                        isDegenerateCompletion({
+                                choices: [{ message: { role: "assistant", content: "", tool_calls: [{ id: "t1", function: { name: "bash" } }] }, finish_reason: "tool_calls" }],
+                                usage: { prompt_tokens: 50, completion_tokens: 0 },
+                        }),
+                ).toBe(false);
+        });
+
+        test("a reasoning-only answer is not degenerate", () => {
+                expect(
+                        isDegenerateCompletion({
+                                choices: [{ message: { role: "assistant", content: "", reasoning_content: "thoughts" }, finish_reason: "stop" }],
+                                usage: { prompt_tokens: 50, completion_tokens: 0 },
+                        }),
+                ).toBe(false);
+        });
+
+        test("empty content with NON-zero completion tokens is not flagged (tokens were spent — not the empty-200 fault)", () => {
+                expect(
+                        isDegenerateCompletion({
+                                choices: [{ message: { role: "assistant", content: "" }, finish_reason: "stop" }],
+                                usage: { prompt_tokens: 50, completion_tokens: 12 },
+                        }),
+                ).toBe(false);
+        });
+
+        test("200 with no choices array is degenerate", () => {
+                expect(isDegenerateCompletion({})).toBe(true);
+                expect(isDegenerateCompletion({ choices: [] })).toBe(true);
         });
 });
