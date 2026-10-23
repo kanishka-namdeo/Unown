@@ -7,7 +7,12 @@
  * invariants of the 2026-10-22 benchtest fixes.
  */
 import { describe, expect, test } from "bun:test";
-import { MEM0_CUSTOM_INSTRUCTIONS, normalizeMemories, reframeNoteForExtraction } from "../src/memzero.ts";
+import {
+	MEM0_CUSTOM_INSTRUCTIONS,
+	normalizeMemories,
+	reframeNoteForExtraction,
+	RECONCILE_SYSTEM,
+} from "../src/memzero.ts";
 
 // ---------------------------------------------------------------- reframe
 
@@ -142,6 +147,18 @@ describe("MEM0_CUSTOM_INSTRUCTIONS", () => {
 		expect(MEM0_CUSTOM_INSTRUCTIONS).toContain("pitfall and its remedy together");
 		// the over-broad phrase that caused the misclassification is gone
 		expect(MEM0_CUSTOM_INSTRUCTIONS).not.toContain("runner/tool switches");
+	});
+
+	test("RECONCILE_SYSTEM carries the same carve-out (2026-10-23 reconcile fix)", () => {
+		// The mirror bug on the reconcile side: rule 6's "runner/tool switches"
+		// phrasing made the reconciler DELETE a shipped, verified pitfall
+		// memory ("suite flaky under parallel runners; use bun test
+		// --runInBand") as an injection payload — observed live, memory_history
+		// row 66. Same fix shape: agent-behavior policy only, environment
+		// workarounds preserved.
+		expect(RECONCILE_SYSTEM).toContain("agent-behavior policy ONLY");
+		expect(RECONCILE_SYSTEM).toContain("PRESERVE it like any other durable rule");
+		expect(RECONCILE_SYSTEM).not.toContain("runner/tool switches");
 	});
 });
 
