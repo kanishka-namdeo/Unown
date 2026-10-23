@@ -426,6 +426,7 @@ export const SPRITES = [
   },
 },
 
+
 /* 010 — sdlc: the works badger, walking the list ***********************/
 {
   id: "sdlc",
@@ -470,6 +471,51 @@ export const SPRITES = [
     paint(c, tail, "C2");
     paint(c, both(tail, (x) => x >= 54), "G1");
     glint(c, 20, 27, "C3");
+    return c;
+  },
+},
+
+/* 011 — browser: the window form, cursor up ***************************/
+{
+  id: "browser",
+  meta: { standing: true, symmetric: false },
+  draw(c) {
+    // the window itself — one dominant mass, a tall rounded frame in the
+    // plate ramp (the creature IS the page it renders), standing on two
+    // stubby feet so it can scoot between monitors
+    const win = inRoundRect(26.5, 30, 34, 36, 4);
+    shade(c, win, { base: "P2", light: "P3", shadow: "P1" });
+    // the chrome band across the top — an interior detail (no outline
+    // tax): light blue-grey, three little navy window dots, one glint
+    paint(c, inRoundRect(26.5, 18, 30, 9, 2), "P1");
+    for (const dx of [14, 19, 24]) { px(c, dx, 17, "N2"); px(c, dx + 1, 17, "N2"); px(c, dx, 18, "N2"); px(c, dx + 1, 18, "N2"); }
+    glint(c, 38, 16, "P4");
+    // the rendered page — a brighter plate inside the frame, where the
+    // face lives (interior again: the story painted ON the mass)
+    const page = inRoundRect(26.5, 31, 27, 21, 3);
+    paint(c, page, "P4");
+    paint(c, rim(page, 0, -2), "P3");
+    face(c, { cx: 26.5, eyeY: 28, eyeGap: 9, eyeW: 4, eyeH: 5, mouthDy: 7, mouth: "smile", mouthW: 5, cheek: "P2", cheekDy: 5 });
+    // stubby feet, the plate's own shadow ramp — attached under the frame,
+    // five rows proud of the bottom edge so they read as feet, not a hem
+    for (const fx of [17.5, 35.5]) shade(c, inRoundRect(fx, 49, 7, 7, 2), { base: "P1" });
+    // the golden cursor — the one detached part, because the trusted
+    // click IS the story: a SOLID pointer big enough to survive its own
+    // generated outline, leaning in toward the page, gold with a lit left
+    // edge, floating one clear pixel off the window's right side
+    stamp(c, 45, 29, [
+      "XX.....",
+      "XXX....",
+      "XXXX...",
+      "XXXXX..",
+      "XXXXXX.",
+      "XXXXXXX",
+      "XX.....",
+      "XX.....",
+      "XX.....",
+    ], { X: "G2" });
+    for (let yy = 30; yy <= 34; yy++) px(c, 45, yy, "G3");
+    px(c, 46, 30, "G3");
     return c;
   },
 },

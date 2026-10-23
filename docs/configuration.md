@@ -168,6 +168,15 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_WEB_CACHE_DURABLE` | unset | `1` restores double-fsync (file + directory) cache writes. Default is the cacache model — tmp+rename without fsync: a lost cache entry is a refetch, and a power-loss-torn entry is caught by the payload checksum. |
 | `UNOWN_WEB_CACHE_SWR` | `1` | `0` disables stale-while-revalidate serving (a stale answer then blocks on the provider again; stale-if-error still applies on failure). |
 | `UNOWN_WEB_CACHE_SWR_MS` | entry's stale window | Bounds how far past TTL a stale answer may serve instantly (`· stale — refreshing in background`) while a background refresh restores freshness. |
+| `UNOWN_BROWSER_PATH` | auto | Explicit Chromium-family executable for the `browser` tool; wins over discovery (which tries system Chrome/Chromium/Edge per-OS, then the Playwright cache). |
+| `UNOWN_BROWSER_CDP` | unset | Attach the `browser` tool to a running browser (`ws://…`, `http://host:port`, or `host:port`) instead of launching one — the real, already-logged-in Chrome. Attach never kills it. |
+| `UNOWN_BROWSER_HEADLESS` | `1` | `0` runs the `browser` tool's Chromium headed, so you can watch it work. |
+| `UNOWN_BROWSER_PROFILE` | `$UNOWN_HOME/browser/profile` | Persistent browser profile — logins survive between runs; a locked profile falls back to a temp one instead of fighting over it. |
+| `UNOWN_BROWSER_BLOCK` | unset | Comma-separated host-glob deny list (`*.example.com,internal.corp`) checked before every navigation; localhost stays allowed by default (driving the dev server is a first-class use case). |
+| `UNOWN_BROWSER_TIMEOUT_MS` | `30000` | Navigation timeout. |
+| `UNOWN_BROWSER_SETTLE_MS` | `300` | Post-action quiet settle. |
+| `UNOWN_BROWSER_SNAPSHOT_MAX` | `400` | Max elements per a11y snapshot before truncation. |
+| `UNOWN_BROWSER_SNAPSHOT_MAX_CHARS` | `60000` | Max snapshot characters returned to the model. |
 | `UNOWN_SEARXNG_URL` | unset | SearXNG instance URL for the `searxng` provider (self-hosted with `formats: [html, json]` — see `scripts/searxng-test/settings.yml`). |
 | `UNOWN_STACKEXCHANGE_KEY` | unset | Optional free stackapps.com key; lifts the keyless 300 req/day per-IP limit to 10000/day. |
 | `UNOWN_DASHSCOPE_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible base for the `dashscope` (Qwen enable_search) provider; intl users set `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`. |

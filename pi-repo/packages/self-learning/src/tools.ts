@@ -55,6 +55,7 @@ import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./b
 import { receiptsDir } from "./checkpoints.ts";
 import { trustBypassed } from "./config-trust.ts";
 import { composeTaskWithBrief, summarizeParentContext } from "./context-brief.ts";
+import { registerBrowserTools } from "./browser/tools.ts";
 import { registerContextTools } from "./context-tools.ts";
 import { DashboardApp } from "./dashboard/dashboard-app.ts";
 import { DashboardStore } from "./dashboard/dashboard-data.ts";
@@ -2284,6 +2285,14 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		// -------------------------------------------------------------------
 
 		registerContextTools(pi, { cwd: opts.cwd, verbose });
+
+		// -------------------------------------------------------------------
+		// Browser automation (see src/browser/ — CDP-direct Chromium
+		// control: snapshot+refs, trusted input, vision screenshots,
+		// tabs/downloads/cookies/console/eval; docs/browser.md)
+		// -------------------------------------------------------------------
+
+		registerBrowserTools(pi, { cwd: opts.cwd, verbose });
 
 		// -------------------------------------------------------------------
 		// Git-native commit workflow (aider/Codex port — see src/gittools.ts):

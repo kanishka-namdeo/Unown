@@ -86,8 +86,8 @@ describe("landing Creature", () => {
     expect(img?.getAttribute("aria-hidden")).toBe(null);
   });
 
-  test("the dex data covers every creature exactly once, numbered 001-010", () => {
-    // № 001-010 are the drawn forms; № 011-020 are the filmed behaviors,
+  test("the dex data covers every creature exactly once, numbered 001-011", () => {
+    // № 001-011 are the drawn forms; № 012-021 are the filmed behaviors,
     // which have no specimen — the forms must stay exactly the sprite set, or
     // the bestiary grew a hole.
     const forms = DEX.filter((e) => e.kind === "form");
@@ -95,7 +95,7 @@ describe("landing Creature", () => {
     expect(FORMS_BY_ID.size).toBe(CREATURE_IDS.length);
     expect(new Set(forms.map((e) => e.id))).toEqual(new Set(CREATURE_IDS));
     expect(forms.map((e) => e.no)).toEqual([
-      "001", "002", "003", "004", "005", "006", "007", "008", "009", "010",
+      "001", "002", "003", "004", "005", "006", "007", "008", "009", "010", "011",
     ]);
     // A behavior id is never a creature id.
     for (const e of DEX.filter((x) => x.kind === "behavior")) {
@@ -115,10 +115,10 @@ describe("landing Creature", () => {
   test("the dex is the one home: every form pane mounts a creature, decorative beside the name", () => {
     const { container } = render(<DexSection />);
     const imgs = creatureImgs(container);
-    // Ten forms, ten sprites — the hidden panes still mount theirs (the
+    // Eleven forms, eleven sprites — the hidden panes still mount theirs (the
     // proof band's pane contract: crawlers and gates read every entry), and
-    // the ten behaviors mount none.
-    expect(imgs.length).toBe(10);
+    // the ten behaviors mount none — browser joined the forms, so eleven sprites.
+    expect(imgs.length).toBe(11);
     for (const el of imgs) {
       expect(el.getAttribute("alt")).toBe("");
       expect(el.getAttribute("aria-hidden")).toBe("true");
@@ -126,7 +126,7 @@ describe("landing Creature", () => {
       expect(el.className).toContain("creature");
       expect(el.className).toContain("h-48");
     }
-    // All twenty entries mount a pane; the visible one is the band's derived
+    // All twenty-one entries mount a pane; the visible one is the band's derived
     // default — the first entry with footage — and its article is named.
     const articles = container.querySelectorAll("article[aria-label]");
     expect(articles.length).toBe(DEX.length);

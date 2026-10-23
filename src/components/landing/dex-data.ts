@@ -2,17 +2,17 @@ import type { CreatureId } from "./creature";
 import { ENGINE_JOB_COUNTS } from "./engine-data";
 
 /**
- * The capability dex — twenty catalogued capabilities as one numbered spine.
+ * The capability dex — twenty-one catalogued capabilities as one numbered spine.
  *
  * Two kinds share one list, one cursor and one detail pane:
  *
- *  - `form` (№ 001-010) is a feature the page draws: one original creature
+ *  - `form` (№ 001-011) is a feature the page draws: one original creature
  *    sprite (`creature.tsx`, the pipeline in `scripts/creature_sprites.mjs`),
  *    a game-voice `entry`, a `weakness` and the real capability copy. The dex
  *    is the ONE canonical home for creature art and capability prose; the
  *    retired placements (the hero's party strip, the loop's bento) stay
  *    retired.
- *  - `behavior` (№ 011-020) is a feature the page films instead: a workflow
+ *  - `behavior` (№ 012-021) is a feature the page films instead: a workflow
  *    or surface that is not one form's capability, so it carries no specimen
  *    and no flavor — one summary gloss, its practice lines and its receipt.
  *    Lore stays on the forms, which is what keeps the page's lore:tech rule
@@ -137,7 +137,7 @@ const PARITY_RECEIPTS = [
 
 export const DEX: readonly DexEntry[] = [
   /* ---------------------------------------------------------------- */
-  /* № 001-010 — the forms: drawn, catalogued, filmed where filmed      */
+  /* № 001-011 — the forms: drawn, catalogued, filmed where filmed      */
   /* ---------------------------------------------------------------- */
   {
     kind: "form",
@@ -340,13 +340,37 @@ export const DEX: readonly DexEntry[] = [
     captures: PENDING,
   },
 
+  {
+    kind: "form",
+    id: "browser",
+    no: "011",
+    name: "Browser",
+    category: "the window form",
+    type: "session",
+    entry:
+      "A living window that carries its own little page wherever it goes. It points at things with a golden claw, and the things obey.",
+    weakness: "an agent that can read about the web but never touch it",
+    practice: [
+      "Drives a real Chromium over CDP — navigate, a11y-tree snapshots with element refs, trusted clicks and typing (isTrusted passes), forms in one call, tabs, downloads, cookies, console and network.",
+      "Screenshots come back as image blocks the model sees directly — the vision loop grounds coordinate clicks against the picture. Auto-starts headless, keeps logins in a persistent profile, or attaches to the Chrome you are already logged into.",
+      "Zero new runtime dependencies: the protocol is spoken directly over the runtime's native WebSocket, so the compiled binaries stay a closed graph.",
+    ],
+    habitat: "joins every session",
+    receipts: [
+      ["browser session", SRC("browser/session.ts")],
+      ["browser tools", SRC("browser/tools.ts")],
+      ["docs/browser.md", DOC("docs/browser.md")],
+    ],
+    captures: PENDING,
+  },
+
   /* ---------------------------------------------------------------- */
-  /* № 011-020 — the behaviors: filmed, not drawn                       */
+  /* № 012-021 — the behaviors: filmed, not drawn                       */
   /* ---------------------------------------------------------------- */
   {
     kind: "behavior",
     id: "fix-loop",
-    no: "011",
+    no: "012",
     name: "The fix loop",
     summary: "the working loop, start to finish",
     practice: [
@@ -358,7 +382,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "plan-mode",
-    no: "012",
+    no: "013",
     name: "Plan mode",
     summary: "read-only until you approve",
     practice: [
@@ -370,7 +394,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "checkpoints",
-    no: "013",
+    no: "014",
     name: "Checkpoints",
     summary: "write, list, undo, redo — one session",
     practice: [
@@ -382,7 +406,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "review",
-    no: "014",
+    no: "015",
     name: "Review",
     summary: "adversarial reviewers before the ship",
     practice: [
@@ -394,7 +418,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "wiki",
-    no: "015",
+    no: "016",
     name: "The wiki",
     summary: "generate this repository's wiki, then search it",
     practice: [
@@ -409,7 +433,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "doctor",
-    no: "016",
+    no: "017",
     name: "Doctor",
     summary: "the CLI outside a session",
     practice: [
@@ -421,7 +445,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "split-view",
-    no: "017",
+    no: "018",
     name: "Split view",
     summary: "the display mode's own band, dock and transcript",
     practice: [
@@ -438,7 +462,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "goals",
-    no: "018",
+    no: "019",
     name: "Goals",
     summary: "objectives closed against cited evidence",
     practice: [
@@ -450,7 +474,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "routines",
-    no: "019",
+    no: "020",
     name: "Routines",
     summary: "recurring runs on real recurrence semantics",
     practice: [
@@ -462,7 +486,7 @@ export const DEX: readonly DexEntry[] = [
   {
     kind: "behavior",
     id: "skills",
-    no: "020",
+    no: "021",
     name: "Skills",
     summary: "instruction files loaded on demand",
     practice: [

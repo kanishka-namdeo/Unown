@@ -9,7 +9,7 @@
 //     focus);
 //   - the search box filters through fuse.js (the band's one real dependency)
 //     with an N-of-total counter and an esc-to-clear escape;
-//   - the detail pane mounts all twenty entries (inactive ones `hidden` — the
+//   - the detail pane mounts all twenty-one entries (inactive ones `hidden` — the
 //     proof band's pane contract), each with its capture stage or its honest
 //     empty plate, its cry (forms) and its receipt links;
 //   - the media is exactly the TUI-capture lane's audited set, playback is an
@@ -50,13 +50,13 @@ const bySrc = (root: HTMLElement, part: string) =>
   );
 
 describe("landing DexSection", () => {
-  test("the listbox renders twenty options on one spine with roving tabindex", () => {
+  test("the listbox renders twenty-one options on one spine with roving tabindex", () => {
     const { container } = render(<DexSection />);
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox).toBeTruthy();
     const options = optionsIn(container);
     expect(options.length).toBe(TALLY.total);
-    expect(options.length).toBe(20);
+    expect(options.length).toBe(21);
     // Roving tabindex: exactly the selected option is tabbable — and the
     // cursor opens on the first entry that has footage, so a reader who does
     // nothing still sees a capture rather than an empty stage.
@@ -65,13 +65,15 @@ describe("landing DexSection", () => {
       expect(el.getAttribute("tabIndex")).toBe(i === DEFAULT_INDEX ? "0" : "-1");
     }
     expect(DEX[DEFAULT_INDEX].name).toBe("Task");
-    // The spine: forms № 001-010, behaviors № 011-020, in data order.
+    // The spine: forms № 001-011, behaviors № 012-021, in data order.
     expect(options[0].textContent).toContain("001");
     expect(options[0].textContent).toContain("Websearch");
     expect(options[9].textContent).toContain("010");
     expect(options[9].textContent).toContain("Parity");
     expect(options[19].textContent).toContain("020");
-    expect(options[19].textContent).toContain("Skills");
+    expect(options[19].textContent).toContain("Routines");
+    expect(options[20].textContent).toContain("021");
+    expect(options[20].textContent).toContain("Skills");
     // Every row states its footage state in words, not only as a glyph.
     for (const [i, el] of options.entries()) {
       const want = isFilmed(DEX[i]) ? "filmed" : "pending";
@@ -124,7 +126,7 @@ describe("landing DexSection", () => {
     expect(options()[0].getAttribute("aria-selected")).toBe("true");
   });
 
-  test("the pane contract: twenty entries mounted, the inactive ones hidden", () => {
+  test("the pane contract: twenty-one entries mounted, the inactive ones hidden", () => {
     const { container } = render(<DexSection />);
     const panes = articles(container);
     expect(panes.length).toBe(TALLY.total);
@@ -179,7 +181,7 @@ describe("landing DexSection", () => {
       (n) => n.textContent === "no capture yet",
     );
     expect(stubs.length).toBe(TALLY.pending);
-    expect(stubs.length).toBe(11);
+    expect(stubs.length).toBe(12);
     // …and the band states who makes them, once, not once per empty stage.
     expect(container.textContent).toContain("scripts/tui-capture/");
     expect(
@@ -233,11 +235,11 @@ describe("landing DexSection", () => {
       const label = a.getAttribute("aria-label") ?? "";
       expect(label, `"${label}" must not stutter the article`).not.toMatch(/\bthe\s+the\b/i);
     }
-    // Walk to № 011 "The fix loop" and read its stage button both ways.
-    // All twenty panes stay mounted (the inactive ones `hidden`), so the
+    // Walk to № 012 "The fix loop" and read its stage button both ways.
+    // All twenty-one panes stay mounted (the inactive ones `hidden`), so the
     // button must be read from the SHOWN pane — the first match in the DOM
     // belongs to № 003.
-    const opt = optionsIn(container).find((o) => o.textContent?.includes("011"));
+    const opt = optionsIn(container).find((o) => o.textContent?.includes("012"));
     fireEvent.click(opt!);
     const pane = shownPane(container)[0];
     expect(pane.getAttribute("aria-label")).toContain("The fix loop");
@@ -245,7 +247,7 @@ describe("landing DexSection", () => {
     expect(pause.getAttribute("aria-label")).toBe("Pause the fix loop capture");
     fireEvent.click(pause);
     expect(pause.getAttribute("aria-label")).toBe("Play the fix loop capture");
-    // The cry button composes the same way (forms only — 011 is a behavior,
+    // The cry button composes the same way (forms only — 012 is a behavior,
     // so walk back to a form named with an article if one exists; none does,
     // and the generic no-stutter sweep above is the guard for the cry too).
   });
@@ -272,7 +274,7 @@ describe("landing DexSection", () => {
 
   test("a behavior pane is filmed, not drawn: no specimen, no game flavor", () => {
     const { container } = render(<DexSection />);
-    fireEvent.click(optionsIn(container)[16]); // № 017 Split view
+    fireEvent.click(optionsIn(container)[17]); // № 018 Split view
     const pane = shownPane(container)[0];
     expect(pane.getAttribute("aria-label")).toContain("Split view");
     expect(bySrc(pane, "/landing/creatures/").length).toBe(0);

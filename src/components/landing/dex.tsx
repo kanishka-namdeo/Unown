@@ -47,7 +47,7 @@ import { FadeUp, PixelCursor, SectionHead, TerminalWindow, toneAttr, useReducedM
  * the still image only — on a `<video>` it would delay the poster too.
  *
  * A11y: the list is a WAI-ARIA listbox (roving tabindex, arrows / Home / End,
- * selection follows focus) and the detail pane mounts ALL twenty entries with
+ * selection follows focus) and the detail pane mounts ALL twenty-one entries with
  * the inactive ones `hidden` — the proof band's pane contract, so every
  * capability line, receipt and pending plate stays in the DOM for crawlers and
  * for the `landing_*.mjs` gates. Exactly two live regions: the search tally and
@@ -712,7 +712,7 @@ export function DexSection() {
               </p>
             </div>
 
-            {/* the detail — all twenty entries mounted, the inactive ones
+            {/* the detail — all twenty-one entries mounted, the inactive ones
                 hidden (the proof band's pane contract: crawlers and gates read
                 every capability line and every pending gap) */}
             <div className="min-w-0">

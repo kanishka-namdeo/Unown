@@ -30,52 +30,39 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 232;
+export const CHANGELOG_TOTAL_ENTRIES = 236;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 86,
+  "Added": 87,
   "Changed": 17,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 97,
+  "Fixed": 99,
   "Security": 0,
-  "Behavior": 29
+  "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 6,
+    "label": "0.0.5",
+    "date": "2026-10-23",
+    "total": 10,
     "counts": {
-      "Added": 0,
+      "Added": 1,
       "Changed": 2,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 3,
+      "Fixed": 5,
       "Security": 0,
-      "Behavior": 1
+      "Behavior": 2
     },
     "groups": [
       {
-        "bucket": "Changed",
+        "bucket": "Added",
         "items": [
           {
-            "title": "the code's no-env defaults still said Dashscope/kimi while the docs, the preset and the live wiring said Agnes",
+            "title": "browser automation: the browser session tool — drive a real Chromium over raw CDP, zero new runtime dependencies",
             "behavior": false
-          },
-          {
-            "title": "landing: the alphabet band shrank a tenth of a viewport without losing a fact, a tile or the Konami code",
-            "behavior": false
-          }
-        ]
-      },
-      {
-        "bucket": "Behavior",
-        "items": [
-          {
-            "title": "the built-in agents' model fields were Dashscope relics — two no-op overrides dropped…",
-            "behavior": true
           }
         ]
       },
@@ -93,6 +80,40 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           {
             "title": "landing: the memory-lift chart's axis was typed at 125% and the agnes-3.0-flash receipt spent +197.1% — the…",
             "behavior": false
+          },
+          {
+            "title": "browser: the persistent profile honors the empty-string env convention",
+            "behavior": false
+          },
+          {
+            "title": "browser: Enter submits forms — a keyDown without its char event runs no default action",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "the code's no-env defaults still said Dashscope/kimi while the docs, the preset and the live wiring said Agnes",
+            "behavior": false
+          },
+          {
+            "title": "landing: the capability dex grows an eleventh form — Browser, the window creature",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Behavior",
+        "items": [
+          {
+            "title": "the built-in agents' model fields were Dashscope relics — two no-op overrides dropped…",
+            "behavior": true
+          },
+          {
+            "title": "every terminal session now registers sixteen unown tools (was fifteen)",
+            "behavior": true
           }
         ]
       }

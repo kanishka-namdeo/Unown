@@ -42,6 +42,7 @@ export const CREATURE_IDS = [
   "dream",
   "hooks",
   "sdlc",
+  "browser",
 ] as const;
 
 export type CreatureId = (typeof CREATURE_IDS)[number];
@@ -61,6 +62,7 @@ const DIMS: Record<CreatureId, { w: number; h: number }> = {
   dream: { w: 256, h: 256 },
   hooks: { w: 256, h: 256 },
   sdlc: { w: 256, h: 256 },
+  browser: { w: 256, h: 256 },
 };
 
 export function Creature({
