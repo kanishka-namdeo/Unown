@@ -32,6 +32,7 @@ import {
         openSync,
         readFileSync,
         readSync,
+        realpathSync,
         renameSync,
         rmSync,
         writeFileSync,
@@ -409,8 +410,28 @@ export function writeBinaryShims(opts: {
         return { ...written, binary };
 }
 
+/** The filesystem's own spelling of a path, for IDENTITY comparisons only.
+ *  One directory has several spellings — macOS `/var` is `/private/var`,
+ *  Windows 8.3 short names (`RUNNER~1`) and junctions resolve to the long
+ *  target — and a shim written with one spelling must still be recognized when
+ *  uninstall resolves the other from `process.execPath` (measured on the macOS
+ *  CI leg, 2026-10-23: the shim was called foreign and left on PATH). A path
+ *  that does not exist falls back to its parent's canonical form + basename,
+ *  then to the spelling given, so a broken shim target never matches by luck. */
+export function canonicalPath(p: string): string {
+        try {
+                return realpathSync.native(p);
+        } catch {
+                try {
+                        return join(realpathSync.native(dirname(p)), basename(p));
+                } catch {
+                        return p;
+                }
+        }
+}
+
 function normalizePathForCompare(p: string, platform: NodeJS.Platform): string {
-        const s = p.replace(/\\/g, "/").replace(/\/+$/, "");
+        const s = canonicalPath(p).replace(/\\/g, "/").replace(/\/+$/, "");
         return platform === "win32" ? s.toLowerCase() : s;
 }
 

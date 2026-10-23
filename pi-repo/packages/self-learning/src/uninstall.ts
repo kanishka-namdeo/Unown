@@ -49,7 +49,7 @@ import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:
 import { homedir, tmpdir } from "node:os";
 import { basename, join, posix, win32 } from "node:path";
 import { runGitSync } from "./gittools.ts";
-import { installMetadataPath, readInstallMetadata, shimTargetsRoot, type InstallMode } from "./install-layout.ts";
+import { installMetadataPath, readInstallMetadata, canonicalPath, shimTargetsRoot, type InstallMode } from "./install-layout.ts";
 import { readRootVersion, redactUrl, resolveInstallInfo, type InstallInfo, unownHome } from "./update.ts";
 
 export interface UninstallFlags {
@@ -213,7 +213,7 @@ export function findShims(
 }
 
 function samePath(a: string, b: string): boolean {
-        const norm = (s: string) => s.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+        const norm = (s: string) => canonicalPath(s).replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
         return norm(a) === norm(b);
 }
 
@@ -229,7 +229,7 @@ function errMessage(err: unknown): string {
  *  (`...\unown-old` vs `...\unown`) is not inside. */
 export function pathInside(child: string, parent: string, platform: NodeJS.Platform = process.platform): boolean {
         const norm = (p: string): string => {
-                const n = (platform === "win32" ? win32.normalize(p) : posix.normalize(p))
+                const n = (platform === "win32" ? win32.normalize(canonicalPath(p)) : posix.normalize(canonicalPath(p)))
                         .replace(/\\/g, "/")
                         .replace(/\/+$/, "");
                 return platform === "win32" ? n.toLowerCase() : n;

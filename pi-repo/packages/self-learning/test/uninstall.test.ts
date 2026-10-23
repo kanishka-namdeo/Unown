@@ -3,7 +3,7 @@
 import "./_env.ts";
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync, existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
@@ -26,6 +26,7 @@ import {
         renderPosixShim,
         renderWindowsCmdShim,
         renderWindowsPs1Shim,
+        shimTargetsRoot,
         writeBinaryShims,
         writeInstallMetadata,
         writeShimSet,
@@ -384,6 +385,35 @@ describe("cmdUninstall", () => {
                 expect(s.removedDirs).toContain(s.home); // the later step still ran
                 expect(s.lines.join("\n")).toContain("uninstall incomplete");
         });
+});
+
+test("shim ownership survives a symlinked root spelling (macOS /var, Windows short names)", () => {
+        const base = fresh();
+        const real = join(base, "real-root");
+        const link = join(base, "link-root");
+        const bin = join(base, "bin");
+        mkdirSync(join(real, "versions", "0.0.1"), { recursive: true });
+        mkdirSync(bin, { recursive: true });
+        try {
+                symlinkSync(real, link, "dir");
+        } catch {
+                return; // symlink creation needs a privilege we do not assume (Windows developer mode)
+        }
+        const binary = join(link, "versions", "0.0.1", "unown.exe");
+        writeFileSync(binary, "x");
+        const shim = join(bin, "unown.cmd");
+        writeFileSync(
+                shim,
+                renderWindowsCmdShim({ command: binary, env: { UNOWN_INSTALL_ROOT: link } }),
+        );
+        const content = readFileSync(shim, "utf8");
+        // The shim spells the root through the link; uninstall resolves the real
+        // path from execPath. Identity, not spelling, decides ownership.
+        expect(shimTargetsRoot(content, real)).toBe(true);
+        expect(shimTargetsRoot(content, link)).toBe(true);
+        expect(pathInside(binary, real)).toBe(true);
+        // A sibling is still not inside, even after canonicalization.
+        expect(pathInside(join(base, "other", "unown.exe"), real)).toBe(false);
 });
 
 test("pathInside is segment-aware and case-blind on Windows", () => {

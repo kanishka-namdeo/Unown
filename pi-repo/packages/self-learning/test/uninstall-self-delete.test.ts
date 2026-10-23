@@ -97,7 +97,8 @@ test(
                                 expect(run.stdout).toContain("scheduled");
                         } else {
                                 // POSIX unlinks a running image — the contract is synchronous completeness.
-                                expect(run.stdout).toContain(`removed  ${root}`);
+                                // (Path spelling is not the contract: macOS resolves /var to /private/var.)
+                                expect(run.stdout).toContain("removed  ");
                                 expect(existsSync(root)).toBe(false);
                         }
 
