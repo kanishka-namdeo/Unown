@@ -3,15 +3,18 @@
 import "./_env.ts";
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import {
         checkoutHasUncommittedWork,
         cmdUninstall,
         findInstallShims,
         findShims,
         parseUninstallFlags,
+        pathInside,
+        renderWindowsRemovalScript,
+        scheduleWindowsRootRemoval,
         shimCandidateDirs,
         shimTarget,
         type UninstallFlags,
@@ -202,20 +205,31 @@ describe("cmdUninstall", () => {
                 return { repo, home, bin, shims, removed, removedDirs, lines };
         }
 
-        function run(flags: UninstallFlags, s: ReturnType<typeof setup>): number {
+        interface RunSeams {
+                cwd?: () => string;
+                removeFile?: (p: string) => void;
+                removeDir?: (p: string) => void;
+        }
+
+        function run(flags: UninstallFlags, s: ReturnType<typeof setup>, seams: RunSeams = {}): number {
                 return cmdUninstall(flags, {
                         repoRoot: s.repo,
                         home: s.home,
                         env: { UNOWN_BIN_DIR: s.bin },
+                        cwd: seams.cwd,
                         log: (l) => s.lines.push(l),
-                        removeFile: (p) => {
-                                s.removed.push(p);
-                                rmSync(p, { force: true });
-                        },
-                        removeDir: (p) => {
-                                s.removedDirs.push(p);
-                                rmSync(p, { recursive: true, force: true });
-                        },
+                        removeFile:
+                                seams.removeFile ??
+                                ((p) => {
+                                        s.removed.push(p);
+                                        rmSync(p, { force: true });
+                                }),
+                        removeDir:
+                                seams.removeDir ??
+                                ((p) => {
+                                        s.removedDirs.push(p);
+                                        rmSync(p, { recursive: true, force: true });
+                                }),
                         hasUncommitted: () => false,
                 });
         }
@@ -316,11 +330,109 @@ describe("cmdUninstall", () => {
                 expect(code).toBe(1);
                 expect(existsSync(mine)).toBe(true); // nothing was deleted, so the record stays true
         });
+
+        // Same defect class as the 2026-10-23 Windows binary report, in the
+        // checkout lane: the purge must go first, and a failure must not throw.
+        test("--purge-checkout removes the checkout first, so a failed purge leaves the shims and record", () => {
+                const s = setup();
+                const record = writeCheckoutRecord(s);
+                const code = run({ purgeCheckout: true }, s, {
+                        removeDir: () => {
+                                throw new Error("EBUSY: resource busy or locked, rmdir");
+                        },
+                });
+                expect(code).toBe(1);
+                expect(s.removed).toEqual([]); // no shim was touched
+                expect(existsSync(s.shims[0])).toBe(true);
+                expect(existsSync(record)).toBe(true);
+                expect(s.lines.join("\n")).toContain("nothing else was removed");
+        });
+
+        test("--purge-checkout refuses when the shell's cwd is inside the checkout", () => {
+                const s = setup();
+                const code = run({ purgeCheckout: true }, s, { cwd: () => join(s.repo, "bin") });
+                expect(code).toBe(1);
+                expect(s.removed).toEqual([]);
+                expect(s.removedDirs).toEqual([]);
+                expect(existsSync(s.repo)).toBe(true);
+                expect(s.lines.join("\n")).toContain("cd out of it");
+        });
+
+        test("a purge-data removal failure is reported, not thrown, and exits 1", () => {
+                const s = setup();
+                const code = run({ purgeData: true }, s, {
+                        removeDir: (p) => {
+                                s.removedDirs.push(p);
+                                throw new Error("EPERM: operation not permitted, rmdir");
+                        },
+                });
+                expect(code).toBe(1);
+                expect(existsSync(s.home)).toBe(true);
+                const out = s.lines.join("\n");
+                expect(out).toContain("uninstall incomplete");
+                expect(out).toContain("could not remove");
+        });
+
+        test("a locked shim is reported and the rest of the uninstall still runs", () => {
+                const s = setup();
+                const code = run({ purgeData: true }, s, {
+                        removeFile: () => {
+                                throw new Error("EPERM: operation not permitted, unlink");
+                        },
+                });
+                expect(code).toBe(1);
+                expect(s.removedDirs).toContain(s.home); // the later step still ran
+                expect(s.lines.join("\n")).toContain("uninstall incomplete");
+        });
+});
+
+test("pathInside is segment-aware and case-blind on Windows", () => {
+        expect(pathInside("C:\\Apps\\unown\\versions\\0.0.1\\unown.exe", "C:\\Apps\\unown", "win32")).toBe(true);
+        expect(pathInside("c:\\apps\\UNOWN", "C:\\Apps\\unown", "win32")).toBe(true);
+        // A sibling whose name merely shares the prefix is NOT inside.
+        expect(pathInside("C:\\Apps\\unown-old\\x.exe", "C:\\Apps\\unown", "win32")).toBe(false);
+        expect(pathInside("C:\\Apps\\unown\\..\\other\\x.exe", "C:\\Apps\\unown", "win32")).toBe(false);
+        expect(pathInside("/home/u/.local/share/unown/versions/x", "/home/u/.local/share/unown", "linux")).toBe(true);
+        expect(pathInside("/home/u/.local/share/unown-old", "/home/u/.local/share/unown", "linux")).toBe(false);
+});
+
+test("the Windows removal script retries, escapes the path, and deletes itself", () => {
+        const script = renderWindowsRemovalScript("C:\\Users\\a b\\100% apps\\unown", 7);
+        expect(script.startsWith("@echo off\r\n")).toBe(true);
+        // % is doubled for batch; the path only ever appears inside quoted expansions.
+        expect(script).toContain('set "UNOWN_TARGET=C:\\Users\\a b\\100%% apps\\unown"');
+        expect(script).toContain('rmdir /s /q "%UNOWN_TARGET%"');
+        expect(script).toContain("if %UNOWN_TRIES% geq 7");
+        expect(script).toContain("ping -n 2 127.0.0.1 >nul");
+        // Both terminal paths clean the script up — a give-up must not leave one behind.
+        expect(script.match(/del \/f \/q "%~f0"/g)).toHaveLength(2);
+});
+
+test("scheduleWindowsRootRemoval spawns a detached cmd with a relative script name", () => {
+        const dir = mkdtempSync(join(tmpdir(), "unown-sched-"));
+        const calls: { cmd: string; args: string[]; opts: Record<string, unknown> }[] = [];
+        const fakeSpawn = ((cmd: string, args: string[], opts: Record<string, unknown>) => {
+                calls.push({ cmd, args, opts });
+                return { on: () => {}, unref: () => {} };
+        }) as unknown as typeof import("node:child_process").spawn;
+        try {
+                const { scriptPath } = scheduleWindowsRootRemoval(join(dir, "root"), { tmpDir: dir, spawnImpl: fakeSpawn });
+                expect(dirname(scriptPath)).toBe(dir);
+                expect(existsSync(scriptPath)).toBe(true);
+                expect(readFileSync(scriptPath, "utf8")).toContain("rmdir /s /q");
+                expect(calls).toHaveLength(1);
+                // Relative name + cwd: no path ever reaches cmd's command line, so
+                // spaces and metacharacters in %TEMP% cannot break or inject it.
+                expect(calls[0].args).toEqual(["/d", "/s", "/c", basename(scriptPath)]);
+                expect(calls[0].opts).toMatchObject({ cwd: dir, detached: true, stdio: "ignore", windowsHide: true });
+        } finally {
+                rmSync(dir, { recursive: true, force: true });
+        }
 });
 
 // ---------------------------------------------------------------------------
-// Binary install: shims pointing into THIS root, then the versioned root.
-// No git check runs.
+// Binary install: the versioned root goes first, then the shims pointing into
+// it. No git check runs.
 // ---------------------------------------------------------------------------
 describe("cmdUninstall (binary install)", () => {
         interface BinaryFixture {
@@ -336,7 +448,11 @@ describe("cmdUninstall (binary install)", () => {
                 lines: string[];
         }
 
-        function setupBinary(version = "0.0.1", platform: ReleasePlatform = "linux-x64"): BinaryFixture {
+        function setupBinary(
+                version = "0.0.1",
+                platform: ReleasePlatform = "linux-x64",
+                shimPlatform: NodeJS.Platform = process.platform,
+        ): BinaryFixture {
                 const base = fresh();
                 const root = join(base, "data", "unown");
                 const home = join(base, "unown-home");
@@ -346,7 +462,7 @@ describe("cmdUninstall (binary install)", () => {
                 const file = binaryPath(root, version, platform);
                 mkdirSync(join(file, ".."), { recursive: true });
                 writeFileSync(file, version);
-                const shims = writeBinaryShims({ root, version, env: { UNOWN_BIN_DIR: bin } });
+                const shims = writeBinaryShims({ root, version, platform: shimPlatform, env: { UNOWN_BIN_DIR: bin } });
                 writeInstallMetadata(home, {
                         schema: 1,
                         mode: "binary",
@@ -371,21 +487,37 @@ describe("cmdUninstall (binary install)", () => {
                 };
         }
 
-        function runBinary(flags: UninstallFlags, s: BinaryFixture, platform: NodeJS.Platform = process.platform): number {
+        interface RunSeams {
+                platform?: NodeJS.Platform;
+                execPath?: string;
+                cwd?: () => string;
+                scheduleRemoval?: (root: string) => { scriptPath: string };
+                removeFile?: (p: string) => void;
+                removeDir?: (p: string) => void;
+        }
+
+        function runBinary(flags: UninstallFlags, s: BinaryFixture, seams: RunSeams = {}): number {
                 return cmdUninstall(flags, {
                         install: { mode: "binary", root: s.root, version: s.version, platform: s.platform },
                         home: s.home,
                         env: { UNOWN_BIN_DIR: s.bin },
-                        platform,
+                        platform: seams.platform ?? process.platform,
+                        execPath: seams.execPath,
+                        cwd: seams.cwd,
+                        scheduleRemoval: seams.scheduleRemoval,
                         log: (l) => s.lines.push(l),
-                        removeFile: (p) => {
-                                s.removed.push(p);
-                                rmSync(p, { force: true });
-                        },
-                        removeDir: (p) => {
-                                s.removedDirs.push(p);
-                                rmSync(p, { recursive: true, force: true });
-                        },
+                        removeFile:
+                                seams.removeFile ??
+                                ((p) => {
+                                        s.removed.push(p);
+                                        rmSync(p, { force: true });
+                                }),
+                        removeDir:
+                                seams.removeDir ??
+                                ((p) => {
+                                        s.removedDirs.push(p);
+                                        rmSync(p, { recursive: true, force: true });
+                                }),
                         hasUncommitted: () => {
                                 throw new Error("binary uninstall must not run git checks");
                         },
@@ -435,6 +567,142 @@ describe("cmdUninstall (binary install)", () => {
                 expect(runBinary({ purgeData: true }, s)).toBe(0);
                 expect(s.removedDirs).toContain(s.home);
                 expect(existsSync(s.home)).toBe(false);
+        });
+
+        // The 2026-10-23 Windows report: the shipped order deleted the shims
+        // first, then failed on the locked root — leaving no `unown` to re-run.
+        test("the root goes first, so a failed removal leaves the shims and the record", () => {
+                const s = setupBinary();
+                const code = runBinary({}, s, {
+                        removeDir: () => {
+                                throw new Error("EPERM: operation not permitted, rm");
+                        },
+                });
+                expect(code).toBe(1);
+                expect(s.removed).toEqual([]); // no shim was touched
+                expect(existsSync(s.shim)).toBe(true);
+                expect(readInstallMetadata(s.home)?.mode).toBe("binary");
+                const out = s.lines.join("\n");
+                expect(out).toContain("could not remove");
+                expect(out).toContain("nothing was removed");
+        });
+
+        test("a Windows self-delete schedules the root instead of removing it", () => {
+                const s = setupBinary("0.0.1", "windows-x64", "win32");
+                const scheduled: string[] = [];
+                const code = runBinary({}, s, {
+                        platform: "win32",
+                        execPath: binaryPath(s.root, s.version, "windows-x64"),
+                        scheduleRemoval: (root) => {
+                                scheduled.push(root);
+                                return { scriptPath: join(s.root, "..", "cleanup.cmd") };
+                        },
+                });
+                expect(code).toBe(0);
+                expect(scheduled).toEqual([s.root]);
+                expect(s.removedDirs).toEqual([]); // rmSync never runs against the running install
+                expect(s.removed).toEqual(expect.arrayContaining(s.shims));
+                expect(existsSync(s.shim)).toBe(false);
+                expect(existsSync(installMetadataPath(s.home))).toBe(false);
+                expect(s.lines.join("\n")).toContain("scheduled");
+        });
+
+        test("a failed schedule still leaves the shims and the record", () => {
+                const s = setupBinary("0.0.1", "windows-x64", "win32");
+                const code = runBinary({}, s, {
+                        platform: "win32",
+                        execPath: binaryPath(s.root, s.version, "windows-x64"),
+                        scheduleRemoval: () => {
+                                throw new Error("ENOENT: temp dir unavailable");
+                        },
+                });
+                expect(code).toBe(1);
+                expect(existsSync(s.shim)).toBe(true);
+                expect(existsSync(installMetadataPath(s.home))).toBe(true);
+                expect(s.lines.join("\n")).toContain("nothing was removed");
+        });
+
+        test("a shell sitting inside the root is refused before anything is touched", () => {
+                const s = setupBinary("0.0.1", "windows-x64", "win32");
+                const scheduled: string[] = [];
+                const code = runBinary({}, s, {
+                        platform: "win32",
+                        execPath: binaryPath(s.root, s.version, "windows-x64"),
+                        cwd: () => join(s.root, "versions"),
+                        scheduleRemoval: (root) => {
+                                scheduled.push(root);
+                                return { scriptPath: "" };
+                        },
+                });
+                expect(code).toBe(1);
+                expect(scheduled).toEqual([]);
+                expect(s.removed).toEqual([]);
+                expect(s.removedDirs).toEqual([]);
+                expect(existsSync(s.shim)).toBe(true);
+                expect(existsSync(s.root)).toBe(true);
+                expect(s.lines.join("\n")).toContain("cd out of the install root");
+        });
+
+        test("POSIX still removes synchronously even when running from inside the root", () => {
+                const s = setupBinary();
+                const scheduled: string[] = [];
+                const code = runBinary({}, s, {
+                        platform: "linux",
+                        execPath: binaryPath(s.root, s.version, "linux-x64"),
+                        scheduleRemoval: (root) => {
+                                scheduled.push(root);
+                                return { scriptPath: "" };
+                        },
+                });
+                expect(code).toBe(0);
+                expect(scheduled).toEqual([]); // unlink of a running image is legal on POSIX
+                expect(s.removedDirs).toContain(s.root);
+                expect(existsSync(s.root)).toBe(false);
+        });
+
+        test("--dry-run announces the Windows background removal and does not schedule", () => {
+                const s = setupBinary("0.0.1", "windows-x64", "win32");
+                const scheduled: string[] = [];
+                const code = runBinary({ dryRun: true }, s, {
+                        platform: "win32",
+                        execPath: binaryPath(s.root, s.version, "windows-x64"),
+                        scheduleRemoval: (root) => {
+                                scheduled.push(root);
+                                return { scriptPath: "" };
+                        },
+                });
+                expect(code).toBe(0);
+                expect(scheduled).toEqual([]);
+                expect(existsSync(s.root)).toBe(true);
+                expect(s.lines.join("\n")).toContain("background helper");
+        });
+
+        test("a locked install record is reported, not thrown; the root still goes", () => {
+                const s = setupBinary();
+                const code = runBinary({}, s, {
+                        removeFile: () => {
+                                throw new Error("EPERM: operation not permitted, unlink");
+                        },
+                });
+                expect(code).toBe(1);
+                expect(s.removedDirs).toContain(s.root);
+                expect(existsSync(s.root)).toBe(false);
+                expect(existsSync(installMetadataPath(s.home))).toBe(true);
+                expect(s.lines.join("\n")).toContain("uninstall incomplete");
+        });
+
+        test("--purge-data under a locked home reports and exits 1 (a session holds it open)", () => {
+                const s = setupBinary();
+                const code = runBinary({ purgeData: true }, s, {
+                        removeDir: (p) => {
+                                s.removedDirs.push(p);
+                                if (p === s.home) throw new Error("EPERM: operation not permitted, rmdir");
+                                rmSync(p, { recursive: true, force: true });
+                        },
+                });
+                expect(code).toBe(1);
+                expect(existsSync(s.home)).toBe(true);
+                expect(s.lines.join("\n")).toContain("close it and re-run");
         });
 });
 

@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 214;
+export const CHANGELOG_TOTAL_ENTRIES = 215;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 85,
   "Changed": 15,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 85,
+  "Fixed": 86,
   "Security": 0,
   "Behavior": 26
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 45,
+    "total": 46,
     "counts": {
       "Added": 18,
       "Changed": 5,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 15,
+      "Fixed": 16,
       "Security": 0,
       "Behavior": 6
     },
@@ -164,6 +164,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "docs: three dead memory links in usage.md (a botched edit ate the m) + the README's routines row was two kinds…",
+            "behavior": false
+          },
+          {
+            "title": "unown uninstall now finishes on Windows — the running .exe is the install…",
             "behavior": false
           },
           {
