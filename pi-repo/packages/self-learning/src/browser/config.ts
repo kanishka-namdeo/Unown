@@ -31,6 +31,11 @@ export const BROWSER_SNAPSHOT_MAX_CHARS = envInt("UNOWN_BROWSER_SNAPSHOT_MAX_CHA
 /** Default viewport (CSS px). */
 export const BROWSER_VIEWPORT = { width: 1280, height: 720 };
 
+/**
+ * Stealth tier (v2): env knobs are read at session start and merged with the
+ * per-session `browser start stealth=true|false` override. Pure parsing lives
+ * in stealth.ts; this shape is what session.ts consumes.
+ */
 export interface BrowserEnv {
         /** Explicit executable path (UNOWN_BROWSER_PATH). */
         executablePath?: string;
@@ -42,6 +47,36 @@ export interface BrowserEnv {
         profileDir?: string;
         /** Host-glob deny list (UNOWN_BROWSER_BLOCK, comma-separated). */
         blockList: string[];
+        /** Stealth mode on (UNOWN_BROWSER_STEALTH=1; the `start` action can override). */
+        stealth: boolean;
+        /** UNOWN_BROWSER_OS — claimed OS identity (windows|macos|linux). */
+        stealthOs?: string;
+        /** UNOWN_BROWSER_USER_AGENT — explicit UA override. */
+        stealthUserAgent?: string;
+        /** UNOWN_BROWSER_LOCALE. */
+        stealthLocale?: string;
+        /** UNOWN_BROWSER_TIMEZONE. */
+        stealthTimezone?: string;
+        /** UNOWN_BROWSER_SCREEN (WxH). */
+        stealthScreen?: string;
+        /** UNOWN_BROWSER_HUMANIZE ("0" disables; default on in stealth). */
+        stealthHumanize?: string;
+        /** UNOWN_BROWSER_PROXY (http://host:port, socks5://..., host:port). */
+        proxy?: string;
+        /** UNOWN_CAPTCHA_SOLVER (2captcha | capsolver | none; default: auto from keys). */
+        captchaSolver?: string;
+        /** 2Captcha API key. */
+        twoCaptchaKey?: string;
+        /** CapSolver API key. */
+        capSolverKey?: string;
+        /** UNOWN_CAPTCHA_AUTO=1 — attempt solving automatically after navigate. */
+        captchaAuto: boolean;
+        /** UNOWN_CAPTCHA_VISION ("0" disables; default on when a vision key exists). */
+        captchaVision?: string;
+        /** Vision endpoint for image-captcha OCR (default: the Agnes preset). */
+        visionBaseUrl?: string;
+        visionApiKey?: string;
+        visionModel?: string;
 }
 
 export function browserEnv(): BrowserEnv {
@@ -54,6 +89,23 @@ export function browserEnv(): BrowserEnv {
                         .split(",")
                         .map((s) => s.trim())
                         .filter(Boolean),
+                stealth: process.env.UNOWN_BROWSER_STEALTH === "1",
+                stealthOs: process.env.UNOWN_BROWSER_OS?.trim() || undefined,
+                stealthUserAgent: process.env.UNOWN_BROWSER_USER_AGENT?.trim() || undefined,
+                stealthLocale: process.env.UNOWN_BROWSER_LOCALE?.trim() || undefined,
+                stealthTimezone: process.env.UNOWN_BROWSER_TIMEZONE?.trim() || undefined,
+                stealthScreen: process.env.UNOWN_BROWSER_SCREEN?.trim() || undefined,
+                stealthHumanize: process.env.UNOWN_BROWSER_HUMANIZE?.trim() || undefined,
+                proxy: process.env.UNOWN_BROWSER_PROXY?.trim() || undefined,
+                captchaSolver: process.env.UNOWN_CAPTCHA_SOLVER?.trim() || undefined,
+                twoCaptchaKey: process.env.UNOWN_CAPTCHA_2CAPTCHA_KEY?.trim() || process.env.TWOCAPTCHA_API_KEY?.trim() || undefined,
+                capSolverKey: process.env.UNOWN_CAPTCHA_CAPSOLVER_KEY?.trim() || process.env.CAPSOLVER_API_KEY?.trim() || undefined,
+                captchaAuto: process.env.UNOWN_CAPTCHA_AUTO === "1",
+                captchaVision: process.env.UNOWN_CAPTCHA_VISION?.trim() || undefined,
+                visionBaseUrl: process.env.UNOWN_VISION_BASE_URL?.trim() || undefined,
+                visionApiKey:
+                        process.env.UNOWN_VISION_API_KEY?.trim() || process.env.AGNES_API_KEY?.trim() || undefined,
+                visionModel: process.env.UNOWN_VISION_MODEL?.trim() || undefined,
         };
 }
 
@@ -187,7 +239,12 @@ function expandWildcards(candidates: string[], readdir: (dir: string) => string[
         return out;
 }
 
-/** Find a usable Chromium-family executable. Throws with actionable hints. */
+/** Find a usable Chromium-family executable. Throws with actionable hints.
+ *
+ * `allowHeadlessShell=false` (stealth mode) skips the stripped
+ * chrome-headless-shell binaries: they lack window.chrome and coherent
+ * Notification.permission, and their UA still carries HeadlessChrome.
+ */
 export function discoverBrowser(
         opts: {
                 platform?: NodeJS.Platform;
@@ -196,6 +253,7 @@ export function discoverBrowser(
                 localAppData?: string;
                 exists?: (p: string) => boolean;
                 readdir?: (dir: string) => string[] | null;
+                allowHeadlessShell?: boolean;
         } = {},
 ): DiscoveredBrowser {
         const platform = opts.platform ?? process.platform;
@@ -225,11 +283,13 @@ export function discoverBrowser(
                 throw new Error(`UNOWN_BROWSER_PATH is set but does not point at a file: ${envPath}`);
         }
 
+        const allowShell = opts.allowHeadlessShell ?? true;
         const expanded = expandWildcards(
                 browserCandidates(platform, { home, envPath, localAppData: opts.localAppData }),
                 readdir,
         );
         for (const cand of expanded) {
+                if (!allowShell && /headless[_-]shell/i.test(cand)) continue;
                 if (exists(cand)) {
                         const source = cand.includes("ms-playwright") ? "playwright-cache" : "system";
                         return { path: cand, source };

@@ -29,6 +29,28 @@ import {
 } from "./config.ts";
 import { CdpConnection, modifierBits, parseKeyCombo } from "./cdp.ts";
 import { formatSnapshot, SNAPSHOT_SCRIPT, snapshotRefs, type RefEntry, type Snapshot } from "./a11y.ts";
+import {
+	humanKeyGap,
+	humanPath,
+	humanTypeDelays,
+	mulberry32,
+	readChromeVersion,
+	resolveStealthConfig,
+	stealthLaunchArgs,
+	type StealthConfig,
+} from "./stealth.ts";
+import {
+	CAPTCHA_PROBE_SRC,
+	formatChallenges,
+	injectTokenExpression,
+	resolveCaptchaConfig,
+	tiersFor,
+	visionReadCaptcha,
+	CapSolverClient,
+	TwoCaptchaClient,
+	type CaptchaConfig,
+	type DetectedChallenge,
+} from "./captcha.ts";
 
 // ---------------------------------------------------------------------------
 // types
@@ -76,6 +98,16 @@ export interface SessionInfo {
 	pages: number;
 	activePage?: { url: string; title: string };
 	viewport: { width: number; height: number };
+	/** Stealth tier state (v2). */
+	stealth?: {
+		enabled: boolean;
+		os: string;
+		humanize: boolean;
+		proxy?: string;
+		userAgent: string;
+	};
+	/** Captcha tier state (v2). */
+	captcha?: { solver: string; auto: boolean; vision: boolean };
 }
 
 export interface ActionReport {
@@ -121,10 +153,38 @@ export class BrowserSession {
 	private downloadDir: string | null = null;
 	private disposers: Array<() => void> = [];
 	private stopped = false;
+	// ---- v2 stealth/captcha state ----
+	/** Resolved stealth config — set at start(), read-only after. */
+	private stealthCfg: StealthConfig | null = null;
+	/** Resolved captcha config — set at start(), read-only after. */
+	private captchaCfg: CaptchaConfig | null = null;
+	/** Explicit per-session stealth override (the `start` action). */
+	private explicitStealth: boolean | undefined;
+	/** executionContextId of the isolated world, per page session (stealth). */
+	private isolatedWorlds = new Map<string, number>();
+	/** Last known mouse position (viewport CSS px) — humanized paths start here. */
+	private mousePos = { x: BROWSER_VIEWPORT.width / 2, y: BROWSER_VIEWPORT.height / 2 };
+	/** Humanized-input PRNG — seeded (test-reproducible) when UNOWN_BROWSER_HUMANIZE_SEED is set. */
+	private humanRng: () => number = mulberry32(
+		(Number(process.env.UNOWN_BROWSER_HUMANIZE_SEED) || 0) || (Date.now() ^ (process.pid << 8)) >>> 0,
+	);
 
 	constructor(opts: { cwd?: string; env?: BrowserEnv } = {}) {
 		this.cwd = opts.cwd ?? process.cwd();
 		this.env = opts.env ?? browserEnv();
+	}
+
+	/** Map the env-shaped knobs onto the stealth override shape (names differ). */
+	private stealthOverridesFromEnv() {
+		return {
+			os: this.env.stealthOs,
+			userAgent: this.env.stealthUserAgent,
+			locale: this.env.stealthLocale,
+			timezone: this.env.stealthTimezone,
+			screen: this.env.stealthScreen,
+			humanize: this.env.stealthHumanize,
+			proxy: this.env.proxy,
+		};
 	}
 
 	// ------------------------------------------------------------- lifecycle
@@ -134,9 +194,18 @@ export class BrowserSession {
 	}
 
 	/** Lazily ensure a connected browser. Safe to call before every action. */
-	async ensureStarted(opts: { headless?: boolean } = {}): Promise<void> {
+	async ensureStarted(opts: { headless?: boolean; stealth?: boolean } = {}): Promise<void> {
 		if (this.stopped) throw new Error("browser session was stopped — start a new one (any action auto-starts)");
-		if (this.started && !this.conn?.isClosed) return;
+		if (this.started && !this.conn?.isClosed) {
+			// an explicit stealth request against a running session must be
+			// a hard, honest error: the flags and overrides were set at launch
+			if (opts.stealth !== undefined && this.stealthCfg && opts.stealth !== this.stealthCfg.enabled) {
+				throw new Error(
+					`browser is already running with stealth=${this.stealthCfg.enabled} - stop it first to switch (browser stop, then start stealth=${opts.stealth})`,
+				);
+			}
+			return;
+		}
 		if (this.starting) return this.starting;
 		this.starting = this.start(opts).finally(() => {
 			this.starting = null;
@@ -144,10 +213,22 @@ export class BrowserSession {
 		return this.starting;
 	}
 
-	private async start(opts: { headless?: boolean }): Promise<void> {
+	private async start(opts: { headless?: boolean; stealth?: boolean }): Promise<void> {
 		const headless = opts.headless ?? this.env.headless;
+		// resolve the stealth + captcha tiers ONCE, before any launch: the
+		// identity (UA/platform/screen) decides launch args and per-page
+		// overrides; the captcha config decides the navigate auto-loop.
+		if (opts.stealth !== undefined) this.explicitStealth = opts.stealth;
+		this.captchaCfg = resolveCaptchaConfig(this.env);
 
 		if (this.env.cdpUrl) {
+			// attach mode: launch flags are the remote browser's business, but
+			// the protocol-level stealth tier (no Runtime.enable, isolated
+			// worlds, fingerprint overrides) still applies per page.
+			this.stealthCfg = resolveStealthConfig({
+				enabled: this.explicitStealth ?? this.env.stealth,
+				overrides: this.stealthOverridesFromEnv(),
+			});
 			const conn = await CdpConnection.attach(this.env.cdpUrl);
 			this.conn = conn;
 			this.info = {
@@ -161,7 +242,21 @@ export class BrowserSession {
 			return;
 		}
 
-		const found = discoverBrowser();
+		const stealthOn = this.explicitStealth ?? this.env.stealth;
+		// stealth needs the REAL engine version before the identity is built
+		const found = discoverBrowser({ allowHeadlessShell: !stealthOn });
+		const chromeVersion = stealthOn ? await readChromeVersion(found.path) : undefined;
+		this.stealthCfg = resolveStealthConfig({
+			enabled: stealthOn,
+			overrides: this.stealthOverridesFromEnv(),
+			version: chromeVersion,
+		});
+		if (stealthOn) {
+			// the identity's viewport is the default in stealth mode (a
+			// 1280x720 window inside a claimed 1920x1080 screen is a tell)
+			this.viewport = { ...this.stealthCfg.identity.viewport };
+			this.mousePos = { x: this.viewport.width / 2, y: this.viewport.height / 2 };
+		}
 		let profileDir = this.env.profileDir ?? defaultProfileDir();
 		let tempProfile = false;
 		// D9: a locked profile means another Chromium owns it — fall back to a
@@ -175,6 +270,8 @@ export class BrowserSession {
 		mkdirSync(profileDir, { recursive: true });
 		this.downloadDir = this.cwd;
 
+		// stealth launch args (lang/proxy/bypass) merge with the base flag set
+		const stealthArgs = this.stealthCfg?.enabled ? stealthLaunchArgs(this.stealthCfg) : [];
 		let conn: CdpConnection;
 		try {
 			conn = await CdpConnection.launch({
@@ -182,17 +279,28 @@ export class BrowserSession {
 				userDataDir: profileDir,
 				headless,
 				windowSize: this.viewport,
+				extraArgs: stealthArgs,
 			});
 		} catch (err: any) {
 			const msg = err instanceof Error ? err.message : String(err);
-			// containers/ci often need --no-sandbox; retry once with it
+			// two failure families land here and one retry fixes both:
+			//   - containers/CI need --no-sandbox
+			//   - a concurrent unown session won the default profile's
+			//     SingletonLock between our check and the launch (Chrome
+			//     exits during startup) — the retry must use a TEMP profile,
+			//     never the still-locked one
 			if (/exited during startup|DevTools endpoint/i.test(msg)) {
+				const retryProfile = join(tmpdir(), `unown-browser-retry-${process.pid}-${Date.now()}`);
 				conn = await CdpConnection.launch({
 					executablePath: found.path,
-					userDataDir: profileDir,
+					userDataDir: retryProfile,
 					headless,
 					windowSize: this.viewport,
-					extraArgs: ["--no-sandbox", "--disable-gpu"],
+					extraArgs: ["--no-sandbox", "--disable-gpu", ...stealthArgs],
+				}).then((c) => {
+					tempProfile = true;
+					profileDir = retryProfile;
+					return c;
 				}).catch((err2: any) => {
 					throw new Error(
 						`browser failed to start (${err2?.message ?? err2}) — if this is a container, set UNOWN_BROWSER_NO_SANDBOX=1 or run a headed desktop`,
@@ -350,6 +458,9 @@ export class BrowserSession {
 						const page = this.pages.get(sessionId);
 						if (page && p?.frame?.parentId === undefined) {
 							page.url = p.frame.url ?? page.url;
+							// the isolated world died with the document;
+							// the next isolated op re-creates it lazily
+							this.isolatedWorlds.delete(sessionId);
 						}
 					}),
 					this.conn!.on("Network.requestWillBeSent", (_m, p, sid) => {
@@ -377,14 +488,24 @@ export class BrowserSession {
 				);
 				// domains AFTER handlers are live — the race window is closed
 				await this.conn!.send("Page.enable", {}, { sessionId });
-				await this.conn!.send("Runtime.enable", {}, { sessionId });
+				if (this.stealthCfg?.enabled) {
+					// THE stealth line: never Runtime.enable (the CDP
+					// signal - verified: modern prepareStackTrace detectors
+					// fire on it, stay silent without it). Console capture
+					// degrades to Log-domain entries; reported honestly.
+					await this.applyStealthToPage(sessionId);
+				} else {
+					await this.conn!.send("Runtime.enable", {}, { sessionId });
+				}
 				await this.conn!.send("Network.enable", {}, { sessionId });
 				await this.conn!.send("Log.enable", {}, { sessionId });
-				await this.conn!.send(
-					"Emulation.setDeviceMetricsOverride",
-					{ width: this.viewport.width, height: this.viewport.height, deviceScaleFactor: 1, mobile: false },
-					{ sessionId },
-				).catch(() => undefined);
+				if (!this.stealthCfg?.enabled) {
+					await this.conn!.send(
+						"Emulation.setDeviceMetricsOverride",
+						{ width: this.viewport.width, height: this.viewport.height, deviceScaleFactor: 1, mobile: false },
+						{ sessionId },
+					).catch(() => undefined);
+				}
 			} catch {
 				/* page may close mid-setup */
 			}
@@ -394,6 +515,7 @@ export class BrowserSession {
 	private onTargetDetached(params: any) {
 		const { sessionId } = params ?? {};
 		if (!sessionId) return;
+		this.isolatedWorlds.delete(sessionId);
 		this.pages.delete(sessionId);
 		if (this.activeSessionId === sessionId) {
 			this.activeSessionId = this.pages.keys().next().value ?? null;
@@ -433,6 +555,18 @@ export class BrowserSession {
 			pages: this.pages.size,
 			activePage: page ? { url: page.url, title: page.title } : undefined,
 			viewport: this.viewport,
+			stealth: this.stealthCfg
+				? {
+					enabled: this.stealthCfg.enabled,
+					os: this.stealthCfg.identity.os,
+					humanize: this.stealthCfg.humanize,
+					proxy: this.stealthCfg.proxy,
+					userAgent: this.stealthCfg.identity.userAgent,
+				}
+				: undefined,
+			captcha: this.captchaCfg
+				? { solver: this.captchaCfg.solver, auto: this.captchaCfg.auto, vision: this.captchaCfg.vision }
+				: undefined,
 		};
 	}
 
@@ -466,19 +600,21 @@ export class BrowserSession {
 
 	// ------------------------------------------------------------- primitives
 
-	private async pageEval(expression: string, opts: { awaitPromise?: boolean; sessionId?: string } = {}): Promise<any> {
+	private async pageEval(
+		expression: string,
+		opts: { awaitPromise?: boolean; sessionId?: string; world?: "main" | "isolated" } = {},
+	): Promise<any> {
 		const conn = this.requireConn();
 		const sessionId = opts.sessionId ?? this.requireSessionId();
-		const res = await conn.send(
-			"Runtime.evaluate",
-			{
-				expression,
-				returnByValue: true,
-				awaitPromise: opts.awaitPromise ?? false,
-				userGesture: true,
-			},
-			{ sessionId },
-		);
+		const params: Record<string, unknown> = {
+			expression,
+			returnByValue: true,
+			awaitPromise: opts.awaitPromise ?? false,
+			userGesture: true,
+		};
+		const world = opts.world ?? (this.stealthCfg?.enabled ? "isolated" : "main");
+		if (world === "isolated") params.contextId = await this.ensureIsolatedWorld(sessionId);
+		const res = await conn.send("Runtime.evaluate", params, { sessionId });
 		if (res.exceptionDetails) {
 			const d = res.exceptionDetails;
 			const text = d.exception?.description || d.text || "evaluation failed";
@@ -494,15 +630,18 @@ export class BrowserSession {
 	 * string; every dynamic value crosses the boundary as a CDP JSON argument —
 	 * data, never code. The page's `window` object is resolved fresh each call
 	 * so navigation invalidates nothing.
-	 */
-	private async pageCall(functionDeclaration: string, args: unknown[], opts: { awaitPromise?: boolean } = {}): Promise<any> {
+         */
+	private async pageCall(
+		functionDeclaration: string,
+		args: unknown[],
+		opts: { awaitPromise?: boolean; world?: "main" | "isolated" } = {},
+	): Promise<any> {
 		const conn = this.requireConn();
 		const sessionId = this.requireSessionId();
-		const target = await conn.send(
-			"Runtime.evaluate",
-			{ expression: "window" },
-			{ sessionId },
-		);
+		const world = opts.world ?? (this.stealthCfg?.enabled ? "isolated" : "main");
+		const windowParams: Record<string, unknown> = { expression: "window" };
+		if (world === "isolated") windowParams.contextId = await this.ensureIsolatedWorld(sessionId);
+		const target = await conn.send("Runtime.evaluate", windowParams, { sessionId });
 		const objectId = target?.result?.objectId;
 		if (!objectId) throw new Error("page JS error: no window object to call on");
 		const res = await conn.send(
@@ -587,7 +726,7 @@ export class BrowserSession {
 	/**
 	 * Scroll an element into view and return its fresh viewport box
 	 * (D5 — trusted input needs real coordinates).
-	 */
+         */
 	private async prepElement(selector: string): Promise<number[] | null> {
 		const prepped = await this.pageEval(`(() => {
 			const el = document.querySelector(${JSON.stringify(selector)});
@@ -605,6 +744,20 @@ export class BrowserSession {
 		const sessionId = this.requireSessionId();
 		const button = opts.button === "right" ? "right" : opts.button === "middle" ? "middle" : "left";
 		const mods = modifierBits(opts.modifiers);
+		// humanized approach: walk a jittered, eased path from wherever the
+		// cursor was to the target, then press. Straight-line teleports are a
+		// behavioral tell; this is the tier every stealth product ships.
+		if (this.stealthCfg?.enabled && this.stealthCfg.humanize) {
+			for (const pt of humanPath(this.mousePos, { x, y }, this.humanRng)) {
+				await conn.send(
+					"Input.dispatchMouseEvent",
+					{ type: "mouseMoved", x: pt.x, y: pt.y, pointerType: "mouse" },
+					{ sessionId },
+				).catch(() => undefined);
+				await sleep(pt.delayMs);
+			}
+		}
+		this.mousePos = { x, y };
 		const base = { x: Math.round(x), y: Math.round(y), button, modifiers: mods, clickCount: opts.clickCount ?? 1, pointerType: "mouse" };
 		await conn.send("Input.dispatchMouseEvent", { ...base, type: "mousePressed", buttons: button === "left" ? 1 : button === "right" ? 2 : 4 }, { sessionId });
 		await sleep(30);
@@ -714,11 +867,29 @@ export class BrowserSession {
 		const loaded = await this.raceNavigate(conn, sessionId, url);
 		await this.settle();
 		const { snap, text } = await this.takeSnapshot();
+		// v2: captcha detection on every navigate (cheap, isolated); solving
+		// runs automatically only when UNOWN_CAPTCHA_AUTO=1 and a tier is armed
+		const warnings: string[] = [];
+		let captchaLine: string | undefined;
+		const check = await this.captchaQuickCheck();
+		if (check) {
+			captchaLine = `captcha: ${check.lines[0]}${check.lines.length > 1 ? ` (+${check.lines.length - 1} more)` : ""}`;
+			if (check.blocked) warnings.push("page looks BLOCKED by a challenge interstitial");
+			if (this.captchaCfg?.auto) {
+				const r = await this.captchaSolve({ attempt: "all" }).catch((e: any) => ({
+					summary: `auto-solve failed: ${e?.message ?? e}`,
+					details: [],
+				} as ActionReport));
+				captchaLine += ` | auto-solve: ${r.summary}`;
+			}
+		}
+		const summary = `navigated to ${snap.url}${loaded ? "" : " (load timed out — page may still be loading)"}${captchaLine ? ` - ${captchaLine}` : ""}`;
 		return {
-			summary: `navigated to ${snap.url}${loaded ? "" : " (load timed out — page may still be loading)"}`,
+			summary,
 			snapshot: text,
 			url: snap.url,
 			title: snap.title,
+			warnings: warnings.length ? warnings : undefined,
 		};
 	}
 
@@ -844,8 +1015,29 @@ export class BrowserSession {
 			await this.pressKeyCombo("Backspace");
 		}
 		if (opts.text.length > 0) {
-			// insertText fires real input events (works with React/Vue controlled inputs)
-			await conn.send("Input.insertText", { text: opts.text }, { sessionId });
+			if (this.stealthCfg?.enabled && this.stealthCfg.humanize) {
+				// humanized typing: per-character key events with jittered
+				// delays (insertText is an instant paste - a behavioral tell)
+				const delays = humanTypeDelays(opts.text, this.humanRng);
+				for (let i = 0; i < opts.text.length; i++) {
+					const ch = opts.text[i];
+					await sleep(delays[i]);
+					if (ch === "\n") {
+						await conn.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r", unmodifiedText: "\r" }, { sessionId });
+						await sleep(humanKeyGap(this.humanRng));
+						await conn.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 }, { sessionId });
+						continue;
+					}
+					const vk = ch.toUpperCase().charCodeAt(0);
+					const code = /^[a-zA-Z]$/.test(ch) ? `Key${ch.toUpperCase()}` : /^[0-9]$/.test(ch) ? `Digit${ch}` : undefined;
+					await conn.send("Input.dispatchKeyEvent", { type: "keyDown", key: ch, code, windowsVirtualKeyCode: vk, text: ch, unmodifiedText: ch }, { sessionId });
+					await sleep(humanKeyGap(this.humanRng));
+					await conn.send("Input.dispatchKeyEvent", { type: "keyUp", key: ch, code, windowsVirtualKeyCode: vk }, { sessionId });
+				}
+			} else {
+				// insertText fires real input events (works with React/Vue controlled inputs)
+				await conn.send("Input.insertText", { text: opts.text }, { sessionId });
+			}
 		}
 		if (opts.submit) {
 			await this.pressKeyCombo("Enter");
@@ -1066,7 +1258,7 @@ export class BrowserSession {
 		};
 	}
 
-	async evalCode(code: string): Promise<ActionReport> {
+	async evalCode(code: string, opts: { world?: "main" | "isolated" } = {}): Promise<ActionReport> {
 		await this.ensureStarted();
 		// Three wrapper shapes, in order of what models actually send:
 		//   1. expression (incl. `await …` and function calls)  → return (expr)
@@ -1081,7 +1273,7 @@ export class BrowserSession {
 		let lastErr: Error | undefined;
 		for (const expression of attempts) {
 			try {
-				value = await this.pageEval(expression, { awaitPromise: true });
+				value = await this.pageEval(expression, { awaitPromise: true, world: opts.world });
 				lastErr = undefined;
 				break;
 			} catch (err: any) {
@@ -1214,11 +1406,19 @@ export class BrowserSession {
 	async resize(width: number, height: number): Promise<ActionReport> {
 		await this.ensureStarted();
 		this.viewport = { width, height };
-		await this.conn!.send(
-			"Emulation.setDeviceMetricsOverride",
-			{ width, height, deviceScaleFactor: 1, mobile: false },
-			{ sessionId: this.requireSessionId() },
-		);
+		const id = this.stealthCfg?.enabled ? this.stealthCfg.identity : undefined;
+		const params: Record<string, unknown> = { width, height, deviceScaleFactor: 1, mobile: false };
+		if (id) {
+			params.screenWidth = id.screen.width;
+			params.screenHeight = id.screen.height;
+			params.screenOrientation = { angle: 0, type: "landscapePrimary" };
+		}
+		await this.conn!
+			.send("Emulation.setDeviceMetricsOverride", params, { sessionId: this.requireSessionId() })
+			.catch(() =>
+				this.conn!
+					.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false }, { sessionId: this.requireSessionId() })
+					.catch(() => undefined));
 		return { summary: `viewport ${width}x${height}` };
 	}
 
@@ -1370,6 +1570,312 @@ export class BrowserSession {
 			).catch(() => undefined);
 		}
 		return { summary: `loaded storage state from ${path} (${n} cookies)` };
+	}
+
+	// ------------------------------------------------------------- v2: stealth internals
+
+	/**
+	 * Apply the stealth tier to one page session: CDP-native fingerprint
+	 * overrides (no page-JS patching) + coherent screen metrics. Verified
+	 * against Chrome 143 (scripts-dev/dbg-stealth-probe3.ts): UA, platform,
+	 * userAgentData brands/platform, locale, timezone and screen all land
+	 * coherently. Called per page attach, before Network/Log enables, and
+	 * NEVER enables the Runtime domain.
+         */
+	private async applyStealthToPage(sessionId: string): Promise<void> {
+		const conn = this.conn!;
+		const id = this.stealthCfg!.identity;
+		// device metrics + SCREEN: fixes the 800x600 headless default
+		// (screenWidth/Height still accepted by Chrome 143; degraded
+		// gracefully on older engines)
+		await conn
+			.send(
+				"Emulation.setDeviceMetricsOverride",
+				{
+					width: this.viewport.width,
+					height: this.viewport.height,
+					deviceScaleFactor: 1,
+					mobile: false,
+					screenWidth: id.screen.width,
+					screenHeight: id.screen.height,
+					screenOrientation: { angle: 0, type: "landscapePrimary" },
+				},
+				{ sessionId },
+			)
+			.catch(async () => {
+				await conn
+					.send(
+						"Emulation.setDeviceMetricsOverride",
+						{ width: this.viewport.width, height: this.viewport.height, deviceScaleFactor: 1, mobile: false },
+						{ sessionId },
+					)
+					.catch(() => undefined);
+			});
+		// UA + platform + full client hints, network-level
+		await conn
+			.send(
+				"Network.setUserAgentOverride",
+				{
+					userAgent: id.userAgent,
+					acceptLanguage: id.acceptLanguage,
+					platform: id.platform,
+					userAgentMetadata: id.uaMetadata,
+				},
+				{ sessionId },
+			)
+			.catch(() => undefined);
+		await conn.send("Emulation.setLocaleOverride", { locale: id.locale }, { sessionId }).catch(() => undefined);
+		await conn.send("Emulation.setTimezoneOverride", { timezoneId: id.timezone }, { sessionId }).catch(() => undefined);
+	}
+
+	/** Get (or lazily create) the isolated world for a page session. */
+	private async ensureIsolatedWorld(sessionId: string): Promise<number> {
+		const cached = this.isolatedWorlds.get(sessionId);
+		if (cached) return cached;
+		const conn = this.requireConn();
+		const tree = await conn.send("Page.getFrameTree", {}, { sessionId });
+		const frameId = tree?.frameTree?.frame?.id;
+		if (!frameId) throw new Error("cannot create isolated world: no main frame yet");
+		const world = await conn.send(
+			"Page.createIsolatedWorld",
+			{ frameId, worldName: "unown", grantUniveralAccess: false },
+			{ sessionId },
+		);
+		const ctxId = Number(world?.executionContextId);
+		if (!ctxId) throw new Error("createIsolatedWorld returned no executionContextId");
+		this.isolatedWorlds.set(sessionId, ctxId);
+		return ctxId;
+	}
+
+	// ------------------------------------------------------------- v2: stealth actions
+
+	/** Report the stealth + captcha tier configuration. */
+	async stealthStatus(): Promise<ActionReport> {
+		this.captchaCfg ?? (this.captchaCfg = resolveCaptchaConfig(this.env));
+		this.stealthCfg ?? (this.stealthCfg = resolveStealthConfig({ enabled: this.env.stealth, overrides: this.stealthOverridesFromEnv() }));
+		const st = this.stealthCfg;
+		const cc = this.captchaCfg;
+		const details: string[] = [
+			`stealth: ${st.enabled ? "ON" : "off"}${this.isRunning ? "" : " (not started - values are the pre-start config)"}`,
+			`identity: os=${st.identity.os} ua=${st.identity.userAgent}`,
+			`platform=${st.identity.platform} uaCh.platform=${st.identity.uaMetadata.platform} platformVersion=${st.identity.uaMetadata.platformVersion}`,
+			`locale=${st.identity.locale} timezone=${st.identity.timezone}`,
+			`screen=${st.identity.screen.width}x${st.identity.screen.height} viewport=${st.identity.viewport.width}x${st.identity.viewport.height}`,
+			`humanize: ${st.humanize ? "on" : "off"} (seeded: ${process.env.UNOWN_BROWSER_HUMANIZE_SEED ? "yes" : "no"})`,
+			`proxy: ${st.proxy ?? "(none - your IP is what sites see)"}`,
+			"protocol: " + (st.enabled ? "no Runtime.enable (CDP signal silent), isolated-world ops" : "classic (Runtime domain enabled)"),
+			`captcha: solver=${cc.solver} auto=${cc.auto} vision=${cc.vision ? `on (${cc.visionModel} via ${cc.visionBaseUrl})` : "off (set UNOWN_VISION_API_KEY or AGNES_API_KEY)"}`,
+		];
+		return { summary: `stealth ${st.enabled ? "ON" : "off"} - os=${st.identity.os}, humanize=${st.humanize ? "on" : "off"}, captcha=${cc.solver}`, details };
+	}
+
+	/** In-page coherence self-check: read the live fingerprint and compare. */
+	async stealthVerify(): Promise<ActionReport> {
+		await this.ensureStarted();
+		const st = this.stealthCfg;
+		if (!st?.enabled) {
+			return { summary: "stealth is off - start with stealth=true to verify a stealth identity", details: ["(classic mode reports its real engine fingerprint by design)"] };
+		}
+		const fp = await this.pageEval(`(() => {
+			const uad = (typeof navigator.userAgentData === "undefined") ? null : {
+				platform: navigator.userAgentData.platform,
+				mobile: navigator.userAgentData.mobile,
+				brands: navigator.userAgentData.brands.map((b) => b.brand + ":" + b.version).join(","),
+			};
+			return {
+				webdriver: navigator.webdriver,
+				ua: navigator.userAgent,
+				platform: navigator.platform,
+				uad,
+				tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				locale: Intl.DateTimeFormat().resolvedOptions().locale,
+				screen: [screen.width, screen.height],
+				inner: [innerWidth, innerHeight],
+				plugins: navigator.plugins.length,
+				chrome: typeof window.chrome,
+				notification: (typeof Notification !== "undefined") ? Notification.permission : "absent",
+			};
+		})()`);
+		const id = st.identity;
+		const checks: Array<[string, boolean, string]> = [];
+		checks.push(["navigator.webdriver is false", fp.webdriver === false, String(fp.webdriver)]);
+		checks.push(["userAgent matches identity", fp.ua === id.userAgent, String(fp.ua)]);
+		checks.push(["navigator.platform matches", fp.platform === id.platform, String(fp.platform)]);
+		checks.push(["userAgentData coherent", !!fp.uad && fp.uad.platform === id.uaMetadata.platform && fp.uad.mobile === id.uaMetadata.mobile, fp.uad ? `${fp.uad.platform} [${fp.uad.brands}]` : "absent"]);
+		checks.push(["timezone matches", fp.tz === id.timezone, String(fp.tz)]);
+		checks.push(["locale matches", String(fp.locale).startsWith(id.locale), String(fp.locale)]);
+		checks.push(["screen matches", fp.screen[0] === id.screen.width && fp.screen[1] === id.screen.height, String(fp.screen)]);
+		checks.push(["viewport matches", fp.inner[0] === this.viewport.width && fp.inner[1] === this.viewport.height, String(fp.inner)]);
+		checks.push(["plugins present", Number(fp.plugins) > 0, String(fp.plugins)]);
+		checks.push(["window.chrome present", fp.chrome !== "undefined", String(fp.chrome)]);
+		const failed = checks.filter(([, ok]) => !ok);
+		return {
+			summary: `stealth verify: ${checks.length - failed.length}/${checks.length} coherent${failed.length ? " - MISMATCHES PRESENT" : ""}`,
+			details: checks.map(([name, ok, actual]) => `${ok ? "PASS" : "FAIL"} ${name}${ok ? "" : ` (got ${actual})`}`),
+			warnings: failed.length ? [`fingerprint mismatches: ${failed.map(([n]) => n).join("; ")}`] : undefined,
+		};
+	}
+
+	// ------------------------------------------------------------- v2: captcha pipeline
+
+	/** Run the in-page detection probe (isolated world in stealth mode). */
+	async captchaDetect(): Promise<ActionReport> {
+		await this.ensureStarted();
+		const raw = await this.pageEval(CAPTCHA_PROBE_SRC, { awaitPromise: false });
+		const challenges = (raw?.challenges ?? []) as DetectedChallenge[];
+		const blocked = !!raw?.blocked;
+		return {
+			summary: challenges.length ? `captcha detected: ${challenges.map((c) => c.type).join(", ")}` : "no captcha detected",
+			details: formatChallenges(challenges, blocked).split("\n"),
+			warnings: blocked ? ["the page looks BLOCKED by a challenge interstitial"] : undefined,
+		};
+	}
+
+	/** Click a Turnstile/reCAPTCHA checkbox at input level (native tier). */
+	private async captchaNativeClick(challenge: DetectedChallenge): Promise<{ clicked: boolean; note: string }> {
+		const box = await this.pageEval(`(() => {
+			let el = null;
+			if (${JSON.stringify(challenge.type)} === "cloudflare-turnstile") {
+				el = document.querySelector('iframe[src*="challenges.cloudflare.com"]') || document.querySelector(".cf-turnstile");
+			} else if (${JSON.stringify(challenge.type)} === "recaptcha-v2") {
+				el = document.querySelector('iframe[title="reCAPTCHA"], iframe[src*="recaptcha/api2/anchor"]');
+			} else if (${JSON.stringify(challenge.type)} === "hcaptcha") {
+				el = document.querySelector('iframe[src*="hcaptcha.com"], .h-captcha');
+			}
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
+		})()`);
+		if (!Array.isArray(box)) return { clicked: false, note: "no widget box found for the native click" };
+		// the checkbox sits at the left edge, vertically centered
+		const cx = box[0] + Math.max(14, Math.min(28, Math.round(box[2] * 0.12)));
+		const cy = box[1] + Math.round(box[3] / 2);
+		await this.dispatchClick(cx, cy);
+		await this.settle(2_500);
+		// verify: does the response field now hold a token?
+		const field = challenge.type === "recaptcha-v2" ? 'textarea#g-recaptcha-response, .g-recaptcha-response' : challenge.type === "hcaptcha" ? 'textarea[name="h-captcha-response"]' : 'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]';
+		const val = await this.pageEval(`(() => { const el = document.querySelector(${JSON.stringify(field)}); return el ? String(el.value || "").length : 0; })()`).catch(() => 0);
+		const solved = Number(val) > 20;
+		return { clicked: true, note: solved ? `native click solved it (token present, ${val} chars)` : "native click landed but no token yet (challenge may be interactive/explicit)" };
+	}
+
+	/** The full solve pipeline for one challenge type. */
+	async captchaSolve(opts: { type?: string; attempt?: "all" | "native" | "service" | "vision" }): Promise<ActionReport> {
+		await this.ensureStarted();
+		const cfg = this.captchaCfg!;
+		const attempt = opts.attempt ?? "all";
+		const raw = await this.pageEval(CAPTCHA_PROBE_SRC, { awaitPromise: false });
+		const challenges = (raw?.challenges ?? []) as DetectedChallenge[];
+		if (!challenges.length) return { summary: "no captcha detected - nothing to solve" };
+		const target = (opts.type ? challenges.find((c) => c.type === opts.type) : challenges[0]) ?? challenges[0];
+		const tiers = tiersFor(target.type);
+		const pageUrl = String(await this.pageEval(`location.href`));
+		const attempts: string[] = [];
+		let solved = false;
+
+		// tier 1: native click
+		if (tiers.native && attempt !== "service" && attempt !== "vision") {
+			try {
+				const r = await this.captchaNativeClick(target);
+				attempts.push(`native-click: ${r.note}`);
+				solved = /solved it/.test(r.note);
+			} catch (err: any) {
+				attempts.push(`native-click failed: ${err?.message ?? err}`);
+			}
+		}
+
+		// tier 2: solver service
+		if (!solved && tiers.service !== "none" && cfg.solver !== "none" && attempt !== "native" && attempt !== "vision") {
+			if (!target.sitekey) {
+				attempts.push(`service: skipped - no sitekey derivable for ${target.type}`);
+			} else {
+				try {
+					const token = await this.serviceSolve(target, pageUrl);
+					const injected = await this.pageEval(injectTokenExpression(target.type, token));
+				const n = Number(injected?.injected ?? 0);
+					attempts.push(`service (${cfg.solver}): token received, injected into ${n} field(s)`);
+					solved = n > 0;
+				} catch (err: any) {
+					attempts.push(`service (${cfg.solver}) failed: ${err?.message ?? err}`);
+				}
+			}
+		}
+
+		// tier 3: vision OCR (image captchas)
+		if (!solved && tiers.vision && target.type === "image-captcha" && attempt !== "native" && attempt !== "service") {
+			try {
+				const answer = await this.visionSolveImage(target);
+				attempts.push(`vision OCR: answer ${JSON.stringify(answer)}`);
+				solved = !!answer;
+			} catch (err: any) {
+				attempts.push(`vision OCR failed: ${err?.message ?? err}`);
+			}
+		}
+
+		if (!solved && tiers.service === "none" && !tiers.native && !tiers.vision) {
+			attempts.push(`${target.type}: no tier applies (vendor support gap - see the note in browser captcha detect)`);
+		}
+
+		// verify: re-detect
+		const after = await this.pageEval(CAPTCHA_PROBE_SRC, { awaitPromise: false });
+		const remaining = ((after?.challenges ?? []) as DetectedChallenge[]).map((c) => c.type);
+		return {
+			summary: `${target.type}: ${solved ? "SOLVED" : "not solved"}${remaining.length ? ` - still detected: ${remaining.join(", ")}` : " - challenge no longer detected"}`,
+			details: attempts,
+			warnings: solved ? undefined : ["captcha not solved - consider: a residential proxy (UNOWN_BROWSER_PROXY), stealth=on, or a human takeover (UNOWN_BROWSER_HEADLESS=0)"],
+		};
+	}
+
+	/** Service solve dispatch (2captcha or capsolver per config). */
+	private async serviceSolve(challenge: DetectedChallenge, pageUrl: string): Promise<string> {
+		const cfg = this.captchaCfg!;
+		if (cfg.solver === "2captcha") {
+			const client = new TwoCaptchaClient(cfg.twoCaptchaKey!);
+			const kind: "recaptcha-v2" | "turnstile" =
+				challenge.type === "recaptcha-v2" ? "recaptcha-v2" : "turnstile";
+			return client.solve({ kind, sitekey: challenge.sitekey!, pageUrl });
+		}
+		if (cfg.solver === "capsolver") {
+			const client = new CapSolverClient(cfg.capSolverKey!);
+			const kind: "recaptcha-v2" | "turnstile" =
+				challenge.type === "recaptcha-v2" ? "recaptcha-v2" : "turnstile";
+			return client.solve({ kind, sitekey: challenge.sitekey!, pageUrl });
+		}
+		throw new Error(`no solver service configured (UNOWN_CAPTCHA_SOLVER / keys)`);
+	}
+
+	/** Image-captcha vision tier: clip the image, OCR it, type the answer. */
+	private async visionSolveImage(target: DetectedChallenge): Promise<string> {
+		const cfg = this.captchaCfg!;
+		if (!cfg.vision || !cfg.visionApiKey || !cfg.visionBaseUrl) {
+			throw new Error("vision OCR not configured (set UNOWN_VISION_API_KEY or AGNES_API_KEY; disable with UNOWN_CAPTCHA_VISION=0)");
+		}
+		if (!target.imageSelector) throw new Error("no image element selector for the vision tier");
+		const shot = await this.screenshot({ selector: target.imageSelector, format: "png" });
+		const answer = await visionReadCaptcha(
+			shot.image!.data,
+			{ baseUrl: cfg.visionBaseUrl, apiKey: cfg.visionApiKey, model: cfg.visionModel ?? "agnes-3.0-flash" },
+			(url, init) => fetch(url, init as any),
+		);
+		if (!answer) throw new Error("vision endpoint returned an empty answer");
+		if (target.inputSelector) {
+			// type the answer like a user would (humanized path when on)
+			await this.type({ selector: target.inputSelector, text: answer });
+		}
+		return answer;
+	}
+
+	/** Detection result for the navigate hook (cheap; never throws). */
+	private async captchaQuickCheck(): Promise<{ lines: string[]; blocked: boolean } | null> {
+		try {
+			const raw = await this.pageEval(CAPTCHA_PROBE_SRC, { awaitPromise: false });
+			const challenges = (raw?.challenges ?? []) as DetectedChallenge[];
+			const blocked = !!raw?.blocked;
+			if (!challenges.length && !blocked) return null;
+			return { lines: formatChallenges(challenges, blocked).split("\n"), blocked };
+		} catch {
+			return null;
+		}
 	}
 
 	// ------------------------------------------------------------- teardown

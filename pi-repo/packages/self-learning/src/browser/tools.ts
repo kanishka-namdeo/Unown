@@ -51,6 +51,8 @@ const BrowserAction = StringEnum(
                 "upload",
                 "pdf",
                 "storage",
+                "stealth",
+                "captcha",
         ] as const,
         { description: "Which browser operation to run" },
 );
@@ -109,6 +111,11 @@ const BrowserParams = Type.Object({
         storageAction: Type.Optional(StringEnum(["save", "load"] as const, { description: "storage: sub-action" })),
         path: Type.Optional(Type.String({ description: "storage: JSON state file path (cwd-relative ok)" })),
         includeBoxes: Type.Optional(Type.Boolean({ description: "snapshot: include [x,y,w,h] boxes for visual grounding" })),
+        stealth: Type.Optional(Type.Boolean({ description: "start: run the browser in stealth mode (no CDP signal, coherent fingerprint, humanized input) - must match the session" })),
+        world: Type.Optional(StringEnum(["main", "isolated"] as const, { description: "eval: which JS world to run in (default main; isolated never touches page JS state - stealth sessions run all internal ops there)" })),
+        stealthAction: Type.Optional(StringEnum(["status", "verify"] as const, { description: "stealth: sub-action (default status)" })),
+        captchaAction: Type.Optional(StringEnum(["detect", "solve"] as const, { description: "captcha: sub-action (default detect)" })),
+        attempt: Type.Optional(StringEnum(["all", "native", "service", "vision"] as const, { description: "captcha solve: which tier to attempt (default all)" })),
 });
 
 export interface BrowserToolsOptions {
@@ -139,13 +146,15 @@ export function registerBrowserTools(pi: ExtensionAPI, opts: BrowserToolsOptions
                 name: "browser",
                 label: "Browser",
                 description:
-                        "Drive a real Chromium browser over CDP for web automation: navigate, take accessibility snapshots (refs like [e12]), click/type by ref/selector/coordinates, fill forms, screenshots (returned as images the model can see — works with vision models like agnes-3.0-flash), tabs, downloads, cookies, console/network logs, JS eval, PDF export. The browser auto-starts on first use (headless by default; UNOWN_BROWSER_HEADLESS=0 to watch it). Work loop: navigate → snapshot → act on refs → repeat. Use it to test local dev servers, scrape JS-rendered pages, fill real forms, or visually verify a deploy.",
+                        "Drive a real Chromium browser over CDP for web automation: navigate, take accessibility snapshots (refs like [e12]), click/type by ref/selector/coordinates, fill forms, screenshots (returned as images the model can see — works with vision models like agnes-3.0-flash), tabs, downloads, cookies, console/network logs, JS eval, PDF export. Stealth tier (start stealth=true or UNOWN_BROWSER_STEALTH=1): no CDP signal, coherent fingerprint (UA/client-hints/timezone/screen), humanized mouse+typing, proxy support — for sites that block bots. Captcha tier (browser captcha detect|solve): Turnstile/reCAPTCHA/hCaptcha/DataDome/AWS WAF/image detection, native-click + solver-service + vision-OCR tiers. The browser auto-starts on first use (headless by default; UNOWN_BROWSER_HEADLESS=0 to watch it). Work loop: navigate → snapshot → act on refs → repeat.",
                 parameters: BrowserParams,
-                promptSnippet: "browser — drive a real browser (Chromium/CDP): navigate, snapshot+refs, click/type, screenshots (vision), forms, tabs, downloads, cookies, console/network, eval",
+                promptSnippet: "browser — drive a real browser (Chromium/CDP): navigate, snapshot+refs, click/type, screenshots (vision), forms, tabs, downloads, cookies, console/network, eval, stealth mode, captcha detect/solve",
                 promptGuidelines: [
                         "browser tool: after navigate/click/type the tool returns a fresh accessibility snapshot — pick element refs (like [e12]) from it; refs invalidate on navigation, so re-snapshot instead of reusing stale refs",
                         "browser screenshot returns the actual image — vision models can ground coordinate clicks (x/y) from it when the a11y tree lacks a target",
                         "fill forms with one fill_form call instead of many type calls; wait for text/url changes with the wait action instead of fixed sleeps",
+                        "when a site shows a captcha or bot check: run browser captcha detect, then browser captcha solve (it tries a native click, then a solver service, then vision OCR — whichever is configured); browser stealth status|verify shows and checks the anti-detection fingerprint",
+                        "for bot-protected sites: start with browser start stealth=true (or set UNOWN_BROWSER_STEALTH=1) — stealth sessions never enable the Runtime domain (the CDP detection signal stays silent), run page ops in an isolated world, and humanize mouse paths and typing; console capture is reduced to network/browser log entries in that mode",
                 ],
                 async execute(_toolCallId: string, params: any, signal: AbortSignal | undefined) {
                         const session = getBrowserSession(opts.cwd);
@@ -222,7 +231,7 @@ async function dispatch(
         // session.ts; navigate-level checks happen here for snappy cancels.
         switch (p.action) {
                 case "start": {
-                        await session.ensureStarted({ headless: p.headless });
+                        await session.ensureStarted({ headless: p.headless, stealth: p.stealth });
                         if (p.width && p.height) await session.resize(p.width, p.height);
                         const info = session.sessionInfo();
                         return {
@@ -258,6 +267,8 @@ async function dispatch(
                                         `profile: ${info.profileDir ?? "(attached browser)"}`,
                                         `viewport: ${info.viewport.width}x${info.viewport.height}`,
                                         `console: ${session.consoleEntries().length} entries, network: ${session.requestEntries().length} requests, downloads: ${session.downloadEntries().length}`,
+                                        `stealth: ${info.stealth?.enabled ? `ON (os=${info.stealth.os}, humanize=${info.stealth.humanize ? "on" : "off"}, proxy=${info.stealth.proxy ?? "none"})` : "off"}`,
+                                        `captcha: solver=${info.captcha?.solver ?? "none"}, auto=${info.captcha?.auto ? "on" : "off"}, vision=${info.captcha?.vision ? "on" : "off"}`,
                                 ],
                         };
                 }
@@ -326,7 +337,7 @@ async function dispatch(
                 }
                 case "eval":
                         if (!p.code) throw new Error("eval needs code");
-                        return session.evalCode(p.code);
+                        return session.evalCode(p.code, { world: p.world });
                 case "tabs":
                         return session.tabs(p.tabsAction ?? "list", { index: p.index, url: p.url });
                 case "wait":
@@ -373,6 +384,14 @@ async function dispatch(
                         const abs = isAbsolute(p.path) ? p.path : join(ctx.cwd, p.path);
                         if (action === "save") return session.storageSave(abs);
                         return session.storageLoad(abs);
+                }
+                case "stealth":
+                        return (p.stealthAction ?? "status") === "verify" ? session.stealthVerify() : session.stealthStatus();
+                case "captcha": {
+                        if ((p.captchaAction ?? "detect") === "solve") {
+                                return session.captchaSolve({ type: p.text, attempt: p.attempt });
+                        }
+                        return session.captchaDetect();
                 }
                 default:
                         throw new Error(`unknown browser action: ${p.action}`);
