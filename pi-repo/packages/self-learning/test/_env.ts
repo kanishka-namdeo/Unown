@@ -54,7 +54,13 @@ process.env.PI_SELFLEARNING_DATA ??= `${TEST_TMP}/data`;
 process.env.PI_BRIDGE_URL ??= "http://127.0.0.1:9";
 // Terminal-agent home away from the developer's real ~/.unown (termhooks.ts
 // pulls term.ts, which reads UNOWN_HOME at module load).
-process.env.UNOWN_HOME ??= `${TEST_TMP}/unown-home`;
+// TRUTHINESS, not ??=: the checkout .env ships optional vars as `KEY=` and
+// bun auto-loads it, so UNOWN_HOME arrives SET-BUT-EMPTY — `??=` keeps the
+// empty string, term.ts's resolveUnownHome treats empty as unset (the repo
+// `||` convention), and every test that writes agent config (models-catalog's
+// writeAgentConfig) silently hit the REAL ~/.unown (the 2026-10-22 incident:
+// a full-suite run rewrote a live Agnes install to openai/sk-test).
+if (!process.env.UNOWN_HOME) process.env.UNOWN_HOME = `${TEST_TMP}/unown-home`;
 // The web results store stays OFF for the suite by default: the existing
 // websearch/provider tests are cache-blind (they assert upstream call
 // counts), and a warmed store would make them order-dependent. The store's

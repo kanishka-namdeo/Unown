@@ -24,6 +24,7 @@ const COMMANDS = [
         "mcp",
         "automations",
         "engine",
+        "repomap",
         "usage",
         "webcache",
         "sessions",

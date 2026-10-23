@@ -55,6 +55,7 @@ import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./b
 import { receiptsDir } from "./checkpoints.ts";
 import { trustBypassed } from "./config-trust.ts";
 import { composeTaskWithBrief, summarizeParentContext } from "./context-brief.ts";
+import { runRepomapCommand, withRepoMap } from "./repomap/repomap-cli.ts";
 import { registerContextTools } from "./context-tools.ts";
 import { DashboardApp } from "./dashboard/dashboard-app.ts";
 import { DashboardStore } from "./dashboard/dashboard-data.ts";
@@ -1628,7 +1629,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         }
                                                         const request: FleetSpawnRequest = {
                                                                 agent: agent.name,
-                                                                task: await maybeBrief(agent, job.task),
+                                                                task: await withRepoMap(runCwd, await maybeBrief(agent, job.task)),
                                                                 name: typeof params.name === "string" && params.name.trim() ? params.name.trim() : undefined,
                                                                 routing: {
                                                                         model: agent.model,
@@ -1761,7 +1762,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                                                         const guardActive = agent.completionGuard === true;
                                                         const guardBefore = guardActive ? snapshotWorkingTree(runCwd) : null;
                                                         log(`spawning subagent ${agent.name}`);
-                                                        const result = await runSubagent(agent, await maybeBrief(agent, job.task), runCwd, signal, {
+                                                        const result = await runSubagent(agent, await withRepoMap(runCwd, await maybeBrief(agent, job.task)), runCwd, signal, {
                                                                 outputSchema: job.outputSchema,
                                                                 schemaMode: job.schemaMode,
                                                                 onProgress: (p) => {
@@ -2659,6 +2660,18 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
                         description: "manage model providers (list, add, key, test, refresh, defaults)",
                         getArgumentCompletions: (prefix: string) => providersArgumentCompletions(prefix),
                         handler: async (args: string, ctx) => runProvidersCommand(args, ctx),
+                });
+
+                pi.registerCommand("repomap", {
+                        description: "repo map: /repomap [--tokens N] [--refresh] | /repomap clear — the graph-ranked tree-sitter symbol map",
+                        handler: async (args, ctx) => {
+                                try {
+                                        const result = await runRepomapCommand(opts.cwd, args ?? "");
+                                        ctx.ui.notify(result.message, result.level);
+                                } catch (err: any) {
+                                        ctx.ui.notify(`Repo map command failed: ${err?.message ?? err}`, "error");
+                                }
+                        },
                 });
 
                 pi.registerCommand("lsp", {

@@ -31,7 +31,16 @@ beforeEach(() => {
 // writeAgentConfig targets the module-level UNOWN_AGENT_DIR (the _env.ts
 // UNOWN_HOME redirect keeps it inside the test tree). Preserve whatever was
 // there and restore byte-identically so this file never leaks state.
+// TRIPWIRE: the redirect once silently failed (checkout .env ships
+// UNOWN_HOME= empty; `??=` kept it and term.ts fell back to the REAL
+// ~/.unown) and a test run rewrote a live install — so the resolved path is
+// asserted to be inside the test tree BEFORE any write happens (2026-10-22).
 const AGENT_DIR_MODELS = join(process.env.UNOWN_HOME!, "agent", "models.json");
+if (!AGENT_DIR_MODELS.startsWith(TEST_TMP)) {
+        throw new Error(
+                `test isolation failed: UNOWN_HOME resolved outside the test tree (${AGENT_DIR_MODELS}) — refusing to touch it`,
+        );
+}
 const SAVED_MODELS: string | null = existsSync(AGENT_DIR_MODELS) ? readFileSync(AGENT_DIR_MODELS, "utf8") : null;
 afterAll(() => {
         if (SAVED_MODELS === null) {

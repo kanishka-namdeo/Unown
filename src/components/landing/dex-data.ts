@@ -218,7 +218,10 @@ export const DEX: readonly DexEntry[] = [
     entry:
       "A patient bookwyrm that keeps its spectacles on. It takes the project line by line and taps your shoulder mid-edit, not after the commit.",
     weakness: "edit first, diagnose later",
-    practice: ["Language-server intelligence — diagnostics ride every edit."],
+    practice: [
+      "Language-server intelligence — diagnostics ride every edit.",
+      "A graph-ranked repo map (/repomap) orients fresh subagents before their first tool call.",
+    ],
     habitat: "joins every session",
     receipts: [["lsp.ts", SRC("lsp.ts")]],
     captures: PENDING,

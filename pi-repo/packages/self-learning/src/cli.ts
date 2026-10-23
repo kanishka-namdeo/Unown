@@ -121,6 +121,7 @@ import {
 } from "./update.ts";
 import { runUsageCommand, USAGE_HELP } from "./usage-cli.ts";
 import { WATCH_USAGE, runWatchCommand } from "./watch-cli.ts";
+import { runRepomapCliCommand } from "./repomap/repomap-cli.ts";
 import { RALPH_USAGE, runRalphCommand } from "./ralph-cli.ts";
 import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
 import { runWikiCommand, WIKI_USAGE } from "./wiki-cli.ts";
@@ -181,6 +182,11 @@ Usage:
                            //, --, ; per language); projects opt in via
                            .unown/watch.json; default mode report (read-only)
                            (see docs/watch.md)
+  unown repomap [path]   the graph-ranked repo map (aider's repomap, on
+                           tree-sitter): symbols + reference ranking in a
+                           token budget — fresh subagents get one
+                           automatically; --tokens N, --refresh, clear, --json
+                           (also /repomap; see docs/repomap.md)
   unown ralph "<task>"    the worker→reviewer loop (goose's Ralph pattern):
                            fresh-context iterations, file handoff, VERDICT:
                            SHIP/REVISE; --iterations (default 5),
@@ -2530,6 +2536,15 @@ export async function runCli(argv: string[]) {
                 // grammar; dispatch before the generic parser would eat the
                 // subcommand tokens as prompt text.
                 const result = await runWatchCommand(argv.slice(1), { cwd: process.cwd() });
+                if (result.stdout) process.stdout.write(result.stdout);
+                if (result.stderr) process.stderr.write(result.stderr);
+                process.exit(result.exitCode);
+        }
+        if (first === "repomap") {
+                // M6 — `unown repomap`: the graph-ranked tree-sitter symbol map
+                // (aider's repomap). Owns its flag grammar; dispatched before the
+                // generic parser for the same reason as watch.
+                const result = await runRepomapCliCommand(argv.slice(1), { cwd: process.cwd() });
                 if (result.stdout) process.stdout.write(result.stdout);
                 if (result.stderr) process.stderr.write(result.stderr);
                 process.exit(result.exitCode);
