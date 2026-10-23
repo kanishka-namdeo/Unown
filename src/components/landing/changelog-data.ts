@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 244;
+export const CHANGELOG_TOTAL_ENTRIES = 246;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 91,
+  "Added": 93,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.6",
     "date": "2026-10-24",
-    "total": 7,
+    "total": 9,
     "counts": {
-      "Added": 4,
+      "Added": 6,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,14 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "usage: the /usage in-session token & cost report (the Claude Code / Codex / Aider parity gap)",
+            "behavior": false
+          },
+          {
+            "title": "security: secret redaction on every path that leaves the machine (the Amp secret-redaction gap)",
+            "behavior": false
+          },
           {
             "title": "landing: the memory, browser and dream lanes — three filmed gaps closed, the hard way",
             "behavior": false
