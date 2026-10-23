@@ -30,19 +30,44 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 236;
+export const CHANGELOG_TOTAL_ENTRIES = 237;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 87,
   "Changed": 17,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 99,
+  "Fixed": 100,
   "Security": 0,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 1,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "security: the supply-chain and static-analysis round — every Dependabot and CodeQL code-scanning alert cleared…",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.5",
     "date": "2026-10-23",
