@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 212;
+export const CHANGELOG_TOTAL_ENTRIES = 214;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 84,
+  "Added": 85,
   "Changed": 15,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 84,
+  "Fixed": 85,
   "Security": 0,
   "Behavior": 26
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 43,
+    "total": 45,
     "counts": {
-      "Added": 17,
+      "Added": 18,
       "Changed": 5,
       "Deprecated": 0,
       "Removed": 1,
-      "Fixed": 14,
+      "Fixed": 15,
       "Security": 0,
       "Behavior": 6
     },
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "Routines v5 — reliability: failed-run retries, chained routines, engine hygiene (env hot-reload, log rotation)",
+            "behavior": false
+          },
           {
             "title": "Standing orders + /promote — durable authority for unattended runs (OpenClaw's convention, adapted)",
             "behavior": false
@@ -158,6 +162,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "docs: three dead memory links in usage.md (a botched edit ate the m) + the README's routines row was two kinds…",
+            "behavior": false
+          },
           {
             "title": "the guard was quarantining every substantive terminal note — the note's own metadata label tripped the…",
             "behavior": false

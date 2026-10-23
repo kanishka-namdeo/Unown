@@ -3,7 +3,7 @@
 The reference for scheduled, recurring, unattended agent runs: the five schedule kinds (four on the clock, one on inbound events), completion anchors, missed-run policies, timezone/DST edge cases, and every management surface (TUI, CLI, session tools, REST).
 
 - [The five schedule kinds](#the-five-schedule-kinds) · [Missed runs: the misfire policy](#missed-runs-the-misfire-policy) · [Boundaries](#boundaries)
-- [Event routines](#event-routines) · [Managing routines in the TUI](#managing-routines-in-the-tui) · [The session tools](#the-session-tools) · [REST surface](#rest-surface)
+- [Event routines](#event-routines) · [Reliability: failed-run retries + chained routines (M6)](#reliability-failed-run-retries--chained-routines-m6) · [Managing routines in the TUI](#managing-routines-in-the-tui) · [The session tools](#the-session-tools) · [REST surface](#rest-surface)
 - [The trust story](#the-trust-story) · [Scheduler semantics reference](#scheduler-semantics-reference) · [Sources (the decision record)](#sources-the-decision-record)
 
 Related pages: [usage](usage.md) · [configuration](configuration.md) · [tui-dashboard-plan](tui-dashboard-plan.md) · [resilience](resilience.md)
@@ -139,29 +139,70 @@ Four per-routine knobs reverse-engineered from OpenClaw's active-hours/monitorin
 
 Event routines reject the three time-shaped policies at create AND edit (an event is a moment, never held or yielded) but accept delivery. Schema v4: `active_hours` / `idle_only` / `deliver_url` / `jitter_secs` on the automations table, `delivered` on automation_runs — pragma-guarded ALTERs like v2/v3.
 
+## Reliability: failed-run retries + chained routines (M6)
+
+Two answers to the two questions an unattended schedule eventually faces — *the run failed, now what?* and *this routine's result is the next one's trigger.* The retry is Kubernetes Job semantics (the `backoffLimit` ladder); the chain is GitHub Actions' `workflow_run` (one workflow's completion is another's trigger). Both are **opt-in**: unattended runs spend tokens, so retries and chains are deliberate choices, never defaults.
+
+### The retry policy (k8s `backoffLimit`, per occurrence)
+
+- **`--retry-max N`** (0..10, default 0 = off) — re-run a **failed** occurrence up to N more times. A success of *any* trigger kind disarms a pending chain — the task effectively completed (k8s' "any success counts" posture, extended to manual runs: a `run`-now that succeeds also clears the retry).
+- **`--retry-backoff <sec>`** (30..3600, default 300) — the wait before the FIRST retry; later attempts double it, capped at 1 h (k8s' 10 s·2ⁿ cap shape, rescaled to agent-run costs).
+- Retries land in history as their own runs — trigger `retry`, `attempt 2+`, linked to the original by `retry_of` — and **never consume a slot or the `--max-runs` budget**: the occurrence was counted once, at its original slot (k8s' retry-restart distinction).
+- At most ONE chain per routine, tracking the most recent failure (a newer failure re-arms over an older pending chain).
+- **Once-kind hold**: a failed one-shot with an armed chain stays `active` (`next_run_at` NULL — only the pending retry can fire) until the chain resolves, then completes or fails. The dispatch retry ladder exhausting on a retry run clears the chain and finalizes the held once.
+- **Staleness horizon**: a due retry older than 24 h (engine down, routine paused) is recorded `retry_stale` and cleared — the same 24 h horizon as misfire catch-up, for the same reason: a day-old retry of a morning brief is noise, not recovery.
+- Clearing the policy (`--retry-max 0`, `--clear-retry`, PATCH `retryMax: null`) also disarms a pending chain — the off-switch is immediate.
+
+```bash
+unown routines create --title 'nightly audit' --every '1d at 02:00' \
+    --retry-max 3 --retry-backoff 600 --prompt "..."   # up to 3 re-runs, first at +10 min
+```
+
+### Chained routines (GitHub's `workflow_run` pattern)
+
+Every completed run — success or failure, any trigger — broadcasts the internal event **`routine.finished`** with the payload `{routineId, routineTitle, runId, trigger, attempt, status, exitCode, startedAt, endedAt, chainDepth}`. An `--on-event routine.finished` routine scoped to it runs as the next hop:
+
+```bash
+unown routines create --title 'on green check, draft the changelog' \
+    --on-event routine.finished \
+    --filter 'routineId == "r-abc123" status == "succeeded"' \
+    --prompt "The release-check routine finished green. Draft the changelog section."
+```
+
+- The `routine.*` namespace is **reserved on the public webhook lane** (a 400 — external senders cannot forge chain triggers); the local trigger lane keeps it for rehearsal and tests.
+- Chains cap at **3 hops** (`chainDepth` compounds through the payload): a deeper dispatch is refused and recorded (`chain_depth_capped`) — at unattended token spend, a runaway chain is a bug, not a feature.
+- A manual `run` of the upstream routine is how you rehearse a chain — it broadcasts like any other completion.
+
+### Surfaces
+
+- **CLI**: `--retry-max` / `--retry-backoff` on create and edit (`--clear-retry` on edit); `history` rows carry `attempt 2+`.
+- **TUI**: the wizard's **retries** step (`3` or `3 900` = max + first backoff, empty = off, validated inline); the edit flow's **retries** field (preloaded with the current policy; empty = the deliberate clear); detail rows for the policy and any armed chain (`retry attempt 3 in 4m · recovers <run>`); an armed chain chips the list row (`⟳ retry in 4m`) ahead of the schedule chips; run rows render `retry #2`.
+- **Session tools**: `routine_create` / `routine_update` take `retry_max` / `retry_backoff_secs`; `routine_list` shows the policy and any pending retry.
+- **REST**: `retryMax` / `retryBackoffSecs` on POST and PATCH (snake_case aliases; `null` clears + disarms); the row carries `retry_next_at` / `retry_attempt` / `retry_of_run`, run rows carry `attempt` / `retry_of`.
+
 ## Boundaries
 
 - **`--until`** (a date — `2026-12-31` or `2026-12-31 09:00` — or epoch ms): the inclusive end boundary. When the next computed slot is past it, the routine **completes** (no run, no error). Setting a past `until` on an existing routine ends it — the "stop after today" flow.
-- **`--max-runs N`**: stops after N *scheduled* runs. Manual `run`s never consume the budget (event triggers do — they are the schedule).
+- **`--max-runs N`**: stops after N *scheduled* runs. Manual `run`s never consume the budget (event triggers do — they are the schedule; failed-run **retries never do** either — the occurrence was counted at its original slot).
 - A `completed` routine is terminal (zcode's rule) — create a new one instead of resurrecting.
 
 ## Managing routines in the TUI
 
 `unown dashboard routines` (or `/routines` inside a live session) opens the **Routines** screen:
 
-- The **list** is ordered by next occurrence (soonest first) — paused and terminal routines sink to the bottom, Things' "Repeating"-list ordering. Each row shows the lifecycle dot, mode badge, the engine's human schedule description, run count and `next in …`.
-- **enter** opens the detail pane: the full spec (schedule, timezone, misfire, boundaries), the prompt, a **streak row** — the last 10 runs as glyphs (`✓` succeeded · `✗` failed · `–` skipped · `⟳` running) — and the run history with outputs, errors and skip reasons.
-- **a** opens the create wizard: title → prompt → schedule (one field, every kind: `0 9 * * 1-5`, `every 2d at 09:00`, `every 30m`, `after 3d`, `+90m`, `on <event>` — validated inline with the engine's own parser) → timezone → misfire policy → mode → model → confirm.
-- **e** opens the edit flow: a field picker over everything (title, prompt, schedule, timezone, misfire, mode, model, until, max runs) → inline input or option list. Schedule edits re-arm the next run from now.
+- The **list** is ordered by next occurrence (soonest first) — paused and terminal routines sink to the bottom, Things' "Repeating"-list ordering. Each row shows the lifecycle dot, mode badge, the engine's human schedule description, run count and `next in …` — plus an **armed-retry chip** (`⟳ retry in 4m`) ahead of the schedule chips when a chain is pending (the live emergency outranks the rhythm).
+- **enter** opens the detail pane: the full spec (schedule, timezone, misfire, boundaries, retries), the prompt, a **streak row** — the last 10 runs as glyphs (`✓` succeeded · `✗` failed · `–` skipped · `⟳` running) — and the run history with outputs, errors and skip reasons; retry runs render as `retry #2`; a pending retry gets its own line (`retry attempt 3 in 4m · recovers <run>`). Run transitions clear the pane's cached history live — a run finishing under an open pane appears without Esc+re-open.
+- **a** opens the create wizard: title → prompt → schedule (one field, every kind: `0 9 * * 1-5`, `every 2d at 09:00`, `every 30m`, `after 3d`, `+90m`, `on <event>` — validated inline with the engine's own parser) → timezone → misfire policy → mode → model → **retries** (`3` or `3 900`, empty = off) → confirm.
+- **e** opens the edit flow: a field picker over everything (title, prompt, schedule, timezone, misfire, mode, model, until, max runs, retries) → inline input or option list. Schedule edits re-arm the next run from now; an empty retries input is the deliberate clear.
 - **s** skips the next occurrence (recorded); **S** snoozes by typed minutes; **space** pauses/resumes; **n** runs now; **x** deletes (confirm-gated).
 
 ## The session tools
 
 Agents can manage routines mid-session (the mutation tools are hidden inside routine runs and subagents — no recursion):
 
-- `routine_list` — this project's routines with schedules and next runs
-- `routine_create` — any kind (`cron`, `every`, `after`, `delay_minutes`) plus `timezone`, `misfire`, `mode`, `max_runs`
-- `routine_update` — edit fields or pause/resume
+- `routine_list` — this project's routines with schedules, next runs, retry policies and pending retries
+- `routine_create` — any kind (`cron`, `every`, `after`, `delay_minutes`) plus `timezone`, `misfire`, `mode`, `max_runs`, `retry_max`, `retry_backoff_secs`
+- `routine_update` — edit fields (retry policy included) or pause/resume
 - `routine_run` — trigger a run now (test a routine; answer "why did it do nothing")
 - `routine_delete` — remove a routine and its history
 
@@ -196,11 +237,11 @@ The exact behaviors the engine guarantees (each pinned by tests):
 
 ## REST surface
 
-`GET /api/automations` (list + human `schedule` + `lastRun`) · `POST /api/automations` (`cron`|`every`|`after`|`delayMinutes`|`event`+`filter`, `timezone`, `until`, `misfire`, `mode`, `model`, `maxRuns`, `workspace`) · `GET/PATCH/DELETE /api/automations/:id` · `POST /api/automations/:id/run` · `POST /api/automations/:id/skip` · `POST /api/automations/:id/snooze {minutes}` · `GET /api/automations/:id/runs?limit=N`. `until` accepts epoch ms or an ISO string. The event lane: `POST /api/automations/event-dispatch {event, payload}` (engine token) and `POST /api/hooks/<hookId>` (auth by URL — see [Event routines](#event-routines)); `GET /api/hooks/info` (engine token) reports the hook id, listener count and the last inbound events.
+`GET /api/automations` (list + human `schedule` + `lastRun`) · `POST /api/automations` (`cron`|`every`|`after`|`delayMinutes`|`event`+`filter`, `timezone`, `until`, `misfire`, `mode`, `model`, `maxRuns`, `retryMax`, `retryBackoffSecs`, `workspace`) · `GET/PATCH/DELETE /api/automations/:id` (PATCH: `retryMax: null` clears the policy and disarms a pending chain) · `POST /api/automations/:id/run` · `POST /api/automations/:id/skip` · `POST /api/automations/:id/snooze {minutes}` · `GET /api/automations/:id/runs?limit=N`. `until` accepts epoch ms or an ISO string. The event lane: `POST /api/automations/event-dispatch {event, payload}` (engine token) and `POST /api/hooks/<hookId>` (auth by URL — see [Event routines](#event-routines)); `GET /api/hooks/info` (engine token) reports the hook id, listener count and the last inbound events.
 
 ## Configuration
 
-See [configuration](configuration.md) for the engine knobs. The routine-relevant ones: `UNOWN_AUTOMATION_MISFIRE_CATCHUP` (default misfire policy), `PI_AUTOMATION_MISFIRE_GRACE_MS` (grace window), `UNOWN_AUTOMATION` (the unattended-run marker — never set by hand).
+See [configuration](configuration.md) for the engine knobs. The routine-relevant ones: `UNOWN_AUTOMATION_MISFIRE_CATCHUP` (default misfire policy), `PI_AUTOMATION_MISFIRE_GRACE_MS` (grace window), `UNOWN_ENGINE_LOG_MAX_BYTES` (the engine log's rotation cap, default 5 MiB, keep 1), `UNOWN_AUTOMATION` (the unattended-run marker — never set by hand). `PI_*`/`UNOWN_*` knobs hot-reload each scheduler tick (a stat-mtime gate, additive-diff semantics) — an env edit lands without an engine restart.
 
 ## Sources (the decision record)
 
@@ -210,3 +251,5 @@ See [configuration](configuration.md) for the engine knobs. The routine-relevant
 - Habit-tracker health UX (the streak row): Loop Habit Tracker's skip-doesn't-break, Streaks' cadence rules.
 - TUI management: k9s/lazygit's table-plus-verbs, Things' Repeating list ordering (next-occurrence first, paused sink).
 - Event routines (M2): OpenHands Automations — event-driven triggers with webhook delivery and JMESPath payload filters (the filter shape we shrank to: dotted path + operator + literal, `contains`, create-time validation); OpenClaw automations — the event payload kinds (the vocabulary an event carries), and the event-name charset we share with GitHub's webhook event names. The URL-is-the-capability auth model is GitHub webhooks'; the flood guard is our own (OpenHands rate-limits at the platform edge, which a self-hosted engine cannot assume).
+- Failed-run retries (M6): Kubernetes Job `backoffLimit` + `restartPolicy` — the per-occurrence retry budget, the exponential backoff ladder with a cap, "any success counts" disarming, and retries never consuming the job's own accounting; the 24 h staleness horizon mirrors launchd's catch-up horizon.
+- Chained routines (M6): GitHub Actions' `workflow_run` trigger — one workflow's completion is another's trigger, with the payload carrying identity + outcome; the depth cap is our own (GitHub has no hop limit, but a self-hosted engine pays for every hop).

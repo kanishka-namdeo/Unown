@@ -14,7 +14,7 @@ How to run the `unown` terminal agent, what it does inside a session, and where 
 - [Memory in sessions](#memory-in-sessions)
 - [Environment variables](#environment-variables)
 
-Related pages: [subagents](subagents.md) · [skills](skills.md) · [routines](routines.md) · [watch](watch.md) · [ralph](ralph.md) · [repomap](repomap.md) · [standing orders](standing-orders.md) · [memory](memory.md) · [providers](providers.md) · [configuration](configuration.md) · [addons](addons.md) · [updating](updating.md) · [resilience](resilience.md)
+Related pages: [subagents](subagents.md) · [skills](skills.md) · [routines](routines.md) · [watch](watch.md) · [ralph](ralph.md) · [repomap](repomap.md) · [standing orders](standing-orders.md) · [m[memory](memory.md) · [providers](providers.md) · [configuration](configuration.md) · [addons](addons.md) · [updating](updating.md) · [resilience](resilience.md)
 
 ## Three ways to run
 
@@ -26,7 +26,7 @@ unown                          # full interactive session, like claude/pi
 unown "fix the failing tests"  # same, starting with a prompt
 ```
 
-You get the real pi TUI in your actual project directory: file tools (read / edit / write / grep / find / ls), bash, `@file` mentions, session management — plus unown's self-learning layer: tiered memory injected into every session, guardrail hooks, session tools, and note capture for AutoDream. See [memory](memory.md) for what gets injected and [guardrails](#guardrails) below for what gets blocked.
+You get the real pi TUI in your actual project directory: file tools (read / edit / write / grep / find / ls), bash, `@file` mentions, session management — plus unown's self-learning layer: tiered memory injected into every session, guardrail hooks, session tools, and note capture for AutoDream. See [m[memory](memory.md) for what gets injected and [guardrails](#guardrails) below for what gets blocked.
 
 On first run, unown seeds `~/.unown/agent/` (models.json pointing at the bundled llm-bridge, settings.json, a sessions dir, and four starter [skills](skills.md)) and prints a banner — and on an interactive TTY it offers the guided provider wizard on the spot ("connect a model provider now?" → the `unown setup` presets with live verification; declining keeps the bundled bridge). Connect a different provider any time with `unown setup` — see [providers](providers.md).
 
@@ -519,7 +519,7 @@ When both exist, the project config wins per event name. Handlers come in five t
 
 ## Memory in sessions
 
-Every session is injected with the resolved 4-tier stack — most specific tier wins — alongside your own `AGENTS.md`/`CLAUDE.md` chain (supplemented, never replaced). Details and maintenance in [memory](memory.md).
+Every session is injected with the resolved 4-tier stack — most specific tier wins — alongside your own `AGENTS.md`/`CLAUDE.md` chain (supplemented, never replaced). Details and maintenance in [m[memory](memory.md).
 
 | Tier | File | Who writes it |
 |---|---|---|
