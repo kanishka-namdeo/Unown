@@ -20,6 +20,8 @@ import { join } from "node:path";
 import {
     autoCommitEnabled,
     commitAll,
+    commitTrailers,
+    currentSessionId,
     generateAutoCommitMessage,
     generateCommitMessage,
     gitAvailable,
@@ -38,6 +40,7 @@ import {
     runGitSync,
     summarizePorcelain,
     summarizeToSubject,
+    withCommitTrailers,
 } from "../src/gittools.ts";
 import { createUnownToolsExtension } from "../src/tools.ts";
 
@@ -196,6 +199,51 @@ describe("generateCommitMessage / generateAutoCommitMessage", () => {
 
     test("auto template is the dated session-end snapshot", () => {
         expect(generateAutoCommitMessage(date)).toBe("unown(auto): session end snapshot 2026-10-19\n\nGenerated-by: unown");
+    });
+
+    test("session-id trailer: templates carry Unown-Session when an id is reachable", () => {
+        const sid = "0192f0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c";
+        expect(generateCommitMessage("Fixed login", date, sid)).toBe(
+            "unown(session): Fixed login\n\nGenerated-by: unown\nUnown-Session: 0192f0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c",
+        );
+        expect(generateAutoCommitMessage(date, sid)).toBe(
+            "unown(auto): session end snapshot 2026-10-19\n\nGenerated-by: unown\nUnown-Session: 0192f0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c",
+        );
+    });
+
+    test("session-id trailer shape gate: garbage ids are dropped, never committed", () => {
+        expect(commitTrailers(undefined)).toBe("Generated-by: unown");
+        expect(commitTrailers("")).toBe("Generated-by: unown");
+        expect(commitTrailers("../etc/passwd\nmulti\nline")).toBe("Generated-by: unown");
+        expect(commitTrailers("short")).toBe("Generated-by: unown");
+        expect(commitTrailers("x".repeat(64))).toBe("Generated-by: unown"); // over the 64-char cap
+        // A path-looking id with a slash must never ride along.
+        expect(commitTrailers("../../db/selflearning.db")).toBe("Generated-by: unown");
+    });
+
+    test("withCommitTrailers: user message rides verbatim, trailers append as the final block", () => {
+        const sid = "0192f0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c";
+        expect(withCommitTrailers("fix: the thing", sid)).toBe(
+            "fix: the thing\n\nGenerated-by: unown\nUnown-Session: 0192f0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c",
+        );
+        // Multi-line user bodies keep their shape; the trailer block stays the last paragraph.
+        expect(withCommitTrailers("fix: the thing\n\ndetailed body", undefined)).toBe(
+            "fix: the thing\n\ndetailed body\n\nGenerated-by: unown",
+        );
+        // Empty input stays empty (the caller's fallback path owns that case).
+        expect(withCommitTrailers("", sid)).toBe("");
+        expect(withCommitTrailers("   \n  ", sid)).toBe("");
+        // Plain-ASCII contract holds with the trailer.
+        expect(withCommitTrailers("summary", sid)).toMatch(/^[\x20-\x7e\n]+$/);
+    });
+
+    test("currentSessionId: read through the readonly session manager, best-effort", () => {
+        expect(currentSessionId({ sessionManager: { getSessionId: () => "abc-12345678" } })).toBe("abc-12345678");
+        expect(currentSessionId({ sessionManager: { getSessionId: () => "  " } })).toBeUndefined();
+        expect(currentSessionId({ sessionManager: {} })).toBeUndefined();
+        expect(currentSessionId({})).toBeUndefined();
+        expect(currentSessionId(undefined)).toBeUndefined();
+        expect(currentSessionId({ sessionManager: { getSessionId: () => { throw new Error("boom"); } } })).toBeUndefined();
     });
 });
 
@@ -509,8 +557,11 @@ describe("/commit command wiring", () => {
         expect(messages[0].level).toBe("info");
         expect(messages[0].text).toMatch(/^Committed [0-9a-f]{7} — 2 files changed$/m);
         expect(messages[0].text).toContain("never pushes");
-        // User message is preserved VERBATIM — no generated trailer appended.
-        expect(gitSh(repo, ["log", "-1", "--pretty=%B"]).trim()).toBe("fix: the thing");
+        // User message preserved VERBATIM in its own words; the provenance
+        // trailer block (Generated-by + Unown-Session when reachable) rides
+        // as the final paragraph. The fake ctx carries no sessionManager, so
+        // only the Generated-by trailer appears here.
+        expect(gitSh(repo, ["log", "-1", "--pretty=%B"]).trim()).toBe("fix: the thing\n\nGenerated-by: unown");
     });
 
     test.skipIf(!GIT_ON_PATH)("no message → generated conventional message from the session's recent assistant text", async () => {

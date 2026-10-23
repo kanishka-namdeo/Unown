@@ -394,19 +394,47 @@ export function summarizeToSubject(text: string | undefined, cap = SUBJECT_CAP):
     return cleaned.slice(0, cap).trim();
 }
 
+/** Provenance trailers appended to every unown-created commit: `Generated-by`
+ *  plus — when the session id is reachable — `Unown-Session: <id>` so `git log`
+ *  leads back to the producing conversation (the Amp `Amp-Thread-ID` pattern,
+ *  wired to unown's own receipts//blame ledger: the id is the session-file
+ *  uuid, the same one `/blame --session` and `/session` report). Plain ASCII
+ *  only (uuidv7 is hex+dashes), one trailer block as the final paragraph. */
+export function commitTrailers(sessionId?: string): string {
+    const lines = ["Generated-by: unown"];
+    const id = (sessionId ?? "").trim();
+    // Defensive shape gate: a session id is a uuid-shaped token. Anything else
+    // (garbage, a path, a value with newlines) is dropped, never committed.
+    if (/^[a-zA-Z0-9][a-zA-Z0-9-]{7,62}$/.test(id)) {
+        lines.push(`Unown-Session: ${id}`);
+    }
+    return lines.join("\n");
+}
+
 /** Deterministic session-commit message when the user gave none:
  *  `unown(session): <short summary>` + a plain-ASCII provenance trailer.
  *  Falls back to a dated snapshot when no summary is reachable. The subject
  *  line is capped at 72 chars TOTAL (conventional-commit length). */
-export function generateCommitMessage(sessionSummary?: string, date: Date = new Date()): string {
+export function generateCommitMessage(sessionSummary?: string, date: Date = new Date(), sessionId?: string): string {
     const prefix = "unown(session): ";
     const summary = summarizeToSubject(sessionSummary, SUBJECT_CAP - prefix.length) ?? `work snapshot ${isoDate(date)}`;
-    return `${prefix}${summary}\n\nGenerated-by: unown`;
+    return `${prefix}${summary}\n\n${commitTrailers(sessionId)}`;
 }
 
 /** Deterministic shutdown-snapshot message for UNOWN_AUTO_COMMIT. */
-export function generateAutoCommitMessage(date: Date = new Date()): string {
-    return `unown(auto): session end snapshot ${isoDate(date)}\n\nGenerated-by: unown`;
+export function generateAutoCommitMessage(date: Date = new Date(), sessionId?: string): string {
+    return `unown(auto): session end snapshot ${isoDate(date)}\n\n${commitTrailers(sessionId)}`;
+}
+
+/** Append the provenance trailer block to a user-supplied commit message.
+ *  The user's own words pass through VERBATIM (that contract is documented in
+ *  docs/usage.md); the trailer rides as a separate trailing paragraph, the
+ *  way git interprets trailer blocks — same shape as the generated templates,
+ *  so every unown commit is attributable without touching the user's text. */
+export function withCommitTrailers(userMessage: string, sessionId?: string): string {
+    const message = userMessage.trim();
+    if (!message) return message;
+    return `${message}\n\n${commitTrailers(sessionId)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -511,6 +539,20 @@ export function recentAssistantSummary(ctx: any): string | undefined {
     return undefined;
 }
 
+/** Best-effort current session id from an extension context — the id the
+ *  session file is named after, `/session` prints and `/blame --session`
+ *  filters by. Reached through the read-only session manager every extension
+ *  context carries; every failure mode degrades to undefined (no trailer),
+ *  never to an error. */
+export function currentSessionId(ctx: any): string | undefined {
+    try {
+        const id = ctx?.sessionManager?.getSessionId?.();
+        return typeof id === "string" && id.trim() ? id.trim() : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 /** Env gates that make the git workflow a no-op: subagent sessions (the
  *  parent session owns commits) and automation runs (unattended commits are
  *  out of scope by the automations trust design). Pure. */
@@ -592,12 +634,19 @@ export function registerGitTools(pi: ExtensionAPI, opts: GitToolsOptions): void 
                 );
                 return;
             }
+            const sessionId = currentSessionId(ctx);
             const userMessage = (args ?? "").trim();
             let message = userMessage;
             if (!message) {
                 const summary = recentAssistantSummary(ctx);
-                message = generateCommitMessage(summary);
+                message = generateCommitMessage(summary, new Date(), sessionId);
                 log(`generated message from ${summary ? "session text" : "dated fallback"}: ${message.split("\n")[0]}`);
+            } else {
+                // Every unown commit is attributable: the user's words ride
+                // verbatim, the provenance trailers (incl. Unown-Session) ride
+                // as the trailing block (see withCommitTrailers).
+                message = withCommitTrailers(message, sessionId);
+                log(`user message + trailers (session ${sessionId ?? "unreachable"})`);
             }
             try {
                 const outcome = await commitAll(opts.cwd, message);
@@ -645,7 +694,7 @@ export function registerGitTools(pi: ExtensionAPI, opts: GitToolsOptions): void 
             }
             // Subagents and automation runs stay silent — their parents own commits.
             if (isSubagent || gitWorkflowSuppressed()) return;
-            const outcome = await commitAll(opts.cwd, generateAutoCommitMessage());
+            const outcome = await commitAll(opts.cwd, generateAutoCommitMessage(new Date(), currentSessionId(ctx)));
             if (outcome.ok) {
                 log(`auto-committed ${outcome.commitHash} (${outcome.filesChanged} files) on ${reason}`);
                 report(
