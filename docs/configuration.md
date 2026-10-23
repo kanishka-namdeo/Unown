@@ -177,6 +177,23 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_BROWSER_SETTLE_MS` | `300` | Post-action quiet settle. |
 | `UNOWN_BROWSER_SNAPSHOT_MAX` | `400` | Max elements per a11y snapshot before truncation. |
 | `UNOWN_BROWSER_SNAPSHOT_MAX_CHARS` | `60000` | Max snapshot characters returned to the model. |
+| `UNOWN_BROWSER_STEALTH` | `0` | `1` runs every `browser` session in stealth mode — no CDP detection signal (the Runtime domain is never enabled), a coherent fingerprint applied by the browser itself, humanized input, headless-shell binaries excluded from discovery. Per-session: `browser start stealth=true`. |
+| `UNOWN_BROWSER_OS` | `windows` | Stealth-mode claimed OS identity (`windows` / `macos` / `linux`), each with a coherent UA / client-hints / screen / locale / timezone set. |
+| `UNOWN_BROWSER_USER_AGENT` | per identity | Explicit user-agent override in stealth mode; the rest of the identity still applies. |
+| `UNOWN_BROWSER_LOCALE` | `en-US` | Locale (and Accept-Language) in stealth mode. |
+| `UNOWN_BROWSER_TIMEZONE` | `America/New_York` | IANA timezone id in stealth mode (validated at resolve time; invalid ids fall back to the default with no silent no-op). |
+| `UNOWN_BROWSER_SCREEN` | `1920x1080` | Claimed screen size in stealth mode (`WxH`) — applied via `screenWidth`/`screenHeight`, killing the 800x600 headless default. |
+| `UNOWN_BROWSER_HUMANIZE` | `1` in stealth | `0` disables humanized mouse paths and per-character typing. |
+| `UNOWN_BROWSER_HUMANIZE_SEED` | random | Fixed PRNG seed for reproducible humanized-input paths (tests pin it). |
+| `UNOWN_BROWSER_PROXY` | unset | Proxy for all site traffic — `http://host:port`, `socks5://host:port`, or bare `host:port` (becomes `--proxy-server`); loopback is bypassed so the dev server never goes through it. Credential-bearing proxies need a local relay (Chrome flags cannot carry auth). |
+| `UNOWN_CAPTCHA_SOLVER` | auto | `2captcha` / `capsolver` / `none`. Default picks whichever service key is set (2captcha first — broadest type coverage). |
+| `UNOWN_CAPTCHA_2CAPTCHA_KEY` | unset | 2Captcha API key for the `browser captcha solve` service tier. |
+| `UNOWN_CAPTCHA_CAPSOLVER_KEY` | unset | CapSolver API key for the same. |
+| `UNOWN_CAPTCHA_AUTO` | `0` | `1` auto-solves challenges detected right after `navigate` (detection always runs; this gates the paid/LLM tiers). |
+| `UNOWN_CAPTCHA_VISION` | `1` with a key | `0` disables the vision-OCR tier for image captchas. |
+| `UNOWN_VISION_BASE_URL` | `https://apihub.agnes-ai.com/v1` | OpenAI-compatible vision endpoint for image-captcha OCR. |
+| `UNOWN_VISION_API_KEY` | falls back to `AGNES_API_KEY` | Key for the vision endpoint. |
+| `UNOWN_VISION_MODEL` | `agnes-3.0-flash` | Vision model that reads image captchas. |
 | `UNOWN_SEARXNG_URL` | unset | SearXNG instance URL for the `searxng` provider (self-hosted with `formats: [html, json]` — see `scripts/searxng-test/settings.yml`). |
 | `UNOWN_STACKEXCHANGE_KEY` | unset | Optional free stackapps.com key; lifts the keyless 300 req/day per-IP limit to 10000/day. |
 | `UNOWN_DASHSCOPE_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible base for the `dashscope` (Qwen enable_search) provider; intl users set `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`. |

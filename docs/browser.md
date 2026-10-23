@@ -9,6 +9,9 @@ into). It auto-starts on first use; there is nothing to configure.
 - [What it is](#what-it-is)
 - [The work loop](#the-work-loop)
 - [Element addressing](#element-addressing)
+- [Stealth mode](#stealth-mode)
+- [CAPTCHAs](#captchas)
+- [Workflows for end users](#workflows-for-end-users)
 - [Action reference](#action-reference)
 - [Screenshots and vision models](#screenshots-and-vision-models)
 - [Launch vs attach](#launch-vs-attach)
@@ -17,7 +20,7 @@ into). It auto-starts on first use; there is nothing to configure.
 - [Environment variables](#environment-variables)
 - [Cross-platform support](#cross-platform-support)
 - [Security and trust](#security-and-trust)
-- [What is deliberately out, v1](#what-is-deliberately-out-v1)
+- [What is deliberately out](#what-is-deliberately-out)
 
 Related pages: [usage](usage.md) · [configuration](configuration.md) · [BEHAVIOR](BEHAVIOR.md) · [browser research](browser-research.md) · [testing strategy](testing-strategy.md)
 
@@ -41,7 +44,12 @@ Five user journeys it is built for: drive and test a local dev server;
 extract data from a page that needs JavaScript; fill and submit a real form;
 log in once and keep the session across runs; and visually verify a deploy
 through a vision model's eyes (screenshots come back as images the model
-sees directly — the agnes-3.0-flash preset takes them).
+sees directly — the agnes-3.0-flash preset takes them). Since the v2 round
+two more tiers close the loop on sites that fight back: a **stealth mode**
+(no CDP detection signal, a coherent fingerprint, humanized input) and a
+**CAPTCHA pipeline** (detect → classify → solve → verify, with native-click,
+solver-service and vision-OCR tiers) — see [stealth mode](#stealth-mode),
+[CAPTCHAs](#captchas) and [the workflows](#workflows-for-end-users).
 
 ## The work loop
 
@@ -81,11 +89,146 @@ center. Sites that check `isTrusted` behave as if a human clicked. The
 snapshot walker also mints `data-unown-ref` attributes on elements while
 snapshotting, so a ref doubles as a stable selector for replay.
 
+## Stealth mode
+
+For sites that fingerprint and block bots. Opt in per session
+(`browser start stealth=true`) or for every session
+(`UNOWN_BROWSER_STEALTH=1`); the mode is set at launch — a running browser
+must be stopped before switching. What it does, every piece verified live
+against a real Chromium (the probes are `scripts-dev/dbg-stealth-probe*.ts`,
+the assertions are `test/browser-stealth-live.test.ts`):
+
+- **No CDP detection signal.** The Runtime domain is never enabled. The
+  2026-generation detector — a page hooking `Error.prepareStackTrace` and
+  console.debug-ing an error, which fires the moment a client calls
+  `Runtime.enable` because Chrome starts serializing console arguments —
+  stays **silent** in a stealth session and **fires** in a classic one (both
+  directions are asserted by the live suite, the same detector DataDome-class
+  WAFs ship). Every internal page operation (snapshots, element prep, form
+  fills, captcha detection, token injection) runs in an **isolated world**
+  (`Page.createIsolatedWorld`), so the page's own JS state is never touched.
+- **A coherent fingerprint, applied by the browser itself — not by page-JS
+  patching** (the 2026 consensus: JS-injected lies are themselves
+  detectable). `Network.setUserAgentOverride` carries the full
+  `userAgentMetadata` (brands, platform, platformVersion, architecture,
+  mobile) so `navigator.userAgent`, `navigator.platform` and
+  `navigator.userAgentData` all agree; `Emulation.setLocaleOverride` and
+  `setTimezoneOverride` pin Intl; `setDeviceMetricsOverride` sets viewport
+  *and screen* (the 800x600 headless default screen is a classic tell).
+  The claimed Chrome version **is the launched engine's real version**
+  (read from `--version`), so the client hints never over-claim.
+- **Identities per OS** — `windows` (default), `macos`, `linux`
+  (`UNOWN_BROWSER_OS`), each with a plausible screen/viewport/locale/timezone
+  set. Running on Linux while claiming Windows leaks at the TCP layer —
+  hosted-stealth-browser surveys' number one finding — so the honest `linux`
+  identity is one flag away, and users on macOS/Windows hosts get native
+  coherence for free.
+- **Humanized input.** Mouse clicks walk a jittered, eased, seeded-PRNG
+  bezier path from the cursor's last position (no straight-line teleports);
+  typing lands per key with human-ish delays instead of an instant paste.
+  Disable with `UNOWN_BROWSER_HUMANIZE=0`; pin the seed for reproducible
+  runs with `UNOWN_BROWSER_HUMANIZE_SEED`.
+- **Flag hygiene + the right binary.** Never `--enable-automation`,
+  always `--disable-blink-features=AutomationControlled` (both modes), and
+  stealth discovery skips the stripped `chrome-headless-shell` builds (they
+  lack `window.chrome` and coherent Notification.permission).
+- **Proxies.** `UNOWN_BROWSER_PROXY` (`socks5://gw:1080`, `http://gw:8080`,
+  or bare `host:port`) becomes `--proxy-server` with loopback bypassed —
+  your local dev server never goes through the proxy. A residential proxy
+  is the single biggest factor in passing bot checks; no fingerprint fixes
+  a datacenter IP.
+- **Honest degradation.** Console capture is impossible without the Runtime
+  domain (verified: `Log.entryAdded` carries network/browser errors only,
+  and `Runtime.bindingCalled` events do not deliver without the enable), so
+  in stealth mode `console` reports Log-domain entries only — the same
+  tradeoff Patchright documents. `browser stealth verify` re-reads the live
+  fingerprint and reports each axis (webdriver, UA, platform, client hints,
+  timezone, locale, screen, viewport, plugins, window.chrome) — 10/10
+  coherent in the verified baseline, and `bot.sannysoft.com` shows zero
+  FAIL rows from a stealth session (the agent ran that check itself).
+- **Attach mode keeps the protocol tier.** Launch flags belong to the
+  browser you attach to, but the no-signal handshake, isolated worlds and
+  fingerprint overrides still apply per page.
+
+What stealth does **not** do: hide your IP (that is the proxy's job), defeat
+TLS/TCP-stack OS fingerprinting (claim the OS you run, or accept the risk),
+or solve interactive challenges that need a human (take over with
+`UNOWN_BROWSER_HEADLESS=0`).
+
+## CAPTCHAs
+
+`browser captcha detect` classifies what is on the page; `browser captcha
+solve` runs the pipeline for one challenge (default: the first detected).
+Detection covers Cloudflare Turnstile (widget and full-page interstitial),
+reCAPTCHA v2 and v3, hCaptcha, DataDome, AWS WAF, GeeTest, Arkose/FunCaptcha,
+and an image-captcha heuristic (an `<img>` with captcha-ish naming next to a
+text input inside a form). `navigate` re-runs detection automatically and
+reports what it found; with `UNOWN_CAPTCHA_AUTO=1` it also attempts a solve.
+
+The solve tiers, in order (each reported honestly — the result lists what
+was attempted and what failed):
+
+1. **Native click** — Turnstile / reCAPTCHA / hCaptcha checkbox widgets get
+   a real trusted click at the checkbox's coordinates (input-level events
+   cross iframes), then the response field is checked for a token. With a
+   coherent fingerprint this is often enough for Turnstile.
+2. **Solver service** — [2Captcha] or [CapSolver] (set a key:
+   `UNOWN_CAPTCHA_2CAPTCHA_KEY` / `UNOWN_CAPTCHA_CAPSOLVER_KEY`; the solver
+   picks whichever key exists, or pin one with `UNOWN_CAPTCHA_SOLVER`).
+   Tokens are injected into the page's response fields through native
+   setters + events (React/Vue-safe), and the page is re-checked. Supported:
+   reCAPTCHA v2/v3, Turnstile, AWS WAF, DataDome (2Captcha), image-to-text.
+3. **Vision OCR** — image captchas are clipped, screenshotted, and read by
+   any OpenAI-compatible image endpoint. The default preset is this repo's
+   own: **Agnes AI's `agnes-3.0-flash`** (set `UNOWN_VISION_API_KEY` or
+   `AGNES_API_KEY`; verified live — the model reads a four-character
+   fixture captcha and the answer lands typed in the field).
+
+The honest gaps, stated rather than faked: **hCaptcha was dropped by every
+major solving vendor as of October 2026** (2Captcha's hCaptcha page is a
+404; CapSolver's API docs too) — the native click and a human takeover are
+what is left. DataDome/Imperva-class interstitials are *prevention* problems
+(stealth + residential proxy), not token problems; full-page Cloudflare
+interstitials usually clear themselves when the fingerprint is coherent —
+`wait`, then re-check. `browser captcha solve` never pretends otherwise:
+the result names the tiers attempted and the reason each failed.
+
+[2Captcha]: https://2captcha.com/2captcha-api
+[CapSolver]: https://docs.capsolver.com/
+
+## Workflows for end users
+
+1. **Test the local dev server** — `navigate http://localhost:3000` →
+   snapshot → click/type on refs → read `console` and `requests` for errors
+   → screenshot to visually confirm. Stealth off; localhost is never
+   proxied even in stealth mode.
+2. **Scrape a JS-rendered page** — navigate → `text`/`html` (or snapshot
+   refs) → for authenticated pages, log in once (workflow 4) or load a
+   saved storage state (`storage load state.json`).
+3. **Fill and submit a real form** — one `fill_form` call with the fields →
+   `click` the submit button (or `type … submit=true`) → `wait text=` for
+   the confirmation. On a protected form, start with
+   `browser start stealth=true` and let the captcha tiers run.
+4. **Log in once, stay logged in** — the persistent profile
+   (`~/.unown/browser/profile`) keeps cookies across runs; export a
+   portable state with `storage save` and reload it later; or attach to the
+   Chrome you are already logged into (`UNOWN_BROWSER_CDP`).
+5. **Visually verify a deploy** — `screenshot` returns the image inline, so
+   a vision model (the agnes preset) reads it and grounds coordinate clicks
+   when the a11y tree lacks a target.
+6. **Browse a bot-protected site** — `browser start stealth=true` (+
+   `UNOWN_BROWSER_PROXY` for a residential exit) → navigate → if a captcha
+   is reported, `browser captcha solve` → `browser stealth verify` to
+   confirm the fingerprint when something still blocks you.
+7. **Image-captcha form completion** — set the Agnes key; detection finds
+   the image + input pair, the vision tier reads the code, and the answer
+   is typed like a human typed it.
+
 ## Action reference
 
 | Action | Key parameters | What it does |
 |---|---|---|
-| `start` | `headless`, `width`, `height` | Start (or report) the browser; auto-runs on first use anyway |
+| `start` | `headless`, `stealth`, `width`, `height` | Start (or report) the browser; `stealth` must match the whole session; auto-runs on first use anyway |
 | `stop` | — | Close the browser gracefully (also runs on session end) |
 | `status` | — | Running state, executable, profile, viewport, entry counts |
 | `navigate` | `url` | Open a URL (bare hosts get `https://`); waits for load + settle, returns a snapshot |
@@ -102,7 +245,7 @@ snapshotting, so a ref doubles as a stable selector for replay.
 | `scroll` | `direction`, `amount`, `ref`/`selector` | Scroll the page (or an element) up/down/left/right |
 | `drag` | `startRef`/`startSelector`, `endRef`/`endSelector` | Drag from one element to another |
 | `screenshot` | `fullPage`, `ref`/`selector`, `format`, `quality`, `filename` | Capture the page — comes back as an image the model sees; `filename` also saves it |
-| `eval` | `code` | Run JS in the page (expressions or async function bodies); the result is returned |
+| `eval` | `code`, `world` | Run JS in the page (expressions or async function bodies); `world: isolated` never touches page JS state; the result is returned |
 | `tabs` | `tabsAction`, `index`, `url` | `list` / `new` / `select` / `close` tabs |
 | `wait` | `text`, `textGone`, `url`, `time`, `waitDownload`, `timeoutMs` | Bounded waits only — see [the work loop](#the-work-loop) |
 | `resize` | `width`, `height` | Set the viewport |
@@ -112,6 +255,8 @@ snapshotting, so a ref doubles as a stable selector for replay.
 | `upload` | `paths`, `ref`/`selector` | Set files on a file input — paths jailed to the project root and system tmp |
 | `pdf` | `filename`, `landscape` | Print the page to a PDF file |
 | `storage` | `storageAction`, `path` | `save` / `load` cookies + current-origin localStorage as a JSON state file |
+| `stealth` | `stealthAction` | `status` (default): the stealth + captcha config, effective identity, proxy; `verify`: live 10-axis fingerprint coherence check |
+| `captcha` | `captchaAction`, `text`, `attempt` | `detect` (default): classify challenges on the page; `solve`: run the pipeline (tiers below), `text` picks the type, `attempt` narrows the tier (`native`/`service`/`vision`) |
 
 ## Screenshots and vision models
 
@@ -172,11 +317,30 @@ paths out of the agent's context.
 | `UNOWN_BROWSER_SETTLE_MS` | `300` | Post-action quiet settle |
 | `UNOWN_BROWSER_SNAPSHOT_MAX` | `400` | Max elements per snapshot |
 | `UNOWN_BROWSER_SNAPSHOT_MAX_CHARS` | `60000` | Max snapshot characters returned |
+| `UNOWN_BROWSER_STEALTH` | `0` | `1` starts every browser session in stealth mode |
+| `UNOWN_BROWSER_OS` | `windows` | Claimed OS identity in stealth mode (`windows` / `macos` / `linux`) |
+| `UNOWN_BROWSER_USER_AGENT` | per identity | Explicit UA override (rest of the identity still applies) |
+| `UNOWN_BROWSER_LOCALE` | `en-US` | Locale + Accept-Language in stealth mode |
+| `UNOWN_BROWSER_TIMEZONE` | `America/New_York` | IANA timezone id (validated; invalid ids fall back to the default) |
+| `UNOWN_BROWSER_SCREEN` | `1920x1080` | Claimed screen size in stealth mode (`WxH`) |
+| `UNOWN_BROWSER_HUMANIZE` | `1` in stealth | `0` disables humanized mouse paths and per-character typing |
+| `UNOWN_BROWSER_HUMANIZE_SEED` | random | Fixed seed for reproducible humanized-input paths |
+| `UNOWN_BROWSER_PROXY` | — | Proxy for all site traffic (`http://…`, `socks5://…`, or `host:port`); loopback is bypassed |
+| `UNOWN_CAPTCHA_SOLVER` | auto | `2captcha` / `capsolver` / `none`; default picks whichever key is set |
+| `UNOWN_CAPTCHA_2CAPTCHA_KEY` | — | 2Captcha API key |
+| `UNOWN_CAPTCHA_CAPSOLVER_KEY` | — | CapSolver API key |
+| `UNOWN_CAPTCHA_AUTO` | `0` | `1` auto-solves detected challenges right after navigate |
+| `UNOWN_CAPTCHA_VISION` | `1` with a key | `0` disables the vision-OCR tier |
+| `UNOWN_VISION_BASE_URL` | `https://apihub.agnes-ai.com/v1` | OpenAI-compatible endpoint for image-captcha OCR |
+| `UNOWN_VISION_API_KEY` | `AGNES_API_KEY` | Key for the vision endpoint |
+| `UNOWN_VISION_MODEL` | `agnes-3.0-flash` | Vision model for image-captcha OCR |
 
 ## Cross-platform support
 
 Native on all six release targets (the same compiled binaries as the rest of
-unown; the CDP client is pure protocol over Bun's WebSocket). Browser
+unown; the CDP client is pure protocol over Bun's WebSocket — and the
+stealth tier adds only protocol and launch-flag work, so it ships in the
+same closed graph with zero new dependencies). Browser
 discovery knows the per-OS Chrome/Chromium/Edge locations on Windows
 (Program Files + LocalAppData, real backslash paths), macOS (the four .app
 bundles) and Linux (the distro binary set), plus the Playwright cache layout
@@ -195,18 +359,26 @@ per OS. Windows path handling is tested with literal separators — not
 - **The jail**: uploads are limited to the project root and system tmp;
   downloads land in the cwd with the path reported.
 - **Honest fingerprints**: unown never passes `--enable-automation` and drops
-  the AutomationControlled blink feature (so `navigator.webdriver` is not
-  trivially true) — a real browser profile, not stealth theater. No
-  anti-bot service integrations; a datacenter IP is a datacenter IP.
+  the AutomationControlled blink feature in both modes. Stealth mode is
+  protocol-level and self-verifying (`browser stealth verify` reports every
+  axis), never JS-injection theater — and it says out loud what it cannot
+  fix (your IP is your IP: `UNOWN_BROWSER_PROXY` is the lever). Solver
+  keys and vision keys live in env vars, are never sent anywhere except
+  their own service, and the vision tier ships only the clipped captcha
+  image — never the page — to the endpoint.
 - **Teardown**: `Browser.close` on session end plus SIGTERM/SIGKILL fallback
   on the process tree; a crashed session never leaks a zombie Chromium.
   Attach mode only ever closes its socket.
 
-## What is deliberately out, v1
+## What is deliberately out
 
-Closed shadow-DOM piercing (`DOMSnapshot.captureSnapshot` is the paved
-path), network interception (`Fetch` domain), video/HAR recording,
-storage-state export beyond cookies + current-origin localStorage, and any
-anti-bot service. Each has a CDP path; none blocks the five journeys — and
-the scope line with its reasoning is in
-[browser research §4](browser-research.md#4-scope-line-explicitly-out-v1).
+The v2 round moved the anti-bot scope line: stealth mode and the CAPTCHA
+pipeline are now in (above), with their design records in
+[browser research](browser-research.md). Still out, each a deliberate scope
+decision with a CDP path when it earns one: closed shadow-DOM piercing
+(`DOMSnapshot.captureSnapshot`), network interception (`Fetch` domain —
+also a stealth liability: serving the main document through `route.fulfill`
+leaves an empty `nextHopProtocol`), video/HAR recording, and storage-state
+export beyond cookies + current-origin localStorage. Solving *for* sites
+(hCaptcha after the vendor drop, Imperva-class walls) stays out too — those
+are documented as gaps, not half-implemented.

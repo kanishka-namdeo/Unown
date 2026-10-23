@@ -141,7 +141,7 @@ knows.
 | D13 | `find` action greps the snapshot (cheap narrowing for big pages); snapshot caps at 400 elements / 60k chars with an explicit truncation note | Anthropic 50k read cap + `find`; Playwright MCP `browser_find` |
 | D14 | Browser discovery order: `UNOWN_BROWSER_PATH` → system Chrome/Chromium/Edge (per-OS paths) → Playwright's `ms-playwright` cache (chromium + chrome-headless-shell) → actionable error with two install commands | both ecosystems' launchers; the repo's own e2e already ships a Playwright chromium |
 | D15 | Cleanup is graceful: `Browser.close` on session shutdown, SIGINT/SIGTERM/exit hooks, process-tree fallback kill | zombie Chrome is the loudest complaint in every product's issue tracker |
-| D16 | No anti-bot stealth beyond not passing `--enable-automation` + `--disable-blink-features=AutomationControlled` (a real fingerprint, not a datacenter IP, is what matters) | research §9; honesty over stealth theater |
+| D16 | ~~No anti-bot stealth~~ **superseded by D17-D27 (the v2 round)**: flag hygiene alone leaves the CDP signal wide open (measured); the v2 stealth tier keeps the honesty (self-verify, stated limits) and closes the real leaks | probe receipts in §5; the 2026 stealth survey |
 
 ## 4. Scope line (explicitly out, v1)
 
@@ -154,3 +154,66 @@ the five target user journeys: (1) drive/test a local dev server, (2) scrape
 or extract from a page behind JS, (3) fill and submit real forms, (4) log in
 once and keep the session (persistent profile), (5) visually verify a deploy
 with screenshots through a vision model.
+
+## 5. The v2 round: stealth + CAPTCHAs (2026-10-24)
+
+The field moved again for this round: seven more products and every
+relevant stealth library were read for their current approach (Patchright
+1.64.2, rebrowser-patches against Playwright 1.64, Camoufox 0.5.8,
+nodriver 0.50.6, the April-2026 hosted-stealth-browser survey, the 2Captcha/
+CapSolver/Anti-Captcha/NoCaptchaAI catalogs, Cloudflare's May-2026
+Turnstile-WebGL behavior change), and every assumption below was then
+**measured live against Chrome for Testing 143** before a line of
+production code was written - `scripts-dev/dbg-stealth-probe*.ts` in this
+repo hold the raw receipts.
+
+### 5.1 What the probes proved (Chrome 143, 2026-10-24)
+
+| Claim | Measured result |
+|---|---|
+| `Runtime.enable` is the CDP signal | The **classic** `error.stack`-getter trap is dead in 143 (silent even with the enable). The **modern** detector (`Error.prepareStackTrace` hook) FIRES the moment Runtime.enable is called and stays **silent** without it - asserted in both directions by `test/browser-stealth-live.test.ts` |
+| Console capture needs the Runtime domain | `Log.entryAdded` carries network/browser errors only (0 console entries in a page that console.logs twice); `Runtime.addBinding` + an init-script tap runs but `Runtime.bindingCalled` delivers **0 events** without the enable. Stealth therefore degrades console capture to the Log domain and says so |
+| Isolated worlds work without the enable | `Page.createIsolatedWorld` + `Runtime.evaluate {contextId}` return DOM state fine; page JS globals are invisible from the world (isolation verified) |
+| CDP-native fingerprint overrides are coherent | `Network.setUserAgentOverride` with full `userAgentMetadata` makes UA, `navigator.platform` and `navigator.userAgentData` (platform, mobile, brands) all agree on an https page; `Emulation.setLocale/TimezoneOverride` land in Intl. (On `data:` URLs `userAgentData` is absent - an insecure-context artifact, not a spoof failure.) |
+| Headless screen defaults leak | `--window-size` does **not** change the 800x600 headless screen; `Emulation.setDeviceMetricsOverride` still accepts `screenWidth/screenHeight/screenOrientation` in 143 and sets them (screen [1920,1080] verified) |
+| Headless UA leaks | Chrome 143 `--headless` reports `HeadlessChrome/143` in the UA - the UA override is mandatory, not cosmetic |
+| Full Chromium vs headless-shell | The full build has `window.chrome`, 5 plugins, coherent `Notification.permission`; the stripped `chrome-headless-shell` builds fail all three, so stealth discovery excludes them |
+| Raw `Page.addScriptToEvaluateOnNewDocument` leaves no Playwright artifact | `window.__pwInitScripts` stays `undefined` - though the v2 design ends up needing no init script at all |
+
+### 5.2 Design decisions for the v2 round
+
+| # | Decision | Grounding |
+|---|---|---|
+| D17 | Stealth = never call `Runtime.enable`; all internal page ops run in an isolated world | the probe table above; Patchright's documented approach; rebrowser's bot-detector catalog names this the number-one 2026 signal |
+| D18 | Fingerprint overrides via the protocol only (Network/Emulation domains) - zero page-JS patching, zero init scripts | rebrowser/Castle 2026 consensus: JS-injected lies are themselves detectable (`nativeTampering`, `workerConsistency`); Camoufox is admired but is a Firefox/Juggler build - a second engine would break the closed-graph constraint |
+| D19 | The claimed Chrome version is the launched engine's real version (`--version` probe, cached, fallback 143) | over-claiming versions is its own fingerprint; BotBrowser-style coherence |
+| D20 | Windows/macos/linux identity presets with coherent screen/viewport/locale/timezone; default claims Windows (most common web traffic), `linux` one flag away, with the TCP-layer mismatch risk documented | the April-2026 survey's number-one hosted-browser failure was claiming a non-Linux OS from Linux TCP characteristics - a local agent on a Windows/macOS host gets native coherence free |
+| D21 | Humanized input: seeded-PRNG bezier mouse paths + per-key typing with jittered delays; disableable, seedable | ghost-cursor/Cursory lineage; behavioral tells are the cheap tier every stealth product ships |
+| D22 | Proxies via `--proxy-server` + `--proxy-bypass-list=<-loopback>`; auth-bearing proxies need a local relay (documented) | every product's ranking: the IP is the #1 factor; Chrome flags cannot carry credentials |
+| D23 | CAPTCHA pipeline = detect > classify > solve > verify with three tiers: native input-level click > solver service (2Captcha + CapSolver clients) > vision OCR on the repo's own Agnes preset; token injection via native setters + events | Steel's documented pipeline shape; Browser Use auto-solve default; the vendor catalogs (verified pricing/type coverage); token injection is the standard textarea-and-callback contract |
+| D24 | hCaptcha reported as unsupported (native click only) | 2Captcha's hCaptcha page 404s; CapSolver's hCaptcha API docs 404 (checked 2026-10) - the major vendors dropped it; pretending support would be the stealth theater D16 rejected |
+| D25 | Detection re-runs on every navigate (cheap, isolated); solving only on `UNOWN_CAPTCHA_AUTO=1` or an explicit `captcha solve` | detection is one isolated-world eval; solving can cost service credits - the user's money, so an explicit switch |
+| D26 | `stealth status` + `stealth verify` as first-class actions; verify reads the live fingerprint and reports all ten axes | self-verification beats claims - the same honesty rule the harness applies to the agent itself |
+| D27 | Vision OCR sends only the clipped captcha image to the endpoint (never the page) and defaults to the repo's Agnes preset (`agnes-3.0-flash`) | data-minimization; the preset is already the shipped default model for the whole stack |
+
+### 5.3 What stays out, v2
+
+Network interception (`Fetch` domain) is now doubly out: serving the main
+document through `route.fulfill` leaves an empty `nextHopProtocol`, a named
+rebrowser detector. Solving *for* the sites vendors dropped (hCaptcha) and
+Imperva-class walls stays out and documented. Camoufox-style WebRTC IP
+rewriting and TCP-stack coherence are out of reach for a stock Chromium and
+are said so in docs/browser.md instead of being faked.
+
+### 5.4 Verification strategy for v2
+
+Unit: identity/UA-CH coherence math, launch-arg sets, humanize determinism
+under a fixed seed, solver wire protocol against a mocked transport, vision
+request shape (data-URL image, model pinning), discovery's headless-shell
+filter (`test/browser-stealth.test.ts`, 31 tests). Live: the detector in
+both directions, the 10-axis verify, in-page-counted humanized mouse paths,
+detection fixtures for five challenge shapes, token injection, env override
+coherence (`test/browser-stealth-live.test.ts`, 10 tests + 1 env-gated
+vision call against the real Agnes endpoint). Real-user: the agent itself
+ran `bot.sannysoft.com` from a stealth session and reported zero FAIL rows;
+`browser stealth verify` returned 10/10 coherent.

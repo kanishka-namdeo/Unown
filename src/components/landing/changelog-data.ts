@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 238;
+export const CHANGELOG_TOTAL_ENTRIES = 239;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 87,
+  "Added": 88,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 1,
+    "total": 2,
     "counts": {
-      "Added": 0,
+      "Added": 1,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -57,6 +57,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Behavior": 0
     },
     "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "browser(v2): the stealth + CAPTCHA tiers — CDP-signal silence, coherent fingerprints, humanized input…",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Fixed",
         "items": [

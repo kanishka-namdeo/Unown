@@ -112,9 +112,10 @@ const BEATS: Beat[] = [
       "",
       "## Workflow",
       "- Run: bunx biome check --write on changed files in pi-repo/.",
-      "- Verify engine restart: GET /api/overview returns ok:true.",
+      "- Verify engine health: GET /api/overview returns ok:true; check this after any engine restart or config change.",
       "",
       "## Known pitfalls",
+      "- Stealth verification suite on bot.sannysoft.com: all 10 checks (webdriver, userAgent, platform, userAgentData, timezone, locale, screen, viewport, plugins, window.chrome) pass; 0 FAIL rows in Intoli tests.",
       "- Failed cycles auto-recover — do NOT restart engine to fix them.",
     ].join("\n"),
     caption2:
