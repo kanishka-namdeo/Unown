@@ -225,10 +225,10 @@ describe("landing DexSection", () => {
       expect(o.textContent).toContain(pool[i].no);
       expect(o.textContent).toContain(pool[i].name);
     }
-    // The cursor snapped to the pool's first FILMED entry (memory, harness,
-    // router and dream are pending — hooks is the engine's first footage),
-    // never to a row the screen cannot show.
-    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Hooks");
+    // The cursor snapped to the pool's first FILMED entry (memory-learn made
+    // Memory the engine's first footage — № 005, before Hooks № 009), never
+    // to a row the screen cannot show.
+    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Memory");
     // The tally reads against the pool, not the whole spine.
     expect(screen.getByText(`${pool.length}/${pool.length}`)).toBeTruthy();
     // And switching back to `all` keeps the walkable spine.

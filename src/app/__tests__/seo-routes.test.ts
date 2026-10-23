@@ -11,7 +11,7 @@
 import { describe, expect, test } from "bun:test";
 import robots from "../robots";
 import sitemap from "../sitemap";
-import { CHANGELOG_STOPS } from "@/components/landing/changelog-data";
+import { CHANGELOG_STOPS, type ChangelogStop } from "@/components/landing/changelog-data";
 import { SITE } from "@/lib/site";
 
 describe("robots.ts (served at /robots.txt)", () => {
@@ -45,7 +45,13 @@ describe("sitemap.ts (served at /sitemap.xml)", () => {
 
   test("lastmod is the newest CUT release date — never build time, never [Unreleased]", () => {
     const s = sitemap();
-    const dated = CHANGELOG_STOPS.filter((stop) => stop.date !== null);
+    // Type predicate: the filter's null-check narrows the stop type (the
+    // bare `!== null` filter leaves `date: string | null` on the element
+    // and `new Date(newest!.date)` fails typecheck — found when the 0.0.6
+    // fold regenerated the rail under this suite).
+    const dated = CHANGELOG_STOPS.filter(
+      (stop): stop is ChangelogStop & { date: string } => stop.date !== null,
+    );
     const newest = dated[0];
     expect(newest).toBeTruthy(); // a repository with no cut release has no lastmod
     expect(s[0].lastModified).toEqual(new Date(newest!.date));
