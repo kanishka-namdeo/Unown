@@ -78,13 +78,13 @@ const bySrc = (root: HTMLElement, part: string) =>
   );
 
 describe("landing DexSection", () => {
-  test("the listbox renders twenty-one options on one spine with roving tabindex", () => {
+  test("the listbox renders twenty-two options on one spine with roving tabindex", () => {
     const { container } = render(<DexSection />);
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox).toBeTruthy();
     const options = optionsIn(container);
     expect(options.length).toBe(TALLY.total);
-    expect(options.length).toBe(21);
+    expect(options.length).toBe(22);
     // Roving tabindex: exactly the selected option is tabbable — and the
     // cursor opens on the first entry that has footage, so a reader who does
     // nothing still sees a capture rather than an empty stage.
@@ -153,7 +153,7 @@ describe("landing DexSection", () => {
     expect(options()[0].getAttribute("aria-selected")).toBe("true");
     fireEvent.keyDown(listbox, { key: "End" });
     expect(options()[TALLY.total - 1].getAttribute("aria-selected")).toBe("true");
-    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Skills");
+    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("The parity round");
     // And the walk wraps past the end back to the top.
     fireEvent.keyDown(listbox, { key: "ArrowRight" });
     expect(options()[0].getAttribute("aria-selected")).toBe("true");
@@ -311,7 +311,7 @@ describe("landing DexSection", () => {
     expect(window.location.hash).toBe("#dex-skills");
   });
 
-  test("the pane contract: twenty-one entries mounted, the inactive ones hidden", () => {
+  test("the pane contract: twenty-two entries mounted, the inactive ones hidden", () => {
     const { container } = render(<DexSection />);
     const panes = articles(container);
     expect(panes.length).toBe(TALLY.total);
@@ -381,7 +381,7 @@ describe("landing DexSection", () => {
       (n) => n.textContent === "no capture yet",
     );
     expect(stubs.length).toBe(TALLY.pending);
-    expect(stubs.length).toBe(9);
+    expect(stubs.length).toBe(10);
     // …and the band states who makes them, once, not once per empty stage.
     expect(container.textContent).toContain("scripts/tui-capture/");
     expect(
@@ -436,7 +436,7 @@ describe("landing DexSection", () => {
       expect(label, `"${label}" must not stutter the article`).not.toMatch(/\bthe\s+the\b/i);
     }
     // Walk to № 012 "The fix loop" and read its stage button both ways.
-    // All twenty-one panes stay mounted (the inactive ones `hidden`), so the
+    // All twenty-two panes stay mounted (the inactive ones `hidden`), so the
     // button must be read from the SHOWN pane — the first match in the DOM
     // belongs to № 003.
     const opt = optionsIn(container).find((o) => o.textContent?.includes("012"));

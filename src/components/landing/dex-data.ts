@@ -587,6 +587,28 @@ const RAW: readonly DexEntryInput[] = [
     receipts: [["docs/skills.md", DOC("docs/skills.md")]],
     captures: PENDING,
   },
+  {
+    kind: "behavior",
+    id: "parity-round",
+    screen: "workflow",
+    name: "The parity round",
+    summary: "the 2026 consensus workflows, ported and live-verified",
+    practice: [
+      "The side-question lane (/btw): one answer about the session in a dismissible overlay — never entering the transcript, the receipts ledger or AutoDream's note mining (the Claude Code / Antigravity / OpenCode consensus, ported).",
+      "The persona layer (/output-style): four built-ins plus custom .unown/styles/*.md, the directive riding the system prompt from the next message.",
+      "Cross-session analytics (/insights): sessions, top models/projects, most-touched files from receipts, tool usage, token totals, friction — everything local.",
+      "Session auto-titles after the first settled turn, long-turn OSC-9 attention, and unown sessions import --from claude|codex — the migration moat off Claude Code and Codex histories.",
+    ],
+    receipts: [
+      ["btw.ts", SRC("btw.ts")],
+      ["output-style.ts", SRC("output-style.ts")],
+      ["insights.ts", SRC("insights.ts")],
+      ["auto-title.ts", SRC("auto-title.ts")],
+      ["import-convert.ts", SRC("import-convert.ts")],
+      ["docs/usage.md", DOC("docs/usage.md")],
+    ],
+    captures: PENDING,
+  },
 ];
 
 /** The numbered spine — `RAW` in walk order, each entry stamped with its
