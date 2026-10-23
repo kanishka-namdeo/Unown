@@ -109,7 +109,11 @@ let bridgeHealthLite: BridgeHealthLite | null = null;
  *  fallback and the doctor's coherence warning covers the rest. */
 export async function probeBridgeHealth(baseUrl: string): Promise<BridgeHealthLite | null> {
         try {
-                const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/health`, {
+                // `(^|[^\/])\/+$/` = linear-time trailing-slash strip (ReDoS
+                // fix): the old `/\/+$/` rescanned from every start position —
+                // quadratic on long '/' runs; the mandatory non-slash prefix
+                // pins each run to a single start position.
+                const res = await fetch(`${baseUrl.replace(/(^|[^\/])\/+$/, "$1")}/health`, {
                         signal: AbortSignal.timeout(2500),
                 });
                 if (!res.ok) return null;
@@ -717,7 +721,10 @@ export function slugifyPath(projectDir: string): string {
                 base
                         .toLowerCase()
                         .replace(/[^a-z0-9]+/g, "-")
-                        .replace(/^-+|-+$/g, "")
+                        // `(^|[^-])-+$` = linear trailing-dash strip (ReDoS fix): the
+                        // old `-+$/` rescanned from every start position — quadratic
+                        // on long '-' runs. Same matched language as `-+$`.
+                        .replace(/^-+|(^|[^-])-+$/g, "$1")
                         .slice(0, 32) || "project"
         );
 }

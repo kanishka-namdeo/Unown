@@ -588,7 +588,10 @@ export function reframeNoteForExtraction(text: string | Array<{ role: string; co
 	const kept = lines.filter((l) => {
 		const s = l.trim();
 		// the old terminal-note header: "Terminal session in X (N min): a prompt(s), b tool call(s)…"
-		if (/^Terminal session( \[subagent\])? in .+\(.*\d+\s*prompt\(s\)/i.test(s)) return false;
+		// (ReDoS fix: `\d` not `\d+` — under a preceding .*, a single digit is
+		// language-equivalent and removes the overlapping-quantifier
+		// backtracking that was quadratic on runs of '0'.)
+		if (/^Terminal session( \[subagent\])? in .+\(.*\d\s*prompt\(s\)/i.test(s)) return false;
 		// the new outcome-first header (bare, no counts): "Terminal session [subagent] outcome in X:"
 		if (/^Terminal session( \[subagent\])?( outcome)? in .+:\s*$/i.test(s)) return false;
 		if (/^Session metadata \(/i.test(s)) return false; // phrasing-agnostic: any metadata-label line
@@ -1122,6 +1125,33 @@ export async function unshipEngineRules(
 
 // ---------------------------------------------------------------- render
 
+/** Linear-time equivalent of `line.replace(/\s*\[note[^\]]*\]\s*$/i, "")`
+ *  (ReDoS fix, 2026-10-29): strip a trailing "[note …]" annotation plus the
+ *  whitespace around it. The old unanchored regex rescanned the line from
+ *  every start position — quadratic on adversarial runs of spaces or
+ *  "[note". Two observations make a single left-to-right pass enough: the
+ *  closing bracket of any match is always the LAST "]" in the line (only
+ *  whitespace may follow it), and the opening "[note" is the first one
+ *  starting after the previous "]". */
+function stripNoteAnnotation(line: string): string {
+	const close = line.lastIndexOf("]");
+	if (close === -1 || line.slice(close + 1).trim() !== "") return line;
+	const prevClose = line.lastIndexOf("]", close - 1); // -1 when none before
+	const NOTE = /\[note/gi;
+	for (let m = NOTE.exec(line); m !== null; m = NOTE.exec(line)) {
+		// A "]" can never sit inside "[note", so any opening that ends past
+		// prevClose (and fits before close) closes at `close` — first one
+		// wins, exactly like the regex's leftmost match.
+		if (m.index + 5 > prevClose && m.index + 5 <= close) {
+			let start = m.index;
+			while (start > 0 && /\s/.test(line[start - 1])) start--;
+			return line.slice(0, start);
+		}
+		if (m.index > close) break; // openings past the last "]" can't close
+	}
+	return line;
+}
+
 /**
  * Import a legacy markdown memory file into a scope — the migration path
  * for pre-swap installs (the engine's project tier, each terminal project's
@@ -1138,12 +1168,9 @@ export async function importLegacyMarkdown(
 		.split("\n")
 		.map((l) => l.trim())
 		.filter((l) => l.startsWith("- ") && !l.startsWith("- (")) // skeleton placeholders stay out
-		.map((l) =>
-			l
-				.slice(2)
-				.replace(/\s*\[note[^\]]*\]\s*$/i, "")
-				.trim(),
-		)
+		// stripNoteAnnotation = the linear-time form of the old
+		// /\s*\[note[^\]]*\]\s*$/i trailing-annotation strip (helper above)
+		.map((l) => stripNoteAnnotation(l.slice(2)).trim())
 		.filter((l) => l.length >= 8); // HTML comments and markers fall below this
 	// Seed-instructional bullets are scaffolding copy, not learned rules — a
 	// file whose only non-pristine content is the seed's own instructions must

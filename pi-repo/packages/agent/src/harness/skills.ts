@@ -370,15 +370,19 @@ async function resolveKind(
 }
 
 function dirnameEnvPath(path: string): string {
-	const normalized = path.replace(/[\\/]+$/, "");
+	// (^|[^/\\])[\\/]+$ is the linear-time trailing-separator strip (ReDoS
+	// fix): the old /[\\/]+$/ rescanned from every start position — quadratic
+	// on long '/' runs. The mandatory non-separator prefix pins each run to a
+	// single start position. Same matched language.
+	const normalized = path.replace(/(^|[^/\\])[\\/]+$/, "$1");
 	const separatorIndex = Math.max(normalized.lastIndexOf("/"), normalized.lastIndexOf("\\"));
 	if (separatorIndex === 2 && normalized[1] === ":") return normalized.slice(0, 3);
 	return separatorIndex <= 0 ? "/" : normalized.slice(0, separatorIndex);
 }
 
 function relativeEnvPath(root: string, path: string): string {
-	const normalizedRoot = root.replace(/\\/g, "/").replace(/\/+$/, "");
-	const normalizedPath = path.replace(/\\/g, "/").replace(/\/+$/, "");
+	const normalizedRoot = root.replace(/\\/g, "/").replace(/(^|[^\/])\/+$/, "$1");
+	const normalizedPath = path.replace(/\\/g, "/").replace(/(^|[^\/])\/+$/, "$1");
 	if (normalizedPath === normalizedRoot) return "";
 	return normalizedPath.startsWith(`${normalizedRoot}/`)
 		? normalizedPath.slice(normalizedRoot.length + 1)

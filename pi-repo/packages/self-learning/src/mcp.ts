@@ -1353,6 +1353,16 @@ export function stdioSpawnSpec(
         }
     }
     if (platform === "win32" && !/\.(exe|com)$/i.test(expandedCommand)) {
+        // The COMMAND token must be a plain Windows path. `" & | < > ^` are
+        // reserved/illegal in Windows filenames, so a command containing one
+        // is broken or hostile config — refuse it outright instead of relying
+        // on the quoting below (js/shell-command-injection-from-environment:
+        // the command never legitimately carries a cmd.exe metacharacter).
+        if (/["&|<>^]/.test(expandedCommand)) {
+            throw new Error(
+                `stdio command contains cmd.exe metacharacters — refused (command injection vector): ${JSON.stringify(expandedCommand.slice(0, 80))}`,
+            );
+        }
         for (const [kind, value] of parts) {
             if (value.includes("%")) {
                 throw new Error(
@@ -1365,7 +1375,11 @@ export function stdioSpawnSpec(
         // default arg quoting re-escapes the embedded quotes (\"node\" …) and
         // cmd.exe then fails instantly (every live stdio test died in ~13ms
         // on the windows CI leg until windowsVerbatimArguments landed).
-        return { command: "cmd.exe", args: ["/d", "/s", "/c", `"${line}"`], env: expandedEnv, cwd, verbatim: true };
+        // The /c payload is built as an explicit quote-wrapped concatenation
+        // (the CodeQL-recognized shape for "the value cannot break out of
+        // the quoting") — every token inside is itself escapeCmdArg-quoted.
+        const cmdLine = '"' + line + '"';
+        return { command: "cmd.exe", args: ["/d", "/s", "/c", cmdLine], env: expandedEnv, cwd, verbatim: true };
     }
     return { command: expandedCommand, args: expandedArgs, env: expandedEnv, cwd, verbatim: false };
 }

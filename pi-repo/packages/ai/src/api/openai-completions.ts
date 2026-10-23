@@ -45,6 +45,7 @@ import { getPiUserAgent } from "../utils/pi-user-agent.ts";
 import { getProviderEnvValue } from "../utils/provider-env.ts";
 import { retryProviderRequest } from "../utils/provider-retry.ts";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.ts";
+import { urlHostMatches } from "../utils/url-host.ts";
 import {
         appendGrammarToolInputJsonDelta,
         createGrammarToolInputProperties,
@@ -820,7 +821,7 @@ function buildParams(
                 messages,
                 stream: true,
                 prompt_cache_key:
-                        (model.baseUrl.includes("api.openai.com") && cacheRetention !== "none") ||
+                        (urlHostMatches(model.baseUrl, "api.openai.com") && cacheRetention !== "none") ||
                         (cacheRetention === "long" && compat.supportsLongCacheRetention)
                                 ? clampOpenAIPromptCacheKey(options?.sessionId)
                                 : undefined,
@@ -1593,37 +1594,41 @@ function detectCompat(model: Model<"openai-completions">): ResolvedOpenAIComplet
         const isZai =
                 provider === "zai" ||
                 provider === "zai-coding-cn" ||
-                baseUrl.includes("api.z.ai") ||
-                baseUrl.includes("open.bigmodel.cn");
+                urlHostMatches(baseUrl, "api.z.ai") ||
+                urlHostMatches(baseUrl, "open.bigmodel.cn");
         const isTogether =
-                provider === "together" || baseUrl.includes("api.together.ai") || baseUrl.includes("api.together.xyz");
-        const isMoonshot = provider === "moonshotai" || provider === "moonshotai-cn" || baseUrl.includes("api.moonshot.");
-        const isOpenRouter = provider === "openrouter" || baseUrl.includes("openrouter.ai");
-        const isCloudflareWorkersAI = provider === "cloudflare-workers-ai" || baseUrl.includes("api.cloudflare.com");
-        const isCloudflareAiGateway = provider === "cloudflare-ai-gateway" || baseUrl.includes("gateway.ai.cloudflare.com");
-        const isNvidia = provider === "nvidia" || baseUrl.includes("integrate.api.nvidia.com");
-        const isAntLing = provider === "ant-ling" || baseUrl.includes("api.ant-ling.com");
-        const isDeepSeek = provider === "deepseek" || baseUrl.toLowerCase().includes("deepseek.com");
+                provider === "together" || urlHostMatches(baseUrl, "api.together.ai") || urlHostMatches(baseUrl, "api.together.xyz");
+        const isMoonshot =
+                provider === "moonshotai" ||
+                provider === "moonshotai-cn" ||
+                urlHostMatches(baseUrl, "api.moonshot.ai") ||
+                urlHostMatches(baseUrl, "api.moonshot.cn");
+        const isOpenRouter = provider === "openrouter" || urlHostMatches(baseUrl, "openrouter.ai");
+        const isCloudflareWorkersAI = provider === "cloudflare-workers-ai" || urlHostMatches(baseUrl, "api.cloudflare.com");
+        const isCloudflareAiGateway = provider === "cloudflare-ai-gateway" || urlHostMatches(baseUrl, "gateway.ai.cloudflare.com");
+        const isNvidia = provider === "nvidia" || urlHostMatches(baseUrl, "integrate.api.nvidia.com");
+        const isAntLing = provider === "ant-ling" || urlHostMatches(baseUrl, "api.ant-ling.com");
+        const isDeepSeek = provider === "deepseek" || urlHostMatches(baseUrl, "deepseek.com");
 
         const isNonStandard =
                 isNvidia ||
                 provider === "cerebras" ||
-                baseUrl.includes("cerebras.ai") ||
+                urlHostMatches(baseUrl, "cerebras.ai") ||
                 provider === "xai" ||
-                baseUrl.includes("api.x.ai") ||
+                urlHostMatches(baseUrl, "api.x.ai") ||
                 isTogether ||
-                baseUrl.includes("chutes.ai") ||
+                urlHostMatches(baseUrl, "chutes.ai") ||
                 isDeepSeek ||
                 isZai ||
                 isMoonshot ||
                 provider === "opencode" ||
-                baseUrl.includes("opencode.ai") ||
+                urlHostMatches(baseUrl, "opencode.ai") ||
                 isCloudflareWorkersAI ||
                 isCloudflareAiGateway ||
                 isAntLing;
 
         const useMaxTokens =
-                baseUrl.includes("chutes.ai") ||
+                urlHostMatches(baseUrl, "chutes.ai") ||
                 isDeepSeek ||
                 isMoonshot ||
                 isCloudflareAiGateway ||
@@ -1632,7 +1637,7 @@ function detectCompat(model: Model<"openai-completions">): ResolvedOpenAIComplet
                 isAntLing ||
                 isZai;
 
-        const isGrok = provider === "xai" || baseUrl.includes("api.x.ai");
+        const isGrok = provider === "xai" || urlHostMatches(baseUrl, "api.x.ai");
         const isOpenRouterDeveloperRoleModel =
                 isOpenRouter && (model.id.startsWith("anthropic/") || model.id.startsWith("openai/"));
         const cacheControlFormat = provider === "openrouter" && model.id.startsWith("anthropic/") ? "anthropic" : undefined;

@@ -446,8 +446,23 @@ export function spawnEngineDetached(opts: { force?: boolean } = {}): Promise<boo
                         // before the command is the window-title slot — without it, `start`
                         // consumes a quoted executable path (spaces: "C:\Program Files\…")
                         // as the title and runs the wrong command (SS64-documented trap).
+                        // The executable itself is QUOTE-WRAPPED too — the SS64-correct
+                        // `start "" "C:\path with spaces\exe"` form: an unquoted path
+                        // splits at its first space and `start` would run the wrong
+                        // command. (js/shell-command-injection-from-environment: the
+                        // quote-wrap is also what keeps the uncontrolled execPath inert.)
+                        // Defense in depth before that branch: execPath is a plain
+                        // filesystem path, so a `"` (or any cmd metacharacter) would
+                        // break out of the quoting — it never legitimately contains one,
+                        // so refuse loudly instead of spawning. POSIX spawns an argv
+                        // array and is unaffected.
+                        if (process.platform === "win32" && /[&|<>^"%]/.test(command)) {
+                                throw new Error(
+                                        `refusing to spawn engine: executable path contains cmd.exe metacharacters: ${command}`,
+                                );
+                        }
                         if (process.platform === "win32") {
-                                const child = spawn("cmd", ["/c", "start", "/b", "", command, ...args], {
+                                const child = spawn("cmd", ["/c", "start", "/b", "", `"${command}"`, ...args], {
                                         cwd: state,
                                         env,
                                         windowsHide: true,

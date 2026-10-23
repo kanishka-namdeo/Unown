@@ -138,7 +138,11 @@ function looksWin32(...parts: string[]): boolean {
  *  slashes, duplicate slashes collapse, trailing separators drop. Purely
  *  lexical — resolution happens before this. */
 function toShape(p: string): string {
-        return p.replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/\/+$/, "");
+        // `(^|[^\/])\/+$/` is the linear-time form of a trailing-slash strip:
+        // the old `/\/+$/` rescanned from every start position (quadratic on
+        // long '/' runs); the mandatory non-slash prefix pins each run to a
+        // single start position. Same matched language.
+        return p.replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/(^|[^\/])\/+$/, "$1");
 }
 
 /**

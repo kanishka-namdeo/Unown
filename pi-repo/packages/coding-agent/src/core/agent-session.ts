@@ -129,14 +129,43 @@ export interface ParsedSkillBlock {
  * Returns null if the text doesn't contain a skill block.
  */
 export function parseSkillBlock(text: string): ParsedSkillBlock | null {
-	const match = text.match(/^<skill name="([^"]+)" location="([^"]+)">\n([\s\S]*?)\n<\/skill>(?:\n\n([\s\S]+))?$/);
-	if (!match) return null;
-	return {
-		name: match[1],
-		location: match[2],
-		content: match[3],
-		userMessage: match[4]?.trim() || undefined,
-	};
+	// (ReDoS fix) This used to be one regex — /^<skill …>\n([\s\S]*?)\n<\/skill>(?:\n\n([\s\S]+))?$/ —
+	// whose lazy content group plus optional greedy tail group (both over
+	// [\s\S]) backtracked polynomially. The manual scan below reproduces the
+	// regex's exact match semantics in linear time: the header anchors the
+	// start; the content extends to the FIRST "\n</skill>" whose remainder
+	// completes the pattern ("" for no user message, "\n\n" + non-empty for
+	// one) — precisely what lazy matching settled on — and if no closing tag
+	// completes the pattern the parse fails, exactly like the regex.
+	const headerMatch = text.match(/^<skill name="([^"]+)" location="([^"]+)">\n/);
+	if (!headerMatch) return null;
+	const headerEnd = headerMatch[0].length;
+	const CLOSING = "\n</skill>";
+	let searchFrom = headerEnd;
+	for (;;) {
+		const closeAt = text.indexOf(CLOSING, searchFrom);
+		if (closeAt === -1) return null;
+		const rest = text.slice(closeAt + CLOSING.length);
+		if (rest === "") {
+			return {
+				name: headerMatch[1],
+				location: headerMatch[2],
+				content: text.slice(headerEnd, closeAt),
+				userMessage: undefined,
+			};
+		}
+		if (rest.startsWith("\n\n") && rest.length > 2) {
+			return {
+				name: headerMatch[1],
+				location: headerMatch[2],
+				content: text.slice(headerEnd, closeAt),
+				userMessage: rest.slice(2).trim() || undefined,
+			};
+		}
+		// This closing tag cannot complete the pattern — the lazy regex would
+		// have extended the content past it; keep scanning.
+		searchFrom = closeAt + 1;
+	}
 }
 
 /** Session-specific events that extend the core AgentEvent */

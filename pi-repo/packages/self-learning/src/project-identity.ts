@@ -72,7 +72,9 @@ export function normalizeGitRemote(url: string): string {
         // strip a second user@ if ssh:// kept one
         u = u.replace(/^([^@/\s]+)@/, "");
         // file:// already lost its proto above → /path
-        u = u.replace(/\.git$/, "").replace(/\/+$/, "");
+        // (`(^|[^\/])\/+$/` = linear trailing-slash strip — ReDoS fix; the old
+        // `/\/+$/` rescanned from every start position on long '/' runs)
+        u = u.replace(/\.git$/, "").replace(/(^|[^\/])\/+$/, "$1");
         return u.toLowerCase();
 }
 
@@ -187,7 +189,10 @@ export function basenameSlug(projectDir: string): string {
                 base
                         .toLowerCase()
                         .replace(/[^a-z0-9]+/g, "-")
-                        .replace(/^-+|-+$/g, "")
+                        // `(^|[^-])-+$` = linear trailing-dash strip (ReDoS fix): the
+                        // old `-+$/` rescanned from every start position — quadratic
+                        // on long '-' runs. Same matched language as `-+$`.
+                        .replace(/^-+|(^|[^-])-+$/g, "$1")
                         .slice(0, 32) || "project"
         );
 }
@@ -200,7 +205,9 @@ function identityBase(projectDir: string, identity: string): string {
         if (!identity.startsWith("path:")) {
                 const parts = identity.split("/");
                 const remoteBase = parts[parts.length - 1] || parts[parts.length - 2] || "";
-                const cleaned = remoteBase.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                // `(^|[^-])-+$` = linear trailing-dash strip (ReDoS fix — see
+                // basenameSlug for the rationale; same language as `-+$`).
+                const cleaned = remoteBase.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|(^|[^-])-+$/g, "$1");
                 if (cleaned) return cleaned;
         }
         return basenameSlug(projectDir);

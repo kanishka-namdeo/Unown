@@ -70,13 +70,26 @@ export function parseCommandArgs(argsString: string): string[] {
 export function substituteArgs(content: string, args: string[]): string {
         const allArgs = args.join(" ");
 
+        // (ReDoS fix) The first alternative used to be \$\{(\d+|ARGUMENTS|@):-… —
+        // the alternation inside the group overlaps with what follows it, and
+        // the backtracking across "${{@:-" runs was polynomial. Splitting it
+        // into one alternative per literal target keeps the matched language
+        // identical (the targets are mutually exclusive after "${") while
+        // giving every alternative a literal, unambiguous prefix.
         return content.replace(
-                /\$\{(\d+|ARGUMENTS|@):-([^}]*)\}|\$\{@:(\d+)(?::(\d+))?\}|\$(ARGUMENTS|@|\d+)/g,
-                (_match, defaultTarget, defaultValue, sliceStart, sliceLength, simple) => {
-                        if (defaultTarget) {
-                                const value =
-                                        defaultTarget === "@" || defaultTarget === "ARGUMENTS" ? allArgs : args[parseInt(defaultTarget, 10) - 1];
-                                return value ? value : defaultValue;
+                /\$\{ARGUMENTS:-([^}]*)\}|\$\{@:-([^}]*)\}|\$\{(\d+):-([^}]*)\}|\$\{@:(\d+)(?::(\d+))?\}|\$(ARGUMENTS|@|\d+)/g,
+                (_match, argumentsDefault, atDefault, numberTarget, numberDefault, sliceStart, sliceLength, simple) => {
+                        if (argumentsDefault !== undefined) {
+                                return allArgs ? allArgs : argumentsDefault;
+                        }
+
+                        if (atDefault !== undefined) {
+                                return allArgs ? allArgs : atDefault;
+                        }
+
+                        if (numberTarget !== undefined) {
+                                const value = args[parseInt(numberTarget, 10) - 1];
+                                return value ? value : numberDefault;
                         }
 
                         if (sliceStart) {

@@ -596,10 +596,38 @@ function replaceCharacters(value: string, replacements: Readonly<Record<string, 
 	return result;
 }
 
+/**
+ * Strip the whitespace surrounding each "=", "+" or "-" operator — the
+ * linear-time reimplementation of the old \s*X\s* strip around operators
+ * (value.replace with the pattern \s*([=+-])\s* and capture-group
+ * replacement; ReDoS fix): that regex rescans a whitespace run from every start position
+ * while hunting for an operator — quadratic on operator-free space runs.
+ * Single left-to-right pass: track the trailing whitespace already emitted,
+ * drop it when an operator lands, and skip the whitespace that follows.
+ */
+function stripWhitespaceAroundOperators(value: string): string {
+	const buf: string[] = [];
+	let trailingWs = 0;
+	let i = 0;
+	while (i < value.length) {
+		const ch = value[i++]!;
+		if (ch === "=" || ch === "+" || ch === "-") {
+			buf.length -= trailingWs;
+			buf.push(ch);
+			trailingWs = 0;
+			while (i < value.length && /\s/.test(value[i]!)) i++;
+		} else {
+			buf.push(ch);
+			trailingWs = /\s/.test(ch) ? trailingWs + 1 : 0;
+		}
+	}
+	return buf.join("");
+}
+
 function formatScript(value: string, kind: "sub" | "sup"): string {
 	value = value.trim();
 	const replacements = kind === "sub" ? SUBSCRIPTS : SUPERSCRIPTS;
-	const unicode = replaceCharacters(value.replace(/\s*([=+-])\s*/g, "$1"), replacements);
+	const unicode = replaceCharacters(stripWhitespaceAroundOperators(value), replacements);
 	if (unicode !== undefined) {
 		return unicode;
 	}

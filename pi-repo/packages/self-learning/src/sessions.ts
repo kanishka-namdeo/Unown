@@ -28,6 +28,7 @@
  * All writes go through `atomicWriteFileSync` (temp + fsync + rename) so a
  * crash mid-write never leaves a truncated export at the target path.
  */
+import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 
@@ -403,10 +404,13 @@ export async function importSession(filePath: string, opts: ImportOptions = {}):
     return { sessionId: newId, bytes: Buffer.byteLength(body) };
 }
 
-/** Generate a fresh import session id — `imp-<ts36>-<rand>`, easy to spot. */
+/** Generate a fresh import session id — `imp-<ts36>-<rand>`, easy to spot.
+ * The rand half is CSPRNG-sourced (randomBytes, not Math.random): the id
+ * names/keys the on-disk .jsonl session file, so a predictable id would let
+ * an attacker enumerate other sessions' files (js/insecure-randomness). */
 function generateSessionId(): string {
     const ts = Date.now().toString(36);
-    const rand = Math.random().toString(36).slice(2, 8);
+    const rand = randomBytes(4).toString("hex").slice(0, 6);
     return `imp-${ts}-${rand}`;
 }
 

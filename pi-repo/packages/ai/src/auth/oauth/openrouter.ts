@@ -49,6 +49,14 @@ function sendHtml(response: ServerResponse, status: number, html: string): void 
 	response.end(html);
 }
 
+/** Escape HTML metacharacters so request-derived values cannot break out of the callback page markup. */
+function escapeHtml(value: string): string {
+	return value.replace(
+		/[&<>"']/g,
+		(c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+	);
+}
+
 function parseAuthorizationInput(input: string): string | undefined {
 	const value = input.trim();
 	if (!value) return undefined;
@@ -181,7 +189,7 @@ async function startCallbackServer(
 			const oauthError = requestUrl.searchParams.get("error");
 			if (oauthError) {
 				const description = requestUrl.searchParams.get("error_description") ?? oauthError;
-				sendHtml(response, 400, oauthErrorHtml("OpenRouter authorization was denied.", description));
+				sendHtml(response, 400, oauthErrorHtml("OpenRouter authorization was denied.", escapeHtml(description)));
 				finish({ error: new Error(`OpenRouter authorization failed: ${description}`) });
 				return;
 			}
@@ -199,7 +207,7 @@ async function startCallbackServer(
 				finish({ credential: result });
 			} catch (error) {
 				const message = error instanceof Error ? error.message : "Unknown token exchange error";
-				sendHtml(response, 502, oauthErrorHtml("OpenRouter key exchange failed.", message));
+				sendHtml(response, 502, oauthErrorHtml("OpenRouter key exchange failed.", escapeHtml(message)));
 				finish({ error: error instanceof Error ? error : new Error(message) });
 			}
 		})();

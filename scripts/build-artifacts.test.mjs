@@ -122,7 +122,11 @@ describe("build-artifacts --dry-run plan", () => {
         // This is the identity the release workflow asserts (tag === package.json
         // === `unown --version`). A binary stamped with anything else breaks it.
         const pkg = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8"));
-        assert.match(r.out, new RegExp(`version ${String(pkg.version).replace(/\./g, "\\.")} —`));
+        // escape every RegExp metacharacter in the interpolated version, not just
+        // dots — js/incomplete-sanitization: a partial escape leaves the
+        // RegExp open to the very characters it meant to neutralize
+        const escapedVersion = String(pkg.version).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        assert.match(r.out, new RegExp(`version ${escapedVersion} —`));
     });
 });
 

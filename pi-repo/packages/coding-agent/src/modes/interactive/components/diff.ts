@@ -6,9 +6,28 @@ import { theme } from "../theme/theme.ts";
  * Format: "+123 content" or "-123 content" or " 123 content" or "     ..."
  */
 function parseDiffLine(line: string): { prefix: string; lineNum: string; content: string } | null {
-	const match = line.match(/^([+-\s])(\s*\d*)\s(.*)$/);
-	if (!match) return null;
-	return { prefix: match[1], lineNum: match[2], content: match[3] };
+	// (ReDoS fix) The old /^([+-\s])(\s*\d*)\s(.*)$/ had three overlapping
+	// consumers of whitespace (the prefix class contains \s, then \s*, then a
+	// mandatory \s) — the ambiguity CodeQL flags as polynomial backtracking.
+	// This scan reproduces the regex's exact greedy/backtrack capture behavior:
+	// take the maximal space run then the digit run; when the char after the
+	// digits is whitespace that is the separator (the greedy parse), otherwise
+	// the regex's first backtrack wins — the run's LAST space separates and
+	// everything after it is content.
+	if (line.length < 2) return null;
+	const prefix = line[0]!;
+	if (prefix !== "+" && prefix !== "-" && !/\s/.test(prefix)) return null;
+	let s = 1;
+	while (s < line.length && /\s/.test(line[s]!)) s++;
+	let d = s;
+	while (d < line.length && /\d/.test(line[d]!)) d++;
+	if (d < line.length && /\s/.test(line[d]!)) {
+		return { prefix, lineNum: line.slice(1, d), content: line.slice(d + 1) };
+	}
+	if (s >= 2) {
+		return { prefix, lineNum: line.slice(1, s - 1), content: line.slice(s) };
+	}
+	return null;
 }
 
 /**

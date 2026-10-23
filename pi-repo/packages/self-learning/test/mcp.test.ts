@@ -1068,6 +1068,19 @@ describe("H2 trust gate + validation", () => {
         expect(win.verbatim).toBe(true); // wrapper lines are pre-quoted — spawn must not re-escape
         // win32: % is unescapable through cmd.exe — refused.
         expect(() => stdioSpawnSpec("npx.cmd", ["%VAR%"], {}, "C:\\proj", { platform: "win32" })).toThrow("'%'");
+        // win32: cmd.exe metacharacters in the COMMAND are refused outright —
+        // they are reserved/illegal in Windows filenames, so a command path
+        // carrying one is broken or hostile config, never legitimate.
+        expect(() => stdioSpawnSpec("np&x.cmd", [], {}, "C:\\proj", { platform: "win32" })).toThrow("metacharacters");
+        expect(() => stdioSpawnSpec('tool"inject.cmd', [], {}, "C:\\proj", { platform: "win32" })).toThrow("metacharacters");
+        expect(() => stdioSpawnSpec("a<b.cmd", [], {}, "C:\\proj", { platform: "win32" })).toThrow("metacharacters");
+        // ...but the same characters stay legal in ARGS (escapeCmdArg quotes
+        // each token — "&" inside quotes is a literal) and in .exe/.com
+        // commands (spawned directly, argv array, no cmd.exe involved).
+        const argOk = stdioSpawnSpec("npx.cmd", ["--flag=a&b|c"], {}, "C:\\proj", { platform: "win32" });
+        expect(argOk.args[3]).toContain("a&b|c");
+        const exeMeta = stdioSpawnSpec("C:\\odd\\tool&x.exe", [], {}, "C:\\proj", { platform: "win32" });
+        expect(exeMeta.verbatim).toBe(false);
         // win32: .exe binaries spawn directly (no cmd wrapper).
         const exe = stdioSpawnSpec("C:\\tool\\srv.exe", ["-v"], {}, "C:\\proj", { platform: "win32" });
         expect(exe.command).toBe("C:\\tool\\srv.exe");

@@ -67,7 +67,10 @@ describe("ModelRegistry", () => {
 	}
 
 	function toShPath(value: string): string {
-		return value.replace(/\\/g, "/").replace(/"/g, '\\"');
+		// single-pass: backslash -> "/", quote -> escaped — no chained replaces
+		// (CodeQL js/incomplete-sanitization cannot prove backslash safety
+		// through a replace chain; one pass with a replacer fn is unambiguous)
+		return value.replace(/[\\"]/g, (c) => (c === '"' ? '\\"' : "/"));
 	}
 
 	/** Create a baseUrl-only override (no custom models) */

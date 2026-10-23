@@ -196,14 +196,26 @@ function clampResults(results: WebSearchResult[], cap: number): WebSearchResult[
 
 /** Strip HTML tags/entities from provider snippets (Wikipedia excerpts etc.). */
 export function stripInlineHtml(html: string): string {
-        return html
-                .replace(/<[^>]+>/g, "")
+        // Tag strip LOOPS until stable: a single pass can leave a re-formed
+        // tag behind (`<scr<script>ipt>` — one tag's `>` gets consumed with
+        // another's opener and the leftovers recombine; js/incomplete-
+        // multi-character-sanitization).
+        let s = html;
+        let prev: string;
+        do {
+                prev = s;
+                s = s.replace(/<[^>]*>/g, "");
+        } while (s !== prev);
+        // Entity decode with `&amp;` LAST: decoding it first would turn
+        // `&amp;lt;` into `&lt;` and then `<` — a double-unescape
+        // (js/double-escaping).
+        return s
                 .replace(/&nbsp;/g, " ")
-                .replace(/&amp;/g, "&")
                 .replace(/&lt;/g, "<")
                 .replace(/&gt;/g, ">")
                 .replace(/&quot;/g, '"')
                 .replace(/&#39;/g, "'")
+                .replace(/&amp;/g, "&")
                 .replace(/\s+/g, " ")
                 .trim();
 }
@@ -420,21 +432,34 @@ async function isRobotsAllowed(url: URL): Promise<boolean> {
 // ---------------------------------------------------------------------------
 
 export function htmlToText(html: string): string {
-        return html
-                .replace(/<script[\s\S]*?<\/script>/gi, " ")
-                .replace(/<style[\s\S]*?<\/style>/gi, " ")
-                .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-                .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
-                .replace(/<!--[\s\S]*?-->/g, " ")
-                .replace(/<\/(p|div|li|h[1-6]|tr|section|article|header|footer|blockquote|pre|ul|ol|dl|table)>/gi, "\n")
-                .replace(/<br\s*\/?>/gi, "\n")
-                .replace(/<[^>]+>/g, " ")
+        // Strip phase, LOOPED until stable (see stripInlineHtml): the loop
+        // clears re-formed tags (`<scr<script>ipt>`, `<a<b>`), and the element
+        // strips below tolerate whitespace in the closing tag (`</script >`
+        // — js/bad-tag-filter; without it the script BODY leaked through as
+        // text).
+        let s = html;
+        let prev: string;
+        do {
+                prev = s;
+                s = s
+                        .replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ")
+                        .replace(/<style\b[\s\S]*?<\/style\s*>/gi, " ")
+                        .replace(/<noscript\b[\s\S]*?<\/noscript\s*>/gi, " ")
+                        .replace(/<svg\b[\s\S]*?<\/svg\s*>/gi, " ")
+                        .replace(/<!--[\s\S]*?-->/g, " ")
+                        .replace(/<\/(p|div|li|h[1-6]|tr|section|article|header|footer|blockquote|pre|ul|ol|dl|table)>/gi, "\n")
+                        .replace(/<br\s*\/?>/gi, "\n")
+                        .replace(/<[^>]*>/g, " ");
+        } while (s !== prev);
+        // Entity decode with `&amp;` LAST (see stripInlineHtml: `&amp;lt;`
+        // must decode to the literal text `&lt;`, never `<`).
+        return s
                 .replace(/&nbsp;/g, " ")
-                .replace(/&amp;/g, "&")
                 .replace(/&lt;/g, "<")
                 .replace(/&gt;/g, ">")
                 .replace(/&quot;/g, '"')
                 .replace(/&#39;/g, "'")
+                .replace(/&amp;/g, "&")
                 .replace(/[ \t]+/g, " ")
                 .replace(/\n{3,}/g, "\n\n")
                 .trim();

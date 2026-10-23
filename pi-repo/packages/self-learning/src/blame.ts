@@ -168,7 +168,11 @@ function parseLedger(file: string): ParsedLedger {
  */
 function pathsMatch(candidatePath: string, targetPath: string, cwd?: string): boolean {
     if (!candidatePath || !targetPath) return false;
-    const norm = (p: string) => p.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
+    // `(^|[^\/])\/+$/` is the linear-time form of a trailing-slash strip: the
+    // old `/\/+$/` rescanned the string from every start position (quadratic
+    // on long '/' runs), while the mandatory non-slash prefix pins each run
+    // to a single start position. Same matched language.
+    const norm = (p: string) => p.replace(/\\/g, "/").replace(/^\.\//, "").replace(/(^|[^\/])\/+$/, "$1");
     const a = norm(candidatePath);
     const b = norm(targetPath);
     if (!a || !b) return false;

@@ -240,8 +240,14 @@ export const BUILTIN_PATTERNS: InjectionPattern[] = [
         { id: "ce-eval-buffer-from", pattern: /eval\s*\(\s*Buffer\.from\s*\(/i, risk: "critical", category: "code-execution", reason: "eval of Buffer.from code" },
         { id: "ce-template-process-env", pattern: /\$\{process\.env/i, risk: "high", category: "code-execution", reason: "JS template injection of process.env" },
         { id: "ce-template-ssti", pattern: /\{\{[^}]*\}\}|<%[^%]*%>/, risk: "medium", category: "code-execution", reason: "template injection syntax" },
-        { id: "ce-rm-rf-root", pattern: /rm\s+(-[a-zA-Z]*[rRfF][a-zA-Z]*\s+)+['"]?\/(?:['"]|\s|$|[*;&|])/i, risk: "critical", category: "code-execution", reason: "recursive deletion of root filesystem" },
-        { id: "ce-rm-rf-home", pattern: /rm\s+(-[a-zA-Z]*[rRfF][a-zA-Z]*\s+)+['"]?(?:~|\$HOME|\/home|\/root)/i, risk: "critical", category: "code-execution", reason: "recursive deletion of home/root directory" },
+        // ReDoS fix (2026-10-29): the rm-flag runs below use
+        // [a-eg-qs-zA-EG-QS-Z]* (letters minus r/R/f/F) before the required
+        // [rRfF], so every "-xyz " token has a UNIQUE parse. The old
+        // [a-zA-Z]*[rRfF] overlap let the (...)+ repetition backtrack
+        // exponentially on inputs like "rm -ff -ff -…". Same matched
+        // language, linear time.
+        { id: "ce-rm-rf-root", pattern: /rm\s+(-[a-eg-qs-zA-EG-QS-Z]*[rRfF][a-zA-Z]*\s+)+['"]?\/(?:['"]|\s|$|[*;&|])/i, risk: "critical", category: "code-execution", reason: "recursive deletion of root filesystem" },
+        { id: "ce-rm-rf-home", pattern: /rm\s+(-[a-eg-qs-zA-EG-QS-Z]*[rRfF][a-zA-Z]*\s+)+['"]?(?:~|\$HOME|\/home|\/root)/i, risk: "critical", category: "code-execution", reason: "recursive deletion of home/root directory" },
 
         // ----- sandbox-escape (14) -----
         { id: "se-chroot", pattern: /\bchroot\b/i, risk: "high", category: "sandbox-escape", reason: "chroot sandbox escape" },

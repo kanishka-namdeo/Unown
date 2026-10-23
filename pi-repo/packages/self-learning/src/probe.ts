@@ -21,7 +21,10 @@ export interface EndpointProbe {
 
 /** Probe an OpenAI-compatible endpoint via GET {baseUrl}/models. */
 export async function probeOpenAiEndpoint(baseUrl: string, apiKey?: string, timeoutMs = 4000): Promise<EndpointProbe> {
-        const url = `${baseUrl.replace(/\/+$/, "")}/models`;
+        // `(^|[^\/])\/+$/` = linear-time trailing-slash strip (ReDoS fix): the
+        // old `/\/+$/` rescanned from every start position — quadratic on long
+        // '/' runs. The mandatory non-slash prefix pins each run to one start.
+        const url = `${baseUrl.replace(/(^|[^\/])\/+$/, "$1")}/models`;
         const headers: Record<string, string> = {};
         if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
         try {

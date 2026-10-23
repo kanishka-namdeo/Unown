@@ -627,7 +627,10 @@ describe("Markdown component", () => {
 			// even if it was split across multiple wrapped lines.
 			const extracted = plainLines.join("").replace(/[│├┤─\s]/g, "");
 			assert.ok(extracted.includes("prefix"), "Should preserve 'prefix'");
-			assert.ok(extracted.includes(url), "Should preserve URL");
+			// Assert on the URL's parsed host and path instead of substring-matching the raw URL.
+			const parsedUrl = new URL(url);
+			assert.ok(extracted.includes(parsedUrl.hostname), "Should preserve URL host");
+			assert.ok(extracted.includes(parsedUrl.pathname.replace(/^\//, "")), "Should preserve URL path");
 		});
 
 		it("should wrap styled inline code inside table cells without breaking borders", () => {

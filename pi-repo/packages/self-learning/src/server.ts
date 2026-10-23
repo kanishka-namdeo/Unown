@@ -111,6 +111,20 @@ function json(data: unknown, status = 200) {
         });
 }
 
+/**
+ * Error text for an API error body — the .message ONLY (js/stack-trace-
+ * exposure: `String(err)`/`${err}` on a caught value may stringify the whole
+ * error, stack included; a plain .message read cannot). Non-Error throwables
+ * keep their string form; anything else answers a generic label. The full
+ * error is logged server-side at the catch sites — the client never sees
+ * the stack.
+ */
+export function apiErrorMessage(err: unknown): string {
+        if (err instanceof Error) return err.message;
+        if (typeof err === "string") return err.toString();
+        return "internal error";
+}
+
 // ---------------------------------------------------------------------------
 // BUG 13 (audit #13) — one error contract for the engine-busy class.
 // The trigger guard answers busy conflicts with a 409 payload ({error,
@@ -611,7 +625,8 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 return json({ ok: true, outcome });
                         } catch (err: any) {
                                 if (isEngineBusyError(err)) return engineBusyResponse();
-                                return json({ error: err?.message ?? String(err) }, 500);
+                                console.error("[agent-service] mint job failed:", err);
+                                return json({ error: apiErrorMessage(err) }, 500);
                         }
                 }
                 if (method === "GET" && /^\/api\/tasks\/[^/]+$/.test(path)) {
@@ -784,7 +799,8 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                                 platform: memoryPlatformStatus(),
                                         });
                                 } catch (err: any) {
-                                        return json({ error: `memory platform unavailable: ${err?.message ?? err}` }, 503);
+                                        console.error("[agent-service] memory search failed:", err);
+                                        return json({ error: `memory platform unavailable: ${apiErrorMessage(err)}` }, 503);
                                 }
                         }
                         // Unscoped = the ENGINE scope (the learning core's own memories —
@@ -796,7 +812,8 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 const memories = q ? await searchMemories(q, scope, limit) : await projectMemories(scope);
                                 return json({ memories, query: q ?? null, scope, platform: memoryPlatformStatus() });
                         } catch (err: any) {
-                                return json({ error: `memory platform unavailable: ${err?.message ?? err}` }, 503);
+                                console.error("[agent-service] memory search failed:", err);
+                                return json({ error: `memory platform unavailable: ${apiErrorMessage(err)}` }, 503);
                         }
                 }
 
@@ -920,7 +937,8 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                                 // one 409 contract too (it already answered 409 — but the
                                 // raw error body, not the guard's {error, reason} shape).
                                 if (isEngineBusyError(e)) return engineBusyResponse();
-                                return json({ error: e?.message ?? String(e) }, 409);
+                                console.error("[agent-service] job trigger failed:", e);
+                                return json({ error: apiErrorMessage(e) }, 409);
                         }
                 }
                 if (method === "POST" && /^\/api\/jobs\/[^/]+\/toggle$/.test(path)) {
@@ -973,7 +991,8 @@ export async function handleApi(req: ApiRequest): Promise<Response> {
                 // engine-busy 409 contract — never a raw 500. Everything else keeps the
                 // generic 500 handler.
                 if (isEngineBusyError(err)) return engineBusyResponse();
-                return json({ error: err?.message ?? String(err) }, 500);
+                console.error("[agent-service] api handler failed:", err);
+                return json({ error: apiErrorMessage(err) }, 500);
         }
 }
 

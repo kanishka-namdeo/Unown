@@ -93,10 +93,15 @@ function parseField(raw: string, field: number): number[] {
                         lo = min;
                         hi = max;
                 } else {
-                        const rangeMatch = rangePart.match(/^(.+?)-(.+)$/);
-                        if (rangeMatch) {
-                                lo = requireNumber(rangeMatch[1], field);
-                                hi = requireNumber(rangeMatch[2], field);
+                        // Linear-time range split (ReDoS fix): the old lazy-dot
+                        // /^(.+?)-(.+)$/ backtracked quadratically on adversarial
+                        // inputs. Split at the first "-" that leaves a non-empty
+                        // prefix and suffix; a line terminator anywhere made the
+                        // dot-based regex fail, so keep that behavior for parity.
+                        const dash = rangePart.indexOf("-", 1);
+                        if (dash !== -1 && dash < rangePart.length - 1 && !/[\n\r\u2028\u2029]/.test(rangePart)) {
+                                lo = requireNumber(rangePart.slice(0, dash), field);
+                                hi = requireNumber(rangePart.slice(dash + 1), field);
                         } else {
                                 lo = requireNumber(rangePart, field);
                                 hi = lo;

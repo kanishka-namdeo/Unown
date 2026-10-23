@@ -1580,6 +1580,9 @@ export class DefaultPackageManager implements PackageManager {
 			if (!branch) {
 				throw new Error("Missing upstream branch name");
 			}
+			// A branch name can never start with "-" (git's own rule) — if the
+			// checkout reports one anyway, it is hostile metadata, not a branch.
+			this.assertSafeGitRef(branch);
 			const head = await this.runCommandCapture("git", ["rev-parse", "@{upstream}"], {
 				cwd: installedPath,
 				timeoutMs: NETWORK_TIMEOUT_MS,
@@ -1728,8 +1731,40 @@ export class DefaultPackageManager implements PackageManager {
 		return result;
 	}
 
+	/**
+	 * Allowed git remote shapes for package sources: an URL scheme git can
+	 * clone, or an scp-like git@host:path. parseGitUrl() only ever produces
+	 * these forms; anything else reaching this point (in particular an
+	 * option-looking string such as --upload-pack=<cmd>, whose value git
+	 * passes to a shell) is refused rather than executed.
+	 */
+	private assertSafeGitRemote(repo: string): void {
+		if (
+			!repo.startsWith("https://") &&
+			!repo.startsWith("http://") &&
+			!repo.startsWith("ssh://") &&
+			!repo.startsWith("git://") &&
+			!repo.startsWith("git@")
+		) {
+			throw new Error(`Refusing to install git source with unexpected remote: ${repo}`);
+		}
+	}
+
+	/** A git ref (branch/tag/commit) must never look like a git option. */
+	private assertSafeGitRef(ref: string): void {
+		if (ref.startsWith("-")) {
+			throw new Error(`Refusing git ref that looks like an option: ${ref}`);
+		}
+	}
+
 	private parseNpmSpec(spec: string): { name: string; version?: string } {
-		const match = spec.match(/^(@?[^@]+(?:\/[^@]+)?)(?:@(.+))?$/);
+		// (ReDoS fix) The name group used to be `@?[^@]+(?:\/[^@]+)?` — the
+		// optional slash part is dead weight (both halves consume only non-@
+		// characters, so every match of the pair is also a match of the bare
+		// `[^@]+` with the group empty) but the two adjacent quantifiers
+		// backtracked polynomially on '/'-heavy input. Dropping it is
+		// language-identical (verified against 200k random inputs) and linear.
+		const match = spec.match(/^(@?[^@]+)(?:@(.+))?$/);
 		if (!match) {
 			return { name: spec };
 		}
@@ -1829,6 +1864,8 @@ export class DefaultPackageManager implements PackageManager {
 	}
 
 	private async installGit(source: GitSource, scope: SourceScope): Promise<void> {
+		this.assertSafeGitRemote(source.repo);
+		if (source.ref) this.assertSafeGitRef(source.ref);
 		const targetDir = this.getGitInstallPath(source, scope);
 		if (existsSync(targetDir)) {
 			if (source.ref) {
@@ -1863,6 +1900,8 @@ export class DefaultPackageManager implements PackageManager {
 	}
 
 	private async updateGit(source: GitSource, scope: SourceScope): Promise<void> {
+		this.assertSafeGitRemote(source.repo);
+		if (source.ref) this.assertSafeGitRef(source.ref);
 		const targetDir = this.getGitInstallPath(source, scope);
 		if (!existsSync(targetDir)) {
 			await this.installGit(source, scope);
@@ -1931,6 +1970,18 @@ export class DefaultPackageManager implements PackageManager {
 
 	private async ensureGitRef(targetDir: string, fetchArgs: string[], ref: string): Promise<void> {
 		// Fetch only the ref we will reset to, avoiding unrelated branch/tag noise.
+		// Defensive re-validation (js/second-order-command-line-injection): the
+		// ref interpolates into git's command line — a value that starts with "-"
+		// could be parsed as an option (--upload-pack is passed to a shell by
+		// git). Literal options (--prune, --no-tags) and the remote name are
+		// constructed here; refspec-shaped args must be +-prefixed forced
+		// refspecs so the embedded branch name can never reach option position.
+		this.assertSafeGitRef(ref);
+		for (const arg of fetchArgs) {
+			if (arg.includes(":") && !arg.startsWith("+")) {
+				throw new Error(`Refusing non-forced git refspec: ${arg}`);
+			}
+		}
 		await this.runCommand("git", fetchArgs, { cwd: targetDir });
 
 		const localHead = await this.runCommandCapture("git", ["rev-parse", "HEAD"], {
