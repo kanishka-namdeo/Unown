@@ -205,15 +205,16 @@ export function findShims(
                                 continue;
                         }
                         const target = shimTarget(content);
-                        const ours = target !== null && samePath(target, join(repoRoot, "bin", "unown"));
+                        const ours = target !== null && samePath(target, join(repoRoot, "bin", "unown"), platform);
                         hits.push({ path: p, ours, target: target ?? undefined });
                 }
         }
         return hits;
 }
 
-function samePath(a: string, b: string): boolean {
-        const norm = (s: string) => canonicalPath(s).replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+function samePath(a: string, b: string, platform: NodeJS.Platform = process.platform): boolean {
+        const canon = (s: string) => (platform === process.platform ? canonicalPath(s) : s);
+        const norm = (s: string) => canon(s).replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
         return norm(a) === norm(b);
 }
 
@@ -228,8 +229,9 @@ function errMessage(err: unknown): string {
  *  testable off-platform. A sibling whose name merely shares a prefix
  *  (`...\unown-old` vs `...\unown`) is not inside. */
 export function pathInside(child: string, parent: string, platform: NodeJS.Platform = process.platform): boolean {
+        const yours = (p: string) => (platform === process.platform ? canonicalPath(p) : p);
         const norm = (p: string): string => {
-                const n = (platform === "win32" ? win32.normalize(canonicalPath(p)) : posix.normalize(canonicalPath(p)))
+                const n = (platform === "win32" ? win32.normalize(yours(p)) : posix.normalize(yours(p)))
                         .replace(/\\/g, "/")
                         .replace(/\/+$/, "");
                 return platform === "win32" ? n.toLowerCase() : n;

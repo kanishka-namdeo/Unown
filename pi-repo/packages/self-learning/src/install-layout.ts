@@ -431,7 +431,11 @@ export function canonicalPath(p: string): string {
 }
 
 function normalizePathForCompare(p: string, platform: NodeJS.Platform): string {
-        const s = canonicalPath(p).replace(/\\/g, "/").replace(/\/+$/, "");
+        // Only the running OS can resolve its own spellings; a layout or fixture
+        // computed for another platform stays a string comparison.
+        const s = (platform === process.platform ? canonicalPath(p) : p)
+                .replace(/\\/g, "/")
+                .replace(/\/+$/, "");
         return platform === "win32" ? s.toLowerCase() : s;
 }
 

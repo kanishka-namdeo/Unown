@@ -154,7 +154,10 @@ describe("checkoutHasUncommittedWork (hardened probe)", () => {
 
 test("the Windows shim set is fully owned by the checkout it points into", () => {
         // Platform-injected so the `.ps1` leg runs on the Linux and macOS CI
-        // runners too — the ones that shipped the skipped-shim bug.
+        // runners too — the ones that shipped the skipped-shim bug. It also
+        // pins the foreign-platform rule: `C:\repos\Unown` must never be
+        // resolved against the HOST filesystem (POSIX dirname of a backslash
+        // path is ".", which canonicalized to the CWD and broke ownership).
         const bin = join(fresh(), "bin");
         const repo = "C:\\repos\\Unown";
         const written = writeShimSet({
