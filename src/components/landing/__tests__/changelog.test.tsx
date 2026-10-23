@@ -141,7 +141,7 @@ describe("landing changelog rail", () => {
   test("counts and links the entries a tile does not print", () => {
     const { container } = rail();
     const overflow = CHANGELOG_STOPS.map(listedCount).filter((n) => n > MAX_LISTED);
-    expect(overflow.length).toBeGreaterThan(0); // 2.1.0 ships 20 additions
+    expect(overflow.length).toBeGreaterThan(0); // at least one stop exceeds MAX_LISTED
     const text = container.textContent ?? "";
     for (const n of overflow) expect(text).toContain(`+${n - MAX_LISTED} more`);
 

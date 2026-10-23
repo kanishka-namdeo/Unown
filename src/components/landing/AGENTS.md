@@ -100,10 +100,11 @@ while the spine doubled from ten entries to twenty.
   "add a feature, the page follows" is a build result, not a habit: a changelog
   entry that never reached the rail is red, and so is a rail that invented a
   date. Four rules follow from the wiring:
-  - **dates come only from `## [x.y.z] - YYYY-MM-DD` headings.** This repository
-    has two releases, both cut on 2026-10-18, and 190 commits spread over seven
-    distinct days with a 48-day hole in the middle — so any sentence about a
-    shipping *cadence* is false here. The section must never acquire one, and
+  - **dates come only from `## [x.y.z] - YYYY-MM-DD` headings.** The four cut
+    releases (0.0.1–0.0.4) all landed on three adjacent days — two on
+    2026-10-21, one each on 10-22 and 10-23 — and the commit history has a
+    48-day hole in the middle — so any sentence about a shipping *cadence* is
+    false here. The section must never acquire one, and
     `__tests__/changelog.test.tsx` greps its own rendered text for
     weekly/monthly/continuous phrasing to keep that from arriving by copy-edit.
   - **`[Unreleased]` renders undated** ("Not cut yet"). An undated entry is a
@@ -243,8 +244,9 @@ while the spine doubled from ten entries to twenty.
     reads the FIRST `const COMMANDS` in the file it is pointed at, so
     `dex.tsx` carries exactly one: the `/split*` table. The catalog above it
     is `DEX`, never a second `COMMANDS`); the
-    `unown automations create` line carries the read-only-by-default claim,
-    checkable against `docs/usage.md#automations-unown-automations`;
+    `unown routines create` line carries the read-only-by-default claim,
+    checkable against `docs/usage.md#routines-unown-routines` (`unown
+    automations` is the CLI's historical alias);
   - **the project-config trust gate** (`integrity.tsx`, the cloned-configs
     block, receipts-linked to `config-trust.ts`);
   - **the release record** (`changelog.tsx` — the rail is the page's only home
@@ -276,14 +278,18 @@ while the spine doubled from ten entries to twenty.
   `prefers-reduced-motion` is honoured in CSS and in every JS animation path.
 - **`page.tsx` wraps the tree in `LandingMotion` (`MotionConfig
   reducedMotion="user"`), and that is the only place reduced motion has to be
-  handled for framer.** `FadeUp` branches on `useReducedMotion()` itself, which
-  protects reveals written through the primitive — but the page also has staged
-  reveals written as bare `motion` elements because they need per-item delays:
-  the `origin` pipeline (rail `scaleX`, then three staggered `motion.li`), the
-  `integrity` hook log (seven staggered rows) and the `finale` spellbox
-  (per-letter `motion.span`). Without the wrapper those three would move a
-  reduced-motion visitor through the page. Wrap new animation in
-  `LandingMotion`, not in another `useReducedMotion()` branch.
+  handled for framer's bare `motion` elements.** Reveals written through
+  `FadeUp` read reduced motion themselves — through
+  `useReducedMotionAfterMount()`, not the raw hook, because the raw hook
+  returns the live media-query value during hydration and React discards the
+  whole server tree over the mismatch (the reduced-motion visitor got a full
+  client re-render; the bar for "fixes the render path" is "the first client
+  render equals the server render"). The page also has staged reveals written
+  as bare `motion` elements because they need per-item delays: the `integrity`
+  hook log's staggered rows and the `finale` spellbox's per-letter
+  `motion.span` — those stay covered by the wrapper. Wrap new animation in
+  `LandingMotion`, not in another `useReducedMotion()` branch; branch a
+  RENDERED value on reduced motion only through the after-mount hook.
 - **The FAQ accordion animates on `height`, and it needs two files to do it.**
   The vendored `ui/accordion.tsx` already emits
   `data-[state=open]:animate-accordion-down`, but Tailwind only resolves
@@ -312,14 +318,16 @@ while the spine doubled from ten entries to twenty.
   that and rendered every benchmark bar in both track cards as an empty track;
   `LiftBar` was already correct. The pattern for a bar reveal is: put the
   **finished** value in `style`, animate `scaleX` from 0 with `origin-left`, and
-  branch on `useReducedMotion()` so the finished state is the initial state.
+  branch on `useReducedMotionAfterMount()` so the finished state is the initial
+  state for a reduced-motion reader without breaking hydration.
   The printed figure beside the bar is a second signal, not a substitute for the
   bar itself.
 - Provider marks are CC0 Simple Icons, **vendored** as path data by
   `scripts/vendor-provider-marks.mjs`. Never hotlink the CDN and never add
-  `npm i simple-icons` for eight glyphs. OpenAI and DashScope are text-only on
-  purpose — one mark was retired at its owner's request and the other has no
-  slug; see the header of `provider-marks.tsx`.
+  `npm i simple-icons` for eight glyphs. OpenAI, Agnes AI and llama.cpp are
+  text-only on purpose — one mark was retired at its owner's request and the
+  other two have no slug — while DashScope carries the vendored Alibaba Cloud
+  mark; see the header of `provider-marks.tsx`.
 - `star-count.tsx` is a **server** component that fetches at build/ISR time. It
   must never fail a build: any error, timeout or shape mismatch renders the
   fallback. It sets `revalidate: 3600`, which is what makes `/` ISR.
@@ -582,7 +590,12 @@ parallel ones.
     an entry the harness has not turned through holds `{ kind: "pending" }`
     and renders the same aspect box with a `no capture yet` label, so the
     stage's height is CONSTANT and the band's measured height does not move
-    with the cursor. Every reel mounts and the inactive ones hide, so the SSR
+    with the cursor. The same promise is enforced at panel scale: the detail
+    `<article>` carries a `lg:min-h` floor sized to its tallest entry, with
+    the receipts row pinned to the panel's bottom edge (`mt-auto`), so the
+    behavior entries' shorter copy cannot shift the page ~195px per
+    selection (measured: every entry renders the band at the same height at
+    1440). Every reel mounts and the inactive ones hide, so the SSR
     DOM names all 9 movies and the 1 still. Playback is an effect decision,
     never an `autoPlay` attribute (muted + loop started after hydration, when
     reduced motion is known); under `prefers-reduced-motion` the stage keeps
@@ -825,8 +838,10 @@ parallel ones.
   dialogue text, Geist Sans for paragraphs, and `.quote` (VT323) **only** for
   attributed quotations — it signals "someone else's words, quoted" and must
   never carry body copy. `.quote` used to be Instrument Serif; the serif was
-  the one modern note left on a Game Boy page, and a quoted dex entry is game
-  text, so the face changed but the rule did not.
+  the one modern note left on a Game Boy page, so the face changed but the
+  rule did not. The dex's game-voice entries are NOT quotations — they are
+  original sentences (see `dex-data.ts`) — so they are set in plain `gb-term`
+  on the `.gb-box`, not in `.quote`.
 - The TUI's `unown` theme (cool zinc, emerald accents — `pi-repo/.../src/theme.ts`) is
   untouched by this page. Only the landing page is retro.
 
@@ -845,15 +860,17 @@ parallel ones.
   it prints
   per-band height/words/paragraph counts, which is how the 14-section bloat
   was found and how regressions get caught before review.
-- **The VLM design-review lane (optional, needs the bridge up):** `node
-  scripts/agnes_review.mjs <image…>` sends landing screenshots through the
-  llm-bridge's second upstream (agnes-3.0-flash, vision-capable; wire it via
-  `BRIDGE_LOCAL_URL`/`BRIDGE_LOCAL_KEY`/`BRIDGE_LOCAL_MODELS` — see
-  `.env.example`) and prints a strict PASS/FIX critique (defects + top
-  improvements). It is a reviewer's aid, not a gate: weigh its findings
-  against the design-system contracts in this file — the VLM does not know
-  the seal is the brand or that Press Start 2P is deliberate, and it will
-  happily recommend the smooth, modern, off-grid thing the palette gate
+- **The VLM design-review lane (optional):** `node
+  scripts/agnes_review.mjs <image…>` sends landing screenshots through
+  agnes-3.0-flash (vision-capable) and prints a strict PASS/FIX critique
+  (defects + top improvements). Two wirings: through the llm-bridge's second
+  upstream (`BRIDGE_LOCAL_URL`/`BRIDGE_LOCAL_KEY`/`BRIDGE_LOCAL_MODELS` — see
+  `.env.example`; the script's default URL) or straight at any
+  OpenAI-compatible endpoint (`VLM_BRIDGE=https://apihub.agnes-ai.com/v1/chat/completions`
+  + `VLM_KEY=<bearer>`). It is a reviewer's aid, not a gate: weigh its
+  findings against the design-system contracts in this file — the VLM does
+  not know the seal is the brand or that Press Start 2P is deliberate, and it
+  will happily recommend the smooth, modern, off-grid thing the palette gate
   exists to refuse.
 - `bun run build` — exit 0. `/` must prerender; the star-count fetch is the only
   network call and it is wrapped.

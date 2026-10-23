@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 229;
+export const CHANGELOG_TOTAL_ENTRIES = 230;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 86,
   "Changed": 16,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 95,
+  "Fixed": 96,
   "Security": 0,
   "Behavior": 29
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 3,
+    "total": 4,
     "counts": {
       "Added": 0,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 1,
+      "Fixed": 2,
       "Security": 0,
       "Behavior": 1
     },
@@ -78,6 +78,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Fixed",
         "items": [
+          {
+            "title": "landing: the defect round — a real hydration failure, the square-corner and type contracts…",
+            "behavior": false
+          },
           {
             "title": "the DOX tree was two upstreams behind — every stale documentation surface caught up in one round",
             "behavior": false

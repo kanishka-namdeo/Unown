@@ -1,16 +1,27 @@
 #!/usr/bin/env node
 /**
  * agnes_review.mjs — VLM design critique of landing screenshots via the
- * Agnes AI lane on the llm-bridge (agnes-3.0-flash, vision-capable).
+ * Agnes AI lane (agnes-3.0-flash, vision-capable).
  *
  * Usage: node scripts/agnes_review.mjs <image...>
  * Env:   VLM_BRIDGE (default http://127.0.0.1:3031/v1/chat/completions)
  *        VLM_MODEL  (default agnes-3.0-flash)
+ *        VLM_KEY    (optional bearer token — sent as `Authorization: Bearer …`
+ *                   when set; the local llm-bridge needs none, a keyed
+ *                   upstream such as https://apihub.agnes-ai.com/v1 does)
+ *
+ * Two wirings, same script:
+ *   - through the llm-bridge's second upstream (BRIDGE_LOCAL_URL/KEY/MODELS
+ *     in .env.example), the default URL above;
+ *   - straight at any OpenAI-compatible endpoint:
+ *       VLM_BRIDGE=https://apihub.agnes-ai.com/v1/chat/completions \
+ *       VLM_KEY=cpk-… node scripts/agnes_review.mjs download/landing/*.png
  */
 import sharp from "sharp";
 
 const BRIDGE = process.env.VLM_BRIDGE ?? "http://127.0.0.1:3031/v1/chat/completions";
 const MODEL = process.env.VLM_MODEL ?? "agnes-3.0-flash";
+const KEY = process.env.VLM_KEY ?? "";
 const BRIEF = process.env.VLM_BRIEF ?? "";
 
 async function review(path) {
@@ -32,7 +43,9 @@ async function review(path) {
     max_tokens: 500,
   };
   const t0 = Date.now();
-  const resp = await fetch(BRIDGE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const headers = { "Content-Type": "application/json" };
+  if (KEY) headers.Authorization = `Bearer ${KEY}`;
+  const resp = await fetch(BRIDGE, { method: "POST", headers, body: JSON.stringify(body) });
   if (!resp.ok) throw new Error(`${resp.status}: ${(await resp.text()).slice(0, 200)}`);
   const json = await resp.json();
   const out = json.choices?.[0]?.message?.content ?? JSON.stringify(json).slice(0, 300);

@@ -102,10 +102,12 @@
  * Every text token clears AA 4.5:1 against canvas AND panel-2, the two
  * surfaces text actually lands on, and every hue field keeps its own accent
  * plus ink/dim/faint legible on it. Measured worst-case ratios:
- *   DARK   ink 9.91 · dim 7.76 · faint 5.95 · gold 7.96 · amber 7.65 ·
- *          poke 4.69 · aqua 5.15 · magma 4.88 · leaf 6.02 · psychic 4.90
- *   LIGHT  ink 10.20 · dim 8.89 · faint 7.81 · gold 5.28 · amber 4.60 ·
- *          poke 5.99 · aqua 7.43 · magma 6.41 · leaf 7.05 · psychic 6.77
+ *   DARK   ink 9.57 · dim 7.49 · faint 5.74 · gold 7.69 · gold-soft 9.47 ·
+ *          amber 7.39 · poke 4.53 · aqua 4.97 · magma 5.18 · leaf 5.82 ·
+ *          psychic 4.73
+ *   LIGHT  ink 9.81 · dim 8.55 · faint 7.52 · gold 6.73 · gold-soft 7.84 ·
+ *          amber 6.15 · poke 6.46 · aqua 7.15 · magma 6.17 · leaf 6.78 ·
+ *          psychic 6.51
  * `line-bright` is exempt in both modes by design: it is only ever a border
  * or a bar-chart track, never text. Re-run `bun scripts/contrast_audit.mjs`
  * (it walks both schemes) and `bun scripts/gba_palette_check.mjs` before

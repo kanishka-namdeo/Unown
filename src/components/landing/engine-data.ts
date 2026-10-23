@@ -2,8 +2,8 @@
 // Regenerate after any router.ts JOB_DEFS edit:  bun scripts/landing_claims.mjs
 // CI gate:                                      bun scripts/landing_claims.mjs --check
 //
-// The landing page's background-jobs claims (origin.tsx's job list,
-// mechanisms.tsx's on-timer/on-event tallies) are facts about JOB_DEFS in
+// The landing page's background-jobs claims (loop.tsx's engine job strip
+// and its on-timer/on-event tallies) are facts about JOB_DEFS in
 // pi-repo/packages/self-learning/src/router.ts, so they are read from it here
 // instead of retyped in a component. The counts are derived, never authored:
 // the page cannot claim a job the engine does not run.
