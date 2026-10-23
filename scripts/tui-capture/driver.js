@@ -76,6 +76,11 @@ class TmuxSession {
     // kill the tmux status bar: a real user runs `unown` in a bare terminal —
     // the bar is a harness artifact and would eat one pane row on top of that
     try { await sh(TMUX_BIN, ["set-option", "-t", this.name, "status", "off"], { env: this.env() }); } catch {}
+    // tmux extended-keys: the TUI warns when the server runs with it off
+    // (modified Enter keys unreliable) — a config-less server (e.g. the
+    // AppImage build, no ~/.tmux.conf) starts with it off and the warning
+    // films into every session-2 boot. Set it server-side so it never does.
+    try { await sh(TMUX_BIN, ["set-option", "-g", "extended-keys", "on"], { env: this.env() }); } catch {}
   }
   async text() {
     return sh(TMUX_BIN, ["capture-pane", "-t", this.name, "-p"], { env: this.env() });

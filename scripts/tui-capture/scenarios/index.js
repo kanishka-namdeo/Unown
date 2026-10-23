@@ -1,15 +1,24 @@
-/** Scenario catalog — nine landing-page stories, each a real end-to-end
+/** Scenario catalog — twelve landing-page stories, each a real end-to-end
  *  session against the live stack (bridge + engine), captured in one take.
  *
  *  Demo-fixture states (prep with prep_demo.sh BEFORE running):
  *    s1-hero-bugfix   seed      (bug present, suite red)
  *    s3-checkpoints   fixed     (clean tree, suite green)
  *    s5-review        seed+fix  (one-char fix uncommitted, suite green)
- *    s2/s4/s8         any       (fixture content irrelevant)
+ *    s2/s4/s8/s10     any       (fixture content irrelevant — s10 wants the
+ *                               .unown scaffold pristine: v0 project memory,
+ *                               no provenance sidecar, so the dream's
+ *                               version bump is visible in the footer chip)
  *    s6/s7 run in the real repo checkout (no prep).
  *    s9 runs in the real repo checkout too (the fleet spawns real children
  *      against it; .unown/fleet/ is wiped first for a fresh registry).
+ *    s11 runs in the real repo checkout with the landing dev server already
+ *      up on :3000 (the realistic "the site is running locally" state).
+ *    s12 boots `unown dashboard dreams` against the live engine — richest
+ *      AFTER s10 (its dream is then the newest row on the Dreams screen).
  */
+const fs = require("node:fs");
+const path = require("node:path");
 const { DEMO_DIR, REPO_ROOT, unownBin } = require("./_paths");
 
 /** Wait until the agent's turn is over. beauty-2/3 replaced the generic
@@ -341,6 +350,195 @@ const s9 = {
   ],
 };
 
+/* ────────────────────────────────────────────────────────────────────────
+ * s10-s12 — the memory / browser / dream lanes (2026-10-23)
+ *
+ * Three gaps the catalog had as pending: the memory learning loop end to
+ * end (№ 005 Memory), the browser round's visitor check (№ 011 Browser),
+ * and the dashboard's Dreams + Memory screens on the live engine (№ 008
+ * Dream). Ports 7619-7621 extend the catalog's block.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/** The engine's own URL + bearer token (M7) — the same discovery every
+ * in-tree client does. Used by fn steps that trigger AutoDream. */
+const ENGINE_URL = process.env.UNOWN_ENGINE_URL || "http://127.0.0.1:3030";
+const engineToken = () => {
+  try {
+    return fs.readFileSync(path.join(REPO_ROOT, "data", "self-learning", "engine.token"), "utf8").trim();
+  } catch {
+    return "";
+  }
+};
+
+/** Trigger AutoDream for the terminal notes of `projectDir` — the exact
+ * path the dashboard's "dream now" key hits (POST /api/dreams/run) — and
+ * wait until the project's memory file carries `needle`. The engine's own
+ * self-improvement loop (auto-dream ticks + dream-check events on canary
+ * runs) holds the busy-mutex for multi-minute stretches, so this retries
+ * FAST (12s — grab the mutex the moment it frees) and budgets generously
+ * (default 420s: a queued engine dream ~3 min + the project dream ~1 min).
+ * A "skipped" answer means the tick already drained the notes — the file
+ * poll below is the convergence either way. Hard-fails on timeout: the
+ * story needs the dream. */
+async function dreamUntilLearned(s, projectDir, needle, timeoutMs = 420_000) {
+  const memFile = path.join(projectDir, ".unown", "memory", "project.md");
+  const hasNeedle = () => {
+    try {
+      return fs.readFileSync(memFile, "utf8").includes(needle);
+    } catch {
+      return false;
+    }
+  };
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline && !hasNeedle()) {
+    try {
+      const res = await fetch(`${ENGINE_URL}/api/dreams/run`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${engineToken()}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      s.log(`dreams/run -> ${JSON.stringify(body).slice(0, 140)}`);
+    } catch (e) {
+      s.log(`dreams/run failed: ${e instanceof Error ? e.message : e}`);
+    }
+    const inner = Math.min(Date.now() + 12_000, deadline);
+    while (Date.now() < inner && !hasNeedle()) await s.sleep(1_500);
+  }
+  if (!hasNeedle()) throw new Error(`dream did not land "${needle}" within ${timeoutMs}ms`);
+  // the footer chip + boot Context read the file at session start; settle
+  await s.sleep(2_000);
+}
+
+const s10 = {
+  // Two sessions in one pane, exactly like a real terminal: teach the house
+  // rules + one real task, /note the lesson, /quit — AutoDream consolidates
+  // behind the scenes (the dashboard's "dream now" trigger) — then a fresh
+  // session boots with the learned memory (footer chip v0 -> v1), /learning
+  // prints the 4-tier stack, and a second task shows the lesson applied
+  // unprompted (bun, tests run twice, both tallies quoted).
+  name: "memory-learn", cwd: DEMO_DIR, port: 7619, env: {},
+  bootCmd: "bash --noprofile --norc -i",
+  ready: { include: ["bash-"], desc: "shell prompt" },
+  steps: [
+    { t: "waitReady", timeout: 30_000 },
+    { t: "prompt", s: "clear", cps: 40 },
+    { t: "sleep", ms: 600 },
+    // ── session one: the teach + a real task
+    { t: "prompt", s: `bun ${unownBin}`, cps: 40 },
+    { t: "wait", include: ["unown v", "memory: up"], timeout: 90_000, desc: "TUI up" },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "01-fresh-session-v0" },
+    { t: "prompt", s: "Quick context before you start: this repo is bun-only - the package manager is bun, with a bun.lock at the root; npm and yarn are not used here. The suite has shown flakes on single runs, so the verification bar for pagination changes is two consecutive green bun test runs. Now the task: bump the default page size for GET /api/tasks from 5 to 10 (src/server.ts) and add one test that pins the new default.", cps: 28 },
+    { t: "fn", desc: "task one lands", fn: async (s) => {
+      await s.waitForExternal({
+        desc: "default page size bumped to 10",
+        timeout: 420_000, poll: 1500,
+        check: async () => (await s.exec(`grep -cF '?? "10"' ${DEMO_DIR}/src/server.ts`)).trim() === "1",
+      });
+      await waitTurnIdle(s, 420_000, "task one turn complete");
+      await s.sleep(1500);
+    }},
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "02-task-done" },
+    { t: "prompt", s: "/note Environment: this repo is bun-only - the package manager is bun, with a bun.lock at the root; npm and yarn are not used here. Known pitfall: pagination changes have regressed this API before and single test runs have missed flakes - the repo's verification bar for a pagination change is two consecutive green bun test runs.", cps: 26 },
+    { t: "wait", include: ["Note delivered"], timeout: 30_000, desc: "note delivered" },
+    { t: "linger", ms: 1600 },
+    { t: "still", name: "03-note-recorded" },
+    // ── the session ends; AutoDream consolidates the notes
+    { t: "prompt", s: "/quit", cps: 26 },
+    { t: "wait", include: ["bash-"], timeout: 60_000, desc: "back at the shell" },
+    { t: "fn", desc: "AutoDream consolidates the notes", fn: (s) => dreamUntilLearned(s, DEMO_DIR, "bun") },
+    { t: "linger", ms: 1200 },
+    // ── session two: a fresh boot carries the learned memory
+    { t: "prompt", s: `bun ${unownBin}`, cps: 40 },
+    { t: "wait", include: ["unown v"], timeout: 90_000, desc: "TUI up (session two)" },
+    { t: "fn", desc: "footer chip shows learned memory", fn: async (s) => {
+      // the memory bar is "mem ▕█░░▏ vN · M rules" — wait for v>=1 (v0 is
+      // the scaffold state session one started from)
+      await s.waitForExternal({
+        desc: "memory chip version >= 1",
+        timeout: 60_000, poll: 800,
+        check: async () => /v[1-9][0-9]* · \d+ rules/.test(await s.text()),
+      });
+    }},
+    { t: "linger", ms: 1600 },
+    { t: "still", name: "04-second-session-learned" },
+    // /memory search — the cross-scope recall surface: the learned rules come
+    // back as scored results (and it fits the pane, unlike /learning's full
+    // stack print which scrolls the PROJECT tier out of the 36-row viewport)
+    { t: "prompt", s: "/memory search package manager", cps: 26 },
+    { t: "wait", include: ["cross-project memory search"], timeout: 30_000, desc: "memory recall results" },
+    { t: "linger", ms: 1600 },
+    { t: "still", name: "05-memory-recall" },
+    { t: "prompt", s: "Change the default page size back from 10 to 5. Keep the suite green.", cps: 28 },
+    { t: "fn", desc: "task two lands (lesson applied)", fn: async (s) => {
+      // soft tail: the closing still must always fire (workflow §recipe);
+      // the pane dump + audits judge whether the lesson visibly applied.
+      const landed = await s.waitForExternal({
+        desc: "default page size back to 5",
+        timeout: 420_000, poll: 1500,
+        check: async () => (await s.exec(`grep -cF '?? "5"' ${DEMO_DIR}/src/server.ts`)).trim() === "1",
+      }).then(() => true).catch(() => false);
+      if (landed) await waitTurnIdle(s, 180_000, "task two turn complete").catch(() => {});
+      else s.log("warn: task two did not land before the tail budget — still fires for audit");
+    }},
+    { t: "linger", ms: 1800 },
+    { t: "still", name: "06-lesson-applied" },
+  ],
+};
+
+const s11 = {
+  // The browser round's own lane: the visitor check. The dev server is
+  // already running (the harness pre-starts it — the realistic "can you
+  // check the site" state); the agent opens the landing page with its
+  // browser tool, reads the a11y tree, finds the curl install command,
+  // clicks the GitHub link, screenshots where it landed, and reports.
+  name: "browser-verify", cwd: REPO_ROOT, port: 7620, env: {},
+  steps: [
+    { t: "waitReady" },
+    { t: "linger", ms: 1200 },
+    { t: "still", name: "01-session" },
+    { t: "prompt", s: "The landing page dev server is already running at http://localhost:3000. Give it a quick visitor check with your browser tool: open the page, take an accessibility snapshot, find the exact curl install command it prints, then click the GitHub link and screenshot where you land. Report the install command and the page you ended up on.", cps: 28 },
+    // browser(v2) prints its tool blocks as "web <action>" (tools.ts:199 —
+    // the display title), so the anchor is "web navigate"
+    { t: "wait", include: ["web navigate"], timeout: 180_000, desc: "browser opened the landing page" },
+    { t: "linger", ms: 2000 },
+    { t: "still", name: "02-browser-open" },
+    // soft tail: the whole browsing turn may span several tool calls; the
+    // closing still always fires (pane dump + audits judge the report)
+    { t: "fn", desc: "visitor check turn complete", fn: (s) => waitTurnIdle(s, 420_000, "browser check complete").catch((e) => s.log(`warn: ${e.message}`)) },
+    { t: "linger", ms: 1600 },
+    { t: "still", name: "03-check-report" },
+  ],
+};
+
+const s12 = {
+  // The Dreams + Memory screens of `unown dashboard` against the LIVE
+  // engine — the dream rows are the real AutoDream history (the s10 lane's
+  // own dream will be the newest row), the detail view shows the canary/
+  // guard note + rendered output + consumed notes, and the Memory screen
+  // shows the four tiers with versions and the injection budget.
+  name: "dream-dashboard", cwd: REPO_ROOT, port: 7621, env: {},
+  bootCmd: `bun ${unownBin} dashboard dreams`,
+  ready: { include: ["unown dashboard", "Dreams"], desc: "dashboard dreams screen" },
+  steps: [
+    { t: "waitReady", timeout: 60_000 },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "01-dreams" },
+    { t: "key", k: "Enter" },
+    // the detail heading "dream · <status>" prints immediately; the
+    // "consumed notes" section sits below the fold when the dream output is
+    // long (the 36-row pane only shows canary note + output start)
+    { t: "wait", include: ["dream ·"], timeout: 20_000, desc: "dream detail open" },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "02-dream-detail" },
+    { t: "key", k: "2" },
+    { t: "wait", include: ["injection budget"], timeout: 20_000, desc: "memory screen" },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "03-memory-tiers" },
+  ],
+};
+
 module.exports = {
   "s1-hero-bugfix": s1,
   "s2-plan-mode": s2,
@@ -351,4 +549,7 @@ module.exports = {
   "s7-wiki": s7,
   "s8-cli-doctor": s8,
   "s9-fleet": s9,
+  "s10-memory-learn": s10,
+  "s11-browser-verify": s11,
+  "s12-dream-dashboard": s12,
 };

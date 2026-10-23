@@ -1,7 +1,7 @@
 # Project Memory
 
 ## Workflow
-- Verify engine health: GET /api/overview returns ok:true; check this after any engine restart or config change. Reason: Tightened wording from 'restart' to broader 'health' verification since 'ok:true' is a general health indicator, not exclusively tied to restarts; preserved core check method.
+- Verify engine health: GET /api/overview returns ok:true; check this after any engine restart or config change.
 - Run: bunx biome check --write on changed files in pi-repo/.
 
 ## Known pitfalls

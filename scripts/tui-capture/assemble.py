@@ -115,7 +115,16 @@ def main():
             continue
         try:
             im = _np.array(_PILImage.open(os.path.join(fdir, frames[i])).convert("L"))
-            if (im > 22).sum() < 0.005 * im.size:
+            # near-UNIFORM in ANY luminance band: the G8 page-reload resync
+            # windows paint solid states — the ttyd page's dark pre-attach,
+            # the browser's white pre-CSS flash, xterm's mid-gray mid-attach
+            # (found live, dream-dashboard 2026-10-23: a solid-gray frame at
+            # the still-01 desync reload sailed into the MP4 and failed the
+            # video VLM gate). A frame whose pixels sit >=99.5% inside one
+            # 32-wide luminance band is plumbing, not content — a real TUI
+            # frame spreads across bands (dark bg + bright text + color).
+            hist, _ = _np.histogram(im, bins=8, range=(0, 256))
+            if hist.max() >= 0.995 * im.size:
                 keep.discard(i)
         except Exception:
             pass

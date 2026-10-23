@@ -334,11 +334,11 @@ describe("landing DexSection", () => {
     }
   });
 
-  test("the media is the harness's audited set — nine movies, one still, nothing invented", () => {
+  test("the media is the harness's audited set — twelve movies, one still, nothing invented", () => {
     const { container } = render(<DexSection />);
     const videos = Array.from(container.querySelectorAll("video"));
     expect(videos.length).toBe(TALLY.videos);
-    expect(videos.length).toBe(9);
+    expect(videos.length).toBe(12);
     for (const v of videos) {
       // Never an autoplay attribute — playback is an effect decision, so a
       // reduced-motion visitor is never handed one in the markup.
@@ -381,7 +381,7 @@ describe("landing DexSection", () => {
       (n) => n.textContent === "no capture yet",
     );
     expect(stubs.length).toBe(TALLY.pending);
-    expect(stubs.length).toBe(12);
+    expect(stubs.length).toBe(9);
     // …and the band states who makes them, once, not once per empty stage.
     expect(container.textContent).toContain("scripts/tui-capture/");
     expect(

@@ -30,7 +30,20 @@ wall-of-green pixel measurements — live in
 | fleet | async spawn → fleet widget (waiting-for-answer) → ask_question → task_control steer answer → result steered back → /tasks resume registry | 5 stills + mp4/webm/gif |
 | wiki | /wiki generate → search with scores | 3 stills + mp4/webm/gif |
 | cli-doctor | shell showcase: doctor, models, usage | 3 stills + mp4/webm/gif |
+| memory-learn | two sessions in one pane: teach house rules + a real task → /note the lesson → /quit → AutoDream consolidates → a fresh session boots with the learned memory (footer chip v0 → vN) → /memory search recalls it scored → the closing task applies the lesson unprompted | 6 stills + mp4/webm |
+| browser-verify | the visitor check: browser tool opens the landing page on :3000 → a11y snapshot → the exact curl install command → click the GitHub link → screenshot → report | 3 stills + mp4/webm |
+| dream-dashboard | `unown dashboard dreams`: the real dream rows → dream detail (canary/guard note, rendered output) → the Memory screen (four tiers, injection budget) | 3 stills + mp4/webm |
 | split-view | the split-view display mode: the thinking + tools band, the files dock with its edit-diff subpanel, the geometry commands, live reasoning, an agent turn | 5 stills (see the note below) |
+
+The memory-learn / browser-verify / dream-dashboard lanes were captured
+2026-10-23 against the live stack (bridge + engine, agnes-3.0-flash through
+the Agnes AI upstream, the ONNX bge-small embedder installed for real
+semantic recall) — the first lanes captured with the post-swap memory
+platform. The memory-learn lane is the catalog's first two-session story
+(one pane, one take): its mid-scenario AutoDream trigger is the same engine
+path the dashboard's "dream now" key hits (`POST /api/dreams/run`), and its
+closing still receipts the lesson applied unprompted ("bun test run twice
+(per this repo's flake-guard convention) — 6/6 passing both times").
 
 Stills are full-frame (128x36 grid, ~2214px wide, everything the user sees:
 header/transcript, input box, cwd + model status). Videos are paced (8fps,

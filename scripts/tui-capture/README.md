@@ -64,7 +64,10 @@ a pane dump at every still — the audit's ground truth), `<scenario>.mp4`,
 | s7-wiki | /wiki generate → search with scores | `default` (runs in the demo dir) |
 | s8-cli-doctor | shell: doctor, models, usage | `default` |
 | s9-fleet | async spawn → fleet widget → ask_question → task_control steer answer → result → /tasks registry | — (runs in the repo) |
+| s10-memory-learn | teach house rules + a real task → /note the lesson → /quit → AutoDream consolidates → a fresh session boots with the learned memory (footer chip v0 → v1) → /learning stack → the lesson applied unprompted | `default` (pristine `.unown` scaffold — no provenance sidecar) |
+| s11-browser-verify | browser tool visitor check: open the landing page on :3000 → a11y snapshot → find the curl install command → click the GitHub link → screenshot → report | — (repo; landing dev server already up on :3000) |
+| s12-dream-dashboard | `unown dashboard dreams`: the real dream rows → dream detail (canary/guard note, output, consumed notes) → Memory screen (tiers, versions, injection budget) | — (repo; richest after s10 — its dream is the newest row) |
 
-Scenarios share one port block (7610–7618); run one at a time against the same
+Scenarios share one port block (7610–7621); run one at a time against the same
 fixture. `driver.js` closes gracefully on SIGTERM (time-box long scenarios with
 `timeout 575` and re-run on failure — never edit a failed frame).

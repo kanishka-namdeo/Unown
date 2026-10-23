@@ -319,7 +319,13 @@ const RAW: readonly DexEntryInput[] = [
     ],
     habitat: "rides every prompt, session and subagent",
     receipts: [["memory.ts", SRC("memory.ts")]],
-    captures: PENDING,
+    // The memory-learn lane: two sessions in one pane — teach the house
+    // rules + a real task, /note the lesson, /quit; AutoDream consolidates
+    // behind the scenes; a fresh session boots with the learned memory (the
+    // footer chip v0 → vN), /memory search recalls it as a scored result,
+    // and the closing task applies the lesson unprompted (bun, the test
+    // suite run twice, both tallies quoted).
+    captures: [REEL("memory-learn", "01-fresh-session-v0.png")],
   },
   {
     kind: "form",
@@ -368,7 +374,12 @@ const RAW: readonly DexEntryInput[] = [
     ],
     habitat: "runs in the engine, overnight",
     receipts: [["dream.ts", SRC("dream.ts")]],
-    captures: PENDING,
+    // The dream-dashboard lane: `unown dashboard dreams` against the live
+    // engine — the real dream rows (done/gated/error, notes → merged ·
+    // pruned · added), the dream detail with its canary/guard note and
+    // rendered output, and the Memory screen's four tiers + injection
+    // budget.
+    captures: [REEL("dream-dashboard", "01-dreams.png")],
   },
   {
     kind: "form",
@@ -438,7 +449,11 @@ const RAW: readonly DexEntryInput[] = [
       ["docs/browser.md", DOC("docs/browser.md")],
       ["stealth live tests", SRC("../test/browser-stealth-live.test.ts")],
     ],
-    captures: PENDING,
+    // The browser-verify lane: the visitor check — the agent opens the
+    // landing page on the local dev server with its browser tool (web
+    // navigate → a11y snapshot), finds the exact curl install command,
+    // clicks the GitHub link, screenshots where it landed, and reports.
+    captures: [REEL("browser-verify", "01-session.png")],
   },
 
   /* ---------------------------------------------------------------- */
