@@ -33,9 +33,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
@@ -78,7 +78,7 @@ jobs:
           if (fail.length) { console.error("H6 THRESHOLD FAILURES:\n- " + fail.join("\n- ")); process.exit(1); }
           console.log("H6 thresholds OK on " + process.platform);
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: local-llm-probe-${{ matrix.os }}
