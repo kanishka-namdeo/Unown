@@ -456,7 +456,7 @@ export async function runDream(opts: DreamOpts = {}): Promise<DreamResult> {
 			guard: { action: guard.action, flags: guard.flags, summary: guardSummary(guard) },
 		};
 	} catch (err: any) {
-		const msg = err?.message ?? String(err);
+		const msg = err instanceof Error ? err.message : String(err);
 		store.run(`UPDATE dreams SET ended_at = ?, status = 'error', note = ? WHERE id = ?`, [Date.now(), msg, id]);
 		emit("dream:finished", { id, status: "error", error: msg });
 		return { id, status: "error", notesIn: notes.length, merged: 0, pruned: 0, added: 0, output: "", error: msg };
@@ -1009,7 +1009,7 @@ export async function runProjectDream(opts: DreamOpts = {}): Promise<ProjectDrea
 				hoist: hoist ?? undefined,
 			});
 		} catch (err: any) {
-			const msg = err?.message ?? String(err);
+			const msg = err instanceof Error ? err.message : String(err);
 			const dreamId = `project-${randomUUID()}`;
 			let note = `project dream error (${group.slug}): ${msg}`;
 			// Partial-apply unwind (the 2026-10-22 partial-ship fix), scoped to

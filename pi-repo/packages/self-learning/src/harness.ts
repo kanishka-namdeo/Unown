@@ -579,7 +579,7 @@ export async function runCycle(taskId: string, opts: { maxIterations?: number } 
                         summary,
                 };
         } catch (err: any) {
-                const msg = err?.message ?? String(err);
+                const msg = err instanceof Error ? err.message : String(err);
                 store.run(`UPDATE cycles SET status = 'no-fix', ended_at = ?, summary = ? WHERE id = ?`, [
                         Date.now(),
                         `error: ${msg}`,

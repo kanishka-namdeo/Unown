@@ -370,7 +370,7 @@ export function registerContextTools(pi: ExtensionAPI, opts: ContextToolsOptions
                 };
             } catch (err: any) {
                 return {
-                    content: [{ type: "text", text: `get_context_remaining failed: ${err?.message ?? String(err)}` }],
+                    content: [{ type: "text", text: `get_context_remaining failed: ${err instanceof Error ? err.message : String(err)}` }],
                     isError: true,
                 };
             }
@@ -410,7 +410,7 @@ export function registerContextTools(pi: ExtensionAPI, opts: ContextToolsOptions
                 };
             } catch (err: any) {
                 return {
-                    content: [{ type: "text", text: `view_image failed: ${err?.message ?? String(err)}` }],
+                    content: [{ type: "text", text: `view_image failed: ${err instanceof Error ? err.message : String(err)}` }],
                     isError: true,
                 };
             }

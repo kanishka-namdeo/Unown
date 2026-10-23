@@ -629,7 +629,7 @@ export function registerGitTools(pi: ExtensionAPI, opts: GitToolsOptions): void 
                         return;
                 }
             } catch (err: any) {
-                ctx.ui.notify(`/commit failed: ${err?.message ?? String(err)}`, "error");
+                ctx.ui.notify(`/commit failed: ${err instanceof Error ? err.message : String(err)}`, "error");
             }
         },
     });
@@ -659,7 +659,7 @@ export function registerGitTools(pi: ExtensionAPI, opts: GitToolsOptions): void 
             }
         } catch (err: any) {
             // Shutdown must never break on our account.
-            log(`auto-commit error: ${err?.message ?? String(err)}`);
+            log(`auto-commit error: ${err instanceof Error ? err.message : String(err)}`);
         }
     });
 }

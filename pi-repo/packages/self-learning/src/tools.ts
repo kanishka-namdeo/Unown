@@ -2259,7 +2259,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					return { content: [{ type: "text", text }] };
 				} catch (err: any) {
 					return {
-						content: [{ type: "text", text: `fetch_url failed: ${err?.message ?? String(err)}` }],
+						content: [{ type: "text", text: `fetch_url failed: ${err instanceof Error ? err.message : String(err)}` }],
 						isError: true,
 					};
 				}
@@ -2492,7 +2492,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					return { content: [{ type: "text", text: `Error: unknown action ${params.action}` }] };
 				} catch (err: any) {
 					return {
-						content: [{ type: "text", text: `lsp ${params.action} failed: ${err?.message ?? String(err)}` }],
+						content: [{ type: "text", text: `lsp ${params.action} failed: ${err instanceof Error ? err.message : String(err)}` }],
 						isError: true,
 					};
 				}

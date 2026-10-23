@@ -1462,7 +1462,7 @@ function kickSwrSearchRefresh(ckey: SearchCacheKey, query: string, opts: WebSear
                         });
                         webCacheLogEvent({ ts: Date.now(), kind: "miss", tool: "web_search", provider: outcome.provider, detail: `${query.slice(0, 80)} (swr refresh)` });
                 } catch (err) {
-                        webCacheLogEvent({ ts: Date.now(), kind: "error", tool: "web_search", detail: `swr refresh failed: ${(err as Error)?.message ?? String(err)}`.slice(0, 120) });
+                        webCacheLogEvent({ ts: Date.now(), kind: "error", tool: "web_search", detail: `swr refresh failed: ${err instanceof Error ? err.message : String(err)}`.slice(0, 120) });
                 }
         }).catch(() => {
                 /* detached by contract */
@@ -1584,7 +1584,7 @@ async function runWebSearchUncached(query: string, opts: WebSearchOptions): Prom
                         attempted.push({ provider: id, ok: true, note: `${results.length} results` });
                         return { results, provider: id, attempted, query };
                 } catch (err: any) {
-                        attempted.push({ provider: id, ok: false, note: err?.message ?? String(err) });
+                        attempted.push({ provider: id, ok: false, note: err instanceof Error ? err.message : String(err) });
                 }
         }
         const notes = attempted.map((a) => `${a.provider}: ${a.note}`).join("; ");
@@ -1986,7 +1986,7 @@ function kickSwrFetchRefresh(
                         storeFetchOutcome(ckey, outcome, tool, url);
                         webCacheLogEvent({ ts: Date.now(), kind: "miss", tool, provider: outcome.method, detail: `${url.host} (swr refresh)` });
                 } catch (err) {
-                        webCacheLogEvent({ ts: Date.now(), kind: "error", tool, detail: `swr refresh failed: ${(err as Error)?.message ?? String(err)}`.slice(0, 120) });
+                        webCacheLogEvent({ ts: Date.now(), kind: "error", tool, detail: `swr refresh failed: ${err instanceof Error ? err.message : String(err)}`.slice(0, 120) });
                 }
         }).catch(() => {
                 /* detached by contract */
@@ -2049,7 +2049,7 @@ async function fetchOutcomeUncached(
                         return outcome;
                 } catch (err: any) {
                         if (err?.message?.includes("SSRF guard") || err?.message?.includes("robots.txt disallows")) throw err;
-                        notes.push(err?.message ?? String(err));
+                        notes.push(err instanceof Error ? err.message : String(err));
                 }
         }
         throw new Error(`webfetch failed for ${url.toString()} — ${notes.join("; ")}`);
@@ -2131,7 +2131,7 @@ export function registerWebTools(pi: ExtensionAPI, opts: WebToolsOptions = {}): 
                                 return { content: [{ type: "text", text }] };
                         } catch (err: any) {
                                 return {
-                                        content: [{ type: "text", text: `web_search failed: ${err?.message ?? String(err)}` }],
+                                        content: [{ type: "text", text: `web_search failed: ${err instanceof Error ? err.message : String(err)}` }],
                                         isError: true,
                                 };
                         }
@@ -2270,7 +2270,7 @@ export function registerWebTools(pi: ExtensionAPI, opts: WebToolsOptions = {}): 
                                 return { content: [{ type: "text", text: shieldWebText(pi, log, text, `webfetch:${params.url}`) }] };
                         } catch (err: any) {
                                 return {
-                                        content: [{ type: "text", text: `webfetch failed: ${err?.message ?? String(err)}` }],
+                                        content: [{ type: "text", text: `webfetch failed: ${err instanceof Error ? err.message : String(err)}` }],
                                         isError: true,
                                 };
                         }

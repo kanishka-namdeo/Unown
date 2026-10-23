@@ -37,7 +37,7 @@ export function onAsync(event: string, handler: (payload: any) => void | Promise
 		try {
 			await handler(payload);
 		} catch (err: any) {
-			emit("router:error", { event, error: err?.message ?? String(err) });
+			emit("router:error", { event, error: err instanceof Error ? err.message : String(err) });
 		}
 	};
 	bus.on(event, wrapper);

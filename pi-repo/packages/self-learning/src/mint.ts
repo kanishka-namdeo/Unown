@@ -401,7 +401,7 @@ async function runMintPipeline(
                 });
         } catch (err: any) {
                 store.run(`UPDATE tasks SET status = 'discarded' WHERE id = ?`, [def.id]);
-                return { status: "error", taskId: def.id, reason: `validation run threw: ${err?.message ?? String(err)}` };
+                return { status: "error", taskId: def.id, reason: `validation run threw: ${err instanceof Error ? err.message : String(err)}` };
         }
 
         if (validation.status === "failed") {

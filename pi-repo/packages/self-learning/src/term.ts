@@ -884,7 +884,7 @@ export async function deliverTerminalNote(
                         writeOutboxNote(note);
                         return { delivered: false, via: "outbox" as const, detail };
                 } catch (err: any) {
-                        const detail = err?.message ?? String(err);
+                        const detail = err instanceof Error ? err.message : String(err);
                         writeOutboxNote(note);
                         return {
                                 delivered: false,

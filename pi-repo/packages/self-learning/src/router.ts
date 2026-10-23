@@ -376,7 +376,7 @@ export class Router {
                         try {
                                 result = await Promise.race([work, watchdog]);
                         } catch (err: any) {
-                                const message = err?.message ?? String(err);
+                                const message = err instanceof Error ? err.message : String(err);
                                 failure = message;
                                 if (message.startsWith("watchdog:")) {
                                         emit("router:watchdog", { id: jobId, timeoutMs });

@@ -172,7 +172,7 @@ export function registerBrowserTools(pi: ExtensionAPI, opts: BrowserToolsOptions
                                         details: { action: params.action, summary: report.summary, ms: Date.now() - started },
                                 };
                         } catch (err: any) {
-                                const msg = err?.message ?? String(err);
+                                const msg = err instanceof Error ? err.message : String(err);
                                 log(`${params.action} failed: ${msg}`);
                                 return {
                                         content: [{ type: "text", text: `browser ${params.action} failed: ${msg}` }],

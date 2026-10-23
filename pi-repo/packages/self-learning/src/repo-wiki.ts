@@ -380,7 +380,7 @@ export async function generateModulePage(module: ModuleInfo, ctx: WikiRunContext
 			}
 		} catch (err: any) {
 			// SchemaError — the SCHEMA is malformed (should never happen here).
-			return errorPage(pagePath, module, `schema error: ${err?.message ?? String(err)}`);
+			return errorPage(pagePath, module, `schema error: ${err instanceof Error ? err.message : String(err)}`);
 		}
 
 		const data = extracted.data as {
@@ -417,7 +417,7 @@ export async function generateModulePage(module: ModuleInfo, ctx: WikiRunContext
 			content,
 		};
 	} catch (err: any) {
-		return errorPage(pagePath, module, `subagent call failed: ${err?.message ?? String(err)}`);
+		return errorPage(pagePath, module, `subagent call failed: ${err instanceof Error ? err.message : String(err)}`);
 	}
 }
 

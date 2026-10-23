@@ -17,7 +17,7 @@ export function boot(argv: string[]): void {
         // the user can attach to a report themselves — see crash.ts.
         const crashPath = writeCrashRecord(err);
         const e = err as { message?: string } | null;
-        console.error("unown:", e?.message ?? String(err));
+        console.error("unown:", err instanceof Error ? err.message : String(err));
         if (crashPath) console.error(`crash record: ${crashPath} — attach it if you report this (also: unown info)`);
         process.exit(1);
     });

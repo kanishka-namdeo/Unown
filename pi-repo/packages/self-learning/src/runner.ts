@@ -637,7 +637,7 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
                                 : "passed";
                 return await finalize(status, verify);
         } catch (err: any) {
-                const runError = err?.message ?? String(err);
+                const runError = err instanceof Error ? err.message : String(err);
                 try {
                         return await finalize("error", undefined, runError);
                 } catch (finErr: any) {
