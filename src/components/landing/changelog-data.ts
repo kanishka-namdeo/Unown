@@ -30,19 +30,44 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 256;
+export const CHANGELOG_TOTAL_ENTRIES = 257;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 102,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 103,
+  "Fixed": 104,
   "Security": 0,
   "Behavior": 30
 };
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
+  {
+    "label": "Unreleased",
+    "date": null,
+    "total": 1,
+    "counts": {
+      "Added": 0,
+      "Changed": 0,
+      "Deprecated": 0,
+      "Removed": 0,
+      "Fixed": 1,
+      "Security": 0,
+      "Behavior": 0
+    },
+    "groups": [
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "landing: the scroll-budget breach the v0.0.12 stop caused — MAX_LISTED 3→2, the rail's own valve again",
+            "behavior": false
+          }
+        ]
+      }
+    ]
+  },
   {
     "label": "0.0.12",
     "date": "2026-10-24",
@@ -61,7 +86,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "release: the pending-plates round ships with the Windows release-gate fixes",
+            "title": "release: the pending-plates round ships with the Windows release-gate fixes — v0.0.12 supersedes the failed…",
             "behavior": false
           }
         ]
