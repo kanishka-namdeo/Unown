@@ -333,10 +333,15 @@ async function fireSessionStart(opts: {
 			},
 		},
 	};
+	// Hermetic by default: ambient NO_COLOR / UNOWN_NO_SPLASH (exported in a
+	// developer shell, or CI images that set NO_COLOR globally) must not leak
+	// into "a real boot installs the header" — only opts.env controls them.
 	const savedNoColor = process.env.NO_COLOR;
 	const savedKill = process.env[UNOWN_NO_SPLASH_ENV];
 	if (opts.env?.NO_COLOR !== undefined) process.env.NO_COLOR = opts.env.NO_COLOR;
+	else delete process.env.NO_COLOR;
 	if (opts.env?.[UNOWN_NO_SPLASH_ENV] !== undefined) process.env[UNOWN_NO_SPLASH_ENV] = opts.env[UNOWN_NO_SPLASH_ENV];
+	else delete process.env[UNOWN_NO_SPLASH_ENV];
 	try {
 		for (const handler of handlers) {
 			await handler({ type: "session_start", reason: opts.reason ?? "startup" } as never, ctx as never);
@@ -373,8 +378,18 @@ describe("extension wiring", () => {
 			on: (_e: string, h: (event: never, ctx: never) => Promise<void>) => handlers.push(h),
 		} as never);
 		const ctx = { mode: "tui", ui: { setHeader: (f?: unknown) => (f ? 1 : 0) } };
-		for (let i = 0; i < 3; i++) {
-			for (const h of handlers) await h({ type: "session_start", reason: "startup" } as never, ctx as never);
+		// Hermetic: the ambient shell's NO_COLOR must not block the mark.
+		const savedNoColor = process.env.NO_COLOR;
+		const savedKill = process.env[UNOWN_NO_SPLASH_ENV];
+		delete process.env.NO_COLOR;
+		delete process.env[UNOWN_NO_SPLASH_ENV];
+		try {
+			for (let i = 0; i < 3; i++) {
+				for (const h of handlers) await h({ type: "session_start", reason: "startup" } as never, ctx as never);
+			}
+		} finally {
+			if (savedNoColor !== undefined) process.env.NO_COLOR = savedNoColor;
+			if (savedKill !== undefined) process.env[UNOWN_NO_SPLASH_ENV] = savedKill;
 		}
 		expect(handlers.length).toBe(1);
 		expect(readOnboardingState(home).tipsSeen).toContain(SPLASH_DECODE_TIP);
