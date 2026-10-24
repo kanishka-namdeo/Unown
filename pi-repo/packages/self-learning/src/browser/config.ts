@@ -37,90 +37,95 @@ export const BROWSER_VIEWPORT = { width: 1280, height: 720 };
  * in stealth.ts; this shape is what session.ts consumes.
  */
 export interface BrowserEnv {
-        /** Explicit executable path (UNOWN_BROWSER_PATH). */
-        executablePath?: string;
-        /** Attach to a running browser instead of launching (UNOWN_BROWSER_CDP). */
-        cdpUrl?: string;
-        /** 1 (default) headless, 0 headed. */
-        headless: boolean;
-        /** Persistent user-data-dir (UNOWN_BROWSER_PROFILE). */
-        profileDir?: string;
-        /** Host-glob deny list (UNOWN_BROWSER_BLOCK, comma-separated). */
-        blockList: string[];
-        /** Stealth mode on (UNOWN_BROWSER_STEALTH=1; the `start` action can override). */
-        stealth: boolean;
-        /** UNOWN_BROWSER_OS — claimed OS identity (windows|macos|linux). */
-        stealthOs?: string;
-        /** UNOWN_BROWSER_USER_AGENT — explicit UA override. */
-        stealthUserAgent?: string;
-        /** UNOWN_BROWSER_LOCALE. */
-        stealthLocale?: string;
-        /** UNOWN_BROWSER_TIMEZONE. */
-        stealthTimezone?: string;
-        /** UNOWN_BROWSER_SCREEN (WxH). */
-        stealthScreen?: string;
-        /** UNOWN_BROWSER_HUMANIZE ("0" disables; default on in stealth). */
-        stealthHumanize?: string;
-        /** UNOWN_BROWSER_PROXY (http://host:port, socks5://..., host:port). */
-        proxy?: string;
-        /** UNOWN_CAPTCHA_SOLVER (2captcha | capsolver | none; default: auto from keys). */
-        captchaSolver?: string;
-        /** 2Captcha API key. */
-        twoCaptchaKey?: string;
-        /** CapSolver API key. */
-        capSolverKey?: string;
-        /** UNOWN_CAPTCHA_AUTO=1 — attempt solving automatically after navigate. */
-        captchaAuto: boolean;
-        /** UNOWN_CAPTCHA_VISION ("0" disables; default on when a vision key exists). */
-        captchaVision?: string;
-        /** Vision endpoint for image-captcha OCR (default: the Agnes preset). */
-        visionBaseUrl?: string;
-        visionApiKey?: string;
-        visionModel?: string;
+	/** Explicit executable path (UNOWN_BROWSER_PATH). */
+	executablePath?: string;
+	/** Attach to a running browser instead of launching (UNOWN_BROWSER_CDP). */
+	cdpUrl?: string;
+	/** 1 (default) headless, 0 headed. */
+	headless: boolean;
+	/** UNOWN_BROWSER_NO_SANDBOX ("1" adds --no-sandbox --disable-gpu on
+	 *  the FIRST launch — containers/CI; the retry path always forces them). */
+	noSandbox: boolean;
+	/** Persistent user-data-dir (UNOWN_BROWSER_PROFILE). */
+	profileDir?: string;
+	/** Host-glob deny list (UNOWN_BROWSER_BLOCK, comma-separated). */
+	blockList: string[];
+	/** Stealth mode on (UNOWN_BROWSER_STEALTH=1; the `start` action can override). */
+	stealth: boolean;
+	/** UNOWN_BROWSER_OS — claimed OS identity (windows|macos|linux). */
+	stealthOs?: string;
+	/** UNOWN_BROWSER_USER_AGENT — explicit UA override. */
+	stealthUserAgent?: string;
+	/** UNOWN_BROWSER_LOCALE. */
+	stealthLocale?: string;
+	/** UNOWN_BROWSER_TIMEZONE. */
+	stealthTimezone?: string;
+	/** UNOWN_BROWSER_SCREEN (WxH). */
+	stealthScreen?: string;
+	/** UNOWN_BROWSER_HUMANIZE ("0" disables; default on in stealth). */
+	stealthHumanize?: string;
+	/** UNOWN_BROWSER_PROXY (http://host:port, socks5://..., host:port). */
+	proxy?: string;
+	/** UNOWN_CAPTCHA_SOLVER (2captcha | capsolver | none; default: auto from keys). */
+	captchaSolver?: string;
+	/** 2Captcha API key. */
+	twoCaptchaKey?: string;
+	/** CapSolver API key. */
+	capSolverKey?: string;
+	/** UNOWN_CAPTCHA_AUTO=1 — attempt solving automatically after navigate. */
+	captchaAuto: boolean;
+	/** UNOWN_CAPTCHA_VISION ("0" disables; default on when a vision key exists). */
+	captchaVision?: string;
+	/** Vision endpoint for image-captcha OCR (default: the Agnes preset). */
+	visionBaseUrl?: string;
+	visionApiKey?: string;
+	visionModel?: string;
 }
 
 export function browserEnv(): BrowserEnv {
-        return {
-                executablePath: process.env.UNOWN_BROWSER_PATH?.trim() || undefined,
-                cdpUrl: process.env.UNOWN_BROWSER_CDP?.trim() || undefined,
-                headless: process.env.UNOWN_BROWSER_HEADLESS !== "0",
-                profileDir: process.env.UNOWN_BROWSER_PROFILE?.trim() || undefined,
-                blockList: (process.env.UNOWN_BROWSER_BLOCK || "")
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean),
-                stealth: process.env.UNOWN_BROWSER_STEALTH === "1",
-                stealthOs: process.env.UNOWN_BROWSER_OS?.trim() || undefined,
-                stealthUserAgent: process.env.UNOWN_BROWSER_USER_AGENT?.trim() || undefined,
-                stealthLocale: process.env.UNOWN_BROWSER_LOCALE?.trim() || undefined,
-                stealthTimezone: process.env.UNOWN_BROWSER_TIMEZONE?.trim() || undefined,
-                stealthScreen: process.env.UNOWN_BROWSER_SCREEN?.trim() || undefined,
-                stealthHumanize: process.env.UNOWN_BROWSER_HUMANIZE?.trim() || undefined,
-                proxy: process.env.UNOWN_BROWSER_PROXY?.trim() || undefined,
-                captchaSolver: process.env.UNOWN_CAPTCHA_SOLVER?.trim() || undefined,
-                twoCaptchaKey: process.env.UNOWN_CAPTCHA_2CAPTCHA_KEY?.trim() || process.env.TWOCAPTCHA_API_KEY?.trim() || undefined,
-                capSolverKey: process.env.UNOWN_CAPTCHA_CAPSOLVER_KEY?.trim() || process.env.CAPSOLVER_API_KEY?.trim() || undefined,
-                captchaAuto: process.env.UNOWN_CAPTCHA_AUTO === "1",
-                captchaVision: process.env.UNOWN_CAPTCHA_VISION?.trim() || undefined,
-                visionBaseUrl: process.env.UNOWN_VISION_BASE_URL?.trim() || undefined,
-                visionApiKey:
-                        process.env.UNOWN_VISION_API_KEY?.trim() || process.env.AGNES_API_KEY?.trim() || undefined,
-                visionModel: process.env.UNOWN_VISION_MODEL?.trim() || undefined,
-        };
+	return {
+		executablePath: process.env.UNOWN_BROWSER_PATH?.trim() || undefined,
+		cdpUrl: process.env.UNOWN_BROWSER_CDP?.trim() || undefined,
+		headless: process.env.UNOWN_BROWSER_HEADLESS !== "0",
+		noSandbox: process.env.UNOWN_BROWSER_NO_SANDBOX === "1",
+		profileDir: process.env.UNOWN_BROWSER_PROFILE?.trim() || undefined,
+		blockList: (process.env.UNOWN_BROWSER_BLOCK || "")
+			.split(",")
+			.map((s) => s.trim())
+			.filter(Boolean),
+		stealth: process.env.UNOWN_BROWSER_STEALTH === "1",
+		stealthOs: process.env.UNOWN_BROWSER_OS?.trim() || undefined,
+		stealthUserAgent: process.env.UNOWN_BROWSER_USER_AGENT?.trim() || undefined,
+		stealthLocale: process.env.UNOWN_BROWSER_LOCALE?.trim() || undefined,
+		stealthTimezone: process.env.UNOWN_BROWSER_TIMEZONE?.trim() || undefined,
+		stealthScreen: process.env.UNOWN_BROWSER_SCREEN?.trim() || undefined,
+		stealthHumanize: process.env.UNOWN_BROWSER_HUMANIZE?.trim() || undefined,
+		proxy: process.env.UNOWN_BROWSER_PROXY?.trim() || undefined,
+		captchaSolver: process.env.UNOWN_CAPTCHA_SOLVER?.trim() || undefined,
+		twoCaptchaKey:
+			process.env.UNOWN_CAPTCHA_2CAPTCHA_KEY?.trim() || process.env.TWOCAPTCHA_API_KEY?.trim() || undefined,
+		capSolverKey:
+			process.env.UNOWN_CAPTCHA_CAPSOLVER_KEY?.trim() || process.env.CAPSOLVER_API_KEY?.trim() || undefined,
+		captchaAuto: process.env.UNOWN_CAPTCHA_AUTO === "1",
+		captchaVision: process.env.UNOWN_CAPTCHA_VISION?.trim() || undefined,
+		visionBaseUrl: process.env.UNOWN_VISION_BASE_URL?.trim() || undefined,
+		visionApiKey: process.env.UNOWN_VISION_API_KEY?.trim() || process.env.AGNES_API_KEY?.trim() || undefined,
+		visionModel: process.env.UNOWN_VISION_MODEL?.trim() || undefined,
+	};
 }
 
 /** Default persistent profile: <unown home>/browser/profile. */
 export function defaultProfileDir(unownHome?: string): string {
-        // `||`, never `??` (the repo's env convention): the repo-root .env
-        // ships UNOWN_HOME= EMPTY, and an empty string must mean "unset" or
-        // the profile lands at <cwd>/browser/profile instead of ~/.unown.
-        const home = unownHome || process.env.UNOWN_HOME || join(homedir(), ".unown");
-        return join(home, "browser", "profile");
+	// `||`, never `??` (the repo's env convention): the repo-root .env
+	// ships UNOWN_HOME= EMPTY, and an empty string must mean "unset" or
+	// the profile lands at <cwd>/browser/profile instead of ~/.unown.
+	const home = unownHome || process.env.UNOWN_HOME || join(homedir(), ".unown");
+	return join(home, "browser", "profile");
 }
 
 function envInt(name: string, fallback: number): number {
-        const n = Number(process.env[name] ?? "");
-        return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+	const n = Number(process.env[name] ?? "");
+	return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,10 +133,10 @@ function envInt(name: string, fallback: number): number {
 // ---------------------------------------------------------------------------
 
 export interface DiscoveredBrowser {
-        /** Absolute path to a Chrome/Chromium-family executable. */
-        path: string;
-        /** How it was found ("env" | "system" | "playwright-cache"). */
-        source: string;
+	/** Absolute path to a Chrome/Chromium-family executable. */
+	path: string;
+	/** How it was found ("env" | "system" | "playwright-cache"). */
+	source: string;
 }
 
 /**
@@ -139,71 +144,71 @@ export interface DiscoveredBrowser {
  * tests; the production entry point is {@link discoverBrowser}.
  */
 export function browserCandidates(
-        platform: NodeJS.Platform,
-        dirs: { home: string; envPath?: string; localAppData?: string },
+	platform: NodeJS.Platform,
+	dirs: { home: string; envPath?: string; localAppData?: string },
 ): string[] {
-        const out: string[] = [];
-        if (dirs.envPath) out.push(dirs.envPath);
+	const out: string[] = [];
+	if (dirs.envPath) out.push(dirs.envPath);
 
-        if (platform === "win32") {
-                // literal backslash strings, NOT path.join: join() uses the
-                // HOST separator, so a linux-run test with platform="win32"
-                // would produce mixed-separator paths (and the compiled
-                // windows binary must see real backslash paths).
-                const lad = dirs.localAppData ?? `${dirs.home}\\AppData\\Local`;
-                const pf = "C:\\Program Files";
-                const pf86 = "C:\\Program Files (x86)";
-                out.push(
-                        `${pf}\\Google\\Chrome\\Application\\chrome.exe`,
-                        `${pf86}\\Google\\Chrome\\Application\\chrome.exe`,
-                        `${lad}\\Google\\Chrome\\Application\\chrome.exe`,
-                        `${pf}\\Microsoft\\Edge\\Application\\msedge.exe`,
-                        `${pf86}\\Microsoft\\Edge\\Application\\msedge.exe`,
-                        `${lad}\\Microsoft\\Edge\\Application\\msedge.exe`,
-                        `${lad}\\Chromium\\Application\\chrome.exe`,
-                );
-        } else if (platform === "darwin") {
-                out.push(
-                        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                        join(dirs.home, "Applications", "Google Chrome.app/Contents/MacOS/Google Chrome"),
-                        "/Applications/Chromium.app/Contents/MacOS/Chromium",
-                        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-                        "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary",
-                );
-        } else {
-                out.push(
-                        "/usr/bin/google-chrome",
-                        "/usr/bin/google-chrome-stable",
-                        "/usr/bin/chromium",
-                        "/usr/bin/chromium-browser",
-                        "/opt/google/chrome/chrome",
-                        "/usr/bin/microsoft-edge",
-                        "/usr/bin/microsoft-edge-stable",
-                        "/snap/bin/chromium",
-                );
-        }
+	if (platform === "win32") {
+		// literal backslash strings, NOT path.join: join() uses the
+		// HOST separator, so a linux-run test with platform="win32"
+		// would produce mixed-separator paths (and the compiled
+		// windows binary must see real backslash paths).
+		const lad = dirs.localAppData ?? `${dirs.home}\\AppData\\Local`;
+		const pf = "C:\\Program Files";
+		const pf86 = "C:\\Program Files (x86)";
+		out.push(
+			`${pf}\\Google\\Chrome\\Application\\chrome.exe`,
+			`${pf86}\\Google\\Chrome\\Application\\chrome.exe`,
+			`${lad}\\Google\\Chrome\\Application\\chrome.exe`,
+			`${pf}\\Microsoft\\Edge\\Application\\msedge.exe`,
+			`${pf86}\\Microsoft\\Edge\\Application\\msedge.exe`,
+			`${lad}\\Microsoft\\Edge\\Application\\msedge.exe`,
+			`${lad}\\Chromium\\Application\\chrome.exe`,
+		);
+	} else if (platform === "darwin") {
+		out.push(
+			"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+			join(dirs.home, "Applications", "Google Chrome.app/Contents/MacOS/Google Chrome"),
+			"/Applications/Chromium.app/Contents/MacOS/Chromium",
+			"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+			"/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary",
+		);
+	} else {
+		out.push(
+			"/usr/bin/google-chrome",
+			"/usr/bin/google-chrome-stable",
+			"/usr/bin/chromium",
+			"/usr/bin/chromium-browser",
+			"/opt/google/chrome/chrome",
+			"/usr/bin/microsoft-edge",
+			"/usr/bin/microsoft-edge-stable",
+			"/snap/bin/chromium",
+		);
+	}
 
-        // Playwright cache (the headless shell counts — for a headless default it
-        // is a full Chromium, just without a headed UI). The <WILDCARD> marker
-        // stands for the versioned dir segment (chromium-1200, …).
-        const cacheRoots =
-                platform === "win32"
-                        ? [`${dirs.localAppData ?? `${dirs.home}\\AppData\\Local`}\\ms-playwright`]
-                        : platform === "darwin"
-                                ? [`${dirs.home}/Library/Caches/ms-playwright`]
-                                : [`${dirs.home}/.cache/ms-playwright`];
-        for (const root of cacheRoots) {
-                out.push(
-                        `${root}/chromium-<WILDCARD>/chrome-linux/chrome`,
-                        `${root}/chromium-<WILDCARD>/chrome-linux64/chrome`,
-                        `${root}/chromium-<WILDCARD>/chrome-mac/Chromium.app/Contents/MacOS/Chromium`,
-                        `${root}/chrome-headless_shell-<WILDCARD>/chrome-linux/chrome-headless-shell`,
-                        `${root}/chrome-headless_shell-<WILDCARD>/chrome-linux64/chrome-headless-shell`,
-                        `${root}/chromium_headless_shell-<WILDCARD>/chrome-linux/headless_shell`,
-                        `${root}/chromium_headless_shell-<WILDCARD>/chrome-linux64/headless_shell`,
-                );
-        }
-        return out;
+	// Playwright cache (the headless shell counts — for a headless default it
+	// is a full Chromium, just without a headed UI). The <WILDCARD> marker
+	// stands for the versioned dir segment (chromium-1200, …).
+	const cacheRoots =
+		platform === "win32"
+			? [`${dirs.localAppData ?? `${dirs.home}\\AppData\\Local`}\\ms-playwright`]
+			: platform === "darwin"
+				? [`${dirs.home}/Library/Caches/ms-playwright`]
+				: [`${dirs.home}/.cache/ms-playwright`];
+	for (const root of cacheRoots) {
+		out.push(
+			`${root}/chromium-<WILDCARD>/chrome-linux/chrome`,
+			`${root}/chromium-<WILDCARD>/chrome-linux64/chrome`,
+			`${root}/chromium-<WILDCARD>/chrome-mac/Chromium.app/Contents/MacOS/Chromium`,
+			`${root}/chrome-headless_shell-<WILDCARD>/chrome-linux/chrome-headless-shell`,
+			`${root}/chrome-headless_shell-<WILDCARD>/chrome-linux64/chrome-headless-shell`,
+			`${root}/chromium_headless_shell-<WILDCARD>/chrome-linux/headless_shell`,
+			`${root}/chromium_headless_shell-<WILDCARD>/chrome-linux64/headless_shell`,
+		);
+	}
+	return out;
 }
 
 /**
@@ -212,31 +217,31 @@ export function browserCandidates(
  * dir is the marker segment's PARENT and the prefix must be preserved.
  */
 function expandWildcards(candidates: string[], readdir: (dir: string) => string[] | null): string[] {
-        const out: string[] = [];
-        for (const cand of candidates) {
-                if (!cand.includes("<WILDCARD>")) {
-                        out.push(cand);
-                        continue;
-                }
-                const segments = cand.split("/");
-                const segIdx = segments.findIndex((s) => s.includes("<WILDCARD>"));
-                if (segIdx < 0) continue;
-                const dir = segments.slice(0, segIdx).join("/");
-                const prefix = segments[segIdx].replace("<WILDCARD>", "");
-                const rest = segments.slice(segIdx + 1).join("/");
-                const entries = readdir(dir);
-                if (!entries) continue;
-                // newest (highest numeric suffix) first — playwright names them chromium-1200 etc.
-                const numeric = entries
-                        .filter((e) => e.startsWith(prefix) && /^\d+$/.test(e.slice(prefix.length)))
-                        .sort((a, b) => {
-                                const na = Number(a.slice(prefix.length));
-                                const nb = Number(b.slice(prefix.length));
-                                return nb - na;
-                        });
-                for (const entry of numeric) out.push(`${dir}/${entry}/${rest}`);
-        }
-        return out;
+	const out: string[] = [];
+	for (const cand of candidates) {
+		if (!cand.includes("<WILDCARD>")) {
+			out.push(cand);
+			continue;
+		}
+		const segments = cand.split("/");
+		const segIdx = segments.findIndex((s) => s.includes("<WILDCARD>"));
+		if (segIdx < 0) continue;
+		const dir = segments.slice(0, segIdx).join("/");
+		const prefix = segments[segIdx].replace("<WILDCARD>", "");
+		const rest = segments.slice(segIdx + 1).join("/");
+		const entries = readdir(dir);
+		if (!entries) continue;
+		// newest (highest numeric suffix) first — playwright names them chromium-1200 etc.
+		const numeric = entries
+			.filter((e) => e.startsWith(prefix) && /^\d+$/.test(e.slice(prefix.length)))
+			.sort((a, b) => {
+				const na = Number(a.slice(prefix.length));
+				const nb = Number(b.slice(prefix.length));
+				return nb - na;
+			});
+		for (const entry of numeric) out.push(`${dir}/${entry}/${rest}`);
+	}
+	return out;
 }
 
 /** Find a usable Chromium-family executable. Throws with actionable hints.
@@ -246,65 +251,63 @@ function expandWildcards(candidates: string[], readdir: (dir: string) => string[
  * Notification.permission, and their UA still carries HeadlessChrome.
  */
 export function discoverBrowser(
-        opts: {
-                platform?: NodeJS.Platform;
-                home?: string;
-                envPath?: string;
-                localAppData?: string;
-                exists?: (p: string) => boolean;
-                readdir?: (dir: string) => string[] | null;
-                allowHeadlessShell?: boolean;
-        } = {},
+	opts: {
+		platform?: NodeJS.Platform;
+		home?: string;
+		envPath?: string;
+		localAppData?: string;
+		exists?: (p: string) => boolean;
+		readdir?: (dir: string) => string[] | null;
+		allowHeadlessShell?: boolean;
+	} = {},
 ): DiscoveredBrowser {
-        const platform = opts.platform ?? process.platform;
-        const home = opts.home ?? homedir();
-        const envPath = opts.envPath ?? process.env.UNOWN_BROWSER_PATH?.trim();
-        const exists =
-                opts.exists ??
-                ((p: string) => {
-                        try {
-                                return statSync(p).isFile();
-                        } catch {
-                                return false;
-                        }
-                });
-        const readdir =
-                opts.readdir ??
-                ((dir: string): string[] | null => {
-                        try {
-                                return readdirSync(dir) as string[];
-                        } catch {
-                                return null;
-                        }
-                });
+	const platform = opts.platform ?? process.platform;
+	const home = opts.home ?? homedir();
+	const envPath = opts.envPath ?? process.env.UNOWN_BROWSER_PATH?.trim();
+	const exists =
+		opts.exists ??
+		((p: string) => {
+			try {
+				return statSync(p).isFile();
+			} catch {
+				return false;
+			}
+		});
+	const readdir =
+		opts.readdir ??
+		((dir: string): string[] | null => {
+			try {
+				return readdirSync(dir) as string[];
+			} catch {
+				return null;
+			}
+		});
 
-        if (envPath) {
-                if (exists(envPath)) return { path: envPath, source: "env" };
-                throw new Error(`UNOWN_BROWSER_PATH is set but does not point at a file: ${envPath}`);
-        }
+	if (envPath) {
+		if (exists(envPath)) return { path: envPath, source: "env" };
+		throw new Error(`UNOWN_BROWSER_PATH is set but does not point at a file: ${envPath}`);
+	}
 
-        const allowShell = opts.allowHeadlessShell ?? true;
-        const expanded = expandWildcards(
-                browserCandidates(platform, { home, envPath, localAppData: opts.localAppData }),
-                readdir,
-        );
-        for (const cand of expanded) {
-                if (!allowShell && /headless[_-]shell/i.test(cand)) continue;
-                if (exists(cand)) {
-                        const source = cand.includes("ms-playwright") ? "playwright-cache" : "system";
-                        return { path: cand, source };
-                }
-        }
+	const allowShell = opts.allowHeadlessShell ?? true;
+	const expanded = expandWildcards(
+		browserCandidates(platform, { home, envPath, localAppData: opts.localAppData }),
+		readdir,
+	);
+	for (const cand of expanded) {
+		if (!allowShell && /headless[_-]shell/i.test(cand)) continue;
+		if (exists(cand)) {
+			const source = cand.includes("ms-playwright") ? "playwright-cache" : "system";
+			return { path: cand, source };
+		}
+	}
 
-        const hints =
-                platform === "darwin"
-                        ? "install Google Chrome (https://www.google.com/chrome/) or run: bunx playwright install chromium"
-                        : platform === "win32"
-                                ? "install Google Chrome or Microsoft Edge, or run: bunx playwright install chromium"
-                                : "install chromium via your package manager (e.g. sudo apt install chromium), or run: bunx playwright install chromium";
-        throw new Error(
-                `no Chromium-family browser found — ${hints} (or set UNOWN_BROWSER_PATH to an executable)`,
-        );
+	const hints =
+		platform === "darwin"
+			? "install Google Chrome (https://www.google.com/chrome/) or run: bunx playwright install chromium"
+			: platform === "win32"
+				? "install Google Chrome or Microsoft Edge, or run: bunx playwright install chromium"
+				: "install chromium via your package manager (e.g. sudo apt install chromium), or run: bunx playwright install chromium";
+	throw new Error(`no Chromium-family browser found — ${hints} (or set UNOWN_BROWSER_PATH to an executable)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -313,60 +316,74 @@ export function discoverBrowser(
 
 /** Host-glob match: `*` matches one label segment, `**`/leading `*` matches any suffix. */
 export function hostMatchesGlob(host: string, pattern: string): boolean {
-        const h = host.toLowerCase();
-        const p = pattern.toLowerCase();
-        if (p === h) return true;
-        if (p.startsWith("**")) {
-                const rest = p.slice(2).replace(/^\./, "");
-                return h === rest || h.endsWith(`.${rest}`);
-        }
-        if (p.startsWith("*.")) {
-                const rest = p.slice(2);
-                return h === rest || h.endsWith(`.${rest}`);
-        }
-        // per-label glob: foo.*.example.com
-        const rx = new RegExp(
-                `^${p
-                        .split(".")
-                        .map((seg) => (seg === "*" ? "[^.]+" : seg.replace(/[.+?^${}()|[\]\\]/g, "\\$&")))
-                        .join("\\.")}$`,
-        );
-        return rx.test(h);
+	const h = host.toLowerCase();
+	const p = pattern.toLowerCase();
+	if (p === h) return true;
+	if (p.startsWith("**")) {
+		const rest = p.slice(2).replace(/^\./, "");
+		return h === rest || h.endsWith(`.${rest}`);
+	}
+	if (p.startsWith("*.")) {
+		const rest = p.slice(2);
+		return h === rest || h.endsWith(`.${rest}`);
+	}
+	// per-label glob: foo.*.example.com
+	const rx = new RegExp(
+		`^${p
+			.split(".")
+			.map((seg) => (seg === "*" ? "[^.]+" : seg.replace(/[.+?^${}()|[\]\\]/g, "\\$&")))
+			.join("\\.")}$`,
+	);
+	return rx.test(h);
 }
 
 /** True when the URL is allowed by the block list. */
 export function urlAllowed(rawUrl: string, blockList: string[]): { ok: boolean; blockedBy?: string } {
-        if (blockList.length === 0) return { ok: true };
-        let u: URL;
-        try {
-                u = new URL(rawUrl);
-        } catch {
-                return { ok: true }; // invalid URLs fail later in navigation with a real error
-        }
-        for (const pattern of blockList) {
-                if (hostMatchesGlob(u.hostname, pattern)) return { ok: false, blockedBy: pattern };
-        }
-        return { ok: true };
+	if (blockList.length === 0) return { ok: true };
+	let u: URL;
+	try {
+		u = new URL(rawUrl);
+	} catch {
+		return { ok: true }; // invalid URLs fail later in navigation with a real error
+	}
+	for (const pattern of blockList) {
+		if (hostMatchesGlob(u.hostname, pattern)) return { ok: false, blockedBy: pattern };
+	}
+	return { ok: true };
 }
 
 /** Schemes we pass through untouched. */
 const KNOWN_SCHEMES = new Set([
-        "http", "https", "file", "about", "data", "blob", "ws", "wss", "ftp", "ftps",
-        "chrome", "chrome-extension", "view-source", "javascript", "intent", "mailto",
+	"http",
+	"https",
+	"file",
+	"about",
+	"data",
+	"blob",
+	"ws",
+	"wss",
+	"ftp",
+	"ftps",
+	"chrome",
+	"chrome-extension",
+	"view-source",
+	"javascript",
+	"intent",
+	"mailto",
 ]);
 
 /** Normalize user input into a navigable URL (bare host → https://). */
 export function normalizeUrl(input: string): string {
-        const trimmed = input.trim();
-        if (/^\/\/[^/]/.test(trimmed)) return `https:${trimmed}`;
-        // "localhost:3000/x" parses its host:port as a URI scheme — only pass
-        // through REAL schemes, and only when the rest doesn't start like a port.
-        const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):(.*)$/.exec(trimmed);
-        if (schemeMatch) {
-                const [, scheme, rest] = schemeMatch;
-                if (KNOWN_SCHEMES.has(scheme.toLowerCase())) return trimmed;
-                // unknown "scheme" followed by a port-looking remainder → host:port
-                if (!/^\d/.test(rest)) return trimmed; // e.g. C:\... on windows or data-ish garbage — pass through, navigation will error
-        }
-        return `https://${trimmed}`;
+	const trimmed = input.trim();
+	if (/^\/\/[^/]/.test(trimmed)) return `https:${trimmed}`;
+	// "localhost:3000/x" parses its host:port as a URI scheme — only pass
+	// through REAL schemes, and only when the rest doesn't start like a port.
+	const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):(.*)$/.exec(trimmed);
+	if (schemeMatch) {
+		const [, scheme, rest] = schemeMatch;
+		if (KNOWN_SCHEMES.has(scheme.toLowerCase())) return trimmed;
+		// unknown "scheme" followed by a port-looking remainder → host:port
+		if (!/^\d/.test(rest)) return trimmed; // e.g. C:\... on windows or data-ish garbage — pass through, navigation will error
+	}
+	return `https://${trimmed}`;
 }

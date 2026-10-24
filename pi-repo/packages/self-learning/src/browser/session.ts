@@ -15,20 +15,32 @@ import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { formatSnapshot, type RefEntry, SNAPSHOT_SCRIPT, type Snapshot, snapshotRefs } from "./a11y.ts";
+import {
+	CAPTCHA_PROBE_SRC,
+	CapSolverClient,
+	type CaptchaConfig,
+	type DetectedChallenge,
+	formatChallenges,
+	injectTokenExpression,
+	resolveCaptchaConfig,
+	TwoCaptchaClient,
+	tiersFor,
+	visionReadCaptcha,
+} from "./captcha.ts";
+import { CdpConnection, modifierBits, parseKeyCombo } from "./cdp.ts";
 import {
 	BROWSER_NAV_TIMEOUT_MS,
 	BROWSER_SETTLE_MS,
 	BROWSER_SNAPSHOT_MAX,
 	BROWSER_VIEWPORT,
+	type BrowserEnv,
+	browserEnv,
 	defaultProfileDir,
 	discoverBrowser,
 	normalizeUrl,
 	urlAllowed,
-	type BrowserEnv,
-	browserEnv,
 } from "./config.ts";
-import { CdpConnection, modifierBits, parseKeyCombo } from "./cdp.ts";
-import { formatSnapshot, SNAPSHOT_SCRIPT, snapshotRefs, type RefEntry, type Snapshot } from "./a11y.ts";
 import {
 	humanKeyGap,
 	humanPath,
@@ -36,21 +48,9 @@ import {
 	mulberry32,
 	readChromeVersion,
 	resolveStealthConfig,
-	stealthLaunchArgs,
 	type StealthConfig,
+	stealthLaunchArgs,
 } from "./stealth.ts";
-import {
-	CAPTCHA_PROBE_SRC,
-	formatChallenges,
-	injectTokenExpression,
-	resolveCaptchaConfig,
-	tiersFor,
-	visionReadCaptcha,
-	CapSolverClient,
-	TwoCaptchaClient,
-	type CaptchaConfig,
-	type DetectedChallenge,
-} from "./captcha.ts";
 
 // ---------------------------------------------------------------------------
 // types
@@ -166,7 +166,7 @@ export class BrowserSession {
 	private mousePos = { x: BROWSER_VIEWPORT.width / 2, y: BROWSER_VIEWPORT.height / 2 };
 	/** Humanized-input PRNG — seeded (test-reproducible) when UNOWN_BROWSER_HUMANIZE_SEED is set. */
 	private humanRng: () => number = mulberry32(
-		(Number(process.env.UNOWN_BROWSER_HUMANIZE_SEED) || 0) || (Date.now() ^ (process.pid << 8)) >>> 0,
+		Number(process.env.UNOWN_BROWSER_HUMANIZE_SEED) || 0 || (Date.now() ^ (process.pid << 8)) >>> 0,
 	);
 
 	constructor(opts: { cwd?: string; env?: BrowserEnv } = {}) {
@@ -279,7 +279,11 @@ export class BrowserSession {
 				userDataDir: profileDir,
 				headless,
 				windowSize: this.viewport,
-				extraArgs: stealthArgs,
+				// UNOWN_BROWSER_NO_SANDBOX=1 opts into --no-sandbox --disable-gpu on the
+				// FIRST launch (containers/CI). The retry path below has always forced
+				// them; the env knob just lets a known-container host skip the one
+				// failed launch instead of paying for it.
+				extraArgs: this.env.noSandbox ? ["--no-sandbox", "--disable-gpu", ...stealthArgs] : stealthArgs,
 			});
 		} catch (err: any) {
 			const msg = err instanceof Error ? err.message : String(err);
@@ -297,15 +301,17 @@ export class BrowserSession {
 					headless,
 					windowSize: this.viewport,
 					extraArgs: ["--no-sandbox", "--disable-gpu", ...stealthArgs],
-				}).then((c) => {
-					tempProfile = true;
-					profileDir = retryProfile;
-					return c;
-				}).catch((err2: any) => {
-					throw new Error(
-						`browser failed to start (${err2?.message ?? err2}) — if this is a container, set UNOWN_BROWSER_NO_SANDBOX=1 or run a headed desktop`,
-					);
-				});
+				})
+					.then((c) => {
+						tempProfile = true;
+						profileDir = retryProfile;
+						return c;
+					})
+					.catch((err2: any) => {
+						throw new Error(
+							`browser failed to start (${err2?.message ?? err2}) — if this is a container, set UNOWN_BROWSER_NO_SANDBOX=1 or run a headed desktop`,
+						);
+					});
 			} else {
 				throw err;
 			}
@@ -399,7 +405,7 @@ export class BrowserSession {
 							source: "console",
 							level: String(p?.type ?? "log"),
 							text: (p?.args ?? [])
-								.map((a: any) => (a.value !== undefined ? String(a.value) : a.description ?? ""))
+								.map((a: any) => (a.value !== undefined ? String(a.value) : (a.description ?? "")))
 								.join(" ")
 								.slice(0, 400),
 							ts: Date.now(),
@@ -410,8 +416,11 @@ export class BrowserSession {
 						this.pushConsole({
 							source: "exception",
 							level: "error",
-							text: String(p?.exceptionDetails?.text ?? "") +
-								(p?.exceptionDetails?.exception?.description ? ` ${p.exceptionDetails.exception.description.slice(0, 300)}` : ""),
+							text:
+								String(p?.exceptionDetails?.text ?? "") +
+								(p?.exceptionDetails?.exception?.description
+									? ` ${p.exceptionDetails.exception.description.slice(0, 300)}`
+									: ""),
 							ts: Date.now(),
 						});
 					}),
@@ -426,14 +435,20 @@ export class BrowserSession {
 					}),
 					this.conn!.on("Page.javascriptDialogOpening", (_m, p, sid) => {
 						if (sid !== sessionId) return;
-						this.lastDialog = { message: String(p?.message ?? ""), type: String(p?.type ?? "alert"), ts: Date.now() };
+						this.lastDialog = {
+							message: String(p?.message ?? ""),
+							type: String(p?.type ?? "alert"),
+							ts: Date.now(),
+						};
 						this.pushConsole({
 							source: "dialog",
 							level: "warn",
 							text: `${this.lastDialog.type} dialog (auto-dismissed): ${this.lastDialog.message.slice(0, 200)}`,
 							ts: Date.now(),
 						});
-						void this.conn!.send("Page.handleJavaScriptDialog", { accept: false }, { sessionId: sid }).catch(() => undefined);
+						void this.conn!.send("Page.handleJavaScriptDialog", { accept: false }, { sessionId: sid }).catch(
+							() => undefined,
+						);
 					}),
 					this.conn!.on("Page.downloadWillBegin", (_m, p, sid) => {
 						if (sid !== sessionId) return;
@@ -446,7 +461,8 @@ export class BrowserSession {
 					}),
 					this.conn!.on("Page.downloadProgress", (_m, p, sid) => {
 						if (sid !== sessionId) return;
-						const state = p?.state === "completed" ? "completed" : p?.state === "canceled" ? "canceled" : "inprogress";
+						const state =
+							p?.state === "completed" ? "completed" : p?.state === "canceled" ? "canceled" : "inprogress";
 						this.updateDownload(state);
 					}),
 					this.conn!.on("Page.fileChooserOpened", (_m, p, sid) => {
@@ -557,12 +573,12 @@ export class BrowserSession {
 			viewport: this.viewport,
 			stealth: this.stealthCfg
 				? {
-					enabled: this.stealthCfg.enabled,
-					os: this.stealthCfg.identity.os,
-					humanize: this.stealthCfg.humanize,
-					proxy: this.stealthCfg.proxy,
-					userAgent: this.stealthCfg.identity.userAgent,
-				}
+						enabled: this.stealthCfg.enabled,
+						os: this.stealthCfg.identity.os,
+						humanize: this.stealthCfg.humanize,
+						proxy: this.stealthCfg.proxy,
+						userAgent: this.stealthCfg.identity.userAgent,
+					}
 				: undefined,
 			captcha: this.captchaCfg
 				? { solver: this.captchaCfg.solver, auto: this.captchaCfg.auto, vision: this.captchaCfg.vision }
@@ -589,7 +605,8 @@ export class BrowserSession {
 	}
 
 	private requireConn(): CdpConnection {
-		if (!this.conn || this.conn.isClosed) throw new Error("browser is not running — call any browser action to auto-start it");
+		if (!this.conn || this.conn.isClosed)
+			throw new Error("browser is not running — call any browser action to auto-start it");
 		return this.conn;
 	}
 
@@ -630,7 +647,7 @@ export class BrowserSession {
 	 * string; every dynamic value crosses the boundary as a CDP JSON argument —
 	 * data, never code. The page's `window` object is resolved fresh each call
 	 * so navigation invalidates nothing.
-         */
+	 */
 	private async pageCall(
 		functionDeclaration: string,
 		args: unknown[],
@@ -689,11 +706,14 @@ export class BrowserSession {
 
 	/** Take a snapshot, refresh the ref registry, return {snap, text}. */
 	private async takeSnapshot(opts: { includeBoxes?: boolean } = {}): Promise<{ snap: Snapshot; text: string }> {
-		const raw = await this.pageEval(`${SNAPSHOT_SCRIPT}(${JSON.stringify({
-			maxNodes: BROWSER_SNAPSHOT_MAX,
-			includeBoxes: opts.includeBoxes ?? false,
-		})})`);
-		if (!raw || typeof raw !== "object") throw new Error("snapshot failed — the page may have navigated away mid-snapshot; retry");
+		const raw = await this.pageEval(
+			`${SNAPSHOT_SCRIPT}(${JSON.stringify({
+				maxNodes: BROWSER_SNAPSHOT_MAX,
+				includeBoxes: opts.includeBoxes ?? false,
+			})})`,
+		);
+		if (!raw || typeof raw !== "object")
+			throw new Error("snapshot failed — the page may have navigated away mid-snapshot; retry");
 		const snap = raw as Snapshot;
 		this.refs = snapshotRefs(snap, opts.includeBoxes ?? false);
 		this.snapshotCount++;
@@ -726,7 +746,7 @@ export class BrowserSession {
 	/**
 	 * Scroll an element into view and return its fresh viewport box
 	 * (D5 — trusted input needs real coordinates).
-         */
+	 */
 	private async prepElement(selector: string): Promise<number[] | null> {
 		const prepped = await this.pageEval(`(() => {
 			const el = document.querySelector(${JSON.stringify(selector)});
@@ -739,7 +759,11 @@ export class BrowserSession {
 		return Array.isArray(prepped) ? prepped : null;
 	}
 
-	private async dispatchClick(x: number, y: number, opts: { button?: string; clickCount?: number; modifiers?: string[] } = {}): Promise<void> {
+	private async dispatchClick(
+		x: number,
+		y: number,
+		opts: { button?: string; clickCount?: number; modifiers?: string[] } = {},
+	): Promise<void> {
 		const conn = this.requireConn();
 		const sessionId = this.requireSessionId();
 		const button = opts.button === "right" ? "right" : opts.button === "middle" ? "middle" : "left";
@@ -749,17 +773,30 @@ export class BrowserSession {
 		// behavioral tell; this is the tier every stealth product ships.
 		if (this.stealthCfg?.enabled && this.stealthCfg.humanize) {
 			for (const pt of humanPath(this.mousePos, { x, y }, this.humanRng)) {
-				await conn.send(
-					"Input.dispatchMouseEvent",
-					{ type: "mouseMoved", x: pt.x, y: pt.y, pointerType: "mouse" },
-					{ sessionId },
-				).catch(() => undefined);
+				await conn
+					.send(
+						"Input.dispatchMouseEvent",
+						{ type: "mouseMoved", x: pt.x, y: pt.y, pointerType: "mouse" },
+						{ sessionId },
+					)
+					.catch(() => undefined);
 				await sleep(pt.delayMs);
 			}
 		}
 		this.mousePos = { x, y };
-		const base = { x: Math.round(x), y: Math.round(y), button, modifiers: mods, clickCount: opts.clickCount ?? 1, pointerType: "mouse" };
-		await conn.send("Input.dispatchMouseEvent", { ...base, type: "mousePressed", buttons: button === "left" ? 1 : button === "right" ? 2 : 4 }, { sessionId });
+		const base = {
+			x: Math.round(x),
+			y: Math.round(y),
+			button,
+			modifiers: mods,
+			clickCount: opts.clickCount ?? 1,
+			pointerType: "mouse",
+		};
+		await conn.send(
+			"Input.dispatchMouseEvent",
+			{ ...base, type: "mousePressed", buttons: button === "left" ? 1 : button === "right" ? 2 : 4 },
+			{ sessionId },
+		);
 		await sleep(30);
 		await conn.send("Input.dispatchMouseEvent", { ...base, type: "mouseReleased" }, { sessionId });
 	}
@@ -775,10 +812,21 @@ export class BrowserSession {
 			const p = parts[0];
 			await conn.send(
 				"Input.dispatchKeyEvent",
-				{ type: "keyDown", key: p.key, code: p.code, windowsVirtualKeyCode: p.vk, text: p.text, unmodifiedText: p.text },
+				{
+					type: "keyDown",
+					key: p.key,
+					code: p.code,
+					windowsVirtualKeyCode: p.vk,
+					text: p.text,
+					unmodifiedText: p.text,
+				},
 				{ sessionId },
 			);
-			await conn.send("Input.dispatchKeyEvent", { type: "keyUp", key: p.key, code: p.code, windowsVirtualKeyCode: p.vk }, { sessionId });
+			await conn.send(
+				"Input.dispatchKeyEvent",
+				{ type: "keyUp", key: p.key, code: p.code, windowsVirtualKeyCode: p.vk },
+				{ sessionId },
+			);
 			return;
 		}
 		// Combos (Ctrl+A, cmd+shift+p): modifier key events bracket a
@@ -827,7 +875,10 @@ export class BrowserSession {
 	// ------------------------------------------------------------- actions
 
 	/** Element locator: ref (preferred), selector, or explicit coords. */
-	async locate(opts: { ref?: string; selector?: string }): Promise<{ selector?: string; box: number[]; center: { x: number; y: number } }> {
+	async locate(opts: {
+		ref?: string;
+		selector?: string;
+	}): Promise<{ selector?: string; box: number[]; center: { x: number; y: number } }> {
 		if (opts.ref) {
 			const { selector, box } = await this.resolveRefBox(opts.ref);
 			return { selector, box, center: { x: box[0] + box[2] / 2, y: box[1] + box[3] / 2 } };
@@ -841,7 +892,11 @@ export class BrowserSession {
 	}
 
 	/** Arm the load listener first, then send Page.navigate — no missed loads. */
-	private async raceNavigate(conn: import("./cdp.ts").CdpConnection, sessionId: string, url: string): Promise<boolean> {
+	private async raceNavigate(
+		conn: import("./cdp.ts").CdpConnection,
+		sessionId: string,
+		url: string,
+	): Promise<boolean> {
 		const loaded = this.waitForLoad(sessionId);
 		try {
 			await conn.send("Page.navigate", { url }, { sessionId });
@@ -876,10 +931,13 @@ export class BrowserSession {
 			captchaLine = `captcha: ${check.lines[0]}${check.lines.length > 1 ? ` (+${check.lines.length - 1} more)` : ""}`;
 			if (check.blocked) warnings.push("page looks BLOCKED by a challenge interstitial");
 			if (this.captchaCfg?.auto) {
-				const r = await this.captchaSolve({ attempt: "all" }).catch((e: any) => ({
-					summary: `auto-solve failed: ${e instanceof Error ? e.message : String(e)}`,
-					details: [],
-				} as ActionReport));
+				const r = await this.captchaSolve({ attempt: "all" }).catch(
+					(e: any) =>
+						({
+							summary: `auto-solve failed: ${e instanceof Error ? e.message : String(e)}`,
+							details: [],
+						}) as ActionReport,
+				);
 				captchaLine += ` | auto-solve: ${r.summary}`;
 			}
 		}
@@ -927,13 +985,17 @@ export class BrowserSession {
 		await this.ensureStarted();
 		const { text: snapText } = await this.takeSnapshot();
 		const needle = text.toLowerCase();
-		const matches = snapText
-			.split("\n")
-			.filter((l) => l.toLowerCase().includes(needle));
+		const matches = snapText.split("\n").filter((l) => l.toLowerCase().includes(needle));
 		if (matches.length === 0) {
-			return { summary: `no snapshot lines match ${JSON.stringify(text)}`, snapshot: snapText.split("\n").slice(0, 10).join("\n") };
+			return {
+				summary: `no snapshot lines match ${JSON.stringify(text)}`,
+				snapshot: snapText.split("\n").slice(0, 10).join("\n"),
+			};
 		}
-		return { summary: `${matches.length} matching line(s) for ${JSON.stringify(text)}`, details: matches.slice(0, 30) };
+		return {
+			summary: `${matches.length} matching line(s) for ${JSON.stringify(text)}`,
+			details: matches.slice(0, 30),
+		};
 	}
 
 	async getText(): Promise<ActionReport> {
@@ -974,7 +1036,7 @@ export class BrowserSession {
 			const loc = await this.locate(opts);
 			cx = loc.center.x;
 			cy = loc.center.y;
-			label = opts.ref ? `[${opts.ref}]` : opts.selector ?? "";
+			label = opts.ref ? `[${opts.ref}]` : (opts.selector ?? "");
 		}
 		await this.dispatchClick(cx, cy, {
 			button: opts.button,
@@ -998,10 +1060,21 @@ export class BrowserSession {
 		);
 		await this.settle(150);
 		const { snap, text } = await this.takeSnapshot();
-		return { summary: `hovered ${opts.ref ? `[${opts.ref}]` : opts.selector}`, snapshot: text, url: snap.url, title: snap.title };
+		return {
+			summary: `hovered ${opts.ref ? `[${opts.ref}]` : opts.selector}`,
+			snapshot: text,
+			url: snap.url,
+			title: snap.title,
+		};
 	}
 
-	async type(opts: { ref?: string; selector?: string; text: string; submit?: boolean; clear?: boolean }): Promise<ActionReport> {
+	async type(opts: {
+		ref?: string;
+		selector?: string;
+		text: string;
+		submit?: boolean;
+		clear?: boolean;
+	}): Promise<ActionReport> {
 		await this.ensureStarted();
 		const conn = this.requireConn();
 		const sessionId = this.requireSessionId();
@@ -1023,16 +1096,43 @@ export class BrowserSession {
 					const ch = opts.text[i];
 					await sleep(delays[i]);
 					if (ch === "\n") {
-						await conn.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r", unmodifiedText: "\r" }, { sessionId });
+						await conn.send(
+							"Input.dispatchKeyEvent",
+							{
+								type: "keyDown",
+								key: "Enter",
+								code: "Enter",
+								windowsVirtualKeyCode: 13,
+								text: "\r",
+								unmodifiedText: "\r",
+							},
+							{ sessionId },
+						);
 						await sleep(humanKeyGap(this.humanRng));
-						await conn.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 }, { sessionId });
+						await conn.send(
+							"Input.dispatchKeyEvent",
+							{ type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 },
+							{ sessionId },
+						);
 						continue;
 					}
 					const vk = ch.toUpperCase().charCodeAt(0);
-					const code = /^[a-zA-Z]$/.test(ch) ? `Key${ch.toUpperCase()}` : /^[0-9]$/.test(ch) ? `Digit${ch}` : undefined;
-					await conn.send("Input.dispatchKeyEvent", { type: "keyDown", key: ch, code, windowsVirtualKeyCode: vk, text: ch, unmodifiedText: ch }, { sessionId });
+					const code = /^[a-zA-Z]$/.test(ch)
+						? `Key${ch.toUpperCase()}`
+						: /^[0-9]$/.test(ch)
+							? `Digit${ch}`
+							: undefined;
+					await conn.send(
+						"Input.dispatchKeyEvent",
+						{ type: "keyDown", key: ch, code, windowsVirtualKeyCode: vk, text: ch, unmodifiedText: ch },
+						{ sessionId },
+					);
 					await sleep(humanKeyGap(this.humanRng));
-					await conn.send("Input.dispatchKeyEvent", { type: "keyUp", key: ch, code, windowsVirtualKeyCode: vk }, { sessionId });
+					await conn.send(
+						"Input.dispatchKeyEvent",
+						{ type: "keyUp", key: ch, code, windowsVirtualKeyCode: vk },
+						{ sessionId },
+					);
 				}
 			} else {
 				// insertText fires real input events (works with React/Vue controlled inputs)
@@ -1045,7 +1145,7 @@ export class BrowserSession {
 		await this.settle();
 		const { snap, text } = await this.takeSnapshot();
 		return {
-			summary: `typed ${JSON.stringify(opts.text.slice(0, 60))}${opts.submit ? " + Enter" : ""} into ${opts.ref ? `[${opts.ref}]` : opts.selector ?? "focused element"}`,
+			summary: `typed ${JSON.stringify(opts.text.slice(0, 60))}${opts.submit ? " + Enter" : ""} into ${opts.ref ? `[${opts.ref}]` : (opts.selector ?? "focused element")}`,
 			snapshot: text,
 			url: snap.url,
 			title: snap.title,
@@ -1100,7 +1200,13 @@ export class BrowserSession {
 		}
 		await this.settle();
 		const { snap, text } = await this.takeSnapshot();
-		return { summary: `filled ${fields.length} field(s)`, details: notes, snapshot: text, url: snap.url, title: snap.title };
+		return {
+			summary: `filled ${fields.length} field(s)`,
+			details: notes,
+			snapshot: text,
+			url: snap.url,
+			title: snap.title,
+		};
 	}
 
 	async selectOption(opts: { ref?: string; selector?: string; values: string[] }): Promise<ActionReport> {
@@ -1147,7 +1253,12 @@ export class BrowserSession {
 		};
 	}
 
-	async scroll(opts: { direction?: "up" | "down" | "left" | "right"; amount?: number; ref?: string; selector?: string }): Promise<ActionReport> {
+	async scroll(opts: {
+		direction?: "up" | "down" | "left" | "right";
+		amount?: number;
+		ref?: string;
+		selector?: string;
+	}): Promise<ActionReport> {
 		await this.ensureStarted();
 		const conn = this.requireConn();
 		const sessionId = this.requireSessionId();
@@ -1164,7 +1275,12 @@ export class BrowserSession {
 				return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
 			})()`);
 			const { snap, text } = await this.takeSnapshot();
-			return { summary: `scrolled ${opts.ref ? `[${opts.ref}]` : opts.selector} into view`, snapshot: text, url: snap.url, title: snap.title };
+			return {
+				summary: `scrolled ${opts.ref ? `[${opts.ref}]` : opts.selector} into view`,
+				snapshot: text,
+				url: snap.url,
+				title: snap.title,
+			};
 		}
 		const deltas: Record<string, [number, number]> = {
 			up: [0, -amount],
@@ -1177,23 +1293,44 @@ export class BrowserSession {
 		const { width, height } = this.viewport;
 		await conn.send(
 			"Input.dispatchMouseEvent",
-			{ type: "mouseWheel", x: Math.round(width / 2), y: Math.round(height / 2), deltaX: dx, deltaY: dy, pointerType: "mouse" },
+			{
+				type: "mouseWheel",
+				x: Math.round(width / 2),
+				y: Math.round(height / 2),
+				deltaX: dx,
+				deltaY: dy,
+				pointerType: "mouse",
+			},
 			{ sessionId },
 		);
 		await this.settle(150);
 		const { snap, text } = await this.takeSnapshot();
 		const scrolled = await this.pageEval(`window.scrollY`);
-		return { summary: `scrolled ${direction} by ${amount}px (scrollY=${Math.round(Number(scrolled ?? 0))})`, snapshot: text, url: snap.url, title: snap.title };
+		return {
+			summary: `scrolled ${direction} by ${amount}px (scrollY=${Math.round(Number(scrolled ?? 0))})`,
+			snapshot: text,
+			url: snap.url,
+			title: snap.title,
+		};
 	}
 
-	async drag(opts: { startRef?: string; startSelector?: string; endRef?: string; endSelector?: string }): Promise<ActionReport> {
+	async drag(opts: {
+		startRef?: string;
+		startSelector?: string;
+		endRef?: string;
+		endSelector?: string;
+	}): Promise<ActionReport> {
 		await this.ensureStarted();
 		const conn = this.requireConn();
 		const sessionId = this.requireSessionId();
 		const start = await this.locate({ ref: opts.startRef, selector: opts.startSelector });
 		const end = await this.locate({ ref: opts.endRef, selector: opts.endSelector });
 		const base = { button: "left", clickCount: 1, pointerType: "mouse" };
-		await conn.send("Input.dispatchMouseEvent", { ...base, type: "mousePressed", x: Math.round(start.center.x), y: Math.round(start.center.y) }, { sessionId });
+		await conn.send(
+			"Input.dispatchMouseEvent",
+			{ ...base, type: "mousePressed", x: Math.round(start.center.x), y: Math.round(start.center.y) },
+			{ sessionId },
+		);
 		const steps = 8;
 		for (let i = 1; i <= steps; i++) {
 			await conn.send(
@@ -1210,10 +1347,19 @@ export class BrowserSession {
 			);
 			await sleep(16);
 		}
-		await conn.send("Input.dispatchMouseEvent", { ...base, type: "mouseReleased", x: Math.round(end.center.x), y: Math.round(end.center.y) }, { sessionId });
+		await conn.send(
+			"Input.dispatchMouseEvent",
+			{ ...base, type: "mouseReleased", x: Math.round(end.center.x), y: Math.round(end.center.y) },
+			{ sessionId },
+		);
 		await this.settle();
 		const { snap, text } = await this.takeSnapshot();
-		return { summary: `dragged from ${opts.startRef ? `[${opts.startRef}]` : opts.startSelector} to ${opts.endRef ? `[${opts.endRef}]` : opts.endSelector}`, snapshot: text, url: snap.url, title: snap.title };
+		return {
+			summary: `dragged from ${opts.startRef ? `[${opts.startRef}]` : opts.startSelector} to ${opts.endRef ? `[${opts.endRef}]` : opts.endSelector}`,
+			snapshot: text,
+			url: snap.url,
+			title: snap.title,
+		};
 	}
 
 	async screenshot(opts: {
@@ -1291,10 +1437,16 @@ export class BrowserSession {
 				rendered = String(value);
 			}
 		}
-		return { summary: `eval → ${rendered.slice(0, 80)}${rendered.length > 80 ? "…" : ""}`, details: [rendered.slice(0, 60_000)] };
+		return {
+			summary: `eval → ${rendered.slice(0, 80)}${rendered.length > 80 ? "…" : ""}`,
+			details: [rendered.slice(0, 60_000)],
+		};
 	}
 
-	async tabs(action: "list" | "new" | "select" | "close", opts: { index?: number; url?: string } = {}): Promise<ActionReport> {
+	async tabs(
+		action: "list" | "new" | "select" | "close",
+		opts: { index?: number; url?: string } = {},
+	): Promise<ActionReport> {
 		await this.ensureStarted();
 		const conn = this.requireConn();
 		const list = () => Array.from(this.pages.values()).map((p, i) => `${i}: ${p.title || p.url || "(untitled)"}`);
@@ -1344,7 +1496,14 @@ export class BrowserSession {
 		return { summary: `closed tab ${idx}`, details: list() };
 	}
 
-	async wait(opts: { text?: string; textGone?: string; url?: string; time?: number; download?: boolean; timeoutMs?: number }): Promise<ActionReport> {
+	async wait(opts: {
+		text?: string;
+		textGone?: string;
+		url?: string;
+		time?: number;
+		download?: boolean;
+		timeoutMs?: number;
+	}): Promise<ActionReport> {
 		await this.ensureStarted();
 		const timeoutMs = Math.min(30_000, opts.timeoutMs ?? 10_000);
 		const deadline = Date.now() + timeoutMs;
@@ -1356,24 +1515,32 @@ export class BrowserSession {
 		}
 		if (opts.text) {
 			while (Date.now() < deadline) {
-				const has = await this.pageEval(`document.body ? document.body.innerText.includes(${JSON.stringify(opts.text)}) : false`).catch(() => false);
+				const has = await this.pageEval(
+					`document.body ? document.body.innerText.includes(${JSON.stringify(opts.text)}) : false`,
+				).catch(() => false);
 				if (has) {
 					notes.push(`text ${JSON.stringify(opts.text)} present`);
 					break;
 				}
 				await sleep(200);
-				if (Date.now() >= deadline) throw new Error(`wait timed out after ${timeoutMs}ms: text ${JSON.stringify(opts.text)} not found`);
+				if (Date.now() >= deadline)
+					throw new Error(`wait timed out after ${timeoutMs}ms: text ${JSON.stringify(opts.text)} not found`);
 			}
 		}
 		if (opts.textGone) {
 			while (Date.now() < deadline) {
-				const has = await this.pageEval(`document.body ? document.body.innerText.includes(${JSON.stringify(opts.textGone)}) : false`).catch(() => false);
+				const has = await this.pageEval(
+					`document.body ? document.body.innerText.includes(${JSON.stringify(opts.textGone)}) : false`,
+				).catch(() => false);
 				if (!has) {
 					notes.push(`text ${JSON.stringify(opts.textGone)} gone`);
 					break;
 				}
 				await sleep(200);
-				if (Date.now() >= deadline) throw new Error(`wait timed out after ${timeoutMs}ms: text ${JSON.stringify(opts.textGone)} still present`);
+				if (Date.now() >= deadline)
+					throw new Error(
+						`wait timed out after ${timeoutMs}ms: text ${JSON.stringify(opts.textGone)} still present`,
+					);
 			}
 		}
 		if (opts.url) {
@@ -1384,7 +1551,8 @@ export class BrowserSession {
 					break;
 				}
 				await sleep(200);
-				if (Date.now() >= deadline) throw new Error(`wait timed out after ${timeoutMs}ms: url never contained ${JSON.stringify(opts.url)}`);
+				if (Date.now() >= deadline)
+					throw new Error(`wait timed out after ${timeoutMs}ms: url never contained ${JSON.stringify(opts.url)}`);
 			}
 		}
 		if (opts.download) {
@@ -1400,7 +1568,12 @@ export class BrowserSession {
 			}
 		}
 		const { snap, text } = await this.takeSnapshot();
-		return { summary: `waited (${notes.join("; ") || "no condition"})`, snapshot: text, url: snap.url, title: snap.title };
+		return {
+			summary: `waited (${notes.join("; ") || "no condition"})`,
+			snapshot: text,
+			url: snap.url,
+			title: snap.title,
+		};
 	}
 
 	async resize(width: number, height: number): Promise<ActionReport> {
@@ -1413,12 +1586,14 @@ export class BrowserSession {
 			params.screenHeight = id.screen.height;
 			params.screenOrientation = { angle: 0, type: "landscapePrimary" };
 		}
-		await this.conn!
-			.send("Emulation.setDeviceMetricsOverride", params, { sessionId: this.requireSessionId() })
-			.catch(() =>
-				this.conn!
-					.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false }, { sessionId: this.requireSessionId() })
-					.catch(() => undefined));
+		await this.conn!.send("Emulation.setDeviceMetricsOverride", params, { sessionId: this.requireSessionId() }).catch(
+			() =>
+				this.conn!.send(
+					"Emulation.setDeviceMetricsOverride",
+					{ width, height, deviceScaleFactor: 1, mobile: false },
+					{ sessionId: this.requireSessionId() },
+				).catch(() => undefined),
+		);
 		return { summary: `viewport ${width}x${height}` };
 	}
 
@@ -1463,7 +1638,9 @@ export class BrowserSession {
 			await conn.send("DOM.setFileInputFiles", params, { sessionId });
 			return { summary: `uploaded ${paths.length} file(s) via file chooser` };
 		}
-		throw new Error("upload needs a ref/selector of the file input, or a file chooser opened by a click (click the upload button first, then upload without a ref)");
+		throw new Error(
+			"upload needs a ref/selector of the file input, or a file chooser opened by a click (click the upload button first, then upload without a ref)",
+		);
 	}
 
 	async pdf(opts: { filename?: string; landscape?: boolean; printBackground?: boolean }): Promise<ActionReport> {
@@ -1483,12 +1660,21 @@ export class BrowserSession {
 		if (!data) throw new Error("printToPDF returned no data");
 		const { writeFileSync } = await import("node:fs");
 		const { isAbsolute, join } = await import("node:path");
-		const filename = opts.filename && isAbsolute(opts.filename) ? opts.filename : join(this.cwd, opts.filename ?? `page-${Date.now()}.pdf`);
+		const filename =
+			opts.filename && isAbsolute(opts.filename)
+				? opts.filename
+				: join(this.cwd, opts.filename ?? `page-${Date.now()}.pdf`);
 		writeFileSync(filename, Buffer.from(data, "base64"));
-		return { summary: `printed PDF (${Math.round((data.length * 3) / 4 / 1024)} KB)`, details: [`saved: ${filename}`] };
+		return {
+			summary: `printed PDF (${Math.round((data.length * 3) / 4 / 1024)} KB)`,
+			details: [`saved: ${filename}`],
+		};
 	}
 
-	async cookies(action: "list" | "set" | "clear", opts: { url?: string; name?: string; value?: string; domain?: string; path?: string } = {}): Promise<ActionReport> {
+	async cookies(
+		action: "list" | "set" | "clear",
+		opts: { url?: string; name?: string; value?: string; domain?: string; path?: string } = {},
+	): Promise<ActionReport> {
 		await this.ensureStarted();
 		const conn = this.requireConn();
 		const sessionId = this.requireSessionId();
@@ -1496,7 +1682,10 @@ export class BrowserSession {
 			const url = opts.url ?? (await this.pageEval(`location.href`));
 			const res = await conn.send("Network.getCookies", { urls: [String(url)] }, { sessionId });
 			const cookies = res?.cookies ?? [];
-			const lines = cookies.map((c: any) => `${c.name}=${String(c.value).slice(0, 40)} (domain ${c.domain}${c.expires ? `, expires ${new Date(c.expires * 1000).toISOString()}` : ""})`);
+			const lines = cookies.map(
+				(c: any) =>
+					`${c.name}=${String(c.value).slice(0, 40)} (domain ${c.domain}${c.expires ? `, expires ${new Date(c.expires * 1000).toISOString()}` : ""})`,
+			);
 			return { summary: `${cookies.length} cookie(s)`, details: lines.slice(0, 100) };
 		}
 		if (action === "set") {
@@ -1529,7 +1718,9 @@ export class BrowserSession {
 		// active session (measured: browser-level Network.* → "wasn't found")
 		const cookiesRes = await conn.send("Storage.getCookies", {}, { sessionId }).catch(() => ({ cookies: [] }));
 		const origin = String(await this.pageEval(`location.origin`));
-		const local = await this.pageEval(`(() => { try { const o = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); o[k] = localStorage.getItem(k); } return o; } catch (e) { return null; } })()`).catch(() => null);
+		const local = await this.pageEval(
+			`(() => { try { const o = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); o[k] = localStorage.getItem(k); } return o; } catch (e) { return null; } })()`,
+		).catch(() => null);
 		const payload = {
 			version: 1,
 			savedAt: new Date().toISOString(),
@@ -1557,7 +1748,16 @@ export class BrowserSession {
 			const res = await conn
 				.send(
 					"Network.setCookie",
-					{ name: c.name, value: c.value ?? "", domain: c.domain, path: c.path ?? "/", secure: !!c.secure, httpOnly: !!c.httpOnly, expires: c.expires, sameSite: c.sameSite === "Strict" ? "Strict" : c.sameSite === "Lax" ? "Lax" : undefined },
+					{
+						name: c.name,
+						value: c.value ?? "",
+						domain: c.domain,
+						path: c.path ?? "/",
+						secure: !!c.secure,
+						httpOnly: !!c.httpOnly,
+						expires: c.expires,
+						sameSite: c.sameSite === "Strict" ? "Strict" : c.sameSite === "Lax" ? "Lax" : undefined,
+					},
 					{ sessionId },
 				)
 				.catch(() => ({ success: false }));
@@ -1581,7 +1781,7 @@ export class BrowserSession {
 	 * userAgentData brands/platform, locale, timezone and screen all land
 	 * coherently. Called per page attach, before Network/Log enables, and
 	 * NEVER enables the Runtime domain.
-         */
+	 */
 	private async applyStealthToPage(sessionId: string): Promise<void> {
 		const conn = this.conn!;
 		const id = this.stealthCfg!.identity;
@@ -1625,7 +1825,9 @@ export class BrowserSession {
 			)
 			.catch(() => undefined);
 		await conn.send("Emulation.setLocaleOverride", { locale: id.locale }, { sessionId }).catch(() => undefined);
-		await conn.send("Emulation.setTimezoneOverride", { timezoneId: id.timezone }, { sessionId }).catch(() => undefined);
+		await conn
+			.send("Emulation.setTimezoneOverride", { timezoneId: id.timezone }, { sessionId })
+			.catch(() => undefined);
 	}
 
 	/** Get (or lazily create) the isolated world for a page session. */
@@ -1652,7 +1854,11 @@ export class BrowserSession {
 	/** Report the stealth + captcha tier configuration. */
 	async stealthStatus(): Promise<ActionReport> {
 		this.captchaCfg ?? (this.captchaCfg = resolveCaptchaConfig(this.env));
-		this.stealthCfg ?? (this.stealthCfg = resolveStealthConfig({ enabled: this.env.stealth, overrides: this.stealthOverridesFromEnv() }));
+		this.stealthCfg ??
+			(this.stealthCfg = resolveStealthConfig({
+				enabled: this.env.stealth,
+				overrides: this.stealthOverridesFromEnv(),
+			}));
 		const st = this.stealthCfg;
 		const cc = this.captchaCfg;
 		const details: string[] = [
@@ -1663,10 +1869,16 @@ export class BrowserSession {
 			`screen=${st.identity.screen.width}x${st.identity.screen.height} viewport=${st.identity.viewport.width}x${st.identity.viewport.height}`,
 			`humanize: ${st.humanize ? "on" : "off"} (seeded: ${process.env.UNOWN_BROWSER_HUMANIZE_SEED ? "yes" : "no"})`,
 			`proxy: ${st.proxy ?? "(none - your IP is what sites see)"}`,
-			"protocol: " + (st.enabled ? "no Runtime.enable (CDP signal silent), isolated-world ops" : "classic (Runtime domain enabled)"),
+			"protocol: " +
+				(st.enabled
+					? "no Runtime.enable (CDP signal silent), isolated-world ops"
+					: "classic (Runtime domain enabled)"),
 			`captcha: solver=${cc.solver} auto=${cc.auto} vision=${cc.vision ? `on (${cc.visionModel} via ${cc.visionBaseUrl})` : "off (set UNOWN_VISION_API_KEY or AGNES_API_KEY)"}`,
 		];
-		return { summary: `stealth ${st.enabled ? "ON" : "off"} - os=${st.identity.os}, humanize=${st.humanize ? "on" : "off"}, captcha=${cc.solver}`, details };
+		return {
+			summary: `stealth ${st.enabled ? "ON" : "off"} - os=${st.identity.os}, humanize=${st.humanize ? "on" : "off"}, captcha=${cc.solver}`,
+			details,
+		};
 	}
 
 	/** In-page coherence self-check: read the live fingerprint and compare. */
@@ -1674,7 +1886,10 @@ export class BrowserSession {
 		await this.ensureStarted();
 		const st = this.stealthCfg;
 		if (!st?.enabled) {
-			return { summary: "stealth is off - start with stealth=true to verify a stealth identity", details: ["(classic mode reports its real engine fingerprint by design)"] };
+			return {
+				summary: "stealth is off - start with stealth=true to verify a stealth identity",
+				details: ["(classic mode reports its real engine fingerprint by design)"],
+			};
 		}
 		const fp = await this.pageEval(`(() => {
 			const uad = (typeof navigator.userAgentData === "undefined") ? null : {
@@ -1701,11 +1916,23 @@ export class BrowserSession {
 		checks.push(["navigator.webdriver is false", fp.webdriver === false, String(fp.webdriver)]);
 		checks.push(["userAgent matches identity", fp.ua === id.userAgent, String(fp.ua)]);
 		checks.push(["navigator.platform matches", fp.platform === id.platform, String(fp.platform)]);
-		checks.push(["userAgentData coherent", !!fp.uad && fp.uad.platform === id.uaMetadata.platform && fp.uad.mobile === id.uaMetadata.mobile, fp.uad ? `${fp.uad.platform} [${fp.uad.brands}]` : "absent"]);
+		checks.push([
+			"userAgentData coherent",
+			!!fp.uad && fp.uad.platform === id.uaMetadata.platform && fp.uad.mobile === id.uaMetadata.mobile,
+			fp.uad ? `${fp.uad.platform} [${fp.uad.brands}]` : "absent",
+		]);
 		checks.push(["timezone matches", fp.tz === id.timezone, String(fp.tz)]);
 		checks.push(["locale matches", String(fp.locale).startsWith(id.locale), String(fp.locale)]);
-		checks.push(["screen matches", fp.screen[0] === id.screen.width && fp.screen[1] === id.screen.height, String(fp.screen)]);
-		checks.push(["viewport matches", fp.inner[0] === this.viewport.width && fp.inner[1] === this.viewport.height, String(fp.inner)]);
+		checks.push([
+			"screen matches",
+			fp.screen[0] === id.screen.width && fp.screen[1] === id.screen.height,
+			String(fp.screen),
+		]);
+		checks.push([
+			"viewport matches",
+			fp.inner[0] === this.viewport.width && fp.inner[1] === this.viewport.height,
+			String(fp.inner),
+		]);
 		checks.push(["plugins present", Number(fp.plugins) > 0, String(fp.plugins)]);
 		checks.push(["window.chrome present", fp.chrome !== "undefined", String(fp.chrome)]);
 		const failed = checks.filter(([, ok]) => !ok);
@@ -1725,7 +1952,9 @@ export class BrowserSession {
 		const challenges = (raw?.challenges ?? []) as DetectedChallenge[];
 		const blocked = !!raw?.blocked;
 		return {
-			summary: challenges.length ? `captcha detected: ${challenges.map((c) => c.type).join(", ")}` : "no captcha detected",
+			summary: challenges.length
+				? `captcha detected: ${challenges.map((c) => c.type).join(", ")}`
+				: "no captcha detected",
 			details: formatChallenges(challenges, blocked).split("\n"),
 			warnings: blocked ? ["the page looks BLOCKED by a challenge interstitial"] : undefined,
 		};
@@ -1753,14 +1982,29 @@ export class BrowserSession {
 		await this.dispatchClick(cx, cy);
 		await this.settle(2_500);
 		// verify: does the response field now hold a token?
-		const field = challenge.type === "recaptcha-v2" ? 'textarea#g-recaptcha-response, .g-recaptcha-response' : challenge.type === "hcaptcha" ? 'textarea[name="h-captcha-response"]' : 'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]';
-		const val = await this.pageEval(`(() => { const el = document.querySelector(${JSON.stringify(field)}); return el ? String(el.value || "").length : 0; })()`).catch(() => 0);
+		const field =
+			challenge.type === "recaptcha-v2"
+				? "textarea#g-recaptcha-response, .g-recaptcha-response"
+				: challenge.type === "hcaptcha"
+					? 'textarea[name="h-captcha-response"]'
+					: 'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]';
+		const val = await this.pageEval(
+			`(() => { const el = document.querySelector(${JSON.stringify(field)}); return el ? String(el.value || "").length : 0; })()`,
+		).catch(() => 0);
 		const solved = Number(val) > 20;
-		return { clicked: true, note: solved ? `native click solved it (token present, ${val} chars)` : "native click landed but no token yet (challenge may be interactive/explicit)" };
+		return {
+			clicked: true,
+			note: solved
+				? `native click solved it (token present, ${val} chars)`
+				: "native click landed but no token yet (challenge may be interactive/explicit)",
+		};
 	}
 
 	/** The full solve pipeline for one challenge type. */
-	async captchaSolve(opts: { type?: string; attempt?: "all" | "native" | "service" | "vision" }): Promise<ActionReport> {
+	async captchaSolve(opts: {
+		type?: string;
+		attempt?: "all" | "native" | "service" | "vision";
+	}): Promise<ActionReport> {
 		await this.ensureStarted();
 		const cfg = this.captchaCfg!;
 		const attempt = opts.attempt ?? "all";
@@ -1785,14 +2029,20 @@ export class BrowserSession {
 		}
 
 		// tier 2: solver service
-		if (!solved && tiers.service !== "none" && cfg.solver !== "none" && attempt !== "native" && attempt !== "vision") {
+		if (
+			!solved &&
+			tiers.service !== "none" &&
+			cfg.solver !== "none" &&
+			attempt !== "native" &&
+			attempt !== "vision"
+		) {
 			if (!target.sitekey) {
 				attempts.push(`service: skipped - no sitekey derivable for ${target.type}`);
 			} else {
 				try {
 					const token = await this.serviceSolve(target, pageUrl);
 					const injected = await this.pageEval(injectTokenExpression(target.type, token));
-				const n = Number(injected?.injected ?? 0);
+					const n = Number(injected?.injected ?? 0);
 					attempts.push(`service (${cfg.solver}): token received, injected into ${n} field(s)`);
 					solved = n > 0;
 				} catch (err: any) {
@@ -1822,7 +2072,11 @@ export class BrowserSession {
 		return {
 			summary: `${target.type}: ${solved ? "SOLVED" : "not solved"}${remaining.length ? ` - still detected: ${remaining.join(", ")}` : " - challenge no longer detected"}`,
 			details: attempts,
-			warnings: solved ? undefined : ["captcha not solved - consider: a residential proxy (UNOWN_BROWSER_PROXY), stealth=on, or a human takeover (UNOWN_BROWSER_HEADLESS=0)"],
+			warnings: solved
+				? undefined
+				: [
+						"captcha not solved - consider: a residential proxy (UNOWN_BROWSER_PROXY), stealth=on, or a human takeover (UNOWN_BROWSER_HEADLESS=0)",
+					],
 		};
 	}
 
@@ -1831,14 +2085,12 @@ export class BrowserSession {
 		const cfg = this.captchaCfg!;
 		if (cfg.solver === "2captcha") {
 			const client = new TwoCaptchaClient(cfg.twoCaptchaKey!);
-			const kind: "recaptcha-v2" | "turnstile" =
-				challenge.type === "recaptcha-v2" ? "recaptcha-v2" : "turnstile";
+			const kind: "recaptcha-v2" | "turnstile" = challenge.type === "recaptcha-v2" ? "recaptcha-v2" : "turnstile";
 			return client.solve({ kind, sitekey: challenge.sitekey!, pageUrl });
 		}
 		if (cfg.solver === "capsolver") {
 			const client = new CapSolverClient(cfg.capSolverKey!);
-			const kind: "recaptcha-v2" | "turnstile" =
-				challenge.type === "recaptcha-v2" ? "recaptcha-v2" : "turnstile";
+			const kind: "recaptcha-v2" | "turnstile" = challenge.type === "recaptcha-v2" ? "recaptcha-v2" : "turnstile";
 			return client.solve({ kind, sitekey: challenge.sitekey!, pageUrl });
 		}
 		throw new Error(`no solver service configured (UNOWN_CAPTCHA_SOLVER / keys)`);
@@ -1848,7 +2100,9 @@ export class BrowserSession {
 	private async visionSolveImage(target: DetectedChallenge): Promise<string> {
 		const cfg = this.captchaCfg!;
 		if (!cfg.vision || !cfg.visionApiKey || !cfg.visionBaseUrl) {
-			throw new Error("vision OCR not configured (set UNOWN_VISION_API_KEY or AGNES_API_KEY; disable with UNOWN_CAPTCHA_VISION=0)");
+			throw new Error(
+				"vision OCR not configured (set UNOWN_VISION_API_KEY or AGNES_API_KEY; disable with UNOWN_CAPTCHA_VISION=0)",
+			);
 		}
 		if (!target.imageSelector) throw new Error("no image element selector for the vision tier");
 		const shot = await this.screenshot({ selector: target.imageSelector, format: "png" });

@@ -51,6 +51,17 @@ two more tiers close the loop on sites that fight back: a **stealth mode**
 solver-service and vision-OCR tiers) — see [stealth mode](#stealth-mode),
 [CAPTCHAs](#captchas) and [the workflows](#workflows-for-end-users).
 
+**Delegating instead of driving.** Every session can use the `browser` tool
+directly — and for anything beyond a quick check you should hand the whole
+flow to the **`browser` subagent** (`task {agent: "browser"}`, sync or async)
+instead: the child holds the snapshots, screenshots and console noise in its
+own context and returns a compact verified report (`Outcome:` / `Did:` /
+`Pages:` / `Notes:`), on a 10-minute budget, with the model fallback chain.
+The same Gemini-CLI/Cursor reasoning applies: DOM trees are context poison,
+so the browser surface ships as a subagent. The routing contract (what to
+delegate, what belongs to `webfetch` instead) lives in
+[subagents](subagents.md#delegating-web-work-the-browser-subagent).
+
 ## The work loop
 
 Every mutation returns a fresh accessibility snapshot, so the next decision
@@ -311,6 +322,7 @@ paths out of the agent's context.
 | `UNOWN_BROWSER_PATH` | auto | Explicit executable path; wins over discovery |
 | `UNOWN_BROWSER_CDP` | — | Attach to a running browser instead of launching (ws://, http://, or host:port) |
 | `UNOWN_BROWSER_HEADLESS` | `1` | `0` runs headed — watch the agent work |
+| `UNOWN_BROWSER_NO_SANDBOX` | `0` | `1` adds `--no-sandbox --disable-gpu` on the FIRST launch (containers/CI; the crash-retry path always forces them) |
 | `UNOWN_BROWSER_PROFILE` | `~/.unown/browser/profile` | Persistent profile directory |
 | `UNOWN_BROWSER_BLOCK` | — | Comma-separated host-glob deny list (`*.example.com,internal.corp`), checked before every navigation |
 | `UNOWN_BROWSER_TIMEOUT_MS` | `30000` | Navigation timeout |

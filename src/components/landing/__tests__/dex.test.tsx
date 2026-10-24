@@ -334,7 +334,7 @@ describe("landing DexSection", () => {
     }
   });
 
-  test("the media is the harness's audited set — twelve movies, one still, nothing invented", () => {
+  test("the media is the harness's audited set — twelve movies, three stills, nothing invented", () => {
     const { container } = render(<DexSection />);
     const videos = Array.from(container.querySelectorAll("video"));
     expect(videos.length).toBe(TALLY.videos);
@@ -373,7 +373,7 @@ describe("landing DexSection", () => {
     }
     const captures = bySrc(container, "/landing/tui/");
     expect(captures.length).toBe(TALLY.stills);
-    expect(captures.length).toBe(1);
+    expect(captures.length).toBe(3);
     expect(captures[0].getAttribute("loading")).toBe("lazy");
     expect(captures[0].getAttribute("alt")?.length).toBeGreaterThan(0);
     // No capture was fabricated: every unfilmed entry says so on its stage.

@@ -28,6 +28,7 @@ wall-of-green pixel measurements — live in
 | review | /review on the uncommitted fix → reviewers → SHIP verdict → artifact | 4 stills + mp4/webm/gif |
 | subagent-explore | task subagent maps the real unown repo | 4 stills + mp4/webm/gif |
 | fleet | async spawn → fleet widget (waiting-for-answer) → ask_question → task_control steer answer → result steered back → /tasks resume registry | 5 stills + mp4/webm/gif |
+| browser-subagent | the delegated web lane: task → browser (humanized live labels) → ✓ with wall clock → child report; async ◉ fleet row + /tasks lifecycle metadata (2026-10-24, PTY lane) | 6 stills |
 | wiki | /wiki generate → search with scores | 3 stills + mp4/webm/gif |
 | cli-doctor | shell showcase: doctor, models, usage | 3 stills + mp4/webm/gif |
 | memory-learn | two sessions in one pane: teach house rules + a real task → /note the lesson → /quit → AutoDream consolidates → a fresh session boots with the learned memory (footer chip v0 → vN) → /memory search recalls it scored → the closing task applies the lesson unprompted | 6 stills + mp4/webm |

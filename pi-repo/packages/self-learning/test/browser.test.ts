@@ -236,3 +236,38 @@ describe("parseKeyCombo", () => {
                 expect(modifierBits(undefined)).toBe(0);
         });
 });
+
+// ---------------------------------------------------------------------------
+// UNOWN_BROWSER_NO_SANDBOX — the env the launch-retry error hint advertises
+// (session.ts:306) must actually be read. Pinned at the config seam: the
+// BrowserEnv record carries it, and browserEnv() maps "1" → true, everything
+// else → false (the retry path keeps forcing the flags regardless).
+// ---------------------------------------------------------------------------
+import { browserEnv } from "../src/browser/config.ts";
+
+describe("browserEnv: UNOWN_BROWSER_NO_SANDBOX", () => {
+    test("unset / anything but '1' → false (first launch keeps the sandbox)", () => {
+        const cases = [undefined, "", "0", "true", "yes"];
+        for (const v of cases) {
+            const before = process.env.UNOWN_BROWSER_NO_SANDBOX;
+            if (v === undefined) delete process.env.UNOWN_BROWSER_NO_SANDBOX;
+            else process.env.UNOWN_BROWSER_NO_SANDBOX = v;
+            try {
+                expect(browserEnv().noSandbox).toBe(false);
+            } finally {
+                if (before === undefined) delete process.env.UNOWN_BROWSER_NO_SANDBOX;
+                else process.env.UNOWN_BROWSER_NO_SANDBOX = before;
+            }
+        }
+    });
+    test("'1' → true (--no-sandbox --disable-gpu on the FIRST launch)", () => {
+        const before = process.env.UNOWN_BROWSER_NO_SANDBOX;
+        process.env.UNOWN_BROWSER_NO_SANDBOX = "1";
+        try {
+            expect(browserEnv().noSandbox).toBe(true);
+        } finally {
+            if (before === undefined) delete process.env.UNOWN_BROWSER_NO_SANDBOX;
+            else process.env.UNOWN_BROWSER_NO_SANDBOX = before;
+        }
+    });
+});

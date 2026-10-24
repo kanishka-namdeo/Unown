@@ -439,6 +439,7 @@ const RAW: readonly DexEntryInput[] = [
       "Stealth tier: the Runtime domain is never enabled, so the 2026 CDP detection signal stays silent — verified live in both directions — while the browser itself applies a coherent fingerprint (real engine version, matching client hints, timezone, screen) and humanizes mouse paths and typing; stealth verify re-reads the live fingerprint: 10/10 coherent, and bot.sannysoft.com shows zero FAIL rows.",
       "Captcha tier: detect then solve Turnstile, reCAPTCHA, hCaptcha, DataDome, AWS WAF and image challenges — a native checkbox click first, then 2Captcha/CapSolver, then vision OCR on the repo's own Agnes preset (verified reading a live captcha); the vendor gaps are stated, not faked.",
       "Zero new runtime dependencies: the protocol is spoken directly over the runtime's native WebSocket, so the compiled binaries stay a closed graph.",
+      "The browser SUBAGENT: delegate the whole flow (task agent=browser, sync or async) and the child holds every snapshot, screenshot and console line in its own context — you get back a compact verified report on a 10-minute budget. The 2026 consensus shape (Gemini's browser_agent, Cursor's Browser subagent): DOM trees are context poison, so the browser surface ships as a subagent.",
     ],
     habitat: "joins every session",
     receipts: [
@@ -453,7 +454,19 @@ const RAW: readonly DexEntryInput[] = [
     // landing page on the local dev server with its browser tool (web
     // navigate → a11y snapshot), finds the exact curl install command,
     // clicks the GitHub link, screenshots where it landed, and reports.
-    captures: [REEL("browser-verify", "01-session.png")],
+    // The browser-subagent lane (2026-10-24): the same surface delegated —
+    // live humanized tool labels, the ◉ fleet row, /tasks lifecycle metadata.
+    captures: [
+      REEL("browser-verify", "01-session.png"),
+      STILL(
+        "/landing/tui/browser-subagent/stills/02-live-browser.png",
+        "the browser subagent in flight — the task row shows the humanized live label 'browser: …' with elapsed time",
+      ),
+      STILL(
+        "/landing/tui/browser-subagent/stills/05-fleet.png",
+        "the async fleet widget — the ◉ browser-active glyph, the lane rail, the live token count",
+      ),
+    ],
   },
 
   /* ---------------------------------------------------------------- */

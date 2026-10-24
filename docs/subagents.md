@@ -68,6 +68,8 @@ The contract: isolation is opt-in and **fail-closed** — outside a git reposito
 | `background-explore` | `read`, `grep`, `find`, `ls` — read-only | Low-cost background sweeps: same evidence-first shape as `explore`, at `effort: low`, loading **no MCP servers** and skipping AGENTS.md/memory injection — the minimal-overhead lane for parallel fact-finding |
 | `worker` | full toolset, **completion guard on** | Implementation with evidence: a run that finishes without touching a single file is reported as FAILED (silent no-op success cannot happen), and the reply follows a fixed evidence report — Changed / Commands / Residual risks. Falls back across models on provider failures |
 | `reviewer` | `read`, `grep`, `find`, `ls`, `bash` (read-only inspection) | Second pair of eyes: P0/P1/P2 findings with file:line evidence and an explicit merge verdict — BLOCK, OK, or OK with notes. A P0 forces BLOCK |
+| `browser` | `browser`, `read`, `grep`, `find`, `ls` — a real Chromium, no repo writes | Interactive web automation: JS-heavy pages, login-gated flows you have credentials for, multi-step forms, visual verification — everything `webfetch` cannot see. Snapshots and screenshots stay in the child's context; you get a compact verified report (`Outcome:` / `Did:` / `Pages:` / `Notes:`). 10-minute budget, no MCP, no memory injection. **Do not delegate plain page reads** — `webfetch`/`web_search` are cheaper ([browser.md](browser.md)) |
+| `browser` | `browser`, `read`, `grep`, `find`, `ls` — a real Chromium, no repo writes | Interactive web automation: JS-heavy pages, login-gated flows you have credentials for, multi-step forms, visual verification — everything `webfetch` cannot see. Snapshots and screenshots stay in the child's context; you get back a compact verified report (`Outcome:` / `Did:` / `Pages:` / `Notes:`). 10-minute budget, no MCP, no memory injection. **Do not delegate plain page reads** — `webfetch`/`web_search` are cheaper ([browser.md](browser.md)) |
 | `planner` | `read`, `grep`, `find`, `ls`, `write` (plan.md only) | Writes a step-by-step `plan.md` to the project root and STOPS — the plan file is the review gate; read it, edit it, then hand the approved steps to a `worker`. Not listed in the advertised catalog (reached explicitly) |
 
 `general` is the default when no agent is named.
@@ -114,6 +116,7 @@ Load order is built-in → global → project; a definition with the same `name`
 | `fallbackModels` | no | Ordered fallback models for provider-style failures (see [Fallback models](#fallback-models)) |
 | `context` | no | `fresh` (default) or `summary` — `summary` prepends a distilled brief of the parent session to the task (see [Context briefs](#context-briefs)) |
 | `contextBrief` | no | Role-directed instruction shaping the summary brief (what it keeps) — only used with `context: summary` |
+| `timeoutMs` | no | Per-agent wall-clock budget for one spawn — `600000`, `"10m"` and `"90s"` all parse; clamped to 30s–30min. Default 300000 (5 min); the `browser` builtin ships 600000. Also `timeout_ms` / `timeout`. Session-wide override: `UNOWN_SUBAGENT_TIMEOUT_MS` (a per-agent value always wins) |
 
 The Markdown **body (everything after the closing `---`) becomes the subagent's system prompt**. Files without valid `name` and `description` frontmatter are skipped silently. Invalid values for the routing fields are dropped, never thrown. Other frontmatter fields are ignored. Run `/agents` in a session to list everything discovered, with source and toolset.
 
@@ -353,15 +356,35 @@ The park is bounded at **10 minutes**. With no answer the child is told to proce
 While any async child runs, the TUI grows a **fleet widget above the editor** — one row per child, live, theme-aware:
 
 ```
-╭─ Subagents ── 2 running ────────────
-  ⟳ 01:04 mapper — running · grep
-  ?  00:12 triage — waiting for your answer
-╰─────────────────────────────────────
+╭─ Subagents ── 2 running ─────────────────────────────
+  ▌ ⟳ 01:04 mapper — running · grep: browser: · 1.2k tok
+  ▌ ◉ 00:12 form-flow — running · browser: click [e12] · 3.4k tok
+╰──────────────────────────────────────────────────────
 ```
 
-Row glyphs: `⟳` running (with the current tool), `○` starting, `?` waiting for your answer, `!` stalled. The list caps at 8 rows (`+N more running.` under it), and the footer carries the one-line summary (`fleet: 2 subagents running · 1 awaiting answer`). When the last child finishes the widget lingers ~1.5 s and disappears.
+Row glyphs: `⟳` running (with the current tool), `◉` **browser-active** (the `browser` subagent, or any child currently driving the browser tool), `○` starting, `?` waiting for your answer, `!` stalled. The tool detail is the **humanized label** — `browser: navigate example.com`, `bash: npm test`, `read: src/foo.ts` — derived in the parent from the `tool_execution_start` args already streaming over the child's JSONL (nothing extra is sent, nothing is polled from the page). Rows carry a **live token count** once the child has consumed any (`· 3.4k tok`), and each child's name rides in its stable lane color (the `▌` rail). The list caps at 8 rows (`+N more running.` under it), and the footer carries the one-line summary (`fleet: 2 subagents running`). When the last child finishes the widget lingers ~1.5 s and disappears.
+
+`/tasks` lists the running children with full **lifecycle metadata** — status, model, turns, tokens, current tool, elapsed, and the task's first line (the number-one ask across Claude Code's subagent-row issues):
+
+```
+Running (1):
+  form-flow (browser) — running-tool · agnes-3.0-flash · 3 turns · 17.9k tok · browser: navigate 127.0.0.1:40955 · 00:14
+      Open the form fixture and report the heading
+```
+
+The sync lane matches: while a `task` call is in flight its tool block shows one row per job (`browser: ⟳ 3 turns, 2 tools in browser: navigate example.com · 12s`), and each finished row carries its verdict and wall clock (`browser: ✓ 7 turns, 6 tools in 1m 08s`).
 
 The watcher behind it polls every second. A child with no activity for **120 s** flips to `stalled` (`!` — steer or stop it); a child parked on a question never stalls (the reply is the orchestrator's obligation, not the child's). Everything the widget shows is derived from the child's own event stream — turns, tools, tokens, current tool — not scraped from a terminal.
+
+### Delegating web work: the `browser` subagent
+
+The `browser` builtin exists so the parent's context never has to hold a DOM snapshot, a screenshot or a console log (the Gemini-CLI/Cursor pattern — their browser surfaces are subagents for exactly this reason). Delegate to it with `task {agent: "browser", task: "…"}` (sync or `async: true`), and keep three rules of thumb:
+
+- **Rendered web only.** Public page reads belong to `webfetch`/`web_search`; the browser subagent is for JS-heavy pages, forms, login-gated flows and visual verification.
+- **Credentials are yours to hand over, not the child's to guess.** The child's contract forbids entering credentials the task did not explicitly provide; a login wall it cannot pass comes back as `Outcome: partial` naming the wall.
+- **Terminal failures are reported, not retried.** Browser-missing launch errors, `UNOWN_BROWSER_BLOCK` denials and repeated `net::ERR_*` on the same URL come back verbatim with their remediation — policy and environment facts, never a retry loop.
+
+The child runs on a **10-minute budget** (double the default, Gemini's `browser_agent` number) with a model fallback chain, and its full tool surface is the [browser tool](browser.md) — every action, stealth tier and CAPTCHA ladder included.
 
 ## Fleet state on disk
 
