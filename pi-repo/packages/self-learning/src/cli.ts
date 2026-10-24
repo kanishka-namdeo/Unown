@@ -71,6 +71,8 @@ import { unownVersion } from "./packaging.ts";
 import { createPermissionGate, createPermissionsExtension, permissionsDoctorSummary } from "./permissions.ts";
 import { createProjectSettingsExtension, loadProjectSettings } from "./project-settings.ts";
 import { describeResume, latestSessionForCwd, resolveResumeQuery } from "./resume.ts";
+import { createMaxTurnsGuard, parseMaxTurns } from "./max-turns.ts";
+import { loadOutputSchema, renderSchemaFailure, validateAnswerAgainstSchema } from "./output-schema.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import { keyStatusLabel, listProviders, resolveProviderKey } from "./providers.ts";
 import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
@@ -322,6 +324,14 @@ One-shot run flags (print mode; several also used by the task tool):
   --output-format json     print ONE final JSON object (result + session id +
                            model + usage + cost + duration + turns; exit codes
                            unchanged) — CI/wrapper contract, composes with jq
+  --max-turns N            bound the run to N completed agent turns — the
+                           (N+1)th turn start aborts, the answer so far
+                           stands (JSON envelope gains "capped")
+  --output-schema F        validate the final answer against the JSON Schema
+                           in F (fence-stripped, exit 3 on mismatch; composes
+                           with --output-format json — envelope gains
+                           schema_valid/schema_issues; refused with --mode
+                           json)
   --no-session             do not persist the session
   --tools a,b,c            restrict the active tool set
   --append-system-prompt F append the file's contents to the system prompt
@@ -418,6 +428,14 @@ interface CliArgs {
          *  jail (edit/write tools + bash redirect targets). Claude Code
          *  --add-dir parity; /add-dir is the in-session twin. */
         addDirs?: string[];
+        /** --max-turns <N> (2026-10-24 CI round): bound the headless run to N
+         *  completed agent turns — the (N+1)th turn start aborts (Claude
+         *  Code / Gemini parity; the JSON envelope gains `capped`). */
+        maxTurns?: number;
+        /** --output-schema <file> (2026-10-24 CI round): validate the final
+         *  answer against a JSON Schema (Codex exec --output-schema parity);
+         *  exit 3 on mismatch; composes with --output-format json. */
+        outputSchema?: string;
 }
 
 // Exported for tests: the parse contract (routing flags, --output-format
@@ -446,6 +464,8 @@ export function parseArgs(argv: string[]): CliArgs {
         let addDirs: string[] | undefined;
         let continueLatest = false;
         let resumeQuery: string | undefined;
+        let maxTurns: number | undefined;
+        let outputSchema: string | undefined;
         for (let i = 0; i < argvRest.length; i++) {
                 const a = argvRest[i];
                 if (a === "--help" || a === "-h")
@@ -570,6 +590,28 @@ export function parseArgs(argv: string[]): CliArgs {
                         }
                         continue;
                 }
+                if (a === "--max-turns") {
+                        const next = argvRest[i + 1];
+                        const parsed = next !== undefined && !next.startsWith("--") ? parseMaxTurns(next) : { ok: false as const, error: "--max-turns expects a positive integer" };
+                        if (!parsed.ok) {
+                                console.error(`unown: ${parsed.error}`);
+                                process.exit(2);
+                        }
+                        maxTurns = parsed.value;
+                        i++;
+                        continue;
+                }
+                if (a === "--output-schema") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                outputSchema = next;
+                                i++;
+                        } else {
+                                console.error("unown: --output-schema expects a JSON Schema file path");
+                                process.exit(2);
+                        }
+                        continue;
+                }
                 rest.push(a);
         }
         const first = rest[0];
@@ -621,6 +663,8 @@ export function parseArgs(argv: string[]): CliArgs {
                         provider,
                         permissionMode,
                         addDirs,
+                        maxTurns,
+                        outputSchema,
                 };
         return {
                 command: "tui",
@@ -642,6 +686,8 @@ export function parseArgs(argv: string[]): CliArgs {
                 provider,
                 permissionMode,
                 addDirs,
+                maxTurns,
+                outputSchema,
         };
 }
 
@@ -2375,6 +2421,26 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 process.exit(2);
         }
         const wantResultJson = args.outputFormat === "json" && !args.jsonMode;
+        // CI round (2026-10-24): --output-schema needs a final-answer lane —
+        // the JSONL event stream has no single answer to validate, so the
+        // combination is a usage error exactly like --output-format json +
+        // --mode json.
+        const schema = args.outputSchema ? loadOutputSchema(args.outputSchema) : undefined;
+        if (schema && !schema.ok) {
+                console.error(`unown: ${schema.error}`);
+                process.exit(2);
+        }
+        if (schema && args.jsonMode) {
+                console.error("unown: --output-schema cannot be combined with --mode json (the event stream) — use --output-format json or the text lane");
+                process.exit(2);
+        }
+        // CI round: the bounded run (--max-turns) — the (N+1)th turn start
+        // aborts; the envelope gains `capped`, the stderr note lands once.
+        const maxTurnsGuard = args.maxTurns
+                ? createMaxTurnsGuard(args.maxTurns, (n) => {
+                        console.error(`unown: --max-turns ${n} reached — the run stopped after ${n} completed turn(s); the answer so far stands`);
+                  })
+                : undefined;
         const capture = wantResultJson ? createOutputCapture() : undefined;
         const startedAt = wantResultJson ? Date.now() : 0;
         // M3 answer ping (notify.ts): a SEPARATE clock from the json lane's
@@ -2396,7 +2462,11 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 // (preflight, stdin drain and boot are all part of the session the user
                 // waited through) and the arrival timestamp comes from the final
                 // agent_end — see the answer-watch extension below.
-                extraExtensions: [...(capture ? [createOutputCaptureExtension(capture)] : []), answerWatch.extension],
+                extraExtensions: [
+                        ...(capture ? [createOutputCaptureExtension(capture)] : []),
+                        ...(maxTurnsGuard ? [maxTurnsGuard.extension] : []),
+                        answerWatch.extension,
+                ],
                 // Milestone 2.1 + 2.2 — surface the routing fields (set by
                 // parseSubagentFlags inside parseArgs). bootRuntime applies
                 // them to process.env via applySubagentEnvOverrides BEFORE
@@ -2429,16 +2499,38 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                         // F11 empty-answer guard (2026-10-23): never report success on an
                         // empty result — a silent empty 200 from the upstream (see the
                         // bridge/pi-ai guards) must not reach automation callers as
-                        // subtype "success" + exit 0.
-                        const emptyAnswer = code === 0 && text.length === 0;
+                        // subtype "success" + exit 0. The CI-round cap refines this: a
+                        // CAPPED run is a controlled stop, so the abort's non-zero code
+                        // must not masquerade as an execution error when an answer
+                        // exists — `capped: true` in the envelope is the honest signal.
+                        const capped = maxTurnsGuard?.state.capped === true;
+                        const emptyAnswer = (code === 0 || capped) && text.length === 0;
                         const result = assembleResultJson({
                                 capture,
                                 text,
-                                subtype: code === 0 && !emptyAnswer ? "success" : "error_during_execution",
+                                subtype: (code === 0 || capped) && !emptyAnswer ? "success" : "error_during_execution",
                                 durationMs: Date.now() - startedAt,
                                 version: VERSION,
                         });
+                        // CI round: schema + cap facts ride the envelope (additive
+                        // fields — only present when the flags were used).
+                        if (schema?.ok) {
+                                const v = validateAnswerAgainstSchema(text, schema.schema);
+                                result.schema_valid = v.valid;
+                                result.schema_issues = v.issues;
+                        }
+                        if (maxTurnsGuard) {
+                                result.capped = maxTurnsGuard.state.capped;
+                                // Completed turns only — the aborted (N+1)th turn's
+                                // message_end (when pi emits one) is subtracted.
+                                const completed = capture.numTurns - maxTurnsGuard.state.abortedTurnEnds;
+                                if (completed >= 0 && completed !== capture.numTurns) result.num_turns = completed;
+                        }
                         process.stdout.write(JSON.stringify(result) + "\n");
+                        if (schema?.ok && result.schema_valid === false) {
+                                console.error(renderSchemaFailure(result.schema_issues as string[]));
+                                process.exit(3);
+                        }
                         if (emptyAnswer) {
                                 console.error("unown: the run ended without an answer (empty completion) — reported as error, not success");
                                 process.exit(1);
@@ -2464,6 +2556,22 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                         "unown: the model returned an empty answer (no text content) — likely an upstream fault; retry the run (the bridge and the provider layer already retried once each)",
                 );
                 process.exit(1);
+        }
+        // CI round (2026-10-24): text-lane schema validation — the final
+        // answer must parse as JSON and validate against the schema, or the
+        // run exits 3 (the answer itself still printed above). Runs AFTER the
+        // F11 guard on purpose: an empty answer is an upstream fault (exit 1),
+        // not a schema failure; only a NON-empty invalid answer is exit 3.
+        if (schema?.ok) {
+                const answerText = (answerWatch.answer?.text ?? "").trim();
+                const v = validateAnswerAgainstSchema(answerText, schema.schema);
+                if (!v.valid) {
+                        console.error(renderSchemaFailure(v.issues));
+                        process.exit(3);
+                }
+        }
+        if (maxTurnsGuard?.state.capped) {
+                console.error(`unown: (the run stopped at the --max-turns ${args.maxTurns} cap)`);
         }
         // M3 answer ping (notify.ts) — TEXT LANE ONLY: `--mode json` streams
         // JSONL events and `--output-format json` returned above, so neither
