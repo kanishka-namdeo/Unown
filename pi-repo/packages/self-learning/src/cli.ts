@@ -83,6 +83,7 @@ import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
 import { IMPORT_USAGE, runImportCommand } from "./import-cli.ts";
 import { runWorktreesCommand, WORKTREES_USAGE, withSessionWorktree } from "./worktree-session.ts";
 import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
+import { createSplashExtension } from "./splash.ts";
 import { createSplitViewExtension } from "./splitview.ts";
 import {
         applyEffortToEnv,
@@ -958,6 +959,15 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
 
         const settingsManager = SettingsManager.create(cwd, agentDir);
 
+        // Startup mark: a Unown form opens in the header slot for ~1 s, then
+        // hands the header back (src/splash.ts). Created after settingsManager
+        // because a quiet start gets no mark.
+        const splashExtension = createSplashExtension({
+                appName: "unown",
+                version: VERSION,
+                quietStartup: settingsManager.getQuietStartup(),
+        });
+
         // Verify-first defaults (2026-10): when the user has NOT configured a
         // default tool set in settings, unown sessions start with pi's base four
         // PLUS the dedicated search tools (grep/find/ls) when their binaries
@@ -1012,6 +1022,7 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                         toolsExtension as any,
                                         addonsExtension as any,
                                         firstFlightsExtension as any,
+                                        splashExtension as any,
                                         mcpExtension as any,
                                         permissionsExtension as any,
                                         projectSettingsExtension as any,

@@ -65,6 +65,32 @@ See the next section. Also reachable mid-session as `/plan` or Ctrl+Alt+P.
 
 Before every session (TUI or print), unown probes the configured model endpoint so a dead bridge or bad API key fails with instructions instead of a raw connection error. In print mode a failed probe exits with status 1; in the TUI it warns and continues. `UNOWN_NO_PREFLIGHT=1` skips the check.
 
+## The startup mark (2026-10-24)
+
+An interactive boot opens with a Unown form in the header slot: the script's eye
+draws itself, blinks once, and hands the header back to the normal one about a
+second later. The first interactive session on a machine gets the longer
+flourish — the five forms `unown` is spelled with, resolving into letters — and
+records that in `~/.unown/onboarding.json`, so every later session gets the
+short one.
+
+It is decoration that stays out of the way, by construction:
+
+- The `unown v…` wordmark is painted on **every** frame, so nothing that waits
+  on it (including the TUI capture lane) ever waits on the animation.
+- The editor already has focus, so you can type immediately; the timer is
+  `unref()`'d, so the mark can never hold the process open.
+- It plays once per process, and only on a real boot — `/new`, `/resume` and
+  `/reload` are not boots.
+- Below its own width the art is dropped rather than wrapped, so it cannot shear
+  or shift the transcript.
+- Colour comes from the active theme's tokens only; there are no background
+  fills.
+
+To turn it off: `UNOWN_NO_SPLASH=1`, or set `quietStartup` (which already
+suppresses the whole header), or export `NO_COLOR`. See
+[configuration](configuration.md#terminal-agent-unown-cli).
+
 ## Plan mode
 
 Plan mode is a read-only exploration phase with an explicit approval gate before anything changes. Start it three ways: `unown --plan` (print or TUI), `/plan` in the TUI, or Ctrl+Alt+P.

@@ -150,6 +150,7 @@ Author `.env` in the repo root from [`.env.example`](../.env.example). This tabl
 | `UNOWN_AUTO_TEST_COOLDOWN_MS` | `60000` | Cooldown between auto-test runs. |
 | `UNOWN_TRUST_PROJECT_CONFIG` | unset | `1`/`true` bypasses the project-config trust gate — `.unown/mcp.json`, `.unown/lsp.json`, `.unown/permissions.json` and `.unown/hooks.json` load without approval (CI/headless). Any other value keeps the gate on; approve interactively with `/mcp trust`, `/lsp trust`, `/permissions trust` or `/hooks trust`. |
 | `UNOWN_STATE_WARN_BYTES` | `536870912` | `unown doctor`'s unown-state check warns when the project's `.unown/` runtime state (checkpoints + receipts + reviews) exceeds this. |
+| `UNOWN_NO_SPLASH` | unset | `1` (any value but `0`/empty) never plays the [TUI startup mark](usage.md#the-startup-mark-2026-10-24). The mark is already suppressed by the `quietStartup` setting, by `NO_COLOR`, and in every non-TUI mode; this switch is what the TUI capture lane uses for a byte-stable first frame. |
 | `UNOWN_WEB_SEARCH` | `1` | `0` disables the `web_search` tool. |
 | `UNOWN_WEBFETCH` | `1` | `0` disables the `webfetch` tool. |
 | `UNOWN_WEB_SEARCH_PROVIDER` | auto | Explicit provider id or comma-separated chain (e.g. `tavily,duckduckgo`); unset = keyed providers first, then the keyless chain. |
