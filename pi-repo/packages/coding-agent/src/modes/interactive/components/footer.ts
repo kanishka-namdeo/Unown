@@ -168,12 +168,20 @@ export class FooterComponent implements Component {
 
                 for (const entry of this.session.sessionManager.getEntries()) {
                         if (entry.type === "message" && entry.message.role === "assistant") {
-                                addUsageToTotals(usageTotals, entry.message.usage);
+                                // Imported / hand-crafted sessions can carry assistant messages
+                                // without a usage block (e.g. unown's cross-agent import lane
+                                // converts Claude Code / Codex histories that never had one).
+                                // Such entries contribute zero usage instead of crashing the
+                                // footer render (usage.input on undefined — found live while
+                                // resuming an imported session).
+                                const usage = entry.message.usage;
+                                if (usage) {
+                                        addUsageToTotals(usageTotals, usage);
 
-                                const latestPromptTokens =
-                                        entry.message.usage.input + entry.message.usage.cacheRead + entry.message.usage.cacheWrite;
-                                latestCacheHitRate =
-                                        latestPromptTokens > 0 ? (entry.message.usage.cacheRead / latestPromptTokens) * 100 : undefined;
+                                        const latestPromptTokens = usage.input + usage.cacheRead + usage.cacheWrite;
+                                        latestCacheHitRate =
+                                                latestPromptTokens > 0 ? (usage.cacheRead / latestPromptTokens) * 100 : undefined;
+                                }
                         } else if (entry.type === "message" && entry.message.role === "toolResult" && entry.message.usage) {
                                 addUsageToTotals(usageTotals, entry.message.usage);
                         } else if ((entry.type === "branch_summary" || entry.type === "compaction") && entry.usage) {

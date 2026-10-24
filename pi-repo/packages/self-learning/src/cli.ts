@@ -69,6 +69,8 @@ import {
 } from "./output-format.ts";
 import { unownVersion } from "./packaging.ts";
 import { createPermissionGate, createPermissionsExtension, permissionsDoctorSummary } from "./permissions.ts";
+import { createProjectSettingsExtension, loadProjectSettings } from "./project-settings.ts";
+import { describeResume, latestSessionForCwd, resolveResumeQuery } from "./resume.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import { keyStatusLabel, listProviders, resolveProviderKey } from "./providers.ts";
 import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
@@ -137,6 +139,10 @@ Usage:
   unown                    interactive session in the current directory
   unown "do something"     interactive session starting with a prompt
   unown -p "prompt"        one-shot headless run (print mode)
+  unown -c                 continue this directory's latest session (TUI;
+                           with -p "..." it resumes and runs the prompt)
+  unown --resume <id|name> resume by session id, name or file path
+                           (auto-titles and /name both feed name matching)
   unown --plan [...]       start (print or TUI) in plan mode: read-only exploration,
                            numbered plan, then execution after approval (also /plan, Ctrl+Alt+P)
   unown --goal "objective"  start with a durable goal: evidence-verified completion,
@@ -298,6 +304,10 @@ Session tools (registered in every session):
                            (write access) for cross-repo work — /add-dir lists,
                            /add-dir clear revokes; the project dir and the
                            system temp dir are always writable
+  /project-settings       per-project session defaults (.unown/settings.json:
+                           model, provider, effort, permissionMode, addDirs —
+                           trust-gated like every project config; CLI flags
+                           still win; /project-settings trust approves)
   /providers              the in-chat provider manager (R2): bare opens the
                           interactive list/add/key/test/refresh/defaults flow;
                           /providers list | test <id> | refresh <id> work
@@ -434,6 +444,8 @@ export function parseArgs(argv: string[]): CliArgs {
         let provider: string | undefined;
         let permissionMode: "default" | "acceptEdits" | "bypassPermissions" | undefined;
         let addDirs: string[] | undefined;
+        let continueLatest = false;
+        let resumeQuery: string | undefined;
         for (let i = 0; i < argvRest.length; i++) {
                 const a = argvRest[i];
                 if (a === "--help" || a === "-h")
@@ -543,6 +555,21 @@ export function parseArgs(argv: string[]): CliArgs {
                         }
                         continue;
                 }
+                if (a === "--continue" || a === "-c") {
+                        continueLatest = true;
+                        continue;
+                }
+                if (a === "--resume" || a === "-r") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                resumeQuery = next;
+                                i++;
+                        } else {
+                                console.error("unown: --resume expects a session id, name or file path (bare picker: run `unown` and use /resume; -c continues this directory's latest)");
+                                process.exit(2);
+                        }
+                        continue;
+                }
                 rest.push(a);
         }
         const first = rest[0];
@@ -551,6 +578,21 @@ export function parseArgs(argv: string[]): CliArgs {
                 return { command: first, prompt, verbose, jsonMode, noSession, plan, noSplit, outputFormat };
         }
         const prompt = rest.join(" ");
+        // The flow-round launch lane (2026-10-24): -c/--continue and
+        // --resume <query> resolve to an exact session FILE before the boot —
+        // mutually exclusive with --session (which is already exact) and with
+        // each other. parseArgs owns the grammar + conflict checks; the
+        // resolution itself happens in cmdPrint/cmdTui (needs the real cwd
+        // + agent dir), so the sentinel values carry the intent there.
+        if ((continueLatest || resumeQuery) && sessionFile) {
+                console.error("unown: --session cannot be combined with --continue/--resume (both pick the session file themselves)");
+                process.exit(2);
+        }
+        if (continueLatest && resumeQuery) {
+                console.error("unown: --continue and --resume are mutually exclusive (latest-in-cwd vs id/name/file)");
+                process.exit(2);
+        }
+        const resolvedSessionFile = continueLatest ? "__continue__" : resumeQuery ? `__resume__:${resumeQuery}` : sessionFile;
         // Milestone 2.1 + 2.2 — surface the parsed routing fields (set by
         // parseSubagentFlags above) on every exit path so bootRuntime's
         // applySubagentEnvOverrides honors --model / --effort /
@@ -565,7 +607,7 @@ export function parseArgs(argv: string[]): CliArgs {
                         verbose,
                         jsonMode,
                         noSession,
-                        sessionFile,
+                        sessionFile: resolvedSessionFile,
                         tools,
                         appendSystemPromptPath,
                         plan,
@@ -586,7 +628,7 @@ export function parseArgs(argv: string[]): CliArgs {
                 verbose,
                 jsonMode,
                 noSession,
-                sessionFile,
+                sessionFile: resolvedSessionFile,
                 tools,
                 appendSystemPromptPath,
                 plan,
@@ -689,7 +731,70 @@ function applySubagentEnvOverrides(opts: BootOptions): void {
         }
 }
 
+/**
+ * Resolve the flow-round launch sentinels (2026-10-24) to an exact session
+ * file: `__continue__` -> the newest session recorded for this cwd;
+ * `__resume__:<query>` -> path / id(prefix) / name. Real paths (the --session
+ * spelling, fleet children) pass through untouched. Failure is a clean exit 1
+ * with the actionable message (candidates listed for ambiguous names); the
+ * landing notice goes to STDERR so the JSON lanes' stdout contract is intact.
+ */
+function resolveLaunchSession(sessionFile: string | undefined, cwd: string): string | undefined {
+	if (!sessionFile) return undefined;
+	if (sessionFile === "__continue__") {
+		const res = latestSessionForCwd(cwd, UNOWN_AGENT_DIR);
+		if (!res.ok) {
+			console.error(`unown: ${res.error}`);
+			process.exit(1);
+		}
+		console.error(`unown: ${describeResume(res)}`);
+		return res.file;
+	}
+	if (sessionFile.startsWith("__resume__:")) {
+		const query = sessionFile.slice("__resume__:".length);
+		const res = resolveResumeQuery(cwd, UNOWN_AGENT_DIR, query);
+		if (!res.ok) {
+			console.error(`unown: ${res.error}`);
+			for (const c of res.candidates ?? []) {
+				console.error(`  ${c.id}${c.name ? ` - ${c.name}` : ""}`);
+			}
+			process.exit(1);
+		}
+		console.error(`unown: ${describeResume(res)}`);
+		return res.file;
+	}
+	return sessionFile;
+}
+
 async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions = {}) {
+	// The flow round (2026-10-24): the trust-gated project settings layer
+	// (.unown/settings.json — Claude Code's committed .claude/settings.json
+	// parity) merges UNDER the CLI flags before anything consumes them:
+	// precedence CLI > project > user defaults. An untrusted file's keys
+	// are ignored with one boot notice (stderr — print-mode stdout stays
+	// a clean contract).
+	{
+		const ps = loadProjectSettings(cwd, { env: process.env });
+		if (ps.found && ps.ignored) {
+			console.error(`unown: ${ps.warnings.find((w) => w.includes("UNTRUSTED")) ?? "project .unown/settings.json is untrusted — ignored"}`);
+		}
+		if (ps.found && ps.trusted) {
+			for (const w of ps.warnings) console.error(`unown: ${w}`);
+		}
+		if (ps.trusted && Object.keys(ps.settings).length > 0) {
+			bootOpts = {
+				...bootOpts,
+				model: bootOpts.model ?? ps.settings.model,
+				provider: bootOpts.provider ?? ps.settings.provider,
+				effort: bootOpts.effort ?? ps.settings.effort,
+				permissionMode: bootOpts.permissionMode ?? ps.settings.permissionMode,
+				addDirs: bootOpts.addDirs ?? ps.settings.addDirs,
+			};
+			if (verbose) {
+				console.error(`[unown] project settings: ${Object.entries(ps.settings).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(",") : v}`).join(" ")}`);
+			}
+		}
+	}
         // Milestone 2.1 + 2.2 — apply the per-subagent routing overrides to
         // process.env BEFORE the session is created, so term.ts:writeModelsJson
         // (reads PI_MODEL_ID), the bridge (reads BRIDGE_QWEN_THINKING), the
@@ -734,6 +839,8 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                 initialMode: bootOpts.permissionMode,
                 initialAddDirs: bootOpts.addDirs,
         });
+        // The flow round (2026-10-24): the project-settings status/trust command.
+        const projectSettingsExtension = createProjectSettingsExtension({ cwd, verbose });
         // Split-view TUI display mode (thinking/tool band, files dock, response-only): a built-in
         // port of pi-split-view, persisted via <agentDir>/ui-panels.json (/split-save).
         const splitviewExtension = createSplitViewExtension({ agentDir, verbose });
@@ -810,6 +917,7 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                                         firstFlightsExtension as any,
                                         mcpExtension as any,
                                         permissionsExtension as any,
+                                        projectSettingsExtension as any,
                                         splitviewExtension as any,
                                         // Fleet lane (pi-interactive-subagents port): the
                                         // child-side extension — control-inbox steering +
@@ -2169,6 +2277,10 @@ function createAnswerWatch(): {
 
 async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: boolean) {
         const cwd = process.cwd();
+        // Flow round (2026-10-24): -c/--continue and --resume <query> resolve to
+        // an exact session file here (exit 1 with the actionable message when
+        // nothing matches). Real --session paths pass through untouched.
+        const launchSessionFile = resolveLaunchSession(args.sessionFile, cwd);
         // Pre-flight: fail fast with instructions when the model endpoint is
         // unreachable or rejects credentials (stderr — stdout may carry the
         // JSON event stream in --mode json).
@@ -2274,7 +2386,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         const { runtime } = await bootRuntime(cwd, verbose, {
                 jsonMode: args.jsonMode,
                 noSession: args.noSession,
-                sessionFile: args.sessionFile,
+                sessionFile: launchSessionFile,
                 tools: args.tools,
                 appendSystemPromptPath: args.appendSystemPromptPath,
                 plan: args.plan,
@@ -2376,6 +2488,10 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
 
 async function cmdTui(prompt: string | undefined, verbose: boolean, bootOpts: BootOptions = {}) {
         const cwd = process.cwd();
+        // Flow round (2026-10-24): the TUI lane resolves -c/--resume the same way
+        // (fail-fast exit 1; the landing notice lands on stderr before the TUI
+        // takes over the screen).
+        if (bootOpts.sessionFile) bootOpts = { ...bootOpts, sessionFile: resolveLaunchSession(bootOpts.sessionFile, cwd) };
         await ensureUnownAgentDirInfoAsync();
         maybeShowUpdateNotice();
         // M3 first-run onboarding (W1): a FRESH seed on an interactive TTY gets

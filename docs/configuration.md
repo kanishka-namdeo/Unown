@@ -349,6 +349,40 @@ The first run of `unown` bootstraps the same trio with bridge defaults (`zai-bri
 
 **The `BRIDGE_API_KEY` coupling.** The bridge-mode key stored in `models.json` is read from `BRIDGE_API_KEY` (falling back to the `bridge-local` placeholder) *only when the file is created*. If you later set `BRIDGE_API_KEY` in the repo's `.env`, the bridge now demands a bearer token — but the terminal agent still sends the old placeholder, and every chat dies with `unauthorized: missing or invalid bearer token (BRIDGE_API_KEY is set)`. Fix: re-run `unown setup` **from the unown repo root** (where bun loads `.env`, so the wizard sees the key), or hand-edit the `apiKey` field in `~/.unown/agent/models.json` to match. Details in [troubleshooting](troubleshooting.md).
 
+## Project settings (.unown/settings.json, 2026-10-24)
+
+The per-project session defaults layer — Claude Code's committed
+`.claude/settings.json` / Gemini CLI's workspace `.gemini/settings.json`
+parity. A repo can pin the model its agents should use, the effort level,
+the default permission mode and additional working directories without
+every contributor editing `~/.unown`:
+
+```json
+{
+  "version": 1,
+  "model": "agnes-2.5-flash",
+  "provider": "agnes",
+  "effort": "high",
+  "permissionMode": "acceptEdits",
+  "addDirs": ["../shared-config"]
+}
+```
+
+- All keys optional; unknown keys and wrong shapes warn and are ignored — a
+  malformed file never blocks the boot.
+- **Trust-gated** exactly like `.unown/mcp.json` / `.unown/lsp.json` /
+  `.unown/permissions.json` (a cloned repo is attacker-controlled): an
+  untrusted file's keys are ignored with one boot notice; approve it with
+  `/project-settings trust` in a session (or `UNOWN_TRUST_PROJECT_CONFIG=1`
+  for CI). Effective from the next session in that project.
+- Precedence: **CLI flags > project settings > user defaults** — a field the
+  command line already set is never overwritten.
+- `/project-settings` (in-session) shows the live state — file, trust,
+  effective keys.
+- `addDirs` entries resolve relative to the project root and grant the same
+  session-scoped write access as `--add-dir` (see
+  [permissions → additional working directories](permissions.md#additional-working-directories---add-dir--add-dir-2026-10-24)).
+
 ## Addons config (addons.json)
 
 The TUI addons — `ask_user_question`, `todo`, `advisor` — keep every user-tunable knob in one JSON file, editable by hand or through the in-session `/addons` configurator. Full key-by-key semantics, defaults and the design contracts: [addons](addons.md).

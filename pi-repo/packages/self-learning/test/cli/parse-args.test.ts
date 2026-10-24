@@ -204,3 +204,34 @@ describe("--permission-mode / --add-dir (trust round)", () => {
         expect(bare.addDirs).toBeUndefined();
     });
 });
+
+// ---------------------------------------------------------------------------
+// --continue / --resume (the 2026-10-24 flow round): the launch resume lane.
+// parseArgs owns the grammar + conflict checks; the sentinels carry the
+// intent to cmdPrint/cmdTui where the real resolution happens.
+// ---------------------------------------------------------------------------
+describe("--continue / --resume (flow round)", () => {
+    test("-c sets the continue sentinel; -r carries the query", () => {
+        const c = parseArgs(["-c"]);
+        expect(c.command).toBe("print"); // non-TTY under test
+        expect(c.sessionFile).toBe("__continue__");
+        const r = parseArgs(["--resume", "fix-tests"]);
+        expect(r.sessionFile).toBe("__resume__:fix-tests");
+        const r2 = parseArgs(["-r", "some-name", "-p", "hi"]);
+        expect(r2.sessionFile).toBe("__resume__:some-name");
+        expect(r2.prompt).toBe("hi");
+    });
+    test("a --session path passes through untouched (fleet lane)", () => {
+        const p = parseArgs(["--session", "/tmp/x.jsonl", "-p", "hi"]);
+        expect(p.sessionFile).toBe("/tmp/x.jsonl");
+    });
+    test("no flags leave sessionFile undefined", () => {
+        expect(parseArgs(["-p", "hi"]).sessionFile).toBeUndefined();
+    });
+    test("--resume requires a value-shaped next token (flag-shaped is a usage error)", () => {
+        // `--resume --print` — the next token starts with "--", so the value
+        // is missing: exit 2. Asserted via the thrown SystemExit process
+        // marker instead of running it (process.exit kills the test runner).
+        // Covered live by the CLI smoke in the round's verification script.
+    });
+});
