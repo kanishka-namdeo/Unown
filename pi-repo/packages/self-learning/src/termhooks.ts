@@ -396,18 +396,24 @@ export function bashRedirectEscape(cwd: string, command: string): string | null 
                 if (RAW_DEVICE.test(target) || RAW_DEVICE_WIN.test(target) || SSH_TRUST_DIR.test(target)) {
                         return `redirect target escapes the safe write set: ${target}`;
                 }
-                // System trees: denied on sight too, unless the target lexically
-                // falls inside an allowed root (macOS /var/folders/… — and, since
-                // the trust round, a user-added --add-dir root under /opt or
-                // similar) — the resolved-path layer below re-confirms with
-                // symlink knowledge.
+                // System trees: denied on sight too, unless the target — spelled
+                // OR resolved — falls inside an allowed root (macOS /var/folders/…
+                // — and, since the trust round, a user-added --add-dir root under
+                // /opt or similar). The resolved form matters on darwin, where
+                // /var/tmp is a symlink into /private/var/tmp: the root is stored
+                // REALPATH'd (write-roots.ts resolves at add time), so comparing
+                // only the literal spelling denied exactly the root the user had
+                // added (observed as the release-gate failure on the macOS leg:
+                // --add-dir /var/tmp then > /var/tmp/log was blocked). The
+                // resolved-path layer below re-confirms with full symlink
+                // knowledge; this early check just must not fire first.
+                let resolved = jailPath(cwd, target).resolved;
                 if (
                         (SYSTEM_TREE.test(target) || SYSTEM_TREE_WIN.test(target)) &&
-                        !allowedWriteRoots().some((r) => insideRoot(r, target))
+                        !allowedWriteRoots().some((r) => insideRoot(r, target) || insideRoot(r, resolved))
                 ) {
                         return `redirect target escapes the safe write set: ${target}`;
                 }
-                let resolved = jailPath(cwd, target).resolved;
                 for (const link of links) {
                         if (resolved === link.path || resolved.startsWith(`${link.path}/`)) {
                                 resolved = `${resolvePath(cwd, link.target)}${resolved.slice(link.path.length)}`;

@@ -15,7 +15,7 @@
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
 import { TEST_TMP } from "./_env.ts";
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -153,14 +153,35 @@ describe("terminalPathOk — the write jail extension", () => {
 describe("bashRedirectEscape — the redirect exemption", () => {
     test("a redirect into an added root under a system tree is exempt (the /opt story)", () => {
         const cwd = freshDir("wr-proj4-");
-        // /var/tmp matches SYSTEM_TREE (^/var) and is NOT in TMP_ROOTS —
-        // the only writable stand-in for a "/opt/mydata"-style root.
-        const opt = "/var/tmp";
+        // A real directory under a SYSTEM_TREE that is NOT in TMP_ROOTS —
+        // the writable stand-in for a "/opt/mydata"-style root. Platform
+        // truth: POSIX /var/tmp exists on linux + darwin (darwin realpaths
+        // to /private/var/tmp — the stored root is the realpath, so the
+        // redirect is spelled through it); Windows has no /var, so the story
+        // runs against %SystemRoot%\Temp (SYSTEM_TREE_WIN matches C:\Windows).
+        // bashRedirectEscape is pure — nothing is written; only the ROOT
+        // needs to exist on disk.
+        const opt = (() => {
+            if (process.platform === "win32") {
+                const root = process.env.SystemRoot ?? "C:\\Windows";
+                return join(root, "Temp");
+            }
+            return realpathSync("/var/tmp");
+        })();
         const log = join(opt, "unown-write-roots-test.log");
         clearSessionWriteRoots();
+        // No roots set: a system-tree redirect is an escape, on every OS.
         expect(bashRedirectEscape(cwd, `echo x > ${log}`)).toBeTruthy();
+        // The root added: the same redirect is exempt.
         setSessionWriteRoots(cwd, [opt]);
         expect(bashRedirectEscape(cwd, `echo x > ${log}`)).toBeNull();
+        // And on darwin the SYMLINK SPELLING works too (/var/tmp/... with a
+        // /private/var/tmp root): the lexical layer exempts the resolved
+        // path, not just the literal string (the 0.0.9 release-gate fix).
+        if (process.platform === "darwin") {
+            const literal = join("/var/tmp", "unown-write-roots-test.log");
+            expect(bashRedirectEscape(cwd, `echo x > ${literal}`)).toBeNull();
+        }
         clearSessionWriteRoots();
     });
 
