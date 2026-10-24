@@ -1,0 +1,36 @@
+
+ Tip — /plan explores read-only first, then proposes a numbered plan you approve before execution.
+
+» Delegate a web task to the browser subagent right now using the task tool with agent set to browser. The task: open
+  http://127.0.0.1:37409/ in the browser, type Ada into the name field, pick the Beta option, click Submit form, then report the
+  confirmation text exactly. Do not open the page yourself; delegate it.
+
+
+✓  task → browser "Open http://127.0.0.1:37409/ in the browser. Then:"
+   browser: ✓ 7 turns, 6 tools in 1m 13s
+
+
+ Done — delegated to the browser subagent and it completed all steps:
+
+ 1. ✅ Opened http://127.0.0.1:37409/ (fixture form page loaded)
+ 2. ✅ Typed "Ada" into the name field (confirmed value="Ada" in snapshot)
+ 3. ✅ Selected "Beta" in the option combobox
+ 4. ✅ Clicked "Submit form"
+
+ Exact confirmation text reported (verbatim):
+
+ ```
+   submitted Ada/b
+ ```
+
+ No validation errors or captchas encountered.
+
+ ✓ Task...
+
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/my-project/Unown (main)
+ctx ▕█░░░░░░░░░▏ 5.0%/524k (auto) ↓303 ↑735 CH97.8% R51k                                                         agnes-3.0-flash
+memory: up · old build
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree · ctrl+shift+f search (fullscreen)

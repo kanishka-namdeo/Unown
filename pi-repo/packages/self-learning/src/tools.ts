@@ -772,7 +772,12 @@ async function runSubagentOnce(
 						event?.args,
 					);
 					publishProgress();
-				} else if (event?.type === "tool_result_end") {
+				} else if (event?.type === "tool_execution_end" || event?.type === "tool_result_end") {
+					// The child's JSONL wire names this event `tool_execution_end`
+					// (core/extensions/types.ts ToolExecutionEndEvent); `tool_result_end`
+					// stays as a legacy alias so an older child still counts. Without
+					// this arm the sync lane's tool counter stays at 0 (observed live:
+					// "7 turns, 0 tools" while the browser child ran a dozen actions).
 					result.toolResults++;
 					currentTool = "";
 					publishProgress();
