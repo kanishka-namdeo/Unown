@@ -9,6 +9,7 @@
 // validator (valid, invalid-with-JSON-paths, malformed schema never
 // crashes); the failure renderer caps its output.
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
+import { TEST_TMP } from "./_env.ts";
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -97,7 +98,9 @@ describe("createMaxTurnsGuard", () => {
 });
 
 describe("loadOutputSchema", () => {
-    const dir = mkdtempSync("/tmp/unown-schema-");
+    // TEST_TMP, not a hardcoded "/tmp" — the literal POSIX path does not exist
+    // on Windows (mkdtemp ENOENT, caught by the v0.0.10 release matrix).
+    const dir = mkdtempSync(join(TEST_TMP, "unown-schema-"));
     TMP.push(dir);
 
     test("reads + shape-checks a valid schema", () => {
