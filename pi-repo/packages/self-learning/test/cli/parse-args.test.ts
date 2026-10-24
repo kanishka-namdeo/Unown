@@ -235,3 +235,38 @@ describe("--continue / --resume (flow round)", () => {
         // Covered live by the CLI smoke in the round's verification script.
     });
 });
+
+describe("parseArgs --max-tool-repetitions (2026-10-24 parity round)", () => {
+    test("the flag parses to a number on the print path", () => {
+        const args = parseArgs(["-p", "do it", "--max-tool-repetitions", "4"]);
+        expect(args.command).toBe("print");
+        expect(args.maxToolRepetitions).toBe(4);
+        expect(args.prompt).toBe("do it");
+    });
+    test("the flag parses on the tui path too", () => {
+        const origIn = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
+        const origOut = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+        Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+        Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+        try {
+            const args = parseArgs(["--max-tool-repetitions", "3", "hello"]);
+            expect(args.command).toBe("tui");
+            expect(args.maxToolRepetitions).toBe(3);
+        } finally {
+            if (origIn) Object.defineProperty(process.stdin, "isTTY", origIn);
+            else delete (process.stdin as any).isTTY;
+            if (origOut) Object.defineProperty(process.stdout, "isTTY", origOut);
+            else delete (process.stdout as any).isTTY;
+        }
+    });
+    test("composes with --max-turns (both guards on one run)", () => {
+        const args = parseArgs(["-p", "go", "--max-turns", "10", "--max-tool-repetitions", "2"]);
+        expect(args.maxTurns).toBe(10);
+        expect(args.maxToolRepetitions).toBe(2);
+    });
+    test("absent flag stays undefined; --output-schema composes", () => {
+        const args = parseArgs(["-p", "go", "--output-schema", "s.json"]);
+        expect(args.maxToolRepetitions).toBeUndefined();
+        expect(args.outputSchema).toBe("s.json");
+    });
+});

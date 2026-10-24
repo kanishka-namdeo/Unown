@@ -72,6 +72,7 @@ import { createPermissionGate, createPermissionsExtension, permissionsDoctorSumm
 import { createProjectSettingsExtension, loadProjectSettings } from "./project-settings.ts";
 import { describeResume, latestSessionForCwd, resolveResumeQuery } from "./resume.ts";
 import { createMaxTurnsGuard, parseMaxTurns } from "./max-turns.ts";
+import { createToolRepetitionGuard, parseMaxToolRepetitions } from "./tool-repetition.ts";
 import { loadOutputSchema, renderSchemaFailure, validateAnswerAgainstSchema } from "./output-schema.ts";
 import { isLoopbackProvider, probeOpenAiEndpoint, readAgentModelsFile, resolveActiveProvider } from "./probe.ts";
 import { keyStatusLabel, listProviders, resolveProviderKey } from "./providers.ts";
@@ -324,7 +325,10 @@ One-shot run flags (print mode; several also used by the task tool):
   --output-format json     print ONE final JSON object (result + session id +
                            model + usage + cost + duration + turns; exit codes
                            unchanged) — CI/wrapper contract, composes with jq
-  --max-turns N            bound the run to N completed agent turns — the
+  --max-tool-repetitions N abort when the SAME tool is called with the same
+                         arguments N times in a row — the loop guard
+                         (goose parity; exit 4; envelope: loop_guard)
+--max-turns N            bound the run to N completed agent turns — the
                            (N+1)th turn start aborts, the answer so far
                            stands (JSON envelope gains "capped")
   --output-schema F        validate the final answer against the JSON Schema
@@ -436,6 +440,11 @@ interface CliArgs {
          *  answer against a JSON Schema (Codex exec --output-schema parity);
          *  exit 3 on mismatch; composes with --output-format json. */
         outputSchema?: string;
+        /** --max-tool-repetitions <N> (2026-10-24 parity round): the loop
+         *  guard — abort when the SAME tool is called with the SAME arguments
+         *  N times consecutively (goose --max-tool-repetitions parity); exit
+         *  4 on trip; the JSON envelope gains `loop_guard`. */
+        maxToolRepetitions?: number;
 }
 
 // Exported for tests: the parse contract (routing flags, --output-format
@@ -465,6 +474,7 @@ export function parseArgs(argv: string[]): CliArgs {
         let continueLatest = false;
         let resumeQuery: string | undefined;
         let maxTurns: number | undefined;
+        let maxToolRepetitions: number | undefined;
         let outputSchema: string | undefined;
         for (let i = 0; i < argvRest.length; i++) {
                 const a = argvRest[i];
@@ -601,6 +611,17 @@ export function parseArgs(argv: string[]): CliArgs {
                         i++;
                         continue;
                 }
+                if (a === "--max-tool-repetitions") {
+                        const next = argvRest[i + 1];
+                        const parsed = next !== undefined && !next.startsWith("--") ? parseMaxToolRepetitions(next) : { ok: false as const, error: "--max-tool-repetitions expects a positive integer" };
+                        if (!parsed.ok) {
+                                console.error(`unown: ${parsed.error}`);
+                                process.exit(2);
+                        }
+                        maxToolRepetitions = parsed.value;
+                        i++;
+                        continue;
+                }
                 if (a === "--output-schema") {
                         const next = argvRest[i + 1];
                         if (next !== undefined && !next.startsWith("--")) {
@@ -665,6 +686,7 @@ export function parseArgs(argv: string[]): CliArgs {
                         addDirs,
                         maxTurns,
                         outputSchema,
+                        maxToolRepetitions,
                 };
         return {
                 command: "tui",
@@ -688,6 +710,7 @@ export function parseArgs(argv: string[]): CliArgs {
                 addDirs,
                 maxTurns,
                 outputSchema,
+                maxToolRepetitions,
         };
 }
 
@@ -2441,6 +2464,15 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                         console.error(`unown: --max-turns ${n} reached — the run stopped after ${n} completed turn(s); the answer so far stands`);
                   })
                 : undefined;
+        // Parity round (2026-10-24): the loop guard (--max-tool-repetitions) —
+        // the same-tool-same-args streak aborts; exit 4 + envelope `loop_guard`.
+        const repetitionGuard = args.maxToolRepetitions
+                ? createToolRepetitionGuard(args.maxToolRepetitions, (info) => {
+                        console.error(
+                                `unown: loop guard — tool ${info.tool} called with identical arguments ${info.count} time(s) in a row (limit ${info.limit}); aborting (--max-tool-repetitions)`,
+                        );
+                  })
+                : undefined;
         const capture = wantResultJson ? createOutputCapture() : undefined;
         const startedAt = wantResultJson ? Date.now() : 0;
         // M3 answer ping (notify.ts): a SEPARATE clock from the json lane's
@@ -2465,6 +2497,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 extraExtensions: [
                         ...(capture ? [createOutputCaptureExtension(capture)] : []),
                         ...(maxTurnsGuard ? [maxTurnsGuard.extension] : []),
+                        ...(repetitionGuard ? [repetitionGuard.extension] : []),
                         answerWatch.extension,
                 ],
                 // Milestone 2.1 + 2.2 — surface the routing fields (set by
@@ -2526,7 +2559,20 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                                 const completed = capture.numTurns - maxTurnsGuard.state.abortedTurnEnds;
                                 if (completed >= 0 && completed !== capture.numTurns) result.num_turns = completed;
                         }
+                        if (repetitionGuard?.state.tripped) {
+                                result.loop_guard = {
+                                        tool: repetitionGuard.state.tool,
+                                        count: repetitionGuard.state.count,
+                                        limit: repetitionGuard.state.limit,
+                                };
+                        }
                         process.stdout.write(JSON.stringify(result) + "\n");
+                        if (repetitionGuard?.state.tripped) {
+                                // The loop guard is a distinct, documented exit
+                                // (4) — automation can tell "stuck agent" from
+                                // "execution error" (1) and "invalid answer" (3).
+                                process.exit(4);
+                        }
                         if (schema?.ok && result.schema_valid === false) {
                                 console.error(renderSchemaFailure(result.schema_issues as string[]));
                                 process.exit(3);
@@ -2572,6 +2618,12 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         }
         if (maxTurnsGuard?.state.capped) {
                 console.error(`unown: (the run stopped at the --max-turns ${args.maxTurns} cap)`);
+        }
+        if (repetitionGuard?.state.tripped) {
+                console.error(
+                        `unown: (the run aborted on the --max-tool-repetitions ${args.maxToolRepetitions} loop guard — tool ${repetitionGuard.state.tool})`,
+                );
+                process.exit(4);
         }
         // M3 answer ping (notify.ts) — TEXT LANE ONLY: `--mode json` streams
         // JSONL events and `--output-format json` returned above, so neither
