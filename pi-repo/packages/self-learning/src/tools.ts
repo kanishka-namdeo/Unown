@@ -109,6 +109,7 @@ import {
 	styleSystemPromptAppendix,
 } from "./output-style.ts";
 import { IS_COMPILED_BINARY, isBunVirtualPath } from "./packaging.ts";
+import type { PermissionsStatus } from "./permissions.ts";
 import { postPrComment } from "./pr-review.ts";
 import { runPromoteCommand } from "./promote-cli.ts";
 import { providersArgumentCompletions, runProvidersCommand } from "./providers-command.ts";
@@ -126,6 +127,7 @@ import {
 	reviewerAgent,
 	saveReviewArtifact,
 } from "./review.ts";
+import { registerStatusCommands } from "./status-card.ts";
 import { ROLE_BUILTIN_AGENTS } from "./subagent-builtins.ts";
 import {
 	type CatalogAgent,
@@ -1216,6 +1218,11 @@ export interface UnownToolsOptions {
 	cwd: string; // the user's real project directory
 	engineUrl: string;
 	isSubagent?: boolean; // inside a spawned subagent: disable the task tool (no nesting)
+	/** The shared permission gate's live status (bootRuntime owns the gate);
+	 *  feeds the /status card's permissions line. */
+	permissionsStatus?: () => PermissionsStatus | undefined;
+	/** Live --add-dir / /add-dir count for the /status card. */
+	addDirs?: () => number | undefined;
 	verbose?: boolean;
 }
 
@@ -2392,6 +2399,20 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		registerGitTools(pi, { cwd: opts.cwd, isSubagent, verbose });
 
 		// -------------------------------------------------------------------
+		// /status + /diff — the visibility pair (2026-10-25 completion
+		// round, src/status-card.ts): the one-glance session card
+		// (model, thinking, permissions, memory, engine, worktree, git)
+		// and the working-tree diff /commit was missing its half for.
+		// -------------------------------------------------------------------
+
+		registerStatusCommands(pi, {
+			cwd: opts.cwd,
+			permissionsStatus: opts.permissionsStatus,
+			addDirs: opts.addDirs,
+			verbose,
+		});
+
+		// -------------------------------------------------------------------
 		// LSP code intelligence (oh-my-pi port — see src/lsp.ts)
 		// -------------------------------------------------------------------
 
@@ -2883,7 +2904,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		// memory stack, the conversation estimate, the system+tools residual,
 		// session rollups and the compaction advice. Pure core in context-viz.ts.
 		pi.registerCommand("context", {
-			description: "Context window utilization: the bar, where it goes (memory / conversation / system), compaction advice",
+			description:
+				"Context window utilization: the bar, where it goes (memory / conversation / system), compaction advice",
 			handler: async (_args: string | undefined, ctx: any) => {
 				const { computeContextReport, renderContextReport } = await import("./context-viz.ts");
 				const { terminalMemoryForAgent } = await import("./term.ts");
@@ -2896,12 +2918,14 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					const usage = typeof ctx?.getContextUsage === "function" ? ctx.getContextUsage() : undefined;
 					if (usage) {
 						if (typeof usage.tokens === "number") usedTokens = usage.tokens;
-						if (typeof usage.contextWindow === "number" && usage.contextWindow > 0) contextWindow = usage.contextWindow;
+						if (typeof usage.contextWindow === "number" && usage.contextWindow > 0)
+							contextWindow = usage.contextWindow;
 					}
 				} catch {
 					/* best-effort — estimates below carry the report */
 				}
-				const entries = typeof ctx?.sessionManager?.getEntries === "function" ? ctx.sessionManager.getEntries() : [];
+				const entries =
+					typeof ctx?.sessionManager?.getEntries === "function" ? ctx.sessionManager.getEntries() : [];
 				// Model fallbacks: ctx.model (id + provider) and the model-specs
 				// table when the host hasn't reported the window yet.
 				let model: string | null = null;
@@ -3419,7 +3443,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			},
 		});
 
-				// Milestone 3.5 — `/sessions <sub>` slash command: the in-session
+		// Milestone 3.5 — `/sessions <sub>` slash command: the in-session
 		// alias for the `unown sessions` CLI. Uses the live session
 		// manager (ctx.sessionManager) so export/import operate on the
 		// CURRENT session without needing the CLI to construct one.
@@ -3430,8 +3454,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		// user lane where this live session itself is persisted + the
 		// project import lane), and export gained the markdown format.
 		pi.registerCommand("sessions", {
-			description:
-				"Session export / import / list: /sessions export [--md] [--raw] | list [--all] | import <file>",
+			description: "Session export / import / list: /sessions export [--md] [--raw] | list [--all] | import <file>",
 			handler: async (args, ctx) => {
 				const tokens = (args ?? "")
 					.trim()
@@ -3474,7 +3497,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					for (let i = 1; i < tokens.length; i++) {
 						const t = tokens[i];
 						if (t === "--out" && i + 1 < tokens.length) {
-								out = tokens[i + 1];
+							out = tokens[i + 1];
 							i++;
 						} else if (t === "--md" || t === "--markdown" || t === "--format") {
 							// --format takes the next token (md|json); --md is the shorthand
@@ -3484,11 +3507,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 								if (v !== undefined && !md) {
 									ctx.ui.notify(`Unknown --format "${v}" (expected md or json)`, "warning");
 									return;
-							}
-							i++;
-						} else {
+								}
+								i++;
+							} else {
 								md = true;
-						}
+							}
 						} else if (t === "--raw") {
 							raw = true;
 						}
@@ -3501,22 +3524,22 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 						const sessionId = ctx.sessionManager.getSessionId();
 						const result = md
 							? await exportSessionMarkdown(sessionId, {
-									  sessionManager: ctx.sessionManager as any,
-									  outPath: out,
-									  redact: !raw,
-								  })
+									sessionManager: ctx.sessionManager as any,
+									outPath: out,
+									redact: !raw,
+								})
 							: await exportSession(sessionId, {
-									  sessionManager: ctx.sessionManager as any,
-									  outPath: out,
-								  });
+									sessionManager: ctx.sessionManager as any,
+									outPath: out,
+								});
 						const redactionNote =
 							result.redacted > 0
 								? ` · ${result.redacted} secret${result.redacted === 1 ? "" : "s"} redacted`
 								: "";
 						ctx.ui.notify(
-								`✓ Exported session ${sessionId} → ${result.path} (${result.bytes} bytes${md ? ", markdown" : ""}${redactionNote})`,
-								"info",
-							);
+							`✓ Exported session ${sessionId} → ${result.path} (${result.bytes} bytes${md ? ", markdown" : ""}${redactionNote})`,
+							"info",
+						);
 					} catch (err: any) {
 						ctx.ui.notify(`Export failed: ${err instanceof Error ? err.message : String(err)}`, "warning");
 					}
@@ -3540,7 +3563,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					}
 					return;
 				}
-				ctx.ui.notify(`Usage: /sessions export [--md] [--raw] [--out F] | list [--all] | import <file> (got "${sub}")`, "info");
+				ctx.ui.notify(
+					`Usage: /sessions export [--md] [--raw] [--out F] | list [--all] | import <file> (got "${sub}")`,
+					"info",
+				);
 			},
 		});
 		// Milestone 4.1 — `/recipe <name> [args]` slash command: the

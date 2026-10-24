@@ -136,6 +136,7 @@ import { runWatchCommand, WATCH_USAGE } from "./watch-cli.ts";
 import { webCacheClear, webCacheStats, webCacheSweep } from "./webcache.ts";
 import { runWikiCommand, WIKI_USAGE } from "./wiki-cli.ts";
 import { runWorktreesCommand, WORKTREES_USAGE, withSessionWorktree } from "./worktree-session.ts";
+import { sessionWriteRoots } from "./write-roots.ts";
 
 /** Unown's version — the value the release-artifact build injected, else the
  *  ROOT package.json (the source of truth CI asserts against). "unknown" when
@@ -285,6 +286,10 @@ Session tools (registered in every session):
   /restore /checkpoints /receipts /mcp /goal /review   session commands
   /commit /hooks          git-native commit (message optional, never pushes)
                           + the user-hook layer's status/trust surface
+  /status /diff           the visibility pair: the one-glance session card
+                          (model, thinking, permissions, memory, engine,
+                          worktree, git) + the working-tree diff /commit
+                          was missing its other half for (--stat for compact)
   /tasks                  the async subagent fleet: running children + the
                           resume registry (task_control steer <name> resumes)
   /addons                configure the TUI addons (ask_user_question, todo,
@@ -1041,7 +1046,15 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
 	// Split-view TUI display mode (thinking/tool band, files dock, response-only): a built-in
 	// port of pi-split-view, persisted via <agentDir>/ui-panels.json (/split-save).
 	const splitviewExtension = createSplitViewExtension({ agentDir, verbose });
-	const toolsExtension = createUnownToolsExtension({ cwd, engineUrl: ENGINE_URL, verbose });
+	const toolsExtension = createUnownToolsExtension({
+		cwd,
+		engineUrl: ENGINE_URL,
+		// The /status card's live inputs (2026-10-25 completion round): the
+		// shared permission gate's status + the live --add-dir / /add-dir count.
+		permissionsStatus: () => (typeof permissionsGate.status === "function" ? permissionsGate.status() : undefined),
+		addDirs: () => sessionWriteRoots().length,
+		verbose,
+	});
 	// The TUI addons (ask_user_question, todo, advisor + /addons): bundled
 	// inline extensions with their own user config (~/.unown/agent/addons.json).
 	// ask_user_question + todo register in subagent sessions too (the
