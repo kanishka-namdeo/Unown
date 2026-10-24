@@ -74,6 +74,7 @@ import { instructionWriteDeny } from "./instruction-guard.ts";
 import { getActiveMcpManager } from "./mcp.ts";
 import { assistantTextOf } from "./messages.ts";
 import { createPermissionGate, type PermissionGate, type ToolCallDecision } from "./permissions.ts";
+import { createFormatterSessionState, maybeFormatOnEdit } from "./formatters.ts";
 import { sessionWriteRoots } from "./write-roots.ts";
 import { annotateToolOutput, recordShieldFlag, shieldEnabled, shieldTelemetry } from "./shield.ts";
 import { deliverTerminalNote } from "./term.ts";
@@ -588,6 +589,9 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
         let prompts = 0;
         let toolCalls = 0;
         const toolNames = new Set<string>();
+        // Auto-formatters (2026-10-24 parity round): per-session latch state —
+        // a formatter that failed once stops being reported (see formatters.ts).
+        const formatterState = createFormatterSessionState();
         let lastAssistantText = "";
         let sessionStartTs = Date.now();
         // Session salt (2026-10-22 consistency fix): two concurrent sessions in the
@@ -903,6 +907,23 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                                 content: [...(event.content ?? []), { type: "text", text: augment.appended }],
                                                 isError: true,
                                         };
+                                }
+                                // Auto-formatters (2026-10-24 parity round; OpenCode
+                                // Formatters / aider auto-lint parity): run the first
+                                // matching formatter on the edited file and feed the
+                                // change back as a NON-error block. Fail-open by
+                                // contract — a formatter must never break an edit.
+                                const fmt = await maybeFormatOnEdit({
+                                        tool,
+                                        path: fileName,
+                                        projectDir: opts.cwd,
+                                        state: formatterState,
+                                        cwd: opts.cwd,
+                                });
+                                if (fmt.feedback) {
+                                        log(`PostToolUse formatter: ${fmt.feedback.slice(0, 120)}`);
+                                        result = result ?? { content: [...(event.content ?? [])], isError: false };
+                                        result.content = [...(result.content ?? []), { type: "text", text: fmt.feedback }];
                                 }
                         }
                         // Injection shield: bash/powershell stdout is live hostile-content

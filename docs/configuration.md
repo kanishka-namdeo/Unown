@@ -411,6 +411,26 @@ Three files switch whole guard behaviors on and off. All are user-authored, none
 
 The same refuse-first trust gate covers the other project-scoped configs — `.unown/mcp.json`, `.unown/lsp.json`, `.unown/permissions.json` — each with its own approval command (`/mcp trust`, `/lsp trust`, `/permissions trust`).
 
+### Formatters config (formatters.json, 2026-10-24)
+
+Post-edit **auto-formatters** (OpenCode Formatters / aider auto-lint parity): after every successful `write`/`edit`, the first matching formatter runs on the file and the change is fed back to the agent as a non-error `[PostToolUse:formatter]` block — the agent sees the final on-disk form and can re-read if the reformat moved its anchors. Two scopes, the hooks.json precedent:
+
+- `~/.unown/agent/formatters.json` — user scope, always trusted
+- `.unown/formatters.json` — project scope, trust-gated refuse-first (`UNOWN_TRUST_PROJECT_CONFIG=1` bypasses for CI)
+
+```json
+{
+  "version": 1,
+  "formatters": [
+    { "pattern": "**/*.ts",  "command": "prettier --write" },
+    { "pattern": "**/*.go",  "command": "gofmt -w" },
+    { "pattern": "**/*.py",  "command": "ruff format $FILE" }
+  ]
+}
+```
+
+Rules: first match wins (project rules replace user rules with the same pattern); patterns are the permissions layer's globs (a lone `*` never crosses `/`, a double-star does) matched against the project-relative path, the basename and the absolute path — a bare `*.ts` rule therefore covers nested files too; the file path is **appended** to the command unless the command contains the `$FILE` placeholder (full argument-order control); each run gets a 10s timeout (a wedged formatter never wedges the session). Everything is fail-open: a missing formatter, a timeout or a non-zero exit never breaks the edit — the first failure per command is reported once to the agent (`… formatters for this pattern are now silent for the session`) and the edit stands unformatted. A formatter that changes nothing stays silent (no noise on every clean write).
+
 ## Common setups
 
 Three shapes cover almost everyone:
