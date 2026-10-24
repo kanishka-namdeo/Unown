@@ -17,12 +17,13 @@ const LISTED = new Set(["Added", "Behavior"]);
  *  the eight-stop rail alone had grown to 585 of them (the word gate does not
  *  care that the overflow is sideways). "+N more" links the rest, counts stay
  *  printed, nothing is deleted.
- *  2026-10-24 (again): 3 -> 2 — the 0.0.12 stop's tile pushed the page to
- *  3216 words against the same 3200 gate (CI 40087051206, the one deterministic
- *  red in the v0.0.12 round), so the third titles paid for it again: seven of
- *  them across the rail, 86 words out, seven "+1 more" links back in. Two
- *  titles still carry a stop's flavor; the rule holds. */
-export const MAX_LISTED = 2;
+ *  2026-10-24 (a third time): 2 -> 1 — the 0.0.14 stop (the v0.0.14 release
+ *  supersedes the failed v0.0.13 tag's windows matrix) pushed the page past
+ *  the 3200 gate again with zero headroom left at 3199; the second titles pay
+ *  for it the same way (thirteen of them out, the "+N more" links back in —
+ *  every count stays printed, nothing deleted). One listed title still names
+ *  a stop's round; the rule holds. */
+export const MAX_LISTED = 1;
 
 const NOUNS: Record<string, [string, string]> = {
   Added: ["addition", "additions"],

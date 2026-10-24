@@ -18,7 +18,7 @@ import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module
 import { TEST_TMP } from "./_env.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -57,7 +57,11 @@ function makeRepo(): string {
     writeFileSync(join(root, "README.md"), "# repo\n");
     run(root, ["add", "."]);
     run(root, ["commit", "-m", "init"]);
-    return root;
+    // Windows short-path normalization (the v0.0.13 release matrix): git
+    // reports the LONG form (runneradmin) while tmpdir() mkdtemp returns the
+    // 8.3 short form (RUNNER~1) — every path assertion compares the resolved
+    // form, the same trap the v0.0.10 resume-test round hit.
+    return realpathSync(root);
 }
 
 beforeAll(() => mkdirSync(TEST_TMP, { recursive: true }));

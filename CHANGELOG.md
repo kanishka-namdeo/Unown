@@ -9,6 +9,12 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.14] - 2026-10-24
+
+### Added
+
+- **release: the parity round re-cuts — v0.0.14 supersedes the failed v0.0.13 tag** — the v0.0.13 tag's release run failed its windows-latest verification on one worktree-session test (the run's only red; macOS and Ubuntu green, the build never ran): the test compared `mkdtempSync(tmpdir())`'s Windows 8.3 SHORT path form (`RUNNER~1`) against git's LONG form (`runneradmin`) in the worktree handle — the same Windows path trap the v0.0.10 resume-test round hit (its fixture fix is the precedent). The fixture now normalizes through `realpathSync`, the suite's established cross-platform pattern. Following the failed-tag precedent (never move a dead tag): the fix lands on main and this release cuts v0.0.14 from it, carrying the whole 0.0.13 parity round — the six rounds (session workflow: markdown export + the both-stores fix; /context; --max-tool-repetitions + exit 4; post-edit auto-formatters; unown import config migration; unown --worktree session worktrees) — plus the DOX contract sync (the AGENTS.md command lists, the exit contract, the phantom settings.json reference cleaned — the instruction-set audit 0/0/0). Also in the release: the changelog rail's `MAX_LISTED` 2→1 (the third valve turn — the 0.0.14 stop's tile pushed the page past the 3200-word gate with zero headroom at 3199; thirteen second titles out, "+N more" links back in, every count printed, nothing deleted). Verified: the worktree-session suite 8/8 with the normalized fixture, the full self-learning suite green on the fixed main, and this release's own 3-OS verification matrix.
+
 ## [0.0.13] - 2026-10-24
 
 ### Added

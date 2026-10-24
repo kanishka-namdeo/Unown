@@ -1,6 +1,6 @@
 {
   "name": "unown",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "private": true,
   "type": "module",
   "description": "Unown \u2014 a self-improving coding agent built on the pi coding agent: tiered memory, hooks, AutoDreaming, a self-improving harness, sandbox testing, routing, and a terminal-first mission control (unown dashboard).",
