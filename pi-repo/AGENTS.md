@@ -172,7 +172,7 @@ If the user's instructions conflict with any rule in this document, ask for expl
 
 ## Child DOX Index
 
-This doc is the upstream pi-mono development ruleset, vendored into Unown and binding for edits inside `pi-repo/` (code quality, commands, git hygiene). Repo-level workflow (Unown commits, stack verification, secrets policy) is governed by the repo root `AGENTS.md` DOX rail, which takes precedence where rules overlap — this doc may not weaken it, and Unown commits follow the root rail's explicit-path staging rule.
+This doc is the upstream pi-mono development ruleset, vendored into Unown and binding for edits inside `pi-repo/` (code quality, commands, git hygiene, dependency security). Repo-level workflow is governed by the repo root `AGENTS.md` DOX rail; where rules overlap the root rail decides, and this doc may not weaken it.
 
-- `packages/self-learning/AGENTS.md` — the Unown self-learning engine (the only locally-owned package); env contracts, model registration, learning-integrity gates, verification
+- `packages/self-learning/AGENTS.md` — the Unown self-learning engine, the only locally-owned package (the five mechanisms, terminal agent, engine service, sandbox, env contracts, verification). Sibling packages are upstream code — this doc's rules bind them; they carry no child docs.
 

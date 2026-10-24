@@ -736,9 +736,10 @@ job runs `--check`, so the rail and the changelog cannot disagree. That is the
 answer to the question this doc keeps having to re-answer, namely how a landing
 page stays true after the session that wrote it: the entry the next agent is
 already required to add to `CHANGELOG.md` *is* the update to the page. The
-binding rule is recorded in root `AGENTS.md`'s same-change sync map and in
-`CONTRIBUTING.md`'s checklist, and it is enforced by a red build rather than by
-good intentions.
+binding rule is recorded in root `AGENTS.md`'s Root Contracts (the
+generated-data rules; moved there from the pre-2026-10-24 sync map by the DOX
+v3 reinstall) and in `CONTRIBUTING.md`'s checklist, and it is enforced by a red
+build rather than by good intentions.
 
 Because `--check` compares the committed file against the same parser, it cannot
 detect a parser that mislabels an entry, so the extractor has its own suite

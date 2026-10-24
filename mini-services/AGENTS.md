@@ -2,36 +2,33 @@
 
 ## Purpose
 
-The two bun background services that make up the agent runtime: `llm-bridge` (OpenAI-compatible LLM gateway on :3031) and `agent-service` (boots the self-learning engine on :3030 for the TUI dashboard and API clients). A third, sandbox-only upstream shim `zai-upstream/` serves as an OpenAI-compatible GLM endpoint on :3032 for environments with no external provider key; it has no `package.json`/`dev` script and is not launched by the stack supervisor.
+The background service boot wrappers: `agent-service` (the self-learning engine's serving surface on :3030), `llm-bridge` (the OpenAI-compatible gateway on :3031) and `zai-upstream` (a sandbox-only shim on :3032). The engine's actual code lives in `pi-repo/packages/self-learning`; these wrappers only boot it.
 
 ## Ownership
 
-- Owns: shared boot conventions for the two runtime services and this doc; `agent-service/index.ts` directly (a thin wrapper — ~15 lines calling `startServer()` from `pi-repo/packages/self-learning/src/index.ts`).
-- Child owns: `llm-bridge/` — see Child DOX Index.
-- Parked, not owned: `zai-upstream/` (sandbox-only shim, port 3032, no package.json or AGENTS.md; run manually when needed). It is intentionally outside the ownership index because its supervisor launch depends on a dev script it does not provide.
-- Does not own: engine internals (`pi-repo/packages/self-learning/`), the landing page (`src/`), launch orchestration (`scripts/start.ts`, root `package.json`).
+- Owns: `mini-services/agent-service/` (its `index.ts`, `smoke.ts`, `package.json`) and this doc.
+- Children own: `mini-services/llm-bridge/` (its own contract doc).
+- `zai-upstream/` has no `package.json`/`dev` script and is NOT supervisor-managed — `scripts/start.ts` starts it only when `BRIDGE_UPSTREAM_URL` points at `127.0.0.1:3032`.
 
 ## Local Contracts
 
-- Ports: engine `PI_AGENT_PORT` (3030), bridge `BRIDGE_PORT` (3031). Both default from the root `.env`, delivered by TWO paths: `scripts/start.ts` parses it and exports every variable into each spawned child (bun does NOT read the repo-root `.env` from a service cwd), and `scripts/install.ts` symlinks the root `.env` into each service dir (`mini-services/<service>/.env → ../../.env`) so supervisor launches that just run the `dev` script from the service dir (e.g. the sandbox's `.zscripts/dev.sh` scanning `mini-services/*/package.json`) inherit the same config — bun auto-loads `.env` from the process cwd. Symlink creation is idempotent and non-fatal where symlinks are unavailable (Windows without Developer Mode; the launcher export still covers `agent:start`). Config changes happen in the root `.env`, never per-service copies.
-- Each service directory must keep a `package.json` with a `dev` script: the sandbox supervisor `.zscripts/dev.sh` scans `mini-services/*/package.json` for `dev` and launches each with `bun --hot`.
-- Dev entrypoints: `bun run agent:bridge` / `bun run agent:engine` from the repo root (both `bun --hot`).
-- Production: run WITHOUT hot reload — `cd mini-services/<service> && bun index.ts` (`--hot` can detach in-flight engine cycles from the router mutex when sources change mid-run).
-- Single-tenant by design (engine busy-mutex); scale by running more engine instances against separate `PI_SELFLEARNING_DATA` / `PI_SELFLEARNING_DB`.
-- `agent-service/smoke.ts` is a manual smoke script for the engine boot path.
+- Each service has a `package.json` with `dev: bun --hot index.ts`; `scripts/start.ts` discovers and detaches them, keeping pidfiles and logs in `.run/` (bridge.pid/engine.pid/bridge.log/engine.log, usage-log.jsonl).
+- `agent-service/index.ts` is 20 lines: it calls `startServer(PI_AGENT_PORT ?? 3030)` from the self-learning package. If `startServer` returns null (single-instance lock lost), it exits 0 — "already running" is healthy for a supervisor. Fatal errors exit 1.
+- Config delivery: the root `.env` is the single config source, delivered two ways — `scripts/start.ts` parses it and exports vars to spawned children, and `scripts/install.ts` symlinks each service's `.env` to the root one. Config changes happen in the root `.env` only.
+- Production runs WITHOUT `--hot` (hot reload can detach in-flight engine cycles from the router mutex); `--hot` is the dev lane only.
+- The engine is single-tenant by design (busy-mutex); scale by running more engine instances against separate `PI_SELFLEARNING_DATA` / `PI_SELFLEARNING_DB`.
 
 ## Work Guidance
 
-- Service code stays minimal: business logic lives in `pi-repo/packages/self-learning` (engine) or the bridge module; wrappers here only boot it.
-- Restart the whole stack via the root supervisor command (see root AGENTS.md "Stack lifecycle"); stop with `bun run agent:stop`.
+- Engine behavior, API, jobs and env contracts are documented in `pi-repo/packages/self-learning/AGENTS.md` — read it before changing anything the wrapper touches.
+- `agent-service/smoke.ts` is a manual smoke: it drives pi headlessly through the bridge and asserts a file gets created.
 
 ## Verification
 
-- `curl -s localhost:3031/health` — bridge up, upstream healthy.
-- `curl -s localhost:3030/api/overview` — engine up, reports real provider/model.
-- Logs: `.run/*.log` (via `scripts/start.ts`) or `.zscripts/mini-service-*.log` (via the supervisor).
+- `bun run agent:start` then `curl -s localhost:3031/health` (bridge, `ok:true`) and `curl -s -H "Authorization: Bearer $(cat data/self-learning/engine.token)" localhost:3030/api/overview` (engine, `ok:true`); `bun run agent:stop` must leave the ports quiet.
+- The bridge unit suite: `cd mini-services/llm-bridge && bun test` (181 tests: 176 hermetic + 5 env-gated live-VLM skips).
+- CI's build-test matrix runs the full-stack boot/survive/stop smoke (services must answer 20s after the launcher exits — the bun#31603 regression gate).
 
 ## Child DOX Index
 
-- `llm-bridge/AGENTS.md` — the OpenAI-compatible gateway to the upstream Agnes AI endpoint
-- `zai-upstream/` (no AGENTS.md) — optional sandbox upstream shim (port 3032, model id `glm-4-plus`); not supervisor-managed
+- `mini-services/llm-bridge/AGENTS.md` — the OpenAI-compatible gateway: model routing, admission lanes, failover, usage log, health shape
