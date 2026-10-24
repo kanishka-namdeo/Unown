@@ -9,6 +9,12 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [Unreleased]
+
+### Fixed
+
+- **landing: the scroll-budget breach the v0.0.12 stop caused — MAX_LISTED 3→2, the rail's own valve again** — CI 40087051206 (the v0.0.12 release commit) failed the e2e landing-budget gate deterministically: 3216 words against the 3200 contract (the same gate the pending-plates round itself had to pay at 5→3 hours earlier — the 0.0.12 stop's tile plus its 15-word restated title was the growth). The fix is the sanctioned compression, not a deletion: the changelog rail prints two listed titles per stop instead of three ("+1 more" links the third out — seven stops carried one, 86 words out, seven links back in, nothing deleted and every count stays printed), and the 0.0.12 stop's title drops its redundant "supersedes the failed tag" tail, which the release notes and CHANGELOG entry already carry. Verified: the production standalone build audited at 3167 words / 12.4vh / no band over 3vh (`node scripts/landing_audit.mjs --budget`, the same measurement the e2e spec makes at 1440x900; the rail itself 574→492 words), the changelog rail's unit suite green with the arithmetic asserted generically over the exported constant, typecheck + production build unchanged.
+
 ## [0.0.12] - 2026-10-24
 
 ### Added

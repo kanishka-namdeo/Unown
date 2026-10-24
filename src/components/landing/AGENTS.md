@@ -20,7 +20,7 @@ Every band of the marketing page: the hero, the learning loop, the capability de
 5. `proof.tsx` (magma) — one tabbed band, three panes (Benchmarks / Integrity / Models), all panes stay mounted with `hidden` so generated numbers stay in the SSR DOM for crawlers and gates.
 6. `alphabet.tsx` (psychic) — the identity: 28-tile glyph wall, decode panel driven by `LEXICON_BY_ID`, the static Z highlight card (lore reachable without clicking), non-affiliation one-liner.
 7. `faq.tsx` (gold) — seven skeptic questions through the vendored Radix accordion; `faq-data.ts` is the one source for BOTH the accordion and the FAQPage JSON-LD.
-8. `changelog.tsx` (aqua) — the shipping rail: fixed-height horizontal band, native scroll only, `MAX_LISTED = 3` titles then "+N more", `▶` marks the newest cut stop, all numbers read off data.
+8. `changelog.tsx` (aqua) — the shipping rail: fixed-height horizontal band, native scroll only, `MAX_LISTED = 2` titles then "+N more" (the valve that keeps the rail inside the scroll budget — see the comment at the constant for the 5→3→2 history), `▶` marks the newest cut stop, all numbers read off data.
 9. `finale.tsx` (leaf) — the last ask + the `Spellbox` toy, CTA links, Konami receipt.
 
 `shell.tsx` owns the shared chrome (`Nav` + `NAV_LINKS` mirroring the anchors, `Footer` with the canonical non-affiliation notice that `verify-deploy.mjs` asserts, `ThemeToggle` auto→light→dark persisting `unown-theme`, `TerminalWindow`, links, `SectionHead`, hue/tone helpers). `effects.tsx` owns `LandingStyles` (the `<noscript>` restore that undoes framer's inline `opacity:0`), `LetterRainProvider`, `AlphabetWakeProvider`, `useKonami`. `LandingMotion` (shell.tsx) is the ONE place framer reduced-motion is handled (`reducedMotion="user"`).

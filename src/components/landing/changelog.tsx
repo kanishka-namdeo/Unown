@@ -15,9 +15,14 @@ const LISTED = new Set(["Added", "Behavior"]);
  *  2026-10-24: 5 -> 3 — the rail's own rule is "the fortieth release costs the
  *  page nothing", but every listed title also costs scroll-budget words, and
  *  the eight-stop rail alone had grown to 585 of them (the word gate does not
- *  care that the overflow is sideways). Three titles still carry a stop's
- *  flavor; "+N more" links the rest, counts stay printed, nothing is deleted. */
-export const MAX_LISTED = 3;
+ *  care that the overflow is sideways). "+N more" links the rest, counts stay
+ *  printed, nothing is deleted.
+ *  2026-10-24 (again): 3 -> 2 — the 0.0.12 stop's tile pushed the page to
+ *  3216 words against the same 3200 gate (CI 40087051206, the one deterministic
+ *  red in the v0.0.12 round), so the third titles paid for it again: seven of
+ *  them across the rail, 86 words out, seven "+1 more" links back in. Two
+ *  titles still carry a stop's flavor; the rule holds. */
+export const MAX_LISTED = 2;
 
 const NOUNS: Record<string, [string, string]> = {
   Added: ["addition", "additions"],

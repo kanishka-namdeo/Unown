@@ -61,7 +61,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Added",
         "items": [
           {
-            "title": "release: the pending-plates round ships with the Windows release-gate fixes — v0.0.12 supersedes the failed…",
+            "title": "release: the pending-plates round ships with the Windows release-gate fixes",
             "behavior": false
           }
         ]
