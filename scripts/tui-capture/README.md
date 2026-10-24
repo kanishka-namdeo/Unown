@@ -77,9 +77,11 @@ a pane dump at every still — the audit's ground truth), `<scenario>.mp4`,
 | s20-skills | `unown dashboard skills` after the loop shipped a skill (engine-prep: mint + run until a ship lands) | — (repo; engine up) |
 | s21-goals | a real /goal run: objective → todos → [GOAL:COMPLETE] with both evidence kinds → /goal status | `default` |
 | s22-split-view | /split mounts the band + dock, a live turn fills it (the filmed cut of the old PTY stills lane) | `default` |
+| s23-browser-subagent | the delegated browser flow END TO END: sync `task → browser` delegation → humanized live labels (`browser: navigate/fill_form/click`) → done row → child's report → async ◉ fleet widget → /tasks registry (the filmed cut of the old PTY stills lane; the lane serves its own form fixture) | — (repo) |
+| s24-sdlc | № 010 Parity's plate: one real task → /context → the session workflow — /sessions list → /sessions export --md → the exported markdown on disk → /sessions list --all | `default` |
 
 Scenarios share one port block (7610–7621 for s1–s12, 7622–7631 for
-s13–s22); run one at a time against the same fixture. The s17–s20 dashboard
+s13–s22, 7632–7633 for s23–s24); run one at a time against the same fixture. The s17–s20 dashboard
 lanes read the engine instead of driving turns and can run beside a session
 lane. `driver.js` closes gracefully on SIGTERM (time-box long scenarios with
 `timeout 575` and re-run on failure — never edit a failed frame).

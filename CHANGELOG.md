@@ -9,7 +9,11 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
-## [Unreleased]
+## [0.0.15] - 2026-10-24
+
+### Added
+
+- **release: v0.0.15 — the media-completion round ships — every dex entry filmed, the atlas review PASS** — this release cuts the two rounds that closed the landing's media gaps: **the media-completion round** (№ 010 Parity's last pending plate filmed via the sdlc lane — /context + the session workflow end to end; № 011 Browser's still reels filmed via the browser-subagent lane — the moving cut that retires the PTY stills; the dex ships 24 movies on 22 entries, zero stills, zero pending, and the gates pin all three: the e2e decode walk, the zero-pending contract, the 24=22+2 reel arithmetic) and **the sprite craft round** (the creature atlas's own VLM review lane flipped FIX→PASS: memory's card rides the drawer mid-pull, mcp's floating head is justified by a centered gold energy column with recessed sockets and seamed treads, lsp's spectacles read as glasses with a bridge and temple arms over evenly-breathing segments — all eleven sprites re-gated, IP-safety clean, and the stale ten-body-plan docblocks corrected to eleven). The release is verified like every release: the full engine suite 4350 pass / 0 fail, the integration suite 13/13, the bridge suite 161/161, the artifact plan gate (6 targets + both builder test files), the six per-OS binaries built and the linux-x64 archive extracted and EXECUTED locally (`unown --version` → 0.0.15, VERSION/LICENSE/INSTALL.txt in the payload), the landing production build + standalone smoke, the full e2e 9/9 with the decode gate walking all 24 movies, and the 3-OS release matrix this tag triggers.
 
 ### Added
 
