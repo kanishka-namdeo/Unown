@@ -80,6 +80,7 @@ import { PROVIDERS_HELP, runProvidersCommand } from "./providers-cli.ts";
 import { RECIPES_USAGE, runRecipesCommand } from "./recipes-cli.ts";
 import { defaultSessionTools } from "./session-tools.ts";
 import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
+import { IMPORT_USAGE, runImportCommand } from "./import-cli.ts";
 import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
 import { createSplitViewExtension } from "./splitview.ts";
 import {
@@ -213,6 +214,11 @@ Usage:
                            clear | sweep) shared by web_search + webfetch
   unown sessions <sub>  session export / import / list (Milestone 3.5):
                            export <id> [--out <file>] | import <file> | list
+  unown import [--from]  one-command config migration from the other agents
+                         (claude-code | codex | gemini | cursor | opencode |
+                         auto): instructions → AGENTS.md, commands →
+                         .unown/commands, skills, agents, MCP servers →
+                         .unown/mcp.json (never overwrites; --dry-run; --list)
   unown blame [file]     receipts-backed blame: which sessions and tool calls
                            touched <file>; no arg = whole-ledger summary
                            (flags: --session <id> --since <ts> --json —
@@ -2985,6 +2991,14 @@ export async function runCli(argv: string[]) {
                 const code = await runSessionsCommand(argv.slice(1));
                 process.exit(code);
         }
+        if (first === "import") {
+                // 2026-10-24 parity round — `unown import`: one-command config
+                // migration from Claude Code / Codex / Gemini / Cursor / OpenCode
+                // (the Claude Code /import acquisition play, pointed this way).
+                // Sessions-only imports stay on `unown sessions import`.
+                const code = await runImportCommand(argv.slice(1));
+                process.exit(code);
+        }
         if (first === "recipes") {
                 // Milestone 4.1 — `unown recipes list|run|create|validate` (the
                 // goose Recipes port). Dispatch before the generic parser would
@@ -3089,6 +3103,7 @@ export async function runCli(argv: string[]) {
                         "webcache",
                         "blame",
                         "sessions",
+                        "import",
                         "recipes",
                         "wiki",
                         "completions",
