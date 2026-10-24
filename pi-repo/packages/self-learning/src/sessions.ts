@@ -30,7 +30,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import { atomicWriteFileSync } from "./atomic.ts";
 import { redactSecretsCounted } from "./adversary.ts";
@@ -132,6 +132,10 @@ export interface SessionSummary {
     createdAt: number;
     messageCount: number;
     touchedFiles: string[];
+    /** Where the .jsonl lives: "user" = ~/.unown/agent/sessions (real TUI /
+     *  print sessions), "project" = <cwd>/.unown/sessions (imports). Omitted
+     *  by the legacy project-only `listSessions` for shape compatibility. */
+    source?: "project" | "user";
 }
 
 // ---------------------------------------------------------------------------
@@ -266,17 +270,18 @@ export function findReceiptsFile(cwd: string, sessionId: string): string | null 
 // ---------------------------------------------------------------------------
 
 /**
- * Serialize a session to a JSON file. Returns `{ path, bytes, redacted }` —
- * `redacted` counts the secrets the default redaction pass replaced (0 when
- * clean or when `redact: false` opted out). Throws on a missing
- * sessionManager, an unreadable session or a write failure.
+ * Assemble the portable `SessionExport` object shared by BOTH export formats
+ * (JSON and markdown). Extracted from `exportSession` when markdown landed so
+ * the two formats can never drift apart: same manifest, same todos/notes/
+ * skills/files sidecars, same message filter.
  */
-export async function exportSession(
-    sessionId: string,
-    opts: ExportOptions = {},
-): Promise<{ path: string; bytes: number; redacted: number }> {
+export function assembleSessionExport(sessionId: string, opts: ExportOptions): {
+    exportObj: SessionExport;
+    cwd: string;
+    receiptsFile: string;
+} {
     const sm = opts.sessionManager;
-    if (!sm) throw new Error("exportSession: sessionManager is required (opts.sessionManager)");
+    if (!sm) throw new Error("assembleSessionExport: sessionManager is required (opts.sessionManager)");
 
     const cwd = sm.getCwd();
     const entries = sm.getEntries();
@@ -315,7 +320,20 @@ export async function exportSession(
         skills,
         files,
     };
+    return { exportObj, cwd, receiptsFile };
+}
 
+/**
+ * Serialize a session to a JSON file. Returns `{ path, bytes, redacted }` —
+ * `redacted` counts the secrets the default redaction pass replaced (0 when
+ * clean or when `redact: false` opted out). Throws on a missing
+ * sessionManager, an unreadable session or a write failure.
+ */
+export async function exportSession(
+    sessionId: string,
+    opts: ExportOptions = {},
+): Promise<{ path: string; bytes: number; redacted: number }> {
+    const { exportObj, cwd } = assembleSessionExport(sessionId, opts);
     const path = opts.outPath ?? defaultExportPath(sessionId, cwd);
     mkdirSync(dirname(path), { recursive: true });
     const serialized = JSON.stringify(exportObj, null, 2);
@@ -331,6 +349,301 @@ export async function exportSession(
     const content = result.text;
     atomicWriteFileSync(path, content);
     return { path, bytes: Buffer.byteLength(content), redacted: redact ? result.count : 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Markdown export (the Codex `/export` / goose `session export md` lane)
+// ---------------------------------------------------------------------------
+
+/** Default markdown export path: `<cwd>/.unown/sessions/export-<sessionId>.md`. */
+export function defaultMarkdownExportPath(sessionId: string, cwd: string): string {
+    return join(cwd, ".unown", "sessions", `export-${sessionId}.md`);
+}
+
+export interface MarkdownRenderOptions {
+    /** Cap on a single tool-result payload inside the transcript (default
+     *  2000 chars; the excess is replaced by an explicit truncation marker —
+     *  a share artifact should never grow unbounded from one noisy `read`). */
+    maxToolResultChars?: number;
+}
+
+/** Longest backtick run in `s` (0 when none) — drives fence-length safety. */
+function longestBacktickRun(s: string): number {
+    let longest = 0;
+    let run = 0;
+    for (const ch of s) {
+        if (ch === "`") {
+            run++;
+            if (run > longest) longest = run;
+        } else {
+            run = 0;
+        }
+    }
+    return longest;
+}
+
+/** A code fence that can never be broken by content inside it: at least 3
+ *  backticks, always one longer than the longest backtick run in the payload
+ *  (CommonMark's own rule for fenced-code-block precedence). */
+function safeFence(payload: string): string {
+    return "`".repeat(Math.max(3, longestBacktickRun(payload) + 1));
+}
+
+/** Compact one-line summary of a tool call's arguments for the transcript
+ *  bullet: prefer the human-meaningful fields (path / command / url /
+ *  pattern / query), else a capped JSON one-liner. Pure. */
+function summarizeToolArgs(args: unknown): string {
+    const argCap = 160;
+    if (!args || typeof args !== "object") return "";
+    const a = args as Record<string, unknown>;
+    for (const key of ["path", "file", "command", "cmd", "url", "pattern", "query", "prompt", "content", "name"]) {
+        const v = a[key];
+        if (typeof v === "string" && v.length > 0) {
+            const flat = v.replace(/\s+/g, " ").trim();
+            return flat.length > argCap ? flat.slice(0, argCap - 1) + "…" : flat;
+        }
+    }
+    try {
+        const j = JSON.stringify(a) ?? "";
+        return j.length > argCap ? j.slice(0, argCap - 1) + "…" : j;
+    } catch {
+        return "";
+    }
+}
+
+/** Render one message's text blocks as prose (user + assistant shapes). */
+function renderTextBlocks(content: unknown): string {
+    if (typeof content === "string") return content;
+    if (!Array.isArray(content)) return "";
+    const parts: string[] = [];
+    for (const block of content) {
+        if (!block || typeof block !== "object") continue;
+        const b = block as Record<string, unknown>;
+        if (b.type === "text" && typeof b.text === "string") {
+            parts.push(b.text);
+        } else if (b.type === "image") {
+            parts.push("[image]");
+        } else if (b.type === "resource") {
+            parts.push("[resource]");
+        }
+        // `thinking` blocks are deliberately omitted: raw reasoning is noise
+        // in a share artifact (and every competitor's markdown export skips
+        // it too). The header notes the omission.
+    }
+    return parts.join("\n\n");
+}
+
+/** Extract a toolResult's text payload (content is a text-block array). */
+function toolResultText(content: unknown): string {
+    if (typeof content === "string") return content;
+    if (!Array.isArray(content)) return "";
+    const parts: string[] = [];
+    for (const block of content) {
+        if (block && typeof block === "object") {
+            const b = block as Record<string, unknown>;
+            if (b.type === "text" && typeof b.text === "string") parts.push(b.text);
+            else if (b.type === "image") parts.push("[image]");
+        }
+    }
+    return parts.join("\n");
+}
+
+/** Format a todo list as markdown checkboxes (deleted tasks skipped). */
+function renderTodos(todos: unknown[]): string {
+    const lines: string[] = [];
+    for (const t of todos) {
+        if (!t || typeof t !== "object") continue;
+        const task = t as Record<string, unknown>;
+        const subject = typeof task.subject === "string" ? task.subject : typeof task.content === "string" ? task.content : "(task)";
+        const status = typeof task.status === "string" ? task.status : "pending";
+        if (status === "deleted") continue;
+        const box = status === "completed" ? "x" : " ";
+        const active = status === "in_progress" ? " *(in progress)*" : "";
+        lines.push(`- [${box}] ${subject}${active}`);
+    }
+    return lines.join("\n");
+}
+
+/** Format ISO-ish numbers with thousands separators for the header table. */
+function fmtNum(n: number): string {
+    return n.toLocaleString("en-US");
+}
+
+/**
+ * Render a `SessionExport` as a shareable markdown document — the format
+ * every competitor's export converges on (Codex `/export`, goose `session
+ * export md`, Amp thread `.md`, Gemini `/chat share`). Pure: no I/O, no
+ * clocks (pass `generatedAt` if you want a timestamp line).
+ */
+export function renderSessionMarkdown(exportObj: SessionExport, opts: MarkdownRenderOptions = {}): string {
+    const maxToolResultChars = opts.maxToolResultChars ?? 2000;
+    const m = exportObj.manifest;
+    const messages = exportObj.messages ?? [];
+
+    // -- stats pass ----------------------------------------------------------
+    let userCount = 0;
+    let assistantCount = 0;
+    let toolResultCount = 0;
+    let tokensIn = 0;
+    let tokensOut = 0;
+    for (const msg of messages) {
+        if (!msg || typeof msg !== "object") continue;
+        const mm = msg as Record<string, any>;
+        if (mm.role === "user") userCount++;
+        else if (mm.role === "assistant") assistantCount++;
+        else if (mm.role === "toolResult") toolResultCount++;
+        const usage = mm.usage;
+        if (usage && typeof usage === "object") {
+            if (typeof usage.input === "number") tokensIn += usage.input;
+            if (typeof usage.output === "number") tokensOut += usage.output;
+        }
+    }
+
+    const date = Number.isFinite(m.createdAt) ? new Date(m.createdAt).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "unknown";
+    const modelLine = m.model ? `${m.model}${m.provider ? ` (${m.provider})` : ""}` : "unknown";
+
+    const out: string[] = [];
+    out.push(`# Unown session — ${m.id}`);
+    out.push("");
+    out.push("| Field | Value |");
+    out.push("|---|---|");
+    out.push(`| Date | ${date} |`);
+    out.push(`| Model | ${modelLine} |`);
+    out.push(`| Project | ${m.cwd} |`);
+    out.push(`| Messages | ${fmtNum(userCount + assistantCount + toolResultCount)} — ${fmtNum(userCount)} user, ${fmtNum(assistantCount)} assistant, ${fmtNum(toolResultCount)} tool results |`);
+    if (tokensIn > 0 || tokensOut > 0) {
+        out.push(`| Tokens | ${fmtNum(tokensIn)} in · ${fmtNum(tokensOut)} out |`);
+    }
+    if (exportObj.files.length > 0) {
+        out.push(`| Files touched | ${exportObj.files.map((f) => f.split(/[\\/]/).pop() ?? f).join(", ")} |`);
+    }
+    if (exportObj.skills.length > 0) {
+        out.push(`| Tools used | ${exportObj.skills.join(", ")} |`);
+    }
+    out.push("");
+
+    if (exportObj.todos.length > 0) {
+        const todoMd = renderTodos(exportObj.todos);
+        if (todoMd) {
+            out.push("## Todos");
+            out.push("");
+            out.push(todoMd);
+            out.push("");
+        }
+    }
+
+    if (exportObj.notes.length > 0) {
+        out.push("## Notes");
+        out.push("");
+        for (const n of exportObj.notes) {
+            if (!n || typeof n !== "object") continue;
+            const note = n as Record<string, unknown>;
+            const preview = typeof note.preview === "string" ? note.preview : "";
+            const ts = typeof note.ts === "number" ? new Date(note.ts).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "";
+            out.push(`> ${ts ? `${ts} — ` : ""}${preview.replace(/\n/g, " ")}`);
+            out.push(">");
+        }
+        out.push("");
+    }
+
+    out.push("## Transcript");
+    out.push("");
+
+    for (const msg of messages) {
+        if (!msg || typeof msg !== "object") continue;
+        const mm = msg as Record<string, any>;
+        const role = mm.role;
+
+        if (role === "user") {
+            out.push("**User:**");
+            out.push("");
+            out.push(renderTextBlocks(mm.content).trim() || "*(empty)*");
+            out.push("");
+
+        } else if (role === "assistant") {
+            const modelTag = typeof mm.model === "string" && mm.model ? ` (${mm.model})` : "";
+            out.push(`**Assistant${modelTag}:**`);
+            out.push("");
+            const blocks = Array.isArray(mm.content) ? mm.content : [];
+            const toolBullets: string[] = [];
+            const proseParts: string[] = [];
+            for (const block of blocks) {
+                if (!block || typeof block !== "object") continue;
+                const b = block as Record<string, unknown>;
+                if (b.type === "toolCall" && typeof b.name === "string") {
+                    const args = summarizeToolArgs(b.arguments);
+                    toolBullets.push(`- \`${b.name}\`${args ? ` → ${args}` : ""}`);
+                } else if (b.type === "text" && typeof b.text === "string" && b.text.trim().length > 0) {
+                    proseParts.push(b.text);
+                }
+            }
+            if (toolBullets.length > 0) {
+                out.push(toolBullets.join("\n"));
+                out.push("");
+            }
+            const prose = proseParts.join("\n\n").trim();
+            if (prose) {
+                out.push(prose);
+                out.push("");
+            }
+            if (toolBullets.length === 0 && !prose) {
+                out.push("*(empty)*");
+                out.push("");
+            }
+
+        } else if (role === "toolResult") {
+            const toolName = typeof mm.toolName === "string" ? mm.toolName : "tool";
+            const isError = mm.isError === true;
+            let payload = toolResultText(mm.content).trim();
+            if (payload.length > maxToolResultChars) {
+                const omitted = payload.length - maxToolResultChars;
+                payload = payload.slice(0, maxToolResultChars) + `\n… [truncated ${fmtNum(omitted)} chars]`;
+            }
+            const status = isError ? "error" : "ok";
+            out.push(`**Tool result — \`${toolName}\`** (${status})`);
+            out.push("");
+            if (payload) {
+                const fence = safeFence(payload);
+                out.push(fence);
+                out.push(payload);
+                out.push(fence);
+            } else {
+                out.push("*(no output)*");
+            }
+            out.push("");
+        }
+    }
+
+    out.push("---");
+    out.push("");
+    out.push(
+        "Exported from unown · thinking blocks omitted · secrets redacted by default " +
+            "(`--raw` keeps them verbatim; redaction markers appear as `[REDACTED:<type>]`).",
+    );
+    out.push("");
+    return out.join("\n");
+}
+
+/**
+ * Serialize a session to a markdown file (the share/transfer format). Same
+ * contract as `exportSession`: same options (including the default-on
+ * redaction pass — here applied to the final rendered markdown), same
+ * `{ path, bytes, redacted }` return.
+ */
+export async function exportSessionMarkdown(
+    sessionId: string,
+    opts: ExportOptions & MarkdownRenderOptions = {},
+): Promise<{ path: string; bytes: number; redacted: number }> {
+    const { exportObj, cwd } = assembleSessionExport(sessionId, opts);
+    const path = opts.outPath ?? defaultMarkdownExportPath(sessionId, cwd);
+    mkdirSync(dirname(path), { recursive: true });
+    const rendered = renderSessionMarkdown(exportObj, { maxToolResultChars: opts.maxToolResultChars });
+    // Same serialized-form redaction posture as the JSON export: the whole
+    // document (message text, tool payloads, notes) is one string surface.
+    const redact = opts.redact !== false;
+    const result = redact ? redactSecretsCounted(rendered) : { text: rendered, count: 0 };
+    atomicWriteFileSync(path, result.text);
+    return { path, bytes: Buffer.byteLength(result.text), redacted: redact ? result.count : 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -498,6 +811,7 @@ export function listSessions(opts: { cwd?: string; sessionDir?: string } = {}): 
                 createdAt: Number.isFinite(createdAt) ? createdAt : 0,
                 messageCount,
                 touchedFiles: [...touchedFiles].sort(),
+                source: opts.sessionDir ? undefined : "project",
             });
         } catch {
             continue; // broken file — skip, don't fail the whole list
@@ -506,4 +820,119 @@ export function listSessions(opts: { cwd?: string; sessionDir?: string } = {}): 
 
     summaries.sort((a, b) => b.createdAt - a.createdAt);
     return summaries;
+}
+
+/**
+ * List sessions from the USER session store (`~/.unown/agent/sessions/` —
+ * where the TUI and print mode actually persist every real session), keeping
+ * only sessions whose header cwd resolves to `opts.cwd` (pi's own
+ * `sessionCwdMatches` semantics: resolve both sides, compare exactly).
+ *
+ * This is the storage-side half of the 2026-10-24 session-workflow fix: the
+ * CLI previously listed ONLY `<cwd>/.unown/sessions/` (the import lane), so
+ * every session the agent itself wrote was invisible to
+ * `unown sessions list` / `export`. Pure fs scan; tolerant per-file.
+ */
+export function listUserSessions(opts: { cwd?: string; userSessionDir: string; allProjects?: boolean }): SessionSummary[] {
+    const cwd = opts.cwd ?? process.cwd();
+    const dir = opts.userSessionDir;
+    if (!existsSync(dir)) return [];
+    let names: string[];
+    try {
+        names = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
+    } catch {
+        return [];
+    }
+
+    const summaries: SessionSummary[] = [];
+    for (const name of names) {
+        const fullPath = join(dir, name);
+        try {
+            const content = readFileSync(fullPath, "utf8");
+            const lines = content.split("\n").filter((l) => l.trim().length > 0);
+            if (lines.length === 0) continue;
+            const header = JSON.parse(lines[0]);
+            if (header.type !== "session" || typeof header.id !== "string") continue;
+            // cwd filter — resolve() both sides so `/tmp/x` vs `/tmp/x/` and
+            // (on Windows) case/slash variants compare equal. Sessions with
+            // no cwd header (foreign imports) never match a specific cwd.
+            // `allProjects: true` skips the filter entirely (the `--all` lane).
+            if (!opts.allProjects) {
+                const headerCwd = typeof header.cwd === "string" ? header.cwd : "";
+                if (!headerCwd || resolve(headerCwd) !== resolve(cwd)) continue;
+            }
+            const createdAtRaw = header.timestamp;
+            const createdAt = createdAtRaw ? Date.parse(createdAtRaw) : 0;
+
+            let messageCount = 0;
+            const touchedFiles = new Set<string>();
+            for (let i = 1; i < lines.length; i++) {
+                let entry: any;
+                try {
+                    entry = JSON.parse(lines[i]);
+                } catch {
+                    continue;
+                }
+                if (entry.type !== "message") continue;
+                messageCount++;
+                const msg = entry.message;
+                if (!msg) continue;
+                if (msg.role === "assistant" && Array.isArray(msg.content)) {
+                    for (const block of msg.content) {
+                        if (block?.type === "toolCall" && (block.name === "write" || block.name === "edit")) {
+                            const p = block.arguments?.path;
+                            if (typeof p === "string" && p.length > 0) touchedFiles.add(p);
+                        }
+                    }
+                }
+            }
+
+            summaries.push({
+                id: header.id,
+                createdAt: Number.isFinite(createdAt) ? createdAt : 0,
+                messageCount,
+                touchedFiles: [...touchedFiles].sort(),
+                source: "user",
+            });
+        } catch {
+            continue; // broken file — skip, don't fail the whole list
+        }
+    }
+
+    summaries.sort((a, b) => b.createdAt - a.createdAt);
+    return summaries;
+}
+
+/**
+ * The merged listing the CLI and `/sessions list` surface: real sessions
+ * from the user store (cwd-filtered) UNION imports from the project dir,
+ * deduped by id (the project copy wins — it is the deliberate, newer
+ * rehydration), sorted newest-first. Each summary carries its `source`.
+ */
+export function listAllSessions(opts: { cwd?: string; userSessionDir: string; projectSessionDir?: string }): SessionSummary[] {
+    const cwd = opts.cwd ?? process.cwd();
+    const project = listSessions({ cwd, sessionDir: opts.projectSessionDir });
+    const user = listUserSessions({ cwd, userSessionDir: opts.userSessionDir });
+    const byId = new Map<string, SessionSummary>();
+    for (const s of user) byId.set(s.id, s);
+    for (const s of project) byId.set(s.id, s); // project (import) wins on collision
+    return [...byId.values()].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * Find a session .jsonl by id under the USER store (flat
+ * `~/.unown/agent/sessions/` layout — filenames are `<timestamp>_<id>.jsonl`
+ * but the id may also appear via a caller-supplied export name). Returns the
+ * full path or null. Mirrors `findSessionFile`'s filename-contains match.
+ */
+export function findUserSessionFile(userSessionDir: string, sessionId: string): string | null {
+    if (!existsSync(userSessionDir)) return null;
+    let files: string[];
+    try {
+        files = readdirSync(userSessionDir).filter((f) => f.endsWith(".jsonl"));
+    } catch {
+        return null;
+    }
+    const byName = files.find((f) => f.includes(sessionId));
+    return byName ? join(userSessionDir, byName) : null;
 }

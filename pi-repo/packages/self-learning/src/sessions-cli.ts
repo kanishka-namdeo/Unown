@@ -24,21 +24,40 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { exportSession, importSession, listSessions, type SessionEntryLike, type SessionLike } from "./sessions.ts";
+import {
+    exportSession,
+    exportSessionMarkdown,
+    findUserSessionFile,
+    importSession,
+    listAllSessions,
+    listSessions,
+    listUserSessions,
+    type SessionEntryLike,
+    type SessionLike,
+} from "./sessions.ts";
 import { convertAndWriteSession, detectSessionFormat, type SessionFormat } from "./import-convert.ts";
+import { resolveUserSessionDir } from "./unown-home.ts";
 
 export const SESSIONS_USAGE = `unown sessions — session export / import / list (Milestone 3.5)
 
 Usage:
-  unown sessions list
-  unown sessions export <session-id> [--out <file>] [--raw]
+  unown sessions list [--all]
+  unown sessions export <session-id> [--format <md|json>] [--out <file>] [--raw]
   unown sessions import <file> [--from <auto|claude|codex|unown>]
+
+Sessions are found in BOTH stores: the project lane (<cwd>/.unown/sessions —
+imports) and the user lane (~/.unown/agent/sessions — every real TUI / print
+session, filtered to this project by the session header's cwd). --all drops
+the project filter and lists every session on the machine.
 
 The exported JSON contains { version, manifest, messages, todos, notes, skills,
 files } — a single self-describing file you can rehydrate on another machine
 with \`unown sessions import\`. The imported session appears in \`unown sessions
 list\` with a fresh id (the original id is preserved in the manifest for
-traceability).
+traceability). --format md renders the same data as a shareable markdown
+transcript (the Codex /export and goose \`session export md\` lane): metadata
+header, todos, notes, and the conversation with tool-call bullets and fenced
+tool results.
 
 \`sessions import\` also converts FOREIGN agent transcripts (the migration
 path away from Claude Code / Codex CLI, which both ship /import themselves):
@@ -219,9 +238,17 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
     const cwd = process.cwd();
 
     if (sub === "list") {
-        const sessions = listSessions({ cwd });
+        const userSessionDir = resolveUserSessionDir();
+        const all = hasFlag(argv, "--all");
+        // --all: every session in the user store regardless of project (the
+        // Codex `resume --all` / Claude Ctrl+A lane), UNION the project imports.
+        const sessions = all
+            ? listUserSessions({ userSessionDir, allProjects: true })
+            : listAllSessions({ cwd, userSessionDir });
         if (sessions.length === 0) {
-            process.stdout.write("No sessions found in this project. Run `unown` to start one.\n");
+            process.stdout.write(
+                all ? "No sessions found on this machine.\n" : "No sessions found in this project. Run `unown` to start one.\n",
+            );
             return 0;
         }
         const lines = sessions.map((s) => {
@@ -237,16 +264,27 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
     if (sub === "export") {
         const sessionId = argv[1];
         if (!sessionId || sessionId.startsWith("--")) {
-            process.stderr.write("usage: unown sessions export <session-id> [--out <file>] [--raw]\n");
+            process.stderr.write(
+                "usage: unown sessions export <session-id> [--format <md|json>] [--out <file>] [--raw]\n",
+            );
             return 1;
         }
         const out = flagValue(argv, "--out");
         const raw = hasFlag(argv, "--raw");
+        const formatFlag = flagValue(argv, "--format");
+        const format = formatFlag === "md" || formatFlag === "markdown" ? "md" : formatFlag === "json" ? "json" : undefined;
+        if (format === undefined && formatFlag !== undefined) {
+            process.stderr.write(`unown sessions export: invalid --format "${formatFlag}" (expected md or json)\n`);
+            return 1;
+        }
         const sessionDir = join(cwd, ".unown", "sessions");
-        const sessionFile = findSessionFile(sessionDir, sessionId);
+        const userSessionDir = resolveUserSessionDir();
+        // Project lane first (back-compat: imports live there), then the user
+        // lane — where every real TUI / print session is persisted.
+        const sessionFile = findSessionFile(sessionDir, sessionId) ?? findUserSessionFile(userSessionDir, sessionId);
         if (!sessionFile) {
             process.stderr.write(
-                `unown sessions export: no session file matching id "${sessionId}" under ${sessionDir}\n`,
+                `unown sessions export: no session file matching id "${sessionId}" under ${sessionDir} or ${userSessionDir}\n`,
             );
             return 1;
         }
@@ -258,17 +296,24 @@ export async function runSessionsCommand(argv: string[]): Promise<number> {
             return 1;
         }
         try {
-            const result = await exportSession(sm.getSessionId(), {
-                sessionManager: sm,
-                outPath: out,
-                redact: !raw,
-            });
+            const result =
+                format === "md"
+                    ? await exportSessionMarkdown(sm.getSessionId(), {
+                            sessionManager: sm,
+                            outPath: out,
+                            redact: !raw,
+                        })
+                    : await exportSession(sm.getSessionId(), {
+                            sessionManager: sm,
+                            outPath: out,
+                            redact: !raw,
+                        });
             const redactionNote =
                 result.redacted > 0
                     ? ` — ${result.redacted} secret${result.redacted === 1 ? "" : "s"} redacted ([REDACTED:*] markers; --raw keeps them verbatim)`
                     : "";
             process.stdout.write(
-                `✓ Exported session ${sm.getSessionId()} → ${result.path} (${result.bytes} bytes)${redactionNote}\n`,
+                `✓ Exported session ${sm.getSessionId()} → ${result.path} (${result.bytes} bytes${format === "md" ? ", markdown" : ""})${redactionNote}\n`,
             );
             return 0;
         } catch (err: any) {

@@ -19,7 +19,6 @@
  */
 import { randomUUID, createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { pruneToBudget, type BudgetReport } from "./budget.ts";
 import { extractManualNotesSection } from "./memzero.ts";
@@ -32,19 +31,14 @@ import { MEMORY_GUIDE, MEMORY_GUIDE_PATH } from "./memory-guide.ts";
 import { modelSpec } from "./model-specs.ts";
 import { STARTER_SKILLS } from "./skill-seeds.ts";
 import { UNOWN_THEME, UNOWN_THEME_NAME } from "./theme.ts";
+import { resolveUnownHome } from "./unown-home.ts";
 
-/**
- * Resolve the unown user-state home. `||`, not `??`: bun auto-loads the
- * repo-root `.env` (and `scripts/start.ts` exports it to every child), and
- * the shipped `.env.example` documents optional vars as `UNOWN_HOME=` — an
- * EMPTY string. `??` passed that through as `join("", "agent")` = a
- * cwd-relative `agent/` dir, so a fresh clone (`cp .env.example .env`) put
- * user state in whatever directory the CLI ran from. An empty value means
- * "unset, use the real home".
- */
-export function resolveUnownHome(env: NodeJS.ProcessEnv = process.env): string {
-        return env.UNOWN_HOME || join(homedir(), ".unown");
-}
+// `resolveUnownHome` moved to unown-home.ts (2026-10-24 session-workflow
+// round) so lightweight modules can resolve the user home without this
+// module's import graph. Re-exported here for every existing importer; the
+// env contract (`||` not `??` — an EMPTY UNOWN_HOME means "unset, use the
+// real home") is documented at the definition.
+export { resolveUnownHome };
 
 export const UNOWN_HOME = resolveUnownHome();
 export const UNOWN_AGENT_DIR = join(UNOWN_HOME, "agent");

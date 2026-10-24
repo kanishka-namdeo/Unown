@@ -3347,15 +3347,19 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			},
 		});
 
-		// Milestone 3.5 — `/sessions <sub>` slash command: the in-session
+				// Milestone 3.5 — `/sessions <sub>` slash command: the in-session
 		// alias for the `unown sessions` CLI. Uses the live session
 		// manager (ctx.sessionManager) so export/import operate on the
 		// CURRENT session without needing the CLI to construct one.
-		//   /sessions export [--out <file>]   export THIS session
-		//   /sessions list                    list sessions in this project
-		//   /sessions import <file>           rehydrate a session file
+		//   /sessions export [--md|--format md] [--raw] [--out F]   export THIS session
+		//   /sessions list [--all]                list sessions (this project, or all)
+		//   /sessions import <file>               rehydrate a session file
+		// 2026-10-24 session-workflow round: list reads BOTH stores (the
+		// user lane where this live session itself is persisted + the
+		// project import lane), and export gained the markdown format.
 		pi.registerCommand("sessions", {
-			description: "Session export / import / list (Milestone 3.5): /sessions export|import|list",
+			description:
+				"Session export / import / list: /sessions export [--md] [--raw] | list [--all] | import <file>",
 			handler: async (args, ctx) => {
 				const tokens = (args ?? "")
 					.trim()
@@ -3363,28 +3367,58 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					.filter((t) => t.length > 0);
 				const sub = tokens[0] ?? "list";
 				if (sub === "list") {
-					const { listSessions } = await import("./sessions.ts");
-					const sessions = listSessions({ cwd: opts.cwd });
+					const { listAllSessions, listUserSessions } = await import("./sessions.ts");
+					const { resolveUserSessionDir } = await import("./unown-home.ts");
+					const all = tokens.includes("--all");
+					const userSessionDir = resolveUserSessionDir();
+					const sessions = all
+						? listUserSessions({ userSessionDir, allProjects: true })
+						: listAllSessions({ cwd: opts.cwd, userSessionDir });
 					if (sessions.length === 0) {
-						ctx.ui.notify("No sessions found in this project.", "info");
+						ctx.ui.notify(
+							all ? "No sessions found on this machine." : "No sessions found in this project.",
+							"info",
+						);
 						return;
 					}
-					const lines = sessions.map((s) => {
+					const lines = sessions.slice(0, 30).map((s) => {
 						const date = new Date(s.createdAt).toISOString().replace("T", " ").slice(0, 19);
 						const fc = s.touchedFiles.length;
 						return `${s.id}  ${date}  · ${s.messageCount} msg(s)${fc ? ` · ${fc} file(s)` : ""}`;
 					});
-					ctx.ui.notify(`Sessions in this project:\n${lines.join("\n")}`, "info");
+					const more = sessions.length > 30 ? `\n… +${sessions.length - 30} more (unown sessions list --all)` : "";
+					ctx.ui.notify(
+						`${all ? "Sessions on this machine" : "Sessions in this project"}:\n${lines.join("\n")}${more}`,
+						"info",
+					);
 					return;
 				}
 				if (sub === "export") {
-					const { exportSession } = await import("./sessions.ts");
-					// Find --out
+					const { exportSession, exportSessionMarkdown } = await import("./sessions.ts");
+					// Flags: --out <file>, --md | --format md, --raw
 					let out: string | undefined;
+					let md = false;
+					let raw = false;
 					for (let i = 1; i < tokens.length; i++) {
-						if (tokens[i] === "--out" && i + 1 < tokens.length) {
-							out = tokens[i + 1];
-							break;
+						const t = tokens[i];
+						if (t === "--out" && i + 1 < tokens.length) {
+								out = tokens[i + 1];
+							i++;
+						} else if (t === "--md" || t === "--markdown" || t === "--format") {
+							// --format takes the next token (md|json); --md is the shorthand
+							if (t === "--format") {
+								const v = tokens[i + 1];
+								md = v === "md" || v === "markdown";
+								if (v !== undefined && !md) {
+									ctx.ui.notify(`Unknown --format "${v}" (expected md or json)`, "warning");
+									return;
+							}
+							i++;
+						} else {
+								md = true;
+						}
+						} else if (t === "--raw") {
+							raw = true;
 						}
 					}
 					if (!ctx?.sessionManager) {
@@ -3393,11 +3427,24 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					}
 					try {
 						const sessionId = ctx.sessionManager.getSessionId();
-						const result = await exportSession(sessionId, {
-							sessionManager: ctx.sessionManager as any,
-							outPath: out,
-						});
-						ctx.ui.notify(`✓ Exported session ${sessionId} → ${result.path} (${result.bytes} bytes)`, "info");
+						const result = md
+							? await exportSessionMarkdown(sessionId, {
+									  sessionManager: ctx.sessionManager as any,
+									  outPath: out,
+									  redact: !raw,
+								  })
+							: await exportSession(sessionId, {
+									  sessionManager: ctx.sessionManager as any,
+									  outPath: out,
+								  });
+						const redactionNote =
+							result.redacted > 0
+								? ` · ${result.redacted} secret${result.redacted === 1 ? "" : "s"} redacted`
+								: "";
+						ctx.ui.notify(
+								`✓ Exported session ${sessionId} → ${result.path} (${result.bytes} bytes${md ? ", markdown" : ""}${redactionNote})`,
+								"info",
+							);
 					} catch (err: any) {
 						ctx.ui.notify(`Export failed: ${err instanceof Error ? err.message : String(err)}`, "warning");
 					}
@@ -3421,10 +3468,9 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					}
 					return;
 				}
-				ctx.ui.notify(`Usage: /sessions export|import|list (got "${sub}")`, "info");
+				ctx.ui.notify(`Usage: /sessions export [--md] [--raw] [--out F] | list [--all] | import <file> (got "${sub}")`, "info");
 			},
 		});
-
 		// Milestone 4.1 — `/recipe <name> [args]` slash command: the
 		// in-session alias for the `unown recipes` CLI. Loads recipes
 		// from .unown/recipes/*.md (project) and $UNOWN_HOME/recipes/*.md
