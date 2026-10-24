@@ -2298,6 +2298,53 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 addDirs: args.addDirs,
         });
         installPrintStallWatchdog(runtime);
+        // TEMP DIAGNOSTIC (print-hang investigation 2026-10-24) — env-gated, remove after.
+        // UNOWN_TRACE_EXIT=1 adds phase traces + an UNREF'd 2s heartbeat to stderr.
+        const __traceExit = process.env.UNOWN_TRACE_EXIT === "1";
+        const __t0 = Date.now();
+        const __tr = (m: string) => console.error(`[exittrace +${Date.now() - __t0}ms] ${m}`);
+        if (__traceExit) {
+                __tr("bootRuntime done; installing exit tracing");
+                try {
+                        const rt: any = runtime;
+                        const origDispose = rt.dispose?.bind(rt);
+                        if (origDispose) {
+                                rt.dispose = async (...a: any[]) => {
+                                        __tr("runtime.dispose ENTER");
+                                        try {
+                                                const r = await origDispose(...a);
+                                                __tr("runtime.dispose EXIT ok");
+                                                return r;
+                                        } catch (e) {
+                                                __tr(`runtime.dispose EXIT err ${e}`);
+                                                throw e;
+                                        }
+                                };
+                        }
+                        const hb = setInterval(() => __tr("HEARTBEAT"), 2_000);
+                        hb.unref?.();
+                        process.on("exit", (c) => console.error(`[exittrace] process exit event code=${c} at +${Date.now() - __t0}ms`));
+                        process.on("SIGTERM", () => __tr("SIGTERM received"));
+                        process.on("SIGINT", () => __tr("SIGINT received"));
+                        process.on("beforeExit", (c) => __tr(`beforeExit code=${c}`));
+                } catch (e) {
+                        __tr(`trace install failed: ${e}`);
+                }
+        }
+        const __rpm = (r: any, o: any) => {
+                if (!__traceExit) return runPrintMode(r, o);
+                __tr("runPrintMode ENTER");
+                return runPrintMode(r, o).then(
+                        (c) => {
+                                __tr(`runPrintMode EXIT code=${c}`);
+                                return c;
+                        },
+                        (e) => {
+                                __tr(`runPrintMode EXIT err ${e}`);
+                                throw e;
+                        },
+                );
+        };
         // The fleet drain sentinel rides as the final message in orchestrator
         // runs: the fleet's input handler intercepts it (never model-visible)
         // and waits for async subagents so their steer-back results land while
@@ -2308,7 +2355,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 const wrap = captureStdout();
                 let code = 0;
                 try {
-                        code = await runPrintMode(runtime as any, { mode: "text", messages: [message, ...drainTail] });
+                        code = await __rpm(runtime as any, { mode: "text", messages: [message, ...drainTail] });
                 } finally {
                         const text = wrap.unwrap().trim();
                         // --no-session: the id names an ephemeral in-memory
@@ -2334,10 +2381,12 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 }
                 process.exit(code);
         }
-        const code = await runPrintMode(runtime as any, {
+        if (__traceExit) __tr("before runPrintMode (text/json lane)");
+        const code = await __rpm(runtime as any, {
                 mode: args.jsonMode ? "json" : "text",
                 messages: [message, ...drainTail],
         });
+        if (__traceExit) __tr("after runPrintMode — heading to exit guards");
         // F11 empty-answer guard (2026-10-23, text lane): a completed run whose
         // final assistant message carries no text is NOT success. Measured live:
         // an Agnes flash upstream under concurrent load answers 200 streams with
@@ -2360,6 +2409,7 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
         // awaits flushRawStdout), so the escape lands on a quiet stream right
         // after the answer it announces. The TUI never runs this code — see
         // notify.ts for why that lane is skipped (user present; frame loop).
+        if (__traceExit) __tr("past empty-answer guard");
         if (
                 !args.jsonMode &&
                 shouldNotifyOnAnswer({

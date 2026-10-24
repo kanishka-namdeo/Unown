@@ -56,20 +56,27 @@ export type SubagentEffort = "low" | "medium" | "high";
  *  Kept as a separate interface so SubagentConfig can extend it without
  *  dragging the test runtime into pi. */
 export interface SubagentRoutingFields {
-        /** Override `PI_MODEL_ID` for this subagent's run only. Per-agent value
-         *  takes precedence over the `UNOWN_SUBAGENT_MODEL` env var. */
-        model?: string;
-        /** Reasoning effort. `low` → BRIDGE_QWEN_THINKING=0; `high` → =1;
-         *  `medium` (or unset) → leave the bridge default alone. */
-        effort?: SubagentEffort;
-        /** Whitelist of MCP server names to load for this subagent. An EMPTY
-         *  array means "load NO MCP servers" (the background-explore shape);
-         *  undefined means "load all" (the legacy behavior). */
-        mcpServers?: string[];
-        /** Whether to inject the per-tier AGENTS.md / memory files into the
-         *  subagent's system prompt. Default `true` (legacy). `false` skips
-         *  injection (lighter context, lower cost). */
-        injectAgentsMd?: boolean;
+	/** Override `PI_MODEL_ID` for this subagent's run only. Per-agent value
+	 *  takes precedence over the `UNOWN_SUBAGENT_MODEL` env var. */
+	model?: string;
+	/** Reasoning effort. `low` → BRIDGE_QWEN_THINKING=0; `high` → =1;
+	 *  `medium` (or unset) → leave the bridge default alone. */
+	effort?: SubagentEffort;
+	/** Whitelist of MCP server names to load for this subagent. An EMPTY
+	 *  array means "load NO MCP servers" (the background-explore shape);
+	 *  undefined means "load all" (the legacy behavior). */
+	mcpServers?: string[];
+	/** Whether to inject the per-tier AGENTS.md / memory files into the
+	 *  subagent's system prompt. Default `true` (legacy). `false` skips
+	 *  injection (lighter context, lower cost). */
+	injectAgentsMd?: boolean;
+	/** Per-agent wall-clock budget for ONE spawn, in milliseconds.
+	 *  Clamped to [SUBAGENT_TIMEOUT_MIN_MS, SUBAGENT_TIMEOUT_MAX_MS]
+	 *  by resolveSubagentTimeoutMs; undefined = the session default
+	 *  (SUBAGENT_TIMEOUT_MS, env-tunable via UNOWN_SUBAGENT_TIMEOUT_MS).
+	 *  Long-running specialists (the browser agent) raise this; cheap
+	 *  scouts keep the default. */
+	timeoutMs?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +102,24 @@ export const SUBAGENT_NO_AGENTS_MD_ENV = "UNOWN_NO_AGENTS_MD";
  *  "1" = thinking enabled (high effort); "0" = disabled (low effort). */
 export const SUBAGENT_QWEN_THINKING_ENV = "BRIDGE_QWEN_THINKING";
 
+/** When set, overrides the session-wide subagent wall-clock budget
+ *  (default 300_000 = 5 minutes). Values are clamped to
+ *  [SUBAGENT_TIMEOUT_MIN_MS, SUBAGENT_TIMEOUT_MAX_MS]; junk falls back to
+ *  the default. Per-agent `timeoutMs` still wins over this. */
+export const SUBAGENT_TIMEOUT_ENV = "UNOWN_SUBAGENT_TIMEOUT_MS";
+
+/** Floor for any resolved subagent timeout — a budget below this cannot
+ *  complete even a trivial spawn (process boot + one model turn). */
+export const SUBAGENT_TIMEOUT_MIN_MS = 30_000;
+
+/** Ceiling for any resolved subagent timeout — half an hour. Above this a
+ *  stuck child is a support burden, not a long task (the async fleet lane
+ *  has its own UNOWN_FLEET_TIMEOUT_MS with the same philosophy). */
+export const SUBAGENT_TIMEOUT_MAX_MS = 1_800_000;
+
+/** The session-wide default budget for one synchronous subagent spawn. */
+export const SUBAGENT_TIMEOUT_DEFAULT_MS = 300_000;
+
 // ---------------------------------------------------------------------------
 // CLI flag parser (extracted from cli.ts:parseArgs so it is hermetically
 // testable without importing the pi-coding-agent runtime)
@@ -104,11 +129,11 @@ export const SUBAGENT_QWEN_THINKING_ENV = "BRIDGE_QWEN_THINKING";
  *  array. `rest` is the argv with the consumed flags removed (so the
  *  existing parseArgs loop does not treat them as prompt text). */
 export interface ParsedSubagentFlags {
-        rest: string[];
-        model?: string;
-        effort?: SubagentEffort;
-        mcpServers?: string[];
-        noAgentsMd?: boolean;
+	rest: string[];
+	model?: string;
+	effort?: SubagentEffort;
+	mcpServers?: string[];
+	noAgentsMd?: boolean;
 }
 
 /**
@@ -127,50 +152,50 @@ export interface ParsedSubagentFlags {
  * value — same shape as `--tools` and `--append-system-prompt`).
  */
 export function parseSubagentFlags(argv: string[]): ParsedSubagentFlags {
-        const rest: string[] = [];
-        let model: string | undefined;
-        let effort: SubagentEffort | undefined;
-        let mcpServers: string[] | undefined;
-        let noAgentsMd: boolean | undefined;
-        for (let i = 0; i < argv.length; i++) {
-                const a = argv[i];
-                if (a === "--model") {
-                        const next = argv[i + 1];
-                        if (next !== undefined && !next.startsWith("--")) {
-                                model = next;
-                                i++;
-                        }
-                        continue;
-                }
-                if (a === "--effort") {
-                        const next = argv[i + 1];
-                        if (next !== undefined && !next.startsWith("--")) {
-                                const e = next.trim().toLowerCase();
-                                if (e === "low" || e === "medium" || e === "high") effort = e;
-                                // invalid effort values are silently dropped (the flag is
-                                // still consumed — same posture as parseToolList on bad input)
-                                i++;
-                        }
-                        continue;
-                }
-                if (a === "--mcp-servers") {
-                        const next = argv[i + 1];
-                        if (next !== undefined && !next.startsWith("--")) {
-                                mcpServers = next
-                                        .split(",")
-                                        .map((s) => s.trim())
-                                        .filter(Boolean);
-                                i++;
-                        }
-                        continue;
-                }
-                if (a === "--no-agents-md") {
-                        noAgentsMd = true;
-                        continue;
-                }
-                rest.push(a);
-        }
-        return { rest, model, effort, mcpServers, noAgentsMd };
+	const rest: string[] = [];
+	let model: string | undefined;
+	let effort: SubagentEffort | undefined;
+	let mcpServers: string[] | undefined;
+	let noAgentsMd: boolean | undefined;
+	for (let i = 0; i < argv.length; i++) {
+		const a = argv[i];
+		if (a === "--model") {
+			const next = argv[i + 1];
+			if (next !== undefined && !next.startsWith("--")) {
+				model = next;
+				i++;
+			}
+			continue;
+		}
+		if (a === "--effort") {
+			const next = argv[i + 1];
+			if (next !== undefined && !next.startsWith("--")) {
+				const e = next.trim().toLowerCase();
+				if (e === "low" || e === "medium" || e === "high") effort = e;
+				// invalid effort values are silently dropped (the flag is
+				// still consumed — same posture as parseToolList on bad input)
+				i++;
+			}
+			continue;
+		}
+		if (a === "--mcp-servers") {
+			const next = argv[i + 1];
+			if (next !== undefined && !next.startsWith("--")) {
+				mcpServers = next
+					.split(",")
+					.map((s) => s.trim())
+					.filter(Boolean);
+				i++;
+			}
+			continue;
+		}
+		if (a === "--no-agents-md") {
+			noAgentsMd = true;
+			continue;
+		}
+		rest.push(a);
+	}
+	return { rest, model, effort, mcpServers, noAgentsMd };
 }
 
 // ---------------------------------------------------------------------------
@@ -189,48 +214,75 @@ export function parseSubagentFlags(argv: string[]): ParsedSubagentFlags {
  * Pure: no I/O, no env. Invalid values are dropped silently.
  */
 export function parseAgentFrontmatterExtras(frontmatter: unknown): SubagentRoutingFields {
-        if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return {};
-        const fm = frontmatter as Record<string, unknown>;
-        const out: SubagentRoutingFields = {};
+	if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return {};
+	const fm = frontmatter as Record<string, unknown>;
+	const out: SubagentRoutingFields = {};
 
-        if (typeof fm.model === "string" && fm.model.trim()) {
-                out.model = fm.model.trim();
-        }
+	if (typeof fm.model === "string" && fm.model.trim()) {
+		out.model = fm.model.trim();
+	}
 
-        if (typeof fm.effort === "string") {
-                const e = fm.effort.trim().toLowerCase();
-                if (e === "low" || e === "medium" || e === "high") out.effort = e;
-        }
+	if (typeof fm.effort === "string") {
+		const e = fm.effort.trim().toLowerCase();
+		if (e === "low" || e === "medium" || e === "high") out.effort = e;
+	}
 
-        // mcpServers accepts a comma-separated string OR an array (matching
-        // parseToolList's permissiveness). snake_case fallback for zcode parity.
-        const mcpRaw = fm.mcpServers ?? fm.mcp_servers;
-        if (typeof mcpRaw === "string") {
-                const list = mcpRaw
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                if (list.length > 0) out.mcpServers = list;
-        } else if (Array.isArray(mcpRaw)) {
-                const list = mcpRaw
-                        .filter((s): s is string => typeof s === "string")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                if (list.length > 0) out.mcpServers = list;
-        }
+	// mcpServers accepts a comma-separated string OR an array (matching
+	// parseToolList's permissiveness). snake_case fallback for zcode parity.
+	const mcpRaw = fm.mcpServers ?? fm.mcp_servers;
+	if (typeof mcpRaw === "string") {
+		const list = mcpRaw
+			.split(",")
+			.map((s) => s.trim())
+			.filter(Boolean);
+		if (list.length > 0) out.mcpServers = list;
+	} else if (Array.isArray(mcpRaw)) {
+		const list = mcpRaw
+			.filter((s): s is string => typeof s === "string")
+			.map((s) => s.trim())
+			.filter(Boolean);
+		if (list.length > 0) out.mcpServers = list;
+	}
 
-        // injectAgentsMd accepts a boolean OR a string ("true"/"1" → true,
-        // "false"/"0" → false). snake_case fallback for zcode parity.
-        const injRaw = fm.injectAgentsMd ?? fm.inject_agents_md;
-        if (typeof injRaw === "boolean") {
-                out.injectAgentsMd = injRaw;
-        } else if (typeof injRaw === "string") {
-                const v = injRaw.trim().toLowerCase();
-                if (v === "true" || v === "1") out.injectAgentsMd = true;
-                else if (v === "false" || v === "0") out.injectAgentsMd = false;
-        }
+	// injectAgentsMd accepts a boolean OR a string ("true"/"1" → true,
+	// "false"/"0" → false). snake_case fallback for zcode parity.
+	const injRaw = fm.injectAgentsMd ?? fm.inject_agents_md;
+	if (typeof injRaw === "boolean") {
+		out.injectAgentsMd = injRaw;
+	} else if (typeof injRaw === "string") {
+		const v = injRaw.trim().toLowerCase();
+		if (v === "true" || v === "1") out.injectAgentsMd = true;
+		else if (v === "false" || v === "0") out.injectAgentsMd = false;
+	}
 
-        return out;
+	// timeoutMs accepts a number (milliseconds) OR a numeric string, in
+	// camelCase or snake_case. Human-friendly unit suffixes ("10m",
+	// "90s") are accepted — an agent author writes minutes, not
+	// milliseconds. Clamped at resolve time, not parse time, so the
+	// stored value round-trips.
+	const timeoutRaw = fm.timeoutMs ?? fm.timeout_ms ?? fm.timeout;
+	if (typeof timeoutRaw === "number" && Number.isFinite(timeoutRaw) && timeoutRaw > 0) {
+		out.timeoutMs = timeoutRaw;
+	} else if (typeof timeoutRaw === "string") {
+		const parsed = parseDurationMs(timeoutRaw.trim());
+		if (parsed !== undefined) out.timeoutMs = parsed;
+	}
+
+	return out;
+}
+
+/** Parse a human duration string into milliseconds: "90"/"90s"/"90s " →
+ *  90_000; "10m" → 600_000; "1h" → 3_600_000; "500ms" → 500. Junk →
+ *  undefined (the caller leaves the field unset). Pure. */
+export function parseDurationMs(raw: string): number | undefined {
+	const m = /^([0-9]+(?:\.[0-9]+)?)(ms|s|m|h)?$/i.exec(raw.replace(/\s+/g, ""));
+	if (!m) return undefined;
+	const value = Number.parseFloat(m[1] ?? "");
+	if (!Number.isFinite(value) || value <= 0) return undefined;
+	const unit = (m[2] ?? "ms").toLowerCase();
+	const scale = unit === "ms" ? 1 : unit === "s" ? 1_000 : unit === "m" ? 60_000 : 3_600_000;
+	const ms = Math.round(value * scale);
+	return Number.isFinite(ms) && ms > 0 ? ms : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -251,9 +303,9 @@ export function parseAgentFrontmatterExtras(frontmatter: unknown): SubagentRouti
  * length. For now only the env var is set.
  */
 export function applyEffortToEnv(effort: SubagentEffort | undefined): Record<string, string> {
-        if (effort === "low") return { [SUBAGENT_QWEN_THINKING_ENV]: "0" };
-        if (effort === "high") return { [SUBAGENT_QWEN_THINKING_ENV]: "1" };
-        return {};
+	if (effort === "low") return { [SUBAGENT_QWEN_THINKING_ENV]: "0" };
+	if (effort === "high") return { [SUBAGENT_QWEN_THINKING_ENV]: "1" };
+	return {};
 }
 
 // ---------------------------------------------------------------------------
@@ -271,12 +323,42 @@ export function applyEffortToEnv(effort: SubagentEffort | undefined): Record<str
  * Pure: reads `env` (defaults to `process.env`) but never mutates it.
  */
 export function resolveSubagentModel(
-        agent: Pick<SubagentRoutingFields, "model">,
-        env: Record<string, string | undefined> = process.env,
+	agent: Pick<SubagentRoutingFields, "model">,
+	env: Record<string, string | undefined> = process.env,
 ): string | undefined {
-        if (typeof agent.model === "string" && agent.model.length > 0) return agent.model;
-        const global = env[SUBAGENT_MODEL_ENV];
-        return typeof global === "string" && global.length > 0 ? global : undefined;
+	if (typeof agent.model === "string" && agent.model.length > 0) return agent.model;
+	const global = env[SUBAGENT_MODEL_ENV];
+	return typeof global === "string" && global.length > 0 ? global : undefined;
+}
+
+/**
+ * Resolve the wall-clock budget for ONE synchronous subagent spawn.
+ * Precedence: per-agent `timeoutMs` → the UNOWN_SUBAGENT_TIMEOUT_MS env var
+ * → SUBAGENT_TIMEOUT_DEFAULT_MS (5 minutes). The winner is clamped to
+ * [SUBAGENT_TIMEOUT_MIN_MS, SUBAGENT_TIMEOUT_MAX_MS] — an author who writes
+ * `timeout: 1` (meaning one minute, saying milliseconds) gets the 30-second
+ * floor instead of an instant kill, and a runaway value gets the half-hour
+ * ceiling. Pure: takes the env record, never reads process.env directly.
+ */
+export function resolveSubagentTimeoutMs(
+	agent: Pick<SubagentRoutingFields, "timeoutMs">,
+	env: Record<string, string | undefined> = process.env,
+): number {
+	const clamp = (ms: number): number =>
+		Math.min(SUBAGENT_TIMEOUT_MAX_MS, Math.max(SUBAGENT_TIMEOUT_MIN_MS, Math.round(ms)));
+	if (typeof agent.timeoutMs === "number" && Number.isFinite(agent.timeoutMs) && agent.timeoutMs > 0) {
+		return clamp(agent.timeoutMs);
+	}
+	const raw = env[SUBAGENT_TIMEOUT_ENV];
+	if (typeof raw === "string" && raw.trim()) {
+		// Human-friendly on purpose: an operator writing
+		// UNOWN_SUBAGENT_TIMEOUT_MS=10m means ten minutes (the same
+		// grammar the frontmatter accepts). Junk falls back to the
+		// default rather than clamping a misread number.
+		const parsed = parseDurationMs(raw.trim()) ?? Number.parseFloat(raw.replace(/[^0-9.]/g, ""));
+		if (Number.isFinite(parsed) && parsed > 0) return clamp(parsed);
+	}
+	return SUBAGENT_TIMEOUT_DEFAULT_MS;
 }
 
 // ---------------------------------------------------------------------------
@@ -289,8 +371,8 @@ export function resolveSubagentModel(
  *  SubagentConfig satisfies this (it has `name`, `tools?`, plus the four
  *  routing fields when extended with SubagentRoutingFields). */
 export interface BuildSubagentArgsAgent extends SubagentRoutingFields {
-        name: string;
-        tools?: string[];
+	name: string;
+	tools?: string[];
 }
 
 /**
@@ -309,35 +391,35 @@ export interface BuildSubagentArgsAgent extends SubagentRoutingFields {
  * reads beyond `resolveSubagentModel` (which is itself pure).
  */
 export function buildSubagentArgs(agent: BuildSubagentArgsAgent): string[] {
-        const args: string[] = ["--mode", "json", "-p", "--no-session"];
+	const args: string[] = ["--mode", "json", "-p", "--no-session"];
 
-        if (agent.tools && agent.tools.length > 0) {
-                args.push("--tools", agent.tools.join(","));
-        }
+	if (agent.tools && agent.tools.length > 0) {
+		args.push("--tools", agent.tools.join(","));
+	}
 
-        const model = resolveSubagentModel(agent);
-        if (model) {
-                args.push("--model", model);
-        }
+	const model = resolveSubagentModel(agent);
+	if (model) {
+		args.push("--model", model);
+	}
 
-        if (agent.effort === "low" || agent.effort === "medium" || agent.effort === "high") {
-                args.push("--effort", agent.effort);
-        }
+	if (agent.effort === "low" || agent.effort === "medium" || agent.effort === "high") {
+		args.push("--effort", agent.effort);
+	}
 
-        if (Array.isArray(agent.mcpServers)) {
-                // Even an empty whitelist is meaningful: it means "load NO MCP
-                // servers" (the background-explore shape). So we always pass the
-                // flag when the field is set; the consumer side (parseSubagentFlags
-                // → cli.ts → mcp.ts) treats an empty CSV as "load none".
-                args.push("--mcp-servers", agent.mcpServers.join(","));
-        }
+	if (Array.isArray(agent.mcpServers)) {
+		// Even an empty whitelist is meaningful: it means "load NO MCP
+		// servers" (the background-explore shape). So we always pass the
+		// flag when the field is set; the consumer side (parseSubagentFlags
+		// → cli.ts → mcp.ts) treats an empty CSV as "load none".
+		args.push("--mcp-servers", agent.mcpServers.join(","));
+	}
 
-        if (agent.injectAgentsMd === false) {
-                // Default is `true` (legacy injection). Only `=== false` opts out.
-                args.push("--no-agents-md");
-        }
+	if (agent.injectAgentsMd === false) {
+		// Default is `true` (legacy injection). Only `=== false` opts out.
+		args.push("--no-agents-md");
+	}
 
-        return args;
+	return args;
 }
 
 // ---------------------------------------------------------------------------
@@ -351,25 +433,25 @@ export function buildSubagentArgs(agent: BuildSubagentArgsAgent): string[] {
  *  tools.ts imports this const and adds it to BUILTIN_AGENTS so the
  *  discovery + override semantics (built-in < user < project) apply. */
 export const BACKGROUND_EXPLORE_AGENT: {
-        name: string;
-        description: string;
-        tools: string[];
-        systemPrompt: string;
-        source: "built-in";
+	name: string;
+	description: string;
+	tools: string[];
+	systemPrompt: string;
+	source: "built-in";
 } & SubagentRoutingFields = {
-        name: "background-explore",
-        description:
-                "Read-only exploration subagent for low-cost background sweeps. Maps where things live in the repo and returns file:line evidence. Runs at lower reasoning effort than `explore`, loads no MCP servers, and skips AGENTS.md injection — the minimal-overhead choice for parallel fact-finding where the parent agent does not need a full unown context.",
-        tools: ["read", "grep", "find", "ls"],
-        systemPrompt: `You are unown's background exploration subagent — read-only, minimal overhead.
+	name: "background-explore",
+	description:
+		"Read-only exploration subagent for low-cost background sweeps. Maps where things live in the repo and returns file:line evidence. Runs at lower reasoning effort than `explore`, loads no MCP servers, and skips AGENTS.md injection — the minimal-overhead choice for parallel fact-finding where the parent agent does not need a full unown context.",
+	tools: ["read", "grep", "find", "ls"],
+	systemPrompt: `You are unown's background exploration subagent — read-only, minimal overhead.
 
 You receive ONE self-contained question about the codebase. Answer concisely with evidence:
 - cite file:line for every claim
 - end with a short direct answer first, details after
 
 Do not propose changes; do not edit anything. If the answer is not in the repo, say so.`,
-        source: "built-in",
-        effort: "low",
-        mcpServers: [],
-        injectAgentsMd: false,
+	source: "built-in",
+	effort: "low",
+	mcpServers: [],
+	injectAgentsMd: false,
 };

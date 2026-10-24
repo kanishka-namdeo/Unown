@@ -51,14 +51,14 @@ import { type ExtensionAPI, type ExtensionUIContext, parseFrontmatter } from "@e
 import { Key, stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { foregroundTodosForGoalGate } from "./addons/todo.ts";
+import { maybeAutoTitleSession } from "./auto-title.ts";
 import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
+import { registerBrowserTools } from "./browser/tools.ts";
 import { answerBtw, btwHeader } from "./btw.ts";
 import { BtwOverlay } from "./btw-overlay.ts";
 import { receiptsDir } from "./checkpoints.ts";
 import { trustBypassed } from "./config-trust.ts";
 import { composeTaskWithBrief, summarizeParentContext } from "./context-brief.ts";
-import { registerBrowserTools } from "./browser/tools.ts";
-import { maybeAutoTitleSession } from "./auto-title.ts";
 import { registerContextTools } from "./context-tools.ts";
 import { DashboardApp } from "./dashboard/dashboard-app.ts";
 import { DashboardStore } from "./dashboard/dashboard-data.ts";
@@ -77,6 +77,7 @@ import {
 	renderGoalStatus,
 } from "./goal.ts";
 import { generateAgentsMd } from "./init-agents.ts";
+import { buildInsightsReport, insightsHintLine, renderInsightsReport } from "./insights.ts";
 import { checkSchemaShape, type SchemaIssue, validateJsonSchema } from "./jsonschema.ts";
 import { chatText } from "./llm.ts";
 import {
@@ -98,10 +99,7 @@ import {
 	markModelUnhealthy,
 	saveModelHealth,
 } from "./model-health.ts";
-import { IS_COMPILED_BINARY, isBunVirtualPath } from "./packaging.ts";
 import { scheduleTurnEndPing } from "./notify-tui.ts";
-import { postPrComment } from "./pr-review.ts";
-import { runPromoteCommand } from "./promote-cli.ts";
 import {
 	activeStyleName,
 	describeStyles,
@@ -110,10 +108,12 @@ import {
 	saveActiveStyle,
 	styleSystemPromptAppendix,
 } from "./output-style.ts";
+import { IS_COMPILED_BINARY, isBunVirtualPath } from "./packaging.ts";
+import { postPrComment } from "./pr-review.ts";
+import { runPromoteCommand } from "./promote-cli.ts";
 import { providersArgumentCompletions, runProvidersCommand } from "./providers-command.ts";
 import { loadRecipes, runRecipe, userRecipesDir } from "./recipes.ts";
 import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
-import { buildInsightsReport, insightsHintLine, renderInsightsReport } from "./insights.ts";
 import { runRepomapCommand, withRepoMap } from "./repomap/repomap-cli.ts";
 import {
 	buildReviewerTask,
@@ -141,10 +141,12 @@ import {
 	snapshotWorkingTree,
 	treeMutated,
 } from "./subagent-catalog.ts";
+import { formatElapsedCompact, humanizeToolLabel } from "./subagent-progress.ts";
 import {
 	BACKGROUND_EXPLORE_AGENT,
 	buildSubagentArgs,
 	parseAgentFrontmatterExtras,
+	resolveSubagentTimeoutMs,
 	type SubagentEffort,
 	type SubagentRoutingFields,
 } from "./subagent-routing.ts";
@@ -195,7 +197,7 @@ export function sessionUsageSummary(entries: any[]): {
 			if (!isMessage && !isSummary) continue;
 			const message = isMessage ? entry.message : null;
 			if (isMessage && !message) continue;
-			const usage = isMessage ? message.usage ?? entry.usage : entry.usage;
+			const usage = isMessage ? (message.usage ?? entry.usage) : entry.usage;
 			if (message && message.role === "assistant") {
 				totals.messages += 1;
 				const model = message.responseModel ?? message.model;
@@ -381,7 +383,6 @@ export function discoverSubagents(cwd: string): SubagentConfig[] {
 // Subagent process runner — spawns `unown --mode json -p --no-session`
 // ---------------------------------------------------------------------------
 
-const SUBAGENT_TIMEOUT_MS = 300_000;
 const SUBAGENT_OUTPUT_CAP = 16_000;
 const SUBAGENT_STDERR_CAP = 2_000;
 
@@ -762,7 +763,14 @@ async function runSubagentOnce(
 						publishProgress();
 					}
 				} else if (event?.type === "tool_execution_start") {
-					currentTool = typeof event?.toolName === "string" ? event.toolName : "tool";
+					// Humanized label (subagent-progress.ts): the full tool args ride
+					// the wire on this event, so the parent can render
+					// "browser: navigate example.com" instead of "browser" without a
+					// single child-side change. Degrades to the bare name on junk.
+					currentTool = humanizeToolLabel(
+						typeof event?.toolName === "string" ? event.toolName : "tool",
+						event?.args,
+					);
 					publishProgress();
 				} else if (event?.type === "tool_result_end") {
 					result.toolResults++;
@@ -791,8 +799,9 @@ async function runSubagentOnce(
 				finish();
 			});
 
+			const timeoutMs = resolveSubagentTimeoutMs(agent);
 			const watchdog = setTimeout(() => {
-				stderrBuffer += `\n(subagent timed out after ${SUBAGENT_TIMEOUT_MS / 1000}s and was killed)`;
+				stderrBuffer += `\n(subagent timed out after ${timeoutMs / 1000}s and was killed)`;
 				killSubagentTree(proc);
 				if (process.platform !== "win32") {
 					// POSIX escalation: SIGTERM (sent by killSubagentTree)
@@ -806,7 +815,7 @@ async function runSubagentOnce(
 						}
 					}, 5000);
 				}
-			}, SUBAGENT_TIMEOUT_MS);
+			}, timeoutMs);
 
 			const killProc = () => {
 				stderrBuffer += "\n(subagent aborted)";
@@ -1412,12 +1421,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		// ---- fleet surface (async-lane tools, /tasks, renderers, widget)
 		if (!isSubagent) registerFleetSurface(pi, fleetManager, { cwd: opts.cwd });
 		// ---- plan-mode state
-	// TUI attention + auto-title runtime state (factory scope): turn timing
-	// for the deferred turn-complete ping, and the once-per-session title
-	// guard (the module's own guards do the real gating).
-	let turnStartTs: number | null = null;
-	let pendingTurnPing: { cancel(): void } | null = null;
-	const titledSessions = new Set<string>();
+		// TUI attention + auto-title runtime state (factory scope): turn timing
+		// for the deferred turn-complete ping, and the once-per-session title
+		// guard (the module's own guards do the real gating).
+		let turnStartTs: number | null = null;
+		let pendingTurnPing: { cancel(): void } | null = null;
+		const titledSessions = new Set<string>();
 
 		let planModeEnabled = false;
 		let executionMode = false;
@@ -1602,7 +1611,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 				name: "task",
 				label: "Task",
 				description:
-					"Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default), 'explore' / 'scout' (read-only; scout returns a compressed handoff), 'worker' (implementation, completion-guarded), 'reviewer' (P0/P1/P2 + verdict), 'planner' (writes plan.md, never executes), 'background-explore' (cheap sweep) plus any defined in .unown/agents/*.md (also listed in the advertised-subagents block of your system prompt). Pass {tasks: [...]} to run up to 4 in parallel. Set async: true to spawn in the BACKGROUND fire-and-forget (immediate ack; the result arrives as a new message — steer/stop/inspect via the task_control tool; the child can ask you questions). Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back; sync lane only). Prefer this whenever a focused investigation would pollute this session's context.",
+					"Launch a unown subagent with a FRESH context window to work on a self-contained task (research, exploration, or implementation). The subagent does not see this conversation and cannot spawn further subagents; it returns a concise report. Agents: 'general' (full tools, default), 'explore' / 'scout' (read-only; scout returns a compressed handoff), 'worker' (implementation, completion-guarded), 'reviewer' (P0/P1/P2 + verdict), 'planner' (writes plan.md, never executes), 'browser' (interactive web automation with a real Chromium — navigate/click/type/screenshot; snapshots stay in the child, you get a verified report; do NOT use it to read public pages — webfetch is cheaper), 'background-explore' (cheap sweep) plus any defined in .unown/agents/*.md (also listed in the advertised-subagents block of your system prompt). Pass {tasks: [...]} to run up to 4 in parallel. Set async: true to spawn in the BACKGROUND fire-and-forget (immediate ack; the result arrives as a new message — steer/stop/inspect via the task_control tool; the child can ask you questions). Set worktree_isolation: true to give a writing subagent its own git worktree (parallel writers never collide; kept trees are reported for merge). Set output_schema to a JSON Schema the subagent's final reply must satisfy (typed fan-out: invalid replies are retried with the exact defects quoted back; sync lane only). Prefer this whenever a focused investigation would pollute this session's context.",
 				parameters: TaskParams,
 				async execute(_toolCallId, params, signal, onUpdate, executeCtx) {
 					const agents = discoverSubagents(opts.cwd);
@@ -1845,6 +1854,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 							const guardActive = agent.completionGuard === true;
 							const guardBefore = guardActive ? snapshotWorkingTree(runCwd) : null;
 							log(`spawning subagent ${agent.name}`);
+							const spawnStartedAt = Date.now();
 							const result = await runSubagent(
 								agent,
 								await withRepoMap(runCwd, await maybeBrief(agent, job.task)),
@@ -1865,6 +1875,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 								exitCode: result.exitCode,
 								turns: result.usage.turns,
 								toolResults: result.toolResults,
+								elapsedMs: Date.now() - spawnStartedAt,
 							};
 							if (result.modelsAttempted) run.modelsAttempted = result.modelsAttempted;
 							// ---- BLOCKED protocol (pi-cciotti port): a machine-readable
@@ -2005,7 +2016,11 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 							const tree = r.worktree ? ` [${r.worktree.action}]` : "";
 							const guard = r.guard ? ` [guard ${r.guard.status}]` : "";
 							const models = r.modelsAttempted ? ` (${r.modelsAttempted.join("→")})` : "";
-							return `${laneName(theme, r.agent)}${models}: ${mark} ${r.turns} turns, ${r.toolResults} tools${tree}${guard}`;
+							// Finished rows carry the wall-clock total (the live
+							// rows above show the running elapsed); compact so a
+							// 4-wide batch stays one line per child at 80 cols.
+							const took = r.elapsedMs != null ? ` in ${formatElapsedCompact(r.elapsedMs)}` : "";
+							return `${laneName(theme, r.agent)}${models}: ${mark} ${r.turns} turns, ${r.toolResults} tools${took}${tree}${guard}`;
 						})
 						.join("\n");
 					return new Text(theme.fg("muted", summary), 0, 0);
@@ -2326,7 +2341,9 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					return { content: [{ type: "text", text }] };
 				} catch (err: any) {
 					return {
-						content: [{ type: "text", text: `fetch_url failed: ${err instanceof Error ? err.message : String(err)}` }],
+						content: [
+							{ type: "text", text: `fetch_url failed: ${err instanceof Error ? err.message : String(err)}` },
+						],
 						isError: true,
 					};
 				}
@@ -2559,7 +2576,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					return { content: [{ type: "text", text: `Error: unknown action ${params.action}` }] };
 				} catch (err: any) {
 					return {
-						content: [{ type: "text", text: `lsp ${params.action} failed: ${err instanceof Error ? err.message : String(err)}` }],
+						content: [
+							{
+								type: "text",
+								text: `lsp ${params.action} failed: ${err instanceof Error ? err.message : String(err)}`,
+							},
+						],
 						isError: true,
 					};
 				}
@@ -2833,8 +2855,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					: [];
 				const result = await runUsageCommand(argv);
 				// Session totals ride on top: the same attribution semantics
-					// /session uses (assistant usage + toolResult/compaction usage),
-					// computed from the read-only entries every extension sees.
+				// /session uses (assistant usage + toolResult/compaction usage),
+				// computed from the read-only entries every extension sees.
 				const entries =
 					typeof (ctx as any)?.sessionManager?.getEntries === "function"
 						? (ctx as any).sessionManager.getEntries()
@@ -2845,9 +2867,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					`  messages: ${session.messages} · tokens: ${session.tokensIn + session.tokensOut + session.cacheRead + session.cacheWrite} (in ${session.tokensIn}, out ${session.tokensOut}, cached ${session.cacheRead}${session.cacheWrite ? `, cache-writes ${session.cacheWrite}` : ""})`,
 					session.models.length > 0 ? `  models: ${session.models.join(", ")}` : "",
 				].filter(Boolean);
-				const out = [sessionLines.join("\n"), "", result.stdout ?? result.stderr ?? ""]
-					.join("\n")
-					.trimEnd();
+				const out = [sessionLines.join("\n"), "", result.stdout ?? result.stderr ?? ""].join("\n").trimEnd();
 				ctx.ui.notify(out, result.exitCode === 0 ? "info" : "warning");
 			},
 		});
@@ -2857,7 +2877,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		// rendered in a dismissible overlay, never entering the transcript,
 		// the receipts ledger or AutoDream's note mining. See btw.ts.
 		pi.registerCommand("btw", {
-			description: "Ask a side question about the session — answered in an overlay, never added to the transcript: /btw <question>",
+			description:
+				"Ask a side question about the session — answered in an overlay, never added to the transcript: /btw <question>",
 			handler: async (args: string, ctx) => {
 				const question = (args ?? "").trim();
 				const entries =
@@ -2884,7 +2905,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					);
 				} else {
 					// print/RPC/headless: the answer prints as a notification block.
-					ctx.ui.notify(`btw · ${btwHeader(question).slice(6)}\n${answer}\n(side channel — not added to the session)`, "info");
+					ctx.ui.notify(
+						`btw · ${btwHeader(question).slice(6)}\n${answer}\n(side channel — not added to the session)`,
+						"info",
+					);
 				}
 			},
 		});
@@ -2897,12 +2921,18 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			handler: async (args: string, ctx) => {
 				const name = (args ?? "").trim();
 				if (!name) {
-					ctx.ui.notify(`Output styles — active: ${activeStyleName(opts.cwd)}\n\n${describeStyles(opts.cwd)}\n\n/output-style <name> switches (persists to .unown/output-style.json; "default" clears).`, "info");
+					ctx.ui.notify(
+						`Output styles — active: ${activeStyleName(opts.cwd)}\n\n${describeStyles(opts.cwd)}\n\n/output-style <name> switches (persists to .unown/output-style.json; "default" clears).`,
+						"info",
+					);
 					return;
 				}
 				const style = resolveStyle(name, opts.cwd);
 				if (!style) {
-					ctx.ui.notify(`Unknown output style "${name}".\n\n${describeStyles(opts.cwd)}\n\nCustom styles: drop a .md file (frontmatter name+description, body = directive) into .unown/styles/ or ~/.unown/agent/styles/.`, "warning");
+					ctx.ui.notify(
+						`Unknown output style "${name}".\n\n${describeStyles(opts.cwd)}\n\nCustom styles: drop a .md file (frontmatter name+description, body = directive) into .unown/styles/ or ~/.unown/agent/styles/.`,
+						"warning",
+					);
 					return;
 				}
 				try {
@@ -2921,7 +2951,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 		// /insights — Claude Code /insights parity: cross-session analytics
 		// over the user's OWN history (sessions, files, tools, tokens, friction).
 		pi.registerCommand("insights", {
-			description: "Cross-session analytics: what you worked on, top files/tools, tokens, friction (/insights [days])",
+			description:
+				"Cross-session analytics: what you worked on, top files/tools, tokens, friction (/insights [days])",
 			handler: async (args: string, ctx) => {
 				const daysRaw = (args ?? "").trim().split(/\s+/)[0] ?? "";
 				const days = /^\d+$/.test(daysRaw) ? Math.min(Number(daysRaw), 365) : 7;
@@ -2945,7 +2976,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			},
 		});
 
-				pi.registerCommand("repomap", {
+		pi.registerCommand("repomap", {
 			description:
 				"repo map: /repomap [--tokens N] [--refresh] | /repomap clear — the graph-ranked tree-sitter symbol map",
 			handler: async (args, ctx) => {
@@ -3176,7 +3207,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 							await postPrComment(prRef, text);
 							ctx.ui.notify(`Posted verdict as a comment on ${prRef}.`, "info");
 						} catch (err: any) {
-							ctx.ui.notify(`Could not post PR comment: ${err instanceof Error ? err.message : String(err)}`, "warning");
+							ctx.ui.notify(
+								`Could not post PR comment: ${err instanceof Error ? err.message : String(err)}`,
+								"warning",
+							);
 						}
 					}
 				} finally {
@@ -3201,7 +3235,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 				try {
 					md = generateAgentsMd(opts.cwd);
 				} catch (err: any) {
-					ctx.ui.notify(`AGENTS.md generation failed: ${err instanceof Error ? err.message : String(err)}`, "warning");
+					ctx.ui.notify(
+						`AGENTS.md generation failed: ${err instanceof Error ? err.message : String(err)}`,
+						"warning",
+					);
 					return;
 				}
 				// Long markdown in a notify popup is unreadable; cap at
@@ -3520,7 +3557,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 						);
 					}
 				} catch (err: any) {
-					ctx.ui.notify(`✗ Recipe ${recipe.name} aborted: ${err instanceof Error ? err.message : String(err)}`, "warning");
+					ctx.ui.notify(
+						`✗ Recipe ${recipe.name} aborted: ${err instanceof Error ? err.message : String(err)}`,
+						"warning",
+					);
 				}
 			},
 		});
@@ -3589,7 +3629,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 							result.errors.length > 0 ? "warning" : "info",
 						);
 					} catch (err: any) {
-						ctx.ui.notify(`✗ Wiki generation failed: ${err instanceof Error ? err.message : String(err)}`, "warning");
+						ctx.ui.notify(
+							`✗ Wiki generation failed: ${err instanceof Error ? err.message : String(err)}`,
+							"warning",
+						);
 					}
 					return;
 				}
@@ -3635,7 +3678,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					try {
 						manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 					} catch (err: any) {
-						ctx.ui.notify(`Could not parse manifest: ${err instanceof Error ? err.message : String(err)}`, "warning");
+						ctx.ui.notify(
+							`Could not parse manifest: ${err instanceof Error ? err.message : String(err)}`,
+							"warning",
+						);
 						return;
 					}
 					const lines = manifest.pages.map((p) => `  ${p.path}  —  ${p.title}`);
@@ -3677,7 +3723,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					try {
 						content = readFileSync(resolved, "utf8");
 					} catch (err: any) {
-						ctx.ui.notify(`Could not read ${resolved}: ${err instanceof Error ? err.message : String(err)}`, "warning");
+						ctx.ui.notify(
+							`Could not read ${resolved}: ${err instanceof Error ? err.message : String(err)}`,
+							"warning",
+						);
 						return;
 					}
 					const cap = 8 * 1024;
@@ -3927,9 +3976,10 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 			if (typeof event?.systemPrompt === "string" && event.systemPrompt) {
 				const style = resolveStyle(activeStyleName(opts.cwd), opts.cwd);
 				const styleAppendix = style ? styleSystemPromptAppendix(style) : "";
-				const catalogAppendix = catalogPrompt && catalogPrompt.startsWith(event.systemPrompt)
-					? catalogPrompt.slice(event.systemPrompt.length)
-					: "";
+				const catalogAppendix =
+					catalogPrompt && catalogPrompt.startsWith(event.systemPrompt)
+						? catalogPrompt.slice(event.systemPrompt.length)
+						: "";
 				const mergedAppendix = [catalogAppendix.trim(), styleAppendix.trim()]
 					.filter((part) => part.length > 0)
 					.join("\n\n");
@@ -3962,7 +4012,8 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 				if (turnStartTs) {
 					const preview = assistantTextOf(event?.message);
 					pendingTurnPing =
-						scheduleTurnEndPing(Date.now() - turnStartTs, preview, { isTty: Boolean(process.stdout.isTTY) }) ?? null;
+						scheduleTurnEndPing(Date.now() - turnStartTs, preview, { isTty: Boolean(process.stdout.isTTY) }) ??
+						null;
 				}
 				turnStartTs = null;
 			} catch {
@@ -4007,11 +4058,11 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 						writeTitle: (title) => pi.setSessionName(title),
 					}).then((result) => {
 						if (result.titled && opts.verbose) {
-								console.error(`[unown] session auto-titled: ${result.title}`);
-							}
+							console.error(`[unown] session auto-titled: ${result.title}`);
+						}
 						if (!result.titled && opts.verbose) {
-								console.error(`[unown] auto-title skipped: ${result.reason}`);
-							}
+							console.error(`[unown] auto-title skipped: ${result.reason}`);
+						}
 					});
 				}
 			} catch {

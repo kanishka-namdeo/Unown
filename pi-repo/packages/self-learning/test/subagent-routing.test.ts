@@ -25,18 +25,18 @@
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
-        applyEffortToEnv,
-        BACKGROUND_EXPLORE_AGENT,
-        buildSubagentArgs,
-        parseAgentFrontmatterExtras,
-        parseSubagentFlags,
-        resolveSubagentModel,
-        SUBAGENT_MCP_SERVERS_ENV,
-        SUBAGENT_MODEL_ENV,
-        SUBAGENT_NO_AGENTS_MD_ENV,
-        SUBAGENT_QWEN_THINKING_ENV,
-        type SubagentEffort,
-        type SubagentRoutingFields,
+	applyEffortToEnv,
+	BACKGROUND_EXPLORE_AGENT,
+	buildSubagentArgs,
+	parseAgentFrontmatterExtras,
+	parseSubagentFlags,
+	resolveSubagentModel,
+	SUBAGENT_MCP_SERVERS_ENV,
+	SUBAGENT_MODEL_ENV,
+	SUBAGENT_NO_AGENTS_MD_ENV,
+	SUBAGENT_QWEN_THINKING_ENV,
+	type SubagentEffort,
+	type SubagentRoutingFields,
 } from "../src/subagent-routing.ts";
 
 /**
@@ -49,14 +49,14 @@ const ENV_KEYS = [SUBAGENT_MODEL_ENV, SUBAGENT_MCP_SERVERS_ENV, SUBAGENT_NO_AGEN
 const envSnapshots: Record<string, string | undefined> = {};
 
 beforeEach(() => {
-        for (const k of ENV_KEYS) envSnapshots[k] = process.env[k];
+	for (const k of ENV_KEYS) envSnapshots[k] = process.env[k];
 });
 
 afterEach(() => {
-        for (const k of ENV_KEYS) {
-                if (envSnapshots[k] === undefined) delete process.env[k];
-                else process.env[k] = envSnapshots[k];
-        }
+	for (const k of ENV_KEYS) {
+		if (envSnapshots[k] === undefined) delete process.env[k];
+		else process.env[k] = envSnapshots[k];
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -64,42 +64,53 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("SubagentConfig / SubagentRoutingFields", () => {
-        test("accepts model + effort + mcpServers + injectAgentsMd (the type contract)", () => {
-                // This is a compile-time + runtime check. tools.ts's SubagentConfig
-                // extends SubagentRoutingFields; the object literal below satisfies
-                // the routing-fields shape (and the canonical SubagentConfig shape
-                // when name/description/tools/systemPrompt/source are added).
-                const agent: { name: string; description: string; tools?: string[]; systemPrompt: string; source: "built-in" } & SubagentRoutingFields = {
-                        name: "routed",
-                        description: "routed subagent",
-                        tools: ["read"],
-                        systemPrompt: "you are routed",
-                        source: "built-in",
-                        model: "kimi-k2.5",
-                        effort: "low",
-                        mcpServers: ["server-a", "server-b"],
-                        injectAgentsMd: false,
-                };
-                expect(agent.model).toBe("kimi-k2.5");
-                expect(agent.effort).toBe("low");
-                expect(agent.mcpServers).toEqual(["server-a", "server-b"]);
-                expect(agent.injectAgentsMd).toBe(false);
-        });
+	test("accepts model + effort + mcpServers + injectAgentsMd (the type contract)", () => {
+		// This is a compile-time + runtime check. tools.ts's SubagentConfig
+		// extends SubagentRoutingFields; the object literal below satisfies
+		// the routing-fields shape (and the canonical SubagentConfig shape
+		// when name/description/tools/systemPrompt/source are added).
+		const agent: {
+			name: string;
+			description: string;
+			tools?: string[];
+			systemPrompt: string;
+			source: "built-in";
+		} & SubagentRoutingFields = {
+			name: "routed",
+			description: "routed subagent",
+			tools: ["read"],
+			systemPrompt: "you are routed",
+			source: "built-in",
+			model: "kimi-k2.5",
+			effort: "low",
+			mcpServers: ["server-a", "server-b"],
+			injectAgentsMd: false,
+		};
+		expect(agent.model).toBe("kimi-k2.5");
+		expect(agent.effort).toBe("low");
+		expect(agent.mcpServers).toEqual(["server-a", "server-b"]);
+		expect(agent.injectAgentsMd).toBe(false);
+	});
 
-        test("all four routing fields are optional (the no-routing agent)", () => {
-                // Backward compatibility: an agent with none of the new fields still
-                // satisfies the type (and the args array is unchanged — see case 12).
-                const agent: { name: string; description: string; systemPrompt: string; source: "built-in" } & SubagentRoutingFields = {
-                        name: "general",
-                        description: "general",
-                        systemPrompt: "you are general",
-                        source: "built-in",
-                };
-                expect(agent.model).toBeUndefined();
-                expect(agent.effort).toBeUndefined();
-                expect(agent.mcpServers).toBeUndefined();
-                expect(agent.injectAgentsMd).toBeUndefined();
-        });
+	test("all four routing fields are optional (the no-routing agent)", () => {
+		// Backward compatibility: an agent with none of the new fields still
+		// satisfies the type (and the args array is unchanged — see case 12).
+		const agent: {
+			name: string;
+			description: string;
+			systemPrompt: string;
+			source: "built-in";
+		} & SubagentRoutingFields = {
+			name: "general",
+			description: "general",
+			systemPrompt: "you are general",
+			source: "built-in",
+		};
+		expect(agent.model).toBeUndefined();
+		expect(agent.effort).toBeUndefined();
+		expect(agent.mcpServers).toBeUndefined();
+		expect(agent.injectAgentsMd).toBeUndefined();
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -107,74 +118,74 @@ describe("SubagentConfig / SubagentRoutingFields", () => {
 // ---------------------------------------------------------------------------
 
 describe("parseAgentFrontmatterExtras", () => {
-        test("extracts all four fields (camelCase)", () => {
-                // pi's parseFrontmatter returns the parsed JS object; this helper
-                // plucks + validates the four new keys.
-                const extras = parseAgentFrontmatterExtras({
-                        name: "routed",
-                        description: "routed subagent",
-                        tools: "read,grep",
-                        model: "kimi-k2.5",
-                        effort: "low",
-                        mcpServers: "server-a,server-b",
-                        injectAgentsMd: false,
-                });
-                expect(extras).toEqual({
-                        model: "kimi-k2.5",
-                        effort: "low",
-                        mcpServers: ["server-a", "server-b"],
-                        injectAgentsMd: false,
-                });
-        });
+	test("extracts all four fields (camelCase)", () => {
+		// pi's parseFrontmatter returns the parsed JS object; this helper
+		// plucks + validates the four new keys.
+		const extras = parseAgentFrontmatterExtras({
+			name: "routed",
+			description: "routed subagent",
+			tools: "read,grep",
+			model: "kimi-k2.5",
+			effort: "low",
+			mcpServers: "server-a,server-b",
+			injectAgentsMd: false,
+		});
+		expect(extras).toEqual({
+			model: "kimi-k2.5",
+			effort: "low",
+			mcpServers: ["server-a", "server-b"],
+			injectAgentsMd: false,
+		});
+	});
 
-        test("accepts snake_case aliases (zcode parity)", () => {
-                const extras = parseAgentFrontmatterExtras({
-                        mcp_servers: "server-a,server-b",
-                        inject_agents_md: true,
-                });
-                expect(extras.mcpServers).toEqual(["server-a", "server-b"]);
-                expect(extras.injectAgentsMd).toBe(true);
-        });
+	test("accepts snake_case aliases (zcode parity)", () => {
+		const extras = parseAgentFrontmatterExtras({
+			mcp_servers: "server-a,server-b",
+			inject_agents_md: true,
+		});
+		expect(extras.mcpServers).toEqual(["server-a", "server-b"]);
+		expect(extras.injectAgentsMd).toBe(true);
+	});
 
-        test("accepts mcpServers as an array", () => {
-                const extras = parseAgentFrontmatterExtras({
-                        mcpServers: ["server-a", "server-b"],
-                });
-                expect(extras.mcpServers).toEqual(["server-a", "server-b"]);
-        });
+	test("accepts mcpServers as an array", () => {
+		const extras = parseAgentFrontmatterExtras({
+			mcpServers: ["server-a", "server-b"],
+		});
+		expect(extras.mcpServers).toEqual(["server-a", "server-b"]);
+	});
 
-        test("accepts injectAgentsMd as a string ('true'/'1' → true; 'false'/'0' → false)", () => {
-                expect(parseAgentFrontmatterExtras({ injectAgentsMd: "true" }).injectAgentsMd).toBe(true);
-                expect(parseAgentFrontmatterExtras({ injectAgentsMd: "1" }).injectAgentsMd).toBe(true);
-                expect(parseAgentFrontmatterExtras({ injectAgentsMd: "false" }).injectAgentsMd).toBe(false);
-                expect(parseAgentFrontmatterExtras({ injectAgentsMd: "0" }).injectAgentsMd).toBe(false);
-        });
+	test("accepts injectAgentsMd as a string ('true'/'1' → true; 'false'/'0' → false)", () => {
+		expect(parseAgentFrontmatterExtras({ injectAgentsMd: "true" }).injectAgentsMd).toBe(true);
+		expect(parseAgentFrontmatterExtras({ injectAgentsMd: "1" }).injectAgentsMd).toBe(true);
+		expect(parseAgentFrontmatterExtras({ injectAgentsMd: "false" }).injectAgentsMd).toBe(false);
+		expect(parseAgentFrontmatterExtras({ injectAgentsMd: "0" }).injectAgentsMd).toBe(false);
+	});
 
-        test("drops invalid effort values silently (tolerant posture)", () => {
-                const extras = parseAgentFrontmatterExtras({ effort: "extreme" });
-                expect(extras.effort).toBeUndefined();
-        });
+	test("drops invalid effort values silently (tolerant posture)", () => {
+		const extras = parseAgentFrontmatterExtras({ effort: "extreme" });
+		expect(extras.effort).toBeUndefined();
+	});
 
-        test("case-insensitive effort ('LOW' → 'low')", () => {
-                expect(parseAgentFrontmatterExtras({ effort: "LOW" }).effort).toBe("low");
-                expect(parseAgentFrontmatterExtras({ effort: "Medium" }).effort).toBe("medium");
-                expect(parseAgentFrontmatterExtras({ effort: "HIGH" }).effort).toBe("high");
-        });
+	test("case-insensitive effort ('LOW' → 'low')", () => {
+		expect(parseAgentFrontmatterExtras({ effort: "LOW" }).effort).toBe("low");
+		expect(parseAgentFrontmatterExtras({ effort: "Medium" }).effort).toBe("medium");
+		expect(parseAgentFrontmatterExtras({ effort: "HIGH" }).effort).toBe("high");
+	});
 
-        test("returns {} on null/undefined/non-object input", () => {
-                expect(parseAgentFrontmatterExtras(null)).toEqual({});
-                expect(parseAgentFrontmatterExtras(undefined)).toEqual({});
-                expect(parseAgentFrontmatterExtras("string")).toEqual({});
-                expect(parseAgentFrontmatterExtras([])).toEqual({});
-        });
+	test("returns {} on null/undefined/non-object input", () => {
+		expect(parseAgentFrontmatterExtras(null)).toEqual({});
+		expect(parseAgentFrontmatterExtras(undefined)).toEqual({});
+		expect(parseAgentFrontmatterExtras("string")).toEqual({});
+		expect(parseAgentFrontmatterExtras([])).toEqual({});
+	});
 
-        test("omits mcpServers when the list parses empty (matches parseToolList)", () => {
-                // An empty array IS the signal for "load none"; that lives on the
-                // agent field, not the frontmatter — a missing/empty mcpServers in
-                // frontmatter means "no whitelist declared", so undefined (load all).
-                expect(parseAgentFrontmatterExtras({ mcpServers: "" })).toEqual({});
-                expect(parseAgentFrontmatterExtras({ mcpServers: [] })).toEqual({});
-        });
+	test("omits mcpServers when the list parses empty (matches parseToolList)", () => {
+		// An empty array IS the signal for "load none"; that lives on the
+		// agent field, not the frontmatter — a missing/empty mcpServers in
+		// frontmatter means "no whitelist declared", so undefined (load all).
+		expect(parseAgentFrontmatterExtras({ mcpServers: "" })).toEqual({});
+		expect(parseAgentFrontmatterExtras({ mcpServers: [] })).toEqual({});
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -182,43 +193,48 @@ describe("parseAgentFrontmatterExtras", () => {
 // ---------------------------------------------------------------------------
 
 describe("BACKGROUND_EXPLORE_AGENT (the new built-in)", () => {
-        test("has the canonical built-in agent shape", () => {
-                expect(BACKGROUND_EXPLORE_AGENT.name).toBe("background-explore");
-                expect(typeof BACKGROUND_EXPLORE_AGENT.description).toBe("string");
-                expect(BACKGROUND_EXPLORE_AGENT.description.length).toBeGreaterThan(20);
-                expect(BACKGROUND_EXPLORE_AGENT.source).toBe("built-in");
-                expect(typeof BACKGROUND_EXPLORE_AGENT.systemPrompt).toBe("string");
-                expect(BACKGROUND_EXPLORE_AGENT.systemPrompt.length).toBeGreaterThan(20);
-        });
+	test("has the canonical built-in agent shape", () => {
+		expect(BACKGROUND_EXPLORE_AGENT.name).toBe("background-explore");
+		expect(typeof BACKGROUND_EXPLORE_AGENT.description).toBe("string");
+		expect(BACKGROUND_EXPLORE_AGENT.description.length).toBeGreaterThan(20);
+		expect(BACKGROUND_EXPLORE_AGENT.source).toBe("built-in");
+		expect(typeof BACKGROUND_EXPLORE_AGENT.systemPrompt).toBe("string");
+		expect(BACKGROUND_EXPLORE_AGENT.systemPrompt.length).toBeGreaterThan(20);
+	});
 
-        test("is read-only (read/grep/find/ls)", () => {
-                expect(BACKGROUND_EXPLORE_AGENT.tools).toEqual(["read", "grep", "find", "ls"]);
-        });
+	test("is read-only (read/grep/find/ls)", () => {
+		expect(BACKGROUND_EXPLORE_AGENT.tools).toEqual(["read", "grep", "find", "ls"]);
+	});
 
-        test("carries no model override (resolves the session default — the qwen hardcode only existed via bridge routing)", () => {
-                expect(BACKGROUND_EXPLORE_AGENT.model).toBeUndefined();
-        });
+	test("carries no model override (resolves the session default — the qwen hardcode only existed via bridge routing)", () => {
+		expect(BACKGROUND_EXPLORE_AGENT.model).toBeUndefined();
+	});
 
-        test("uses low reasoning effort", () => {
-                expect(BACKGROUND_EXPLORE_AGENT.effort).toBe("low");
-        });
+	test("uses low reasoning effort", () => {
+		expect(BACKGROUND_EXPLORE_AGENT.effort).toBe("low");
+	});
 
-        test("loads NO MCP servers (empty whitelist)", () => {
-                expect(Array.isArray(BACKGROUND_EXPLORE_AGENT.mcpServers)).toBe(true);
-                expect(BACKGROUND_EXPLORE_AGENT.mcpServers).toEqual([]);
-        });
+	test("loads NO MCP servers (empty whitelist)", () => {
+		expect(Array.isArray(BACKGROUND_EXPLORE_AGENT.mcpServers)).toBe(true);
+		expect(BACKGROUND_EXPLORE_AGENT.mcpServers).toEqual([]);
+	});
 
-        test("disables AGENTS.md injection (minimal-overhead)", () => {
-                expect(BACKGROUND_EXPLORE_AGENT.injectAgentsMd).toBe(false);
-        });
+	test("disables AGENTS.md injection (minimal-overhead)", () => {
+		expect(BACKGROUND_EXPLORE_AGENT.injectAgentsMd).toBe(false);
+	});
 
-        test("satisfies the SubagentConfig shape (no missing required fields)", () => {
-                // Type-level check: if this compiles, BACKGROUND_EXPLORE_AGENT
-                // satisfies the agent shape that tools.ts's BUILTIN_AGENTS expects.
-                const asConfig: { name: string; description: string; tools: string[]; systemPrompt: string; source: "built-in" } & SubagentRoutingFields =
-                        BACKGROUND_EXPLORE_AGENT;
-                expect(asConfig.name).toBe("background-explore");
-        });
+	test("satisfies the SubagentConfig shape (no missing required fields)", () => {
+		// Type-level check: if this compiles, BACKGROUND_EXPLORE_AGENT
+		// satisfies the agent shape that tools.ts's BUILTIN_AGENTS expects.
+		const asConfig: {
+			name: string;
+			description: string;
+			tools: string[];
+			systemPrompt: string;
+			source: "built-in";
+		} & SubagentRoutingFields = BACKGROUND_EXPLORE_AGENT;
+		expect(asConfig.name).toBe("background-explore");
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -226,114 +242,107 @@ describe("BACKGROUND_EXPLORE_AGENT (the new built-in)", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildSubagentArgs", () => {
-        test("case 12: no routing fields → unchanged args (backward compat)", () => {
-                // The legacy shape: --mode json -p --no-session (+ optional --tools).
-                // buildSubagentArgs only consumes {name, tools?, + routing fields};
-                // other SubagentConfig fields (description, systemPrompt, source)
-                // are passed through in real usage but not used by the builder.
-                const args = buildSubagentArgs({
-                        name: "general",
-                });
-                expect(args).toEqual(["--mode", "json", "-p", "--no-session"]);
-        });
+	test("case 12: no routing fields → unchanged args (backward compat)", () => {
+		// The legacy shape: --mode json -p --no-session (+ optional --tools).
+		// buildSubagentArgs only consumes {name, tools?, + routing fields};
+		// other SubagentConfig fields (description, systemPrompt, source)
+		// are passed through in real usage but not used by the builder.
+		const args = buildSubagentArgs({
+			name: "general",
+		});
+		expect(args).toEqual(["--mode", "json", "-p", "--no-session"]);
+	});
 
-        test("case 12b: no routing fields but with tools → --tools appended", () => {
-                const args = buildSubagentArgs({
-                        name: "explore",
-                        tools: ["read", "grep", "find", "ls"],
-                });
-                expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--tools", "read,grep,find,ls"]);
-        });
+	test("case 12b: no routing fields but with tools → --tools appended", () => {
+		const args = buildSubagentArgs({
+			name: "explore",
+			tools: ["read", "grep", "find", "ls"],
+		});
+		expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--tools", "read,grep,find,ls"]);
+	});
 
-        test("case 4: agent.model + agent.effort → --model and --effort passed", () => {
-                const args = buildSubagentArgs({
-                        name: "routed",
-                        model: "kimi-k2.5",
-                        effort: "low",
-                });
-                expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--model", "kimi-k2.5", "--effort", "low"]);
-        });
+	test("case 4: agent.model + agent.effort → --model and --effort passed", () => {
+		const args = buildSubagentArgs({
+			name: "routed",
+			model: "kimi-k2.5",
+			effort: "low",
+		});
+		expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--model", "kimi-k2.5", "--effort", "low"]);
+	});
 
-        test("case 4b: all three effort levels produce valid --effort flags", () => {
-                for (const effort of ["low", "medium", "high"] as SubagentEffort[]) {
-                        const args = buildSubagentArgs({ name: "routed", effort });
-                        expect(args).toContain("--effort");
-                        expect(args[args.indexOf("--effort") + 1]).toBe(effort);
-                }
-        });
+	test("case 4b: all three effort levels produce valid --effort flags", () => {
+		for (const effort of ["low", "medium", "high"] as SubagentEffort[]) {
+			const args = buildSubagentArgs({ name: "routed", effort });
+			expect(args).toContain("--effort");
+			expect(args[args.indexOf("--effort") + 1]).toBe(effort);
+		}
+	});
 
-        test("case 5: agent.mcpServers set → --mcp-servers <csv> passed", () => {
-                const args = buildSubagentArgs({
-                        name: "routed",
-                        mcpServers: ["server-a", "server-b"],
-                });
-                expect(args).toEqual([
-                        "--mode",
-                        "json",
-                        "-p",
-                        "--no-session",
-                        "--mcp-servers",
-                        "server-a,server-b",
-                ]);
-        });
+	test("case 5: agent.mcpServers set → --mcp-servers <csv> passed", () => {
+		const args = buildSubagentArgs({
+			name: "routed",
+			mcpServers: ["server-a", "server-b"],
+		});
+		expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--mcp-servers", "server-a,server-b"]);
+	});
 
-        test("case 5b: empty mcpServers array → --mcp-servers with empty CSV (load none)", () => {
-                // background-explore shape: empty whitelist = "load no MCP servers".
-                const args = buildSubagentArgs({
-                        name: "background-explore",
-                        mcpServers: [],
-                });
-                expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--mcp-servers", ""]);
-        });
+	test("case 5b: empty mcpServers array → --mcp-servers with empty CSV (load none)", () => {
+		// background-explore shape: empty whitelist = "load no MCP servers".
+		const args = buildSubagentArgs({
+			name: "background-explore",
+			mcpServers: [],
+		});
+		expect(args).toEqual(["--mode", "json", "-p", "--no-session", "--mcp-servers", ""]);
+	});
 
-        test("case 6: agent.injectAgentsMd === false → --no-agents-md passed", () => {
-                const args = buildSubagentArgs({
-                        name: "background-explore",
-                        injectAgentsMd: false,
-                });
-                expect(args).toContain("--no-agents-md");
-        });
+	test("case 6: agent.injectAgentsMd === false → --no-agents-md passed", () => {
+		const args = buildSubagentArgs({
+			name: "background-explore",
+			injectAgentsMd: false,
+		});
+		expect(args).toContain("--no-agents-md");
+	});
 
-        test("case 6b: agent.injectAgentsMd === true → --no-agents-md NOT passed (default)", () => {
-                const args = buildSubagentArgs({
-                        name: "explicit-true",
-                        injectAgentsMd: true,
-                });
-                expect(args).not.toContain("--no-agents-md");
-        });
+	test("case 6b: agent.injectAgentsMd === true → --no-agents-md NOT passed (default)", () => {
+		const args = buildSubagentArgs({
+			name: "explicit-true",
+			injectAgentsMd: true,
+		});
+		expect(args).not.toContain("--no-agents-md");
+	});
 
-        test("case 6c: agent.injectAgentsMd undefined → --no-agents-md NOT passed (legacy)", () => {
-                const args = buildSubagentArgs({ name: "legacy" });
-                expect(args).not.toContain("--no-agents-md");
-        });
+	test("case 6c: agent.injectAgentsMd undefined → --no-agents-md NOT passed (legacy)", () => {
+		const args = buildSubagentArgs({ name: "legacy" });
+		expect(args).not.toContain("--no-agents-md");
+	});
 
-        test("all four routing fields combine in order (model, effort, mcp-servers, no-agents-md)", () => {
-                // The order matters for readability (NOT for the parser, which
-                // treats them as a set). Pin it so future refactors don't drift.
-                const args = buildSubagentArgs({
-                        name: "all-four",
-                        tools: ["read"],
-                        model: "kimi-k2.5",
-                        effort: "high",
-                        mcpServers: ["srv-a"],
-                        injectAgentsMd: false,
-                });
-                expect(args).toEqual([
-                        "--mode",
-                        "json",
-                        "-p",
-                        "--no-session",
-                        "--tools",
-                        "read",
-                        "--model",
-                        "kimi-k2.5",
-                        "--effort",
-                        "high",
-                        "--mcp-servers",
-                        "srv-a",
-                        "--no-agents-md",
-                ]);
-        });
+	test("all four routing fields combine in order (model, effort, mcp-servers, no-agents-md)", () => {
+		// The order matters for readability (NOT for the parser, which
+		// treats them as a set). Pin it so future refactors don't drift.
+		const args = buildSubagentArgs({
+			name: "all-four",
+			tools: ["read"],
+			model: "kimi-k2.5",
+			effort: "high",
+			mcpServers: ["srv-a"],
+			injectAgentsMd: false,
+		});
+		expect(args).toEqual([
+			"--mode",
+			"json",
+			"-p",
+			"--no-session",
+			"--tools",
+			"read",
+			"--model",
+			"kimi-k2.5",
+			"--effort",
+			"high",
+			"--mcp-servers",
+			"srv-a",
+			"--no-agents-md",
+		]);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -341,46 +350,46 @@ describe("buildSubagentArgs", () => {
 // ---------------------------------------------------------------------------
 
 describe("resolveSubagentModel", () => {
-        test("agent.model takes precedence over UNOWN_SUBAGENT_MODEL env var", () => {
-                process.env[SUBAGENT_MODEL_ENV] = "qwen3.6-plus";
-                const model = resolveSubagentModel({ model: "kimi-k2.5" });
-                expect(model).toBe("kimi-k2.5");
-        });
+	test("agent.model takes precedence over UNOWN_SUBAGENT_MODEL env var", () => {
+		process.env[SUBAGENT_MODEL_ENV] = "qwen3.6-plus";
+		const model = resolveSubagentModel({ model: "kimi-k2.5" });
+		expect(model).toBe("kimi-k2.5");
+	});
 
-        test("UNOWN_SUBAGENT_MODEL env var overrides the default when agent.model is unset", () => {
-                process.env[SUBAGENT_MODEL_ENV] = "qwen3.6-plus";
-                const model = resolveSubagentModel({});
-                expect(model).toBe("qwen3.6-plus");
-        });
+	test("UNOWN_SUBAGENT_MODEL env var overrides the default when agent.model is unset", () => {
+		process.env[SUBAGENT_MODEL_ENV] = "qwen3.6-plus";
+		const model = resolveSubagentModel({});
+		expect(model).toBe("qwen3.6-plus");
+	});
 
-        test("returns undefined when both agent.model and env are unset (use the runtime default)", () => {
-                delete process.env[SUBAGENT_MODEL_ENV];
-                const model = resolveSubagentModel({});
-                expect(model).toBeUndefined();
-        });
+	test("returns undefined when both agent.model and env are unset (use the runtime default)", () => {
+		delete process.env[SUBAGENT_MODEL_ENV];
+		const model = resolveSubagentModel({});
+		expect(model).toBeUndefined();
+	});
 
-        test("empty agent.model falls back to the env var (defensive against whitespace frontmatter)", () => {
-                process.env[SUBAGENT_MODEL_ENV] = "qwen3.6-plus";
-                const model = resolveSubagentModel({ model: "" });
-                expect(model).toBe("qwen3.6-plus");
-        });
+	test("empty agent.model falls back to the env var (defensive against whitespace frontmatter)", () => {
+		process.env[SUBAGENT_MODEL_ENV] = "qwen3.6-plus";
+		const model = resolveSubagentModel({ model: "" });
+		expect(model).toBe("qwen3.6-plus");
+	});
 
-        test("empty env var falls back to undefined (treat empty as unset)", () => {
-                // term.ts:resolveUnownHome documents the same `||` vs `??` trap for
-                // bun auto-loaded .env files; this matches that posture.
-                process.env[SUBAGENT_MODEL_ENV] = "";
-                const model = resolveSubagentModel({});
-                expect(model).toBeUndefined();
-        });
+	test("empty env var falls back to undefined (treat empty as unset)", () => {
+		// term.ts:resolveUnownHome documents the same `||` vs `??` trap for
+		// bun auto-loaded .env files; this matches that posture.
+		process.env[SUBAGENT_MODEL_ENV] = "";
+		const model = resolveSubagentModel({});
+		expect(model).toBeUndefined();
+	});
 
-        test("explicit env param overrides process.env (test-injected env)", () => {
-                // The third arg lets tests inject a clean env without mutating
-                // process.env. Verifies the helper does NOT read process.env when
-                // an explicit env is passed.
-                process.env[SUBAGENT_MODEL_ENV] = "from-process-env";
-                const model = resolveSubagentModel({}, { [SUBAGENT_MODEL_ENV]: "from-injected-env" });
-                expect(model).toBe("from-injected-env");
-        });
+	test("explicit env param overrides process.env (test-injected env)", () => {
+		// The third arg lets tests inject a clean env without mutating
+		// process.env. Verifies the helper does NOT read process.env when
+		// an explicit env is passed.
+		process.env[SUBAGENT_MODEL_ENV] = "from-process-env";
+		const model = resolveSubagentModel({}, { [SUBAGENT_MODEL_ENV]: "from-injected-env" });
+		expect(model).toBe("from-injected-env");
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -388,119 +397,119 @@ describe("resolveSubagentModel", () => {
 // ---------------------------------------------------------------------------
 
 describe("parseSubagentFlags", () => {
-        test("case 8: parses --model and --effort flags correctly", () => {
-                const result = parseSubagentFlags(["--model", "kimi-k2.5", "--effort", "low", "the", "prompt"]);
-                expect(result.model).toBe("kimi-k2.5");
-                expect(result.effort).toBe("low");
-                // The prompt text is preserved in `rest` (in order).
-                expect(result.rest).toEqual(["the", "prompt"]);
-        });
+	test("case 8: parses --model and --effort flags correctly", () => {
+		const result = parseSubagentFlags(["--model", "kimi-k2.5", "--effort", "low", "the", "prompt"]);
+		expect(result.model).toBe("kimi-k2.5");
+		expect(result.effort).toBe("low");
+		// The prompt text is preserved in `rest` (in order).
+		expect(result.rest).toEqual(["the", "prompt"]);
+	});
 
-        test("case 8b: invalid effort value is dropped (the flag is still consumed)", () => {
-                const result = parseSubagentFlags(["--effort", "extreme", "prompt"]);
-                expect(result.effort).toBeUndefined();
-                // The invalid value is NOT treated as prompt text — the flag was consumed.
-                expect(result.rest).toEqual(["prompt"]);
-        });
+	test("case 8b: invalid effort value is dropped (the flag is still consumed)", () => {
+		const result = parseSubagentFlags(["--effort", "extreme", "prompt"]);
+		expect(result.effort).toBeUndefined();
+		// The invalid value is NOT treated as prompt text — the flag was consumed.
+		expect(result.rest).toEqual(["prompt"]);
+	});
 
-        test("case 8c: effort value is case-insensitive", () => {
-                expect(parseSubagentFlags(["--effort", "LOW"]).effort).toBe("low");
-                expect(parseSubagentFlags(["--effort", "Medium"]).effort).toBe("medium");
-                expect(parseSubagentFlags(["--effort", "HIGH"]).effort).toBe("high");
-        });
+	test("case 8c: effort value is case-insensitive", () => {
+		expect(parseSubagentFlags(["--effort", "LOW"]).effort).toBe("low");
+		expect(parseSubagentFlags(["--effort", "Medium"]).effort).toBe("medium");
+		expect(parseSubagentFlags(["--effort", "HIGH"]).effort).toBe("high");
+	});
 
-        test("case 9: parses --mcp-servers flag (CSV)", () => {
-                const result = parseSubagentFlags(["--mcp-servers", "server-a,server-b,server-c", "prompt"]);
-                expect(result.mcpServers).toEqual(["server-a", "server-b", "server-c"]);
-                expect(result.rest).toEqual(["prompt"]);
-        });
+	test("case 9: parses --mcp-servers flag (CSV)", () => {
+		const result = parseSubagentFlags(["--mcp-servers", "server-a,server-b,server-c", "prompt"]);
+		expect(result.mcpServers).toEqual(["server-a", "server-b", "server-c"]);
+		expect(result.rest).toEqual(["prompt"]);
+	});
 
-        test("case 9b: empty CSV → empty array (signal for 'load none')", () => {
-                // An empty CSV is meaningful: it means "load no MCP servers" (the
-                // background-explore shape). parseSubagentFlags still parses it as
-                // an empty array so applySubagentEnvOverrides sets UNOWN_MCP_SERVERS="".
-                const result = parseSubagentFlags(["--mcp-servers", "", "prompt"]);
-                expect(result.mcpServers).toEqual([]);
-                expect(result.rest).toEqual(["prompt"]);
-        });
+	test("case 9b: empty CSV → empty array (signal for 'load none')", () => {
+		// An empty CSV is meaningful: it means "load no MCP servers" (the
+		// background-explore shape). parseSubagentFlags still parses it as
+		// an empty array so applySubagentEnvOverrides sets UNOWN_MCP_SERVERS="".
+		const result = parseSubagentFlags(["--mcp-servers", "", "prompt"]);
+		expect(result.mcpServers).toEqual([]);
+		expect(result.rest).toEqual(["prompt"]);
+	});
 
-        test("case 9c: --mcp-servers not present → mcpServers undefined (load all)", () => {
-                const result = parseSubagentFlags(["prompt"]);
-                expect(result.mcpServers).toBeUndefined();
-        });
+	test("case 9c: --mcp-servers not present → mcpServers undefined (load all)", () => {
+		const result = parseSubagentFlags(["prompt"]);
+		expect(result.mcpServers).toBeUndefined();
+	});
 
-        test("case 10: parses --no-agents-md flag (boolean, no value)", () => {
-                const result = parseSubagentFlags(["--no-agents-md", "prompt"]);
-                expect(result.noAgentsMd).toBe(true);
-                expect(result.rest).toEqual(["prompt"]);
-        });
+	test("case 10: parses --no-agents-md flag (boolean, no value)", () => {
+		const result = parseSubagentFlags(["--no-agents-md", "prompt"]);
+		expect(result.noAgentsMd).toBe(true);
+		expect(result.rest).toEqual(["prompt"]);
+	});
 
-        test("case 10b: --no-agents-md absent → noAgentsMd undefined", () => {
-                const result = parseSubagentFlags(["prompt"]);
-                expect(result.noAgentsMd).toBeUndefined();
-        });
+	test("case 10b: --no-agents-md absent → noAgentsMd undefined", () => {
+		const result = parseSubagentFlags(["prompt"]);
+		expect(result.noAgentsMd).toBeUndefined();
+	});
 
-        test("case 10c: --no-agents-md does NOT consume the next token (it's a boolean flag)", () => {
-                // A common parser bug: a boolean flag consuming the next prompt word.
-                // --no-agents-md is a switch, NOT a value flag.
-                const result = parseSubagentFlags(["--no-agents-md", "do", "something"]);
-                expect(result.noAgentsMd).toBe(true);
-                expect(result.rest).toEqual(["do", "something"]);
-        });
+	test("case 10c: --no-agents-md does NOT consume the next token (it's a boolean flag)", () => {
+		// A common parser bug: a boolean flag consuming the next prompt word.
+		// --no-agents-md is a switch, NOT a value flag.
+		const result = parseSubagentFlags(["--no-agents-md", "do", "something"]);
+		expect(result.noAgentsMd).toBe(true);
+		expect(result.rest).toEqual(["do", "something"]);
+	});
 
-        test("rest preserves the original argv order (no flag re-ordering)", () => {
-                const result = parseSubagentFlags(["alpha", "--model", "m", "beta", "--no-agents-md", "gamma"]);
-                expect(result.rest).toEqual(["alpha", "beta", "gamma"]);
-                expect(result.model).toBe("m");
-                expect(result.noAgentsMd).toBe(true);
-        });
+	test("rest preserves the original argv order (no flag re-ordering)", () => {
+		const result = parseSubagentFlags(["alpha", "--model", "m", "beta", "--no-agents-md", "gamma"]);
+		expect(result.rest).toEqual(["alpha", "beta", "gamma"]);
+		expect(result.model).toBe("m");
+		expect(result.noAgentsMd).toBe(true);
+	});
 
-        test("all four flags consumed together (full subagent routing invocation)", () => {
-                const result = parseSubagentFlags([
-                        "--mode",
-                        "json",
-                        "-p",
-                        "--no-session",
-                        "--tools",
-                        "read",
-                        "--model",
-                        "kimi-k2.5",
-                        "--effort",
-                        "low",
-                        "--mcp-servers",
-                        "srv-a,srv-b",
-                        "--no-agents-md",
-                        "--append-system-prompt",
-                        "/tmp/x.md",
-                        "Task: do the thing",
-                ]);
-                expect(result.model).toBe("kimi-k2.5");
-                expect(result.effort).toBe("low");
-                expect(result.mcpServers).toEqual(["srv-a", "srv-b"]);
-                expect(result.noAgentsMd).toBe(true);
-                // Legacy flags + the prompt are preserved in `rest`.
-                expect(result.rest).toEqual([
-                        "--mode",
-                        "json",
-                        "-p",
-                        "--no-session",
-                        "--tools",
-                        "read",
-                        "--append-system-prompt",
-                        "/tmp/x.md",
-                        "Task: do the thing",
-                ]);
-        });
+	test("all four flags consumed together (full subagent routing invocation)", () => {
+		const result = parseSubagentFlags([
+			"--mode",
+			"json",
+			"-p",
+			"--no-session",
+			"--tools",
+			"read",
+			"--model",
+			"kimi-k2.5",
+			"--effort",
+			"low",
+			"--mcp-servers",
+			"srv-a,srv-b",
+			"--no-agents-md",
+			"--append-system-prompt",
+			"/tmp/x.md",
+			"Task: do the thing",
+		]);
+		expect(result.model).toBe("kimi-k2.5");
+		expect(result.effort).toBe("low");
+		expect(result.mcpServers).toEqual(["srv-a", "srv-b"]);
+		expect(result.noAgentsMd).toBe(true);
+		// Legacy flags + the prompt are preserved in `rest`.
+		expect(result.rest).toEqual([
+			"--mode",
+			"json",
+			"-p",
+			"--no-session",
+			"--tools",
+			"read",
+			"--append-system-prompt",
+			"/tmp/x.md",
+			"Task: do the thing",
+		]);
+	});
 
-        test("a value starting with -- is NOT consumed (matches --tools / --append-system-prompt posture)", () => {
-                // `--model --effort low` would be ambiguous; the parser treats the
-                // `--effort` after `--model` as a missing-value, drops the --model,
-                // and parses --effort normally. This matches the legacy `--tools`
-                // posture in cli.ts:parseArgs.
-                const result = parseSubagentFlags(["--model", "--effort", "low"]);
-                expect(result.model).toBeUndefined();
-                expect(result.effort).toBe("low");
-        });
+	test("a value starting with -- is NOT consumed (matches --tools / --append-system-prompt posture)", () => {
+		// `--model --effort low` would be ambiguous; the parser treats the
+		// `--effort` after `--model` as a missing-value, drops the --model,
+		// and parses --effort normally. This matches the legacy `--tools`
+		// posture in cli.ts:parseArgs.
+		const result = parseSubagentFlags(["--model", "--effort", "low"]);
+		expect(result.model).toBeUndefined();
+		expect(result.effort).toBe("low");
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -508,40 +517,40 @@ describe("parseSubagentFlags", () => {
 // ---------------------------------------------------------------------------
 
 describe("applyEffortToEnv", () => {
-        test("low → BRIDGE_QWEN_THINKING=0", () => {
-                const env = applyEffortToEnv("low");
-                expect(env[SUBAGENT_QWEN_THINKING_ENV]).toBe("0");
-        });
+	test("low → BRIDGE_QWEN_THINKING=0", () => {
+		const env = applyEffortToEnv("low");
+		expect(env[SUBAGENT_QWEN_THINKING_ENV]).toBe("0");
+	});
 
-        test("high → BRIDGE_QWEN_THINKING=1", () => {
-                const env = applyEffortToEnv("high");
-                expect(env[SUBAGENT_QWEN_THINKING_ENV]).toBe("1");
-        });
+	test("high → BRIDGE_QWEN_THINKING=1", () => {
+		const env = applyEffortToEnv("high");
+		expect(env[SUBAGENT_QWEN_THINKING_ENV]).toBe("1");
+	});
 
-        test("medium → empty record (leave the bridge default alone)", () => {
-                const env = applyEffortToEnv("medium");
-                expect(env).toEqual({});
-                expect(env[SUBAGENT_QWEN_THINKING_ENV]).toBeUndefined();
-        });
+	test("medium → empty record (leave the bridge default alone)", () => {
+		const env = applyEffortToEnv("medium");
+		expect(env).toEqual({});
+		expect(env[SUBAGENT_QWEN_THINKING_ENV]).toBeUndefined();
+	});
 
-        test("undefined → empty record (legacy behavior)", () => {
-                const env = applyEffortToEnv(undefined);
-                expect(env).toEqual({});
-        });
+	test("undefined → empty record (legacy behavior)", () => {
+		const env = applyEffortToEnv(undefined);
+		expect(env).toEqual({});
+	});
 
-        test("the env record only contains the documented var (no extras)", () => {
-                // The keys of the returned record are exactly the documented env
-                // vars (no leakage of internal state). Pinning the surface.
-                const lowEnv = applyEffortToEnv("low");
-                expect(Object.keys(lowEnv)).toEqual([SUBAGENT_QWEN_THINKING_ENV]);
-                const highEnv = applyEffortToEnv("high");
-                expect(Object.keys(highEnv)).toEqual([SUBAGENT_QWEN_THINKING_ENV]);
-        });
+	test("the env record only contains the documented var (no extras)", () => {
+		// The keys of the returned record are exactly the documented env
+		// vars (no leakage of internal state). Pinning the surface.
+		const lowEnv = applyEffortToEnv("low");
+		expect(Object.keys(lowEnv)).toEqual([SUBAGENT_QWEN_THINKING_ENV]);
+		const highEnv = applyEffortToEnv("high");
+		expect(Object.keys(highEnv)).toEqual([SUBAGENT_QWEN_THINKING_ENV]);
+	});
 
-        test("the env var name is exactly 'BRIDGE_QWEN_THINKING'", () => {
-                // Pin the literal — this is the contract the llm-bridge reads.
-                expect(SUBAGENT_QWEN_THINKING_ENV).toBe("BRIDGE_QWEN_THINKING");
-        });
+	test("the env var name is exactly 'BRIDGE_QWEN_THINKING'", () => {
+		// Pin the literal — this is the contract the llm-bridge reads.
+		expect(SUBAGENT_QWEN_THINKING_ENV).toBe("BRIDGE_QWEN_THINKING");
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -549,15 +558,103 @@ describe("applyEffortToEnv", () => {
 // ---------------------------------------------------------------------------
 
 describe("env-var name constants", () => {
-        test("SUBAGENT_MODEL_ENV is 'UNOWN_SUBAGENT_MODEL'", () => {
-                expect(SUBAGENT_MODEL_ENV).toBe("UNOWN_SUBAGENT_MODEL");
-        });
+	test("SUBAGENT_MODEL_ENV is 'UNOWN_SUBAGENT_MODEL'", () => {
+		expect(SUBAGENT_MODEL_ENV).toBe("UNOWN_SUBAGENT_MODEL");
+	});
 
-        test("SUBAGENT_MCP_SERVERS_ENV is 'UNOWN_MCP_SERVERS'", () => {
-                expect(SUBAGENT_MCP_SERVERS_ENV).toBe("UNOWN_MCP_SERVERS");
-        });
+	test("SUBAGENT_MCP_SERVERS_ENV is 'UNOWN_MCP_SERVERS'", () => {
+		expect(SUBAGENT_MCP_SERVERS_ENV).toBe("UNOWN_MCP_SERVERS");
+	});
 
-        test("SUBAGENT_NO_AGENTS_MD_ENV is 'UNOWN_NO_AGENTS_MD'", () => {
-                expect(SUBAGENT_NO_AGENTS_MD_ENV).toBe("UNOWN_NO_AGENTS_MD");
-        });
+	test("SUBAGENT_NO_AGENTS_MD_ENV is 'UNOWN_NO_AGENTS_MD'", () => {
+		expect(SUBAGENT_NO_AGENTS_MD_ENV).toBe("UNOWN_NO_AGENTS_MD");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Per-agent timeout lane (the browser-agent budget) — resolveSubagentTimeoutMs
+// + parseDurationMs + the frontmatter plumb. Same hermeticity: pure module
+// only, env passed explicitly.
+// ---------------------------------------------------------------------------
+import {
+	parseDurationMs,
+	resolveSubagentTimeoutMs,
+	SUBAGENT_TIMEOUT_DEFAULT_MS,
+	SUBAGENT_TIMEOUT_ENV,
+	SUBAGENT_TIMEOUT_MAX_MS,
+	SUBAGENT_TIMEOUT_MIN_MS,
+} from "../src/subagent-routing.ts";
+
+describe("resolveSubagentTimeoutMs", () => {
+	test("no agent value + no env → the 5-minute default", () => {
+		expect(resolveSubagentTimeoutMs({}, {})).toBe(SUBAGENT_TIMEOUT_DEFAULT_MS);
+		expect(SUBAGENT_TIMEOUT_DEFAULT_MS).toBe(300_000);
+	});
+
+	test("per-agent timeoutMs wins over the env var", () => {
+		expect(resolveSubagentTimeoutMs({ timeoutMs: 600_000 }, { [SUBAGENT_TIMEOUT_ENV]: "120000" })).toBe(600_000);
+	});
+
+	test("the env var applies when the agent has no own budget", () => {
+		expect(resolveSubagentTimeoutMs({}, { [SUBAGENT_TIMEOUT_ENV]: "120000" })).toBe(120_000);
+	});
+
+	test("human durations in the env apply ('10m' → 10 minutes)", () => {
+		expect(resolveSubagentTimeoutMs({}, { [SUBAGENT_TIMEOUT_ENV]: "10m" })).toBe(600_000);
+		expect(resolveSubagentTimeoutMs({}, { [SUBAGENT_TIMEOUT_ENV]: "90s" })).toBe(90_000);
+	});
+
+	test("env junk ('abc', '') falls back to the default", () => {
+		expect(resolveSubagentTimeoutMs({}, { [SUBAGENT_TIMEOUT_ENV]: "abc" })).toBe(300_000);
+		expect(resolveSubagentTimeoutMs({}, { [SUBAGENT_TIMEOUT_ENV]: "" })).toBe(300_000);
+	});
+
+	test("values clamp to the [30s, 30min] window from both ends", () => {
+		expect(resolveSubagentTimeoutMs({ timeoutMs: 1 }, {})).toBe(SUBAGENT_TIMEOUT_MIN_MS);
+		expect(resolveSubagentTimeoutMs({ timeoutMs: 99_999_999 }, {})).toBe(SUBAGENT_TIMEOUT_MAX_MS);
+		expect(SUBAGENT_TIMEOUT_MIN_MS).toBe(30_000);
+		expect(SUBAGENT_TIMEOUT_MAX_MS).toBe(1_800_000);
+	});
+
+	test("non-finite / zero / negative agent values are ignored, not clamped", () => {
+		expect(resolveSubagentTimeoutMs({ timeoutMs: 0 }, {})).toBe(300_000);
+		expect(resolveSubagentTimeoutMs({ timeoutMs: -5 }, {})).toBe(300_000);
+		expect(resolveSubagentTimeoutMs({ timeoutMs: Number.NaN }, {})).toBe(300_000);
+	});
+});
+
+describe("parseDurationMs", () => {
+	test("plain numbers are milliseconds", () => {
+		expect(parseDurationMs("500")).toBe(500);
+		expect(parseDurationMs("500ms")).toBe(500);
+	});
+	test("suffixes scale", () => {
+		expect(parseDurationMs("90s")).toBe(90_000);
+		expect(parseDurationMs("10m")).toBe(600_000);
+		expect(parseDurationMs("1.5h")).toBe(5_400_000);
+	});
+	test("surrounding whitespace is tolerated", () => {
+		expect(parseDurationMs("  2m ")).toBe(120_000);
+	});
+	test("junk is undefined (never throws, never 0)", () => {
+		expect(parseDurationMs("")).toBeUndefined();
+		expect(parseDurationMs("soon")).toBeUndefined();
+		expect(parseDurationMs("1x")).toBeUndefined();
+		expect(parseDurationMs("0s")).toBeUndefined();
+		expect(parseDurationMs("-5m")).toBeUndefined();
+	});
+});
+
+describe("parseAgentFrontmatterExtras: timeoutMs", () => {
+	test("numeric frontmatter round-trips", () => {
+		expect(parseAgentFrontmatterExtras({ timeoutMs: 600_000 }).timeoutMs).toBe(600_000);
+	});
+	test("snake_case + duration strings are accepted", () => {
+		expect(parseAgentFrontmatterExtras({ timeout_ms: "10m" }).timeoutMs).toBe(600_000);
+		expect(parseAgentFrontmatterExtras({ timeout: "90s" }).timeoutMs).toBe(90_000);
+	});
+	test("junk values leave the field unset (default budget applies)", () => {
+		expect(parseAgentFrontmatterExtras({ timeoutMs: "later" }).timeoutMs).toBeUndefined();
+		expect(parseAgentFrontmatterExtras({ timeoutMs: -1 }).timeoutMs).toBeUndefined();
+	});
 });
