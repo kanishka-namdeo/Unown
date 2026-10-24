@@ -322,14 +322,19 @@ const s8 = {
     { t: "still", name: "01-doctor" },
     { t: "prompt", s: "clear", cps: 40 },
     { t: "wait", exclude: ["unown version"], timeout: 20_000, desc: "cleared" },
+    // Model-agnostic anchors (2026-10-24): the lane previously waited on
+    // "kimi-k2.5", the model id of the ORIGINAL capture host — a fresh clone
+    // serving any other catalog (agnes, qwen…) never matched and the lane
+    // timed out with the listing on screen. The printed HEADERS are the
+    // contract, not the host's model ids.
     { t: "prompt", s: `bun ${unownBin} models`, cps: 40 },
-    { t: "wait", include: ["kimi-k2.5"], timeout: 60_000, desc: "models listed" },
+    { t: "wait", include: ["Configured providers"], timeout: 60_000, desc: "models listed" },
     { t: "linger", ms: 1600 },
     { t: "still", name: "02-models" },
     { t: "prompt", s: "clear", cps: 40 },
-    { t: "wait", exclude: ["kimi-k2.5"], timeout: 20_000, desc: "cleared" },
+    { t: "wait", exclude: ["Configured providers"], timeout: 20_000, desc: "cleared" },
     { t: "prompt", s: `bun ${unownBin} usage`, cps: 40 },
-    { t: "wait", include: ["kimi-k2.5"], timeout: 60_000, desc: "usage table" },
+    { t: "wait", include: ["LLM usage"], timeout: 60_000, desc: "usage table" },
     { t: "linger", ms: 1600 },
     { t: "still", name: "03-usage" },
   ],
@@ -921,6 +926,177 @@ const s22 = {
   ],
 };
 
+/* ────────────────────────────────────────────────────────────────────────
+ * s23-s24 — the 2026-10-24 media-completion round
+ *
+ * The two surfaces a visitor could click to and find nothing moving:
+ *   s23 browser-subagent — the delegated browser flow END TO END as film
+ *       (the 2026-10-24 PTY stills lane, superseded by a moving cut: sync
+ *       delegation → humanized live labels → done → report → async fleet
+ *       widget → /tasks registry), and
+ *   s24 sdlc — the № 010 Parity plate closed with the NEWEST parity ports
+ *       filmed live (/context, the context-window view + the session
+ *       workflow: /sessions list → /sessions export --md → the exported
+ *       markdown on disk → /sessions list --all).
+ * Ports 7632-7633 extend the catalog's block.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const BROWSER_FIXTURE_PAGE = `<!doctype html><html><head><title>Subagent Fixture</title></head><body>
+<h1>Form page</h1>
+<form id="f" onsubmit="event.preventDefault(); document.getElementById('out').textContent = 'submitted ' + document.getElementById('nm').value + '/' + document.getElementById('sel').value;">
+<input id="nm" type="text" placeholder="name">
+<select id="sel"><option value="a">Alpha</option><option value="b">Beta</option></select>
+<button type="submit" id="go">Submit form</button>
+</form>
+<div id="out"></div>
+</body></html>`;
+
+const s23 = {
+  // --no-split: the classic transcript look with maximum room for the task
+  // rows, the fleet widget and the story's beats (same visual language as
+  // s9-fleet, the other subagent lane).
+  name: "browser-subagent", cwd: REPO_ROOT, port: 7632, env: {},
+  bootCmd: `bun ${unownBin} --no-split`,
+  steps: [
+    { t: "waitReady" },
+    { t: "linger", ms: 1000 },
+    // Fresh fleet state + the local form fixture the child will really fill
+    // (a real rendered page is the only place the confirmation text can come
+    // from — the proof the whole loop ran, not a mock).
+    { t: "fn", desc: "fixture page + fresh fleet registry", fn: async (s) => {
+      await s.exec(`rm -rf ${REPO_ROOT}/.unown/fleet`);
+      await s.exec("mkdir -p /tmp/browsersub-fixture");
+      await s.exec(`printf '%s\\n' ${JSON.stringify(BROWSER_FIXTURE_PAGE)} > /tmp/browsersub-fixture/index.html`);
+      // [h]ttp bracket: pkill -f 'http.server' would match THIS bash's own
+      // cmdline (the pattern string rides in it) and kill the shell mid-step
+      await s.exec("pkill -f '[h]ttp.server 7788' 2>/dev/null; true");
+      await s.exec("nohup python3 -m http.server 7788 --directory /tmp/browsersub-fixture >/tmp/browsersub-http.log 2>&1 & echo $! > /tmp/browsersub-http.pid");
+      await s.waitForExternal({
+        check: async () => {
+          try { return String(await s.exec("curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7788/", { timeout: 5_000 })) === "200"; }
+          catch { return false; }
+        },
+        timeout: 20_000, poll: 1_000, desc: "fixture page serving",
+      });
+    }},
+    { t: "still", name: "01-boot-session" },
+    // The sync delegation: the task row mounts, the child really drives the
+    // page, the humanized labels ride the row, the report comes back.
+    { t: "prompt", s: 'Delegate a web task to the browser subagent right now using the task tool with agent set to browser. The task: open http://127.0.0.1:7788/ in the browser, type Ada into the name field, pick the Beta option, click Submit form, then report the confirmation text exactly. Do not open the page yourself; delegate it.', cps: 30 },
+    { t: "wait", include: ["task → browser"], timeout: 240_000, desc: "delegation row rendered" },
+    { t: "linger", ms: 1200 },
+    { t: "still", name: "02-task-call" },
+    { t: "wait", include: ["browser: navigate", "browser: click", "browser: fill_form", "browser: snapshot", "browser: type", "browser: start"], mode: "any", timeout: 240_000, desc: "humanized live label" },
+    { t: "linger", ms: 1000 },
+    { t: "still", name: "03-live-browser" },
+    { t: "wait", include: ["browser: ✓", "browser: ✗", "browser: ⊘"], mode: "any", timeout: 300_000, desc: "finished task row" },
+    { t: "linger", ms: 1200 },
+    { t: "still", name: "04-done" },
+    // The report reaching the parent transcript is model-timed and can scroll
+    // past the pane — best-effort, never fatal to the lane.
+    { t: "fn", desc: "child report (best effort)", fn: async (s) => {
+      const seen = await s
+        .wait({ include: ["Outcome:", "submitted"], mode: "any", timeout: 150_000, desc: "child report" })
+        .then(() => true)
+        .catch(() => false);
+      if (seen) {
+        await s.linger(1200);
+        await s.still("05-report");
+      } else {
+        await s.linger(800);
+      }
+    }},
+    // The async lane: the fleet widget above the editor with the ◉ browser
+    // row, then the /tasks lifecycle registry.
+    { t: "prompt", s: 'Now spawn the browser subagent IN THE BACKGROUND: call the task tool with async true and agent browser, with this task: open http://127.0.0.1:7788/ and report the page heading. Acknowledge immediately; do not wait for it to finish.', cps: 30 },
+    { t: "wait", include: ["Subagents"], timeout: 240_000, desc: "fleet widget up" },
+    { t: "fn", desc: "fleet row carries the live label (best effort)", fn: async (s) => {
+      await s
+        .wait({ include: ["browser: navigate", "browser: snapshot", "browser: start", "browser: click"], mode: "any", timeout: 90_000, desc: "fleet row label" })
+        .catch(() => {});
+      await s.linger(1500);
+      await s.still("06-fleet");
+    }},
+    // The async child finishes on its own clock; its result arrives as a new
+    // turn (the fleet lane's "finished in" beat). /tasks is an idle-context
+    // command — typing it mid-turn queues it behind the child's arrival, so
+    // the lane waits the parent's turn out first (s9's proven shape).
+    { t: "fn", desc: "async child result arrives / parent idle", fn: (s) => waitTurnIdle(s, 300_000, "async child turn settles") },
+    { t: "linger", ms: 1200 },
+    { t: "prompt", s: "/tasks", cps: 30 },
+    { t: "wait", include: ["Resumable"], timeout: 90_000, desc: "registry shown" },
+    { t: "linger", ms: 1800 },
+    { t: "still", name: "07-tasks" },
+    { t: "fn", desc: "stop the fixture server", fn: async (s) => {
+      await s.exec("kill $(cat /tmp/browsersub-http.pid) 2>/dev/null; true").catch(() => {});
+    }},
+  ],
+};
+
+const s24 = {
+  // № 010 Parity — the checklist counted out loud. The filmed surface is the
+  // session-workflow round (the NEWEST of the 15 ports, "blame + sessions")
+  // plus /context (the context round): a real task gives the session real
+  // turns, then the workflow surfaces one beat at a time. Every anchor is a
+  // literal the TUI itself prints — the pane is the truth.
+  name: "sdlc", cwd: DEMO_DIR, port: 7633, env: {},
+  steps: [
+    { t: "waitReady" },
+    { t: "linger", ms: 1200 },
+    { t: "still", name: "01-boot-fresh-session" },
+    // One real task: the session this lane exports needs real turns, real
+    // tool calls, real tokens — a fabricated session would be a lie the
+    // exported markdown would expose immediately.
+    { t: "prompt", s: "Read src/pagination.ts and tell me in one sentence what it does.", cps: 30 },
+    { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 300_000, "real turn complete") },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "02-real-turn" },
+    // /context — where the window goes, mid-session, with real accounting.
+    { t: "prompt", s: "/context", cps: 30 },
+    { t: "wait", include: ["Where it goes:"], timeout: 30_000, desc: "context report rendered" },
+    { t: "linger", ms: 1600 },
+    { t: "still", name: "03-context-view" },
+    // /sessions list — the project store + the user store, merged and
+    // deduped (the both-stores fix this round shipped).
+    { t: "prompt", s: "/sessions list", cps: 30 },
+    { t: "wait", include: ["Sessions in this project:"], timeout: 60_000, desc: "sessions listed" },
+    { t: "linger", ms: 1600 },
+    { t: "still", name: "04-sessions-list" },
+    // /sessions export --md — the share artifact, redacted by default.
+    { t: "prompt", s: "/sessions export --md", cps: 30 },
+    { t: "wait", include: ["Exported session"], timeout: 60_000, desc: "export confirmed" },
+    { t: "linger", ms: 1400 },
+    { t: "still", name: "05-export-confirmed" },
+    // The artifact itself on screen — the path comes from the confirmation
+    // line (which WRAPS: the notify renders the session id and the path on
+    // separate rows, so match the export filename anywhere in the pane).
+    { t: "fn", desc: "cat the exported markdown", fn: async (s) => {
+      const pane = await s.tmux.text();
+      const p = pane.split("\n").map((l) => l.match(/\S*export-[0-9a-f-]+\.md/)?.[0]).find(Boolean);
+      if (!p) throw new Error("no export path in pane — cannot cat the artifact");
+      await s.prompt(`!head -n 24 '${p}'`, { cps: 30 });
+      // the artifact's FIRST row (# Unown session — …) scrolls above the
+      // 36-row fold when the confirmation is still on screen — anchor on
+      // rows that land inside the fold: the passthrough echo and the
+      // manifest table's Model row.
+      try {
+        await s.wait({ include: ["$ head", "| Model |"], mode: "any", timeout: 30_000, desc: "markdown on screen" });
+      } catch (err) {
+        // the full pane rides the error so a failed lane tells the truth
+        const cur = await s.tmux.text();
+        throw new Error(`markdown never rendered — pane dump:\n${cur}`);
+      }
+      await s.linger(1800);
+      await s.still("06-exported-markdown");
+    }},
+    // The machine-wide view: every project's sessions, one flag away.
+    { t: "prompt", s: "/sessions list --all", cps: 30 },
+    { t: "wait", include: ["Sessions on this machine"], timeout: 60_000, desc: "machine-wide listing" },
+    { t: "linger", ms: 1800 },
+    { t: "still", name: "07-all-machine-sessions" },
+  ],
+};
+
 module.exports = {
   "s1-hero-bugfix": s1,
   "s2-plan-mode": s2,
@@ -944,4 +1120,6 @@ module.exports = {
   "s20-skills": s20,
   "s21-goals": s21,
   "s22-split-view": s22,
+  "s23-browser-subagent": s23,
+  "s24-sdlc": s24,
 };

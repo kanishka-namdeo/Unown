@@ -434,10 +434,14 @@ const RAW: readonly DexEntryInput[] = [
       ...PARITY_RECEIPTS,
       ["docs/sdlc-feature-parity.md", DOC("docs/sdlc-feature-parity.md")],
     ],
-    // Parity is a checklist, not a behavior, so nothing is filmed under this
-    // number. The wiki and the diagnostics clips are catalogued as their own
-    // entries (№ 016, № 017) rather than filed here as a catch-all.
-    captures: PENDING,
+    // The 2026-10-24 media-completion round: the checklist's newest ports,
+    // filmed live — one real task, /context (the context-window view), then
+    // the session workflow end to end: /sessions list → /sessions export --md
+    // → the exported markdown on disk → the machine-wide listing. The wiki
+    // and the diagnostics clips stay catalogued as their own entries (№ 016,
+    // № 017) rather than filed here as a catch-all; the filmed plate is the
+    // sessions list itself — the face of the workflow this number counts.
+    captures: [REEL("sdlc", "04-sessions-list.png")],
   },
 
   {
@@ -470,18 +474,14 @@ const RAW: readonly DexEntryInput[] = [
     // landing page on the local dev server with its browser tool (web
     // navigate → a11y snapshot), finds the exact curl install command,
     // clicks the GitHub link, screenshots where it landed, and reports.
-    // The browser-subagent lane (2026-10-24): the same surface delegated —
-    // live humanized tool labels, the ◉ fleet row, /tasks lifecycle metadata.
+    // The browser-subagent lane (2026-10-24, the filmed cut of the old PTY
+    // stills): the same surface delegated — the task → browser row, the
+    // HUMANIZED live labels riding it (browser: navigate / fill_form /
+    // click), the child's report back, then the async lane: the ◉ fleet
+    // widget row and the /tasks lifecycle registry.
     captures: [
-      REEL("browser-verify", "01-session.png"),
-      STILL(
-        "/landing/tui/browser-subagent/stills/02-live-browser.png",
-        "the browser subagent in flight — the task row shows the humanized live label 'browser: …' with elapsed time",
-      ),
-      STILL(
-        "/landing/tui/browser-subagent/stills/05-fleet.png",
-        "the async fleet widget — the ◉ browser-active glyph, the lane rail, the live token count",
-      ),
+      REEL("browser-verify", "01-session.png", "visitor check"),
+      REEL("browser-subagent", "03-live-browser.png", "subagent"),
     ],
   },
 
@@ -707,7 +707,11 @@ export const FORMS_BY_ID: ReadonlyMap<CreatureId, FormEntry> = new Map(
   DEX.flatMap((e) => (e.kind === "form" ? [[e.id, e] as const] : [])),
 );
 
-/** The spelled-out tally sentence the band's lead prints. */
+/** The spelled-out tally sentence the band's lead prints. The still-set
+ *  phrase pluralizes with its count ("1 still set", "0 still sets") — the
+ *  2026-10-24 media-completion round left zero still lanes in the mix, and
+ *  the derived sentence has to read like English at every count. */
 export const TALLY_SENTENCE =
   `${TALLY.filmed} of ${TALLY.total} carry a capture — ${TALLY.videos} movies, ` +
-  `${TALLY.stills} still set, ${TALLY.pending} pending. Nothing here was filmed by hand.`;
+  `${TALLY.stills === 1 ? "1 still set" : `${TALLY.stills} still sets`}, ` +
+  `${TALLY.pending} pending. Nothing here was filmed by hand.`;

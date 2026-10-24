@@ -372,9 +372,13 @@ class CaptureSession {
     throw new Error(`wait timeout (${desc}) after ${timeout}ms — anchors not found (mode=${mode}). Pane tail:\n${tail}`);
   }
 
-  /** Wait until the TUI is ready (branded header + footer model + no spinner). */
+  /** Wait until the TUI is ready (boot resource block + footer, no spinner).
+   *  The anchor is the LAST section of the startup resource block the TUI
+   *  itself prints (── Themes ──): the v0.0.8-era "unown v" first line was
+   *  retired when the startup banner became the loaded-resources block, so
+   *  "unown v" would hang every fresh-boot lane on the current build. */
   async waitReady(timeout = 90_000) {
-    const ready = this.ready || { include: ["unown v"], desc: "TUI ready" };
+    const ready = this.ready || { include: ["── Themes ──"], desc: "TUI ready" };
     await this.wait({ ...ready, timeout, desc: ready.desc || "ready" });
     await this.linger(700);
   }

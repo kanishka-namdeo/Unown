@@ -334,11 +334,17 @@ describe("landing DexSection", () => {
     }
   });
 
-  test("the media is the harness's audited set — twenty-two movies, two stills, nothing invented", () => {
+  test("the media is the harness's audited set — every reel a movie, nothing invented", () => {
     const { container } = render(<DexSection />);
     const videos = Array.from(container.querySelectorAll("video"));
     expect(videos.length).toBe(TALLY.videos);
-    expect(videos.length).toBe(22);
+    // 2026-10-24 media-completion round: the last still lanes were filmed
+    // (browser-subagent joins split-view), so every reel is a movie and the
+    // count is the entry count plus the two double-reeled entries (№ 003
+    // Task, № 011 Browser). A new reel is a deliberate edit that flips this
+    // pin — the derived count above can never catch it alone.
+    expect(TALLY.stills).toBe(0);
+    expect(TALLY.videos).toBe(TALLY.total + 2);
     for (const v of videos) {
       // Never an autoplay attribute — playback is an effect decision, so a
       // reduced-motion visitor is never handed one in the markup.
@@ -372,12 +378,12 @@ describe("landing DexSection", () => {
       expect(v.getAttribute("data-poster")?.length).toBeGreaterThan(0);
     }
     const captures = bySrc(container, "/landing/tui/");
-    // 2026-10-24: the split-view lane is FILMED now, so the only still
-    // captures left are the browser-subagent lane's two fleet/live stills
-    // (the 44 <source> tags — 22 movies × webm+mp4 — are asserted in the
-    // videos block above).
+    // 2026-10-24: every lane is filmed now — the split-view lane's PTY cut
+    // went first, the browser-subagent stills followed; zero <img> still
+    // captures remain (the 48 <source> tags — 24 movies × webm+mp4 — are
+    // asserted in the videos block above).
     expect(captures.length).toBe(TALLY.stills);
-    expect(captures.length).toBe(2);
+    expect(captures.length).toBe(0);
     for (const c of captures) {
       expect(c.getAttribute("loading")).toBe("lazy");
       expect(c.getAttribute("alt")?.length).toBeGreaterThan(0);
@@ -387,7 +393,11 @@ describe("landing DexSection", () => {
       (n) => n.textContent === "no capture yet",
     );
     expect(stubs.length).toBe(TALLY.pending);
-    expect(stubs.length).toBe(1);
+    // 2026-10-24 media-completion round: the band's contract HARDENED — the
+    // last plate (№ 010 Parity) closed, so zero entries may ship unfilmed.
+    // A new pending plate must be a deliberate, visible decision that flips
+    // this pin — never an accident the derived counts quietly absorb.
+    expect(TALLY.pending).toBe(0);
     // …and the band states who makes them, once, not once per empty stage.
     expect(container.textContent).toContain("scripts/tui-capture/");
     expect(
@@ -402,10 +412,18 @@ describe("landing DexSection", () => {
     const text = container.textContent ?? "";
     expect(text).toContain(`${TALLY.filmed} of ${TALLY.total} carry a capture`);
     expect(text).toContain(`${TALLY.videos} movies`);
-    expect(text).toContain(`${TALLY.stills} still set`);
+    // the still-set phrase composes with the count ("1 still set", "0 still
+    // sets") — it only appears in the lead sentence, whose template carries
+    // every count, so the containment is derived at any value
+    expect(text).toContain(`${TALLY.stills === 1 ? "1 still set" : `${TALLY.stills} still sets`}`);
     expect(text).toContain(`${TALLY.pending} pending`);
-    // The same figures appear in the provenance line, so they cannot drift.
-    expect(text).toContain(`The ${TALLY.videos} movies and the ${TALLY.stills} still set`);
+    // The same figures appear in the provenance line, so they cannot drift —
+    // its still-set clause folds away at zero (2026-10-24: every reel is a
+    // movie), so the shared figure is the movie count either way.
+    expect(text).toContain(`The ${TALLY.videos} movies`);
+    if (TALLY.stills > 0) {
+      expect(text).toContain(`and the ${TALLY.stills} still set`);
+    }
     // And the tallies are internally derived, not two separate assertions:
     expect(TALLY.filmed + TALLY.pending).toBe(TALLY.total);
     expect(TALLY.forms + TALLY.behaviors).toBe(TALLY.total);

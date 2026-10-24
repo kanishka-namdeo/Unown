@@ -270,7 +270,11 @@ KEYS = {
     "CtrlC": b"\x03",
 }
 
-READY_ANCHOR = "unown v"
+# The LAST section of the TUI's startup resource block (── Themes ──) — the
+# v0.0.8-era "unown v" first line was retired when the startup banner became
+# the loaded-resources block, so that anchor hangs every fresh boot on the
+# current build (same fix as driver.js waitReady).
+READY_ANCHOR = "── Themes ──"
 
 
 class PaneTimeout(Exception):

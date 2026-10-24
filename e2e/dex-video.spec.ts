@@ -147,27 +147,48 @@ test("every filmed dex entry decodes and presents frames when selected", async (
   expect(mediaFailures, "media fetches failed").toEqual([]);
 });
 
-test("the pending entries state their gap out loud, never a broken frame", async ({
+test("the dex ships zero pending plates — every entry films, none mount a broken stage", async ({
   page,
 }) => {
+  // The 2026-10-24 media-completion round closed the last plate (№ 010
+  // Parity), so the band's contract hardened: NO entry may greet a visitor
+  // with "no capture yet". The defensive half stays for the future: IF an
+  // entry ever goes pending again, its pane must state the gap out loud and
+  // mount ZERO media — an empty stage with a missing file is the broken
+  // experience this guards against, so the regression is caught either way.
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
-  const pending = await page.evaluate(() => {
-    const arts = [...document.querySelectorAll("article")];
-    return arts
-      .filter((a) => a.textContent?.includes("no capture yet"))
-      .map((a) => ({
-        label: a.getAttribute("aria-label") ?? "?",
-        // a pending pane must contain ZERO video/img media — an empty stage
-        // with a missing file would be the broken experience this guards
-        videos: a.querySelectorAll("video source[src], video[poster]").length,
-        stills: a.querySelectorAll(`img[src^="/landing/tui/"]`).length,
-      }));
+  const arts = await page.evaluate(() => {
+    return [...document.querySelectorAll("#dex article")].map((a) => ({
+      label: a.getAttribute("aria-label") ?? "?",
+      pendingGap: a.textContent?.includes("no capture yet") ?? false,
+      // a pending pane must contain ZERO video/img media — an empty stage
+      // with a missing file would be the broken experience this guards
+      videos: a.querySelectorAll("video source[src], video[poster]").length,
+      stills: a.querySelectorAll(`img[src^="/landing/tui/"]`).length,
+    }));
   });
 
-  expect(pending.length).toBeGreaterThan(0);
+  expect(arts.length).toBeGreaterThan(0);
+
+  const pending = arts.filter((a) => a.pendingGap);
+  expect(
+    pending.map((a) => a.label),
+    "pending plates are back — every dex entry must ship a capture (the band's lead sentence counts them)",
+  ).toEqual([]);
   for (const p of pending) {
     expect(p.videos, `${p.label}: pending pane must mount no video`).toBe(0);
     expect(p.stills, `${p.label}: pending pane must mount no still`).toBe(0);
+  }
+
+  // and every pane that is NOT pending must reference at least one real
+  // media element (video source or still) — a filmed entry whose reels all
+  // failed to mount is exactly as broken as a pending one
+  const filmed = arts.filter((a) => !a.pendingGap);
+  for (const f of filmed) {
+    expect(
+      f.videos + f.stills,
+      `${f.label}: filmed entry mounted no media at all`,
+    ).toBeGreaterThan(0);
   }
 });

@@ -942,12 +942,21 @@ export function DexSection() {
             </div>
           </div>
 
-          {/* provenance, once: what the lane filmed and what it has not */}
+          {/* provenance, once: what the lane filmed and what it has not.
+              Composes with the data: the still-set clause folds away when no
+              lane ships stills (2026-10-24: every reel is a movie), and the
+              pending clause states either the count or the closed state. */}
           <p className="mt-4 text-[11px] leading-relaxed text-faint">
-            The {TALLY.videos} movies and the {TALLY.stills} still set were
-            captured 2026-10-20 by the harness from real unown sessions at
-            128 × 36 and audited still by still; each poster is that scenario's
-            first audited still. {TALLY.pending} entries have no capture yet.
+            The {TALLY.videos} movies
+            {TALLY.stills > 0 ? <> and the {TALLY.stills} still set</> : null}{" "}
+            were captured across the 2026-10 rounds by the harness from real
+            unown sessions at 128 × 36 and audited still by still; each poster
+            is one of that scenario&rsquo;s audited stills.{" "}
+            {TALLY.pending > 0 ? (
+              <>{TALLY.pending} entries have no capture yet.</>
+            ) : (
+              <>No plate waits on a capture — every entry is filmed.</>
+            )}
           </p>
 
           {/* the display-command surface keeps this band as its one home,
