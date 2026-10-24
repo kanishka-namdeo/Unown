@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 257;
+export const CHANGELOG_TOTAL_ENTRIES = 263;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 102,
+  "Added": 108,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -44,11 +44,11 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 1,
+    "label": "0.0.13",
+    "date": "2026-10-24",
+    "total": 7,
     "counts": {
-      "Added": 0,
+      "Added": 6,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -57,6 +57,35 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       "Behavior": 0
     },
     "groups": [
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "parity: session workflow — markdown export, both stores",
+            "behavior": false
+          },
+          {
+            "title": "parity: /context — the context view",
+            "behavior": false
+          },
+          {
+            "title": "parity: --max-tool-repetitions — the loop guard, exit 4",
+            "behavior": false
+          },
+          {
+            "title": "parity: post-edit auto-formatters",
+            "behavior": false
+          },
+          {
+            "title": "parity: unown import — config migration",
+            "behavior": false
+          },
+          {
+            "title": "parity: unown --worktree — session worktrees",
+            "behavior": false
+          }
+        ]
+      },
       {
         "bucket": "Fixed",
         "items": [
