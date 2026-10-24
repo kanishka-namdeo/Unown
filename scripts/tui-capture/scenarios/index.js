@@ -77,16 +77,28 @@ const s1 = {
       await s.linger(600);
       await s.still("04-agent-editing");
     }},
-    // agent re-runs the suite → green
+    // agent re-runs the suite → green. 2026-10-24: the anchor " 0 fail" can
+    // also match the agent's FINAL ANSWER quoting the tally, so it only paces
+    // the video — the stills moved POST-IDLE: mid-turn stills raced the
+    // streaming answer twice (row-clip pane/pixel desync), and a stable
+    // pane is the whole point of a still.
     { t: "fn", desc: "wait for green suite", fn: async (s) => {
       await s.wait({ include: [" 0 fail"], timeout: 420_000, desc: "green suite" });
-      await s.linger(1500);
-      await s.still("05-tests-passing");
     }},
-    // turn completes (working line gone)
+    // turn completes (working line gone) — 05 is the finished turn: the
+    // green bash output + the agent's answer, spinner gone, pane stable
     { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 420_000, "hero turn complete") },
-    { t: "linger", ms: 2200 },
-    { t: "still", name: "06-final-answer" },
+    { t: "linger", ms: 1800 },
+    { t: "still", name: "05-tests-passing" },
+    // 2026-10-24 (3rd fix): with agnes-3.0-flash the bash re-run + short
+    // final answer land inside any pre-idle settle window — a post-idle still
+    // shipped byte-identical to 05 twice. The honest closing beat is the
+    // user's own flake-guard re-run (this repo's convention: the suite runs
+    // twice), which puts the fresh green tally under the agent's answer.
+    { t: "prompt", s: "!bun test", cps: 24 },
+    { t: "wait", include: [" 5 pass"], timeout: 60_000, desc: "second green run" },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "06-suite-green-twice" },
   ],
 };
 
@@ -211,6 +223,16 @@ const s5 = {
   steps: [
     { t: "waitReady" },
     { t: "linger", ms: 900 },
+    // 2026-10-24: the poster beat must show what its name says. The fixture's
+    // uncommitted one-char fix lives in the FILESYSTEM — a plain boot still
+    // rendered byte-identical to every other lane's boot frame (the shipped
+    // poster collided with hero-bugfix/01 and plan-mode/01). Read the diff
+    // into the pane first, so "session with uncommitted diff" is pane-true.
+    { t: "prompt", s: "!git diff", cps: 24 },
+    // the seed fixture's function is `paginate` (the paginateItems rename is
+    // the FIXED tag's state) — anchor on the removed off-by-one line itself
+    { t: "wait", include: ["perPage + 1"], timeout: 30_000, desc: "diff rendered in pane" },
+    { t: "linger", ms: 900 },
     { t: "still", name: "01-session-with-uncommitted-diff" },
     { t: "prompt", s: "/review", cps: 30 },
     { t: "wait", include: ["Review: "], timeout: 60_000, desc: "review starting" },
@@ -220,10 +242,20 @@ const s5 = {
       await s.still("02-reviewers-running");
     }},
     { t: "wait", include: ["VERDICT:"], timeout: 330_000, desc: "review verdict" },
-    { t: "linger", ms: 3000 },
+    // 2026-10-24: capture the verdict the moment it lands — the artifact save
+    // line can render inside the old 3s linger, which made 03 and 04
+    // byte-identical. 03 is the verdict beat, 04 is the artifact beat.
+    { t: "linger", ms: 1000 },
     { t: "still", name: "03-verdict" },
     { t: "wait", include: ["Saved to "], timeout: 60_000, desc: "artifact saved" },
-    { t: "linger", ms: 2600 },
+    // 2026-10-24 (2nd fix): the verdict and the "Saved to" path land in the
+    // SAME result block — panes at 03 and 04 were verbatim equal, so no two
+    // stills can differ there. The honest 04 beat is the user's own next
+    // move: list the reviews dir and open the artifact's head — the pane
+    // shows the saved file itself, which is what "artifact saved" means.
+    { t: "prompt", s: "!ls .unown/reviews/", cps: 24 },
+    { t: "wait", include: ["uncommitted-work-diff"], timeout: 30_000, desc: "reviews dir listed" },
+    { t: "linger", ms: 700 },
     { t: "still", name: "04-review-artifact-saved" },
   ],
 };
@@ -232,9 +264,14 @@ const s6 = {
   name: "subagent-explore", cwd: REPO_ROOT, port: 7615, env: {},
   steps: [
     { t: "waitReady" },
+    // 2026-10-24: the lane's own boot frame was byte-identical to fleet's
+    // (same cwd, same chrome, nothing typed yet) — the shipped poster
+    // collided with the fleet lane's. The poster beat is now the session with
+    // the repo-exploration ask in it, which is what makes this lane this lane.
+    { t: "prompt", s: "Use a task subagent to explore this repository and give me a short map of the main modules and what they do.", cps: 30 },
+    { t: "wait", include: ["explore this repository"], timeout: 30_000, desc: "prompt echoed" },
     { t: "linger", ms: 1000 },
     { t: "still", name: "01-boot-in-real-repo" },
-    { t: "prompt", s: "Use a task subagent to explore this repository and give me a short map of the main modules and what they do.", cps: 30 },
     { t: "wait", include: ["task → "], timeout: 240_000, desc: "subagent spawned" },
     { t: "linger", ms: 1500 },
     { t: "still", name: "02-task-subagent-running" },
@@ -539,6 +576,351 @@ const s12 = {
   ],
 };
 
+/* ------------------------------------------------------------------ */
+/* s13-s22 — the 2026-10-24 capture round: the dex's pending lanes.     */
+/* Every lane closes one `captures: PENDING` entry in dex-data.ts —     */
+/* the ten "no capture yet" plates a visitor met while clicking the     */
+/* spine. Same contracts as s1-s12: pane-truth anchors, real model      */
+/* turns through the live bridge, stills at the story's beats, and the  */
+/* honest-provenance rules of docs/tui-capture-workflow.md.             */
+/* ------------------------------------------------------------------ */
+
+const s13 = {
+  // № 001 Websearch — the keyless chain answering a sourced question in a
+  // real session. The question is picked to be stable forever (Node.js
+  // first release: 2009, Ryan Dahl — Wikipedia holds both), so the lane
+  // never rots, and the keyless chain's Wikipedia lane answers it from a
+  // datacenter IP even where DuckDuckGo gets challenged (the cascade notes
+  // surface in the tool result — the chain visibly working IS the story).
+  name: "websearch", cwd: DEMO_DIR, port: 7622, env: {},
+  steps: [
+    { t: "waitReady" },
+    { t: "prompt", s: "Use the web_search tool to look up who created Node.js and the year it was first released, then answer with the URL of the source you actually read. Do not answer from memory.", cps: 30 },
+    { t: "wait", include: ["web_search tool"], timeout: 30_000, desc: "prompt echoed" },
+    { t: "linger", ms: 1000 },
+    { t: "still", name: "01-session-with-question" },
+    { t: "wait", include: ["web_search", "webfetch"], mode: "any", timeout: 180_000, desc: "search tool block" },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "02-search-running" },
+    { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 300_000, "websearch turn complete") },
+    { t: "linger", ms: 2000 },
+    { t: "still", name: "03-answer-with-sources" },
+  ],
+};
+
+const s14 = {
+  // № 002 Mcp — a real MCP stdio server (the harness's own
+  // fixtures/mini-mcp-dice.mjs: initialize → tools/list → tools/call over
+  // newline-delimited JSON-RPC) configured at user scope before boot, so
+  // the session picks it up the way the docs promise: its tool arrives as
+  // mcp__dice__roll, permissions and all, and the agent uses it live.
+  // Prep (prep_demo.sh s14-mcp): `unown mcp add dice bun <repo>/scripts/
+  // tui-capture/fixtures/mini-mcp-dice.mjs` — user scope, trusted by
+  // definition (the user's own config dir).
+  name: "mcp", cwd: DEMO_DIR, port: 7623, env: {},
+  steps: [
+    { t: "waitReady" },
+    { t: "prompt", s: "Use the dice MCP server to roll a d20 and tell me the result.", cps: 30 },
+    { t: "wait", include: ["dice MCP server"], timeout: 30_000, desc: "prompt echoed" },
+    { t: "linger", ms: 1000 },
+    { t: "still", name: "01-session-with-ask" },
+    { t: "wait", include: ["dice/roll", "mcp__dice__roll"], mode: "any", timeout: 180_000, desc: "mcp tool call visible" },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "02-mcp-tool-call" },
+    { t: "wait", include: ["You rolled a"], timeout: 60_000, desc: "roll result rendered" },
+    { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 240_000, "mcp turn complete") },
+    { t: "linger", ms: 2000 },
+    { t: "still", name: "03-rolled-result" },
+  ],
+};
+
+const s15 = {
+  // № 004 Lsp — the reading form's two halves in one session: the
+  // graph-ranked repo map (/repomap, tree-sitter symbols + reference
+  // ranking) that orients every fresh subagent, then a rename driven
+  // through edits while typescript-language-server's diagnostics ride
+  // each tool result (PostToolUse feedback loop — broken intermediate
+  // states surface as compiler feedback instead of compounding).
+  // Fixture: tag "fixed" (green suite); the rename keeps it green.
+  name: "lsp", cwd: DEMO_DIR, port: 7624, env: {},
+  steps: [
+    { t: "waitReady" },
+    { t: "prompt", s: "/repomap", cps: 30 },
+    { t: "wait", include: ["pagination"], timeout: 30_000, desc: "repo map rendered" },
+    { t: "linger", ms: 1200 },
+    { t: "still", name: "01-repomap" },
+    { t: "prompt", s: "Rename the paginate function to paginateItems across src/ and test/, keeping the whole test suite green.", cps: 30 },
+    { t: "fn", desc: "edit block with diagnostics", fn: async (s) => {
+      await s.wait({ include: ["Rename the paginate function"], timeout: 30_000, desc: "prompt echoed" });
+      await s.wait({ include: ["edit "], timeout: 300_000, desc: "first edit block" });
+      await s.linger(1200);
+      await s.still("02-edit-riding-diagnostics");
+    }},
+    { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 420_000, "rename turn complete") },
+    { t: "linger", ms: 2200 },
+    { t: "still", name: "03-rename-green" },
+  ],
+};
+
+const s16 = {
+  // № 022 The parity round — the 2026 consensus workflows in one live
+  // session: the persona layer (/output-style listing + set), the
+  // side-question lane (/btw answering from context in a dismissible
+  // overlay that never enters the transcript), cross-session analytics
+  // (/insights), and the auto-title proven by /name. The ttyd-lane movie
+  // of the story pty_capture_parity.py filmed as stills (same anchors).
+  name: "parity-round", cwd: REPO_ROOT, port: 7625, env: {},
+  steps: [
+    { t: "waitReady" },
+    // fresh per-run style state so the listing still shows "active: default"
+    { t: "fn", desc: "clean output-style state", fn: async (s) => {
+      await s.exec("rm -f .unown/output-style.json").catch(() => {});
+    }},
+    // one real turn: context for /btw, material for the auto-title
+    { t: "prompt", s: "Reply with exactly: the parity round is live", cps: 30 },
+    { t: "fn", desc: "context turn", fn: async (s) => {
+      await s.wait({ include: ["the parity round is live"], timeout: 120_000, desc: "reply landed" }).catch(() => {});
+      await waitTurnIdle(s, 120_000, "context turn complete").catch(() => {});
+    }},
+    { t: "prompt", s: "/output-style", cps: 30 },
+    { t: "wait", include: ["Output styles"], timeout: 20_000, desc: "style listing" },
+    { t: "linger", ms: 1000 },
+    { t: "still", name: "01-output-styles" },
+    { t: "prompt", s: "/output-style concise", cps: 30 },
+    { t: "wait", include: ["Output style set: concise"], timeout: 20_000, desc: "style set" },
+    { t: "linger", ms: 1000 },
+    { t: "still", name: "02-style-set" },
+    { t: "prompt", s: "/btw what did I just ask you to reply with?", cps: 30 },
+    // the /btw side-channel rides the bridge's BACKGROUND lane (the same
+    // lane AutoDream uses) — when the engine is draining a dream queue the
+    // overlay waits its turn behind it. 300s covers a full queue; the video
+    // pacing compresses the spinner-idle wait to ~2.5s on screen.
+    { t: "wait", include: ["btw"], timeout: 300_000, desc: "btw overlay" },
+    // the overlay renders when the call starts AND re-renders when the
+    // answer settles — an Esc sent mid-stream dismisses the first paint and
+    // the settled overlay re-opens. Let the answer land first (it is one
+    // short line; 12s covers it on a quiet lane), THEN still, THEN dismiss.
+    { t: "sleep", ms: 12_000 },
+    { t: "linger", ms: 1600 },
+    { t: "still", name: "03-btw-overlay" },
+    { t: "fn", desc: "dismiss the settled overlay (retry: a mid-settle Esc gets eaten)", fn: async (s) => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await s.key("Esc");
+        try {
+          await s.wait({ include: ["? help"], exclude: ["dismiss"], timeout: 8_000, desc: "overlay dismissed" });
+          return;
+        } catch { /* settled overlay re-painted — dismiss again */ }
+      }
+      throw new Error("btw overlay did not dismiss after 3 Esc attempts");
+    }},
+    { t: "linger", ms: 800 },
+    { t: "prompt", s: "/insights", cps: 30 },
+    // the report renders as one tall notify toast — taller than the 36-row
+    // pane, so its SECTION HEADERS scroll out of view and only the tail
+    // ("window: N days · generated …") stays visible: anchor THAT. ~12s
+    // against the quiet engine; 90s covers a cold bridge fetch.
+    { t: "wait", include: ["window:"], timeout: 90_000, desc: "insights report" },
+    { t: "linger", ms: 1200 },
+    { t: "still", name: "04-insights" },
+    { t: "fn", desc: "auto-title landed", fn: async (s) => {
+      // the background title call can take up to two minutes on the
+      // bridge's background lane — poll the /name output like the PTY lane
+      const deadline = Date.now() + 150_000;
+      for (;;) {
+        await s.prompt("/name", { cps: 30 });
+        await s.sleep(2500);
+        const text = String(await s.text());
+        if (text.includes("Session name:")) break;
+        if (Date.now() > deadline) break;
+      }
+      await s.wait({ include: ["Session name:", "Usage: /name"], mode: "any", timeout: 15_000, desc: "session name output" }).catch(() => {});
+    }},
+    { t: "linger", ms: 1200 },
+    { t: "still", name: "05-auto-title" },
+  ],
+};
+
+const s17 = {
+  // № 006 Harness — the Learning Lab screen of `unown dashboard` against
+  // the live engine, after a REAL harness cycle was run through the
+  // engine API (POST /api/tasks/<id>/run — the pipeline's prep step), so
+  // the screen shows the cycle the engine actually ran: task, baseline
+  // pass/fail, the mined-rule decision, and the transcript.
+  name: "harness", cwd: REPO_ROOT, port: 7626, env: {},
+  bootCmd: `bun ${unownBin} dashboard lab`,
+  ready: { include: ["unown dashboard", "Learning"], desc: "dashboard learning-lab screen" },
+  steps: [
+    { t: "waitReady", timeout: 60_000 },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "01-learning-lab" },
+    // the dashboard opens with focus on the section sidebar (the footer
+    // reads "tab sections · j/k select") — Tab hands focus to the content
+    // list first, then Enter opens the selected cycle's run detail
+    { t: "key", k: "Tab" },
+    { t: "linger", ms: 600 },
+    { t: "key", k: "Enter" },
+    { t: "fn", desc: "cycle detail open", fn: async (s) => {
+      await s.wait({ include: ["prompt", "transcript", "verify"], mode: "any", timeout: 20_000, desc: "run detail view" }).catch(() => {});
+      await s.linger(1500);
+      await s.still("02-cycle-detail");
+    }},
+  ],
+};
+
+const s18 = {
+  // № 007 Router — the Router screen: the engine's real job table —
+  // dreams, harness, automations, the busy-mutex — against the live
+  // engine, exactly the "signpost that walks its own routes" story.
+  name: "router", cwd: REPO_ROOT, port: 7627, env: {},
+  bootCmd: `bun ${unownBin} dashboard router`,
+  ready: { include: ["unown dashboard", "Router"], desc: "dashboard router screen" },
+  steps: [
+    { t: "waitReady", timeout: 60_000 },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "01-router-jobs" },
+    { t: "key", k: "Enter" },
+    { t: "fn", desc: "job detail open", fn: async (s) => {
+      await s.wait({ include: ["job", "schedule", "last run"], mode: "any", timeout: 20_000, desc: "job detail" }).catch(() => {});
+      await s.linger(1500);
+      await s.still("02-job-detail");
+    }},
+  ],
+};
+
+const s19 = {
+  // № 019 Routines — the full routines manager (`unown dashboard
+  // routines`) against the live engine with a REAL routine created
+  // through the CLI first (prep: unown routines create --title 'morning
+  // brief' --every '1d at 09:00' --prompt '...' — real recurrence
+  // semantics: cron, every, after; per-routine timezone + misfire
+  // policy), then its history view.
+  name: "routines", cwd: REPO_ROOT, port: 7628, env: {},
+  bootCmd: `bun ${unownBin} dashboard routines`,
+  ready: { include: ["unown dashboard", "Routines"], desc: "dashboard routines screen" },
+  steps: [
+    { t: "waitReady", timeout: 60_000 },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "01-routines-manager" },
+    { t: "key", k: "Enter" },
+    { t: "fn", desc: "routine history open", fn: async (s) => {
+      await s.wait({ include: ["history", "next run", "morning brief"], mode: "any", timeout: 20_000, desc: "routine detail" }).catch(() => {});
+      await s.linger(1500);
+      await s.still("02-routine-detail");
+    }},
+  ],
+};
+
+const s20 = {
+  // № 021 Skills — the Skills screen: what the agent shipped itself.
+  // Requires the engine to have actually minted a skill through the
+  // harness loop (mine → candidate → re-run → ship), which the pipeline's
+  // engine-prep step drives for real (minted variant tasks until a ship
+  // lands). The screen shows the shipped skill rows; Enter opens one.
+  name: "skills", cwd: REPO_ROOT, port: 7629, env: {},
+  bootCmd: `bun ${unownBin} dashboard skills`,
+  ready: { include: ["unown dashboard", "Skills"], desc: "dashboard skills screen" },
+  steps: [
+    { t: "waitReady", timeout: 60_000 },
+    { t: "linger", ms: 1500 },
+    { t: "still", name: "01-skills-shipped" },
+    { t: "key", k: "Enter" },
+    { t: "fn", desc: "skill detail open", fn: async (s) => {
+      await s.wait({ include: ["skill", "rule", "evidence"], mode: "any", timeout: 20_000, desc: "skill detail" }).catch(() => {});
+      await s.linger(1500);
+      await s.still("02-skill-detail");
+    }},
+  ],
+};
+
+const s21 = {
+  // № 019 Goals — the durable, evidence-verified objective: /goal sets the
+  // objective (footer chip "goal: active"; the contract rides the system
+  // prompt FROM THE NEXT MESSAGE — setting it starts no work), the user
+  // starts the turn, the agent works it with todos, and the completion
+  // gate only passes with the [GOAL:COMPLETE] tag on its own line, every
+  // todo done, and BOTH kinds of cited evidence (a changed-file path AND
+  // a command output). The footer chip flipping to "goal: ✓ complete" is
+  // the state anchor — prose anchors false-match the model's own text.
+  name: "goals", cwd: DEMO_DIR, port: 7630, env: {},
+  steps: [
+    { t: "waitReady" },
+    { t: "prompt", s: "/goal Add a GET /health endpoint returning {ok:true} to this API server, with a test proving the response shape. Track it with a todo and complete only with real evidence.", cps: 30 },
+    { t: "wait", include: ["Goal set:"], timeout: 30_000, desc: "goal acknowledged" },
+    { t: "linger", ms: 1200 },
+    { t: "still", name: "01-goal-set" },
+    // the goal rides the NEXT message — nothing happens until the user
+    // starts the turn. (Earlier cuts gave the agent 3 endpoints + tests +
+    // README: real work, but the turn outgrew the driver's 575s box and
+    // the gate never closed — one endpoint closes inside the budget.)
+    { t: "prompt", s: "Start working on the goal now and complete it in this turn.", cps: 30 },
+    // the mid-work beat anchors on the FILESYSTEM, not the pane: the demo
+    // tree is clean at boot, so a dirty git status means real edits are
+    // landing (pane-text anchors false-matched the boot context's "read")
+    { t: "fn", desc: "goal work underway", fn: async (s) => {
+      await s.waitForExternal({
+        // s.exec resolves to the raw stdout STRING (and rejects on failure) —
+        // an earlier shape bug read `.status` off the promise and never fired
+        check: async () => {
+          const out = String(await s.exec("git -C '" + DEMO_DIR + "' status --porcelain", { timeout: 10_000 }));
+          return out.split("\n").some((l) => l.trim() && !l.includes(".unown"));
+        },
+        timeout: 300_000, poll: 2_000, desc: "first real edits land in the tree",
+      });
+      await s.linger(1600);
+      await s.still("02-goal-work");
+    }},
+    // completion is a FOOTER STATE, not prose: "goal: ✓ complete" only
+    // renders when the evidence gate actually passed
+    { t: "fn", desc: "goal completes with evidence", fn: async (s) => {
+      await s.wait({ include: ["goal: \u2713 complete"], timeout: 300_000, desc: "completion gate passed" });
+      await waitTurnIdle(s, 120_000, "goal turn complete").catch(() => {});
+    }},
+    { t: "linger", ms: 1800 },
+    { t: "still", name: "03-goal-complete" },
+    { t: "prompt", s: "/goal", cps: 30 },
+    { t: "fn", desc: "goal status", fn: async (s) => {
+      await s.wait({ include: ["complete", "evidence", "active"], mode: "any", timeout: 20_000, desc: "status output" }).catch(() => {});
+      await s.linger(1200);
+    }},
+    { t: "still", name: "04-goal-status" },
+  ],
+};
+
+const s22 = {
+  // № 018 Split view — the display mode's own band, dock and transcript,
+  // FILMED (the dex copy said "stills only — this lane ships no movie";
+  // this round ships one). /split mounts the Thinking + Tool Usage band
+  // and the Files dock on the real pi-tui split geometry; a live turn
+  // fills the band with reasoning and tool blocks while the dock shows
+  // the edit diff, and the response-only transcript carries the answer.
+  name: "split-view", cwd: DEMO_DIR, port: 7631, env: {},
+  steps: [
+    { t: "waitReady" },
+    { t: "prompt", s: "/split", cps: 30 },
+    { t: "fn", desc: "split panels mounted", fn: async (s) => {
+      await s.wait({ include: ["Thinking"], timeout: 20_000, desc: "split band up" }).catch(() => {});
+      await s.linger(1200);
+    }},
+    { t: "prompt", s: "Add a /health route returning {ok:true} to the API server, with a test.", cps: 30 },
+    { t: "wait", include: ["/health route"], timeout: 30_000, desc: "prompt echoed" },
+    { t: "linger", ms: 1000 },
+    { t: "still", name: "01-split-band" },
+    { t: "fn", desc: "live thinking + tools", fn: async (s) => {
+      await s.wait({ include: ["Thinking"], timeout: 30_000, desc: "thinking panel live" }).catch(() => {});
+      await s.linger(1800);
+      await s.still("02-thinking-tools-live");
+    }},
+    { t: "fn", desc: "files dock with diff", fn: async (s) => {
+      await s.wait({ include: ["edit ", "write "], mode: "any", timeout: 300_000, desc: "edit under way" });
+      await s.linger(1500);
+      await s.still("03-files-dock");
+    }},
+    { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 420_000, "split-view turn complete") },
+    { t: "linger", ms: 2000 },
+    { t: "still", name: "04-response-transcript" },
+  ],
+};
+
 module.exports = {
   "s1-hero-bugfix": s1,
   "s2-plan-mode": s2,
@@ -552,4 +934,14 @@ module.exports = {
   "s10-memory-learn": s10,
   "s11-browser-verify": s11,
   "s12-dream-dashboard": s12,
+  "s13-websearch": s13,
+  "s14-mcp": s14,
+  "s15-lsp": s15,
+  "s16-parity-round": s16,
+  "s17-harness": s17,
+  "s18-router": s18,
+  "s19-routines": s19,
+  "s20-skills": s20,
+  "s21-goals": s21,
+  "s22-split-view": s22,
 };

@@ -92,7 +92,7 @@ describe("landing DexSection", () => {
       expect(el.getAttribute("aria-selected")).toBe(i === DEFAULT_INDEX ? "true" : "false");
       expect(el.getAttribute("tabIndex")).toBe(i === DEFAULT_INDEX ? "0" : "-1");
     }
-    expect(DEX[DEFAULT_INDEX].name).toBe("Task");
+    expect(DEX[DEFAULT_INDEX].name).toBe("Websearch"); // first filmed entry since the 2026-10-24 capture round
     // The spine's numbers are derived from position, so the literals below
     // pin the DERIVATION (forms first, then behaviors, three-digit padded),
     // not hand-typed values that could drift from the data.
@@ -147,7 +147,7 @@ describe("landing DexSection", () => {
     fireEvent.keyDown(listbox, { key: "ArrowDown" });
     expect(options()[DEFAULT_INDEX + 1].getAttribute("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(options()[DEFAULT_INDEX + 1]);
-    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Lsp");
+    expect(shownPane(container)[0].getAttribute("aria-label")).toContain("Mcp");
     // Home returns to the top; End lands on the last entry, a behavior.
     fireEvent.keyDown(listbox, { key: "Home" });
     expect(options()[0].getAttribute("aria-selected")).toBe("true");
@@ -334,11 +334,11 @@ describe("landing DexSection", () => {
     }
   });
 
-  test("the media is the harness's audited set — twelve movies, three stills, nothing invented", () => {
+  test("the media is the harness's audited set — twenty-two movies, two stills, nothing invented", () => {
     const { container } = render(<DexSection />);
     const videos = Array.from(container.querySelectorAll("video"));
     expect(videos.length).toBe(TALLY.videos);
-    expect(videos.length).toBe(12);
+    expect(videos.length).toBe(22);
     for (const v of videos) {
       // Never an autoplay attribute — playback is an effect decision, so a
       // reduced-motion visitor is never handed one in the markup.
@@ -372,16 +372,22 @@ describe("landing DexSection", () => {
       expect(v.getAttribute("data-poster")?.length).toBeGreaterThan(0);
     }
     const captures = bySrc(container, "/landing/tui/");
+    // 2026-10-24: the split-view lane is FILMED now, so the only still
+    // captures left are the browser-subagent lane's two fleet/live stills
+    // (the 44 <source> tags — 22 movies × webm+mp4 — are asserted in the
+    // videos block above).
     expect(captures.length).toBe(TALLY.stills);
-    expect(captures.length).toBe(3);
-    expect(captures[0].getAttribute("loading")).toBe("lazy");
-    expect(captures[0].getAttribute("alt")?.length).toBeGreaterThan(0);
+    expect(captures.length).toBe(2);
+    for (const c of captures) {
+      expect(c.getAttribute("loading")).toBe("lazy");
+      expect(c.getAttribute("alt")?.length).toBeGreaterThan(0);
+    }
     // No capture was fabricated: every unfilmed entry says so on its stage.
     const stubs = Array.from(container.querySelectorAll("p")).filter(
       (n) => n.textContent === "no capture yet",
     );
     expect(stubs.length).toBe(TALLY.pending);
-    expect(stubs.length).toBe(10);
+    expect(stubs.length).toBe(1);
     // …and the band states who makes them, once, not once per empty stage.
     expect(container.textContent).toContain("scripts/tui-capture/");
     expect(
@@ -413,15 +419,19 @@ describe("landing DexSection", () => {
     const live = Array.from(container.querySelectorAll("[aria-live]"));
     expect(live.length).toBe(2);
     const readout = live[live.length - 1];
-    expect(readout.textContent).toContain("№ 003");
-    expect(readout.textContent).toContain("Task");
-    expect(readout.textContent).toContain("reel 1/2");
+    // 2026-10-24: the derived default is the FIRST FILMED entry — with the
+    // pending-plates round that is № 001 Websearch (it used to be № 003
+    // Task, back when № 001-002 carried no capture at all).
+    expect(readout.textContent).toContain("№ 001");
+    expect(readout.textContent).toContain("Websearch");
+    // Single-reel entries print no reel counter — the chip is for flipping.
+    expect(readout.textContent).not.toContain("reel");
     // The chrome starts unpaused; the button is the reader's brake.
     const pause = container.querySelector('button[aria-label^="Pause the "]') as HTMLElement;
     expect(pause).toBeTruthy();
-    expect(pause.getAttribute("aria-label")).toBe("Pause the Task capture");
+    expect(pause.getAttribute("aria-label")).toBe("Pause the Websearch capture");
     fireEvent.click(pause);
-    expect(pause.getAttribute("aria-label")).toBe("Play the Task capture");
+    expect(pause.getAttribute("aria-label")).toBe("Play the Websearch capture");
     expect(readout.textContent).toContain("paused");
   });
 
@@ -438,7 +448,7 @@ describe("landing DexSection", () => {
     // Walk to № 012 "The fix loop" and read its stage button both ways.
     // All twenty-two panes stay mounted (the inactive ones `hidden`), so the
     // button must be read from the SHOWN pane — the first match in the DOM
-    // belongs to № 003.
+    // belongs to № 001 Websearch.
     const opt = optionsIn(container).find((o) => o.textContent?.includes("012"));
     fireEvent.click(opt!);
     const pane = shownPane(container)[0];
@@ -454,6 +464,9 @@ describe("landing DexSection", () => {
 
   test("an entry with two reels flips the stage without moving the cursor", () => {
     const { container } = render(<DexSection />);
+    // Select № 003 Task first — the derived default is № 001 Websearch since
+    // the 2026-10-24 capture round, and Task is the only two-reel entry.
+    fireEvent.click(optionsIn(container).find((o) => o.textContent?.includes("003"))!);
     const pane = shownPane(container)[0];
     const boxes = Array.from(pane.querySelectorAll('[hidden]')).filter((el) =>
       el.querySelector("video"),
@@ -480,8 +493,11 @@ describe("landing DexSection", () => {
     expect(bySrc(pane, "/landing/creatures/").length).toBe(0);
     expect(pane.querySelectorAll("blockquote").length).toBe(0);
     expect(pane.textContent).not.toContain("weakness");
-    // Its portrait is the capture itself.
-    expect(bySrc(pane, "/landing/tui/").length).toBe(1);
+    // Its portrait is the capture itself — the FILMED split-view movie
+    // (2026-10-24: stills-only became a reel when the lane was captured
+    // through the ttyd pipeline).
+    expect(pane.querySelectorAll("video").length).toBe(1);
+    expect(pane.querySelectorAll("video source").length).toBe(2);
     expect(pane.textContent).toContain("pi-split-view 1.1.0");
   });
 

@@ -86,6 +86,13 @@ benchmarks/edit-bench/results/rerun-2026-10-17/*/events/
 .unown/receipts/
 .unown/checkpoints/
 .unown/reviews/
+# Per-machine preference + cache state a capture session leaves behind (the
+# output style a lane set for its story, the repomap tag cache) and the
+# engine's pre-promotion staging ground — a staged skill ships only by a
+# human `mv` into .unown/skills/, never by a commit.
+.unown/output-style.json
+.unown/repomap-cache.json
+.unown/skills-staged/
 # (interactive-fleet runtime state: control inboxes, ask channels, session
 # transcripts + the resume registry — per-machine, per-session, never shared)
 .unown/fleet/

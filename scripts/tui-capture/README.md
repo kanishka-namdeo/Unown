@@ -67,7 +67,22 @@ a pane dump at every still — the audit's ground truth), `<scenario>.mp4`,
 | s10-memory-learn | teach house rules + a real task → /note the lesson → /quit → AutoDream consolidates → a fresh session boots with the learned memory (footer chip v0 → v1) → /learning stack → the lesson applied unprompted | `default` (pristine `.unown` scaffold — no provenance sidecar) |
 | s11-browser-verify | browser tool visitor check: open the landing page on :3000 → a11y snapshot → find the curl install command → click the GitHub link → screenshot → report | — (repo; landing dev server already up on :3000) |
 | s12-dream-dashboard | `unown dashboard dreams`: the real dream rows → dream detail (canary/guard note, output, consumed notes) → Memory screen (tiers, versions, injection budget) | — (repo; richest after s10 — its dream is the newest row) |
+| s13-websearch | the keyless chain live: web_search → the answer with its cited source (stable-forever question so the lane never rots) | `default` |
+| s14-mcp | a real MCP stdio server joins the session — the harness's `fixtures/mini-mcp-dice.mjs` (JSON-RPC initialize/tools/list/tools/call), its dice/roll tool called live | `s14-mcp` (adds the dice server at user scope via `unown mcp add`) |
+| s15-lsp | /repomap → a cross-tree rename while typescript-language-server diagnostics ride every edit's tool result (needs `typescript-language-server` on PATH) | `default` |
+| s16-parity-round | the 2026 consensus round: /output-style listing + set → /btw overlay (background-lane call — allow for dream queue drain) → /insights → the auto-title via /name | — (repo) |
+| s17-harness | `unown dashboard lab` against real cycles (engine-prep: `POST /api/tasks/<id>/run` first) | — (repo; engine up) |
+| s18-router | `unown dashboard router`: the real job table | — (repo; engine up) |
+| s19-routines | `unown dashboard routines` with a real CLI-created routine + its history | — (repo; engine up; `unown routines create` first) |
+| s20-skills | `unown dashboard skills` after the loop shipped a skill (engine-prep: mint + run until a ship lands) | — (repo; engine up) |
+| s21-goals | a real /goal run: objective → todos → [GOAL:COMPLETE] with both evidence kinds → /goal status | `default` |
+| s22-split-view | /split mounts the band + dock, a live turn fills it (the filmed cut of the old PTY stills lane) | `default` |
 
-Scenarios share one port block (7610–7621); run one at a time against the same
-fixture. `driver.js` closes gracefully on SIGTERM (time-box long scenarios with
+Scenarios share one port block (7610–7621 for s1–s12, 7622–7631 for
+s13–s22); run one at a time against the same fixture. The s17–s20 dashboard
+lanes read the engine instead of driving turns and can run beside a session
+lane. `driver.js` closes gracefully on SIGTERM (time-box long scenarios with
 `timeout 575` and re-run on failure — never edit a failed frame).
+`run_lane.sh <spec> [prep]` runs one lane end to end (prep → capture →
+assemble → all three audit gates + an md5-distinctness check);
+`pipeline-a.sh` / `pipeline-b.sh` / `pipeline-c.sh` chain lanes sequentially.

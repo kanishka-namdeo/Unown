@@ -132,4 +132,32 @@ describe("the landing's captured media, on disk and byte-true", () => {
 
     expect(broken, `videos that load but would not play`).toEqual([]);
   });
+
+  test("no two entries ship the same poster — a duplicate face reads as a broken lane", () => {
+    // The 2026-10-23 set shipped three lanes sharing one byte-identical boot
+    // frame as their posters (review ≡ plan-mode ≡ hero-bugfix, and fleet ≡
+    // subagent-explore): clicking through the spine showed the same image
+    // under different names, which is exactly what "the videos don't work"
+    // looked like to a visitor. Two entries must never wear the same face.
+    const posters = new Map<string, string>(); // md5 → first poster path
+    const dupes: string[] = [];
+    const { container } = render(<DexSection />);
+
+    container.querySelectorAll("video[data-poster]").forEach((el) => {
+      const poster = el.getAttribute("data-poster")!;
+      const file = join(PUBLIC, poster);
+      if (!existsSync(file)) return; // the existence test reports this
+      const md5 = new Bun.CryptoHasher("md5");
+      md5.update(readFileSync(file));
+      const hash = md5.digest("hex");
+      const first = posters.get(hash);
+      if (first && first !== poster) {
+        dupes.push(`${poster} is byte-identical to ${first}`);
+      } else {
+        posters.set(hash, poster);
+      }
+    });
+
+    expect(dupes, `posters that duplicate another entry's face`).toEqual([]);
+  });
 });

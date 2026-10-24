@@ -89,7 +89,12 @@ class TmuxSession {
     await sh(TMUX_BIN, ["send-keys", "-t", this.name, "-l", s], { env: this.env() });
   }
   async sendKey(k) {
-    await sh(TMUX_BIN, ["send-keys", "-t", this.name, k], { env: this.env() });
+    // tmux does not know "Esc" — an unrecognized key name is typed as a
+    // LITERAL STRING (verified: `send-keys ... Esc` prints "Esc" into the
+    // pane), which a modal overlay silently eats. Alias the common
+    // shorthand so a spec's `Esc` is a real Escape keypress.
+    const KEY_ALIASES = { Esc: "Escape", Del: "Delete", Ins: "Insert", Pgup: "PageUp", Pgdn: "PageDown" };
+    await sh(TMUX_BIN, ["send-keys", "-t", this.name, KEY_ALIASES[k] ?? k], { env: this.env() });
   }
 }
 

@@ -242,7 +242,10 @@ const RAW: readonly DexEntryInput[] = [
       ["webcache.ts", SRC("webcache.ts")],
       ["bench receipts", DOC("benchmarks/webcache/RESULTS.md")],
     ],
-    captures: PENDING,
+    // Captured 2026-10-24 (the pending-plates round): a real session asking a
+    // stable-forever question through the keyless chain — web_search visibly
+    // cascading providers, the answer arriving with its cited source.
+    captures: [REEL("websearch", "01-session-with-question.png")],
   },
   {
     kind: "form",
@@ -261,7 +264,11 @@ const RAW: readonly DexEntryInput[] = [
       ["mcp.ts", SRC("mcp.ts")],
       ["docs/usage.md", DOC("docs/usage.md")],
     ],
-    captures: PENDING,
+    // Captured 2026-10-24: a real MCP stdio server (the harness's own
+    // fixtures/mini-mcp-dice.mjs — actual JSON-RPC initialize/tools/list/
+    // tools/call) configured via `unown mcp add`, its tool arriving in the
+    // session as dice/roll and called live.
+    captures: [REEL("mcp", "01-session-with-ask.png")],
   },
   {
     kind: "form",
@@ -303,7 +310,10 @@ const RAW: readonly DexEntryInput[] = [
     ],
     habitat: "joins every session",
     receipts: [["lsp.ts", SRC("lsp.ts")]],
-    captures: PENDING,
+    // Captured 2026-10-24: /repomap's graph-ranked map, then a cross-tree
+    // rename while typescript-language-server's diagnostics ride every
+    // edit's tool result (the PostToolUse feedback loop).
+    captures: [REEL("lsp", "01-repomap.png")],
   },
   {
     kind: "form",
@@ -341,7 +351,11 @@ const RAW: readonly DexEntryInput[] = [
     ],
     habitat: "runs in the engine, on the clock",
     receipts: [["harness.ts", SRC("harness.ts")]],
-    captures: PENDING,
+    // Captured 2026-10-24: the Learning Lab screen against the live engine
+    // after a real cycle ran through POST /api/tasks/<id>/run — the
+    // baseline run, the verify step and the mined-rule decision the screen
+    // actually shows.
+    captures: [REEL("harness", "01-learning-lab.png")],
   },
   {
     kind: "form",
@@ -358,7 +372,9 @@ const RAW: readonly DexEntryInput[] = [
     ],
     habitat: "runs in the engine, on the clock",
     receipts: [["router.ts", SRC("router.ts")]],
-    captures: PENDING,
+    // Captured 2026-10-24: the Router screen's real job table against the
+    // live engine — dreams, harness, automations, one busy-mutex.
+    captures: [REEL("router", "01-router-jobs.png")],
   },
   {
     kind: "form",
@@ -494,7 +510,12 @@ const RAW: readonly DexEntryInput[] = [
       "Read-only until approved: /plan drafts the numbered plan, the approval overlay hands execution over, and the plan runs to completion.",
     ],
     receipts: [["docs/usage.md", DOC("docs/usage.md")]],
-    captures: [REEL("plan-mode", "01-session.png")],
+    // The poster is the lane's SECOND audited still — the numbered plan
+    // itself, the story's face. The first still is the shared boot frame,
+    // byte-identical to the hero lane's (same fresh-session pane, same
+    // fixture): as a poster it read as a broken duplicate, and two entries
+    // must never ship the same face.
+    captures: [REEL("plan-mode", "02-plan-mode-on.png")],
   },
   {
     kind: "behavior",
@@ -554,15 +575,10 @@ const RAW: readonly DexEntryInput[] = [
     name: "Split view",
     summary: "the display mode's own band, dock and transcript",
     practice: [
-      "A Thinking panel and a Tool Usage band across the top, a Files dock with its edit-diff subpanel on the right, a response-only transcript. A built-in port of pi-split-view 1.1.0, shipped with every session. Stills only — this lane ships no movie.",
+      "A Thinking panel and a Tool Usage band across the top, a Files dock with its edit-diff subpanel on the right, a response-only transcript. A built-in port of pi-split-view 1.1.0, shipped with every session. Filmed 2026-10-24: a live turn filling the band while the dock carries the diff.",
     ],
     receipts: [["docs/split-view.md", DOC("docs/split-view.md")]],
-    captures: [
-      STILL(
-        "/landing/tui/split-view/stills/01-band-thinking-tools.png",
-        "unown split view — the top band with a Thinking panel beside a Tool Usage panel, the transcript below",
-      ),
-    ],
+    captures: [REEL("split-view", "01-split-band.png")],
   },
   {
     kind: "behavior",
@@ -574,7 +590,10 @@ const RAW: readonly DexEntryInput[] = [
       "A durable objective the session completes against cited evidence — the usage docs' goals section carries the rules.",
     ],
     receipts: [["docs/usage.md", DOC("docs/usage.md")]],
-    captures: PENDING,
+    // Captured 2026-10-24: a real /goal run — the objective injection, the
+    // todo-tracked work, the [GOAL:COMPLETE] gate passing on both kinds of
+    // cited evidence, and the /goal status showing the record.
+    captures: [REEL("goals", "01-goal-set.png")],
   },
   {
     kind: "behavior",
@@ -586,7 +605,10 @@ const RAW: readonly DexEntryInput[] = [
       "Recurring runs on real recurrence semantics — docs/routines.md is the decision record.",
     ],
     receipts: [["docs/routines.md", DOC("docs/routines.md")]],
-    captures: PENDING,
+    // Captured 2026-10-24: the full routines manager against the live
+    // engine, with a real routine created through the CLI (a daily 09:00
+    // morning brief, read-only) and its history row.
+    captures: [REEL("routines", "01-routines-manager.png")],
   },
   {
     kind: "behavior",
@@ -598,7 +620,10 @@ const RAW: readonly DexEntryInput[] = [
       "Instruction files the session loads on demand — docs/skills.md has the surface.",
     ],
     receipts: [["docs/skills.md", DOC("docs/skills.md")]],
-    captures: PENDING,
+    // Captured 2026-10-24: the Skills screen against the live engine after
+    // the harness loop actually shipped a skill — the row the loop minted,
+    // not a mock.
+    captures: [REEL("skills", "01-skills-shipped.png")],
   },
   {
     kind: "behavior",
@@ -620,7 +645,10 @@ const RAW: readonly DexEntryInput[] = [
       ["import-convert.ts", SRC("import-convert.ts")],
       ["docs/usage.md", DOC("docs/usage.md")],
     ],
-    captures: PENDING,
+    // Captured 2026-10-24: one live session walking the consensus round —
+    // the style listing and set, the /btw overlay answering from context,
+    // the /insights report, and the auto-titled session proven by /name.
+    captures: [REEL("parity-round", "01-output-styles.png")],
   },
 ];
 

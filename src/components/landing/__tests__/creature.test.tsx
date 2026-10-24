@@ -127,11 +127,13 @@ describe("landing Creature", () => {
       expect(el.className).toContain("h-48");
     }
     // All twenty-two entries mount a pane; the visible one is the band's derived
-    // default — the first entry with footage — and its article is named.
+    // default — the first entry with footage (№ 001 Websearch since the
+    // 2026-10-24 capture round; it used to be № 003 Task when the first two
+    // forms were still pending plates) — and its article is named.
     const articles = container.querySelectorAll("article[aria-label]");
     expect(articles.length).toBe(DEX.length);
-    expect(articles[2].getAttribute("aria-label")).toContain("Task");
-    expect(articles[2].hasAttribute("hidden")).toBe(false);
+    expect(articles[0].getAttribute("aria-label")).toContain("Websearch");
+    expect(articles[0].hasAttribute("hidden")).toBe(false);
   });
 
   test("no creature renders outside the dex — the hero party strip and the bento badges retired", () => {

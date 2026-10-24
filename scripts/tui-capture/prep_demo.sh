@@ -25,6 +25,15 @@ case "${1:-default}" in
     git reset -q --hard seed
     sed -i 's/page \* perPage + 1/page * perPage/' src/pagination.ts
     ;;
+  s14-mcp)
+    # the Mcp lane's dice server at USER scope (trusted by definition — the
+    # user's own config dir; the landing copy's .unown/mcp.json project flow
+    # is the same plumbing one file away). Idempotent: a stale entry is
+    # replaced so the fixture state never drifts between runs.
+    unown mcp remove dice >/dev/null 2>&1 || true
+    unown mcp add dice bun "${UNOWN_ROOT:-/home/z/my-project/Unown}/scripts/tui-capture/fixtures/mini-mcp-dice.mjs" >/dev/null
+    unown mcp list
+    ;;
 esac
 # Restore .unown if it existed (part of the boot screen a real user sees);
 # otherwise leave it absent — the TUI scaffolds a fresh one on first boot,
