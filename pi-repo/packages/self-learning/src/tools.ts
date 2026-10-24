@@ -2877,6 +2877,78 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			},
 		});
 
+		// /context — the context-window visualization every competitor ships
+		// (Claude Code /context grid, aider /tokens, Gemini /stats, Codex
+		// /usage): where the window goes — the utilization bar, the measured
+		// memory stack, the conversation estimate, the system+tools residual,
+		// session rollups and the compaction advice. Pure core in context-viz.ts.
+		pi.registerCommand("context", {
+			description: "Context window utilization: the bar, where it goes (memory / conversation / system), compaction advice",
+			handler: async (_args: string | undefined, ctx: any) => {
+				const { computeContextReport, renderContextReport } = await import("./context-viz.ts");
+				const { terminalMemoryForAgent } = await import("./term.ts");
+				// Actual accounting first: ctx.getContextUsage() is the host's own
+				// number ({ tokens, contextWindow, percent } — null tokens before
+				// the first response; the same seam get_context_remaining uses).
+				let usedTokens: number | null = null;
+				let contextWindow: number | null = null;
+				try {
+					const usage = typeof ctx?.getContextUsage === "function" ? ctx.getContextUsage() : undefined;
+					if (usage) {
+						if (typeof usage.tokens === "number") usedTokens = usage.tokens;
+						if (typeof usage.contextWindow === "number" && usage.contextWindow > 0) contextWindow = usage.contextWindow;
+					}
+				} catch {
+					/* best-effort — estimates below carry the report */
+				}
+				const entries = typeof ctx?.sessionManager?.getEntries === "function" ? ctx.sessionManager.getEntries() : [];
+				// Model fallbacks: ctx.model (id + provider) and the model-specs
+				// table when the host hasn't reported the window yet.
+				let model: string | null = null;
+				let provider: string | null = null;
+				try {
+					const m = ctx?.model;
+					if (m) {
+						model = typeof m.id === "string" ? m.id : typeof m.modelId === "string" ? m.modelId : null;
+						provider = typeof m.provider === "string" ? m.provider : null;
+					}
+				} catch {
+					/* optional surface */
+				}
+				if (!contextWindow && model) {
+					try {
+						const { modelSpec } = await import("./model-specs.ts");
+						const spec = modelSpec(model);
+						if (spec?.contextWindow) contextWindow = spec.contextWindow;
+					} catch {
+						/* spec table is best-effort */
+					}
+				}
+				// Tool count: the registered surface is readable from the runtime's
+				// tools listing when exposed; otherwise omitted (rendered without it).
+				let toolCount: number | null = null;
+				try {
+					const tools = typeof ctx?.getTools === "function" ? ctx.getTools() : undefined;
+					if (Array.isArray(tools)) toolCount = tools.length;
+				} catch {
+					/* optional surface */
+				}
+				const memoryStack = terminalMemoryForAgent(opts.cwd);
+				const report = computeContextReport({
+					model,
+					provider,
+					contextWindow,
+					usedTokens,
+					messageEstimateTokens: null,
+					memoryStack,
+					entries,
+					toolCount,
+					sessionUsage: sessionUsageSummary(entries),
+				});
+				ctx.ui.notify(renderContextReport(report), "info");
+			},
+		});
+
 		// /btw — the 2026 consensus side-question lane (Claude Code /btw,
 		// Antigravity /btw, OpenCode /btw): one answer about the session,
 		// rendered in a dismissible overlay, never entering the transcript,
