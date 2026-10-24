@@ -11,8 +11,13 @@ const RELEASES_URL = `${GITHUB_URL}/releases`;
 /** Which buckets get their titles printed. The rest are counted, not listed. */
 const LISTED = new Set(["Added", "Behavior"]);
 /** Titles a stop prints before the rest are counted and linked out. Exported so
- *  the test asserts the overflow arithmetic instead of hardcoding a number. */
-export const MAX_LISTED = 5;
+ *  the test asserts the overflow arithmetic instead of hardcoding a number.
+ *  2026-10-24: 5 -> 3 — the rail's own rule is "the fortieth release costs the
+ *  page nothing", but every listed title also costs scroll-budget words, and
+ *  the eight-stop rail alone had grown to 585 of them (the word gate does not
+ *  care that the overflow is sideways). Three titles still carry a stop's
+ *  flavor; "+N more" links the rest, counts stay printed, nothing is deleted. */
+export const MAX_LISTED = 3;
 
 const NOUNS: Record<string, [string, string]> = {
   Added: ["addition", "additions"],

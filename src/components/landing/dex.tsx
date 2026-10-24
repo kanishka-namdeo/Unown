@@ -346,8 +346,8 @@ function CaptureStage({
                 <img
                   src={c.src}
                   alt={c.alt}
-                  width={2214}
-                  height={1369}
+                  width={1792}
+                  height={1042}
                   loading="lazy"
                   className="h-full w-full object-contain"
                 />

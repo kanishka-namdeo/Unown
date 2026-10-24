@@ -7,7 +7,7 @@ import { ENGINE_JOB_COUNTS } from "./engine-data";
  *
  * Scalability is the file's first contract (2026-10-24 round,
  * docs/landing-research.md "the category screens"): the project keeps adding
- * capabilities, so the design that held at twenty-one entries has to hold at
+ * capabilities, so the design that held at twenty-two entries has to hold at
  * a hundred without the band growing a hundred-row list. Three rules do it:
  *
  *  - **the number is derived, never typed.** No entry carries a hand-written
@@ -420,7 +420,7 @@ const RAW: readonly DexEntryInput[] = [
     ],
     // Parity is a checklist, not a behavior, so nothing is filmed under this
     // number. The wiki and the diagnostics clips are catalogued as their own
-    // entries (№ 015, № 016) rather than filed here as a catch-all.
+    // entries (№ 016, № 017) rather than filed here as a catch-all.
     captures: PENDING,
   },
 
@@ -457,7 +457,7 @@ const RAW: readonly DexEntryInput[] = [
   },
 
   /* ---------------------------------------------------------------- */
-  /* № 012-021 — the behaviors: filmed, not drawn                       */
+  /* № 012-022 — the behaviors: filmed, not drawn                       */
   /* ---------------------------------------------------------------- */
   {
     kind: "behavior",

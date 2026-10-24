@@ -3,5 +3,16 @@
   "framework": "nextjs",
   "buildCommand": "bun run build",
   "installCommand": "bun install",
-  "devCommand": "bun run dev"
+  "devCommand": "bun run dev",
+  "headers": [
+    {
+      "source": "/landing/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, s-maxage=31536000"
+        }
+      ]
+    }
+  ]
 }
