@@ -34,7 +34,16 @@ wall-of-green pixel measurements — live in
 | memory-learn | two sessions in one pane: teach house rules + a real task → /note the lesson → /quit → AutoDream consolidates → a fresh session boots with the learned memory (footer chip v0 → vN) → /memory search recalls it scored → the closing task applies the lesson unprompted | 6 stills + mp4/webm |
 | browser-verify | the visitor check: browser tool opens the landing page on :3000 → a11y snapshot → the exact curl install command → click the GitHub link → screenshot → report | 3 stills + mp4/webm |
 | dream-dashboard | `unown dashboard dreams`: the real dream rows → dream detail (canary/guard note, rendered output) → the Memory screen (four tiers, injection budget) | 3 stills + mp4/webm |
-| split-view | the split-view display mode: the thinking + tools band, the files dock with its edit-diff subpanel, the geometry commands, live reasoning, an agent turn | 5 stills (see the note below) |
+| websearch | the keyless chain live: web_search cascading providers in a real session → the answer with its cited source (2026-10-24) | 3 stills + mp4/webm |
+| mcp | a real MCP stdio server (the harness's own `fixtures/mini-mcp-dice.mjs` — actual JSON-RPC initialize/tools/list/tools/call) joins the session via `unown mcp add`; its dice/roll tool called live (2026-10-24) | 3 stills + mp4/webm |
+| lsp | /repomap's graph-ranked map → a cross-tree rename while typescript-language-server diagnostics ride every edit's tool result (2026-10-24) | 3 stills + mp4/webm |
+| parity-round | the 2026 consensus round in one live session: /output-style listing + set → the /btw side-question overlay → /insights → the auto-titled session proven by /name (2026-10-24; the ttyd-lane movie of the story the PTY stills told) | 5 stills + mp4/webm |
+| harness | `unown dashboard lab` against the live engine after a real cycle ran through the engine API (`POST /api/tasks/<id>/run`) — the baseline, the verify, the mined-rule decision (2026-10-24) | 2 stills + mp4/webm |
+| router | `unown dashboard router`: the engine's real job table — dreams, harness, automations, one busy-mutex (2026-10-24) | 2 stills + mp4/webm |
+| routines | `unown dashboard routines` with a real routine created through the CLI (a daily 09:00 morning brief, read-only) and its history row (2026-10-24) | 2 stills + mp4/webm |
+| skills | `unown dashboard skills` after the harness loop actually shipped a skill — the loop's own minted row, not a mock (2026-10-24) | 2 stills + mp4/webm |
+| goals | a real /goal run: the objective injection → todo-tracked work → the [GOAL:COMPLETE] gate passing on both kinds of cited evidence → the /goal status record (2026-10-24) | 4 stills + mp4/webm |
+| split-view | the split-view display mode FILMED: /split mounts the band + dock, a live turn fills the Thinking and Tool Usage panels while the files dock carries the edit diff, the response-only transcript closes it (2026-10-24; supersedes the PTY stills-only cut — see the note below) | 4 stills + mp4/webm |
 
 The memory-learn / browser-verify / dream-dashboard lanes were captured
 2026-10-23 against the live stack (bridge + engine, agnes-3.0-flash through
@@ -46,18 +55,31 @@ path the dashboard's "dream now" key hits (`POST /api/dreams/run`), and its
 closing still receipts the lesson applied unprompted ("bun test run twice
 (per this repo's flake-guard convention) — 6/6 passing both times").
 
+The 2026-10-24 round — websearch, mcp, lsp, parity-round, harness, router,
+ routines, skills, goals and the filmed split-view — was captured against
+the same live stack (bridge + engine, agnes-3.0-flash through the Agnes AI
+upstream) with one addition: the mcp lane's dice server is the harness's own
+dependency-free MCP stdio fixture (`scripts/tui-capture/fixtures/
+mini-mcp-dice.mjs`, real JSON-RPC — initialize, tools/list, tools/call), and
+the harness/router/skills lanes read real engine state produced by actual
+harness cycles, a CLI-created routine, and a skill the loop genuinely mined
+and shipped. The s1/s5/s6 lanes were also re-captured this round: their
+posters had shipped byte-identical to other lanes' boot frames (the pane
+never showed what the poster's name claimed), and the closed lanes now
+capture distinct, pane-true beats — the review poster shows the actual
+uncommitted diff, the subagent poster the typed exploration ask, and the
+hero lane closes on the user's flake-guard re-run of the suite.
+
 Stills are full-frame (128x36 grid, ~2214px wide, everything the user sees:
 header/transcript, input box, cwd + model status). Videos are paced (8fps,
 spinner-idle compressed, ~6-22s each). Regenerate or extend via the harness —
 this directory is the curatation of audited output, not the source of truth.
 
-The split-view scenario is the exception to the harness paragraph above, and
-this note is the honest provenance: its stills were captured with a PTY driver
-and a terminal-emulator render of real unown sessions at 128x36 (2026-10-20,
-same live stack), not the ttyd pipeline in `scripts/tui-capture/` — and it
-ships stills only (no videos), so the pane-truth + pixel + VLM audit has not
-been applied to it. Consumed by the landing page's capability dex
-(`src/components/landing/dex.tsx` + `dex-data.ts`) as the screen of its
-№ 018 "Split view" entry — the movie entries' posters come from each
-scenario's own audited stills above. (Until 2026-10-23 the consumer was the
-standalone feature-carousel band; the captures merged into the dex with it.)
+The split-view lane's provenance, updated 2026-10-24: its first cut
+(2026-10-20) was captured with a PTY driver and a terminal-emulator render,
+ships stills only, and never passed the pane-truth + pixel + VLM audit. The
+shipped cut is a full ttyd-pipeline capture — audited like every other lane
+here — filmed through the same driver as the rest of the catalog. Consumed
+by the landing page's capability dex (`src/components/landing/dex.tsx` +
+`dex-data.ts`) as the reel of its № 018 "Split view" entry — every movie
+entry's poster comes from its own lane's audited stills above.
