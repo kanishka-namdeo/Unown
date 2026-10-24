@@ -195,6 +195,66 @@ names in the config produce a warning, never a crash.
 | `acceptEdits` | `ask` rules on edit/write with in-project paths are auto-approved (the path jail still confines writes) |
 | `bypassPermissions` | `ask` prompts are skipped (treated as allow) — `deny` rules and the hard-coded guardrails STILL apply; the mode refuses to load under `UNOWN_STRICT_HOOKS=1` (falls back to `default` with a loud warning) |
 
+### Switching modes mid-session (2026-10-24, the trust round)
+
+The mode comes from the config files (above), but it no longer takes an
+exit-edit-restart to change: **`/permissions mode <default|acceptEdits|bypassPermissions>`**
+switches the effective mode for the CURRENT session — the config files are
+never written, the override dies with the session (Claude Code's Shift+Tab
+lane, Gemini CLI's `--approval-mode`, goose's `/mode`, Crush's yolo toggle —
+every competitor ships this; the 2026-10-24 research round closed it).
+
+- `/permissions mode` (bare) prints the current mode, where it comes from
+  (config files or session override) and the usage line.
+- `/permissions mode reset` drops the override and returns to whatever the
+  config files declare.
+- `--permission-mode <m>` at launch applies the same override from the first
+  tool call onward (print mode and TUI both; a usage error exits 2).
+- `UNOWN_STRICT_HOOKS=1` refuses the `bypassPermissions` override exactly
+  like a config declaration — strict sessions never skip confirmations.
+- A session override **survives a config reload** (`/permissions trust` and
+  friends): the user's in-flight choice stands until they reset it.
+- The layer still only ADDS restrictions: `deny` rules and the hard-coded
+  guardrails (bash deny-list, write jail, instruction-set gate) apply in
+  every mode, no exception.
+- `acceptEdits` auto-approves edit/write asks for **in-project** paths
+  (project-relative). Additional working directories (below) still ask once
+  — use "Always allow (this session)" there.
+
+## Additional working directories (`--add-dir` / `/add-dir`, 2026-10-24)
+
+The write jail is the project dir + the system temp dir by default. For
+cross-repo work (a backend session that also touches a sibling frontend, a
+shared config repo) grant more roots — session-scoped, user-initiated,
+never persisted by the grant itself:
+
+- **`/add-dir <path>`** in-session: resolves the path (relative paths are
+  cwd-relative), requires an existing directory, and extends the WRITE jail
+  — edit/write tools and bash redirect targets may land there.
+- **`--add-dir <path>`** (repeatable) at launch: the same grant from the
+  first tool call onward.
+- **`/add-dir`** (bare) lists the active roots; **`/add-dir clear** revokes
+  them all. `/permissions` status shows them under "additional dirs".
+
+What a root grants, precisely:
+
+- write tools (`edit`/`write`) may target files under the root (the jail
+  check consults the root after project + tmp);
+- bash redirect targets (`> file`) under the root are exempt from the
+  system-tree denial (the `/opt/mydata` story);
+- roots are **realpath-resolved at add time** (a symlinked root compares
+  exactly after the jail's own realpath resolution — the temp-root idiom);
+  degenerate roots (`/`, `C:\`) are never accepted;
+- the **instruction-set write gate stays FINAL**: an added root's AGENTS.md,
+  `CLAUDE.md`, `.unown/hooks.json`, `.claude/settings.json` and friends are
+  still not writable in-session — the SA-B2 deny set applies relative to
+  every added root exactly as it does to the project (propose those changes
+  via a PR);
+- devices (`/dev/…`, `\\.\…`) and `.ssh` trust dirs are never writable, root
+  or no root;
+- a root only ever extends the jail — it cannot unlock a `deny` rule or any
+  hard-coded guardrail.
+
 ## The `ask` effect without a UI
 
 pi's tool-call seam supports an interactive confirmation when a UI exists
@@ -225,8 +285,12 @@ with the learn knob on it is also persisted.
 
 ## Commands and diagnostics
 
-- `/permissions` (in-session) — mode, trust state, and the full rule table
+- `/permissions` (in-session) — mode (and whether it is a session override),
+  additional dirs, trust state, and the full rule table
   (tool / effect / pattern / which file it came from)
+- `/permissions mode <m>` (in-session) — switch the session's mode (see Modes)
+- `/add-dir <path>` (in-session) — grant an additional working directory
+  (see the add-dir section)
 - `unown doctor` — a permissions section: config files found / valid /
   trusted, rule counts, mode, learn state
 

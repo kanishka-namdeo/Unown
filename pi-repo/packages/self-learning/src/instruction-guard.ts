@@ -25,7 +25,8 @@
  * sidestep the write-tool gate.
  *
  * Purity contract (repo rule for policy modules, bash-policy.ts's idiom):
- * node:fs + node:path only, and only READS (realpathSync for symlink
+ * node:fs + node:path + ./write-roots.ts (the session add-dir registry —
+ * node-only too, no cycle) only, and only READS (realpathSync for symlink
  * resolution — the realpathAncestor idiom). No store, no bus, no env, no
  * writes; fully unit-testable. Bash-command SHAPE rules stay in
  * bash-policy.ts (the deny-list module); this module owns PATH shapes only.
@@ -66,6 +67,7 @@
  */
 import { realpathSync } from "node:fs";
 import { basename, dirname, join, resolve as resolvePath, win32 } from "node:path";
+import { sessionWriteRoots } from "./write-roots.ts";
 
 // ---------------------------------------------------------------------------
 // The protected path shapes
@@ -236,10 +238,36 @@ export function instructionWriteDeny(projectPath: string, p: string): Instructio
         const rootL = toShape(root).toLowerCase();
         const realL = real.toLowerCase();
 
-        // Outside the project → not this guard's decision (the jail owns it).
-        if (realL !== rootL && !realL.startsWith(`${rootL}/`)) return allow();
+        // Outside the project → not this guard's project decision (the jail owns
+        // it)… except the session's additional write roots (write-roots.ts, the
+        // 2026-10-24 trust round): a path inside an added root gets the SAME deny
+        // set relative to that root. An added directory's AGENTS.md,
+        // .unown/hooks.json or .claude/settings.json is instruction-set material
+        // for whoever works in that tree — in-session writes stay PR-reviewed
+        // there exactly like the project's own. Native spellings only: the roots
+        // are current-host realpaths, so cross-host win32 shapes fall through to
+        // allow (the jail — the WHERE — still confines those writes).
+        if (realL !== rootL && !realL.startsWith(`${rootL}/`)) {
+                for (const extra of sessionWriteRoots()) {
+                        const extraL = toShape(extra).toLowerCase();
+                        if (extraL && (realL === extraL || realL.startsWith(`${extraL}/`))) {
+                                const rel2 = realL === extraL ? "" : realL.slice(extraL.length + 1);
+                                const d = denyForRel(rel2);
+                                if (d) return d;
+                        }
+                }
+                return allow();
+        }
         const rel = realL === rootL ? "" : realL.slice(rootL.length + 1);
+        const d = denyForRel(rel);
+        return d ?? allow();
+}
 
+/** The deny set for one tree-relative path (project or an added root):
+ *  AGENTS.md / CLAUDE.md basenames, the .unown state trees, the memory
+ *  engine-written files, the Tensorlake dropper targets. Returns the deny
+ *  decision or null when the path is not instruction-set material. */
+function denyForRel(rel: string): InstructionWriteDecision | null {
         const denyWith = (match: string, guidance = "propose changes via a PR for human review"): InstructionWriteDecision => ({
                 deny: true,
                 match,
@@ -291,7 +319,7 @@ export function instructionWriteDeny(projectPath: string, p: string): Instructio
         if (endsWithSegments(rel, ".vscode/tasks.json")) return denyWith(".vscode/tasks.json");
         if (endsWithSegments(rel, ".vscode/settings.json")) return denyWith(".vscode/settings.json");
 
-        return allow();
+        return null;
 }
 
 // ---------------------------------------------------------------------------

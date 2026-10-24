@@ -74,6 +74,7 @@ import { instructionWriteDeny } from "./instruction-guard.ts";
 import { getActiveMcpManager } from "./mcp.ts";
 import { assistantTextOf } from "./messages.ts";
 import { createPermissionGate, type PermissionGate, type ToolCallDecision } from "./permissions.ts";
+import { sessionWriteRoots } from "./write-roots.ts";
 import { annotateToolOutput, recordShieldFlag, shieldEnabled, shieldTelemetry } from "./shield.ts";
 import { deliverTerminalNote } from "./term.ts";
 
@@ -310,6 +311,16 @@ const TMP_ROOTS: string[] = (() => {
         return [...roots];
 })();
 
+/** The complete safe-write set for redirect exemptions: temp roots PLUS the
+ *  session-scoped additional working directories (--add-dir / /add-dir —
+ *  write-roots.ts, the 2026-10-24 trust round). Session roots are resolved
+ *  at add time, so a plain string compare after jailPath's realpath
+ *  resolution is exact. */
+function allowedWriteRoots(): string[] {
+        const extra = sessionWriteRoots();
+        return extra.length ? [...TMP_ROOTS, ...extra] : TMP_ROOTS;
+}
+
 function insideRoot(root: string, p: string): boolean {
         // Degenerate roots ("", "/", "\", "C:\", …) would prefix-match entire
         // namespaces — never treat them as an allowed root (Bun's win32
@@ -318,13 +329,17 @@ function insideRoot(root: string, p: string): boolean {
         return p === root || p.startsWith(`${root}/`) || p.startsWith(`${root}\\`);
 }
 
-/** Path policy for terminal sessions: writes confined to the project dir and
- *  the system temp dir. `tmpRoots` overrides the computed set (unit tests
- *  inject a portable root); callers that omit it keep the default policy. */
+/** Path policy for terminal sessions: writes confined to the project dir,
+ *  the system temp dir, and (since the 2026-10-24 trust round) the
+ *  session-scoped additional working directories from --add-dir / /add-dir
+ *  (write-roots.ts — user-initiated roots, realpath-resolved). `tmpRoots`
+ *  overrides the computed set (unit tests inject a portable root); callers
+ *  that omit it keep the default policy. */
 export function terminalPathOk(cwd: string, p: string, tmpRoots: string[] = TMP_ROOTS): boolean {
         const jail = jailPath(cwd, p);
         if (jail.ok) return true;
-        return tmpRoots.some((r) => insideRoot(r, jail.resolved));
+        if (tmpRoots.some((r) => insideRoot(r, jail.resolved))) return true;
+        return sessionWriteRoots().some((r) => insideRoot(r, jail.resolved));
 }
 
 // ---------------------------------------------------------------------------
@@ -382,11 +397,13 @@ export function bashRedirectEscape(cwd: string, command: string): string | null 
                         return `redirect target escapes the safe write set: ${target}`;
                 }
                 // System trees: denied on sight too, unless the target lexically
-                // falls inside an allowed tmp root (macOS /var/folders/…) — the
-                // resolved-path layer below re-confirms with symlink knowledge.
+                // falls inside an allowed root (macOS /var/folders/… — and, since
+                // the trust round, a user-added --add-dir root under /opt or
+                // similar) — the resolved-path layer below re-confirms with
+                // symlink knowledge.
                 if (
                         (SYSTEM_TREE.test(target) || SYSTEM_TREE_WIN.test(target)) &&
-                        !TMP_ROOTS.some((r) => insideRoot(r, target))
+                        !allowedWriteRoots().some((r) => insideRoot(r, target))
                 ) {
                         return `redirect target escapes the safe write set: ${target}`;
                 }
@@ -421,8 +438,9 @@ export function bashRedirectEscape(cwd: string, command: string): string | null 
                 // Allowed write roots are EXEMPT before the deny check (macOS:
                 // os.tmpdir() lives under /private/var/…, which the private-
                 // prefixed SYSTEM_TREE below would otherwise deny — over-blocking
-                // every legitimate `> /tmp/…` scratch redirect on darwin).
-                if (TMP_ROOTS.some((r) => insideRoot(r, resolved))) continue;
+                // every legitimate `> /tmp/…` scratch redirect on darwin; session
+                // --add-dir roots get the same exemption for the same reason).
+                if (allowedWriteRoots().some((r) => insideRoot(r, resolved))) continue;
                 // Defense-in-depth: node:path resolution can mangle device
                 // paths (\\.\PhysicalDrive1 gains a drive prefix on win32) and
                 // other unusual absolute forms, so the raw user-supplied target
@@ -757,7 +775,7 @@ export function createTerminalExtension(opts: TerminalHookOptions) {
                                         if (p && !terminalPathOk(opts.cwd, p)) {
                                                 return {
                                                         block: true,
-                                                        reason: `write path escapes the project directory: ${p} (use the project dir or the system temp dir)`,
+                                                        reason: `write path escapes the project directory: ${p} (use the project dir, the system temp dir, or grant it with /add-dir <path> / --add-dir for this session)`,
                                                 };
                                         }
                                         // SA-B2 — instruction-set write gate: the jail confines

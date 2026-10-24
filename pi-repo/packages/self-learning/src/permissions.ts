@@ -59,14 +59,16 @@
  * with the learn knob on it is also persisted.
  *
  * Purity: node:fs/crypto/path + ./atomic.ts + ./config-trust.ts + ./term.ts
- * (agent-dir default) — no pi imports in the logic; only the tiny extension
- * factory touches the pi extension API (loosely typed, like termhooks.ts).
+ * (agent-dir default) + ./write-roots.ts (the /add-dir registry) — no pi
+ * imports in the logic; only the tiny extension factory touches the pi
+ * extension API (loosely typed, like termhooks.ts).
  */
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { atomicWriteFileSync } from "./atomic.ts";
 import { configFingerprint, trustApprovalNeeded, trustBypassed, trustConfig, trustStatePath } from "./config-trust.ts";
 import { UNOWN_AGENT_DIR } from "./term.ts";
+import { addSessionWriteRoot, clearSessionWriteRoots, setSessionWriteRoots, sessionWriteRoots } from "./write-roots.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -695,6 +697,10 @@ export interface PermissionGateOptions {
 export interface PermissionsStatus {
         disabled: boolean;
         mode: PermissionMode;
+        /** Where the effective mode comes from: the config files, or a
+         *  session-scoped override set by /permissions mode / --permission-mode
+         *  (the 2026-10-24 trust round — Claude Code Shift+Tab parity). */
+        modeSource: "config" | "session";
         requestedMode: PermissionMode;
         learn: boolean;
         trustBypassed: boolean;
@@ -729,6 +735,12 @@ export interface PermissionGate {
         status(): PermissionsStatus;
         /** One-shot notice when the project config is untrusted (null after first read). */
         consumeUntrustedNotice(): string | null;
+        /** Session-scoped mode override (the 2026-10-24 trust round): switch the
+         *  effective permission mode mid-session — Claude Code's Shift+Tab lane.
+         *  null resets to the config files' mode. "bypassPermissions" is refused
+         *  under UNOWN_STRICT_HOOKS=1 exactly like a config-file declaration.
+         *  The config files are NOT written — the override dies with the session. */
+        setSessionMode(mode: PermissionMode | null): { applied: boolean; effectiveMode: PermissionMode; note?: string };
 }
 
 export function createPermissionGate(opts: PermissionGateOptions): PermissionGate {
@@ -746,6 +758,16 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
         let untrustedNoticePending =
                 loaded.project.ignored ? "unown: project .unown/permissions.json is untrusted — its rules are ignored. Approve it with /permissions trust." : null;
 
+        // The session-scoped mode override (2026-10-24 trust round). null =
+        // the config files' mode governs. Applied by /permissions mode and the
+        // --permission-mode flag; never written to disk.
+        let sessionMode: PermissionMode | null = null;
+        /** The view evaluatePermissions sees: the loaded config with the
+         *  session override swapped in when one is active. A shallow clone —
+         *  rules/warnings are shared read-only. */
+        const effectiveLoaded = (): LoadedPermissions =>
+                sessionMode === null ? loaded : { ...loaded, mode: sessionMode };
+
         /** The pattern remembered for a session always-allow on a concrete call. */
         const sessionPatternFor = (tool: string, subject: string): string | null => {
                 if (!subject) return null;
@@ -758,13 +780,14 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
                         try {
                                 if (loaded.disabled) return PROCEED;
                                 const subject = extractSubject(tool, input, cwd);
-                                const evaluation = evaluatePermissions(loaded, tool, subject, sessionRules);
+                                const view = effectiveLoaded();
+                                const evaluation = evaluatePermissions(view, tool, subject, sessionRules);
                                 if (evaluation.action === "deny") {
                                         log(`DENY ${tool}: rule ${evaluation.rule?.pattern ?? "(any)"} (${evaluation.rule?.source})`);
                                         return { blocked: true, reason: evaluation.reason, evaluation };
                                 }
                                 if (evaluation.action === "ask") return { blocked: false, needsAsk: true, evaluation };
-                                if (evaluation.action === "none" && loaded.learn && loaded.mode === "default") {
+                                if (evaluation.action === "none" && loaded.learn && view.mode === "default") {
                                         maybeLearn(tool, subject);
                                 }
                                 return PROCEED;
@@ -832,10 +855,36 @@ export function createPermissionGate(opts: PermissionGateOptions): PermissionGat
                         }
                 },
 
+                setSessionMode(mode) {
+                        if (mode === null) {
+                                sessionMode = null;
+                                return { applied: true, effectiveMode: loaded.mode };
+                        }
+                        if (mode !== "default" && mode !== "acceptEdits" && mode !== "bypassPermissions") {
+                                return {
+                                        applied: false,
+                                        effectiveMode: sessionMode ?? loaded.mode,
+                                        note: `unknown mode "${mode}" — use default, acceptEdits or bypassPermissions`,
+                                };
+                        }
+                        if (mode === "bypassPermissions" && opts.strict) {
+                                return {
+                                        applied: false,
+                                        effectiveMode: sessionMode ?? loaded.mode,
+                                        note: "bypassPermissions refused under UNOWN_STRICT_HOOKS=1 (strict sessions never skip confirmations) — config default stays",
+                                };
+                        }
+                        sessionMode = mode;
+                        log(`session mode override: ${mode}`);
+                        return { applied: true, effectiveMode: mode };
+                },
+
                 status() {
+                        const view = effectiveLoaded();
                         return {
                                 disabled: loaded.disabled,
-                                mode: loaded.mode,
+                                mode: view.mode,
+                                modeSource: sessionMode === null ? "config" : "session",
                                 requestedMode: loaded.requestedMode,
                                 learn: loaded.learn,
                                 trustBypassed: trustBypassed(env),
@@ -891,7 +940,16 @@ export function renderPermissionsStatus(status: PermissionsStatus): string {
         }
         const modeNote =
                 status.requestedMode !== status.mode ? ` (requested "${status.requestedMode}" — refused under UNOWN_STRICT_HOOKS=1)` : "";
-        lines.push(`unown permissions — mode: ${status.mode}${modeNote}`);
+        const sourceNote = status.modeSource === "session" ? " — session override (/permissions mode <m> to change, config files untouched)" : "";
+        lines.push(`unown permissions — mode: ${status.mode}${modeNote}${sourceNote}`);
+        const roots = sessionWriteRoots();
+        if (roots.length > 0) {
+                lines.push(`  additional dirs (${roots.length}):`);
+                for (const r of roots) lines.push(`    ${r}`);
+                lines.push("  (/add-dir <path> adds · /add-dir clear removes — session-scoped)");
+        } else {
+                lines.push("  additional dirs: none (/add-dir <path> or --add-dir grants a second working directory for this session)");
+        }
         const describeScope = (s: PermissionScopeStatus, label: string): string => {
                 if (!s.found) return `  ${label}: ${s.path} (not found — defaults active)`;
                 if (label === "project" && s.ignored) {
@@ -917,6 +975,7 @@ export function renderPermissionsStatus(status: PermissionsStatus): string {
                 }
         }
         for (const w of status.warnings) lines.push(`  ⚠ ${w}`);
+        lines.push("  switch mode: /permissions mode <default|acceptEdits|bypassPermissions> (session-scoped) · --permission-mode at launch");
         lines.push("  reference: docs/permissions.md");
         return lines.join("\n");
 }
@@ -969,6 +1028,14 @@ export interface PermissionsExtensionOptions {
         /** Shared gate (cli.ts injects the termhooks gate so state is session-wide). */
         gate?: PermissionGate;
         statePath?: string;
+        /** The --permission-mode launch flag: applied to the gate as a session
+         *  override at extension construction (the flag's value is validated by
+         *  parseArgs; the strict-hook refusal still happens in the gate). */
+        initialMode?: PermissionMode;
+        /** The --add-dir launch flags (repeatable): resolved into the session
+         *  write-roots registry at construction — the same registry /add-dir
+         *  mutates at runtime. */
+        initialAddDirs?: string[];
 }
 
 export function createPermissionsExtension(opts: PermissionsExtensionOptions) {
@@ -982,14 +1049,62 @@ export function createPermissionsExtension(opts: PermissionsExtensionOptions) {
         const getGate = (): PermissionGate =>
                 opts.gate ??
                 createPermissionGate({ cwd, agentDir, env, verbose: opts.verbose, statePath });
+        // The 2026-10-24 trust-round launch flags: --permission-mode becomes a
+        // session override on the gate; --add-dir roots land in the write-roots
+        // registry BEFORE any tool call runs (the same registry /add-dir uses).
+        if (opts.initialMode) {
+                const res = getGate().setSessionMode(opts.initialMode);
+                if (!res.applied) log(`initial mode refused: ${res.note}`);
+        }
+        if (opts.initialAddDirs?.length) {
+                const res = setSessionWriteRoots(cwd, opts.initialAddDirs);
+                for (const s of res.skipped) log(`--add-dir ${s.input} skipped: ${s.reason}`);
+                if (res.added.length) log(`--add-dir active: ${res.added.join(", ")}`);
+        }
 
         const factory = (pi: any) => {
                 pi.registerCommand("permissions", {
-                        description: "Granular permissions status: /permissions — /permissions trust approves a project .unown/permissions.json",
+                        description:
+                                "Granular permissions: /permissions [status] — /permissions mode <default|acceptEdits|bypassPermissions> switches the session mode — /permissions trust approves a project .unown/permissions.json",
                         handler: async (args: string, ctx: any) => {
                                 try {
-                                        const sub = ((args ?? "").trim().split(/\s+/)[0] ?? "").toLowerCase();
+                                        const parts = (args ?? "").trim().split(/\s+/).filter(Boolean);
+                                        const sub = (parts[0] ?? "").toLowerCase();
                                         const gate = getGate();
+                                        if (sub === "mode") {
+                                                const raw = parts[1];
+                                                const value = raw?.toLowerCase();
+                                                if (!raw || value === "?") {
+                                                        const st = gate.status();
+                                                        ctx?.ui?.notify?.(
+                                                                `current mode: ${st.mode}${st.modeSource === "session" ? " (session override)" : " (from config files)"}\nusage: /permissions mode <default|acceptEdits|bypassPermissions> — session-scoped, config files are not written`,
+                                                                "info",
+                                                        );
+                                                        return;
+                                                }
+                                                // Canonicalize case-insensitively (acceptEdits / acceptedits / ACCEPTEDITS all land on the real value).
+                                                const canonical =
+                                                        value === "default"
+                                                                ? "default"
+                                                                : value === "acceptedits"
+                                                                  ? "acceptEdits"
+                                                                  : value === "bypasspermissions"
+                                                                    ? "bypassPermissions"
+                                                                    : raw;
+                                                const requested = value === "reset" ? null : (canonical as PermissionMode);
+                                                const res = gate.setSessionMode(requested);
+                                                if (!res.applied) {
+                                                        ctx?.ui?.notify?.(`unown: ${res.note}`, "error");
+                                                        return;
+                                                }
+                                                ctx?.ui?.notify?.(
+                                                        requested === null
+                                                                ? `permissions mode reset — back to the config files' mode (${res.effectiveMode})`
+                                                                : `permissions mode → ${res.effectiveMode} (this session only; the hard-coded guardrails — bash deny-list, write jail, instruction-set gate — still apply; config files untouched)`,
+                                                        "info",
+                                                );
+                                                return;
+                                        }
                                         if (sub === "trust") {
                                                 const projectFile = join(cwd, ".unown", "permissions.json");
                                                 if (!existsSync(projectFile)) {
@@ -1021,13 +1136,59 @@ export function createPermissionsExtension(opts: PermissionsExtensionOptions) {
                                                 return;
                                         }
                                         if (sub !== "") {
-                                                ctx?.ui?.notify?.(`Unknown /permissions argument "${sub}". Usage: /permissions [trust]`, "info");
+                                                ctx?.ui?.notify?.(
+                                                        `Unknown /permissions argument "${sub}". Usage: /permissions [status] | mode <default|acceptEdits|bypassPermissions> | trust`,
+                                                        "info",
+                                                );
                                                 return;
                                         }
                                         gate.reload(); // show the files as they are NOW, not as the session booted
                                         ctx?.ui?.notify?.(renderPermissionsStatus(gate.status()), "info");
                                 } catch (err: any) {
                                         ctx?.ui?.notify?.(`Permissions command failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+                                }
+                        },
+                });
+
+                pi.registerCommand("add-dir", {
+                        description:
+                                "Grant the session an additional working directory (write access): /add-dir <path> — /add-dir (list) — /add-dir clear",
+                        handler: async (args: string, ctx: any) => {
+                                try {
+                                        const parts = (args ?? "").trim().split(/\s+/).filter(Boolean);
+                                        if (parts.length === 0) {
+                                                const roots = sessionWriteRoots();
+                                                if (roots.length === 0) {
+                                                        ctx?.ui?.notify?.(
+                                                                "unown additional working directories: none\nusage: /add-dir <path> — grants write access to a directory for THIS session (Claude Code /add-dir parity)\nthe project dir and the system temp dir are always writable",
+                                                                "info",
+                                                        );
+                                                } else {
+                                                        ctx?.ui?.notify?.(
+                                                                `unown additional working directories (${roots.length}):\n${roots.map((r) => `  ${r}`).join("\n")}\n/add-dir <path> adds · /add-dir clear removes all — session-scoped`,
+                                                                "info",
+                                                        );
+                                                }
+                                                return;
+                                        }
+                                        if (parts[0].toLowerCase() === "clear") {
+                                                clearSessionWriteRoots();
+                                                ctx?.ui?.notify?.("cleared — the write jail is back to the project dir + the system temp dir for this session", "info");
+                                                return;
+                                        }
+                                        const res = addSessionWriteRoot(cwd, parts[0]);
+                                        if (res.skipped.length > 0) {
+                                                ctx?.ui?.notify?.(`unown: ${res.skipped[0].input} — ${res.skipped[0].reason}`, "error");
+                                                return;
+                                        }
+                                        const root = res.added[0] ?? sessionWriteRoots().find((r) => r === res.roots.at(-1));
+                                        log(`add-dir ${parts[0]} → ${root}`);
+                                        ctx?.ui?.notify?.(
+                                                `added ${root} — write tools and bash redirects may now target it (this session; the instruction-set write gate still applies to AGENTS.md and friends)`,
+                                                "info",
+                                        );
+                                } catch (err: any) {
+                                        ctx?.ui?.notify?.(`add-dir command failed: ${err instanceof Error ? err.message : String(err)}`, "error");
                                 }
                         },
                 });

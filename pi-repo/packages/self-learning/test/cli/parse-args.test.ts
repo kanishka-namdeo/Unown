@@ -153,3 +153,54 @@ describe("--session flag (fleet lane)", () => {
         expect(parsed.prompt).toContain("hi");
     });
 });
+
+// ---------------------------------------------------------------------------
+// --permission-mode / --add-dir (the 2026-10-24 trust round): the launch
+// twins of /permissions mode and /add-dir. Validated at parse time (usage
+// errors exit 2), carried on BOTH exit paths (print + tui).
+// ---------------------------------------------------------------------------
+describe("--permission-mode / --add-dir (trust round)", () => {
+    test("print mode carries permissionMode + addDirs", () => {
+        const parsed = parseArgs([
+            "--permission-mode",
+            "acceptEdits",
+            "--add-dir",
+            "../sibling",
+            "--add-dir",
+            "/abs/dir",
+            "-p",
+            "hi",
+        ]);
+        expect(parsed.command).toBe("print");
+        expect(parsed.permissionMode).toBe("acceptEdits");
+        expect(parsed.addDirs).toEqual(["../sibling", "/abs/dir"]);
+        expect(parsed.prompt).toBe("hi");
+    });
+
+    test("tui mode carries the fields too (TTY shadow)", () => {
+        const origIn = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
+        const origOut = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+        Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+        Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+        try {
+            const parsed = parseArgs(["--permission-mode", "bypassPermissions", "--add-dir", ".."]);
+            expect(parsed.command).toBe("tui");
+            expect(parsed.permissionMode).toBe("bypassPermissions");
+            expect(parsed.addDirs).toEqual([".."]);
+        } finally {
+            if (origIn) Object.defineProperty(process.stdin, "isTTY", origIn);
+            else delete (process.stdin as any).isTTY;
+            if (origOut) Object.defineProperty(process.stdout, "isTTY", origOut);
+            else delete (process.stdout as any).isTTY;
+        }
+    });
+
+    test("all three mode values parse; absent flags leave the fields undefined", () => {
+        for (const m of ["default", "acceptEdits", "bypassPermissions"] as const) {
+            expect(parseArgs(["--permission-mode", m, "-p", "hi"]).permissionMode).toBe(m);
+        }
+        const bare = parseArgs(["-p", "hi"]);
+        expect(bare.permissionMode).toBeUndefined();
+        expect(bare.addDirs).toBeUndefined();
+    });
+});

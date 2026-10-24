@@ -290,7 +290,14 @@ Session tools (registered in every session):
                           file reset; aborts if any file was edited out-of-band —
                           Milestone 3.6)
   /permissions            granular permissions status (mode, rules, trust;
-                           /permissions trust approves a project config)
+                           /permissions trust approves a project config;
+                           /permissions mode <default|acceptEdits|bypass
+                           Permissions> switches the session mode — the config
+                           files are never written)
+  /add-dir <path>         grant the session an additional working directory
+                           (write access) for cross-repo work — /add-dir lists,
+                           /add-dir clear revokes; the project dir and the
+                           system temp dir are always writable
   /providers              the in-chat provider manager (R2): bare opens the
                           interactive list/add/key/test/refresh/defaults flow;
                           /providers list | test <id> | refresh <id> work
@@ -324,6 +331,14 @@ One-shot run flags (print mode; several also used by the task tool):
                           startup defaults behind
   --session <path>        continue that exact session file (TUI + print mode;
                           the fleet's resume substrate — children run with it)
+  --permission-mode <m>   start with the session permission mode pinned:
+                          default | acceptEdits | bypassPermissions (the
+                          same override /permissions mode sets in-session;
+                          strict hooks still refuse bypass; the config files
+                          are not written)
+  --add-dir <path>        grant the session an additional working directory
+                          (write access; repeatable) — Claude Code --add-dir
+                          parity, the /add-dir twin at launch
 
 Environment:
   UNOWN_HOME               state dir (default ~/.unown)
@@ -383,6 +398,16 @@ interface CliArgs {
         provider?: string;
         /** --no-split: start bare, ignoring saved split-view startup defaults. */
         noSplit?: boolean;
+        /** --permission-mode <m> (2026-10-24 trust round): a session-scoped
+         *  override on the permissions gate — default | acceptEdits |
+         *  bypassPermissions (the strict-hook refusal still applies inside the
+         *  gate). Claude Code --permission-mode parity. */
+        permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
+        /** --add-dir <path> (repeatable; 2026-10-24 trust round): additional
+         *  working directories granted to the session — they extend the write
+         *  jail (edit/write tools + bash redirect targets). Claude Code
+         *  --add-dir parity; /add-dir is the in-session twin. */
+        addDirs?: string[];
 }
 
 // Exported for tests: the parse contract (routing flags, --output-format
@@ -407,6 +432,8 @@ export function parseArgs(argv: string[]): CliArgs {
         let goal: string | undefined;
         let outputFormat: "text" | "json" | undefined;
         let provider: string | undefined;
+        let permissionMode: "default" | "acceptEdits" | "bypassPermissions" | undefined;
+        let addDirs: string[] | undefined;
         for (let i = 0; i < argvRest.length; i++) {
                 const a = argvRest[i];
                 if (a === "--help" || a === "-h")
@@ -494,6 +521,28 @@ export function parseArgs(argv: string[]): CliArgs {
                         }
                         continue;
                 }
+                if (a === "--permission-mode") {
+                        const next = argvRest[i + 1];
+                        if (next === "default" || next === "acceptEdits" || next === "bypassPermissions") {
+                                permissionMode = next;
+                                i++;
+                        } else {
+                                console.error("unown: --permission-mode expects default, acceptEdits or bypassPermissions");
+                                process.exit(2);
+                        }
+                        continue;
+                }
+                if (a === "--add-dir") {
+                        const next = argvRest[i + 1];
+                        if (next !== undefined && !next.startsWith("--")) {
+                                addDirs = [...(addDirs ?? []), next];
+                                i++;
+                        } else {
+                                console.error("unown: --add-dir expects a directory path");
+                                process.exit(2);
+                        }
+                        continue;
+                }
                 rest.push(a);
         }
         const first = rest[0];
@@ -528,6 +577,8 @@ export function parseArgs(argv: string[]): CliArgs {
                         mcpServers: subagentFlags.mcpServers,
                         noAgentsMd: subagentFlags.noAgentsMd,
                         provider,
+                        permissionMode,
+                        addDirs,
                 };
         return {
                 command: "tui",
@@ -547,6 +598,8 @@ export function parseArgs(argv: string[]): CliArgs {
                 mcpServers: subagentFlags.mcpServers,
                 noAgentsMd: subagentFlags.noAgentsMd,
                 provider,
+                permissionMode,
+                addDirs,
         };
 }
 
@@ -587,6 +640,12 @@ interface BootOptions {
          * first message must suppress the startup catalog — the user already
          * told us what they want to do. */
         initialMessage?: string;
+        /** --permission-mode (2026-10-24 trust round): session-scoped mode
+         *  override applied to the shared permissions gate at boot. */
+        permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
+        /** --add-dir (repeatable; 2026-10-24 trust round): additional working
+         *  directories granted to the session (the write-jail extension). */
+        addDirs?: string[];
 }
 
 /**
@@ -668,7 +727,13 @@ async function bootRuntime(cwd: string, verbose: boolean, bootOpts: BootOptions 
                 verbose,
                 permissions: permissionsGate,
         });
-        const permissionsExtension = createPermissionsExtension({ cwd, verbose, gate: permissionsGate });
+        const permissionsExtension = createPermissionsExtension({
+                cwd,
+                verbose,
+                gate: permissionsGate,
+                initialMode: bootOpts.permissionMode,
+                initialAddDirs: bootOpts.addDirs,
+        });
         // Split-view TUI display mode (thinking/tool band, files dock, response-only): a built-in
         // port of pi-split-view, persisted via <agentDir>/ui-panels.json (/split-save).
         const splitviewExtension = createSplitViewExtension({ agentDir, verbose });
@@ -2229,6 +2294,8 @@ async function cmdPrint(prompt: string | undefined, args: CliArgs, verbose: bool
                 mcpServers: args.mcpServers,
                 noAgentsMd: args.noAgentsMd,
                 provider: args.provider,
+                permissionMode: args.permissionMode,
+                addDirs: args.addDirs,
         });
         installPrintStallWatchdog(runtime);
         // The fleet drain sentinel rides as the final message in orchestrator
@@ -2849,6 +2916,8 @@ export async function runCli(argv: string[]) {
                                 mcpServers: args.mcpServers,
                                 noAgentsMd: args.noAgentsMd,
                                 provider: args.provider,
+                                permissionMode: args.permissionMode,
+                                addDirs: args.addDirs,
                         });
                         break;
         }
