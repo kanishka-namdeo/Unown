@@ -82,7 +82,7 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "bucket": "Fixed",
         "items": [
           {
-            "title": "resume (Windows): the positional-read trap — unown -c and --resume <name> were broken on Windows",
+            "title": "resume tests (Windows): the fixture wrote invalid JSON — 4 phantom source failures on the release matrix…",
             "behavior": false
           }
         ]

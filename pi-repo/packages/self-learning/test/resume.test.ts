@@ -31,16 +31,23 @@ afterAll(() => {
     for (const d of LOADED) rmSync(d, { recursive: true, force: true });
 });
 
-/** Write one session JSONL fixture. */
+/** Write one session JSONL fixture. The lines are built with JSON.stringify —
+ *  a raw template interpolation of `cwd` produces INVALID JSON on Windows
+ *  (`D:\a\...` -> "Invalid escape character a"), which the v0.0.10 release
+ *  matrix caught as 4 phantom source failures: parseHeader correctly rejects
+ *  the unparseable header and every content-dependent test degrades. The real
+ *  session writer serializes properly; the fixture now does too. */
 function writeSession(
     dir: string,
     opts: { id: string; cwd?: string; name?: string; mtimeAgeMs?: number },
 ): string {
     const age = opts.mtimeAgeMs ?? 0;
     const file = join(dir, `2026-01-01T00-00-00-000Z_${opts.id}.jsonl`);
-    const lines: string[] = [`{"type":"session","version":3,"id":"${opts.id}","timestamp":"2026-01-01T00:00:00.000Z"${opts.cwd ? `,"cwd":"${opts.cwd}"` : ""}}`];
-    if (opts.name) lines.push(`{"type":"session_info","id":"n1","parentId":null,"timestamp":"2026-01-01T00:00:01.000Z","name":"${opts.name}"}`);
-    lines.push(`{"type":"message","id":"m1","parentId":null,"timestamp":"2026-01-01T00:00:02.000Z","message":{"role":"user","content":"hi"}}`);
+    const header: Record<string, unknown> = { type: "session", version: 3, id: opts.id, timestamp: "2026-01-01T00:00:00.000Z" };
+    if (opts.cwd) header.cwd = opts.cwd;
+    const lines: string[] = [JSON.stringify(header)];
+    if (opts.name) lines.push(JSON.stringify({ type: "session_info", id: "n1", parentId: null, timestamp: "2026-01-01T00:00:01.000Z", name: opts.name }));
+    lines.push(JSON.stringify({ type: "message", id: "m1", parentId: null, timestamp: "2026-01-01T00:00:02.000Z", message: { role: "user", content: "hi" } }));
     writeFileSync(file, `${lines.join("\n")}\n`);
     // Deterministic mtime ordering (same-ms writes make "newest" ambiguous).
     const t = new Date(Date.now() - age);
