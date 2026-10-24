@@ -344,6 +344,9 @@ Session tools (registered in every session):
 
 One-shot run flags (print mode; several also used by the task tool):
   --mode json              stream JSON events instead of text (print mode)
+  --output-format stream-json
+                           the Claude Code / Gemini / Cursor spelling of the
+                           same NDJSON event stream (an alias for --mode json)
   --output-format json     print ONE final JSON object (result + session id +
                            model + usage + cost + duration + turns; exit codes
                            unchanged) — CI/wrapper contract, composes with jq
@@ -506,6 +509,9 @@ export function parseArgs(argv: string[]): CliArgs {
 	let continueLatest = false;
 	let resumeQuery: string | undefined;
 	let resumePicker = false;
+	/** rest.length when the `--` escape fired: the unknown-flag guard scans
+	 *  only the tokens before it (everything after `--` is prompt text). */
+	let escapeMark = -1;
 	let maxTurns: number | undefined;
 	let maxToolRepetitions: number | undefined;
 	let worktree: string | true | undefined;
@@ -548,8 +554,17 @@ export function parseArgs(argv: string[]): CliArgs {
 			if (next === "json" || next === "text") {
 				outputFormat = next;
 				i++;
+			} else if (next === "stream-json") {
+				// The muscle-memory lane (2026-10-25 completion round): Claude
+				// Code / Gemini / Cursor all spell their NDJSON event stream
+				// "--output-format stream-json" — unown's stream already exists
+				// as --mode json (pi's JSONL events); this alias maps onto it so
+				// scripts written against those CLIs work verbatim. The conflict
+				// guards downstream key on jsonMode, which is what this sets.
+				jsonMode = true;
+				i++;
 			} else {
-				console.error("unown: --output-format expects json or text");
+				console.error("unown: --output-format expects json, text or stream-json");
 				process.exit(2);
 			}
 			continue;
@@ -693,7 +708,31 @@ export function parseArgs(argv: string[]): CliArgs {
 			}
 			continue;
 		}
+		// The `--` escape (2026-10-25 completion round): every token after a
+		// bare `--` joins the prompt verbatim — the standard end-of-options
+		// marker, so a prompt that itself begins with a dash stays spellable.
+		if (a === "--") {
+			if (escapeMark === -1) escapeMark = rest.length;
+			for (let j = i + 1; j < argvRest.length; j++) rest.push(argvRest[j]);
+			i = argvRest.length;
+			continue;
+		}
 		rest.push(a);
+	}
+	// Unknown-flag guard (2026-10-25): an unrecognized dash-token used to
+	// fall into `rest` and ride the prompt to the model as literal text
+	// (measured: `unown --thinking high` sent the words "--thinking high" to
+	// the LLM) — the same silent misroute the bare-typo guard exists to
+	// refuse. Exit 2 with the flag named; `--help` is one keystroke away.
+	{
+		const scan = escapeMark === -1 ? rest : rest.slice(0, escapeMark);
+		const unknown = [...new Set(scan.filter((t) => t.startsWith("-")))];
+		if (unknown.length > 0) {
+			console.error(
+				`unown: unknown flag${unknown.length === 1 ? "" : "s"} ${unknown.join(", ")} — see \`unown --help\` for the accepted surface (a prompt starting with a dash: quote it, or use the \`--\` end-of-options marker)`,
+			);
+			process.exit(2);
+		}
 	}
 	const first = rest[0];
 	if (first === "init" || first === "memory" || first === "doctor" || first === "note") {

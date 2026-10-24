@@ -451,7 +451,7 @@ describe("CLI golden — --output-format json", () => {
 		async () => {
 			const run = await unown(["-p", "say hi", "--output-format", "yaml"], base());
 			expect(run.exitCode).toBe(2);
-			expect(run.stderr).toContain("--output-format expects json or text");
+			expect(run.stderr).toContain("--output-format expects json, text or stream-json");
 			expect(run.stdout.trim()).toBe("");
 		},
 		LONG,

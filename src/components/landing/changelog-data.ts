@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 270;
+export const CHANGELOG_TOTAL_ENTRIES = 271;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 115,
+  "Added": 116,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 3,
+    "total": 4,
     "counts": {
-      "Added": 3,
+      "Added": 4,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "cli: the stream-json alias + the unknown-flag guard",
+            "behavior": false
+          },
           {
             "title": "engine: the visibility pair — /status and /diff",
             "behavior": false

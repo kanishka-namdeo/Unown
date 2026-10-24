@@ -296,3 +296,100 @@ describe("parseArgs --worktree / -w (2026-10-24 parity round)", () => {
         expect(parseArgs(["-p", "go"]).worktree).toBeUndefined();
     });
 });
+
+// ---------------------------------------------------------------------------
+// The 2026-10-25 completion round: the stream-json alias + the unknown-flag
+// guard (an unrecognized dash-token used to ride the prompt to the model as
+// literal text — the same silent misroute the bare-typo guard refuses).
+// ---------------------------------------------------------------------------
+
+describe("parseArgs: --output-format stream-json (the muscle-memory alias)", () => {
+        test("maps onto the --mode json event stream (jsonMode), not the result object", () => {
+                const args = parseArgs(["--output-format", "stream-json", "-p", "hi"]);
+                expect(args.command).toBe("print");
+                expect(args.jsonMode).toBe(true);
+                expect(args.outputFormat).toBeUndefined(); // NOT the result-object lane
+        });
+
+        test("still conflicts with --output-schema exactly like --mode json does (exit 2 at cmdPrint)", () => {
+                const args = parseArgs(["--output-format", "stream-json", "--output-schema", "/tmp/s.json", "-p", "hi"]);
+                expect(args.jsonMode).toBe(true);
+                expect(args.outputSchema).toBe("/tmp/s.json");
+                // the refusal itself is cmdPrint's contract (checked in its suite)
+        });
+
+        test("the error message names all three accepted values", () => {
+                const origExit = process.exit;
+                let exitCode: number | undefined;
+                (process as any).exit = (c?: number) => {
+                        exitCode = c ?? 0;
+                        throw new Error("__exit__");
+                };
+                try {
+                        expect(() => parseArgs(["--output-format", "yaml", "-p", "hi"])).toThrow("__exit__");
+                } finally {
+                        (process as any).exit = origExit;
+                }
+                expect(exitCode).toBe(2);
+        });
+});
+
+describe("parseArgs: the unknown-flag guard", () => {
+        test("an unrecognized flag exits 2 and never becomes prompt text", () => {
+                const origExit = process.exit;
+                let exitCode: number | undefined;
+                (process as any).exit = (c?: number) => {
+                        exitCode = c ?? 0;
+                        throw new Error("__exit__");
+                };
+                try {
+                        // Measured pre-fix behavior: "--thinking high" rode the
+                        // prompt to the LLM as literal text.
+                        expect(() => parseArgs(["--thinking", "high", "do", "the", "thing"])).toThrow("__exit__");
+                } finally {
+                        (process as any).exit = origExit;
+                }
+                expect(exitCode).toBe(2);
+        });
+
+        test("every flag the fleet spawns is still accepted (the guard cannot break children)", () => {
+                const args = parseArgs([
+                        "--tools", "read,grep",
+                        "--session", "/tmp/s.jsonl",
+                        "--model", "agnes-3.0-flash",
+                        "--effort", "high",
+                        "--mcp-servers", "a,b",
+                        "--no-agents-md",
+                        "-p", "child task",
+                ]);
+                expect(args.prompt).toBe("child task");
+                expect(args.sessionFile).toBe("/tmp/s.jsonl");
+                expect(args.tools).toEqual(["read", "grep"]);
+        });
+
+        test("the `--` escape keeps dash-prefixed prompts spellable", () => {
+                const args = parseArgs(["--", "--not-a-flag", "is", "my", "prompt"]);
+                expect(args.prompt).toBe("--not-a-flag is my prompt");
+        });
+
+        test("single-dash flags are guarded too; duplicates name once", () => {
+                const origExit = process.exit;
+                let msg = "";
+                const origErr = console.error;
+                console.error = (m?: any) => {
+                        msg = String(m);
+                };
+                (process as any).exit = (c?: number) => {
+                        throw new Error("__exit__");
+                };
+                try {
+                        expect(() => parseArgs(["-bogus", "--nope", "-bogus", "prompt"])).toThrow("__exit__");
+                } finally {
+                        (process as any).exit = origExit;
+                        console.error = origErr;
+                }
+                expect(msg).toContain("-bogus");
+                expect(msg).toContain("--nope");
+                expect(msg).toContain("unknown flags"); // plural, both named once each
+        });
+});
