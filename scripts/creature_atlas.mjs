@@ -1,5 +1,5 @@
 /**
- * creature_atlas.mjs — the ten feature creatures, v3: one body plan each.
+ * creature_atlas.mjs — the eleven feature creatures, v3+: one body plan each.
  *
  * THE V3 DOCTRINE (2026-10-20, the variety round): v2 authored every pixel
  * in code but composed every creature from ONE shared plan — the standing
@@ -36,7 +36,11 @@
  * Ten plans, ten poses (hover, trundle, rear, stack, trundle, sit, stand,
  * lie, scuttle, walk), ten faces (lens eye, visor squares, sly slits,
  * spectacles, a side eye, open-mouth shouting, small-and-capped, closed
- * arcs, stalked eyes, a walking blaze). What still makes them ONE bestiary:
+ * arcs, stalked eyes, a walking blaze) — plus the ELEVENTH plan the
+ * browser-subagent round appended (011: the window form, cursor up — a
+ * standing frame on stubby feet, its face on the rendered page, the
+ * golden trusted-click pointer as the one detached story part). What
+ * still makes them ONE bestiary:
  * the shared kit (ramps, cel bands, the generated 1px outline, the
  * parameterized face template), the shared baseline, the full-canvas ship,
  * and one feature story per creature.
@@ -134,15 +138,28 @@ export const SPRITES = [
     shade(c, inRoundRect(17.5, 33, 9, 12, 1), { base: "L2" });
     shade(c, inRoundRect(45.5, 33, 9, 12, 1), { base: "L2" });
     paint(c, inRoundRect(31.5, 34, 20, 11, 1), "P3");
-    // three gold sockets on the chest plate — the dock, grown into the body
+    // three gold sockets on the chest plate — the dock, grown into the body.
+    // 2026-10-24 review round: the single navy row read as BUTTONS, not
+    // recessed ports — the dark core now runs two rows deep so each socket
+    // reads as a hole you plug into.
     for (const [x0, x1] of [[23, 27], [29, 33], [35, 39]]) {
       for (let y = 31; y <= 35; y++) for (let x = x0; x <= x1; x++) px(c, x, y, "G2");
-      for (let x = x0 + 1; x <= x1 - 1; x++) px(c, x, 32, "N2");
+      for (let x = x0 + 1; x <= x1 - 1; x++) { px(c, x, 32, "N2"); px(c, x, 33, "N2"); }
     }
+    // the float, justified (2026-10-24 review round): a thin gold energy
+    // column bridges the head's air gap — CENTERED on the golem's axis
+    // (the sprite is X-symmetric, so the wisp must be too), attached at
+    // BOTH ends (head base and collar), so it reads as an anti-gravity
+    // wisp the outline can wrap, never as a detached glitch.
+    for (let y = 28; y <= 36; y++) { px(c, 31, y, "G2"); px(c, 32, y, y % 3 === 0 ? "G3" : "G2"); }
+    for (let x = 29; x <= 34; x++) px(c, x, 36, "G2");
     // gold treads with navy bolts (navy treads read as a smudge band — the
-    // dark-ratio gate drove them gold)
+    // dark-ratio gate drove them gold). 2026-10-24 review round (second
+    // pass): 1px notches vanished at 2x — the bolt columns now run the full
+    // band height and a CENTER column joins them (all symmetric pairs), so
+    // the navy reads as tread SEAMS cutting the skirt into segments.
     shade(c, inRoundRect(31.5, 50, 24, 7, 3), { base: "G1", light: "G2", shadow: "N2", shadowD: [-1, -3] });
-    for (const bx of [25, 37]) { px(c, bx, 50, "N2"); px(c, bx + 1, 50, "N2"); px(c, bx, 51, "N2"); px(c, bx + 1, 51, "N2"); }
+    for (const sx of [25, 31, 37]) for (let y = 50; y <= 53; y++) { px(c, sx, y, "N2"); px(c, sx + 1, y, "N2"); }
     return c;
   },
 },
@@ -188,11 +205,15 @@ export const SPRITES = [
   draw(c) {
     // a rearing worm: an OVAL head (a different shape than any segment —
     // the first draft's roundrect head made the stack read as blocks),
-    // then segments that TAPER and CURVE left, stacking to the baseline
+    // then segments that TAPER and CURVE left, stacking to the baseline.
+    // 2026-10-24 review round: the head→middle air (1 row) and the
+    // middle→bottom air (3.5 rows) were uneven enough that the stack read
+    // as one lumpy shape at the top — the segments now breathe at the same
+    // ~3-row pitch, the “air between segments” the doctrine promises.
     shade(c, inEllipse(32, 18, 12, 9), { base: "B2", light: "B3", shadow: "B1" });
     // the scholar's curl
     paint(c, tube([[36, 10], [40, 7], [43, 9]], 1.5), "B1");
-    shade(c, inRoundRect(29.5, 34, 22, 12, 6), { base: "B2", light: "B3", shadow: "B1" });
+    shade(c, inRoundRect(29.5, 36, 22, 11, 6), { base: "B2", light: "B3", shadow: "B1" });
     shade(c, inRoundRect(27, 48.5, 18, 10, 5), { base: "B2", light: "B3", shadow: "B1" });
     // round spectacles: a DARK-gold ring per eye with a cream lens. The
     // first rings were bright gold on amber — near-zero contrast, the
@@ -206,7 +227,13 @@ export const SPRITES = [
     }
     // the face: eyes low on the head, cheeks, smile below the rims
     face(c, { cx: 32, eyeY: 16, eyeGap: 8, eyeW: 3, eyeH: 4, mouthDy: 8, mouth: "smile", mouthW: 5, cheek: "G2", cheekDy: 6 });
-    px(c, 31, 18, "G1"); px(c, 32, 18, "G1");
+    // the bridge, made explicit (2026-10-24 review round): the two rings
+    // touch, so the joined pair read as one gold mask or “two separate
+    // eyes”. A bright bridge bar across the tangent seam + temple arms
+    // running to the head's edge are what make spectacles read as GLASSES
+    // — the scholar's one unmistakable signifier, worth stating twice.
+    px(c, 31, 18, "G1"); px(c, 32, 18, "G1"); px(c, 31, 17, "G1"); px(c, 32, 17, "G1");
+    for (const tx of [22, 42]) { px(c, tx, 18, "G1"); px(c, tx + (tx < 32 ? 1 : -1), 18, "G1"); }
     glint(c, 25, 12, "B3");
     // the open book, held against the middle segment: two cream pages,
     // a navy spine, two little arms
@@ -242,9 +269,14 @@ export const SPRITES = [
       paint(c, rim(front, 0, -2), "P2");
       for (let xx = -1; xx <= 1; xx++) px(c, dx + xx, 31, "G1");
     }
-    // a card slipping out above the right drawer — retrieved on the first try
-    for (let xx = 38; xx <= 44; xx++) { px(c, xx, 25, "P4"); px(c, xx, 26, "P4"); }
-    for (let xx = 39; xx <= 43; xx++) px(c, xx, 27, "P2");
+    // a card sliding out of the RIGHT drawer, mid-pull (2026-10-24 review
+    // round: the first card floated 6 rows above the drawer with shell
+    // between — it read as a detached white fleck, not an archive in use).
+    // The card rides the drawer's frame and pokes two rows above the front,
+    // its bottom rows INSIDE the front, so the outline wraps card+drawer
+    // as ONE shape — mid-pull, half-out, unmistakably in use.
+    for (let xx = 42; xx <= 47; xx++) { px(c, xx, 26, "P4"); px(c, xx, 27, "P4"); px(c, xx, 28, "P4"); px(c, xx, 29, "P4"); px(c, xx, 30, "P4"); px(c, xx, 31, "P4"); }
+    for (let xx = 43; xx <= 46; xx++) px(c, xx, 28, "P2");
     // the head on a short neck, out at the left
     paint(c, tube([[21, 39], [16, 33]], 3.5), "C2");
     shade(c, inEllipse(14, 28, 5.5, 5), { base: "C2", light: "C3", shadow: "C1" });

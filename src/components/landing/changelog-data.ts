@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 265;
+export const CHANGELOG_TOTAL_ENTRIES = 266;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 110,
+  "Added": 111,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 1,
+    "total": 2,
     "counts": {
-      "Added": 1,
+      "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -62,6 +62,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "landing: the media-completion round — the last plate filmed, every reel a movie",
+            "behavior": false
+          },
+          {
+            "title": "landing: the sprite craft round — the atlas's own review lane flips FIX→PASS",
             "behavior": false
           }
         ]

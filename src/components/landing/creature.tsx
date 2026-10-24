@@ -16,10 +16,10 @@ import * as React from "react";
  * while authored pixels read as a sprite — the pipeline gates that
  * difference), and the variety round gave every creature its own body
  * plan — crawler, golem, serpent, bookwyrm, turtle, roo, signpost,
- * sheep, crab, badger — because a set that shares one silhouette reads
- * as reskins no matter how good each sprite is (the landing AGENTS.md
- * carries the one-body-plan doctrine). The pipeline gates that difference
- * (edge-outline integrity, orphan clusters, the 5-bit GBA grid, ≤ 15
+ * sheep, crab, badger, window — because a set that shares one silhouette
+ * reads as reskins no matter how good each sprite is (the landing
+ * AGENTS.md carries the one-body-plan doctrine). The pipeline gates that
+ * difference (edge-outline integrity, orphan clusters, the 5-bit GBA grid, ≤ 15
  * colours, dark-ratio ≤ 30%, shared baseline). Sprites ship at 4× (a
  * uniform 256×256) and display at integer multiples of the 64px logical
  * grid via the `.creature` class (image-rendering: pixelated) — h-16 is
