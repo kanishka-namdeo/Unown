@@ -6,7 +6,7 @@ The benchmark suites that measure Unown and its models, plus the committed recei
 
 ## Ownership
 
-- Owns: everything under `benchmarks/` and this doc — the landing-feeding suites (`edit-bench/`, `evalplus/`, `livecodebench/`, `longhorizon/`, `polyglot/`, `selfimprove/`); the memory-eval lanes (`memory-eval/`: poison-corpus, mpbench, quality-axes, recall-qa, results, `_lib/`); the research testbenches (`local-llm/`, `nonllm/`, `complementary/`, `transfer-bench/`); the receipts lanes (`webcache/`, `websearch-live/`, `tui-beauty/`, `detached-engine/`, `vlm-smoke/`, `snapshots/`); `benchmarks/README.md` (methodology) and `benchmarks/RESULTS.md` (master index).
+- Owns: everything under `benchmarks/` and this doc — the landing-feeding suites (`edit-bench/`, `evalplus/`, `livecodebench/`, `longhorizon/`, `polyglot/`, `selfimprove/`); the memory-eval lanes (`memory-eval/`: poison-corpus, mpbench, quality-axes, recall-qa, results, `_lib/`); the research testbenches (`local-llm/`, `nonllm/`, `complementary/`, `transfer-bench/`); the receipts lanes (`webcache/`, `websearch-live/`, `tui-beauty/`, `detached-engine/`, `vlm-smoke/`, `snapshots/`); the competitive-research reports (`research/<date>/` — web-verified product reverse-engineering sweeps whose findings feed the changelog's design decisions; committed as evidence like receipts, regenerated per sweep, never hand-edited); `benchmarks/README.md` (methodology) and `benchmarks/RESULTS.md` (master index).
 - The drivers for `webcache-bench` and `websearch-live` live in `scripts/` (see `scripts/AGENTS.md`); their receipts land here.
 
 ## Local Contracts
