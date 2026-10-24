@@ -57,16 +57,21 @@ const NAME_TAIL_BYTES = 512 * 1024;
 /** Files larger than this skip the name scan (id/path matching still work). */
 const NAME_SCAN_MAX_BYTES = 8 * 1024 * 1024;
 
-/** Read up to `bytes` from the START of a file (best-effort, utf8). */
+/** Read up to `bytes` from the START of a file (best-effort, utf8).
+ *  Cross-platform guard: bun's Windows `readSync` mis-handles `position: 0`
+ *  (the falsy-position trap — reads at a positive position work; a 0 position
+ *  returns 0 bytes, caught live by the v0.0.10 release matrix on the
+ *  windows-latest leg). A zero/failed read on a NON-empty file falls back to
+ *  `readFileSync` + slice, which is correct on every platform. */
 function readHead(file: string, bytes: number): string {
     let fd: number | undefined;
     try {
         fd = openSync(file, "r");
         const buf = Buffer.alloc(bytes);
         const bytesRead = readAt(fd, buf, 0, bytes, 0);
-        return buf.subarray(0, bytesRead).toString("utf8");
+        if (bytesRead > 0) return buf.subarray(0, bytesRead).toString("utf8");
     } catch {
-        return "";
+        /* fall through to the whole-read fallback */
     } finally {
         if (fd !== undefined) {
             try {
@@ -76,27 +81,49 @@ function readHead(file: string, bytes: number): string {
             }
         }
     }
+    return readSliceFallback(file, 0, bytes);
+}
+
+/** Whole-read fallback for the positional reads: `readFileSync` + a byte
+ *  slice. Bounded by the callers' caps (4 KiB head / 512 KiB tail) and only
+ *  reached when the fd path failed or returned nothing on a non-empty file. */
+function readSliceFallback(file: string, fromEnd: number, bytes: number): string {
+    try {
+        const whole = readFileSync(file);
+        if (fromEnd > 0) return whole.subarray(Math.max(0, whole.length - fromEnd)).toString("utf8");
+        return whole.subarray(0, Math.min(bytes, whole.length)).toString("utf8");
+    } catch {
+        return "";
+    }
 }
 
 /** readSync for clarity (positional form; never the callback form — that one
- *  is async and returns 0 bytes synchronously, silently breaking every scan). */
+ *  is async and returns 0 bytes synchronously, silently breaking every scan).
+ *  NOTE: on Windows a `position` of 0 can yield 0 bytes (the falsy-position
+ *  trap) — the callers fall back to readFileSync when that happens. */
 function readAt(fd: number, buf: Buffer, offset: number, length: number, position: number): number {
     return readSync(fd, buf, offset, length, position);
 }
 
-/** Read the LAST `bytes` of a file (best-effort). */
+/** Read the LAST `bytes` of a file (best-effort). Same Windows guard as
+ *  readHead: `start` is 0 for files smaller than the tail window — the exact
+ *  falsy-position trap — so a short/zero read falls back to the whole read. */
 function readTail(file: string, bytes: number): string {
     let fd: number | undefined;
     try {
         const size = statSync(file).size;
         const start = Math.max(0, size - bytes);
-        fd = openSync(file, "r");
         const len = Math.min(bytes, size);
-        const buf = Buffer.alloc(len);
-        const bytesRead = readAt(fd, buf, 0, len, start);
-        return buf.subarray(0, bytesRead).toString("utf8");
+        if (len > 0) {
+            fd = openSync(file, "r");
+            const buf = Buffer.alloc(len);
+            const bytesRead = readAt(fd, buf, 0, len, start);
+            if (bytesRead === len) return buf.toString("utf8");
+        } else {
+            return "";
+        }
     } catch {
-        return "";
+        /* fall through to the whole-read fallback */
     } finally {
         if (fd !== undefined) {
             try {
@@ -106,6 +133,7 @@ function readTail(file: string, bytes: number): string {
             }
         }
     }
+    return readSliceFallback(file, bytes, bytes);
 }
 
 /** Parse the session header from the first line of a JSONL file. */
@@ -271,7 +299,7 @@ export function resolveResumeQuery(cwd: string, agentDir: string, query: string)
     }
     // 3. Name match (newest first, case-insensitive substring).
     const candidates = scanSessions(cwd, agentDir);
-    const nameHits = candidates.filter((c) => c.name && c.name.toLowerCase().includes(qLower));
+    const nameHits = candidates.filter((c) => c.name?.toLowerCase().includes(qLower));
     if (nameHits.length === 0) {
         return {
             ok: false,

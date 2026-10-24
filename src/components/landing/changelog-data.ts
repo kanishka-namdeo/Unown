@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 253;
+export const CHANGELOG_TOTAL_ENTRIES = 254;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 100,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 102,
+  "Fixed": 103,
   "Security": 0,
   "Behavior": 30
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.10",
     "date": "2026-10-24",
-    "total": 4,
+    "total": 5,
     "counts": {
       "Added": 4,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 0,
+      "Fixed": 1,
       "Security": 0,
       "Behavior": 0
     },
@@ -74,6 +74,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
           },
           {
             "title": "docs(DOX v3): the documentation tree reinstalled on the v3 framework — every AGENTS.md rebuilt from a fresh…",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "resume (Windows): the positional-read trap — unown -c and --resume <name> were broken on Windows",
             "behavior": false
           }
         ]
