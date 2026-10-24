@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 250;
+export const CHANGELOG_TOTAL_ENTRIES = 253;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 97,
+  "Added": 100,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.10",
     "date": "2026-10-24",
-    "total": 1,
+    "total": 4,
     "counts": {
-      "Added": 1,
+      "Added": 4,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,18 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "parity: the trust round — in-session permission modes + additional working directories",
+            "behavior": false
+          },
+          {
+            "title": "parity: the flow round — --continue/--resume launch + project settings",
+            "behavior": false
+          },
+          {
+            "title": "parity: the CI round — --max-turns + --output-schema headless hardening",
+            "behavior": false
+          },
           {
             "title": "docs(DOX v3): the documentation tree reinstalled on the v3 framework — every AGENTS.md rebuilt from a fresh…",
             "behavior": false
