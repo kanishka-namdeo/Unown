@@ -177,8 +177,16 @@ export interface WorktreeStatus {
         error?: string;
 }
 
+/** Optional status filter (2026-10-24 session-worktree round): a predicate
+ *  over porcelain paths. The SESSION lane excludes its own `.unown/` runtime
+ *  state (memory scaffold, receipts) so a session that produced no work
+ *  still cleans up; the subagent lane passes nothing (unchanged semantics). */
+export interface WorktreeStatusOptions {
+        ignore?: (file: string) => boolean;
+}
+
 /** Probe a tree: dirtiness + commits since base. Never throws. */
-export async function worktreeStatus(handle: WorktreeHandle): Promise<WorktreeStatus> {
+export async function worktreeStatus(handle: WorktreeHandle, opts: WorktreeStatusOptions = {}): Promise<WorktreeStatus> {
         const status = await runGit(handle.path, ["status", "--porcelain"]);
         const head = await runGit(handle.path, ["rev-parse", "HEAD"]);
         if (status.code !== 0 || head.code !== 0) {
@@ -187,7 +195,8 @@ export async function worktreeStatus(handle: WorktreeHandle): Promise<WorktreeSt
         const dirtyFiles = status.stdout
                 .split(/\r?\n/)
                 .map((l) => l.slice(3).trim())
-                .filter((l) => l.length > 0);
+                .filter((l) => l.length > 0)
+                .filter((l) => !opts.ignore?.(l));
         const headCommit = head.stdout.trim();
         let newCommits = 0;
         if (headCommit !== handle.baseCommit) {
@@ -208,8 +217,8 @@ export interface CleanupResult {
  *     merges via normal source control — muse merges nothing automatically)
  *   - probe fails (tree missing/corrupt, ownership unproven) → quarantine:
  *     rename aside rather than delete. */
-export async function cleanupWorktree(handle: WorktreeHandle): Promise<CleanupResult> {
-        const status = await worktreeStatus(handle);
+export async function cleanupWorktree(handle: WorktreeHandle, opts: WorktreeStatusOptions = {}): Promise<CleanupResult> {
+        const status = await worktreeStatus(handle, opts);
         if (status.error) {
                 // Ownership cannot be proven — quarantine, never delete.
                 try {

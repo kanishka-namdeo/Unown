@@ -270,3 +270,29 @@ describe("parseArgs --max-tool-repetitions (2026-10-24 parity round)", () => {
         expect(args.outputSchema).toBe("s.json");
     });
 });
+
+describe("parseArgs --worktree / -w (2026-10-24 parity round)", () => {
+    test("bare --worktree sets true (the auto-name lane)", () => {
+        const args = parseArgs(["--worktree", "-p", "go"]);
+        expect(args.command).toBe("print");
+        expect(args.worktree).toBe(true);
+    });
+    test("-w <name> takes the name", () => {
+        const args = parseArgs(["-w", "fix-tests", "-p", "go"]);
+        expect(args.worktree).toBe("fix-tests");
+        expect(args.prompt).toBe("go");
+    });
+    test("--worktree <name> composes with other flags", () => {
+        const args = parseArgs(["--worktree", "spike", "--max-turns", "5", "-p", "go"]);
+        expect(args.worktree).toBe("spike");
+        expect(args.maxTurns).toBe(5);
+    });
+    test("a following flag is not eaten as the name", () => {
+        const args = parseArgs(["--worktree", "--plan", "do it"]);
+        expect(args.worktree).toBe(true);
+        expect(args.plan).toBe(true);
+    });
+    test("absent flag stays undefined", () => {
+        expect(parseArgs(["-p", "go"]).worktree).toBeUndefined();
+    });
+});

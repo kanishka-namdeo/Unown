@@ -81,6 +81,7 @@ import { RECIPES_USAGE, runRecipesCommand } from "./recipes-cli.ts";
 import { defaultSessionTools } from "./session-tools.ts";
 import { runSessionsCommand, SESSIONS_USAGE } from "./sessions-cli.ts";
 import { IMPORT_USAGE, runImportCommand } from "./import-cli.ts";
+import { runWorktreesCommand, WORKTREES_USAGE, withSessionWorktree } from "./worktree-session.ts";
 import { printModelsOverview, runSetupCommand, SETUP_USAGE } from "./setup.ts";
 import { createSplitViewExtension } from "./splitview.ts";
 import {
@@ -331,6 +332,10 @@ One-shot run flags (print mode; several also used by the task tool):
   --output-format json     print ONE final JSON object (result + session id +
                            model + usage + cost + duration + turns; exit codes
                            unchanged) — CI/wrapper contract, composes with jq
+  --worktree [name]     run THIS session inside a managed git worktree at
+                         the repo HEAD (-w; Claude/Codex/Gemini parity) —
+                         exit removes an untouched tree, keeps a changed
+                         one (unown worktrees list|remove manages them)
   --max-tool-repetitions N abort when the SAME tool is called with the same
                          arguments N times in a row — the loop guard
                          (goose parity; exit 4; envelope: loop_guard)
@@ -451,6 +456,12 @@ interface CliArgs {
          *  N times consecutively (goose --max-tool-repetitions parity); exit
          *  4 on trip; the JSON envelope gains `loop_guard`. */
         maxToolRepetitions?: number;
+        /** --worktree [name] / -w (2026-10-24 parity round): run THIS session
+         *  inside a managed worktree at the repo's HEAD (Claude Code
+         *  --worktree / Codex --worktree / Gemini -w parity). Fail-closed
+         *  outside a git repo; exit removes an untouched tree, keeps a
+         *  changed one for review (unown worktrees list / remove). */
+        worktree?: string | true;
 }
 
 // Exported for tests: the parse contract (routing flags, --output-format
@@ -481,6 +492,7 @@ export function parseArgs(argv: string[]): CliArgs {
         let resumeQuery: string | undefined;
         let maxTurns: number | undefined;
         let maxToolRepetitions: number | undefined;
+        let worktree: string | true | undefined;
         let outputSchema: string | undefined;
         for (let i = 0; i < argvRest.length; i++) {
                 const a = argvRest[i];
@@ -606,6 +618,14 @@ export function parseArgs(argv: string[]): CliArgs {
                         }
                         continue;
                 }
+                if (a === "--worktree" || a === "-w") {
+                        // Optional value: a following non-flag token is the
+                        // tree's name (Claude's --worktree [name] grammar).
+                        const next = argvRest[i + 1];
+                        worktree = next !== undefined && !next.startsWith("-") ? next : true;
+                        if (worktree !== true) i++;
+                        continue;
+                }
                 if (a === "--max-turns") {
                         const next = argvRest[i + 1];
                         const parsed = next !== undefined && !next.startsWith("--") ? parseMaxTurns(next) : { ok: false as const, error: "--max-turns expects a positive integer" };
@@ -693,6 +713,7 @@ export function parseArgs(argv: string[]): CliArgs {
                         maxTurns,
                         outputSchema,
                         maxToolRepetitions,
+                        worktree,
                 };
         return {
                 command: "tui",
@@ -717,6 +738,7 @@ export function parseArgs(argv: string[]): CliArgs {
                 maxTurns,
                 outputSchema,
                 maxToolRepetitions,
+                worktree,
         };
 }
 
@@ -2843,6 +2865,22 @@ function cmdHelp(topics: string[]): number {
         return 0;
 }
 
+/**
+ * 2026-10-24 parity round — the --worktree session wrapper: create the tree,
+ * run the session inside it, clean up per the remove_if_clean policy. The
+ * notices go to stderr (stdout contracts stay clean); a creation failure is
+ * fail-closed (exit 1 with the typed reason — never a silent shared run).
+ */
+async function runSessionInWorktree(name: string, runSession: () => Promise<unknown>): Promise<void> {
+        const result = await withSessionWorktree(name.length > 0 ? name : undefined, runSession, (line) => {
+                console.error(line);
+        });
+        if (!result.ok) {
+                console.error(`unown: --worktree failed (${result.reason}): ${result.detail}`);
+                process.exit(1);
+        }
+}
+
 export async function runCli(argv: string[]) {
         // `setup`, `models`, `update`, `changelog`, `info`, `completions`,
         // `uninstall`, `doctor` and `mcp` own their own flag grammar — dispatch
@@ -2997,6 +3035,13 @@ export async function runCli(argv: string[]) {
                 // (the Claude Code /import acquisition play, pointed this way).
                 // Sessions-only imports stay on `unown sessions import`.
                 const code = await runImportCommand(argv.slice(1));
+                process.exit(code);
+        }
+        if (first === "worktrees") {
+                // 2026-10-24 parity round — `unown worktrees list|remove`: the
+                // management surface for the trees `--worktree` sessions leave
+                // behind (kept-for-review ones, after the merge).
+                const code = await runWorktreesCommand(argv.slice(1));
                 process.exit(code);
         }
         if (first === "recipes") {
@@ -3180,6 +3225,12 @@ export async function runCli(argv: string[]) {
                         await cmdNote(args.prompt ?? "");
                         break;
                 case "print":
+                        if (args.worktree !== undefined) {
+                                await runSessionInWorktree(String(args.worktree === true ? "" : args.worktree), () =>
+                                        cmdPrint(args.prompt, args, args.verbose),
+                                );
+                                break;
+                        }
                         await cmdPrint(args.prompt, args, args.verbose);
                         break;
                 case "tui":
@@ -3188,6 +3239,26 @@ export async function runCli(argv: string[]) {
                         if (args.outputFormat === "json") {
                                 console.error("unown: --output-format json requires print mode (-p)");
                                 process.exit(2);
+                        }
+                        if (args.worktree !== undefined) {
+                                await runSessionInWorktree(String(args.worktree === true ? "" : args.worktree), () =>
+                                        cmdTui(args.prompt, args.verbose, {
+                                                tools: args.tools,
+                                                appendSystemPromptPath: args.appendSystemPromptPath,
+                                                plan: args.plan,
+                                                noSplit: args.noSplit,
+                                                goal: args.goal,
+                                                sessionFile: args.sessionFile,
+                                                model: args.model,
+                                                effort: args.effort,
+                                                mcpServers: args.mcpServers,
+                                                noAgentsMd: args.noAgentsMd,
+                                                provider: args.provider,
+                                                permissionMode: args.permissionMode,
+                                                addDirs: args.addDirs,
+                                        }),
+                                );
+                                break;
                         }
                         await cmdTui(args.prompt, args.verbose, {
                                 tools: args.tools,
