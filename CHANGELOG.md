@@ -9,6 +9,12 @@ otherwise specified; the release tag must always equal package.json's version.
 
 Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md`, `benchmarks/memory-eval/*/RESULTS.md`). Changes to agent behavior — prompts, default models, routing, guard rules, hooks, memory injection — are filed under **Agent Behavior**; the policy lives in [docs/BEHAVIOR.md](docs/BEHAVIOR.md).
 
+## [0.0.12] - 2026-10-24
+
+### Added
+
+- **release: the pending-plates round ships with the Windows release-gate fixes — v0.0.12 supersedes the failed v0.0.11 tag** — the v0.0.11 tag's release run failed its windows-latest verification on the `headless-guards.test.ts` `mkdtemp('/tmp/...')` ENOENT (the CI-round test file had never faced a Windows runner; the fix landed on main minutes after the tag was cut, too late for the tag's lineage). Rather than move a dead tag, this release cuts v0.0.12 from the merged main, which carries BOTH the pending-plates round (every capability filmed, no duplicate faces — the dex's twenty-two entries all captured, the last honest-empty stages retired) AND the complete Windows release-gate fix line: the resume-test fixture now serializes its JSON properly (raw `D:\` interpolation was invalid JSON on Windows), and the headless-guards schema block uses the suite's `TEST_TMP` redirect. The v0.0.10 release below already shipped the DOX v3 round with these fixes verified by its own green 3-OS matrix; this release adds the pending-plates content on top. Verified: the merged main's full CI green (CI/CodeQL/Scorecard on a597dc4), the v0.0.10 matrix as the Windows proof of the fix line, and this release's own 3-OS verification.
+
 ## [0.0.11] - 2026-10-24
 
 ### Added
