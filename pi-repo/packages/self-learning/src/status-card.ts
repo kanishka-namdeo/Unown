@@ -27,7 +27,8 @@ import { basename, join } from "node:path";
 import { getEngineStatusInfo } from "./engine-status.ts";
 import { agentGitSha } from "./engine-version.ts";
 import { runGit as runGitHardened } from "./gittools.ts";
-import { unownVersion } from "./packaging.ts";
+import { readInstallMetadata } from "./install-layout.ts";
+import { unownHome, unownVersion } from "./packaging.ts";
 import { findGitRepo, worktreeRoot } from "./worktree.ts";
 
 // ---------------------------------------------------------------------------
@@ -44,6 +45,9 @@ export interface StatusCardInput {
 	sessionName?: string;
 	messageCount?: number;
 	model?: { provider?: string | null; model: string | null };
+	/** The install receipt, when this machine has one (install-surface.ts's
+	 *  source): which channel installed this, at which version. */
+	install?: { mode: string; version: string; platform?: string };
 	/** pi's thinking level (unown's --effort maps here). */
 	thinkingLevel?: string;
 	permissionMode?: string;
@@ -67,6 +71,10 @@ export interface StatusCardInput {
 export function renderStatusCard(input: StatusCardInput): string {
 	const lines: string[] = [];
 	lines.push(`unown v${input.version}${input.gitSha ? ` (${input.gitSha.slice(0, 8)})` : ""}`);
+	if (input.install) {
+		const plat = input.install.platform ? ` (${input.install.platform})` : "";
+		lines.push(`install ${input.install.mode} v${input.install.version}${plat}`);
+	}
 	const sessionBits: string[] = [];
 	if (input.sessionName) sessionBits.push(`"${input.sessionName}"`);
 	if (input.sessionId) sessionBits.push(`id ${String(input.sessionId).slice(0, 8)}`);
@@ -253,6 +261,16 @@ export function registerStatusCommands(pi: any, opts: StatusCommandsOptions): vo
 				}
 			})();
 			const memory = await collectMemoryFacts(opts.cwd);
+			// The install receipt is optional state: a dev run straight from a clone
+			// may never have written one, and the card simply omits the line.
+			const install = (() => {
+				try {
+					const meta = readInstallMetadata(unownHome());
+					return meta ? { mode: meta.mode, version: meta.version, platform: meta.platform } : undefined;
+				} catch {
+					return undefined;
+				}
+			})();
 			const card = renderStatusCard({
 				version,
 				gitSha: agentGitSha(),
@@ -273,6 +291,7 @@ export function registerStatusCommands(pi: any, opts: StatusCommandsOptions): vo
 				git,
 				memory,
 				addDirs,
+				install,
 			});
 			ctx.ui.notify(card, "info");
 		},

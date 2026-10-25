@@ -37,6 +37,10 @@ export interface OnboardingState {
         firstTaskAt?: string;
         /** One-time tip ids already shown (reserved for the next milestone — keep the field). */
         tipsSeen: string[];
+        /** The install receipt already shown as a card, as `<mode>:<version>`
+         *  (install-surface.ts). Absent = never shown; a recorded version change
+         *  re-shows it, so an update gets one line of acknowledgement. */
+        installCardSeenFor?: string;
 }
 
 /** The blank slate: catalog not dismissed, nothing flown, no tips shown. */
@@ -65,6 +69,9 @@ function parseOnboardingState(raw: unknown): OnboardingState | null {
         };
         if (typeof raw.firstTaskAt === "string" && !Number.isNaN(Date.parse(raw.firstTaskAt))) {
                 state.firstTaskAt = raw.firstTaskAt;
+        }
+        if (typeof raw.installCardSeenFor === "string" && raw.installCardSeenFor.length > 0) {
+                state.installCardSeenFor = raw.installCardSeenFor;
         }
         return state;
 }

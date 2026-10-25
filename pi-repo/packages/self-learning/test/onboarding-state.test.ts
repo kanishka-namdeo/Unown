@@ -69,6 +69,22 @@ describe("readOnboardingState (default-on-error, never throws)", () => {
                 expect(readOnboardingState(home)).toEqual({ schema: 1, flightsDismissed: false, tipsSeen: [] });
         });
 
+        test("a wrong-typed or empty installCardSeenFor is dropped, not fatal", () => {
+                const home = tempHome();
+                writeFileSync(
+                        onboardingStatePath(home),
+                        JSON.stringify({ schema: 1, flightsDismissed: true, tipsSeen: [], installCardSeenFor: 42 }),
+                        "utf8",
+                );
+                expect(readOnboardingState(home).installCardSeenFor).toBeUndefined();
+                writeFileSync(
+                        onboardingStatePath(home),
+                        JSON.stringify({ schema: 1, flightsDismissed: true, tipsSeen: [], installCardSeenFor: "" }),
+                        "utf8",
+                );
+                expect(readOnboardingState(home).installCardSeenFor).toBeUndefined();
+        });
+
         test("a directory sitting at the file path → default state, no throw", () => {
                 const home = tempHome();
                 mkdirSync(onboardingStatePath(home), { recursive: true });
@@ -99,6 +115,19 @@ describe("writeOnboardingState / round-trip", () => {
                 expect(content).toBe(`${JSON.stringify(state, null, 2)}\n`);
                 expect(content).toContain('\n  "schema": 1'); // the 2-space indent
                 expect(JSON.parse(content)).toEqual(state); // valid JSON
+        });
+
+        test("the install-card latch round-trips beside the other fields", () => {
+                const home = tempHome();
+                const state: OnboardingState = {
+                        schema: 1,
+                        flightsDismissed: false,
+                        firstTaskAt: "2026-10-25T09:00:00.000Z",
+                        tipsSeen: ["a"],
+                        installCardSeenFor: "binary:0.0.16",
+                };
+                writeOnboardingState(state, home);
+                expect(readOnboardingState(home)).toEqual(state);
         });
 
         test("atomic: no leftover *.tmp files in the target dir after writes", () => {

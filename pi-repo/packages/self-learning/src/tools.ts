@@ -79,8 +79,9 @@ import {
 } from "./goal.ts";
 import { generateAgentsMd } from "./init-agents.ts";
 import { buildInsightsReport, insightsHintLine, renderInsightsReport } from "./insights.ts";
+import { markInstallCardSeen, modelPillFromAgentDir, pendingInstallCard } from "./install-surface.ts";
 import { checkSchemaShape, type SchemaIssue, validateJsonSchema } from "./jsonschema.ts";
-import { chatText } from "./llm.ts";
+import { bridgeHealth, chatText } from "./llm.ts";
 import {
 	characterForLine,
 	countErrors,
@@ -1517,6 +1518,45 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 			const timer = setInterval(() => refreshUpdateChip(ctx), 5000);
 			(timer as { unref?: () => void }).unref?.();
 			updateChipTimer = timer;
+		};
+
+		// ---- install receipt surface (the landing-page handoff)
+		// The card fires once per recorded version; the pill keeps visible, for
+		// the whole session, the state the first-run gate deliberately stops
+		// re-asking. Both cosmetic: TUI only, never in a subagent, and a UI seam
+		// that answers nothing must not affect the session.
+		const showInstallCard = (ctx: any): void => {
+			try {
+				if (isSubagent || !ctx?.hasUI || ctx.mode !== "tui") return;
+				if (typeof ctx.ui?.notify !== "function") return;
+				const pending = pendingInstallCard();
+				if (!pending) return;
+				ctx.ui.notify(pending.card, "info");
+				// Latched only after the card reached the pane, so a context that
+				// swallowed it never spends the one-shot.
+				markInstallCardSeen(pending.key);
+			} catch {
+				/* the card is cosmetic */
+			}
+		};
+		const refreshModelPill = async (ctx: any): Promise<void> => {
+			try {
+				if (isSubagent || !ctx?.hasUI || ctx.mode !== "tui") return;
+				// The agent dir answers first: a configured install returns undefined
+				// and never pays for the probe. Only the unconfigured case can change
+				// its wording based on the bridge, so only that case asks it.
+				const unrouted = modelPillFromAgentDir(UNOWN_AGENT_DIR);
+				if (unrouted === undefined) {
+					setStatusLine(ctx, "model", undefined);
+					return;
+				}
+				// Loopback probe with the gate's own 1 s cap: the pill must never
+				// claim "no model connected" over a bridge that is answering.
+				const bridgeUp = (await bridgeHealth(1000))?.ok === true;
+				setStatusLine(ctx, "model", modelPillFromAgentDir(UNOWN_AGENT_DIR, bridgeUp));
+			} catch {
+				/* the footer is cosmetic */
+			}
 		};
 
 		// ---- goal state (zcode Goal Mode / muse goals port — see goal.ts)
@@ -4672,6 +4712,8 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 			updateStatus(ctx);
 			setStatusLine(ctx, "goal", goalFooterLine(goal));
 			armUpdateChip(ctx);
+			showInstallCard(ctx);
+			await refreshModelPill(ctx);
 		});
 
 		pi.on("session_tree", async (_event: any, _ctx: any) => {

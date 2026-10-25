@@ -17,6 +17,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { writeInstallMetadata } from "../src/install-layout.ts";
 import {
 	collectGitFacts,
 	detectSessionWorktree,
@@ -148,6 +149,19 @@ describe("renderStatusCard", () => {
 		expect(card).toContain("model (unset — see /model)");
 		expect(card).toContain("git main · clean");
 	});
+
+	test("the install receipt renders as its own line, and is absent without it", () => {
+		const withInstall = renderStatusCard({
+			version: "0.0.16",
+			install: { mode: "binary", version: "0.0.16", platform: "linux-x64" },
+		});
+		expect(withInstall).toContain("install binary v0.0.16 (linux-x64)");
+		expect(renderStatusCard({ version: "0.0.16" })).not.toContain("install ");
+		// A checkout record renders the channel name, not a bare version.
+		expect(renderStatusCard({ version: "0.0.16", install: { mode: "checkout", version: "0.0.16" } })).toContain(
+			"install checkout v0.0.16",
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -199,6 +213,37 @@ describe("registerStatusCommands (/status + /diff)", () => {
 		expect(last.level).toBe("info");
 		expect(last.text).toContain("unown v9.9.9");
 		expect(last.text).toContain("session");
+	});
+
+	test("the card carries the install channel only when UNOWN_HOME has a receipt", async () => {
+		const home = freshDir("sc-home-");
+		const previous = process.env.UNOWN_HOME;
+		process.env.UNOWN_HOME = home;
+		try {
+			const run = async () => {
+				const pi = fakePi();
+				registerStatusCommands(pi, { cwd: TEST_TMP, version: "9.9.9" });
+				await pi.commands.get("status")!.handler("", pi.ctx());
+				return pi.notifications[pi.notifications.length - 1].text;
+			};
+			// A bare dev run has no receipt — the card must not invent a channel.
+			expect(await run()).not.toContain("install ");
+			// Written by the real producer, not typed to resemble it.
+			writeInstallMetadata(home, {
+				schema: 1,
+				mode: "binary",
+				version: "0.0.16",
+				platform: "linux-x64",
+				root: "/home/ann/.local/share/unown",
+				bin: "/home/ann/.local/share/unown/versions/0.0.16/unown",
+				shim: "/home/ann/.local/bin/unown",
+				installedAt: "2026-10-25T09:00:00.000Z",
+			});
+			expect(await run()).toContain("install binary v0.0.16 (linux-x64)");
+		} finally {
+			if (previous === undefined) delete process.env.UNOWN_HOME;
+			else process.env.UNOWN_HOME = previous;
+		}
 	});
 
 	test.skipIf(!HAS_GIT)("/diff: clean tree, then changes with the cap and --stat", async () => {
