@@ -70,6 +70,7 @@ import { fsmonitorNeutralizerArgs, promptSinkNeutralizerArgs, readOnlyGitArgs } 
 // is side-effect-free at module scope (the detachment contract) — importing
 // it here does NOT open the engine DB from a `unown update` run.
 import { engineHealth } from "./engine-supervisor.ts";
+import { codeMtimeMs, compareEngineBuild } from "./engine-version.ts";
 import {
         archiveName,
         binaryPath,
@@ -865,12 +866,25 @@ export async function cmdUpdate(flags: UpdateFlags, ctx: UpdateCtx = {}): Promis
                 log("");
                 log(`  release notes: https://github.com/kanishka-namdeo/Unown/releases/tag/${targetTag}`);
                 log(`  restart any running unown sessions to pick up the new build`);
-                // M8: the engine is a LONG-LIVED process — updating the checkout does
-                // not (and must not) restart it under the user. If one is running, it
-                // is now the OLD build by construction; say so with the one-command
-                // fix instead of letting the skew surface later as a mystery.
-                const engineUp = (await engineHealth(1500)).up;
-                if (engineUp) log(`  engine: still running the OLD build until restarted — unown engine restart`);
+                // M8: the engine is a LONG-LIVED process. install.ts above restarts
+                // it when an OS service owns it; a supervisor-spawned engine (no
+                // service installed) survives the rebuild and now runs the OLD
+                // build — say so only in that case, with the one-command fix.
+                const engine = await engineHealth(1500);
+                if (engine.up) {
+                        const skew = compareEngineBuild(
+                                { version: got, gitSha: null, codeMtimeMs: codeMtimeMs() },
+                                engine.version,
+                        );
+                        if (
+                                skew.verdict === "old-build" ||
+                                skew.verdict === "stale" ||
+                                skew.verdict === "ancient" ||
+                                skew.verdict === "unknown"
+                        ) {
+                                log(`  engine: still running the OLD build until restarted — unown engine restart`);
+                        }
+                }
                 log(`  rollback anytime: unown update --rollback   (or: unown update ${current})`);
                 return 0;
         } finally {

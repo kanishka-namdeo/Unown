@@ -179,7 +179,7 @@ All resilience bookkeeping is written best-effort and fails open — a read-only
 
 ### R9 — Deliberate engine-off
 
-Some users want the engine to stay off — privacy, a shared box, or just not wanting a daemon. `UNOWN_ENGINE_AUTOSTART=0` (also `false`/`off`/`no`) is the kill switch: no agent-side touchpoint — note delivery, the session status loop — ever spawns the engine again (the surfaces that merely *report*, like doctor and `unown automations`, never spawned it in the first place). The rest of the UX is shaped for this user:
+Some users want the engine to stay off — privacy, a shared box, or just not wanting a daemon. `UNOWN_ENGINE_AUTOSTART=0` (also `false`/`off`/`no`) is the kill switch: no agent-side touchpoint — note delivery, the session status loop — ever spawns the engine again, and `bun run agent:install` / `unown update` do not install the always-on OS service (the surfaces that merely *report*, like doctor and `unown automations`, never spawned it in the first place). To keep the installer lane out while agent-side auto-start stays allowed, use `UNOWN_NO_ENGINE_SERVICE=1`; to remove an already-installed service, `unown engine uninstall` — which is remembered across installs and updates. The rest of the UX is shaped for this user:
 
 - The probe loop still runs and the footer still tells the truth (`memory: down · 3 queued`) — a persistent status row, not an alarm.
 - **No toast at session start.** The initial state is a fact, not an event; nobody is nagged on boot. Toasts fire only on mid-session *transitions*.
@@ -195,7 +195,7 @@ The engine is long-lived; `unown update` fast-forwards the checkout and rebuilds
 - **`/engine`**: a `build:` line with both sides (engine v + sha · agent v + sha) and the restart hint when stale.
 - **Doctor**: an `engine version` row — pass when fresh, warn on old-build/stale/ancient, info-pass `engine predates version reporting` for pre-M8 engines.
 - **`unown engine status`**: version + sha on the UP line, a `— STALE` marker with the restart command.
-- **`unown update`** prints: `engine: still running the OLD build until restarted — unown engine restart`.
+- **`unown update`** prints `engine: still running the OLD build until restarted — unown engine restart` only when real skew remains after the rebuild — an OS-service-owned engine was already restarted by the installer; a supervisor-spawned one (no service installed) survives the update by design.
 
 The fix is always `unown engine restart` — busy-aware (refuses to cut an active job without `--force`; `--wait <ms>` polls for idle), HTTP-drain-first (Windows-safe), and it reports the fresh build when done. Nothing ever hard-refuses on skew: chat works engine-down by contract (R1), so an old engine is a degradation, not an outage — dreams may miss recent improvements, but the agent never blocks.
 

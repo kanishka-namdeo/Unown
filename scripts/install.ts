@@ -11,10 +11,14 @@
  *   1. verify bun ≥ 1.4 (per-OS install hint if missing/too old — the pi-repo lockfile needs it)
  *   2. bun install          (landing-page dependencies, repo root)
  *   3. bun install          (pi-repo/, vendored pi coding agent)
- *   4. bun run build:offline (pi-repo/, compiled packages)
- *   5. bootstrap .env from .env.example when absent
+ *   4. hydrate + build      (pi model data, then build:offline in pi-repo/)
+ *   5. bootstrap .env from .env.example when absent + link it into both mini-services
  *   6. link `unown` onto PATH (scripts/link.ts) unless UNOWN_NO_LINK=1
- *   7. print next steps (missing BRIDGE_UPSTREAM_KEY flagged as REQUIRED)
+ *   7. install the always-on engine service (`unown engine install --auto`) —
+ *      the engine boots with the login session and restarts on crash; skipped
+ *      in CI, after `unown engine uninstall`, under UNOWN_ENGINE_AUTOSTART=0,
+ *      or under UNOWN_NO_ENGINE_SERVICE=1
+ *   8. print next steps (missing BRIDGE_UPSTREAM_KEY flagged as REQUIRED)
  *
  * Windows notes:
  *   - everything runs through bun; no bash-isms. Child steps are spawned with
@@ -68,14 +72,14 @@ const PI_REPO = path.join(REPO_ROOT, "pi-repo");
 
 // ------------------------------------------------------- step 1: root install
 // (step failures exit with the child's exit code, like install.sh's `set -e`)
-console.log(`${sym.step} [1/6] Installing landing-page dependencies (bun install --frozen-lockfile)...`);
+console.log(`${sym.step} [1/7] Installing landing-page dependencies (bun install --frozen-lockfile)...`);
 {
   const code = run(BUN, ["install", "--frozen-lockfile"], { cwd: REPO_ROOT });
   if (code !== 0) die(`${sym.fail} root bun install failed (exit ${code}) - see output above`, code);
 }
 
 // ----------------------------------------------------- step 2: pi-repo install
-console.log(`${sym.step} [2/6] Installing pi-mono engine dependencies (pi-repo/bun install --frozen-lockfile)...`);
+console.log(`${sym.step} [2/7] Installing pi-mono engine dependencies (pi-repo/bun install --frozen-lockfile)...`);
 {
   const code = run(BUN, ["install", "--frozen-lockfile"], { cwd: PI_REPO });
   if (code !== 0) die(`${sym.fail} pi-repo bun install failed (exit ${code}) - see output above`, code);
@@ -98,7 +102,7 @@ function modelDataCount(): number {
 }
 if (modelDataCount() === 0) {
   console.log(
-    `${sym.step} [3/6] pi model data missing (${MODEL_DATA_DIR}) — hydrating (network fetch, ~1-2 min)…`,
+    `${sym.step} [3/7] pi model data missing (${MODEL_DATA_DIR}) — hydrating (network fetch, ~1-2 min)…`,
   );
   console.log(`    (upstream gitignores this dir; a fresh clone cannot build without it)`);
   const hydrateCode = run(BUN, ["run", "hydrate:model-data"], { cwd: PI_REPO });
@@ -121,14 +125,14 @@ if (modelDataCount() === 0) {
     process.exit(1);
   }
 } else {
-  console.log(`${sym.dot} [3/6] pi model data present (${modelDataCount()} files) - skipping hydration`);
+  console.log(`${sym.dot} [3/7] pi model data present (${modelDataCount()} files) - skipping hydration`);
 }
 
 // ------------------------------------------------------- step 4: build offline
 // build:offline = same as build, but skips the ai package's network-dependent
 // model-data hydration step; the self-learning runner only needs the compiled
 // packages (coding-agent, ai, agent, …).
-console.log(`${sym.step} [4/6] Building the pi coding agent (pi-repo/bun run build:offline)...`);
+console.log(`${sym.step} [4/7] Building the pi coding agent (pi-repo/bun run build:offline)...`);
 {
   const code = run(BUN, ["run", "build:offline"], { cwd: PI_REPO });
   if (code !== 0) die(`${sym.fail} pi-repo build:offline failed (exit ${code}) - see output above`, code);
@@ -183,6 +187,25 @@ if (process.env.UNOWN_NO_LINK === "1") {
   const code = run(BUN, [path.join(REPO_ROOT, "scripts", "link.ts")]);
   if (code !== 0) {
     console.log(`${sym.dot} PATH link failed (not fatal) - run scripts/link.ts manually`);
+  }
+}
+
+// ----------------------------------------------------- step 7: engine service
+// The always-on layer: a per-user OS service (systemd --user / launchd agent /
+// Windows logon task) owns `unown engine serve`, so memory, AutoDream and
+// routines keep running after a reboot with no agent invoked. The CLI's
+// --auto lane decides (CI, an explicit `unown engine uninstall`, the
+// UNOWN_ENGINE_AUTOSTART=0 kill switch, or UNOWN_NO_ENGINE_SERVICE=1 keep it
+// off) and prints the reason.
+// Never fatal: an installer must succeed on machines without a service manager.
+console.log(`${sym.step} [7/7] Engine service (boots at login, restarts on crash)...`);
+{
+  const code = run(BUN, [path.join(REPO_ROOT, "bin", "unown"), "engine", "install", "--auto"], {
+    cwd: REPO_ROOT,
+  });
+  if (code !== 0) {
+    console.log(`${sym.warn} engine service not installed - memory still works while an agent is in use`);
+    console.log(`    retry: bun bin/unown engine install   (docs/routines.md - Always-on)`);
   }
 }
 

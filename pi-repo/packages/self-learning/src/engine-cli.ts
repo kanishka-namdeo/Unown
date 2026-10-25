@@ -27,16 +27,18 @@
  *   install keep the engine ALWAYS ON: install the OS login service (systemd
  *           --user unit / launchd LaunchAgent / Windows scheduled task) that
  *           runs `engine serve` at login and restarts it on crash — routines
- *           then fire even when no agent is in use. Idempotent; re-run to repair
- *   uninstall  stop + remove that OS service (the engine returns to the
- *           agent-touchpoint auto-start)
+ *           then fire even when no agent is in use. Idempotent; re-run to repair.
+ *           `--auto` (the install/update lane) skips in CI, after an uninstall,
+ *           and under the engine-off kill switch
+ *   uninstall  stop + remove that OS service and REMEMBER the opt-out (the
+ *           engine returns to the agent-touchpoint auto-start)
  */
 
 import { Database } from "bun:sqlite";
 import { existsSync, renameSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { engineFetch } from "./engine-auth.ts";
-import { installEngineService, serviceStatus, uninstallEngineService } from "./engine-service.ts";
+import { autoServiceEnv, installEngineService, serviceStatus, uninstallEngineService } from "./engine-service.ts";
 import { describeSpawnCircuit } from "./engine-status.ts";
 import {
 	engineHealth,
@@ -72,7 +74,14 @@ export const ENGINE_USAGE = `unown engine <sub> — the detached self-learning e
   repair   quarantine a corrupt engine DB (backs it up aside, boots fresh; memory
            files on disk + queued notes survive) — when the engine won't start
   serve    run the engine in THIS process (the supervisor entry — systemd/
-           launchd/Windows services should use this)`;
+           launchd/Windows services should use this)
+  install  keep the engine ALWAYS ON: install the per-user login service
+           (systemd user unit / launchd agent / Windows logon task) that boots
+           it at login and restarts it on crash. Idempotent; re-run to repair.
+           --auto is the installer lane: skips in CI, after engine uninstall,
+           and under UNOWN_ENGINE_AUTOSTART=0 / UNOWN_NO_ENGINE_SERVICE=1
+  uninstall  stop + remove that service (remembers the opt-out: install/update
+           will not re-add it; engine install re-enables)`;
 
 /** `unown engine restart` flags (--force, --wait <ms>). */
 export interface RestartFlags {
@@ -157,8 +166,22 @@ export async function runEngineCommand(argv: string[], ctx: { out?: (s: string) 
 	if (sub === "repair") return cmdRepair(out);
 	if (sub === "serve") return cmdServe();
 	if (sub === "install" || sub === "install-service") {
+		const rest = argv.slice(1);
+		if (rest.includes("--help") || rest.includes("-h")) {
+			out(ENGINE_USAGE);
+			return 0;
+		}
+		const unknown = rest.filter((a) => a !== "--auto");
+		if (unknown.length > 0) {
+			out(`unown: unknown install flag '${unknown[0]}'`);
+			out(ENGINE_USAGE);
+			return 2;
+		}
 		const repoRoot = resolve(import.meta.dir, "../../../..");
-		return installEngineService(repoRoot, out);
+		// The two auto-lane knobs may live in the checkout .env (empty = unset);
+		// file wins, matching cmdServe's precedence.
+		const env = autoServiceEnv(process.env, join(repoRoot, ".env"));
+		return installEngineService(repoRoot, out, { auto: rest.includes("--auto"), env });
 	}
 	if (sub === "uninstall" || sub === "uninstall-service") return uninstallEngineService(out);
 	out(`unown: unknown engine subcommand '${sub}'`);

@@ -36,18 +36,25 @@
  *      so exactly one engine ever holds the lock.
  *   4. No root, no system-wide state: systemd --user + enable-linger
  *      (best-effort, warned), ~/Library/LaunchAgents, a per-user scheduled
- *      task — uninstallable by the user alone.
+ *      task (and, when Task Scheduler is ACL-gated for a standard Windows
+ *      account, a hidden Startup-folder launcher with the same restart
+ *      policy) — uninstallable by the user alone.
  *   5. Compile-time refusal in binary installs (the engine stack is a
  *      source-install feature — docs/install.md): a clear error, not a
  *      half-working service.
+ *   6. Auto lane (`--auto`, run by scripts/install.ts on install AND update):
+ *      the service is the DEFAULT, not an opt-in command — skipping it in CI
+ *      (no login session), after `unown engine uninstall` (a remembered
+ *      opt-out marker), or under the `UNOWN_ENGINE_AUTOSTART=0` kill switch.
+ *      Manual `unown engine install` always wins and clears the marker.
  */
 
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import { engineHealth } from "./engine-supervisor.ts";
-import { IS_COMPILED_BINARY } from "./packaging.ts";
+import { dirname, join, resolve } from "node:path";
+import { autoStartDisabled, engineHealth, loadEnvValues } from "./engine-supervisor.ts";
+import { IS_COMPILED_BINARY, unownHome } from "./packaging.ts";
 
 /** The service name across platforms (systemd unit base, launchd label base,
  *  scheduled task name). One identity everywhere it can be queried. */
@@ -104,6 +111,91 @@ export function resolveServiceSpec(repoRoot: string, compiled: boolean = IS_COMP
 		logFile: join(repoRoot, ".run", "engine.log"),
 		serveArgs: ["engine", "serve"],
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Auto lane — should scripts/install.ts (install AND update) install the
+// service without being asked? Pure (env + platform + marker injected) so the
+// gate itself is unit-tested; the imperative layer only acts on the verdict.
+// ---------------------------------------------------------------------------
+
+/** Marker written by `unown engine uninstall`: a deliberate opt-out that the
+ *  install/update lane must not silently undo. Lives in UNOWN_HOME (outside
+ *  the checkout, so a moved repo keeps it), removed by a manual `install`. */
+export function serviceDisabledMarker(env: NodeJS.ProcessEnv = process.env): string {
+	return join(unownHome(env), "engine-service.disabled");
+}
+
+export type ServiceAutoSkipReason = "compiled" | "no-manager" | "ci" | "opt-out" | "autostart-off" | "uninstalled";
+
+export interface ServiceAutoDecision {
+	install: boolean;
+	/** Why the auto lane skipped (undefined when `install` is true). */
+	reason?: ServiceAutoSkipReason;
+}
+
+export interface ServiceAutoInput {
+	env?: NodeJS.ProcessEnv;
+	platform?: NodeJS.Platform;
+	compiled?: boolean;
+	/** Override the on-disk marker probe (tests). */
+	uninstalled?: boolean;
+}
+
+function envTruthy(raw: string | undefined): boolean {
+	return /^(1|true|yes|on)$/i.test(raw ?? "");
+}
+
+/**
+ * The install/update lane's gate. Order matters only for the reported reason:
+ * every skip is safe, but the most specific one is the one a user can act on.
+ * Fails OPEN (install) — the service is the default; every skip is explicit.
+ */
+export function decideAutoServiceInstall(input: ServiceAutoInput = {}): ServiceAutoDecision {
+	const env = input.env ?? process.env;
+	const platform = input.platform ?? process.platform;
+	if (input.compiled ?? IS_COMPILED_BINARY) return { install: false, reason: "compiled" };
+	if (detectServiceManager(platform) === "none") return { install: false, reason: "no-manager" };
+	if (envTruthy(env.UNOWN_NO_ENGINE_SERVICE)) return { install: false, reason: "opt-out" };
+	if (autoStartDisabled(env)) return { install: false, reason: "autostart-off" };
+	if (input.uninstalled ?? existsSync(serviceDisabledMarker(env))) return { install: false, reason: "uninstalled" };
+	// CI runners have no login session (and windows-latest would register a
+	// real logon task): services are a desktop concern, never a build step.
+	if (envTruthy(env.CI)) return { install: false, reason: "ci" };
+	return { install: true };
+}
+
+/** One actionable line for an auto-lane skip. */
+export function describeServiceAutoSkip(
+	reason: ServiceAutoSkipReason,
+	platform: NodeJS.Platform = process.platform,
+): string {
+	switch (reason) {
+		case "compiled":
+			return "engine service: skipped (binary installs have no engine — the source lane owns it)";
+		case "no-manager":
+			return `engine service: skipped (no supported service manager on ${platform})`;
+		case "opt-out":
+			return "engine service: skipped (UNOWN_NO_ENGINE_SERVICE=1)";
+		case "autostart-off":
+			return "engine service: skipped (UNOWN_ENGINE_AUTOSTART=0 — engine-off kill switch)";
+		case "uninstalled":
+			return "engine service: skipped (you ran unown engine uninstall — unown engine install re-enables it)";
+		case "ci":
+			return "engine service: skipped (CI run — logon services are a desktop concern)";
+	}
+}
+
+/** Merge the two auto-lane knobs from the state root's .env, empty = unset
+ *  (the repo convention). File values win, matching the engine's serve path. */
+export function autoServiceEnv(env: NodeJS.ProcessEnv, envFile: string): NodeJS.ProcessEnv {
+	const file = loadEnvValues(envFile);
+	const merged = { ...env };
+	for (const key of ["UNOWN_ENGINE_AUTOSTART", "UNOWN_NO_ENGINE_SERVICE"]) {
+		const v = file[key];
+		if (v !== undefined && v !== "") merged[key] = v;
+	}
+	return merged;
 }
 
 // ---------------------------------------------------------------------------
@@ -201,21 +293,66 @@ export function buildLaunchdPlist(spec: ServiceSpec): string {
 }
 
 /** Windows: the PowerShell that registers the per-user logon task. Returned
- *  as a single -Command string (executed via powershell.exe -NoProfile). */
+ *  as a single -Command string (executed via powershell.exe -NoProfile).
+ *
+ *  Two live-caught rules:
+ *   - ONE statement per line — PowerShell has no implicit line continuation,
+ *     so a `-Argument …` on its own line is parsed as a cmdlet and fails;
+ *   - restart policy goes through the CMDLET parameters, never a direct
+ *     `$settings.RestartInterval` assignment: the property serialises as
+ *     `00:01:00`, which Task Scheduler's XML parser rejects as out of range.
+ */
 export function buildWindowsRegisterPs(spec: ServiceSpec): string {
 	const sq = (s: string) => `'${s.replace(/'/g, "''")}'`;
+	// The task's Argument string is parsed by CreateProcess, not PowerShell:
+	// an unquoted entry path splits at its first space (`C:\Users\Jane Doe\…`)
+	// and the task starts bun with a nonexistent script. Quote-wrap it exactly
+	// like the Windows spawn path does (engine-supervisor).
+	const argv = [`"${spec.entryPath}"`, ...spec.serveArgs].join(" ");
 	return [
-		"$action = New-ScheduledTaskAction -Execute " + sq(spec.bunPath),
-		"  -Argument " + sq(`${spec.entryPath} engine serve`) + " -WorkingDirectory " + sq(spec.workDir),
+		`$action = New-ScheduledTaskAction -Execute ${sq(spec.bunPath)} -Argument ${sq(argv)} -WorkingDirectory ${sq(spec.workDir)}`,
 		"$trigger = New-ScheduledTaskTrigger -AtLogOn",
-		"$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable",
+		"$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)",
 		"$settings.ExecutionTimeLimit = 'PT0S'",
-		"$settings.RestartCount = 3",
-		"$settings.RestartInterval = (New-TimeSpan -Minutes 1)",
-		"Register-ScheduledTask -TaskName " +
-			sq(ENGINE_SERVICE_NAME) +
-			" -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null",
+		`Register-ScheduledTask -TaskName ${sq(ENGINE_SERVICE_NAME)} -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null`,
 	].join("\n");
+}
+
+/** Windows per-user Startup folder (`shell:startup`) — writable without admin
+ *  rights, unlike the Task Scheduler root folder on a standard account. */
+export function windowsStartupDir(env: NodeJS.ProcessEnv = process.env): string {
+	const appData = env.APPDATA || join(homedir(), "AppData", "Roaming");
+	return join(appData, "Microsoft", "Windows", "Start Menu", "Programs", "Startup");
+}
+
+/** The launcher file the no-admin Windows lane installs. */
+export function windowsLauncherPath(env: NodeJS.ProcessEnv = process.env): string {
+	return join(windowsStartupDir(env), "unown-engine.vbs");
+}
+
+/** Windows logon launcher — the fallback when Task Scheduler refuses the
+ *  registration (standard accounts; the scheduled task is ACL-gated even for
+ *  per-user logon triggers). A hidden wscript host owns `engine serve` and
+ *  restarts it after a NON-ZERO exit; exit 0 (a graceful stop, the
+ *  single-instance lock loser) ends the loop — the exact systemd/launchd
+ *  policy spelled with WScript.Shell.Run. */
+export function buildWindowsLauncherVbs(spec: ServiceSpec): string {
+	// VBScript string literal: `"` is escaped by doubling it.
+	const vb = (s: string) => `"${s.replace(/"/g, '""')}"`;
+	const wq = (s: string) => `"${s}"`; // CreateProcess quoting INSIDE the command
+	const cmd = [wq(spec.bunPath), wq(spec.entryPath), ...spec.serveArgs].join(" ");
+	return [
+		"' unown engine logon launcher - generated by `unown engine install` (idempotent; re-run to repair)",
+		"' Hidden + restart-on-failure; a clean exit (unown engine stop, the lock loser) ends the loop.",
+		'Set shell = CreateObject("WScript.Shell")',
+		`shell.CurrentDirectory = ${vb(spec.workDir)}`,
+		"Do",
+		`  code = shell.Run(${vb(cmd)}, 0, True)`,
+		"  If code = 0 Then Exit Do",
+		"  WScript.Sleep 3000",
+		"Loop",
+		"",
+	].join("\r\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -237,7 +374,13 @@ function runCaptured(cmd: string, args: string[], timeoutMs = 15_000): { ok: boo
 		}).toString();
 		return { ok: true, stdout, stderr: "" };
 	} catch (err: any) {
-		return { ok: false, stdout: String(err?.stdout ?? ""), stderr: String(err?.stderr ?? err instanceof Error ? err.message : String(err)) };
+		return {
+			ok: false,
+			stdout: String(err?.stdout ?? ""),
+			// Parenthesized: `a ?? b ? c : d` parses as `(a ?? b) ? c : d`, which
+			// threw away err.stderr whenever the captured stderr existed.
+			stderr: String(err?.stderr ?? (err instanceof Error ? err.message : String(err))),
+		};
 	}
 }
 
@@ -276,8 +419,11 @@ export async function serviceStatus(): Promise<ServiceStatus> {
 	}
 	if (kind === "schtasks") {
 		const q = runCaptured("schtasks", ["/Query", "/TN", ENGINE_SERVICE_NAME], 5000);
-		if (!q.ok) return { installed: false, kind, detail: "not installed" };
-		return { installed: true, kind, detail: "registered" };
+		if (q.ok) return { installed: true, kind, detail: "registered (logon task)" };
+		if (existsSync(windowsLauncherPath())) {
+			return { installed: true, kind, detail: "startup launcher (logon, restart on failure)" };
+		}
+		return { installed: false, kind, detail: "not installed" };
 	}
 	return { installed: false, kind: "none", detail: `no service manager on ${process.platform}` };
 }
@@ -325,8 +471,51 @@ export interface ServiceCommandResult {
 	lines: string[];
 }
 
-/** `unown engine install` — install + enable + start the OS service. */
-export async function installEngineService(repoRoot: string, out: (s: string) => void): Promise<number> {
+export interface InstallEngineServiceOptions {
+	/** The install/update lane (scripts/install.ts): honor decideAutoServiceInstall. */
+	auto?: boolean;
+	/** Env for the auto gate (defaults to process.env). */
+	env?: NodeJS.ProcessEnv;
+}
+
+/** Remember a deliberate `unown engine uninstall` so the installer never
+ *  silently re-adds the service the user just removed. Best-effort. */
+export function markServiceUninstalled(env: NodeJS.ProcessEnv = process.env): void {
+	try {
+		const marker = serviceDisabledMarker(env);
+		mkdirSync(dirname(marker), { recursive: true });
+		writeFileSync(
+			marker,
+			JSON.stringify({ disabledAt: new Date().toISOString(), platform: process.platform }) + "\n",
+			{ mode: 0o644 },
+		);
+	} catch {
+		/* a read-only home keeps the uninstall itself successful */
+	}
+}
+
+/** `unown engine install [--auto]` — install + enable + start the OS service.
+ *  `--auto` is the installer lane: skip (returning 0) whenever the gate says
+ *  the service is not wanted on this machine. */
+export async function installEngineService(
+	repoRoot: string,
+	out: (s: string) => void,
+	opts: InstallEngineServiceOptions = {},
+): Promise<number> {
+	const env = opts.env ?? process.env;
+	if (opts.auto) {
+		const decision = decideAutoServiceInstall({ env });
+		if (!decision.install) {
+			out(describeServiceAutoSkip(decision.reason ?? "ci"));
+			return 0;
+		}
+	}
+	// A manual install is the explicit "turn it back on" after an uninstall.
+	try {
+		rmSync(serviceDisabledMarker(env), { force: true });
+	} catch {
+		/* best effort — the install below reports its own failures */
+	}
 	let spec: ServiceSpec;
 	try {
 		spec = resolveServiceSpec(repoRoot);
@@ -398,21 +587,56 @@ export async function installEngineService(repoRoot: string, out: (s: string) =>
 	} else if (kind === "schtasks") {
 		const ps = buildWindowsRegisterPs(spec);
 		const reg = runCaptured("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps], 30_000);
-		if (!reg.ok) {
-			out(`  Register-ScheduledTask failed: ${reg.stderr.trim()}`);
-			return 1;
+		if (reg.ok) {
+			await drainRunningEngine();
+			// A launcher from an earlier no-admin install would double-start.
+			rmSync(windowsLauncherPath(), { force: true });
+			const startRes = runCaptured(
+				"powershell",
+				["-NoProfile", "-Command", `Start-ScheduledTask -TaskName '${ENGINE_SERVICE_NAME}'`],
+				15_000,
+			);
+			if (!startRes.ok) {
+				out(`  task registered but Start-ScheduledTask failed: ${startRes.stderr.trim()}`);
+				return 1;
+			}
+			out(`  task: ${ENGINE_SERVICE_NAME} (logon trigger, restart on failure)`);
+		} else {
+			// Task Scheduler's root folder is ACL-gated for standard accounts
+			// (live-caught: Register-ScheduledTask and schtasks /Create both
+			// answer "Access is denied" unelevated). The per-user Startup
+			// folder needs no admin and buys the same two properties.
+			const launcher = windowsLauncherPath();
+			try {
+				mkdirSync(dirname(launcher), { recursive: true });
+				// UTF-16LE + BOM: the encoding WSH reads reliably. UTF-8 would
+				// mojibake a non-ASCII user path (C:\Users\José\…) under the
+				// ANSI default on a legacy code page.
+				writeFileSync(launcher, "\uFEFF" + buildWindowsLauncherVbs(spec), "utf16le");
+			} catch (err: any) {
+				out(`  Register-ScheduledTask failed: ${reg.stderr.trim()}`);
+				out(`  startup launcher fallback also failed: ${err instanceof Error ? err.message : String(err)}`);
+				return 1;
+			}
+			await drainRunningEngine();
+			const startRes = runCaptured(
+				"powershell",
+				[
+					"-NoProfile",
+					"-Command",
+					`Start-Process -WindowStyle Hidden -FilePath 'wscript.exe' -ArgumentList '${`"${launcher}"`.replace(/'/g, "''")}'`,
+				],
+				15_000,
+			);
+			if (!startRes.ok) {
+				out(`  Register-ScheduledTask failed: ${reg.stderr.trim().split("\n")[0]}`);
+				out(`  startup launcher written but could not start now: ${startRes.stderr.trim()}`);
+				out(`  it will run at the next logon: ${launcher}`);
+				return 1;
+			}
+			out(`  task registration refused (${reg.stderr.trim().split("\n")[0]})`);
+			out(`  startup: ${launcher} (logon, hidden, restart on failure - no admin needed)`);
 		}
-		await drainRunningEngine();
-		const startRes = runCaptured(
-			"powershell",
-			["-NoProfile", "-Command", `Start-ScheduledTask -TaskName '${ENGINE_SERVICE_NAME}'`],
-			15_000,
-		);
-		if (!startRes.ok) {
-			out(`  task registered but Start-ScheduledTask failed: ${startRes.stderr.trim()}`);
-			return 1;
-		}
-		out(`  task: ${ENGINE_SERVICE_NAME} (logon trigger, restart on failure)`);
 	} else {
 		out(`engine service: no supported service manager on ${process.platform}`);
 		out("  the agent-side auto-start still spawns the engine on the next note/session touchpoint");
@@ -432,13 +656,19 @@ export async function installEngineService(repoRoot: string, out: (s: string) =>
 	return 0;
 }
 
-/** `unown engine uninstall` — stop + remove the OS service (idempotent). */
-export async function uninstallEngineService(out: (s: string) => void): Promise<number> {
+/** `unown engine uninstall` — stop + remove the OS service (idempotent).
+ *  Records the opt-out so the next install/update does not re-add it. */
+export async function uninstallEngineService(
+	out: (s: string) => void,
+	env: NodeJS.ProcessEnv = process.env,
+): Promise<number> {
 	const kind = detectServiceManager();
 	if (kind === "systemd-user") {
 		const unit = systemdUnitPath();
 		if (!existsSync(unit)) {
 			out("engine service: not installed (nothing to remove)");
+			markServiceUninstalled(env);
+			out("  noted: the installer will not add it back (unown engine install re-enables it)");
 			return 0;
 		}
 		runCaptured("systemctl", ["--user", "stop", ENGINE_SERVICE_NAME], 20_000);
@@ -454,30 +684,56 @@ export async function uninstallEngineService(out: (s: string) => void): Promise<
 		else runCaptured("launchctl", ["unload", "-w", plist], 20_000);
 		if (!existsSync(plist)) {
 			out("engine service: not installed (nothing to remove)");
+			markServiceUninstalled(env);
+			out("  noted: the installer will not add it back (unown engine install re-enables it)");
 			return 0;
 		}
 		rmSync(plist, { force: true });
 		out("engine service: stopped and removed (launchd agent)");
 	} else if (kind === "schtasks") {
-		runCaptured(
-			"powershell",
-			["-NoProfile", "-Command", `Stop-ScheduledTask -TaskName '${ENGINE_SERVICE_NAME}'`],
-			15_000,
-		);
-		const un = runCaptured(
-			"powershell",
-			["-NoProfile", "-Command", `Unregister-ScheduledTask -TaskName '${ENGINE_SERVICE_NAME}' -Confirm:$false`],
-			15_000,
-		);
-		if (!un.ok && /cannot find|does not exist|not found/i.test(un.stderr)) {
+		const launcher = windowsLauncherPath();
+		const hadLauncher = existsSync(launcher);
+		const taskQuery = runCaptured("schtasks", ["/Query", "/TN", ENGINE_SERVICE_NAME], 5000);
+		if (!taskQuery.ok && !hadLauncher) {
 			out("engine service: not installed (nothing to remove)");
+			markServiceUninstalled(env);
+			out("  noted: the installer will not add it back (unown engine install re-enables it)");
 			return 0;
 		}
-		out("engine service: stopped and removed (scheduled task)");
+		let ok = true;
+		if (taskQuery.ok) {
+			// Stop-ScheduledTask is a hard terminate; drain first so the WAL
+			// checkpoints and the single-instance lock releases cleanly.
+			await drainRunningEngine();
+			runCaptured(
+				"powershell",
+				["-NoProfile", "-Command", `Stop-ScheduledTask -TaskName '${ENGINE_SERVICE_NAME}'`],
+				15_000,
+			);
+			const un = runCaptured(
+				"powershell",
+				["-NoProfile", "-Command", `Unregister-ScheduledTask -TaskName '${ENGINE_SERVICE_NAME}' -Confirm:$false`],
+				15_000,
+			);
+			if (!un.ok) {
+				out(`  Unregister-ScheduledTask failed: ${un.stderr.trim()}`);
+				ok = false;
+			}
+		}
+		if (hadLauncher) {
+			// The hidden wscript host waits on the engine: the HTTP drain exits
+			// its loop cleanly, then the launcher file may go.
+			await drainRunningEngine();
+			rmSync(launcher, { force: true });
+		}
+		if (!ok) return 1;
+		out("engine service: stopped and removed (scheduled task / startup launcher)");
 	} else {
 		out(`engine service: no service manager on ${process.platform} — nothing installed`);
 		return 0;
 	}
+	markServiceUninstalled(env);
+	out("  noted: install/update will not add it back (unown engine install re-enables it)");
 	out("  the engine stays down until: unown engine start  (or the next note/session touchpoint)");
 	return 0;
 }
