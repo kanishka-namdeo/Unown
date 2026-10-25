@@ -4,12 +4,30 @@
 # commit that touches a file containing secret-shaped STRINGS will fail the
 # scan even when those strings are obviously fixtures. Allowlist the fixture
 # files here when adding tests for redaction/secret handling.
+#
+# The xplat `full` scenario (docs/xplat-testing.md) scans FULL history on
+# dispatch — the 2026-10-25 first run proved push-CI alone cannot keep this
+# allowlist honest: the sessions-redaction tests and the mpbench corpus
+# below landed with secret-shaped fixtures and no allowlist entry, because
+# the per-push diff never saw them together. When a dispatch scan goes red
+# on a fixture, add its path here (never weaken the rules); when it goes red
+# on something that is not obviously a fixture, treat it as a real leak.
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "redaction test fixtures: deliberately secret-shaped strings (sk-…, Bearer …, KEY=VALUE) that the redactSecrets / receipts-privacy tests must recognize and mask — none are real credentials"
+description = "redaction test fixtures: deliberately secret-shaped strings (sk-…, Bearer …, KEY=VALUE) that the redactSecrets / receipts-privacy / share-redact tests must recognize and mask — none are real credentials"
 paths = [
     '''pi-repo/packages/self-learning/test/checkpoints\.test\.ts''',
+    '''pi-repo/packages/self-learning/test/sessions-completion\.test\.ts''',
+    '''pi-repo/packages/self-learning/test/sessions-markdown\.test\.ts''',
+    '''pi-repo/packages/coding-agent/test/share-redact\.test\.ts''',
+]
+
+[[allowlists]]
+description = "memory-eval corpus: the ADV_2974 case family is the secret-hygiene eval — the agent is graded on NOT writing user_api_key=… to memory; the corpus and its receipts quote the bait"
+paths = [
+    '''benchmarks/memory-eval/mpbench/corpus\.json''',
+    '''benchmarks/memory-eval/mpbench/results/.+/per-case/ADV_2974\.json''',
 ]

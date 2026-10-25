@@ -20,6 +20,7 @@ The cross-platform lifecycle scripts (install/start/stop/link), the release buil
 - `link.ts` (`agent:link`) — puts `unown` on PATH (POSIX `~/.local/bin`-first; Windows `%USERPROFILE%\.local\bin` + user PATH via PowerShell, never `setx`); records `~/.unown/install.json` (mode "checkout"). This is the supported global-install path; `bun install -g .` does NOT work with the vendored workspace layout.
 - `lib.ts` — shared helpers (`resolveBun()`, `loadEnvFile()`, `probeHttpOk()` where 401/403 = a tokened engine is present, ASCII glyphs on win32).
 - `bwrap_smoke.sh` — 25-check bubblewrap profile verification; `verify_sandbox.mjs` — engine-level sandbox verification against a scratch tmpdir (never the live engine).
+- `xplat.mjs` — the cross-platform test driver: the steering wheel over the `xplat.yml` dispatch workflow (dispatch/status/watch/logs/artifacts/cancel/rerun/runs/local/scenarios). Zero dependencies (node >= 20 or bun), resolves auth from `XPLAT_GITHUB_TOKEN` > `GITHUB_TOKEN` > the PAT in the git remote, mints a correlation `run_id` per dispatch (the API returns 204 with no body — the driver finds its own run by run-name segment match), and exits with the verdict contract (0 green / 1 red / 2 cancelled / 3 infra / 4 usage / 5 auth). `local --scenario <s>` runs the scenario's steps on this machine (the fast inner loop). The manual is `docs/xplat-testing.md`; the pure logic is pinned by `scripts/xplat.test.mjs`. Scenario or `--os` changes move the driver, the workflow inputs, the pinning suite AND the docs page in the same change (four-place contract, like the platform ids).
 
 **Release builders:**
 
@@ -56,7 +57,8 @@ The cross-platform lifecycle scripts (install/start/stop/link), the release buil
 
 ## Verification
 
-- `node --test scripts/build-artifacts.test.mjs scripts/release-manifest.test.mjs` (the release plan gates); `node --test scripts/check_instruction_chars.test.mjs` (the scanner itself).
+- `node --test scripts/build-artifacts.test.mjs scripts/release-manifest.test.mjs` (the release plan gates); `node --test scripts/check_instruction_chars.test.mjs` (the scanner itself); `node --test scripts/xplat.test.mjs` (the driver's pure logic: remote parsing, matrix resolution, exit codes, dispatch correlation, the local-lane subset contract).
+- `node scripts/xplat.mjs local --scenario core` after any driver/workflow change — the local lane must stay green end to end; `node scripts/xplat.mjs dispatch --scenario smoke --watch` proves the remote lane (correlation, receipts, verdict exit code) after workflow-input changes.
 - `bun run check:docs` / `check:changelog` / `check:blog` / `check:benchmarks` / `check:claims` — all green after any docs/landing/benchmarks/blog change.
 - `bash scripts/bwrap_smoke.sh` + `bun scripts/verify_sandbox.mjs` (Linux sandbox legs) before committing sandbox changes.
 - CI runs: lint-shell (`bash -n scripts/*.sh public/*.sh`), the docs/palette/theme/instruction-chars/coverage jobs, and the 3-OS build-test matrix through the real installer.

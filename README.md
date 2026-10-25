@@ -152,6 +152,7 @@ Full usage docs live in [`docs/`](docs/):
 | [TUI responsiveness](docs/tui-responsive-plan.md) | the R-series responsive design record — viewport tiers, the min-size gate, footer degradation, overlay scaling, the graduated files dock |
 | [behavior](docs/BEHAVIOR.md) | the agent behavior card: default models, memory stack, session tools, sandbox, hooks, and the behavior-change policy |
 | [testing strategy](docs/testing-strategy.md) | the engineering contract for proving the harness works: which layers get which tests, what runs in CI, what must be true before a number may be published |
+| [xplat testing](docs/xplat-testing.md) | the agent-drivable cross-platform lane — `scripts/xplat.mjs` + the `xplat.yml` dispatch workflow: four scenarios (smoke/core/full/release-verify), on-demand OS targeting, junit receipts, and the driving playbook |
 | [benchmark research](docs/benchmark-research.md) | what comparable coding agents run and publish, and the Docker-free benchmarks Unown adopted for the landing page |
 
 ---

@@ -514,6 +514,7 @@ Notes on the two decisions that changed from the original proposal:
 | 17 | Docs link and anchor integrity on `docs/*.md` | SHIPPED (this revision; verified green against upstream's new `windows.md`/`macos.md`) | `scripts/check_docs.mjs` as the `docs` CI job; the CLI-surface and env-var cross-checks in `docs/AGENTS.md` remain prose (§7.10) |
 
 | 18 | Browser automation suite (`test/browser.test.ts` + env-gated `test/browser-live.test.ts`) | **SHIPPED** (the browser capability) | 19 unit tests pin the pure contract (discovery per-OS with injectable fs, wildcard expansion newest-first, URL normalization incl. `localhost:3000/x`, host-glob gating, snapshot formatting + truncation, key parsing) and 31 live tests drive the full action surface against a real Chromium the module itself discovered — navigate/snapshot/find (incl. iframe + open shadow DOM), trusted clicks by ref and selector, type/fill_form/select/checkbox/press_key, eval, console + network capture, JPEG-magic-validated screenshots, element clips, tabs, waits (text/textGone), cookies, dialogs, downloads, upload jail (positive + rejection), storage round-trip, PDF, blocklist denial, stale-ref errors, and teardown. Runs in the 3-OS matrix via the engine suite; the live half is `UNOWN_BROWSER_LIVE=1`-gated and skips with a printed reason when no browser exists, so machines without one stay green (the memory-live convention) |
+| 19 | Agent-drivable cross-platform lane ([`xplat.yml`](../.github/workflows/xplat.yml) + [`scripts/xplat.mjs`](../scripts/xplat.mjs); the manual is [`docs/xplat-testing.md`](xplat-testing.md)) | **SHIPPED** (the on-demand lane) | A `workflow_dispatch` surface over the SAME steps this ledger already numbers — the installer (gate 10's lane), the integration suite (gate 12), the bridge suite (gate 11), the coverage/docs/instruction-chars/theme/palette gates (9, 17, 5, 6, 7-adjacent), the sandbox smoke (13), the build (14), E2E + axe (16), mermaid (15) — plus what NO push lane offers: on-demand OS targeting (`--os windows-latest`, the `macos-15-intel` darwin-x64 gap leg ci.yml's arm64 matrix cannot cover) and a release-verify scenario that boots all six per-OS binaries on their own runners, including `windows-11-arm`, which release.yml ships untested. The driver pins its own pure logic (`scripts/xplat.test.mjs`, 24 tests: remote parsing, matrix resolution, the exit-code contract 0/1/2/3, dispatch correlation) and resolves auth from the PAT in the git remote. This is the answer to "an agent mid-session cannot ask 'is this green on all three OSes?' without pushing" — the lane exists so the question costs a dispatch, not a commit |
 
 ## 7. Surface-by-surface backlog
 
@@ -1211,6 +1212,12 @@ revision, which is precisely the drift this revision exists to stop.
 
 - **Pre-commit / local**: pure unit + hook corpus + coverage on changed files
   (<2 min, $0).
+- **On demand (agent-driven, 2026-10-25)**: the xplat lane
+  ([`docs/xplat-testing.md`](xplat-testing.md), gate 19) — `local --scenario
+  smoke|core` as the fast inner loop, then `dispatch --scenario smoke|core
+  [--os <one>] --watch` for a cross-platform verdict without pushing a
+  commit to buy one; `full` before a release tag and `release-verify` for
+  the six-binary boot proof.
 - **Per PR**: lint, typecheck, landing unit, coverage gate, docs gate,
   changed-path security scan; engine suite wired inside the 3-OS `build-test`
   matrix (ubuntu leg green, win/mac red - §7.2); bridge + integration suites
