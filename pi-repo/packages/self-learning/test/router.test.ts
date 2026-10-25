@@ -12,7 +12,7 @@
 import "./_env.ts"; // MUST be the first import: store.ts opens SQLite at module scope
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { emit } from "../src/bus.ts";
@@ -536,7 +536,17 @@ describe("dream-check is kind-aware (BUG 10)", () => {
         // The project dream rows carry the group slug (recomputed from the
         // path at dream time — the stored project_slug column is display data
         // only), so row matching/cleanup keys on THIS, not on any seeded slug.
-        const SLUG = slugifyProject(PROJECT);
+        //
+        // Materialize the dir BEFORE hashing it, and hash the REALPATH: on
+        // macOS /var and /var/folders are symlinks into /private/…, and
+        // resolveProjectIdentity() realpaths an existing dir but falls back to
+        // the literal spelling for a missing one — a not-yet-created PROJECT
+        // gives a different key than the dream's own (created) lookup. That
+        // latent identity split sits underneath the slow dead-bridge path the
+        // 30s window below covers (this pin failed on the macOS leg of xplat
+        // run 40202377629); deriving both sides from the same realpath removes it.
+        mkdirSync(PROJECT, { recursive: true });
+        const SLUG = slugifyProject(realpathSync(PROJECT));
         const noNotesCount = () => (store.get<{ c: number }>(`SELECT COUNT(*) AS c FROM dreams WHERE status = 'no-notes'`)?.c ?? 0);
         const dreamCheckRow = () => store.get<{ run_count: number; status: string }>(`SELECT run_count, status FROM jobs WHERE id = 'dream-check'`)!;
         const projectDreamRow = () =>
