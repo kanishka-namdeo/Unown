@@ -17,9 +17,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { emit } from "../src/bus.ts";
 import { breakerStatus, breakerThreshold, markEngineProcess, recordLlmFailure, resetBreakerForTest, resetEngineProcessForTest } from "../src/governor.ts";
+import { setMemoryPlatformForTests } from "../src/memzero.ts";
 import { slugifyProject } from "../src/notes.ts";
 import { JOB_DEFS, listJobs, Router, router, ROUTER_TEST_ONLY } from "../src/router.ts";
 import { Store, store } from "../src/store.ts";
+import { makeFakePlatform } from "./_fake-platform.ts";
 
 describe("JOB_DEFS", () => {
         test("defines the nine engine jobs", () => {
@@ -609,26 +611,36 @@ describe("dream-check is kind-aware (BUG 10)", () => {
                 for (let i = 0; i < 10; i++) store.run(`INSERT INTO notes (id, run_id, content, created_at, kind, project_path, project_slug) VALUES (?, NULL, ?, ?, 'terminal', ?, 'bug10-proj')`, [`bug10-e${i}`, `bug10 emit note ${i}`, Date.now() + i, PROJECT]);
                 const r = new Router(60_000); // slow tick: the emit path dispatches, not the scheduler
                 await r.start();
+                // Deterministic platform for the DISPATCHED lane (the macOS CI
+                // finding, runs 40201780672 + 40203360478): with the real mem0
+                // platform against the dead test bridge, the dispatched project
+                // dream never recorded its row within 30s on macos-latest (the
+                // direct-lane sibling above DOES — 1.3s — so the hang lives in
+                // the dispatched lane's SDK/bridge chain, and it is NOT this
+                // test's subject). This test pins ROUTING — the kind-aware
+                // gate, the dispatch, the PROJECT lane — so the platform is the
+                // deterministic fake (no LLM, no network: add() extracts one
+                // memory per line) and the project dream completes fast on every
+                // OS. The dead-bridge error outcome stays pinned where it
+                // belongs, by dreams-run-projects.test.ts.
+                setMemoryPlatformForTests(makeFakePlatform());
                 try {
                         emit("run:finished", { id: "x", kind: "baseline", taskId: "t", status: "passed", durationMs: 5 });
-                        const dispatched = await until(() => dreamCheckRow().run_count > before && dreamCheckRow().status === "idle");
+                        // 30s window: with the fake platform the dream SUCCEEDS, and the
+                        // job's execute() then runs the post-ship skill-mint pass whose
+                        // dead-bridge chatJson burns llm.ts's retry ladder (3 attempts,
+                        // 2s+4s sleeps) before the job returns to idle.
+                        const dispatched = await until(() => dreamCheckRow().run_count > before && dreamCheckRow().status === "idle", 30_000);
                         expect(dispatched).toBe(true);
                         // The dispatched run took the project lane for the terminal notes.
-                        // 30s window, NOT the 10s default: the dead-bridge error path
-                        // (platform init + the extraction retries + every embed call
-                        // refusing) is SLOW on the macOS CI runner — measured on the
-                        // v0.0.19 release run (40201780672, macos-latest): the row
-                        // lands past 10s and the default window failed the exact
-                        // assertion this pins. dreams-run-projects.test.ts pins the
-                        // SAME dead-bridge outcome with the same 30_000 budget — this
-                        // matches it.
                         const projectRow = await until(() => Boolean(projectDreamRow()), 30_000);
                         expect(projectRow).toBe(true);
                         expect(noNotesCount()).toBe(noNotesBefore); // still no junk row
                 } finally {
                         r.stop();
+                        setMemoryPlatformForTests(null); // never leak the fake singleton
                 }
-        }, 60_000);
+        }, 90_000);
 
         test("run:finished with NOTHING dreamable does not dispatch", async () => {
                 store.run(`DELETE FROM notes`); // no benchmark >=3, no terminal notes
