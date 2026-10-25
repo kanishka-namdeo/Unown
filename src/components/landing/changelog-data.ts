@@ -30,11 +30,11 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 286;
+export const CHANGELOG_TOTAL_ENTRIES = 287;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 127,
-  "Changed": 19,
+  "Changed": 20,
   "Deprecated": 0,
   "Removed": 3,
   "Fixed": 107,
@@ -46,10 +46,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 1,
+    "total": 2,
     "counts": {
       "Added": 1,
-      "Changed": 0,
+      "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
       "Fixed": 0,
@@ -62,6 +62,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "cli: the install receipt reaches the TUI — a card, a pill, one record contract",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Changed",
+        "items": [
+          {
+            "title": "landing: the rail renders cut releases only",
             "behavior": false
           }
         ]

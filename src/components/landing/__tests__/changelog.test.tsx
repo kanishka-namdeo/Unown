@@ -38,29 +38,24 @@ const listedCount = (stop: (typeof CHANGELOG_STOPS)[number]) =>
 const rail = () => render(<ChangelogRail />);
 
 describe("landing changelog rail", () => {
-  test("prints release dates as <time>, and prints no date for the uncut stop", () => {
+  test("renders dated stops only — an uncut [Unreleased] tile never reaches the page", () => {
     const { container } = rail();
     const times = [...container.querySelectorAll("time")].map((t) => t.getAttribute("datetime"));
 
-    for (const stop of CHANGELOG_STOPS.filter((s) => s.date)) {
+    const cut = CHANGELOG_STOPS.filter((s) => s.date);
+    for (const stop of cut) {
       expect(times).toContain(stop.date);
       expect(stop.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
-
-    // Release-aware: right after a cut there is no [Unreleased] section at
-    // all (an empty stop fails the extractor's build() by contract), so the
-    // uncut assertions only apply mid-flight.
-    const uncut = CHANGELOG_STOPS.filter((s) => !s.date);
-    if (uncut.length > 0) {
-      for (const stop of uncut) {
-        const li = [...container.querySelectorAll("li")].find((el) => el.textContent?.includes("UNCUT"));
-        expect(li).toBeTruthy();
-        expect(li?.querySelector("time")).toBeNull();
-        expect(li?.textContent).toContain("no tag yet");
-      }
-    } else {
-      expect(container.textContent).not.toContain("no tag yet");
-    }
+    // One <time> per cut stop, and nothing else: the rail no longer renders an
+    // uncut tile. Its chrome (`UNCUT`, `no tag yet`, a tally, and a headline for
+    // work that has not shipped) bought the band no part of its argument — the
+    // record reads as live because the stops carry dates — and it cost the page
+    // ~20 words of the scroll budget at every changelog entry. The in-flight
+    // record stays one click away at the exit's CHANGELOG.md link.
+    expect(times.length).toBe(cut.length);
+    expect(container.textContent).not.toContain("UNCUT");
+    expect(container.textContent).not.toContain("no tag yet");
   });
 
   test("makes no promise about how often the project ships", () => {
@@ -89,7 +84,10 @@ describe("landing changelog rail", () => {
     expect(ol).toBeTruthy();
     expect(ol?.hasAttribute("reversed")).toBe(true);
     // Markers are removed by the stylesheet, so the role must be re-declared.
-    expect(region?.querySelectorAll("ul[role='list']").length).toBe(CHANGELOG_STOPS.length);
+    // One list per rendered stop, and the rendered stops are the cut ones.
+    expect(region?.querySelectorAll("ul[role='list']").length).toBe(
+      CHANGELOG_STOPS.filter((s) => s.date).length,
+    );
     expect(container.innerHTML).not.toMatch(/<ul[^>]*>\s*<div/);
   });
 

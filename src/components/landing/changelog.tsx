@@ -73,8 +73,18 @@ export function latestCutIndex(stops: ChangelogStop[]) {
   return stops.findIndex((s) => s.date);
 }
 
+/**
+ * The rail renders CUT releases only. An uncut `[Unreleased]` tile would spend
+ * its whole chrome on the page — `UNCUT`, `no tag yet`, a tally, and a headline
+ * for work that has not shipped — and the band's argument ("is this a live
+ * project or a screenshot of one") is carried entirely by dated stops. In-flight
+ * work stays readable where it belongs: the exit's CHANGELOG.md link. This also
+ * makes the next changelog entry cost the scroll budget zero words.
+ */
+const CUT_STOPS = CHANGELOG_STOPS.filter((s) => s.date);
+const LATEST_CUT = CHANGELOG_STOPS[latestCutIndex(CHANGELOG_STOPS)];
+
 function Stop({ stop, isLatest }: { stop: ChangelogStop; isLatest: boolean }) {
-  const cut = Boolean(stop.date);
   const { shown, hidden } = listedItems(stop);
   return (
     <li className="gb-rail-stop" aria-current={isLatest ? "date" : undefined}>
@@ -86,9 +96,7 @@ function Stop({ stop, isLatest }: { stop: ChangelogStop; isLatest: boolean }) {
           className={
             isLatest
               ? "size-[13px] border-[3px] border-(--hue-accent) bg-(--hue-accent)"
-              : cut
-                ? "size-[13px] border-[3px] border-(--hue-accent) bg-canvas"
-                : "size-[13px] border-[3px] border-dashed border-(--hue-accent) bg-canvas"
+              : "size-[13px] border-[3px] border-(--hue-accent) bg-canvas"
           }
         />
         <span className="gb-rail-line h-[3px] flex-1 bg-(--hue-accent)" />
@@ -99,18 +107,12 @@ function Stop({ stop, isLatest }: { stop: ChangelogStop; isLatest: boolean }) {
           <PixelCursor className="absolute -left-[22px] top-[26px] size-4 text-(--hue-accent)" />
         ) : null}
 
-        <p className="font-pixel text-[13px] leading-none text-(--hue-accent)">
-          {cut ? `v${stop.label}` : "UNCUT"}
-        </p>
+        <p className="font-pixel text-[13px] leading-none text-(--hue-accent)">v{stop.label}</p>
 
         <p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-[12px]">
-          {cut ? (
-            <time dateTime={stop.date ?? undefined} className="font-mono text-faint">
-              {shortDate(stop.date ?? "")}
-            </time>
-          ) : (
-            <span className="font-mono text-faint">no tag yet</span>
-          )}
+          <time dateTime={stop.date ?? undefined} className="font-mono text-faint">
+            {shortDate(stop.date ?? "")}
+          </time>
           {isLatest ? <span className="gb-label text-[8px] text-gold">latest</span> : null}
         </p>
 
@@ -126,12 +128,12 @@ function Stop({ stop, isLatest }: { stop: ChangelogStop; isLatest: boolean }) {
 
         <p className="mt-auto flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-4 text-[12px]">
           <a
-            href={cut ? `${RELEASES_URL}/tag/v${stop.label}` : CHANGELOG_URL}
+            href={`${RELEASES_URL}/tag/v${stop.label}`}
             target="_blank"
             rel="noreferrer noopener"
             className="gb-label text-[9px] text-gold hover:text-gold-soft"
           >
-            {cut ? `v${stop.label} release` : "CHANGELOG.md"}
+            v{stop.label} release
           </a>
           {hidden > 0 ? (
             <a
@@ -201,7 +203,6 @@ export function ChangelogRail() {
   // never desynchronises the nudge distance from the CSS.
   const scroller = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
-  const latest = latestCutIndex(CHANGELOG_STOPS);
 
   const nudge = (dir: -1 | 1) => {
     const el = scroller.current;
@@ -274,12 +275,8 @@ export function ChangelogRail() {
             aria-label="Release rail, newest stop first"
           >
             <ol role="list" reversed className="gb-rail-track">
-              {CHANGELOG_STOPS.map((stop) => (
-                <Stop
-                  key={stop.label}
-                  stop={stop}
-                  isLatest={CHANGELOG_STOPS.indexOf(stop) === latest}
-                />
+              {CUT_STOPS.map((stop) => (
+                <Stop key={stop.label} stop={stop} isLatest={stop === LATEST_CUT} />
               ))}
               {/* The band's exit. NOT aria-hidden: it holds two links, and a
                   focusable element inside a hidden-from-screen-readers subtree
