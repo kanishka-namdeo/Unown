@@ -279,6 +279,7 @@ export class FleetManager {
 			steerCount: 0,
 		};
 		this.children.set(id, state);
+		touchFleetActivity();
 
 		const invocation = this.invocation(args);
 		const proc = this.spawnProc(invocation.command, invocation.args, {
@@ -485,6 +486,13 @@ export class FleetManager {
 		return [...this.children.values()];
 	}
 
+	/** True while a completed child's result is batched but not yet
+	 *  delivered — the drain must not return between a child's terminal
+	 *  flip and its result's delivery turn. */
+	hasPendingResults(): boolean {
+		return this.pendingResults.length > 0;
+	}
+
 	/** Find by id, by name, or by registry name (finished children). */
 	find(idOrName: string): FleetChildState | null {
 		const direct = this.children.get(idOrName);
@@ -618,7 +626,7 @@ export class FleetManager {
 		}
 	}
 
-	private finalize(id: string): void {
+	private async finalize(id: string): Promise<void> {
 		const child = this.children.get(id);
 		const proc = this.procs.get(id);
 		if (proc) {
@@ -628,18 +636,23 @@ export class FleetManager {
 		if (!child) return;
 		child.endedAt = child.endedAt ?? Date.now();
 		// Worktree disposition (remove_if_clean — kept trees carry the
-		// path for merge; nothing merges automatically).
+		// path for merge; nothing merges automatically). The cleanup is
+		// AWAITED (2026-10-25 stress round) so the disposition — and the
+		// computed merge preview it now carries — land IN the delivered
+		// result instead of only the log: the model steering an async
+		// writer needs git's own merge answer, not silence followed by a
+		// guessed merge plan (the dead treeNote this replaces never
+		// reached any reader).
 		const tree = this.worktrees.get(id);
 		let treeNote = "";
 		if (tree) {
 			this.worktrees.delete(id);
 			try {
-				void cleanupWorktree(tree).then((cleanup) => {
-					this.log(`fleet child ${child.name} worktree ${cleanup.action}: ${cleanup.detail}`);
-				});
-				treeNote = `\n[worktree ${tree.path}]`;
+				const cleanup = await cleanupWorktree(tree);
+				this.log(`fleet child ${child.name} worktree ${cleanup.action}: ${cleanup.detail}`);
+				treeNote = `\n\n[worktree ${cleanup.action}] ${cleanup.detail}`;
 			} catch {
-				/* best effort */
+				treeNote = `\n\n[worktree ${tree.path} kept]`;
 			}
 		}
 		// Record into the registry (name → session, for resume).
@@ -661,7 +674,7 @@ export class FleetManager {
 		// N children wakes the parent ONCE, not N times; failures and
 		// blocked replies bypass the batch (bad news races).
 		if (this.deliver) {
-			const content = buildFleetResultContent(child);
+			const content = buildFleetResultContent(child) + treeNote;
 			const urgent = child.status !== "done";
 			if (urgent) {
 				this.flushPendingResults();
@@ -672,6 +685,7 @@ export class FleetManager {
 				}
 			} else {
 				this.pendingResults.push({ name: child.name, content });
+				touchFleetActivity();
 				if (!this.batchDeadline) {
 					this.batchDeadline = setTimeout(() => this.flushPendingResults(), FLEET_BATCH_MAX_WAIT_MS);
 				}
@@ -695,6 +709,7 @@ export class FleetManager {
 		if (this.pendingResults.length === 0 || !this.deliver) return;
 		const batch = this.pendingResults;
 		this.pendingResults = [];
+		touchFleetActivity();
 		const content = mergeFleetResultContents(batch);
 		try {
 			this.deliver(content, { fleetBatch: batch.map((b) => b.name) }, "result");
@@ -814,18 +829,72 @@ function fleetManagers(): Set<FleetManager> {
 	return set;
 }
 
+// ---------------------------------------------------------------------------
+// Drain-activity tracker (2026-10-25 stress round). The old waitForFleetDrain
+// returned the moment every child reached a TERMINAL status — but terminal
+// status flips inside finalize() BEFORE the batched result is delivered, and
+// the delivered result triggers a MODEL TURN that only matters while the
+// process is alive. A live print-mode session hit exactly that window: the
+// last child's result landed as a custom message after the model's final
+// text, the model never answered it, runPrintMode's last-message contract saw
+// a non-assistant tail, and stdout came back EMPTY with exit 0. The tracker
+// below lets the drain distinguish "nothing in flight" from "the pipeline is
+// still moving": turn activity comes from the extension runner's
+// agent_start/agent_settled events, fleet-side activity from spawn/finalize/
+// flush touches, and the grace window covers the flush→deliver→triggerTurn
+// handoff that no single event observes.
+// ---------------------------------------------------------------------------
+
+const FLEET_ACTIVITY_SYMBOL = Symbol.for("unown-fleet-activity");
+
+interface FleetActivityState {
+	lastAt: number;
+	turnActive: boolean;
+}
+
+function fleetActivity(): FleetActivityState {
+	const holders = globalThis as unknown as Record<symbol, FleetActivityState | undefined>;
+	let state = holders[FLEET_ACTIVITY_SYMBOL];
+	if (!state) {
+		state = { lastAt: 0, turnActive: false };
+		holders[FLEET_ACTIVITY_SYMBOL] = state;
+	}
+	return state;
+}
+
+/** Mark fleet pipeline movement (spawn, finalize, result flush). */
+function touchFleetActivity(): void {
+	fleetActivity().lastAt = Date.now();
+}
+
+/** Grace window after the last observed movement before the drain may
+ *  return — covers the flush→deliver→triggerTurn handoff plus event-order
+ *  noise. 750ms: 5x the 150ms batch debounce, 3x the control poll. */
+const FLEET_DRAIN_GRACE_MS = 750;
+
 /**
- * Wait (bounded) until every live fleet manager has no running children.
- * Returns true when drained, false on timeout. Results that arrive during
- * the wait trigger their own turns through the session's steer path.
+ * Wait (bounded) until every live fleet manager has no running children, no
+ * batched-but-undelivered results, and the session turn triggered by the
+ * last delivery has settled. Returns true when drained, false on timeout.
+ * Results that arrive during the wait trigger their own turns through the
+ * session's steer path — the drain now waits for those turns too, so a
+ * print-mode process stays alive until the model has actually answered the
+ * final result instead of exiting on the child's terminal-status flip.
  */
 export async function waitForFleetDrain(timeoutMs = resolveFleetTimeoutMs()): Promise<boolean> {
 	const deadline = Date.now() + timeoutMs;
 	for (;;) {
-		const busy = [...fleetManagers()].some((m) => m.statusSnapshot().some((c) => !isTerminalFleetStatus(c.status)));
-		if (!busy) return true;
+		const managers = [...fleetManagers()];
+		// No manager ever saw a child — nothing to drain; a fleetless
+		// print run must not pay the grace window.
+		if (managers.every((m) => m.statusSnapshot().length === 0)) return true;
+		const busy = managers.some((m) => m.statusSnapshot().some((c) => !isTerminalFleetStatus(c.status)));
+		const pending = managers.some((m) => m.hasPendingResults());
+		const activity = fleetActivity();
+		const settled = !activity.turnActive && Date.now() - activity.lastAt >= FLEET_DRAIN_GRACE_MS;
+		if (!busy && !pending && settled) return true;
 		if (Date.now() >= deadline) return false;
-		await new Promise((r) => setTimeout(r, 500));
+		await new Promise((r) => setTimeout(r, 250));
 	}
 }
 
@@ -1069,6 +1138,23 @@ export function registerFleetSurface(pi: any, manager: FleetManager, opts: { cwd
 			return { action: "handled" } as const;
 		}
 		return undefined;
+	});
+	// ---- drain-activity tracking (2026-10-25 stress round): the drain
+	// must know when a delivered result's triggered turn is still running,
+	// or a print-mode process can exit between the delivery and the
+	// model's answer — losing the final message to the last-message
+	// contract (observed live: empty stdout, exit 0). agent_settled is
+	// the runner's own "no retry, compaction, or queued continuation
+	// will run" signal, which is exactly the drain's question.
+	safeOn("agent_start", () => {
+		const activity = fleetActivity();
+		activity.turnActive = true;
+		activity.lastAt = Date.now();
+	});
+	safeOn("agent_settled", () => {
+		const activity = fleetActivity();
+		activity.turnActive = false;
+		activity.lastAt = Date.now();
 	});
 	safeOn("session_shutdown", () => {
 		manager.dispose();

@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 300;
+export const CHANGELOG_TOTAL_ENTRIES = 301;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 131,
+  "Added": 132,
   "Changed": 22,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "0.0.23",
     "date": "2026-10-26",
-    "total": 2,
+    "total": 3,
     "counts": {
-      "Added": 0,
+      "Added": 1,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
@@ -62,6 +62,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "engine: a foreign or occupied engine can no longer spawn-loop",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Added",
+        "items": [
+          {
+            "title": "subagents: the stress round — ten live scenarios, six real findings, six fixes, and the receipts",
             "behavior": false
           }
         ]

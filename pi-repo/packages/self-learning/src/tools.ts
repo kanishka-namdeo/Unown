@@ -51,6 +51,7 @@ import { type ExtensionAPI, type ExtensionUIContext, parseFrontmatter } from "@e
 import { Key, stableLaneIndex, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { foregroundTodosForGoalGate } from "./addons/todo.ts";
+import { formatIdleCompactNotice, shouldIdleCompact } from "./auto-compact.ts";
 import { maybeAutoTitleSession } from "./auto-title.ts";
 import { blameFile, blameSummary, formatBlameJson, formatBlameReport } from "./blame.ts";
 import { registerBrowserTools } from "./browser/tools.ts";
@@ -67,7 +68,6 @@ import { engineFetch } from "./engine-auth.ts";
 import { getEngineStatusInfo } from "./engine-status.ts";
 import { FleetManager, type FleetSpawnRequest, registerFleetSurface } from "./fleet-runtime.ts";
 import { registerGitTools } from "./gittools.ts";
-	import { reportBlocked, reportClear, reportIdle, reportWorking } from "./osc-status.ts";
 import {
 	checkGoalCompletion,
 	type GoalState,
@@ -101,7 +101,9 @@ import {
 	markModelUnhealthy,
 	saveModelHealth,
 } from "./model-health.ts";
+import { registerMonitorTool } from "./monitor.ts";
 import { scheduleTurnEndPing } from "./notify-tui.ts";
+import { reportBlocked, reportClear, reportIdle, reportWorking } from "./osc-status.ts";
 import {
 	activeStyleName,
 	describeStyles,
@@ -115,6 +117,7 @@ import type { PermissionsStatus } from "./permissions.ts";
 import { postPrComment } from "./pr-review.ts";
 import { runPromoteCommand } from "./promote-cli.ts";
 import { providersArgumentCompletions, runProvidersCommand } from "./providers-command.ts";
+import { buildRecapDigest, buildRecapQuestion, renderRecapDigestLine, shouldRecap } from "./recap.ts";
 import { loadRecipes, runRecipe, userRecipesDir } from "./recipes.ts";
 import { generateWiki, searchWiki, type WikiRunContext } from "./repo-wiki.ts";
 import { runRepomapCommand, withRepoMap } from "./repomap/repomap-cli.ts";
@@ -126,8 +129,8 @@ import {
 	discoverReviewPolicy,
 	filterFindingsBySeverity,
 	mergeReviews,
-	parseReviewOutput,
 	parseReviewFlags,
+	parseReviewOutput,
 	REVIEWER_FOCUSES,
 	type ReviewTarget,
 	renderReview,
@@ -162,6 +165,7 @@ import {
 } from "./subagent-routing.ts";
 import { deliverTerminalNote, ENGINE_URL, terminalMemoryForAgentDetailed, UNOWN_AGENT_DIR } from "./term.ts";
 import { emitTerminalHookEvent } from "./termhooks.ts";
+import { formatTurnMeter } from "./turn-meter.ts";
 import {
 	cheapInstallStatus,
 	deriveUpdateStatus,
@@ -171,11 +175,7 @@ import {
 	unownHome,
 	updateChipLine,
 } from "./update-status.ts";
-	import { fetchBridgeUsage, resolveBridgeUrl, resolveModelPrice, runUsageCommand } from "./usage-cli.ts";
-	import { formatTurnMeter } from "./turn-meter.ts";
-	import { formatIdleCompactNotice, shouldIdleCompact } from "./auto-compact.ts";
-	import { registerMonitorTool } from "./monitor.ts";
-	import { buildRecapDigest, buildRecapQuestion, renderRecapDigestLine, shouldRecap } from "./recap.ts";
+import { fetchBridgeUsage, resolveBridgeUrl, resolveModelPrice, runUsageCommand } from "./usage-cli.ts";
 import { createAutoVerifyRunner } from "./verify.ts";
 import { fetchPageContent, registerWebTools } from "./websearch.ts";
 import { cleanupWorktree, createWorktree, type WorktreeHandle } from "./worktree.ts";
@@ -473,6 +473,40 @@ export type SubagentProgressFn = (progress: SubagentProgress) => void;
  *  2 corrective re-runs (each carries the exact schema defects back to the
  *  child, same contract omp's reminders implement inside one session). */
 const STRUCTURED_RETRIES = 2;
+
+/** Lenient schema intake (2026-10-25 stress round): models and providers
+ *  routinely pass the JSON Schema as a STRINGIFIED JSON string — observed
+ *  three times consecutively in a live print-mode session, each rejected by
+ *  the preflight with "schema must be an object", burning the feature and
+ *  forcing the model to embed the schema in prose instead. Parse the string
+ *  and use the parsed object; only an unparseable string, or one that parses
+ *  to a non-object, stays an error. Pure + exported for tests. */
+export function coerceOutputSchema(
+	raw: unknown,
+): { ok: true; schema: unknown; coerced: boolean } | { ok: false; error: string } {
+	if (typeof raw !== "string") return { ok: true, schema: raw, coerced: false };
+	const trimmed = raw.trim();
+	if (!trimmed)
+		return {
+			ok: false,
+			error: "output_schema is an empty string — pass the JSON Schema as an object (or a JSON string of it)",
+		};
+	try {
+		const parsed: unknown = JSON.parse(trimmed);
+		if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+			return { ok: true, schema: parsed, coerced: true };
+		}
+		return {
+			ok: false,
+			error: `output_schema string parsed to ${Array.isArray(parsed) ? "an array" : typeof parsed}, not a JSON Schema object`,
+		};
+	} catch (err) {
+		return {
+			ok: false,
+			error: `output_schema is a string that does not parse as JSON (${err instanceof Error ? err.message : String(err)}) — pass the schema as an object`,
+		};
+	}
+}
 
 /** Extract the JSON a model was asked to emit: handles bare JSON, fenced
  *  ```json blocks, and leading/trailing prose around ONE balanced object or
@@ -1684,6 +1718,51 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 				async execute(_toolCallId, params, signal, onUpdate, executeCtx) {
 					const agents = discoverSubagents(opts.cwd);
 					// Job = normalized spawn request (single form + batch form).
+					// The batch cap slices at 4 — the overflow is NOT silently
+					// dropped (2026-10-25 stress round): the dropped items are
+					// reported back so the model can resubmit them instead of
+					// half the fan-out vanishing without a trace.
+					const droppedTasks = params.tasks ? params.tasks.slice(4) : [];
+					const overflowNote =
+						droppedTasks.length > 0
+							? `warning: ${droppedTasks.length} task(s) beyond the batch cap of 4 were NOT run — resubmit them as a separate task call. Not run:\n` +
+								droppedTasks
+									.map(
+										(t: any, i: number) =>
+											`  ${i + 5}. (${t.agent ?? "general"}) ${String(t.task).replace(/\s+/g, " ").slice(0, 160)}`,
+									)
+									.join("\n")
+							: "";
+					// Lenient schema intake: a stringified-JSON schema parses
+					// here, once, before the preflight (which then validates
+					// keywords on the parsed object). Coerced schemas are
+					// reported back so the model learns the object form.
+					const schemaCoercionNotes: string[] = [];
+					const coerceJobSchemas = (
+						rawJobs: { outputSchema?: unknown }[],
+					): { content: { type: "text"; text: string }[] } | null => {
+						for (const job of rawJobs) {
+							if (job.outputSchema === undefined) continue;
+							const coerced = coerceOutputSchema(job.outputSchema);
+							if (!coerced.ok) {
+								return {
+									content: [
+										{
+											type: "text",
+											text: `Error: output_schema is not a usable JSON Schema — ${coerced.error}`,
+										},
+									],
+								};
+							}
+							if (coerced.coerced) {
+								job.outputSchema = coerced.schema;
+								schemaCoercionNotes.push(
+									"note: output_schema arrived as a JSON string and was parsed automatically — pass the schema as an object, not a string, next time",
+								);
+							}
+						}
+						return null;
+					};
 					const jobs = params.tasks
 						? params.tasks.slice(0, 4).map((t: any) => ({
 								agent: t.agent ?? "general",
@@ -1701,6 +1780,8 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 									schemaMode: params.schema_mode,
 								},
 							];
+					const schemaError = coerceJobSchemas(jobs);
+					if (schemaError) return schemaError;
 					if (jobs.length === 0 || jobs.some((j) => !j.task.trim())) {
 						return {
 							content: [
@@ -1818,8 +1899,9 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 								toolResults: 0,
 							});
 						}
+						const asyncTrailing = overflowNote ? `\n\n---\n\n${overflowNote}` : "";
 						return {
-							content: [{ type: "text", text: acks.filter(Boolean).join("\n\n---\n\n") }],
+							content: [{ type: "text", text: acks.filter(Boolean).join("\n\n---\n\n") + asyncTrailing }],
 							details,
 						};
 					}
@@ -2029,7 +2111,15 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					});
 					await Promise.all(workers);
 					const details: TaskRunDetails = { runs };
-					return { content: [{ type: "text", text: sections.filter(Boolean).join("\n\n---\n\n") }], details };
+					// Trailing notes: the batch-overflow warning and the
+					// schema-coercion notes ride AFTER the sections so the
+					// model can resubmit dropped tasks / learn the object
+					// form — visible, never silent.
+					const trailingNotes = [overflowNote, ...new Set(schemaCoercionNotes)].filter(Boolean);
+					const resultText =
+						sections.filter(Boolean).join("\n\n---\n\n") +
+						(trailingNotes.length > 0 ? `\n\n---\n\n${trailingNotes.join("\n\n")}` : "");
+					return { content: [{ type: "text", text: resultText }], details };
 				},
 				renderCall(args: any, theme: any) {
 					if (args.tasks) {
@@ -3103,9 +3193,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					`recap · ${digest.turns} turn${digest.turns === 1 ? "" : "s"}, ` +
 					`${digest.toolCalls} tool call${digest.toolCalls === 1 ? "" : "s"}` +
 					(digest.toolsUsed.length ? `, tools: ${digest.toolsUsed.slice(0, 6).join(", ")}` : "") +
-					(digest.filesTouched.length
-						? `\nfiles: ${digest.filesTouched.join(", ")}`
-						: "");
+					(digest.filesTouched.length ? `\nfiles: ${digest.filesTouched.join(", ")}` : "");
 				const result = await answerBtw(entries, buildRecapQuestion(turns));
 				const summary = result.answer
 					? result.answer
@@ -3120,7 +3208,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 								keybindings,
 								done,
 							}),
-							{ overlay: false },
+						{ overlay: false },
 					);
 				} else {
 					ctx.ui.notify(`recap\n${summary}\n${digestLine}\n(side channel — not added to the session)`, "info");
@@ -3342,7 +3430,10 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					selectedChecks = policy.checks.filter((c) => wanted.has(c.name));
 					const missing = flags.checksFilter.filter((n) => !policy.checks.some((c) => c.name === n));
 					if (missing.length > 0) {
-						ctx.ui.notify(`Unknown check name(s): ${missing.join(", ")} — /review --list-checks lists them`, "warning");
+						ctx.ui.notify(
+							`Unknown check name(s): ${missing.join(", ")} — /review --list-checks lists them`,
+							"warning",
+						);
 					}
 				}
 				if (flags.listChecks) {
@@ -3428,19 +3519,12 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					// render as "the diff looked clean". Truncated outputs are
 					// marked too (S3).
 					const outputs = results.map((r, i) =>
-						parseReviewOutput(
-							r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""),
-							labels[i],
-							{
-								failed: r.exitCode !== 0 || !r.output.trim(),
-								truncated: r.outputTruncated,
-							},
-						),
+						parseReviewOutput(r.output + (r.outputTruncated ? "\n(reviewer output truncated)" : ""), labels[i], {
+							failed: r.exitCode !== 0 || !r.output.trim(),
+							truncated: r.outputTruncated,
+						}),
 					);
-					const labels = [
-						...focuses.map((f) => f.key),
-						...selectedChecks.map((c) => `check:${c.name}`),
-					];
+					const labels = [...focuses.map((f) => f.key), ...selectedChecks.map((c) => `check:${c.name}`)];
 					const merged = mergeReviews(outputs);
 					const shownFindings = filterFindingsBySeverity(merged.findings, flags.minSeverity);
 					const text = renderReview(target.label, outputs, shownFindings);
@@ -4216,20 +4300,16 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 				if (lastAgentEndTs !== null && typeof ctx?.getContextUsage === "function") {
 					const usage = ctx.getContextUsage();
 					if (usage && typeof usage.tokens === "number" && typeof usage.contextWindow === "number") {
-						const decision = shouldIdleCompact(
-							Date.now() - lastAgentEndTs,
-							usage.tokens,
-							usage.contextWindow,
-						);
+						const decision = shouldIdleCompact(Date.now() - lastAgentEndTs, usage.tokens, usage.contextWindow);
 						if (decision.action === "compact") {
-								if (ctx?.hasUI) ctx.ui.notify(formatIdleCompactNotice(decision), "info");
-								ctx.compact?.();
-							}
+							if (ctx?.hasUI) ctx.ui.notify(formatIdleCompactNotice(decision), "info");
+							ctx.compact?.();
 						}
 					}
-				} catch {
-					/* idle compaction is a convenience — never block a turn */
 				}
+			} catch {
+				/* idle compaction is a convenience — never block a turn */
+			}
 			// ---- auto-recap on return (Claude Code parity, the 2026-10
 			// convergence round): after a real idle gap the next prompt gets a
 			// deterministic welcome-home line through the notify pane — the shape
@@ -4241,9 +4321,7 @@ export function createUnownToolsExtension(opts: UnownToolsOptions) {
 					const decision = shouldRecap(gapMs);
 					if (decision.action === "show") {
 						const entries =
-							typeof ctx?.sessionManager?.getEntries === "function"
-								? ctx.sessionManager.getEntries()
-								: [];
+							typeof ctx?.sessionManager?.getEntries === "function" ? ctx.sessionManager.getEntries() : [];
 						const digest = buildRecapDigest(entries, lastAgentEndTs, gapMs);
 						if (digest.turns > 0 || digest.toolCalls > 0) {
 							ctx.ui.notify(renderRecapDigestLine(digest), "info");
@@ -4386,8 +4464,7 @@ Execute the steps in order. After completing a step, include a [DONE:n] tag in y
 				const msgModel = event?.message?.responseModel ?? event?.message?.model;
 				let liveContext: { tokens: number; contextWindow: number } | undefined;
 				try {
-					const usage =
-						typeof ctx?.getContextUsage === "function" ? ctx.getContextUsage() : undefined;
+					const usage = typeof ctx?.getContextUsage === "function" ? ctx.getContextUsage() : undefined;
 					if (
 						usage &&
 						typeof usage.tokens === "number" &&

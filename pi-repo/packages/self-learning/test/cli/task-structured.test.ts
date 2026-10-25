@@ -190,3 +190,71 @@ describe("task tool — worktree isolation (end-to-end, real CLI + real git)", (
                 LONG,
         );
 });
+
+describe("task tool — stress-round regressions (2026-10-25 live findings)", () => {
+        // F2 (critical, live): models pass output_schema as a STRINGIFIED JSON
+        // string — observed three times consecutively against a live provider,
+        // each rejected by the preflight ("schema must be an object"), burning
+        // the whole structured-output feature. The lenient intake parses the
+        // string, runs the validated lane, and reports the coercion so the
+        // model learns the object form.
+        test(
+                "output_schema passed as a JSON string parses, validates, and notes the coercion",
+                async () => {
+                        const taskText = 'Audit the code. JSONREPLY {"findings": [{"title": "string schema finding", "severity": "low"}]}';
+                        const args = { task: taskText, output_schema: JSON.stringify(FINDINGS_SCHEMA) };
+                        const prompt = `TOOLCALL task ${JSON.stringify(args)}`;
+                        const run = await unown(["--mode", "json", "-p", prompt], { bridge, env: { UNOWN_NO_PREFLIGHT: "1" } });
+                        expect(run.exitCode).toBe(0);
+                        // The validated JSON reaches the parent — the stringified schema
+                        // was parsed and USED, not rejected.
+                        expect(run.stdout).toContain("```json");
+                        expect(run.stdout).toContain("string schema finding");
+                        expect(run.stdout).not.toContain("output_schema is not a usable JSON Schema");
+                        // The coercion is visible (education, not silence).
+                        expect(run.stdout).toContain("parsed automatically");
+                        run.release();
+                },
+                LONG,
+        );
+
+        test(
+                "an unparseable output_schema string still fails fast before any spawn",
+                async () => {
+                        const before = childRequests().length;
+                        const taskText = 'Audit the code. JSONREPLY {"findings": [{"title": "x", "severity": "low"}]}';
+                        const args = { task: taskText, output_schema: "{definitely not json" };
+                        const prompt = `TOOLCALL task ${JSON.stringify(args)}`;
+                        const run = await unown(["--mode", "json", "-p", prompt], { bridge, env: { UNOWN_NO_PREFLIGHT: "1" } });
+                        expect(run.exitCode).toBe(0);
+                        expect(run.stdout).toContain("output_schema is not a usable JSON Schema");
+                        expect(run.stdout).toContain("does not parse as JSON");
+                        // No paid run on a broken contract — zero subagent spawns.
+                        expect(childRequests().length - before).toBe(0);
+                        run.release();
+                },
+                LONG,
+        );
+
+        // F5 (live): a 6-item tasks array silently dropped items 5-6 — the
+        // model recovered only by noticing the gap itself. The overflow is
+        // now reported back with the dropped items quoted for resubmission.
+        test(
+                "batch overflow reports the dropped tasks instead of silently slicing",
+                async () => {
+                        const mk = (n: number) => `Item ${n}: report the number ${n}. JSONREPLY {"n": ${n}}`;
+                        const args = {
+                                tasks: [1, 2, 3, 4, 5, 6].map((n) => ({ agent: "explore", task: mk(n) })),
+                        };
+                        const prompt = `TOOLCALL task ${JSON.stringify(args)}`;
+                        const run = await unown(["--mode", "json", "-p", prompt], { bridge, env: { UNOWN_NO_PREFLIGHT: "1" } });
+                        expect(run.exitCode).toBe(0);
+                        // The visible overflow warning lists the two dropped items.
+                        expect(run.stdout).toContain("2 task(s) beyond the batch cap of 4 were NOT run");
+                        expect(run.stdout).toContain("Item 5");
+                        expect(run.stdout).toContain("Item 6");
+                        run.release();
+                },
+                LONG,
+        );
+});

@@ -211,10 +211,78 @@ export interface CleanupResult {
         detail: string;
 }
 
+// ---------------------------------------------------------------------------
+// Merge preview (2026-10-25 stress round)
+// ---------------------------------------------------------------------------
+
+export interface MergePreview {
+        status: "clean" | "conflicts" | "fast_forward" | "already_merged" | "unavailable";
+        detail: string;
+        /** Conflicted paths when status === "conflicts". */
+        conflicts: string[];
+}
+
+/** Compute a REAL merge preview for a kept worktree against the parent
+ *  repo's CURRENT HEAD — computed fact instead of model-guessed guidance
+ *  (2026-10-25 stress round: a live orchestrator with two parallel writer
+ *  worktrees told the user "both merges auto-resolve cleanly"; the actual
+ *  sequential merge hit three file conflicts). Uses `git merge-tree
+ *  --write-tree --name-only` (git >= 2.38): a full in-memory 3-way merge —
+ *  no working tree is touched, no state is mutated — exit 0 means clean,
+ *  exit 1 lists the conflicted paths. Older git degrades to "unavailable",
+ *  as does any git failure: the preview never blocks disposition. */
+export async function previewMergeIntoParent(handle: WorktreeHandle, treeHead: string): Promise<MergePreview> {
+        if (!treeHead) return { status: "unavailable", detail: "tree HEAD unknown", conflicts: [] };
+        const parent = await runGit(handle.repoRoot, ["rev-parse", "HEAD"]);
+        if (parent.code !== 0) {
+                return { status: "unavailable", detail: "parent HEAD unresolvable", conflicts: [] };
+        }
+        const parentHead = parent.stdout.trim();
+        if (parentHead === treeHead) {
+                return { status: "already_merged", detail: "tree HEAD is the parent HEAD (already merged)", conflicts: [] };
+        }
+        const ancestor = await runGit(handle.repoRoot, ["merge-base", "--is-ancestor", treeHead, parentHead]);
+        if (ancestor.code === 0) {
+                return { status: "already_merged", detail: "tree commits are already contained in the parent HEAD", conflicts: [] };
+        }
+        if (parentHead === handle.baseCommit) {
+                return {
+                        status: "fast_forward",
+                        detail: `parent HEAD is still the spawn base (${parentHead.slice(0, 10)}) — merging this tree is a fast-forward`,
+                        conflicts: [],
+                };
+        }
+        const res = await runGit(handle.repoRoot, ["merge-tree", "--write-tree", "--name-only", parentHead, treeHead]);
+        if (res.code === 0) {
+                return { status: "clean", detail: "git merge-tree: merging this tree into the current HEAD resolves cleanly", conflicts: [] };
+        }
+        if (res.code === 1) {
+                // Line 1 is the merged tree OID; the conflicted paths follow,
+                // one per line, up to the first blank line (git >= 2.38 format).
+                const lines = res.stdout.split(/\r?\n/);
+                const conflicts: string[] = [];
+                for (const line of lines.slice(1)) {
+                        const trimmed = line.trim();
+                        if (!trimmed) break;
+                        conflicts.push(trimmed);
+                }
+                const shown = conflicts.slice(0, 8).join(", ");
+                return {
+                        status: "conflicts",
+                        detail: `git merge-tree: merging this tree into the current HEAD CONFLICTS in ${conflicts.length} file(s): ${shown}${conflicts.length > 8 ? " …" : ""}`,
+                        conflicts,
+                };
+        }
+        return { status: "unavailable", detail: `git merge-tree failed (exit ${res.code}; git >= 2.38 required)`, conflicts: [] };
+}
+
 /** Cleanup per policy `remove_if_clean`:
  *   - clean + no new commits            → remove (and prune the admin files)
  *   - dirty or unmerged commits present → KEEP + report the path (the user
- *     merges via normal source control — muse merges nothing automatically)
+ *     merges via normal source control — muse merges nothing automatically);
+ *     kept-with-commits trees additionally carry a computed merge preview
+ *     (see previewMergeIntoParent) so the reported merge guidance is git's
+ *     own answer, never the orchestrating model's guess
  *   - probe fails (tree missing/corrupt, ownership unproven) → quarantine:
  *     rename aside rather than delete. */
 export async function cleanupWorktree(handle: WorktreeHandle, opts: WorktreeStatusOptions = {}): Promise<CleanupResult> {
@@ -238,10 +306,15 @@ export async function cleanupWorktree(handle: WorktreeHandle, opts: WorktreeStat
                 ]
                         .filter(Boolean)
                         .join(" + ");
+                let mergeNote = "";
+                if (status.newCommits > 0 && status.headCommit) {
+                        const preview = await previewMergeIntoParent(handle, status.headCommit);
+                        mergeNote = ` · merge preview: ${preview.detail}`;
+                }
                 appendRecord(handle.repoRoot, { op: "kept", id: handle.id, path: handle.path, baseCommit: handle.baseCommit, policy: "remove_if_clean", ts: Date.now(), reason: why });
                 return {
                         action: "kept",
-                        detail: `${why}; worktree kept for review/merge at ${handle.path} (nothing was merged automatically — review and merge via your normal source-control workflow, then git worktree remove)`,
+                        detail: `${why}; worktree kept for review/merge at ${handle.path}${mergeNote} (nothing was merged automatically — review and merge via your normal source-control workflow, then git worktree remove)`,
                 };
         }
         const removeWorktree = () => runGit(handle.repoRoot, ["worktree", "remove", handle.path]);

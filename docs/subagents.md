@@ -39,7 +39,7 @@ The subagent does not see the parent conversation. The parent gets back a report
 
 ## Structured outputs
 
-Any task call (single or batch item) can demand a **typed reply** with `output_schema` — a JSON Schema the subagent's *final message* must satisfy. The reply is parsed as JSON (bare JSON, a fenced `json` code block, or one JSON object surrounded by prose all work) and validated locally; an invalid reply is retried up to two times with the **exact, path-annotated defects** quoted back to the child (`$.findings[0].severity: expected low | medium | high, got "critical"`), after which:
+Any task call (single or batch item) can demand a **typed reply** with `output_schema` — a JSON Schema the subagent's *final message* must satisfy. A schema passed as a **stringified JSON string parses leniently** (models and providers routinely emit object parameters as strings — observed three times consecutively in a live session before this existed; the coerced schema is used and the coercion is reported back as a visible note so the model learns the object form); a string that does not parse as JSON fails fast, before any subagent is spawned, with a fix-naming error. The reply is parsed as JSON (bare JSON, a fenced `json` code block, or one JSON object surrounded by prose all work) and validated locally; an invalid reply is retried up to two times with the **exact, path-annotated defects** quoted back to the child (`$.findings[0].severity: expected low | medium | high, got "critical"`), after which:
 
 - `schema_mode: "permissive"` (the default) returns the raw reply **with a visible warning** — good enough to read, honest about the miss;
 - `schema_mode: "strict"` reports the failure as an error and returns no data.
@@ -50,7 +50,7 @@ A valid reply is returned to the parent as a fenced JSON block — the structure
 
 A writing subagent normally shares your working tree. Pass `worktree_isolation: true` (single task or batch item) and the subagent instead runs in **its own git worktree** — an isolated checkout of the repo at HEAD, created at `<repo>/.unown/worktrees/<id>` — so parallel writers can never collide with each other or with your uncommitted work.
 
-The contract: isolation is opt-in and **fail-closed** — outside a git repository (or with `UNOWN_WORKTREE_ISOLATION=0`) the spawn is rejected with a typed failure, never silently downgraded to the shared tree. When the subagent finishes, a **clean, commit-less** worktree is removed again automatically; a tree with uncommitted files or new commits is **kept** and its path is reported back so you can review and merge it through your normal source-control workflow (nothing is merged automatically, and the parent repo is never touched during the run). Every tree's lifecycle is journaled to `.unown/worktrees/registry.jsonl` (base commit, policy, disposition), probes run with repository **hooks disabled**, and a tree whose state cannot be proven after a crash is quarantined, not deleted.
+The contract: isolation is opt-in and **fail-closed** — outside a git repository (or with `UNOWN_WORKTREE_ISOLATION=0`) the spawn is rejected with a typed failure, never silently downgraded to the shared tree. When the subagent finishes, a **clean, commit-less** worktree is removed again automatically; a tree with uncommitted files or new commits is **kept** and its path is reported back so you can review and merge it through your normal source-control workflow (nothing is merged automatically, and the parent repo is never touched during the run). A kept-with-commits tree's report also carries a **computed merge preview** — `git merge-tree --write-tree` answers whether merging the tree into the *current* parent HEAD resolves cleanly, conflicts (with the file list), fast-forwards, or is already merged — so the merge guidance in the report is git's own answer, not the orchestrating model's guess (a live session was told "both merges auto-resolve cleanly"; the real merge hit three file conflicts). Every tree's lifecycle is journaled to `.unown/worktrees/registry.jsonl` (base commit, policy, disposition), probes run with repository **hooks disabled**, and a tree whose state cannot be proven after a crash is quarantined, not deleted.
 
 
 
@@ -216,13 +216,13 @@ Cheaper than a full fork (the whole conversation copied), more targeted than raw
 
 ## The BLOCKED protocol
 
-Every subagent's system prompt carries boundary instructions ending in one rule: if the task cannot be safely or legitimately completed — missing access, ambiguous target, destructive-looking request — the child returns exactly:
+Every subagent's system prompt carries boundary instructions ending in one rule: if the task cannot be safely or legitimately completed — missing access, ambiguous target, destructive-looking request, **or any reason the child would refuse it for safety, policy, or ethics** — the child returns exactly:
 
 ```
 BLOCKED: <short reason>
 ```
 
-instead of improvising a partial answer. The parent parses the marker (tolerantly: fenced, padded, or as the first line — but never a mid-document mention, so discussing the protocol is not using it) and routes it back as a **first-class outcome**: the run's header reads `## worker (BLOCKED; …)`, the reason is quoted in bold, and the parent model can re-plan. A BLOCKED reply is not an error — it is the honest refusal lane that keeps silent no-op "success" out of your transcript. (Ported from pi-cciotti's `CHILD_SUBAGENT_BOUNDARY_INSTRUCTIONS`.)
+instead of improvising a partial answer or free-form refusal prose (a live child once refused an unsafe task with well-meant prose — safety worked, the typed signal did not). The parent parses the marker (tolerantly: fenced, padded, or as the first line — but never a mid-document mention, so discussing the protocol is not using it) and routes it back as a **first-class outcome**: the run's header reads `## worker (BLOCKED; …)`, the reason is quoted in bold, and the parent model can re-plan. A BLOCKED reply is not an error — it is the honest refusal lane that keeps silent no-op "success" out of your transcript. (Ported from pi-cciotti's `CHILD_SUBAGENT_BOUNDARY_INSTRUCTIONS`.)
 
 ## The completion guard
 
@@ -239,7 +239,7 @@ The guard is honest about its own limits: outside a git repository (or when git 
 The model calls the `task` tool with either a single job or a batch:
 
 - `{ "agent": "explore", "task": "Find every caller of parseConfig() and cite file:line" }`
-- `{ "tasks": [ { "agent": "explore", "task": "..." }, { "agent": "explore", "task": "..." }, ... ] }` — up to 4 tasks per call, executed in parallel.
+- `{ "tasks": [ { "agent": "explore", "task": "..." }, { "agent": "explore", "task": "..." }, ... ] }` — up to 4 tasks per call, executed in parallel. **Items beyond the cap are not silently dropped**: the result carries a visible `warning: N task(s) beyond the batch cap of 4 were NOT run` listing the dropped tasks, so the model can resubmit them as a separate call (a live 6-item fan-out once lost items 5–6 without a trace).
 
 The task string is all the subagent ever sees — it does not see the parent conversation, so it must be self-contained: file paths, error text, and the definition of "done" included. Unknown agent names fail with the list of available agents. A parallel call mixing agents is fine:
 
@@ -403,7 +403,7 @@ The fleet keeps its runtime state in `<project>/.unown/fleet/` (gitignored — p
 
 The **registry** is what makes `task_control steer` work across sessions: name → session file, status, finish time and a one-line summary, bounded to the 32 most-recent entries. The **loadout sidecar** is the resume contract — everything needed to relaunch the same child later; resume refuses rather than guess when it is missing. Registry and inbox files are atomic-written and fail closed (a corrupt file reads as empty, never throws).
 
-Print-mode orchestrators (`unown -p`) are not left behind: the run appends an untypeable sentinel message the fleet's input handler intercepts, and the process **waits (up to the fleet timeout) for all children to finish** — async results arrive as real turns while the process is alive, so headless runs deliver the full fleet story to stdout.
+Print-mode orchestrators (`unown -p`) are not left behind: the run appends an untypeable sentinel message the fleet's input handler intercepts, and the process **waits (up to the fleet timeout) for all children to finish AND for the model to answer the last delivered result** — the drain tracks result delivery and turn activity (agent_start/agent_settled) through a grace window, so async results arrive as real turns while the process is alive and the final synthesis actually prints (the pre-fix behavior exited between a child's terminal status and its result's answering turn, printing nothing).
 
 **Limits** (the honest table):
 
