@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 291;
+export const CHANGELOG_TOTAL_ENTRIES = 292;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 128,
+  "Added": 129,
   "Changed": 20,
   "Deprecated": 0,
   "Removed": 3,
@@ -44,11 +44,11 @@ export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
 
 export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
-    "label": "Unreleased",
-    "date": null,
-    "total": 1,
+    "label": "0.0.20",
+    "date": "2026-10-25",
+    "total": 2,
     "counts": {
-      "Added": 1,
+      "Added": 2,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "release: the learning-integrity round re-cuts — v0.0.20 supersedes the failed v0.0.19 tag",
+            "behavior": false
+          },
           {
             "title": "engine: the memory engine comes up on its own — install, update, reboot",
             "behavior": false
