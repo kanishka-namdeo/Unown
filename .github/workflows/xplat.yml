@@ -1,0 +1,645 @@
+# XPlat — the agent-drivable cross-platform test lane.
+#
+# WHAT THIS IS. A workflow_dispatch surface over the same test steps CI runs
+# on push/PR, so a driving agent (scripts/xplat.mjs) or a human can demand a
+# cross-platform verdict on demand — on any ref, for any scenario — and read
+# machine receipts back. ci.yml is push/PR-only: mid-session, an agent has no
+# way to ask "is this green on all three OSes?" without pushing. This file is
+# that way back (the three probe workflows already proved the dispatch shape
+# on a smaller scale; this is the full-stack lane).
+#
+# SCENARIOS (docs/xplat-testing.md is the playbook; levels escalate):
+#   smoke           L1  the fast confidence pass: real installer, engine unit
+#                     suite, version consistency, CLI smokes — per selected OS
+#                     (~6-9 min). The lane an agent runs after an engine change.
+#   core            L2  + the integration suite and the full-stack lifecycle
+#                     gate (bun#31603 detach regression, all OSes) (~9-13 min).
+#   full            L3  + every landing/engineering gate ci.yml runs —
+#                     lint/typecheck/unit/coverage/docs/instruction-chars/
+#                     theme/palette/claims, bridge suite, gitleaks + advisory
+#                     audit, sandbox smoke, production build, E2E + axe-core,
+#                     mermaid byte-identity (~15-25 min). The pre-release lane.
+#   release-verify L4  the release path minus the publish: six per-OS binaries
+#                     built by one ubuntu runner, then every archive booted on
+#                     its own runner — including windows-11-arm, which
+#                     release.yml still ships untested (no leg existed when
+#                     that comment was written; the hosted image exists now,
+#                     and this lane uses it) (~25-40 min).
+#
+# OS CHOICE. `all` = the primary matrix (ubuntu/macos/windows, what ci.yml
+# gates). `macos-intel` = macos-15-intel — the darwin-x64 gap leg: ci.yml's
+# macos-latest is arm64-only, but a darwin-x64 archive ships in every
+# release, so the agent can now demand an x64 macOS receipt on demand.
+# The `os` input narrows the `test` matrix only; release-verify's
+# smoke-artifacts matrix is fixed at all six platforms (that is the point of
+# the scenario).
+#
+# CORRELATION. The driver passes a unique `run_id`; it lands in run-name and
+# in every receipt artifact name, so `scripts/xplat.mjs dispatch` can find its
+# own run without racing the runs list, and two agents dispatching
+# simultaneously never read each other's results.
+#
+# CONCURRENCY. Dispatch runs deliberately do NOT cancel: the group is keyed
+# by the agent's run_id (never github.ref — a dispatch must never cancel a
+# push/PR run of the same ref), and cancel-in-progress is off so a slow poll
+# never kills its own run.
+#
+# HONESTY RULES (inherited from ci.yml, same reasons):
+#   - the real installer runs (bun scripts/install.ts, UNOWN_NO_LINK=1) — the
+#     exact path a fresh clone takes, network hydration included;
+#   - no secrets: every lane is keyless (doctor's "model endpoint reachable"
+#     row is an expected CI-only miss, asserted as a printed row, not green);
+#   - Windows steps that need POSIX run `shell: bash`, and env vars go through
+#     `env:` blocks — the pwsh parser errors ci.yml documents are load-bearing;
+#   - receipts are junit XML + the payload artifacts, uploaded `if: always()`
+#     so a red run still hands the agent its evidence.
+#
+# MAINTENANCE CONTRACT. `full` must stay an honest mirror of ci.yml's gate
+# set. When ci.yml gains or drops a job, mirror it here in the same change —
+# docs/AGENTS.md and scripts/AGENTS.md both point at this file.
+
+name: XPlat
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Scenario: smoke | core | full | release-verify"
+        type: choice
+        options:
+          - smoke
+          - core
+          - full
+          - release-verify
+        default: smoke
+      os:
+        description: "OS target (all = ubuntu+macos+windows; macos-intel = the darwin-x64 gap leg)"
+        type: choice
+        options:
+          - all
+          - ubuntu-latest
+          - macos-latest
+          - macos-intel
+          - windows-latest
+        default: all
+      run_id:
+        description: "Correlation key from the driving agent (lands in run-name + receipt names)"
+        type: string
+        default: ""
+
+run-name: "xplat ${{ inputs.scenario || 'smoke' }} · ${{ inputs.os || 'all' }} · ${{ inputs.run_id || 'manual' }}"
+
+# Dispatch runs never touch push/PR concurrency: the group carries the agent's
+# run_id (github.run_id as fallback for UI/manual dispatches), not the ref.
+concurrency:
+  group: xplat-${{ inputs.run_id || github.run_id }}
+  cancel-in-progress: false
+
+# Least-privilege, like every CI job: this lane only reads the checkout.
+# (It creates no releases — that stays in release.yml, tag-gated.)
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: Resolve the matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - name: Map the os input to the runner matrix
+        # env: (not inline ${{ }}) so a hostile input can never inject YAML —
+        # the value only ever reaches a bash case statement as a plain string.
+        env:
+          OS_INPUT: ${{ inputs.os }}
+        run: |
+          case "$OS_INPUT" in
+            all)           echo 'matrix=["ubuntu-latest","macos-latest","windows-latest"]' >> "$GITHUB_OUTPUT";;
+            macos-intel)   echo 'matrix=["macos-15-intel"]' >> "$GITHUB_OUTPUT";;
+            ubuntu-latest|macos-latest|windows-latest) echo "matrix=[\"$OS_INPUT\"]" >> "$GITHUB_OUTPUT";;
+            *)             echo "::error::unknown os input: $OS_INPUT"; exit 1;;
+          esac
+        id: m
+
+  test:
+    name: Test (${{ matrix.os }})
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(needs.resolve.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - name: Enable git long paths (Windows)
+        # Same reason as ci.yml's build-test: the vendored pi-repo trees can
+        # exceed MAX_PATH; this must run BEFORE checkout.
+        if: runner.os == 'Windows'
+        run: git config --global core.longpaths true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install via the real installer
+        # The exact fresh-clone path: both bun installs, the network hydration
+        # of the gitignored provider data, build:offline. No secrets needed.
+        env:
+          UNOWN_NO_LINK: "1"
+        run: bun scripts/install.ts
+      - name: Self-learning engine tests (junit receipt)
+        # Same suite as ci.yml's build-test leg, plus a junit XML receipt the
+        # driver can fetch as an artifact. The default console output is kept
+        # (bun still prints it while writing the file).
+        working-directory: pi-repo/packages/self-learning
+        run: bun test test/ --reporter=junit --reporter-outfile=engine-junit.xml
+      - name: Engine integration suite (real server + mock bridge)
+        # scenario >= core. Hermetic (ephemeral port, temp DB, mock upstream).
+        if: ${{ inputs.scenario != 'smoke' }}
+        working-directory: pi-repo/packages/self-learning
+        env:
+          PI_TEST_SCOPE: integration
+        run: bun test test/integration/
+      - name: Version consistency (unown --version === package.json)
+        # clig.dev contract, same assertion as ci.yml. shell: bash is NOT
+        # optional on the Windows leg (pwsh cannot parse the POSIX syntax).
+        shell: bash
+        run: |
+          expected=$(node -p "require('./package.json').version")
+          actual=$(bun bin/unown --version)
+          echo "package.json: $expected / unown --version: $actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::version mismatch: package.json=$expected unown=$actual"
+            exit 1
+          fi
+      - name: Smoke — CLI boots (unown --help)
+        run: bun bin/unown --help
+      - name: Smoke — dashboard TTY guard
+        # The TUI must refuse a non-interactive stdin with guidance, not hang.
+        shell: bash
+        run: |
+          out=$(bun bin/unown dashboard < /dev/null 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "needs an interactive terminal"
+      - name: Smoke — CLI surface (info, doctor --json, completions, changelog)
+        # The same non-interactive productization surface ci.yml asserts, with
+        # the update --check leg pinned to the same {0,2} exit contract.
+        shell: bash
+        run: |
+          bun bin/unown info --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);if(!j.platform)throw new Error('info json missing platform')})"
+          bun bin/unown doctor --json > doctor-xplat.json || code=$?
+          code=${code:-0}
+          if [ "$code" -gt 1 ]; then echo "::error::doctor --json crashed (exit $code)"; exit 1; fi
+          node -e "const j=require('./doctor-xplat.json');if(!Array.isArray(j.checks)||!j.checks.length)throw new Error('doctor json missing checks')"
+          for sh in bash; do
+            bun bin/unown completions "$sh" > "c-xplat.$sh"
+            bash -n "c-xplat.$sh" || { echo "::error::$sh completion has syntax errors"; exit 1; }
+          done
+          bun bin/unown changelog | grep -q "full changelog" || { echo "::error::unown changelog printed no footer (command broken)"; exit 1; }
+          ucode=0
+          bun bin/unown update --check || ucode=$?
+          if [ "$ucode" -ne 0 ] && [ "$ucode" -ne 2 ]; then
+            echo "::error::unown update --check failed with exit $ucode (1 = offline/broken remote)"
+            exit 1
+          fi
+      - name: Smoke — doctor prints its table
+        # Exit {0,1} accepted (no stack/key in CI — endpoint row is an expected
+        # miss); a crash prints none of these rows and fails.
+        shell: bash
+        run: |
+          code=0
+          out="$(bun bin/unown doctor 2>&1)" || code=$?
+          printf '%s\n' "$out"
+          if [ "$code" -gt 1 ]; then
+            echo "::error::unown doctor crashed (exit $code)"
+            exit 1
+          fi
+          for row in "agent dir" "model endpoint reachable" "OS sandbox" "self-learning engine"; do
+            if ! printf '%s\n' "$out" | grep -q "$row"; then
+              echo "::error::doctor table missing row: $row"
+              exit 1
+            fi
+          done
+      - name: Smoke — full stack boots, survives the launcher, stops
+        # scenario >= core: the lifecycle gate ci.yml runs on all three OSes
+        # (the bun#31603 Windows regression + the POSIX detach contract).
+        if: ${{ inputs.scenario != 'smoke' }}
+        shell: bash
+        run: |
+          bun run agent:stop >/dev/null 2>&1 || true
+          sleep 2
+          if node -e "fetch('http://127.0.0.1:3030/').then(()=>process.exit(0)).catch(()=>process.exit(1))"; then
+            echo "::error::a process is still answering on :3030 before the smoke starts - leaked engine from an earlier step"
+            exit 1
+          fi
+          bun run agent:start
+          sleep 20
+          answering() {
+            node -e "
+              fetch(process.argv[1])
+                .then(() => process.exit(0))
+                .catch(() => process.exit(1));
+            " "$1"
+          }
+          authed_ok() {
+            node -e "
+              const fs = require('fs');
+              const url = process.argv[1];
+              let tok = '';
+              try { tok = fs.readFileSync('data/self-learning/engine.token', 'utf8').trim(); } catch {}
+              fetch(url, { headers: { Authorization: 'Bearer ' + tok } })
+                .then(r => process.exit(r.ok ? 0 : 1))
+                .catch(() => process.exit(1));
+            " "$1"
+          }
+          if ! authed_ok http://127.0.0.1:3030/api/overview; then
+            echo "::error::engine did not survive the launcher exit (bun#31603 regression on Windows / detach regression on POSIX)"
+            exit 1
+          fi
+          if ! answering http://127.0.0.1:3031/health; then
+            echo "::error::bridge did not survive the launcher exit (bun#31603 regression on Windows / detach regression on POSIX)"
+            exit 1
+          fi
+          bun run agent:stop
+          sleep 5
+          if answering http://127.0.0.1:3030/api/overview || answering http://127.0.0.1:3031/health; then
+            echo "::error::agent:stop left a service answering on 3030/3031"
+            exit 1
+          fi
+      - name: Upload receipts
+        # junit XML + the doctor json + the doctor table — the evidence the
+        # driving agent fetches on red (and archives on green).
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: xplat-${{ inputs.scenario || 'smoke' }}-${{ matrix.os }}-${{ inputs.run_id || github.run_id }}
+          path: |
+            pi-repo/packages/self-learning/engine-junit.xml
+            doctor-xplat.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------- full ----
+  # Every gate ci.yml runs outside its OS matrix, folded into one job per
+  # runtime profile (the separate ci.yml jobs exist for parallelism and
+  # required-check contexts; a dispatch lane needs neither).
+
+  linux-gates:
+    name: Landing + engine gates (linux)
+    if: ${{ inputs.scenario == 'full' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the coverage gate diffs against the parent commit
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Lint shell scripts (bash -n)
+        run: |
+          failed=0
+          for f in scripts/*.sh public/*.sh; do
+            [ -e "$f" ] || continue
+            if ! bash -n "$f"; then
+              echo "::error file=$f::syntax error"
+              failed=1
+            fi
+          done
+          exit $failed
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: Lint (landing)
+        run: bunx eslint src
+      - name: Typecheck (landing)
+        run: bun run typecheck
+      - name: Unit tests (landing)
+        run: bun test src
+      - name: Changed-line coverage (src/)
+        # --run with no base resolves to HEAD~1 (the script's own default),
+        # which for a dispatch on main is exactly the new commit's diff.
+        run: node scripts/check_coverage.mjs --run
+      - name: Docs links and anchors
+        run: node scripts/check_docs.mjs docs/*.md
+      - name: Instruction-set unicode lint (invisible chars)
+        run: node scripts/check_instruction_chars.mjs
+      - name: Scanner unit tests
+        run: node --test scripts/check_instruction_chars.test.mjs
+      - name: Theme contract
+        run: bun scripts/check_theme.mjs
+      - name: Landing palette + generated-data contracts
+        run: |
+          bun scripts/gba_palette_check.mjs
+          node --test scripts/landing_changelog.test.mjs
+          bun scripts/landing_changelog.mjs --check
+          node --test scripts/landing_blog.test.mjs
+          node scripts/landing_blog.mjs --check
+          node --test scripts/landing_benchmarks.test.mjs
+          bun scripts/landing_benchmarks.mjs --check
+          node --test scripts/landing_claims.test.mjs
+          bun scripts/landing_claims.mjs --check
+      - name: LLM bridge tests
+        working-directory: mini-services/llm-bridge
+        run: bun test
+
+  security:
+    name: Security scan (secrets + advisories)
+    if: ${{ inputs.scenario == 'full' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks, full history)
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Advisory audit (root, production deps only)
+        run: bun audit --prod
+
+  sandbox-smoke:
+    name: Sandbox smoke (bwrap profile)
+    if: ${{ inputs.scenario == 'full' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Allow unprivileged user namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: bwrap profile verification
+        run: bash scripts/bwrap_smoke.sh
+      - name: Engine sandbox verification
+        run: bun scripts/verify_sandbox.mjs
+
+  build:
+    name: Production build (landing)
+    if: ${{ inputs.scenario == 'full' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: Build
+        run: bun run build
+      - name: Standalone server smoke
+        run: |
+          PORT=3210 node .next/standalone/server.js &
+          server_pid=$!
+          for i in $(seq 1 30); do
+            curl -sf -m 2 http://127.0.0.1:3210/ >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -sf -m 5 http://127.0.0.1:3210/ >/dev/null || { echo "::error::landing route did not answer"; kill $server_pid; exit 1; }
+          kill $server_pid
+          echo "standalone server: / answered 200"
+
+  e2e:
+    name: E2E + a11y (landing)
+    if: ${{ inputs.scenario == 'full' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: Build
+        run: bun run build
+      - name: Chromium for Playwright
+        run: bunx playwright install chromium --with-deps
+      - name: E2E axe-core a11y + landing budget
+        run: bunx playwright test
+      - name: Upload report + traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: xplat-full-playwright-${{ inputs.run_id || github.run_id }}
+          path: |
+            download/playwright-report
+            download/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  mermaid:
+    name: Mermaid byte-identity + brand overflow
+    if: ${{ inputs.scenario == 'full' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install root deps (frozen)
+        run: bun install --frozen-lockfile
+      - name: Chromium for Playwright
+        run: bunx playwright install chromium --with-deps
+      - name: Byte-identity gate — parse + dual render + sha256
+        run: bun scripts/mermaid_check.mjs
+      - name: Brand HTML layout gate (overflow)
+        run: bun scripts/check_overflow.mjs
+
+  # ------------------------------------------------------ release-verify ----
+
+  release-build:
+    name: Release-verify — build the six per-OS binaries
+    if: ${{ inputs.scenario == 'release-verify' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install (landing deps + built pi workspace)
+        # The compiled artifacts import pi's BUILT output; same precondition
+        # as release.yml's build job.
+        env:
+          UNOWN_NO_LINK: "1"
+        run: bun scripts/install.ts
+      - name: Production build
+        run: bun run build
+      - name: Standalone server smoke
+        run: |
+          PORT=3210 node .next/standalone/server.js &
+          server_pid=$!
+          for i in $(seq 1 30); do
+            curl -sf -m 2 http://127.0.0.1:3210/ >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -sf -m 5 http://127.0.0.1:3210/ >/dev/null
+          kill $server_pid
+      - name: Builder plan + suites (the release verify job's own gate)
+        # The same assertions release.yml runs before building anything.
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! bun scripts/build-artifacts.ts --dry-run > artifact-plan.txt; then
+            echo "::error::the artifact builder could not even print its plan"; exit 1; fi
+          n=$(grep -c . artifact-plan.txt || true)
+          if [ "$n" != "7" ]; then
+            echo "::error::the plan is $n lines, expected a header plus 6 targets"; cat artifact-plan.txt; exit 1; fi
+          for p in darwin-arm64 darwin-x64 linux-arm64 linux-x64 windows-arm64 windows-x64; do
+            if ! grep -q "^$p" artifact-plan.txt; then
+              echo "::error::$p is not in the build plan — a target disappeared"; exit 1; fi
+          done
+          rm -f artifact-plan.txt
+          node --test scripts/build-artifacts.test.mjs
+          node --test scripts/release-manifest.test.mjs
+      - name: Build the six per-OS CLI artifacts
+        run: bun scripts/build-artifacts.ts --out release-assets
+      - name: Stage the shipped installer scripts
+        run: |
+          cp public/install.sh public/install.ps1 release-assets/
+          ls -l release-assets/install.sh release-assets/install.ps1
+      - name: Every planned artifact exists, and no extra
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! bun scripts/build-artifacts.ts --list-platforms > planned.txt; then
+            echo "::error::could not read the build plan"; exit 1; fi
+          for p in $(cat planned.txt); do
+            case "$p" in
+              windows-*) want="unown-$p.zip" ;;
+              *) want="unown-$p.tar.gz" ;;
+            esac
+            if [ ! -f "release-assets/$want" ]; then
+              echo "::error::the builder planned $p but produced no release-assets/$want"; exit 1; fi
+          done
+          rm -f planned.txt
+          find release-assets -maxdepth 1 \( -name 'unown-*.tar.gz' -o -name 'unown-*.zip' \) > archives.txt
+          n=$(wc -l < archives.txt)
+          rm -f archives.txt
+          if [ "$n" != "6" ]; then echo "::error::found $n archives, expected exactly 6"; exit 1; fi
+          for f in version.txt install.sh install.ps1 sha256sums.txt; do
+            if [ ! -f "release-assets/$f" ]; then
+              echo "::error::the payload is missing $f"; exit 1; fi
+          done
+      - name: Generate the release manifest (unsigned)
+        # Proves manifest generation works against the version in the
+        # checkout — the release-readiness signal short of publishing.
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bun scripts/release-manifest.ts --out release-assets --version "$(node -p "require('./package.json').version")"
+      - name: Verify the release payload
+        working-directory: release-assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun ../scripts/release-manifest.ts --check --require-all --out .
+      - name: Upload the payload for the smoke legs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: xplat-release-payload-${{ inputs.run_id || github.run_id }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 7
+
+  smoke-artifacts:
+    name: Boot the artifact on ${{ matrix.runner }} (${{ matrix.platform }})
+    if: ${{ inputs.scenario == 'release-verify' }}
+    needs: release-build
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        # release.yml's smoke matrix plus the two legs it cannot have:
+        # windows-11-arm now exists as a hosted image, so the windows-arm64
+        # archive stops shipping untested in THIS lane (release.yml keeps its
+        # own five-leg set until that workflow is retuned).
+        include:
+          - runner: ubuntu-latest
+            platform: linux-x64
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+          - runner: macos-latest
+            platform: darwin-arm64
+          - runner: macos-15-intel
+            platform: darwin-x64
+          - runner: windows-latest
+            platform: windows-x64
+          - runner: windows-11-arm
+            platform: windows-arm64
+    steps:
+      - name: Download the release payload
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: xplat-release-payload-${{ inputs.run_id || github.run_id }}
+          path: payload
+      - name: Verify the checksum manifest
+        shell: bash
+        run: cd payload && sha256sum -c sha256sums.txt
+      - name: version.txt matches the checkout
+        # release-verify has no tag; the version contract is checked against
+        # the checkout's package.json (the same source of truth).
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(curl -sf "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/package.json" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>process.stdout.write(JSON.parse(d).version))")"
+          if ! grep -Fqx "$expected" payload/version.txt; then
+            echo "::error::payload/version.txt does not equal package.json ($expected)"
+            cat payload/version.txt
+            exit 1
+          fi
+      - name: Extract this platform's archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=""
+          for f in payload/unown-${{ matrix.platform }}.*; do
+            if [ -e "$f" ]; then archive="$f"; break; fi
+          done
+          if [ -z "$archive" ]; then
+            echo "::error::the payload has no archive for ${{ matrix.platform }}"; exit 1; fi
+          echo "archive: $archive"
+          mkdir -p extracted
+          case "$archive" in
+            *.zip)
+              export ARCHIVE_PATH="$(cygpath -w "$archive" 2>/dev/null || echo "$archive")"
+              export DESTINATION_PATH="$(cygpath -w extracted 2>/dev/null || echo "$PWD/extracted")"
+              powershell.exe -NoProfile -NonInteractive -Command 'Expand-Archive -LiteralPath $env:ARCHIVE_PATH -DestinationPath $env:DESTINATION_PATH -Force'
+              ;;
+            *)
+              tar -xzf "$archive" -C extracted
+              ;;
+          esac
+          ls -R extracted
+      - name: Run it
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="extracted/unown-${{ matrix.platform }}/unown"
+          if [ ! -f "$bin" ]; then bin="$bin.exe"; fi
+          if [ ! -f "$bin" ]; then
+            echo "::error::the archive for ${{ matrix.platform }} contained no runnable binary"; exit 1; fi
+          chmod +x "$bin" 2>/dev/null || true
+          if ! version="$("$bin" --version 2>&1)"; then
+            echo "::error::the built binary could not report a version: $version"; exit 1; fi
+          echo "binary reports: $version"
+          expected="$(cat payload/version.txt)"
+          if [ "$version" != "$expected" ]; then
+            echo "::error::the built binary reports $version, expected $expected — the version define did not land"
+            exit 1; fi
+          "$bin" --help | grep -q "self-improving terminal coding agent"
+          code=0
+          out="$("$bin" doctor 2>&1)" || code=$?
+          [ "$code" -le 1 ] || { echo "::error::doctor crashed in the binary (exit $code)"; exit 1; }
+          printf '%s\n' "$out" | grep -q "agent dir" || { echo "::error::doctor table missing in the binary"; exit 1; }
+          printf '%s\n' "$out" | grep -q "binary install" || {
+            echo "::error::the binary does not report binary-install mode — update/uninstall will misbehave"
+            exit 1; }
