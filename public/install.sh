@@ -138,13 +138,20 @@ meta_value() {
   # $1 = install.json path, $2 = member name. Prints the scalar of a top-level
   # member of the flat install.json record; empty when it is absent or the file
   # does not parse. A JSON string must escape its newlines, so a raw newline is
-  # always structural whitespace: collapsing newlines and tabs first makes the
-  # read independent of key order and of which installer pretty-printed the
-  # file. Spaces stay — paths contain them. The two strips anchor on the quoted
-  # KEY so a colon inside a value (`C:\Users\…`) cannot be mistaken for the
-  # separator; a value holding an escaped quote truncates, which is why only
-  # schema/mode/version (never quote-bearing) decide anything here.
-  sed -e ':a' -e 'N' -e '$!ba' -e 's/[\r\n\t]//g' "$1" 2>/dev/null |
+  # always structural whitespace: deleting them first makes the read independent
+  # of key order and of which installer pretty-printed the file. Spaces stay —
+  # paths contain them.
+  #
+  # tr, not sed's s/[\r\n\t]//g: BSD sed reads that bracket as the literal set
+  # {\, r, n, t} and silently deletes every n, r, t and backslash, so macOS
+  # returned "binary" as "biay" and ate a Windows path's separators. tr's
+  # escapes are POSIX and mean the same thing on both.
+  #
+  # The two strips anchor on the quoted KEY so a colon inside a value
+  # (`C:\Users\…`) cannot be mistaken for the separator; a value holding an
+  # escaped quote truncates, which is why only schema/mode/version (never
+  # quote-bearing) decide anything here.
+  tr -d '\r\n\t' < "$1" 2>/dev/null |
     grep -o -e "\"$2\"[[:space:]]*:[[:space:]]*\"\{0,1\}[^\",}]*" |
     head -n 1 |
     sed -e 's/^"[^"]*"[[:space:]]*:[[:space:]]*"//' -e 's/^"[^"]*"[[:space:]]*:[[:space:]]*//' -e 's/"$//'

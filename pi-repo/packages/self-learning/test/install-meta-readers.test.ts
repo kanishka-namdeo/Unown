@@ -66,6 +66,13 @@ function envFor(home: string, shell: "sh" | "ps"): NodeJS.ProcessEnv {
 		UNOWN_RELEASES_BASE_URL: "http://127.0.0.1:9",
 		UNOWN_INSTALL_ROOT: join(h, "install-root"),
 		UNOWN_BIN_DIR: join(h, "bin-dir"),
+		// The mode-change guard sits BEHIND the root/Administrator refusal, and
+		// GitHub's Windows runners execute elevated (containers run as root), so a
+		// bare run would report the privilege refusal and never reach the guard
+		// under test. Overriding it here tests the guard; nothing downloads either
+		// way — the release base is a dead port, and a refused install stops
+		// before the fetch.
+		UNOWN_INSTALL_ALLOW_ROOT: "1",
 	};
 }
 

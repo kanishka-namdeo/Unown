@@ -30,14 +30,14 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 287;
+export const CHANGELOG_TOTAL_ENTRIES = 288;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
   "Added": 127,
   "Changed": 20,
   "Deprecated": 0,
   "Removed": 3,
-  "Fixed": 107,
+  "Fixed": 108,
   "Security": 0,
   "Behavior": 30
 };
@@ -46,13 +46,13 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 2,
+    "total": 3,
     "counts": {
       "Added": 1,
       "Changed": 1,
       "Deprecated": 0,
       "Removed": 0,
-      "Fixed": 0,
+      "Fixed": 1,
       "Security": 0,
       "Behavior": 0
     },
@@ -71,6 +71,15 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
         "items": [
           {
             "title": "landing: the rail renders cut releases only",
+            "behavior": false
+          }
+        ]
+      },
+      {
+        "bucket": "Fixed",
+        "items": [
+          {
+            "title": "install: macOS read the install record as garbage",
             "behavior": false
           }
         ]
