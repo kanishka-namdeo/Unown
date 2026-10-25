@@ -910,8 +910,8 @@ export function DexSection() {
                 ↑ ↓ walk the list · ◀ ▶ switch screens · type to filter · esc
                 clears · <span aria-hidden="true">●</span> filmed{" "}
                 <span aria-hidden="true">○</span> pending · captures come only
-                from the harness in{" "}
-                <code className="font-mono text-dim">scripts/tui-capture/</code>, never by hand
+                from{" "}
+                <code className="font-mono text-dim">scripts/tui-capture/</code>
               </p>
             </div>
 
@@ -945,18 +945,16 @@ export function DexSection() {
           {/* provenance, once: what the lane filmed and what it has not.
               Composes with the data: the still-set clause folds away when no
               lane ships stills (2026-10-24: every reel is a movie), and the
-              pending clause states either the count or the closed state. */}
+              pending clause states the count — the closed state already reads
+              off the tally's "0 pending" (2026-10-25: the caption's second
+              restatement paid the scroll bill the v0.0.23 stop adds). */}
           <p className="mt-4 text-[11px] leading-relaxed text-faint">
             The {TALLY.videos} movies
             {TALLY.stills > 0 ? <> and the {TALLY.stills} still set</> : null}{" "}
             were captured across the 2026-10 rounds by the harness from real
             unown sessions at 128 × 36 and audited still by still; each poster
-            is one of that scenario&rsquo;s audited stills.{" "}
-            {TALLY.pending > 0 ? (
-              <>{TALLY.pending} entries have no capture yet.</>
-            ) : (
-              <>No plate waits on a capture — every entry is filmed.</>
-            )}
+            is one of them.{" "}
+            {TALLY.pending > 0 ? <>{TALLY.pending} entries have no capture yet.</> : null}
           </p>
 
           {/* the display-command surface keeps this band as its one home,

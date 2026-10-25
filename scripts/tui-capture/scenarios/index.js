@@ -70,12 +70,15 @@ const s1 = {
       await s.still("03-agent-investigating");
     }},
     // the fix lands — anchor on the edit tool block itself (it renders the
-    // instant the tool starts, with the diff streaming under it), so the
-    // "editing" beat lands mid-edit instead of after the whole fast turn
+    // instant the tool starts, with the diff streaming under it). 2026-10-25
+    // (SOTA re-cut): with the quick upstream the edit+bash+answer all land
+    // inside any linger, so a MID-edit still raced the finished turn and
+    // shipped byte-identical to the next beat. The mid-edit moment stays in
+    // the MOVIE (the frames record it continuously); the stills now anchor on
+    // states that differ by construction.
     { t: "fn", desc: "wait for the edit block", fn: async (s) => {
       await s.wait({ include: ["edit ", "write "], mode: "any", timeout: 420_000, desc: "edit block visible" });
       await s.linger(600);
-      await s.still("04-agent-editing");
     }},
     // agent re-runs the suite → green. 2026-10-24: the anchor " 0 fail" can
     // also match the agent's FINAL ANSWER quoting the tally, so it only paces
@@ -89,7 +92,7 @@ const s1 = {
     // green bash output + the agent's answer, spinner gone, pane stable
     { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 420_000, "hero turn complete") },
     { t: "linger", ms: 1800 },
-    { t: "still", name: "05-tests-passing" },
+    { t: "still", name: "04-agent-fixed" },
     // 2026-10-24 (3rd fix): with agnes-3.0-flash the bash re-run + short
     // final answer land inside any pre-idle settle window — a post-idle still
     // shipped byte-identical to 05 twice. The honest closing beat is the
@@ -98,7 +101,7 @@ const s1 = {
     { t: "prompt", s: "!bun test", cps: 24 },
     { t: "wait", include: [" 5 pass"], timeout: 60_000, desc: "second green run" },
     { t: "linger", ms: 1500 },
-    { t: "still", name: "06-suite-green-twice" },
+    { t: "still", name: "05-suite-green-twice" },
   ],
 };
 
@@ -608,11 +611,24 @@ const s13 = {
   name: "websearch", cwd: DEMO_DIR, port: 7622, env: {},
   steps: [
     { t: "waitReady" },
+    // 2026-10-25 (SOTA re-cut): the keyless chain's results are CACHED from any
+    // earlier ask — a re-run answers from the store in ~2s and the tool blocks
+    // scroll past before a mid-turn beat can catch them. Clearing the store
+    // gives the lane its honest first-ever-ask pacing (the cascade notes ARE
+    // the story). Blocks render as "web <query>" / "web <url>" (the
+    // browser-family display form), never the literal tool names.
+    { t: "fn", desc: "clear the web results store for a live first ask", fn: async (s) => {
+      await s.exec("rm -rf /home/z/.unown/cache/web/entries");
+    }},
     { t: "prompt", s: "Use the web_search tool to look up who created Node.js and the year it was first released, then answer with the URL of the source you actually read. Do not answer from memory.", cps: 30 },
     { t: "wait", include: ["web_search tool"], timeout: 30_000, desc: "prompt echoed" },
     { t: "linger", ms: 1000 },
     { t: "still", name: "01-session-with-question" },
-    { t: "wait", include: ["web_search", "webfetch"], mode: "any", timeout: 180_000, desc: "search tool block" },
+    // 2026-10-25 (SOTA re-cut): web_search's renderCall prints "web <query>"
+    // (the browser-tool family's display form), not the literal tool name —
+    // the shipped anchor predated the renderer and never matched on the
+    // 2.7s keyless-chain turn. The literal query prefix is the block's face.
+    { t: "wait", include: ["web who created", "web http"], mode: "any", timeout: 180_000, desc: "search tool block" },
     { t: "linger", ms: 1500 },
     { t: "still", name: "02-search-running" },
     { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 300_000, "websearch turn complete") },
@@ -643,17 +659,29 @@ const s14 = {
     // 2026-10-25 (SOTA re-cut): the bare "roll a d20" ask read as a toy
     // command (VLM: "arbitrary for a coding agent"). The dev-real frame —
     // picking a random port for a test server — is the same tool call.
-    { t: "prompt", s: "I need a random port number for the test fixture server. Use the dice MCP server to roll a d20 and tell me the result.", cps: 30 },
-    { t: "wait", include: ["dice MCP server"], timeout: 30_000, desc: "prompt echoed" },
-    { t: "linger", ms: 1000 },
-    { t: "still", name: "01-session-with-ask" },
-    { t: "wait", include: ["dice/roll", "mcp__dice__roll"], mode: "any", timeout: 180_000, desc: "mcp tool call visible" },
-    { t: "linger", ms: 1500 },
-    { t: "still", name: "02-mcp-tool-call" },
+    // The dice turn also finishes in ~2s (the stdio MCP round trip is that
+    // fast), so every mid-turn still raced it byte-identical: the ask is now
+    // TYPED and stilled before Enter (the session-with-ask face the dex
+    // poster promises), and a second real turn applies the result.
+    { t: "fn", desc: "type the ask, still it, then send", fn: async (s) => {
+      await s.type("I need a random port number for the test fixture server. Use the dice MCP server to roll a d20 and tell me the result.", { cps: 30 });
+      await s.linger(700);
+      await s.still("01-session-with-ask");
+      await s.enter();
+    }},
     { t: "wait", include: ["You rolled a"], timeout: 60_000, desc: "roll result rendered" },
-    { t: "fn", desc: "turn complete", fn: (s) => waitTurnIdle(s, 240_000, "mcp turn complete") },
+    { t: "fn", desc: "roll turn complete", fn: (s) => waitTurnIdle(s, 240_000, "mcp roll turn complete") },
+    { t: "linger", ms: 1600 },
+    { t: "still", name: "02-rolled-result" },
+    // apply the roll: a second real turn that puts the result to work — the
+    // agent greps the fixture for port references and answers.
+    { t: "prompt", s: "Use 2000 for the fixture port. Check src/ and test/ to make sure nothing already references it, and tell me whether it is safe to use.", cps: 30 },
+    { t: "fn", desc: "port-check turn complete", fn: async (s) => {
+      await s.wait({ include: ["grep ", "bash ", "ls ", "read "], mode: "any", timeout: 180_000, desc: "port check tool block" }).catch(() => {});
+      await waitTurnIdle(s, 300_000, "mcp port-check turn complete").catch(() => {});
+    }},
     { t: "linger", ms: 2000 },
-    { t: "still", name: "03-rolled-result" },
+    { t: "still", name: "03-port-checked" },
   ],
 };
 
@@ -718,26 +746,25 @@ const s16 = {
     { t: "still", name: "02-style-set" },
     { t: "prompt", s: "/btw what did I just ask you about?", cps: 30 },
     // the /btw side-channel rides the bridge's BACKGROUND lane (the same
-    // lane AutoDream uses) — when the engine is draining a dream queue the
-    // overlay waits its turn behind it. 300s covers a full queue; the video
-    // pacing compresses the spinner-idle wait to ~2.5s on screen.
-    { t: "wait", include: ["btw"], timeout: 300_000, desc: "btw overlay" },
-    // the overlay renders when the call starts AND re-renders when the
-    // answer settles — an Esc sent mid-stream dismisses the first paint and
-    // the settled overlay re-opens. Let the answer land first (it is one
-    // short line; 12s covers it on a quiet lane), THEN still, THEN dismiss.
-    { t: "sleep", ms: 12_000 },
+    // lane AutoDream and skill-minting use) and the overlay mounts only
+    // AFTER the answer resolves — 2026-10-25 live runs measured 1s on a
+    // quiet engine but 20s+ behind a mint queue, so the old "wait for the
+    // word btw" (which the ECHOED COMMAND matches instantly) plus a fixed
+    // 12s sleep missed the overlay entirely. Anchor the overlay's OWN
+    // chrome — the dismiss hint only exists while it is mounted.
+    { t: "wait", include: ["esc / enter / q"], timeout: 300_000, desc: "btw overlay mounted" },
     { t: "linger", ms: 1600 },
     { t: "still", name: "03-btw-overlay" },
-    { t: "fn", desc: "dismiss the settled overlay (retry: a mid-settle Esc gets eaten)", fn: async (s) => {
-      for (let attempt = 0; attempt < 3; attempt++) {
+    { t: "fn", desc: "dismiss the overlay (Esc, verified live)", fn: async (s) => {
+      // a bare Esc dismisses (probed on the live TUI); loop until the hint
+      // is gone so a slow last paint can never eat the next command.
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const text = String(await s.tmux.text());
+        if (!text.includes("esc / enter / q")) return;
         await s.key("Esc");
-        try {
-          await s.wait({ include: ["? help"], exclude: ["dismiss"], timeout: 8_000, desc: "overlay dismissed" });
-          return;
-        } catch { /* settled overlay re-painted — dismiss again */ }
+        await s.sleep(1_200);
       }
-      throw new Error("btw overlay did not dismiss after 3 Esc attempts");
+      throw new Error("btw overlay did not dismiss after 8 attempts");
     }},
     { t: "linger", ms: 800 },
     { t: "prompt", s: "/insights", cps: 30 },
@@ -804,11 +831,25 @@ const s18 = {
     { t: "waitReady", timeout: 60_000 },
     { t: "linger", ms: 1500 },
     { t: "still", name: "01-router-jobs" },
-    { t: "key", k: "Enter" },
-    { t: "fn", desc: "job detail open", fn: async (s) => {
-      await s.wait({ include: ["job", "schedule", "last run"], mode: "any", timeout: 20_000, desc: "job detail" }).catch(() => {});
-      await s.linger(1500);
-      await s.still("02-job-detail");
+    // 2026-10-25 (SOTA re-cut): the Router screen's own interaction model is
+    // "space triggers, d toggles" — there is NO per-job detail view (the
+    // shipped "Enter opens a detail" step selected nothing: both shipped
+    // stills and every frame of the shipped movie showed the same jobs table,
+    // which the shipped VLM audit correctly read as four identical static
+    // screens). The honest visible action is the screen's own: walk the
+    // selection onto auto-dream (the interval job a trigger actually starts —
+    // probed live; the first row is the event-driven dream-check) and trigger
+    // it — the emerald toast + the running row are the beat, and the engine
+    // really runs the job.
+    { t: "key", k: "j" },
+    { t: "linger", ms: 500 },
+    { t: "key", k: "j" },
+    { t: "linger", ms: 600 },
+    { t: "key", k: "Space" },
+    { t: "fn", desc: "job triggered", fn: async (s) => {
+      await s.wait({ include: ["job triggered"], timeout: 20_000, desc: "trigger toast" }).catch(() => {});
+      await s.linger(1600);
+      await s.still("02-job-triggered");
     }},
   ],
 };
@@ -1023,10 +1064,16 @@ const s23 = {
     { t: "linger", ms: 1200 },
     { t: "still", name: "04-done" },
     // The report reaching the parent transcript is model-timed and can scroll
-    // past the pane — best-effort, never fatal to the lane.
+    // past the pane — best-effort, never fatal to the lane. 2026-10-25
+    // (SOTA re-cut): the old anchor also accepted "submitted", which the
+    // child's LIVE labels (the fixture page's own confirmation text) print
+    // during 04 — the wait passed instantly, the pane had not changed, and
+    // 05 shipped byte-identical to 04. The parent-side report block's own
+    // prefix is the only unambiguous marker; when it does not land in the
+    // fold, the still is skipped and the movie carries the beat.
     { t: "fn", desc: "child report (best effort)", fn: async (s) => {
       const seen = await s
-        .wait({ include: ["Outcome:", "submitted"], mode: "any", timeout: 150_000, desc: "child report" })
+        .wait({ include: ["Outcome:"], timeout: 150_000, desc: "child report" })
         .then(() => true)
         .catch(() => false);
       if (seen) {

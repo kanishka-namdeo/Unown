@@ -114,8 +114,9 @@ test("every filmed dex entry decodes and presents frames when selected", async (
     await page.waitForTimeout(350);
     const proof = await probeShownVideo(page);
 
-    // a still-only lane (split-view) has an <img>, not a <video> — its
-    // existence/dims are the unit gate's job; nothing to decode here
+    // a stills-only pane (the dashboard showcase's <img>) mounts no <video> —
+    // its existence/dims are the unit gate's job; nothing to decode here
+    // (2026-10-25: the comment's old example, split-view, is a movie lane)
     if (proof.src === "NONE") continue;
 
     expect(

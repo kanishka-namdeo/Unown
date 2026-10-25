@@ -19,31 +19,47 @@ per-still audits, the numeric polish and motion critiques, and the
 wall-of-green pixel measurements — live in
 [benchmarks/tui-beauty/RESULTS.md](../../../benchmarks/tui-beauty/RESULTS.md).
 
+The 2026-10-25 SOTA re-capture round — thirteen lanes re-filmed end to end
+against the live stack (bridge + engine, agnes-3.0-flash through the Agnes
+AI upstream): hero-bugfix, overlays, subagent-explore, wiki, websearch, mcp,
+parity-round, harness, router, split-view, browser-subagent, sdlc and
+cli-doctor. The round was driven by a frame-sampled VLM audit against the
+SOTA terminal-demo bar: the shipped cuts of these lanes showed dead air,
+idle screens mid-story, test-case prompts, blank closing frames or — for
+router — no visible interaction at all. Every lane below carries its
+2026-10-25 provenance in its story column; the eleven lanes not listed in
+the round paragraph (plan-mode, checkpoints, review, fleet, memory-learn,
+browser-verify, dream-dashboard, lsp, routines, skills, goals) kept their
+audited 2026-10-20/23/24 cuts (aggregating a VLM pass at 8-9/10). The
+superseded set is archived outside the repo in the capture root
+(`_superseded-2026-10-25/`), and git history holds every byte.
+
 | scenario | story | assets |
 |---|---|---|
-| hero-bugfix | failing suite → agent finds and fixes the off-by-one → green | 6 stills + mp4/webm/gif |
+| hero-bugfix | failing suite → agent finds and fixes the off-by-one → green → the user's flake-guard re-run (2026-10-25 re-cut: the stills anchor states that differ by construction — the fast upstream lands edit+bash+answer inside one mid-beat linger) | 5 stills + mp4/webm/gif |
 | plan-mode | /plan → numbered plan → approval overlay → execute → complete | 5 stills + mp4/webm/gif |
 | checkpoints | rename → /checkpoints list → /undo revert → /redo restore | 4 stills + mp4/webm/gif |
-| overlays | /model picker → model switch → /permissions → /hooks | 5 stills + mp4/webm/gif |
+| overlays | fresh session → /model picker → model switch → /permissions → /hooks (2026-10-25 re-cut: opens on the session itself instead of cold on a slash command) | 6 stills + mp4/webm/gif |
 | review | /review on the uncommitted fix → reviewers → SHIP verdict → artifact | 4 stills + mp4/webm/gif |
-| subagent-explore | task subagent maps the real unown repo | 4 stills + mp4/webm/gif |
+| subagent-explore | task subagent maps the real unown repo (2026-10-25 re-cut, tmux csi-u warning-free boots) | 4 stills + mp4/webm/gif |
 | fleet | async spawn → fleet widget (waiting-for-answer) → ask_question → task_control steer answer → result steered back → /tasks resume registry | 5 stills + mp4/webm/gif |
-| browser-subagent | the delegated web lane: task → browser (humanized live labels) → ✓ with wall clock → child report; async ◉ fleet row + /tasks lifecycle metadata (2026-10-24, PTY lane) | 6 stills |
-| wiki | /wiki generate → search with scores | 3 stills + mp4/webm/gif |
-| cli-doctor | shell showcase: doctor, models, usage | 3 stills + mp4/webm/gif |
+| browser-subagent | the delegated web lane: task → browser (humanized live labels) → ✓ done row → report → async ◉ fleet row + /tasks lifecycle registry (2026-10-25 re-cut of the filmed lane — the report still anchors the parent-side Outcome block) | 6 stills + mp4/webm |
+| wiki | fresh session → /wiki generate → search with scores (2026-10-25 re-cut: the story opens on the session the user works in) | 4 stills + mp4/webm/gif |
+| cli-doctor | shell showcase: doctor, models, usage — with real accumulated usage rows (2026-10-25 re-cut, captured last so the usage table is lived-in) | 3 stills + mp4/webm/gif |
 | memory-learn | two sessions in one pane: teach house rules + a real task → /note the lesson → /quit → AutoDream consolidates → a fresh session boots with the learned memory (footer chip v0 → vN) → /memory search recalls it scored → the closing task applies the lesson unprompted | 6 stills + mp4/webm |
 | browser-verify | the visitor check: browser tool opens the landing page on :3000 → a11y snapshot → the exact curl install command → click the GitHub link → screenshot → report | 3 stills + mp4/webm |
 | dream-dashboard | `unown dashboard dreams`: the real dream rows → dream detail (canary/guard note, rendered output) → the Memory screen (four tiers, injection budget) | 3 stills + mp4/webm |
-| websearch | the keyless chain live: web_search cascading providers in a real session → the answer with its cited source (2026-10-24) | 3 stills + mp4/webm |
-| mcp | a real MCP stdio server (the harness's own `fixtures/mini-mcp-dice.mjs` — actual JSON-RPC initialize/tools/list/tools/call) joins the session via `unown mcp add`; its dice/roll tool called live (2026-10-24) | 3 stills + mp4/webm |
+| websearch | the keyless chain live: a live first ask (the web results store cleared for the lane) → web_search cascading providers → the answer with its cited source (2026-10-25 re-cut) | 3 stills + mp4/webm |
+| mcp | a real MCP stdio server (the harness's own `fixtures/mini-mcp-dice.mjs` — actual JSON-RPC initialize/tools/list/tools/call) joins the session via `unown mcp add`; the d20 roll picks the fixture server's port and a second real turn checks the port is free (2026-10-25 re-cut) | 3 stills + mp4/webm |
 | lsp | /repomap's graph-ranked map → a cross-tree rename while typescript-language-server diagnostics ride every edit's tool result (2026-10-24) | 3 stills + mp4/webm |
-| parity-round | the 2026 consensus round in one live session: /output-style listing + set → the /btw side-question overlay → /insights → the auto-titled session proven by /name (2026-10-24; the ttyd-lane movie of the story the PTY stills told) | 5 stills + mp4/webm |
-| harness | `unown dashboard lab` against the live engine after a real cycle ran through the engine API (`POST /api/tasks/<id>/run`) — the baseline, the verify, the mined-rule decision (2026-10-24) | 2 stills + mp4/webm |
-| router | `unown dashboard router`: the engine's real job table — dreams, harness, automations, one busy-mutex (2026-10-24) | 2 stills + mp4/webm |
+| parity-round | the 2026 consensus round in one live session: a real docs question for context → /output-style listing + set → the /btw side-question overlay (its own chrome anchored) → /insights → the auto-titled session proven by /name (2026-10-25 re-cut) | 5 stills + mp4/webm |
+| harness | `unown dashboard lab` against the live engine after real cycles ran through the engine API (`POST /api/tasks/<id>/run` — fizzbuzz, csv-parser, debounce) — the cycle list, the baseline/verify, the mined-rule decision (2026-10-25 re-cut) | 2 stills + mp4/webm |
+| router | `unown dashboard router`: the engine's real job table — dreams, harness, automations, one busy-mutex — then the screen's own action: the selection walks onto auto-dream and Space triggers it, toast on screen (2026-10-25 re-cut — the shipped cut had no visible interaction: the detail step selected nothing and every frame showed the same table) | 2 stills + mp4/webm |
 | routines | `unown dashboard routines` with a real routine created through the CLI (a daily 09:00 morning brief, read-only) and its history row (2026-10-24) | 2 stills + mp4/webm |
 | skills | `unown dashboard skills` after the harness loop actually shipped a skill — the loop's own minted row, not a mock (2026-10-24) | 2 stills + mp4/webm |
 | goals | a real /goal run: the objective injection → todo-tracked work → the [GOAL:COMPLETE] gate passing on both kinds of cited evidence → the /goal status record (2026-10-24) | 4 stills + mp4/webm |
-| split-view | the split-view display mode FILMED: /split mounts the band + dock, a live turn fills the Thinking and Tool Usage panels while the files dock carries the edit diff, the response-only transcript closes it (2026-10-24; supersedes the PTY stills-only cut — see the note below) | 4 stills + mp4/webm |
+| split-view | the split-view display mode FILMED: /split mounts the band + dock, a live turn fills the Thinking and Tool Usage panels while the files dock carries the edit diff, the response-only transcript + the user's flake-guard green tally close it (2026-10-25 re-cut) | 5 stills + mp4/webm |
+| sdlc | the № 010 Parity plate: a real read task → /context → the session workflow — /sessions list → /sessions export --md → the exported markdown on disk → /sessions list --all (2026-10-25 re-cut: the machine-wide listing settles before the closing beat) | 7 stills + mp4/webm |
 
 The memory-learn / browser-verify / dream-dashboard lanes were captured
 2026-10-23 against the live stack (bridge + engine, agnes-3.0-flash through
@@ -72,8 +88,8 @@ hero lane closes on the user's flake-guard re-run of the suite.
 
 Stills are full-frame (128x36 grid, ~2214px wide, everything the user sees:
 header/transcript, input box, cwd + model status). Videos are paced (8fps,
-spinner-idle compressed, ~6-22s each). Regenerate or extend via the harness —
-this directory is the curatation of audited output, not the source of truth.
+spinner-idle compressed, ~4-22s each). Regenerate or extend via the harness —
+this directory is the curation of audited output, not the source of truth.
 
 The split-view lane's provenance, updated 2026-10-24: its first cut
 (2026-10-20) was captured with a PTY driver and a terminal-emulator render,

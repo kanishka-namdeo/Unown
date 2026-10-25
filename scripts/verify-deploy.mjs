@@ -88,6 +88,62 @@ note(html.includes("Beta"), "beta badge present (header wordmark + hero kicker)"
 note(html.includes("Unown is in beta"), "beta plain-language sentence present");
 
 /* ---------------------------------------------------------------- */
+/* landing media: every tui reel the page references, served intact    */
+/*                                                                  */
+/* 2026-10-25 (the SOTA re-capture round): the dex's 24 reels were   */
+/* verified by the e2e decode gate against the STANDALONE build, but  */
+/* the deployed site's media was never checked — a broken deploy, a  */
+/* stale cache or a missing file would be discovered by a visitor.    */
+/* The SSR DOM carries every reel's sources (webm+mp4), every lazy    */
+/* poster (data-poster) and the showcase's dashboard stills, so the   */
+/* rendered page itself is the manifest: probe each unique URL for    */
+/* status 200, the right content type, byte-range support (the dex     */
+/* player and Safari both range-request), and the long CDN cache the   */
+/* vercel.json media rule promises.                                  */
+/* ---------------------------------------------------------------- */
+
+section("landing media");
+{
+  const media = new Set();
+  for (const m of html.matchAll(/(?:src|data-poster)="(\/landing\/tui\/[^"]+\.(?:webm|mp4|png))"/g)) media.add(m[1]);
+  note(media.size >= 60, "landing tui media referenced in SSR DOM", `${media.size} unique URLs`);
+  const wantType = (p) =>
+    p.endsWith(".webm") ? "video/webm" : p.endsWith(".mp4") ? "video/mp4" : "image/png";
+  let typeFails = 0, statusFails = 0, rangeFails = 0, cacheFails = 0;
+  let firstVideo = null;
+  for (const p of media) {
+    try {
+      // HEAD: the existence/type/cache probe; the body-less request keeps
+      // the run light while the deploy still has to answer for every file.
+      const res = await fetch(URL_ARG + p, { method: "HEAD", headers: { "cache-control": "no-cache" } });
+      if (res.status !== 200) statusFails += 1;
+      const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim();
+      if (ct !== wantType(p)) typeFails += 1;
+      const cache = res.headers.get("cache-control") ?? "";
+      if (!/s-maxage=\d+/.test(cache)) cacheFails += 1;
+      if (!firstVideo && p.endsWith(".mp4")) firstVideo = p;
+    } catch (err) {
+      statusFails += 1;
+    }
+  }
+  // byte-range: one representative mp4 + one webm (Safari's player and the
+  // dex seek both issue Range requests; a plain 200 means no seeking)
+  for (const probe of [firstVideo, [...media].find((p) => p.endsWith(".webm"))]) {
+    if (!probe) continue;
+    try {
+      const res = await fetch(URL_ARG + probe, { headers: { Range: "bytes=0-1023" } });
+      if (res.status !== 206) rangeFails += 1;
+    } catch {
+      rangeFails += 1;
+    }
+  }
+  note(statusFails === 0, "every referenced media URL returns 200", statusFails ? `${statusFails} failed` : "all");
+  note(typeFails === 0, "media content types exact (mp4/webm/png)", typeFails ? `${typeFails} wrong` : "all");
+  note(rangeFails === 0, "byte-range seeking supported (206)", rangeFails ? `${rangeFails} probes failed` : "mp4+webm 206");
+  note(cacheFails === 0, "long CDN cache on every media asset", cacheFails ? `${cacheFails} uncached` : "s-maxage set");
+}
+
+/* ---------------------------------------------------------------- */
 /* SEO: the search surface a crawler reads, on the deployed page     */
 /* ---------------------------------------------------------------- */
 
