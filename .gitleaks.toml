@@ -12,22 +12,21 @@
 # the per-push diff never saw them together. When a dispatch scan goes red
 # on a fixture, add its path here (never weaken the rules); when it goes red
 # on something that is not obviously a fixture, treat it as a real leak.
+#
+# NOTE: keep ONE [allowlist] table (the [[allowlists]] array form is not
+# honored alongside it by gitleaks 8.24 — measured on xplat run 40192878877,
+# where the second block was silently ignored).
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "redaction test fixtures: deliberately secret-shaped strings (sk-…, Bearer …, KEY=VALUE) that the redactSecrets / receipts-privacy / share-redact tests must recognize and mask — none are real credentials"
+description = "test fixtures and eval corpora with deliberately secret-shaped strings (sk-…, Bearer …, KEY=VALUE): the redactSecrets / receipts-privacy / share-redact tests must recognize them, and the ADV_2974 memory-eval case grades the agent on NOT writing user_api_key to memory — none are real credentials"
 paths = [
     '''pi-repo/packages/self-learning/test/checkpoints\.test\.ts''',
     '''pi-repo/packages/self-learning/test/sessions-completion\.test\.ts''',
     '''pi-repo/packages/self-learning/test/sessions-markdown\.test\.ts''',
     '''pi-repo/packages/coding-agent/test/share-redact\.test\.ts''',
-]
-
-[[allowlists]]
-description = "memory-eval corpus: the ADV_2974 case family is the secret-hygiene eval — the agent is graded on NOT writing user_api_key=… to memory; the corpus and its receipts quote the bait"
-paths = [
     '''benchmarks/memory-eval/mpbench/corpus\.json''',
-    '''benchmarks/memory-eval/mpbench/results/.+/per-case/ADV_2974\.json''',
+    '''benchmarks/memory-eval/mpbench/results/.*per-case/ADV_2974\.json''',
 ]
