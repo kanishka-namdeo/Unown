@@ -368,10 +368,16 @@ describe("Router job outcome columns (M11)", () => {
 
         function seedProbe() {
                 store.run(`DELETE FROM jobs WHERE id = ?`, [PROBE]);
+                // schedule_ms goes through a BOUND PARAM, never inlined: SQLite only
+                // accepts underscores in numeric literals from 3.46 (2024), and bun's
+                // darwin-x64 build bundles an older engine — an inlined 3_600_000 is
+                // "unrecognized token" there while every other CI leg stays green.
+                // Found by the xplat lane's macos-intel leg (the darwin-x64 gap leg
+                // ci.yml's arm64-only macos matrix cannot run): run 40192211514.
                 store.run(
                         `INSERT INTO jobs (id, name, kind, schedule_ms, event, enabled, next_run, run_count, status, description)
-                         VALUES (?, ?, 'interval', 3_600_000, NULL, 1, ?, 0, 'idle', 'M11 outcome probe')`,
-                        [PROBE, PROBE, Date.now() + 3_600_000],
+                         VALUES (?, ?, 'interval', ?, NULL, 1, ?, 0, 'idle', 'M11 outcome probe')`,
+                        [PROBE, PROBE, 3_600_000, Date.now() + 3_600_000],
                 );
         }
 
