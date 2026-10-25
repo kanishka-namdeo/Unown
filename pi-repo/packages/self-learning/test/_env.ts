@@ -49,6 +49,11 @@ export const TEST_TMP = (() => {
 
 process.env.PI_SELFLEARNING_DB ??= `${TEST_TMP}/selflearning.db`;
 process.env.PI_SELFLEARNING_DATA ??= `${TEST_TMP}/data`;
+// Never touch a live checkout's .run from the suite: on Windows a running
+// engine can hold .run/engine.log exclusively (EBUSY on the spawn path), and
+// the runtime files are per-profile anyway. The canonical override is
+// UNOWN_RUNTIME_DIR (engine-supervisor.runDir).
+process.env.UNOWN_RUNTIME_DIR ??= `${TEST_TMP}/run`;
 // Dead endpoint (nothing listens on port 9): suite-a's llm.ts probes must
 // never reach the live bridge.
 process.env.PI_BRIDGE_URL ??= "http://127.0.0.1:9";

@@ -22,6 +22,7 @@ import {
 	describeJobHealth,
 	humanizeDbBytes,
 	parseRestartFlags,
+	parseStopFlags,
 } from "../src/engine-cli.ts";
 import type { EngineBuildComparison } from "../src/engine-version.ts";
 
@@ -66,6 +67,37 @@ describe("parseRestartFlags", () => {
 	test("--help / -h short-circuits to the usage text", () => {
 		expect(parseRestartFlags(["--help"]).help).toBe(true);
 		expect(parseRestartFlags(["-h"]).help).toBe(true);
+	});
+
+	test("--take-ownership is explicit and absent by default", () => {
+		expect(parseRestartFlags([]).flags.takeOwnership).toBeUndefined();
+		expect(parseRestartFlags(["--take-ownership"]).flags.takeOwnership).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// parseStopFlags — a foreign engine is only signalled with --force --pid
+// ---------------------------------------------------------------------------
+
+describe("parseStopFlags", () => {
+	test("defaults to a non-forced stop with no pid", () => {
+		expect(parseStopFlags([])).toEqual({ flags: { force: false } });
+	});
+
+	test("--force --pid <n> and --pid=<n> parse", () => {
+		expect(parseStopFlags(["--force", "--pid", "4242"]).flags).toEqual({ force: true, pid: 4242 });
+		expect(parseStopFlags(["--pid=5151"]).flags).toEqual({ force: false, pid: 5151 });
+	});
+
+	test("a missing, negative or non-numeric pid is an error", () => {
+		expect(parseStopFlags(["--pid"]).error).toContain("--pid");
+		expect(parseStopFlags(["--pid", "-1"]).error).toContain("--pid");
+		expect(parseStopFlags(["--pid=abc"]).error).toContain("--pid");
+	});
+
+	test("unknown arguments error; --help short-circuits", () => {
+		expect(parseStopFlags(["--bogus"]).error).toContain("unknown argument");
+		expect(parseStopFlags(["--help"]).help).toBe(true);
 	});
 });
 

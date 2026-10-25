@@ -16,10 +16,11 @@
  *     and kill-switch paths sit BEHIND the SPAWN_DISABLED module-load const,
  *     so they can only be exercised with the guard absent from the env.
  *
- * The supervisor's circuit file lives in the REPO's .run/ (source shape —
- * stateRoot ignores UNOWN_HOME for checkouts), which the live stack also
- * uses: every scenario that touches it snapshots + restores byte-for-byte.
- * The outbox counts come from the redirected UNOWN_HOME (./_env.ts).
+ * The supervisor's circuit file lives in the suite's UNOWN_RUNTIME_DIR temp
+ * dir (./_env.ts) — never the live checkout's .run, which a running Windows
+ * engine can hold exclusively — and every scenario that touches it snapshots
+ * + restores byte-for-byte. The outbox counts come from the redirected
+ * UNOWN_HOME (./_env.ts).
  */
 import "./_env.ts"; // MUST be the first import
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -47,6 +48,7 @@ import {
 	startEngineStatusLoop,
 	stopEngineStatusLoop,
 } from "../src/engine-status.ts";
+import { type EngineProbe } from "../src/engine-probe.ts";
 import { enginePidFile, readSpawnState, type SpawnState, spawnStateFile } from "../src/engine-supervisor.ts";
 import { agentGitSha, agentVersion } from "../src/engine-version.ts";
 import { outboxStats, slugifyPath, UNOWN_OUTBOX_DIR, writeOutboxNote } from "../src/term.ts";
@@ -1163,6 +1165,72 @@ describe("engine status loop — the M3 dream-news toast (injected probe)", () =
 		});
 		await loop.probeNow();
 		expect(toasts).toEqual([]);
+		stopEngineStatusLoop();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// P0 taxonomy — a foreign engine / taken port / hung port is "blocked", not a
+// crash. It must never kick a spawn and must never invite `engine start`.
+// ---------------------------------------------------------------------------
+
+describe("blocked state (P0 taxonomy)", () => {
+	const blockedProbe = (kind: EngineProbe["kind"], pid?: number): EngineProbe => ({
+		kind,
+		endpoint: "http://127.0.0.1:3030",
+		banner: kind === "unauthorized" || kind === "incompatible",
+		detail: `test ${kind}`,
+		owner: pid ? { pid, source: "port" } : undefined,
+	});
+
+	test.each([
+		["unauthorized", "memory: blocked · token"],
+		["occupied", "memory: blocked · port"],
+		["incompatible", "memory: blocked · version"],
+		["unreachable", "memory: blocked · no answer"],
+	] as const)("%s → %s", (kind, expected) => {
+		expect(engineFooterText(makeInfo("blocked", { probe: blockedProbe(kind) }))).toBe(expected);
+	});
+
+	test("the toast names the other owner and never claims the engine is unreachable", () => {
+		const toast = engineToastText("down", "blocked", 0, blockedProbe("unauthorized", 4242));
+		expect(toast?.level).toBe("warning");
+		expect(toast?.message).toContain("blocked");
+		expect(toast?.message).toContain("pid 4242");
+		expect(toast?.message).toContain("another install's engine");
+	});
+
+	test("the loop publishes blocked, never kicks a spawn, and treats blocked as assumed-down", async () => {
+		seedCircuit(freshCircuit());
+		let kicks = 0;
+		const loop = startFresh({
+			probe: async () => ({ up: false, kind: "unauthorized", probe: blockedProbe("unauthorized", 4242) }),
+			kickSpawn: async () => {
+				kicks++;
+				return true;
+			},
+		});
+		const info = await loop.probeNow();
+		expect(info.state).toBe("blocked");
+		expect(info.probe?.owner?.pid).toBe(4242);
+		expect(kicks).toBe(0);
+		// A confident non-up state lets note delivery skip its probe+POST round trips.
+		expect(engineAssumedDown()).toBe(true);
+		stopEngineStatusLoop();
+	});
+
+	test("unreachable is blocked too — a hung port never authorises a spawn", async () => {
+		seedCircuit(freshCircuit());
+		let kicks = 0;
+		const loop = startFresh({
+			probe: async () => ({ up: false, kind: "unreachable", probe: blockedProbe("unreachable") }),
+			kickSpawn: async () => {
+				kicks++;
+				return true;
+			},
+		});
+		expect((await loop.probeNow()).state).toBe("blocked");
+		expect(kicks).toBe(0);
 		stopEngineStatusLoop();
 	});
 });

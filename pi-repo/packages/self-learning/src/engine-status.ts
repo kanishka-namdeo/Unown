@@ -76,9 +76,9 @@ import { readFileSync } from "node:fs";
 import {
 	autoStartDisabled,
 	type DreamNews,
-	engineHealth,
 	evaluateSpawnGate,
 	markEngineHealthy,
+	parseDreamNews,
 	readSpawnState,
 	SPAWN_DISABLED,
 	type SpawnState,
@@ -93,9 +93,10 @@ import {
 	type EngineBuildRef,
 	formatDuration,
 } from "./engine-version.ts";
-import { outboxStats, projectMemoryPath, readProjectProvenance, slugifyPath } from "./term.ts";
+import { probeEngine, type EngineProbe, type EngineProbeKind } from "./engine-probe.ts";
+import { ENGINE_URL, outboxStats, projectMemoryPath, readProjectProvenance, slugifyPath } from "./term.ts";
 
-export type EngineState = "unknown" | "up" | "starting" | "down" | "paused";
+export type EngineState = "unknown" | "up" | "starting" | "down" | "paused" | "blocked";
 
 export interface EngineStatusInfo {
 	state: EngineState;
@@ -118,6 +119,9 @@ export interface EngineStatusInfo {
 	 *  old-build / stale / ancient / ahead / unknown) — drives the footer
 	 *  suffix, the fresh→stale toast and /engine's build line. */
 	buildVerdict?: EngineBuildComparison;
+	/** The last probe's taxonomy when it was not "ok" — why the engine is
+	 *  blocked (token/port/version/no answer) and who owns it. */
+	probe?: EngineProbe;
 }
 
 /** Probe cadence: 30s default, floor 5s (env-tunable for tests + demos). */
@@ -195,6 +199,12 @@ export function engineFooterText(info: EngineStatusInfo, memoryBar?: string): st
 			return info.queuedNotes > 0 ? `memory: down · ${info.queuedNotes} queued` : "memory: down";
 		case "paused":
 			return "memory: paused · /engine";
+		case "blocked": {
+			const kind = info.probe?.kind;
+			const label =
+				kind === "unauthorized" ? "token" : kind === "occupied" ? "port" : kind === "incompatible" ? "version" : "no answer";
+			return `memory: blocked · ${label}`;
+		}
 		default:
 			return "memory: --";
 	}
@@ -205,8 +215,24 @@ export function engineToastText(
 	prev: EngineState,
 	next: EngineState,
 	queued: number,
+	probe?: EngineProbe,
 ): { message: string; level: "info" | "warning" } | undefined {
 	if (prev === next || next === "unknown" || prev === "unknown") return undefined;
+	if (next === "blocked") {
+		const owner = probe?.owner?.pid ? ` (pid ${probe.owner.pid})` : "";
+		const why =
+			probe?.kind === "unauthorized"
+				? "another install's engine owns the port"
+				: probe?.kind === "occupied"
+					? "the port is held by another process"
+					: probe?.kind === "incompatible"
+						? "the engine build is incompatible"
+						: "the engine is not answering";
+		return {
+			message: `memory engine blocked — ${why}${owner}; run \`unown engine status\`; chat unaffected`,
+			level: "warning",
+		};
+	}
 	if (next === "paused")
 		return {
 			message:
@@ -385,7 +411,7 @@ export interface EngineStatusHooks {
 	 *  segment (files read at probe cadence) and the dream-news project
 	 *  filter (slugified the same way the engine groups notes). */
 	projectDir?: string;
-	/** Injectable probe (tests); defaults to engineHealth with the short timeout. */
+	/** Injectable probe (tests); defaults to the taxonomy probe with the short timeout. */
 	probe?: () => Promise<{
 		up: boolean;
 		pid?: number;
@@ -393,6 +419,8 @@ export interface EngineStatusHooks {
 		activeJob?: string;
 		version?: EngineBuildRef;
 		dreamNews?: DreamNews;
+		kind?: EngineProbeKind;
+		probe?: EngineProbe;
 	}>;
 	/** Injectable spawn kick (tests); defaults to the real gated supervisor call. */
 	kickSpawn?: () => Promise<boolean>;
@@ -422,7 +450,7 @@ export function getEngineStatusInfo(): EngineStatusInfo {
 
 function snapshotOf(state: EngineState, extra?: Partial<EngineStatusInfo>): EngineStatusInfo {
 	const stats = outboxStats();
-	return {
+	const snap: EngineStatusInfo = {
 		state,
 		since: extra?.since ?? Date.now(),
 		lastProbeAt: extra?.lastProbeAt ?? 0,
@@ -435,6 +463,8 @@ function snapshotOf(state: EngineState, extra?: Partial<EngineStatusInfo>): Engi
 		engineVersion: extra?.engineVersion,
 		buildVerdict: extra?.buildVerdict,
 	};
+	if (extra?.probe) snap.probe = extra.probe;
+	return snap;
 }
 
 /**
@@ -449,7 +479,7 @@ export function startEngineStatusLoop(hooks: EngineStatusHooks = {}): EngineStat
 	let state: EngineState = "unknown";
 	let since = Date.now();
 	let lastProbeAt = 0;
-	let detail: { pid?: number; busyMs?: number; activeJob?: string } = {};
+	let detail: { pid?: number; busyMs?: number; activeJob?: string; probe?: EngineProbe } = {};
 	// M8: the last up-probe's version handshake — engine block + verdict.
 	// Cleared on a down probe (a stale verdict about an engine we cannot
 	// reach would be a lie on the footer).
@@ -480,15 +510,21 @@ export function startEngineStatusLoop(hooks: EngineStatusHooks = {}): EngineStat
 	let fastProbeTimers: Array<ReturnType<typeof setTimeout>> = [];
 	const probe =
 		hooks.probe ??
-		(() =>
-			engineHealth(probeTimeoutMs()).then((h) => ({
-				up: h.up,
-				pid: h.pid,
-				busyMs: h.busyMs,
-				activeJob: h.activeJob,
-				version: h.version,
-				dreamNews: h.dreamNews,
-			})));
+		(async () => {
+			const p = await probeEngine({ endpoint: process.env.UNOWN_ENGINE_URL || ENGINE_URL, timeoutMs: probeTimeoutMs() });
+			if (p.kind !== "ok") return { up: false, kind: p.kind, probe: p };
+			const body = p.body;
+			return {
+				up: true,
+				pid: body?.pid,
+				busyMs: body?.router?.busyMs,
+				activeJob: body?.router?.activeJob,
+				version: body?.version,
+				dreamNews: parseDreamNews(body?.dreamNews),
+				kind: "ok" as const,
+				probe: p,
+			};
+		});
 	const kickSpawn = hooks.kickSpawn ?? (() => spawnEngineDetached());
 
 	const publish = (next: EngineState, forceToast = false) => {
@@ -498,7 +534,7 @@ export function startEngineStatusLoop(hooks: EngineStatusHooks = {}): EngineStat
 		lastProbeAt = Date.now();
 		if (hooks.onFooter) hooks.onFooter(engineFooterText(info(), memoryBar));
 		if (prev !== next || forceToast) {
-			const toast = engineToastText(prev, next, outboxStats().queued);
+			const toast = engineToastText(prev, next, outboxStats().queued, detail.probe);
 			if (toast && prev !== "unknown") hooks.onToast?.(toast.message, toast.level);
 			// prev === "unknown" (session start): footer appears silently — the
 			// initial state is a fact, not an event (deliberate engine-off users
@@ -555,22 +591,33 @@ export function startEngineStatusLoop(hooks: EngineStatusHooks = {}): EngineStat
 
 	const runProbe = async (): Promise<EngineStatusInfo> => {
 		refreshMemoryBar(); // M3: bar facts ride the probe cadence (never per keystroke)
+		let probeKind: EngineProbeKind | undefined;
 		try {
 			const h = await probe();
+			probeKind = h.kind;
 			if (h.up) {
-				detail = { pid: h.pid, busyMs: h.busyMs, activeJob: h.activeJob };
+				detail = { pid: h.pid, busyMs: h.busyMs, activeJob: h.activeJob, probe: h.probe };
 				publishBuild(h.version); // before publish(): the footer render reads it
 				markEngineHealthy(); // observed healthy → reset the crash-loop circuit
 				publish("up");
 				considerDreamNews(h.dreamNews); // after publish: the news toast is a rider on a healthy probe
 				return info();
 			}
+			detail = { probe: h.probe };
 		} catch {
-			/* probe errors are simply "down" — engineHealth never throws, but a
-			 * custom probe might; never let the loop die. */
+			/* probe errors are simply "down" — the taxonomy probe never throws,
+			 * but a custom probe might; never let the loop die. */
+			detail = {};
 		}
-		detail = {};
 		build = {};
+		// A foreign engine, an occupied port, an incompatible build or a hung
+		// port is not a crash: publish "blocked", do not kick, and do not start
+		// the fast re-probe ladder (nothing this loop can start would help).
+		const kind = probeKind ?? "refused";
+		if (kind !== "refused") {
+			publish("blocked");
+			return info();
+		}
 		// Down. Paused wins when the crash-loop circuit gave up; otherwise kick
 		// a (gated) auto-start and expect it up shortly.
 		const circuit = readSpawnState();
@@ -629,7 +676,7 @@ export function stopEngineStatusLoop() {
 export function engineAssumedDown(): boolean {
 	if (!loop) return false;
 	const info = loop.info();
-	if (info.state !== "down" && info.state !== "paused") return false;
+	if (info.state !== "down" && info.state !== "paused" && info.state !== "blocked") return false;
 	// Trust the snapshot only while fresh: 2x interval (or 60s floor) since
 	// the last probe; after that a delivery should re-probe for itself.
 	const maxAge = Math.max(60_000, 2 * probeIntervalMs());
@@ -638,8 +685,19 @@ export function engineAssumedDown(): boolean {
 
 /** Human summary of the supervisor's crash-loop circuit, for /engine + CLI. */
 export function describeSpawnCircuit(state: SpawnState): string {
+	const cause =
+		state.lastCause === "unauthorized"
+			? "the engine rejected this CLI's token"
+			: state.lastCause === "occupied"
+				? "the port is held by another process"
+				: state.lastCause === "incompatible"
+					? "the engine build/API is incompatible"
+					: state.lastCause === "unreachable"
+						? "the engine did not answer"
+						: undefined;
 	if (state.gaveUp)
-		return `gave up after ${state.attempts} failed start(s) — run \`unown engine start\` (resets the circuit), and check .run/engine.log; if the DB is corrupt: \`unown engine repair\``;
+		return `gave up after ${state.attempts} failed start(s)${cause ? ` — last probe: ${cause}` : ""} — run \`unown engine start\` (resets the circuit), and check .run/engine.log; if the DB is corrupt: \`unown engine repair\``;
+	if (cause) return `auto-start blocked — ${cause}; no spawn attempted (run \`unown engine status\` for the owner)`;
 	const gate = evaluateSpawnGate(state);
 	if (gate.reason === "backoff")
 		return `backing off — attempt ${state.attempts}, next auto-start in ${Math.ceil((gate.retryInMs ?? 0) / 1000)}s (auto-start works, just spaced out)`;

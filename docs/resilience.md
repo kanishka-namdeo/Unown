@@ -39,11 +39,12 @@ One persistent status row in the TUI. It is a fact, not an event: it changes onl
 | `memory: starting…` | starting | a spawn was kicked, health not confirmed yet (seconds) |
 | `memory: down` / `memory: down · 3 queued` | down | unreachable — the suffix is the outbox backlog, hidden when 0 |
 | `memory: paused · /engine` | paused | the crash-loop circuit gave up on auto-start — run `/engine` |
+| `memory: blocked · token` / `· port` / `· version` / `· no answer` | blocked | the port is owned by another install (401), a non-Unown process, an incompatible build, or a hung listener. No spawn is attempted; `/engine` or `unown engine status` names the owner |
 | `memory: --` | unknown | first probe still in flight (clears within seconds of session start) |
 
 Two rules keep the activity suffix honest. The elapsed is bucketed to **whole minutes**, because a 30 s probe cadence plus a seconds-granularity counter would rewrite the line twice a minute for a number nobody acts on; a job under a minute old shows its name with no number, since the job starting is already the news. And the version-skew suffix **wins** over it (`memory: up · stale (v2.1.0)`): a stale engine is a standing condition the user must act on and the footer is its only notice, while job activity is transient and is spelled out by `/engine`, `unown engine status` and the dashboard's Router screen.
 
-The loop behind it starts with the session, probes `/api/overview` every 30 s (`PI_ENGINE_PROBE_INTERVAL_MS`, floor 5 s) with a 700 ms timeout (`PI_ENGINE_PROBE_TIMEOUT_MS`, floor 100 ms — loopback refusal is instant, so the timeout only bites a hanging port, in the background), and after a spawn kick schedules fast re-probes at 2/5/9/16 s so the footer flips as soon as the engine actually boots. It survives `/new`, `/resume` and `/fork` (the engine cares about the process, not the session branch) and stops at quit.
+The loop behind it starts with the session, probes `/api/overview` every 30 s (`PI_ENGINE_PROBE_INTERVAL_MS`, floor 5 s) with a 700 ms timeout (`PI_ENGINE_PROBE_TIMEOUT_MS`, floor 100 ms — loopback refusal is instant, so the timeout only bites a hanging port, in the background), and after a spawn kick schedules fast re-probes at 2/5/9/16 s so the footer flips as soon as the engine actually boots. Only a **refused** connection is spawnable: a 401/occupied/incompatible/hung probe publishes `blocked`, kicks nothing, and schedules no fast re-probes ([R11](#r11--engine-blocked-by-another-ownerport)). It survives `/new`, `/resume` and `/fork` (the engine cares about the process, not the session branch) and stops at quit.
 
 ### Toasts
 
@@ -53,6 +54,7 @@ One toast per state **transition** — never at session start. The first state a
 |---|---|
 | → down | `memory engine unreachable — chat unaffected, notes queue locally` (warning) |
 | → paused | `memory engine won't start (repeated failures) — run \`unown engine status\`; chat unaffected, notes keep queuing locally` (warning) |
+| → blocked | `memory engine blocked — another install's engine owns the port (pid N); run \`unown engine status\`; chat unaffected` (warning) |
 | → up | `memory engine online — learning resumed` (info) — with ` — draining 3 queued note(s)` appended when the engine returns from a real outage with a backlog |
 
 One toast is an EVENT, not a transition: the M3 **dream-news** toast `✦ AutoDream learned 3 new rules for this project (v17 → v18)` fires when a probe sees the engine's `dreamNews` block (a project dream that *added* memories within the last hour, for the session's own project). Unlike the state toasts it deliberately fires at session start too — learning that happened while you were away is exactly the confirmation moment — but still at most ONCE per new dream per session (an in-memory last-seen latch; a second session re-announces the same still-fresh learning once, as its own welcome-back line). Another project's dreams, honest no-change dreams (`added: 0`) and stale news (> 1 h) never interrupt anyone.
@@ -83,8 +85,10 @@ Every engine row is ⚠-class — warnings affect learning features only, chat n
 | Doctor row | When | Detail line |
 |---|---|---|
 | `self-learning engine` | engine unreachable | `unreachable — learning paused, chat unaffected; notes queue in ~/.unown/notes/outbox (3 pending; start it: unown engine start)` |
-| `self-learning engine` | engine up, rejects this CLI's token (a binary install talking to a source-repo engine — the CLI reads its OWN data dir's `engine.token`) | `up but rejected this CLI's token — learning paused, chat unaffected; point UNOWN_ENGINE_TOKEN at the ENGINE's data/self-learning/engine.token (binary and source installs keep different data dirs)` |
+| `self-learning engine` | engine up, rejects this CLI's token (a binary install talking to a source-repo engine — the CLI reads its OWN data dir's `engine.token`) | `up but rejected this CLI's token — pid N; learning paused, chat unaffected; use the owning install's CLI or set UNOWN_ENGINE_TOKEN to the engine's token (no engine was started)` |
+| `self-learning engine` | port owned by a non-Unown process, an incompatible build, or a hung listener | the probe's cause + owner (pid/install/version) + the fix; `no engine was started` |
 | `engine auto-start` | circuit gave up | `gave up after 5 failed start(s) — inspect .run/engine.log; then: unown engine repair (corrupt DB?) or unown engine start (resets the circuit)` |
+| `engine auto-start` | a blocked probe was recorded (foreign engine/port) | `auto-start blocked — last probe: unauthorized|occupied|incompatible|unreachable; no spawn attempted` — a pass, not a warning |
 | `engine auto-start` | backing off between tries | `2 recent attempt(s) — backing off between tries (normal after failures)` — a pass, not a warning |
 | `engine router` | wedged but alive | `busy mutex held 2400s on 'auto-dream' — past 2x the job timeout; restart the engine` |
 
@@ -100,7 +104,22 @@ engine: DOWN (http://127.0.0.1:3030)
   start it with: unown engine start
 ```
 
-Up, it prints pid and uptime, the router (busy job or idle, watchdog), the governor budget and breaker, KPIs, and the outbox pending count. `start` spawns a detached engine and polls health for 20 s; `stop` drains gracefully (see [R4](#r4--engine-wedged-beyond-http)); `repair` is the corrupt-DB path ([R3](#r3--corrupt-sqlite-database)); `serve` runs the engine in the foreground — the entry a systemd user unit, launchd agent or Windows service should own.
+Blocked by an engine it does not own, it names the owner and never starts a second one:
+
+```text
+engine: BLOCKED — unauthorized (http://127.0.0.1:3030)
+  owner: pid 4242
+  cause: an engine answered but rejected this CLI's token (HTTP 401)
+  fix: use the owning install's CLI, or set UNOWN_ENGINE_TOKEN to the engine's token; no engine was started
+  this CLI's token: /path/to/.unown/data/self-learning/engine.token
+  pidfile /path/to/.run/engine.pid: absent
+  outbox: 0 note(s) queued locally
+  auto-start: auto-start blocked — the engine rejected this CLI's token; no spawn attempted
+  service: ...
+  no engine was started — resolve the owner/port above, then re-run.
+```
+
+Up, it prints pid and uptime, the router (busy job or idle, watchdog), the governor budget and breaker, KPIs, and the outbox pending count. `start` spawns a detached engine and polls health for 20 s — a foreign/occupied/incompatible/hung port is reported, never spawned over; `stop` drains gracefully (see [R4](#r4--engine-wedged-beyond-http)) and refuses a foreign engine unless `--force --pid <pid>`; `restart` refuses a foreign engine unless `--take-ownership`; `repair` is the corrupt-DB path ([R3](#r3--corrupt-sqlite-database)) and refuses while this data dir's lock/pid is alive; `serve` runs the engine in the foreground — the entry a systemd user unit, launchd agent or Windows service should own, and a clean loser on an occupied port (exit 0, so the supervisor does not restart-storm).
 
 ## Failure-mode catalog
 
@@ -115,6 +134,7 @@ Up, it prints pid and uptime, the router (busy job or idle, watchdog), the gover
 | [R7](#r7--oversized-note) | Oversized note | nothing (it is truncated, not rejected) | 20 000-char cap on both lanes | keep notes short if you want them verbatim |
 | [R8](#r8--read-only-state) | Read-only state (`.run/`, `$UNOWN_HOME`) | counters read 0, circuit loses its memory | best-effort writes that fail open, never crash | fix the permissions |
 | [R9](#r9--deliberate-engine-off) | Deliberate engine-off | footer `memory: down`, silent session start | none — that is the point | `UNOWN_ENGINE_AUTOSTART=0`; `unown engine start` still works |
+| [R11](#r11--engine-blocked-by-another-ownerport) | Engine blocked by another owner/port | footer `memory: blocked · token/port/version/no answer` | no spawn; the probe records `lastCause` without counting an attempt | use the owning install's CLI; `--take-ownership` only if intended |
 
 ### R1 — Engine down (stopped or crashed)
 
@@ -127,6 +147,7 @@ The spawned child dies at boot — corrupt database, occupied port, missing runt
 - **Backoff between auto-starts**: 2 s after the first failure, doubling (4 s, 8 s, 16 s, 32 s), capped at 60 s.
 - **Gives up after 5** consecutive failed starts — supervisord's `FATAL`: auto-spawn stops trying and the footer flips to `memory: paused · /engine` with one actionable message instead of an infinite silent loop.
 - **Any observed-healthy probe resets the circuit** (a down engine that comes back clears the slate, like a Kubernetes backoff reset after a healthy run).
+- **A blocked probe is not a failed start**: when the port is owned by another engine/process or the probe is unauthorized/incompatible/unreachable, the state file records `lastCause` and the attempt count is unchanged. Auto-start is refused outright, not backed off ([R11](#r11--engine-blocked-by-another-ownerport)).
 - **A quiet window resets the count**: 10 minutes without a failed start (systemd `StartLimitIntervalSec` semantics) — you returning hours later get a clean circuit.
 - **Manual always wins**: `unown engine start` bypasses the gate *and* resets it — the user-facing equivalent of `systemctl reset-failed` before `start`.
 
@@ -199,6 +220,11 @@ The engine is long-lived; `unown update` fast-forwards the checkout and rebuilds
 
 The fix is always `unown engine restart` — busy-aware (refuses to cut an active job without `--force`; `--wait <ms>` polls for idle), HTTP-drain-first (Windows-safe), and it reports the fresh build when done. Nothing ever hard-refuses on skew: chat works engine-down by contract (R1), so an old engine is a degradation, not an outage — dreams may miss recent improvements, but the agent never blocks.
 
+### R11 — Engine blocked by another owner/port
+
+A Unown engine (or another process) owns `UNOWN_ENGINE_URL`, but this CLI cannot use it: a 401 from another install (the binary/source token split), a non-Unown listener, an incompatible API, or a hung port. The probe taxonomy distinguishes these from a refused connection, and **a spawn is only legal on refused** — a 401 is not a crash, and spawning a second engine into an occupied port is exactly how the old five-attempt loop fed itself. The footer shows `memory: blocked · token|port|version|no answer`; `unown engine status` prints the owner (identity headers, descriptor, or the OS port table), this CLI's token path, and the fix; `unown doctor` reports the same and skips the version handshake (an error payload has none). A blocked probe records `lastCause` in `.run/engine-spawn-state.json` without counting an attempt, so the crash-loop circuit does not "give up" on a foreign engine.
+
+Do not use `unown engine restart` from a CLI that does not own the engine: use the owning install's CLI, or `--take-ownership` explicitly. `unown engine stop` refuses a foreign engine unless `--force --pid <pid>` names the verified port owner. The binary/source split is a known cross-install state; the canonical-state and discovery work (P1) removes the token split itself.
 
 ## Bounded loss: what survives, what doesn't
 

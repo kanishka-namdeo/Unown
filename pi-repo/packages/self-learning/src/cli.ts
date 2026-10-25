@@ -49,6 +49,7 @@ import { COMPLETIONS_HELP, cmdCompletions } from "./completions.ts";
 import { DASHBOARD_HELP, runDashboardCommand } from "./dashboard/dashboard-boot.ts";
 import { auditInstructionSet, renderInstructionAudit, summarizeInstructionAudit } from "./doctor-instructions.ts";
 import { engineFetch } from "./engine-auth.ts";
+import { describeEngineOwner, probeEngine } from "./engine-probe.ts";
 import { runEngineCommand } from "./engine-cli.ts";
 import { readSpawnState } from "./engine-supervisor.ts";
 import { agentGitSha, codeMtimeMs, compareEngineBuild } from "./engine-version.ts";
@@ -1971,39 +1972,69 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
 
 	// 5. engine health (notes + dreams + dashboard) — chat works without it;
 	// session notes just queue in the outbox until it returns.
-	try {
-		const res = await engineFetch(`${ENGINE_URL}/api/overview`, { signal: AbortSignal.timeout(3000) });
-		const body: any = await res.json();
-		if (res.status === 401) {
-			// The engine is UP and answering — it just refused this CLI's
-			// bearer token. That happens when the CLI's data dir (where it
-			// looks for engine.token) is not the engine's data dir: a
-			// binary install talking to a source-repo engine, or a second
-			// checkout. Restarting cannot fix it, and the pre-M8 reading
-			// below would print "engine predates version reporting" off
-			// the error body — actively wrong advice — so 5b/5c are skipped
-			// entirely on 401: nothing can be learned from an error payload.
+	const reportEngineDown = (detail: string, hint = "start it: unown engine start") => {
+		const stats = outboxStats();
+		check(
+			"self-learning engine",
+			false,
+			`${detail} — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox (${stats.queued} pending; ${hint})`,
+			"warn",
+		);
+		// M6: the crash-loop circuit explains WHY auto-start isn't fixing
+		// this — surfaced here because doctor is the first place users look.
+		const circuit = readSpawnState();
+		if (circuit.gaveUp) {
 			check(
-				"self-learning engine",
+				"engine auto-start",
 				false,
-				`up but rejected this CLI's token — learning paused, chat unaffected; point UNOWN_ENGINE_TOKEN at the ENGINE's data/self-learning/engine.token (binary and source installs keep different data dirs)`,
+				`gave up after ${circuit.attempts} failed start(s) — inspect .run/engine.log; then: unown engine repair (corrupt DB?) or unown engine start (resets the circuit)`,
 				"warn",
 			);
-		} else if (!res.ok) {
+		} else if (circuit.lastCause) {
+			check("engine auto-start", false, `auto-start blocked — last probe: ${circuit.lastCause}; no spawn attempted`, "warn");
+		} else if (circuit.attempts > 0) {
 			check(
-				"self-learning engine",
-				false,
-				`engine answered HTTP ${res.status}${body?.error ? `: ${String(body.error).slice(0, 120)}` : ""} — learning paused, chat unaffected`,
-				"warn",
-			);
-		} else {
-			check(
-				"self-learning engine",
-				res.ok && body.ok,
-				`${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`,
+				"engine auto-start",
+				true,
+				`${circuit.attempts} recent attempt(s) — backing off between tries (normal after failures)`,
 			);
 		}
-		if (res.ok) {
+	};
+	let body: any = undefined;
+	try {
+		const probe = await probeEngine({ endpoint: ENGINE_URL, timeoutMs: 3000 });
+		if (probe.kind === "unauthorized") {
+			// The engine is UP and answering — it just refused this CLI's
+			// bearer token. A restart cannot fix a foreign owner, and the
+			// pre-M8 reading below would print "engine predates version
+			// reporting" off the error body — actively wrong advice — so
+			// 5b/5c are skipped entirely: nothing can be learned from an
+			// error payload.
+			check(
+				"self-learning engine",
+				false,
+				`up but rejected this CLI's token — ${describeEngineOwner(probe.owner)}; learning paused, chat unaffected; use the owning install's CLI or set UNOWN_ENGINE_TOKEN to the engine's token (no engine was started)`,
+				"warn",
+			);
+		} else if (probe.kind === "occupied" || probe.kind === "incompatible") {
+			check(
+				"self-learning engine",
+				false,
+				`${probe.detail}${probe.owner ? ` — ${describeEngineOwner(probe.owner)}` : ""}; learning paused, chat unaffected; ${probe.remediation ?? "do not start a second engine"}`,
+				"warn",
+			);
+		} else if (probe.kind === "unreachable") {
+			reportEngineDown(
+				`no answer from ${ENGINE_URL} (${probe.detail})`,
+				"do not start another engine while the port is hung; inspect .run/engine.log",
+			);
+		} else if (probe.kind === "refused") {
+			reportEngineDown("unreachable");
+		} else {
+			body = probe.body;
+			check("self-learning engine", body?.ok === true, `${body?.kpis?.totalRuns ?? "?"} runs, ${body?.kpis?.dreams ?? "?"} dreams`);
+		}
+		if (probe.kind === "ok" && body) {
 			// 5b. wedged-but-alive engine (F4, docs/detached-engine-architecture.md):
 			// the router reports how long its busy mutex has been held; past 2x
 			// the job timeout the watchdog should have cut the job off — if it
@@ -2065,30 +2096,7 @@ async function cmdDoctor(jsonMode: boolean): Promise<number> {
 			}
 		}
 	} catch {
-		const stats = outboxStats();
-		check(
-			"self-learning engine",
-			false,
-			`unreachable — learning paused, chat unaffected; notes queue in ${UNOWN_HOME}/notes/outbox (${stats.queued} pending; start it: unown engine start)`,
-			"warn",
-		);
-		// M6: the crash-loop circuit explains WHY auto-start isn't fixing
-		// this — surfaced here because doctor is the first place users look.
-		const circuit = readSpawnState();
-		if (circuit.gaveUp) {
-			check(
-				"engine auto-start",
-				false,
-				`gave up after ${circuit.attempts} failed start(s) — inspect .run/engine.log; then: unown engine repair (corrupt DB?) or unown engine start (resets the circuit)`,
-				"warn",
-			);
-		} else if (circuit.attempts > 0) {
-			check(
-				"engine auto-start",
-				true,
-				`${circuit.attempts} recent attempt(s) — backing off between tries (normal after failures)`,
-			);
-		}
+		reportEngineDown("unreachable");
 	}
 
 	// 6. SDLC surfaces (P1 productization — research R-c §2): LSP servers,

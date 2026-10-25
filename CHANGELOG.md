@@ -11,6 +11,10 @@ Repo conventions: measured claims cite their receipts (`docs/testing-strategy.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **engine: a foreign or occupied engine can no longer spawn-loop** — the health probe collapsed every non-2xx into "down": a 401 from another install's engine (the binary/source token split), a port held by a non-Unown process, an incompatible API, a hung listener and a genuinely refused connection were the same fact, so the status loop kicked a spawn into an occupied port five times until the crash-loop circuit gave up. The probe now returns a taxonomy — `ok`/`refused`/`unauthorized`/`occupied`/`incompatible`/`unreachable` — and **only `refused` is spawnable**; blocked probes record `lastCause` without counting an attempt. The footer gains `memory: blocked · token|port|version|no answer`; `unown engine status` names the owner pid, the probed token path and the fix; `start` refuses instead of spawning; `stop` refuses a foreign engine unless `--force --pid <verified pid>`; `restart` requires `--take-ownership`; `repair` gates on this data dir's lock/pid (a 401 engine is still live); `serve` exits 0 as a clean loser on an occupied port. `UNOWN_RUNTIME_DIR` isolates the run files (the suite now uses it; a live Windows engine can hold `.run/engine.log` exclusively). Pinned by `test/engine-probe.test.ts` (16 cases) plus the blocked state in the `engine-status`/`spawn-circuit`/`engine-cli` suites; live-verified against the source engine (pid 22608): five status runs, zero children, attempts unchanged. **[Agent Behavior]**
+
 ### Changed
 
 - **landing: the memory-eval round pays its own scroll bill** — the fresh checkout measured the page over the 3,200-word gate (3,227 — the capture-harness round's re-filmed lanes landed prose-side additions without a budget pass; nothing in CI had caught it because the e2e budget spec had not run on that push). Compressed authored copy across the loop leads, the dex and alphabet intros and the FAQ's capabilities answer — no generated number or gated literal touched — to **3,173 section words, 12.3vh, every band ≤ 3vh** (`scripts/landing_audit.mjs --budget` PASS; the e2e budget spec green).

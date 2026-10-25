@@ -10,12 +10,13 @@
  * resets, manual start (`force`) bypasses + resets.
  *
  * The pure gates are tested with an injected clock. The FILE-backed tests run
- * against the REPO's .run/ (source shape — stateRoot ignores UNOWN_HOME for
- * checkouts), which the live stack also uses: every write is snapshotted +
- * restored byte-for-byte in afterAll. The force-spawn path runs in a fresh bun
- * subprocess (the suite's PI_DISABLE_ENGINE_SPAWN=1 guard is a module-load
- * const, so the force branch is unreachable in-process); the spawned "engine"
- * is this suite's own probe script, whose argv guard makes it a no-op child.
+ * against the suite's UNOWN_RUNTIME_DIR temp dir (./_env.ts) — never the live
+ * checkout's .run, which a running Windows engine can hold exclusively — and
+ * every write is snapshotted + restored byte-for-byte in afterAll. The
+ * force-spawn path runs in a fresh bun subprocess (the suite's
+ * PI_DISABLE_ENGINE_SPAWN=1 guard is a module-load const, so the force branch
+ * is unreachable in-process); the spawned "engine" is this suite's own probe
+ * script, whose argv guard makes it a no-op child.
  */
 import "./_env.ts"; // MUST be the first import
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -23,6 +24,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { describeSpawnCircuit } from "../src/engine-status.ts";
 import {
         autoStartDisabled,
         enginePidFile,
@@ -30,6 +32,7 @@ import {
         markEngineHealthy,
         readSpawnState,
         recordSpawnAttempt,
+        recordSpawnBlocked,
         resetSpawnCircuit,
         spawnBackoffMs,
         spawnEngineDetached,
@@ -193,6 +196,45 @@ describe("recordSpawnAttempt", () => {
                 const next = recordSpawnAttempt(state, NOW);
                 expect(next.attempts).toBe(5);
                 expect(next.gaveUp).toBe(true);
+        });
+});
+
+// ---------------------------------------------------------------------------
+// recordSpawnBlocked — a refusal caused by a foreign/occupied/incompatible
+// engine, NOT a failed child launch (P0 taxonomy)
+// ---------------------------------------------------------------------------
+
+describe("recordSpawnBlocked", () => {
+        const NOW = 1_700_000_000_000;
+
+        test("stores the cause without counting an attempt or arming backoff", () => {
+                const state = freshCircuit(NOW);
+                const next = recordSpawnBlocked(state, "unauthorized", NOW);
+                expect(next.attempts).toBe(0);
+                expect(next.gaveUp).toBe(false);
+                expect(next.lastCause).toBe("unauthorized");
+                expect(next.lastProbeAt).toBe(NOW);
+                expect(evaluateSpawnGate(next, NOW).allowed).toBe(true); // no attempt → no backoff
+        });
+
+        test("the circuit summary explains the owner problem and never invites a spawn", () => {
+                const text = describeSpawnCircuit(recordSpawnBlocked(freshCircuit(NOW), "occupied", NOW));
+                expect(text).toContain("auto-start blocked");
+                expect(text).toContain("port");
+                expect(text).toContain("no spawn attempted");
+                expect(text).not.toContain("unown engine start (resets");
+        });
+
+        test("readSpawnState round-trips the optional cause fields", () => {
+                const saved = tryRead(spawnStateFile());
+                try {
+                        seedCircuit({ ...freshCircuit(NOW), lastCause: "unauthorized", lastProbeAt: NOW } as any);
+                        const state = readSpawnState();
+                        expect(state.lastCause).toBe("unauthorized");
+                        expect(state.lastProbeAt).toBe(NOW);
+                } finally {
+                        tryWrite(spawnStateFile(), saved);
+                }
         });
 });
 

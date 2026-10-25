@@ -35,9 +35,16 @@
  */
 
 import { Database } from "bun:sqlite";
-import { existsSync, renameSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { engineFetch } from "./engine-auth.ts";
+import { existsSync, readFileSync, renameSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { engineFetch, engineTokenPath } from "./engine-auth.ts";
+import {
+	describeEngineOwner,
+	endpointPort,
+	type EngineProbe,
+	portOwnerPid,
+	probeEngine,
+} from "./engine-probe.ts";
 import { autoServiceEnv, installEngineService, serviceStatus, uninstallEngineService } from "./engine-service.ts";
 import { describeSpawnCircuit } from "./engine-status.ts";
 import {
@@ -47,9 +54,10 @@ import {
 	ensureEngineRunning,
 	loadEnvValues,
 	readSpawnState,
+	requestEngineSpawn,
 	resetSpawnCircuit,
 	rotateEngineLogIfNeeded,
-	spawnEngineDetached,
+	type SpawnDecision,
 } from "./engine-supervisor.ts";
 import {
 	agentVersion,
@@ -67,10 +75,13 @@ export const ENGINE_USAGE = `unown engine <sub> — the detached self-learning e
            governor, retention size, outbox, auto-start circuit
   start    start it if down (detached; waits for health, Ctrl-C safe) — resets the
            crash-loop circuit (use after repeated failed auto-starts); an
-           up-but-older build prints the restart hint
-  stop     graceful stop (drains requests, checkpoints the WAL, releases the lock)
+           up-but-older build prints the restart hint. A foreign engine, a taken
+           port or an incompatible build is reported, never spawned over
+  stop     graceful stop (drains requests, checkpoints the WAL, releases the lock).
+           A foreign engine (different token) is refused unless --force --pid <pid>
   restart  pick up the current build: busy-aware stop + fresh spawn (refuses to
-           cut a running job unless --force; --wait <ms> lets it finish first)
+           cut a running job unless --force; --wait <ms> lets it finish first;
+           --take-ownership explicitly stops a foreign engine first)
   repair   quarantine a corrupt engine DB (backs it up aside, boots fresh; memory
            files on disk + queued notes survive) — when the engine won't start
   serve    run the engine in THIS process (the supervisor entry — systemd/
@@ -87,6 +98,8 @@ export const ENGINE_USAGE = `unown engine <sub> — the detached self-learning e
 export interface RestartFlags {
 	force: boolean;
 	waitMs: number;
+	/** Explicitly adopt a foreign engine on the port (stop it, then start ours). */
+	takeOwnership?: boolean;
 }
 
 /** Parse `unown engine restart` argv — the parseUpdateFlags pattern (pure). */
@@ -95,6 +108,7 @@ export function parseRestartFlags(argv: string[]): { flags: RestartFlags; error?
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i];
 		if (a === "--force") flags.force = true;
+		else if (a === "--take-ownership") flags.takeOwnership = true;
 		else if (a === "--wait" || a.startsWith("--wait=")) {
 			const raw = a === "--wait" ? argv[++i] : a.slice("--wait=".length);
 			const v = Number(raw);
@@ -133,6 +147,62 @@ export function humanizeDbBytes(bytes: number): string {
 	return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
+/** `unown engine stop` flags — a foreign engine is only signalled with an
+ *  explicit, verified pid; never by accident. */
+export interface StopFlags {
+	force: boolean;
+	pid?: number;
+}
+
+export function parseStopFlags(argv: string[]): { flags: StopFlags; error?: string; help?: boolean } {
+	const flags: StopFlags = { force: false };
+	for (let i = 0; i < argv.length; i++) {
+		const a = argv[i];
+		if (a === "--force") flags.force = true;
+		else if (a === "--pid" || a.startsWith("--pid=")) {
+			const raw = a === "--pid" ? argv[++i] : a.slice("--pid=".length);
+			const v = Number(raw);
+			if (raw === undefined || !Number.isInteger(v) || v <= 0) {
+				return { flags, error: "--pid needs a positive integer" };
+			}
+			flags.pid = v;
+		} else if (a === "--help" || a === "-h") {
+			return { flags, help: true };
+		} else {
+			return { flags, error: `unknown argument: ${a}` };
+		}
+	}
+	return { flags };
+}
+
+/** The engine's own data-dir lock holder (alive only). Repair uses this
+ *  instead of a health probe: a 401 engine can still hold this DB. */
+function engineLockHolderPid(): number | null {
+	try {
+		const pid = Number(readFileSync(join(dirname(DB_PATH), "engine.lock"), "utf8").trim());
+		if (!Number.isInteger(pid) || pid <= 0) return null;
+		try {
+			process.kill(pid, 0);
+			return pid;
+		} catch (err: any) {
+			// EPERM = the process exists but belongs to another user: alive.
+			return err?.code === "EPERM" ? pid : null;
+		}
+	} catch {
+		return null;
+	}
+}
+
+/** The shared blocked-engine diagnostic (status/start/stop/doctor). */
+function blockedLines(p: EngineProbe, out: (s: string) => void): void {
+	out(`engine: BLOCKED — ${p.kind} (${p.endpoint})`);
+	out(`  owner: ${describeEngineOwner(p.owner)}`);
+	out(`  cause: ${p.detail}`);
+	if (p.version?.version) out(`  build: v${p.version.version} · api ${p.version.api ?? "?"}`);
+	if (p.remediation) out(`  fix: ${p.remediation}`);
+	out(`  this CLI's token: ${engineTokenPath()}`);
+}
+
 /** The agent's own side of the handshake for the CLI surfaces — sha null on
  *  purpose: these run before any spawn, and the needrestart rule
  *  (bootedAt < codeMtimeMs) already catches same-version skew after an
@@ -150,7 +220,18 @@ export async function runEngineCommand(argv: string[], ctx: { out?: (s: string) 
 	}
 	if (sub === "status") return cmdStatus(out);
 	if (sub === "start") return cmdStart(out);
-	if (sub === "stop") return cmdStop(out);
+	if (sub === "stop") {
+		const { flags, error, help } = parseStopFlags(argv.slice(1));
+		if (help) {
+			out(ENGINE_USAGE);
+			return 0;
+		}
+		if (error) {
+			out(`unown: ${error}`);
+			return 2;
+		}
+		return cmdStop(out, flags);
+	}
 	if (sub === "restart") {
 		const { flags, error, help } = parseRestartFlags(argv.slice(1));
 		if (help) {
@@ -243,33 +324,50 @@ async function fetchJobs(timeoutMs = 2000): Promise<JobHealthRow[] | null> {
 }
 
 async function cmdStatus(out: (s: string) => void): Promise<number> {
-	const health = await engineHealth(2500);
+	const probe = await probeEngine({ endpoint: ENGINE_URL, timeoutMs: 2500 });
 	const stats = outboxStats();
-	if (!health.up) {
+	if (probe.kind !== "ok") {
 		const pf = enginePidFromPidfile();
 		const circuit = readSpawnState();
 		const svc = await serviceStatus();
-		out(`engine: DOWN (${ENGINE_URL})`);
-		out(
-			`  pidfile ${enginePidFile()}: ${pf.pid ? `pid ${pf.pid} (${pf.alive ? "alive — wedged beyond HTTP?" : "dead"})` : "absent"}`,
-		);
-		out(
-			`  outbox: ${stats.queued} note(s) queued locally${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}`,
-		);
-		out(`  auto-start: ${describeSpawnCircuit(circuit)}`);
-		if (circuit.gaveUp)
-			out(`  if it keeps failing: inspect .run/engine.log, then try unown engine repair (corrupt DB?)`);
-		out(
-			svc.installed
-				? `  service: ${svc.kind} — ${svc.detail}`
-				: "  service: not installed — unown engine install keeps it always on (routines fire without an agent)",
-		);
-		out("  start it with: unown engine start");
+		if (probe.kind === "refused") {
+			out(`engine: DOWN (${ENGINE_URL})`);
+			out(
+				`  pidfile ${enginePidFile()}: ${pf.pid ? `pid ${pf.pid} (${pf.alive ? "alive — wedged beyond HTTP?" : "dead"})` : "absent"}`,
+			);
+			out(
+				`  outbox: ${stats.queued} note(s) queued locally${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}`,
+			);
+			out(`  auto-start: ${describeSpawnCircuit(circuit)}`);
+			if (circuit.gaveUp)
+				out(`  if it keeps failing: inspect .run/engine.log, then try unown engine repair (corrupt DB?)`);
+			out(
+				svc.installed
+					? `  service: ${svc.kind} — ${svc.detail}`
+					: "  service: not installed — unown engine install keeps it always on (routines fire without an agent)",
+			);
+			out("  start it with: unown engine start");
+		} else {
+			blockedLines(probe, out);
+			out(
+				`  pidfile ${enginePidFile()}: ${pf.pid ? `pid ${pf.pid} (${pf.alive ? "alive" : "dead"})` : "absent"}`,
+			);
+			out(
+				`  outbox: ${stats.queued} note(s) queued locally${stats.dropped > 0 ? ` · ${stats.dropped} dropped while offline` : ""}`,
+			);
+			out(`  auto-start: ${describeSpawnCircuit(circuit)}`);
+			out(
+				svc.installed
+					? `  service: ${svc.kind} — ${svc.detail}`
+					: "  service: not installed — unown engine install keeps it always on",
+			);
+			out("  no engine was started — resolve the owner/port above, then re-run.");
+		}
 		return 1;
 	}
-	// Full report (the cheap probe passed; now the detailed one, still bounded).
+	// Full report (the probe passed; reuse its body, still bounded).
 	try {
-		const body = await fetchOverview(3000);
+		const body = probe.body ?? (await fetchOverview(3000));
 		if (!body) throw new Error("overview failed");
 		const r = body?.router ?? {};
 		const g = body?.governor ?? {};
@@ -332,31 +430,46 @@ async function cmdStatus(out: (s: string) => void): Promise<number> {
 }
 
 async function cmdStart(out: (s: string) => void): Promise<number> {
-	const pre = await engineHealth(1500);
-	if (pre.up) {
+	const pre = await probeEngine({ endpoint: ENGINE_URL, timeoutMs: 1500 });
+	if (pre.kind === "ok") {
 		// M8: an engine that is UP but an older build is a half-fixed
 		// state — start did its job (liveness), the version handshake
 		// says the build is behind. rc stays 0: nothing is broken,
 		// the user asked for "up" and has it.
-		const cmp = compareEngineBuild(agentBuild(), pre.version, Date.now());
+		const v: EngineBuildRef | undefined = pre.body?.version;
+		const cmp = compareEngineBuild(agentBuild(), v, Date.now());
 		if (cmp.verdict === "old-build" || cmp.verdict === "stale" || cmp.verdict === "ancient") {
-			const bootedAge = pre.version?.bootedAt ? formatDuration(Date.now() - pre.version.bootedAt) : "unknown";
+			const bootedAge = v?.bootedAt ? formatDuration(Date.now() - v.bootedAt) : "unknown";
 			out(
-				`engine: already up (pid ${pre.pid ?? "?"}) — older build (v${pre.version?.version ?? "?"}, booted ${bootedAge} ago; agent v${agentVersion()})`,
+				`engine: already up (pid ${pre.body?.pid ?? "?"}) — older build (v${v?.version ?? "?"}, booted ${bootedAge} ago; agent v${agentVersion()})`,
 			);
 			out(`  pick up the new build: unown engine restart`);
 			return 0;
 		}
-		out(`engine: already up (pid ${pre.pid ?? "?"})`);
+		out(`engine: already up (pid ${pre.body?.pid ?? "?"})`);
 		return 0;
+	}
+	if (pre.kind !== "refused") {
+		blockedLines(pre, out);
+		out("  no engine was started.");
+		return 1;
 	}
 	out(`engine: down — spawning a detached engine…`);
 	// FORCE: an explicit user action bypasses the M6 crash-loop circuit
 	// (backoff / gave-up) and resets it — the manual equivalent of
 	// systemd's `systemctl reset-failed` before `start`.
-	const spawned = await spawnEngineDetached({ force: true });
-	if (!spawned) {
-		out(`engine: spawn failed (see the log at .run/engine.log) — start the stack manually: bun run agent:start`);
+	const decision: SpawnDecision = await requestEngineSpawn({ force: true });
+	if (decision.reason === "blocked" && decision.probe) {
+		blockedLines(decision.probe, out);
+		out("  no engine was started.");
+		return 1;
+	}
+	if (!decision.spawned) {
+		if (decision.reason === "already-up") {
+			out("engine: already up");
+			return 0;
+		}
+		out(`engine: start not attempted (${decision.reason}) — see .run/engine.log`);
 		return 1;
 	}
 	// skipSpawn: the force-spawn above already launched the child (and its
@@ -367,6 +480,11 @@ async function cmdStart(out: (s: string) => void): Promise<number> {
 		out(`engine: UP (pid ${result.pid ?? "?"})`);
 		return 0;
 	}
+	if (result.kind && result.kind !== "refused" && result.kind !== "unreachable") {
+		out(`engine: BLOCKED — ${result.kind}; another process took the port while this engine was booting.`);
+		out("  run `unown engine status` for the owner; no second engine was started.");
+		return 1;
+	}
 	out(`engine: spawned but not healthy yet after 20s — it may still be booting; check:`);
 	out(
 		`  unown engine status   ·   ${process.platform === "win32" ? "Get-Content -Wait .run\\engine.log" : "tail -f .run/engine.log"}`,
@@ -374,7 +492,30 @@ async function cmdStart(out: (s: string) => void): Promise<number> {
 	return 1;
 }
 
-async function cmdStop(out: (s: string) => void): Promise<number> {
+async function cmdStop(out: (s: string) => void, flags: StopFlags = { force: false }): Promise<number> {
+	const pre = await probeEngine({ endpoint: ENGINE_URL, timeoutMs: 1500 });
+	if (pre.kind === "unauthorized" || pre.kind === "occupied" || pre.kind === "incompatible") {
+		if (!flags.force || !flags.pid) {
+			blockedLines(pre, out);
+			out("  refusing to stop an engine this CLI does not own.");
+			out("  stop it with the owning install's CLI, or re-run: unown engine stop --force --pid <pid>");
+			return 1;
+		}
+		const port = endpointPort(ENGINE_URL);
+		const ownerPid = pre.owner?.pid ?? (port ? portOwnerPid(port) : null);
+		if (flags.pid !== ownerPid) {
+			out(`engine: refusing — pid ${flags.pid} does not own ${ENGINE_URL} (owner ${ownerPid ?? "unknown"})`);
+			return 1;
+		}
+		out(`engine: SIGTERM to foreign engine pid ${flags.pid} (explicit --force --pid)…`);
+		try {
+			process.kill(flags.pid, "SIGTERM");
+			return 0;
+		} catch (err: any) {
+			out(`engine: cannot signal pid ${flags.pid}: ${err instanceof Error ? err.message : String(err)}`);
+			return 1;
+		}
+	}
 	// HTTP-first (M3, cross-platform): POST /api/shutdown runs the SAME drain
 	// path as the signal handlers and works on Windows, where SIGTERM cannot
 	// reach JS handlers (TerminateProcess skips them). Signals remain the
@@ -465,34 +606,66 @@ async function cmdStop(out: (s: string) => void): Promise<number> {
  *      close: new boot timestamp, same build as the agent.
  */
 async function cmdRestart(out: (s: string) => void, flags: RestartFlags): Promise<number> {
-	// 1. A down engine has nothing to drain — restart IS start.
-	const health = await engineHealth(1500);
-	if (!health.up) {
-		out("engine: down — nothing to drain, starting it");
-		return cmdStart(out);
-	}
-	// 2. Busy gate: never cut a running job in half unless forced.
-	if (!flags.force) {
-		const deadline = Date.now() + flags.waitMs;
-		for (;;) {
-			const body = await fetchOverview(2000);
-			const router = body?.router;
-			if (!body || !router?.busy) break; // idle (or overview failed — cmdStop re-probes)
-			if (Date.now() >= deadline) {
-				out(busyRefusalMessage(router.activeJob ?? "job", router.busyMs ?? 0));
-				return 1;
-			}
-			await new Promise((r) => setTimeout(r, Math.min(500, Math.max(50, deadline - Date.now()))));
+	const pre = await probeEngine({ endpoint: ENGINE_URL, timeoutMs: 1500 });
+	let tookOver = false;
+	// A foreign engine is not ours to cut. --take-ownership is the explicit
+	// escape hatch: stop the identified owner, wait for the port to free, then
+	// start ours.
+	if (pre.kind === "unauthorized" || pre.kind === "occupied" || pre.kind === "incompatible") {
+		if (!flags.takeOwnership) {
+			blockedLines(pre, out);
+			out("  refusing to restart an engine this CLI does not own; re-run with --take-ownership to stop it and start ours.");
+			return 1;
 		}
+		const port = endpointPort(ENGINE_URL);
+		const ownerPid = pre.owner?.pid ?? (port ? portOwnerPid(port) : null);
+		if (!ownerPid) {
+			out("engine: cannot identify the port owner; refusing --take-ownership");
+			return 1;
+		}
+		const stopRc = await cmdStop(out, { force: true, pid: ownerPid });
+		if (stopRc !== 0) return stopRc;
+		for (let i = 0; i < 15; i++) {
+			const p = await probeEngine({ endpoint: ENGINE_URL, timeoutMs: 500 });
+			if (p.kind === "refused") break;
+			await new Promise((r) => setTimeout(r, 200));
+		}
+		tookOver = true;
 	}
-	// 3. The graceful drain (cmdStop's HTTP-first path, signals as fallback).
-	const stopRc = await cmdStop(out);
-	if (stopRc !== 0) return stopRc; // stop failed — do NOT spawn a second engine over it
-	// 4. Fresh spawn — cmdStart's tail verbatim (force = circuit reset;
-	//    skipSpawn = the force-spawn above already launched the child).
-	const spawned = await spawnEngineDetached({ force: true });
-	if (!spawned) {
-		out(`engine: spawn failed (see the log at .run/engine.log) — start the stack manually: bun run agent:start`);
+	if (!tookOver) {
+		// 1. A down engine has nothing to drain — restart IS start.
+		if (pre.kind !== "ok") {
+			out("engine: down — nothing to drain, starting it");
+			return cmdStart(out);
+		}
+		// 2. Busy gate: never cut a running job in half unless forced.
+		if (!flags.force) {
+			const deadline = Date.now() + flags.waitMs;
+			for (;;) {
+				const body = await fetchOverview(2000);
+				const router = body?.router;
+				if (!body || !router?.busy) break; // idle (or overview failed — cmdStop re-probes)
+				if (Date.now() >= deadline) {
+					out(busyRefusalMessage(router.activeJob ?? "job", router.busyMs ?? 0));
+					return 1;
+				}
+				await new Promise((r) => setTimeout(r, Math.min(500, Math.max(50, deadline - Date.now()))));
+			}
+		}
+		// 3. The graceful drain (cmdStop's HTTP-first path, signals as fallback).
+		const stopRc = await cmdStop(out);
+		if (stopRc !== 0) return stopRc; // stop failed — do NOT spawn a second engine over it
+	}
+	// 4. Fresh spawn — force = circuit reset; the transition marker was never
+	//    set (that is the install/update lane's marker, not an interactive one).
+	const decision: SpawnDecision = await requestEngineSpawn({ force: true });
+	if (decision.reason === "blocked" && decision.probe) {
+		blockedLines(decision.probe, out);
+		out("  no engine was started.");
+		return 1;
+	}
+	if (!decision.spawned) {
+		out(`engine: spawn not attempted (${decision.reason}) — start the stack manually: bun run agent:start`);
 		return 1;
 	}
 	const result = await ensureEngineRunning(20_000, { skipSpawn: true });
@@ -534,10 +707,14 @@ async function cmdRestart(out: (s: string) => void, flags: RestartFlags): Promis
  *     behind in the quarantined file — recoverable via `sqlite3 .recover`.
  */
 async function cmdRepair(out: (s: string) => void): Promise<number> {
-	// Never pull the DB out from under a live engine.
-	const health = await engineHealth(1500);
-	if (health.up) {
-		out("engine: UP — stop it first (unown engine stop), then re-run repair");
+	// Never pull the DB out from under a live engine. The engine's own data
+	// dir is authoritative: its lock/pid survive a token mismatch (the 401
+	// case), and a foreign engine on another data dir cannot own this DB.
+	const lockPid = engineLockHolderPid();
+	const pf = enginePidFromPidfile();
+	if (lockPid || pf.alive) {
+		const pid = lockPid ?? pf.pid;
+		out(`engine: a live engine (pid ${pid}) holds this data dir — stop it first (unown engine stop), then re-run repair`);
 		return 1;
 	}
 	const db = DB_PATH;
@@ -631,6 +808,18 @@ async function cmdServe(): Promise<number> {
 		console.error(`unown engine: failed to start — ${msg}`);
 		if (/corrupt|malformed|not a database/i.test(msg)) {
 			console.error("  the database is damaged — quarantine it and boot fresh with: unown engine repair");
+		} else if (/port.*in use|EADDRINUSE|address already in use/i.test(msg)) {
+			// A second engine is a CLEAN loser, not a crash: exit 0 so an OS
+			// supervisor (Restart=on-failure / KeepAlive) does not restart-storm.
+			const port = Number(process.env.PI_AGENT_PORT ?? 3030);
+			const probe = await probeEngine({ endpoint: `http://127.0.0.1:${port}`, timeoutMs: 1000 });
+			if (probe.banner) {
+				console.error(
+					`  another Unown engine already owns :${port}${probe.owner?.pid ? ` (pid ${probe.owner.pid})` : ""} — this instance exits cleanly.`,
+				);
+				return 0;
+			}
+			console.error("  the port is held by a non-Unown process; identify it before restarting.");
 		} else {
 			console.error("  (is the port already in use? see .run/engine.log)");
 		}

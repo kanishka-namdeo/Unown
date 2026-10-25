@@ -28,12 +28,13 @@ import {
         mkdirSync,
         openSync,
         readFileSync,
+        rmSync,
         statSync,
         truncateSync,
         writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { engineFetch } from "./engine-auth.ts";
+import { probeEngine, type EngineBlockedKind, type EngineProbe, type EngineProbeKind } from "./engine-probe.ts";
 import type { EngineBuildRef } from "./engine-version.ts";
 import { stateRoot } from "./packaging.ts";
 
@@ -51,7 +52,12 @@ export function supervisorStateRoot(): string {
 }
 
 function runDir(): string {
-        return join(supervisorStateRoot(), ".run");
+        // Runtime files (log/pid/circuit/descriptor) live beside the state by
+        // default, but UNOWN_RUNTIME_DIR is the canonical override — it also
+        // lets a test or a second profile keep its run state away from a live
+        // engine's exclusively-held Windows log.
+        const override = (process.env.UNOWN_RUNTIME_DIR ?? "").trim();
+        return override !== "" ? override : join(supervisorStateRoot(), ".run");
 }
 
 /** The engine's single unified log — supervisor-spawned engines write it via
@@ -144,14 +150,60 @@ export interface SpawnState {
         lastHealthyAt: number;
         /** True once attempts hit SPAWN_MAX_ATTEMPTS without a healthy reset. */
         gaveUp: boolean;
+        /** Why the last spawn was refused without being attempted (a foreign
+         *  engine, a taken port, an incompatible build, or a hung port). */
+        lastCause?: EngineBlockedKind;
+        /** Epoch ms of the probe that produced lastCause. */
+        lastProbeAt?: number;
 }
 
 function freshSpawnState(now = Date.now()): SpawnState {
         return { attempts: 0, windowStart: now, lastAttemptAt: 0, lastHealthyAt: 0, gaveUp: false };
 }
 
+const BLOCKED_CAUSES: EngineBlockedKind[] = ["unauthorized", "occupied", "incompatible", "unreachable"];
+
+function isBlockedCause(value: unknown): value is EngineBlockedKind {
+        return typeof value === "string" && (BLOCKED_CAUSES as string[]).includes(value);
+}
+
 export function spawnStateFile(): string {
         return join(runDir(), "engine-spawn-state.json");
+}
+
+/** A deliberate restart (install/update/service reconcile) writes this marker
+ *  before draining. While it is fresh, a CLI must not interpret the missing
+ *  engine as a crash and spawn a competitor into the same port. */
+export function engineTransitionFile(): string {
+        return join(runDir(), "engine-transition.json");
+}
+
+export function writeEngineTransition(ttlMs = 120_000): void {
+        try {
+                mkdirSync(runDir(), { recursive: true });
+                const now = Date.now();
+                writeFileSync(engineTransitionFile(), JSON.stringify({ startedAt: now, until: now + ttlMs }), "utf8");
+        } catch {
+                /* best effort — the drain itself is still safe */
+        }
+}
+
+export function clearEngineTransition(): void {
+        try {
+                rmSync(engineTransitionFile(), { force: true });
+        } catch {
+                /* best effort */
+        }
+}
+
+export function transitionInProgress(now = Date.now()): boolean {
+        try {
+                const raw = JSON.parse(readFileSync(engineTransitionFile(), "utf8"));
+                const until = Number(raw?.until);
+                return Number.isFinite(until) && until > now;
+        } catch {
+                return false;
+        }
 }
 
 /** Best-effort read; a missing/corrupt file means "fresh circuit" (fail-open). */
@@ -159,13 +211,20 @@ export function readSpawnState(): SpawnState {
         try {
                 const raw = JSON.parse(readFileSync(spawnStateFile(), "utf8"));
                 if (typeof raw !== "object" || raw === null) return freshSpawnState();
-                return {
+                const state: SpawnState = {
                         attempts: Number(raw.attempts) || 0,
                         windowStart: Number(raw.windowStart) || Date.now(),
                         lastAttemptAt: Number(raw.lastAttemptAt) || 0,
                         lastHealthyAt: Number(raw.lastHealthyAt) || 0,
                         gaveUp: raw.gaveUp === true,
                 };
+                // Optional fields stay ABSENT when the file predates them — the
+                // pre-taxonomy fixtures (and the live 0.0.21 state file) must
+                // read back byte-shape-compatible.
+                if (isBlockedCause(raw.lastCause)) state.lastCause = raw.lastCause;
+                const lastProbeAt = Number(raw.lastProbeAt) || 0;
+                if (lastProbeAt > 0) state.lastProbeAt = lastProbeAt;
+                return state;
         } catch {
                 return freshSpawnState();
         }
@@ -228,6 +287,18 @@ export function recordSpawnAttempt(state: SpawnState, now = Date.now()): SpawnSt
                 gaveUp: attempts >= SPAWN_MAX_ATTEMPTS,
         };
         return next;
+}
+
+/** Record a REFUSED spawn (a foreign engine, a taken port, an incompatible
+ *  build or a hung port) — the cause is stored so every surface can explain
+ *  why auto-start is not running, without counting a failed attempt (no child
+ *  was launched, so the crash-loop backoff must not advance). */
+export function recordSpawnBlocked(
+        state: SpawnState,
+        cause: EngineBlockedKind,
+        now = Date.now(),
+): SpawnState {
+        return { ...state, lastCause: cause, lastProbeAt: now };
 }
 
 /** Any observed-healthy engine resets the circuit (call from probes + `engine start`). */
@@ -293,21 +364,17 @@ export async function engineHealth(timeoutMs = 1500): Promise<{
         version?: EngineBuildRef;
         dreamNews?: DreamNews;
 }> {
-        try {
-                const res = await engineFetch(`${engineUrl()}/api/overview`, { signal: AbortSignal.timeout(timeoutMs) });
-                if (!res.ok) return { up: false };
-                const body: any = await res.json();
-                return {
-                        up: true,
-                        pid: body?.pid,
-                        busyMs: body?.router?.busyMs,
-                        activeJob: body?.router?.activeJob,
-                        version: body?.version,
-                        dreamNews: parseDreamNews(body?.dreamNews),
-                };
-        } catch {
-                return { up: false };
-        }
+        const probe = await probeEngine({ endpoint: engineUrl(), timeoutMs });
+        if (probe.kind !== "ok") return { up: false };
+        const body = probe.body;
+        return {
+                up: true,
+                pid: body?.pid,
+                busyMs: body?.router?.busyMs,
+                activeJob: body?.router?.activeJob,
+                version: body?.version,
+                dreamNews: parseDreamNews(body?.dreamNews),
+        };
 }
 
 /** Minimal .env loader (KEY=VALUE lines; comments/blanks ignored) — mirrors scripts/lib.ts.
@@ -394,7 +461,15 @@ export function reloadEnvIfChanged(envPath?: string): { reloaded: boolean; appli
 }
 
 /** In-process single-flight: concurrent callers share one spawn attempt. */
-let spawnInFlight: Promise<boolean> | null = null;
+let spawnInFlight: Promise<SpawnDecision> | null = null;
+
+/** The outcome of a spawn request — enough detail for the CLI to explain a
+ *  refusal instead of printing "spawn failed" and looping. */
+export interface SpawnDecision {
+        spawned: boolean;
+        reason: "spawned" | "already-up" | "blocked" | "gated" | "disabled" | "transition" | "spawn-failed";
+        probe?: EngineProbe;
+}
 
 /** Test/CI guard: never spawn engine children from test processes (set by test/_env.ts). */
 export const SPAWN_DISABLED = process.env.PI_DISABLE_ENGINE_SPAWN === "1";
@@ -438,22 +513,50 @@ export function buildWindowsEngineSpawnSpec(execPath: string, serveArgs: string[
  *      hard stop after SPAWN_MAX_ATTEMPTS (force=true, used by
  *      `unown engine start`, bypasses + resets it: a manual action wins).
  */
-export function spawnEngineDetached(opts: { force?: boolean } = {}): Promise<boolean> {
-        if (SPAWN_DISABLED) return Promise.resolve(false);
-        if (autoStartDisabled() && !opts.force) return Promise.resolve(false);
+export async function requestEngineSpawn(opts: { force?: boolean } = {}): Promise<SpawnDecision> {
+        if (SPAWN_DISABLED) return { spawned: false, reason: "disabled" };
+        if (autoStartDisabled() && !opts.force) return { spawned: false, reason: "disabled" };
+        if (transitionInProgress()) return { spawned: false, reason: "transition" };
+        if (spawnInFlight) return spawnInFlight;
+        const probe = await probeEngine({ endpoint: engineUrl(), timeoutMs: 1500 });
+        if (probe.kind === "ok") return { spawned: false, reason: "already-up", probe };
+        if (probe.kind !== "refused") {
+                writeSpawnState(recordSpawnBlocked(readSpawnState(), probe.kind));
+                return { spawned: false, reason: "blocked", probe };
+        }
         if (!opts.force) {
                 const state = readSpawnState();
                 const gate = evaluateSpawnGate(state);
-                if (!gate.allowed) return Promise.resolve(false);
+                if (!gate.allowed) return { spawned: false, reason: "gated", probe };
                 writeSpawnState(recordSpawnAttempt(state));
         } else {
                 // Manual start: clean slate, then record the attempt like any other.
                 markEngineHealthy();
                 writeSpawnState(recordSpawnAttempt(readSpawnState()));
         }
-        if (spawnInFlight) return spawnInFlight;
         spawnInFlight = (async () => {
                 try {
+                        const spawned = await spawnEngineProcess();
+                        return { spawned, reason: spawned ? "spawned" : "spawn-failed", probe } as SpawnDecision;
+                } finally {
+                        // release the single-flight latch after a beat so a LATER call
+                        // (e.g. next CLI invocation in the same process) can retry
+                        setTimeout(() => {
+                                spawnInFlight = null;
+                        }, 5_000).unref?.();
+                }
+        })();
+        return spawnInFlight;
+}
+
+/** Boolean-compatible wrapper for the existing touchpoint call sites. */
+export async function spawnEngineDetached(opts: { force?: boolean } = {}): Promise<boolean> {
+        return (await requestEngineSpawn(opts)).spawned;
+}
+
+/** Launch the detached child (no gates — requestEngineSpawn owns those). */
+async function spawnEngineProcess(): Promise<boolean> {
+        try {
                         const state = supervisorStateRoot();
                         const envFile = join(state, ".env");
                         const env = { ...process.env, ...loadEnvValues(envFile) };
@@ -520,17 +623,16 @@ export function spawnEngineDetached(opts: { force?: boolean } = {}): Promise<boo
                                 closeSync(logFd);
                         }
                         return true;
-                } catch {
-                        return false;
-                } finally {
-                        // release the single-flight latch after a beat so a LATER call
-                        // (e.g. next CLI invocation in the same process) can retry
-                        setTimeout(() => {
-                                spawnInFlight = null;
-                        }, 5_000).unref?.();
+        } catch (err) {
+                // The old silent catch made an occupied port, a bad execPath and
+                // a missing log dir indistinguishable. Keep the boolean contract
+                // but allow an opt-in diagnostic line (the CLI still owns the
+                // user-facing cause via the probe taxonomy).
+                if (process.env.UNOWN_DEBUG_SPAWN === "1") {
+                        console.error("[engine-supervisor] spawn failed:", err);
                 }
-        })();
-        return spawnInFlight;
+                return false;
+        }
 }
 
 /**
@@ -541,32 +643,40 @@ export function spawnEngineDetached(opts: { force?: boolean } = {}): Promise<boo
 export async function ensureEngineRunning(
         waitMs = 0,
         opts: { skipSpawn?: boolean } = {},
-): Promise<{ spawned: boolean; up: boolean; pid?: number }> {
-        const first = await engineHealth();
-        if (first.up) {
+): Promise<{ spawned: boolean; up: boolean; pid?: number; kind?: EngineProbeKind }> {
+        const first = await probeEngine({ endpoint: engineUrl(), timeoutMs: 1500 });
+        if (first.kind === "ok") {
                 markEngineHealthy(); // observed healthy → reset the crash-loop circuit (M6)
-                return { spawned: false, up: true, pid: first.pid };
+                return { spawned: false, up: true, pid: first.body?.pid, kind: "ok" };
         }
-        const spawned = opts.skipSpawn ? false : await spawnEngineDetached();
+        // A foreign engine, an occupied port, an incompatible build or a hung
+        // port is not a reason to spawn — and polling will not heal it.
+        if (first.kind !== "refused" && first.kind !== "unreachable") {
+                return { spawned: false, up: false, kind: first.kind };
+        }
+        const spawned = opts.skipSpawn || first.kind !== "refused" ? false : await spawnEngineDetached();
         // A gated spawn (M6 backoff / gave-up / kill switch) must NOT skip the
         // WAIT: the caller may have JUST kicked a spawn itself (`engine start`'s
         // force path records an attempt, and this function's own un-forced call
         // would hit the fresh 2s backoff gate and used to early-return without
         // ever polling — caught live by the E2E lane: engine healthy at t+2s,
         // cmdStart reporting "not healthy after 20s").
-        if (waitMs <= 0) return { spawned, up: false };
+        if (waitMs <= 0) return { spawned, up: false, kind: first.kind };
         // jittered backoff poll (250ms · 2^n ± 20%) bounded by waitMs
         let delay = 250;
         const deadline = Date.now() + waitMs;
         for (;;) {
                 const jitter = delay * (0.8 + Math.random() * 0.4);
                 await new Promise((r) => setTimeout(r, jitter));
-                const probe = await engineHealth();
-                if (probe.up) {
+                const probe = await probeEngine({ endpoint: engineUrl(), timeoutMs: 1500 });
+                if (probe.kind === "ok") {
                         markEngineHealthy();
-                        return { spawned: true, up: true, pid: probe.pid };
+                        return { spawned, up: true, pid: probe.body?.pid, kind: "ok" };
                 }
-                if (Date.now() >= deadline) return { spawned, up: false };
+                if (probe.kind !== "refused" && probe.kind !== "unreachable") {
+                        return { spawned, up: false, kind: probe.kind };
+                }
+                if (Date.now() >= deadline) return { spawned, up: false, kind: probe.kind };
                 delay = Math.min(delay * 2, 2000);
         }
 }
