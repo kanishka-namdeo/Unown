@@ -442,6 +442,35 @@ export function GhostLink({
 }
 
 /* ------------------------------------------------------------------ */
+/* beta badge                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The product's stage, said where the product's name is. A bordered pixel
+ * chip in the console grammar — square corners, `gb-label`, gold on panel —
+ * not a rounded SaaS pill: the one smooth-cornered thing on the page would
+ * be the badge, which is exactly the wrong place to break the voice.
+ *
+ * Plain text, not `aria-hidden`: "Beta" is a real status a screen reader
+ * should announce (GOV.UK Tag guidance — status indicators are text, not
+ * iconography), and the hero carries the plain-language sentence that says
+ * what the badge means. Non-interactive on purpose: it states a fact, it is
+ * not a control.
+ */
+export function BetaBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={
+        "gb-label inline-flex items-center border border-gold px-1.5 py-[3px] text-[8px] leading-none text-gold " +
+        (className ?? "")
+      }
+    >
+      Beta
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* nav                                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -520,6 +549,11 @@ export function Nav() {
             label="Unown"
           />
           <span className="gb-label text-[13px] text-ink">unown</span>
+          {/* The stage, next to the name — the Vercel/Figma badge placement:
+              a visitor learns "beta" in the same glance that learns the
+              product's name, before any claim is read. Not hidden below a
+              breakpoint: on a phone the header is the first screen too. */}
+          <BetaBadge />
           <span className="gb-label hidden text-[8px] text-faint min-[430px]:inline">
             self-improving
           </span>
@@ -750,6 +784,14 @@ export function Footer() {
             <p className="gb-term mt-3 text-[17px] leading-snug text-faint">
               A terminal coding agent that turns sessions into notes, and notes into
               verified memory.
+            </p>
+            {/* The stage, restated at the bottom: the footer is where a reader
+                who scrolled everything still gets the status before the legal
+                line — and where the beta badge's claim is spelled out in
+                plain words one last time. */}
+            <p className="mt-2 flex items-center gap-2 font-mono text-[11px] text-faint">
+              <span className="size-1 bg-gold/70" aria-hidden="true" />
+              Currently in beta.
             </p>
           </div>
 

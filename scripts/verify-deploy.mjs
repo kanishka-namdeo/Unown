@@ -75,6 +75,12 @@ if (!html) {
 section("page content");
 note(html.includes("It reads what you write down"), "signature line (subhead since 2026-10-24)");
 note(html.includes("The terminal coding agent that remembers"), "keyword-bearing h1");
+// The beta stage is a load-bearing status claim (2026-10-25): the badge pair
+// the research settled on — chip + plain-language sentence — so both halves
+// are asserted; a badge whose sentence was copy-edited away would still pass
+// the chip check and quietly stop meaning anything to a reader.
+note(html.includes("Beta"), "beta badge present (header wordmark + hero kicker)");
+note(html.includes("Unown is in beta"), "beta plain-language sentence present");
 
 /* ---------------------------------------------------------------- */
 /* SEO: the search surface a crawler reads, on the deployed page     */

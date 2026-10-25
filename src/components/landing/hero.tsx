@@ -3,7 +3,7 @@ import { Glyph } from "./glyph";
 import type { GlyphId } from "./glyphs";
 import { InstallPanel } from "./install-panel";
 import { SessionReplay } from "./session-replay";
-import { CopyButton, GhostLink, PixelCursor, PrimaryLink, GITHUB_URL, DOCS_URL } from "./shell";
+import { CopyButton, GhostLink, PixelCursor, PrimaryLink, GITHUB_URL, DOCS_URL, BetaBadge } from "./shell";
 import { StarCount } from "./star-count";
 
 /**
@@ -170,8 +170,18 @@ export function Hero() {
               <pre>'s min-content; without it the git-clone URL sets the
               column's intrinsic width and the section clips it on phones. */}
           <div className="max-w-2xl min-w-0">
-            <p className="gb-label text-[10px] text-gold">
-              Open-source AI coding agent · built on pi
+            {/* The stage, said in the same breath as the category — the badge
+                the Vercel/Figma product pages carry next to their H1s. It is
+                the `BetaBadge` from shell.tsx (one component, three homes:
+                here, the header wordmark, the footer note), and the sentence
+                under the subhead below is the plain-language half of the
+                pattern: a badge states the stage, a sentence says what it
+                means for the reader. */}
+            <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+              <BetaBadge />
+              <span className="gb-label text-[10px] text-gold">
+                Open-source AI coding agent · built on pi
+              </span>
             </p>
 
             {/* The h1 carries the search phrases ("terminal coding agent") —
@@ -190,6 +200,16 @@ export function Hero() {
               <span className="text-ink">note</span>. Overnight that engine turns notes into
               project memory, and refuses to keep any of it until a fresh sandbox has proven it
               twice.
+            </p>
+
+            {/* What "beta" means here, in words — the plain-language half of
+                the badge pattern (Vercel's feature pages pair the badge with
+                one sentence of availability copy; Raycast states it in the
+                subtitle). Honest by the page's own rule: the version line is
+                0.0.x, the changelog records moving formats, and issues are
+                where rough edges go. */}
+            <p className="mt-3 max-w-xl font-mono text-[12px] leading-relaxed text-faint">
+              Unown is in beta — expect rough edges and moving formats; report what breaks.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">

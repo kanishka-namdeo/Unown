@@ -30,10 +30,10 @@ export interface ChangelogStop {
   groups: ChangelogGroup[];
 }
 
-export const CHANGELOG_TOTAL_ENTRIES = 278;
+export const CHANGELOG_TOTAL_ENTRIES = 279;
 
 export const CHANGELOG_TOTALS: Record<ChangelogBucket, number> = {
-  "Added": 123,
+  "Added": 124,
   "Changed": 18,
   "Deprecated": 0,
   "Removed": 3,
@@ -46,9 +46,9 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
   {
     "label": "Unreleased",
     "date": null,
-    "total": 11,
+    "total": 12,
     "counts": {
-      "Added": 11,
+      "Added": 12,
       "Changed": 0,
       "Deprecated": 0,
       "Removed": 0,
@@ -60,6 +60,10 @@ export const CHANGELOG_STOPS: ChangelogStop[] = [
       {
         "bucket": "Added",
         "items": [
+          {
+            "title": "landing: the beta mark — the page says plainly what stage the product is in",
+            "behavior": false
+          },
           {
             "title": "tui: OSC 7501 program status — the terminal knows what the agent is doing",
             "behavior": false

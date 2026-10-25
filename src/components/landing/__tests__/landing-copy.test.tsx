@@ -81,6 +81,24 @@ describe("landing hero", () => {
     expect(container.innerHTML).not.toContain("sk-");
   });
 
+  test("states its beta stage in the badge + plain-language pair the research settled on", () => {
+    setUA(MAC_UA);
+    const { container } = render(<Hero />);
+    // The badge half: the chip in the kicker row, the same component the
+    // header wordmark carries. "Beta" is a real status — plain text a screen
+    // reader announces, never aria-hidden.
+    expect(container.textContent).toContain("Beta");
+    // The plain-language half: a badge states the stage, a sentence says what
+    // it means. The exact wording is pinned so a copy edit cannot quietly
+    // turn the honest sentence into marketing (the page's honesty rule: a
+    // status claim must be defensible — 0.0.x line, moving formats, issues).
+    expect(container.textContent).toContain("Unown is in beta");
+    expect(container.textContent).toContain("expect rough edges and moving formats");
+    // The badge is non-interactive: a status, not a control.
+    const badge = [...container.querySelectorAll("span")].find((s) => s.textContent === "Beta");
+    expect(badge?.querySelector("a, button")).toBeNull();
+  });
+
   test("the install chip defaults to the visitor's OS: the binary one-liner, its note, the CLI-only chain", () => {
     // One command chip above the fold — per OS tab, not a five-command wall.
     // The full-stack source sequence stays in the manual expander below.
@@ -335,6 +353,21 @@ describe("landing shell", () => {
     render(<Footer />);
     const footLinks = screen.getAllByRole("link", { name: /^Dashboard$/i });
     for (const l of footLinks) expect(l.getAttribute("href")).toBe("#showcase");
+  });
+
+  test("the beta stage rides the wordmark in the header and the note in the footer", () => {
+    // Three homes, one component: the header wordmark badge, the hero kicker
+    // badge, the footer sentence. The header is pinned here because it is the
+    // one every page view starts from — a badge only the hero carried would
+    // vanish the moment a visitor scrolls.
+    const { container } = render(<Nav />);
+    // The wordmark link is the one that goes home — the GitHub link and the
+    // CTA are the other <a>s in the header.
+    const wordmark = container.querySelector('a[href="/"]');
+    expect(wordmark?.textContent).toContain("Beta");
+    cleanup();
+    render(<Footer />);
+    expect(screen.getByText("Currently in beta.")).toBeTruthy();
   });
 
   // Below lg the seven anchors live behind the section menu. These pin the
