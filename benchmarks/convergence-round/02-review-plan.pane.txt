@@ -1,0 +1,36 @@
+  memory/how-to-use.md (guide: how to read the memory tiers), memory/tier0-policy.md (enterprise policy — highest authority),
+.unown/memory/project.md (project memory — provenance in the injected header), memory/tier2-user.md (user memory — global
+preferences), .unown/memory/local.md (local overrides — highest precedence)
+
+── Skills ──
+  methodical-debugging, repo-exploration, unown-self-learning, verification-first
+
+── Extensions ──
+  <inline:6>
+
+── Themes ──
+  unown
+
+
+ fd not found. Downloading...
+ Warning: Failed to download fd: GitHub API error: 403
+
+ Tip — /plan explores read-only first, then proposes a numbered plan you approve before execution.
+
+» Reply with exactly: DONE
+
+ DONE
+
+ Review plan: 1 built-in reviewer(s)
+   - correctness
+ 2 team check(s)
+   - console-drift [model: zai-bridge/agnes-2.5-flash] (floor P2) — No console.log drift
+   - no-secrets-in-logs (floor P1) — No secrets in build output
+
+»───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/unown-fv (main)
+ctx ▕░░░░░░░░░░▏ 2.5%/524k (auto) ↓2 ↑13k                                                                        agnes-3.0-flash
+memory: up · mem ▕█░░░▏ v0 · 2 rules turn 2.6s · ctx 2% · in 13.1k out 2
+? help · ctrl+k palette · / commands · ! bash · ctrl+o tools · esc-esc tree
